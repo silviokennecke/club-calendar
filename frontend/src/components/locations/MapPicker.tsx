@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
-const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2lsdmlva2VubmVja2UiLCJhIjoiQmN4cXI4VSJ9.OAictxniq7_TyKwEV3b0qA'
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''
 
 interface Props {
   latitude?: number | null
@@ -110,6 +110,14 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
     mapRef.current?.flyTo({ center: [lng, lat], zoom: 15 })
     markerRef.current?.setLngLat([lng, lat])
     onPositionChange(lat, lng, s.place_name)
+  }
+
+  if (!MAPBOX_TOKEN) {
+    return (
+      <div className="h-24 flex items-center justify-center rounded-lg border border-dashed border-slate-200 text-xs text-slate-400">
+        Map disabled — set NEXT_PUBLIC_MAPBOX_TOKEN to enable
+      </div>
+    )
   }
 
   return (
