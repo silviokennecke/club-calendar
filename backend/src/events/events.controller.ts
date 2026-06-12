@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, Ht
 import { z } from 'zod'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
 import { CalendarMemberGuard } from '../common/guards/calendar-member.guard'
+import { ArchivedCalendarGuard } from '../common/guards/archived-calendar.guard'
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe'
 import { EventsService } from './events.service'
 
@@ -59,7 +60,7 @@ const patchEventSchema = eventSchema.partial().refine(
 )
 
 @Controller('api/calendars/:calendarId/events')
-@UseGuards(JwtAuthGuard, CalendarMemberGuard)
+@UseGuards(JwtAuthGuard, CalendarMemberGuard, ArchivedCalendarGuard)
 export class EventsController {
   constructor(private readonly service: EventsService) {}
 
