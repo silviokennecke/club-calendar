@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, HttpCode,
 import { z } from 'zod'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
 import { CalendarMemberGuard } from '../common/guards/calendar-member.guard'
+import { ArchivedCalendarGuard } from '../common/guards/archived-calendar.guard'
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe'
 import { PropertiesService } from './properties.service'
 
@@ -16,7 +17,7 @@ const patchSchema = propertySchema.partial().refine(
 )
 
 @Controller('api/calendars/:calendarId/properties')
-@UseGuards(JwtAuthGuard, CalendarMemberGuard)
+@UseGuards(JwtAuthGuard, CalendarMemberGuard, ArchivedCalendarGuard)
 export class PropertiesController {
   constructor(private readonly service: PropertiesService) {}
 
