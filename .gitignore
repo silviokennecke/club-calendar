@@ -3,4 +3,8 @@
 node_modules/
 dist/
 .env
-*.env.local
+.env.*
+!.env.example
+# .claude/settings.json is intentionally committed for shared plugin config
+.claude/*
+!.claude/settings.json
