@@ -68,6 +68,8 @@ authRoutes.get('/me', authMiddleware, async (c) => {
 const updateMeSchema = z.object({
   dateFormat: z.string().min(1).max(20).optional(),
   firstDayOfWeek: z.number().int().min(0).max(6).optional(),
+  lastClubId: z.number().int().positive().nullable().optional(),
+  lastCalendarId: z.number().int().positive().nullable().optional(),
 })
 
 authRoutes.patch('/me', authMiddleware, zValidator('json', updateMeSchema), async (c) => {
