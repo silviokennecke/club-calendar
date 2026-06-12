@@ -3,6 +3,8 @@ import { use, useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPatch, apiDelete } from '@/lib/api'
 import type { CalendarEvent, TargetGroup } from '@/lib/types'
+import { useAuth } from '@/lib/auth-context'
+import { formatDate } from '@/lib/dateFormat'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import EventModal from '@/components/calendar/EventModal'
@@ -15,6 +17,8 @@ type StatusFilter = 'all' | 'draft' | 'published'
 export default function EventsListPage({ params }: Props) {
   const { calendarId } = use(params)
   const qc = useQueryClient()
+  const { user } = useAuth()
+  const dateFormat = user?.dateFormat ?? 'dd.MM.yyyy'
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [search, setSearch] = useState('')
@@ -187,7 +191,7 @@ export default function EventsListPage({ params }: Props) {
                     {ev.name}
                     {ev.location && <span className="ml-1.5 text-slate-400 font-normal text-xs">@ {ev.location.name ?? ev.location.address}</span>}
                   </span>
-                  <span className="text-slate-500 font-mono text-xs">{ev.date.slice(0, 10)}</span>
+                  <span className="text-slate-500 text-xs">{formatDate(ev.date, dateFormat)}</span>
                   <span className="text-slate-500 font-mono text-xs">{ev.timeBegin}</span>
                   <span className="text-slate-500 font-mono text-xs">{ev.timeEnd}</span>
 

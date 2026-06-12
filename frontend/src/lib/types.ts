@@ -2,6 +2,8 @@ export interface User {
   id: number
   name: string
   email: string
+  dateFormat: string
+  firstDayOfWeek: number
 }
 
 export interface Club {
@@ -14,6 +16,7 @@ export interface Calendar {
   id: number
   clubId: number
   name: string
+  timezone?: string | null
 }
 
 export interface CalendarFeed {
