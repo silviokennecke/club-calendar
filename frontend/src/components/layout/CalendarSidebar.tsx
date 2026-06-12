@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
   CalendarDays, Settings, LayoutTemplate, ChevronLeft, LogOut,
-  Palette, Tag, Users, MapPin, Rss
+  Palette, Tag, Users, MapPin, Rss, User
 } from 'lucide-react'
 
 interface Props { clubId: string; calendarId: string }
@@ -113,6 +113,9 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
 
       {/* Footer */}
       <div className="p-3 border-t border-slate-100">
+        <Link href="/profile" className="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 rounded transition-colors mb-1">
+          <User className="w-3.5 h-3.5" /> Profile
+        </Link>
         <button
           onClick={logout}
           className="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 w-full rounded transition-colors"
