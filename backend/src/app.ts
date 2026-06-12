@@ -16,7 +16,6 @@ export function createApp() {
       credentials: true,
       allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
       allowHeaders: ['Content-Type', 'Authorization'],
-      exposeHeaders: ['Set-Cookie'],
     }),
   )
 
