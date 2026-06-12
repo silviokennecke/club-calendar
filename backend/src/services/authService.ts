@@ -10,7 +10,19 @@ export async function register(name: string, email: string, password: string) {
   const user = await prisma.user.create({ data: { name, email, password: hashed } })
   const accessToken = await signAccessToken(user.id)
   const refreshToken = await signRefreshToken(user.id)
-  return { accessToken, refreshToken, user: { id: user.id, name: user.name, email: user.email } }
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      dateFormat: user.dateFormat,
+      firstDayOfWeek: user.firstDayOfWeek,
+      lastClubId: user.lastClubId,
+      lastCalendarId: user.lastCalendarId,
+    },
+  }
 }
 
 export async function login(email: string, password: string) {
@@ -20,7 +32,19 @@ export async function login(email: string, password: string) {
   if (!valid) throw unauthorized('Invalid credentials')
   const accessToken = await signAccessToken(user.id)
   const refreshToken = await signRefreshToken(user.id)
-  return { accessToken, refreshToken, user: { id: user.id, name: user.name, email: user.email } }
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      dateFormat: user.dateFormat,
+      firstDayOfWeek: user.firstDayOfWeek,
+      lastClubId: user.lastClubId,
+      lastCalendarId: user.lastCalendarId,
+    },
+  }
 }
 
 export async function refresh(refreshToken: string) {
@@ -88,7 +112,15 @@ export async function findOrCreateOAuthUser(
       return {
         accessToken,
         refreshToken,
-        user: { id: existing.user.id, name: existing.user.name, email: existing.user.email },
+        user: {
+          id: existing.user.id,
+          name: existing.user.name,
+          email: existing.user.email,
+          dateFormat: existing.user.dateFormat,
+          firstDayOfWeek: existing.user.firstDayOfWeek,
+          lastClubId: existing.user.lastClubId,
+          lastCalendarId: existing.user.lastCalendarId,
+        },
       }
     }
   }
@@ -100,5 +132,17 @@ export async function findOrCreateOAuthUser(
   await prisma.oAuthAccount.create({ data: { userId: user.id, provider, providerId, email } })
   const accessToken = await signAccessToken(user.id)
   const refreshToken = await signRefreshToken(user.id)
-  return { accessToken, refreshToken, user: { id: user.id, name: user.name, email: user.email } }
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      dateFormat: user.dateFormat,
+      firstDayOfWeek: user.firstDayOfWeek,
+      lastClubId: user.lastClubId,
+      lastCalendarId: user.lastCalendarId,
+    },
+  }
 }
