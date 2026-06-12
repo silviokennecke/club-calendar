@@ -10,12 +10,13 @@ import { apiGet, apiPatch } from '@/lib/api'
 import type { CalendarEvent, TargetGroup } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import EventModal from '@/components/calendar/EventModal'
-import { Plus } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, Upload } from 'lucide-react'
 
 interface Props { params: Promise<{ clubId: string; calendarId: string }> }
 
 export default function CalendarPage({ params }: Props) {
-  const { calendarId } = use(params)
+  const { clubId, calendarId } = use(params)
   const qc = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string | undefined>()
@@ -114,9 +115,16 @@ export default function CalendarPage({ params }: Props) {
     <div className="p-6">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-lg font-semibold text-slate-900">Calendar</h1>
-        <Button size="sm" onClick={() => openCreate()}>
-          <Plus className="w-3.5 h-3.5 mr-1" />New Event
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href={`/clubs/${clubId}/calendars/${calendarId}/import`}>
+            <Button size="sm" variant="outline">
+              <Upload className="w-3.5 h-3.5 mr-1" />Import ICS
+            </Button>
+          </Link>
+          <Button size="sm" onClick={() => openCreate()}>
+            <Plus className="w-3.5 h-3.5 mr-1" />New Event
+          </Button>
+        </div>
       </div>
 
       {/* Target group filter chips */}
