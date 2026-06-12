@@ -116,6 +116,37 @@ export async function createSeriesFromTemplate(
   )
 }
 
+interface ImportEventData {
+  name: string
+  date: string          // YYYY-MM-DD
+  timeBegin: string     // HH:MM
+  timeEnd: string       // HH:MM
+  timezone?: string | null
+  isDraft?: boolean
+  locationId?: number | null
+  propertyIds?: number[]
+  featureIds?: number[]
+  targetGroupIds?: number[]
+}
+
+export async function importEvents(calendarId: number, events: ImportEventData[]) {
+  return prisma.$transaction(
+    events.map(({ propertyIds = [], featureIds = [], targetGroupIds = [], date, ...rest }) =>
+      prisma.event.create({
+        data: {
+          calendarId,
+          ...rest,
+          date: new Date(date),
+          properties: { create: propertyIds.map(propertyId => ({ propertyId })) },
+          features: { create: featureIds.map(featureId => ({ featureId })) },
+          targetGroups: { create: targetGroupIds.map(targetGroupId => ({ targetGroupId })) },
+        },
+        include: eventInclude,
+      })
+    )
+  )
+}
+
 export async function getEvent(id: number, calendarId: number) {
   const event = await prisma.event.findUnique({ where: { id }, include: eventInclude })
   if (!event || event.calendarId !== calendarId) throw notFound('Event not found')
