@@ -41,6 +41,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
   ]
 
   const settingsNav: NavItem[] = [
+    { label: 'General', href: `${base}/settings`, icon: Settings, exact: true },
     { label: 'Feeds', href: `${base}/settings/feeds`, icon: Rss },
     { label: 'Properties', href: `${base}/settings/properties`, icon: Palette },
     { label: 'Features', href: `${base}/settings/features`, icon: Tag },
