@@ -216,7 +216,7 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
   return (
     <>
       <Dialog open={open} onOpenChange={v => !v && onClose()}>
-        <DialogContent className="w-[min(42rem,calc(100vw-2rem))] max-h-[90vh] overflow-y-auto overflow-x-hidden">
+        <DialogContent className="w-[min(42rem,calc(100vw-2rem))] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Edit Event' : 'New Event'}</DialogTitle>
           </DialogHeader>
@@ -272,13 +272,13 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0">
                     <Label className="text-xs">From</Label>
-                    <Input type="date" className="h-8 text-sm" value={recConfig.from} onChange={e => setRecConfig(c => ({ ...c, from: e.target.value }))} />
+                    <Input type="date" className="h-8 text-sm w-full" value={recConfig.from} onChange={e => setRecConfig(c => ({ ...c, from: e.target.value }))} />
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0">
                     <Label className="text-xs">To</Label>
-                    <Input type="date" className="h-8 text-sm" value={recConfig.to} onChange={e => setRecConfig(c => ({ ...c, to: e.target.value }))} />
+                    <Input type="date" className="h-8 text-sm w-full" value={recConfig.to} onChange={e => setRecConfig(c => ({ ...c, to: e.target.value }))} />
                   </div>
                 </div>
 
@@ -307,9 +307,9 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
                 <Input id="evt-n" value={name} onChange={e => setName(e.target.value)} placeholder="Event name" />
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1"><Label htmlFor="evt-d">Date *</Label><Input id="evt-d" type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
-                <div className="space-y-1"><Label>Start</Label><Input type="time" value={timeBegin} onChange={e => setTimeBegin(e.target.value)} /></div>
-                <div className="space-y-1"><Label>End</Label><Input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} /></div>
+                <div className="space-y-1 min-w-0"><Label htmlFor="evt-d">Date *</Label><Input id="evt-d" type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full" /></div>
+                <div className="space-y-1 min-w-0"><Label>Start</Label><Input type="time" value={timeBegin} onChange={e => setTimeBegin(e.target.value)} className="w-full" /></div>
+                <div className="space-y-1 min-w-0"><Label>End</Label><Input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="w-full" /></div>
               </div>
               <div className="flex items-center gap-2">
                 <Switch id="evt-pub" checked={!isDraft} onCheckedChange={v => setIsDraft(!v)} />
