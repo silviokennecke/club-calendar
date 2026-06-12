@@ -42,3 +42,29 @@ export async function createTestCalendarWithClub() {
   const calendar = await createTestCalendar(club.id)
   return { user, club, calendar }
 }
+
+export async function createTestEvent(calendarId: number, overrides?: { name?: string; date?: string; isDraft?: boolean }) {
+  return prisma.event.create({
+    data: {
+      calendarId,
+      name: overrides?.name ?? 'Test Event',
+      date: new Date(overrides?.date ?? '2026-06-15'),
+      timeBegin: '19:00',
+      timeEnd: '21:00',
+      isDraft: overrides?.isDraft ?? false,
+      timezone: 'Europe/Berlin',
+    },
+  })
+}
+
+export async function createTestTemplate(calendarId: number, overrides?: { name?: string }) {
+  return prisma.eventTemplate.create({
+    data: {
+      calendarId,
+      name: overrides?.name ?? 'Test Template',
+      timezone: 'Europe/Berlin',
+      timeBegin: '19:00',
+      timeEnd: '21:00',
+    },
+  })
+}
