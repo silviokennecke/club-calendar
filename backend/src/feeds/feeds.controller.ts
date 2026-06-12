@@ -56,6 +56,7 @@ export class FeedsController {
   }
 
   @Post(':feedId/regenerate-secret')
+  @HttpCode(200)
   regenerateSecret(
     @Param('calendarId', ParseIntPipe) calendarId: number,
     @Param('feedId', ParseIntPipe) feedId: number,
