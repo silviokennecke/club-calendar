@@ -47,6 +47,12 @@ npm test
 
 Tests run against a real MySQL instance on port 3307 (`club_calendar_test` database). Uses Vitest with `singleFork` pool so migrations are applied once per run.
 
+## Working Rules
+
+1. **Commit after every feature or fix** — create a git commit as soon as an implementation task is complete, before moving to the next task.
+2. **Keep CLAUDE.md and AGENTS.md up to date** — update these files whenever the stack, architecture, or module structure changes.
+3. **Write tests** — add unit, integration, or E2E tests for every backend feature. Backend integration tests use Vitest + supertest (`src/routes/*.test.ts`). E2E tests use Playwright (`frontend/e2e/`).
+
 ## Domain Concepts
 
 - **Club** — the top-level entity; has one or more Calendars; managed by Users

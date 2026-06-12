@@ -28,9 +28,19 @@ The backend (`backend/`) uses NestJS with the following module layout:
 | `src/common/guards/jwt-auth.guard.ts` | Requires valid Bearer token; sets `request.userId` |
 | `src/common/guards/club-member.guard.ts` | Requires `request.userId` to be a member of `:clubId` |
 | `src/common/guards/calendar-member.guard.ts` | Requires `request.userId` to have access to `:calendarId` |
+| `src/common/guards/archived-calendar.guard.ts` | Blocks non-GET requests when `:calendarId` calendar is archived |
 | `src/common/pipes/zod-validation.pipe.ts` | Use with `@Body(new ZodValidationPipe(schema))` |
 | `src/common/decorators/current-user.decorator.ts` | `@CurrentUser()` extracts `request.userId` |
 | `src/common/filters/app-exception.filter.ts` | Maps `AppError` to HTTP responses (registered via APP_FILTER) |
+
+## Calendar Archive & Duplicate
+
+- `Calendar.archivedAt DateTime?` — null = active; set = archived and read-only
+- `POST /api/clubs/:clubId/calendars/:calendarId/archive` — sets `archivedAt`; returns updated calendar
+- `POST /api/clubs/:clubId/calendars/:calendarId/unarchive` — clears `archivedAt`; returns updated calendar
+- `POST /api/clubs/:clubId/calendars/:calendarId/duplicate` (201) — deep-copies calendar + properties/features/target-groups/locations/templates/feeds (new feed secrets); no events copied
+- `GET /api/clubs/:clubId/calendars?includeArchived=true` — includes archived calendars (sorted after active)
+- Archived calendars: public feeds return 404; all nested write endpoints return 403
 
 ## Auth Flow
 
