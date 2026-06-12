@@ -213,9 +213,9 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
   }
 
   // When map position changes, update the location's lat/lng via PATCH
-  const handleMapPositionChange = useCallback(async (lat: number, lng: number, address: string) => {
+  const handleMapPositionChange = useCallback(async (lat: number, lng: number) => {
     if (!locationId) return
-    await apiPatch(`/api/calendars/${calendarId}/locations/${locationId}`, { latitude: lat, longitude: lng, address })
+    await apiPatch(`/api/calendars/${calendarId}/locations/${locationId}`, { latitude: lat, longitude: lng })
     qc.invalidateQueries({ queryKey: ['locations', calendarId] })
   }, [locationId, calendarId, qc])
 
