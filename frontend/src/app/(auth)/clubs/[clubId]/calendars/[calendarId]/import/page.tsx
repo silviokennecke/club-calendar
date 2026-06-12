@@ -14,10 +14,12 @@ interface ParsedEvent {
   uid: string
   name: string
   date: string
+  dateEnd: string       // YYYY-MM-DD or '' (empty = same day)
   timeBegin: string
   timeEnd: string
   timezone: string | null
   locationText: string   // raw LOCATION field from ICS
+  isAllDay: boolean
   isDraft: boolean
   propertyIds: number[]
   featureIds: number[]
@@ -46,17 +48,34 @@ function parseIcs(text: string): ParsedEvent[] {
       if (tzMatch) timezone = tzMatch[1].trim()
       if (dtstart.length >= 8) {
         date = `${dtstart.slice(0, 4)}-${dtstart.slice(4, 6)}-${dtstart.slice(6, 8)}`
-        if (dtstart.length >= 13) timeBegin = `${dtstart.slice(9, 11)}:${dtstart.slice(11, 13)}`
       }
       if (!date) continue
+      // Detect all-day: DTSTART;VALUE=DATE format has no time component (length=8)
+      const isAllDay = dtstart.length === 8
+      if (!isAllDay && dtstart.length >= 13) {
+        timeBegin = `${dtstart.slice(9, 11)}:${dtstart.slice(11, 13)}`
+      }
       const dtend = get('DTEND')
       let timeEnd = timeBegin
-      if (dtend && dtend.length >= 13) {
-        const endDateStr = `${dtend.slice(0, 4)}-${dtend.slice(4, 6)}-${dtend.slice(6, 8)}`
-        if (endDateStr === date) timeEnd = `${dtend.slice(9, 11)}:${dtend.slice(11, 13)}`
+      let dateEnd = ''  // empty = same day
+
+      if (dtend) {
+        const dtendDate = `${dtend.slice(0, 4)}-${dtend.slice(4, 6)}-${dtend.slice(6, 8)}`
+        if (isAllDay) {
+          // All-day DTEND is exclusive in ICS — subtract 1 day
+          const dtendParsed = new Date(dtendDate)
+          dtendParsed.setDate(dtendParsed.getDate() - 1)
+          const dtendAdjusted = dtendParsed.toISOString().slice(0, 10)
+          if (dtendAdjusted !== date) dateEnd = dtendAdjusted
+        } else if (dtend.length >= 13) {
+          if (dtendDate !== date) {
+            dateEnd = dtendDate
+          }
+          timeEnd = `${dtend.slice(9, 11)}:${dtend.slice(11, 13)}`
+        }
       }
       const locationText = get('LOCATION').replace(/\\,/g, ',').replace(/\\n/g, ' ').replace(/\\/g, '')
-      events.push({ uid, name: summary, date, timeBegin, timeEnd, timezone, locationText, isDraft: true, propertyIds: [], featureIds: [], targetGroupIds: [], selected: true })
+      events.push({ uid, name: summary, date, dateEnd, timeBegin, timeEnd, timezone, locationText, isDraft: true, isAllDay, propertyIds: [], featureIds: [], targetGroupIds: [], selected: true })
     } catch { /* skip malformed */ }
   }
   return events
@@ -114,9 +133,11 @@ function RowEditor({ ev, properties, features, targetGroups, onSave, onClose }: 
 }) {
   const [name, setName] = useState(ev.name)
   const [date, setDate] = useState(ev.date)
+  const [dateEnd, setDateEnd] = useState(ev.dateEnd)
   const [timeBegin, setTimeBegin] = useState(ev.timeBegin)
   const [timeEnd, setTimeEnd] = useState(ev.timeEnd)
   const [isDraft, setIsDraft] = useState(ev.isDraft)
+  const [isAllDay, setIsAllDay] = useState(ev.isAllDay)
   const [propertyIds, setPropertyIds] = useState(ev.propertyIds)
   const [featureIds, setFeatureIds] = useState(ev.featureIds)
   const [targetGroupIds, setTargetGroupIds] = useState(ev.targetGroupIds)
@@ -126,8 +147,21 @@ function RowEditor({ ev, properties, features, targetGroups, onSave, onClose }: 
       <div className="flex flex-wrap gap-2">
         <div className="space-y-1 flex-1 min-w-40"><Label className="text-xs">Name</Label><Input value={name} onChange={e => setName(e.target.value)} className="h-8 text-sm" /></div>
         <div className="space-y-1 min-w-36"><Label className="text-xs">Date</Label><Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-8 text-sm w-full" /></div>
-        <div className="space-y-1 min-w-28"><Label className="text-xs">Start</Label><Input type="time" value={timeBegin} onChange={e => setTimeBegin(e.target.value)} className="h-8 text-sm w-full" /></div>
-        <div className="space-y-1 min-w-28"><Label className="text-xs">End</Label><Input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="h-8 text-sm w-full" /></div>
+        <div className="space-y-1 min-w-36">
+          <Label className="text-xs">End date</Label>
+          <Input type="date" value={dateEnd} className="h-8 text-sm w-full" onChange={e => setDateEnd(e.target.value)} />
+        </div>
+        {/* All day toggle */}
+        <div className="flex items-end pb-0.5 gap-2">
+          <Switch id={`allday-${ev.uid}`} checked={isAllDay} onCheckedChange={setIsAllDay} />
+          <Label htmlFor={`allday-${ev.uid}`} className="text-xs">All day</Label>
+        </div>
+        {!isAllDay && (
+          <>
+            <div className="space-y-1 min-w-28"><Label className="text-xs">Start</Label><Input type="time" value={timeBegin} onChange={e => setTimeBegin(e.target.value)} className="h-8 text-sm w-full" /></div>
+            <div className="space-y-1 min-w-28"><Label className="text-xs">End</Label><Input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="h-8 text-sm w-full" /></div>
+          </>
+        )}
         <div className="flex items-end pb-0.5 gap-2"><Switch id={`d-${ev.uid}`} checked={!isDraft} onCheckedChange={v => setIsDraft(!v)} /><Label htmlFor={`d-${ev.uid}`} className="text-xs">Published</Label></div>
       </div>
       <RelationFields {...{ properties, features, targetGroups, propertyIds, featureIds, targetGroupIds }}
@@ -135,7 +169,7 @@ function RowEditor({ ev, properties, features, targetGroups, onSave, onClose }: 
         onToggleFeat={id => setFeatureIds(toggle(featureIds, id))}
         onToggleTg={id => setTargetGroupIds(toggle(targetGroupIds, id))} />
       <div className="flex gap-2 pt-1">
-        <Button size="sm" onClick={() => { onSave({ name, date, timeBegin, timeEnd, isDraft, propertyIds, featureIds, targetGroupIds }); onClose() }}><Check className="w-3.5 h-3.5 mr-1" />Apply</Button>
+        <Button size="sm" onClick={() => { onSave({ name, date, dateEnd, timeBegin, timeEnd, isDraft, isAllDay, propertyIds, featureIds, targetGroupIds }); onClose() }}><Check className="w-3.5 h-3.5 mr-1" />Apply</Button>
         <Button size="sm" variant="ghost" onClick={onClose}><X className="w-3.5 h-3.5 mr-1" />Cancel</Button>
       </div>
     </div>
@@ -154,6 +188,7 @@ function GroupEditor({ groupName, items, properties, features, targetGroups, onA
   const [timeBegin, setTimeBegin] = useState(first.timeBegin)
   const [timeEnd, setTimeEnd] = useState(first.timeEnd)
   const [isDraft, setIsDraft] = useState(first.isDraft)
+  const [isAllDay, setIsAllDay] = useState(first.isAllDay)
   // Start with ids that ALL items in the group already have (intersection)
   const [propertyIds, setPropertyIds] = useState<number[]>(
     first.propertyIds.filter(id => items.every(e => e.propertyIds.includes(id)))
@@ -170,8 +205,17 @@ function GroupEditor({ groupName, items, properties, features, targetGroups, onA
       <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Edit all {items.length} events in this group</p>
       <div className="flex flex-wrap gap-2">
         <div className="space-y-1 flex-1 min-w-40"><Label className="text-xs">Rename all</Label><Input value={name} onChange={e => setName(e.target.value)} className="h-8 text-sm" /></div>
-        <div className="space-y-1 min-w-28"><Label className="text-xs">Start (all)</Label><Input type="time" value={timeBegin} onChange={e => setTimeBegin(e.target.value)} className="h-8 text-sm w-full" /></div>
-        <div className="space-y-1 min-w-28"><Label className="text-xs">End (all)</Label><Input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="h-8 text-sm w-full" /></div>
+        {/* All day toggle */}
+        <div className="flex items-end pb-0.5 gap-2">
+          <Switch id={`gallday-${groupName}`} checked={isAllDay} onCheckedChange={setIsAllDay} />
+          <Label htmlFor={`gallday-${groupName}`} className="text-xs">All day</Label>
+        </div>
+        {!isAllDay && (
+          <>
+            <div className="space-y-1 min-w-28"><Label className="text-xs">Start (all)</Label><Input type="time" value={timeBegin} onChange={e => setTimeBegin(e.target.value)} className="h-8 text-sm w-full" /></div>
+            <div className="space-y-1 min-w-28"><Label className="text-xs">End (all)</Label><Input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="h-8 text-sm w-full" /></div>
+          </>
+        )}
         <div className="flex items-end pb-0.5 gap-2"><Switch id={`gd-${groupName}`} checked={!isDraft} onCheckedChange={v => setIsDraft(!v)} /><Label htmlFor={`gd-${groupName}`} className="text-xs">Published</Label></div>
       </div>
       <RelationFields {...{ properties, features, targetGroups, propertyIds, featureIds, targetGroupIds }}
@@ -179,7 +223,7 @@ function GroupEditor({ groupName, items, properties, features, targetGroups, onA
         onToggleFeat={id => setFeatureIds(toggle(featureIds, id))}
         onToggleTg={id => setTargetGroupIds(toggle(targetGroupIds, id))} />
       <div className="flex gap-2 pt-1">
-        <Button size="sm" onClick={() => { onApply({ name, timeBegin, timeEnd, isDraft, propertyIds, featureIds, targetGroupIds }); onClose() }}>
+        <Button size="sm" onClick={() => { onApply({ name, timeBegin, timeEnd, isDraft, isAllDay, propertyIds, featureIds, targetGroupIds }); onClose() }}>
           <Check className="w-3.5 h-3.5 mr-1" />Apply to all {items.length}
         </Button>
         <Button size="sm" variant="ghost" onClick={onClose}><X className="w-3.5 h-3.5 mr-1" />Cancel</Button>
@@ -293,6 +337,7 @@ export default function ImportPage({ params }: Props) {
         {
           events: toImport.map(({ uid: _uid, selected: _s, locationText, ...rest }) => ({
             ...rest,
+            dateEnd: rest.dateEnd || null,   // empty string → null
             locationId: locationText ? (locationIdMap.get(locationText) ?? null) : null,
           }))
         }
@@ -436,10 +481,12 @@ export default function ImportPage({ params }: Props) {
                           <input type="checkbox" checked={ev.selected} onChange={e => updateEvent(ev.uid, { selected: e.target.checked })} />
                           <span />
                           <span className="text-slate-700 text-sm truncate">{ev.name}</span>
-                          <span className="text-slate-500 font-mono text-xs">{ev.date}</span>
-                          <span className="text-slate-500 font-mono text-xs">{ev.timeBegin}</span>
                           <span className="text-slate-500 font-mono text-xs">
-                            {ev.timeEnd}
+                            {ev.dateEnd ? `${ev.date} – ${ev.dateEnd}` : ev.date}
+                          </span>
+                          <span className="text-slate-500 font-mono text-xs">{ev.isAllDay ? '—' : ev.timeBegin}</span>
+                          <span className="text-slate-500 font-mono text-xs">
+                            {ev.isAllDay ? 'All day' : ev.timeEnd}
                             <span className={`ml-1 text-xs px-1 rounded-full ${ev.isDraft ? 'bg-slate-100 text-slate-400' : 'bg-green-100 text-green-700'}`}>{ev.isDraft ? '·' : '✓'}</span>
                           </span>
                           <span className="text-slate-400 text-xs truncate" title={ev.locationText}>{ev.locationText || '—'}</span>

@@ -105,9 +105,11 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
 
   const [name, setName] = useState('')
   const [date, setDate] = useState('')
+  const [dateEnd, setDateEnd] = useState('')
   const [timeBegin, setTimeBegin] = useState('19:00')
   const [timeEnd, setTimeEnd] = useState('21:00')
   const [isDraft, setIsDraft] = useState(true)
+  const [isAllDay, setIsAllDay] = useState(false)
   const [locationId, setLocationId] = useState<number | ''>('')
   const [showMap, setShowMap] = useState(false)
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<number[]>([])
@@ -135,6 +137,8 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
     if (event) {
       setName(event.name); setDate(event.date.slice(0, 10)); setTimeBegin(event.timeBegin)
       setTimeEnd(event.timeEnd); setIsDraft(event.isDraft)
+      setIsAllDay(event.isAllDay ?? false)
+      setDateEnd(event.dateEnd?.slice(0, 10) ?? '')
       setLocationId(event.locationId ?? '')
       setSelectedPropertyIds(event.properties.map(p => p.property.id))
       setSelectedFeatureIds(event.features.map(f => f.feature.id))
@@ -142,7 +146,7 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
       setShowMap(false)
     } else {
       setName(''); setDate(defaultDate ?? ''); setTimeBegin('19:00'); setTimeEnd('21:00')
-      setIsDraft(true); setLocationId(''); setShowMap(false)
+      setIsDraft(true); setIsAllDay(false); setDateEnd(''); setLocationId(''); setShowMap(false)
       setSelectedPropertyIds([]); setSelectedFeatureIds([]); setSelectedTargetGroupIds([])
     }
     setTab('manual')
@@ -154,7 +158,8 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
     setLoading(true)
     try {
       const body = {
-        name, date, timeBegin, timeEnd, isDraft,
+        name, date, timeBegin, timeEnd, isDraft, isAllDay,
+        dateEnd: dateEnd || null,
         locationId: locationId === '' ? null : Number(locationId),
         propertyIds: selectedPropertyIds, featureIds: selectedFeatureIds, targetGroupIds: selectedTargetGroupIds,
       }
@@ -307,13 +312,27 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
                 <Input id="evt-n" value={name} onChange={e => setName(e.target.value)} placeholder="Event name" />
               </div>
               <div className="flex flex-wrap gap-2">
-                <div className="space-y-1 flex-1 min-w-36"><Label htmlFor="evt-d">Date *</Label><Input id="evt-d" type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full" /></div>
-                <div className="space-y-1 flex-1 min-w-28"><Label>Start</Label><Input type="time" value={timeBegin} onChange={e => setTimeBegin(e.target.value)} className="w-full" /></div>
-                <div className="space-y-1 flex-1 min-w-28"><Label>End</Label><Input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="w-full" /></div>
+                <div className="space-y-1 flex-1 min-w-36"><Label htmlFor="evt-d">Start date *</Label><Input id="evt-d" type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full" /></div>
+                <div className="space-y-1 flex-1 min-w-36">
+                  <Label htmlFor="evt-de">End date <span className="text-slate-400 font-normal">(optional)</span></Label>
+                  <Input id="evt-de" type="date" value={dateEnd} min={date} onChange={e => setDateEnd(e.target.value)} className="w-full" />
+                </div>
+                {!isAllDay && (
+                  <>
+                    <div className="space-y-1 min-w-28"><Label>Start time</Label><Input type="time" value={timeBegin} onChange={e => setTimeBegin(e.target.value)} className="w-full" /></div>
+                    <div className="space-y-1 min-w-28"><Label>End time</Label><Input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="w-full" /></div>
+                  </>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <Switch id="evt-pub" checked={!isDraft} onCheckedChange={v => setIsDraft(!v)} />
-                <Label htmlFor="evt-pub">Published {isDraft && <span className="text-xs text-slate-400">(draft)</span>}</Label>
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Switch id="evt-allday" checked={isAllDay} onCheckedChange={setIsAllDay} />
+                  <Label htmlFor="evt-allday">All day</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch id="evt-pub" checked={!isDraft} onCheckedChange={v => setIsDraft(!v)} />
+                  <Label htmlFor="evt-pub">Published {isDraft && <span className="text-xs text-slate-400">(draft)</span>}</Label>
+                </div>
               </div>
 
               {/* Location with inline create + map */}

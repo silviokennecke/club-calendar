@@ -191,9 +191,13 @@ export default function EventsListPage({ params }: Props) {
                     {ev.name}
                     {ev.location && <span className="ml-1.5 text-slate-400 font-normal text-xs">@ {ev.location.name ?? ev.location.address}</span>}
                   </span>
-                  <span className="text-slate-500 text-xs">{formatDate(ev.date, dateFormat)}</span>
-                  <span className="text-slate-500 font-mono text-xs">{ev.timeBegin}</span>
-                  <span className="text-slate-500 font-mono text-xs">{ev.timeEnd}</span>
+                  <span className="text-slate-500 text-xs">
+                    {ev.dateEnd && ev.dateEnd.slice(0, 10) !== ev.date.slice(0, 10)
+                      ? `${formatDate(ev.date, dateFormat)} – ${formatDate(ev.dateEnd, dateFormat)}`
+                      : formatDate(ev.date, dateFormat)}
+                  </span>
+                  <span className="text-slate-500 font-mono text-xs">{ev.isAllDay ? '—' : ev.timeBegin}</span>
+                  <span className="text-slate-500 font-mono text-xs">{ev.isAllDay ? 'All day' : ev.timeEnd}</span>
 
                   {/* Tags: target groups + features */}
                   <div className="flex gap-1 flex-wrap">
