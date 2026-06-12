@@ -4,8 +4,8 @@ import { PrismaModule } from './prisma/prisma.module'
 import { AppExceptionFilter } from './common/filters/app-exception.filter'
 import { AuthModule } from './auth/auth.module'
 import { ClubsModule } from './clubs/clubs.module'
+import { CalendarsModule } from './calendars/calendars.module'
 // Feature modules will be added in later phases — leave these as TODO comments
-// import { CalendarsModule } from './calendars/calendars.module'
 // import { PropertiesModule } from './properties/properties.module'
 // import { FeaturesModule } from './features/features.module'
 // import { TargetGroupsModule } from './target-groups/target-groups.module'
@@ -20,6 +20,7 @@ import { ClubsModule } from './clubs/clubs.module'
     PrismaModule,
     AuthModule,
     ClubsModule,
+    CalendarsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AppExceptionFilter },
