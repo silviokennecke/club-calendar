@@ -24,7 +24,12 @@ propertyRoutes.post('/', authMiddleware, requireCalendarMember, zValidator('json
   return c.json(property, 201)
 })
 
-propertyRoutes.patch('/:id', authMiddleware, requireCalendarMember, zValidator('json', propertySchema.partial()), async (c) => {
+const patchPropertySchema = propertySchema.partial().refine(
+  (d) => Object.keys(d).length > 0,
+  { message: 'At least one field required' },
+)
+
+propertyRoutes.patch('/:id', authMiddleware, requireCalendarMember, zValidator('json', patchPropertySchema), async (c) => {
   const calendarId = Number(c.req.param('calendarId'))
   const id = Number(c.req.param('id'))
   const property = await updateProperty(id, calendarId, c.req.valid('json'))
