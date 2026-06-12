@@ -21,6 +21,8 @@ export default function CalendarPage({ params }: Props) {
   const [selectedDate, setSelectedDate] = useState<string | undefined>()
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
   const [selectedGroups, setSelectedGroups] = useState<number[]>([])
+  // Ref keeps the latest filter value accessible inside the stale fetchEvents closure
+  const selectedGroupsRef = useRef<number[]>([])
   const calendarRef = useRef<InstanceType<typeof FullCalendar>>(null)
 
   const { data: targetGroups = [] } = useQuery<TargetGroup[]>({
@@ -31,13 +33,14 @@ export default function CalendarPage({ params }: Props) {
   function toggleGroup(id: number) {
     setSelectedGroups(prev => {
       const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-      // Force FullCalendar to refetch events with new filter
+      selectedGroupsRef.current = next
       setTimeout(() => calendarRef.current?.getApi().refetchEvents(), 0)
       return next
     })
   }
 
   function clearFilter() {
+    selectedGroupsRef.current = []
     setSelectedGroups([])
     setTimeout(() => calendarRef.current?.getApi().refetchEvents(), 0)
   }
@@ -65,7 +68,7 @@ export default function CalendarPage({ params }: Props) {
     successCallback: (events: EventInput[]) => void,
     failureCallback: (err: Error) => void,
   ) {
-    const tgParam = selectedGroups.length > 0 ? `&targetGroupIds=${selectedGroups.join(',')}` : ''
+    const tgParam = selectedGroupsRef.current.length > 0 ? `&targetGroupIds=${selectedGroupsRef.current.join(',')}` : ''
     apiGet<CalendarEvent[]>(
       `/api/calendars/${calendarId}/events?from=${fetchInfo.startStr.slice(0, 10)}&to=${fetchInfo.endStr.slice(0, 10)}${tgParam}`
     ).then(events => {
