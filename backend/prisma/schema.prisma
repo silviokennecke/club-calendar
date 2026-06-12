@@ -56,7 +56,7 @@ model CalendarFeed {
   calendarId   Int
   name         String                   @db.VarChar(255)
   visibility   FeedVisibility           @default(PRIVATE)
-  sharedSecret String                   @db.VarChar(255)
+  sharedSecret String                   @unique @db.VarChar(255)
   isDraft      Boolean                  @default(true)
   calendar     Calendar                 @relation(fields: [calendarId], references: [id], onDelete: Cascade)
   targetGroups CalendarFeedTargetGroup[]
@@ -75,7 +75,7 @@ model Property {
   id         Int                     @id @default(autoincrement())
   calendarId Int
   name       String                  @db.VarChar(255)
-  icon       String?                 @db.VarChar(10)
+  icon       String?                 @db.VarChar(32)
   calendar   Calendar                @relation(fields: [calendarId], references: [id], onDelete: Cascade)
   events     EventProperty[]
   templates  EventTemplateProperty[]
