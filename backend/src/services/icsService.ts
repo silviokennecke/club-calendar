@@ -3,7 +3,7 @@ import { notFound, forbidden } from '../lib/errors.js'
 import { buildIcs } from '../lib/ics.js'
 import { FeedVisibility } from '@prisma/client'
 
-export async function getFeedIcs(feedId: number, secret?: string): Promise<string> {
+export async function getFeedIcs(feedId: number, secret?: string, targetGroupIds?: number[]): Promise<string> {
   const feed = await prisma.calendarFeed.findUnique({
     where: { id: feedId },
     include: {
@@ -22,14 +22,16 @@ export async function getFeedIcs(feedId: number, secret?: string): Promise<strin
     if (!secret || secret !== feed.sharedSecret) throw forbidden('Invalid secret')
   }
 
-  const targetGroupIds = feed.targetGroups.map((ftg) => ftg.targetGroupId)
+  const filterGroupIds = (targetGroupIds && targetGroupIds.length > 0)
+    ? targetGroupIds
+    : feed.targetGroups.map((ftg) => ftg.targetGroupId)
 
   const events = await prisma.event.findMany({
     where: {
       calendarId: feed.calendarId,
       isDraft: false,
-      ...(targetGroupIds.length > 0
-        ? { targetGroups: { some: { targetGroupId: { in: targetGroupIds } } } }
+      ...(filterGroupIds.length > 0
+        ? { targetGroups: { some: { targetGroupId: { in: filterGroupIds } } } }
         : {}),
     },
     include: {
@@ -44,7 +46,7 @@ export async function getFeedIcs(feedId: number, secret?: string): Promise<strin
   return buildIcs(feed.name, feed.calendar.club.timezone, events)
 }
 
-export async function getFeedEvents(feedId: number, secret?: string) {
+export async function getFeedEvents(feedId: number, secret?: string, targetGroupIds?: number[]) {
   const feed = await prisma.calendarFeed.findUnique({
     where: { id: feedId },
     include: {
@@ -59,14 +61,16 @@ export async function getFeedEvents(feedId: number, secret?: string) {
     if (!secret || secret !== feed.sharedSecret) throw forbidden('Invalid secret')
   }
 
-  const targetGroupIds = feed.targetGroups.map((ftg) => ftg.targetGroupId)
+  const filterGroupIds = (targetGroupIds && targetGroupIds.length > 0)
+    ? targetGroupIds
+    : feed.targetGroups.map((ftg) => ftg.targetGroupId)
 
   const events = await prisma.event.findMany({
     where: {
       calendarId: feed.calendarId,
       isDraft: false,
-      ...(targetGroupIds.length > 0
-        ? { targetGroups: { some: { targetGroupId: { in: targetGroupIds } } } }
+      ...(filterGroupIds.length > 0
+        ? { targetGroups: { some: { targetGroupId: { in: filterGroupIds } } } }
         : {}),
     },
     include: {

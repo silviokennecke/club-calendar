@@ -104,6 +104,8 @@ model Location {
   id         Int             @id @default(autoincrement())
   calendarId Int
   address    String          @db.VarChar(500)
+  latitude   Float?
+  longitude  Float?
   calendar   Calendar        @relation(fields: [calendarId], references: [id], onDelete: Cascade)
   events     Event[]
   templates  EventTemplate[]

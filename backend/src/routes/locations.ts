@@ -9,6 +9,8 @@ export const locationRoutes = new Hono<{ Variables: { userId: number } }>()
 
 const locationSchema = z.object({
   address: z.string().min(1).max(500),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
 })
 
 locationRoutes.get('/', authMiddleware, requireCalendarMember, async (c) => {
