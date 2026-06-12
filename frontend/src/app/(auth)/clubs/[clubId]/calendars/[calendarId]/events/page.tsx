@@ -1,12 +1,12 @@
 'use client'
 import { use, useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiGet, apiPatch } from '@/lib/api'
+import { apiGet, apiPatch, apiDelete } from '@/lib/api'
 import type { CalendarEvent, TargetGroup } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import EventModal from '@/components/calendar/EventModal'
-import { Search, X, Eye, EyeOff, CheckSquare } from 'lucide-react'
+import { Search, X, Eye, EyeOff, CheckSquare, Trash2 } from 'lucide-react'
 
 interface Props { params: Promise<{ clubId: string; calendarId: string }> }
 
@@ -68,6 +68,19 @@ export default function EventsListPage({ params }: Props) {
     }
   }
 
+  async function bulkDelete() {
+    const ids = sorted.filter(e => selectedIds.has(e.id)).map(e => e.id)
+    if (ids.length === 0) return
+    if (!confirm(`Delete ${ids.length} event${ids.length !== 1 ? 's' : ''}? This cannot be undone.`)) return
+    setBulking(true)
+    try {
+      await Promise.all(ids.map(id => apiDelete(`/api/calendars/${calendarId}/events/${id}`)))
+      qc.invalidateQueries({ queryKey: ['events-list', calendarId] })
+      qc.invalidateQueries({ queryKey: ['events', calendarId] })
+      setSelectedIds(new Set())
+    } finally { setBulking(false) }
+  }
+
   async function bulkSetDraft(isDraft: boolean) {
     const ids = sorted.filter(e => selectedIds.has(e.id)).map(e => e.id)
     if (ids.length === 0) return
@@ -118,6 +131,10 @@ export default function EventsListPage({ params }: Props) {
             <Button size="sm" variant="outline" disabled={bulking} onClick={() => bulkSetDraft(true)}
               className="gap-1.5 border-slate-300 text-slate-600 hover:bg-slate-50">
               <EyeOff className="w-3.5 h-3.5" />Mark as draft
+            </Button>
+            <Button size="sm" variant="outline" disabled={bulking} onClick={bulkDelete}
+              className="gap-1.5 border-red-300 text-red-600 hover:bg-red-50">
+              <Trash2 className="w-3.5 h-3.5" />Delete
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())} className="text-slate-400">
               <X className="w-3.5 h-3.5" />
