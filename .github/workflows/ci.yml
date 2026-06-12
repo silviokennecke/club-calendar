@@ -1,0 +1,163 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend — build & tests
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: club_calendar
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+      mysql_test:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: club_calendar_test
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: mysql://root:root@localhost:3306/club_calendar
+        run: npx prisma migrate deploy
+
+      - name: TypeScript build
+        run: npm run build -w @club-calendar/backend
+
+      - name: Run tests
+        working-directory: backend
+        env:
+          DATABASE_URL: mysql://root:root@localhost:3306/club_calendar
+          TEST_DATABASE_URL: mysql://root:root@localhost:3307/club_calendar_test
+          JWT_ACCESS_SECRET: ci-access-secret-at-least-16-chars
+          JWT_REFRESH_SECRET: ci-refresh-secret-at-least-16-chars
+          FRONTEND_URL: http://localhost:3000
+          PORT: "3001"
+          NODE_ENV: test
+          WEBAUTHN_RP_ID: localhost
+          WEBAUTHN_RP_NAME: Club Calendar CI
+        run: npm test
+
+  frontend:
+    name: Frontend — build & E2E
+    runs-on: ubuntu-latest
+    needs: backend   # E2E needs the backend to work
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: club_calendar
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Apply migrations & seed
+        working-directory: backend
+        env:
+          DATABASE_URL: mysql://root:root@localhost:3306/club_calendar
+        run: |
+          npx prisma migrate deploy
+          npx prisma generate
+          npm run db:seed
+
+      - name: TypeScript build (frontend)
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001
+        run: npm run build
+
+      - name: Start backend
+        working-directory: backend
+        env:
+          DATABASE_URL: mysql://root:root@localhost:3306/club_calendar
+          JWT_ACCESS_SECRET: ci-access-secret-at-least-16-chars
+          JWT_REFRESH_SECRET: ci-refresh-secret-at-least-16-chars
+          FRONTEND_URL: http://localhost:3000
+          PORT: "3001"
+          NODE_ENV: production
+          WEBAUTHN_RP_ID: localhost
+          WEBAUTHN_RP_NAME: Club Calendar CI
+        run: node dist/index.js &
+
+      - name: Start frontend
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001
+          PORT: "3000"
+        run: npm start &
+
+      - name: Wait for servers
+        run: |
+          npx wait-on http://localhost:3001/health --timeout 30000
+          npx wait-on http://localhost:3000 --timeout 30000
+
+      - name: Run Playwright E2E tests
+        working-directory: frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
