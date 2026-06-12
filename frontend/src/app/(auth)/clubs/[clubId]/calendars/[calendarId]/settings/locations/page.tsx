@@ -1,35 +1,218 @@
 'use client'
-import { use } from 'react'
-import ResourceManager from '@/components/settings/ResourceManager'
-import { MapPin } from 'lucide-react'
+import { use, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api'
+import type { Location } from '@/lib/types'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { Plus, MapPin, Pencil, Trash2 } from 'lucide-react'
+import dynamic from 'next/dynamic'
+
+// Dynamic imports to avoid SSR issues with Mapbox
+const MapPicker = dynamic(() => import('@/components/locations/MapPicker'), { ssr: false, loading: () => <div className="h-56 bg-slate-100 rounded-lg animate-pulse" /> })
+const LocationsOverviewMap = dynamic(() => import('@/components/locations/LocationsOverviewMap'), { ssr: false })
 
 interface Props { params: Promise<{ clubId: string; calendarId: string }> }
 
+interface FormState {
+  name: string
+  address: string
+  latitude: number | null
+  longitude: number | null
+}
+
+const emptyForm: FormState = { name: '', address: '', latitude: null, longitude: null }
+
 export default function LocationsPage({ params }: Props) {
   const { calendarId } = use(params)
-  const path = `/api/calendars/${calendarId}/locations`
+  const qc = useQueryClient()
+
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null)
+  const [form, setForm] = useState<FormState>(emptyForm)
+  const [saving, setSaving] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Location | null>(null)
+  const [hoveredId, setHoveredId] = useState<number | null>(null)
+
+  const { data: locations = [] } = useQuery<Location[]>({
+    queryKey: ['locations', calendarId],
+    queryFn: () => apiGet(`/api/calendars/${calendarId}/locations`),
+  })
+
+  const locationsWithCoords = locations.filter(
+    (l): l is Location & { latitude: number; longitude: number } =>
+      l.latitude != null && l.longitude != null
+  )
+
+  function openCreate() {
+    setEditingLocation(null)
+    setForm(emptyForm)
+    setModalOpen(true)
+  }
+
+  function openEdit(loc: Location) {
+    setEditingLocation(loc)
+    setForm({ name: loc.name ?? '', address: loc.address, latitude: loc.latitude ?? null, longitude: loc.longitude ?? null })
+    setModalOpen(true)
+  }
+
+  function closeModal() {
+    setModalOpen(false)
+    setEditingLocation(null)
+    setForm(emptyForm)
+  }
+
+  function handleMapPosition(lat: number, lng: number, address: string) {
+    setForm(f => ({ ...f, latitude: lat, longitude: lng, address: f.address || address }))
+  }
+
+  async function handleSave() {
+    if (!form.address.trim()) return
+    setSaving(true)
+    try {
+      const payload = {
+        name: form.name.trim() || null,
+        address: form.address.trim(),
+        latitude: form.latitude,
+        longitude: form.longitude,
+      }
+      if (editingLocation) {
+        await apiPatch(`/api/calendars/${calendarId}/locations/${editingLocation.id}`, payload)
+      } else {
+        await apiPost(`/api/calendars/${calendarId}/locations`, payload)
+      }
+      qc.invalidateQueries({ queryKey: ['locations', calendarId] })
+      closeModal()
+    } finally { setSaving(false) }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return
+    await apiDelete(`/api/calendars/${calendarId}/locations/${deleteTarget.id}`)
+    qc.invalidateQueries({ queryKey: ['locations', calendarId] })
+    setDeleteTarget(null)
+  }
+
   return (
-    <div className="p-6 max-w-2xl">
-      <p className="text-sm text-slate-500 mb-6">Locations can be assigned to events and templates as the default venue.</p>
-      <ResourceManager
-        calendarId={calendarId}
-        resourcePath={path}
-        queryKey={['locations', calendarId]}
-        title="Locations"
-        fields={[
-          { key: 'name', label: 'Name', placeholder: 'e.g. Main Hall' },
-          { key: 'address', label: 'Address', placeholder: 'Street, City' },
-        ]}
-        renderItem={item => (
-          <div className="flex items-center gap-2">
-            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <div>
-              {item.name != null && item.name !== '' && <span className="text-sm font-medium text-slate-800">{String(item.name)}</span>}
-              <span className={`text-sm ${item.name != null && item.name !== '' ? 'text-slate-500 ml-1' : 'text-slate-800'}`}>{String(item.address)}</span>
+    <div className="p-6 max-w-4xl space-y-6">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-500">Locations can be assigned to events and templates as the default venue.</p>
+        <Button size="sm" onClick={openCreate}><Plus className="w-3.5 h-3.5 mr-1" />Add Location</Button>
+      </div>
+
+      {/* Overview map — only shown when at least one location has coordinates */}
+      {locationsWithCoords.length > 0 && (
+        <LocationsOverviewMap
+          locations={locationsWithCoords}
+          selectedId={hoveredId}
+          onSelect={id => { const loc = locations.find(l => l.id === id); if (loc) openEdit(loc) }}
+          height="h-72"
+        />
+      )}
+
+      {/* Cards grid */}
+      {locations.length === 0 ? (
+        <div className="text-center py-12 text-slate-400 text-sm border border-dashed border-slate-200 rounded-xl">
+          No locations yet. Add one to assign it to events and templates.
+        </div>
+      ) : (
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {locations.map(loc => (
+            <div
+              key={loc.id}
+              className="bg-white rounded-xl border border-slate-200 p-4 hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer group"
+              onMouseEnter={() => setHoveredId(loc.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              onClick={() => openEdit(loc)}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2 min-w-0">
+                  <MapPin className={`w-4 h-4 mt-0.5 shrink-0 transition-colors ${loc.latitude != null ? 'text-blue-500' : 'text-slate-300'}`} />
+                  <div className="min-w-0">
+                    {loc.name && <p className="text-sm font-semibold text-slate-900 truncate">{loc.name}</p>}
+                    <p className={`text-sm truncate ${loc.name ? 'text-slate-500' : 'font-medium text-slate-800'}`}>{loc.address}</p>
+                    {loc.latitude != null && (
+                      <p className="text-xs text-slate-400 mt-0.5 font-mono">{loc.latitude.toFixed(4)}, {loc.longitude!.toFixed(4)}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <button
+                    onClick={e => { e.stopPropagation(); openEdit(loc) }}
+                    className="p-1 text-slate-400 hover:text-slate-600 rounded"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); setDeleteTarget(loc) }}
+                    className="p-1 text-slate-400 hover:text-red-500 rounded"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create / Edit modal */}
+      <Dialog open={modalOpen} onOpenChange={v => !v && closeModal()}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingLocation ? 'Edit Location' : 'New Location'}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Name <span className="text-slate-400 font-normal">(optional)</span></Label>
+                <Input placeholder="e.g. Main Hall" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Address *</Label>
+                <Input placeholder="Street, City" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Map position <span className="text-slate-400 font-normal">(search or click/drag)</span></Label>
+              <MapPicker
+                latitude={form.latitude}
+                longitude={form.longitude}
+                address={form.address}
+                onPositionChange={handleMapPosition}
+              />
             </div>
           </div>
-        )}
-      />
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeModal}>Cancel</Button>
+            <Button disabled={saving || !form.address.trim()} onClick={handleSave}>
+              {saving ? 'Saving…' : editingLocation ? 'Save Changes' : 'Add Location'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={deleteTarget !== null} onOpenChange={v => !v && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete location?</AlertDialogTitle>
+            <AlertDialogDescription>
+              &ldquo;{deleteTarget?.name ?? deleteTarget?.address}&rdquo; will be removed. Events using this location will lose the reference.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
