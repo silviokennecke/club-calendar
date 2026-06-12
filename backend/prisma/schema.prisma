@@ -14,6 +14,8 @@ model User {
   password      String?        @db.VarChar(255)
   dateFormat     String  @default("dd.MM.yyyy") @db.VarChar(20)
   firstDayOfWeek Int     @default(1)
+  lastClubId     Int?
+  lastCalendarId Int?
   clubs         ClubUser[]
   passkeys      Passkey[]
   oauthAccounts OAuthAccount[]
