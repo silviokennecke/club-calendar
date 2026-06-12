@@ -70,3 +70,24 @@ Tests run against a real MySQL instance on port 3307 (`club_calendar_test` datab
 GET /api/feed/:feedId/ics
 GET /api/feed/:feedId/ics?secret=<token>   # for private feeds
 ```
+
+## E2E Tests
+
+E2E tests use Playwright. Run them while backend + frontend dev servers are running:
+
+```bash
+# Start servers first:
+npm run dev:backend &
+npm run dev:frontend &
+
+# Run E2E tests:
+npm run e2e -w frontend
+
+# Interactive UI mode:
+npm run e2e:ui -w frontend
+```
+
+Test files in `frontend/e2e/`:
+- `auth.spec.ts` — login, redirect, error handling
+- `calendar.spec.ts` — calendar navigation, event modal
+- `feeds.spec.ts` — feed management, ICS URL validation
