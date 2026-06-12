@@ -23,6 +23,10 @@ function icsUrl(feedId: number, secret?: string) {
 function webcalUrl(feedId: number, secret?: string) {
   return icsUrl(feedId, secret).replace(/^https?:/, 'webcal:')
 }
+function feedWebUrl(feedId: number, secret?: string) {
+  const base = typeof window !== 'undefined' ? window.location.origin : ''
+  return secret ? `${base}/feed/${feedId}?secret=${secret}` : `${base}/feed/${feedId}`
+}
 
 interface FeedFormData {
   name: string
@@ -179,6 +183,24 @@ export default function FeedsPage({ params }: Props) {
                       {copied === feed.id ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
                     <a href={wurl} className="text-xs text-blue-600 hover:underline whitespace-nowrap">Open in App</a>
+                  </div>
+                </div>
+
+                {/* Web view URL */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-slate-500">Web View</Label>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-md px-3 py-2 truncate text-slate-700 font-mono">
+                      {feedWebUrl(feed.id, feed.visibility === 'PRIVATE' ? feed.sharedSecret : undefined)}
+                    </code>
+                    <a
+                      href={feedWebUrl(feed.id, feed.visibility === 'PRIVATE' ? feed.sharedSecret : undefined)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 text-blue-600 hover:underline text-xs px-2.5 py-1.5 border border-slate-200 rounded hover:bg-slate-50 transition-colors"
+                    >
+                      Open ↗
+                    </a>
                   </div>
                 </div>
 
