@@ -5,24 +5,20 @@ import { randomUUID } from 'crypto'
 const prisma = new PrismaClient()
 
 async function main() {
-  // Delete all data in FK-safe order for idempotent re-runs
-  await prisma.eventTargetGroup.deleteMany()
-  await prisma.eventFeature.deleteMany()
-  await prisma.eventProperty.deleteMany()
-  await prisma.eventTemplateTargetGroup.deleteMany()
-  await prisma.eventTemplateFeature.deleteMany()
-  await prisma.eventTemplateProperty.deleteMany()
-  await prisma.calendarFeedTargetGroup.deleteMany()
-  await prisma.event.deleteMany()
-  await prisma.eventTemplate.deleteMany()
-  await prisma.calendarFeed.deleteMany()
-  await prisma.location.deleteMany()
-  await prisma.targetGroup.deleteMany()
-  await prisma.feature.deleteMany()
-  await prisma.property.deleteMany()
-  await prisma.calendar.deleteMany()
-  await prisma.clubUser.deleteMany()
-  await prisma.club.deleteMany()
+  // Truncate all tables (resets AUTO_INCREMENT so IDs stay predictable across re-seedings)
+  await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS=0')
+  for (const table of [
+    'EventTargetGroup','EventFeature','EventProperty',
+    'EventTemplateTargetGroup','EventTemplateFeature','EventTemplateProperty',
+    'CalendarFeedTargetGroup',
+    'Event','EventTemplate','CalendarFeed',
+    'Location','TargetGroup','Feature','Property',
+    'Calendar','ClubUser','Club',
+    'OAuthAccount','Passkey','User',
+  ]) {
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE \`${table}\``)
+  }
+  await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS=1')
   await prisma.user.deleteMany()
 
   const hashedPassword = await bcrypt.hash('password123', 10)
