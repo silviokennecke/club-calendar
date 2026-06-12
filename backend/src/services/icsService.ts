@@ -43,3 +43,40 @@ export async function getFeedIcs(feedId: number, secret?: string): Promise<strin
 
   return buildIcs(feed.name, feed.calendar.club.timezone, events)
 }
+
+export async function getFeedEvents(feedId: number, secret?: string) {
+  const feed = await prisma.calendarFeed.findUnique({
+    where: { id: feedId },
+    include: {
+      calendar: { include: { club: true } },
+      targetGroups: true,
+    },
+  })
+
+  if (!feed || feed.isDraft) throw notFound('Feed not found')
+
+  if (feed.visibility === FeedVisibility.PRIVATE) {
+    if (!secret || secret !== feed.sharedSecret) throw forbidden('Invalid secret')
+  }
+
+  const targetGroupIds = feed.targetGroups.map((ftg) => ftg.targetGroupId)
+
+  const events = await prisma.event.findMany({
+    where: {
+      calendarId: feed.calendarId,
+      isDraft: false,
+      ...(targetGroupIds.length > 0
+        ? { targetGroups: { some: { targetGroupId: { in: targetGroupIds } } } }
+        : {}),
+    },
+    include: {
+      location: true,
+      properties: { include: { property: true } },
+      features: { include: { feature: true } },
+      targetGroups: { include: { targetGroup: true } },
+    },
+    orderBy: { date: 'asc' },
+  })
+
+  return { feed, events }
+}

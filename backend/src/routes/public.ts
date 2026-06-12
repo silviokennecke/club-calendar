@@ -1,8 +1,24 @@
 import { Hono } from 'hono'
-import { getFeedIcs } from '../services/icsService.js'
+import { getFeedIcs, getFeedEvents } from '../services/icsService.js'
 import { AppError } from '../lib/errors.js'
 
 export const publicRoutes = new Hono()
+
+publicRoutes.get('/:feedId/events', async (c) => {
+  const feedId = Number(c.req.param('feedId'))
+  if (isNaN(feedId)) return c.json({ error: 'Not found' }, 404)
+  const secret = c.req.query('secret')
+
+  try {
+    const { feed, events } = await getFeedEvents(feedId, secret)
+    return c.json({ feed: { id: feed.id, name: feed.name }, events })
+  } catch (err) {
+    if (err instanceof AppError) {
+      return c.json({ error: err.message }, err.status as any)
+    }
+    throw err
+  }
+})
 
 publicRoutes.get('/:feedId/ics', async (c) => {
   const feedId = Number(c.req.param('feedId'))
