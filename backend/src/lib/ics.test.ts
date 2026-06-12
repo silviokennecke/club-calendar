@@ -45,7 +45,7 @@ describe('buildIcs', () => {
         timeBegin: '10:00',
         timeEnd: '12:00',
         isDraft: false,
-        location: { id: 1, calendarId: 1, address: 'Musterstraße 1, Berlin' },
+        location: { id: 1, calendarId: 1, street: 'Musterstraße 1', city: 'Berlin' },
         properties: [],
         features: [],
         targetGroups: [],

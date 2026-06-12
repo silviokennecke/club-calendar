@@ -21,7 +21,6 @@ afterAll(async () => {
 
 async function createFeed(calendarId: number, options: {
   visibility?: FeedVisibility
-  isDraft?: boolean
   secret?: string
 } = {}) {
   return prisma.calendarFeed.create({
@@ -30,7 +29,6 @@ async function createFeed(calendarId: number, options: {
       name: 'Test Feed',
       visibility: options.visibility ?? FeedVisibility.PUBLIC,
       sharedSecret: options.secret ?? randomUUID(),
-      isDraft: options.isDraft ?? false,
     },
   })
 }
@@ -38,13 +36,6 @@ async function createFeed(calendarId: number, options: {
 describe('GET /api/feed/:feedId/ics', () => {
   it('returns 404 for non-existent feed', async () => {
     const res = await supertest(app.getHttpServer()).get('/api/feed/99999/ics')
-    expect(res.status).toBe(404)
-  })
-
-  it('returns 404 for draft feed', async () => {
-    const { calendar } = await createTestCalendarWithClub()
-    const feed = await createFeed(calendar.id, { isDraft: true })
-    const res = await supertest(app.getHttpServer()).get(`/api/feed/${feed.id}/ics`)
     expect(res.status).toBe(404)
   })
 
