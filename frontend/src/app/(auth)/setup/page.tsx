@@ -1,7 +1,8 @@
 'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { apiPost } from '@/lib/api'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
+import { apiGet, apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import type { Club, Calendar } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -12,11 +13,41 @@ import { CalendarDays, Building2, Check } from 'lucide-react'
 export default function SetupPage() {
   const { updateUser } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const clubIdParam = searchParams.get('clubId')
+
   const [step, setStep] = useState<1 | 2>(1)
   const [clubName, setClubName] = useState('')
   const [calendarName, setCalendarName] = useState('')
   const [createdClub, setCreatedClub] = useState<Club | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // When a specific club is passed via ?clubId=, fetch it directly
+  const { data: paramClub, isLoading: paramClubLoading } = useQuery<Club>({
+    queryKey: ['club', clubIdParam],
+    queryFn: () => apiGet<Club>(`/api/clubs/${clubIdParam}`),
+    enabled: !!clubIdParam,
+    retry: false,
+  })
+
+  // When no club is specified, check whether any clubs exist at all
+  const { data: existingClubs = [], isLoading: existingClubsLoading } = useQuery<Club[]>({
+    queryKey: ['clubs'],
+    queryFn: () => apiGet<Club[]>('/api/clubs'),
+    enabled: !clubIdParam,
+  })
+
+  const detecting = clubIdParam ? paramClubLoading : existingClubsLoading
+
+  // Jump to step 2 as soon as we know which club to use
+  useEffect(() => {
+    if (detecting) return
+    const club = clubIdParam ? (paramClub ?? null) : (existingClubs[0] ?? null)
+    if (!club) return
+    setCreatedClub(club)
+    setCalendarName(club.name + ' Calendar')
+    setStep(2)
+  }, [detecting]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleCreateClub() {
     if (!clubName.trim()) return
@@ -39,10 +70,18 @@ export default function SetupPage() {
     } finally { setLoading(false) }
   }
 
+  if (detecting) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-slate-400 text-sm">Loading…</div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Progress */}
+        {/* Progress — hide step 1 indicator when it's already completed implicitly */}
         <div className="flex items-center gap-3 mb-8">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${step >= 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
             {step > 1 ? <Check className="w-4 h-4" /> : '1'}
