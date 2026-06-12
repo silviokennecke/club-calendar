@@ -1,7 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { apiPost } from '@/lib/api'
+import { useQuery } from '@tanstack/react-query'
+import { apiGet, apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import type { Club, Calendar } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -10,13 +11,28 @@ import { Label } from '@/components/ui/label'
 import { CalendarDays, Building2, Check } from 'lucide-react'
 
 export default function SetupPage() {
-  const { updateUser } = useAuth()
+  const { user, updateUser } = useAuth()
   const router = useRouter()
   const [step, setStep] = useState<1 | 2>(1)
   const [clubName, setClubName] = useState('')
   const [calendarName, setCalendarName] = useState('')
   const [createdClub, setCreatedClub] = useState<Club | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Check whether the user already has a club — if so, skip step 1
+  const { data: existingClubs = [], isLoading: clubsLoading } = useQuery({
+    queryKey: ['clubs'],
+    queryFn: () => apiGet<Club[]>('/api/clubs'),
+    enabled: step === 1,
+  })
+
+  useEffect(() => {
+    if (clubsLoading || existingClubs.length === 0) return
+    const club = (user?.lastClubId ? existingClubs.find(c => c.id === user.lastClubId) : null) ?? existingClubs[0]
+    setCreatedClub(club)
+    setCalendarName(club.name + ' Calendar')
+    setStep(2)
+  }, [existingClubs, clubsLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleCreateClub() {
     if (!clubName.trim()) return
@@ -37,6 +53,15 @@ export default function SetupPage() {
       await updateUser({ lastClubId: createdClub.id, lastCalendarId: calendar.id })
       router.replace(`/clubs/${createdClub.id}/calendars/${calendar.id}`)
     } finally { setLoading(false) }
+  }
+
+  // Show loading while detecting existing clubs
+  if (step === 1 && clubsLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-slate-400 text-sm">Loading…</div>
+      </div>
+    )
   }
 
   return (
