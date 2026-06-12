@@ -35,3 +35,10 @@ export async function getAuthHeader(userId: number): Promise<string> {
   const token = await signAccessToken(userId)
   return `Bearer ${token}`
 }
+
+export async function createTestCalendarWithClub() {
+  const user = await createTestUser()
+  const club = await createTestClub(user.id)
+  const calendar = await createTestCalendar(club.id)
+  return { user, club, calendar }
+}
