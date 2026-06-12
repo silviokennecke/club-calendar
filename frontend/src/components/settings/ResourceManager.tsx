@@ -79,14 +79,30 @@ export default function ResourceManager({ calendarId: _calendarId, resourcePath,
       </div>
 
       {creating && (
-        <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
-          {fields.map(f => (
-            <Input key={f.key} className="flex-1" placeholder={f.placeholder ?? f.label}
-              value={createValues[f.key] ?? ''} onChange={e => setCreateValues(v => ({ ...v, [f.key]: e.target.value }))}
-              onKeyDown={e => e.key === 'Enter' && handleCreate()} />
-          ))}
-          <Button size="sm" disabled={saving} onClick={handleCreate}><Check className="w-3.5 h-3.5" /></Button>
-          <Button size="sm" variant="ghost" onClick={() => setCreating(false)}><X className="w-3.5 h-3.5" /></Button>
+        <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+          <div className="flex gap-2 flex-wrap">
+            {fields.map(f => (
+              f.type === 'emoji' ? (
+                <div key={f.key} className="flex items-center gap-1.5">
+                  <div className="w-10 h-10 flex items-center justify-center rounded-md border border-slate-200 bg-white text-xl select-none">
+                    {createValues[f.key] || <span className="text-slate-300 text-sm">😀</span>}
+                  </div>
+                  <Input className="w-24 text-lg text-center" placeholder={f.placeholder ?? '🎯'}
+                    value={createValues[f.key] ?? ''}
+                    onChange={e => setCreateValues(v => ({ ...v, [f.key]: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && handleCreate()} />
+                </div>
+              ) : (
+                <Input key={f.key} className="flex-1 min-w-32" placeholder={f.placeholder ?? f.label}
+                  value={createValues[f.key] ?? ''} onChange={e => setCreateValues(v => ({ ...v, [f.key]: e.target.value }))}
+                  onKeyDown={e => e.key === 'Enter' && handleCreate()} />
+              )
+            ))}
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button size="sm" variant="ghost" onClick={() => setCreating(false)}><X className="w-3.5 h-3.5 mr-1" />Cancel</Button>
+            <Button size="sm" disabled={saving} onClick={handleCreate}><Check className="w-3.5 h-3.5 mr-1" />Save</Button>
+          </div>
         </div>
       )}
 
@@ -97,15 +113,32 @@ export default function ResourceManager({ calendarId: _calendarId, resourcePath,
           {items.map(item => (
             <div key={item.id} className="flex items-center gap-3 px-4 py-3">
               {editingId === item.id ? (
-                <>
-                  {fields.map(f => (
-                    <Input key={f.key} className="flex-1 h-8" value={editValues[f.key] ?? ''}
-                      onChange={e => setEditValues(v => ({ ...v, [f.key]: e.target.value }))}
-                      onKeyDown={e => e.key === 'Enter' && handleUpdate(item.id)} />
-                  ))}
-                  <Button size="sm" disabled={saving} onClick={() => handleUpdate(item.id)}><Check className="w-3.5 h-3.5" /></Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}><X className="w-3.5 h-3.5" /></Button>
-                </>
+                <div className="flex-1 space-y-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {fields.map(f => (
+                      f.type === 'emoji' ? (
+                        <div key={f.key} className="flex items-center gap-1.5">
+                          <div className="w-9 h-9 flex items-center justify-center rounded-md border border-slate-200 bg-white text-xl select-none">
+                            {editValues[f.key] || <span className="text-slate-300 text-xs">😀</span>}
+                          </div>
+                          <Input className="w-24 text-lg text-center h-9" placeholder={f.placeholder ?? '🎯'}
+                            value={editValues[f.key] ?? ''}
+                            onChange={e => setEditValues(v => ({ ...v, [f.key]: e.target.value }))}
+                            onKeyDown={e => e.key === 'Enter' && handleUpdate(item.id)} />
+                        </div>
+                      ) : (
+                        <Input key={f.key} className="flex-1 min-w-32 h-9" value={editValues[f.key] ?? ''}
+                          placeholder={f.placeholder ?? f.label}
+                          onChange={e => setEditValues(v => ({ ...v, [f.key]: e.target.value }))}
+                          onKeyDown={e => e.key === 'Enter' && handleUpdate(item.id)} />
+                      )
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" disabled={saving} onClick={() => handleUpdate(item.id)}><Check className="w-3.5 h-3.5 mr-1" />Save</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}><X className="w-3.5 h-3.5 mr-1" />Cancel</Button>
+                  </div>
+                </div>
               ) : (
                 <>
                   <div className="flex-1">{renderItem(item)}</div>
