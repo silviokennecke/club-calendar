@@ -8,7 +8,6 @@ import { FeedsService } from './feeds.service'
 const createFeedSchema = z.object({
   name: z.string().min(1).max(255),
   visibility: z.enum(['PUBLIC', 'PRIVATE']).default('PRIVATE'),
-  isDraft: z.boolean().optional(),
   targetGroupIds: z.array(z.number().int().positive()).optional(),
 })
 

@@ -64,7 +64,6 @@ model CalendarFeed {
   name         String                   @db.VarChar(255)
   visibility   FeedVisibility           @default(PRIVATE)
   sharedSecret String                   @unique @db.VarChar(255)
-  isDraft      Boolean                  @default(true)
   calendar     Calendar                 @relation(fields: [calendarId], references: [id], onDelete: Cascade)
   targetGroups CalendarFeedTargetGroup[]
 }

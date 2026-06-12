@@ -19,7 +19,6 @@ export class FeedsService {
   createFeed(calendarId: number, data: {
     name: string
     visibility: 'PUBLIC' | 'PRIVATE'
-    isDraft?: boolean
     targetGroupIds?: number[]
   }) {
     const { targetGroupIds = [], ...rest } = data
@@ -38,7 +37,6 @@ export class FeedsService {
   async updateFeed(id: number, calendarId: number, data: {
     name?: string
     visibility?: 'PUBLIC' | 'PRIVATE'
-    isDraft?: boolean
     targetGroupIds?: number[]
   }) {
     const feed = await this.prisma.calendarFeed.findUnique({ where: { id } })
