@@ -216,7 +216,7 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
   return (
     <>
       <Dialog open={open} onOpenChange={v => !v && onClose()}>
-        <DialogContent className="w-[min(42rem,calc(100vw-2rem))] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Edit Event' : 'New Event'}</DialogTitle>
           </DialogHeader>
@@ -306,10 +306,10 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
                 <Label htmlFor="evt-n">Name *</Label>
                 <Input id="evt-n" value={name} onChange={e => setName(e.target.value)} placeholder="Event name" />
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1 min-w-0"><Label htmlFor="evt-d">Date *</Label><Input id="evt-d" type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full" /></div>
-                <div className="space-y-1 min-w-0"><Label>Start</Label><Input type="time" value={timeBegin} onChange={e => setTimeBegin(e.target.value)} className="w-full" /></div>
-                <div className="space-y-1 min-w-0"><Label>End</Label><Input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="w-full" /></div>
+              <div className="flex flex-wrap gap-2">
+                <div className="space-y-1 flex-1 min-w-36"><Label htmlFor="evt-d">Date *</Label><Input id="evt-d" type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full" /></div>
+                <div className="space-y-1 flex-1 min-w-28"><Label>Start</Label><Input type="time" value={timeBegin} onChange={e => setTimeBegin(e.target.value)} className="w-full" /></div>
+                <div className="space-y-1 flex-1 min-w-28"><Label>End</Label><Input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="w-full" /></div>
               </div>
               <div className="flex items-center gap-2">
                 <Switch id="evt-pub" checked={!isDraft} onCheckedChange={v => setIsDraft(!v)} />
