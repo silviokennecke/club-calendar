@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Plus, MapPin, Pencil, Trash2 } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import type { GeocodedAddress } from '@/components/locations/MapPicker'
 
 const MapPicker = dynamic(() => import('@/components/locations/MapPicker'), { ssr: false, loading: () => <div className="h-56 bg-slate-100 rounded-lg animate-pulse" /> })
 const LocationsOverviewMap = dynamic(() => import('@/components/locations/LocationsOverviewMap'), { ssr: false })
@@ -76,13 +77,15 @@ export default function LocationsPage({ params }: Props) {
     setForm(emptyForm)
   }
 
-  function handleMapPosition(lat: number, lng: number, geocodedAddress: string) {
+  function handleMapPosition(lat: number, lng: number, geocoded: GeocodedAddress) {
     setForm(f => ({
       ...f,
       latitude: lat,
       longitude: lng,
-      // Prefill street from geocoded address only if street is currently empty
-      street: f.street || geocodedAddress,
+      street: f.street || geocoded.street || '',
+      zip: f.zip || geocoded.zip || '',
+      city: f.city || geocoded.city || '',
+      country: f.country || geocoded.country || '',
     }))
   }
 

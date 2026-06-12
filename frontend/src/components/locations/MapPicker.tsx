@@ -5,18 +5,50 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''
 
-interface Suggestion {
+interface ContextItem {
+  id: string
+  text: string
+  short_code?: string
+}
+
+interface GeocodingFeature {
   place_name: string
   center: [number, number]
   place_type: string[]
+  text: string
+  address?: string          // house number, present for address-type features
+  context?: ContextItem[]
   properties?: { category?: string }
+}
+
+export interface GeocodedAddress {
+  displayName: string
+  street?: string
+  zip?: string
+  city?: string
+  country?: string
 }
 
 interface Props {
   latitude?: number | null
   longitude?: number | null
   address?: string
-  onPositionChange: (lat: number, lng: number, address: string) => void
+  onPositionChange: (lat: number, lng: number, geocoded: GeocodedAddress) => void
+}
+
+function parseFeature(f: GeocodingFeature): GeocodedAddress {
+  const ctx = f.context ?? []
+
+  const street = f.place_type.includes('address')
+    ? [f.text, f.address].filter(Boolean).join(' ')
+    : undefined
+
+  const zip = ctx.find(c => c.id.startsWith('postcode'))?.text
+  const city = ctx.find(c => c.id.startsWith('place'))?.text
+    ?? ctx.find(c => c.id.startsWith('locality'))?.text
+  const country = ctx.find(c => c.id.startsWith('country'))?.text
+
+  return { displayName: f.place_name, street, zip, city, country }
 }
 
 export default function MapPicker({ latitude, longitude, address, onPositionChange }: Props) {
@@ -24,11 +56,10 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const markerRef = useRef<mapboxgl.Marker | null>(null)
   const [searchQuery, setSearchQuery] = useState(address ?? '')
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
+  const [suggestions, setSuggestions] = useState<GeocodingFeature[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Lazy-load mapbox-gl (client only)
   useEffect(() => {
     if (!mapContainerRef.current) return
     let map: mapboxgl.Map
@@ -37,7 +68,7 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
     import('mapbox-gl').then(({ default: mapboxgl }) => {
       mapboxgl.accessToken = MAPBOX_TOKEN
 
-      const initLng = longitude ?? 10.0  // default: central Europe
+      const initLng = longitude ?? 10.0
       const initLat = latitude ?? 51.0
 
       map = new mapboxgl.Map({
@@ -53,23 +84,21 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
         .setLngLat([initLng, initLat])
         .addTo(map)
 
-      if (longitude != null) {
-        marker.setLngLat([longitude, latitude!])
-      }
+      if (longitude != null) marker.setLngLat([longitude, latitude!])
 
       marker.on('dragend', async () => {
         const { lng, lat } = marker.getLngLat()
-        const addr = await reverseGeocode(lng, lat)
-        onPositionChange(lat, lng, addr)
-        setSearchQuery(addr)
+        const geocoded = await reverseGeocode(lng, lat)
+        onPositionChange(lat, lng, geocoded)
+        setSearchQuery(geocoded.displayName)
       })
 
       map.on('click', async (e) => {
         const { lng, lat } = e.lngLat
         marker.setLngLat([lng, lat])
-        const addr = await reverseGeocode(lng, lat)
-        onPositionChange(lat, lng, addr)
-        setSearchQuery(addr)
+        const geocoded = await reverseGeocode(lng, lat)
+        onPositionChange(lat, lng, geocoded)
+        setSearchQuery(geocoded.displayName)
       })
 
       mapRef.current = map
@@ -79,15 +108,17 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
     return () => { map?.remove() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function reverseGeocode(lng: number, lat: number): Promise<string> {
+  async function reverseGeocode(lng: number, lat: number): Promise<GeocodedAddress> {
+    const fallback: GeocodedAddress = { displayName: `${lat.toFixed(5)}, ${lng.toFixed(5)}` }
     try {
       const res = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=de`
       )
-      const data = await res.json() as { features: { place_name: string }[] }
-      return data.features[0]?.place_name ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`
+      const data = await res.json() as { features: GeocodingFeature[] }
+      const feature = data.features[0]
+      return feature ? parseFeature(feature) : fallback
     } catch {
-      return `${lat.toFixed(5)}, ${lng.toFixed(5)}`
+      return fallback
     }
   }
 
@@ -99,7 +130,7 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
       const res = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=6&types=address,place,poi,neighborhood,locality${proximityParam}`
       )
-      const data = await res.json() as { features: Suggestion[] }
+      const data = await res.json() as { features: GeocodingFeature[] }
       setSuggestions(data.features)
       setShowSuggestions(true)
     } catch { setSuggestions([]) }
@@ -111,14 +142,15 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
     debounceRef.current = setTimeout(() => fetchSuggestions(value), 300)
   }
 
-  function selectSuggestion(s: Suggestion) {
+  function selectSuggestion(s: GeocodingFeature) {
     const [lng, lat] = s.center
-    setSearchQuery(s.place_name)
+    const geocoded = parseFeature(s)
+    setSearchQuery(geocoded.displayName)
     setShowSuggestions(false)
     setSuggestions([])
     mapRef.current?.flyTo({ center: [lng, lat], zoom: 15 })
     markerRef.current?.setLngLat([lng, lat])
-    onPositionChange(lat, lng, s.place_name)
+    onPositionChange(lat, lng, geocoded)
   }
 
   if (!MAPBOX_TOKEN) {
