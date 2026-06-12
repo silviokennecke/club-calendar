@@ -40,11 +40,22 @@ export async function getMe(userId: number) {
       id: true,
       name: true,
       email: true,
+      dateFormat: true,
+      firstDayOfWeek: true,
       passkeys: { select: { id: true, deviceName: true, createdAt: true } },
       oauthAccounts: { select: { provider: true } },
     },
   })
   if (!user) throw unauthorized('User not found')
+  return user
+}
+
+export async function updateMe(userId: number, data: { dateFormat?: string; firstDayOfWeek?: number }) {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data,
+    select: { id: true, name: true, email: true, dateFormat: true, firstDayOfWeek: true },
+  })
   return user
 }
 

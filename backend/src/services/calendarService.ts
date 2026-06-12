@@ -18,7 +18,7 @@ export async function getCalendar(calendarId: number) {
   return cal
 }
 
-export async function updateCalendar(calendarId: number, data: { name?: string }) {
+export async function updateCalendar(calendarId: number, data: { name?: string; timezone?: string | null }) {
   const cal = await prisma.calendar.findUnique({ where: { id: calendarId } })
   if (!cal) throw notFound('Calendar not found')
   return prisma.calendar.update({ where: { id: calendarId }, data })

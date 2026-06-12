@@ -7,7 +7,10 @@ import { listCalendars, createCalendar, updateCalendar, deleteCalendar, verifyCa
 
 export const calendarRoutes = new Hono<{ Variables: { userId: number } }>()
 
-const calendarSchema = z.object({ name: z.string().min(1).max(255) })
+const calendarSchema = z.object({
+  name: z.string().min(1).max(255),
+  timezone: z.string().max(100).nullable().optional(),
+})
 
 calendarRoutes.get('/', authMiddleware, requireClubMember, async (c) => {
   const calendars = await listCalendars(Number(c.req.param('clubId')))
