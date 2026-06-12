@@ -49,6 +49,8 @@ export interface Location {
   id: number
   calendarId: number
   address: string
+  latitude?: number | null
+  longitude?: number | null
 }
 
 export interface EventTemplate {
