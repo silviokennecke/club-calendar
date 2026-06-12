@@ -66,18 +66,23 @@ export async function findOrCreateOAuthUser(
   email: string,
   name: string,
 ) {
-  // Check existing OAuth account
-  const existing = await prisma.oAuthAccount.findUnique({
-    where: { provider_providerId: { provider, providerId } },
+  // Check existing OAuth account (use findFirst to handle orphaned records gracefully)
+  const existing = await prisma.oAuthAccount.findFirst({
+    where: { provider, providerId },
     include: { user: true },
   })
   if (existing) {
-    const accessToken = await signAccessToken(existing.user.id)
-    const refreshToken = await signRefreshToken(existing.user.id)
-    return {
-      accessToken,
-      refreshToken,
-      user: { id: existing.user.id, name: existing.user.name, email: existing.user.email },
+    if (!existing.user) {
+      // Orphaned account — user was deleted externally; clean up and fall through
+      await prisma.oAuthAccount.delete({ where: { id: existing.id } })
+    } else {
+      const accessToken = await signAccessToken(existing.user.id)
+      const refreshToken = await signRefreshToken(existing.user.id)
+      return {
+        accessToken,
+        refreshToken,
+        user: { id: existing.user.id, name: existing.user.name, email: existing.user.email },
+      }
     }
   }
   // Check existing user by email — link them
