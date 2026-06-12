@@ -50,8 +50,8 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
   // If the current club has no calendars, send the user to setup to create one
   useEffect(() => {
     if (calendarsLoading || calendars.length > 0) return
-    router.replace('/setup')
-  }, [calendars, calendarsLoading, router])
+    router.replace(`/setup?clubId=${clubId}`)
+  }, [calendars, calendarsLoading, router, clubId])
 
   async function handleClubChange(newClubId: string) {
     if (newClubId === clubId) return
