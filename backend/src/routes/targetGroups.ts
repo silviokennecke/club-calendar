@@ -23,7 +23,12 @@ targetGroupRoutes.post('/', authMiddleware, requireCalendarMember, zValidator('j
   return c.json(group, 201)
 })
 
-targetGroupRoutes.patch('/:id', authMiddleware, requireCalendarMember, zValidator('json', targetGroupSchema.partial()), async (c) => {
+const patchTargetGroupSchema = targetGroupSchema.partial().refine(
+  (d) => Object.keys(d).length > 0,
+  { message: 'At least one field required' },
+)
+
+targetGroupRoutes.patch('/:id', authMiddleware, requireCalendarMember, zValidator('json', patchTargetGroupSchema), async (c) => {
   const calendarId = Number(c.req.param('calendarId'))
   const id = Number(c.req.param('id'))
   const group = await updateTargetGroup(id, calendarId, c.req.valid('json'))

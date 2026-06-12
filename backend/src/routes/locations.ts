@@ -23,7 +23,12 @@ locationRoutes.post('/', authMiddleware, requireCalendarMember, zValidator('json
   return c.json(location, 201)
 })
 
-locationRoutes.patch('/:id', authMiddleware, requireCalendarMember, zValidator('json', locationSchema.partial()), async (c) => {
+const patchLocationSchema = locationSchema.partial().refine(
+  (d) => Object.keys(d).length > 0,
+  { message: 'At least one field required' },
+)
+
+locationRoutes.patch('/:id', authMiddleware, requireCalendarMember, zValidator('json', patchLocationSchema), async (c) => {
   const calendarId = Number(c.req.param('calendarId'))
   const id = Number(c.req.param('id'))
   const location = await updateLocation(id, calendarId, c.req.valid('json'))

@@ -23,7 +23,12 @@ featureRoutes.post('/', authMiddleware, requireCalendarMember, zValidator('json'
   return c.json(feature, 201)
 })
 
-featureRoutes.patch('/:id', authMiddleware, requireCalendarMember, zValidator('json', featureSchema.partial()), async (c) => {
+const patchFeatureSchema = featureSchema.partial().refine(
+  (d) => Object.keys(d).length > 0,
+  { message: 'At least one field required' },
+)
+
+featureRoutes.patch('/:id', authMiddleware, requireCalendarMember, zValidator('json', patchFeatureSchema), async (c) => {
   const calendarId = Number(c.req.param('calendarId'))
   const id = Number(c.req.param('id'))
   const feature = await updateFeature(id, calendarId, c.req.valid('json'))
