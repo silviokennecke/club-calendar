@@ -18,7 +18,7 @@ export default function CalendarPage({ params }: Props) {
   const { calendarId, clubId } = use(params)
   const router = useRouter()
 
-  function fetchEvents(fetchInfo: EventSourceFuncArg, successCallback: (events: object[]) => void) {
+  function fetchEvents(fetchInfo: EventSourceFuncArg, successCallback: (events: object[]) => void, failureCallback: (err: Error) => void) {
     apiGet<CalendarEvent[]>(
       `/api/calendars/${calendarId}/events?from=${fetchInfo.startStr.slice(0, 10)}&to=${fetchInfo.endStr.slice(0, 10)}`
     ).then((events) => {
@@ -32,7 +32,7 @@ export default function CalendarPage({ params }: Props) {
           extendedProps: ev,
         }))
       )
-    })
+    }).catch(failureCallback)
   }
 
   return (
