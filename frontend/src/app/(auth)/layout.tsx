@@ -12,7 +12,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   }, [user, loading, router])
 
   if (loading || (!user && !loading)) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="text-slate-400 text-sm">Loading...</div>
+      </div>
+    )
   }
   return <>{children}</>
 }
