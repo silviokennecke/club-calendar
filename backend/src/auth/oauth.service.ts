@@ -42,7 +42,7 @@ export class OAuthService {
     )
   }
 
-  createAuthorizationURL(provider: Provider, state: string, codeVerifier: string) {
+  async createAuthorizationURL(provider: Provider, state: string, codeVerifier: string) {
     switch (provider) {
       case 'google': {
         const g = this.getGoogle()
