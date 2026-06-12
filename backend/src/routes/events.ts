@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { authMiddleware } from '../middleware/auth.js'
 import { requireCalendarMember } from '../middleware/requireCalendar.js'
 import {
-  listEvents, createEvent, createSeriesFromTemplate,
+  listEvents, createEvent, createSeriesFromTemplate, importEvents,
   getEvent, updateEvent, removeEvent,
 } from '../services/eventService.js'
 
@@ -60,6 +60,28 @@ eventRoutes.post('/', authMiddleware, requireCalendarMember, zValidator('json', 
   const calendarId = Number(c.req.param('calendarId'))
   const event = await createEvent(calendarId, c.req.valid('json'))
   return c.json(event, 201)
+})
+
+const importSchema = z.object({
+  events: z.array(z.object({
+    name: z.string().min(1).max(255),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    timeBegin: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    timeEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    timezone: z.string().nullable().optional(),
+    isDraft: z.boolean().optional(),
+    locationId: z.number().int().positive().nullable().optional(),
+    propertyIds: z.array(z.number().int().positive()).optional(),
+    featureIds: z.array(z.number().int().positive()).optional(),
+    targetGroupIds: z.array(z.number().int().positive()).optional(),
+  })).min(1).max(500),
+})
+
+eventRoutes.post('/import', authMiddleware, requireCalendarMember, zValidator('json', importSchema), async (c) => {
+  const calendarId = Number(c.req.param('calendarId'))
+  const { events } = c.req.valid('json')
+  const created = await importEvents(calendarId, events)
+  return c.json({ imported: created.length }, 201)
 })
 
 eventRoutes.get('/:id', authMiddleware, requireCalendarMember, async (c) => {
