@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common'
 import { APP_FILTER } from '@nestjs/core'
 import { PrismaModule } from './prisma/prisma.module'
 import { AppExceptionFilter } from './common/filters/app-exception.filter'
+import { AuthModule } from './auth/auth.module'
 // Feature modules will be added in later phases — leave these as TODO comments
-// import { AuthModule } from './auth/auth.module'
 // import { ClubsModule } from './clubs/clubs.module'
 // import { CalendarsModule } from './calendars/calendars.module'
 // import { PropertiesModule } from './properties/properties.module'
@@ -18,7 +18,7 @@ import { AppExceptionFilter } from './common/filters/app-exception.filter'
 @Module({
   imports: [
     PrismaModule,
-    // Feature modules will be added in Phase 2
+    AuthModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AppExceptionFilter },
