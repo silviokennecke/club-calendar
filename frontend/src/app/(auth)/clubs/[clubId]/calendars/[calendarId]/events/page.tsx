@@ -3,6 +3,7 @@ import { use, useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPatch, apiDelete } from '@/lib/api'
 import type { CalendarEvent, TargetGroup } from '@/lib/types'
+import { formatAddress } from '@/lib/types'
 import { useAuth } from '@/lib/auth-context'
 import { formatDate } from '@/lib/dateFormat'
 import { Button } from '@/components/ui/button'
@@ -189,7 +190,7 @@ export default function EventsListPage({ params }: Props) {
                   <span className="font-medium text-slate-800 truncate">
                     {iconPrefix && <span className="mr-1">{iconPrefix}</span>}
                     {ev.name}
-                    {ev.location && <span className="ml-1.5 text-slate-400 font-normal text-xs">@ {ev.location.name ?? ev.location.address}</span>}
+                    {ev.location && <span className="ml-1.5 text-slate-400 font-normal text-xs">@ {ev.location.name ?? formatAddress(ev.location)}</span>}
                   </span>
                   <span className="text-slate-500 text-xs">
                     {ev.dateEnd && ev.dateEnd.slice(0, 10) !== ev.date.slice(0, 10)

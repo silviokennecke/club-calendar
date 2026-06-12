@@ -7,7 +7,10 @@ import { LocationsService } from './locations.service'
 
 const locationSchema = z.object({
   name: z.string().max(255).nullable().optional(),
-  address: z.string().min(1).max(500),
+  street: z.string().max(255).nullable().optional(),
+  zip: z.string().max(20).nullable().optional(),
+  city: z.string().max(255).nullable().optional(),
+  country: z.string().max(100).nullable().optional(),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
 })

@@ -111,7 +111,10 @@ model Location {
   id         Int             @id @default(autoincrement())
   calendarId Int
   name       String?         @db.VarChar(255)
-  address    String          @db.VarChar(500)
+  street     String?         @db.VarChar(255)
+  zip        String?         @db.VarChar(20)
+  city       String?         @db.VarChar(255)
+  country    String?         @db.VarChar(100)
   latitude   Float?
   longitude  Float?
   calendar   Calendar        @relation(fields: [calendarId], references: [id], onDelete: Cascade)

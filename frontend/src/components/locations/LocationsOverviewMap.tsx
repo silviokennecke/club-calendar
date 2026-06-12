@@ -7,7 +7,9 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''
 interface LocationPin {
   id: number
   name?: string | null
-  address: string
+  street?: string | null
+  zip?: string | null
+  city?: string | null
   latitude: number
   longitude: number
 }
@@ -84,13 +86,14 @@ export default function LocationsOverviewMap({ locations, selectedId, onSelect, 
       const el = document.createElement('div')
       el.className = 'cursor-pointer'
       el.innerHTML = `<div style="width:28px;height:28px;background:#2563eb;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>`
-      el.title = loc.name ?? loc.address
+      const addrLine = [loc.street, [loc.zip, loc.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+      el.title = loc.name ?? addrLine
       el.addEventListener('click', () => onSelect?.(loc.id))
 
       const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
         .setLngLat([loc.longitude, loc.latitude])
         .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(
-          `<div style="font-size:12px"><strong>${loc.name ?? loc.address}</strong>${loc.name ? `<br/><span style="color:#64748b">${loc.address}</span>` : ''}</div>`
+          `<div style="font-size:12px"><strong>${loc.name ?? addrLine}</strong>${loc.name && addrLine ? `<br/><span style="color:#64748b">${addrLine}</span>` : ''}</div>`
         ))
         .addTo(map)
       markersRef.current.push({ id: loc.id, marker })

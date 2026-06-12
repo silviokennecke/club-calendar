@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api'
 import type { CalendarEvent, Property, Feature, TargetGroup, Location, EventTemplate } from '@/lib/types'
+import { formatAddress, formatLocationLabel } from '@/lib/types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -343,7 +344,7 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
                     <option value="">No location</option>
                     {locations.map(l => (
                       <option key={l.id} value={l.id}>
-                        {l.name ? `${l.name} — ${l.address}` : l.address}
+                        {formatLocationLabel(l)}
                       </option>
                     ))}
                   </select>
@@ -357,7 +358,7 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
                   <MapPicker
                     latitude={selectedLocation.latitude}
                     longitude={selectedLocation.longitude}
-                    address={selectedLocation.address}
+                    address={formatAddress(selectedLocation) || undefined}
                     onPositionChange={handleMapPositionChange}
                   />
                 )}
