@@ -42,7 +42,8 @@ model Calendar {
   id           Int             @id @default(autoincrement())
   clubId       Int
   name         String          @db.VarChar(255)
-  timezone  String? @db.VarChar(100)
+  timezone     String?         @db.VarChar(100)
+  archivedAt   DateTime?
   club         Club            @relation(fields: [clubId], references: [id], onDelete: Cascade)
   feeds        CalendarFeed[]
   properties   Property[]
