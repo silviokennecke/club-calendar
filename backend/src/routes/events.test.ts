@@ -1,6 +1,9 @@
-import { describe, it, expect } from 'vitest'
-import { createApp } from '../app.js'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const supertest = require('supertest')
+import type { INestApplication } from '@nestjs/common'
 import {
+  createTestApp,
   createTestUser,
   createTestClub,
   createTestCalendar,
@@ -8,36 +11,43 @@ import {
   createTestEvent,
   createTestTemplate,
   getAuthHeader,
-} from '../test/helpers.js'
+} from '../test/helpers'
+
+let app: INestApplication
+
+beforeAll(async () => {
+  app = await createTestApp()
+})
+
+afterAll(async () => {
+  await app.close()
+})
 
 describe('Events /api/calendars/:calendarId/events', () => {
   it('returns empty array initially', async () => {
     const { user, calendar } = await createTestCalendarWithClub()
-    const app = createApp()
-    const res = await app.request(`/api/calendars/${calendar.id}/events`, {
-      headers: { Authorization: await getAuthHeader(user.id) },
-    })
+    const res = await supertest(app.getHttpServer())
+      .get(`/api/calendars/${calendar.id}/events`)
+      .set('Authorization', await getAuthHeader(user.id))
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual([])
+    expect(res.body).toEqual([])
   })
 
   it('creates a single event', async () => {
     const { user, calendar } = await createTestCalendarWithClub()
-    const app = createApp()
-    const res = await app.request(`/api/calendars/${calendar.id}/events`, {
-      method: 'POST',
-      headers: { Authorization: await getAuthHeader(user.id), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const res = await supertest(app.getHttpServer())
+      .post(`/api/calendars/${calendar.id}/events`)
+      .set('Authorization', await getAuthHeader(user.id))
+      .send({
         name: 'Club Night',
         date: '2026-07-01',
         timeBegin: '20:00',
         timeEnd: '23:00',
         isDraft: false,
         timezone: 'Europe/Berlin',
-      }),
-    })
+      })
     expect(res.status).toBe(201)
-    const body = await res.json() as { name: string; isDraft: boolean; date: string }
+    const body = res.body as { name: string; isDraft: boolean; date: string }
     expect(body.name).toBe('Club Night')
     expect(body.isDraft).toBe(false)
   })
@@ -47,13 +57,11 @@ describe('Events /api/calendars/:calendarId/events', () => {
     await createTestEvent(calendar.id, { name: 'Before Range', date: '2026-05-01' })
     await createTestEvent(calendar.id, { name: 'In Range', date: '2026-06-15' })
     await createTestEvent(calendar.id, { name: 'After Range', date: '2026-08-01' })
-    const app = createApp()
-    const res = await app.request(
-      `/api/calendars/${calendar.id}/events?from=2026-06-01&to=2026-06-30`,
-      { headers: { Authorization: await getAuthHeader(user.id) } },
-    )
+    const res = await supertest(app.getHttpServer())
+      .get(`/api/calendars/${calendar.id}/events?from=2026-06-01&to=2026-06-30`)
+      .set('Authorization', await getAuthHeader(user.id))
     expect(res.status).toBe(200)
-    const body = await res.json() as { name: string }[]
+    const body = res.body as { name: string }[]
     expect(body.length).toBe(1)
     expect(body[0].name).toBe('In Range')
   })
@@ -61,17 +69,15 @@ describe('Events /api/calendars/:calendarId/events', () => {
   it('creates events from template (series)', async () => {
     const { user, calendar } = await createTestCalendarWithClub()
     const template = await createTestTemplate(calendar.id)
-    const app = createApp()
-    const res = await app.request(`/api/calendars/${calendar.id}/events/from-template`, {
-      method: 'POST',
-      headers: { Authorization: await getAuthHeader(user.id), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const res = await supertest(app.getHttpServer())
+      .post(`/api/calendars/${calendar.id}/events/from-template`)
+      .set('Authorization', await getAuthHeader(user.id))
+      .send({
         templateId: template.id,
         dates: ['2026-07-01', '2026-07-08', '2026-07-15'],
-      }),
-    })
+      })
     expect(res.status).toBe(201)
-    const body = await res.json() as { name: string }[]
+    const body = res.body as { name: string }[]
     expect(body.length).toBe(3)
     expect(body[0].name).toBe(template.name)
   })
@@ -79,12 +85,11 @@ describe('Events /api/calendars/:calendarId/events', () => {
   it('gets a single event by id', async () => {
     const { user, calendar } = await createTestCalendarWithClub()
     const event = await createTestEvent(calendar.id)
-    const app = createApp()
-    const res = await app.request(`/api/calendars/${calendar.id}/events/${event.id}`, {
-      headers: { Authorization: await getAuthHeader(user.id) },
-    })
+    const res = await supertest(app.getHttpServer())
+      .get(`/api/calendars/${calendar.id}/events/${event.id}`)
+      .set('Authorization', await getAuthHeader(user.id))
     expect(res.status).toBe(200)
-    const body = await res.json() as { id: number; name: string }
+    const body = res.body as { id: number; name: string }
     expect(body.id).toBe(event.id)
     expect(body.name).toBe(event.name)
   })
@@ -92,14 +97,12 @@ describe('Events /api/calendars/:calendarId/events', () => {
   it('updates event name and isDraft', async () => {
     const { user, calendar } = await createTestCalendarWithClub()
     const event = await createTestEvent(calendar.id)
-    const app = createApp()
-    const res = await app.request(`/api/calendars/${calendar.id}/events/${event.id}`, {
-      method: 'PATCH',
-      headers: { Authorization: await getAuthHeader(user.id), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'Updated Event', isDraft: true }),
-    })
+    const res = await supertest(app.getHttpServer())
+      .patch(`/api/calendars/${calendar.id}/events/${event.id}`)
+      .set('Authorization', await getAuthHeader(user.id))
+      .send({ name: 'Updated Event', isDraft: true })
     expect(res.status).toBe(200)
-    const body = await res.json() as { name: string; isDraft: boolean }
+    const body = res.body as { name: string; isDraft: boolean }
     expect(body.name).toBe('Updated Event')
     expect(body.isDraft).toBe(true)
   })
@@ -107,35 +110,31 @@ describe('Events /api/calendars/:calendarId/events', () => {
   it('deletes an event', async () => {
     const { user, calendar } = await createTestCalendarWithClub()
     const event = await createTestEvent(calendar.id)
-    const app = createApp()
-    const deleteRes = await app.request(`/api/calendars/${calendar.id}/events/${event.id}`, {
-      method: 'DELETE',
-      headers: { Authorization: await getAuthHeader(user.id) },
-    })
+    const deleteRes = await supertest(app.getHttpServer())
+      .delete(`/api/calendars/${calendar.id}/events/${event.id}`)
+      .set('Authorization', await getAuthHeader(user.id))
     expect(deleteRes.status).toBe(200)
     // confirm it's gone
-    const getRes = await app.request(`/api/calendars/${calendar.id}/events/${event.id}`, {
-      headers: { Authorization: await getAuthHeader(user.id) },
-    })
+    const getRes = await supertest(app.getHttpServer())
+      .get(`/api/calendars/${calendar.id}/events/${event.id}`)
+      .set('Authorization', await getAuthHeader(user.id))
     expect(getRes.status).toBe(404)
   })
 
   it('returns 403 for non-member', async () => {
     const { calendar } = await createTestCalendarWithClub()
     const other = await createTestUser({ email: 'other-events@example.com' })
-    const app = createApp()
-    const res = await app.request(`/api/calendars/${calendar.id}/events`, {
-      headers: { Authorization: await getAuthHeader(other.id) },
-    })
+    const res = await supertest(app.getHttpServer())
+      .get(`/api/calendars/${calendar.id}/events`)
+      .set('Authorization', await getAuthHeader(other.id))
     expect(res.status).toBe(403)
   })
 
   it('returns 404 for unknown event id', async () => {
     const { user, calendar } = await createTestCalendarWithClub()
-    const app = createApp()
-    const res = await app.request(`/api/calendars/${calendar.id}/events/999999`, {
-      headers: { Authorization: await getAuthHeader(user.id) },
-    })
+    const res = await supertest(app.getHttpServer())
+      .get(`/api/calendars/${calendar.id}/events/999999`)
+      .set('Authorization', await getAuthHeader(user.id))
     expect(res.status).toBe(404)
   })
 
@@ -145,15 +144,13 @@ describe('Events /api/calendars/:calendarId/events', () => {
     const otherClub = await createTestClub(otherUser.id)
     const otherCalendar = await createTestCalendar(otherClub.id)
     const templateInOtherCalendar = await createTestTemplate(otherCalendar.id, { name: 'Other Template' })
-    const app = createApp()
-    const res = await app.request(`/api/calendars/${calendar.id}/events/from-template`, {
-      method: 'POST',
-      headers: { Authorization: await getAuthHeader(user.id), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const res = await supertest(app.getHttpServer())
+      .post(`/api/calendars/${calendar.id}/events/from-template`)
+      .set('Authorization', await getAuthHeader(user.id))
+      .send({
         templateId: templateInOtherCalendar.id,
         dates: ['2026-07-01'],
-      }),
-    })
+      })
     expect(res.status).toBe(404)
   })
 
@@ -164,19 +161,17 @@ describe('Events /api/calendars/:calendarId/events', () => {
     const otherCalendar = await createTestCalendar(otherClub.id)
     await createTestClub(user.id) // make user member of a second club to trigger club membership check
     const eventInOtherCalendar = await createTestEvent(otherCalendar.id, { name: 'Inaccessible' })
-    const app = createApp()
-    const res = await app.request(`/api/calendars/${calendar.id}/events/${eventInOtherCalendar.id}`, {
-      headers: { Authorization: await getAuthHeader(user.id) },
-    })
+    const res = await supertest(app.getHttpServer())
+      .get(`/api/calendars/${calendar.id}/events/${eventInOtherCalendar.id}`)
+      .set('Authorization', await getAuthHeader(user.id))
     expect(res.status).toBe(404)
   })
 
   it('returns 400 for invalid from date query param', async () => {
     const { user, calendar } = await createTestCalendarWithClub()
-    const app = createApp()
-    const res = await app.request(`/api/calendars/${calendar.id}/events?from=notadate`, {
-      headers: { Authorization: await getAuthHeader(user.id) },
-    })
+    const res = await supertest(app.getHttpServer())
+      .get(`/api/calendars/${calendar.id}/events?from=notadate`)
+      .set('Authorization', await getAuthHeader(user.id))
     expect(res.status).toBe(400)
   })
 })

@@ -1,5 +1,5 @@
 import { beforeEach, afterAll } from 'vitest'
-import { prisma } from '../lib/prisma.js'
+import { prisma } from '../lib/prisma'
 
 beforeEach(async () => {
   await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS=0')

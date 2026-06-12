@@ -1,6 +1,21 @@
-import { prisma } from '../lib/prisma.js'
-import { hashPassword } from '../lib/password.js'
-import { signAccessToken } from '../lib/jwt.js'
+import { Test, TestingModule } from '@nestjs/testing'
+import type { INestApplication } from '@nestjs/common'
+import { AppModule } from '../app.module'
+import { prisma } from '../lib/prisma'
+import { hashPassword } from '../lib/password'
+import { signAccessToken } from '../lib/jwt'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const cookieParser = require('cookie-parser')
+
+export async function createTestApp(): Promise<INestApplication> {
+  const moduleFixture: TestingModule = await Test.createTestingModule({
+    imports: [AppModule],
+  }).compile()
+  const app = moduleFixture.createNestApplication()
+  app.use(cookieParser())
+  await app.init()
+  return app
+}
 
 export async function createTestUser(overrides?: { email?: string; name?: string }) {
   return prisma.user.create({
