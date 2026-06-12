@@ -7,6 +7,7 @@ import { featureRoutes } from './features.js'
 import { targetGroupRoutes } from './targetGroups.js'
 import { locationRoutes } from './locations.js'
 import { templateRoutes } from './eventTemplates.js'
+import { eventRoutes } from './events.js'
 
 export const routes = new Hono()
 
@@ -19,3 +20,4 @@ routes.route('/api/calendars/:calendarId/features', featureRoutes)
 routes.route('/api/calendars/:calendarId/target-groups', targetGroupRoutes)
 routes.route('/api/calendars/:calendarId/locations', locationRoutes)
 routes.route('/api/calendars/:calendarId/templates', templateRoutes)
+routes.route('/api/calendars/:calendarId/events', eventRoutes)
