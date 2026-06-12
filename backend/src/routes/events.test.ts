@@ -156,4 +156,27 @@ describe('Events /api/calendars/:calendarId/events', () => {
     })
     expect(res.status).toBe(404)
   })
+
+  it('returns 404 when accessing event from another calendar (IDOR)', async () => {
+    const { user, calendar } = await createTestCalendarWithClub()
+    const otherUser = await createTestUser({ email: 'other-idor@example.com' })
+    const otherClub = await createTestClub(otherUser.id)
+    const otherCalendar = await createTestCalendar(otherClub.id)
+    await createTestClub(user.id) // make user member of a second club to trigger club membership check
+    const eventInOtherCalendar = await createTestEvent(otherCalendar.id, { name: 'Inaccessible' })
+    const app = createApp()
+    const res = await app.request(`/api/calendars/${calendar.id}/events/${eventInOtherCalendar.id}`, {
+      headers: { Authorization: await getAuthHeader(user.id) },
+    })
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 400 for invalid from date query param', async () => {
+    const { user, calendar } = await createTestCalendarWithClub()
+    const app = createApp()
+    const res = await app.request(`/api/calendars/${calendar.id}/events?from=notadate`, {
+      headers: { Authorization: await getAuthHeader(user.id) },
+    })
+    expect(res.status).toBe(400)
+  })
 })
