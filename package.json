@@ -1,0 +1,13 @@
+{
+  "name": "club-calendar",
+  "private": true,
+  "workspaces": ["backend", "frontend"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "test": "npm run test --workspace=backend",
+    "db:up": "docker compose up mysql mysql_test -d",
+    "db:migrate": "npm run db:migrate --workspace=backend"
+  }
+}
