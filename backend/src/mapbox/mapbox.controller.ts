@@ -31,7 +31,8 @@ export class MapboxController {
       const upstream = await fetch(upstreamUrl)
       res.status(upstream.status)
 
-      const skip = new Set(['transfer-encoding', 'connection', 'keep-alive', 'te', 'trailer', 'upgrade'])
+      // Node fetch decompresses the body automatically, so drop the encoding header
+      const skip = new Set(['transfer-encoding', 'content-encoding', 'connection', 'keep-alive', 'te', 'trailer', 'upgrade'])
       upstream.headers.forEach((value, key) => {
         if (!skip.has(key.toLowerCase())) res.setHeader(key, value)
       })
