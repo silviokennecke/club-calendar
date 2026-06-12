@@ -5,7 +5,7 @@ A web app for clubs to manage and publish event calendars.
 ## Stack
 
 - **Runtime:** Node.js v22, TypeScript
-- **Backend:** Hono (lightweight HTTP framework)
+- **Backend:** NestJS (modular framework with DI)
 - **Database:** Prisma ORM + MySQL 8
 - **Frontend:** Next.js 15, Tailwind CSS + shadcn/ui, FullCalendar
 - **Utilities:** ical-generator (ICS export), Luxon (date/time)
@@ -13,7 +13,7 @@ A web app for clubs to manage and publish event calendars.
 ## Monorepo Structure
 
 npm workspaces:
-- `backend/` — Hono API server (port 3001)
+- `backend/` — NestJS API server (port 3001)
 - `frontend/` — Next.js app (port 3000)
 
 ## Dev Setup

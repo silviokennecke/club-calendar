@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing'
 import type { INestApplication } from '@nestjs/common'
 import { AppModule } from '../app.module'
-import { prisma } from '../lib/prisma'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
 import { hashPassword } from '../lib/password'
 import { signAccessToken } from '../lib/jwt'
 // eslint-disable-next-line @typescript-eslint/no-require-imports

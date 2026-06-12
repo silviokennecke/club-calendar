@@ -3,7 +3,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 const supertest = require('supertest')
 import type { INestApplication } from '@nestjs/common'
 import { createTestApp, createTestCalendarWithClub, createTestEvent } from '../test/helpers'
-import { prisma } from '../lib/prisma'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
 import { FeedVisibility } from '@prisma/client'
 import { randomUUID } from 'crypto'
 
