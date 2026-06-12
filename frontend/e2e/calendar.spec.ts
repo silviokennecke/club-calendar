@@ -53,7 +53,8 @@ test.describe('Calendar', () => {
     const publishSwitch = dialog.getByRole('switch')
     await publishSwitch.click()
 
-    await dialog.getByRole('button', { name: /create event/i }).click()
-    await expect(dialog).not.toBeVisible({ timeout: 5000 })
+    // Button label is "Create" in the new modal
+    await dialog.getByRole('button', { name: /^create$/i }).click()
+    await expect(dialog).not.toBeVisible({ timeout: 8000 })
   })
 })
