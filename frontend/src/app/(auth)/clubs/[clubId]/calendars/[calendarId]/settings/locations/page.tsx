@@ -16,11 +16,17 @@ export default function LocationsPage({ params }: Props) {
         resourcePath={path}
         queryKey={['locations', calendarId]}
         title="Locations"
-        fields={[{ key: 'address', label: 'Address', placeholder: 'Street, City' }]}
+        fields={[
+          { key: 'name', label: 'Name', placeholder: 'e.g. Main Hall' },
+          { key: 'address', label: 'Address', placeholder: 'Street, City' },
+        ]}
         renderItem={item => (
           <div className="flex items-center gap-2">
             <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="text-sm text-slate-800">{String(item.address)}</span>
+            <div>
+              {item.name != null && item.name !== '' && <span className="text-sm font-medium text-slate-800">{String(item.name)}</span>}
+              <span className={`text-sm ${item.name != null && item.name !== '' ? 'text-slate-500 ml-1' : 'text-slate-800'}`}>{String(item.address)}</span>
+            </div>
           </div>
         )}
       />
