@@ -21,7 +21,7 @@ export default function PropertiesPage({ params }: Props) {
         ]}
         renderItem={item => (
           <div className="flex items-center gap-2">
-            {item.icon && <span className="text-lg">{String(item.icon)}</span>}
+            {!!item.icon && <span className="text-lg">{String(item.icon)}</span>}
             <span className="text-sm font-medium text-slate-800">{String(item.name)}</span>
           </div>
         )}

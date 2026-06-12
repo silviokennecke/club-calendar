@@ -1,69 +1,124 @@
 'use client'
+import { use, useState } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
+import type { EventInput, EventClickArg } from '@fullcalendar/core'
+import type { DateClickArg } from '@fullcalendar/interaction'
 import { apiGet } from '@/lib/api'
 import type { CalendarEvent } from '@/lib/types'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import type { EventSourceFuncArg } from '@fullcalendar/core'
-import { use } from 'react'
+import EventModal from '@/components/calendar/EventModal'
+import { Plus } from 'lucide-react'
 
-interface Props {
-  params: Promise<{ clubId: string; calendarId: string }>
-}
+interface Props { params: Promise<{ clubId: string; calendarId: string }> }
 
 export default function CalendarPage({ params }: Props) {
-  const { calendarId, clubId } = use(params)
-  const router = useRouter()
+  const { calendarId } = use(params)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<string | undefined>()
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
 
-  function fetchEvents(fetchInfo: EventSourceFuncArg, successCallback: (events: object[]) => void, failureCallback: (err: Error) => void) {
+  function openCreate(date?: string) {
+    setEditingEvent(null)
+    setSelectedDate(date)
+    setModalOpen(true)
+  }
+
+  function openEdit(event: CalendarEvent) {
+    setSelectedDate(undefined)
+    setEditingEvent(event)
+    setModalOpen(true)
+  }
+
+  function closeModal() {
+    setModalOpen(false)
+    setEditingEvent(null)
+    setSelectedDate(undefined)
+  }
+
+  function fetchEvents(
+    fetchInfo: { startStr: string; endStr: string },
+    successCallback: (events: EventInput[]) => void,
+    failureCallback: (err: Error) => void,
+  ) {
     apiGet<CalendarEvent[]>(
       `/api/calendars/${calendarId}/events?from=${fetchInfo.startStr.slice(0, 10)}&to=${fetchInfo.endStr.slice(0, 10)}`
-    ).then((events) => {
-      successCallback(
-        events.map((ev) => ({
+    ).then(events => {
+      successCallback(events.map(ev => {
+        const dateStr = ev.date.slice(0, 10)
+        const iconPrefix = ev.properties.map(p => p.property.icon).filter(Boolean).join('')
+        const title = [iconPrefix, ev.name].filter(Boolean).join(' ')
+        return {
           id: String(ev.id),
-          title: `${ev.isDraft ? '[Draft] ' : ''}${ev.name}`,
-          start: `${ev.date.slice(0, 10)}T${ev.timeBegin}`,
-          end: `${ev.date.slice(0, 10)}T${ev.timeEnd}`,
-          backgroundColor: ev.isDraft ? '#94a3b8' : '#3b82f6',
-          extendedProps: ev,
-        }))
-      )
+          title,
+          start: `${dateStr}T${ev.timeBegin}`,
+          end: `${dateStr}T${ev.timeEnd}`,
+          backgroundColor: ev.isDraft ? '#94a3b8' : '#2563eb',
+          borderColor: ev.isDraft ? '#94a3b8' : '#1d4ed8',
+          textColor: '#fff',
+          extendedProps: { event: ev },
+        }
+      }))
     }).catch(failureCallback)
   }
 
+  function handleDateClick(info: DateClickArg) {
+    openCreate(info.dateStr)
+  }
+
+  function handleEventClick(info: EventClickArg) {
+    const ev = info.event.extendedProps.event as CalendarEvent
+    openEdit(ev)
+  }
+
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
-          <Link href={`/clubs/${clubId}`} className="text-sm text-muted-foreground hover:underline">← Club</Link>
-          <h1 className="text-xl font-semibold">Calendar</h1>
-        </div>
-        <div className="flex gap-2">
-          <Link href={`/clubs/${clubId}/calendars/${calendarId}/events/new`}>
-            <Button size="sm">+ New Event</Button>
-          </Link>
-          <Link href={`/clubs/${clubId}/calendars/${calendarId}/templates`}>
-            <Button size="sm" variant="outline">Templates</Button>
-          </Link>
-          <Link href={`/clubs/${clubId}/calendars/${calendarId}/settings/feeds`}>
-            <Button size="sm" variant="outline">Feeds</Button>
-          </Link>
-        </div>
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="text-lg font-semibold text-slate-900">Calendar</h1>
+        <Button size="sm" onClick={() => openCreate()}>
+          <Plus className="w-3.5 h-3.5 mr-1" />New Event
+        </Button>
       </div>
-      <FullCalendar
-        plugins={[dayGridPlugin, interactionPlugin]}
-        initialView="dayGridMonth"
-        events={fetchEvents}
-        eventClick={(info) => {
-          router.push(`/clubs/${clubId}/calendars/${calendarId}/events/${info.event.id}/edit`)
-        }}
-        headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth' }}
-        height="auto"
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+        <FullCalendar
+          plugins={[dayGridPlugin, interactionPlugin]}
+          initialView="dayGridMonth"
+          events={fetchEvents}
+          eventClick={handleEventClick}
+          dateClick={handleDateClick}
+          selectable={false}
+          displayEventTime={true}
+          eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+          headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth' }}
+          height="auto"
+          eventContent={renderEvent}
+          locale="de"
+        />
+      </div>
+
+      <p className="text-xs text-slate-400 mt-2">Click on an event to edit · Click a date to create</p>
+
+      <EventModal
+        calendarId={calendarId}
+        open={modalOpen}
+        onClose={closeModal}
+        defaultDate={selectedDate}
+        event={editingEvent}
       />
+    </div>
+  )
+}
+
+function renderEvent(info: { event: { title: string; start: Date | null; extendedProps: { event: CalendarEvent } }; timeText: string }) {
+  const { timeText, event } = info
+  const ev = event.extendedProps.event
+  return (
+    <div className="text-xs px-1 truncate">
+      <span className="opacity-80">{timeText} </span>
+      <span className="font-medium">{event.title}</span>
+      {ev.isDraft && <span className="ml-1 opacity-60">(draft)</span>}
     </div>
   )
 }
