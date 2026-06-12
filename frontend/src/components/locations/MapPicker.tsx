@@ -4,12 +4,13 @@ import { Input } from '@/components/ui/input'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+const mapboxApiUrlPlaceholder = 'https://dummy'
 
 function mapboxTransformRequest(url: string) {
-  if (url.startsWith('https://api.mapbox.com/') || url.startsWith('https://events.mapbox.com/')) {
+  if (url.startsWith(mapboxApiUrlPlaceholder)) {
     const u = new URL(url)
     u.searchParams.delete('access_token')
-    return { url: `${BACKEND_URL}/api/mapbox/${u.hostname}${u.pathname}?${u.searchParams}` }
+    return { url: `${BACKEND_URL}/api/mapbox/${u.pathname}?${u.searchParams}` }
   }
   return { url }
 }
@@ -76,6 +77,8 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
 
     import('mapbox-gl').then(({ default: mapboxgl }) => {
       mapboxgl.accessToken = 'pk.proxy'
+      const baseUrl = new URL(mapboxgl.baseApiUrl ?? 'https://api.mapbox.com')
+      mapboxgl.baseApiUrl = `https://dummy/${baseUrl.hostname}`
 
       const initLng = longitude ?? 10.0
       const initLat = latitude ?? 51.0
@@ -86,6 +89,7 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
         center: [initLng, initLat],
         zoom: longitude != null ? 14 : 5,
         transformRequest: mapboxTransformRequest,
+        performanceMetricsCollection: false,
       })
 
       map.addControl(new mapboxgl.NavigationControl(), 'top-right')

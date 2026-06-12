@@ -2,7 +2,7 @@ import { All, Controller, Req, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { env } from '../env'
 
-const ALLOWED_DOMAINS = new Set(['api.mapbox.com', 'events.mapbox.com'])
+const ALLOWED_DOMAINS = new Set(['api.mapbox.com'])
 
 // Node fetch decompresses bodies automatically — these headers become invalid after decompression
 const DROP_HEADERS = new Set([
