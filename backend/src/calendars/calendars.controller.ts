@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, HttpCode, ParseIntPipe } from '@nestjs/common'
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, HttpCode, ParseIntPipe } from '@nestjs/common'
 import { z } from 'zod'
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard'
 import { ClubMemberGuard } from '../common/guards/club-member.guard'
@@ -18,8 +18,11 @@ export class CalendarsController {
   constructor(private readonly calendars: CalendarsService) {}
 
   @Get()
-  list(@Param('clubId', ParseIntPipe) clubId: number) {
-    return this.calendars.listCalendars(clubId)
+  list(
+    @Param('clubId', ParseIntPipe) clubId: number,
+    @Query('includeArchived') includeArchived?: string,
+  ) {
+    return this.calendars.listCalendars(clubId, includeArchived === 'true')
   }
 
   @Post()
@@ -49,5 +52,23 @@ export class CalendarsController {
     await this.calendars.verifyCalendarBelongsToClub(calendarId, clubId)
     await this.calendars.deleteCalendar(calendarId)
     return { ok: true }
+  }
+
+  @Post(':calendarId/archive')
+  @HttpCode(200)
+  async archive(@Param('clubId', ParseIntPipe) clubId: number, @Param('calendarId', ParseIntPipe) calendarId: number) {
+    return this.calendars.archiveCalendar(calendarId, clubId)
+  }
+
+  @Post(':calendarId/unarchive')
+  @HttpCode(200)
+  async unarchive(@Param('clubId', ParseIntPipe) clubId: number, @Param('calendarId', ParseIntPipe) calendarId: number) {
+    return this.calendars.unarchiveCalendar(calendarId, clubId)
+  }
+
+  @Post(':calendarId/duplicate')
+  @HttpCode(201)
+  async duplicate(@Param('clubId', ParseIntPipe) clubId: number, @Param('calendarId', ParseIntPipe) calendarId: number) {
+    return this.calendars.duplicateCalendar(calendarId, clubId)
   }
 }
