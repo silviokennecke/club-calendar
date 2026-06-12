@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { apiGet, clearAccessToken, setAccessToken } from './api'
+import { apiGet, apiPatch, clearAccessToken, setAccessToken } from './api'
 import type { User } from './types'
 
 interface AuthContextValue {
@@ -9,6 +9,7 @@ interface AuthContextValue {
   loading: boolean
   login: (accessToken: string, user: User) => void
   logout: () => void
+  updateUser: (data: { lastClubId?: number | null; lastCalendarId?: number | null; dateFormat?: string; firstDayOfWeek?: number }) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -40,7 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
-  return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>
+  const updateUser = async (data: Parameters<AuthContextValue['updateUser']>[0]) => {
+    try {
+      const updated = await apiPatch<User>('/api/auth/me', data)
+      setUser(updated)
+    } catch { /* ignore */ }
+  }
+
+  return <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
