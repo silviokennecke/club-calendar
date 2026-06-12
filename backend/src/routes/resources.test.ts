@@ -3,6 +3,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 const supertest = require('supertest')
 import type { INestApplication } from '@nestjs/common'
 import { createTestApp, createTestUser, createTestCalendarWithClub, getAuthHeader } from '../test/helpers'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
 
 let app: INestApplication
 
@@ -383,5 +386,48 @@ describe('Event Templates /api/calendars/:calendarId/templates', () => {
       .get(`/api/calendars/${calendar.id}/templates`)
       .set('Authorization', await getAuthHeader(other.id))
     expect(res.status).toBe(403)
+  })
+})
+
+describe('ArchivedCalendarGuard — writes blocked', () => {
+  it('returns 403 when posting event to archived calendar', async () => {
+    const { user, calendar } = await createTestCalendarWithClub()
+    await prisma.calendar.update({ where: { id: calendar.id }, data: { archivedAt: new Date() } })
+    const res = await supertest(app.getHttpServer())
+      .post(`/api/calendars/${calendar.id}/events`)
+      .set('Authorization', await getAuthHeader(user.id))
+      .send({ name: 'Blocked', date: '2026-07-01', timeBegin: '10:00', timeEnd: '11:00' })
+    expect(res.status).toBe(403)
+  })
+
+  it('allows GET on archived calendar sub-resources', async () => {
+    const { user, calendar } = await createTestCalendarWithClub()
+    await prisma.calendar.update({ where: { id: calendar.id }, data: { archivedAt: new Date() } })
+    const res = await supertest(app.getHttpServer())
+      .get(`/api/calendars/${calendar.id}/events`)
+      .set('Authorization', await getAuthHeader(user.id))
+    expect(res.status).toBe(200)
+  })
+})
+
+describe('Public feed — archived calendar', () => {
+  it('returns 404 for ICS feed of archived calendar', async () => {
+    const { calendar } = await createTestCalendarWithClub()
+    const feed = await prisma.calendarFeed.create({
+      data: { calendarId: calendar.id, name: 'Feed', visibility: 'PUBLIC', sharedSecret: 'secret-arch-1' },
+    })
+    await prisma.calendar.update({ where: { id: calendar.id }, data: { archivedAt: new Date() } })
+    const res = await supertest(app.getHttpServer()).get(`/api/feed/${feed.id}/ics`)
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 404 for events feed of archived calendar', async () => {
+    const { calendar } = await createTestCalendarWithClub()
+    const feed = await prisma.calendarFeed.create({
+      data: { calendarId: calendar.id, name: 'Feed2', visibility: 'PUBLIC', sharedSecret: 'secret-arch-2' },
+    })
+    await prisma.calendar.update({ where: { id: calendar.id }, data: { archivedAt: new Date() } })
+    const res = await supertest(app.getHttpServer()).get(`/api/feed/${feed.id}/events`)
+    expect(res.status).toBe(404)
   })
 })
