@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable, ForbiddenException, NotFoundException } from '@nestjs/common'
+import { CanActivate, ExecutionContext, Injectable, ForbiddenException, NotFoundException, UnauthorizedException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 
 @Injectable()
@@ -7,7 +7,8 @@ export class CalendarMemberGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest()
-    const userId: number = request.userId
+    const userId: number | undefined = request.userId
+    if (userId === undefined) throw new UnauthorizedException()
     const calendarId = Number(request.params.calendarId)
     if (isNaN(calendarId)) throw new NotFoundException('Calendar not found')
     const calendar = await this.prisma.calendar.findUnique({
