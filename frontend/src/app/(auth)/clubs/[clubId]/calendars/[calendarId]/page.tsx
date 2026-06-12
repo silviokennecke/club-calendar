@@ -1,11 +1,12 @@
 'use client'
 import { use, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import type { EventInput, EventClickArg } from '@fullcalendar/core'
+import type { EventInput, EventClickArg, EventDropArg } from '@fullcalendar/core'
 import type { DateClickArg } from '@fullcalendar/interaction'
-import { apiGet } from '@/lib/api'
+import { apiGet, apiPatch } from '@/lib/api'
 import type { CalendarEvent } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import EventModal from '@/components/calendar/EventModal'
@@ -15,6 +16,7 @@ interface Props { params: Promise<{ clubId: string; calendarId: string }> }
 
 export default function CalendarPage({ params }: Props) {
   const { calendarId } = use(params)
+  const qc = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string | undefined>()
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
@@ -72,6 +74,17 @@ export default function CalendarPage({ params }: Props) {
     openEdit(ev)
   }
 
+  async function handleEventDrop(info: EventDropArg) {
+    const ev = info.event.extendedProps.event as CalendarEvent
+    const newDate = info.event.startStr.slice(0, 10)
+    try {
+      await apiPatch(`/api/calendars/${calendarId}/events/${ev.id}`, { date: newDate })
+      qc.invalidateQueries({ queryKey: ['events', calendarId] })
+    } catch {
+      info.revert()
+    }
+  }
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-5">
@@ -88,6 +101,8 @@ export default function CalendarPage({ params }: Props) {
           events={fetchEvents}
           eventClick={handleEventClick}
           dateClick={handleDateClick}
+          editable={true}
+          eventDrop={handleEventDrop}
           selectable={false}
           displayEventTime={true}
           eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
