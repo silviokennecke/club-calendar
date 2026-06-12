@@ -76,8 +76,10 @@ export interface CalendarEvent {
   calendarId: number
   name: string
   date: string
+  dateEnd?: string | null    // YYYY-MM-DD, null/undefined = same day as date
   timeBegin: string
   timeEnd: string
+  isAllDay?: boolean         // default false
   timezone: string | null
   isDraft: boolean
   locationId: number | null

@@ -95,14 +95,33 @@ export default function CalendarPage({ params }: Props) {
       const q = searchQueryRef.current.trim().toLowerCase()
       const filtered = q ? events.filter(ev => ev.name.toLowerCase().includes(q)) : events
       successCallback(filtered.map(ev => {
-        const dateStr = ev.date.slice(0, 10)
+        const startDateStr = ev.date.slice(0, 10)
+        const endDateStr = ev.dateEnd?.slice(0, 10) ?? startDateStr
         const iconPrefix = ev.properties.map(p => p.property.icon).filter(Boolean).join('')
         const title = [iconPrefix, ev.name].filter(Boolean).join(' ')
+
+        if (ev.isAllDay) {
+          // FullCalendar all-day end is exclusive — add 1 day
+          const endExclusive = new Date(endDateStr)
+          endExclusive.setDate(endExclusive.getDate() + 1)
+          return {
+            id: String(ev.id),
+            title,
+            start: startDateStr,
+            end: endExclusive.toISOString().slice(0, 10),
+            allDay: true,
+            backgroundColor: ev.isDraft ? '#94a3b8' : '#2563eb',
+            borderColor: ev.isDraft ? '#94a3b8' : '#1d4ed8',
+            textColor: '#fff',
+            extendedProps: { event: ev },
+          }
+        }
+
         return {
           id: String(ev.id),
           title,
-          start: `${dateStr}T${ev.timeBegin}`,
-          end: `${dateStr}T${ev.timeEnd}`,
+          start: `${startDateStr}T${ev.timeBegin}`,
+          end: `${endDateStr}T${ev.timeEnd}`,
           backgroundColor: ev.isDraft ? '#94a3b8' : '#2563eb',
           borderColor: ev.isDraft ? '#94a3b8' : '#1d4ed8',
           textColor: '#fff',
@@ -123,9 +142,24 @@ export default function CalendarPage({ params }: Props) {
 
   async function handleEventDrop(info: EventDropArg) {
     const ev = info.event.extendedProps.event as CalendarEvent
-    const newDate = info.event.startStr.slice(0, 10)
+    const newStartStr = info.event.startStr.slice(0, 10)
+
+    // If the event had a dateEnd, offset it by the same number of days
+    let newDateEnd: string | null = null
+    if (ev.dateEnd) {
+      const oldStart = new Date(ev.date.slice(0, 10))
+      const oldEnd = new Date(ev.dateEnd.slice(0, 10))
+      const diffDays = Math.round((oldEnd.getTime() - oldStart.getTime()) / 86400000)
+      const newEnd = new Date(newStartStr)
+      newEnd.setDate(newEnd.getDate() + diffDays)
+      newDateEnd = newEnd.toISOString().slice(0, 10)
+    }
+
     try {
-      await apiPatch(`/api/calendars/${calendarId}/events/${ev.id}`, { date: newDate })
+      await apiPatch(`/api/calendars/${calendarId}/events/${ev.id}`, {
+        date: newStartStr,
+        ...(newDateEnd !== null ? { dateEnd: newDateEnd } : {}),
+      })
       qc.invalidateQueries({ queryKey: ['events', calendarId] })
     } catch {
       info.revert()
