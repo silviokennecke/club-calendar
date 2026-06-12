@@ -90,6 +90,10 @@ export async function updateMe(userId: number, data: {
   return user
 }
 
+export async function deleteMe(userId: number) {
+  await prisma.user.delete({ where: { id: userId } })
+}
+
 // Find or create a user from an OAuth provider callback
 export async function findOrCreateOAuthUser(
   provider: string,

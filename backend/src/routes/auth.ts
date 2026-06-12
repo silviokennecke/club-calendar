@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import { register, login, refresh, getMe, updateMe } from '../services/authService.js'
+import { register, login, refresh, getMe, updateMe, deleteMe } from '../services/authService.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { enabledProviders } from '../env.js'
 
@@ -77,6 +77,13 @@ authRoutes.patch('/me', authMiddleware, zValidator('json', updateMeSchema), asyn
   const data = c.req.valid('json')
   const user = await updateMe(userId, data)
   return c.json(user)
+})
+
+authRoutes.delete('/me', authMiddleware, async (c) => {
+  const userId = c.get('userId')
+  await deleteMe(userId)
+  deleteCookie(c, 'refreshToken', { path: '/api/auth/refresh' })
+  return c.json({ ok: true })
 })
 
 authRoutes.get('/providers', (c) => c.json(enabledProviders))
