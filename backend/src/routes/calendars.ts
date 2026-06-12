@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { authMiddleware } from '../middleware/auth.js'
 import { requireClubMember } from '../middleware/requireClub.js'
-import { listCalendars, createCalendar, getCalendar, updateCalendar, deleteCalendar } from '../services/calendarService.js'
+import { listCalendars, createCalendar, updateCalendar, deleteCalendar, verifyCalendarBelongsToClub } from '../services/calendarService.js'
 
 export const calendarRoutes = new Hono<{ Variables: { userId: number } }>()
 
@@ -20,16 +20,27 @@ calendarRoutes.post('/', authMiddleware, requireClubMember, zValidator('json', c
 })
 
 calendarRoutes.get('/:calendarId', authMiddleware, requireClubMember, async (c) => {
-  const cal = await getCalendar(Number(c.req.param('calendarId')))
+  const cal = await verifyCalendarBelongsToClub(
+    Number(c.req.param('calendarId')),
+    Number(c.req.param('clubId')),
+  )
   return c.json(cal)
 })
 
 calendarRoutes.patch('/:calendarId', authMiddleware, requireClubMember, zValidator('json', calendarSchema.partial()), async (c) => {
+  await verifyCalendarBelongsToClub(
+    Number(c.req.param('calendarId')),
+    Number(c.req.param('clubId')),
+  )
   const cal = await updateCalendar(Number(c.req.param('calendarId')), c.req.valid('json'))
   return c.json(cal)
 })
 
 calendarRoutes.delete('/:calendarId', authMiddleware, requireClubMember, async (c) => {
+  await verifyCalendarBelongsToClub(
+    Number(c.req.param('calendarId')),
+    Number(c.req.param('clubId')),
+  )
   await deleteCalendar(Number(c.req.param('calendarId')))
   return c.json({ ok: true })
 })
