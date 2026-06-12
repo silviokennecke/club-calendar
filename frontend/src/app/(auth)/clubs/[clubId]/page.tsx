@@ -24,6 +24,9 @@ export default function ClubPage({ params }: Props) {
   const [clubName, setClubName] = useState('')
   const [nameSaved, setNameSaved] = useState(false)
   const [nameSaving, setNameSaving] = useState(false)
+  const [confirmDeleteCalId, setConfirmDeleteCalId] = useState<number | null>(null)
+  const [confirmDeleteClub, setConfirmDeleteClub] = useState(false)
+  const [deletingClub, setDeletingClub] = useState(false)
 
   const { data: club } = useQuery<Club>({
     queryKey: ['club', clubId],
@@ -71,6 +74,7 @@ export default function ClubPage({ params }: Props) {
 
   async function handleDeleteCalendar(calendarId: number) {
     await apiDelete(`/api/clubs/${clubId}/calendars/${calendarId}`)
+    setConfirmDeleteCalId(null)
     qc.invalidateQueries({ queryKey: ['calendars', clubId] })
   }
 
@@ -83,11 +87,20 @@ export default function ClubPage({ params }: Props) {
     router.push(`/clubs/${clubId}/calendars/${cal.id}`)
   }
 
+  async function handleDeleteClub() {
+    setDeletingClub(true)
+    try {
+      await apiDelete(`/api/clubs/${clubId}`)
+      qc.invalidateQueries({ queryKey: ['clubs'] })
+      router.replace('/clubs')
+    } finally { setDeletingClub(false) }
+  }
+
   return (
     <div className="p-6 max-w-lg">
       {/* Club name */}
       <h2 className="text-base font-semibold text-slate-900 mb-4">Club</h2>
-      <div className="bg-white rounded-xl border border-slate-200 p-5 mb-10">
+      <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
         <div className="space-y-1.5">
           <Label>Name</Label>
           <div className="flex gap-2">
@@ -101,6 +114,27 @@ export default function ClubPage({ params }: Props) {
             </Button>
           </div>
         </div>
+      </div>
+
+      {/* Delete club */}
+      <div className="mb-10">
+        {!confirmDeleteClub ? (
+          <button onClick={() => setConfirmDeleteClub(true)} className="text-xs text-red-400 hover:text-red-600 underline">
+            Delete this club
+          </button>
+        ) : (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
+            <p className="text-sm text-red-700 font-medium">
+              This permanently deletes <strong>{club?.name}</strong> including all calendars and events. This cannot be undone.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="destructive" size="sm" disabled={deletingClub} onClick={handleDeleteClub}>
+                {deletingClub ? 'Deleting…' : 'Delete club'}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setConfirmDeleteClub(false)}>Cancel</Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Members */}
@@ -159,20 +193,42 @@ export default function ClubPage({ params }: Props) {
         {calendars.length === 0
           ? <p className="text-sm text-slate-400 py-4">No calendars yet.</p>
           : calendars.map(cal => (
-            <div key={cal.id} className="flex items-center gap-2 px-4 py-3 rounded-xl border bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors">
-              <button
-                onClick={() => router.push(`/clubs/${clubId}/calendars/${cal.id}`)}
-                className="flex items-center gap-3 flex-1 text-left min-w-0"
-              >
-                <CalendarDays className="w-4 h-4 shrink-0 text-slate-400" />
-                <span className="text-sm font-medium text-slate-900 truncate">{cal.name}</span>
-              </button>
-              <button
-                onClick={() => handleDeleteCalendar(cal.id)}
-                className="text-slate-400 hover:text-red-500 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors shrink-0"
-              >
-                Delete
-              </button>
+            <div key={cal.id} className="rounded-xl border bg-white border-slate-200 overflow-hidden">
+              {confirmDeleteCalId === cal.id ? (
+                <div className="flex items-center justify-between px-4 py-3 bg-red-50 border-red-200">
+                  <span className="text-sm text-red-700">Delete <strong>{cal.name}</strong>?</span>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => handleDeleteCalendar(cal.id)}
+                      className="text-xs text-red-600 font-medium px-2 py-1 rounded hover:bg-red-100 transition-colors"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteCalId(null)}
+                      className="text-xs text-slate-500 px-2 py-1 rounded hover:bg-slate-100 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-4 py-3 hover:bg-slate-50 transition-colors">
+                  <button
+                    onClick={() => router.push(`/clubs/${clubId}/calendars/${cal.id}`)}
+                    className="flex items-center gap-3 flex-1 text-left min-w-0"
+                  >
+                    <CalendarDays className="w-4 h-4 shrink-0 text-slate-400" />
+                    <span className="text-sm font-medium text-slate-900 truncate">{cal.name}</span>
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteCalId(cal.id)}
+                    className="text-slate-400 hover:text-red-500 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors shrink-0"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           ))
         }
