@@ -5,79 +5,66 @@ import { randomUUID } from 'crypto'
 const prisma = new PrismaClient()
 
 async function main() {
-  // Create admin user
+  // Delete all data in FK-safe order for idempotent re-runs
+  await prisma.eventTargetGroup.deleteMany()
+  await prisma.eventFeature.deleteMany()
+  await prisma.eventProperty.deleteMany()
+  await prisma.eventTemplateTargetGroup.deleteMany()
+  await prisma.eventTemplateFeature.deleteMany()
+  await prisma.eventTemplateProperty.deleteMany()
+  await prisma.calendarFeedTargetGroup.deleteMany()
+  await prisma.event.deleteMany()
+  await prisma.eventTemplate.deleteMany()
+  await prisma.calendarFeed.deleteMany()
+  await prisma.location.deleteMany()
+  await prisma.targetGroup.deleteMany()
+  await prisma.feature.deleteMany()
+  await prisma.property.deleteMany()
+  await prisma.calendar.deleteMany()
+  await prisma.clubUser.deleteMany()
+  await prisma.club.deleteMany()
+  await prisma.user.deleteMany()
+
   const hashedPassword = await bcrypt.hash('password123', 10)
-  const user = await prisma.user.upsert({
-    where: { email: 'admin@example.com' },
-    update: {},
-    create: {
+  const user = await prisma.user.create({
+    data: {
       name: 'Admin User',
       email: 'admin@example.com',
       password: hashedPassword,
     },
   })
 
-  // Create club
-  const club = await prisma.club.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
+  const club = await prisma.club.create({
+    data: {
       name: 'Schützenverein Musterstadt',
       timezone: 'Europe/Berlin',
       users: { create: { userId: user.id } },
     },
   })
 
-  // Create calendar
-  const calendar = await prisma.calendar.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      clubId: club.id,
-      name: 'Vereinskalender 2026',
-    },
+  const calendar = await prisma.calendar.create({
+    data: { clubId: club.id, name: 'Vereinskalender 2026' },
   })
 
-  // Create target groups
   const [jugend, erwachsene] = await Promise.all([
-    prisma.targetGroup.upsert({
-      where: { id: 1 },
-      update: {},
-      create: { calendarId: calendar.id, name: 'Jugend' },
-    }),
-    prisma.targetGroup.upsert({
-      where: { id: 2 },
-      update: {},
-      create: { calendarId: calendar.id, name: 'Erwachsene' },
-    }),
+    prisma.targetGroup.create({ data: { calendarId: calendar.id, name: 'Jugend' } }),
+    prisma.targetGroup.create({ data: { calendarId: calendar.id, name: 'Erwachsene' } }),
   ])
 
-  // Create property
-  const tracht = await prisma.property.upsert({
-    where: { id: 1 },
-    update: {},
-    create: { calendarId: calendar.id, name: 'Schützentracht', icon: '🎯' },
+  const tracht = await prisma.property.create({
+    data: { calendarId: calendar.id, name: 'Schützentracht', icon: '🎯' },
   })
 
-  // Create feature
-  const bonus = await prisma.feature.upsert({
-    where: { id: 1 },
-    update: {},
-    create: { calendarId: calendar.id, name: 'Bonusschießen' },
+  const bonus = await prisma.feature.create({
+    data: { calendarId: calendar.id, name: 'Bonusschießen' },
   })
 
-  // Create location
-  const location = await prisma.location.upsert({
-    where: { id: 1 },
-    update: {},
-    create: { calendarId: calendar.id, address: 'Schützenstraße 1, 12345 Musterstadt' },
+  const location = await prisma.location.create({
+    data: { calendarId: calendar.id, address: 'Schützenstraße 1, 12345 Musterstadt' },
   })
 
-  // Create event template
-  const template = await prisma.eventTemplate.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
+  const template = await prisma.eventTemplate.create({
+    data: {
       calendarId: calendar.id,
       locationId: location.id,
       name: 'Vereinsabend',
@@ -88,11 +75,8 @@ async function main() {
     },
   })
 
-  // Create calendar feeds
-  await prisma.calendarFeed.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
+  await prisma.calendarFeed.create({
+    data: {
       calendarId: calendar.id,
       name: 'Öffentlicher Kalender',
       visibility: FeedVisibility.PUBLIC,
@@ -101,10 +85,8 @@ async function main() {
     },
   })
 
-  await prisma.calendarFeed.upsert({
-    where: { id: 2 },
-    update: {},
-    create: {
+  await prisma.calendarFeed.create({
+    data: {
       calendarId: calendar.id,
       name: 'Jugendkalender (privat)',
       visibility: FeedVisibility.PRIVATE,
@@ -114,11 +96,8 @@ async function main() {
     },
   })
 
-  // Create sample events
-  await prisma.event.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
+  await prisma.event.create({
+    data: {
       calendarId: calendar.id,
       eventTemplateId: template.id,
       locationId: location.id,
@@ -134,10 +113,8 @@ async function main() {
     },
   })
 
-  await prisma.event.upsert({
-    where: { id: 2 },
-    update: {},
-    create: {
+  await prisma.event.create({
+    data: {
       calendarId: calendar.id,
       name: 'Jugendtraining',
       timezone: 'Europe/Berlin',
