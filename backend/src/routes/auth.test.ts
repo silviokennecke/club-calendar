@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { createApp } from '../app.js'
-import { createTestUser } from '../test/helpers.js'
-import { prisma } from '../lib/prisma.js'
+import { createTestUser, getAuthHeader } from '../test/helpers.js'
 
 describe('POST /api/auth/login', () => {
   it('returns 400 for invalid body', async () => {
@@ -35,7 +34,7 @@ describe('POST /api/auth/login', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns accessToken and user for valid credentials', async () => {
+  it('returns accessToken, user, and sets httpOnly cookie for valid credentials', async () => {
     await createTestUser({ email: 'bob@example.com' })
     const app = createApp()
     const res = await app.request('/api/auth/login', {
@@ -47,6 +46,11 @@ describe('POST /api/auth/login', () => {
     const body = await res.json() as { accessToken: string; user: { email: string } }
     expect(body.accessToken).toBeTruthy()
     expect(body.user.email).toBe('bob@example.com')
+    const cookie = res.headers.get('set-cookie') ?? ''
+    expect(cookie).toContain('refreshToken=')
+    expect(cookie.toLowerCase()).toContain('httponly')
+    expect(cookie.toLowerCase()).toContain('samesite=strict')
+    expect(cookie).toContain('Path=/api/auth/refresh')
   })
 })
 
@@ -59,7 +63,6 @@ describe('GET /api/auth/me', () => {
 
   it('returns user for valid token', async () => {
     const user = await createTestUser({ email: 'carol@example.com' })
-    const { getAuthHeader } = await import('../test/helpers.js')
     const app = createApp()
     const res = await app.request('/api/auth/me', {
       headers: { Authorization: await getAuthHeader(user.id) },
@@ -67,6 +70,46 @@ describe('GET /api/auth/me', () => {
     expect(res.status).toBe(200)
     const body = await res.json() as { email: string }
     expect(body.email).toBe('carol@example.com')
+  })
+})
+
+describe('POST /api/auth/refresh', () => {
+  it('returns 401 with no cookie', async () => {
+    const app = createApp()
+    const res = await app.request('/api/auth/refresh', { method: 'POST' })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 401 with invalid token', async () => {
+    const app = createApp()
+    const res = await app.request('/api/auth/refresh', {
+      method: 'POST',
+      headers: { Cookie: 'refreshToken=invalid.token.here' },
+    })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns new accessToken for valid refresh cookie', async () => {
+    const user = await createTestUser({ email: 'dave@example.com' })
+    // Get a real refresh token via login
+    const app = createApp()
+    const loginRes = await app.request('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'dave@example.com', password: 'password123' }),
+    })
+    const cookie = loginRes.headers.get('set-cookie') ?? ''
+    const tokenMatch = cookie.match(/refreshToken=([^;]+)/)
+    expect(tokenMatch).toBeTruthy()
+    const refreshToken = tokenMatch![1]
+
+    const refreshRes = await app.request('/api/auth/refresh', {
+      method: 'POST',
+      headers: { Cookie: `refreshToken=${refreshToken}` },
+    })
+    expect(refreshRes.status).toBe(200)
+    const body = await refreshRes.json() as { accessToken: string }
+    expect(body.accessToken).toBeTruthy()
   })
 })
 
