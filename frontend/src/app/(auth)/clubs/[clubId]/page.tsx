@@ -48,6 +48,11 @@ export default function ClubPage({ params }: Props) {
     qc.invalidateQueries({ queryKey: ['members', clubId] })
   }
 
+  async function handleDeleteCalendar(calendarId: number) {
+    await apiDelete(`/api/clubs/${clubId}/calendars/${calendarId}`)
+    qc.invalidateQueries({ queryKey: ['calendars', clubId] })
+  }
+
   async function handleCreateCalendar() {
     if (!newCalName.trim()) return
     const cal = await apiPost<Calendar>(`/api/clubs/${clubId}/calendars`, { name: newCalName.trim() })
@@ -115,14 +120,21 @@ export default function ClubPage({ params }: Props) {
         {calendars.length === 0
           ? <p className="text-sm text-slate-400 py-4">No calendars yet.</p>
           : calendars.map(cal => (
-            <button
-              key={cal.id}
-              onClick={() => router.push(`/clubs/${clubId}/calendars/${cal.id}`)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left bg-white border-slate-200 text-slate-900 hover:border-slate-300 hover:bg-slate-50 transition-colors"
-            >
-              <CalendarDays className="w-4 h-4 shrink-0 text-slate-400" />
-              <span className="text-sm font-medium">{cal.name}</span>
-            </button>
+            <div key={cal.id} className="flex items-center gap-2 px-4 py-3 rounded-xl border bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors">
+              <button
+                onClick={() => router.push(`/clubs/${clubId}/calendars/${cal.id}`)}
+                className="flex items-center gap-3 flex-1 text-left min-w-0"
+              >
+                <CalendarDays className="w-4 h-4 shrink-0 text-slate-400" />
+                <span className="text-sm font-medium text-slate-900 truncate">{cal.name}</span>
+              </button>
+              <button
+                onClick={() => handleDeleteCalendar(cal.id)}
+                className="text-slate-400 hover:text-red-500 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors shrink-0"
+              >
+                Delete
+              </button>
+            </div>
           ))
         }
       </div>
