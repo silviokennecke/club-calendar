@@ -57,6 +57,14 @@ describe('GET /api/feed/:feedId/ics', () => {
     expect(res.status).toBe(403)
   })
 
+  it('returns 403 for private feed with wrong secret', async () => {
+    const { calendar } = await createTestCalendarWithClub()
+    const feed = await createFeed(calendar.id, { visibility: FeedVisibility.PRIVATE })
+    const app = createApp()
+    const res = await app.request(`/api/feed/${feed.id}/ics?secret=completely-wrong-secret`)
+    expect(res.status).toBe(403)
+  })
+
   it('returns ICS for private feed with correct secret', async () => {
     const { calendar } = await createTestCalendarWithClub()
     const secret = randomUUID()
@@ -82,5 +90,45 @@ describe('GET /api/feed/:feedId/ics', () => {
     const body = await res.text()
     expect(body).not.toContain('Draft Event')
     expect(body).toContain('Published Event')
+  })
+})
+
+describe('GET /api/feed/:feedId/events', () => {
+  it('returns 404 for non-existent feed', async () => {
+    const app = createApp()
+    const res = await app.request('/api/feed/99999/events')
+    expect(res.status).toBe(404)
+  })
+
+  it('returns JSON events for public feed', async () => {
+    const { calendar } = await createTestCalendarWithClub()
+    const feed = await createFeed(calendar.id)
+    await createTestEvent(calendar.id, { name: 'JSON Event', isDraft: false })
+    const app = createApp()
+    const res = await app.request(`/api/feed/${feed.id}/events`)
+    expect(res.status).toBe(200)
+    const body = await res.json() as { feed: { name: string }; events: { name: string }[] }
+    expect(body.feed.name).toBe('Test Feed')
+    expect(body.events.some((e) => e.name === 'JSON Event')).toBe(true)
+  })
+
+  it('returns 403 for private feed without secret', async () => {
+    const { calendar } = await createTestCalendarWithClub()
+    const feed = await createFeed(calendar.id, { visibility: FeedVisibility.PRIVATE })
+    const app = createApp()
+    const res = await app.request(`/api/feed/${feed.id}/events`)
+    expect(res.status).toBe(403)
+  })
+
+  it('returns events for private feed with correct secret', async () => {
+    const { calendar } = await createTestCalendarWithClub()
+    const secret = randomUUID()
+    const feed = await createFeed(calendar.id, { visibility: FeedVisibility.PRIVATE, secret })
+    await createTestEvent(calendar.id, { isDraft: false })
+    const app = createApp()
+    const res = await app.request(`/api/feed/${feed.id}/events?secret=${secret}`)
+    expect(res.status).toBe(200)
+    const body = await res.json() as { events: unknown[] }
+    expect(Array.isArray(body.events)).toBe(true)
   })
 })
