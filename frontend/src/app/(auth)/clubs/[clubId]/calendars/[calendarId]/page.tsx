@@ -11,7 +11,8 @@ import type { CalendarEvent, TargetGroup } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import EventModal from '@/components/calendar/EventModal'
 import Link from 'next/link'
-import { Plus, Upload } from 'lucide-react'
+import { Plus, Upload, Search, X } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 
 interface Props { params: Promise<{ clubId: string; calendarId: string }> }
 
@@ -22,8 +23,11 @@ export default function CalendarPage({ params }: Props) {
   const [selectedDate, setSelectedDate] = useState<string | undefined>()
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
   const [selectedGroups, setSelectedGroups] = useState<number[]>([])
-  // Ref keeps the latest filter value accessible inside the stale fetchEvents closure
+  const [searchQuery, setSearchQuery] = useState('')
+  // Refs keep latest filter values accessible inside the stale fetchEvents closure
   const selectedGroupsRef = useRef<number[]>([])
+  const searchQueryRef = useRef('')
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const calendarRef = useRef<InstanceType<typeof FullCalendar>>(null)
 
   const { data: targetGroups = [] } = useQuery<TargetGroup[]>({
@@ -44,6 +48,19 @@ export default function CalendarPage({ params }: Props) {
     selectedGroupsRef.current = []
     setSelectedGroups([])
     setTimeout(() => calendarRef.current?.getApi().refetchEvents(), 0)
+  }
+
+  function handleSearchChange(value: string) {
+    setSearchQuery(value)
+    searchQueryRef.current = value
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    searchDebounceRef.current = setTimeout(() => calendarRef.current?.getApi().refetchEvents(), 300)
+  }
+
+  function clearSearch() {
+    searchQueryRef.current = ''
+    setSearchQuery('')
+    calendarRef.current?.getApi().refetchEvents()
   }
 
   function openCreate(date?: string) {
@@ -73,7 +90,9 @@ export default function CalendarPage({ params }: Props) {
     apiGet<CalendarEvent[]>(
       `/api/calendars/${calendarId}/events?from=${fetchInfo.startStr.slice(0, 10)}&to=${fetchInfo.endStr.slice(0, 10)}${tgParam}`
     ).then(events => {
-      successCallback(events.map(ev => {
+      const q = searchQueryRef.current.trim().toLowerCase()
+      const filtered = q ? events.filter(ev => ev.name.toLowerCase().includes(q)) : events
+      successCallback(filtered.map(ev => {
         const dateStr = ev.date.slice(0, 10)
         const iconPrefix = ev.properties.map(p => p.property.icon).filter(Boolean).join('')
         const title = [iconPrefix, ev.name].filter(Boolean).join(' ')
@@ -113,9 +132,24 @@ export default function CalendarPage({ params }: Props) {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
         <h1 className="text-lg font-semibold text-slate-900">Calendar</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+            <Input
+              value={searchQuery}
+              onChange={e => handleSearchChange(e.target.value)}
+              placeholder="Search events…"
+              className="pl-8 pr-8 h-8 w-48 text-sm"
+            />
+            {searchQuery && (
+              <button onClick={clearSearch} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
           <Link href={`/clubs/${clubId}/calendars/${calendarId}/import`}>
             <Button size="sm" variant="outline">
               <Upload className="w-3.5 h-3.5 mr-1" />Import ICS
