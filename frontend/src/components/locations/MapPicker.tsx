@@ -5,6 +5,13 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''
 
+interface Suggestion {
+  place_name: string
+  center: [number, number]
+  place_type: string[]
+  properties?: { category?: string }
+}
+
 interface Props {
   latitude?: number | null
   longitude?: number | null
@@ -17,7 +24,7 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const markerRef = useRef<mapboxgl.Marker | null>(null)
   const [searchQuery, setSearchQuery] = useState(address ?? '')
-  const [suggestions, setSuggestions] = useState<{ place_name: string; center: [number, number] }[]>([])
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -85,12 +92,14 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
   }
 
   async function fetchSuggestions(query: string) {
-    if (query.length < 3) { setSuggestions([]); return }
+    if (query.length < 2) { setSuggestions([]); return }
+    const center = mapRef.current?.getCenter()
+    const proximityParam = center ? `&proximity=${center.lng},${center.lat}` : ''
     try {
       const res = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=5&types=address,place,poi`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=6&types=address,place,poi,neighborhood,locality${proximityParam}`
       )
-      const data = await res.json() as { features: { place_name: string; center: [number, number] }[] }
+      const data = await res.json() as { features: Suggestion[] }
       setSuggestions(data.features)
       setShowSuggestions(true)
     } catch { setSuggestions([]) }
@@ -102,7 +111,7 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
     debounceRef.current = setTimeout(() => fetchSuggestions(value), 300)
   }
 
-  function selectSuggestion(s: { place_name: string; center: [number, number] }) {
+  function selectSuggestion(s: Suggestion) {
     const [lng, lat] = s.center
     setSearchQuery(s.place_name)
     setShowSuggestions(false)
@@ -137,10 +146,13 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
               <button
                 key={i}
                 type="button"
-                className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 truncate border-b border-slate-100 last:border-0"
+                className="w-full flex items-center gap-1 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0"
                 onMouseDown={() => selectSuggestion(s)}
               >
-                {s.place_name}
+                <span className="truncate">{s.place_name}</span>
+                {s.properties?.category && (
+                  <span className="text-slate-400 text-xs ml-1 shrink-0">· {s.properties.category.split(',')[0]}</span>
+                )}
               </button>
             ))}
           </div>
