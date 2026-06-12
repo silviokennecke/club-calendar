@@ -5,10 +5,7 @@ import { CalendarMemberGuard } from '../common/guards/calendar-member.guard'
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe'
 import { FeaturesService } from './features.service'
 
-const featureSchema = z.object({
-  name: z.string().min(1).max(255),
-  icon: z.string().max(32).nullable().optional(),
-})
+const featureSchema = z.object({ name: z.string().min(1).max(255) })
 
 const patchSchema = featureSchema.partial().refine(
   (d) => Object.keys(d).length > 0,
