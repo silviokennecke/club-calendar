@@ -1,54 +1,109 @@
 'use client'
-import { useQuery } from '@tanstack/react-query'
-import { apiGet } from '@/lib/api'
+import { use, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiGet, apiDelete } from '@/lib/api'
 import type { EventTemplate } from '@/lib/types'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import Link from 'next/link'
-import { use } from 'react'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { Plus, Pencil, Trash2, Clock, MapPin } from 'lucide-react'
+import TemplateModal from '@/components/templates/TemplateModal'
 
-interface Props {
-  params: Promise<{ clubId: string; calendarId: string }>
-}
+interface Props { params: Promise<{ clubId: string; calendarId: string }> }
 
 export default function TemplatesPage({ params }: Props) {
-  const { clubId, calendarId } = use(params)
+  const { calendarId } = use(params)
+  const qc = useQueryClient()
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<EventTemplate | null>(null)
 
-  const { data: templates = [] } = useQuery({
-    queryKey: ['calendars', calendarId, 'templates'],
-    queryFn: () => apiGet<EventTemplate[]>(`/api/calendars/${calendarId}/templates`),
+  const { data: templates = [] } = useQuery<EventTemplate[]>({
+    queryKey: ['templates', calendarId],
+    queryFn: () => apiGet(`/api/calendars/${calendarId}/templates`),
   })
 
+  async function handleDelete(id: number) {
+    await apiDelete(`/api/calendars/${calendarId}/templates/${id}`)
+    qc.invalidateQueries({ queryKey: ['templates', calendarId] })
+  }
+
+  function openCreate() { setEditingTemplate(null); setModalOpen(true) }
+  function openEdit(t: EventTemplate) { setEditingTemplate(t); setModalOpen(true) }
+
   return (
-    <div className="container mx-auto p-6 max-w-2xl">
-      <div className="flex items-center gap-2 mb-6">
-        <Link href={`/clubs/${clubId}/calendars/${calendarId}`} className="text-sm text-muted-foreground hover:underline">← Calendar</Link>
-        <h1 className="text-xl font-bold">Event Templates</h1>
+    <div className="p-6 max-w-3xl">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Event Templates</h2>
+          <p className="text-sm text-slate-500 mt-0.5">Templates pre-fill event details and can be used to create series of events.</p>
+        </div>
+        <Button size="sm" onClick={openCreate}><Plus className="w-3.5 h-3.5 mr-1" />New Template</Button>
       </div>
 
-      <div className="space-y-4">
-        {templates.map((template) => (
-          <Card key={template.id}>
-            <CardHeader>
-              <CardTitle className="text-base">{template.name}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p>{template.timeBegin} – {template.timeEnd}</p>
-                {template.location && <p>{template.location.address}</p>}
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {template.targetGroups.map(({ targetGroup }) => (
-                    <Badge key={targetGroup.id} variant="outline">{targetGroup.name}</Badge>
-                  ))}
+      {templates.length === 0 ? (
+        <div className="text-center py-12 text-slate-400 text-sm border border-dashed border-slate-200 rounded-xl">
+          No templates yet. Create one to speed up event creation.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {templates.map(t => (
+            <div key={t.id} className="bg-white rounded-xl border border-slate-200 p-5">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h3 className="font-medium text-slate-900">{t.name}</h3>
+                  <div className="flex items-center gap-3 mt-1.5 text-sm text-slate-500">
+                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{t.timeBegin}–{t.timeEnd}</span>
+                    {t.location && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{t.location.address}</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => openEdit(t)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded"><Pencil className="w-3.5 h-3.5" /></button>
+                  <AlertDialog>
+                    <AlertDialogTrigger render={<button className="text-slate-400 hover:text-red-500 p-1.5 rounded" />}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete template?</AlertDialogTitle>
+                        <AlertDialogDescription>Events created from this template won't be affected.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(t.id)}>Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-        {templates.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-8">No templates yet.</p>
-        )}
-      </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {t.properties.map(p => (
+                  <Badge key={p.property.id} variant="secondary" className="text-xs">
+                    {p.property.icon && <span className="mr-1">{p.property.icon}</span>}{p.property.name}
+                  </Badge>
+                ))}
+                {t.features.map(f => (
+                  <Badge key={f.feature.id} variant="outline" className="text-xs text-green-700 border-green-200 bg-green-50">
+                    {f.feature.name}
+                  </Badge>
+                ))}
+                {t.targetGroups.map(tg => (
+                  <Badge key={tg.targetGroup.id} variant="outline" className="text-xs text-purple-700 border-purple-200 bg-purple-50">
+                    {tg.targetGroup.name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <TemplateModal
+        calendarId={calendarId}
+        open={modalOpen}
+        onClose={() => { setModalOpen(false); setEditingTemplate(null) }}
+        template={editingTemplate}
+      />
     </div>
   )
 }
