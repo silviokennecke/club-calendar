@@ -2,7 +2,16 @@
 import { useEffect, useRef } from 'react'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+
+function mapboxTransformRequest(url: string) {
+  if (url.startsWith('https://api.mapbox.com/')) {
+    const u = new URL(url)
+    u.searchParams.delete('access_token')
+    return { url: `${BACKEND_URL}/api/mapbox${u.pathname}?${u.searchParams}` }
+  }
+  return { url }
+}
 
 interface LocationPin {
   id: number
@@ -28,18 +37,18 @@ export default function LocationsOverviewMap({ locations, selectedId, onSelect, 
   const markersRef = useRef<{ id: number; marker: mapboxgl.Marker }[]>([])
 
   useEffect(() => {
-    if (!mapContainerRef.current || !MAPBOX_TOKEN) return
+    if (!mapContainerRef.current) return
     let map: mapboxgl.Map
 
     import('mapbox-gl').then(({ default: mapboxgl }) => {
-      mapboxgl.accessToken = MAPBOX_TOKEN
+      mapboxgl.accessToken = 'pk.proxy'
 
-      // Default center: central Europe
       map = new mapboxgl.Map({
         container: mapContainerRef.current!,
         style: 'mapbox://styles/mapbox/streets-v12',
         center: [10.0, 51.0],
         zoom: 5,
+        transformRequest: mapboxTransformRequest,
       })
       map.addControl(new mapboxgl.NavigationControl(), 'top-right')
       mapRef.current = map
@@ -113,8 +122,6 @@ export default function LocationsOverviewMap({ locations, selectedId, onSelect, 
       { padding: 60, maxZoom: 14 }
     )
   }
-
-  if (!MAPBOX_TOKEN) return null
 
   return <div ref={mapContainerRef} className={`w-full ${height} rounded-xl border border-slate-200 overflow-hidden`} />
 }

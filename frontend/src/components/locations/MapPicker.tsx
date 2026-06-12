@@ -3,7 +3,16 @@ import { useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+
+function mapboxTransformRequest(url: string) {
+  if (url.startsWith('https://api.mapbox.com/')) {
+    const u = new URL(url)
+    u.searchParams.delete('access_token')
+    return { url: `${BACKEND_URL}/api/mapbox${u.pathname}?${u.searchParams}` }
+  }
+  return { url }
+}
 
 interface ContextItem {
   id: string
@@ -66,7 +75,7 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
     let marker: mapboxgl.Marker
 
     import('mapbox-gl').then(({ default: mapboxgl }) => {
-      mapboxgl.accessToken = MAPBOX_TOKEN
+      mapboxgl.accessToken = 'pk.proxy'
 
       const initLng = longitude ?? 10.0
       const initLat = latitude ?? 51.0
@@ -76,6 +85,7 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
         style: 'mapbox://styles/mapbox/streets-v12',
         center: [initLng, initLat],
         zoom: longitude != null ? 14 : 5,
+        transformRequest: mapboxTransformRequest,
       })
 
       map.addControl(new mapboxgl.NavigationControl(), 'top-right')
@@ -112,7 +122,7 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
     const fallback: GeocodedAddress = { displayName: `${lat.toFixed(5)}, ${lng.toFixed(5)}` }
     try {
       const res = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&language=de`
+        `${BACKEND_URL}/api/mapbox/geocoding/v5/mapbox.places/${lng},${lat}.json?language=de`
       )
       const data = await res.json() as { features: GeocodingFeature[] }
       const feature = data.features[0]
@@ -128,7 +138,7 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
     const proximityParam = center ? `&proximity=${center.lng},${center.lat}` : ''
     try {
       const res = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=6&types=address,place,poi,neighborhood,locality${proximityParam}`
+        `${BACKEND_URL}/api/mapbox/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?language=de&limit=6&types=address,place,poi,neighborhood,locality${proximityParam}`
       )
       const data = await res.json() as { features: GeocodingFeature[] }
       setSuggestions(data.features)
@@ -151,14 +161,6 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
     mapRef.current?.flyTo({ center: [lng, lat], zoom: 15 })
     markerRef.current?.setLngLat([lng, lat])
     onPositionChange(lat, lng, geocoded)
-  }
-
-  if (!MAPBOX_TOKEN) {
-    return (
-      <div className="h-24 flex items-center justify-center rounded-lg border border-dashed border-slate-200 text-xs text-slate-400">
-        Map disabled — set NEXT_PUBLIC_MAPBOX_TOKEN to enable
-      </div>
-    )
   }
 
   return (
