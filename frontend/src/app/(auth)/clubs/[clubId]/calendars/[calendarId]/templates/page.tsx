@@ -3,6 +3,7 @@ import { use, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiDelete } from '@/lib/api'
 import type { EventTemplate } from '@/lib/types'
+import { formatAddress } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
@@ -53,7 +54,7 @@ export default function TemplatesPage({ params }: Props) {
                   <h3 className="font-medium text-slate-900">{t.name}</h3>
                   <div className="flex items-center gap-3 mt-1.5 text-sm text-slate-500">
                     <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{t.timeBegin}–{t.timeEnd}</span>
-                    {t.location && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{t.location.address}</span>}
+                    {t.location && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{t.location.name ?? formatAddress(t.location)}</span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">

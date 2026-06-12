@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost, apiPatch } from '@/lib/api'
 import type { EventTemplate, Property, Feature, TargetGroup, Location } from '@/lib/types'
+import { formatLocationLabel } from '@/lib/types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -107,7 +108,7 @@ export default function TemplateModal({ calendarId, open, onClose, template }: P
               <Label>Default Location</Label>
               <select className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm" value={locationId} onChange={e => setLocationId(e.target.value === '' ? '' : Number(e.target.value))}>
                 <option value="">No default location</option>
-                {locations.map(l => <option key={l.id} value={l.id}>{l.address}</option>)}
+                {locations.map(l => <option key={l.id} value={l.id}>{formatLocationLabel(l)}</option>)}
               </select>
             </div>
           )}

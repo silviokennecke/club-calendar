@@ -6,6 +6,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import type { EventInput, EventClickArg } from '@fullcalendar/core'
 import { Button } from '@/components/ui/button'
 import { Calendar, Download, X, MapPin, Clock, Tag, Users, Sparkles } from 'lucide-react'
+import { formatAddress } from '@/lib/types'
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''
@@ -18,7 +19,7 @@ interface FeedEvent {
   timeBegin: string
   timeEnd: string
   isAllDay?: boolean
-  location?: { name?: string | null; address: string; latitude?: number | null; longitude?: number | null } | null
+  location?: { name?: string | null; street?: string | null; zip?: string | null; city?: string | null; country?: string | null; latitude?: number | null; longitude?: number | null } | null
   properties: { property: { id: number; name: string; icon: string | null } }[]
   features: { feature: { id: number; name: string } }[]
   targetGroups: { targetGroup: { id: number; name: string } }[]
@@ -108,7 +109,7 @@ function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
               <MapPin className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
               <div>
                 {ev.location.name && <p className="font-medium">{ev.location.name}</p>}
-                <p className={ev.location.name ? 'text-slate-500 text-xs' : ''}>{ev.location.address}</p>
+                {formatAddress(ev.location) && <p className={ev.location.name ? 'text-slate-500 text-xs' : ''}>{formatAddress(ev.location)}</p>}
                 {ev.location.latitude != null && (
                   <a
                     href={`https://maps.google.com/?q=${ev.location.latitude},${ev.location.longitude}`}

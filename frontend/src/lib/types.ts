@@ -54,9 +54,27 @@ export interface Location {
   id: number
   calendarId: number
   name?: string | null
-  address: string
+  street?: string | null
+  zip?: string | null
+  city?: string | null
+  country?: string | null
   latitude?: number | null
   longitude?: number | null
+}
+
+export function formatAddress(loc: Pick<Location, 'street' | 'zip' | 'city' | 'country'>): string {
+  const parts: string[] = []
+  if (loc.street) parts.push(loc.street)
+  const cityPart = [loc.zip, loc.city].filter(Boolean).join(' ')
+  if (cityPart) parts.push(cityPart)
+  if (loc.country) parts.push(loc.country)
+  return parts.join(', ')
+}
+
+export function formatLocationLabel(loc: Location): string {
+  const addr = formatAddress(loc)
+  if (loc.name && addr) return `${loc.name} — ${addr}`
+  return loc.name ?? addr ?? ''
 }
 
 export interface EventTemplate {

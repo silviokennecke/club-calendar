@@ -324,11 +324,11 @@ export default function ImportPage({ params }: Props) {
       const uniqueTexts = [...new Set(toImport.map(e => e.locationText).filter(Boolean))]
       const locationIdMap = new Map<string, number>()
       for (const text of uniqueTexts) {
-        const existing = locations.find(l => l.address.toLowerCase() === text.toLowerCase())
+        const existing = locations.find(l => (l.street ?? '').toLowerCase() === text.toLowerCase())
         if (existing) {
           locationIdMap.set(text, existing.id)
         } else {
-          const created = await apiPost<Location>(`/api/calendars/${calendarId}/locations`, { address: text })
+          const created = await apiPost<Location>(`/api/calendars/${calendarId}/locations`, { street: text })
           locationIdMap.set(text, created.id)
         }
       }
