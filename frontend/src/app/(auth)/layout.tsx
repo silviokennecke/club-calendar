@@ -11,7 +11,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     if (!loading && !user) router.push('/login')
   }, [user, loading, router])
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>
-  if (!user) return null
+  if (loading || (!user && !loading)) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  }
   return <>{children}</>
 }
