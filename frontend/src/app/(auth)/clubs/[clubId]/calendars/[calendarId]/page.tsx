@@ -8,6 +8,7 @@ import type { EventInput, EventClickArg, EventDropArg } from '@fullcalendar/core
 import type { DateClickArg } from '@fullcalendar/interaction'
 import { apiGet, apiPatch } from '@/lib/api'
 import type { CalendarEvent, TargetGroup } from '@/lib/types'
+import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import EventModal from '@/components/calendar/EventModal'
 import Link from 'next/link'
@@ -19,6 +20,7 @@ interface Props { params: Promise<{ clubId: string; calendarId: string }> }
 export default function CalendarPage({ params }: Props) {
   const { clubId, calendarId } = use(params)
   const qc = useQueryClient()
+  const { user } = useAuth()
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string | undefined>()
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
@@ -194,6 +196,7 @@ export default function CalendarPage({ params }: Props) {
           editable={true}
           eventDrop={handleEventDrop}
           selectable={false}
+          firstDay={user?.firstDayOfWeek ?? 1}
           displayEventTime={true}
           eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
           headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth' }}

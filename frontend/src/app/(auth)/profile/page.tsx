@@ -1,16 +1,20 @@
 'use client'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { apiGet, apiDelete, apiFetch } from '@/lib/api'
+import { apiGet, apiPatch, apiDelete, apiFetch } from '@/lib/api'
+import { DATE_FORMAT_OPTIONS } from '@/lib/dateFormat'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Trash2, Plus, Key } from 'lucide-react'
 
 interface PasskeyInfo { id: string; deviceName: string; createdAt: string }
 interface ProfileData {
   id: number; name: string; email: string
+  dateFormat: string
+  firstDayOfWeek: number
   passkeys: PasskeyInfo[]
   oauthAccounts: { provider: string }[]
 }
@@ -93,6 +97,49 @@ export default function ProfilePage() {
           </Button>
         </div>
         {message && <p className="text-sm text-green-600">{message}</p>}
+      </div>
+
+      {/* Localization */}
+      <div className="space-y-3 mt-6">
+        <h3 className="text-sm font-semibold text-slate-800">Localization</h3>
+        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+          {/* Date format */}
+          <div className="space-y-1.5">
+            <Label>Date format</Label>
+            <select
+              className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
+              value={profile?.dateFormat ?? 'dd.MM.yyyy'}
+              onChange={async e => {
+                await apiPatch('/api/auth/me', { dateFormat: e.target.value })
+                refetch()
+              }}
+            >
+              {DATE_FORMAT_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* First day of week */}
+          <div className="space-y-1.5">
+            <Label>First day of week</Label>
+            <div className="flex gap-2">
+              {([{ label: 'Monday', value: 1 }, { label: 'Sunday', value: 0 }] as const).map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={async () => {
+                    await apiPatch('/api/auth/me', { firstDayOfWeek: opt.value })
+                    refetch()
+                  }}
+                  className={`flex-1 py-2 text-sm rounded-md border transition-colors ${(profile?.firstDayOfWeek ?? 1) === opt.value ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
