@@ -1,13 +1,13 @@
 'use client'
-import { use, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { use, useState, useRef } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventInput, EventClickArg, EventDropArg } from '@fullcalendar/core'
 import type { DateClickArg } from '@fullcalendar/interaction'
 import { apiGet, apiPatch } from '@/lib/api'
-import type { CalendarEvent } from '@/lib/types'
+import type { CalendarEvent, TargetGroup } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import EventModal from '@/components/calendar/EventModal'
 import { Plus } from 'lucide-react'
@@ -20,6 +20,27 @@ export default function CalendarPage({ params }: Props) {
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string | undefined>()
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
+  const [selectedGroups, setSelectedGroups] = useState<number[]>([])
+  const calendarRef = useRef<InstanceType<typeof FullCalendar>>(null)
+
+  const { data: targetGroups = [] } = useQuery<TargetGroup[]>({
+    queryKey: ['targetGroups', calendarId],
+    queryFn: () => apiGet(`/api/calendars/${calendarId}/target-groups`),
+  })
+
+  function toggleGroup(id: number) {
+    setSelectedGroups(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+      // Force FullCalendar to refetch events with new filter
+      setTimeout(() => calendarRef.current?.getApi().refetchEvents(), 0)
+      return next
+    })
+  }
+
+  function clearFilter() {
+    setSelectedGroups([])
+    setTimeout(() => calendarRef.current?.getApi().refetchEvents(), 0)
+  }
 
   function openCreate(date?: string) {
     setEditingEvent(null)
@@ -44,8 +65,9 @@ export default function CalendarPage({ params }: Props) {
     successCallback: (events: EventInput[]) => void,
     failureCallback: (err: Error) => void,
   ) {
+    const tgParam = selectedGroups.length > 0 ? `&targetGroupIds=${selectedGroups.join(',')}` : ''
     apiGet<CalendarEvent[]>(
-      `/api/calendars/${calendarId}/events?from=${fetchInfo.startStr.slice(0, 10)}&to=${fetchInfo.endStr.slice(0, 10)}`
+      `/api/calendars/${calendarId}/events?from=${fetchInfo.startStr.slice(0, 10)}&to=${fetchInfo.endStr.slice(0, 10)}${tgParam}`
     ).then(events => {
       successCallback(events.map(ev => {
         const dateStr = ev.date.slice(0, 10)
@@ -94,8 +116,31 @@ export default function CalendarPage({ params }: Props) {
         </Button>
       </div>
 
+      {/* Target group filter chips */}
+      {targetGroups.length > 1 && (
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <span className="text-xs text-slate-500">Filter:</span>
+          <button
+            onClick={clearFilter}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${selectedGroups.length === 0 ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 text-slate-600 hover:border-slate-300 bg-white'}`}
+          >
+            All
+          </button>
+          {targetGroups.map(tg => (
+            <button
+              key={tg.id}
+              onClick={() => toggleGroup(tg.id)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${selectedGroups.includes(tg.id) ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 text-slate-600 hover:border-slate-300 bg-white'}`}
+            >
+              {tg.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
         <FullCalendar
+          ref={calendarRef}
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
           events={fetchEvents}

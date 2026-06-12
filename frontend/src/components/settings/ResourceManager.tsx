@@ -1,11 +1,60 @@
 'use client'
-import { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Pencil, Trash2, Plus, Check, X } from 'lucide-react'
+import dynamic from 'next/dynamic'
+
+// @emoji-mart/react doesn't ship TS types; we load it dynamically to avoid SSR issues
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const EmojiPicker = dynamic(() => import('@emoji-mart/react').then(m => m), { ssr: false }) as any
+
+interface EmojiPickerFieldProps {
+  value: string
+  onChange: (val: string) => void
+}
+
+function EmojiPickerField({ value, onChange }: EmojiPickerFieldProps) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-10 h-10 flex items-center justify-center rounded-md border border-slate-200 bg-white hover:bg-slate-50 transition-colors text-xl"
+        title="Pick emoji"
+      >
+        {value || <span className="text-slate-300 text-sm">😀</span>}
+      </button>
+      {open && (
+        <div className="absolute z-50 top-full left-0 mt-1 shadow-xl rounded-xl overflow-hidden">
+          {EmojiPicker && React.createElement(EmojiPicker, {
+            onEmojiSelect: (e: { native: string }) => { onChange(e.native); setOpen(false) },
+            theme: 'light',
+            previewPosition: 'none',
+            skinTonePosition: 'none',
+            navPosition: 'bottom',
+            perLine: 8,
+            maxFrequentRows: 1,
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface Field {
   key: string
@@ -83,15 +132,11 @@ export default function ResourceManager({ calendarId: _calendarId, resourcePath,
           <div className="flex gap-2 flex-wrap">
             {fields.map(f => (
               f.type === 'emoji' ? (
-                <div key={f.key} className="flex items-center gap-1.5">
-                  <div className="w-10 h-10 flex items-center justify-center rounded-md border border-slate-200 bg-white text-xl select-none">
-                    {createValues[f.key] || <span className="text-slate-300 text-sm">😀</span>}
-                  </div>
-                  <Input className="w-24 text-lg text-center" placeholder={f.placeholder ?? '🎯'}
-                    value={createValues[f.key] ?? ''}
-                    onChange={e => setCreateValues(v => ({ ...v, [f.key]: e.target.value }))}
-                    onKeyDown={e => e.key === 'Enter' && handleCreate()} />
-                </div>
+                <EmojiPickerField
+                  key={f.key}
+                  value={createValues[f.key] ?? ''}
+                  onChange={val => setCreateValues(v => ({ ...v, [f.key]: val }))}
+                />
               ) : (
                 <Input key={f.key} className="flex-1 min-w-32" placeholder={f.placeholder ?? f.label}
                   value={createValues[f.key] ?? ''} onChange={e => setCreateValues(v => ({ ...v, [f.key]: e.target.value }))}
@@ -117,15 +162,11 @@ export default function ResourceManager({ calendarId: _calendarId, resourcePath,
                   <div className="flex gap-2 flex-wrap">
                     {fields.map(f => (
                       f.type === 'emoji' ? (
-                        <div key={f.key} className="flex items-center gap-1.5">
-                          <div className="w-9 h-9 flex items-center justify-center rounded-md border border-slate-200 bg-white text-xl select-none">
-                            {editValues[f.key] || <span className="text-slate-300 text-xs">😀</span>}
-                          </div>
-                          <Input className="w-24 text-lg text-center h-9" placeholder={f.placeholder ?? '🎯'}
-                            value={editValues[f.key] ?? ''}
-                            onChange={e => setEditValues(v => ({ ...v, [f.key]: e.target.value }))}
-                            onKeyDown={e => e.key === 'Enter' && handleUpdate(item.id)} />
-                        </div>
+                        <EmojiPickerField
+                          key={f.key}
+                          value={editValues[f.key] ?? ''}
+                          onChange={val => setEditValues(v => ({ ...v, [f.key]: val }))}
+                        />
                       ) : (
                         <Input key={f.key} className="flex-1 min-w-32 h-9" value={editValues[f.key] ?? ''}
                           placeholder={f.placeholder ?? f.label}
