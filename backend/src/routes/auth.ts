@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import { register, login, refresh, getMe } from '../services/authService.js'
+import { register, login, refresh, getMe, updateMe } from '../services/authService.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { enabledProviders } from '../env.js'
 
@@ -62,6 +62,18 @@ authRoutes.post('/logout', (c) => {
 authRoutes.get('/me', authMiddleware, async (c) => {
   const userId = c.get('userId')
   const user = await getMe(userId)
+  return c.json(user)
+})
+
+const updateMeSchema = z.object({
+  dateFormat: z.string().min(1).max(20).optional(),
+  firstDayOfWeek: z.number().int().min(0).max(6).optional(),
+})
+
+authRoutes.patch('/me', authMiddleware, zValidator('json', updateMeSchema), async (c) => {
+  const userId = c.get('userId')
+  const data = c.req.valid('json')
+  const user = await updateMe(userId, data)
   return c.json(user)
 })
 

@@ -12,6 +12,8 @@ model User {
   name          String         @db.VarChar(255)
   email         String         @unique @db.VarChar(255)
   password      String?        @db.VarChar(255)
+  dateFormat     String  @default("dd.MM.yyyy") @db.VarChar(20)
+  firstDayOfWeek Int     @default(1)
   clubs         ClubUser[]
   passkeys      Passkey[]
   oauthAccounts OAuthAccount[]
@@ -38,6 +40,7 @@ model Calendar {
   id           Int             @id @default(autoincrement())
   clubId       Int
   name         String          @db.VarChar(255)
+  timezone  String? @db.VarChar(100)
   club         Club            @relation(fields: [clubId], references: [id], onDelete: Cascade)
   feeds        CalendarFeed[]
   properties   Property[]
