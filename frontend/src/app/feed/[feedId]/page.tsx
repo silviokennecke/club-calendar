@@ -2,16 +2,25 @@
 import { use, useState, useEffect } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
-import type { EventInput } from '@fullcalendar/core'
+import interactionPlugin from '@fullcalendar/interaction'
+import type { EventInput, EventClickArg } from '@fullcalendar/core'
 import { Button } from '@/components/ui/button'
-import { Calendar, Download } from 'lucide-react'
+import { Calendar, Download, X, MapPin, Clock, Tag, Users, Sparkles } from 'lucide-react'
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''
 
 interface FeedEvent {
-  id: number; name: string; date: string; timeBegin: string; timeEnd: string
-  location?: { address: string } | null
-  properties: { property: { icon: string | null } }[]
+  id: number
+  name: string
+  date: string
+  dateEnd?: string | null
+  timeBegin: string
+  timeEnd: string
+  isAllDay?: boolean
+  location?: { name?: string | null; address: string; latitude?: number | null; longitude?: number | null } | null
+  properties: { property: { id: number; name: string; icon: string | null } }[]
+  features: { feature: { id: number; name: string } }[]
   targetGroups: { targetGroup: { id: number; name: string } }[]
 }
 
@@ -20,6 +29,148 @@ interface Props {
   searchParams: Promise<{ secret?: string }>
 }
 
+function formatDate(dateStr: string): string {
+  const [y, m, d] = dateStr.slice(0, 10).split('-')
+  return `${d}.${m}.${y}`
+}
+
+// ——— Event detail modal ———
+function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
+  const startDate = formatDate(ev.date)
+  const endDate = ev.dateEnd && ev.dateEnd.slice(0, 10) !== ev.date.slice(0, 10)
+    ? formatDate(ev.dateEnd)
+    : null
+
+  const iconPrefix = ev.properties.map(p => p.property.icon).filter(Boolean).join('')
+
+  const hasMap = MAPBOX_TOKEN && ev.location?.latitude != null && ev.location?.longitude != null
+
+  return (
+    // Backdrop
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}>
+      {/* Dimmed background */}
+      <div className="absolute inset-0 bg-black/40" />
+
+      {/* Panel */}
+      <div
+        className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 z-10 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors text-slate-500"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
+        {/* Map preview */}
+        {hasMap && (
+          <div className="w-full h-36 bg-slate-100 overflow-hidden">
+            <img
+              src={`https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+2563eb(${ev.location!.longitude},${ev.location!.latitude})/${ev.location!.longitude},${ev.location!.latitude},14,0/800x288?access_token=${MAPBOX_TOKEN}`}
+              alt="Location map"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+
+        <div className="p-5 space-y-4">
+          {/* Title */}
+          <div>
+            {iconPrefix && <span className="text-2xl mr-2">{iconPrefix}</span>}
+            <h2 className="text-lg font-bold text-slate-900 inline">{ev.name}</h2>
+          </div>
+
+          {/* Date + Time */}
+          <div className="flex items-start gap-2.5 text-sm text-slate-700">
+            <Clock className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+            <div>
+              {ev.isAllDay ? (
+                <span>
+                  {endDate ? `${startDate} – ${endDate}` : startDate}
+                  <span className="ml-1.5 text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">All day</span>
+                </span>
+              ) : (
+                <span>
+                  {endDate
+                    ? `${startDate} ${ev.timeBegin} – ${endDate} ${ev.timeEnd}`
+                    : `${startDate}, ${ev.timeBegin} – ${ev.timeEnd}`}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Location */}
+          {ev.location && (
+            <div className="flex items-start gap-2.5 text-sm text-slate-700">
+              <MapPin className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+              <div>
+                {ev.location.name && <p className="font-medium">{ev.location.name}</p>}
+                <p className={ev.location.name ? 'text-slate-500 text-xs' : ''}>{ev.location.address}</p>
+                {ev.location.latitude != null && (
+                  <a
+                    href={`https://maps.google.com/?q=${ev.location.latitude},${ev.location.longitude}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline mt-0.5 inline-block"
+                  >
+                    Open in Maps ↗
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Target groups */}
+          {ev.targetGroups.length > 0 && (
+            <div className="flex items-start gap-2.5">
+              <Users className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+              <div className="flex flex-wrap gap-1">
+                {ev.targetGroups.map(t => (
+                  <span key={t.targetGroup.id} className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">
+                    {t.targetGroup.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Properties */}
+          {ev.properties.length > 0 && (
+            <div className="flex items-start gap-2.5">
+              <Tag className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+              <div className="flex flex-wrap gap-1">
+                {ev.properties.map(p => (
+                  <span key={p.property.id} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                    {p.property.icon && <span className="mr-1">{p.property.icon}</span>}
+                    {p.property.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Features */}
+          {ev.features.length > 0 && (
+            <div className="flex items-start gap-2.5">
+              <Sparkles className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+              <div className="flex flex-wrap gap-1">
+                {ev.features.map(f => (
+                  <span key={f.feature.id} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
+                    {f.feature.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ——— Main page ———
 export default function PublicFeedPage({ params, searchParams }: Props) {
   const { feedId } = use(params)
   const { secret } = use(searchParams)
@@ -27,6 +178,7 @@ export default function PublicFeedPage({ params, searchParams }: Props) {
   const [allEvents, setAllEvents] = useState<FeedEvent[]>([])
   const [allGroups, setAllGroups] = useState<{ id: number; name: string }[]>([])
   const [selected, setSelected] = useState<number[]>([])
+  const [selectedEvent, setSelectedEvent] = useState<FeedEvent | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -67,16 +219,38 @@ export default function PublicFeedPage({ params, searchParams }: Props) {
   }
 
   const fcEvents: EventInput[] = filtered.map(ev => {
-    const dateStr = ev.date.slice(0, 10)
+    const startDateStr = ev.date.slice(0, 10)
+    const endDateStr = ev.dateEnd?.slice(0, 10) ?? startDateStr
     const icons = ev.properties.map(p => p.property.icon).filter(Boolean).join('')
+
+    if (ev.isAllDay) {
+      const endExclusive = new Date(endDateStr)
+      endExclusive.setDate(endExclusive.getDate() + 1)
+      return {
+        id: String(ev.id),
+        title: [icons, ev.name].filter(Boolean).join(' '),
+        start: startDateStr,
+        end: endExclusive.toISOString().slice(0, 10),
+        allDay: true,
+        backgroundColor: '#2563eb', borderColor: '#1d4ed8',
+        extendedProps: { event: ev },
+      }
+    }
+
     return {
       id: String(ev.id),
       title: [icons, ev.name].filter(Boolean).join(' '),
-      start: `${dateStr}T${ev.timeBegin}`,
-      end: `${dateStr}T${ev.timeEnd}`,
+      start: `${startDateStr}T${ev.timeBegin}`,
+      end: `${endDateStr}T${ev.timeEnd}`,
       backgroundColor: '#2563eb', borderColor: '#1d4ed8',
+      extendedProps: { event: ev },
     }
   })
+
+  function handleEventClick(info: EventClickArg) {
+    const ev = info.event.extendedProps.event as FeedEvent
+    setSelectedEvent(ev)
+  }
 
   if (loading) return <div className="flex items-center justify-center min-h-screen bg-slate-50"><p className="text-slate-400">Loading...</p></div>
   if (error) return (
@@ -87,6 +261,7 @@ export default function PublicFeedPage({ params, searchParams }: Props) {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-6 py-5">
           <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -106,6 +281,7 @@ export default function PublicFeedPage({ params, searchParams }: Props) {
               </a>
             </div>
           </div>
+
           {allGroups.length > 1 && (
             <div className="flex items-center gap-2 mt-4 flex-wrap">
               <span className="text-xs text-slate-500">Filter:</span>
@@ -117,16 +293,34 @@ export default function PublicFeedPage({ params, searchParams }: Props) {
           )}
         </div>
       </div>
+
+      {/* Calendar */}
       <div className="max-w-4xl mx-auto px-6 py-6">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-          <FullCalendar plugins={[dayGridPlugin]} initialView="dayGridMonth" events={fcEvents}
-            displayEventTime eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
-            headerToolbar={{ left: 'prev,next today', center: 'title', right: '' }} height="auto" locale="de" />
+          <FullCalendar
+            plugins={[dayGridPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            events={fcEvents}
+            eventClick={handleEventClick}
+            displayEventTime
+            eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+            headerToolbar={{ left: 'prev,next today', center: 'title', right: '' }}
+            height="auto"
+            locale="de"
+          />
         </div>
         {selected.length > 0 && (
-          <p className="text-xs text-slate-400 mt-3 text-center">Showing {filtered.length} of {allEvents.length} events · Subscription reflects this filter</p>
+          <p className="text-xs text-slate-400 mt-3 text-center">
+            Showing {filtered.length} of {allEvents.length} events · Subscription reflects this filter
+          </p>
         )}
+        <p className="text-xs text-slate-400 mt-2 text-center">Click an event for details</p>
       </div>
+
+      {/* Event detail modal */}
+      {selectedEvent && (
+        <EventDetail ev={selectedEvent} onClose={() => setSelectedEvent(null)} />
+      )}
     </div>
   )
 }
