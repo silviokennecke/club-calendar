@@ -221,10 +221,11 @@ describe('Locations /api/calendars/:calendarId/locations', () => {
     const res = await supertest(app.getHttpServer())
       .post(`/api/calendars/${calendar.id}/locations`)
       .set('Authorization', await getAuthHeader(user.id))
-      .send({ address: 'Hauptstraße 1, 10115 Berlin' })
+      .send({ street: 'Hauptstraße 1', zip: '10115', city: 'Berlin' })
     expect(res.status).toBe(201)
-    const body = res.body as { address: string }
-    expect(body.address).toBe('Hauptstraße 1, 10115 Berlin')
+    const body = res.body as { street: string; city: string }
+    expect(body.street).toBe('Hauptstraße 1')
+    expect(body.city).toBe('Berlin')
   })
 
   it('updates a location', async () => {
@@ -232,15 +233,15 @@ describe('Locations /api/calendars/:calendarId/locations', () => {
     const createRes = await supertest(app.getHttpServer())
       .post(`/api/calendars/${calendar.id}/locations`)
       .set('Authorization', await getAuthHeader(user.id))
-      .send({ address: 'Old Street 1' })
+      .send({ street: 'Old Street 1' })
     const created = createRes.body as { id: number }
     const res = await supertest(app.getHttpServer())
       .patch(`/api/calendars/${calendar.id}/locations/${created.id}`)
       .set('Authorization', await getAuthHeader(user.id))
-      .send({ address: 'New Street 2' })
+      .send({ street: 'New Street 2' })
     expect(res.status).toBe(200)
-    const body = res.body as { address: string }
-    expect(body.address).toBe('New Street 2')
+    const body = res.body as { street: string }
+    expect(body.street).toBe('New Street 2')
   })
 
   it('deletes a location', async () => {
@@ -248,7 +249,7 @@ describe('Locations /api/calendars/:calendarId/locations', () => {
     const createRes = await supertest(app.getHttpServer())
       .post(`/api/calendars/${calendar.id}/locations`)
       .set('Authorization', await getAuthHeader(user.id))
-      .send({ address: 'ToDelete Street' })
+      .send({ street: 'ToDelete Street' })
     const created = createRes.body as { id: number }
     const res = await supertest(app.getHttpServer())
       .delete(`/api/calendars/${calendar.id}/locations/${created.id}`)
