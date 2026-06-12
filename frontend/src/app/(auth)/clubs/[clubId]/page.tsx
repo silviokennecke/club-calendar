@@ -1,13 +1,14 @@
 'use client'
-import { use, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
-import { apiGet, apiPost, apiDelete } from '@/lib/api'
-import type { Calendar, User } from '@/lib/types'
+import { apiGet, apiPatch, apiPost, apiDelete } from '@/lib/api'
+import type { Calendar, Club, User } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { CalendarDays, Plus } from 'lucide-react'
+import { CalendarDays, Check, Plus } from 'lucide-react'
 
 interface Props { params: Promise<{ clubId: string }> }
 
@@ -20,6 +21,15 @@ export default function ClubPage({ params }: Props) {
   const [memberError, setMemberError] = useState('')
   const [newCalName, setNewCalName] = useState('')
   const [calDialogOpen, setCalDialogOpen] = useState(false)
+  const [clubName, setClubName] = useState('')
+  const [nameSaved, setNameSaved] = useState(false)
+  const [nameSaving, setNameSaving] = useState(false)
+
+  const { data: club } = useQuery<Club>({
+    queryKey: ['club', clubId],
+    queryFn: () => apiGet<Club>(`/api/clubs/${clubId}`),
+  })
+  useEffect(() => { if (club) setClubName(club.name) }, [club])
 
   const { data: members = [] } = useQuery<User[]>({
     queryKey: ['members', clubId],
@@ -30,6 +40,17 @@ export default function ClubPage({ params }: Props) {
     queryKey: ['calendars', clubId],
     queryFn: () => apiGet<Calendar[]>(`/api/clubs/${clubId}/calendars`),
   })
+
+  async function handleSaveClubName() {
+    if (!clubName.trim() || clubName === club?.name) return
+    setNameSaving(true)
+    try {
+      await apiPatch(`/api/clubs/${clubId}`, { name: clubName.trim() })
+      qc.invalidateQueries({ queryKey: ['club', clubId] })
+      qc.invalidateQueries({ queryKey: ['clubs'] })
+      setNameSaved(true); setTimeout(() => setNameSaved(false), 2000)
+    } finally { setNameSaving(false) }
+  }
 
   async function handleAddMember() {
     if (!newMemberEmail.trim()) return
@@ -64,6 +85,24 @@ export default function ClubPage({ params }: Props) {
 
   return (
     <div className="p-6 max-w-lg">
+      {/* Club name */}
+      <h2 className="text-base font-semibold text-slate-900 mb-4">Club</h2>
+      <div className="bg-white rounded-xl border border-slate-200 p-5 mb-10">
+        <div className="space-y-1.5">
+          <Label>Name</Label>
+          <div className="flex gap-2">
+            <Input
+              value={clubName}
+              onChange={e => setClubName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSaveClubName()}
+            />
+            <Button size="sm" disabled={nameSaving || !clubName.trim() || clubName === club?.name} onClick={handleSaveClubName} className="gap-1.5">
+              {nameSaved ? <><Check className="w-3.5 h-3.5" />Saved</> : nameSaving ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Members */}
       <h2 className="text-base font-semibold text-slate-900 mb-4">Members</h2>
       <div className="flex gap-2 mb-3">
