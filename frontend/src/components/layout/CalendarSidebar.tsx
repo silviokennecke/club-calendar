@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
   CalendarDays, Settings, LayoutTemplate, LogOut,
-  Palette, Tag, Users, MapPin, Rss, User, List, ChevronDown
+  Palette, Tag, Users, MapPin, Rss, User, List, ChevronDown, Users2
 } from 'lucide-react'
 
 interface Props { clubId: string; calendarId: string }
