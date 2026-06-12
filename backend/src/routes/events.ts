@@ -41,10 +41,11 @@ const seriesSchema = z.object({
 
 eventRoutes.get('/', authMiddleware, requireCalendarMember, async (c) => {
   const calendarId = Number(c.req.param('calendarId'))
-  const { from, to } = c.req.query()
+  const { from, to, targetGroupIds: tgParam } = c.req.query()
   if (from && isNaN(Date.parse(from))) return c.json({ error: 'Invalid from date' }, 400)
   if (to && isNaN(Date.parse(to))) return c.json({ error: 'Invalid to date' }, 400)
-  const events = await listEvents(calendarId, from, to)
+  const targetGroupIds = tgParam ? tgParam.split(',').map(Number).filter(n => !isNaN(n)) : undefined
+  const events = await listEvents(calendarId, from, to, targetGroupIds)
   return c.json(events)
 })
 
