@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
   CalendarDays, Settings, LayoutTemplate, ChevronLeft, LogOut,
-  Palette, Tag, Users, MapPin, Rss, User
+  Palette, Tag, Users, MapPin, Rss, User, List
 } from 'lucide-react'
 
 interface Props { clubId: string; calendarId: string }
@@ -37,6 +37,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
 
   const mainNav: NavItem[] = [
     { label: 'Calendar', href: base, icon: CalendarDays, exact: true },
+    { label: 'Events', href: `${base}/events`, icon: List },
     { label: 'Templates', href: `${base}/templates`, icon: LayoutTemplate },
   ]
 
