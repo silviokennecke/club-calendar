@@ -76,7 +76,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
     { label: 'Features', href: `${base}/settings/features`, icon: Tag },
     { label: 'Target Groups', href: `${base}/settings/target-groups`, icon: Users },
     { label: 'Locations', href: `${base}/settings/locations`, icon: MapPin },
-    { label: 'Club', href: `${base}/club`, icon: Users2 },
+    { label: 'Club', href: `/clubs/${clubId}`, icon: Users2, exact: true },
   ]
 
   function isActive(item: NavItem) {
