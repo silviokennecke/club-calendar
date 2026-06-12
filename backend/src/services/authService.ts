@@ -42,6 +42,8 @@ export async function getMe(userId: number) {
       email: true,
       dateFormat: true,
       firstDayOfWeek: true,
+      lastClubId: true,
+      lastCalendarId: true,
       passkeys: { select: { id: true, deviceName: true, createdAt: true } },
       oauthAccounts: { select: { provider: true } },
     },
@@ -50,11 +52,16 @@ export async function getMe(userId: number) {
   return user
 }
 
-export async function updateMe(userId: number, data: { dateFormat?: string; firstDayOfWeek?: number }) {
+export async function updateMe(userId: number, data: {
+  dateFormat?: string
+  firstDayOfWeek?: number
+  lastClubId?: number | null
+  lastCalendarId?: number | null
+}) {
   const user = await prisma.user.update({
     where: { id: userId },
     data,
-    select: { id: true, name: true, email: true, dateFormat: true, firstDayOfWeek: true },
+    select: { id: true, name: true, email: true, dateFormat: true, firstDayOfWeek: true, lastClubId: true, lastCalendarId: true },
   })
   return user
 }
