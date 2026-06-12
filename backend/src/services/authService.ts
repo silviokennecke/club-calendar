@@ -1,20 +1,26 @@
 import { prisma } from '../lib/prisma.js'
-import { verifyPassword } from '../lib/password.js'
+import { verifyPassword, hashPassword } from '../lib/password.js'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../lib/jwt.js'
-import { unauthorized } from '../lib/errors.js'
+import { unauthorized, badRequest } from '../lib/errors.js'
+
+export async function register(name: string, email: string, password: string) {
+  const existing = await prisma.user.findUnique({ where: { email } })
+  if (existing) throw badRequest('Email already in use')
+  const hashed = await hashPassword(password)
+  const user = await prisma.user.create({ data: { name, email, password: hashed } })
+  const accessToken = await signAccessToken(user.id)
+  const refreshToken = await signRefreshToken(user.id)
+  return { accessToken, refreshToken, user: { id: user.id, name: user.name, email: user.email } }
+}
 
 export async function login(email: string, password: string) {
   const user = await prisma.user.findUnique({ where: { email } })
-  if (!user) throw unauthorized('Invalid credentials')
+  if (!user || !user.password) throw unauthorized('Invalid credentials')
   const valid = await verifyPassword(password, user.password)
   if (!valid) throw unauthorized('Invalid credentials')
   const accessToken = await signAccessToken(user.id)
   const refreshToken = await signRefreshToken(user.id)
-  return {
-    accessToken,
-    refreshToken,
-    user: { id: user.id, name: user.name, email: user.email },
-  }
+  return { accessToken, refreshToken, user: { id: user.id, name: user.name, email: user.email } }
 }
 
 export async function refresh(refreshToken: string) {
@@ -30,8 +36,46 @@ export async function refresh(refreshToken: string) {
 export async function getMe(userId: number) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, email: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      passkeys: { select: { id: true, deviceName: true, createdAt: true } },
+      oauthAccounts: { select: { provider: true } },
+    },
   })
   if (!user) throw unauthorized('User not found')
   return user
+}
+
+// Find or create a user from an OAuth provider callback
+export async function findOrCreateOAuthUser(
+  provider: string,
+  providerId: string,
+  email: string,
+  name: string,
+) {
+  // Check existing OAuth account
+  const existing = await prisma.oAuthAccount.findUnique({
+    where: { provider_providerId: { provider, providerId } },
+    include: { user: true },
+  })
+  if (existing) {
+    const accessToken = await signAccessToken(existing.user.id)
+    const refreshToken = await signRefreshToken(existing.user.id)
+    return {
+      accessToken,
+      refreshToken,
+      user: { id: existing.user.id, name: existing.user.name, email: existing.user.email },
+    }
+  }
+  // Check existing user by email — link them
+  let user = await prisma.user.findUnique({ where: { email } })
+  if (!user) {
+    user = await prisma.user.create({ data: { name, email, password: null } })
+  }
+  await prisma.oAuthAccount.create({ data: { userId: user.id, provider, providerId, email } })
+  const accessToken = await signAccessToken(user.id)
+  const refreshToken = await signRefreshToken(user.id)
+  return { accessToken, refreshToken, user: { id: user.id, name: user.name, email: user.email } }
 }

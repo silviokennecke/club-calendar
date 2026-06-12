@@ -8,11 +8,13 @@ datasource db {
 }
 
 model User {
-  id       Int       @id @default(autoincrement())
-  name     String    @db.VarChar(255)
-  email    String    @unique @db.VarChar(255)
-  password String    @db.VarChar(255)
-  clubs    ClubUser[]
+  id            Int            @id @default(autoincrement())
+  name          String         @db.VarChar(255)
+  email         String         @unique @db.VarChar(255)
+  password      String?        @db.VarChar(255)
+  clubs         ClubUser[]
+  passkeys      Passkey[]
+  oauthAccounts OAuthAccount[]
 }
 
 model Club {
@@ -198,4 +200,26 @@ model EventTargetGroup {
   targetGroup   TargetGroup @relation(fields: [targetGroupId], references: [id], onDelete: Cascade)
 
   @@id([eventId, targetGroupId])
+}
+
+model Passkey {
+  id           String   @id @default(cuid())
+  userId       Int
+  credentialId String   @unique @db.VarChar(700)
+  publicKey    Bytes
+  counter      BigInt   @default(0)
+  deviceName   String?  @db.VarChar(255)
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OAuthAccount {
+  id         Int     @id @default(autoincrement())
+  userId     Int
+  provider   String  @db.VarChar(50)
+  providerId String  @db.VarChar(255)
+  email      String? @db.VarChar(255)
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
 }

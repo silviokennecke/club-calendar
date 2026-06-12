@@ -2,10 +2,30 @@ import { Hono } from 'hono'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import { login, refresh, getMe } from '../services/authService.js'
+import { register, login, refresh, getMe } from '../services/authService.js'
 import { authMiddleware } from '../middleware/auth.js'
+import { enabledProviders } from '../env.js'
 
 export const authRoutes = new Hono()
+
+const registerSchema = z.object({
+  name: z.string().min(1).max(255),
+  email: z.string().email(),
+  password: z.string().min(8),
+})
+
+authRoutes.post('/register', zValidator('json', registerSchema), async (c) => {
+  const { name, email, password } = c.req.valid('json')
+  const result = await register(name, email, password)
+  setCookie(c, 'refreshToken', result.refreshToken, {
+    httpOnly: true,
+    sameSite: 'Strict',
+    path: '/api/auth/refresh',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 7 * 24 * 60 * 60,
+  })
+  return c.json({ accessToken: result.accessToken, user: result.user }, 201)
+})
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -44,3 +64,5 @@ authRoutes.get('/me', authMiddleware, async (c) => {
   const user = await getMe(userId)
   return c.json(user)
 })
+
+authRoutes.get('/providers', (c) => c.json(enabledProviders))

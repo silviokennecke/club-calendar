@@ -1,5 +1,7 @@
 import { Hono } from 'hono'
 import { authRoutes } from './auth.js'
+import { webauthnRoutes } from './webauthn.js'
+import { oauthRoutes } from './oauth.js'
 import { clubRoutes } from './clubs.js'
 import { calendarRoutes } from './calendars.js'
 import { propertyRoutes } from './properties.js'
@@ -15,6 +17,8 @@ export const routes = new Hono()
 
 routes.get('/health', (c) => c.json({ ok: true }))
 routes.route('/api/auth', authRoutes)
+routes.route('/api/auth/webauthn', webauthnRoutes)
+routes.route('/api/auth/oauth', oauthRoutes)
 routes.route('/api/clubs', clubRoutes)
 routes.route('/api/clubs/:clubId/calendars', calendarRoutes)
 routes.route('/api/calendars/:calendarId/properties', propertyRoutes)
