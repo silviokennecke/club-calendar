@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { login, getMe } from './authService.js'
+import { login, refresh, getMe } from './authService.js'
 import { createTestUser } from '../test/helpers.js'
 
 describe('login', () => {
@@ -13,6 +13,19 @@ describe('login', () => {
     const result = await login('eve@example.com', 'password123')
     expect(result.accessToken).toBeTruthy()
     expect(result.refreshToken).toBeTruthy()
+  })
+})
+
+describe('refresh', () => {
+  it('throws 401 for invalid refresh token', async () => {
+    await expect(refresh('not.a.valid.token')).rejects.toMatchObject({ status: 401 })
+  })
+
+  it('returns new accessToken for valid refresh token', async () => {
+    await createTestUser({ email: 'grace@example.com' })
+    const { refreshToken } = await login('grace@example.com', 'password123')
+    const result = await refresh(refreshToken)
+    expect(result.accessToken).toBeTruthy()
   })
 })
 
