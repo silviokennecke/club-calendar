@@ -1,5 +1,7 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
+export const BACKEND_URL = BASE_URL
+
 let accessToken: string | null = null
 
 export function setAccessToken(token: string) {
