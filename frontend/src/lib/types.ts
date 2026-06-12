@@ -19,6 +19,7 @@ export interface Calendar {
   clubId: number
   name: string
   timezone?: string | null
+  archivedAt?: string | null   // add this line
 }
 
 export interface CalendarFeed {
