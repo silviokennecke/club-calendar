@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common'
+import { APP_FILTER } from '@nestjs/core'
 import { PrismaModule } from './prisma/prisma.module'
+import { AppExceptionFilter } from './common/filters/app-exception.filter'
 // Feature modules will be added in later phases — leave these as TODO comments
 // import { AuthModule } from './auth/auth.module'
 // import { ClubsModule } from './clubs/clubs.module'
@@ -16,7 +18,10 @@ import { PrismaModule } from './prisma/prisma.module'
 @Module({
   imports: [
     PrismaModule,
-    // Feature modules added in Phase 2
+    // Feature modules will be added in Phase 2
+  ],
+  providers: [
+    { provide: APP_FILTER, useClass: AppExceptionFilter },
   ],
 })
 export class AppModule {}
