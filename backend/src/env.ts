@@ -11,6 +11,8 @@ const schema = z.object({
   // WebAuthn
   WEBAUTHN_RP_ID: z.string().default('localhost'),
   WEBAUTHN_RP_NAME: z.string().default('Club Calendar'),
+  // Mapbox — optional; missing = map features disabled
+  MAPBOX_TOKEN: z.string().optional(),
   // OAuth / SSO — all optional; missing = provider disabled
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),

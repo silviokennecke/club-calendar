@@ -14,6 +14,7 @@ import { EventTemplatesModule } from './event-templates/event-templates.module'
 import { FeedsModule } from './feeds/feeds.module'
 import { EventsModule } from './events/events.module'
 import { PublicModule } from './public/public.module'
+import { MapboxModule } from './mapbox/mapbox.module'
 
 @Module({
   controllers: [AppController],
@@ -30,6 +31,7 @@ import { PublicModule } from './public/public.module'
     FeedsModule,
     EventsModule,
     PublicModule,
+    MapboxModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AppExceptionFilter },
