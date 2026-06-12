@@ -13,14 +13,14 @@ export class OAuthController {
   constructor(private readonly oauthService: OAuthService) {}
 
   @Get(':provider')
-  initiateOAuth(@Param('provider') provider: string, @Res() res: Response) {
+  async initiateOAuth(@Param('provider') provider: string, @Res() res: Response) {
     const p = provider as Provider
     if (!VALID_PROVIDERS.includes(p) || !enabledProviders[p]) {
       throw notFound('OAuth provider not available')
     }
     const state = generateState()
     const codeVerifier = generateCodeVerifier()
-    const url = this.oauthService.createAuthorizationURL(p, state, codeVerifier)
+    const url = await this.oauthService.createAuthorizationURL(p, state, codeVerifier)
     res.cookie(`oauth_state_${provider}`, JSON.stringify({ state, codeVerifier }), {
       httpOnly: true,
       sameSite: 'lax',
