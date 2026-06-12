@@ -1,9 +1,21 @@
-import { describe, it, expect } from 'vitest'
-import { createApp } from '../app.js'
-import { prisma } from '../lib/prisma.js'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const supertest = require('supertest')
+import type { INestApplication } from '@nestjs/common'
+import { createTestApp, createTestCalendarWithClub, createTestEvent } from '../test/helpers'
+import { prisma } from '../lib/prisma'
 import { FeedVisibility } from '@prisma/client'
 import { randomUUID } from 'crypto'
-import { createTestCalendarWithClub, createTestEvent } from '../test/helpers.js'
+
+let app: INestApplication
+
+beforeAll(async () => {
+  app = await createTestApp()
+})
+
+afterAll(async () => {
+  await app.close()
+})
 
 async function createFeed(calendarId: number, options: {
   visibility?: FeedVisibility
@@ -23,16 +35,14 @@ async function createFeed(calendarId: number, options: {
 
 describe('GET /api/feed/:feedId/ics', () => {
   it('returns 404 for non-existent feed', async () => {
-    const app = createApp()
-    const res = await app.request('/api/feed/99999/ics')
+    const res = await supertest(app.getHttpServer()).get('/api/feed/99999/ics')
     expect(res.status).toBe(404)
   })
 
   it('returns 404 for draft feed', async () => {
     const { calendar } = await createTestCalendarWithClub()
     const feed = await createFeed(calendar.id, { isDraft: true })
-    const app = createApp()
-    const res = await app.request(`/api/feed/${feed.id}/ics`)
+    const res = await supertest(app.getHttpServer()).get(`/api/feed/${feed.id}/ics`)
     expect(res.status).toBe(404)
   })
 
@@ -40,44 +50,35 @@ describe('GET /api/feed/:feedId/ics', () => {
     const { calendar } = await createTestCalendarWithClub()
     const feed = await createFeed(calendar.id)
     await createTestEvent(calendar.id, { name: 'Public Event', isDraft: false })
-    const app = createApp()
-    const res = await app.request(`/api/feed/${feed.id}/ics`)
+    const res = await supertest(app.getHttpServer()).get(`/api/feed/${feed.id}/ics`)
     expect(res.status).toBe(200)
-    expect(res.headers.get('content-type')).toContain('text/calendar')
-    const body = await res.text()
-    expect(body).toContain('BEGIN:VCALENDAR')
-    expect(body).toContain('Public Event')
+    expect(res.headers['content-type']).toContain('text/calendar')
+    expect(res.text).toContain('BEGIN:VCALENDAR')
+    expect(res.text).toContain('Public Event')
   })
 
   it('returns 403 for private feed without secret', async () => {
     const { calendar } = await createTestCalendarWithClub()
     const feed = await createFeed(calendar.id, { visibility: FeedVisibility.PRIVATE })
-    const app = createApp()
-    const res = await app.request(`/api/feed/${feed.id}/ics`)
+    const res = await supertest(app.getHttpServer()).get(`/api/feed/${feed.id}/ics`)
     expect(res.status).toBe(403)
   })
 
   it('returns 403 for private feed with wrong secret', async () => {
     const { calendar } = await createTestCalendarWithClub()
     const feed = await createFeed(calendar.id, { visibility: FeedVisibility.PRIVATE })
-    const app = createApp()
-    const res = await app.request(`/api/feed/${feed.id}/ics?secret=completely-wrong-secret`)
+    const res = await supertest(app.getHttpServer()).get(`/api/feed/${feed.id}/ics?secret=completely-wrong-secret`)
     expect(res.status).toBe(403)
   })
 
   it('returns ICS for private feed with correct secret', async () => {
     const { calendar } = await createTestCalendarWithClub()
     const secret = randomUUID()
-    const feed = await createFeed(calendar.id, {
-      visibility: FeedVisibility.PRIVATE,
-      secret,
-    })
+    const feed = await createFeed(calendar.id, { visibility: FeedVisibility.PRIVATE, secret })
     await createTestEvent(calendar.id, { isDraft: false })
-    const app = createApp()
-    const res = await app.request(`/api/feed/${feed.id}/ics?secret=${secret}`)
+    const res = await supertest(app.getHttpServer()).get(`/api/feed/${feed.id}/ics?secret=${secret}`)
     expect(res.status).toBe(200)
-    const body = await res.text()
-    expect(body).toContain('BEGIN:VCALENDAR')
+    expect(res.text).toContain('BEGIN:VCALENDAR')
   })
 
   it('excludes draft events from ICS', async () => {
@@ -85,18 +86,15 @@ describe('GET /api/feed/:feedId/ics', () => {
     const feed = await createFeed(calendar.id)
     await createTestEvent(calendar.id, { name: 'Draft Event', isDraft: true })
     await createTestEvent(calendar.id, { name: 'Published Event', isDraft: false })
-    const app = createApp()
-    const res = await app.request(`/api/feed/${feed.id}/ics`)
-    const body = await res.text()
-    expect(body).not.toContain('Draft Event')
-    expect(body).toContain('Published Event')
+    const res = await supertest(app.getHttpServer()).get(`/api/feed/${feed.id}/ics`)
+    expect(res.text).not.toContain('Draft Event')
+    expect(res.text).toContain('Published Event')
   })
 })
 
 describe('GET /api/feed/:feedId/events', () => {
   it('returns 404 for non-existent feed', async () => {
-    const app = createApp()
-    const res = await app.request('/api/feed/99999/events')
+    const res = await supertest(app.getHttpServer()).get('/api/feed/99999/events')
     expect(res.status).toBe(404)
   })
 
@@ -104,10 +102,9 @@ describe('GET /api/feed/:feedId/events', () => {
     const { calendar } = await createTestCalendarWithClub()
     const feed = await createFeed(calendar.id)
     await createTestEvent(calendar.id, { name: 'JSON Event', isDraft: false })
-    const app = createApp()
-    const res = await app.request(`/api/feed/${feed.id}/events`)
+    const res = await supertest(app.getHttpServer()).get(`/api/feed/${feed.id}/events`)
     expect(res.status).toBe(200)
-    const body = await res.json() as { feed: { name: string }; events: { name: string }[] }
+    const body = res.body as { feed: { name: string }; events: { name: string }[] }
     expect(body.feed.name).toBe('Test Feed')
     expect(body.events.some((e) => e.name === 'JSON Event')).toBe(true)
   })
@@ -115,8 +112,7 @@ describe('GET /api/feed/:feedId/events', () => {
   it('returns 403 for private feed without secret', async () => {
     const { calendar } = await createTestCalendarWithClub()
     const feed = await createFeed(calendar.id, { visibility: FeedVisibility.PRIVATE })
-    const app = createApp()
-    const res = await app.request(`/api/feed/${feed.id}/events`)
+    const res = await supertest(app.getHttpServer()).get(`/api/feed/${feed.id}/events`)
     expect(res.status).toBe(403)
   })
 
@@ -125,10 +121,9 @@ describe('GET /api/feed/:feedId/events', () => {
     const secret = randomUUID()
     const feed = await createFeed(calendar.id, { visibility: FeedVisibility.PRIVATE, secret })
     await createTestEvent(calendar.id, { isDraft: false })
-    const app = createApp()
-    const res = await app.request(`/api/feed/${feed.id}/events?secret=${secret}`)
+    const res = await supertest(app.getHttpServer()).get(`/api/feed/${feed.id}/events?secret=${secret}`)
     expect(res.status).toBe(200)
-    const body = await res.json() as { events: unknown[] }
+    const body = res.body as { events: unknown[] }
     expect(Array.isArray(body.events)).toBe(true)
   })
 })

@@ -82,6 +82,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @HttpCode(200)
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = req.cookies?.['refreshToken']
     if (!token) throw new UnauthorizedException('No refresh token')
@@ -90,6 +91,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @HttpCode(200)
   async logout(@Res({ passthrough: true }) res: Response) {
     clearRefreshCookie(res)
     return { ok: true }
