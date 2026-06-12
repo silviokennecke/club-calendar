@@ -8,9 +8,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { CalendarDays, Check, Plus } from 'lucide-react'
+import { CalendarDays, Check, Plus, Archive, ArchiveRestore, Copy } from 'lucide-react'
 
 interface Props { params: Promise<{ clubId: string }> }
+
+function formatArchivedAt(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+}
 
 export default function ClubPage({ params }: Props) {
   const { clubId } = use(params)
@@ -27,6 +31,7 @@ export default function ClubPage({ params }: Props) {
   const [confirmDeleteCalId, setConfirmDeleteCalId] = useState<number | null>(null)
   const [confirmDeleteClub, setConfirmDeleteClub] = useState(false)
   const [deletingClub, setDeletingClub] = useState(false)
+  const [duplicatingId, setDuplicatingId] = useState<number | null>(null)
 
   const { data: club } = useQuery<Club>({
     queryKey: ['club', clubId],
@@ -40,9 +45,12 @@ export default function ClubPage({ params }: Props) {
   })
 
   const { data: calendars = [] } = useQuery<Calendar[]>({
-    queryKey: ['calendars', clubId],
-    queryFn: () => apiGet<Calendar[]>(`/api/clubs/${clubId}/calendars`),
+    queryKey: ['calendars', clubId, 'all'],
+    queryFn: () => apiGet<Calendar[]>(`/api/clubs/${clubId}/calendars?includeArchived=true`),
   })
+
+  const activeCalendars = calendars.filter(c => !c.archivedAt)
+  const archivedCalendars = calendars.filter(c => !!c.archivedAt)
 
   async function handleSaveClubName() {
     if (!clubName.trim() || clubName === club?.name) return
@@ -75,7 +83,7 @@ export default function ClubPage({ params }: Props) {
   async function handleDeleteCalendar(calendarId: number) {
     await apiDelete(`/api/clubs/${clubId}/calendars/${calendarId}`)
     setConfirmDeleteCalId(null)
-    qc.invalidateQueries({ queryKey: ['calendars', clubId] })
+    qc.invalidateQueries({ queryKey: ['calendars', clubId, 'all'] })
   }
 
   async function handleCreateCalendar() {
@@ -83,8 +91,27 @@ export default function ClubPage({ params }: Props) {
     const cal = await apiPost<Calendar>(`/api/clubs/${clubId}/calendars`, { name: newCalName.trim() })
     setNewCalName('')
     setCalDialogOpen(false)
-    qc.invalidateQueries({ queryKey: ['calendars', clubId] })
+    qc.invalidateQueries({ queryKey: ['calendars', clubId, 'all'] })
     router.push(`/clubs/${clubId}/calendars/${cal.id}`)
+  }
+
+  async function handleArchive(calendarId: number) {
+    await apiPost(`/api/clubs/${clubId}/calendars/${calendarId}/archive`, {})
+    qc.invalidateQueries({ queryKey: ['calendars', clubId, 'all'] })
+  }
+
+  async function handleUnarchive(calendarId: number) {
+    await apiPost(`/api/clubs/${clubId}/calendars/${calendarId}/unarchive`, {})
+    qc.invalidateQueries({ queryKey: ['calendars', clubId, 'all'] })
+  }
+
+  async function handleDuplicate(calendarId: number) {
+    setDuplicatingId(calendarId)
+    try {
+      const newCal = await apiPost<Calendar>(`/api/clubs/${clubId}/calendars/${calendarId}/duplicate`, {})
+      qc.invalidateQueries({ queryKey: ['calendars', clubId, 'all'] })
+      router.push(`/clubs/${clubId}/calendars/${newCal.id}`)
+    } finally { setDuplicatingId(null) }
   }
 
   async function handleDeleteClub() {
@@ -96,6 +123,59 @@ export default function ClubPage({ params }: Props) {
     } finally { setDeletingClub(false) }
   }
 
+  function CalendarCard({ cal, archived = false }: { cal: Calendar; archived?: boolean }) {
+    if (confirmDeleteCalId === cal.id) {
+      return (
+        <div className="flex items-center justify-between px-4 py-3 bg-red-50 border-red-200 rounded-xl border">
+          <span className="text-sm text-red-700">Delete <strong>{cal.name}</strong>?</span>
+          <div className="flex gap-2 shrink-0">
+            <button onClick={() => handleDeleteCalendar(cal.id)} className="text-xs text-red-600 font-medium px-2 py-1 rounded hover:bg-red-100 transition-colors">Delete</button>
+            <button onClick={() => setConfirmDeleteCalId(null)} className="text-xs text-slate-500 px-2 py-1 rounded hover:bg-slate-100 transition-colors">Cancel</button>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className={`rounded-xl border bg-white overflow-hidden ${archived ? 'border-slate-100 opacity-70' : 'border-slate-200'}`}>
+        <div className="flex items-center gap-2 px-4 py-3 hover:bg-slate-50 transition-colors">
+          {archived ? (
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <CalendarDays className="w-4 h-4 shrink-0 text-slate-300" />
+              <div className="min-w-0">
+                <span className="text-sm font-medium text-slate-500 truncate block">{cal.name}</span>
+                <span className="text-xs text-slate-400">Archived · {formatArchivedAt(cal.archivedAt!)}</span>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => router.push(`/clubs/${clubId}/calendars/${cal.id}`)} className="flex items-center gap-3 flex-1 text-left min-w-0">
+              <CalendarDays className="w-4 h-4 shrink-0 text-slate-400" />
+              <span className="text-sm font-medium text-slate-900 truncate">{cal.name}</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-1 shrink-0">
+            {archived ? (
+              <button onClick={() => handleUnarchive(cal.id)} title="Unarchive" className="text-slate-400 hover:text-blue-500 p-1.5 rounded hover:bg-blue-50 transition-colors">
+                <ArchiveRestore className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <>
+                <button onClick={() => handleDuplicate(cal.id)} disabled={duplicatingId === cal.id} title="Duplicate" className="text-slate-400 hover:text-slate-600 p-1.5 rounded hover:bg-slate-100 transition-colors disabled:opacity-40">
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => handleArchive(cal.id)} title="Archive" className="text-slate-400 hover:text-amber-500 p-1.5 rounded hover:bg-amber-50 transition-colors">
+                  <Archive className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
+            <button onClick={() => setConfirmDeleteCalId(cal.id)} className="text-slate-400 hover:text-red-500 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors">Delete</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 max-w-lg">
       {/* Club name */}
@@ -104,11 +184,7 @@ export default function ClubPage({ params }: Props) {
         <div className="space-y-1.5">
           <Label>Name</Label>
           <div className="flex gap-2">
-            <Input
-              value={clubName}
-              onChange={e => setClubName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSaveClubName()}
-            />
+            <Input value={clubName} onChange={e => setClubName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveClubName()} />
             <Button size="sm" disabled={nameSaving || !clubName.trim() || clubName === club?.name} onClick={handleSaveClubName} className="gap-1.5">
               {nameSaved ? <><Check className="w-3.5 h-3.5" />Saved</> : nameSaving ? 'Saving…' : 'Save'}
             </Button>
@@ -119,18 +195,12 @@ export default function ClubPage({ params }: Props) {
       {/* Delete club */}
       <div className="mb-10">
         {!confirmDeleteClub ? (
-          <button onClick={() => setConfirmDeleteClub(true)} className="text-xs text-red-400 hover:text-red-600 underline">
-            Delete this club
-          </button>
+          <button onClick={() => setConfirmDeleteClub(true)} className="text-xs text-red-400 hover:text-red-600 underline">Delete this club</button>
         ) : (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
-            <p className="text-sm text-red-700 font-medium">
-              This permanently deletes <strong>{club?.name}</strong> including all calendars and events. This cannot be undone.
-            </p>
+            <p className="text-sm text-red-700 font-medium">This permanently deletes <strong>{club?.name}</strong> including all calendars and events. This cannot be undone.</p>
             <div className="flex gap-2">
-              <Button variant="destructive" size="sm" disabled={deletingClub} onClick={handleDeleteClub}>
-                {deletingClub ? 'Deleting…' : 'Delete club'}
-              </Button>
+              <Button variant="destructive" size="sm" disabled={deletingClub} onClick={handleDeleteClub}>{deletingClub ? 'Deleting…' : 'Delete club'}</Button>
               <Button variant="outline" size="sm" onClick={() => setConfirmDeleteClub(false)}>Cancel</Button>
             </div>
           </div>
@@ -140,12 +210,7 @@ export default function ClubPage({ params }: Props) {
       {/* Members */}
       <h2 className="text-base font-semibold text-slate-900 mb-4">Members</h2>
       <div className="flex gap-2 mb-3">
-        <Input
-          placeholder="user@example.com"
-          value={newMemberEmail}
-          onChange={e => setNewMemberEmail(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleAddMember()}
-        />
+        <Input placeholder="user@example.com" value={newMemberEmail} onChange={e => setNewMemberEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddMember()} />
         <Button size="sm" disabled={addingMember} onClick={handleAddMember}>Add</Button>
       </div>
       {memberError && <p className="text-sm text-red-500 mb-3">{memberError}</p>}
@@ -158,10 +223,7 @@ export default function ClubPage({ params }: Props) {
                 <p className="text-sm font-medium text-slate-900">{m.name}</p>
                 <p className="text-xs text-slate-500">{m.email}</p>
               </div>
-              <button onClick={() => handleRemoveMember(m.id)}
-                className="text-slate-400 hover:text-red-500 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors">
-                Remove
-              </button>
+              <button onClick={() => handleRemoveMember(m.id)} className="text-slate-400 hover:text-red-500 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors">Remove</button>
             </div>
           ))
         }
@@ -177,62 +239,26 @@ export default function ClubPage({ params }: Props) {
           <DialogContent>
             <DialogHeader><DialogTitle>Create Calendar</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
-              <Input
-                placeholder="Calendar name"
-                value={newCalName}
-                onChange={e => setNewCalName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleCreateCalendar()}
-                autoFocus
-              />
+              <Input placeholder="Calendar name" value={newCalName} onChange={e => setNewCalName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateCalendar()} autoFocus />
               <Button className="w-full" onClick={handleCreateCalendar}>Create</Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
+
       <div className="space-y-2">
-        {calendars.length === 0
-          ? <p className="text-sm text-slate-400 py-4">No calendars yet.</p>
-          : calendars.map(cal => (
-            <div key={cal.id} className="rounded-xl border bg-white border-slate-200 overflow-hidden">
-              {confirmDeleteCalId === cal.id ? (
-                <div className="flex items-center justify-between px-4 py-3 bg-red-50 border-red-200">
-                  <span className="text-sm text-red-700">Delete <strong>{cal.name}</strong>?</span>
-                  <div className="flex gap-2 shrink-0">
-                    <button
-                      onClick={() => handleDeleteCalendar(cal.id)}
-                      className="text-xs text-red-600 font-medium px-2 py-1 rounded hover:bg-red-100 transition-colors"
-                    >
-                      Delete
-                    </button>
-                    <button
-                      onClick={() => setConfirmDeleteCalId(null)}
-                      className="text-xs text-slate-500 px-2 py-1 rounded hover:bg-slate-100 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 px-4 py-3 hover:bg-slate-50 transition-colors">
-                  <button
-                    onClick={() => router.push(`/clubs/${clubId}/calendars/${cal.id}`)}
-                    className="flex items-center gap-3 flex-1 text-left min-w-0"
-                  >
-                    <CalendarDays className="w-4 h-4 shrink-0 text-slate-400" />
-                    <span className="text-sm font-medium text-slate-900 truncate">{cal.name}</span>
-                  </button>
-                  <button
-                    onClick={() => setConfirmDeleteCalId(cal.id)}
-                    className="text-slate-400 hover:text-red-500 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors shrink-0"
-                  >
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          ))
-        }
+        {activeCalendars.length === 0 && archivedCalendars.length === 0 && (
+          <p className="text-sm text-slate-400 py-4">No calendars yet.</p>
+        )}
+        {activeCalendars.map(cal => <CalendarCard key={cal.id} cal={cal} />)}
       </div>
+
+      {archivedCalendars.length > 0 && (
+        <div className="mt-6 space-y-2">
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Archived</p>
+          {archivedCalendars.map(cal => <CalendarCard key={cal.id} cal={cal} archived />)}
+        </div>
+      )}
     </div>
   )
 }
