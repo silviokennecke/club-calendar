@@ -23,7 +23,7 @@ const eventInclude = {
   targetGroups: { include: { targetGroup: true } },
 } as const
 
-export async function listEvents(calendarId: number, from?: string, to?: string) {
+export async function listEvents(calendarId: number, from?: string, to?: string, targetGroupIds?: number[]) {
   return prisma.event.findMany({
     where: {
       calendarId,
@@ -34,6 +34,9 @@ export async function listEvents(calendarId: number, from?: string, to?: string)
               ...(to ? { lte: new Date(to) } : {}),
             },
           }
+        : {}),
+      ...(targetGroupIds && targetGroupIds.length > 0
+        ? { targetGroups: { some: { targetGroupId: { in: targetGroupIds } } } }
         : {}),
     },
     include: eventInclude,
