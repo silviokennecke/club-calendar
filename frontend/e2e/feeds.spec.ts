@@ -25,7 +25,7 @@ test.describe('Feeds', () => {
   test('public feed shows ICS URL', async ({ page }) => {
     await goToFeeds(page)
     // ICS URL should contain the backend URL
-    await expect(page.getByText(/localhost:3001\/api\/feed/)).toBeVisible()
+    await expect(page.getByText(/localhost:3001\/api\/feed/).first()).toBeVisible()
   })
 
   test('private feed shows shared secret toggle', async ({ page }) => {

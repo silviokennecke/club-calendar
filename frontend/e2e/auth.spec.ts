@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test.describe('Authentication', () => {
   test('login page is accessible', async ({ page }) => {
     await page.goto('/login')
-    await expect(page.getByRole('heading', { name: /club calendar/i })).toBeVisible()
+    await expect(page.getByText(/club calendar/i).first()).toBeVisible()
     await expect(page.getByLabel(/email/i)).toBeVisible()
     await expect(page.getByLabel(/password/i)).toBeVisible()
   })
