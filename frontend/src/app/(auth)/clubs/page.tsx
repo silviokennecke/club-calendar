@@ -42,12 +42,6 @@ export default function ClubsPage() {
     if (!isLoading && clubs.length === 0) {
       setRedirected(true)
       router.replace('/setup')
-      return
-    }
-    // Has clubs but never completed calendar setup
-    if (!isLoading && clubs.length > 0 && !user?.lastCalendarId) {
-      setRedirected(true)
-      router.replace('/setup')
     }
   }, [user, clubs, isLoading, redirected, router])
 
