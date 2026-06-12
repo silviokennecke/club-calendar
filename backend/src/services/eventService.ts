@@ -4,9 +4,11 @@ import { notFound } from '../lib/errors.js'
 interface EventData {
   name: string
   timezone?: string | null
-  date: string // YYYY-MM-DD
-  timeBegin: string // HH:MM
-  timeEnd: string // HH:MM
+  date: string         // YYYY-MM-DD (start date)
+  dateEnd?: string | null  // YYYY-MM-DD (end date, null = same as date)
+  timeBegin: string    // HH:MM (ignored when isAllDay=true)
+  timeEnd: string      // HH:MM (ignored when isAllDay=true)
+  isAllDay?: boolean
   isDraft?: boolean
   locationId?: number | null
   eventTemplateId?: number | null
@@ -45,12 +47,13 @@ export async function listEvents(calendarId: number, from?: string, to?: string,
 }
 
 export async function createEvent(calendarId: number, data: EventData) {
-  const { propertyIds = [], featureIds = [], targetGroupIds = [], date, ...rest } = data
+  const { propertyIds = [], featureIds = [], targetGroupIds = [], date, dateEnd, ...rest } = data
   return prisma.event.create({
     data: {
       calendarId,
       ...rest,
       date: new Date(date),
+      dateEnd: dateEnd ? new Date(dateEnd) : null,
       properties: { create: propertyIds.map((propertyId) => ({ propertyId })) },
       features: { create: featureIds.map((featureId) => ({ featureId })) },
       targetGroups: { create: targetGroupIds.map((targetGroupId) => ({ targetGroupId })) },
@@ -119,8 +122,10 @@ export async function createSeriesFromTemplate(
 interface ImportEventData {
   name: string
   date: string          // YYYY-MM-DD
+  dateEnd?: string | null  // YYYY-MM-DD
   timeBegin: string     // HH:MM
   timeEnd: string       // HH:MM
+  isAllDay?: boolean
   timezone?: string | null
   isDraft?: boolean
   locationId?: number | null
@@ -131,12 +136,13 @@ interface ImportEventData {
 
 export async function importEvents(calendarId: number, events: ImportEventData[]) {
   return prisma.$transaction(
-    events.map(({ propertyIds = [], featureIds = [], targetGroupIds = [], date, ...rest }) =>
+    events.map(({ propertyIds = [], featureIds = [], targetGroupIds = [], date, dateEnd, ...rest }) =>
       prisma.event.create({
         data: {
           calendarId,
           ...rest,
           date: new Date(date),
+          dateEnd: dateEnd ? new Date(dateEnd) : null,
           properties: { create: propertyIds.map(propertyId => ({ propertyId })) },
           features: { create: featureIds.map(featureId => ({ featureId })) },
           targetGroups: { create: targetGroupIds.map(targetGroupId => ({ targetGroupId })) },
@@ -156,7 +162,7 @@ export async function getEvent(id: number, calendarId: number) {
 export async function updateEvent(id: number, calendarId: number, data: Partial<EventData>) {
   const existing = await prisma.event.findUnique({ where: { id } })
   if (!existing || existing.calendarId !== calendarId) throw notFound('Event not found')
-  const { propertyIds, featureIds, targetGroupIds, date, ...rest } = data
+  const { propertyIds, featureIds, targetGroupIds, date, dateEnd, ...rest } = data
   return prisma.$transaction(async (tx) => {
     if (propertyIds !== undefined) {
       await tx.eventProperty.deleteMany({ where: { eventId: id } })
@@ -172,7 +178,11 @@ export async function updateEvent(id: number, calendarId: number, data: Partial<
     }
     return tx.event.update({
       where: { id },
-      data: { ...rest, ...(date ? { date: new Date(date) } : {}) },
+      data: {
+        ...rest,
+        ...(date ? { date: new Date(date) } : {}),
+        ...(dateEnd !== undefined ? { dateEnd: dateEnd ? new Date(dateEnd) : null } : {}),
+      },
       include: eventInclude,
     })
   })

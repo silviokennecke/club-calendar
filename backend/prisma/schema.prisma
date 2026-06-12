@@ -168,8 +168,10 @@ model Event {
   name            String             @db.VarChar(255)
   timezone        String?            @db.VarChar(100)
   date            DateTime           @db.Date
+  dateEnd         DateTime?          @db.Date
   timeBegin       String             @db.VarChar(5)
   timeEnd         String             @db.VarChar(5)
+  isAllDay        Boolean            @default(false)
   isDraft         Boolean            @default(true)
   calendar        Calendar           @relation(fields: [calendarId], references: [id], onDelete: Cascade)
   template        EventTemplate?     @relation(fields: [eventTemplateId], references: [id], onDelete: SetNull)

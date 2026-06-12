@@ -1,0 +1,3 @@
+ALTER TABLE `Event`
+  ADD COLUMN `dateEnd` DATE NULL AFTER `date`,
+  ADD COLUMN `isAllDay` TINYINT(1) NOT NULL DEFAULT 0 AFTER `timeEnd`;
