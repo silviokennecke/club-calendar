@@ -27,7 +27,6 @@ export interface CalendarFeed {
   name: string
   visibility: 'PUBLIC' | 'PRIVATE'
   sharedSecret: string
-  isDraft: boolean
   targetGroups: { targetGroupId: number }[]
 }
 

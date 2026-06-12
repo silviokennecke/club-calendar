@@ -6,7 +6,6 @@ import type { CalendarFeed, TargetGroup } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
@@ -31,7 +30,6 @@ function feedWebUrl(feedId: number, secret?: string) {
 interface FeedFormData {
   name: string
   visibility: 'PUBLIC' | 'PRIVATE'
-  isDraft: boolean
   targetGroupIds: number[]
 }
 
@@ -50,14 +48,14 @@ export default function FeedsPage({ params }: Props) {
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingFeed, setEditingFeed] = useState<CalendarFeed | null>(null)
-  const [form, setForm] = useState<FeedFormData>({ name: '', visibility: 'PRIVATE', isDraft: false, targetGroupIds: [] })
+  const [form, setForm] = useState<FeedFormData>({ name: '', visibility: 'PRIVATE', targetGroupIds: [] })
   const [saving, setSaving] = useState(false)
   const [secretVisible, setSecretVisible] = useState<Record<number, boolean>>({})
   const [copied, setCopied] = useState<number | null>(null)
 
   function openCreate() {
     setEditingFeed(null)
-    setForm({ name: '', visibility: 'PRIVATE', isDraft: false, targetGroupIds: [] })
+    setForm({ name: '', visibility: 'PRIVATE', targetGroupIds: [] })
     setDialogOpen(true)
   }
 
@@ -66,7 +64,6 @@ export default function FeedsPage({ params }: Props) {
     setForm({
       name: feed.name,
       visibility: feed.visibility,
-      isDraft: feed.isDraft,
       targetGroupIds: feed.targetGroups.map(t => t.targetGroupId),
     })
     setDialogOpen(true)
@@ -142,7 +139,6 @@ export default function FeedsPage({ params }: Props) {
                       <Badge variant={feed.visibility === 'PUBLIC' ? 'default' : 'secondary'} className="text-xs">
                         {feed.visibility}
                       </Badge>
-                      {feed.isDraft && <Badge variant="outline" className="text-xs text-slate-500">Draft</Badge>}
                     </div>
                     {tgNames.length > 0 && (
                       <div className="flex gap-1 flex-wrap">
@@ -251,11 +247,6 @@ export default function FeedsPage({ params }: Props) {
                 ))}
               </div>
               {form.visibility === 'PRIVATE' && <p className="text-xs text-slate-400">A shared secret will be generated automatically.</p>}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Switch id="feed-draft" checked={!form.isDraft} onCheckedChange={v => setForm(f => ({ ...f, isDraft: !v }))} />
-              <Label htmlFor="feed-draft">Published {form.isDraft && <span className="text-xs text-slate-400">(draft — not accessible)</span>}</Label>
             </div>
 
             {targetGroups.length > 0 && (
