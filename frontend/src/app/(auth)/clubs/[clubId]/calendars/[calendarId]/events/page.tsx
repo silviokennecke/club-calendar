@@ -101,7 +101,7 @@ export default function EventsListPage({ params }: Props) {
   const publishedCount = allEvents.filter(e => !e.isDraft).length
 
   return (
-    <div className="p-6 max-w-5xl">
+    <div className="p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
         <h1 className="text-lg font-semibold text-slate-900">Events</h1>

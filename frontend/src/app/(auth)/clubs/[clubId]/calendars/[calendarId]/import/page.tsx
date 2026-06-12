@@ -352,7 +352,7 @@ export default function ImportPage({ params }: Props) {
   }
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="p-6">
       <div className="flex items-center gap-3 mb-6">
         <Link href={`/clubs/${clubId}/calendars/${calendarId}`} className="text-slate-400 hover:text-slate-600"><ChevronLeft className="w-4 h-4" /></Link>
         <h1 className="text-base font-semibold text-slate-900">Import Events from ICS</h1>
