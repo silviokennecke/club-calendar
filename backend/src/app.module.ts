@@ -9,10 +9,10 @@ import { PropertiesModule } from './properties/properties.module'
 import { FeaturesModule } from './features/features.module'
 import { TargetGroupsModule } from './target-groups/target-groups.module'
 import { LocationsModule } from './locations/locations.module'
-// import { TemplatesModule } from './templates/templates.module'
-// import { FeedsModule } from './feeds/feeds.module'
-// import { EventsModule } from './events/events.module'
-// import { FeedPublicModule } from './feed-public/feed-public.module'
+import { EventTemplatesModule } from './event-templates/event-templates.module'
+import { FeedsModule } from './feeds/feeds.module'
+import { EventsModule } from './events/events.module'
+import { PublicModule } from './public/public.module'
 
 @Module({
   imports: [
@@ -24,6 +24,10 @@ import { LocationsModule } from './locations/locations.module'
     FeaturesModule,
     TargetGroupsModule,
     LocationsModule,
+    EventTemplatesModule,
+    FeedsModule,
+    EventsModule,
+    PublicModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AppExceptionFilter },
