@@ -216,7 +216,7 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
   return (
     <>
       <Dialog open={open} onOpenChange={v => !v && onClose()}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[min(42rem,calc(100vw-2rem))] max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Edit Event' : 'New Event'}</DialogTitle>
           </DialogHeader>
@@ -245,10 +245,10 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
               {/* Recurrence rule */}
               <div className="space-y-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Recurrence Rule</Label>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="flex flex-wrap gap-1.5">
                   {(['weekly', 'biweekly', 'nth-weekday'] as RecurrenceMode[]).map(m => (
                     <button key={m} onClick={() => setRecMode(m)}
-                      className={`text-xs py-1.5 rounded border transition-colors ${recMode === m ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                      className={`text-xs px-3 py-1.5 rounded border transition-colors ${recMode === m ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
                       {m === 'weekly' ? 'Weekly' : m === 'biweekly' ? 'Bi-weekly' : 'Monthly Nth'}
                     </button>
                   ))}
