@@ -9,10 +9,10 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { CalendarDays, Plus } from 'lucide-react'
 
-interface Props { params: Promise<{ clubId: string; calendarId: string }> }
+interface Props { params: Promise<{ clubId: string }> }
 
 export default function ClubPage({ params }: Props) {
-  const { clubId, calendarId } = use(params)
+  const { clubId } = use(params)
   const qc = useQueryClient()
   const router = useRouter()
   const [newMemberEmail, setNewMemberEmail] = useState('')
@@ -118,17 +118,10 @@ export default function ClubPage({ params }: Props) {
             <button
               key={cal.id}
               onClick={() => router.push(`/clubs/${clubId}/calendars/${cal.id}`)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${
-                String(cal.id) === calendarId
-                  ? 'bg-blue-50 border-blue-200 text-blue-900'
-                  : 'bg-white border-slate-200 text-slate-900 hover:border-slate-300 hover:bg-slate-50'
-              }`}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left bg-white border-slate-200 text-slate-900 hover:border-slate-300 hover:bg-slate-50 transition-colors"
             >
-              <CalendarDays className={`w-4 h-4 shrink-0 ${String(cal.id) === calendarId ? 'text-blue-600' : 'text-slate-400'}`} />
+              <CalendarDays className="w-4 h-4 shrink-0 text-slate-400" />
               <span className="text-sm font-medium">{cal.name}</span>
-              {String(cal.id) === calendarId && (
-                <span className="ml-auto text-xs text-blue-500 font-medium">current</span>
-              )}
             </button>
           ))
         }

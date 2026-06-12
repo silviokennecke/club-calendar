@@ -42,10 +42,16 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
     queryFn: () => apiGet('/api/clubs'),
   })
 
-  const { data: calendars = [] } = useQuery<Calendar[]>({
+  const { data: calendars = [], isLoading: calendarsLoading } = useQuery<Calendar[]>({
     queryKey: ['calendars', clubId],
     queryFn: () => apiGet(`/api/clubs/${clubId}/calendars`),
   })
+
+  // If the current club has no calendars, send the user to setup to create one
+  useEffect(() => {
+    if (calendarsLoading || calendars.length > 0) return
+    router.replace('/setup')
+  }, [calendars, calendarsLoading, router])
 
   async function handleClubChange(newClubId: string) {
     if (newClubId === clubId) return
