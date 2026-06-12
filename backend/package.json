@@ -4,7 +4,7 @@
   "private": true,
   "main": "dist/main.js",
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "nest start --watch",
     "build": "tsc",
     "start": "node dist/main.js",
     "test": "vitest run",
@@ -35,6 +35,8 @@
     "seed": "tsx prisma/seed.ts"
   },
   "devDependencies": {
+    "@nestjs/cli": "^11.0.23",
+    "@nestjs/schematics": "^11.1.0",
     "@nestjs/testing": "^10.0.0",
     "@swc/core": "^1.15.41",
     "@types/bcryptjs": "^2.4.6",
