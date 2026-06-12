@@ -7,6 +7,7 @@ import { featureRoutes } from './features.js'
 import { targetGroupRoutes } from './targetGroups.js'
 import { locationRoutes } from './locations.js'
 import { templateRoutes } from './eventTemplates.js'
+import { feedRoutes } from './feeds.js'
 import { eventRoutes } from './events.js'
 import { publicRoutes } from './public.js'
 
@@ -21,5 +22,6 @@ routes.route('/api/calendars/:calendarId/features', featureRoutes)
 routes.route('/api/calendars/:calendarId/target-groups', targetGroupRoutes)
 routes.route('/api/calendars/:calendarId/locations', locationRoutes)
 routes.route('/api/calendars/:calendarId/templates', templateRoutes)
+routes.route('/api/calendars/:calendarId/feeds', feedRoutes)
 routes.route('/api/calendars/:calendarId/events', eventRoutes)
 routes.route('/api/feed', publicRoutes)
