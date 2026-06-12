@@ -6,13 +6,13 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventInput, EventClickArg, EventDropArg } from '@fullcalendar/core'
 import type { DateClickArg } from '@fullcalendar/interaction'
-import { apiGet, apiPatch } from '@/lib/api'
-import type { CalendarEvent, TargetGroup } from '@/lib/types'
+import { apiGet, apiPatch, apiPost } from '@/lib/api'
+import type { CalendarEvent, TargetGroup, Calendar } from '@/lib/types'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import EventModal from '@/components/calendar/EventModal'
 import Link from 'next/link'
-import { Plus, Upload, Search, X } from 'lucide-react'
+import { Plus, Upload, Search, X, ArchiveRestore } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 
 interface Props { params: Promise<{ clubId: string; calendarId: string }> }
@@ -36,6 +36,19 @@ export default function CalendarPage({ params }: Props) {
     queryKey: ['targetGroups', calendarId],
     queryFn: () => apiGet(`/api/calendars/${calendarId}/target-groups`),
   })
+
+  const { data: calendar, refetch: refetchCalendar } = useQuery<Calendar>({
+    queryKey: ['calendar', clubId, calendarId],
+    queryFn: () => apiGet<Calendar>(`/api/clubs/${clubId}/calendars/${calendarId}`),
+  })
+
+  const isArchived = !!calendar?.archivedAt
+
+  async function handleUnarchive() {
+    await apiPost(`/api/clubs/${clubId}/calendars/${calendarId}/unarchive`, {})
+    qc.invalidateQueries({ queryKey: ['calendars', clubId, 'all'] })
+    refetchCalendar()
+  }
 
   function toggleGroup(id: number) {
     setSelectedGroups(prev => {
@@ -168,6 +181,20 @@ export default function CalendarPage({ params }: Props) {
 
   return (
     <div className="p-6">
+      {isArchived && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between gap-4">
+          <p className="text-sm text-amber-800 font-medium">
+            This calendar is archived — it is read-only.
+          </p>
+          <button
+            onClick={handleUnarchive}
+            className="flex items-center gap-1.5 text-xs text-amber-700 font-medium hover:text-amber-900 whitespace-nowrap"
+          >
+            <ArchiveRestore className="w-3.5 h-3.5" />
+            Unarchive
+          </button>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
         <h1 className="text-lg font-semibold text-slate-900">Calendar</h1>
         <div className="flex items-center gap-2 flex-wrap">
