@@ -23,6 +23,8 @@ export class PublicService {
 
     if (!feed) throw notFound('Feed not found')
 
+    if (feed.calendar.archivedAt != null) throw notFound('Feed not found')
+
     if (feed.visibility === FeedVisibility.PRIVATE) {
       if (!secret || secret !== feed.sharedSecret) throw forbidden('Invalid secret')
     }
@@ -61,6 +63,8 @@ export class PublicService {
     })
 
     if (!feed) throw notFound('Feed not found')
+
+    if (feed.calendar.archivedAt != null) throw notFound('Feed not found')
 
     if (feed.visibility === FeedVisibility.PRIVATE) {
       if (!secret || secret !== feed.sharedSecret) throw forbidden('Invalid secret')
