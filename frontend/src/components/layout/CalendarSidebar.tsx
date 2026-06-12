@@ -54,8 +54,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
     if (cals.length > 0) {
       router.push(`/clubs/${newClubId}/calendars/${cals[0].id}`)
     } else {
-      // Club has no calendars — go to club page to create one
-      router.push(`/clubs/${newClubId}`)
+      router.push('/setup')
     }
   }
 
@@ -77,6 +76,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
     { label: 'Features', href: `${base}/settings/features`, icon: Tag },
     { label: 'Target Groups', href: `${base}/settings/target-groups`, icon: Users },
     { label: 'Locations', href: `${base}/settings/locations`, icon: MapPin },
+    { label: 'Club', href: `${base}/club`, icon: Users2 },
   ]
 
   function isActive(item: NavItem) {

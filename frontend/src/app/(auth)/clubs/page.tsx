@@ -8,7 +8,6 @@ import type { Club } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import Link from 'next/link'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 
 export default function ClubsPage() {
@@ -89,12 +88,10 @@ export default function ClubsPage() {
         </div>
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {clubs.map(club => (
-            <Link key={club.id} href={`/clubs/${club.id}`}>
-              <Card className="hover:shadow-md transition-all cursor-pointer border-slate-200 hover:border-blue-200">
-                <CardHeader className="pb-2"><CardTitle className="text-base">{club.name}</CardTitle></CardHeader>
-                <CardContent><p className="text-xs text-slate-500">{club.timezone}</p></CardContent>
-              </Card>
-            </Link>
+            <Card key={club.id} className="border-slate-200">
+              <CardHeader className="pb-2"><CardTitle className="text-base">{club.name}</CardTitle></CardHeader>
+              <CardContent><p className="text-xs text-slate-500">{club.timezone}</p></CardContent>
+            </Card>
           ))}
         </div>
       </div>
