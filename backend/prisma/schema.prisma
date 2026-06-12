@@ -105,6 +105,7 @@ model TargetGroup {
 model Location {
   id         Int             @id @default(autoincrement())
   calendarId Int
+  name       String?         @db.VarChar(255)
   address    String          @db.VarChar(500)
   latitude   Float?
   longitude  Float?

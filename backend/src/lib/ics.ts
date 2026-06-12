@@ -3,7 +3,7 @@ import { DateTime } from 'luxon'
 import type { Event, Location, Property, Feature, TargetGroup } from '@prisma/client'
 
 type EventWithRelations = Event & {
-  location: (Location & { latitude?: number | null; longitude?: number | null }) | null
+  location: (Location & { name?: string | null; latitude?: number | null; longitude?: number | null }) | null
   properties: { property: Property }[]
   features: { feature: Feature }[]
   targetGroups: { targetGroup: TargetGroup }[]
@@ -46,7 +46,7 @@ export function buildIcs(feedName: string, clubTimezone: string, events: EventWi
       summary,
       start,
       end,
-      location: ev.location?.address,
+      location: ev.location ? (ev.location.name ? `${ev.location.name} (${ev.location.address})` : ev.location.address) : undefined,
       description: buildDescription(ev) || undefined,
       ...(ev.location?.latitude != null && ev.location?.longitude != null
         ? { geo: { lat: ev.location.latitude, lon: ev.location.longitude } }

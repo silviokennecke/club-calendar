@@ -1,8 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Search } from 'lucide-react'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2lsdmlva2VubmVja2UiLCJhIjoiQmN4cXI4VSJ9.OAictxniq7_TyKwEV3b0qA'
@@ -19,7 +17,9 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const markerRef = useRef<mapboxgl.Marker | null>(null)
   const [searchQuery, setSearchQuery] = useState(address ?? '')
-  const [searching, setSearching] = useState(false)
+  const [suggestions, setSuggestions] = useState<{ place_name: string; center: [number, number] }[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Lazy-load mapbox-gl (client only)
   useEffect(() => {
@@ -84,40 +84,61 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
     }
   }
 
-  async function handleSearch() {
-    if (!searchQuery.trim()) return
-    setSearching(true)
+  async function fetchSuggestions(query: string) {
+    if (query.length < 3) { setSuggestions([]); return }
     try {
       const res = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=1`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&language=de&limit=5&types=address,place,poi`
       )
-      const data = await res.json() as { features: { center: [number, number]; place_name: string }[] }
-      if (data.features.length > 0) {
-        const [lng, lat] = data.features[0].center
-        const addr = data.features[0].place_name
-        mapRef.current?.flyTo({ center: [lng, lat], zoom: 15 })
-        markerRef.current?.setLngLat([lng, lat])
-        onPositionChange(lat, lng, addr)
-        setSearchQuery(addr)
-      }
-    } finally { setSearching(false) }
+      const data = await res.json() as { features: { place_name: string; center: [number, number] }[] }
+      setSuggestions(data.features)
+      setShowSuggestions(true)
+    } catch { setSuggestions([]) }
+  }
+
+  function handleInputChange(value: string) {
+    setSearchQuery(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => fetchSuggestions(value), 300)
+  }
+
+  function selectSuggestion(s: { place_name: string; center: [number, number] }) {
+    const [lng, lat] = s.center
+    setSearchQuery(s.place_name)
+    setShowSuggestions(false)
+    setSuggestions([])
+    mapRef.current?.flyTo({ center: [lng, lat], zoom: 15 })
+    markerRef.current?.setLngLat([lng, lat])
+    onPositionChange(lat, lng, s.place_name)
   }
 
   return (
     <div className="space-y-2">
-      <div className="flex gap-1.5">
+      <div className="relative">
         <Input
           value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSearch()}
+          onChange={e => handleInputChange(e.target.value)}
+          onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           placeholder="Search address..."
-          className="flex-1 h-8 text-sm"
+          className="w-full h-8 text-sm"
         />
-        <Button size="sm" variant="outline" disabled={searching} onClick={handleSearch} className="h-8 px-2">
-          <Search className="w-3.5 h-3.5" />
-        </Button>
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute z-50 top-full left-0 right-0 mt-0.5 bg-white border border-slate-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+            {suggestions.map((s, i) => (
+              <button
+                key={i}
+                type="button"
+                className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 truncate border-b border-slate-100 last:border-0"
+                onMouseDown={() => selectSuggestion(s)}
+              >
+                {s.place_name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-      <div ref={mapContainerRef} className="w-full h-48 rounded-lg border border-slate-200 overflow-hidden" />
+      <div ref={mapContainerRef} className="w-full h-56 rounded-lg border border-slate-200 overflow-hidden" />
       <p className="text-xs text-slate-400">Click map or drag marker to set position</p>
     </div>
   )

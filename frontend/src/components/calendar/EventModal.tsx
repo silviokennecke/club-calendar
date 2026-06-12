@@ -216,7 +216,7 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
   return (
     <>
       <Dialog open={open} onOpenChange={v => !v && onClose()}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isEditing ? 'Edit Event' : 'New Event'}</DialogTitle>
           </DialogHeader>
@@ -322,7 +322,11 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
                 <div className="flex gap-1.5">
                   <select className="flex-1 border border-slate-200 rounded-md px-3 py-2 text-sm" value={locationId} onChange={e => { setLocationId(e.target.value ? Number(e.target.value) : ''); setShowMap(false) }}>
                     <option value="">No location</option>
-                    {locations.map(l => <option key={l.id} value={l.id}>{l.address}</option>)}
+                    {locations.map(l => (
+                      <option key={l.id} value={l.id}>
+                        {l.name ? `${l.name} — ${l.address}` : l.address}
+                      </option>
+                    ))}
                   </select>
                   {locationId !== '' && (
                     <Button size="sm" variant="outline" className="h-9 px-2.5 text-xs" onClick={() => setShowMap(m => !m)}>

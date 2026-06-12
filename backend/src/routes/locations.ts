@@ -8,6 +8,7 @@ import { listLocations, createLocation, updateLocation, removeLocation } from '.
 export const locationRoutes = new Hono<{ Variables: { userId: number } }>()
 
 const locationSchema = z.object({
+  name: z.string().max(255).nullable().optional(),
   address: z.string().min(1).max(500),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),

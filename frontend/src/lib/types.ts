@@ -48,6 +48,7 @@ export interface TargetGroup {
 export interface Location {
   id: number
   calendarId: number
+  name?: string | null
   address: string
   latitude?: number | null
   longitude?: number | null
