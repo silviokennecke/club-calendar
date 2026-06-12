@@ -6,10 +6,10 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 function mapboxTransformRequest(url: string) {
-  if (url.startsWith('https://api.mapbox.com/')) {
+  if (url.startsWith('https://api.mapbox.com/') || url.startsWith('https://events.mapbox.com/')) {
     const u = new URL(url)
     u.searchParams.delete('access_token')
-    return { url: `${BACKEND_URL}/api/mapbox${u.pathname}?${u.searchParams}` }
+    return { url: `${BACKEND_URL}/api/mapbox/${u.hostname}${u.pathname}?${u.searchParams}` }
   }
   return { url }
 }
@@ -122,7 +122,7 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
     const fallback: GeocodedAddress = { displayName: `${lat.toFixed(5)}, ${lng.toFixed(5)}` }
     try {
       const res = await fetch(
-        `${BACKEND_URL}/api/mapbox/geocoding/v5/mapbox.places/${lng},${lat}.json?language=de`
+        `${BACKEND_URL}/api/mapbox/api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?language=de`
       )
       const data = await res.json() as { features: GeocodingFeature[] }
       const feature = data.features[0]
@@ -138,7 +138,7 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
     const proximityParam = center ? `&proximity=${center.lng},${center.lat}` : ''
     try {
       const res = await fetch(
-        `${BACKEND_URL}/api/mapbox/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?language=de&limit=6&types=address,place,poi,neighborhood,locality${proximityParam}`
+        `${BACKEND_URL}/api/mapbox/api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?language=de&limit=6&types=address,place,poi,neighborhood,locality${proximityParam}`
       )
       const data = await res.json() as { features: GeocodingFeature[] }
       setSuggestions(data.features)

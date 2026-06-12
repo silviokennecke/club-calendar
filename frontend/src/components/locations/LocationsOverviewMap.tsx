@@ -5,10 +5,10 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 function mapboxTransformRequest(url: string) {
-  if (url.startsWith('https://api.mapbox.com/')) {
+  if (url.startsWith('https://api.mapbox.com/') || url.startsWith('https://events.mapbox.com/')) {
     const u = new URL(url)
     u.searchParams.delete('access_token')
-    return { url: `${BACKEND_URL}/api/mapbox${u.pathname}?${u.searchParams}` }
+    return { url: `${BACKEND_URL}/api/mapbox/${u.hostname}${u.pathname}?${u.searchParams}` }
   }
   return { url }
 }

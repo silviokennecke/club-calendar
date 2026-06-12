@@ -69,7 +69,7 @@ function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
         {hasMap && (
           <div className="w-full h-36 bg-slate-100 overflow-hidden">
             <img
-              src={`${BASE}/api/mapbox/styles/v1/mapbox/streets-v12/static/pin-s+2563eb(${ev.location!.longitude},${ev.location!.latitude})/${ev.location!.longitude},${ev.location!.latitude},14,0/800x288`}
+              src={`${BASE}/api/mapbox/api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+2563eb(${ev.location!.longitude},${ev.location!.latitude})/${ev.location!.longitude},${ev.location!.latitude},14,0/800x288`}
               alt="Location map"
               className="w-full h-full object-cover"
             />
