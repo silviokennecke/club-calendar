@@ -1,1 +1,0 @@
-ALTER TABLE `Location` ADD COLUMN `name` VARCHAR(255) NULL AFTER `calendarId`;

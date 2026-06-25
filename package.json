@@ -9,11 +9,11 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev:backend": "npm run dev --workspace=backend",
     "dev:frontend": "npm run dev --workspace=frontend",
-    "test": "npm run test --workspace=backend",
-    "db:up": "docker compose up mysql mysql_test -d",
-    "db:migrate": "npm run db:migrate --workspace=backend"
+    "test": "composer test -d backend && npm run test --workspace=frontend",
+    "test:backend": "composer test -d backend",
+    "test:frontend": "npm run test --workspace=frontend",
+    "db:up": "docker compose up mysql mysql_test -d"
   },
   "devDependencies": {
     "wait-on": "^9.0.10"

@@ -1,13 +1,13 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { apiGet, apiPatch, clearAccessToken, setAccessToken } from './api'
+import { apiGet, apiPatch, clearTokens, storeTokens, getAccessToken } from './api'
 import type { User } from './types'
 
 interface AuthContextValue {
   user: User | null
   loading: boolean
-  login: (accessToken: string, user: User) => void
+  login: (accessToken: string, refreshToken: string, user: User) => void
   logout: () => void
   updateUser: (data: { lastClubId?: number | null; lastCalendarId?: number | null; dateFormat?: string; firstDayOfWeek?: number }) => Promise<void>
 }
@@ -19,25 +19,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? sessionStorage.getItem('accessToken') : null
+    const token = getAccessToken()
     if (!token) {
       setLoading(false)
       return
     }
-    setAccessToken(token)
     apiGet<User>('/api/auth/me')
       .then(setUser)
-      .catch(() => { clearAccessToken(); setUser(null) })
+      .catch(() => { clearTokens(); setUser(null) })
       .finally(() => setLoading(false))
   }, [])
 
-  const login = (accessToken: string, user: User) => {
-    setAccessToken(accessToken)
+  const login = (accessToken: string, refreshToken: string, user: User) => {
+    storeTokens(accessToken, refreshToken)
     setUser(user)
   }
 
   const logout = () => {
-    clearAccessToken()
+    clearTokens()
     setUser(null)
   }
 
