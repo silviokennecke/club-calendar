@@ -22,6 +22,10 @@ services:
             $appSecret: '%env(APP_SECRET)%'
             $appUrl:    '%env(FRONTEND_URL)%'
 
+    App\Controller\OAuthController:
+        arguments:
+            $frontendUrl: '%env(FRONTEND_URL)%'
+
     App\EventListener\ExceptionListener:
         tags:
             - { name: kernel.event_listener, event: kernel.exception, priority: 50 }
