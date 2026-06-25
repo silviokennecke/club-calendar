@@ -91,8 +91,8 @@ readonly class AuthService
 
     public function updateMe(User $user, array $data): array
     {
-        if (isset($data['dateFormat']))     $user->setDateFormat($data['dateFormat']);
-        if (isset($data['firstDayOfWeek'])) $user->setFirstDayOfWeek($data['firstDayOfWeek']);
+        if (array_key_exists('dateFormat', $data))     $user->setDateFormat($data['dateFormat']);
+        if (array_key_exists('firstDayOfWeek', $data)) $user->setFirstDayOfWeek($data['firstDayOfWeek']);
         if (array_key_exists('lastClubId', $data))     $user->setLastClubId($data['lastClubId']);
         if (array_key_exists('lastCalendarId', $data)) $user->setLastCalendarId($data['lastCalendarId']);
         $this->em->flush();
@@ -121,9 +121,14 @@ readonly class AuthService
         ]);
         if ($existing) {
             $oauthUser = $existing->getUser();
-            $this->em->remove($existing);
-            $this->em->flush();
-            return $this->tokens->tokenResponse($oauthUser);
+            // Only remove orphaned accounts (where getUser() is null)
+            if ($oauthUser === null) {
+                $this->em->remove($existing);
+                $this->em->flush();
+            } else {
+                // Valid OAuth account found, return tokens for the associated user
+                return $this->tokens->tokenResponse($oauthUser);
+            }
         }
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         if (!$user) {
