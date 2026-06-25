@@ -11,6 +11,10 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
+    App\Service\TokenService:
+        arguments:
+            $refreshSecret: '%env(JWT_REFRESH_SECRET)%'
+
     App\EventListener\ExceptionListener:
         tags:
             - { name: kernel.event_listener, event: kernel.exception, priority: 50 }
