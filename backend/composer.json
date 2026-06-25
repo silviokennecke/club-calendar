@@ -7,25 +7,26 @@
         "php": ">=8.4",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "doctrine/doctrine-bundle": "^3.2",
+        "doctrine/doctrine-bundle": "^3.2.4",
         "doctrine/doctrine-migrations-bundle": "^4.0",
-        "doctrine/orm": "^3.6",
+        "doctrine/orm": "^3.6.7",
         "eluceo/ical": "^2.16",
-        "knpuniversity/oauth2-client-bundle": "^2.20",
+        "knpuniversity/oauth2-client-bundle": "^2.20.2",
         "league/oauth2-google": "^5.0",
         "lexik/jwt-authentication-bundle": "^3.2",
         "stevenmaguire/oauth2-microsoft": "^2.2",
         "symfony/console": "8.1.*",
         "symfony/dotenv": "8.1.*",
-        "symfony/flex": "^2",
+        "symfony/flex": "^2.11",
         "symfony/framework-bundle": "8.1.*",
         "symfony/http-client": "8.1.*",
         "symfony/property-access": "8.1.*",
         "symfony/runtime": "8.1.*",
+        "symfony/security-bundle": "8.1.*",
         "symfony/serializer": "8.1.*",
         "symfony/validator": "8.1.*",
         "symfony/yaml": "8.1.*",
-        "web-auth/webauthn-lib": "^5.3"
+        "web-auth/webauthn-lib": "^5.3.5"
     },
     "config": {
         "allow-plugins": {
@@ -80,9 +81,10 @@
         }
     },
     "require-dev": {
-        "doctrine/doctrine-fixtures-bundle": "^4.3",
-        "phpunit/phpunit": "^13.2",
+        "doctrine/doctrine-fixtures-bundle": "^4.3.1",
+        "phpunit/phpunit": "^13.2.1",
         "symfony/browser-kit": "8.1.*",
-        "symfony/css-selector": "8.1.*"
+        "symfony/css-selector": "8.1.*",
+        "symfony/test-pack": "^1.2"
     }
 }
