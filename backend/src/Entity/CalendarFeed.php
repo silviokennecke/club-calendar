@@ -30,7 +30,7 @@ class CalendarFeed
     #[ORM\Column(length: 255, unique: true)]
     private string $sharedSecret;
 
-    #[ORM\OneToMany(targetEntity: CalendarFeedTargetGroup::class, mappedBy: 'feed', cascade: ['persist', 'remove'])]
+    #[ORM\OneToMany(targetEntity: CalendarFeedTargetGroup::class, mappedBy: 'feed', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $targetGroups;
 
     public function __construct()
