@@ -1,0 +1,16 @@
+knpu_oauth2_client:
+    clients:
+        google:
+            type: google
+            client_id: '%env(GOOGLE_CLIENT_ID)%'
+            client_secret: '%env(GOOGLE_CLIENT_SECRET)%'
+            redirect_route: oauth_callback
+            redirect_params: { provider: google }
+            use_state: false
+        microsoft:
+            type: microsoft
+            client_id: '%env(MICROSOFT_CLIENT_ID)%'
+            client_secret: '%env(MICROSOFT_CLIENT_SECRET)%'
+            redirect_route: oauth_callback
+            redirect_params: { provider: microsoft }
+            use_state: false

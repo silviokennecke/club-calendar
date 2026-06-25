@@ -4,26 +4,50 @@ export const BACKEND_URL = BASE_URL
 
 let accessToken: string | null = null
 
+export function storeTokens(newAccessToken: string, newRefreshToken: string) {
+  accessToken = newAccessToken
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('access_token', newAccessToken)
+    sessionStorage.setItem('refresh_token', newRefreshToken)
+  }
+}
+
 export function setAccessToken(token: string) {
   accessToken = token
   if (typeof window !== 'undefined') {
-    sessionStorage.setItem('accessToken', token)
+    sessionStorage.setItem('access_token', token)
   }
 }
 
 export function getAccessToken(): string | null {
   if (accessToken) return accessToken
   if (typeof window !== 'undefined') {
-    return sessionStorage.getItem('accessToken')
+    // Support both new key and old key for backward compatibility
+    return sessionStorage.getItem('access_token') ?? sessionStorage.getItem('accessToken')
   }
   return null
 }
 
-export function clearAccessToken() {
+export function getRefreshToken(): string | null {
+  if (typeof window !== 'undefined') {
+    return sessionStorage.getItem('refresh_token')
+  }
+  return null
+}
+
+export function clearTokens() {
   accessToken = null
   if (typeof window !== 'undefined') {
+    sessionStorage.removeItem('access_token')
+    sessionStorage.removeItem('refresh_token')
+    // Also remove old key in case it exists
     sessionStorage.removeItem('accessToken')
   }
+}
+
+/** @deprecated Use clearTokens() instead */
+export function clearAccessToken() {
+  clearTokens()
 }
 
 export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
@@ -34,21 +58,31 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  let res = await fetch(BASE_URL + path, { ...options, headers, credentials: 'include' })
+  let res = await fetch(BASE_URL + path, { ...options, headers })
 
   if (res.status === 401 && token) {
-    // Try token refresh
-    const refreshRes = await fetch(BASE_URL + '/api/auth/refresh', {
-      method: 'POST',
-      credentials: 'include',
-    })
-    if (refreshRes.ok) {
-      const data = await refreshRes.json() as { accessToken: string }
-      setAccessToken(data.accessToken)
-      headers['Authorization'] = `Bearer ${data.accessToken}`
-      res = await fetch(BASE_URL + path, { ...options, headers, credentials: 'include' })
+    // Try token refresh via OAuth2 form-encoded grant
+    const refreshToken = getRefreshToken()
+    if (refreshToken) {
+      const refreshRes = await fetch(BASE_URL + '/api/auth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+        }).toString(),
+      })
+      if (refreshRes.ok) {
+        const data = await refreshRes.json() as { access_token: string; refresh_token: string }
+        storeTokens(data.access_token, data.refresh_token)
+        headers['Authorization'] = `Bearer ${data.access_token}`
+        res = await fetch(BASE_URL + path, { ...options, headers })
+      } else {
+        clearTokens()
+        if (typeof window !== 'undefined') window.location.href = '/login'
+      }
     } else {
-      clearAccessToken()
+      clearTokens()
       if (typeof window !== 'undefined') window.location.href = '/login'
     }
   }

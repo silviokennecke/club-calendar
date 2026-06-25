@@ -1,0 +1,78 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Service;
+
+use App\Entity\Calendar;
+use App\Entity\Property;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+
+readonly class PropertyService
+{
+    public function __construct(private EntityManagerInterface $em) {}
+
+    public function list(Calendar $calendar): array
+    {
+        $items = $this->em->getRepository(Property::class)->findBy(['calendar' => $calendar]);
+
+        return array_map(fn (Property $p) => $this->serialize($p), $items);
+    }
+
+    public function create(Calendar $calendar, array $data): array
+    {
+        $property = new Property();
+        $property->setCalendar($calendar);
+        $property->setName($data['name']);
+        $property->setIcon($data['icon'] ?? null);
+
+        $this->em->persist($property);
+        $this->em->flush();
+
+        return $this->serialize($property);
+    }
+
+    public function update(int $id, Calendar $calendar, array $data): array
+    {
+        $property = $this->find($id, $calendar);
+
+        if (array_key_exists('name', $data)) {
+            $property->setName($data['name']);
+        }
+        if (array_key_exists('icon', $data)) {
+            $property->setIcon($data['icon']);
+        }
+
+        $this->em->flush();
+
+        return $this->serialize($property);
+    }
+
+    public function delete(int $id, Calendar $calendar): void
+    {
+        $property = $this->find($id, $calendar);
+        $this->em->remove($property);
+        $this->em->flush();
+    }
+
+    private function find(int $id, Calendar $calendar): Property
+    {
+        $property = $this->em->getRepository(Property::class)->find($id);
+        if (!$property || $property->getCalendar()->getId() !== $calendar->getId()) {
+            throw new NotFoundHttpException('Property not found');
+        }
+
+        return $property;
+    }
+
+    public function serialize(Property $property): array
+    {
+        return [
+            'id'         => $property->getId(),
+            'calendarId' => $property->getCalendar()->getId(),
+            'name'       => $property->getName(),
+            'icon'       => $property->getIcon(),
+        ];
+    }
+}
