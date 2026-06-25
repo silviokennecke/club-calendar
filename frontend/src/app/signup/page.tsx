@@ -27,8 +27,8 @@ export default function SignupPage() {
     if (password.length < 8) { setError('Password must be at least 8 characters'); return }
     setLoading(true)
     try {
-      const data = await apiPost<{ accessToken: string; user: User }>('/api/auth/register', { name, email, password })
-      login(data.accessToken, data.user)
+      const data = await apiPost<{ access_token: string; refresh_token: string; user: User }>('/api/auth/register', { name, email, password })
+      login(data.access_token, data.refresh_token, data.user)
       router.push('/clubs')
     } catch (e: unknown) {
       setError((e as Error).message ?? 'Registration failed')
