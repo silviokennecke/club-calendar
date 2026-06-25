@@ -4,7 +4,7 @@ framework:
     handle_all_throwables: true
     php_errors:
         log: true
-    session: true
+    session: false
 
 when@test:
     framework:
