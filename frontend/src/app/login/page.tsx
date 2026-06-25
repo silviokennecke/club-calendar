@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { apiPost, apiFetch, setAccessToken, BACKEND_URL } from '@/lib/api'
+import { apiPost, apiFetch, BACKEND_URL } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import type { User } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -47,8 +47,8 @@ export default function LoginPage() {
     e.preventDefault()
     setError(''); setLoading(true)
     try {
-      const data = await apiPost<{ accessToken: string; user: User }>('/api/auth/login', { email, password })
-      login(data.accessToken, data.user)
+      const data = await apiPost<{ access_token: string; refresh_token: string; user: User }>('/api/auth/login', { email, password })
+      login(data.access_token, data.refresh_token, data.user)
       router.push('/clubs')
     } catch {
       setError('Invalid email or password')
@@ -71,8 +71,8 @@ export default function LoginPage() {
         body: JSON.stringify({ challengeToken, response }),
       })
       if (!verifyRes.ok) { setError('Passkey login failed'); return }
-      const data = await verifyRes.json() as { accessToken: string; user: User }
-      login(data.accessToken, data.user)
+      const data = await verifyRes.json() as { access_token: string; refresh_token: string; user: User }
+      login(data.access_token, data.refresh_token, data.user)
       router.push('/clubs')
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : ''

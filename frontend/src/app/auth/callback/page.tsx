@@ -1,7 +1,7 @@
 'use client'
 import { Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { setAccessToken, apiGet } from '@/lib/api'
+import { storeTokens, apiGet } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import type { User } from '@/lib/types'
 
@@ -12,6 +12,7 @@ function CallbackInner() {
 
   useEffect(() => {
     const token = searchParams.get('token')
+    const refreshToken = searchParams.get('refresh_token')
     const error = searchParams.get('error')
 
     if (error) {
@@ -22,11 +23,16 @@ function CallbackInner() {
       router.replace('/login')
       return
     }
-    // Store token then fetch user info
-    setAccessToken(token)
+    // Store both tokens then fetch user info
+    if (refreshToken) {
+      storeTokens(token, refreshToken)
+    } else {
+      // Fallback: store only access token if no refresh token provided
+      storeTokens(token, '')
+    }
     apiGet<User>('/api/auth/me')
       .then(user => {
-        login(token, user)
+        login(token, refreshToken ?? '', user)
         router.replace('/clubs')
       })
       .catch(() => router.replace('/login?error=oauth_failed'))
