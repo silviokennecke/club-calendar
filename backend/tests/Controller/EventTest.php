@@ -6,8 +6,6 @@ namespace App\Tests\Controller;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
-use DateMalformedStringException;
-use Doctrine\DBAL\Exception as DBALException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -29,11 +27,9 @@ class EventTest extends WebTestCase
         self::$tokens = $container->get(TokenService::class);
     }
 
-    /**
-     * @throws DBALException
-     */
     protected function setUp(): void
     {
+        self::$em = static::getContainer()->get(EntityManagerInterface::class);
         DatabaseResetter::reset(self::$em);
     }
 

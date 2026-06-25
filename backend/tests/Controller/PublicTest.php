@@ -9,7 +9,6 @@ use App\Enum\FeedVisibility;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
 use DateMalformedStringException;
-use Doctrine\DBAL\Exception as DBALException;
 use Random\RandomException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -30,11 +29,9 @@ class PublicTest extends WebTestCase
         self::$hasher = $container->get(UserPasswordHasherInterface::class);
     }
 
-    /**
-     * @throws DBALException
-     */
     protected function setUp(): void
     {
+        self::$em = static::getContainer()->get(EntityManagerInterface::class);
         DatabaseResetter::reset(self::$em);
     }
 

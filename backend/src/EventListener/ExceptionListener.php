@@ -6,6 +6,8 @@ namespace App\EventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Validator\ConstraintViolationListInterface;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
 
@@ -15,26 +17,32 @@ class ExceptionListener
     {
         $exception = $event->getThrowable();
 
-        // Unwrap ValidationFailedException to get ConstraintViolationList
         if ($exception instanceof ValidationFailedException) {
             $violations = $exception->getViolations();
             $detail = $this->formatViolations($violations);
-            $response = $this->problemResponse(422, 'Unprocessable Entity', $detail);
-            $event->setResponse($response);
+            $event->setResponse($this->problemResponse(422, 'Unprocessable Entity', $detail));
             return;
         }
 
         if ($exception instanceof HttpExceptionInterface) {
             $status = $exception->getStatusCode();
-            $title = $this->statusTitle($status);
-            $response = $this->problemResponse($status, $title, $exception->getMessage());
-            $event->setResponse($response);
+            $event->setResponse($this->problemResponse($status, $this->statusTitle($status), $exception->getMessage()));
+            return;
+        }
+
+        // Symfony security exceptions not wrapped in HttpException
+        if ($exception instanceof AccessDeniedException) {
+            $event->setResponse($this->problemResponse(403, 'Forbidden', $exception->getMessage()));
+            return;
+        }
+
+        if ($exception instanceof AuthenticationException) {
+            $event->setResponse($this->problemResponse(401, 'Unauthorized', $exception->getMessage()));
             return;
         }
 
         // Unknown exception: 500
-        $response = $this->problemResponse(500, 'Internal Server Error', 'An unexpected error occurred.');
-        $event->setResponse($response);
+        $event->setResponse($this->problemResponse(500, 'Internal Server Error', 'An unexpected error occurred.'));
     }
 
     private function problemResponse(int $status, string $title, string $detail): JsonResponse
