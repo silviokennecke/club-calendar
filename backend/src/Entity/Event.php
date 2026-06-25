@@ -34,11 +34,11 @@ class Event
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $timezone = null;
 
-    #[ORM\Column(type: 'date')]
-    private \DateTimeInterface $date;
+    #[ORM\Column(type: 'date_immutable')]
+    private \DateTimeImmutable $date;
 
-    #[ORM\Column(type: 'date', nullable: true)]
-    private ?\DateTimeInterface $dateEnd = null;
+    #[ORM\Column(type: 'date_immutable', nullable: true)]
+    private ?\DateTimeImmutable $dateEnd = null;
 
     #[ORM\Column(length: 5)]
     private string $timeBegin;
@@ -133,24 +133,24 @@ class Event
         return $this;
     }
 
-    public function getDate(): \DateTimeInterface
+    public function getDate(): \DateTimeImmutable
     {
         return $this->date;
     }
 
-    public function setDate(\DateTimeInterface $date): static
+    public function setDate(\DateTimeImmutable $date): static
     {
         $this->date = $date;
 
         return $this;
     }
 
-    public function getDateEnd(): ?\DateTimeInterface
+    public function getDateEnd(): ?\DateTimeImmutable
     {
         return $this->dateEnd;
     }
 
-    public function setDateEnd(?\DateTimeInterface $dateEnd): static
+    public function setDateEnd(?\DateTimeImmutable $dateEnd): static
     {
         $this->dateEnd = $dateEnd;
 
