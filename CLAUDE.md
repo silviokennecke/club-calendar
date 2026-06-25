@@ -4,16 +4,23 @@ A web app for clubs to manage and publish event calendars.
 
 ## Stack
 
-- **Runtime:** Node.js v22, TypeScript
-- **Backend:** NestJS (modular framework with DI)
-- **Database:** Prisma ORM + MySQL 8
+- **Runtime (backend):** PHP 8.4
+- **Backend:** Symfony 8.1 (attribute routing, autowiring)
+- **ORM:** Doctrine ORM (attribute mapping, UnderscoreNamingStrategy)
+- **DB migrations:** `doctrine/migrations`
+- **JWT:** `lexik/jwt-authentication-bundle` (RSA keys)
+- **OAuth SSO:** `knpuniversity/oauth2-client-bundle` + league providers
+- **WebAuthn:** `web-auth/webauthn-lib`
+- **ICS generation:** `eluceo/ical`
+- **Validation:** `symfony/validator` (DTO constraints)
+- **Tests:** PHPUnit 11 + `symfony/test-pack`
+- **Runtime (frontend):** Node.js v22, TypeScript
 - **Frontend:** Next.js 15, Tailwind CSS + shadcn/ui, FullCalendar
-- **Utilities:** ical-generator (ICS export), Luxon (date/time)
+- **Database:** MySQL 8
 
 ## Monorepo Structure
 
-npm workspaces:
-- `backend/` — NestJS API server (port 3001)
+- `backend/` — Symfony API server (port 3001)
 - `frontend/` — Next.js app (port 3000)
 
 ## Dev Setup
@@ -22,18 +29,24 @@ npm workspaces:
 # 1. Start databases
 docker compose up mysql mysql_test -d
 
-# 2. Install dependencies
-npm install
+# 2. Install PHP dependencies
+cd backend && composer install
 
 # 3. Run migrations
-cd backend && npx prisma migrate dev
+php bin/console doctrine:migrations:migrate
+
+# 4. Load seed fixtures (optional)
+php bin/console doctrine:fixtures:load
+
+# 5. Install frontend dependencies (from repo root)
+npm install
 ```
 
 ## Running
 
 ```bash
 # Backend (port 3001)
-npm run dev:backend
+symfony serve --port=3001 -d
 
 # Frontend (port 3000)
 npm run dev:frontend
@@ -42,16 +55,23 @@ npm run dev:frontend
 ## Tests
 
 ```bash
+# Backend (PHPUnit — requires MySQL test DB on port 3360)
+cd backend && composer test
+
+# Frontend (Vitest)
+npm test -w frontend
+
+# All
 npm test
 ```
 
-Tests run against a real MySQL instance on port 3360 (`club_calendar_test` database). Uses Vitest with `singleFork` pool so migrations are applied once per run.
+Tests run against a real MySQL instance on port 3360 (`club_calendar_test` database). The root `npm test` script runs PHPUnit then Vitest.
 
 ## Working Rules
 
 1. **Commit after every feature or fix** — create a git commit as soon as an implementation task is complete, before moving to the next task.
 2. **Keep CLAUDE.md and AGENTS.md up to date** — update these files whenever the stack, architecture, or module structure changes.
-3. **Write tests** — add unit, integration, or E2E tests for every backend feature. Backend integration tests use Vitest + supertest (`src/routes/*.test.ts`). E2E tests use Playwright (`frontend/e2e/`).
+3. **Write tests** — add PHPUnit integration tests for every backend feature (`tests/Controller/*.php`). E2E tests use Playwright (`frontend/e2e/`).
 
 ## Domain Concepts
 
@@ -67,8 +87,11 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 
 ## Auth
 
-- JWT-based: short-lived access token stored in `sessionStorage`, long-lived refresh token in an `httpOnly` cookie
-- Secrets: `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (set in `backend/.env`)
+- OAuth2-compliant: short-lived access token (15 min) + long-lived refresh token (7 days), both in `sessionStorage`
+- No cookies. Frontend owns both tokens.
+- Refresh: `POST /api/auth/token` (form-encoded: `grant_type=refresh_token&refresh_token=<token>`)
+- Keys: RSA keypair in `backend/config/jwt/` (gitignored); `JWT_REFRESH_SECRET` for HMAC refresh tokens
+- OAuth SSO: Google + Microsoft (redirect → callback → `{FRONTEND_URL}/auth/callback?token=X&refresh_token=Y`)
 
 ## ICS Feed Endpoint
 
