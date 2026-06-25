@@ -15,6 +15,13 @@ services:
         arguments:
             $refreshSecret: '%env(JWT_REFRESH_SECRET)%'
 
+    App\Service\WebAuthnService:
+        arguments:
+            $rpId:      '%env(WEBAUTHN_RP_ID)%'
+            $rpName:    '%env(WEBAUTHN_RP_NAME)%'
+            $appSecret: '%env(APP_SECRET)%'
+            $appUrl:    '%env(FRONTEND_URL)%'
+
     App\EventListener\ExceptionListener:
         tags:
             - { name: kernel.event_listener, event: kernel.exception, priority: 50 }
