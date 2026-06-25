@@ -45,7 +45,7 @@ npm run dev:frontend
 npm test
 ```
 
-Tests run against a real MySQL instance on port 3307 (`club_calendar_test` database). Uses Vitest with `singleFork` pool so migrations are applied once per run.
+Tests run against a real MySQL instance on port 3360 (`club_calendar_test` database). Uses Vitest with `singleFork` pool so migrations are applied once per run.
 
 ## Working Rules
 

@@ -52,4 +52,4 @@ The backend (`backend/`) uses NestJS with the following module layout:
 
 Tests use `@nestjs/testing` + `supertest`. Test files are in `src/routes/`. Shared helpers are in `src/test/helpers.ts`.
 
-Run: `npm test` (requires MySQL test DB on port 3307)
+Run: `npm test` (requires MySQL test DB on port 3360)

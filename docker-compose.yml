@@ -17,7 +17,7 @@ services:
   mysql_test:
     image: mysql:8.0
     ports:
-      - "3307:3306"
+      - "3360:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: club_calendar_test
