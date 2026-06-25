@@ -52,13 +52,13 @@ class Event
     #[ORM\Column]
     private bool $isDraft = true;
 
-    #[ORM\OneToMany(targetEntity: EventProperty::class, mappedBy: 'event', cascade: ['persist', 'remove'])]
+    #[ORM\OneToMany(targetEntity: EventProperty::class, mappedBy: 'event', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $properties;
 
-    #[ORM\OneToMany(targetEntity: EventFeature::class, mappedBy: 'event', cascade: ['persist', 'remove'])]
+    #[ORM\OneToMany(targetEntity: EventFeature::class, mappedBy: 'event', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $features;
 
-    #[ORM\OneToMany(targetEntity: EventTargetGroup::class, mappedBy: 'event', cascade: ['persist', 'remove'])]
+    #[ORM\OneToMany(targetEntity: EventTargetGroup::class, mappedBy: 'event', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $targetGroups;
 
     public function __construct()

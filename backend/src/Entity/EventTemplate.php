@@ -39,13 +39,13 @@ class EventTemplate
     #[ORM\OneToMany(targetEntity: Event::class, mappedBy: 'template')]
     private Collection $events;
 
-    #[ORM\OneToMany(targetEntity: EventTemplateProperty::class, mappedBy: 'template', cascade: ['persist', 'remove'])]
+    #[ORM\OneToMany(targetEntity: EventTemplateProperty::class, mappedBy: 'template', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $properties;
 
-    #[ORM\OneToMany(targetEntity: EventTemplateFeature::class, mappedBy: 'template', cascade: ['persist', 'remove'])]
+    #[ORM\OneToMany(targetEntity: EventTemplateFeature::class, mappedBy: 'template', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $features;
 
-    #[ORM\OneToMany(targetEntity: EventTemplateTargetGroup::class, mappedBy: 'template', cascade: ['persist', 'remove'])]
+    #[ORM\OneToMany(targetEntity: EventTemplateTargetGroup::class, mappedBy: 'template', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $targetGroups;
 
     public function __construct()
