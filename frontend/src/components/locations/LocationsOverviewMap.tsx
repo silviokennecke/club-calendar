@@ -9,7 +9,9 @@ function mapboxTransformRequest(url: string) {
   if (url.startsWith(mapboxApiUrlPlaceholder)) {
     const u = new URL(url)
     u.searchParams.delete('access_token')
-    return { url: `${BACKEND_URL}/api/mapbox/${u.pathname}?${u.searchParams}` }
+    const pathname = u.pathname.replace(/^\/*([^\/].*)$/, '$1');
+    const newUrl = `${BACKEND_URL}/api/mapbox/${pathname}?${u.searchParams}`;
+    return { url: newUrl }
   }
   return { url }
 }
@@ -44,7 +46,9 @@ export default function LocationsOverviewMap({ locations, selectedId, onSelect, 
     import('mapbox-gl').then(({ default: mapboxgl }) => {
       mapboxgl.accessToken = 'pk.proxy'
       const baseUrl = new URL(mapboxgl.baseApiUrl ?? 'https://api.mapbox.com')
-      mapboxgl.baseApiUrl = `https://dummy/${baseUrl.hostname}`
+      if (!baseUrl.toString().startsWith(mapboxApiUrlPlaceholder)) {
+        mapboxgl.baseApiUrl = `${mapboxApiUrlPlaceholder}/${baseUrl.hostname}`
+      }
 
       map = new mapboxgl.Map({
         container: mapContainerRef.current!,
