@@ -5,7 +5,6 @@ namespace App\Controller;
 
 use App\Service\AuthService;
 use Exception;
-use InvalidArgumentException;
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
 use RuntimeException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -25,20 +24,17 @@ class OAuthController extends AbstractController
     #[Route('/{provider}', name: 'oauth_redirect', methods: ['GET'])]
     public function start(string $provider): Response
     {
-        if (!in_array($provider, ['google', 'microsoft'], true)) {
+        try {
+            return $this->clientRegistry->getClient($provider)->redirect([], []);
+        } catch (\InvalidArgumentException) {
             return new Response('Unknown provider', 400);
         }
-        return $this->clientRegistry->getClient($provider)->redirect([], []);
     }
 
     #[Route('/{provider}/callback', name: 'oauth_callback', methods: ['GET', 'POST'])]
     public function callback(string $provider): Response
     {
         try {
-            if (!in_array($provider, ['google', 'microsoft'], true)) {
-                throw new InvalidArgumentException("Unknown provider: $provider");
-            }
-
             $client = $this->clientRegistry->getClient($provider);
             $resourceOwner = $client->fetchUser();
 

@@ -1,16 +1,46 @@
 knpu_oauth2_client:
     clients:
         google:
-            type: google
+            type: generic
+            provider_class: App\OAuth\OidcProvider
             client_id: '%env(GOOGLE_CLIENT_ID)%'
             client_secret: '%env(GOOGLE_CLIENT_SECRET)%'
             redirect_route: oauth_callback
             redirect_params: { provider: google }
             use_state: false
+            provider_options:
+                urlAuthorize: 'https://accounts.google.com/o/oauth2/v2/auth'
+                urlAccessToken: 'https://oauth2.googleapis.com/token'
+                urlResourceOwnerDetails: 'https://openidconnect.googleapis.com/v1/userinfo'
+                scopes: ['openid', 'email', 'profile']
+                scopeSeparator: ' '
         microsoft:
-            type: microsoft
+            type: generic
+            provider_class: App\OAuth\OidcProvider
             client_id: '%env(MICROSOFT_CLIENT_ID)%'
             client_secret: '%env(MICROSOFT_CLIENT_SECRET)%'
             redirect_route: oauth_callback
             redirect_params: { provider: microsoft }
             use_state: false
+            provider_options:
+                urlAuthorize: '%microsoft_oidc_authorize_url%'
+                urlAccessToken: '%microsoft_oidc_token_url%'
+                urlResourceOwnerDetails: 'https://graph.microsoft.com/oidc/userinfo'
+                scopes: ['openid', 'email', 'profile']
+                scopeSeparator: ' '
+        apple:
+            type: generic
+            provider_class: App\OAuth\OidcProvider
+            client_id: '%env(APPLE_CLIENT_ID)%'
+            client_secret: '%env(APPLE_CLIENT_SECRET)%'
+            redirect_route: oauth_callback
+            redirect_params: { provider: apple }
+            use_state: false
+            provider_options:
+                urlAuthorize: 'https://appleid.apple.com/auth/authorize'
+                urlAccessToken: 'https://appleid.apple.com/auth/token'
+                urlResourceOwnerDetails: ''
+                scopes: ['openid', 'email', 'name']
+                scopeSeparator: ' '
+                defaultAuthorizationParams:
+                    response_mode: form_post
