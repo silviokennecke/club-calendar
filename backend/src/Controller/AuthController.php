@@ -8,6 +8,8 @@ use App\Dto\Auth\RegisterDto;
 use App\Dto\Auth\UpdateMeDto;
 use App\Security\CurrentUserResolver;
 use App\Service\AuthService;
+use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,6 +27,9 @@ class AuthController extends AbstractApiController
         private readonly CurrentUserResolver $userResolver,
         private readonly ValidatorInterface $validator,
         private readonly SerializerInterface $serializer,
+        private readonly ClientRegistry $clientRegistry,
+        #[Autowire(param: 'knpu_oauth2_client.providers_meta')]
+        private readonly array $providersMeta,
     ) {}
 
     #[Route('/register', methods: ['POST'])]
@@ -101,19 +106,19 @@ class AuthController extends AbstractApiController
     #[Route('/providers', methods: ['GET'])]
     public function providers(): JsonResponse
     {
-        $all = [
-            'google'    => ['name' => 'Google',    'icon' => 'google',    'envKey' => 'GOOGLE_CLIENT_ID',    'envSecret' => 'GOOGLE_CLIENT_SECRET'],
-            'microsoft' => ['name' => 'Microsoft', 'icon' => 'microsoft', 'envKey' => 'MICROSOFT_CLIENT_ID', 'envSecret' => 'MICROSOFT_CLIENT_SECRET'],
-            'apple'     => ['name' => 'Apple',     'icon' => 'apple',     'envKey' => 'APPLE_CLIENT_ID',     'envSecret' => 'APPLE_CLIENT_SECRET'],
-        ];
-
-        $enabled = [];
-        foreach ($all as $id => $meta) {
-            if (!empty($_ENV[$meta['envKey']]) && !empty($_ENV[$meta['envSecret']])) {
-                $enabled[] = ['id' => $id, 'name' => $meta['name'], 'icon' => $meta['icon']];
+        $result = [];
+        foreach ($this->clientRegistry->getEnabledClientKeys() as $id) {
+            $envPrefix = strtoupper($id);
+            if (empty($_ENV["{$envPrefix}_CLIENT_ID"]) || empty($_ENV["{$envPrefix}_CLIENT_SECRET"])) {
+                continue;
             }
+            $meta     = $this->providersMeta[$id] ?? [];
+            $result[] = [
+                'id'   => $id,
+                'name' => $meta['label'] ?? ucfirst($id),
+                'icon' => $meta['icon']  ?? $id,
+            ];
         }
-
-        return new JsonResponse($enabled);
+        return new JsonResponse($result);
     }
 }
