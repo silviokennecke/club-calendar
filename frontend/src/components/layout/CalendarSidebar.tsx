@@ -1,7 +1,5 @@
-'use client'
 import { useEffect, useRef } from 'react'
-import Link from 'next/link'
-import { useRouter, usePathname } from 'next/navigation'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiGet } from '@/lib/api'
 import type { Calendar, Club } from '@/lib/types'
@@ -22,8 +20,9 @@ interface NavItem {
 }
 
 export default function CalendarSidebar({ clubId, calendarId }: Props) {
-  const pathname = usePathname()
-  const router = useRouter()
+  const location = useLocation()
+  const pathname = location.pathname
+  const navigate = useNavigate()
   const { logout, updateUser } = useAuth()
   const trackedRef = useRef<string>('')
 
@@ -50,23 +49,22 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
   // If the current club has no calendars, send the user to setup to create one
   useEffect(() => {
     if (calendarsLoading || calendars.length > 0) return
-    router.replace(`/setup?clubId=${clubId}`)
-  }, [calendars, calendarsLoading, router, clubId])
+    navigate(`/setup?clubId=${clubId}`, { replace: true })
+  }, [calendars, calendarsLoading, navigate, clubId])
 
   async function handleClubChange(newClubId: string) {
     if (newClubId === clubId) return
-    // Fetch calendars for new club and navigate to first one
     const cals = await apiGet<Calendar[]>(`/api/clubs/${newClubId}/calendars`)
     if (cals.length > 0) {
-      router.push(`/clubs/${newClubId}/calendars/${cals[0].id}`)
+      navigate(`/clubs/${newClubId}/calendars/${cals[0].id}`)
     } else {
-      router.push('/setup')
+      navigate('/setup')
     }
   }
 
   function handleCalendarChange(newCalendarId: string) {
     if (newCalendarId === calendarId) return
-    router.push(`/clubs/${clubId}/calendars/${newCalendarId}`)
+    navigate(`/clubs/${clubId}/calendars/${newCalendarId}`)
   }
 
   const mainNav: NavItem[] = [
@@ -138,7 +136,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
       <nav className="p-2 flex-1">
         <div className="space-y-0.5">
           {mainNav.map(item => (
-            <Link key={item.href} href={item.href}
+            <Link key={item.href} to={item.href}
               className={cn('flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors',
                 isActive(item) ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')}>
               <item.icon className="w-4 h-4 shrink-0" />{item.label}
@@ -150,7 +148,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
           <p className="px-3 py-1.5 text-xs font-medium text-slate-400 uppercase tracking-wider">Settings</p>
           <div className="space-y-0.5">
             {settingsNav.map(item => (
-              <Link key={item.href} href={item.href}
+              <Link key={item.href} to={item.href}
                 className={cn('flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors',
                   isActive(item) ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')}>
                 <item.icon className="w-4 h-4 shrink-0" />{item.label}
@@ -162,7 +160,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
 
       {/* Footer */}
       <div className="p-3 border-t border-slate-100 space-y-0.5">
-        <Link href="/profile"
+        <Link to="/profile"
           className="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 w-full rounded transition-colors">
           <User className="w-3.5 h-3.5" /> Profile
         </Link>

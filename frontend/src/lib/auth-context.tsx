@@ -1,5 +1,3 @@
-'use client'
-
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { apiGet, apiPatch, clearTokens, storeTokens, getAccessToken } from './api'
 import type { User } from './types'

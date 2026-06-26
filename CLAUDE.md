@@ -15,7 +15,7 @@ A web app for clubs to manage and publish event calendars.
 - **Validation:** `symfony/validator` (DTO constraints)
 - **Tests:** PHPUnit 11 + `symfony/test-pack`
 - **Runtime (frontend):** Node.js v22, TypeScript
-- **Frontend:** Next.js 15, Tailwind CSS + shadcn/ui, FullCalendar
+- **Frontend:** Vite + React 19 + React Router v7, Tailwind CSS + shadcn/ui, FullCalendar (static SPA build)
 - **Database:** MySQL 8
 
 ## Monorepo Structure
