@@ -12,20 +12,21 @@ use Psr\Http\Message\ResponseInterface;
 class OidcProvider extends GenericProvider implements CachePoolAwareInterface
 {
     private readonly string $issuer;
-    private readonly array $defaultAuthorizationParams;
     private ?CacheItemPoolInterface $cache = null;
     private ?array $discovery = null;
 
     public function __construct(array $options = [], array $collaborators = [])
     {
-        $this->issuer                     = rtrim($options['issuer'] ?? '', '/');
-        $this->defaultAuthorizationParams = $options['defaultAuthorizationParams'] ?? [];
+        if (!\array_key_exists('issuer', $options)) {
+            throw new \InvalidArgumentException('Option "issuer" is required.');
+        }
 
-        unset($options['defaultAuthorizationParams']);
+        $this->issuer = rtrim($options['issuer'] ?? '', '/');
+        unset($options['issuer']);
 
         // GenericProvider requires these three; we override the methods so the stored values are never used
-        $options['urlAuthorize']            ??= '';
-        $options['urlAccessToken']          ??= '';
+        $options['urlAuthorize'] ??= '';
+        $options['urlAccessToken'] ??= '';
         $options['urlResourceOwnerDetails'] ??= '';
 
         parent::__construct($options, $collaborators);
@@ -34,11 +35,6 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
     public function setCache(CacheItemPoolInterface $cache): void
     {
         $this->cache = $cache;
-    }
-
-    protected function getRequiredOptions(): array
-    {
-        return ['issuer'];
     }
 
     public function getBaseAuthorizationUrl(): string
@@ -54,11 +50,6 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
     public function getResourceOwnerDetailsUrl(AccessToken $token): string
     {
         return $this->discover()['userinfo_endpoint'] ?? '';
-    }
-
-    public function buildAuthorizationUrl(array $options = []): string
-    {
-        return parent::buildAuthorizationUrl(array_merge($this->defaultAuthorizationParams, $options));
     }
 
     public function getResourceOwner(AccessToken $token): OidcResourceOwner
