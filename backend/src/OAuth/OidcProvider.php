@@ -5,22 +5,32 @@ namespace App\OAuth;
 
 use League\OAuth2\Client\Provider\GenericProvider;
 use League\OAuth2\Client\Token\AccessToken;
+use Psr\Http\Message\ResponseInterface;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Contracts\Cache\CacheInterface;
 
 class OidcProvider extends GenericProvider
 {
     private readonly string $issuer;
     private readonly array $defaultAuthorizationParams;
+    private readonly ?CacheInterface $cache;
     private ?array $discovery = null;
 
     public function __construct(array $options = [], array $collaborators = [])
     {
-        $this->issuer                    = rtrim($options['issuer'] ?? '', '/');
+        $this->issuer                     = rtrim($options['issuer'] ?? '', '/');
         $this->defaultAuthorizationParams = $options['defaultAuthorizationParams'] ?? [];
-        unset($options['defaultAuthorizationParams']);
+        $cacheDir                         = $options['cacheDir'] ?? null;
+
+        unset($options['defaultAuthorizationParams'], $options['cacheDir']);
+
+        $this->cache = $cacheDir !== null ? new FilesystemAdapter('oidc', 0, $cacheDir) : null;
+
         // GenericProvider requires these three; we override the methods so the stored values are never used
         $options['urlAuthorize']            ??= '';
         $options['urlAccessToken']          ??= '';
         $options['urlResourceOwnerDetails'] ??= '';
+
         parent::__construct($options, $collaborators);
     }
 
@@ -68,13 +78,56 @@ class OidcProvider extends GenericProvider
 
     private function discover(): array
     {
-        if ($this->discovery === null) {
-            $url = $this->issuer . '/.well-known/openid-configuration';
-            $response = $this->getHttpClient()->get($url);
-            $this->discovery = json_decode((string) $response->getBody(), true) ?? [];
+        if ($this->discovery !== null) {
+            return $this->discovery;
         }
 
+        if ($this->cache !== null) {
+            $cacheKey        = 'discovery_' . md5($this->issuer);
+            $this->discovery = $this->cache->get($cacheKey, function (\Symfony\Contracts\Cache\ItemInterface $item) {
+                $url      = $this->issuer . '/.well-known/openid-configuration';
+                $response = $this->getHttpClient()->get($url);
+                $document = json_decode((string) $response->getBody(), true) ?? [];
+
+                $ttl = $this->parseCacheTtl($response);
+                $item->expiresAfter($ttl > 0 ? $ttl : null);
+
+                return $document;
+            });
+
+            return $this->discovery;
+        }
+
+        $url             = $this->issuer . '/.well-known/openid-configuration';
+        $response        = $this->getHttpClient()->get($url);
+        $this->discovery = json_decode((string) $response->getBody(), true) ?? [];
+
         return $this->discovery;
+    }
+
+    private function parseCacheTtl(ResponseInterface $response): int
+    {
+        $cacheControl = $response->getHeaderLine('Cache-Control');
+
+        if (!empty($cacheControl)) {
+            if (preg_match('/\b(?:no-store|no-cache)\b/i', $cacheControl)) {
+                return 0;
+            }
+            if (preg_match('/\bmax-age\s*=\s*(\d+)/i', $cacheControl, $m)) {
+                $age = (int) $response->getHeaderLine('Age');
+                return max(0, (int) $m[1] - $age);
+            }
+        }
+
+        $expires = $response->getHeaderLine('Expires');
+        if (!empty($expires)) {
+            $expiresAt = strtotime($expires);
+            if ($expiresAt !== false && $expiresAt > time()) {
+                return $expiresAt - (int) time();
+            }
+        }
+
+        return 0;
     }
 
     private function parseIdToken(AccessToken $token): array
