@@ -5,15 +5,15 @@ namespace App\OAuth;
 
 use League\OAuth2\Client\Provider\GenericProvider;
 use League\OAuth2\Client\Token\AccessToken;
+use Psr\Cache\CacheItemPoolInterface;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
-use Symfony\Contracts\Cache\CacheInterface;
 
 class OidcProvider extends GenericProvider
 {
     private readonly string $issuer;
     private readonly array $defaultAuthorizationParams;
-    private readonly ?CacheInterface $cache;
+    private readonly ?CacheItemPoolInterface $cache;
     private ?array $discovery = null;
 
     public function __construct(array $options = [], array $collaborators = [])
@@ -83,19 +83,25 @@ class OidcProvider extends GenericProvider
         }
 
         if ($this->cache !== null) {
-            $cacheKey        = 'discovery_' . md5($this->issuer);
-            $this->discovery = $this->cache->get($cacheKey, function (\Symfony\Contracts\Cache\ItemInterface $item) {
-                $url      = $this->issuer . '/.well-known/openid-configuration';
-                $response = $this->getHttpClient()->get($url);
-                $document = json_decode((string) $response->getBody(), true) ?? [];
+            $cacheKey = 'discovery_' . md5($this->issuer);
+            $item     = $this->cache->getItem($cacheKey);
 
-                $ttl = $this->parseCacheTtl($response);
-                $item->expiresAfter($ttl > 0 ? $ttl : null);
+            if ($item->isHit()) {
+                return $this->discovery = $item->get();
+            }
 
-                return $document;
-            });
+            $url      = $this->issuer . '/.well-known/openid-configuration';
+            $response = $this->getHttpClient()->get($url);
+            $document = json_decode((string) $response->getBody(), true) ?? [];
 
-            return $this->discovery;
+            $ttl = $this->parseCacheTtl($response);
+            if ($ttl > 0) {
+                $item->set($document);
+                $item->expiresAfter($ttl);
+                $this->cache->save($item);
+            }
+
+            return $this->discovery = $document;
         }
 
         $url             = $this->issuer . '/.well-known/openid-configuration';
