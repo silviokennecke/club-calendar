@@ -1,20 +1,7 @@
 'use client'
 import { useEffect, useRef } from 'react'
 import 'mapbox-gl/dist/mapbox-gl.css'
-
-const BACKEND_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
-const mapboxApiUrlPlaceholder = 'https://dummy'
-
-function mapboxTransformRequest(url: string) {
-  if (url.startsWith(mapboxApiUrlPlaceholder)) {
-    const u = new URL(url)
-    u.searchParams.delete('access_token')
-    const pathname = u.pathname.replace(/^\/*([^\/].*)$/, '$1');
-    const newUrl = `${BACKEND_URL}/api/mapbox/${pathname}?${u.searchParams}`;
-    return { url: newUrl }
-  }
-  return { url }
-}
+import { mapboxTransformRequest, initMapboxProxy } from './mapboxProxy'
 
 interface LocationPin {
   id: number
@@ -44,11 +31,7 @@ export default function LocationsOverviewMap({ locations, selectedId, onSelect, 
     let map: mapboxgl.Map
 
     import('mapbox-gl').then(({ default: mapboxgl }) => {
-      mapboxgl.accessToken = 'pk.proxy'
-      const baseUrl = new URL(mapboxgl.baseApiUrl ?? 'https://api.mapbox.com')
-      if (!baseUrl.toString().startsWith(mapboxApiUrlPlaceholder)) {
-        mapboxgl.baseApiUrl = `${mapboxApiUrlPlaceholder}/${baseUrl.hostname}`
-      }
+      initMapboxProxy(mapboxgl)
 
       map = new mapboxgl.Map({
         container: mapContainerRef.current!,
