@@ -10,7 +10,6 @@ knpu_oauth2_client:
             use_state: false
             provider_options:
                 issuer: 'https://accounts.google.com'
-                cacheDir: '%oidc_discovery_cache_dir%'
                 scopes: ['openid', 'email', 'profile']
                 scopeSeparator: ' '
         microsoft:
@@ -23,7 +22,6 @@ knpu_oauth2_client:
             use_state: false
             provider_options:
                 issuer: '%microsoft_oidc_issuer%'
-                cacheDir: '%oidc_discovery_cache_dir%'
                 scopes: ['openid', 'email', 'profile']
                 scopeSeparator: ' '
         apple:
@@ -36,7 +34,6 @@ knpu_oauth2_client:
             use_state: false
             provider_options:
                 issuer: 'https://appleid.apple.com'
-                cacheDir: '%oidc_discovery_cache_dir%'
                 scopes: ['openid', 'email', 'name']
                 scopeSeparator: ' '
                 defaultAuthorizationParams:

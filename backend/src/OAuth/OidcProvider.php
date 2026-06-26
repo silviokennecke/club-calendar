@@ -3,28 +3,25 @@ declare(strict_types=1);
 
 namespace App\OAuth;
 
+use App\DependencyInjection\CachePoolAwareInterface;
 use League\OAuth2\Client\Provider\GenericProvider;
 use League\OAuth2\Client\Token\AccessToken;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Http\Message\ResponseInterface;
-use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
-class OidcProvider extends GenericProvider
+class OidcProvider extends GenericProvider implements CachePoolAwareInterface
 {
     private readonly string $issuer;
     private readonly array $defaultAuthorizationParams;
-    private readonly ?CacheItemPoolInterface $cache;
+    private ?CacheItemPoolInterface $cache = null;
     private ?array $discovery = null;
 
     public function __construct(array $options = [], array $collaborators = [])
     {
         $this->issuer                     = rtrim($options['issuer'] ?? '', '/');
         $this->defaultAuthorizationParams = $options['defaultAuthorizationParams'] ?? [];
-        $cacheDir                         = $options['cacheDir'] ?? null;
 
-        unset($options['defaultAuthorizationParams'], $options['cacheDir']);
-
-        $this->cache = $cacheDir !== null ? new FilesystemAdapter('oidc', 0, $cacheDir) : null;
+        unset($options['defaultAuthorizationParams']);
 
         // GenericProvider requires these three; we override the methods so the stored values are never used
         $options['urlAuthorize']            ??= '';
@@ -32,6 +29,11 @@ class OidcProvider extends GenericProvider
         $options['urlResourceOwnerDetails'] ??= '';
 
         parent::__construct($options, $collaborators);
+    }
+
+    public function setCache(CacheItemPoolInterface $cache): void
+    {
+        $this->cache = $cache;
     }
 
     protected function getRequiredOptions(): array
