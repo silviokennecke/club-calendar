@@ -38,7 +38,7 @@ readonly class LocationService
         return $this->serialize($location);
     }
 
-    public function update(int $id, Calendar $calendar, array $data): array
+    public function update(string $id, Calendar $calendar, array $data): array
     {
         $location = $this->find($id, $calendar);
 
@@ -69,14 +69,14 @@ readonly class LocationService
         return $this->serialize($location);
     }
 
-    public function delete(int $id, Calendar $calendar): void
+    public function delete(string $id, Calendar $calendar): void
     {
         $location = $this->find($id, $calendar);
         $this->em->remove($location);
         $this->em->flush();
     }
 
-    private function find(int $id, Calendar $calendar): Location
+    private function find(string $id, Calendar $calendar): Location
     {
         $location = $this->em->getRepository(Location::class)->find($id);
         if (!$location || $location->getCalendar()->getId() !== $calendar->getId()) {

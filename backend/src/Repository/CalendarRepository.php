@@ -18,7 +18,7 @@ class CalendarRepository extends ServiceEntityRepository
         parent::__construct($registry, Calendar::class);
     }
 
-    public function findByIdAndClubId(int $id, int $clubId): ?Calendar
+    public function findByIdAndClubId(string $id, string $clubId): ?Calendar
     {
         return $this->findOneBy(['id' => $id, 'club' => $clubId]);
     }

@@ -7,14 +7,14 @@ namespace App\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
 class Event
 {
     #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    private ?int $id = null;
+    #[ORM\Column(length: 36)]
+    private string $id;
 
     #[ORM\ManyToOne(targetEntity: Calendar::class, inversedBy: 'events')]
     #[ORM\JoinColumn(name: 'calendar_id', nullable: false, onDelete: 'CASCADE')]
@@ -63,12 +63,13 @@ class Event
 
     public function __construct()
     {
+        $this->id = Uuid::v7()->toRfc4122();
         $this->properties = new ArrayCollection();
         $this->features = new ArrayCollection();
         $this->targetGroups = new ArrayCollection();
     }
 
-    public function getId(): ?int
+    public function getId(): string
     {
         return $this->id;
     }

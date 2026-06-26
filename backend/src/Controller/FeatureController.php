@@ -42,7 +42,7 @@ class FeatureController extends AbstractApiController
     #[Route('/{id}', methods: ['PATCH'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function update(#[MapEntity(id: 'calendarId')] Calendar $calendar, int $id, Request $request): JsonResponse
+    public function update(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id, Request $request): JsonResponse
     {
         $data = $this->decodeJson($request);
 
@@ -52,7 +52,7 @@ class FeatureController extends AbstractApiController
     #[Route('/{id}', methods: ['DELETE'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, int $id): JsonResponse
+    public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id): JsonResponse
     {
         $this->featureService->delete($id, $calendar);
 

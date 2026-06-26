@@ -8,14 +8,14 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use App\Repository\CalendarRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity(repositoryClass: CalendarRepository::class)]
 class Calendar
 {
     #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    private ?int $id = null;
+    #[ORM\Column(length: 36)]
+    private string $id;
 
     #[ORM\ManyToOne(targetEntity: Club::class, inversedBy: 'calendars')]
     #[ORM\JoinColumn(name: 'club_id', nullable: false, onDelete: 'CASCADE')]
@@ -53,6 +53,7 @@ class Calendar
 
     public function __construct()
     {
+        $this->id = Uuid::v7()->toRfc4122();
         $this->feeds = new ArrayCollection();
         $this->properties = new ArrayCollection();
         $this->features = new ArrayCollection();
@@ -62,7 +63,7 @@ class Calendar
         $this->events = new ArrayCollection();
     }
 
-    public function getId(): ?int
+    public function getId(): string
     {
         return $this->id;
     }

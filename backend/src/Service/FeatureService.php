@@ -32,7 +32,7 @@ readonly class FeatureService
         return $this->serialize($feature);
     }
 
-    public function update(int $id, Calendar $calendar, array $data): array
+    public function update(string $id, Calendar $calendar, array $data): array
     {
         $feature = $this->find($id, $calendar);
 
@@ -45,14 +45,14 @@ readonly class FeatureService
         return $this->serialize($feature);
     }
 
-    public function delete(int $id, Calendar $calendar): void
+    public function delete(string $id, Calendar $calendar): void
     {
         $feature = $this->find($id, $calendar);
         $this->em->remove($feature);
         $this->em->flush();
     }
 
-    private function find(int $id, Calendar $calendar): Feature
+    private function find(string $id, Calendar $calendar): Feature
     {
         $feature = $this->em->getRepository(Feature::class)->find($id);
         if (!$feature || $feature->getCalendar()->getId() !== $calendar->getId()) {

@@ -7,14 +7,14 @@ namespace App\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
 class Club
 {
     #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    private ?int $id = null;
+    #[ORM\Column(length: 36)]
+    private string $id;
 
     #[ORM\Column(length: 255)]
     private string $name;
@@ -30,11 +30,12 @@ class Club
 
     public function __construct()
     {
+        $this->id = Uuid::v7()->toRfc4122();
         $this->users = new ArrayCollection();
         $this->calendars = new ArrayCollection();
     }
 
-    public function getId(): ?int
+    public function getId(): string
     {
         return $this->id;
     }

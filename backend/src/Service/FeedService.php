@@ -51,7 +51,7 @@ readonly class FeedService
         return $this->serialize($feed);
     }
 
-    public function update(int $id, Calendar $calendar, array $data): array
+    public function update(string $id, Calendar $calendar, array $data): array
     {
         $feed = $this->find($id, $calendar);
 
@@ -78,14 +78,14 @@ readonly class FeedService
         return $this->serialize($feed);
     }
 
-    public function delete(int $id, Calendar $calendar): void
+    public function delete(string $id, Calendar $calendar): void
     {
         $feed = $this->find($id, $calendar);
         $this->em->remove($feed);
         $this->em->flush();
     }
 
-    public function regenerateSecret(int $id, Calendar $calendar): array
+    public function regenerateSecret(string $id, Calendar $calendar): array
     {
         $feed = $this->find($id, $calendar);
         $feed->setSharedSecret(bin2hex(random_bytes(16)));
@@ -94,7 +94,7 @@ readonly class FeedService
         return $this->serialize($feed);
     }
 
-    private function find(int $id, Calendar $calendar): CalendarFeed
+    private function find(string $id, Calendar $calendar): CalendarFeed
     {
         $feed = $this->em->getRepository(CalendarFeed::class)->find($id);
         if (!$feed || $feed->getCalendar()->getId() !== $calendar->getId()) {

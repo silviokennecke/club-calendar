@@ -36,7 +36,7 @@ class EventController extends AbstractApiController
             throw new BadRequestHttpException('Invalid to date');
         }
         $tgParam = $request->query->get('targetGroupIds');
-        $tgIds = $tgParam ? array_filter(array_map('intval', explode(',', $tgParam))) : null;
+        $tgIds = $tgParam ? array_values(array_filter(array_map('trim', explode(',', $tgParam)))) : null;
 
         return new JsonResponse($this->eventService->listEvents($calendar, $from ?: null, $to ?: null, $tgIds ?: null));
     }
@@ -53,7 +53,7 @@ class EventController extends AbstractApiController
 
         $events = $this->eventService->createSeriesFromTemplate(
             $calendar,
-            (int) $data['templateId'],
+            (string) $data['templateId'],
             (array) $data['dates'],
             (array) ($data['overrides'] ?? []),
         );
@@ -91,7 +91,7 @@ class EventController extends AbstractApiController
 
     #[Route('/{id}', methods: ['GET'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
-    public function getOne(#[MapEntity(id: 'calendarId')] Calendar $calendar, int $id): JsonResponse
+    public function getOne(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id): JsonResponse
     {
         return new JsonResponse($this->eventService->getEvent($id, $calendar));
     }
@@ -99,7 +99,7 @@ class EventController extends AbstractApiController
     #[Route('/{id}', methods: ['PATCH'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function update(#[MapEntity(id: 'calendarId')] Calendar $calendar, int $id, Request $request): JsonResponse
+    public function update(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id, Request $request): JsonResponse
     {
         $data = $this->decodeJson($request);
 
@@ -109,7 +109,7 @@ class EventController extends AbstractApiController
     #[Route('/{id}', methods: ['DELETE'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, int $id): JsonResponse
+    public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id): JsonResponse
     {
         $this->eventService->deleteEvent($id, $calendar);
 

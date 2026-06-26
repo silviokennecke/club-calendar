@@ -9,14 +9,14 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    private ?int $id = null;
+    #[ORM\Column(length: 36)]
+    private string $id;
 
     #[ORM\Column(length: 255)]
     private string $name;
@@ -33,11 +33,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column]
     private int $firstDayOfWeek = 1;
 
-    #[ORM\Column(nullable: true)]
-    private ?int $lastClubId = null;
+    #[ORM\Column(length: 36, nullable: true)]
+    private ?string $lastClubId = null;
 
-    #[ORM\Column(nullable: true)]
-    private ?int $lastCalendarId = null;
+    #[ORM\Column(length: 36, nullable: true)]
+    private ?string $lastCalendarId = null;
 
     #[ORM\OneToMany(targetEntity: ClubUser::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
     private Collection $clubs;
@@ -50,12 +50,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function __construct()
     {
+        $this->id = Uuid::v7()->toRfc4122();
         $this->clubs = new ArrayCollection();
         $this->passkeys = new ArrayCollection();
         $this->oauthAccounts = new ArrayCollection();
     }
 
-    public function getId(): ?int
+    public function getId(): string
     {
         return $this->id;
     }
@@ -120,24 +121,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getLastClubId(): ?int
+    public function getLastClubId(): ?string
     {
         return $this->lastClubId;
     }
 
-    public function setLastClubId(?int $lastClubId): static
+    public function setLastClubId(?string $lastClubId): static
     {
         $this->lastClubId = $lastClubId;
 
         return $this;
     }
 
-    public function getLastCalendarId(): ?int
+    public function getLastCalendarId(): ?string
     {
         return $this->lastCalendarId;
     }
 
-    public function setLastCalendarId(?int $lastCalendarId): static
+    public function setLastCalendarId(?string $lastCalendarId): static
     {
         $this->lastCalendarId = $lastCalendarId;
 

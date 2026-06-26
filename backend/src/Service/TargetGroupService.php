@@ -32,7 +32,7 @@ readonly class TargetGroupService
         return $this->serialize($targetGroup);
     }
 
-    public function update(int $id, Calendar $calendar, array $data): array
+    public function update(string $id, Calendar $calendar, array $data): array
     {
         $targetGroup = $this->find($id, $calendar);
 
@@ -45,14 +45,14 @@ readonly class TargetGroupService
         return $this->serialize($targetGroup);
     }
 
-    public function delete(int $id, Calendar $calendar): void
+    public function delete(string $id, Calendar $calendar): void
     {
         $targetGroup = $this->find($id, $calendar);
         $this->em->remove($targetGroup);
         $this->em->flush();
     }
 
-    private function find(int $id, Calendar $calendar): TargetGroup
+    private function find(string $id, Calendar $calendar): TargetGroup
     {
         $targetGroup = $this->em->getRepository(TargetGroup::class)->find($id);
         if (!$targetGroup || $targetGroup->getCalendar()->getId() !== $calendar->getId()) {
