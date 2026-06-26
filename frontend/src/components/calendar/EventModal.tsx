@@ -1,8 +1,8 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api'
-import type { CalendarEvent, Property, Feature, TargetGroup, Location, EventTemplate } from '@/lib/types'
+import { apiGet, apiPost, apiPatch, apiDelete, getHolidayEvents } from '@/lib/api'
+import type { CalendarEvent, Property, Feature, TargetGroup, Location, EventTemplate, HolidayEvent } from '@/lib/types'
 import { formatAddress, formatLocationLabel } from '@/lib/types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import dynamic from 'next/dynamic'
 
 const MapPicker = dynamic(() => import('@/components/locations/MapPicker'), { ssr: false, loading: () => <div className="h-48 bg-slate-100 rounded-lg animate-pulse" /> })
+
+export function filterDatesExcludingHolidays(
+  dates: string[],
+  holidays: HolidayEvent[],
+): string[] {
+  return dates.filter(date =>
+    !holidays.some(h => {
+      const end = h.dateEnd ?? h.date
+      return date >= h.date && date <= end
+    }),
+  )
+}
 
 // ——— Recurrence helpers ———
 
@@ -126,6 +138,26 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
   const [recConfig, setRecConfig] = useState<RecurrenceConfig>({ from: '', to: '', weekday: 1, nth: 0 })
   const generatedDates = generateDates(recMode, recConfig)
 
+  const [excludeHolidays, setExcludeHolidays] = useState(false)
+  const [holidays, setHolidays] = useState<HolidayEvent[]>([])
+  const [loadingHolidays, setLoadingHolidays] = useState(false)
+
+  useEffect(() => {
+    if (!excludeHolidays || !recConfig.from || !recConfig.to) {
+      setHolidays([])
+      return
+    }
+    setLoadingHolidays(true)
+    getHolidayEvents(calendarId, recConfig.from, recConfig.to)
+      .then(setHolidays)
+      .catch(() => setHolidays([]))
+      .finally(() => setLoadingHolidays(false))
+  }, [excludeHolidays, recConfig.from, recConfig.to, calendarId])
+
+  const effectiveDates = excludeHolidays
+    ? filterDatesExcludingHolidays(generatedDates, holidays)
+    : generatedDates
+
   const { data: properties = [] } = useQuery({ queryKey: ['properties', calendarId], queryFn: () => apiGet<Property[]>(`/api/calendars/${calendarId}/properties`), enabled: open })
   const { data: features = [] } = useQuery({ queryKey: ['features', calendarId], queryFn: () => apiGet<Feature[]>(`/api/calendars/${calendarId}/features`), enabled: open })
   const { data: targetGroups = [] } = useQuery({ queryKey: ['targetGroups', calendarId], queryFn: () => apiGet<TargetGroup[]>(`/api/calendars/${calendarId}/target-groups`), enabled: open })
@@ -172,10 +204,10 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
   }
 
   async function handleCreateSeries() {
-    if (!templateId || generatedDates.length === 0) return
+    if (!templateId || effectiveDates.length === 0) return
     setLoading(true)
     try {
-      await apiPost(`/api/calendars/${calendarId}/events/from-template`, { templateId: Number(templateId), dates: generatedDates, overrides: { isDraft } })
+      await apiPost(`/api/calendars/${calendarId}/events/from-template`, { templateId: Number(templateId), dates: effectiveDates, overrides: { isDraft } })
       qc.invalidateQueries({ queryKey: ['events', calendarId] })
       onClose()
     } finally { setLoading(false) }
@@ -288,11 +320,30 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
                   </div>
                 </div>
 
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="exclude-holidays"
+                    checked={excludeHolidays}
+                    onChange={e => setExcludeHolidays(e.target.checked)}
+                    className="h-4 w-4 rounded border-input"
+                  />
+                  <label htmlFor="exclude-holidays" className="text-sm">
+                    Exclude holidays
+                    {loadingHolidays && <span className="ml-1 text-muted-foreground">(loading…)</span>}
+                  </label>
+                </div>
+                {excludeHolidays && generatedDates.length !== effectiveDates.length && (
+                  <p className="text-xs text-muted-foreground">
+                    {generatedDates.length - effectiveDates.length} date(s) excluded due to holidays
+                  </p>
+                )}
+
                 {generatedDates.length > 0 ? (
                   <div>
-                    <p className="text-xs text-slate-500 mb-1.5">{generatedDates.length} events will be created:</p>
+                    <p className="text-xs text-slate-500 mb-1.5">{effectiveDates.length} events will be created:</p>
                     <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
-                      {generatedDates.map(d => <span key={d} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{d}</span>)}
+                      {effectiveDates.map(d => <span key={d} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{d}</span>)}
                     </div>
                   </div>
                 ) : recConfig.from && recConfig.to ? (
@@ -419,9 +470,9 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
             </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={onClose}>Cancel</Button>
-              <Button disabled={loading || (tab === 'template' && generatedDates.length === 0 && !isEditing)}
+              <Button disabled={loading || (tab === 'template' && effectiveDates.length === 0 && !isEditing)}
                 onClick={tab === 'template' && !isEditing ? handleCreateSeries : handleSubmit}>
-                {loading ? 'Saving...' : isEditing ? 'Save' : tab === 'template' ? `Create ${generatedDates.length} Events` : 'Create'}
+                {loading ? 'Saving...' : isEditing ? 'Save' : tab === 'template' ? `Create ${effectiveDates.length} Events` : 'Create'}
               </Button>
             </div>
           </DialogFooter>
