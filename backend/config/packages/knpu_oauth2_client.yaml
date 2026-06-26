@@ -36,5 +36,3 @@ knpu_oauth2_client:
                 issuer: 'https://appleid.apple.com'
                 scopes: ['openid', 'email', 'name']
                 scopeSeparator: ' '
-                defaultAuthorizationParams:
-                    response_mode: form_post
