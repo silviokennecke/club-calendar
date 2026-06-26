@@ -1,3 +1,5 @@
+import type { HolidayCalendar, HolidayEvent } from './types'
+
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
 
 export const BACKEND_URL = BASE_URL
@@ -117,4 +119,39 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
 export async function apiDelete(path: string): Promise<void> {
   const res = await apiFetch(path, { method: 'DELETE' })
   if (!res.ok) throw new Error(`API error ${res.status}`)
+}
+
+export function getHolidayCalendars(calendarId: number): Promise<HolidayCalendar[]> {
+  return apiGet<HolidayCalendar[]>(`/api/calendars/${calendarId}/holiday-calendars`)
+}
+
+export function createHolidayCalendar(
+  calendarId: number,
+  data: { name: string; url: string },
+): Promise<HolidayCalendar> {
+  return apiPost<HolidayCalendar>(`/api/calendars/${calendarId}/holiday-calendars`, data)
+}
+
+export function updateHolidayCalendar(
+  calendarId: number,
+  id: number,
+  data: { name: string; url: string },
+): Promise<HolidayCalendar> {
+  return apiPatch<HolidayCalendar>(`/api/calendars/${calendarId}/holiday-calendars/${id}`, data)
+}
+
+export function deleteHolidayCalendar(calendarId: number, id: number): Promise<void> {
+  return apiDelete<void>(`/api/calendars/${calendarId}/holiday-calendars/${id}`)
+}
+
+export function refreshHolidayCalendar(calendarId: number, id: number): Promise<HolidayCalendar> {
+  return apiPost<HolidayCalendar>(`/api/calendars/${calendarId}/holiday-calendars/${id}/refresh`, {})
+}
+
+export function getHolidayEvents(
+  calendarId: number,
+  from: string,
+  to: string,
+): Promise<HolidayEvent[]> {
+  return apiGet<HolidayEvent[]>(`/api/calendars/${calendarId}/holiday-events?from=${from}&to=${to}`)
 }
