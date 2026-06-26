@@ -8,7 +8,12 @@ use App\Entity\HolidayEvent;
 use DateMalformedStringException;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use InvalidArgumentException;
+use RuntimeException;
 use Sabre\VObject;
+use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -20,17 +25,54 @@ readonly class HolidayCalendarService
     ) {}
 
     /**
+     * Validates the given URL against SSRF attack vectors.
+     * Rejects non-http/https schemes and private/loopback IP ranges.
+     *
+     * @throws InvalidArgumentException if the URL is unsafe
+     */
+    private function assertSafeUrl(string $url): void
+    {
+        $parsed = parse_url($url);
+        if (!isset($parsed['scheme']) || !in_array($parsed['scheme'], ['http', 'https'], true)) {
+            throw new InvalidArgumentException('Only http/https URLs are allowed');
+        }
+        $host = $parsed['host'] ?? '';
+        $ip   = filter_var($host, FILTER_VALIDATE_IP);
+        if ($ip !== false) {
+            if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                throw new InvalidArgumentException('Requests to private/reserved IP ranges are not allowed');
+            }
+        }
+        // Hostname resolution check — guard against DNS rebinding to private IPs
+        $resolved = gethostbyname($host);
+        if ($resolved !== $host) { // resolved to an IP
+            if (!filter_var($resolved, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                throw new InvalidArgumentException('Resolved host points to a private/reserved IP address');
+            }
+        }
+    }
+
+    /**
      * Fetches the ICS feed for the given HolidayCalendar, replaces all stored events,
      * updates lastFetchedAt, and returns the number of events stored.
      *
-     * @throws TransportExceptionInterface if the HTTP request fails
+     * @throws InvalidArgumentException    if the URL fails SSRF safety checks
+     * @throws TransportExceptionInterface if the HTTP request fails at the transport level
+     * @throws ClientExceptionInterface    if the server returns a 4xx response
+     * @throws RedirectionExceptionInterface if the server returns a 3xx response that cannot be followed
+     * @throws ServerExceptionInterface    if the server returns a 5xx response
+     * @throws RuntimeException            if the ICS feed exceeds the maximum allowed size
      * @throws DateMalformedStringException if a DTSTART/DTEND value cannot be parsed
      */
     public function fetchAndStore(HolidayCalendar $holidayCalendar): int
     {
-        $icsContent = $this->httpClient
-            ->request('GET', $holidayCalendar->getUrl())
-            ->getContent();
+        $this->assertSafeUrl($holidayCalendar->getUrl());
+
+        $response   = $this->httpClient->request('GET', $holidayCalendar->getUrl(), ['max_duration' => 10]);
+        $icsContent = $response->getContent(); // throws on 4xx/5xx
+        if (strlen($icsContent) > 1_048_576) {
+            throw new RuntimeException('ICS feed exceeds maximum allowed size (1 MB)');
+        }
 
         $vcalendar = VObject\Reader::read($icsContent);
 

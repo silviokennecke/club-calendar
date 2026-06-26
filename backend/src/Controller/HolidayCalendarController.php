@@ -13,7 +13,6 @@ use App\Security\CalendarMemberVoter;
 use App\Service\HolidayCalendarService;
 use DateTimeInterface;
 use Doctrine\ORM\EntityManagerInterface;
-use Throwable;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -61,8 +60,8 @@ class HolidayCalendarController extends AbstractApiController
                 $this->em->flush();
                 $this->holidayCalendarService->fetchAndStore($hc);
             });
-        } catch (Throwable $e) {
-            return new JsonResponse(['error' => 'Fetch failed: ' . $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (Throwable) {
+            return new JsonResponse(['error' => 'Failed to fetch ICS feed. Please check the URL and try again.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         return new JsonResponse($this->serialize($hc), Response::HTTP_CREATED);
@@ -127,8 +126,8 @@ class HolidayCalendarController extends AbstractApiController
 
         try {
             $this->holidayCalendarService->fetchAndStore($hc);
-        } catch (Throwable $e) {
-            return new JsonResponse(['error' => 'Refresh failed: ' . $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (Throwable) {
+            return new JsonResponse(['error' => 'Failed to fetch ICS feed. Please check the URL and try again.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         return new JsonResponse($this->serialize($hc));
