@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+const BACKEND_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
 const mapboxApiUrlPlaceholder = 'https://dummy'
 
 function mapboxTransformRequest(url: string) {
