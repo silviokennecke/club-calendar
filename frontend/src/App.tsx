@@ -22,6 +22,7 @@ import PropertiesPage from './pages/settings/PropertiesPage'
 import FeaturesPage from './pages/settings/FeaturesPage'
 import LocationsPage from './pages/settings/LocationsPage'
 import TargetGroupsPage from './pages/settings/TargetGroupsPage'
+import HolidayCalendarsPage from './pages/settings/HolidayCalendarsPage'
 
 export default function App() {
   return (
@@ -50,6 +51,7 @@ export default function App() {
               <Route path="/clubs/:clubId/calendars/:calendarId/settings/features" element={<FeaturesPage />} />
               <Route path="/clubs/:clubId/calendars/:calendarId/settings/locations" element={<LocationsPage />} />
               <Route path="/clubs/:clubId/calendars/:calendarId/settings/target-groups" element={<TargetGroupsPage />} />
+              <Route path="/clubs/:clubId/calendars/:calendarId/settings/holiday-calendars" element={<HolidayCalendarsPage />} />
             </Route>
           </Routes>
           <Toaster />

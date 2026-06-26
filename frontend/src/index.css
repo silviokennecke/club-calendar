@@ -129,3 +129,8 @@
     @apply font-sans;
   }
 }
+
+.fc-holiday-event .fc-event-main {
+  opacity: 0.45;
+  cursor: default !important;
+}

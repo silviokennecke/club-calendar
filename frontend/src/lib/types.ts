@@ -108,3 +108,19 @@ export interface CalendarEvent {
   features: { feature: Feature }[]
   targetGroups: { targetGroup: TargetGroup }[]
 }
+
+export interface HolidayCalendar {
+  id: number
+  name: string
+  url: string
+  lastFetchedAt: string | null
+  eventCount: number
+}
+
+export interface HolidayEvent {
+  id: number
+  holidayCalendarId: number
+  name: string
+  date: string       // YYYY-MM-DD, start (inclusive)
+  dateEnd: string | null  // YYYY-MM-DD, end (inclusive), null = same day as date
+}
