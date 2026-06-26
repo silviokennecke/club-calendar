@@ -121,35 +121,35 @@ export async function apiDelete(path: string): Promise<void> {
   if (!res.ok) throw new Error(`API error ${res.status}`)
 }
 
-export function getHolidayCalendars(calendarId: number): Promise<HolidayCalendar[]> {
+export function getHolidayCalendars(calendarId: string): Promise<HolidayCalendar[]> {
   return apiGet<HolidayCalendar[]>(`/api/calendars/${calendarId}/holiday-calendars`)
 }
 
 export function createHolidayCalendar(
-  calendarId: number,
+  calendarId: string,
   data: { name: string; url: string },
 ): Promise<HolidayCalendar> {
   return apiPost<HolidayCalendar>(`/api/calendars/${calendarId}/holiday-calendars`, data)
 }
 
 export function updateHolidayCalendar(
-  calendarId: number,
+  calendarId: string,
   id: number,
   data: { name: string; url: string },
 ): Promise<HolidayCalendar> {
   return apiPatch<HolidayCalendar>(`/api/calendars/${calendarId}/holiday-calendars/${id}`, data)
 }
 
-export function deleteHolidayCalendar(calendarId: number, id: number): Promise<void> {
-  return apiDelete<void>(`/api/calendars/${calendarId}/holiday-calendars/${id}`)
+export function deleteHolidayCalendar(calendarId: string, id: number): Promise<void> {
+  return apiDelete(`/api/calendars/${calendarId}/holiday-calendars/${id}`)
 }
 
-export function refreshHolidayCalendar(calendarId: number, id: number): Promise<HolidayCalendar> {
+export function refreshHolidayCalendar(calendarId: string, id: number): Promise<HolidayCalendar> {
   return apiPost<HolidayCalendar>(`/api/calendars/${calendarId}/holiday-calendars/${id}/refresh`, {})
 }
 
 export function getHolidayEvents(
-  calendarId: number,
+  calendarId: string,
   from: string,
   to: string,
 ): Promise<HolidayEvent[]> {

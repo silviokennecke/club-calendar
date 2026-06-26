@@ -20,7 +20,6 @@ import type { HolidayCalendar } from '@/lib/types'
 
 export default function HolidayCalendarsPage() {
   const { calendarId } = useParams<{ calendarId: string }>()
-  const id = Number(calendarId)
 
   const [items, setItems] = useState<HolidayCalendar[]>([])
   const [loading, setLoading] = useState(true)
@@ -33,11 +32,11 @@ export default function HolidayCalendarsPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      setItems(await getHolidayCalendars(id))
+      setItems(await getHolidayCalendars(calendarId!))
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [calendarId])
 
   useEffect(() => { load() }, [load])
 
@@ -45,7 +44,7 @@ export default function HolidayCalendarsPage() {
     setSaving(true)
     setAddError(null)
     try {
-      const created = await createHolidayCalendar(id, form)
+      const created = await createHolidayCalendar(calendarId!, form)
       setItems(prev => [...prev, created])
       setShowAdd(false)
       setForm({ name: '', url: '' })
@@ -58,14 +57,18 @@ export default function HolidayCalendarsPage() {
 
   async function handleDelete(hcId: number) {
     if (!window.confirm('Delete this holiday calendar and all its events?')) return
-    await deleteHolidayCalendar(id, hcId)
-    setItems(prev => prev.filter(hc => hc.id !== hcId))
+    try {
+      await deleteHolidayCalendar(calendarId!, hcId)
+      setItems(prev => prev.filter(hc => hc.id !== hcId))
+    } catch (e: unknown) {
+      window.alert(e instanceof Error ? e.message : 'Delete failed')
+    }
   }
 
   async function handleRefresh(hcId: number) {
     setRefreshingId(hcId)
     try {
-      const updated = await refreshHolidayCalendar(id, hcId)
+      const updated = await refreshHolidayCalendar(calendarId!, hcId)
       setItems(prev => prev.map(hc => (hc.id === hcId ? updated : hc)))
     } catch (e: unknown) {
       window.alert(e instanceof Error ? e.message : 'Refresh failed')
