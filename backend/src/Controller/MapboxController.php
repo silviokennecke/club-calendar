@@ -21,22 +21,21 @@ class MapboxController extends AbstractController
         'connection', 'keep-alive', 'te', 'trailer', 'upgrade',
     ];
 
-    #[Route('/{path}', name: 'mapbox_proxy', requirements: ['path' => '.+'], methods: ['GET', 'POST', 'PUT', 'PATCH'])]
-    public function proxy(string $path, Request $request): Response
+    public function __construct(
+        private readonly string $mapboxToken,
+    ) {
+    }
+
+    #[Route('/{domain}/{path}', name: 'mapbox_proxy', requirements: ['path' => '.+'], methods: ['GET', 'POST', 'PUT', 'PATCH'])]
+    public function proxy(string $domain, string $path, Request $request): Response
     {
-        $mapboxToken = $_ENV['MAPBOX_TOKEN'] ?? '';
-        if (!$mapboxToken) {
+        if ($this->mapboxToken === '') {
             return new Response(
                 json_encode(['error' => 'Map service not configured']),
                 503,
                 ['Content-Type' => 'application/json'],
             );
         }
-
-        // path = "{domain}/{rest...}"
-        $parts  = explode('/', $path, 2);
-        $domain = $parts[0] ?? '';
-        $rest   = '/' . ($parts[1] ?? '');
 
         if (!in_array($domain, self::ALLOWED_DOMAINS, true)) {
             return new Response(
@@ -52,9 +51,9 @@ class MapboxController extends AbstractController
             if ($k === 'access_token') continue;
             $params[$k] = $v;
         }
-        $params['access_token'] = $mapboxToken;
+        $params['access_token'] = $this->mapboxToken;
 
-        $upstreamUrl = "https://$domain$rest?" . http_build_query($params);
+        $upstreamUrl = "https://$domain/$path?" . http_build_query($params);
 
         $options = ['headers' => []];
         if (in_array($request->getMethod(), ['POST', 'PUT', 'PATCH'], true) && $request->getContent()) {

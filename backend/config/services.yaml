@@ -1,6 +1,7 @@
 parameters:
     env(MICROSOFT_TENANT_ID): 'common'
     microsoft_oidc_issuer: 'https://login.microsoftonline.com/%env(MICROSOFT_TENANT_ID)%/v2.0'
+    env(MAPBOX_TOKEN): ''
 
 services:
     _defaults:
@@ -13,6 +14,10 @@ services:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
             - '../src/Kernel.php'
+
+    App\Controller\MapboxController:
+        arguments:
+            $mapboxToken: '%env(MAPBOX_TOKEN)%'
 
     App\Service\TokenService:
         arguments:
