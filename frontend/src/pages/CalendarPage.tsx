@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import FullCalendar from '@fullcalendar/react'
@@ -6,7 +6,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventInput, EventClickArg, EventDropArg } from '@fullcalendar/core'
 import type { DateClickArg } from '@fullcalendar/interaction'
-import { apiGet, apiPatch, apiPost } from '@/lib/api'
+import { apiGet, apiPatch, apiPost, getHolidayEvents } from '@/lib/api'
 import type { CalendarEvent, TargetGroup, Calendar } from '@/lib/types'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
@@ -139,16 +139,51 @@ export default function CalendarPage() {
     }).catch(failureCallback)
   }
 
+  const fetchHolidayEvents = useCallback(
+    async (
+      info: { startStr: string; endStr: string },
+      successCallback: (events: EventInput[]) => void,
+      failureCallback: (error: Error) => void,
+    ) => {
+      try {
+        const from = info.startStr.slice(0, 10)
+        const to   = info.endStr.slice(0, 10)
+        const holidays = await getHolidayEvents(Number(calendarId), from, to)
+        successCallback(
+          holidays.map(h => ({
+            id: `holiday-${h.id}`,
+            title: h.name,
+            start: h.date,
+            end: h.dateEnd
+              ? new Date(new Date(h.dateEnd + 'T00:00:00').getTime() + 86_400_000)
+                  .toISOString()
+                  .slice(0, 10)
+              : undefined,
+            allDay: true,
+            editable: false,
+            classNames: ['fc-holiday-event'],
+            extendedProps: { isHoliday: true },
+          })),
+        )
+      } catch (e) {
+        failureCallback(e instanceof Error ? e : new Error('Failed to load holidays'))
+      }
+    },
+    [calendarId],
+  )
+
   function handleDateClick(info: DateClickArg) {
     openCreate(info.dateStr)
   }
 
   function handleEventClick(info: EventClickArg) {
+    if (info.event.extendedProps?.isHoliday) return
     const ev = info.event.extendedProps.event as CalendarEvent
     openEdit(ev)
   }
 
   async function handleEventDrop(info: EventDropArg) {
+    if (info.event.extendedProps?.isHoliday) { info.revert(); return }
     const ev = info.event.extendedProps.event as CalendarEvent
     const newStartStr = info.event.startStr.slice(0, 10)
 
@@ -243,7 +278,14 @@ export default function CalendarPage() {
           ref={calendarRef}
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
-          events={fetchEvents}
+          eventSources={[
+            { events: fetchEvents },
+            {
+              events: fetchHolidayEvents,
+              color: '#f97316',
+              textColor: '#ffffff',
+            },
+          ]}
           eventClick={handleEventClick}
           dateClick={handleDateClick}
           editable={true}
