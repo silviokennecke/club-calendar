@@ -101,11 +101,19 @@ class AuthController extends AbstractApiController
     #[Route('/providers', methods: ['GET'])]
     public function providers(): JsonResponse
     {
-        $enabled = [
-            'google'    => !empty($_ENV['GOOGLE_CLIENT_ID'])    && !empty($_ENV['GOOGLE_CLIENT_SECRET']),
-            'microsoft' => !empty($_ENV['MICROSOFT_CLIENT_ID']) && !empty($_ENV['MICROSOFT_CLIENT_SECRET']),
-            'apple'     => !empty($_ENV['APPLE_CLIENT_ID'])     && !empty($_ENV['APPLE_CLIENT_SECRET']),
+        $all = [
+            'google'    => ['name' => 'Google',    'icon' => 'google',    'envKey' => 'GOOGLE_CLIENT_ID',    'envSecret' => 'GOOGLE_CLIENT_SECRET'],
+            'microsoft' => ['name' => 'Microsoft', 'icon' => 'microsoft', 'envKey' => 'MICROSOFT_CLIENT_ID', 'envSecret' => 'MICROSOFT_CLIENT_SECRET'],
+            'apple'     => ['name' => 'Apple',     'icon' => 'apple',     'envKey' => 'APPLE_CLIENT_ID',     'envSecret' => 'APPLE_CLIENT_SECRET'],
         ];
+
+        $enabled = [];
+        foreach ($all as $id => $meta) {
+            if (!empty($_ENV[$meta['envKey']]) && !empty($_ENV[$meta['envSecret']])) {
+                $enabled[] = ['id' => $id, 'name' => $meta['name'], 'icon' => $meta['icon']];
+            }
+        }
+
         return new JsonResponse($enabled);
     }
 }

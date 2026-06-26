@@ -109,4 +109,19 @@ class AuthTest extends WebTestCase
         $this->assertSame(200, $r['status']);
         $this->assertTrue($r['body']['ok']);
     }
+
+    public function testProvidersReturnsArrayOfProviderObjects(): void
+    {
+        $r = TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/providers');
+        $this->assertSame(200, $r['status']);
+        $this->assertIsArray($r['body']);
+        foreach ($r['body'] as $provider) {
+            $this->assertArrayHasKey('id', $provider);
+            $this->assertArrayHasKey('name', $provider);
+            $this->assertArrayHasKey('icon', $provider);
+            $this->assertIsString($provider['id']);
+            $this->assertIsString($provider['name']);
+            $this->assertIsString($provider['icon']);
+        }
+    }
 }

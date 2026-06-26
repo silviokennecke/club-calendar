@@ -9,20 +9,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { SsoProviderIcon } from '@/components/SsoProviderIcon'
 
-interface ProvidersResponse { google: boolean; microsoft: boolean; apple: boolean }
-
-const PROVIDER_LABELS: Record<string, string> = {
-  google: 'Google',
-  microsoft: 'Microsoft',
-  apple: 'Apple',
-}
-
-const PROVIDER_ICONS: Record<string, string> = {
-  google: '🔵',
-  microsoft: '🟦',
-  apple: '⬛',
-}
+interface SsoProvider { id: string; name: string; icon: string }
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -30,7 +19,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [passkeyLoading, setPasskeyLoading] = useState(false)
-  const [providers, setProviders] = useState<ProvidersResponse>({ google: false, microsoft: false, apple: false })
+  const [providers, setProviders] = useState<SsoProvider[]>([])
   const { login } = useAuth()
   const navigate = useNavigate()
 
@@ -75,8 +64,6 @@ export default function LoginPage() {
     } finally { setPasskeyLoading(false) }
   }
 
-  const enabledSSOProviders = Object.entries(providers).filter(([, enabled]) => enabled)
-
   return (
     <div className="flex items-center justify-center min-h-screen bg-slate-50">
       <Card className="w-full max-w-sm shadow-md border-slate-200">
@@ -105,18 +92,18 @@ export default function LoginPage() {
             🔑 {passkeyLoading ? 'Waiting for passkey…' : 'Sign in with passkey'}
           </Button>
 
-          {enabledSSOProviders.length > 0 && (
+          {providers.length > 0 && (
             <>
               <div className="relative">
                 <Separator />
                 <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-xs text-slate-400">or continue with</span>
               </div>
               <div className="space-y-2">
-                {enabledSSOProviders.map(([provider]) => (
-                  <a key={provider} href={`${BACKEND_URL}/api/auth/oauth/${provider}`} className="block">
+                {providers.map(provider => (
+                  <a key={provider.id} href={`${BACKEND_URL}/api/auth/oauth/${provider.id}`} className="block">
                     <Button variant="outline" className="w-full gap-2 justify-center">
-                      <span>{PROVIDER_ICONS[provider]}</span>
-                      {PROVIDER_LABELS[provider]}
+                      <SsoProviderIcon icon={provider.icon} />
+                      {provider.name}
                     </Button>
                   </a>
                 ))}
