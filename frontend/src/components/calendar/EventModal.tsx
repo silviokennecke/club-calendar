@@ -340,10 +340,10 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
               <div className="space-y-1.5">
                 <Label>Location</Label>
                 <div className="flex gap-1.5">
-                  <select className="flex-1 border border-slate-200 rounded-md px-3 py-2 text-sm" value={locationId} onChange={e => { setLocationId(e.target.value ? Number(e.target.value) : ''); setShowMap(false) }}>
+                  <select className="flex-1 border border-slate-200 rounded-md px-3 py-2 text-sm" value={locationId} onChange={e => { const n = Number(e.target.value); setLocationId(e.target.value === '' || isNaN(n) ? '' : n); setShowMap(false) }}>
                     <option value="">No location</option>
                     {locations.map(l => (
-                      <option key={l.id} value={l.id}>
+                      <option key={l.id} value={String(l.id)}>
                         {formatLocationLabel(l)}
                       </option>
                     ))}
