@@ -147,11 +147,13 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
       setHolidays([])
       return
     }
+    let cancelled = false
     setLoadingHolidays(true)
     getHolidayEvents(calendarId, recConfig.from, recConfig.to)
-      .then(setHolidays)
-      .catch(() => setHolidays([]))
-      .finally(() => setLoadingHolidays(false))
+      .then(data => { if (!cancelled) setHolidays(data) })
+      .catch(() => { if (!cancelled) setHolidays([]) })
+      .finally(() => { if (!cancelled) setLoadingHolidays(false) })
+    return () => { cancelled = true }
   }, [excludeHolidays, recConfig.from, recConfig.to, calendarId])
 
   const effectiveDates = excludeHolidays
