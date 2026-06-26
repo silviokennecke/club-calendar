@@ -1,7 +1,6 @@
 parameters:
     env(MICROSOFT_TENANT_ID): 'common'
-    microsoft_oidc_authorize_url: 'https://login.microsoftonline.com/%env(MICROSOFT_TENANT_ID)%/oauth2/v2.0/authorize'
-    microsoft_oidc_token_url:     'https://login.microsoftonline.com/%env(MICROSOFT_TENANT_ID)%/oauth2/v2.0/token'
+    microsoft_oidc_issuer: 'https://login.microsoftonline.com/%env(MICROSOFT_TENANT_ID)%/v2.0'
 
 services:
     _defaults:
