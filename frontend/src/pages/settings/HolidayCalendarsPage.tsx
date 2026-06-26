@@ -78,10 +78,12 @@ export default function HolidayCalendarsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Holiday Calendars</h1>
-        <Button onClick={() => setShowAdd(true)}>Add ICS Feed</Button>
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
+        <h1 className="text-lg font-semibold text-slate-900">Holiday Calendars</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button onClick={() => setShowAdd(true)}>Add ICS Feed</Button>
+        </div>
       </div>
 
       {loading ? (
