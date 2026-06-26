@@ -148,7 +148,7 @@ export default function CalendarPage() {
       try {
         const from = info.startStr.slice(0, 10)
         const to   = info.endStr.slice(0, 10)
-        const holidays = await getHolidayEvents(Number(calendarId), from, to)
+        const holidays = await getHolidayEvents(calendarId!, from, to)
         successCallback(
           holidays.map(h => ({
             id: `holiday-${h.id}`,
