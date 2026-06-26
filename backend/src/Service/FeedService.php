@@ -66,11 +66,19 @@ readonly class FeedService
             $feed->setVisibility($visibility);
         }
         if (array_key_exists('targetGroupIds', $data)) {
+            $newIds = $data['targetGroupIds'];
+            $keptIds = [];
             foreach ($feed->getTargetGroups() as $ftg) {
-                $this->em->remove($ftg);
+                $tgId = $ftg->getTargetGroup()->getId();
+                if (in_array($tgId, $newIds, true)) {
+                    $keptIds[] = $tgId;
+                } else {
+                    $this->em->remove($ftg);
+                    $feed->getTargetGroups()->removeElement($ftg);
+                }
             }
-            $feed->getTargetGroups()->clear();
-            $this->syncTargetGroups($feed, $data['targetGroupIds'], $calendar);
+            $toAdd = array_values(array_filter($newIds, fn($id) => !in_array($id, $keptIds, true)));
+            $this->syncTargetGroups($feed, $toAdd, $calendar);
         }
 
         $this->em->flush();
