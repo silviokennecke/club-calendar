@@ -6,6 +6,7 @@ namespace App\Controller;
 use App\Entity\Calendar;
 use App\Repository\HolidayEventRepository;
 use App\Security\CalendarMemberVoter;
+use DateMalformedStringException;
 use DateTimeImmutable;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -32,11 +33,24 @@ class HolidayEventController extends AbstractApiController
         if (!$from || !$to) {
             throw new BadRequestHttpException('from and to query params are required');
         }
+        if (false === strtotime($from)) {
+            throw new BadRequestHttpException('Invalid from date');
+        }
+        if (false === strtotime($to)) {
+            throw new BadRequestHttpException('Invalid to date');
+        }
+
+        try {
+            $fromDate = new DateTimeImmutable($from);
+            $toDate = new DateTimeImmutable($to);
+        } catch (DateMalformedStringException) {
+            throw new BadRequestHttpException('Invalid date format');
+        }
 
         $events = $this->holidayEventRepo->findByCalendarAndDateRange(
             $calendar->getId(),
-            new DateTimeImmutable($from),
-            new DateTimeImmutable($to),
+            $fromDate,
+            $toDate,
         );
 
         return new JsonResponse(array_map(fn ($e) => [

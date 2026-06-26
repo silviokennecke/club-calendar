@@ -55,13 +55,14 @@ class HolidayCalendarController extends AbstractApiController
         $this->validateDto($dto, $validator);
 
         $hc = new HolidayCalendar($calendar, $dto->name, $dto->url);
-        $this->em->persist($hc);
-        $this->em->flush();
-
         try {
-            $this->holidayCalendarService->fetchAndStore($hc);
+            $this->em->wrapInTransaction(function () use ($hc): void {
+                $this->em->persist($hc);
+                $this->em->flush();
+                $this->holidayCalendarService->fetchAndStore($hc);
+            });
         } catch (Throwable $e) {
-            return new JsonResponse(['error' => 'Created but fetch failed: ' . $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return new JsonResponse(['error' => 'Fetch failed: ' . $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         return new JsonResponse($this->serialize($hc), Response::HTTP_CREATED);
