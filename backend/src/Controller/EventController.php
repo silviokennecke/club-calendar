@@ -8,26 +8,25 @@ use App\Entity\Calendar;
 use App\Security\ArchivedCalendarVoter;
 use App\Security\CalendarMemberVoter;
 use App\Service\EventService;
-use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/api/calendars/{calendarId}/events')]
 class EventController extends AbstractApiController
 {
     public function __construct(
         private readonly EventService $eventService,
-        private readonly EntityManagerInterface $em,
     ) {}
 
     #[Route('', methods: ['GET'])]
-    public function list(int $calendarId, Request $request): JsonResponse
+    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    public function list(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
-        $calendar = $this->findCalendar($calendarId, readOnly: true);
         $from = $request->query->get('from');
         $to = $request->query->get('to');
         if ($from && false === strtotime($from)) {
@@ -43,9 +42,10 @@ class EventController extends AbstractApiController
     }
 
     #[Route('/from-template', methods: ['POST'])]
-    public function createFromTemplate(int $calendarId, Request $request): JsonResponse
+    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
+    public function createFromTemplate(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
-        $calendar = $this->findCalendar($calendarId, readOnly: false);
         $data = $this->decodeJson($request);
         if (empty($data['templateId']) || empty($data['dates'])) {
             throw new BadRequestHttpException('templateId and dates are required');
@@ -62,9 +62,10 @@ class EventController extends AbstractApiController
     }
 
     #[Route('/import', methods: ['POST'])]
-    public function import(int $calendarId, Request $request): JsonResponse
+    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
+    public function import(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
-        $calendar = $this->findCalendar($calendarId, readOnly: false);
         $data = $this->decodeJson($request);
         if (empty($data['events']) || !is_array($data['events'])) {
             throw new BadRequestHttpException('events array required');
@@ -79,51 +80,39 @@ class EventController extends AbstractApiController
     }
 
     #[Route('', methods: ['POST'])]
-    public function create(int $calendarId, Request $request): JsonResponse
+    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
+    public function create(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
-        $calendar = $this->findCalendar($calendarId, readOnly: false);
         $data = $this->decodeJson($request);
 
         return new JsonResponse($this->eventService->createEvent($calendar, $data), Response::HTTP_CREATED);
     }
 
     #[Route('/{id}', methods: ['GET'])]
-    public function getOne(int $calendarId, int $id): JsonResponse
+    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    public function getOne(#[MapEntity(id: 'calendarId')] Calendar $calendar, int $id): JsonResponse
     {
-        $calendar = $this->findCalendar($calendarId, readOnly: true);
-
         return new JsonResponse($this->eventService->getEvent($id, $calendar));
     }
 
     #[Route('/{id}', methods: ['PATCH'])]
-    public function update(int $calendarId, int $id, Request $request): JsonResponse
+    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
+    public function update(#[MapEntity(id: 'calendarId')] Calendar $calendar, int $id, Request $request): JsonResponse
     {
-        $calendar = $this->findCalendar($calendarId, readOnly: false);
         $data = $this->decodeJson($request);
 
         return new JsonResponse($this->eventService->updateEvent($id, $calendar, $data));
     }
 
     #[Route('/{id}', methods: ['DELETE'])]
-    public function delete(int $calendarId, int $id): JsonResponse
+    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
+    public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, int $id): JsonResponse
     {
-        $calendar = $this->findCalendar($calendarId, readOnly: false);
         $this->eventService->deleteEvent($id, $calendar);
 
         return new JsonResponse(['ok' => true]);
-    }
-
-    private function findCalendar(int $calendarId, bool $readOnly): Calendar
-    {
-        $calendar = $this->em->getRepository(Calendar::class)->find($calendarId);
-        if (!$calendar) {
-            throw new NotFoundHttpException('Calendar not found');
-        }
-        $this->denyAccessUnlessGranted(CalendarMemberVoter::CALENDAR_MEMBER, $calendar);
-        if (!$readOnly) {
-            $this->denyAccessUnlessGranted(ArchivedCalendarVoter::NOT_ARCHIVED, $calendar);
-        }
-
-        return $calendar;
     }
 }
