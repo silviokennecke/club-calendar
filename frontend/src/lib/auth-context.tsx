@@ -7,7 +7,7 @@ interface AuthContextValue {
   loading: boolean
   login: (accessToken: string, refreshToken: string, user: User) => void
   logout: () => void
-  updateUser: (data: { lastClubId?: number | null; lastCalendarId?: number | null; dateFormat?: string; firstDayOfWeek?: number }) => Promise<void>
+  updateUser: (data: { lastClubId?: string | null; lastCalendarId?: string | null; dateFormat?: string; firstDayOfWeek?: number }) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)

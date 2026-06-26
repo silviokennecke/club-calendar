@@ -33,7 +33,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
     const key = `${clubId}-${calendarId}`
     if (trackedRef.current === key) return
     trackedRef.current = key
-    updateUser({ lastClubId: Number(clubId), lastCalendarId: Number(calendarId) })
+    updateUser({ lastClubId: clubId, lastCalendarId: calendarId })
   }, [clubId, calendarId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: clubs = [] } = useQuery<Club[]>({

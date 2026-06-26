@@ -4,8 +4,8 @@ export interface User {
   email: string
   dateFormat: string
   firstDayOfWeek: number
-  lastClubId?: number | null
-  lastCalendarId?: number | null
+  lastClubId?: string | null
+  lastCalendarId?: string | null
 }
 
 export interface Club {

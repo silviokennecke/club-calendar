@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth-context'
 import CalendarSidebar from './CalendarSidebar'
 
 function parseCalendarFromPath(pathname: string): { clubId: string; calendarId: string } | null {
-  const match = pathname.match(/\/clubs\/(\d+)\/calendars\/(\d+)/)
+  const match = pathname.match(/\/clubs\/([^/]+)\/calendars\/([^/]+)/)
   if (match) return { clubId: match[1], calendarId: match[2] }
   return null
 }
