@@ -4,6 +4,7 @@ services:
     _defaults:
         autowire: true
         autoconfigure: true
+
     App\:
         resource: '../src/'
         exclude:
@@ -27,5 +28,5 @@ services:
             $frontendUrl: '%env(FRONTEND_URL)%'
 
     App\EventListener\ExceptionListener:
-        tags:
-            - { name: kernel.event_listener, event: kernel.exception, priority: 50 }
+        arguments:
+            $httpErrorListener: '@exception_listener'

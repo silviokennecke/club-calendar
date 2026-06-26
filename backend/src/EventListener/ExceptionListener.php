@@ -3,18 +3,29 @@ declare(strict_types=1);
 
 namespace App\EventListener;
 
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
+use Symfony\Component\HttpKernel\EventListener\ErrorListener;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Validator\ConstraintViolationListInterface;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
 
+#[AsEventListener(event: KernelEvents::EXCEPTION, priority: 50, method: 'onKernelException')]
 class ExceptionListener
 {
+    public function __construct(
+        private readonly ErrorListener $httpErrorListener,
+    ) {
+    }
+
     public function onKernelException(ExceptionEvent $event): void
     {
+        $this->httpErrorListener->logKernelException($event);
+
         $exception = $event->getThrowable();
 
         if ($exception instanceof ValidationFailedException) {
