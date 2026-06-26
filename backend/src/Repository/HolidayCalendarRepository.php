@@ -15,7 +15,7 @@ class HolidayCalendarRepository extends ServiceEntityRepository
     }
 
     /** @return HolidayCalendar[] */
-    public function findByCalendarId(int $calendarId): array
+    public function findByCalendarId(string $calendarId): array
     {
         return $this->createQueryBuilder('hc')
             ->where('hc.calendar = :calendarId')

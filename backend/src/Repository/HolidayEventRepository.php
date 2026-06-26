@@ -16,7 +16,7 @@ class HolidayEventRepository extends ServiceEntityRepository
     }
 
     /** @return HolidayEvent[] */
-    public function findByCalendarAndDateRange(int $calendarId, DateTimeImmutable $from, DateTimeImmutable $to): array
+    public function findByCalendarAndDateRange(string $calendarId, DateTimeImmutable $from, DateTimeImmutable $to): array
     {
         return $this->createQueryBuilder('he')
             ->join('he.holidayCalendar', 'hc')
