@@ -9,9 +9,7 @@ knpu_oauth2_client:
             redirect_params: { provider: google }
             use_state: false
             provider_options:
-                urlAuthorize: 'https://accounts.google.com/o/oauth2/v2/auth'
-                urlAccessToken: 'https://oauth2.googleapis.com/token'
-                urlResourceOwnerDetails: 'https://openidconnect.googleapis.com/v1/userinfo'
+                issuer: 'https://accounts.google.com'
                 scopes: ['openid', 'email', 'profile']
                 scopeSeparator: ' '
         microsoft:
@@ -23,9 +21,7 @@ knpu_oauth2_client:
             redirect_params: { provider: microsoft }
             use_state: false
             provider_options:
-                urlAuthorize: '%microsoft_oidc_authorize_url%'
-                urlAccessToken: '%microsoft_oidc_token_url%'
-                urlResourceOwnerDetails: 'https://graph.microsoft.com/oidc/userinfo'
+                issuer: '%microsoft_oidc_issuer%'
                 scopes: ['openid', 'email', 'profile']
                 scopeSeparator: ' '
         apple:
@@ -37,9 +33,7 @@ knpu_oauth2_client:
             redirect_params: { provider: apple }
             use_state: false
             provider_options:
-                urlAuthorize: 'https://appleid.apple.com/auth/authorize'
-                urlAccessToken: 'https://appleid.apple.com/auth/token'
-                urlResourceOwnerDetails: ''
+                issuer: 'https://appleid.apple.com'
                 scopes: ['openid', 'email', 'name']
                 scopeSeparator: ' '
                 defaultAuthorizationParams:
