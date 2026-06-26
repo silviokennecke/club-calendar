@@ -16,7 +16,6 @@ use App\Entity\Location;
 use App\Entity\Property;
 use App\Entity\TargetGroup;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 class CalendarService
 {
@@ -58,15 +57,6 @@ class CalendarService
         $this->em->persist($cal);
         $this->em->flush();
         return $this->serializeCalendar($cal);
-    }
-
-    public function verifyCalendarBelongsToClub(int $calendarId, Club $club): Calendar
-    {
-        $cal = $this->em->getRepository(Calendar::class)->find($calendarId);
-        if (!$cal || $cal->getClub()->getId() !== $club->getId()) {
-            throw new AccessDeniedHttpException('Calendar not found in this club');
-        }
-        return $cal;
     }
 
     public function updateCalendar(Calendar $calendar, array $data): array
