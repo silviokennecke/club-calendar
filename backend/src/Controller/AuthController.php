@@ -104,8 +104,7 @@ class AuthController extends AbstractApiController
         $enabled = [
             'google'    => !empty($_ENV['GOOGLE_CLIENT_ID'])    && !empty($_ENV['GOOGLE_CLIENT_SECRET']),
             'microsoft' => !empty($_ENV['MICROSOFT_CLIENT_ID']) && !empty($_ENV['MICROSOFT_CLIENT_SECRET']),
-            'apple'     => !empty($_ENV['APPLE_CLIENT_ID'])     && !empty($_ENV['APPLE_TEAM_ID'])
-                            && !empty($_ENV['APPLE_KEY_ID'])    && !empty($_ENV['APPLE_PRIVATE_KEY']),
+            'apple'     => !empty($_ENV['APPLE_CLIENT_ID'])     && !empty($_ENV['APPLE_CLIENT_SECRET']),
         ];
         return new JsonResponse($enabled);
     }
