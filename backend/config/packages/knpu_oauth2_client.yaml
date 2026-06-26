@@ -1,3 +1,9 @@
+parameters:
+    knpu_oauth2_client.providers_meta:
+        google:    { label: 'Google',    icon: 'google' }
+        microsoft: { label: 'Microsoft', icon: 'microsoft' }
+        apple:     { label: 'Apple',     icon: 'apple' }
+
 knpu_oauth2_client:
     clients:
         google:
