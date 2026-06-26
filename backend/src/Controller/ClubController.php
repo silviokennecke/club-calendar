@@ -95,7 +95,7 @@ class ClubController extends AbstractApiController
 
     #[Route('/{clubId}/members/{userId}', methods: ['DELETE'])]
     #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
-    public function removeMember(#[MapEntity(id: 'clubId')] Club $club, int $userId): JsonResponse
+    public function removeMember(#[MapEntity(id: 'clubId')] Club $club, string $userId): JsonResponse
     {
         $this->clubService->removeMember($club, $userId);
         return new JsonResponse(['ok' => true]);

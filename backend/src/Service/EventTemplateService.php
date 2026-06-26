@@ -50,14 +50,14 @@ readonly class EventTemplateService
         return $this->serialize($template);
     }
 
-    public function getTemplate(int $id, Calendar $calendar): array
+    public function getTemplate(string $id, Calendar $calendar): array
     {
         $template = $this->findTemplate($id, $calendar);
 
         return $this->serialize($template);
     }
 
-    public function updateTemplate(int $id, Calendar $calendar, array $data): array
+    public function updateTemplate(string $id, Calendar $calendar, array $data): array
     {
         $template = $this->findTemplate($id, $calendar);
 
@@ -133,14 +133,14 @@ readonly class EventTemplateService
         return $this->serialize($template);
     }
 
-    public function deleteTemplate(int $id, Calendar $calendar): void
+    public function deleteTemplate(string $id, Calendar $calendar): void
     {
         $template = $this->findTemplate($id, $calendar);
         $this->em->remove($template);
         $this->em->flush();
     }
 
-    private function findTemplate(int $id, Calendar $calendar): EventTemplate
+    private function findTemplate(string $id, Calendar $calendar): EventTemplate
     {
         $template = $this->em->getRepository(EventTemplate::class)->find($id);
         if (!$template || $template->getCalendar()->getId() !== $calendar->getId()) {

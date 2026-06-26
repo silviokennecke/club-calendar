@@ -33,7 +33,7 @@ readonly class PropertyService
         return $this->serialize($property);
     }
 
-    public function update(int $id, Calendar $calendar, array $data): array
+    public function update(string $id, Calendar $calendar, array $data): array
     {
         $property = $this->find($id, $calendar);
 
@@ -49,14 +49,14 @@ readonly class PropertyService
         return $this->serialize($property);
     }
 
-    public function delete(int $id, Calendar $calendar): void
+    public function delete(string $id, Calendar $calendar): void
     {
         $property = $this->find($id, $calendar);
         $this->em->remove($property);
         $this->em->flush();
     }
 
-    private function find(int $id, Calendar $calendar): Property
+    private function find(string $id, Calendar $calendar): Property
     {
         $property = $this->em->getRepository(Property::class)->find($id);
         if (!$property || $property->getCalendar()->getId() !== $calendar->getId()) {

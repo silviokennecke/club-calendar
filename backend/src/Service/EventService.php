@@ -72,7 +72,7 @@ readonly class EventService
         return $this->serializeEvent($event);
     }
 
-    public function createSeriesFromTemplate(Calendar $calendar, int $templateId, array $dates, array $overrides): array
+    public function createSeriesFromTemplate(Calendar $calendar, string $templateId, array $dates, array $overrides): array
     {
         $template = $this->em->getRepository(EventTemplate::class)->find($templateId);
         if (!$template || $template->getCalendar()->getId() !== $calendar->getId()) {
@@ -144,7 +144,7 @@ readonly class EventService
         return count($eventsData);
     }
 
-    public function getEvent(int $id, Calendar $calendar): array
+    public function getEvent(string $id, Calendar $calendar): array
     {
         $event = $this->em->getRepository(Event::class)->find($id);
         if (!$event || $event->getCalendar()->getId() !== $calendar->getId()) {
@@ -154,7 +154,7 @@ readonly class EventService
         return $this->serializeEvent($event);
     }
 
-    public function updateEvent(int $id, Calendar $calendar, array $data): array
+    public function updateEvent(string $id, Calendar $calendar, array $data): array
     {
         $event = $this->em->getRepository(Event::class)->find($id);
         if (!$event || $event->getCalendar()->getId() !== $calendar->getId()) {
@@ -262,7 +262,7 @@ readonly class EventService
         return $this->serializeEvent($event);
     }
 
-    public function deleteEvent(int $id, Calendar $calendar): void
+    public function deleteEvent(string $id, Calendar $calendar): void
     {
         $event = $this->em->getRepository(Event::class)->find($id);
         if (!$event || $event->getCalendar()->getId() !== $calendar->getId()) {

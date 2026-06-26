@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
 #[ORM\UniqueConstraint(name: 'uq_oauth_provider_provider_id', columns: ['provider', 'provider_id'])]
 class OAuthAccount
 {
     #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    private ?int $id = null;
+    #[ORM\Column(length: 36)]
+    private string $id;
 
     #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'oauthAccounts')]
     #[ORM\JoinColumn(name: 'user_id', nullable: false, onDelete: 'CASCADE')]
@@ -28,7 +28,12 @@ class OAuthAccount
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $email = null;
 
-    public function getId(): ?int
+    public function __construct()
+    {
+        $this->id = Uuid::v7()->toRfc4122();
+    }
+
+    public function getId(): string
     {
         return $this->id;
     }

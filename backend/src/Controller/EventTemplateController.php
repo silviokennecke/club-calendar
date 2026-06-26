@@ -41,7 +41,7 @@ class EventTemplateController extends AbstractApiController
 
     #[Route('/{id}', methods: ['GET'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
-    public function getOne(#[MapEntity(id: 'calendarId')] Calendar $calendar, int $id): JsonResponse
+    public function getOne(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id): JsonResponse
     {
         return new JsonResponse($this->templateService->getTemplate($id, $calendar));
     }
@@ -49,7 +49,7 @@ class EventTemplateController extends AbstractApiController
     #[Route('/{id}', methods: ['PATCH'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function update(#[MapEntity(id: 'calendarId')] Calendar $calendar, int $id, Request $request): JsonResponse
+    public function update(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id, Request $request): JsonResponse
     {
         $data = $this->decodeJson($request);
 
@@ -59,7 +59,7 @@ class EventTemplateController extends AbstractApiController
     #[Route('/{id}', methods: ['DELETE'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, int $id): JsonResponse
+    public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id): JsonResponse
     {
         $this->templateService->deleteTemplate($id, $calendar);
 

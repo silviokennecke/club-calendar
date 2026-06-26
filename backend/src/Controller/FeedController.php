@@ -42,7 +42,7 @@ class FeedController extends AbstractApiController
     #[Route('/{feedId}', methods: ['PATCH'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function update(#[MapEntity(id: 'calendarId')] Calendar $calendar, int $feedId, Request $request): JsonResponse
+    public function update(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId, Request $request): JsonResponse
     {
         $data = $this->decodeJson($request);
 
@@ -52,7 +52,7 @@ class FeedController extends AbstractApiController
     #[Route('/{feedId}', methods: ['DELETE'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, int $feedId): JsonResponse
+    public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId): JsonResponse
     {
         $this->feedService->delete($feedId, $calendar);
 
@@ -62,7 +62,7 @@ class FeedController extends AbstractApiController
     #[Route('/{feedId}/regenerate-secret', methods: ['POST'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function regenerateSecret(#[MapEntity(id: 'calendarId')] Calendar $calendar, int $feedId): JsonResponse
+    public function regenerateSecret(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId): JsonResponse
     {
         return new JsonResponse($this->feedService->regenerateSecret($feedId, $calendar));
     }

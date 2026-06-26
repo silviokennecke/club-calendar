@@ -35,7 +35,7 @@ class PublicTest extends WebTestCase
         DatabaseResetter::reset(self::$em);
     }
 
-    private function createFeed(int $calendarId, FeedVisibility $visibility = FeedVisibility::PUBLIC, string $secret = 'test-secret'): CalendarFeed
+    private function createFeed(string $calendarId, FeedVisibility $visibility = FeedVisibility::PUBLIC, string $secret = 'test-secret'): CalendarFeed
     {
         $feed     = new CalendarFeed();
         $calendar = self::$em->getRepository(Calendar::class)->find($calendarId);

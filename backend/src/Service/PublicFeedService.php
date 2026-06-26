@@ -18,7 +18,7 @@ class PublicFeedService
         private readonly IcsService $icsService,
     ) {}
 
-    public function getFeedEvents(int $feedId, ?string $secret, ?array $targetGroupIds): array
+    public function getFeedEvents(string $feedId, ?string $secret, ?array $targetGroupIds): array
     {
         $feed   = $this->loadFeed($feedId, $secret);
         $events = $this->loadEvents($feed, $targetGroupIds);
@@ -29,7 +29,7 @@ class PublicFeedService
         ];
     }
 
-    public function getFeedIcs(int $feedId, ?string $secret, ?array $targetGroupIds): string
+    public function getFeedIcs(string $feedId, ?string $secret, ?array $targetGroupIds): string
     {
         $feed   = $this->loadFeed($feedId, $secret);
         $events = $this->loadEvents($feed, $targetGroupIds);
@@ -38,7 +38,7 @@ class PublicFeedService
         return $this->icsService->buildIcs($feed, $club, $events);
     }
 
-    private function loadFeed(int $feedId, ?string $secret): CalendarFeed
+    private function loadFeed(string $feedId, ?string $secret): CalendarFeed
     {
         $feed = $this->em->getRepository(CalendarFeed::class)->find($feedId);
         if (!$feed) {

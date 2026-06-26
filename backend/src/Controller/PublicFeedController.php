@@ -17,21 +17,21 @@ class PublicFeedController extends AbstractController
     public function __construct(private readonly PublicFeedService $feedService) {}
 
     #[Route('/{feedId}/events', methods: ['GET'])]
-    public function events(int $feedId, Request $request): JsonResponse
+    public function events(string $feedId, Request $request): JsonResponse
     {
         $secret  = $request->query->get('secret');
         $tgParam = $request->query->get('targetGroupIds');
-        $tgIds   = $tgParam ? array_values(array_filter(array_map('intval', explode(',', $tgParam)))) : null;
+        $tgIds   = $tgParam ? array_values(array_filter(array_map('trim', explode(',', $tgParam)))) : null;
 
         return new JsonResponse($this->feedService->getFeedEvents($feedId, $secret, $tgIds ?: null));
     }
 
     #[Route('/{feedId}/ics', methods: ['GET'])]
-    public function ics(int $feedId, Request $request): Response
+    public function ics(string $feedId, Request $request): Response
     {
         $secret     = $request->query->get('secret');
         $tgParam    = $request->query->get('targetGroupIds');
-        $tgIds      = $tgParam ? array_values(array_filter(array_map('intval', explode(',', $tgParam)))) : null;
+        $tgIds      = $tgParam ? array_values(array_filter(array_map('trim', explode(',', $tgParam)))) : null;
         $icsContent = $this->feedService->getFeedIcs($feedId, $secret, $tgIds ?: null);
 
         return new Response($icsContent, 200, [

@@ -90,7 +90,7 @@ readonly class ClubService
         return ['id' => $user->getId(), 'name' => $user->getName(), 'email' => $user->getEmail()];
     }
 
-    public function removeMember(Club $club, int $memberId): void
+    public function removeMember(Club $club, string $memberId): void
     {
         $member = $this->em->getRepository(User::class)->find($memberId);
         if (!$member) return;

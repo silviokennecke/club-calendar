@@ -13,7 +13,7 @@ class UpdateMeDto
     #[Assert\Range(min: 0, max: 6)]
     public ?int $firstDayOfWeek = null;
 
-    public ?int $lastClubId = null;
+    public ?string $lastClubId = null;
 
-    public ?int $lastCalendarId = null;
+    public ?string $lastCalendarId = null;
 }
