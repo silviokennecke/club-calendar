@@ -1,7 +1,6 @@
 parameters:
     env(MICROSOFT_TENANT_ID): 'common'
     microsoft_oidc_issuer: 'https://login.microsoftonline.com/%env(MICROSOFT_TENANT_ID)%/v2.0'
-    oidc_discovery_cache_dir: '%kernel.cache_dir%/oidc'
 
 services:
     _defaults:
