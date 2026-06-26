@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
   CalendarDays, Settings, LayoutTemplate, LogOut,
-  Palette, Tag, Users, MapPin, Rss, User, List, ChevronDown, Users2
+  Palette, Tag, Users, MapPin, Rss, User, List, ChevronDown, Users2, Sun
 } from 'lucide-react'
 
 interface Props { clubId: string; calendarId: string }
@@ -80,6 +80,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
     { label: 'Features', href: `${base}/settings/features`, icon: Tag },
     { label: 'Target Groups', href: `${base}/settings/target-groups`, icon: Users },
     { label: 'Locations', href: `${base}/settings/locations`, icon: MapPin },
+    { label: 'Holidays', href: `${base}/settings/holiday-calendars`, icon: Sun },
     { label: 'Club', href: `/clubs/${clubId}`, icon: Users2, exact: true },
   ]
 
