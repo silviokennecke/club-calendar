@@ -10,10 +10,9 @@ import { apiGet, apiPatch, apiPost, getHolidayEvents } from '@/lib/api'
 import type {CalendarEvent, TargetGroup, Calendar, HolidayEvent} from '@/lib/types'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
-import { FilterPillGroup } from '@/components/ui/shared'
+import { FilterPillGroup, SearchInput } from '@/components/ui/shared'
 import EventModal from '@/components/calendar/EventModal'
-import { Plus, Upload, Search, X, ArchiveRestore } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { Plus, Upload, ArchiveRestore } from 'lucide-react'
 
 export default function CalendarPage() {
   const { clubId, calendarId } = useParams<{ clubId: string; calendarId: string }>()
@@ -228,20 +227,11 @@ export default function CalendarPage() {
       <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
         <h1 className="text-lg font-semibold text-slate-900">Calendar</h1>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-            <Input
-              value={searchQuery}
-              onChange={e => handleSearchChange(e.target.value)}
-              placeholder="Search events…"
-              className="pl-8 pr-8 h-8 w-48 text-sm"
-            />
-            {searchQuery && (
-              <button onClick={clearSearch} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={val => val === '' ? clearSearch() : handleSearchChange(val)}
+            placeholder="Search events…"
+          />
           <Link to={`/clubs/${clubId}/calendars/${calendarId}/import`}>
             <Button size="sm" variant="outline">
               <Upload className="w-3.5 h-3.5 mr-1" />Import ICS
