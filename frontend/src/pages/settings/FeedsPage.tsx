@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { FormField } from '@/components/ui/shared'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Plus, Copy, Eye, EyeOff, RefreshCw, Pencil, Trash2, Check } from 'lucide-react'
@@ -225,10 +226,9 @@ export default function FeedsPage() {
             <DialogTitle>{editingFeed ? 'Edit Feed' : 'New Feed'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-1">
-              <Label>Name</Label>
+            <FormField label="Name">
               <Input placeholder="e.g. Public Calendar" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-            </div>
+            </FormField>
 
             <div className="space-y-1">
               <Label>Visibility</Label>
@@ -244,8 +244,7 @@ export default function FeedsPage() {
             </div>
 
             {targetGroups.length > 0 && (
-              <div className="space-y-1.5">
-                <Label>Filter by Target Group <span className="text-slate-400 font-normal">(optional — empty = all events)</span></Label>
+              <FormField label={<>Filter by Target Group <span className="text-slate-400 font-normal">(optional — empty = all events)</span></>}>
                 <div className="flex flex-wrap gap-1.5">
                   {targetGroups.map(tg => (
                     <button key={tg.id} type="button" onClick={() => toggleTargetGroup(tg.id)}
@@ -254,7 +253,7 @@ export default function FeedsPage() {
                     </button>
                   ))}
                 </div>
-              </div>
+              </FormField>
             )}
           </div>
           <DialogFooter>

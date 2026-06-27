@@ -6,8 +6,8 @@ import type { Location } from '@/lib/types'
 import { formatAddress, formatLocationLabel } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { FormField } from '@/components/ui/shared'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Plus, MapPin, Pencil, Trash2 } from 'lucide-react'
 import type { GeocodedAddress } from '@/components/locations/MapPicker'
@@ -190,34 +190,28 @@ export default function LocationsPage() {
           </DialogHeader>
 
           <div className="space-y-4 py-1">
-            <div className="space-y-1.5">
-              <Label>Name <span className="text-slate-400 font-normal">(optional)</span></Label>
+            <FormField label={<>Name <span className="text-slate-400 font-normal">(optional)</span></>}>
               <Input placeholder="e.g. Main Hall" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-            </div>
+            </FormField>
 
-            <div className="space-y-1.5">
-              <Label>Street &amp; house number</Label>
+            <FormField label="Street & house number">
               <Input placeholder="Musterstraße 1" value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} />
-            </div>
+            </FormField>
 
             <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label>ZIP</Label>
+              <FormField label="ZIP">
                 <Input placeholder="12345" value={form.zip} onChange={e => setForm(f => ({ ...f, zip: e.target.value }))} />
-              </div>
-              <div className="col-span-2 space-y-1.5">
-                <Label>City</Label>
+              </FormField>
+              <FormField label="City" className="col-span-2">
                 <Input placeholder="Berlin" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} />
-              </div>
+              </FormField>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Country <span className="text-slate-400 font-normal">(optional)</span></Label>
+            <FormField label={<>Country <span className="text-slate-400 font-normal">(optional)</span></>}>
               <Input placeholder="Germany" value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} />
-            </div>
+            </FormField>
 
-            <div className="space-y-1.5">
-              <Label>Map position <span className="text-slate-400 font-normal">(search or click/drag)</span></Label>
+            <FormField label={<>Map position <span className="text-slate-400 font-normal">(search or click/drag)</span></>}>
               <Suspense fallback={<div className="h-56 bg-slate-100 rounded-lg animate-pulse" />}>
                 <MapPicker
                   latitude={form.latitude}
@@ -226,7 +220,7 @@ export default function LocationsPage() {
                   onPositionChange={handleMapPosition}
                 />
               </Suspense>
-            </div>
+            </FormField>
           </div>
 
           <DialogFooter>

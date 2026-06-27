@@ -6,8 +6,8 @@ import { DATE_FORMAT_OPTIONS } from '@/lib/dateFormat'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { FormField } from '@/components/ui/shared'
 import { Trash2, Plus, Key } from 'lucide-react'
 
 interface PasskeyInfo { id: string; deviceName: string; createdAt: string }
@@ -108,8 +108,7 @@ export default function ProfilePage() {
       <div className="space-y-3 mt-6">
         <h3 className="text-sm font-semibold text-slate-800">Localization</h3>
         <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
-          <div className="space-y-1.5">
-            <Label>Date format</Label>
+          <FormField label="Date format">
             <select
               className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
               value={profile?.dateFormat ?? 'dd.MM.yyyy'}
@@ -122,10 +121,9 @@ export default function ProfilePage() {
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
-          </div>
+          </FormField>
 
-          <div className="space-y-1.5">
-            <Label>First day of week</Label>
+          <FormField label="First day of week">
             <div className="flex gap-2">
               {([{ label: 'Monday', value: 1 }, { label: 'Sunday', value: 0 }] as const).map(opt => (
                 <button
@@ -141,7 +139,7 @@ export default function ProfilePage() {
                 </button>
               ))}
             </div>
-          </div>
+          </FormField>
         </div>
       </div>
 
