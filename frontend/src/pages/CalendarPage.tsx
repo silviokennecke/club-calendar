@@ -1,12 +1,15 @@
 import { useState, useRef, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventInput, EventClickArg, EventDropArg } from '@fullcalendar/core'
+import deLocale from '@fullcalendar/core/locales/de'
 import type { DateClickArg } from '@fullcalendar/interaction'
 import { apiGet, apiPatch, apiPost, getHolidayEvents } from '@/lib/api'
+import i18n from '@/lib/i18n'
 import type {CalendarEvent, TargetGroup, Calendar, HolidayEvent} from '@/lib/types'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
@@ -18,6 +21,8 @@ export default function CalendarPage() {
   const { clubId, calendarId } = useParams<{ clubId: string; calendarId: string }>()
   const qc = useQueryClient()
   const { user } = useAuth()
+  const { t, i18n: i18nHook } = useTranslation()
+  const fcLocale = i18nHook.resolvedLanguage === 'de' ? deLocale : undefined
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string | undefined>()
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
@@ -213,7 +218,7 @@ export default function CalendarPage() {
       {isArchived && (
         <Alert
           variant="warning"
-          message="This calendar is archived — it is read-only."
+          message={t('calendar.archivedNotice')}
           className="border-b border-t-0 border-x-0 rounded-none"
           actions={
             <button
@@ -221,33 +226,34 @@ export default function CalendarPage() {
               className="flex items-center gap-1.5 text-xs text-amber-700 font-medium hover:text-amber-900 whitespace-nowrap"
             >
               <ArchiveRestore className="w-3.5 h-3.5" />
-              Unarchive
+              {t('calendar.unarchive')}
             </button>
           }
         />
       )}
       <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
-        <h1 className="text-lg font-semibold text-slate-900">Calendar</h1>
+        <h1 className="text-lg font-semibold text-slate-900">{t('calendar.title')}</h1>
         <div className="flex items-center gap-2 flex-wrap">
           <SearchInput
             value={searchQuery}
             onChange={val => val === '' ? clearSearch() : handleSearchChange(val)}
-            placeholder="Search events…"
+            placeholder={t('calendar.searchEvents')}
           />
           <Link to={`/clubs/${clubId}/calendars/${calendarId}/import`}>
             <Button size="sm" variant="outline">
-              <Upload className="w-3.5 h-3.5 mr-1" />Import ICS
+              <Upload className="w-3.5 h-3.5 mr-1" />{t('calendar.importIcs')}
             </Button>
           </Link>
           <Button size="sm" onClick={() => openCreate()}>
-            <Plus className="w-3.5 h-3.5 mr-1" />New Event
+            <Plus className="w-3.5 h-3.5 mr-1" />{t('calendar.newEvent')}
           </Button>
         </div>
       </div>
 
       {targetGroups.length > 1 && (
         <FilterPillGroup
-          label="Filter:"
+          label={t('calendar.filter')}
+          clearAllLabel={t('calendar.allGroups')}
           items={targetGroups.map(tg => ({ id: tg.id, label: tg.name }))}
           selected={selectedGroups}
           onChange={toggleGroup}
@@ -280,11 +286,11 @@ export default function CalendarPage() {
           headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth' }}
           height="auto"
           eventContent={renderEvent}
-          locale="de"
+          locale={fcLocale}
         />
       </div>
 
-      <p className="text-xs text-slate-400 mt-2">Click on an event to edit · Click a date to create</p>
+      <p className="text-xs text-slate-400 mt-2">{t('calendar.clickToEdit')}</p>
 
       <EventModal
         calendarId={calendarId!}
@@ -313,7 +319,7 @@ function renderEvent(info: { event: { title: string; start: Date | null; extende
     <div className="text-xs px-1 truncate">
       <span className="opacity-80">{timeText} </span>
       <span className="font-medium">{event.title}</span>
-      {ev?.isDraft && <span className="ml-1 opacity-60">(draft)</span>}
+      {ev?.isDraft && <span className="ml-1 opacity-60">{i18n.t('calendar.draft')}</span>}
     </div>
   )
 }
