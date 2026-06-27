@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { apiGet } from '@/lib/api'
 import type { Calendar, Club } from '@/lib/types'
 import { useAuth } from '@/lib/auth-context'
@@ -24,6 +25,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
   const pathname = location.pathname
   const navigate = useNavigate()
   const { logout, updateUser } = useAuth()
+  const { t } = useTranslation()
   const trackedRef = useRef<string>('')
 
   const base = `/clubs/${clubId}/calendars/${calendarId}`
@@ -68,20 +70,20 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
   }
 
   const mainNav: NavItem[] = [
-    { label: 'Calendar', href: base, icon: CalendarDays, exact: true },
-    { label: 'Events', href: `${base}/events`, icon: List },
-    { label: 'Templates', href: `${base}/templates`, icon: LayoutTemplate },
+    { label: t('nav.calendar'), href: base, icon: CalendarDays, exact: true },
+    { label: t('nav.events'), href: `${base}/events`, icon: List },
+    { label: t('nav.templates'), href: `${base}/templates`, icon: LayoutTemplate },
   ]
 
   const settingsNav: NavItem[] = [
-    { label: 'General', href: `${base}/settings`, icon: Settings, exact: true },
-    { label: 'Feeds', href: `${base}/settings/feeds`, icon: Rss },
-    { label: 'Properties', href: `${base}/settings/properties`, icon: Palette },
-    { label: 'Features', href: `${base}/settings/features`, icon: Tag },
-    { label: 'Target Groups', href: `${base}/settings/target-groups`, icon: Users },
-    { label: 'Locations', href: `${base}/settings/locations`, icon: MapPin },
-    { label: 'Holidays', href: `${base}/settings/holiday-calendars`, icon: Sun },
-    { label: 'Club', href: `/clubs/${clubId}`, icon: Users2, exact: true },
+    { label: t('nav.general'), href: `${base}/settings`, icon: Settings, exact: true },
+    { label: t('nav.feeds'), href: `${base}/settings/feeds`, icon: Rss },
+    { label: t('nav.properties'), href: `${base}/settings/properties`, icon: Palette },
+    { label: t('nav.features'), href: `${base}/settings/features`, icon: Tag },
+    { label: t('nav.targetGroups'), href: `${base}/settings/target-groups`, icon: Users },
+    { label: t('nav.locations'), href: `${base}/settings/locations`, icon: MapPin },
+    { label: t('nav.holidays'), href: `${base}/settings/holiday-calendars`, icon: Sun },
+    { label: t('nav.clubSettings'), href: `/clubs/${clubId}`, icon: Users2, exact: true },
   ]
 
   function isActive(item: NavItem) {
@@ -98,7 +100,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
       <div className="p-3 border-b border-slate-100 space-y-2">
         {/* Club selector */}
         <div className="relative">
-          <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider px-1">Club</label>
+          <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider px-1">{t('nav.club')}</label>
           <div className="relative mt-0.5">
             <select
               value={clubId}
@@ -108,7 +110,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
               {clubs.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
-              {clubs.length === 0 && <option value={clubId}>{currentClub?.name ?? 'Loading…'}</option>}
+              {clubs.length === 0 && <option value={clubId}>{currentClub?.name ?? t('common.loading')}</option>}
             </select>
             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
           </div>
@@ -116,7 +118,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
 
         {/* Calendar selector */}
         <div className="relative">
-          <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider px-1">Calendar</label>
+          <label className="text-[10px] font-medium text-slate-400 uppercase tracking-wider px-1">{t('nav.calendar')}</label>
           <div className="relative mt-0.5">
             <select
               value={calendarId}
@@ -126,7 +128,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
               {calendars.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
-              {calendars.length === 0 && <option value={calendarId}>{currentCalendar?.name ?? 'Loading…'}</option>}
+              {calendars.length === 0 && <option value={calendarId}>{currentCalendar?.name ?? t('common.loading')}</option>}
             </select>
             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
           </div>
@@ -146,7 +148,7 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
         </div>
 
         <div className="mt-4">
-          <p className="px-3 py-1.5 text-xs font-medium text-slate-400 uppercase tracking-wider">Settings</p>
+          <p className="px-3 py-1.5 text-xs font-medium text-slate-400 uppercase tracking-wider">{t('nav.settings')}</p>
           <div className="space-y-0.5">
             {settingsNav.map(item => (
               <Link key={item.href} to={item.href}
@@ -163,11 +165,11 @@ export default function CalendarSidebar({ clubId, calendarId }: Props) {
       <div className="p-3 border-t border-slate-100 space-y-0.5">
         <Link to="/profile"
           className="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 w-full rounded transition-colors">
-          <User className="w-3.5 h-3.5" /> Profile
+          <User className="w-3.5 h-3.5" /> {t('nav.profile')}
         </Link>
         <button onClick={logout}
           className="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 w-full rounded transition-colors">
-          <LogOut className="w-3.5 h-3.5" /> Sign out
+          <LogOut className="w-3.5 h-3.5" /> {t('auth.signOut')}
         </button>
       </div>
     </div>
