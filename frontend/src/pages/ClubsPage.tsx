@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { apiGet, apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { FullPageLoader } from '@/components/ui/shared'
@@ -12,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 
 export default function ClubsPage() {
   const { user, logout } = useAuth()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [redirected, setRedirected] = useState(false)
   const [newClubName, setNewClubName] = useState('')
@@ -54,21 +56,21 @@ export default function ClubsPage() {
         <span className="text-lg font-semibold text-slate-900">📅 Club Calendar</span>
         <div className="flex items-center gap-3">
           <span className="text-sm text-slate-500">{user?.email}</span>
-          <Button variant="ghost" size="sm" onClick={logout}>Sign out</Button>
+          <Button variant="ghost" size="sm" onClick={logout}>{t('auth.signOut')}</Button>
         </div>
       </div>
       <div className="max-w-5xl mx-auto p-8">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Select a Club</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{t('clubs.selectClub')}</h1>
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger render={<Button size="sm" />}>+ New Club</DialogTrigger>
+            <DialogTrigger render={<Button size="sm" />}>{t('clubs.newClub')}</DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Create Club</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{t('clubs.createClubTitle')}</DialogTitle></DialogHeader>
               <div className="space-y-4 pt-2">
-                <Input placeholder="Club name" value={newClubName}
+                <Input placeholder={t('clubs.clubName')} value={newClubName}
                   onChange={e => setNewClubName(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleCreate()} />
-                <Button className="w-full" onClick={handleCreate}>Create</Button>
+                <Button className="w-full" onClick={handleCreate}>{t('clubs.create')}</Button>
               </div>
             </DialogContent>
           </Dialog>
