@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { apiGet, apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
@@ -11,6 +12,7 @@ import { CalendarDays, Building2, Check } from 'lucide-react'
 import { FormField } from '@/components/ui/shared'
 
 export default function SetupPage() {
+  const { t } = useTranslation()
   const { updateUser } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -67,7 +69,7 @@ export default function SetupPage() {
     } finally { setLoading(false) }
   }
 
-  if (detecting) return <FullPageLoader />
+  if (detecting) return <FullPageLoader message={t('common.loading')} />
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -87,12 +89,12 @@ export default function SetupPage() {
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-5">
               <Building2 className="w-6 h-6 text-blue-600" />
             </div>
-            <h1 className="text-xl font-bold text-slate-900 mb-1">Welcome to Club Calendar</h1>
-            <p className="text-sm text-slate-500 mb-6">Let&apos;s set up your club first.</p>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">{t('setup.welcome')}</h1>
+            <p className="text-sm text-slate-500 mb-6">{t('setup.setupClubFirst')}</p>
             <div className="space-y-4">
-              <FormField label="Club name">
+              <FormField label={t('setup.clubName')}>
                 <Input
-                  placeholder="e.g. Schützenverein Musterstadt"
+                  placeholder={t('setup.clubNamePlaceholder')}
                   value={clubName}
                   onChange={e => setClubName(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleCreateClub()}
@@ -100,7 +102,7 @@ export default function SetupPage() {
                 />
               </FormField>
               <Button className="w-full" disabled={loading || !clubName.trim()} onClick={handleCreateClub}>
-                {loading ? 'Creating…' : 'Create club →'}
+                {loading ? t('setup.creating') : t('setup.createClub')}
               </Button>
             </div>
           </div>
@@ -111,10 +113,10 @@ export default function SetupPage() {
             <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-5">
               <CalendarDays className="w-6 h-6 text-green-600" />
             </div>
-            <h1 className="text-xl font-bold text-slate-900 mb-1">Create your first calendar</h1>
-            <p className="text-sm text-slate-500 mb-6">For <strong>{createdClub?.name}</strong></p>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">{t('setup.createCalendar')}</h1>
+            <p className="text-sm text-slate-500 mb-6">{t('setup.forClub', { club: createdClub?.name ?? '' })}</p>
             <div className="space-y-4">
-              <FormField label="Calendar name">
+              <FormField label={t('setup.calendarName')}>
                 <Input
                   value={calendarName}
                   onChange={e => setCalendarName(e.target.value)}
@@ -123,7 +125,7 @@ export default function SetupPage() {
                 />
               </FormField>
               <Button className="w-full" disabled={loading || !calendarName.trim()} onClick={handleCreateCalendar}>
-                {loading ? 'Creating…' : 'Get started →'}
+                {loading ? t('setup.creating') : t('setup.getStarted')}
               </Button>
             </div>
           </div>
