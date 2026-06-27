@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { storeTokens, apiGet } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
+import { FullPageLoader } from '@/components/ui/shared'
 import type { User } from '@/lib/types'
 
 export default function AuthCallbackPage() {
@@ -35,9 +36,5 @@ export default function AuthCallbackPage() {
       .catch(() => navigate('/login?error=oauth_failed', { replace: true }))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-50">
-      <p className="text-slate-400">Signing in…</p>
-    </div>
-  )
+  return <FullPageLoader message="Signing in…" />
 }

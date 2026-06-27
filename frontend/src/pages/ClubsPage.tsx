@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiGet, apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
+import { FullPageLoader } from '@/components/ui/shared'
 import type { Club } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -45,13 +46,7 @@ export default function ClubsPage() {
     refetch()
   }
 
-  if (isLoading || redirected) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <div className="text-slate-400 text-sm">Loading…</div>
-      </div>
-    )
-  }
+  if (isLoading || redirected) return <FullPageLoader />
 
   return (
     <div className="min-h-screen bg-slate-50">
