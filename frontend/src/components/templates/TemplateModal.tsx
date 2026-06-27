@@ -148,11 +148,11 @@ export default function TemplateModal({ calendarId, open, onClose, template }: P
             <div className="space-y-1.5">
               <Label>{t('eventModal.targetGroups')}</Label>
               <div className="flex flex-wrap gap-1.5">
-                {targetGroups.map(t => (
-                  <button key={t.id} type="button"
-                    onClick={() => setSelectedTargetGroupIds(toggle(selectedTargetGroupIds, t.id))}
-                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${selectedTargetGroupIds.includes(t.id) ? 'bg-purple-100 border-purple-300 text-purple-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                    {t.name}
+                {targetGroups.map(tg => (
+                  <button key={tg.id} type="button"
+                    onClick={() => setSelectedTargetGroupIds(toggle(selectedTargetGroupIds, tg.id))}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${selectedTargetGroupIds.includes(tg.id) ? 'bg-purple-100 border-purple-300 text-purple-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                    {tg.name}
                   </button>
                 ))}
               </div>

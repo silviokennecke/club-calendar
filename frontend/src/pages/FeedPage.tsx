@@ -264,6 +264,7 @@ export default function FeedPage() {
               selected={selected.map(String)}
               onChange={id => toggleGroup(Number(id))}
               onClearAll={() => setSelected([])}
+              clearAllLabel={t('feed.allGroups')}
               className="mt-4"
             />
           )}
