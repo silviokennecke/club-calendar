@@ -5,7 +5,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventInput, EventClickArg } from '@fullcalendar/core'
 import { Button } from '@/components/ui/button'
-import { TagBadge, FilterPillGroup } from '@/components/ui/shared'
+import { TagBadge, FilterPillGroup, FullPageLoader, FullPageError } from '@/components/ui/shared'
 import { Calendar, Download, X, MapPin, Clock, Tag, Users, Sparkles } from 'lucide-react'
 import { formatAddress } from '@/lib/types'
 
@@ -221,11 +221,11 @@ export default function FeedPage() {
     setSelectedEvent(ev)
   }
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen bg-slate-50"><p className="text-slate-400">Loading...</p></div>
+  if (loading) return <FullPageLoader />
   if (error) return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-50">
-      <div className="text-center"><Calendar className="w-10 h-10 text-slate-300 mx-auto mb-3" /><p className="text-slate-600 font-medium">{error}</p></div>
-    </div>
+    <FullPageError message={error}>
+      <Calendar className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+    </FullPageError>
   )
 
   return (

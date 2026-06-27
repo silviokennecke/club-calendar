@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiGet, apiPost } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
+import { FullPageLoader } from '@/components/ui/shared'
 import type { Club, Calendar } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -66,13 +67,7 @@ export default function SetupPage() {
     } finally { setLoading(false) }
   }
 
-  if (detecting) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-slate-400 text-sm">Loading…</div>
-      </div>
-    )
-  }
+  if (detecting) return <FullPageLoader />
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
