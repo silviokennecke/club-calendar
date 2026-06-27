@@ -5,7 +5,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventInput, EventClickArg } from '@fullcalendar/core'
 import { Button } from '@/components/ui/button'
-import { TagBadge } from '@/components/ui/shared'
+import { TagBadge, FilterPillGroup } from '@/components/ui/shared'
 import { Calendar, Download, X, MapPin, Clock, Tag, Users, Sparkles } from 'lucide-react'
 import { formatAddress } from '@/lib/types'
 
@@ -251,13 +251,14 @@ export default function FeedPage() {
           </div>
 
           {allGroups.length > 1 && (
-            <div className="flex items-center gap-2 mt-4 flex-wrap">
-              <span className="text-xs text-slate-500">Filter:</span>
-              <button onClick={() => setSelected([])} className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${selected.length === 0 ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 text-slate-600 hover:border-slate-300 bg-white'}`}>All</button>
-              {allGroups.map(tg => (
-                <button key={tg.id} onClick={() => toggleGroup(tg.id)} className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${selected.includes(tg.id) ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 text-slate-600 hover:border-slate-300 bg-white'}`}>{tg.name}</button>
-              ))}
-            </div>
+            <FilterPillGroup
+              label="Filter:"
+              items={allGroups.map(tg => ({ id: String(tg.id), label: tg.name }))}
+              selected={selected.map(String)}
+              onChange={id => toggleGroup(Number(id))}
+              onClearAll={() => setSelected([])}
+              className="mt-4"
+            />
           )}
         </div>
       </div>
