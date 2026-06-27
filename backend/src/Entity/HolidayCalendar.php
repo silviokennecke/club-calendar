@@ -8,14 +8,14 @@ use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity(repositoryClass: HolidayCalendarRepository::class)]
 class HolidayCalendar
 {
     #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    private ?int $id = null;
+    #[ORM\Column(length: 36)]
+    private string $id;
 
     #[ORM\ManyToOne(targetEntity: Calendar::class)]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
@@ -36,13 +36,14 @@ class HolidayCalendar
 
     public function __construct(Calendar $calendar, string $name, string $url)
     {
+        $this->id       = Uuid::v7()->toRfc4122();
         $this->calendar = $calendar;
         $this->name     = $name;
         $this->url      = $url;
         $this->events   = new ArrayCollection();
     }
 
-    public function getId(): ?int { return $this->id; }
+    public function getId(): string { return $this->id; }
     public function getCalendar(): Calendar { return $this->calendar; }
     public function getName(): string { return $this->name; }
     public function setName(string $name): void { $this->name = $name; }

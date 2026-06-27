@@ -72,6 +72,7 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 1. **Commit after every feature or fix** — create a git commit as soon as an implementation task is complete, before moving to the next task.
 2. **Keep CLAUDE.md and AGENTS.md up to date** — update these files whenever the stack, architecture, or module structure changes.
 3. **Write tests** — add PHPUnit integration tests for every backend feature (`tests/Controller/*.php`). E2E tests use Playwright (`frontend/e2e/`).
+4. **Always use UUIDs for entity IDs** — never use auto-increment integers. Use `Uuid::v7()->toRfc4122()` assigned in the constructor, with `#[ORM\Column(length: 36)]` (no `#[ORM\GeneratedValue]`). The `getId()` return type must be `string`, not `?int`.
 
 ## Domain Concepts
 
