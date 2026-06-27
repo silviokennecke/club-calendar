@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import { formatDate } from '@/lib/dateFormat'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { EmptyState } from '@/components/ui/shared'
+import { EmptyState, TagBadge } from '@/components/ui/shared'
 import EventModal from '@/components/calendar/EventModal'
 import { Search, X, Eye, EyeOff, CheckSquare, Trash2 } from 'lucide-react'
 
@@ -192,12 +192,8 @@ export default function EventsListPage() {
                   <span className="text-slate-500 font-mono text-xs">{ev.isAllDay ? 'All day' : ev.timeEnd}</span>
 
                   <div className="flex gap-1 flex-wrap">
-                    {tgNames.map(n => (
-                      <span key={n} className="text-xs bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full">{n}</span>
-                    ))}
-                    {ev.features.map(f => (
-                      <span key={f.feature.id} className="text-xs bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full">{f.feature.name}</span>
-                    ))}
+                    {tgNames.map(n => <TagBadge key={n} label={n} variant="purple" />)}
+                    {ev.features.map(f => <TagBadge key={f.feature.id} label={f.feature.name} variant="green" />)}
                   </div>
 
                   <span className={`justify-self-start text-xs px-2 py-0.5 rounded-full font-medium ${ev.isDraft ? 'bg-slate-100 text-slate-500' : 'bg-green-100 text-green-700'}`}>
