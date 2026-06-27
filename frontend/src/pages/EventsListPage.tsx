@@ -7,10 +7,9 @@ import { formatAddress } from '@/lib/types'
 import { useAuth } from '@/lib/auth-context'
 import { formatDate } from '@/lib/dateFormat'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { EmptyState, TagBadge } from '@/components/ui/shared'
+import { EmptyState, TagBadge, SearchInput } from '@/components/ui/shared'
 import EventModal from '@/components/calendar/EventModal'
-import { Search, X, Eye, EyeOff, CheckSquare, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, CheckSquare, Trash2, X } from 'lucide-react'
 
 type StatusFilter = 'all' | 'draft' | 'published'
 
@@ -104,12 +103,7 @@ export default function EventsListPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
         <h1 className="text-lg font-semibold text-slate-900">Events</h1>
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
-            className="pl-8 pr-7 h-8 w-48 text-sm" />
-          {search && <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="w-3.5 h-3.5" /></button>}
-        </div>
+        <SearchInput value={search} onChange={setSearch} placeholder="Search…" />
       </div>
 
       <div className="flex items-center gap-1 mb-4 bg-slate-100 p-1 rounded-lg w-fit">
