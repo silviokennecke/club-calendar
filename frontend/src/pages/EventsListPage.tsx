@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import { formatDate } from '@/lib/dateFormat'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { EmptyState } from '@/components/ui/shared'
 import EventModal from '@/components/calendar/EventModal'
 import { Search, X, Eye, EyeOff, CheckSquare, Trash2 } from 'lucide-react'
 
@@ -146,9 +147,7 @@ export default function EventsListPage() {
       {isLoading ? (
         <div className="text-center py-12 text-slate-400 text-sm">Loading…</div>
       ) : sorted.length === 0 ? (
-        <div className="text-center py-12 text-slate-400 text-sm border border-dashed border-slate-200 rounded-xl">
-          {search ? 'No events match your search.' : statusFilter !== 'all' ? `No ${statusFilter} events.` : 'No events yet.'}
-        </div>
+        <EmptyState message={search ? 'No events match your search.' : statusFilter !== 'all' ? `No ${statusFilter} events.` : 'No events yet.'} />
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
           <div className="grid grid-cols-[2rem_1fr_7rem_5rem_5rem_auto_5.5rem] gap-3 px-4 py-2 bg-slate-50 border-b border-slate-200 text-xs font-medium text-slate-500">
