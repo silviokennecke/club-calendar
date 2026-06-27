@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { FormField, SectionHeader } from '@/components/ui/shared'
+import { FormField, SectionHeader, EmptyState } from '@/components/ui/shared'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Plus, Copy, Eye, EyeOff, RefreshCw, Pencil, Trash2, Check } from 'lucide-react'
@@ -115,9 +115,7 @@ export default function FeedsPage() {
       />
 
       {feeds.length === 0 ? (
-        <div className="text-center py-12 text-slate-400 text-sm border border-dashed border-slate-200 rounded-xl">
-          No feeds yet. Create one to publish your calendar.
-        </div>
+        <EmptyState message="No feeds yet. Create one to publish your calendar." />
       ) : (
         <div className="space-y-4">
           {feeds.map(feed => {

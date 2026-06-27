@@ -7,7 +7,7 @@ import { formatAddress } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { SectionHeader } from '@/components/ui/shared'
+import { SectionHeader, EmptyState } from '@/components/ui/shared'
 import { Plus, Pencil, Trash2, Clock, MapPin } from 'lucide-react'
 import TemplateModal from '@/components/templates/TemplateModal'
 
@@ -39,9 +39,7 @@ export default function TemplatesPage() {
       />
 
       {templates.length === 0 ? (
-        <div className="text-center py-12 text-slate-400 text-sm border border-dashed border-slate-200 rounded-xl">
-          No templates yet. Create one to speed up event creation.
-        </div>
+        <EmptyState message="No templates yet. Create one to speed up event creation." />
       ) : (
         <div className="space-y-3">
           {templates.map(t => (

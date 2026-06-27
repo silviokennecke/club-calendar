@@ -7,7 +7,7 @@ import { formatAddress, formatLocationLabel } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { FormField } from '@/components/ui/shared'
+import { FormField, EmptyState } from '@/components/ui/shared'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Plus, MapPin, Pencil, Trash2 } from 'lucide-react'
 import type { GeocodedAddress } from '@/components/locations/MapPicker'
@@ -138,9 +138,7 @@ export default function LocationsPage() {
       )}
 
       {locations.length === 0 ? (
-        <div className="text-center py-12 text-slate-400 text-sm border border-dashed border-slate-200 rounded-xl">
-          No locations yet. Add one to assign it to events and templates.
-        </div>
+        <EmptyState message="No locations yet. Add one to assign it to events and templates." />
       ) : (
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {locations.map(loc => {
