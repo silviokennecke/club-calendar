@@ -1,5 +1,5 @@
 export interface User {
-  id: number
+  id: string
   name: string
   email: string
   dateFormat: string
@@ -9,50 +9,50 @@ export interface User {
 }
 
 export interface Club {
-  id: number
+  id: string
   name: string
   timezone: string
 }
 
 export interface Calendar {
-  id: number
-  clubId: number
+  id: string
+  clubid: string
   name: string
   timezone?: string | null
   archivedAt?: string | null   // add this line
 }
 
 export interface CalendarFeed {
-  id: number
-  calendarId: number
+  id: string
+  calendarid: string
   name: string
   visibility: 'PUBLIC' | 'PRIVATE'
   sharedSecret: string
-  targetGroups: { targetGroupId: number }[]
+  targetGroups: { targetGroupid: string }[]
 }
 
 export interface Property {
-  id: number
-  calendarId: number
+  id: string
+  calendarid: string
   name: string
   icon: string | null
 }
 
 export interface Feature {
-  id: number
-  calendarId: number
+  id: string
+  calendarid: string
   name: string
 }
 
 export interface TargetGroup {
-  id: number
-  calendarId: number
+  id: string
+  calendarid: string
   name: string
 }
 
 export interface Location {
-  id: number
-  calendarId: number
+  id: string
+  calendarid: string
   name?: string | null
   street?: string | null
   zip?: string | null
@@ -78,13 +78,13 @@ export function formatLocationLabel(loc: Location): string {
 }
 
 export interface EventTemplate {
-  id: number
-  calendarId: number
+  id: string
+  calendarId: string
   name: string
   timezone: string
   timeBegin: string
   timeEnd: string
-  locationId: number | null
+  locationId: string | null
   location: Location | null
   properties: { property: Property }[]
   features: { feature: Feature }[]
@@ -92,8 +92,8 @@ export interface EventTemplate {
 }
 
 export interface CalendarEvent {
-  id: number
-  calendarId: number
+  id: string
+  calendarId: string
   name: string
   date: string
   dateEnd?: string | null    // YYYY-MM-DD, null/undefined = same day as date
@@ -102,7 +102,7 @@ export interface CalendarEvent {
   isAllDay?: boolean         // default false
   timezone: string | null
   isDraft: boolean
-  locationId: number | null
+  locationId: string | null
   location: Location | null
   properties: { property: Property }[]
   features: { feature: Feature }[]

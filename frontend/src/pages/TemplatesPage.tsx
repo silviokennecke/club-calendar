@@ -21,7 +21,7 @@ export default function TemplatesPage() {
     queryFn: () => apiGet(`/api/calendars/${calendarId}/templates`),
   })
 
-  async function handleDelete(id: number) {
+  async function handleDelete(id: string) {
     await apiDelete(`/api/calendars/${calendarId}/templates/${id}`)
     qc.invalidateQueries({ queryKey: ['templates', calendarId] })
   }

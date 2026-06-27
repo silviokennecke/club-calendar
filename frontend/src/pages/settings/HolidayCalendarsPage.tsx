@@ -23,7 +23,7 @@ export default function HolidayCalendarsPage() {
 
   const [items, setItems] = useState<HolidayCalendar[]>([])
   const [loading, setLoading] = useState(true)
-  const [refreshingId, setRefreshingId] = useState<number | null>(null)
+  const [refreshingId, setRefreshingId] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [form, setForm] = useState({ name: '', url: '' })
   const [saving, setSaving] = useState(false)
@@ -55,7 +55,7 @@ export default function HolidayCalendarsPage() {
     }
   }
 
-  async function handleDelete(hcId: number) {
+  async function handleDelete(hcId: string) {
     if (!window.confirm('Delete this holiday calendar and all its events?')) return
     try {
       await deleteHolidayCalendar(calendarId!, hcId)
@@ -65,7 +65,7 @@ export default function HolidayCalendarsPage() {
     }
   }
 
-  async function handleRefresh(hcId: number) {
+  async function handleRefresh(hcId: string) {
     setRefreshingId(hcId)
     try {
       const updated = await refreshHolidayCalendar(calendarId!, hcId)
