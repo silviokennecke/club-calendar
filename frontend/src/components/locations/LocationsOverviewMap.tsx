@@ -1,4 +1,3 @@
-'use client'
 import { useEffect, useRef } from 'react'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { useMapbox } from './useMapbox'

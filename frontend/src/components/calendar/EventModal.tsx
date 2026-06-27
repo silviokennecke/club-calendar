@@ -1,5 +1,4 @@
-'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost, apiPatch, apiDelete, getHolidayEvents } from '@/lib/api'
 import type { CalendarEvent, Property, Feature, TargetGroup, Location, EventTemplate, HolidayEvent } from '@/lib/types'
@@ -11,9 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Trash2, Plus, X } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import dynamic from 'next/dynamic'
-
-const MapPicker = dynamic(() => import('@/components/locations/MapPicker'), { ssr: false, loading: () => <div className="h-48 bg-slate-100 rounded-lg animate-pulse" /> })
+const MapPicker = lazy(() => import('@/components/locations/MapPicker'))
 
 export function filterDatesExcludingHolidays(
   dates: string[],
@@ -408,12 +405,14 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
                   )}
                 </div>
                 {showMap && locationId !== '' && selectedLocation && (
-                  <MapPicker
-                    latitude={selectedLocation.latitude}
-                    longitude={selectedLocation.longitude}
-                    address={formatAddress(selectedLocation) || undefined}
-                    onPositionChange={handleMapPositionChange}
-                  />
+                  <Suspense fallback={<div className="h-48 bg-slate-100 rounded-lg animate-pulse" />}>
+                    <MapPicker
+                      latitude={selectedLocation.latitude}
+                      longitude={selectedLocation.longitude}
+                      address={formatAddress(selectedLocation) || undefined}
+                      onPositionChange={handleMapPositionChange}
+                    />
+                  </Suspense>
                 )}
                 <InlineCreate label="location" placeholder="Address" onAdd={addLocation} />
               </div>
