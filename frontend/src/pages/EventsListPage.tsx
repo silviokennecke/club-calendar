@@ -21,7 +21,7 @@ export default function EventsListPage() {
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [search, setSearch] = useState('')
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulking, setBulking] = useState(false)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
 
@@ -55,7 +55,7 @@ export default function EventsListPage() {
   const allFilteredSelected = sorted.length > 0 && sorted.every(e => selectedIds.has(e.id))
   const someSelected = selectedIds.size > 0
 
-  function toggleSelect(id: number) {
+  function toggleSelect(id: string) {
     setSelectedIds(prev => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)

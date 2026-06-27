@@ -3,7 +3,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { useMapbox } from './useMapbox'
 
 interface LocationPin {
-  id: number
+  id: string
   name?: string | null
   street?: string | null
   zip?: string | null
@@ -14,14 +14,14 @@ interface LocationPin {
 
 interface Props {
   locations: LocationPin[]
-  selectedId?: number | null
-  onSelect?: (id: number) => void
+  selectedId?: string | null
+  onSelect?: (id: string) => void
   height?: string
 }
 
 export default function LocationsOverviewMap({ locations, selectedId, onSelect, height = 'h-72' }: Props) {
   // Keep markers in a ref so we can update them without remounting the map
-  const markersRef = useRef<{ id: number; marker: mapboxgl.Marker }[]>([])
+  const markersRef = useRef<{ id: string; marker: mapboxgl.Marker }[]>([])
 
   const { mapContainerRef, mapRef } = useMapbox({
     onReady: (map, mapboxgl) => {

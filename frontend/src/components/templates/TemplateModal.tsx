@@ -24,10 +24,10 @@ export default function TemplateModal({ calendarId, open, onClose, template }: P
   const [timezone, setTimezone] = useState('Europe/Berlin')
   const [timeBegin, setTimeBegin] = useState('19:00')
   const [timeEnd, setTimeEnd] = useState('21:00')
-  const [locationId, setLocationId] = useState<number | ''>('')
-  const [selectedPropertyIds, setSelectedPropertyIds] = useState<number[]>([])
-  const [selectedFeatureIds, setSelectedFeatureIds] = useState<number[]>([])
-  const [selectedTargetGroupIds, setSelectedTargetGroupIds] = useState<number[]>([])
+  const [locationId, setLocationId] = useState<string>('')
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([])
+  const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>([])
+  const [selectedTargetGroupIds, setSelectedTargetGroupIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
 
   const { data: properties = [] } = useQuery({ queryKey: ['properties', calendarId], queryFn: () => apiGet<Property[]>(`/api/calendars/${calendarId}/properties`), enabled: open })
@@ -60,7 +60,7 @@ export default function TemplateModal({ calendarId, open, onClose, template }: P
     try {
       const body = {
         name, timezone, timeBegin, timeEnd,
-        locationId: locationId === '' ? null : Number(locationId),
+        locationId: locationId === '' ? null : locationId,
         propertyIds: selectedPropertyIds,
         featureIds: selectedFeatureIds,
         targetGroupIds: selectedTargetGroupIds,
@@ -106,7 +106,7 @@ export default function TemplateModal({ calendarId, open, onClose, template }: P
           {locations.length > 0 && (
             <div className="space-y-1">
               <Label>Default Location</Label>
-              <select className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm" value={locationId} onChange={e => setLocationId(e.target.value === '' ? '' : Number(e.target.value))}>
+              <select className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm" value={locationId} onChange={e => setLocationId(e.target.value)}>
                 <option value="">No default location</option>
                 {locations.map(l => <option key={l.id} value={l.id}>{formatLocationLabel(l)}</option>)}
               </select>

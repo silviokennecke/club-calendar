@@ -14,14 +14,14 @@ import { Plus, Copy, Eye, EyeOff, RefreshCw, Pencil, Trash2, Check } from 'lucid
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
 
-function icsUrl(feedId: number, secret?: string) {
+function icsUrl(feedId: string, secret?: string) {
   const base = `${API_URL}/api/feed/${feedId}/ics`
   return secret ? `${base}?secret=${secret}` : base
 }
-function webcalUrl(feedId: number, secret?: string) {
+function webcalUrl(feedId: string, secret?: string) {
   return icsUrl(feedId, secret).replace(/^https?:/, 'webcal:')
 }
-function feedWebUrl(feedId: number, secret?: string) {
+function feedWebUrl(feedId: string, secret?: string) {
   const base = window.location.origin
   return secret ? `${base}/feed/${feedId}?secret=${secret}` : `${base}/feed/${feedId}`
 }
@@ -29,7 +29,7 @@ function feedWebUrl(feedId: number, secret?: string) {
 interface FeedFormData {
   name: string
   visibility: 'PUBLIC' | 'PRIVATE'
-  targetGroupIds: number[]
+  targetGroupIds: string[]
 }
 
 export default function FeedsPage() {
@@ -49,8 +49,8 @@ export default function FeedsPage() {
   const [editingFeed, setEditingFeed] = useState<CalendarFeed | null>(null)
   const [form, setForm] = useState<FeedFormData>({ name: '', visibility: 'PRIVATE', targetGroupIds: [] })
   const [saving, setSaving] = useState(false)
-  const [secretVisible, setSecretVisible] = useState<Record<number, boolean>>({})
-  const [copied, setCopied] = useState<number | null>(null)
+  const [secretVisible, setSecretVisible] = useState<Record<string, boolean>>({})
+  const [copied, setCopied] = useState<string | null>(null)
 
   function openCreate() {
     setEditingFeed(null)
@@ -63,12 +63,12 @@ export default function FeedsPage() {
     setForm({
       name: feed.name,
       visibility: feed.visibility,
-      targetGroupIds: feed.targetGroups.map(t => t.targetGroupId),
+      targetGroupIds: feed.targetGroups.map(t => t.targetGroupid),
     })
     setDialogOpen(true)
   }
 
-  function toggleTargetGroup(id: number) {
+  function toggleTargetGroup(id: string) {
     setForm(f => ({
       ...f,
       targetGroupIds: f.targetGroupIds.includes(id)
@@ -90,17 +90,17 @@ export default function FeedsPage() {
     } finally { setSaving(false) }
   }
 
-  async function handleDelete(id: number) {
+  async function handleDelete(id: string) {
     await apiDelete(`/api/calendars/${calendarId}/feeds/${id}`)
     qc.invalidateQueries({ queryKey: ['feeds', calendarId] })
   }
 
-  async function handleRegenerate(id: number) {
+  async function handleRegenerate(id: string) {
     await apiPost(`/api/calendars/${calendarId}/feeds/${id}/regenerate-secret`, {})
     qc.invalidateQueries({ queryKey: ['feeds', calendarId] })
   }
 
-  function copyToClipboard(text: string, feedId: number) {
+  function copyToClipboard(text: string, feedId: string) {
     navigator.clipboard.writeText(text)
     setCopied(feedId)
     setTimeout(() => setCopied(null), 2000)
@@ -122,7 +122,7 @@ export default function FeedsPage() {
             const url = icsUrl(feed.id, feed.visibility === 'PRIVATE' ? feed.sharedSecret : undefined)
             const wurl = webcalUrl(feed.id, feed.visibility === 'PRIVATE' ? feed.sharedSecret : undefined)
             const tgNames = feed.targetGroups
-              .map(ft => targetGroups.find(t => t.id === ft.targetGroupId)?.name)
+              .map(ft => targetGroups.find(t => t.id === ft.targetGroupid)?.name)
               .filter(Boolean) as string[]
 
             return (
