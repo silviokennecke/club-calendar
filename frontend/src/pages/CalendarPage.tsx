@@ -21,9 +21,9 @@ export default function CalendarPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string | undefined>()
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
-  const [selectedGroups, setSelectedGroups] = useState<number[]>([])
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const selectedGroupsRef = useRef<number[]>([])
+  const selectedGroupsRef = useRef<string[]>([])
   const searchQueryRef = useRef('')
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const calendarRef = useRef<InstanceType<typeof FullCalendar>>(null)
@@ -46,7 +46,7 @@ export default function CalendarPage() {
     refetchCalendar()
   }
 
-  function toggleGroup(id: number) {
+  function toggleGroup(id: string) {
     setSelectedGroups(prev => {
       const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
       selectedGroupsRef.current = next

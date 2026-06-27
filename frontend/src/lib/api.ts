@@ -134,17 +134,17 @@ export function createHolidayCalendar(
 
 export function updateHolidayCalendar(
   calendarId: string,
-  id: number,
+  id: string,
   data: { name: string; url: string },
 ): Promise<HolidayCalendar> {
   return apiPatch<HolidayCalendar>(`/api/calendars/${calendarId}/holiday-calendars/${id}`, data)
 }
 
-export function deleteHolidayCalendar(calendarId: string, id: number): Promise<void> {
+export function deleteHolidayCalendar(calendarId: string, id: string): Promise<void> {
   return apiDelete(`/api/calendars/${calendarId}/holiday-calendars/${id}`)
 }
 
-export function refreshHolidayCalendar(calendarId: string, id: number): Promise<HolidayCalendar> {
+export function refreshHolidayCalendar(calendarId: string, id: string): Promise<HolidayCalendar> {
   return apiPost<HolidayCalendar>(`/api/calendars/${calendarId}/holiday-calendars/${id}/refresh`, {})
 }
 
