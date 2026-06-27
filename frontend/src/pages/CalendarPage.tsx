@@ -10,6 +10,7 @@ import { apiGet, apiPatch, apiPost, getHolidayEvents } from '@/lib/api'
 import type {CalendarEvent, TargetGroup, Calendar, HolidayEvent} from '@/lib/types'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
+import { FilterPillGroup } from '@/components/ui/shared'
 import EventModal from '@/components/calendar/EventModal'
 import { Plus, Upload, Search, X, ArchiveRestore } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -253,24 +254,14 @@ export default function CalendarPage() {
       </div>
 
       {targetGroups.length > 1 && (
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <span className="text-xs text-slate-500">Filter:</span>
-          <button
-            onClick={clearFilter}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${selectedGroups.length === 0 ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 text-slate-600 hover:border-slate-300 bg-white'}`}
-          >
-            All
-          </button>
-          {targetGroups.map(tg => (
-            <button
-              key={tg.id}
-              onClick={() => toggleGroup(tg.id)}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${selectedGroups.includes(tg.id) ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 text-slate-600 hover:border-slate-300 bg-white'}`}
-            >
-              {tg.name}
-            </button>
-          ))}
-        </div>
+        <FilterPillGroup
+          label="Filter:"
+          items={targetGroups.map(tg => ({ id: tg.id, label: tg.name }))}
+          selected={selectedGroups}
+          onChange={toggleGroup}
+          onClearAll={clearFilter}
+          className="mb-4"
+        />
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
