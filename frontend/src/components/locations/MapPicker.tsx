@@ -1,8 +1,9 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { BACKEND_URL, mapboxTransformRequest, initMapboxProxy } from './mapboxProxy'
+import { BACKEND_URL } from './mapboxProxy'
+import { useMapbox } from './useMapbox'
 
 interface ContextItem {
   id: string
@@ -51,37 +52,20 @@ function parseFeature(f: GeocodingFeature): GeocodedAddress {
 }
 
 export default function MapPicker({ latitude, longitude, address, onPositionChange }: Props) {
-  const mapContainerRef = useRef<HTMLDivElement>(null)
-  const mapRef = useRef<mapboxgl.Map | null>(null)
   const markerRef = useRef<mapboxgl.Marker | null>(null)
   const [searchQuery, setSearchQuery] = useState(address ?? '')
   const [suggestions, setSuggestions] = useState<GeocodingFeature[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => {
-    if (!mapContainerRef.current) return
-    let map: mapboxgl.Map
-    let marker: mapboxgl.Marker
+  const initLng = longitude ?? 10.0
+  const initLat = latitude ?? 51.0
 
-    import('mapbox-gl').then(({ default: mapboxgl }) => {
-      initMapboxProxy(mapboxgl)
-
-      const initLng = longitude ?? 10.0
-      const initLat = latitude ?? 51.0
-
-      map = new mapboxgl.Map({
-        container: mapContainerRef.current!,
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center: [initLng, initLat],
-        zoom: longitude != null ? 14 : 5,
-        transformRequest: mapboxTransformRequest,
-        performanceMetricsCollection: false,
-      })
-
-      map.addControl(new mapboxgl.NavigationControl(), 'top-right')
-
-      marker = new mapboxgl.Marker({ draggable: true, color: '#2563eb' })
+  const { mapContainerRef, mapRef } = useMapbox({
+    initialCenter: [initLng, initLat],
+    initialZoom: longitude != null ? 14 : 5,
+    onReady: (map, mapboxgl) => {
+      const marker = new mapboxgl.Marker({ draggable: true, color: '#2563eb' })
         .setLngLat([initLng, initLat])
         .addTo(map)
 
@@ -102,12 +86,9 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
         setSearchQuery(geocoded.displayName)
       })
 
-      mapRef.current = map
       markerRef.current = marker
-    })
-
-    return () => { map?.remove() }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    },
+  })
 
   async function reverseGeocode(lng: number, lat: number): Promise<GeocodedAddress> {
     const fallback: GeocodedAddress = { displayName: `${lat.toFixed(5)}, ${lng.toFixed(5)}` }
