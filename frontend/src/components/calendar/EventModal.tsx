@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost, apiPatch, apiDelete, getHolidayEvents } from '@/lib/api'
 import type { CalendarEvent, Property, Feature, TargetGroup, Location, EventTemplate, HolidayEvent } from '@/lib/types'
@@ -27,8 +28,6 @@ export function filterDatesExcludingHolidays(
 // ——— Recurrence helpers ———
 
 type RecurrenceMode = 'weekly' | 'biweekly' | 'nth-weekday'
-const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const NTH_LABELS = ['1st', '2nd', '3rd', '4th', 'last']
 
 function generateDates(mode: RecurrenceMode, config: RecurrenceConfig): string[] {
   const dates: string[] = []
@@ -74,6 +73,7 @@ interface RecurrenceConfig { from: string; to: string; weekday: number; nth: num
 
 // ——— Inline creator ———
 function InlineCreate({ label, placeholder, onAdd }: { label: string; placeholder: string; onAdd: (name: string) => Promise<void> }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState('')
   const [loading, setLoading] = useState(false)
@@ -87,14 +87,14 @@ function InlineCreate({ label, placeholder, onAdd }: { label: string; placeholde
 
   if (!open) return (
     <button onClick={() => setOpen(true)} className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-0.5 mt-1">
-      <Plus className="w-3 h-3" />New {label}
+      <Plus className="w-3 h-3" />{t('common.add')} {label}
     </button>
   )
   return (
     <div className="flex items-center gap-1 mt-1">
       <Input className="h-7 text-xs flex-1" placeholder={placeholder} value={value}
         onChange={e => setValue(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdd()} autoFocus />
-      <Button size="sm" className="h-7 px-2 text-xs" disabled={loading} onClick={handleAdd}>Add</Button>
+      <Button size="sm" className="h-7 px-2 text-xs" disabled={loading} onClick={handleAdd}>{t('common.add')}</Button>
       <button onClick={() => { setOpen(false); setValue('') }} className="text-slate-400 hover:text-slate-600"><X className="w-3.5 h-3.5" /></button>
     </div>
   )
@@ -111,6 +111,9 @@ interface Props {
 
 export default function EventModal({ calendarId, open, onClose, defaultDate, event }: Props) {
   const qc = useQueryClient()
+  const { t } = useTranslation()
+  const WEEKDAYS = t('eventModal.weekdays', { returnObjects: true }) as string[]
+  const NTH_LABELS = t('eventModal.nthLabels', { returnObjects: true }) as string[]
   const isEditing = !!event
 
   const [name, setName] = useState('')
@@ -255,15 +258,15 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
       <Dialog open={open} onOpenChange={v => !v && onClose()}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{isEditing ? 'Edit Event' : 'New Event'}</DialogTitle>
+            <DialogTitle>{isEditing ? t('eventModal.editEvent') : t('eventModal.newEvent')}</DialogTitle>
           </DialogHeader>
 
           {!isEditing && (
             <div className="flex gap-1 border-b pb-3 -mx-1">
-              {(['manual', 'template'] as const).map(t => (
-                <button key={t} onClick={() => setTab(t)}
-                  className={`text-sm px-3 py-1.5 rounded-md transition-colors capitalize ${tab === t ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-500 hover:text-slate-700'}`}>
-                  {t === 'template' ? 'From Template' : 'Manual'}
+              {(['manual', 'template'] as const).map(tabOption => (
+                <button key={tabOption} onClick={() => setTab(tabOption)}
+                  className={`text-sm px-3 py-1.5 rounded-md transition-colors capitalize ${tab === tabOption ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-500 hover:text-slate-700'}`}>
+                  {tabOption === 'template' ? t('eventModal.fromTemplate') : t('eventModal.manual')}
                 </button>
               ))}
             </div>
@@ -272,35 +275,35 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
           {tab === 'template' && !isEditing ? (
             <div className="space-y-4">
               <div className="space-y-1">
-                <Label>Template</Label>
+                <Label>{t('eventModal.template')}</Label>
                 <select className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm" value={templateId} onChange={e => setTemplateId(e.target.value)}>
-                  <option value="">Select template...</option>
-                  {templates.map(t => <option key={t.id} value={t.id}>{t.name} ({t.timeBegin}–{t.timeEnd})</option>)}
+                  <option value="">{t('eventModal.selectTemplate')}</option>
+                  {templates.map(tmpl => <option key={tmpl.id} value={tmpl.id}>{tmpl.name} ({tmpl.timeBegin}–{tmpl.timeEnd})</option>)}
                 </select>
               </div>
 
               {/* Recurrence rule */}
               <div className="space-y-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Recurrence Rule</Label>
+                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{t('eventModal.recurrenceRule')}</Label>
                 <div className="flex flex-wrap gap-1.5">
                   {(['weekly', 'biweekly', 'nth-weekday'] as RecurrenceMode[]).map(m => (
                     <button key={m} onClick={() => setRecMode(m)}
                       className={`text-xs px-3 py-1.5 rounded border transition-colors ${recMode === m ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                      {m === 'weekly' ? 'Weekly' : m === 'biweekly' ? 'Bi-weekly' : 'Monthly Nth'}
+                      {m === 'weekly' ? t('eventModal.weekly') : m === 'biweekly' ? t('eventModal.biweekly') : t('eventModal.monthlyNth')}
                     </button>
                   ))}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-xs">Weekday</Label>
+                    <Label className="text-xs">{t('eventModal.weekday')}</Label>
                     <select className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm" value={recConfig.weekday} onChange={e => setRecConfig(c => ({ ...c, weekday: Number(e.target.value) }))}>
                       {WEEKDAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
                     </select>
                   </div>
                   {recMode === 'nth-weekday' && (
                     <div className="space-y-1">
-                      <Label className="text-xs">Which one</Label>
+                      <Label className="text-xs">{t('eventModal.whichOne')}</Label>
                       <select className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm" value={recConfig.nth} onChange={e => setRecConfig(c => ({ ...c, nth: Number(e.target.value) }))}>
                         {NTH_LABELS.map((l, i) => <option key={i} value={i}>{l}</option>)}
                       </select>
@@ -310,11 +313,11 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
 
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1 min-w-0">
-                    <Label className="text-xs">From</Label>
+                    <Label className="text-xs">{t('eventModal.from')}</Label>
                     <Input type="date" className="h-8 text-sm w-full" value={recConfig.from} onChange={e => setRecConfig(c => ({ ...c, from: e.target.value }))} />
                   </div>
                   <div className="space-y-1 min-w-0">
-                    <Label className="text-xs">To</Label>
+                    <Label className="text-xs">{t('eventModal.to')}</Label>
                     <Input type="date" className="h-8 text-sm w-full" value={recConfig.to} onChange={e => setRecConfig(c => ({ ...c, to: e.target.value }))} />
                   </div>
                 </div>
@@ -328,70 +331,70 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
                     className="h-4 w-4 rounded border-input"
                   />
                   <label htmlFor="exclude-holidays" className="text-sm">
-                    Exclude holidays
-                    {loadingHolidays && <span className="ml-1 text-muted-foreground">(loading…)</span>}
+                    {t('eventModal.excludeHolidays')}
+                    {loadingHolidays && <span className="ml-1 text-muted-foreground">{t('eventModal.loadingHolidays')}</span>}
                   </label>
                 </div>
                 {excludeHolidays && generatedDates.length !== effectiveDates.length && (
                   <p className="text-xs text-muted-foreground">
-                    {generatedDates.length - effectiveDates.length} date(s) excluded due to holidays
+                    {t('eventModal.datesExcluded', { count: generatedDates.length - effectiveDates.length })}
                   </p>
                 )}
 
                 {generatedDates.length > 0 ? (
                   <div>
-                    <p className="text-xs text-slate-500 mb-1.5">{effectiveDates.length} events will be created:</p>
+                    <p className="text-xs text-slate-500 mb-1.5">{t('eventModal.eventsWillBeCreated', { count: effectiveDates.length })}</p>
                     <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
                       {effectiveDates.map(d => <span key={d} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{d}</span>)}
                     </div>
                   </div>
                 ) : recConfig.from && recConfig.to ? (
-                  <p className="text-xs text-slate-400">No dates match the rule in this range.</p>
+                  <p className="text-xs text-slate-400">{t('eventModal.noMatchingDates')}</p>
                 ) : null}
               </div>
 
               <div className="flex items-center gap-2">
                 <Switch id="draft-s" checked={!isDraft} onCheckedChange={v => setIsDraft(!v)} />
-                <Label htmlFor="draft-s">Published</Label>
+                <Label htmlFor="draft-s">{t('eventModal.published')}</Label>
               </div>
             </div>
           ) : (
             <div className="space-y-4">
               {/* Name + time */}
               <div className="space-y-1">
-                <Label htmlFor="evt-n">Name *</Label>
+                <Label htmlFor="evt-n">{t('eventModal.eventName')}</Label>
                 <Input id="evt-n" value={name} onChange={e => setName(e.target.value)} placeholder="Event name" />
               </div>
               <div className="flex flex-wrap gap-2">
-                <div className="space-y-1 flex-1 min-w-36"><Label htmlFor="evt-d">Start date *</Label><Input id="evt-d" type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full" /></div>
+                <div className="space-y-1 flex-1 min-w-36"><Label htmlFor="evt-d">{t('eventModal.startDate')}</Label><Input id="evt-d" type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full" /></div>
                 <div className="space-y-1 flex-1 min-w-36">
-                  <Label htmlFor="evt-de">End date <span className="text-slate-400 font-normal">(optional)</span></Label>
+                  <Label htmlFor="evt-de">{t('eventModal.endDate')} <span className="text-slate-400 font-normal">{t('eventModal.endDateOptional')}</span></Label>
                   <Input id="evt-de" type="date" value={dateEnd} min={date} onChange={e => setDateEnd(e.target.value)} className="w-full" />
                 </div>
                 {!isAllDay && (
                   <>
-                    <div className="space-y-1 min-w-28"><Label>Start time</Label><Input type="time" value={timeBegin} onChange={e => setTimeBegin(e.target.value)} className="w-full" /></div>
-                    <div className="space-y-1 min-w-28"><Label>End time</Label><Input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="w-full" /></div>
+                    <div className="space-y-1 min-w-28"><Label>{t('eventModal.startTime')}</Label><Input type="time" value={timeBegin} onChange={e => setTimeBegin(e.target.value)} className="w-full" /></div>
+                    <div className="space-y-1 min-w-28"><Label>{t('eventModal.endTime')}</Label><Input type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} className="w-full" /></div>
                   </>
                 )}
               </div>
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
                   <Switch id="evt-allday" checked={isAllDay} onCheckedChange={setIsAllDay} />
-                  <Label htmlFor="evt-allday">All day</Label>
+                  <Label htmlFor="evt-allday">{t('eventModal.allDay')}</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch id="evt-pub" checked={!isDraft} onCheckedChange={v => setIsDraft(!v)} />
-                  <Label htmlFor="evt-pub">Published {isDraft && <span className="text-xs text-slate-400">(draft)</span>}</Label>
+                  <Label htmlFor="evt-pub">{t('eventModal.published')} {isDraft && <span className="text-xs text-slate-400">{t('eventModal.draftLabel')}</span>}</Label>
                 </div>
               </div>
 
               {/* Location with inline create + map */}
               <div className="space-y-1.5">
-                <Label>Location</Label>
+                <Label>{t('eventModal.location')}</Label>
                 <div className="flex gap-1.5">
                   <select className="flex-1 border border-slate-200 rounded-md px-3 py-2 text-sm" value={locationId} onChange={e => { setLocationId(e.target.value); setShowMap(false) }}>
-                    <option value="">No location</option>
+                    <option value="">{t('eventModal.noLocation')}</option>
                     {locations.map(l => (
                       <option key={l.id} value={String(l.id)}>
                         {formatLocationLabel(l)}
@@ -400,7 +403,7 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
                   </select>
                   {locationId !== '' && (
                     <Button size="sm" variant="outline" className="h-9 px-2.5 text-xs" onClick={() => setShowMap(m => !m)}>
-                      {showMap ? 'Hide map' : 'Map'}
+                      {showMap ? t('eventModal.hideMap') : t('eventModal.map')}
                     </Button>
                   )}
                 </div>
@@ -414,12 +417,12 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
                     />
                   </Suspense>
                 )}
-                <InlineCreate label="location" placeholder="Address" onAdd={addLocation} />
+                <InlineCreate label={t('eventModal.newLocation')} placeholder={t('eventModal.address')} onAdd={addLocation} />
               </div>
 
               {/* Properties */}
               <div className="space-y-1.5">
-                <Label>Properties</Label>
+                <Label>{t('eventModal.properties')}</Label>
                 <div className="flex flex-wrap gap-1.5">
                   {properties.map(p => (
                     <button key={p.id} type="button" onClick={() => setSelectedPropertyIds(toggle(selectedPropertyIds, p.id))}
@@ -428,12 +431,12 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
                     </button>
                   ))}
                 </div>
-                <InlineCreate label="property" placeholder="Property name" onAdd={addProperty} />
+                <InlineCreate label={t('eventModal.newProperty')} placeholder={t('eventModal.propertyName')} onAdd={addProperty} />
               </div>
 
               {/* Features */}
               <div className="space-y-1.5">
-                <Label>Features</Label>
+                <Label>{t('eventModal.features')}</Label>
                 <div className="flex flex-wrap gap-1.5">
                   {features.map(f => (
                     <button key={f.id} type="button" onClick={() => setSelectedFeatureIds(toggle(selectedFeatureIds, f.id))}
@@ -442,21 +445,21 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
                     </button>
                   ))}
                 </div>
-                <InlineCreate label="feature" placeholder="Feature name" onAdd={addFeature} />
+                <InlineCreate label={t('eventModal.newFeature')} placeholder={t('eventModal.featureName')} onAdd={addFeature} />
               </div>
 
               {/* Target groups */}
               <div className="space-y-1.5">
-                <Label>Target Groups</Label>
+                <Label>{t('eventModal.targetGroups')}</Label>
                 <div className="flex flex-wrap gap-1.5">
-                  {targetGroups.map(t => (
-                    <button key={t.id} type="button" onClick={() => setSelectedTargetGroupIds(toggle(selectedTargetGroupIds, t.id))}
-                      className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${selectedTargetGroupIds.includes(t.id) ? 'bg-purple-100 border-purple-300 text-purple-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                      {t.name}
+                  {targetGroups.map(tg => (
+                    <button key={tg.id} type="button" onClick={() => setSelectedTargetGroupIds(toggle(selectedTargetGroupIds, tg.id))}
+                      className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${selectedTargetGroupIds.includes(tg.id) ? 'bg-purple-100 border-purple-300 text-purple-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                      {tg.name}
                     </button>
                   ))}
                 </div>
-                <InlineCreate label="target group" placeholder="Group name" onAdd={addTargetGroup} />
+                <InlineCreate label={t('eventModal.newTargetGroup')} placeholder={t('eventModal.groupName')} onAdd={addTargetGroup} />
               </div>
             </div>
           )}
@@ -465,15 +468,15 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
             <div>
               {isEditing && (
                 <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
-                  <Trash2 className="w-3.5 h-3.5 mr-1" />Delete
+                  <Trash2 className="w-3.5 h-3.5 mr-1" />{t('common.delete')}
                 </Button>
               )}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={onClose}>Cancel</Button>
+              <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
               <Button disabled={loading || (tab === 'template' && effectiveDates.length === 0 && !isEditing)}
                 onClick={tab === 'template' && !isEditing ? handleCreateSeries : handleSubmit}>
-                {loading ? 'Saving...' : isEditing ? 'Save' : tab === 'template' ? `Create ${effectiveDates.length} Events` : 'Create'}
+                {loading ? t('eventModal.saving') : isEditing ? t('common.save') : tab === 'template' ? t('eventModal.createEvents', { count: effectiveDates.length }) : t('common.create')}
               </Button>
             </div>
           </DialogFooter>
@@ -483,12 +486,12 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete event?</AlertDialogTitle>
-            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+            <AlertDialogTitle>{t('eventModal.deleteEvent')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('eventModal.cannotBeUndone')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>{t('common.delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

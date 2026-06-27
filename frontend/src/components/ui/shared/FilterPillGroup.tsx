@@ -7,6 +7,7 @@ interface FilterItem {
 
 interface Props {
   label?: string
+  clearAllLabel?: string
   items: FilterItem[]
   selected: string[]
   onChange: (id: string) => void
@@ -14,7 +15,7 @@ interface Props {
   className?: string
 }
 
-export function FilterPillGroup({ label, items, selected, onChange, onClearAll, className }: Props) {
+export function FilterPillGroup({ label, clearAllLabel = 'All', items, selected, onChange, onClearAll, className }: Props) {
   const pillBase = 'text-xs px-3 py-1.5 rounded-full border transition-colors'
   const active = 'bg-blue-600 border-blue-600 text-white'
   const inactive = 'border-slate-200 text-slate-600 hover:border-slate-300 bg-white'
@@ -24,7 +25,7 @@ export function FilterPillGroup({ label, items, selected, onChange, onClearAll, 
       {label && <span className="text-xs text-slate-500">{label}</span>}
       {onClearAll && (
         <button onClick={onClearAll} className={cn(pillBase, selected.length === 0 ? active : inactive)}>
-          All
+          {clearAllLabel}
         </button>
       )}
       {items.map(item => (
