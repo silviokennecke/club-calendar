@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPatch, apiDelete } from '@/lib/api'
@@ -14,6 +15,7 @@ import { Eye, EyeOff, CheckSquare, Trash2, X } from 'lucide-react'
 type StatusFilter = 'all' | 'draft' | 'published'
 
 export default function EventsListPage() {
+  const { t } = useTranslation()
   const { calendarId } = useParams<{ calendarId: string }>()
   const qc = useQueryClient()
   const { user } = useAuth()
@@ -74,7 +76,7 @@ export default function EventsListPage() {
   async function bulkDelete() {
     const ids = sorted.filter(e => selectedIds.has(e.id)).map(e => e.id)
     if (ids.length === 0) return
-    if (!confirm(`Delete ${ids.length} event${ids.length !== 1 ? 's' : ''}? This cannot be undone.`)) return
+    if (!confirm(t('events.deleteConfirm', { count: ids.length }))) return
     setBulking(true)
     try {
       await Promise.all(ids.map(id => apiDelete(`/api/calendars/${calendarId}/events/${id}`)))
@@ -102,34 +104,38 @@ export default function EventsListPage() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
-        <h1 className="text-lg font-semibold text-slate-900">Events</h1>
-        <SearchInput value={search} onChange={setSearch} placeholder="Search…" />
+        <h1 className="text-lg font-semibold text-slate-900">{t('events.title')}</h1>
+        <SearchInput value={search} onChange={setSearch} placeholder={t('events.search')} />
       </div>
 
       <div className="flex items-center gap-1 mb-4 bg-slate-100 p-1 rounded-lg w-fit">
-        {([['all', `All (${allEvents.length})`], ['published', `Published (${publishedCount})`], ['draft', `Draft (${draftCount})`]] as [StatusFilter, string][]).map(([val, label]) => (
+        {(([
+          ['all', t('events.allTab', { count: allEvents.length })],
+          ['published', t('events.publishedTab', { count: publishedCount })],
+          ['draft', t('events.draftTab', { count: draftCount })],
+        ] as [StatusFilter, string][]).map(([val, label]) => (
           <button key={val} onClick={() => { setStatusFilter(val); setSelectedIds(new Set()) }}
             className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${statusFilter === val ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
             {label}
           </button>
-        ))}
+        )))}
       </div>
 
       {someSelected && (
         <div className="flex items-center gap-3 mb-4 px-4 py-2.5 bg-blue-50 border border-blue-200 rounded-xl">
-          <span className="text-sm font-medium text-blue-800">{selectedIds.size} selected</span>
+          <span className="text-sm font-medium text-blue-800">{t('events.selectedCount', { count: selectedIds.size })}</span>
           <div className="flex gap-2 ml-auto">
             <Button size="sm" variant="outline" disabled={bulking} onClick={() => bulkSetDraft(false)}
               className="gap-1.5 border-green-300 text-green-700 hover:bg-green-50">
-              <Eye className="w-3.5 h-3.5" />Publish
+              <Eye className="w-3.5 h-3.5" />{t('events.publish')}
             </Button>
             <Button size="sm" variant="outline" disabled={bulking} onClick={() => bulkSetDraft(true)}
               className="gap-1.5 border-slate-300 text-slate-600 hover:bg-slate-50">
-              <EyeOff className="w-3.5 h-3.5" />Mark as draft
+              <EyeOff className="w-3.5 h-3.5" />{t('events.markAsDraft')}
             </Button>
             <Button size="sm" variant="outline" disabled={bulking} onClick={bulkDelete}
               className="gap-1.5 border-red-300 text-red-600 hover:bg-red-50">
-              <Trash2 className="w-3.5 h-3.5" />Delete
+              <Trash2 className="w-3.5 h-3.5" />{t('common.delete')}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())} className="text-slate-400">
               <X className="w-3.5 h-3.5" />
@@ -139,21 +145,21 @@ export default function EventsListPage() {
       )}
 
       {isLoading ? (
-        <div className="text-center py-12 text-slate-400 text-sm">Loading…</div>
+        <div className="text-center py-12 text-slate-400 text-sm">{t('events.loadingEvents')}</div>
       ) : sorted.length === 0 ? (
-        <EmptyState message={search ? 'No events match your search.' : statusFilter !== 'all' ? `No ${statusFilter} events.` : 'No events yet.'} />
+        <EmptyState message={search ? t('events.noSearchResults') : statusFilter === 'published' ? t('events.noPublished') : statusFilter === 'draft' ? t('events.noDraft') : t('events.noEvents')} />
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
           <div className="grid grid-cols-[2rem_1fr_7rem_5rem_5rem_auto_5.5rem] gap-3 px-4 py-2 bg-slate-50 border-b border-slate-200 text-xs font-medium text-slate-500">
             <button onClick={toggleAll} className={`flex items-center justify-center ${allFilteredSelected ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
               <CheckSquare className="w-4 h-4" />
             </button>
-            <span>Name</span>
-            <span>Date</span>
-            <span>Start</span>
-            <span>End</span>
-            <span>Tags</span>
-            <span>Status</span>
+            <span>{t('events.colName')}</span>
+            <span>{t('events.colDate')}</span>
+            <span>{t('events.colStart')}</span>
+            <span>{t('events.colEnd')}</span>
+            <span>{t('events.colTags')}</span>
+            <span>{t('events.colStatus')}</span>
           </div>
 
           <div className="divide-y divide-slate-100">
@@ -183,7 +189,7 @@ export default function EventsListPage() {
                       : formatDate(ev.date, dateFormat)}
                   </span>
                   <span className="text-slate-500 font-mono text-xs">{ev.isAllDay ? '—' : ev.timeBegin}</span>
-                  <span className="text-slate-500 font-mono text-xs">{ev.isAllDay ? 'All day' : ev.timeEnd}</span>
+                  <span className="text-slate-500 font-mono text-xs">{ev.isAllDay ? t('events.allDay') : ev.timeEnd}</span>
 
                   <div className="flex gap-1 flex-wrap">
                     {tgNames.map(n => <TagBadge key={n} label={n} variant="purple" />)}
@@ -191,7 +197,7 @@ export default function EventsListPage() {
                   </div>
 
                   <span className={`justify-self-start text-xs px-2 py-0.5 rounded-full font-medium ${ev.isDraft ? 'bg-slate-100 text-slate-500' : 'bg-green-100 text-green-700'}`}>
-                    {ev.isDraft ? 'Draft' : 'Published'}
+                    {ev.isDraft ? t('events.draftStatus') : t('events.publishedStatus')}
                   </span>
                 </div>
               )
@@ -201,7 +207,11 @@ export default function EventsListPage() {
       )}
 
       {sorted.length > 0 && (
-        <p className="text-xs text-slate-400 mt-3">{sorted.length} event{sorted.length !== 1 ? 's' : ''}{search || statusFilter !== 'all' ? ' (filtered)' : ''}</p>
+        <p className="text-xs text-slate-400 mt-3">
+          {search || statusFilter !== 'all'
+            ? t('events.countFiltered', { count: sorted.length })
+            : t('events.count', { count: sorted.length })}
+        </p>
       )}
 
       <EventModal
