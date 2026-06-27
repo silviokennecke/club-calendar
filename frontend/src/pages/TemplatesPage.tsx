@@ -7,6 +7,7 @@ import { formatAddress } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { SectionHeader } from '@/components/ui/shared'
 import { Plus, Pencil, Trash2, Clock, MapPin } from 'lucide-react'
 import TemplateModal from '@/components/templates/TemplateModal'
 
@@ -31,13 +32,11 @@ export default function TemplatesPage() {
 
   return (
     <div className="p-6 max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Event Templates</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Templates pre-fill event details and can be used to create series of events.</p>
-        </div>
-        <Button size="sm" onClick={openCreate}><Plus className="w-3.5 h-3.5 mr-1" />New Template</Button>
-      </div>
+      <SectionHeader
+        title="Event Templates"
+        description="Templates pre-fill event details and can be used to create series of events."
+        action={<Button size="sm" onClick={openCreate}><Plus className="w-3.5 h-3.5 mr-1" />New Template</Button>}
+      />
 
       {templates.length === 0 ? (
         <div className="text-center py-12 text-slate-400 text-sm border border-dashed border-slate-200 rounded-xl">

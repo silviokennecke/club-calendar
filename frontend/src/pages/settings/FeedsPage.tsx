@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { FormField } from '@/components/ui/shared'
+import { FormField, SectionHeader } from '@/components/ui/shared'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Plus, Copy, Eye, EyeOff, RefreshCw, Pencil, Trash2, Check } from 'lucide-react'
@@ -108,13 +108,11 @@ export default function FeedsPage() {
 
   return (
     <div className="p-6 max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Calendar Feeds</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Publish your calendar as an ICS feed for Apple Calendar, Google Calendar, etc.</p>
-        </div>
-        <Button size="sm" onClick={openCreate}><Plus className="w-3.5 h-3.5 mr-1" />New Feed</Button>
-      </div>
+      <SectionHeader
+        title="Calendar Feeds"
+        description="Publish your calendar as an ICS feed for Apple Calendar, Google Calendar, etc."
+        action={<Button size="sm" onClick={openCreate}><Plus className="w-3.5 h-3.5 mr-1" />New Feed</Button>}
+      />
 
       {feeds.length === 0 ? (
         <div className="text-center py-12 text-slate-400 text-sm border border-dashed border-slate-200 rounded-xl">

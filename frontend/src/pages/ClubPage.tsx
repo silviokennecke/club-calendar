@@ -6,7 +6,7 @@ import type { Calendar, Club, User } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { FormField } from '@/components/ui/shared'
+import { FormField, SectionHeader } from '@/components/ui/shared'
 import { CalendarDays, Check, Plus, Archive, ArchiveRestore, Copy } from 'lucide-react'
 
 function formatArchivedAt(iso: string) {
@@ -222,21 +222,24 @@ export default function ClubPage() {
         }
       </div>
 
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-slate-900">Calendars</h2>
-        <Dialog open={calDialogOpen} onOpenChange={setCalDialogOpen}>
-          <DialogTrigger render={<Button size="sm" variant="outline" className="gap-1" />}>
-            <Plus className="w-3.5 h-3.5" />New
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Create Calendar</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-2">
-              <Input placeholder="Calendar name" value={newCalName} onChange={e => setNewCalName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateCalendar()} autoFocus />
-              <Button className="w-full" onClick={handleCreateCalendar}>Create</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+      <SectionHeader
+        title="Calendars"
+        className="mb-4"
+        action={
+          <Dialog open={calDialogOpen} onOpenChange={setCalDialogOpen}>
+            <DialogTrigger render={<Button size="sm" variant="outline" className="gap-1" />}>
+              <Plus className="w-3.5 h-3.5" />New
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Create Calendar</DialogTitle></DialogHeader>
+              <div className="space-y-4 pt-2">
+                <Input placeholder="Calendar name" value={newCalName} onChange={e => setNewCalName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateCalendar()} autoFocus />
+                <Button className="w-full" onClick={handleCreateCalendar}>Create</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        }
+      />
 
       <div className="space-y-2">
         {activeCalendars.length === 0 && archivedCalendars.length === 0 && (
