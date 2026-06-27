@@ -14,6 +14,28 @@ This is a **Vite + React + React Router** SPA (not Next.js).
 - Links: `<Link to="...">` (not `href`)
 - Lazy loading: `React.lazy()` + `<Suspense>` (not `next/dynamic`)
 
+## Shared UI Components
+
+Before writing raw Tailwind layout divs in a page, check `src/components/ui/shared/` first:
+
+| Component | Replaces |
+|---|---|
+| `FormField` | `<div className="space-y-1.5"><Label>…</Label>…</div>` |
+| `SectionHeader` | `<div className="flex items-center justify-between mb-6">…</div>` |
+| `EmptyState` | `<div className="text-center py-12 … border-dashed …">…</div>` |
+| `ListCard` | `<div className="bg-white rounded-xl border … divide-y …">…</div>` |
+| `ListRow` | `<div className="flex items-center justify-between px-4 py-3">…</div>` |
+| `TagBadge` / `TagBadgeRow` | Inline colored `<span className="text-xs bg-… rounded-full">` pills |
+| `FilterPillGroup` | Toggle pill buttons for filtering |
+| `DangerZoneConfirm` | Two-step destructive action UI |
+| `SearchInput` | Icon-prefixed input with clear button |
+| `FullPageLoader` / `FullPageError` | `<div className="flex … min-h-screen bg-slate-50">…</div>` |
+| `Alert` | Colored `bg-{color}-50 border-{color}-200` alert boxes |
+
+Import: `import { FormField, SectionHeader, ... } from '@/components/ui/shared'`
+
+For Mapbox maps: use `useMapbox` from `src/components/locations/useMapbox.ts`.
+
 ## Build
 
 `npm run build` outputs static files to `dist/`. Serve with any webserver.
