@@ -6,7 +6,7 @@ import type { Calendar, Club, User } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { FormField, SectionHeader, ListCard, ListRow } from '@/components/ui/shared'
+import { FormField, SectionHeader, ListCard, ListRow, DangerZoneConfirm } from '@/components/ui/shared'
 import { CalendarDays, Check, Plus, Archive, ArchiveRestore, Copy } from 'lucide-react'
 
 function formatArchivedAt(iso: string) {
@@ -26,7 +26,6 @@ export default function ClubPage() {
   const [nameSaved, setNameSaved] = useState(false)
   const [nameSaving, setNameSaving] = useState(false)
   const [confirmDeleteCalId, setConfirmDeleteCalId] = useState<number | null>(null)
-  const [confirmDeleteClub, setConfirmDeleteClub] = useState(false)
   const [deletingClub, setDeletingClub] = useState(false)
   const [duplicatingId, setDuplicatingId] = useState<number | null>(null)
 
@@ -188,17 +187,13 @@ export default function ClubPage() {
       </div>
 
       <div className="mb-10">
-        {!confirmDeleteClub ? (
-          <button onClick={() => setConfirmDeleteClub(true)} className="text-xs text-red-400 hover:text-red-600 underline">Delete this club</button>
-        ) : (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
-            <p className="text-sm text-red-700 font-medium">This permanently deletes <strong>{club?.name}</strong> including all calendars and events. This cannot be undone.</p>
-            <div className="flex gap-2">
-              <Button variant="destructive" size="sm" disabled={deletingClub} onClick={handleDeleteClub}>{deletingClub ? 'Deleting…' : 'Delete club'}</Button>
-              <Button variant="outline" size="sm" onClick={() => setConfirmDeleteClub(false)}>Cancel</Button>
-            </div>
-          </div>
-        )}
+        <DangerZoneConfirm
+          triggerLabel="Delete this club"
+          description={<>This permanently deletes <strong>{club?.name}</strong> including all calendars and events. This cannot be undone.</>}
+          confirmLabel="Delete club"
+          onConfirm={handleDeleteClub}
+          isLoading={deletingClub}
+        />
       </div>
 
       <h2 className="text-base font-semibold text-slate-900 mb-4">Members</h2>

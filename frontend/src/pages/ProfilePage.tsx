@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { FormField } from '@/components/ui/shared'
+import { FormField, DangerZoneConfirm } from '@/components/ui/shared'
 import { Trash2, Plus, Key } from 'lucide-react'
 
 interface PasskeyInfo { id: string; deviceName: string; createdAt: string }
@@ -25,7 +25,6 @@ export default function ProfilePage() {
   const [deviceName, setDeviceName] = useState('')
   const [registering, setRegistering] = useState(false)
   const [message, setMessage] = useState('')
-  const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   const { data: profile, refetch } = useQuery<ProfileData>({
@@ -145,21 +144,13 @@ export default function ProfilePage() {
 
       <div className="mt-8 pt-6 border-t border-slate-200">
         <h3 className="text-sm font-semibold text-red-600 mb-3">Danger Zone</h3>
-        {!confirmDelete ? (
-          <button onClick={() => setConfirmDelete(true)} className="text-sm text-red-500 hover:text-red-700 underline">
-            Delete my account
-          </button>
-        ) : (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
-            <p className="text-sm text-red-700 font-medium">This permanently deletes your account and all associated data. This cannot be undone.</p>
-            <div className="flex gap-2">
-              <Button variant="destructive" size="sm" disabled={deleting} onClick={handleDeleteAccount}>
-                {deleting ? 'Deleting…' : 'Delete account'}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-            </div>
-          </div>
-        )}
+        <DangerZoneConfirm
+          triggerLabel="Delete my account"
+          description="This permanently deletes your account and all associated data. This cannot be undone."
+          confirmLabel="Delete account"
+          onConfirm={handleDeleteAccount}
+          isLoading={deleting}
+        />
       </div>
     </div>
   )
