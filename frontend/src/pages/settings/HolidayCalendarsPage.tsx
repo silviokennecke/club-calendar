@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { FormField } from '@/components/ui/shared'
+import { FormField, SectionHeader } from '@/components/ui/shared'
 import {
   getHolidayCalendars,
   createHolidayCalendar,
@@ -79,12 +79,11 @@ export default function HolidayCalendarsPage() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
-        <h1 className="text-lg font-semibold text-slate-900">Holiday Calendars</h1>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button onClick={() => setShowAdd(true)}>Add ICS Feed</Button>
-        </div>
-      </div>
+      <SectionHeader
+        title="Holiday Calendars"
+        action={<Button onClick={() => setShowAdd(true)}>Add ICS Feed</Button>}
+        className="mb-5"
+      />
 
       {loading ? (
         <p className="text-muted-foreground">Loading…</p>
