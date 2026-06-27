@@ -5,8 +5,8 @@ import { apiGet, apiPatch, apiPost, apiDelete } from '@/lib/api'
 import type { Calendar, Club, User } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { FormField } from '@/components/ui/shared'
 import { CalendarDays, Check, Plus, Archive, ArchiveRestore, Copy } from 'lucide-react'
 
 function formatArchivedAt(iso: string) {
@@ -177,15 +177,14 @@ export default function ClubPage() {
     <div className="p-6 max-w-lg">
       <h2 className="text-base font-semibold text-slate-900 mb-4">Club</h2>
       <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
-        <div className="space-y-1.5">
-          <Label>Name</Label>
+        <FormField label="Name">
           <div className="flex gap-2">
             <Input value={clubName} onChange={e => setClubName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveClubName()} />
             <Button size="sm" disabled={nameSaving || !clubName.trim() || clubName === club?.name} onClick={handleSaveClubName} className="gap-1.5">
               {nameSaved ? <><Check className="w-3.5 h-3.5" />Saved</> : nameSaving ? 'Saving…' : 'Save'}
             </Button>
           </div>
-        </div>
+        </FormField>
       </div>
 
       <div className="mb-10">

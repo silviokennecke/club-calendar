@@ -6,8 +6,8 @@ import { useAuth } from '@/lib/auth-context'
 import type { Club, Calendar } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { CalendarDays, Building2, Check } from 'lucide-react'
+import { FormField } from '@/components/ui/shared'
 
 export default function SetupPage() {
   const { updateUser } = useAuth()
@@ -95,8 +95,7 @@ export default function SetupPage() {
             <h1 className="text-xl font-bold text-slate-900 mb-1">Welcome to Club Calendar</h1>
             <p className="text-sm text-slate-500 mb-6">Let&apos;s set up your club first.</p>
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Club name</Label>
+              <FormField label="Club name">
                 <Input
                   placeholder="e.g. Schützenverein Musterstadt"
                   value={clubName}
@@ -104,7 +103,7 @@ export default function SetupPage() {
                   onKeyDown={e => e.key === 'Enter' && handleCreateClub()}
                   autoFocus
                 />
-              </div>
+              </FormField>
               <Button className="w-full" disabled={loading || !clubName.trim()} onClick={handleCreateClub}>
                 {loading ? 'Creating…' : 'Create club →'}
               </Button>
@@ -120,15 +119,14 @@ export default function SetupPage() {
             <h1 className="text-xl font-bold text-slate-900 mb-1">Create your first calendar</h1>
             <p className="text-sm text-slate-500 mb-6">For <strong>{createdClub?.name}</strong></p>
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Calendar name</Label>
+              <FormField label="Calendar name">
                 <Input
                   value={calendarName}
                   onChange={e => setCalendarName(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleCreateCalendar()}
                   autoFocus
                 />
-              </div>
+              </FormField>
               <Button className="w-full" disabled={loading || !calendarName.trim()} onClick={handleCreateCalendar}>
                 {loading ? 'Creating…' : 'Get started →'}
               </Button>

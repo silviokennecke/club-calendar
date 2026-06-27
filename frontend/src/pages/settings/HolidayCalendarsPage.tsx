@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Dialog,
   DialogContent,
@@ -10,6 +9,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { FormField } from '@/components/ui/shared'
 import {
   getHolidayCalendars,
   createHolidayCalendar,
@@ -129,17 +129,15 @@ export default function HolidayCalendarsPage() {
             <DialogTitle>Add Holiday Calendar</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-1">
-              <Label htmlFor="hc-name">Name</Label>
+            <FormField label="Name">
               <Input
                 id="hc-name"
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 placeholder="German Public Holidays"
               />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="hc-url">ICS URL</Label>
+            </FormField>
+            <FormField label="ICS URL">
               <Input
                 id="hc-url"
                 type="url"
@@ -147,7 +145,7 @@ export default function HolidayCalendarsPage() {
                 onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
                 placeholder="https://calendar.google.com/calendar/ical/..."
               />
-            </div>
+            </FormField>
             {addError && <p className="text-sm text-destructive">{addError}</p>}
           </div>
           <DialogFooter>

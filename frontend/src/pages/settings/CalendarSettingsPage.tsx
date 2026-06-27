@@ -5,8 +5,8 @@ import { apiGet, apiPatch } from '@/lib/api'
 import type { Calendar } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Check } from 'lucide-react'
+import { FormField } from '@/components/ui/shared'
 
 export default function CalendarSettingsPage() {
   const { clubId, calendarId } = useParams<{ clubId: string; calendarId: string }>()
@@ -43,13 +43,11 @@ export default function CalendarSettingsPage() {
     <div className="p-6 max-w-lg">
       <h2 className="text-base font-semibold text-slate-900 mb-6">General Settings</h2>
       <div className="space-y-4 bg-white rounded-xl border border-slate-200 p-5">
-        <div className="space-y-1.5">
-          <Label>Calendar Name</Label>
+        <FormField label="Calendar Name">
           <Input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSave()} />
-        </div>
+        </FormField>
 
-        <div className="space-y-1.5">
-          <Label>Timezone <span className="text-slate-400 font-normal">(overrides club default)</span></Label>
+        <FormField label={<>Timezone <span className="text-slate-400 font-normal">(overrides club default)</span></>}>
           <div className="relative">
             <Input
               value={tzSearch || timezone}
@@ -81,7 +79,7 @@ export default function CalendarSettingsPage() {
             )}
           </div>
           {timezone && <p className="text-xs text-slate-400">Current time: {new Date().toLocaleTimeString('de-DE', { timeZone: timezone })}</p>}
-        </div>
+        </FormField>
 
         <Button disabled={saving || !name.trim()} onClick={handleSave} className="gap-1.5">
           {saved ? <><Check className="w-3.5 h-3.5" />Saved</> : saving ? 'Saving...' : 'Save'}
