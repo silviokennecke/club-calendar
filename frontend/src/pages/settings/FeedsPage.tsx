@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { FormField, SectionHeader, EmptyState } from '@/components/ui/shared'
+import { FormField, SectionHeader, EmptyState, TagBadge } from '@/components/ui/shared'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Plus, Copy, Eye, EyeOff, RefreshCw, Pencil, Trash2, Check } from 'lucide-react'
@@ -123,7 +123,7 @@ export default function FeedsPage() {
             const wurl = webcalUrl(feed.id, feed.visibility === 'PRIVATE' ? feed.sharedSecret : undefined)
             const tgNames = feed.targetGroups
               .map(ft => targetGroups.find(t => t.id === ft.targetGroupId)?.name)
-              .filter(Boolean)
+              .filter(Boolean) as string[]
 
             return (
               <div key={feed.id} className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
@@ -137,9 +137,7 @@ export default function FeedsPage() {
                     </div>
                     {tgNames.length > 0 && (
                       <div className="flex gap-1 flex-wrap">
-                        {tgNames.map(name => (
-                          <span key={name} className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">{name}</span>
-                        ))}
+                        {tgNames.map(name => <TagBadge key={name} label={name} variant="purple" />)}
                       </div>
                     )}
                   </div>

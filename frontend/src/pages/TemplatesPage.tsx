@@ -5,9 +5,8 @@ import { apiGet, apiDelete } from '@/lib/api'
 import type { EventTemplate } from '@/lib/types'
 import { formatAddress } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { SectionHeader, EmptyState } from '@/components/ui/shared'
+import { SectionHeader, EmptyState, TagBadge } from '@/components/ui/shared'
 import { Plus, Pencil, Trash2, Clock, MapPin } from 'lucide-react'
 import TemplateModal from '@/components/templates/TemplateModal'
 
@@ -73,21 +72,9 @@ export default function TemplatesPage() {
               </div>
 
               <div className="flex flex-wrap gap-1.5">
-                {t.properties.map(p => (
-                  <Badge key={p.property.id} variant="secondary" className="text-xs">
-                    {p.property.icon && <span className="mr-1">{p.property.icon}</span>}{p.property.name}
-                  </Badge>
-                ))}
-                {t.features.map(f => (
-                  <Badge key={f.feature.id} variant="outline" className="text-xs text-green-700 border-green-200 bg-green-50">
-                    {f.feature.name}
-                  </Badge>
-                ))}
-                {t.targetGroups.map(tg => (
-                  <Badge key={tg.targetGroup.id} variant="outline" className="text-xs text-purple-700 border-purple-200 bg-purple-50">
-                    {tg.targetGroup.name}
-                  </Badge>
-                ))}
+                {t.properties.map(p => <TagBadge key={p.property.id} label={p.property.name} icon={p.property.icon} variant="slate" />)}
+                {t.features.map(f => <TagBadge key={f.feature.id} label={f.feature.name} variant="green" />)}
+                {t.targetGroups.map(tg => <TagBadge key={tg.targetGroup.id} label={tg.targetGroup.name} variant="purple" />)}
               </div>
             </div>
           ))}

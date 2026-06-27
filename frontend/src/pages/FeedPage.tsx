@@ -5,6 +5,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventInput, EventClickArg } from '@fullcalendar/core'
 import { Button } from '@/components/ui/button'
+import { TagBadge } from '@/components/ui/shared'
 import { Calendar, Download, X, MapPin, Clock, Tag, Users, Sparkles } from 'lucide-react'
 import { formatAddress } from '@/lib/types'
 
@@ -110,11 +111,7 @@ function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
             <div className="flex items-start gap-2.5">
               <Users className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
               <div className="flex flex-wrap gap-1">
-                {ev.targetGroups.map(t => (
-                  <span key={t.targetGroup.id} className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">
-                    {t.targetGroup.name}
-                  </span>
-                ))}
+                {ev.targetGroups.map(t => <TagBadge key={t.targetGroup.id} label={t.targetGroup.name} variant="purple" />)}
               </div>
             </div>
           )}
@@ -123,12 +120,7 @@ function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
             <div className="flex items-start gap-2.5">
               <Tag className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
               <div className="flex flex-wrap gap-1">
-                {ev.properties.map(p => (
-                  <span key={p.property.id} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
-                    {p.property.icon && <span className="mr-1">{p.property.icon}</span>}
-                    {p.property.name}
-                  </span>
-                ))}
+                {ev.properties.map(p => <TagBadge key={p.property.id} label={p.property.name} icon={p.property.icon} variant="blue" />)}
               </div>
             </div>
           )}
@@ -137,11 +129,7 @@ function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
             <div className="flex items-start gap-2.5">
               <Sparkles className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
               <div className="flex flex-wrap gap-1">
-                {ev.features.map(f => (
-                  <span key={f.feature.id} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
-                    {f.feature.name}
-                  </span>
-                ))}
+                {ev.features.map(f => <TagBadge key={f.feature.id} label={f.feature.name} variant="green" />)}
               </div>
             </div>
           )}
