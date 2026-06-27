@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventInput, EventClickArg } from '@fullcalendar/core'
+import deLocale from '@fullcalendar/core/locales/de'
 import { Button } from '@/components/ui/button'
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher'
 import { TagBadge, FilterPillGroup, FullPageLoader, FullPageError } from '@/components/ui/shared'
 import { Calendar, Download, X, MapPin, Clock, Tag, Users, Sparkles } from 'lucide-react'
 import { formatAddress } from '@/lib/types'
@@ -31,6 +34,7 @@ function formatDate(dateStr: string): string {
 }
 
 function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
+  const { t } = useTranslation()
   const startDate = formatDate(ev.date)
   const endDate = ev.dateEnd && ev.dateEnd.slice(0, 10) !== ev.date.slice(0, 10)
     ? formatDate(ev.dateEnd)
@@ -58,7 +62,7 @@ function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
           <div className="w-full h-36 bg-slate-100 overflow-hidden">
             <img
               src={`${BASE}/api/mapbox/api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+2563eb(${ev.location!.longitude},${ev.location!.latitude})/${ev.location!.longitude},${ev.location!.latitude},14,0/800x288`}
-              alt="Location map"
+              alt={t('feed.locationMapAlt')}
               className="w-full h-full object-cover"
             />
           </div>
@@ -76,7 +80,7 @@ function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
               {ev.isAllDay ? (
                 <span>
                   {endDate ? `${startDate} – ${endDate}` : startDate}
-                  <span className="ml-1.5 text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">All day</span>
+                  <span className="ml-1.5 text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{t('feed.allDay')}</span>
                 </span>
               ) : (
                 <span>
@@ -100,7 +104,7 @@ function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
                     target="_blank" rel="noopener noreferrer"
                     className="text-xs text-blue-600 hover:underline mt-0.5 inline-block"
                   >
-                    Open in Maps ↗
+                    {t('feed.openInMaps')}
                   </a>
                 )}
               </div>
@@ -140,6 +144,8 @@ function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
 }
 
 export default function FeedPage() {
+  const { t, i18n } = useTranslation()
+  const fcLocale = i18n.resolvedLanguage === 'de' ? deLocale : undefined
   const { feedId } = useParams<{ feedId: string }>()
   const [searchParams] = useSearchParams()
   const secret = searchParams.get('secret') ?? undefined
@@ -157,9 +163,9 @@ export default function FeedPage() {
     fetch(url.toString())
       .then(async res => {
         if (!res.ok) {
-          if (res.status === 403) setError('This feed is private. A valid key is required.')
-          else if (res.status === 404) setError('Feed not found or not published.')
-          else setError('Failed to load calendar.')
+          if (res.status === 403) setError('feed.privateError')
+          else if (res.status === 404) setError('feed.notFoundError')
+          else setError('feed.loadError')
           return
         }
         const data = await res.json() as { feed: { name: string }; events: FeedEvent[] }
@@ -169,7 +175,7 @@ export default function FeedPage() {
         data.events.forEach(ev => ev.targetGroups.forEach(t => tgMap.set(t.targetGroup.id, t.targetGroup.name)))
         setAllGroups(Array.from(tgMap.entries()).map(([id, name]) => ({ id, name })))
       })
-      .catch(() => setError('Failed to load calendar.'))
+      .catch(() => setError('feed.loadError'))
       .finally(() => setLoading(false))
   }, [feedId, secret])
 
@@ -221,9 +227,9 @@ export default function FeedPage() {
     setSelectedEvent(ev)
   }
 
-  if (loading) return <FullPageLoader />
+  if (loading) return <FullPageLoader message={t('feed.loading')} />
   if (error) return (
-    <FullPageError message={error}>
+    <FullPageError message={t(error as Parameters<typeof t>[0])}>
       <Calendar className="w-10 h-10 text-slate-300 mx-auto mb-3" />
     </FullPageError>
   )
@@ -236,13 +242,14 @@ export default function FeedPage() {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Calendar className="w-4 h-4 text-blue-600" />
-                <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">Public Calendar</span>
+                <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t('feed.publicCalendar')}</span>
               </div>
               <h1 className="text-xl font-bold text-slate-900">{feedName}</h1>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              <LanguageSwitcher />
               <a href={buildUrl('webcal')}>
-                <Button size="sm" className="gap-1.5"><Calendar className="w-3.5 h-3.5" />Subscribe</Button>
+                <Button size="sm" className="gap-1.5"><Calendar className="w-3.5 h-3.5" />{t('feed.subscribe')}</Button>
               </a>
               <a href={buildUrl('http')} download>
                 <Button size="sm" variant="outline" className="gap-1.5"><Download className="w-3.5 h-3.5" />ICS</Button>
@@ -252,7 +259,7 @@ export default function FeedPage() {
 
           {allGroups.length > 1 && (
             <FilterPillGroup
-              label="Filter:"
+              label={t('feed.filter')}
               items={allGroups.map(tg => ({ id: String(tg.id), label: tg.name }))}
               selected={selected.map(String)}
               onChange={id => toggleGroup(Number(id))}
@@ -274,15 +281,15 @@ export default function FeedPage() {
             eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
             headerToolbar={{ left: 'prev,next today', center: 'title', right: '' }}
             height="auto"
-            locale="de"
+            locale={fcLocale}
           />
         </div>
         {selected.length > 0 && (
           <p className="text-xs text-slate-400 mt-3 text-center">
-            Showing {filtered.length} of {allEvents.length} events · Subscription reflects this filter
+            {t('feed.showingCount', { filtered: filtered.length, total: allEvents.length })}
           </p>
         )}
-        <p className="text-xs text-slate-400 mt-2 text-center">Click an event for details</p>
+        <p className="text-xs text-slate-400 mt-2 text-center">{t('feed.clickForDetails')}</p>
       </div>
 
       {selectedEvent && (
