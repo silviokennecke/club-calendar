@@ -7,9 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Check } from 'lucide-react'
 import { FormField } from '@/components/ui/shared'
+import { useTranslation } from 'react-i18next'
 
 export default function CalendarSettingsPage() {
+  const { t } = useTranslation()
   const { clubId, calendarId } = useParams<{ clubId: string; calendarId: string }>()
+
   const qc = useQueryClient()
   const [name, setName] = useState('')
   const [timezone, setTimezone] = useState('')
@@ -41,13 +44,13 @@ export default function CalendarSettingsPage() {
 
   return (
     <div className="p-6 max-w-lg">
-      <h2 className="text-base font-semibold text-slate-900 mb-6">General Settings</h2>
+      <h2 className="text-base font-semibold text-slate-900 mb-6">{t('settings.title')}</h2>
       <div className="space-y-4 bg-white rounded-xl border border-slate-200 p-5">
-        <FormField label="Calendar Name">
+        <FormField label={t('settings.calendarName')}>
           <Input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSave()} />
         </FormField>
 
-        <FormField label={<>Timezone <span className="text-slate-400 font-normal">(overrides club default)</span></>}>
+        <FormField label={<>{t('settings.timezone')} <span className="text-slate-400 font-normal">({t('settings.overridesClubDefault')})</span></>}>
           <div className="relative">
             <Input
               value={tzSearch || timezone}
@@ -61,7 +64,7 @@ export default function CalendarSettingsPage() {
               <div className="absolute z-20 top-full left-0 right-0 mt-0.5 bg-white border border-slate-200 rounded-md shadow-lg max-h-52 overflow-y-auto">
                 <button type="button" onMouseDown={() => { setTimezone(''); setTzSearch(''); setShowTzDropdown(false) }}
                   className="w-full text-left px-3 py-2 text-xs text-slate-400 hover:bg-slate-50 border-b border-slate-100 italic">
-                  — Use club default —
+                  — {t('settings.useClubDefault')} —
                 </button>
                 {(typeof Intl !== 'undefined' && 'supportedValuesOf' in Intl
                   ? (Intl as unknown as { supportedValuesOf: (key: string) => string[] }).supportedValuesOf('timeZone')
@@ -78,11 +81,11 @@ export default function CalendarSettingsPage() {
               </div>
             )}
           </div>
-          {timezone && <p className="text-xs text-slate-400">Current time: {new Date().toLocaleTimeString('de-DE', { timeZone: timezone })}</p>}
+          {timezone && <p className="text-xs text-slate-400">{t('settings.currentTime')} {new Date().toLocaleTimeString('de-DE', { timeZone: timezone })}</p>}
         </FormField>
 
         <Button disabled={saving || !name.trim()} onClick={handleSave} className="gap-1.5">
-          {saved ? <><Check className="w-3.5 h-3.5" />Saved</> : saving ? 'Saving...' : 'Save'}
+          {saved ? <><Check className="w-3.5 h-3.5" />{t('settings.saved')}</> : t('settings.save')}
         </Button>
       </div>
     </div>

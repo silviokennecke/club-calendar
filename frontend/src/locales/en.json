@@ -241,11 +241,21 @@
   },
   "templates": {
     "title": "Templates",
+    "description": "Templates pre-fill event details and can be used to create series of events.",
     "newTemplate": "New Template",
     "noTemplates": "No templates yet.",
     "editTemplate": "Edit Template",
     "deleteTemplate": "Delete template?",
-    "cannotBeUndone": "This cannot be undone."
+    "cannotBeUndone": "This cannot be undone.",
+    "deleteTemplateInfo": "Events created from this template won't be affected.",
+    "timezone": "Timezone",
+    "startTime": "Start",
+    "endTime": "End",
+    "defaultLocation": "Default Location",
+    "noDefaultLocation": "No default location",
+    "saveChanges": "Save Changes",
+    "createTemplate": "Create Template",
+    "saving": "Saving..."
   },
   "club": {
     "title": "Club",
@@ -254,11 +264,20 @@
     "save": "Save",
     "saved": "Saved!",
     "members": "Members",
+    "noMembers": "No members yet.",
+    "addMember": "Add",
     "inviteMember": "Invite member",
     "removeMember": "Remove",
     "leaveClub": "Leave club",
     "deleteClub": "Delete club",
-    "deleteClubConfirm": "This will permanently delete the club and all its calendars and events. This cannot be undone."
+    "deleteClubConfirm": "This will permanently delete the club and all its calendars and events. This cannot be undone.",
+    "deleteThisClub": "Delete this club",
+    "calendars": "Calendars",
+    "newCalendarButton": "New",
+    "createCalendar": "Create Calendar",
+    "calendarNamePlaceholder": "Calendar name",
+    "noCalendars": "No calendars yet.",
+    "archived": "Archived"
   },
   "settings": {
     "title": "Settings",
@@ -268,8 +287,12 @@
     "saved": "Saved!",
     "archiveCalendar": "Archive calendar",
     "archiveConfirm": "This will make the calendar read-only. It can be unarchived later.",
+    "overridesClubDefault": "overrides club default",
+    "useClubDefault": "Use club default",
+    "currentTime": "Current time:",
     "feeds": {
       "title": "Feeds",
+      "description": "Publish your calendar as an ICS feed for Apple Calendar, Google Calendar, etc.",
       "newFeed": "New Feed",
       "editFeed": "Edit Feed",
       "feedName": "Name",
@@ -280,10 +303,14 @@
       "icsUrl": "ICS URL",
       "webcalUrl": "Webcal URL",
       "webUrl": "Web URL",
+      "openInApp": "Open in App",
+      "open": "Open ↗",
       "copy": "Copy",
       "copied": "Copied!",
       "showSecret": "Show secret",
       "hideSecret": "Hide secret",
+      "regeneratingWarning": "Regenerating will break existing subscriptions.",
+      "privateSecretInfo": "A shared secret will be generated automatically.",
       "deleteFeed": "Delete feed?",
       "cannotBeUndone": "This cannot be undone.",
       "saving": "Saving…",
@@ -292,6 +319,7 @@
     },
     "properties": {
       "title": "Properties",
+      "description": "Properties are tags shown on events (e.g. dress code, equipment). They can have an emoji icon.",
       "newProperty": "New Property",
       "icon": "Icon",
       "noProperties": "No properties yet.",
@@ -300,6 +328,7 @@
     },
     "features": {
       "title": "Features",
+      "description": "Features are special activities or offerings at an event (e.g. Bonusschießen).",
       "newFeature": "New Feature",
       "noFeatures": "No features yet.",
       "deleteFeature": "Delete feature?",
@@ -307,6 +336,7 @@
     },
     "targetGroups": {
       "title": "Target Groups",
+      "description": "Target groups define audience segments (e.g. Jugend, Erwachsene). Used to filter calendar feeds.",
       "newTargetGroup": "New Target Group",
       "noTargetGroups": "No target groups yet.",
       "deleteTargetGroup": "Delete target group?",
@@ -314,11 +344,15 @@
     },
     "locations": {
       "title": "Locations",
+      "description": "Locations can be assigned to events and templates as the default venue.",
       "newLocation": "New Location",
       "street": "Street",
       "zip": "ZIP",
       "city": "City",
       "country": "Country",
+      "nameOptional": "Name (optional)",
+      "mapPosition": "Map position",
+      "mapPositionHint": "search or click/drag",
       "noLocations": "No locations yet.",
       "deleteLocation": "Delete location?",
       "cannotBeUndone": "This cannot be undone.",
@@ -335,7 +369,9 @@
       "refreshing": "Refreshing…",
       "deleteCalendar": "Delete holiday calendar?",
       "cannotBeUndone": "This cannot be undone.",
-      "neverFetched": "Never fetched"
+      "neverFetched": "Never fetched",
+      "addAndFetch": "Add & Fetch",
+      "adding": "Adding…"
     }
   }
 }

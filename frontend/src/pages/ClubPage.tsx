@@ -8,12 +8,14 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { FormField, SectionHeader, ListCard, ListRow, DangerZoneConfirm } from '@/components/ui/shared'
 import { CalendarDays, Check, Plus, Archive, ArchiveRestore, Copy } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 function formatArchivedAt(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 }
 
 export default function ClubPage() {
+  const { t } = useTranslation()
   const { clubId } = useParams<{ clubId: string }>()
   const qc = useQueryClient()
   const navigate = useNavigate()
@@ -123,10 +125,10 @@ export default function ClubPage() {
     if (confirmDeleteCalId === cal.id) {
       return (
         <div className="flex items-center justify-between px-4 py-3 bg-red-50 border-red-200 rounded-xl border">
-          <span className="text-sm text-red-700">Delete <strong>{cal.name}</strong>?</span>
+          <span className="text-sm text-red-700">{t('common.delete')} <strong>{cal.name}</strong>?</span>
           <div className="flex gap-2 shrink-0">
-            <button onClick={() => handleDeleteCalendar(cal.id)} className="text-xs text-red-600 font-medium px-2 py-1 rounded hover:bg-red-100 transition-colors">Delete</button>
-            <button onClick={() => setConfirmDeleteCalId(null)} className="text-xs text-slate-500 px-2 py-1 rounded hover:bg-slate-100 transition-colors">Cancel</button>
+            <button onClick={() => handleDeleteCalendar(cal.id)} className="text-xs text-red-600 font-medium px-2 py-1 rounded hover:bg-red-100 transition-colors">{t('common.delete')}</button>
+            <button onClick={() => setConfirmDeleteCalId(null)} className="text-xs text-slate-500 px-2 py-1 rounded hover:bg-slate-100 transition-colors">{t('common.cancel')}</button>
           </div>
         </div>
       )
@@ -140,7 +142,7 @@ export default function ClubPage() {
               <CalendarDays className="w-4 h-4 shrink-0 text-slate-300" />
               <div className="min-w-0">
                 <span className="text-sm font-medium text-slate-500 truncate block">{cal.name}</span>
-                <span className="text-xs text-slate-400">Archived · {formatArchivedAt(cal.archivedAt!)}</span>
+                <span className="text-xs text-slate-400">{t('club.archived')} · {formatArchivedAt(cal.archivedAt!)}</span>
               </div>
             </div>
           ) : (
@@ -165,7 +167,7 @@ export default function ClubPage() {
                 </button>
               </>
             )}
-            <button onClick={() => setConfirmDeleteCalId(cal.id)} className="text-slate-400 hover:text-red-500 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors">Delete</button>
+            <button onClick={() => setConfirmDeleteCalId(cal.id)} className="text-slate-400 hover:text-red-500 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors">{t('common.delete')}</button>
           </div>
         </div>
       </div>
@@ -174,13 +176,13 @@ export default function ClubPage() {
 
   return (
     <div className="p-6 max-w-lg">
-      <h2 className="text-base font-semibold text-slate-900 mb-4">Club</h2>
+      <h2 className="text-base font-semibold text-slate-900 mb-4">{t('club.title')}</h2>
       <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
-        <FormField label="Name">
+        <FormField label={t('club.clubName')}>
           <div className="flex gap-2">
             <Input value={clubName} onChange={e => setClubName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveClubName()} />
             <Button size="sm" disabled={nameSaving || !clubName.trim() || clubName === club?.name} onClick={handleSaveClubName} className="gap-1.5">
-              {nameSaved ? <><Check className="w-3.5 h-3.5" />Saved</> : nameSaving ? 'Saving…' : 'Save'}
+              {nameSaved ? <><Check className="w-3.5 h-3.5" />{t('club.saved')}</> : t('club.save')}
             </Button>
           </div>
         </FormField>
@@ -188,48 +190,48 @@ export default function ClubPage() {
 
       <div className="mb-10">
         <DangerZoneConfirm
-          triggerLabel="Delete this club"
-          description={<>This permanently deletes <strong>{club?.name}</strong> including all calendars and events. This cannot be undone.</>}
-          confirmLabel="Delete club"
+          triggerLabel={t('club.deleteThisClub')}
+          description={t('club.deleteClubConfirm')}
+          confirmLabel={t('club.deleteClub')}
           onConfirm={handleDeleteClub}
           isLoading={deletingClub}
         />
       </div>
 
-      <h2 className="text-base font-semibold text-slate-900 mb-4">Members</h2>
+      <h2 className="text-base font-semibold text-slate-900 mb-4">{t('club.members')}</h2>
       <div className="flex gap-2 mb-3">
         <Input placeholder="user@example.com" value={newMemberEmail} onChange={e => setNewMemberEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddMember()} />
-        <Button size="sm" disabled={addingMember} onClick={handleAddMember}>Add</Button>
+        <Button size="sm" disabled={addingMember} onClick={handleAddMember}>{t('club.addMember')}</Button>
       </div>
       {memberError && <p className="text-sm text-red-500 mb-3">{memberError}</p>}
       <ListCard
         items={members}
-        emptyMessage="No members yet."
+        emptyMessage={t('club.noMembers')}
         className="mb-10"
         renderItem={(m: User) => (
           <ListRow
             title={m.name}
             subtitle={m.email}
             actions={
-              <button onClick={() => handleRemoveMember(m.id)} className="text-slate-400 hover:text-red-500 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors">Remove</button>
+              <button onClick={() => handleRemoveMember(m.id)} className="text-slate-400 hover:text-red-500 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors">{t('club.removeMember')}</button>
             }
           />
         )}
       />
 
       <SectionHeader
-        title="Calendars"
+        title={t('club.calendars')}
         className="mb-4"
         action={
           <Dialog open={calDialogOpen} onOpenChange={setCalDialogOpen}>
             <DialogTrigger render={<Button size="sm" variant="outline" className="gap-1" />}>
-              <Plus className="w-3.5 h-3.5" />New
+              <Plus className="w-3.5 h-3.5" />{t('club.newCalendarButton')}
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Create Calendar</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{t('club.createCalendar')}</DialogTitle></DialogHeader>
               <div className="space-y-4 pt-2">
-                <Input placeholder="Calendar name" value={newCalName} onChange={e => setNewCalName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateCalendar()} autoFocus />
-                <Button className="w-full" onClick={handleCreateCalendar}>Create</Button>
+                <Input placeholder={t('club.calendarNamePlaceholder')} value={newCalName} onChange={e => setNewCalName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateCalendar()} autoFocus />
+                <Button className="w-full" onClick={handleCreateCalendar}>{t('common.create')}</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -238,14 +240,14 @@ export default function ClubPage() {
 
       <div className="space-y-2">
         {activeCalendars.length === 0 && archivedCalendars.length === 0 && (
-          <p className="text-sm text-slate-400 py-4">No calendars yet.</p>
+          <p className="text-sm text-slate-400 py-4">{t('club.noCalendars')}</p>
         )}
         {activeCalendars.map(cal => <CalendarCard key={cal.id} cal={cal} />)}
       </div>
 
       {archivedCalendars.length > 0 && (
         <div className="mt-6 space-y-2">
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Archived</p>
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">{t('club.archived')}</p>
           {archivedCalendars.map(cal => <CalendarCard key={cal.id} cal={cal} archived />)}
         </div>
       )}

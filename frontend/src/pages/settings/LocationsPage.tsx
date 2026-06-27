@@ -11,6 +11,7 @@ import { FormField, EmptyState } from '@/components/ui/shared'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Plus, MapPin, Pencil, Trash2 } from 'lucide-react'
 import type { GeocodedAddress } from '@/components/locations/MapPicker'
+import { useTranslation } from 'react-i18next'
 
 void formatLocationLabel
 
@@ -30,6 +31,7 @@ interface FormState {
 const emptyForm: FormState = { name: '', street: '', zip: '', city: '', country: '', latitude: null, longitude: null }
 
 export default function LocationsPage() {
+  const { t } = useTranslation()
   const { calendarId } = useParams<{ calendarId: string }>()
   const qc = useQueryClient()
 
@@ -122,8 +124,8 @@ export default function LocationsPage() {
   return (
     <div className="p-6 max-w-4xl space-y-6">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">Locations can be assigned to events and templates as the default venue.</p>
-        <Button size="sm" onClick={openCreate}><Plus className="w-3.5 h-3.5 mr-1" />Add Location</Button>
+        <p className="text-sm text-slate-500">{t('settings.locations.description')}</p>
+        <Button size="sm" onClick={openCreate}><Plus className="w-3.5 h-3.5 mr-1" />{t('settings.locations.newLocation')}</Button>
       </div>
 
       {locationsWithCoords.length > 0 && (
@@ -138,7 +140,7 @@ export default function LocationsPage() {
       )}
 
       {locations.length === 0 ? (
-        <EmptyState message="No locations yet. Add one to assign it to events and templates." />
+        <EmptyState message={t('settings.locations.noLocations')} />
       ) : (
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {locations.map(loc => {
@@ -184,32 +186,32 @@ export default function LocationsPage() {
       <Dialog open={modalOpen} onOpenChange={v => !v && closeModal()}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingLocation ? 'Edit Location' : 'New Location'}</DialogTitle>
+            <DialogTitle>{editingLocation ? t('common.edit') : t('settings.locations.newLocation')}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-1">
-            <FormField label={<>Name <span className="text-slate-400 font-normal">(optional)</span></>}>
+            <FormField label={t('settings.locations.nameOptional')}>
               <Input placeholder="e.g. Main Hall" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
             </FormField>
 
-            <FormField label="Street & house number">
+            <FormField label={t('settings.locations.street')}>
               <Input placeholder="Musterstraße 1" value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} />
             </FormField>
 
             <div className="grid grid-cols-3 gap-3">
-              <FormField label="ZIP">
+              <FormField label={t('settings.locations.zip')}>
                 <Input placeholder="12345" value={form.zip} onChange={e => setForm(f => ({ ...f, zip: e.target.value }))} />
               </FormField>
-              <FormField label="City" className="col-span-2">
+              <FormField label={t('settings.locations.city')} className="col-span-2">
                 <Input placeholder="Berlin" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} />
               </FormField>
             </div>
 
-            <FormField label={<>Country <span className="text-slate-400 font-normal">(optional)</span></>}>
+            <FormField label={<>{t('settings.locations.country')} <span className="text-slate-400 font-normal">(optional)</span></>}>
               <Input placeholder="Germany" value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} />
             </FormField>
 
-            <FormField label={<>Map position <span className="text-slate-400 font-normal">(search or click/drag)</span></>}>
+            <FormField label={<>{t('settings.locations.mapPosition')} <span className="text-slate-400 font-normal">({t('settings.locations.mapPositionHint')})</span></>}>
               <Suspense fallback={<div className="h-56 bg-slate-100 rounded-lg animate-pulse" />}>
                 <MapPicker
                   latitude={form.latitude}
@@ -222,9 +224,9 @@ export default function LocationsPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={closeModal}>Cancel</Button>
+            <Button variant="outline" onClick={closeModal}>{t('common.cancel')}</Button>
             <Button disabled={saving} onClick={handleSave}>
-              {saving ? 'Saving…' : editingLocation ? 'Save Changes' : 'Add Location'}
+              {t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -233,14 +235,14 @@ export default function LocationsPage() {
       <AlertDialog open={deleteTarget !== null} onOpenChange={v => !v && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete location?</AlertDialogTitle>
+            <AlertDialogTitle>{t('settings.locations.deleteLocation')}</AlertDialogTitle>
             <AlertDialogDescription>
-              &ldquo;{deleteTarget ? (deleteTarget.name ?? formatAddress(deleteTarget) ?? 'this location') : ''}&rdquo; will be removed. Events using this location will lose the reference.
+              &ldquo;{deleteTarget ? (deleteTarget.name ?? formatAddress(deleteTarget) ?? 'this location') : ''}&rdquo; {t('settings.locations.cannotBeUndone')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>{t('common.delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

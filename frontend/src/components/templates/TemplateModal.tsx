@@ -1,4 +1,3 @@
-'use client'
 import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost, apiPatch } from '@/lib/api'
@@ -8,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useTranslation } from 'react-i18next'
 
 interface Props {
   calendarId: string
@@ -17,6 +17,7 @@ interface Props {
 }
 
 export default function TemplateModal({ calendarId, open, onClose, template }: Props) {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const isEditing = !!template
 
@@ -79,35 +80,35 @@ export default function TemplateModal({ calendarId, open, onClose, template }: P
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Template' : 'New Template'}</DialogTitle>
+          <DialogTitle>{isEditing ? t('templates.editTemplate') : t('templates.newTemplate')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-1">
           <div className="space-y-1">
-            <Label htmlFor="tpl-name">Name *</Label>
+            <Label htmlFor="tpl-name">{t('eventModal.eventName')}</Label>
             <Input id="tpl-name" value={name} onChange={e => setName(e.target.value)} placeholder="Template name" />
           </div>
 
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1 col-span-1">
-              <Label htmlFor="tpl-tz">Timezone</Label>
+              <Label htmlFor="tpl-tz">{t('templates.timezone')}</Label>
               <Input id="tpl-tz" value={timezone} onChange={e => setTimezone(e.target.value)} placeholder="Europe/Berlin" />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="tpl-begin">Start</Label>
+              <Label htmlFor="tpl-begin">{t('templates.startTime')}</Label>
               <Input id="tpl-begin" type="time" value={timeBegin} onChange={e => setTimeBegin(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="tpl-end">End</Label>
+              <Label htmlFor="tpl-end">{t('templates.endTime')}</Label>
               <Input id="tpl-end" type="time" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} />
             </div>
           </div>
 
           {locations.length > 0 && (
             <div className="space-y-1">
-              <Label>Default Location</Label>
+              <Label>{t('templates.defaultLocation')}</Label>
               <select className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm" value={locationId} onChange={e => setLocationId(e.target.value)}>
-                <option value="">No default location</option>
+                <option value="">{t('templates.noDefaultLocation')}</option>
                 {locations.map(l => <option key={l.id} value={l.id}>{formatLocationLabel(l)}</option>)}
               </select>
             </div>
@@ -115,7 +116,7 @@ export default function TemplateModal({ calendarId, open, onClose, template }: P
 
           {properties.length > 0 && (
             <div className="space-y-1.5">
-              <Label>Properties</Label>
+              <Label>{t('eventModal.properties')}</Label>
               <div className="flex flex-wrap gap-1.5">
                 {properties.map(p => (
                   <button key={p.id} type="button"
@@ -130,7 +131,7 @@ export default function TemplateModal({ calendarId, open, onClose, template }: P
 
           {features.length > 0 && (
             <div className="space-y-1.5">
-              <Label>Features</Label>
+              <Label>{t('eventModal.features')}</Label>
               <div className="flex flex-wrap gap-1.5">
                 {features.map(f => (
                   <button key={f.id} type="button"
@@ -145,7 +146,7 @@ export default function TemplateModal({ calendarId, open, onClose, template }: P
 
           {targetGroups.length > 0 && (
             <div className="space-y-1.5">
-              <Label>Target Groups</Label>
+              <Label>{t('eventModal.targetGroups')}</Label>
               <div className="flex flex-wrap gap-1.5">
                 {targetGroups.map(t => (
                   <button key={t.id} type="button"
@@ -160,9 +161,9 @@ export default function TemplateModal({ calendarId, open, onClose, template }: P
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
           <Button disabled={saving || !name.trim()} onClick={handleSave}>
-            {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Template'}
+            {saving ? t('templates.saving') : isEditing ? t('templates.saveChanges') : t('templates.createTemplate')}
           </Button>
         </DialogFooter>
       </DialogContent>
