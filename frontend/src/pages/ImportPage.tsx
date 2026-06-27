@@ -20,9 +20,9 @@ interface ParsedEvent {
   locationText: string
   isAllDay: boolean
   isDraft: boolean
-  propertyIds: number[]
-  featureIds: number[]
-  targetGroupIds: number[]
+  propertyIds: string[]
+  featureIds: string[]
+  targetGroupIds: string[]
   selected: boolean
 }
 
@@ -78,8 +78,8 @@ function parseIcs(text: string): ParsedEvent[] {
 
 function RelationFields({ properties, features, targetGroups, propertyIds, featureIds, targetGroupIds, onToggleProp, onToggleFeat, onToggleTg }: {
   properties: Property[]; features: Feature[]; targetGroups: TargetGroup[]
-  propertyIds: number[]; featureIds: number[]; targetGroupIds: number[]
-  onToggleProp: (id: number) => void; onToggleFeat: (id: number) => void; onToggleTg: (id: number) => void
+  propertyIds: string[]; featureIds: string[]; targetGroupIds: string[]
+  onToggleProp: (id: string) => void; onToggleFeat: (id: string) => void; onToggleTg: (id: string) => void
 }) {
   return (
     <>
@@ -179,13 +179,13 @@ function GroupEditor({ groupName, items, properties, features, targetGroups, onA
   const [timeEnd, setTimeEnd] = useState(first.timeEnd)
   const [isDraft, setIsDraft] = useState(first.isDraft)
   const [isAllDay, setIsAllDay] = useState(first.isAllDay)
-  const [propertyIds, setPropertyIds] = useState<number[]>(
+  const [propertyIds, setPropertyIds] = useState<string[]>(
     first.propertyIds.filter(id => items.every(e => e.propertyIds.includes(id)))
   )
-  const [featureIds, setFeatureIds] = useState<number[]>(
+  const [featureIds, setFeatureIds] = useState<string[]>(
     first.featureIds.filter(id => items.every(e => e.featureIds.includes(id)))
   )
-  const [targetGroupIds, setTargetGroupIds] = useState<number[]>(
+  const [targetGroupIds, setTargetGroupIds] = useState<string[]>(
     first.targetGroupIds.filter(id => items.every(e => e.targetGroupIds.includes(id)))
   )
   function toggle<T>(arr: T[], val: T) { return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val] }
@@ -293,7 +293,7 @@ export default function ImportPage() {
 
   function toggleAll() { const n = !allSelected; setEvents(prev => prev.map(e => ({ ...e, selected: n }))) }
   function bulkSetDraft(isDraft: boolean) { setEvents(prev => prev.map(e => e.selected ? { ...e, isDraft } : e)) }
-  function bulkToggleIds(field: 'propertyIds' | 'featureIds' | 'targetGroupIds', id: number) {
+  function bulkToggleIds(field: 'propertyIds' | 'featureIds' | 'targetGroupIds', id: string) {
     const allHave = selectedEvents.every(e => e[field].includes(id))
     setEvents(prev => prev.map(e => {
       if (!e.selected) return e
@@ -308,7 +308,7 @@ export default function ImportPage() {
     setImporting(true)
     try {
       const uniqueTexts = [...new Set(toImport.map(e => e.locationText).filter(Boolean))]
-      const locationIdMap = new Map<string, number>()
+      const locationIdMap = new Map<string, string>()
       for (const text of uniqueTexts) {
         const existing = locations.find(l => (l.street ?? '').toLowerCase() === text.toLowerCase())
         if (existing) {

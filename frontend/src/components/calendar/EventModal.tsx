@@ -120,17 +120,17 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
   const [timeEnd, setTimeEnd] = useState('21:00')
   const [isDraft, setIsDraft] = useState(true)
   const [isAllDay, setIsAllDay] = useState(false)
-  const [locationId, setLocationId] = useState<number | ''>('')
+  const [locationId, setLocationId] = useState<string>('')
   const [showMap, setShowMap] = useState(false)
-  const [selectedPropertyIds, setSelectedPropertyIds] = useState<number[]>([])
-  const [selectedFeatureIds, setSelectedFeatureIds] = useState<number[]>([])
-  const [selectedTargetGroupIds, setSelectedTargetGroupIds] = useState<number[]>([])
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([])
+  const [selectedFeatureIds, setSelectedFeatureIds] = useState<string[]>([])
+  const [selectedTargetGroupIds, setSelectedTargetGroupIds] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [tab, setTab] = useState<'manual' | 'template'>('manual')
 
   // Series state
-  const [templateId, setTemplateId] = useState<number | ''>('')
+  const [templateId, setTemplateId] = useState<string>('')
   const [recMode, setRecMode] = useState<RecurrenceMode>('weekly')
   const [recConfig, setRecConfig] = useState<RecurrenceConfig>({ from: '', to: '', weekday: 1, nth: 0 })
   const generatedDates = generateDates(recMode, recConfig)
@@ -192,7 +192,7 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
       const body = {
         name, date, timeBegin, timeEnd, isDraft, isAllDay,
         dateEnd: dateEnd || null,
-        locationId: locationId === '' ? null : Number(locationId),
+        locationId: locationId === '' ? null : locationId,
         propertyIds: selectedPropertyIds, featureIds: selectedFeatureIds, targetGroupIds: selectedTargetGroupIds,
       }
       if (isEditing) await apiPatch(`/api/calendars/${calendarId}/events/${event!.id}`, body)
@@ -206,7 +206,7 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
     if (!templateId || effectiveDates.length === 0) return
     setLoading(true)
     try {
-      await apiPost(`/api/calendars/${calendarId}/events/from-template`, { templateId: Number(templateId), dates: effectiveDates, overrides: { isDraft } })
+      await apiPost(`/api/calendars/${calendarId}/events/from-template`, { templateId, dates: effectiveDates, overrides: { isDraft } })
       qc.invalidateQueries({ queryKey: ['events', calendarId] })
       onClose()
     } finally { setLoading(false) }
@@ -273,7 +273,7 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
             <div className="space-y-4">
               <div className="space-y-1">
                 <Label>Template</Label>
-                <select className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm" value={templateId} onChange={e => setTemplateId(e.target.value ? Number(e.target.value) : '')}>
+                <select className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm" value={templateId} onChange={e => setTemplateId(e.target.value)}>
                   <option value="">Select template...</option>
                   {templates.map(t => <option key={t.id} value={t.id}>{t.name} ({t.timeBegin}–{t.timeEnd})</option>)}
                 </select>
@@ -390,7 +390,7 @@ export default function EventModal({ calendarId, open, onClose, defaultDate, eve
               <div className="space-y-1.5">
                 <Label>Location</Label>
                 <div className="flex gap-1.5">
-                  <select className="flex-1 border border-slate-200 rounded-md px-3 py-2 text-sm" value={locationId} onChange={e => { const n = Number(e.target.value); setLocationId(e.target.value === '' || isNaN(n) ? '' : n); setShowMap(false) }}>
+                  <select className="flex-1 border border-slate-200 rounded-md px-3 py-2 text-sm" value={locationId} onChange={e => { setLocationId(e.target.value); setShowMap(false) }}>
                     <option value="">No location</option>
                     {locations.map(l => (
                       <option key={l.id} value={String(l.id)}>

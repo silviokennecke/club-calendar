@@ -25,9 +25,9 @@ export default function ClubPage() {
   const [clubName, setClubName] = useState('')
   const [nameSaved, setNameSaved] = useState(false)
   const [nameSaving, setNameSaving] = useState(false)
-  const [confirmDeleteCalId, setConfirmDeleteCalId] = useState<number | null>(null)
+  const [confirmDeleteCalId, setConfirmDeleteCalId] = useState<string | null>(null)
   const [deletingClub, setDeletingClub] = useState(false)
-  const [duplicatingId, setDuplicatingId] = useState<number | null>(null)
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
 
   const { data: club } = useQuery<Club>({
     queryKey: ['club', clubId],
@@ -71,12 +71,12 @@ export default function ClubPage() {
     } finally { setAddingMember(false) }
   }
 
-  async function handleRemoveMember(userId: number) {
+  async function handleRemoveMember(userId: string) {
     await apiDelete(`/api/clubs/${clubId}/members/${userId}`)
     qc.invalidateQueries({ queryKey: ['members', clubId] })
   }
 
-  async function handleDeleteCalendar(calendarId: number) {
+  async function handleDeleteCalendar(calendarId: string) {
     await apiDelete(`/api/clubs/${clubId}/calendars/${calendarId}`)
     setConfirmDeleteCalId(null)
     qc.invalidateQueries({ queryKey: ['calendars', clubId, 'all'] })
@@ -91,17 +91,17 @@ export default function ClubPage() {
     navigate(`/clubs/${clubId}/calendars/${cal.id}`)
   }
 
-  async function handleArchive(calendarId: number) {
+  async function handleArchive(calendarId: string) {
     await apiPost(`/api/clubs/${clubId}/calendars/${calendarId}/archive`, {})
     qc.invalidateQueries({ queryKey: ['calendars', clubId, 'all'] })
   }
 
-  async function handleUnarchive(calendarId: number) {
+  async function handleUnarchive(calendarId: string) {
     await apiPost(`/api/clubs/${clubId}/calendars/${calendarId}/unarchive`, {})
     qc.invalidateQueries({ queryKey: ['calendars', clubId, 'all'] })
   }
 
-  async function handleDuplicate(calendarId: number) {
+  async function handleDuplicate(calendarId: string) {
     setDuplicatingId(calendarId)
     try {
       const newCal = await apiPost<Calendar>(`/api/clubs/${clubId}/calendars/${calendarId}/duplicate`, {})

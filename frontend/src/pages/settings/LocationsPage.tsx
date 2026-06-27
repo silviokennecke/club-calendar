@@ -38,7 +38,7 @@ export default function LocationsPage() {
   const [form, setForm] = useState<FormState>(emptyForm)
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Location | null>(null)
-  const [hoveredId, setHoveredId] = useState<number | null>(null)
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
 
   const { data: locations = [] } = useQuery<Location[]>({
     queryKey: ['locations', calendarId],
