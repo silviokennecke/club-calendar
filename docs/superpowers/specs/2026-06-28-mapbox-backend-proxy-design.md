@@ -19,6 +19,8 @@ The interactive map (GL JS tiles, styles) continues to flow through the existing
 - Abstract static map image fetching behind an interface so the provider can be swapped independently.
 - Cache static map images server-side (dedicated pool, configurable TTL, default 24 h).
 - Invalidate cached map images when a location's coordinates change.
+- Return a `Cache-Control: public, max-age=3600` (1 h) header on map image responses for browser-level caching.
+- Add `updatedAt` to the `Location` entity; expose it in API responses as a Unix timestamp to serve as a cache-breaker in image URLs.
 
 ## Out of Scope
 
@@ -97,6 +99,32 @@ interface MapImageProviderInterface
 
 ---
 
+## Backend: Location Entity — `updatedAt`
+
+Add an `updatedAt: \DateTimeImmutable` field to the `Location` entity using Doctrine lifecycle callbacks:
+
+```php
+#[ORM\HasLifecycleCallbacks]
+class Location
+{
+    #[ORM\Column]
+    private \DateTimeImmutable $updatedAt;
+
+    #[ORM\PrePersist]
+    #[ORM\PreUpdate]
+    public function touchUpdatedAt(): void
+    {
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+}
+```
+
+- A Doctrine migration adds the `updated_at` column (NOT NULL, default `CURRENT_TIMESTAMP`).
+- `LocationService::serialize()` includes `'updatedAt' => $location->getUpdatedAt()->getTimestamp()` (Unix integer — easy to append to a URL).
+- `PublicFeedService` likewise adds `'updatedAt' => $e->getLocation()->getUpdatedAt()->getTimestamp()` to the location sub-array in the event feed response.
+
+---
+
 ## Backend: Bundle Configuration
 
 ### `backend/config/packages/bazinga_geocoder.yaml`
@@ -159,7 +187,7 @@ Response `200`:
 - Looks up `Location` entity by ID.
 - `404` if not found or coordinates are null.
 - Checks `map_images` cache (`location_{id}` key). On miss, calls `MapImageProviderInterface::getImage()` at fixed size **800×288**, zoom **14**, stores result.
-- Returns `200 image/jpeg` with `Cache-Control: public, max-age=86400`.
+- Returns `200 image/jpeg` with `Cache-Control: public, max-age=3600` (1 h browser cache TTL).
 
 #### `GET /api/map/image/event/{id}`
 
@@ -223,12 +251,13 @@ class LocationMapCacheInvalidator
 - Line 60: replace the inline Mapbox static image URL with:
   ```tsx
   <img
-    src={`${BASE}/api/map/image/location/${ev.location!.id}`}
+    src={`${BASE}/api/map/image/location/${ev.location!.id}?v=${ev.location!.updatedAt}`}
     alt="Location map"
     className="w-full h-full object-cover"
   />
   ```
-- The container already has fixed dimensions; `object-cover` crops the 800×288 image to fit.
+- The `?v={updatedAt}` Unix timestamp is a cache-breaker: when coordinates change, the server clears its cache entry AND the URL changes, so the browser also fetches fresh. The container already has fixed dimensions; `object-cover` crops the 800×288 image to fit.
+- The `location` TypeScript type gains an `updatedAt: number` field.
 
 ---
 
@@ -247,6 +276,7 @@ No new frontend packages required.
 
 ## Testing
 
-- PHPUnit integration tests for `MapController` (suggest, reverse, image/location, image/event) covering 200, 404, 503 paths.
+- PHPUnit integration tests for `MapController` (suggest, reverse, image/location, image/event) covering 200, 404, 503 paths; verify `Cache-Control: public, max-age=3600` header on image responses.
 - Unit test for `BazingaGeocoderAdapter` with a mock geocoder.
-- Unit test for `LocationMapCacheInvalidator` verifying cache is only cleared when coordinates change.
+- Unit test for `LocationMapCacheInvalidator` verifying cache is cleared only when `latitude`/`longitude` change, and not on unrelated field changes.
+- Integration test confirming `updatedAt` is included in `LocationService::serialize()` and `PublicFeedService` location sub-array.
