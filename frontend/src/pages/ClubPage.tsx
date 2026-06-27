@@ -6,7 +6,7 @@ import type { Calendar, Club, User } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { FormField, SectionHeader } from '@/components/ui/shared'
+import { FormField, SectionHeader, ListCard, ListRow } from '@/components/ui/shared'
 import { CalendarDays, Check, Plus, Archive, ArchiveRestore, Copy } from 'lucide-react'
 
 function formatArchivedAt(iso: string) {
@@ -207,20 +207,20 @@ export default function ClubPage() {
         <Button size="sm" disabled={addingMember} onClick={handleAddMember}>Add</Button>
       </div>
       {memberError && <p className="text-sm text-red-500 mb-3">{memberError}</p>}
-      <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 mb-10">
-        {members.length === 0
-          ? <p className="text-sm text-slate-400 p-4">No members yet.</p>
-          : members.map((m: User) => (
-            <div key={m.id} className="flex items-center justify-between px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-slate-900">{m.name}</p>
-                <p className="text-xs text-slate-500">{m.email}</p>
-              </div>
+      <ListCard
+        items={members}
+        emptyMessage="No members yet."
+        className="mb-10"
+        renderItem={(m: User) => (
+          <ListRow
+            title={m.name}
+            subtitle={m.email}
+            actions={
               <button onClick={() => handleRemoveMember(m.id)} className="text-slate-400 hover:text-red-500 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors">Remove</button>
-            </div>
-          ))
-        }
-      </div>
+            }
+          />
+        )}
+      />
 
       <SectionHeader
         title="Calendars"
