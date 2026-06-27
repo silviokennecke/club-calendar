@@ -1,11 +1,13 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { storeTokens, apiGet } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import { FullPageLoader } from '@/components/ui/shared'
 import type { User } from '@/lib/types'
 
 export default function AuthCallbackPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { login } = useAuth()
@@ -36,5 +38,5 @@ export default function AuthCallbackPage() {
       .catch(() => navigate('/login?error=oauth_failed', { replace: true }))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return <FullPageLoader message="Signing in…" />
+  return <FullPageLoader message={t('auth.completingSignIn')} />
 }
