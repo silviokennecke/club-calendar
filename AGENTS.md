@@ -59,6 +59,8 @@ $this->denyAccessUnlessGranted(ArchivedCalendarVoter::NOT_ARCHIVED, $calendar); 
 - All relations use cascade delete matching the Prisma schema
 - Join table entities (e.g. `EventProperty`, `ClubUser`) use composite `#[ORM\Id]`
 - `FeedVisibility` is a PHP 8.1 backed enum mapped via `enumType`
+- **Entity IDs are always UUIDs** — use `#[ORM\Column(length: 36)]` with `Uuid::v7()->toRfc4122()` assigned in the constructor. Never use `#[ORM\GeneratedValue]` or `int` IDs. `getId()` returns `string`.
+- **Frontend types for entity IDs are always `string`** — never `number`
 
 ## Testing
 

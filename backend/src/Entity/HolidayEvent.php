@@ -6,14 +6,14 @@ namespace App\Entity;
 use App\Repository\HolidayEventRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity(repositoryClass: HolidayEventRepository::class)]
 class HolidayEvent
 {
     #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
-    private ?int $id = null;
+    #[ORM\Column(length: 36)]
+    private string $id;
 
     #[ORM\ManyToOne(targetEntity: HolidayCalendar::class, inversedBy: 'events')]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
@@ -38,6 +38,7 @@ class HolidayEvent
         DateTimeImmutable $date,
         ?DateTimeImmutable $dateEnd = null,
     ) {
+        $this->id              = Uuid::v7()->toRfc4122();
         $this->holidayCalendar = $holidayCalendar;
         $this->uid             = $uid;
         $this->name            = $name;
@@ -45,7 +46,7 @@ class HolidayEvent
         $this->dateEnd         = $dateEnd;
     }
 
-    public function getId(): ?int { return $this->id; }
+    public function getId(): string { return $this->id; }
     public function getHolidayCalendar(): HolidayCalendar { return $this->holidayCalendar; }
     public function getUid(): string { return $this->uid; }
     public function getName(): string { return $this->name; }

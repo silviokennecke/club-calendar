@@ -72,7 +72,7 @@ class HolidayCalendarController extends AbstractApiController
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function update(
         #[MapEntity(id: 'calendarId')] Calendar $calendar,
-        int $hcId,
+        string $hcId,
         Request $request,
         ValidatorInterface $validator,
     ): JsonResponse {
@@ -99,7 +99,7 @@ class HolidayCalendarController extends AbstractApiController
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function delete(
         #[MapEntity(id: 'calendarId')] Calendar $calendar,
-        int $hcId,
+        string $hcId,
     ): JsonResponse {
         $hc = $this->holidayCalendarRepo->find($hcId);
         if (!$hc || $hc->getCalendar()->getId() !== $calendar->getId()) {
@@ -117,7 +117,7 @@ class HolidayCalendarController extends AbstractApiController
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function refresh(
         #[MapEntity(id: 'calendarId')] Calendar $calendar,
-        int $hcId,
+        string $hcId,
     ): JsonResponse {
         $hc = $this->holidayCalendarRepo->find($hcId);
         if (!$hc || $hc->getCalendar()->getId() !== $calendar->getId()) {

@@ -110,7 +110,7 @@ export interface CalendarEvent {
 }
 
 export interface HolidayCalendar {
-  id: number
+  id: string
   name: string
   url: string
   lastFetchedAt: string | null
@@ -118,8 +118,8 @@ export interface HolidayCalendar {
 }
 
 export interface HolidayEvent {
-  id: number
-  holidayCalendarId: number
+  id: string
+  holidayCalendarId: string
   name: string
   date: string       // YYYY-MM-DD, start (inclusive)
   dateEnd: string | null  // YYYY-MM-DD, end (inclusive), null = same day as date
