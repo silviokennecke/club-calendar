@@ -1,16 +1,13 @@
-'use client'
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, lazy, Suspense } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Pencil, Trash2, Plus, Check, X } from 'lucide-react'
-import dynamic from 'next/dynamic'
-
-// @emoji-mart/react doesn't ship TS types; we load it dynamically to avoid SSR issues
+// @emoji-mart/react doesn't ship TS types; we load it lazily to keep it out of the main bundle
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const EmojiPicker = dynamic(() => import('@emoji-mart/react').then(m => m), { ssr: false }) as any
+const EmojiPicker = lazy(() => import('@emoji-mart/react').then((m: any) => ({ default: m.Picker ?? m.default ?? m }))) as any
 
 interface EmojiPickerFieldProps {
   value: string
@@ -41,15 +38,17 @@ function EmojiPickerField({ value, onChange }: EmojiPickerFieldProps) {
       </button>
       {open && (
         <div className="absolute z-50 top-full left-0 mt-1 shadow-xl rounded-xl overflow-hidden">
-          {EmojiPicker && React.createElement(EmojiPicker, {
-            onEmojiSelect: (e: { native: string }) => { onChange(e.native); setOpen(false) },
-            theme: 'light',
-            previewPosition: 'none',
-            skinTonePosition: 'none',
-            navPosition: 'bottom',
-            perLine: 8,
-            maxFrequentRows: 1,
-          })}
+          <Suspense fallback={null}>
+            {React.createElement(EmojiPicker, {
+              onEmojiSelect: (e: { native: string }) => { onChange(e.native); setOpen(false) },
+              theme: 'light',
+              previewPosition: 'none',
+              skinTonePosition: 'none',
+              navPosition: 'bottom',
+              perLine: 8,
+              maxFrequentRows: 1,
+            })}
+          </Suspense>
         </div>
       )}
     </div>
