@@ -9,8 +9,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { SectionHeader, EmptyState, TagBadge } from '@/components/ui/shared'
 import { Plus, Pencil, Trash2, Clock, MapPin } from 'lucide-react'
 import TemplateModal from '@/components/templates/TemplateModal'
+import { useTranslation } from 'react-i18next'
 
 export default function TemplatesPage() {
+  const { t } = useTranslation()
   const { calendarId } = useParams<{ calendarId: string }>()
   const qc = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
@@ -32,13 +34,13 @@ export default function TemplatesPage() {
   return (
     <div className="p-6 max-w-3xl">
       <SectionHeader
-        title="Event Templates"
-        description="Templates pre-fill event details and can be used to create series of events."
-        action={<Button size="sm" onClick={openCreate}><Plus className="w-3.5 h-3.5 mr-1" />New Template</Button>}
+        title={t('templates.title')}
+        description={t('templates.description')}
+        action={<Button size="sm" onClick={openCreate}><Plus className="w-3.5 h-3.5 mr-1" />{t('templates.newTemplate')}</Button>}
       />
 
       {templates.length === 0 ? (
-        <EmptyState message="No templates yet. Create one to speed up event creation." />
+        <EmptyState message={t('templates.noTemplates')} />
       ) : (
         <div className="space-y-3">
           {templates.map(t => (
@@ -59,12 +61,12 @@ export default function TemplatesPage() {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete template?</AlertDialogTitle>
-                        <AlertDialogDescription>Events created from this template won&apos;t be affected.</AlertDialogDescription>
+                        <AlertDialogTitle>{t('templates.deleteTemplate')}</AlertDialogTitle>
+                        <AlertDialogDescription>{t('templates.deleteTemplateInfo')}</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(t.id)}>Delete</AlertDialogAction>
+                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(t.id)}>{t('common.delete')}</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>

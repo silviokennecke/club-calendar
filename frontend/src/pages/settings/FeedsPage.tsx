@@ -11,6 +11,7 @@ import { FormField, SectionHeader, EmptyState, TagBadge } from '@/components/ui/
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Plus, Copy, Eye, EyeOff, RefreshCw, Pencil, Trash2, Check } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
 
@@ -33,6 +34,7 @@ interface FeedFormData {
 }
 
 export default function FeedsPage() {
+  const { t } = useTranslation()
   const { calendarId } = useParams<{ calendarId: string }>()
   const qc = useQueryClient()
 
@@ -109,13 +111,13 @@ export default function FeedsPage() {
   return (
     <div className="p-6 max-w-3xl">
       <SectionHeader
-        title="Calendar Feeds"
-        description="Publish your calendar as an ICS feed for Apple Calendar, Google Calendar, etc."
-        action={<Button size="sm" onClick={openCreate}><Plus className="w-3.5 h-3.5 mr-1" />New Feed</Button>}
+        title={t('settings.feeds.title')}
+        description={t('settings.feeds.description')}
+        action={<Button size="sm" onClick={openCreate}><Plus className="w-3.5 h-3.5 mr-1" />{t('settings.feeds.newFeed')}</Button>}
       />
 
       {feeds.length === 0 ? (
-        <EmptyState message="No feeds yet. Create one to publish your calendar." />
+        <EmptyState message={t('settings.feeds.noFeeds')} />
       ) : (
         <div className="space-y-4">
           {feeds.map(feed => {
@@ -149,12 +151,12 @@ export default function FeedsPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Delete feed?</AlertDialogTitle>
-                          <AlertDialogDescription>Subscribers using this URL will lose access.</AlertDialogDescription>
+                          <AlertDialogTitle>{t('settings.feeds.deleteFeed')}</AlertDialogTitle>
+                          <AlertDialogDescription>{t('settings.feeds.cannotBeUndone')}</AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(feed.id)}>Delete</AlertDialogAction>
+                          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(feed.id)}>{t('common.delete')}</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -162,7 +164,7 @@ export default function FeedsPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-500">ICS Subscription URL</Label>
+                  <Label className="text-xs text-slate-500">{t('settings.feeds.icsUrl')}</Label>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-md px-3 py-2 truncate text-slate-700 font-mono">
                       {url}
@@ -170,12 +172,12 @@ export default function FeedsPage() {
                     <button onClick={() => copyToClipboard(url, feed.id)} title="Copy URL" className="text-slate-400 hover:text-slate-700 p-1.5 rounded border border-slate-200 hover:bg-slate-50">
                       {copied === feed.id ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
-                    <a href={wurl} className="text-xs text-blue-600 hover:underline whitespace-nowrap">Open in App</a>
+                    <a href={wurl} className="text-xs text-blue-600 hover:underline whitespace-nowrap">{t('settings.feeds.openInApp')}</a>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-500">Web View</Label>
+                  <Label className="text-xs text-slate-500">{t('settings.feeds.webUrl')}</Label>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-md px-3 py-2 truncate text-slate-700 font-mono">
                       {feedWebUrl(feed.id, feed.visibility === 'PRIVATE' ? feed.sharedSecret : undefined)}
@@ -186,14 +188,14 @@ export default function FeedsPage() {
                       rel="noopener noreferrer"
                       className="shrink-0 text-blue-600 hover:underline text-xs px-2.5 py-1.5 border border-slate-200 rounded hover:bg-slate-50 transition-colors"
                     >
-                      Open ↗
+                      {t('settings.feeds.open')}
                     </a>
                   </div>
                 </div>
 
                 {feed.visibility === 'PRIVATE' && (
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-500">Shared Secret</Label>
+                    <Label className="text-xs text-slate-500">{t('settings.feeds.showSecret')}</Label>
                     <div className="flex items-center gap-2">
                       <code className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-md px-3 py-2 font-mono text-slate-700 truncate">
                         {secretVisible[feed.id] ? feed.sharedSecret : '••••••••••••••••••••••••••••••••••••'}
@@ -205,7 +207,7 @@ export default function FeedsPage() {
                         <RefreshCw className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    <p className="text-xs text-slate-400">Regenerating will break existing subscriptions.</p>
+                    <p className="text-xs text-slate-400">{t('settings.feeds.regeneratingWarning')}</p>
                   </div>
                 )}
               </div>
@@ -217,27 +219,27 @@ export default function FeedsPage() {
       <Dialog open={dialogOpen} onOpenChange={v => !v && setDialogOpen(false)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingFeed ? 'Edit Feed' : 'New Feed'}</DialogTitle>
+            <DialogTitle>{editingFeed ? t('settings.feeds.editFeed') : t('settings.feeds.newFeed')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <FormField label="Name">
+            <FormField label={t('settings.feeds.feedName')}>
               <Input placeholder="e.g. Public Calendar" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
             </FormField>
 
-            <FormField label="Visibility">
+            <FormField label={t('settings.feeds.visibility')}>
               <div className="flex gap-2">
                 {(['PUBLIC', 'PRIVATE'] as const).map(v => (
                   <button key={v} onClick={() => setForm(f => ({ ...f, visibility: v }))}
                     className={`flex-1 py-2 text-sm rounded-md border transition-colors ${form.visibility === v ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                    {v === 'PUBLIC' ? '🌐 Public' : '🔒 Private'}
+                    {v === 'PUBLIC' ? `🌐 ${t('settings.feeds.public')}` : `🔒 ${t('settings.feeds.private')}`}
                   </button>
                 ))}
               </div>
-              {form.visibility === 'PRIVATE' && <p className="text-xs text-slate-400">A shared secret will be generated automatically.</p>}
+              {form.visibility === 'PRIVATE' && <p className="text-xs text-slate-400">{t('settings.feeds.privateSecretInfo')}</p>}
             </FormField>
 
             {targetGroups.length > 0 && (
-              <FormField label={<>Filter by Target Group <span className="text-slate-400 font-normal">(optional — empty = all events)</span></>}>
+              <FormField label={<>{t('settings.feeds.targetGroups')} <span className="text-slate-400 font-normal">({t('settings.feeds.allGroups')})</span></>}>
                 <div className="flex flex-wrap gap-1.5">
                   {targetGroups.map(tg => (
                     <button key={tg.id} type="button" onClick={() => toggleTargetGroup(tg.id)}
@@ -250,9 +252,9 @@ export default function FeedsPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button disabled={saving || !form.name.trim()} onClick={handleSave}>
-              {saving ? 'Saving...' : editingFeed ? 'Save Changes' : 'Create Feed'}
+              {saving ? t('settings.feeds.saving') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

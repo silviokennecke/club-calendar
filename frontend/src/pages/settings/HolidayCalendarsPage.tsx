@@ -17,8 +17,10 @@ import {
   refreshHolidayCalendar,
 } from '@/lib/api'
 import type { HolidayCalendar } from '@/lib/types'
+import { useTranslation } from 'react-i18next'
 
 export default function HolidayCalendarsPage() {
+  const { t } = useTranslation()
   const { calendarId } = useParams<{ calendarId: string }>()
 
   const [items, setItems] = useState<HolidayCalendar[]>([])
@@ -80,16 +82,16 @@ export default function HolidayCalendarsPage() {
   return (
     <div className="p-6">
       <SectionHeader
-        title="Holiday Calendars"
-        action={<Button onClick={() => setShowAdd(true)}>Add ICS Feed</Button>}
+        title={t('settings.holidays.title')}
+        action={<Button onClick={() => setShowAdd(true)}>{t('settings.holidays.newCalendar')}</Button>}
         className="mb-5"
       />
 
       {loading ? (
-        <p className="text-muted-foreground">Loading…</p>
+        <p className="text-muted-foreground">{t('common.loading')}</p>
       ) : items.length === 0 ? (
         <p className="text-muted-foreground">
-          No holiday calendars yet. Add an ICS URL to import public holidays.
+          {t('settings.holidays.noHolidayCalendars')}
         </p>
       ) : (
         <ul className="space-y-3">
@@ -99,9 +101,10 @@ export default function HolidayCalendarsPage() {
                 <p className="font-medium">{hc.name}</p>
                 <p className="text-sm text-muted-foreground break-all">{hc.url}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {hc.eventCount} events
-                  {hc.lastFetchedAt &&
-                    ` · Last fetched: ${new Date(hc.lastFetchedAt).toLocaleString()}`}
+                  {t('settings.holidays.eventCount', { count: hc.eventCount })}
+                  {hc.lastFetchedAt
+                    ? ` · ${t('settings.holidays.lastFetched', { date: new Date(hc.lastFetchedAt).toLocaleString() })}`
+                    : ` · ${t('settings.holidays.neverFetched')}`}
                 </p>
               </div>
               <div className="ml-4 flex shrink-0 gap-2">
@@ -111,10 +114,10 @@ export default function HolidayCalendarsPage() {
                   disabled={refreshingId === hc.id}
                   onClick={() => handleRefresh(hc.id)}
                 >
-                  {refreshingId === hc.id ? 'Refreshing…' : 'Refresh'}
+                  {refreshingId === hc.id ? t('settings.holidays.refreshing') : t('settings.holidays.refresh')}
                 </Button>
                 <Button variant="destructive" size="sm" onClick={() => handleDelete(hc.id)}>
-                  Delete
+                  {t('common.delete')}
                 </Button>
               </div>
             </li>
@@ -125,10 +128,10 @@ export default function HolidayCalendarsPage() {
       <Dialog open={showAdd} onOpenChange={open => { setShowAdd(open); if (!open) setAddError(null) }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Holiday Calendar</DialogTitle>
+            <DialogTitle>{t('settings.holidays.newCalendar')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <FormField label="Name">
+            <FormField label={t('common.name')}>
               <Input
                 id="hc-name"
                 value={form.name}
@@ -136,7 +139,7 @@ export default function HolidayCalendarsPage() {
                 placeholder="German Public Holidays"
               />
             </FormField>
-            <FormField label="ICS URL">
+            <FormField label={t('settings.holidays.url')}>
               <Input
                 id="hc-url"
                 type="url"
@@ -149,10 +152,10 @@ export default function HolidayCalendarsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAdd(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleAdd} disabled={saving || !form.name || !form.url}>
-              {saving ? 'Adding…' : 'Add & Fetch'}
+              {saving ? t('settings.holidays.adding') : t('settings.holidays.addAndFetch')}
             </Button>
           </DialogFooter>
         </DialogContent>

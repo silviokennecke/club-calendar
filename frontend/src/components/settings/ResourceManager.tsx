@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Pencil, Trash2, Plus, Check, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 // @emoji-mart/react doesn't ship TS types; we load it lazily to keep it out of the main bundle
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const EmojiPicker = lazy(() => import('@emoji-mart/react').then((m: any) => ({ default: m.Picker ?? m.default ?? m }))) as any
@@ -73,10 +74,14 @@ interface Props {
   queryKey: string[]
   fields: Field[]
   title: string
+  emptyMessage?: string
+  deleteTitle?: string
+  deleteDescription?: string
   renderItem: (item: Item) => React.ReactNode
 }
 
-export default function ResourceManager({ calendarId: _calendarId, resourcePath, queryKey, fields, title, renderItem }: Props) {
+export default function ResourceManager({ calendarId: _calendarId, resourcePath, queryKey, fields, title, emptyMessage, deleteTitle, deleteDescription, renderItem }: Props) {
+  const { t } = useTranslation()
   const qc = useQueryClient()
   const { data: items = [] } = useQuery<Item[]>({ queryKey, queryFn: () => apiGet(resourcePath) })
 
@@ -122,7 +127,7 @@ export default function ResourceManager({ calendarId: _calendarId, resourcePath,
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-slate-900">{title}</h2>
         <Button size="sm" onClick={() => { setCreating(true); setCreateValues({}) }}>
-          <Plus className="w-3.5 h-3.5 mr-1" />Add
+          <Plus className="w-3.5 h-3.5 mr-1" />{t('common.add')}
         </Button>
       </div>
 
@@ -144,14 +149,14 @@ export default function ResourceManager({ calendarId: _calendarId, resourcePath,
             ))}
           </div>
           <div className="flex gap-2 justify-end">
-            <Button size="sm" variant="ghost" onClick={() => setCreating(false)}><X className="w-3.5 h-3.5 mr-1" />Cancel</Button>
-            <Button size="sm" disabled={saving} onClick={handleCreate}><Check className="w-3.5 h-3.5 mr-1" />Save</Button>
+            <Button size="sm" variant="ghost" onClick={() => setCreating(false)}><X className="w-3.5 h-3.5 mr-1" />{t('common.cancel')}</Button>
+            <Button size="sm" disabled={saving} onClick={handleCreate}><Check className="w-3.5 h-3.5 mr-1" />{t('common.save')}</Button>
           </div>
         </div>
       )}
 
       {items.length === 0 && !creating ? (
-        <p className="text-sm text-slate-400 py-6 text-center">No {title.toLowerCase()} yet. Add one to get started.</p>
+        <p className="text-sm text-slate-400 py-6 text-center">{emptyMessage ?? `No ${title.toLowerCase()} yet. Add one to get started.`}</p>
       ) : (
         <div className="rounded-lg border border-slate-200 divide-y divide-slate-100 bg-white">
           {items.map(item => (
@@ -175,8 +180,8 @@ export default function ResourceManager({ calendarId: _calendarId, resourcePath,
                     ))}
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" disabled={saving} onClick={() => handleUpdate(item.id)}><Check className="w-3.5 h-3.5 mr-1" />Save</Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}><X className="w-3.5 h-3.5 mr-1" />Cancel</Button>
+                    <Button size="sm" disabled={saving} onClick={() => handleUpdate(item.id)}><Check className="w-3.5 h-3.5 mr-1" />{t('common.save')}</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}><X className="w-3.5 h-3.5 mr-1" />{t('common.cancel')}</Button>
                   </div>
                 </div>
               ) : (
@@ -189,12 +194,12 @@ export default function ResourceManager({ calendarId: _calendarId, resourcePath,
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete this item?</AlertDialogTitle>
-                        <AlertDialogDescription>Events using this item will lose the reference.</AlertDialogDescription>
+                        <AlertDialogTitle>{deleteTitle ?? t('common.delete')}</AlertDialogTitle>
+                        <AlertDialogDescription>{deleteDescription ?? 'Events using this item will lose the reference.'}</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(item.id)}>Delete</AlertDialogAction>
+                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(item.id)}>{t('common.delete')}</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>

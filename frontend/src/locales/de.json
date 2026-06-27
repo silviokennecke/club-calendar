@@ -241,11 +241,21 @@
   },
   "templates": {
     "title": "Vorlagen",
+    "description": "Vorlagen füllen Veranstaltungsdetails vor und können zur Erstellung von Veranstaltungsreihen verwendet werden.",
     "newTemplate": "Neue Vorlage",
     "noTemplates": "Noch keine Vorlagen.",
     "editTemplate": "Vorlage bearbeiten",
     "deleteTemplate": "Vorlage löschen?",
-    "cannotBeUndone": "Dieser Vorgang kann nicht rückgängig gemacht werden."
+    "cannotBeUndone": "Dieser Vorgang kann nicht rückgängig gemacht werden.",
+    "deleteTemplateInfo": "Veranstaltungen, die aus dieser Vorlage erstellt wurden, sind nicht betroffen.",
+    "timezone": "Zeitzone",
+    "startTime": "Start",
+    "endTime": "Ende",
+    "defaultLocation": "Standardort",
+    "noDefaultLocation": "Kein Standardort",
+    "saveChanges": "Änderungen speichern",
+    "createTemplate": "Vorlage erstellen",
+    "saving": "Speichern..."
   },
   "club": {
     "title": "Verein",
@@ -254,11 +264,20 @@
     "save": "Speichern",
     "saved": "Gespeichert!",
     "members": "Mitglieder",
+    "noMembers": "Noch keine Mitglieder.",
+    "addMember": "Hinzufügen",
     "inviteMember": "Mitglied einladen",
     "removeMember": "Entfernen",
     "leaveClub": "Verein verlassen",
     "deleteClub": "Verein löschen",
-    "deleteClubConfirm": "Dies löscht den Verein und alle seine Kalender und Veranstaltungen dauerhaft. Dieser Vorgang kann nicht rückgängig gemacht werden."
+    "deleteClubConfirm": "Dies löscht den Verein und alle seine Kalender und Veranstaltungen dauerhaft. Dieser Vorgang kann nicht rückgängig gemacht werden.",
+    "deleteThisClub": "Diesen Verein löschen",
+    "calendars": "Kalender",
+    "newCalendarButton": "Neu",
+    "createCalendar": "Kalender erstellen",
+    "calendarNamePlaceholder": "Kalendername",
+    "noCalendars": "Noch keine Kalender.",
+    "archived": "Archiviert"
   },
   "settings": {
     "title": "Einstellungen",
@@ -268,8 +287,12 @@
     "saved": "Gespeichert!",
     "archiveCalendar": "Kalender archivieren",
     "archiveConfirm": "Der Kalender wird schreibgeschützt. Er kann später wiederhergestellt werden.",
+    "overridesClubDefault": "überschreibt Vereinsstandard",
+    "useClubDefault": "Vereinsstandard verwenden",
+    "currentTime": "Aktuelle Uhrzeit:",
     "feeds": {
       "title": "Feeds",
+      "description": "Veröffentlichen Sie Ihren Kalender als ICS-Feed für Apple Calendar, Google Calendar usw.",
       "newFeed": "Neuer Feed",
       "editFeed": "Feed bearbeiten",
       "feedName": "Name",
@@ -280,10 +303,14 @@
       "icsUrl": "ICS-URL",
       "webcalUrl": "Webcal-URL",
       "webUrl": "Web-URL",
+      "openInApp": "In App öffnen",
+      "open": "Öffnen ↗",
       "copy": "Kopieren",
       "copied": "Kopiert!",
       "showSecret": "Schlüssel anzeigen",
       "hideSecret": "Schlüssel verbergen",
+      "regeneratingWarning": "Durch Neugenerierung werden bestehende Abonnements unterbrochen.",
+      "privateSecretInfo": "Ein gemeinsamer Schlüssel wird automatisch generiert.",
       "deleteFeed": "Feed löschen?",
       "cannotBeUndone": "Dieser Vorgang kann nicht rückgängig gemacht werden.",
       "saving": "Speichern…",
@@ -292,6 +319,7 @@
     },
     "properties": {
       "title": "Eigenschaften",
+      "description": "Eigenschaften sind Tags, die bei Veranstaltungen angezeigt werden (z. B. Dresscode, Ausrüstung). Sie können ein Emoji-Symbol haben.",
       "newProperty": "Neue Eigenschaft",
       "icon": "Symbol",
       "noProperties": "Noch keine Eigenschaften.",
@@ -300,6 +328,7 @@
     },
     "features": {
       "title": "Features",
+      "description": "Features sind besondere Aktivitäten oder Angebote bei einer Veranstaltung (z. B. Bonusschießen).",
       "newFeature": "Neues Feature",
       "noFeatures": "Noch keine Features.",
       "deleteFeature": "Feature löschen?",
@@ -307,6 +336,7 @@
     },
     "targetGroups": {
       "title": "Zielgruppen",
+      "description": "Zielgruppen definieren Zielgruppensegmente (z. B. Jugend, Erwachsene). Werden zur Filterung von Kalender-Feeds verwendet.",
       "newTargetGroup": "Neue Zielgruppe",
       "noTargetGroups": "Noch keine Zielgruppen.",
       "deleteTargetGroup": "Zielgruppe löschen?",
@@ -314,11 +344,15 @@
     },
     "locations": {
       "title": "Orte",
+      "description": "Orte können Veranstaltungen und Vorlagen als Standardveranstaltungsort zugewiesen werden.",
       "newLocation": "Neuer Ort",
       "street": "Straße",
       "zip": "PLZ",
       "city": "Stadt",
       "country": "Land",
+      "nameOptional": "Name (optional)",
+      "mapPosition": "Kartenposition",
+      "mapPositionHint": "suchen oder klicken/ziehen",
       "noLocations": "Noch keine Orte.",
       "deleteLocation": "Ort löschen?",
       "cannotBeUndone": "Dieser Vorgang kann nicht rückgängig gemacht werden.",
@@ -335,7 +369,9 @@
       "refreshing": "Wird aktualisiert…",
       "deleteCalendar": "Feiertagskalender löschen?",
       "cannotBeUndone": "Dieser Vorgang kann nicht rückgängig gemacht werden.",
-      "neverFetched": "Noch nie abgerufen"
+      "neverFetched": "Noch nie abgerufen",
+      "addAndFetch": "Hinzufügen & Abrufen",
+      "adding": "Wird hinzugefügt…"
     }
   }
 }
