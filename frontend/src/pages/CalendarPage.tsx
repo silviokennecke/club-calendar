@@ -7,7 +7,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import type { EventInput, EventClickArg, EventDropArg } from '@fullcalendar/core'
 import type { DateClickArg } from '@fullcalendar/interaction'
 import { apiGet, apiPatch, apiPost, getHolidayEvents } from '@/lib/api'
-import type { CalendarEvent, TargetGroup, Calendar } from '@/lib/types'
+import type {CalendarEvent, TargetGroup, Calendar, HolidayEvent} from '@/lib/types'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import EventModal from '@/components/calendar/EventModal'
@@ -314,14 +314,23 @@ export default function CalendarPage() {
   )
 }
 
-function renderEvent(info: { event: { title: string; start: Date | null; extendedProps: { event: CalendarEvent } }; timeText: string }) {
+function renderEvent(info: { event: { title: string; start: Date | null; extendedProps: { event?: CalendarEvent; isHoliday?: boolean } }; timeText: string }) {
   const { timeText, event } = info
+
+  if (event.extendedProps.isHoliday) {
+    return (
+      <div className="text-xs px-1 truncate font-medium">
+        {event.title}
+      </div>
+    )
+  }
+
   const ev = event.extendedProps.event
   return (
     <div className="text-xs px-1 truncate">
       <span className="opacity-80">{timeText} </span>
       <span className="font-medium">{event.title}</span>
-      {ev.isDraft && <span className="ml-1 opacity-60">(draft)</span>}
+      {ev?.isDraft && <span className="ml-1 opacity-60">(draft)</span>}
     </div>
   )
 }
