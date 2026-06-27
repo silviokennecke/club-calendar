@@ -230,8 +230,7 @@ export default function FeedsPage() {
               <Input placeholder="e.g. Public Calendar" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
             </FormField>
 
-            <div className="space-y-1">
-              <Label>Visibility</Label>
+            <FormField label="Visibility">
               <div className="flex gap-2">
                 {(['PUBLIC', 'PRIVATE'] as const).map(v => (
                   <button key={v} onClick={() => setForm(f => ({ ...f, visibility: v }))}
@@ -241,7 +240,7 @@ export default function FeedsPage() {
                 ))}
               </div>
               {form.visibility === 'PRIVATE' && <p className="text-xs text-slate-400">A shared secret will be generated automatically.</p>}
-            </div>
+            </FormField>
 
             {targetGroups.length > 0 && (
               <FormField label={<>Filter by Target Group <span className="text-slate-400 font-normal">(optional — empty = all events)</span></>}>
