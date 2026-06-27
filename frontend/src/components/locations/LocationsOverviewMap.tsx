@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef } from 'react'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { mapboxTransformRequest, initMapboxProxy } from './mapboxProxy'
+import { useMapbox } from './useMapbox'
 
 interface LocationPin {
   id: number
@@ -21,37 +21,21 @@ interface Props {
 }
 
 export default function LocationsOverviewMap({ locations, selectedId, onSelect, height = 'h-72' }: Props) {
-  const mapContainerRef = useRef<HTMLDivElement>(null)
-  const mapRef = useRef<mapboxgl.Map | null>(null)
   // Keep markers in a ref so we can update them without remounting the map
   const markersRef = useRef<{ id: number; marker: mapboxgl.Marker }[]>([])
 
-  useEffect(() => {
-    if (!mapContainerRef.current) return
-    let map: mapboxgl.Map
-
-    import('mapbox-gl').then(({ default: mapboxgl }) => {
-      initMapboxProxy(mapboxgl)
-
-      map = new mapboxgl.Map({
-        container: mapContainerRef.current!,
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center: [10.0, 51.0],
-        zoom: 5,
-        transformRequest: mapboxTransformRequest,
-        performanceMetricsCollection: false,
-      })
-      map.addControl(new mapboxgl.NavigationControl(), 'top-right')
-      mapRef.current = map
-
+  const { mapContainerRef, mapRef } = useMapbox({
+    onReady: (map, mapboxgl) => {
       map.on('load', () => {
         addMarkers(mapboxgl, map)
         fitBounds(map)
       })
-    })
+    },
+  })
 
-    return () => { map?.remove(); markersRef.current = [] }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    return () => { markersRef.current = [] }
+  }, [])
 
   // Update markers when locations change (after initial load)
   useEffect(() => {
