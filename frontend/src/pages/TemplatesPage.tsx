@@ -29,7 +29,7 @@ export default function TemplatesPage() {
   }
 
   function openCreate() { setEditingTemplate(null); setModalOpen(true) }
-  function openEdit(t: EventTemplate) { setEditingTemplate(t); setModalOpen(true) }
+  function openEdit(tmpl: EventTemplate) { setEditingTemplate(tmpl); setModalOpen(true) }
 
   return (
     <div className="p-6 max-w-3xl">
@@ -43,18 +43,18 @@ export default function TemplatesPage() {
         <EmptyState message={t('templates.noTemplates')} />
       ) : (
         <div className="space-y-3">
-          {templates.map(t => (
-            <div key={t.id} className="bg-white rounded-xl border border-slate-200 p-5">
+          {templates.map(tmpl => (
+            <div key={tmpl.id} className="bg-white rounded-xl border border-slate-200 p-5">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <h3 className="font-medium text-slate-900">{t.name}</h3>
+                  <h3 className="font-medium text-slate-900">{tmpl.name}</h3>
                   <div className="flex items-center gap-3 mt-1.5 text-sm text-slate-500">
-                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{t.timeBegin}–{t.timeEnd}</span>
-                    {t.location && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{t.location.name ?? formatAddress(t.location)}</span>}
+                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{tmpl.timeBegin}–{tmpl.timeEnd}</span>
+                    {tmpl.location && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{tmpl.location.name ?? formatAddress(tmpl.location)}</span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => openEdit(t)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded"><Pencil className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => openEdit(tmpl)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded"><Pencil className="w-3.5 h-3.5" /></button>
                   <AlertDialog>
                     <AlertDialogTrigger render={<button className="text-slate-400 hover:text-red-500 p-1.5 rounded" />}>
                       <Trash2 className="w-3.5 h-3.5" />
@@ -66,7 +66,7 @@ export default function TemplatesPage() {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(t.id)}>{t('common.delete')}</AlertDialogAction>
+                        <AlertDialogAction onClick={() => handleDelete(tmpl.id)}>{t('common.delete')}</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
@@ -74,9 +74,9 @@ export default function TemplatesPage() {
               </div>
 
               <div className="flex flex-wrap gap-1.5">
-                {t.properties.map(p => <TagBadge key={p.property.id} label={p.property.name} icon={p.property.icon} variant="slate" />)}
-                {t.features.map(f => <TagBadge key={f.feature.id} label={f.feature.name} variant="green" />)}
-                {t.targetGroups.map(tg => <TagBadge key={tg.targetGroup.id} label={tg.targetGroup.name} variant="purple" />)}
+                {tmpl.properties.map(p => <TagBadge key={p.property.id} label={p.property.name} icon={p.property.icon} variant="slate" />)}
+                {tmpl.features.map(f => <TagBadge key={f.feature.id} label={f.feature.name} variant="green" />)}
+                {tmpl.targetGroups.map(tg => <TagBadge key={tg.targetGroup.id} label={tg.targetGroup.name} variant="purple" />)}
               </div>
             </div>
           ))}

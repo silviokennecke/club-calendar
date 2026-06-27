@@ -182,7 +182,7 @@ export default function ClubPage() {
           <div className="flex gap-2">
             <Input value={clubName} onChange={e => setClubName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveClubName()} />
             <Button size="sm" disabled={nameSaving || !clubName.trim() || clubName === club?.name} onClick={handleSaveClubName} className="gap-1.5">
-              {nameSaved ? <><Check className="w-3.5 h-3.5" />{t('club.saved')}</> : t('club.save')}
+              {nameSaved ? <><Check className="w-3.5 h-3.5" />{t('club.saved')}</> : nameSaving ? t('club.saving') : t('club.save')}
             </Button>
           </div>
         </FormField>

@@ -207,7 +207,7 @@ export default function LocationsPage() {
               </FormField>
             </div>
 
-            <FormField label={<>{t('settings.locations.country')} <span className="text-slate-400 font-normal">(optional)</span></>}>
+            <FormField label={<>{t('settings.locations.country')} <span className="text-slate-400 font-normal">{t('settings.locations.optional')}</span></>}>
               <Input placeholder="Germany" value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} />
             </FormField>
 
@@ -226,7 +226,7 @@ export default function LocationsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={closeModal}>{t('common.cancel')}</Button>
             <Button disabled={saving} onClick={handleSave}>
-              {t('common.save')}
+              {saving ? t('common.saving') : editingLocation ? t('common.save') : t('settings.locations.addLocation')}
             </Button>
           </DialogFooter>
         </DialogContent>

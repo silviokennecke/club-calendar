@@ -195,7 +195,7 @@ export default function ResourceManager({ calendarId: _calendarId, resourcePath,
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>{deleteTitle ?? t('common.delete')}</AlertDialogTitle>
-                        <AlertDialogDescription>{deleteDescription ?? 'Events using this item will lose the reference.'}</AlertDialogDescription>
+                        <AlertDialogDescription>{deleteDescription ?? t('common.deleteWarning')}</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>

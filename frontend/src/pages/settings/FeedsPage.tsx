@@ -195,7 +195,7 @@ export default function FeedsPage() {
 
                 {feed.visibility === 'PRIVATE' && (
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-500">{t('settings.feeds.showSecret')}</Label>
+                    <Label className="text-xs text-slate-500">{t('settings.feeds.sharedSecret')}</Label>
                     <div className="flex items-center gap-2">
                       <code className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-md px-3 py-2 font-mono text-slate-700 truncate">
                         {secretVisible[feed.id] ? feed.sharedSecret : '••••••••••••••••••••••••••••••••••••'}
@@ -254,7 +254,7 @@ export default function FeedsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button disabled={saving || !form.name.trim()} onClick={handleSave}>
-              {saving ? t('settings.feeds.saving') : t('common.save')}
+              {saving ? t('settings.feeds.saving') : editingFeed ? t('common.save') : t('settings.feeds.createFeed')}
             </Button>
           </DialogFooter>
         </DialogContent>
