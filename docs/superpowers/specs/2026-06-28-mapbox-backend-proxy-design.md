@@ -99,16 +99,24 @@ interface MapImageProviderInterface
 
 ---
 
-## Backend: Location Entity — `updatedAt`
+## Backend: `HasUpdatedAt` Trait
 
-Add an `updatedAt: \DateTimeImmutable` field to the `Location` entity using Doctrine lifecycle callbacks:
+A reusable Doctrine trait at `backend/src/Entity/Trait/HasUpdatedAt.php` so any entity can opt in:
 
 ```php
-#[ORM\HasLifecycleCallbacks]
-class Location
+namespace App\Entity\Trait;
+
+use Doctrine\ORM\Mapping as ORM;
+
+trait HasUpdatedAt
 {
     #[ORM\Column]
     private \DateTimeImmutable $updatedAt;
+
+    public function getUpdatedAt(): \DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
 
     #[ORM\PrePersist]
     #[ORM\PreUpdate]
@@ -119,6 +127,21 @@ class Location
 }
 ```
 
+Usage on any entity (the entity class must carry `#[ORM\HasLifecycleCallbacks]` — traits cannot hold class-level attributes):
+
+```php
+#[ORM\Entity]
+#[ORM\HasLifecycleCallbacks]
+class Location
+{
+    use HasUpdatedAt;
+    // …
+}
+```
+
+Doctrine picks up the `#[ORM\PrePersist]`/`#[ORM\PreUpdate]` callback methods from the trait automatically, as long as `#[ORM\HasLifecycleCallbacks]` is present on the entity class.
+
+**For `Location` specifically:**
 - A Doctrine migration adds the `updated_at` column (NOT NULL, default `CURRENT_TIMESTAMP`).
 - `LocationService::serialize()` includes `'updatedAt' => $location->getUpdatedAt()->getTimestamp()` (Unix integer — easy to append to a URL).
 - `PublicFeedService` likewise adds `'updatedAt' => $e->getLocation()->getUpdatedAt()->getTimestamp()` to the location sub-array in the event feed response.
