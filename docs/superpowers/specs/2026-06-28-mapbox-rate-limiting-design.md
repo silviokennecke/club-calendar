@@ -151,7 +151,7 @@ Injected with:
 4. Cache hit → return cached `ProxyResponse` DTO.
 5. If `pattern.rate_limited` → consume daily/weekly/monthly limiters. Any exhausted → `RateLimitExceededException` → 429.
 6. Make upstream HTTP request. Strip hop-by-hop headers from response.
-7. If GET and response is 2xx → store in cache.
+7. If GET and response status is 2xx, 404, or 410 → store in cache. All other statuses (5xx, 429, etc.) are not cached.
 8. Return `ProxyResponse` DTO (status, headers, body string).
 
 `MapboxController` maps `ProxyResponse` to a Symfony `Response`, continuing to strip the access token from forwarded query params and inject `$mapboxToken`.
