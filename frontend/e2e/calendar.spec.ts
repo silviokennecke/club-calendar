@@ -15,7 +15,10 @@ async function goToCalendar(page: Page) {
   await page.waitForLoadState("networkidle");
   if (!page.url().includes("/calendars/")) {
     // Still on clubs list — navigate through UI
-    await page.getByRole("main").getByText(/Schützenverein/i).click();
+    await page
+      .getByRole("main")
+      .getByText(/Schützenverein/i)
+      .click();
     await page.getByText(/Vereinskalender/i).click();
   }
   // Now on calendar page
