@@ -201,12 +201,23 @@ jobs:
           FRONTEND_URL: http://localhost:5173
         run: php bin/console lexik:jwt:generate-keypair --overwrite
 
-      - name: Run migrations
+      - name: Run migrations (main DB)
         working-directory: backend
         env:
           APP_ENV: dev
           APP_SECRET: ci-app-secret-for-testing-only
           DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
+          JWT_REFRESH_SECRET: ci-refresh-secret-at-least-32-chars-for-testing
+          FRONTEND_URL: http://localhost:5173
+        run: php bin/console doctrine:migrations:migrate --no-interaction
+
+      - name: Run migrations (test DB)
+        working-directory: backend
+        env:
+          APP_ENV: test
+          APP_SECRET: ci-app-secret-for-testing-only
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
+          TEST_DATABASE_URL: mysql://root:root@127.0.0.1:3360/club_calendar_test
           JWT_REFRESH_SECRET: ci-refresh-secret-at-least-32-chars-for-testing
           FRONTEND_URL: http://localhost:5173
         run: php bin/console doctrine:migrations:migrate --no-interaction
