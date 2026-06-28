@@ -1,31 +1,25 @@
 import { useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { BACKEND_URL } from './mapboxProxy'
 import { useMapbox } from './useMapbox'
-
-interface ContextItem {
-  id: string
-  text: string
-  short_code?: string
-}
-
-interface GeocodingFeature {
-  place_name: string
-  center: [number, number]
-  place_type: string[]
-  text: string
-  address?: string          // house number, present for address-type features
-  context?: ContextItem[]
-  properties?: { category?: string }
-}
+import { apiFetch } from '@/lib/api'
 
 export interface GeocodedAddress {
-  displayName: string
+  label: string
   street?: string
   zip?: string
   city?: string
   country?: string
+}
+
+interface SuggestionResult {
+  label: string
+  lat: number
+  lng: number
+  street?: string | null
+  zip?: string | null
+  city?: string | null
+  country?: string | null
 }
 
 interface Props {
@@ -35,25 +29,10 @@ interface Props {
   onPositionChange: (lat: number, lng: number, geocoded: GeocodedAddress) => void
 }
 
-function parseFeature(f: GeocodingFeature): GeocodedAddress {
-  const ctx = f.context ?? []
-
-  const street = f.place_type.includes('address')
-    ? [f.text, f.address].filter(Boolean).join(' ')
-    : undefined
-
-  const zip = ctx.find(c => c.id.startsWith('postcode'))?.text
-  const city = ctx.find(c => c.id.startsWith('place'))?.text
-    ?? ctx.find(c => c.id.startsWith('locality'))?.text
-  const country = ctx.find(c => c.id.startsWith('country'))?.text
-
-  return { displayName: f.place_name, street, zip, city, country }
-}
-
 export default function MapPicker({ latitude, longitude, address, onPositionChange }: Props) {
   const markerRef = useRef<mapboxgl.Marker | null>(null)
   const [searchQuery, setSearchQuery] = useState(address ?? '')
-  const [suggestions, setSuggestions] = useState<GeocodingFeature[]>([])
+  const [suggestions, setSuggestions] = useState<SuggestionResult[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -74,7 +53,7 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
         const { lng, lat } = marker.getLngLat()
         const geocoded = await reverseGeocode(lng, lat)
         onPositionChange(lat, lng, geocoded)
-        setSearchQuery(geocoded.displayName)
+        setSearchQuery(geocoded.label)
       })
 
       map.on('click', async (e) => {
@@ -82,7 +61,7 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
         marker.setLngLat([lng, lat])
         const geocoded = await reverseGeocode(lng, lat)
         onPositionChange(lat, lng, geocoded)
-        setSearchQuery(geocoded.displayName)
+        setSearchQuery(geocoded.label)
       })
 
       markerRef.current = marker
@@ -90,14 +69,12 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
   })
 
   async function reverseGeocode(lng: number, lat: number): Promise<GeocodedAddress> {
-    const fallback: GeocodedAddress = { displayName: `${lat.toFixed(5)}, ${lng.toFixed(5)}` }
+    const fallback: GeocodedAddress = { label: `${lat.toFixed(5)}, ${lng.toFixed(5)}` }
     try {
-      const res = await fetch(
-        `${BACKEND_URL}/api/mapbox/api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?language=de`
-      )
-      const data = await res.json() as { features: GeocodingFeature[] }
-      const feature = data.features[0]
-      return feature ? parseFeature(feature) : fallback
+      const res = await apiFetch(`/api/map/geocode/reverse?lat=${lat}&lng=${lng}`)
+      if (!res.ok) return fallback
+      const data = await res.json() as GeocodedAddress
+      return data
     } catch {
       return fallback
     }
@@ -106,13 +83,12 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
   async function fetchSuggestions(query: string) {
     if (query.length < 2) { setSuggestions([]); return }
     const center = mapRef.current?.getCenter()
-    const proximityParam = center ? `&proximity=${center.lng},${center.lat}` : ''
+    const proximityParams = center ? `&lat=${center.lat}&lng=${center.lng}` : ''
     try {
-      const res = await fetch(
-        `${BACKEND_URL}/api/mapbox/api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?language=de&limit=6&types=address,place,poi,neighborhood,locality${proximityParam}`
-      )
-      const data = await res.json() as { features: GeocodingFeature[] }
-      setSuggestions(data.features)
+      const res = await apiFetch(`/api/map/geocode/suggest?q=${encodeURIComponent(query)}${proximityParams}&limit=6`)
+      if (!res.ok) { setSuggestions([]); return }
+      const data = await res.json() as { suggestions: SuggestionResult[] }
+      setSuggestions(data.suggestions)
       setShowSuggestions(true)
     } catch { setSuggestions([]) }
   }
@@ -123,15 +99,14 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
     debounceRef.current = setTimeout(() => fetchSuggestions(value), 300)
   }
 
-  function selectSuggestion(s: GeocodingFeature) {
-    const [lng, lat] = s.center
-    const geocoded = parseFeature(s)
-    setSearchQuery(geocoded.displayName)
+  function selectSuggestion(s: SuggestionResult) {
+    const geocoded: GeocodedAddress = { label: s.label, street: s.street ?? undefined, zip: s.zip ?? undefined, city: s.city ?? undefined, country: s.country ?? undefined }
+    setSearchQuery(geocoded.label)
     setShowSuggestions(false)
     setSuggestions([])
-    mapRef.current?.flyTo({ center: [lng, lat], zoom: 15 })
-    markerRef.current?.setLngLat([lng, lat])
-    onPositionChange(lat, lng, geocoded)
+    mapRef.current?.flyTo({ center: [s.lng, s.lat], zoom: 15 })
+    markerRef.current?.setLngLat([s.lng, s.lat])
+    onPositionChange(s.lat, s.lng, geocoded)
   }
 
   return (
@@ -154,10 +129,7 @@ export default function MapPicker({ latitude, longitude, address, onPositionChan
                 className="w-full flex items-center gap-1 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0"
                 onMouseDown={() => selectSuggestion(s)}
               >
-                <span className="truncate">{s.place_name}</span>
-                {s.properties?.category && (
-                  <span className="text-slate-400 text-xs ml-1 shrink-0">· {s.properties.category.split(',')[0]}</span>
-                )}
+                <span className="truncate">{s.label}</span>
               </button>
             ))}
           </div>
