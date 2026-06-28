@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller;
 
+use App\Exception\RateLimitExceededException;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
@@ -192,5 +193,57 @@ class MapControllerTest extends WebTestCase
         $this->assertSame(200, $response->getStatusCode());
         $this->assertSame('image/jpeg', $response->headers->get('Content-Type'));
         $this->assertSame('FAKEJPEG', $response->getContent());
+    }
+
+    public function testSuggestReturns429WhenRateLimitExceeded(): void
+    {
+        ['user' => $user] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $auth = TestHelper::authHeader($user, $this->tokens);
+
+        static::getContainer()->set(\App\Service\Map\GeocoderInterface::class, new class implements \App\Service\Map\GeocoderInterface {
+            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array {
+                throw new RateLimitExceededException();
+            }
+            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress { return null; }
+        });
+
+        $r = TestHelper::jsonRequest($this->client, 'GET', '/api/map/geocode/suggest?q=München', [], $auth);
+        $this->assertSame(429, $r['status']);
+    }
+
+    public function testReverseReturns429WhenRateLimitExceeded(): void
+    {
+        ['user' => $user] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $auth = TestHelper::authHeader($user, $this->tokens);
+
+        static::getContainer()->set(\App\Service\Map\GeocoderInterface::class, new class implements \App\Service\Map\GeocoderInterface {
+            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array { return []; }
+            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress {
+                throw new RateLimitExceededException();
+            }
+        });
+
+        $r = TestHelper::jsonRequest($this->client, 'GET', '/api/map/geocode/reverse?lat=48.137&lng=11.575', [], $auth);
+        $this->assertSame(429, $r['status']);
+    }
+
+    public function testLocationImageReturns429WhenRateLimitExceeded(): void
+    {
+        ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $auth = TestHelper::authHeader($user, $this->tokens);
+
+        $create     = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
+            'name' => 'Venue', 'latitude' => 48.137, 'longitude' => 11.575,
+        ], $auth);
+        $locationId = $create['body']['id'];
+
+        static::getContainer()->set(\App\Service\Map\MapImageProviderInterface::class, new class implements \App\Service\Map\MapImageProviderInterface {
+            public function getImage(float $lng, float $lat, int $zoom, int $width, int $height): string {
+                throw new RateLimitExceededException();
+            }
+        });
+
+        $this->client->request('GET', "/api/map/image/location/$locationId");
+        $this->assertSame(429, $this->client->getResponse()->getStatusCode());
     }
 }

@@ -4,3 +4,9 @@ framework:
             map_images:
                 adapter: cache.adapter.filesystem
                 default_lifetime: '%env(int:MAP_IMAGE_CACHE_TTL)%'
+            geocoder_responses:
+                adapter: cache.adapter.filesystem
+                default_lifetime: '%env(int:GEOCODER_CACHE_TTL)%'
+            mapbox_proxy:
+                adapter: cache.adapter.filesystem
+                default_lifetime: '%env(int:MAPBOX_PROXY_CACHE_TTL)%'
