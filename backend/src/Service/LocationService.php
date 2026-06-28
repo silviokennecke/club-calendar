@@ -98,6 +98,7 @@ readonly class LocationService
             'country'    => $location->getCountry(),
             'latitude'   => $location->getLatitude(),
             'longitude'  => $location->getLongitude(),
+            'updatedAt'  => $location->getUpdatedAt()->getTimestamp(),
         ];
     }
 }
