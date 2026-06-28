@@ -10,8 +10,10 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
+#[ORM\HasLifecycleCallbacks]
 class Location
 {
+    use \App\Entity\Trait\HasUpdatedAt;
     #[ORM\Id]
     #[ORM\Column(length: 36)]
     private string $id;
