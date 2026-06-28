@@ -38,6 +38,10 @@ services:
         arguments:
             $mapImagesCache: '@map_images'
 
+    App\Controller\MapController:
+        arguments:
+            $mapImagesCache: '@map_images'
+
     App\Service\TokenService:
         arguments:
             $refreshSecret: '%env(JWT_REFRESH_SECRET)%'

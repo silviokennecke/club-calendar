@@ -1490,6 +1490,37 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         },
  *     }>,
  * }
+ * @psalm-type BazingaGeocoderConfig = array{
+ *     providers?: array<string, array{ // Default: []
+ *         factory?: scalar|Param|null,
+ *         options?: mixed, // Default: []
+ *         cache?: scalar|Param|null, // Default: null
+ *         cache_lifetime?: scalar|Param|null, // Default: null
+ *         cache_precision?: scalar|Param|null, // Precision of the coordinates to cache. // Default: null
+ *         limit?: scalar|Param|null, // Default: null
+ *         locale?: scalar|Param|null, // Default: null
+ *         logger?: scalar|Param|null, // Default: null
+ *         aliases?: list<scalar|Param|null>,
+ *         plugins?: list<array{ // Default: []
+ *             reference?: bool|array{ // Reference to a plugin service
+ *                 enabled?: bool|Param, // Default: false
+ *                 id?: scalar|Param|null, // Service id of a plugin
+ *             },
+ *         }>,
+ *     }>,
+ *     profiling?: bool|array{ // Extend the debug profiler with information about requests.
+ *         enabled?: bool|Param, // Turn the toolbar on or off. Defaults to kernel debug mode. // Default: true
+ *     },
+ *     fake_ip?: bool|string|array{
+ *         enabled?: bool|Param, // Default: false
+ *         local_ip?: scalar|Param|null, // Default: "127.0.0.1"
+ *         ip?: scalar|Param|null, // Default: null
+ *         use_faker?: bool|Param, // Default: false
+ *     },
+ *     orm?: bool|array{
+ *         enabled?: bool|Param, // Turn the Doctrine ORM listener on or off. // Default: false
+ *     },
+ * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,
  *     parameters?: ParametersConfig,
@@ -1502,6 +1533,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *     nelmio_cors?: NelmioCorsConfig,
  *     monolog?: MonologConfig,
+ *     bazinga_geocoder?: BazingaGeocoderConfig,
  *     "when@dev"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,
@@ -1514,6 +1546,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *         nelmio_cors?: NelmioCorsConfig,
  *         monolog?: MonologConfig,
+ *         bazinga_geocoder?: BazingaGeocoderConfig,
  *     },
  *     "when@prod"?: array{
  *         imports?: ImportsConfig,
@@ -1527,6 +1560,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *         nelmio_cors?: NelmioCorsConfig,
  *         monolog?: MonologConfig,
+ *         bazinga_geocoder?: BazingaGeocoderConfig,
  *     },
  *     "when@test"?: array{
  *         imports?: ImportsConfig,
@@ -1540,6 +1574,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *         nelmio_cors?: NelmioCorsConfig,
  *         monolog?: MonologConfig,
+ *         bazinga_geocoder?: BazingaGeocoderConfig,
  *     },
  *     ...<string, ExtensionType|array{ // extra keys must follow the when@%env% pattern or match an extension alias
  *         imports?: ImportsConfig,
