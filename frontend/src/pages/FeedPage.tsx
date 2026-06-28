@@ -22,7 +22,7 @@ interface FeedEvent {
   timeBegin: string
   timeEnd: string
   isAllDay?: boolean
-  location?: { name?: string | null; street?: string | null; zip?: string | null; city?: string | null; country?: string | null; latitude?: number | null; longitude?: number | null } | null
+  location?: { id: string; name?: string | null; street?: string | null; zip?: string | null; city?: string | null; country?: string | null; latitude?: number | null; longitude?: number | null; updatedAt: number } | null
   properties: { property: { id: number; name: string; icon: string | null } }[]
   features: { feature: { id: number; name: string } }[]
   targetGroups: { targetGroup: { id: number; name: string } }[]
@@ -61,7 +61,7 @@ function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
         {hasMap && (
           <div className="w-full h-36 bg-slate-100 overflow-hidden">
             <img
-              src={`${BASE}/api/mapbox/api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+2563eb(${ev.location!.longitude},${ev.location!.latitude})/${ev.location!.longitude},${ev.location!.latitude},14,0/800x288`}
+              src={`${BASE}/api/map/image/location/${ev.location!.id}?v=${ev.location!.updatedAt}`}
               alt={t('feed.locationMapAlt')}
               className="w-full h-full object-cover"
             />
