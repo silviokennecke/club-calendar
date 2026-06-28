@@ -6,6 +6,7 @@ export interface User {
   firstDayOfWeek: number
   lastClubId?: string | null
   lastCalendarId?: string | null
+  language: string
 }
 
 export interface Club {

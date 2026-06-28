@@ -21,7 +21,7 @@ readonly class AuthService
         private TokenService $tokens,
     ) {}
 
-    public function register(string $name, string $email, string $password): array
+    public function register(string $name, string $email, string $password, ?string $language = null): array
     {
         $existing = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         if ($existing) {
@@ -31,6 +31,9 @@ readonly class AuthService
         $user->setName($name);
         $user->setEmail($email);
         $user->setPassword($this->hasher->hashPassword($user, $password));
+        if ($language !== null && $language !== '') {
+            $user->setLanguage($language);
+        }
         $this->em->persist($user);
         $this->em->flush();
         return $this->tokens->tokenResponse($user);
@@ -78,6 +81,7 @@ readonly class AuthService
             'firstDayOfWeek' => $user->getFirstDayOfWeek(),
             'lastClubId'     => $user->getLastClubId(),
             'lastCalendarId' => $user->getLastCalendarId(),
+            'language'       => $user->getLanguage(),
             'passkeys'       => $user->getPasskeys()->map(fn($p) => [
                 'id'         => $p->getId(),
                 'deviceName' => $p->getDeviceName(),

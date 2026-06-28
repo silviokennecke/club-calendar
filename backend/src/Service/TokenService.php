@@ -59,6 +59,16 @@ class TokenService
             'token_type'    => 'Bearer',
             'expires_in'    => 900,
             'refresh_token' => $this->createRefreshToken($user),
+            'user'          => [
+                'id'             => $user->getId(),
+                'name'           => $user->getName(),
+                'email'          => $user->getEmail(),
+                'dateFormat'     => $user->getDateFormat(),
+                'firstDayOfWeek' => $user->getFirstDayOfWeek(),
+                'lastClubId'     => $user->getLastClubId(),
+                'lastCalendarId' => $user->getLastCalendarId(),
+                'language'       => $user->getLanguage(),
+            ],
         ];
     }
 }

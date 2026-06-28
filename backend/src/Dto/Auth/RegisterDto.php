@@ -18,4 +18,6 @@ class RegisterDto
     #[Assert\NotBlank]
     #[Assert\Length(min: 8)]
     public string $password = '';
+
+    public ?string $language = null;
 }
