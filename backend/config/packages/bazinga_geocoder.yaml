@@ -1,0 +1,6 @@
+bazinga_geocoder:
+    providers:
+        mapbox:
+            factory: Bazinga\GeocoderBundle\ProviderFactory\MapboxFactory
+            options:
+                api_key: '%env(MAPBOX_TOKEN)%'

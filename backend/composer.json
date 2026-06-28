@@ -11,9 +11,11 @@
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.6.7",
         "eluceo/ical": "^2.16",
+        "geocoder-php/mapbox-provider": "^1.5",
         "knpuniversity/oauth2-client-bundle": "^2.20.2",
         "lexik/jwt-authentication-bundle": "^3.2",
         "nelmio/cors-bundle": "^2.6",
+        "php-http/guzzle7-adapter": "^1.1",
         "sabre/vobject": "^4.0",
         "symfony/cache": "8.1.*",
         "symfony/console": "8.1.*",
@@ -29,7 +31,8 @@
         "symfony/serializer": "8.1.*",
         "symfony/validator": "8.1.*",
         "symfony/yaml": "8.1.*",
-        "web-auth/webauthn-lib": "^5.3.5"
+        "web-auth/webauthn-lib": "^5.3.5",
+        "willdurand/geocoder-bundle": "^6.0"
     },
     "config": {
         "allow-plugins": {
