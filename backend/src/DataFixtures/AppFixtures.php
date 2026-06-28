@@ -12,20 +12,16 @@ use App\Entity\User;
 use App\Enum\FeedVisibility;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class AppFixtures extends Fixture
 {
-    public function __construct(private readonly UserPasswordHasherInterface $hasher)
-    {
-    }
-
     public function load(ObjectManager $manager): void
     {
         $user = new User();
         $user->setName('Admin');
         $user->setEmail('admin@example.com');
-        $user->setPassword($this->hasher->hashPassword($user, 'password123'));
+        // Pre-computed bcrypt hash of "password123" (cost 10) — avoids hasher DI complexity
+        $user->setPassword('$2y$10$g.3Hzn/vGFX3dtFoBzovpeukTOps.EFBhaLmnJcMROaBm7NHJViq6');
         $manager->persist($user);
 
         $club = new Club();
