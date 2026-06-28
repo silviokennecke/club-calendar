@@ -106,6 +106,7 @@ class PublicFeedService
                 'country'   => $e->getLocation()->getCountry(),
                 'latitude'  => $e->getLocation()->getLatitude(),
                 'longitude' => $e->getLocation()->getLongitude(),
+                'updatedAt' => $e->getLocation()->getUpdatedAt()->getTimestamp(),
             ] : null,
             'properties'   => $e->getProperties()->map(fn ($ep) => [
                 'propertyId' => $ep->getProperty()->getId(),
