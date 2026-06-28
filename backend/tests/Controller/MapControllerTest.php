@@ -1,16 +1,17 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Controller;
 
 use App\Exception\RateLimitExceededException;
+use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-use App\Service\TokenService;
 
 class MapControllerTest extends WebTestCase
 {
@@ -22,12 +23,12 @@ class MapControllerTest extends WebTestCase
     protected function setUp(): void
     {
         self::ensureKernelShutdown();
-        $this->client  = static::createClient();
+        $this->client = static::createClient();
         $this->client->disableReboot();
-        $container     = static::getContainer();
-        $this->em      = $container->get(EntityManagerInterface::class);
-        $this->hasher  = $container->get(UserPasswordHasherInterface::class);
-        $this->tokens  = $container->get(TokenService::class);
+        $container = static::getContainer();
+        $this->em = $container->get(EntityManagerInterface::class);
+        $this->hasher = $container->get(UserPasswordHasherInterface::class);
+        $this->tokens = $container->get(TokenService::class);
         DatabaseResetter::reset($this->em);
     }
 
@@ -37,10 +38,15 @@ class MapControllerTest extends WebTestCase
         $auth = TestHelper::authHeader($user, $this->tokens);
 
         $fakeGeocoder = new class implements \App\Service\Map\GeocoderInterface {
-            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array {
+            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
+            {
                 return [new \App\Service\Map\SuggestionResult('München Hbf', 48.14, 11.56, 'Bahnhofplatz', '80335', 'München', 'Germany')];
             }
-            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress { return null; }
+
+            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress
+            {
+                return null;
+            }
         };
         static::getContainer()->set(\App\Service\Map\GeocoderInterface::class, $fakeGeocoder);
 
@@ -75,8 +81,13 @@ class MapControllerTest extends WebTestCase
         $auth = TestHelper::authHeader($user, $this->tokens);
 
         $fakeGeocoder = new class implements \App\Service\Map\GeocoderInterface {
-            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array { return []; }
-            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress {
+            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
+            {
+                return [];
+            }
+
+            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress
+            {
                 return new \App\Service\Map\GeocodedAddress('Marienplatz, München', 'Marienplatz', '80331', 'München', 'Germany');
             }
         };
@@ -95,8 +106,15 @@ class MapControllerTest extends WebTestCase
         $auth = TestHelper::authHeader($user, $this->tokens);
 
         $fakeGeocoder = new class implements \App\Service\Map\GeocoderInterface {
-            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array { return []; }
-            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress { return null; }
+            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
+            {
+                return [];
+            }
+
+            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress
+            {
+                return null;
+            }
         };
         static::getContainer()->set(\App\Service\Map\GeocoderInterface::class, $fakeGeocoder);
 
@@ -121,7 +139,8 @@ class MapControllerTest extends WebTestCase
     private function fakeImageProvider(): \App\Service\Map\MapImageProviderInterface
     {
         return new class implements \App\Service\Map\MapImageProviderInterface {
-            public function getImage(float $lng, float $lat, int $zoom, int $width, int $height): string {
+            public function getImage(float $lng, float $lat, int $zoom, int $width, int $height): string
+            {
                 return 'FAKEJPEG';
             }
         };
@@ -201,10 +220,15 @@ class MapControllerTest extends WebTestCase
         $auth = TestHelper::authHeader($user, $this->tokens);
 
         static::getContainer()->set(\App\Service\Map\GeocoderInterface::class, new class implements \App\Service\Map\GeocoderInterface {
-            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array {
+            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
+            {
                 throw new RateLimitExceededException();
             }
-            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress { return null; }
+
+            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress
+            {
+                return null;
+            }
         });
 
         $r = TestHelper::jsonRequest($this->client, 'GET', '/api/map/geocode/suggest?q=München', [], $auth);
@@ -217,8 +241,13 @@ class MapControllerTest extends WebTestCase
         $auth = TestHelper::authHeader($user, $this->tokens);
 
         static::getContainer()->set(\App\Service\Map\GeocoderInterface::class, new class implements \App\Service\Map\GeocoderInterface {
-            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array { return []; }
-            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress {
+            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
+            {
+                return [];
+            }
+
+            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress
+            {
                 throw new RateLimitExceededException();
             }
         });
@@ -232,13 +261,14 @@ class MapControllerTest extends WebTestCase
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
         $auth = TestHelper::authHeader($user, $this->tokens);
 
-        $create     = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
+        $create = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
             'name' => 'Venue', 'latitude' => 48.137, 'longitude' => 11.575,
         ], $auth);
         $locationId = $create['body']['id'];
 
         static::getContainer()->set(\App\Service\Map\MapImageProviderInterface::class, new class implements \App\Service\Map\MapImageProviderInterface {
-            public function getImage(float $lng, float $lat, int $zoom, int $width, int $height): string {
+            public function getImage(float $lng, float $lat, int $zoom, int $width, int $height): string
+            {
                 throw new RateLimitExceededException();
             }
         });

@@ -1,10 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repository;
 
 use App\Entity\HolidayEvent;
-use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -16,7 +16,7 @@ class HolidayEventRepository extends ServiceEntityRepository
     }
 
     /** @return HolidayEvent[] */
-    public function findByCalendarAndDateRange(string $calendarId, DateTimeImmutable $from, DateTimeImmutable $to): array
+    public function findByCalendarAndDateRange(string $calendarId, \DateTimeImmutable $from, \DateTimeImmutable $to): array
     {
         return $this->createQueryBuilder('he')
             ->join('he.holidayCalendar', 'hc')

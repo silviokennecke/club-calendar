@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service\Map;
@@ -13,5 +14,6 @@ readonly class SuggestionResult
         public ?string $zip = null,
         public ?string $city = null,
         public ?string $country = null,
-    ) {}
+    ) {
+    }
 }

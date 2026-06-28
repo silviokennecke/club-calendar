@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Controller;
@@ -21,8 +22,8 @@ class ClubTest extends WebTestCase
     public static function setUpBeforeClass(): void
     {
         self::$client = static::createClient();
-        $container    = static::getContainer();
-        self::$em     = $container->get(EntityManagerInterface::class);
+        $container = static::getContainer();
+        self::$em = $container->get(EntityManagerInterface::class);
         self::$hasher = $container->get(UserPasswordHasherInterface::class);
         self::$tokens = $container->get(TokenService::class);
     }
@@ -44,7 +45,7 @@ class ClubTest extends WebTestCase
         $user = TestHelper::createUser(self::$em, self::$hasher);
         TestHelper::createClub(self::$em, $user, 'My Club');
         $auth = TestHelper::authHeader($user, self::$tokens);
-        $r    = TestHelper::jsonRequest(self::$client, 'GET', '/api/clubs', [], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'GET', '/api/clubs', [], $auth);
         $this->assertSame(200, $r['status']);
         $names = array_column($r['body'], 'name');
         $this->assertContains('My Club', $names);
@@ -54,7 +55,7 @@ class ClubTest extends WebTestCase
     {
         $user = TestHelper::createUser(self::$em, self::$hasher);
         $auth = TestHelper::authHeader($user, self::$tokens);
-        $r    = TestHelper::jsonRequest(self::$client, 'POST', '/api/clubs', [
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/clubs', [
             'name' => 'New Club', 'timezone' => 'Europe/London',
         ], $auth);
         $this->assertSame(201, $r['status']);
@@ -65,9 +66,9 @@ class ClubTest extends WebTestCase
     {
         $owner = TestHelper::createUser(self::$em, self::$hasher, 'owner@example.com');
         $other = TestHelper::createUser(self::$em, self::$hasher, 'other@example.com');
-        $club  = TestHelper::createClub(self::$em, $owner);
-        $auth  = TestHelper::authHeader($other, self::$tokens);
-        $r     = TestHelper::jsonRequest(self::$client, 'GET', "/api/clubs/{$club->getId()}", [], $auth);
+        $club = TestHelper::createClub(self::$em, $owner);
+        $auth = TestHelper::authHeader($other, self::$tokens);
+        $r = TestHelper::jsonRequest(self::$client, 'GET', "/api/clubs/{$club->getId()}", [], $auth);
         $this->assertSame(403, $r['status']);
     }
 
@@ -76,7 +77,7 @@ class ClubTest extends WebTestCase
         $user = TestHelper::createUser(self::$em, self::$hasher);
         $club = TestHelper::createClub(self::$em, $user, 'My Club');
         $auth = TestHelper::authHeader($user, self::$tokens);
-        $r    = TestHelper::jsonRequest(self::$client, 'GET', "/api/clubs/{$club->getId()}", [], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'GET', "/api/clubs/{$club->getId()}", [], $auth);
         $this->assertSame(200, $r['status']);
         $this->assertSame($club->getId(), $r['body']['id']);
     }
@@ -86,7 +87,7 @@ class ClubTest extends WebTestCase
         $user = TestHelper::createUser(self::$em, self::$hasher);
         $club = TestHelper::createClub(self::$em, $user);
         $auth = TestHelper::authHeader($user, self::$tokens);
-        $r    = TestHelper::jsonRequest(self::$client, 'DELETE', "/api/clubs/{$club->getId()}", [], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', "/api/clubs/{$club->getId()}", [], $auth);
         $this->assertSame(200, $r['status']);
     }
 }

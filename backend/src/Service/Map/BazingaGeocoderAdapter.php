@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service\Map;
@@ -10,30 +11,32 @@ use Geocoder\Query\ReverseQuery;
 
 class BazingaGeocoderAdapter implements GeocoderInterface
 {
-    public function __construct(private readonly Geocoder $geocoder) {}
+    public function __construct(private readonly Geocoder $geocoder)
+    {
+    }
 
     public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
     {
         $geoQuery = GeocodeQuery::create($query)->withLimit($limit);
-        if ($proximityLat !== null && $proximityLng !== null) {
+        if (null !== $proximityLat && null !== $proximityLng) {
             $geoQuery = $geoQuery->withData('proximity', sprintf('%f,%f', $proximityLng, $proximityLat));
         }
 
         $collection = $this->geocoder->geocodeQuery($geoQuery);
-        $results    = [];
+        $results = [];
 
         foreach ($collection as $address) {
             $coords = $address->getCoordinates();
-            if ($coords === null) {
+            if (null === $coords) {
                 continue;
             }
             $results[] = new SuggestionResult(
-                label:   $this->buildLabel($address),
-                lat:     $coords->getLatitude(),
-                lng:     $coords->getLongitude(),
-                street:  $this->buildStreet($address),
-                zip:     $address->getPostalCode(),
-                city:    $address->getLocality(),
+                label: $this->buildLabel($address),
+                lat: $coords->getLatitude(),
+                lng: $coords->getLongitude(),
+                street: $this->buildStreet($address),
+                zip: $address->getPostalCode(),
+                city: $address->getLocality(),
                 country: $address->getCountry()?->getName(),
             );
         }
@@ -52,10 +55,10 @@ class BazingaGeocoderAdapter implements GeocoderInterface
         $address = $collection->first();
 
         return new GeocodedAddress(
-            label:   $this->buildLabel($address),
-            street:  $this->buildStreet($address),
-            zip:     $address->getPostalCode(),
-            city:    $address->getLocality(),
+            label: $this->buildLabel($address),
+            street: $this->buildStreet($address),
+            zip: $address->getPostalCode(),
+            city: $address->getLocality(),
             country: $address->getCountry()?->getName(),
         );
     }
@@ -74,11 +77,11 @@ class BazingaGeocoderAdapter implements GeocoderInterface
     private function buildStreet(Location $address): ?string
     {
         $name = $address->getStreetName();
-        if ($name === null) {
+        if (null === $name) {
             return null;
         }
         $number = $address->getStreetNumber();
 
-        return $number !== null ? "$name $number" : $name;
+        return null !== $number ? "$name $number" : $name;
     }
 }

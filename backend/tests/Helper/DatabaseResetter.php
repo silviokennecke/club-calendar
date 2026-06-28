@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Helper;
@@ -14,7 +15,7 @@ class DatabaseResetter
      */
     public static function reset(EntityManagerInterface $em): void
     {
-        $conn   = $em->getConnection();
+        $conn = $em->getConnection();
         $tables = [
             'event_target_group', 'event_feature', 'event_property',
             'event',

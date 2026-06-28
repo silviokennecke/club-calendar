@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service;
@@ -11,18 +12,22 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class ClubService
 {
-    public function __construct(private readonly EntityManagerInterface $em) {}
+    public function __construct(private readonly EntityManagerInterface $em)
+    {
+    }
 
     public function listClubs(User $user): array
     {
         $clubUsers = $this->em->getRepository(ClubUser::class)->findBy(['user' => $user]);
+
         return array_map(function (ClubUser $cu) {
             $club = $cu->getClub();
+
             return [
-                'id'       => $club->getId(),
-                'name'     => $club->getName(),
+                'id' => $club->getId(),
+                'name' => $club->getName(),
                 'timezone' => $club->getTimezone(),
-                '_count'   => ['calendars' => $club->getCalendars()->count()],
+                '_count' => ['calendars' => $club->getCalendars()->count()],
             ];
         }, $clubUsers);
     }
@@ -50,9 +55,14 @@ readonly class ClubService
 
     public function updateClub(Club $club, array $data): array
     {
-        if (isset($data['name']))     $club->setName($data['name']);
-        if (isset($data['timezone'])) $club->setTimezone($data['timezone']);
+        if (isset($data['name'])) {
+            $club->setName($data['name']);
+        }
+        if (isset($data['timezone'])) {
+            $club->setTimezone($data['timezone']);
+        }
         $this->em->flush();
+
         return $this->serializeClub($club);
     }
 
@@ -65,9 +75,10 @@ readonly class ClubService
     public function listMembers(Club $club): array
     {
         $members = $this->em->getRepository(ClubUser::class)->findBy(['club' => $club]);
-        return array_map(fn(ClubUser $cu) => [
-            'id'    => $cu->getUser()->getId(),
-            'name'  => $cu->getUser()->getName(),
+
+        return array_map(fn (ClubUser $cu) => [
+            'id' => $cu->getUser()->getId(),
+            'name' => $cu->getUser()->getName(),
             'email' => $cu->getUser()->getEmail(),
         ], $members);
     }
@@ -87,13 +98,16 @@ readonly class ClubService
         $cu->setUser($user);
         $this->em->persist($cu);
         $this->em->flush();
+
         return ['id' => $user->getId(), 'name' => $user->getName(), 'email' => $user->getEmail()];
     }
 
     public function removeMember(Club $club, string $memberId): void
     {
         $member = $this->em->getRepository(User::class)->find($memberId);
-        if (!$member) return;
+        if (!$member) {
+            return;
+        }
         $cu = $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $club, 'user' => $member]);
         if ($cu) {
             $this->em->remove($cu);
@@ -104,8 +118,8 @@ readonly class ClubService
     private function serializeClub(Club $club): array
     {
         return [
-            'id'       => $club->getId(),
-            'name'     => $club->getName(),
+            'id' => $club->getId(),
+            'name' => $club->getName(),
             'timezone' => $club->getTimezone(),
         ];
     }

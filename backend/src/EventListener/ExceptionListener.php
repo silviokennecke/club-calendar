@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\EventListener;
@@ -32,23 +33,27 @@ class ExceptionListener
             $violations = $exception->getViolations();
             $detail = $this->formatViolations($violations);
             $event->setResponse($this->problemResponse(422, 'Unprocessable Entity', $detail));
+
             return;
         }
 
         if ($exception instanceof HttpExceptionInterface) {
             $status = $exception->getStatusCode();
             $event->setResponse($this->problemResponse($status, $this->statusTitle($status), $exception->getMessage()));
+
             return;
         }
 
         // Symfony security exceptions not wrapped in HttpException
         if ($exception instanceof AccessDeniedException) {
             $event->setResponse($this->problemResponse(403, 'Forbidden', $exception->getMessage()));
+
             return;
         }
 
         if ($exception instanceof AuthenticationException) {
             $event->setResponse($this->problemResponse(401, 'Unauthorized', $exception->getMessage()));
+
             return;
         }
 
@@ -59,8 +64,8 @@ class ExceptionListener
     private function problemResponse(int $status, string $title, string $detail): JsonResponse
     {
         return new JsonResponse([
-            'type'   => 'https://tools.ietf.org/html/rfc2616#section-10',
-            'title'  => $title,
+            'type' => 'https://tools.ietf.org/html/rfc2616#section-10',
+            'title' => $title,
             'status' => $status,
             'detail' => $detail,
         ], $status, ['Content-Type' => 'application/problem+json']);
@@ -70,8 +75,9 @@ class ExceptionListener
     {
         $parts = [];
         foreach ($violations as $violation) {
-            $parts[] = $violation->getPropertyPath() . ': ' . $violation->getMessage();
+            $parts[] = $violation->getPropertyPath().': '.$violation->getMessage();
         }
+
         return implode('; ', $parts);
     }
 

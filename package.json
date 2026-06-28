@@ -13,9 +13,21 @@
     "test": "composer test -d backend && npm run test --workspace=frontend",
     "test:backend": "composer test -d backend",
     "test:frontend": "npm run test --workspace=frontend",
-    "db:up": "docker compose up mysql mysql_test -d"
+    "db:up": "docker compose up mysql mysql_test -d",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "frontend/src/**/*.{ts,tsx}": [
+      "eslint --fix --config frontend/eslint.config.mjs",
+      "prettier --write"
+    ],
+    "frontend/**/*.{css,json,md,yaml,yml}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
     "wait-on": "^9.0.10"
   }
 }

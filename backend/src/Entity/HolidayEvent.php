@@ -1,10 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Entity;
 
 use App\Repository\HolidayEventRepository;
-use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
@@ -26,33 +26,68 @@ class HolidayEvent
     private string $name;
 
     #[ORM\Column(type: 'date_immutable')]
-    private DateTimeImmutable $date;
+    private \DateTimeImmutable $date;
 
     #[ORM\Column(type: 'date_immutable', nullable: true)]
-    private ?DateTimeImmutable $dateEnd = null;
+    private ?\DateTimeImmutable $dateEnd = null;
 
     public function __construct(
         HolidayCalendar $holidayCalendar,
         string $uid,
         string $name,
-        DateTimeImmutable $date,
-        ?DateTimeImmutable $dateEnd = null,
+        \DateTimeImmutable $date,
+        ?\DateTimeImmutable $dateEnd = null,
     ) {
-        $this->id              = Uuid::v7()->toRfc4122();
+        $this->id = Uuid::v7()->toRfc4122();
         $this->holidayCalendar = $holidayCalendar;
-        $this->uid             = $uid;
-        $this->name            = $name;
-        $this->date            = $date;
-        $this->dateEnd         = $dateEnd;
+        $this->uid = $uid;
+        $this->name = $name;
+        $this->date = $date;
+        $this->dateEnd = $dateEnd;
     }
 
-    public function getId(): string { return $this->id; }
-    public function getHolidayCalendar(): HolidayCalendar { return $this->holidayCalendar; }
-    public function getUid(): string { return $this->uid; }
-    public function getName(): string { return $this->name; }
-    public function setName(string $name): void { $this->name = $name; }
-    public function getDate(): DateTimeImmutable { return $this->date; }
-    public function setDate(DateTimeImmutable $date): void { $this->date = $date; }
-    public function getDateEnd(): ?DateTimeImmutable { return $this->dateEnd; }
-    public function setDateEnd(?DateTimeImmutable $dateEnd): void { $this->dateEnd = $dateEnd; }
+    public function getId(): string
+    {
+        return $this->id;
+    }
+
+    public function getHolidayCalendar(): HolidayCalendar
+    {
+        return $this->holidayCalendar;
+    }
+
+    public function getUid(): string
+    {
+        return $this->uid;
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function setName(string $name): void
+    {
+        $this->name = $name;
+    }
+
+    public function getDate(): \DateTimeImmutable
+    {
+        return $this->date;
+    }
+
+    public function setDate(\DateTimeImmutable $date): void
+    {
+        $this->date = $date;
+    }
+
+    public function getDateEnd(): ?\DateTimeImmutable
+    {
+        return $this->dateEnd;
+    }
+
+    public function setDateEnd(?\DateTimeImmutable $dateEnd): void
+    {
+        $this->dateEnd = $dateEnd;
+    }
 }

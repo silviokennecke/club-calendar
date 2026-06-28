@@ -15,7 +15,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class FeedService
 {
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(private EntityManagerInterface $em)
+    {
+    }
 
     public function list(Calendar $calendar): array
     {
@@ -34,7 +36,7 @@ readonly class FeedService
         }
 
         $visibility = FeedVisibility::tryFrom($data['visibility']);
-        if ($visibility === null) {
+        if (null === $visibility) {
             throw new BadRequestHttpException('visibility must be PUBLIC or PRIVATE');
         }
 
@@ -60,7 +62,7 @@ readonly class FeedService
         }
         if (array_key_exists('visibility', $data)) {
             $visibility = FeedVisibility::tryFrom($data['visibility']);
-            if ($visibility === null) {
+            if (null === $visibility) {
                 throw new BadRequestHttpException('visibility must be PUBLIC or PRIVATE');
             }
             $feed->setVisibility($visibility);
@@ -77,7 +79,7 @@ readonly class FeedService
                     $feed->getTargetGroups()->removeElement($ftg);
                 }
             }
-            $toAdd = array_values(array_filter($newIds, fn($id) => !in_array($id, $keptIds, true)));
+            $toAdd = array_values(array_filter($newIds, fn ($id) => !in_array($id, $keptIds, true)));
             $this->syncTargetGroups($feed, $toAdd, $calendar);
         }
 
@@ -128,13 +130,13 @@ readonly class FeedService
     public function serialize(CalendarFeed $feed): array
     {
         return [
-            'id'           => $feed->getId(),
-            'calendarId'   => $feed->getCalendar()->getId(),
-            'name'         => $feed->getName(),
-            'visibility'   => $feed->getVisibility()->value,
+            'id' => $feed->getId(),
+            'calendarId' => $feed->getCalendar()->getId(),
+            'name' => $feed->getName(),
+            'visibility' => $feed->getVisibility()->value,
             'sharedSecret' => $feed->getSharedSecret(),
             'targetGroups' => $feed->getTargetGroups()->map(fn (CalendarFeedTargetGroup $ftg) => [
-                'feedId'        => $ftg->getFeed()->getId(),
+                'feedId' => $ftg->getFeed()->getId(),
                 'targetGroupId' => $ftg->getTargetGroup()->getId(),
             ])->toArray(),
         ];

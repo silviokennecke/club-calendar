@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service;
@@ -19,7 +20,9 @@ use Doctrine\ORM\EntityManagerInterface;
 
 class CalendarService
 {
-    public function __construct(private readonly EntityManagerInterface $em) {}
+    public function __construct(private readonly EntityManagerInterface $em)
+    {
+    }
 
     public function listCalendars(Club $club, bool $includeArchived = false): array
     {
@@ -37,11 +40,12 @@ class CalendarService
 
         // Sort: non-archived first (nulls first), then by name
         usort($calendars, function (Calendar $a, Calendar $b) {
-            $aArchived = $a->getArchivedAt() !== null;
-            $bArchived = $b->getArchivedAt() !== null;
+            $aArchived = null !== $a->getArchivedAt();
+            $bArchived = null !== $b->getArchivedAt();
             if ($aArchived !== $bArchived) {
                 return $aArchived ? 1 : -1;
             }
+
             return strcmp($a->getName(), $b->getName());
         });
 
@@ -56,6 +60,7 @@ class CalendarService
         $cal->setTimezone($timezone);
         $this->em->persist($cal);
         $this->em->flush();
+
         return $this->serializeCalendar($cal);
     }
 
@@ -68,6 +73,7 @@ class CalendarService
             $calendar->setTimezone($data['timezone']);
         }
         $this->em->flush();
+
         return $this->serializeCalendar($calendar);
     }
 
@@ -81,6 +87,7 @@ class CalendarService
     {
         $calendar->setArchivedAt(new \DateTimeImmutable());
         $this->em->flush();
+
         return $this->serializeCalendar($calendar);
     }
 
@@ -88,6 +95,7 @@ class CalendarService
     {
         $calendar->setArchivedAt(null);
         $this->em->flush();
+
         return $this->serializeCalendar($calendar);
     }
 
@@ -95,15 +103,15 @@ class CalendarService
     {
         $newCal = new Calendar();
         $newCal->setClub($source->getClub());
-        $newCal->setName('Copy of ' . $source->getName());
+        $newCal->setName('Copy of '.$source->getName());
         $newCal->setTimezone($source->getTimezone());
         $this->em->persist($newCal);
 
         // Map old IDs to new entities
-        $propMap    = [];
+        $propMap = [];
         $featureMap = [];
-        $tgMap      = [];
-        $locMap     = [];
+        $tgMap = [];
+        $locMap = [];
 
         foreach ($source->getProperties() as $p) {
             $n = new Property();
@@ -152,7 +160,7 @@ class CalendarService
             $n->setTimeBegin($tmpl->getTimeBegin());
             $n->setTimeEnd($tmpl->getTimeEnd());
             $oldLocId = $tmpl->getLocation()?->getId();
-            if ($oldLocId !== null && isset($locMap[$oldLocId])) {
+            if (null !== $oldLocId && isset($locMap[$oldLocId])) {
                 $n->setLocation($locMap[$oldLocId]);
             }
             $this->em->persist($n);
@@ -206,16 +214,17 @@ class CalendarService
         }
 
         $this->em->flush();
+
         return $this->serializeCalendar($newCal);
     }
 
     public function serializeCalendar(Calendar $cal): array
     {
         return [
-            'id'         => $cal->getId(),
-            'clubId'     => $cal->getClub()->getId(),
-            'name'       => $cal->getName(),
-            'timezone'   => $cal->getTimezone(),
+            'id' => $cal->getId(),
+            'clubId' => $cal->getClub()->getId(),
+            'name' => $cal->getName(),
+            'timezone' => $cal->getTimezone(),
             'archivedAt' => $cal->getArchivedAt()?->format(\DateTimeInterface::ATOM),
         ];
     }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Controller;
@@ -11,7 +12,6 @@ use App\Repository\HolidayCalendarRepository;
 use App\Security\ArchivedCalendarVoter;
 use App\Security\CalendarMemberVoter;
 use App\Service\HolidayCalendarService;
-use DateTimeInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -28,7 +28,8 @@ class HolidayCalendarController extends AbstractApiController
         private readonly EntityManagerInterface $em,
         private readonly HolidayCalendarRepository $holidayCalendarRepo,
         private readonly HolidayCalendarService $holidayCalendarService,
-    ) {}
+    ) {
+    }
 
     #[Route('', methods: ['GET'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
@@ -60,7 +61,7 @@ class HolidayCalendarController extends AbstractApiController
                 $this->em->flush();
                 $this->holidayCalendarService->fetchAndStore($hc);
             });
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return new JsonResponse(['error' => 'Failed to fetch ICS feed. Please check the URL and try again.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -126,7 +127,7 @@ class HolidayCalendarController extends AbstractApiController
 
         try {
             $this->holidayCalendarService->fetchAndStore($hc);
-        } catch (Throwable) {
+        } catch (\Throwable) {
             return new JsonResponse(['error' => 'Failed to fetch ICS feed. Please check the URL and try again.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -136,11 +137,11 @@ class HolidayCalendarController extends AbstractApiController
     private function serialize(HolidayCalendar $hc): array
     {
         return [
-            'id'            => $hc->getId(),
-            'name'          => $hc->getName(),
-            'url'           => $hc->getUrl(),
-            'lastFetchedAt' => $hc->getLastFetchedAt()?->format(DateTimeInterface::ATOM),
-            'eventCount'    => $hc->getEvents()->count(),
+            'id' => $hc->getId(),
+            'name' => $hc->getName(),
+            'url' => $hc->getUrl(),
+            'lastFetchedAt' => $hc->getLastFetchedAt()?->format(\DateTimeInterface::ATOM),
+            'eventCount' => $hc->getEvents()->count(),
         ];
     }
 }

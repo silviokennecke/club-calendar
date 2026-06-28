@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service\Map;
@@ -24,6 +25,7 @@ class MapCacheKeyHelper
     {
         unset($queryParams['access_token']);
         ksort($queryParams);
-        return hash('sha256', "proxy:$method:$path:" . http_build_query($queryParams));
+
+        return hash('sha256', "proxy:$method:$path:".http_build_query($queryParams));
     }
 }

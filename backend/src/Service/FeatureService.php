@@ -11,7 +11,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class FeatureService
 {
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(private EntityManagerInterface $em)
+    {
+    }
 
     public function list(Calendar $calendar): array
     {
@@ -65,9 +67,9 @@ readonly class FeatureService
     public function serialize(Feature $feature): array
     {
         return [
-            'id'         => $feature->getId(),
+            'id' => $feature->getId(),
             'calendarId' => $feature->getCalendar()->getId(),
-            'name'       => $feature->getName(),
+            'name' => $feature->getName(),
         ];
     }
 }

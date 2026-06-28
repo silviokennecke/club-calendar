@@ -1,0 +1,35 @@
+title = "Club Calendar — Gitleaks Config"
+
+[extend]
+# Use the built-in ruleset as a base
+useDefault = true
+
+[allowlist]
+description = "Known-safe values across the repository"
+
+# Regexes matched against the secret value detected by gitleaks
+regexes = [
+  # Placeholder values used in example / documentation files
+  '''changeme''',
+  '''a-long-random-string-at-least-32-chars-change-me''',
+  # CI-only fake credentials hardcoded in workflow files for test containers
+  '''ci-(access|refresh)-secret-at-least-\d+-chars''',
+  # Dev-only placeholder visible in .env.example
+  '''dev-refresh-secret-change-in-production''',
+]
+
+# Paths excluded from all secret scanning
+paths = [
+  # Example env files contain only placeholder values — never real secrets
+  '''backend/\.env\.example$''',
+  '''frontend/\.env\.local\.example$''',
+  # PHPStan and PHP CS Fixer caches — generated files, no secrets
+  '''backend/\.php-cs-fixer\.cache$''',
+  '''backend/\.phpunit\.cache/''',
+  # Composer / npm lock files — package metadata only
+  '''composer\.lock$''',
+  '''package-lock\.json$''',
+  # Test fixtures may contain intentional fake credential strings
+  '''backend/tests/''',
+  '''frontend/e2e/''',
+]

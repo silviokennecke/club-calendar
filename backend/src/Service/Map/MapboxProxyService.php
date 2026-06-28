@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service\Map;
@@ -23,14 +24,15 @@ class MapboxProxyService
         private readonly RateLimiterFactoryInterface $mapboxProxySystemLimiter,
         private readonly HttpClientInterface $httpClient,
         private readonly string $mapboxToken,
-    ) {}
+    ) {
+    }
 
     public function proxy(string $path, string $method, array $queryParams, ?string $body, string $contentType): ProxyResponse
     {
         $matched = $this->matchPattern($path, $method);
 
         $cacheKey = null;
-        if ($method === 'GET') {
+        if ('GET' === $method) {
             $cacheKey = MapCacheKeyHelper::forProxyRequest($method, $path, $queryParams);
             $item = $this->mapboxProxyCache->getItem($cacheKey);
             if ($item->isHit()) {
@@ -44,7 +46,7 @@ class MapboxProxyService
 
         $response = $this->callUpstream($path, $method, $queryParams, $body, $contentType);
 
-        if ($cacheKey !== null && $this->isCacheable($response->status)) {
+        if (null !== $cacheKey && $this->isCacheable($response->status)) {
             $item = $this->mapboxProxyCache->getItem($cacheKey);
             $item->set($response);
             $this->mapboxProxyCache->save($item);
@@ -57,7 +59,7 @@ class MapboxProxyService
     {
         foreach ($this->allowedPatterns as $pattern) {
             if (
-                preg_match('#' . $pattern['pattern'] . '#', "/$path")
+                preg_match('#'.$pattern['pattern'].'#', "/$path")
                 && in_array($method, $pattern['methods'], true)
             ) {
                 return $pattern;
@@ -79,16 +81,16 @@ class MapboxProxyService
     {
         $params = $queryParams;
         $params['access_token'] = $this->mapboxToken;
-        $upstreamUrl = 'https://api.mapbox.com/' . $path . '?' . http_build_query($params);
+        $upstreamUrl = 'https://api.mapbox.com/'.$path.'?'.http_build_query($params);
 
         $options = [];
-        if (in_array($method, ['POST', 'PUT', 'PATCH'], true) && $body !== null) {
+        if (in_array($method, ['POST', 'PUT', 'PATCH'], true) && null !== $body) {
             $options['body'] = $body;
             $options['headers']['Content-Type'] = $contentType;
         }
 
         $upstream = $this->httpClient->request($method, $upstreamUrl, $options);
-        $status   = $upstream->getStatusCode();
+        $status = $upstream->getStatusCode();
 
         $headers = [];
         foreach ($upstream->getHeaders(false) as $name => $values) {
@@ -102,6 +104,6 @@ class MapboxProxyService
 
     private function isCacheable(int $status): bool
     {
-        return ($status >= 200 && $status < 300) || $status === 404 || $status === 410;
+        return ($status >= 200 && $status < 300) || 404 === $status || 410 === $status;
     }
 }

@@ -18,7 +18,7 @@ class ArchivedCalendarVoter extends Voter
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        return $attribute === self::NOT_ARCHIVED && $subject instanceof Calendar;
+        return self::NOT_ARCHIVED === $attribute && $subject instanceof Calendar;
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
@@ -26,6 +26,6 @@ class ArchivedCalendarVoter extends Voter
         /** @var Calendar $calendar */
         $calendar = $subject;
 
-        return $calendar->getArchivedAt() === null;
+        return null === $calendar->getArchivedAt();
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Controller;
@@ -21,8 +22,8 @@ class AuthTest extends WebTestCase
     public static function setUpBeforeClass(): void
     {
         self::$client = static::createClient();
-        $container    = static::getContainer();
-        self::$em     = $container->get(EntityManagerInterface::class);
+        $container = static::getContainer();
+        self::$em = $container->get(EntityManagerInterface::class);
         self::$hasher = $container->get(UserPasswordHasherInterface::class);
         self::$tokens = $container->get(TokenService::class);
     }
@@ -80,7 +81,7 @@ class AuthTest extends WebTestCase
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, 'carol@example.com');
         $auth = TestHelper::authHeader($user, self::$tokens);
-        $r    = TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], $auth);
         $this->assertSame(200, $r['status']);
         $this->assertSame('carol@example.com', $r['body']['email']);
     }
@@ -94,7 +95,7 @@ class AuthTest extends WebTestCase
         $refreshToken = $loginRes['body']['refresh_token'];
 
         self::$client->request('POST', '/api/auth/token', [
-            'grant_type'    => 'refresh_token',
+            'grant_type' => 'refresh_token',
             'refresh_token' => $refreshToken,
         ], [], ['CONTENT_TYPE' => 'application/x-www-form-urlencoded']);
         $response = self::$client->getResponse();

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service\Map;
@@ -11,7 +12,8 @@ readonly class RateLimitedMapImageProvider implements MapImageProviderInterface
     public function __construct(
         private MapImageProviderInterface $inner,
         private RateLimiterFactoryInterface $mapboxImageSystemLimiter,
-    ) {}
+    ) {
+    }
 
     public function getImage(float $lng, float $lat, int $zoom, int $width, int $height): string
     {

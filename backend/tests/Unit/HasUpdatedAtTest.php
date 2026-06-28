@@ -1,12 +1,13 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
-use App\Entity\Location;
 use App\Entity\Calendar;
-use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use App\Entity\Location;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 class HasUpdatedAtTest extends KernelTestCase
 {
@@ -53,15 +54,16 @@ class HasUpdatedAtTest extends KernelTestCase
     private function makeLocation(): Location
     {
         $this->em->getConnection()->executeStatement(
-            "INSERT INTO club (id, name, timezone) VALUES ('club-1', 'Test', 'UTC')"
+            "INSERT INTO club (id, name, timezone) VALUES ('club-1', 'Test', 'UTC')",
         );
         $this->em->getConnection()->executeStatement(
-            "INSERT INTO calendar (id, club_id, name) VALUES ('cal-1', 'club-1', 'Test')"
+            "INSERT INTO calendar (id, club_id, name) VALUES ('cal-1', 'club-1', 'Test')",
         );
         $cal = $this->em->find(Calendar::class, 'cal-1');
         $location = new Location();
         $location->setCalendar($cal);
         $location->setName('Test Location');
+
         return $location;
     }
 }

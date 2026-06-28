@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Helper;
@@ -13,8 +14,6 @@ use App\Service\TokenService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-use DateMalformedStringException;
-use DateTimeImmutable;
 
 class TestHelper
 {
@@ -24,13 +23,14 @@ class TestHelper
         ?string $email = null,
         string $password = 'password123',
     ): User {
-        $email ??= 'user' . uniqid() . '@example.com';
+        $email ??= 'user'.uniqid().'@example.com';
         $user = new User();
         $user->setName('Test User');
         $user->setEmail($email);
         $user->setPassword($hasher->hashPassword($user, $password));
         $em->persist($user);
         $em->flush();
+
         return $user;
     }
 
@@ -46,6 +46,7 @@ class TestHelper
         $cu->setUser($user);
         $em->persist($cu);
         $em->flush();
+
         return $club;
     }
 
@@ -56,6 +57,7 @@ class TestHelper
         $cal->setName($name);
         $em->persist($cal);
         $em->flush();
+
         return $cal;
     }
 
@@ -64,27 +66,30 @@ class TestHelper
      */
     public static function createCalendarWithClub(EntityManagerInterface $em, UserPasswordHasherInterface $hasher): array
     {
-        $user  = self::createUser($em, $hasher);
-        $club  = self::createClub($em, $user);
-        $cal   = self::createCalendar($em, $club);
+        $user = self::createUser($em, $hasher);
+        $club = self::createClub($em, $user);
+        $cal = self::createCalendar($em, $club);
+
         return ['user' => $user, 'club' => $club, 'calendar' => $cal];
     }
 
     /**
      * @param array<string, mixed> $overrides
-     * @throws DateMalformedStringException
+     *
+     * @throws \DateMalformedStringException
      */
     public static function createEvent(EntityManagerInterface $em, Calendar $calendar, array $overrides = []): Event
     {
         $event = new Event();
         $event->setCalendar($calendar);
         $event->setName($overrides['name'] ?? 'Test Event');
-        $event->setDate(new DateTimeImmutable($overrides['date'] ?? '2026-07-01'));
+        $event->setDate(new \DateTimeImmutable($overrides['date'] ?? '2026-07-01'));
         $event->setTimeBegin($overrides['timeBegin'] ?? '18:00');
         $event->setTimeEnd($overrides['timeEnd'] ?? '20:00');
         $event->setIsDraft($overrides['isDraft'] ?? true);
         $em->persist($event);
         $em->flush();
+
         return $event;
     }
 
@@ -101,16 +106,18 @@ class TestHelper
         $tmpl->setTimeEnd($overrides['timeEnd'] ?? '20:00');
         $em->persist($tmpl);
         $em->flush();
+
         return $tmpl;
     }
 
     public static function authHeader(User $user, TokenService $tokens): string
     {
-        return 'Bearer ' . $tokens->createAccessToken($user);
+        return 'Bearer '.$tokens->createAccessToken($user);
     }
 
     /**
      * @param array<string, mixed> $data
+     *
      * @return array{status: int, body: mixed, content: string, headers: array<string, list<string>>}
      */
     public static function jsonRequest(
@@ -126,9 +133,10 @@ class TestHelper
         }
         $client->request($method, $uri, [], [], $headers, $data ? json_encode($data) : null);
         $response = $client->getResponse();
+
         return [
-            'status'  => $response->getStatusCode(),
-            'body'    => json_decode((string) $response->getContent(), true),
+            'status' => $response->getStatusCode(),
+            'body' => json_decode((string) $response->getContent(), true),
             'content' => (string) $response->getContent(),
             'headers' => $response->headers->all(),
         ];

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service\Map;
@@ -13,17 +14,20 @@ readonly class RateLimitedGeocoderDecorator implements GeocoderInterface
         private RateLimiterFactoryInterface $geocoderSystemLimiter,
         private RateLimiterFactoryInterface $geocoderUserLimiter,
         private RequestUserContext $userContext,
-    ) {}
+    ) {
+    }
 
     public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
     {
         $this->consume();
+
         return $this->inner->suggest($query, $proximityLat, $proximityLng, $limit);
     }
 
     public function reverse(float $lng, float $lat): ?GeocodedAddress
     {
         $this->consume();
+
         return $this->inner->reverse($lng, $lat);
     }
 

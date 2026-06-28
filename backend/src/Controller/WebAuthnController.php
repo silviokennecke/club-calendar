@@ -17,12 +17,14 @@ class WebAuthnController extends AbstractController
     public function __construct(
         private readonly WebAuthnService $webAuthn,
         private readonly CurrentUserResolver $userResolver,
-    ) {}
+    ) {
+    }
 
     #[Route('/register/options', methods: ['GET'])]
     public function registrationOptions(): JsonResponse
     {
         $user = $this->userResolver->resolve();
+
         return new JsonResponse($this->webAuthn->getRegistrationOptions($user));
     }
 
@@ -37,6 +39,7 @@ class WebAuthnController extends AbstractController
             $data['response'] ?? [],
             $data['deviceName'] ?? null,
         );
+
         return new JsonResponse(['ok' => true]);
     }
 
@@ -50,11 +53,12 @@ class WebAuthnController extends AbstractController
     public function authenticationVerify(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];
+
         return new JsonResponse(
             $this->webAuthn->verifyAuthentication(
                 $data['challengeToken'] ?? '',
                 $data['response'] ?? [],
-            )
+            ),
         );
     }
 
@@ -63,6 +67,7 @@ class WebAuthnController extends AbstractController
     {
         $user = $this->userResolver->resolve();
         $this->webAuthn->deletePasskey($id, $user);
+
         return new JsonResponse(['ok' => true]);
     }
 }

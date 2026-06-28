@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Unit;
@@ -21,15 +22,17 @@ class CachingGeocoderDecoratorTest extends TestCase
             if (!array_key_exists($key, $store)) {
                 $store[$key] = $cb($this->createMock(ItemInterface::class));
             }
+
             return $store[$key];
         });
+
         return $cache;
     }
 
     public function testSuggestCallsInnerOnCacheMiss(): void
     {
         $suggestion = new SuggestionResult('München', 48.1, 11.5);
-        $inner      = $this->createMock(GeocoderInterface::class);
+        $inner = $this->createMock(GeocoderInterface::class);
         $inner->expects($this->once())->method('suggest')->willReturn([$suggestion]);
 
         $result = new CachingGeocoderDecorator($inner, $this->makeCache())->suggest('München');
@@ -41,7 +44,7 @@ class CachingGeocoderDecoratorTest extends TestCase
     public function testSuggestReturnsCachedResultWithoutCallingInner(): void
     {
         $suggestion = new SuggestionResult('München', 48.1, 11.5);
-        $inner      = $this->createMock(GeocoderInterface::class);
+        $inner = $this->createMock(GeocoderInterface::class);
         $inner->expects($this->once())->method('suggest')->willReturn([$suggestion]);
 
         $decorator = new CachingGeocoderDecorator($inner, $this->makeCache());
@@ -54,7 +57,7 @@ class CachingGeocoderDecoratorTest extends TestCase
     public function testReverseCallsInnerOnCacheMiss(): void
     {
         $address = new GeocodedAddress('Marienplatz', 'Marienplatz', '80331', 'München', 'Germany');
-        $inner   = $this->createMock(GeocoderInterface::class);
+        $inner = $this->createMock(GeocoderInterface::class);
         $inner->expects($this->once())->method('reverse')->willReturn($address);
 
         $result = new CachingGeocoderDecorator($inner, $this->makeCache())->reverse(11.575, 48.137);
@@ -65,7 +68,7 @@ class CachingGeocoderDecoratorTest extends TestCase
     public function testReverseReturnsCachedResultWithoutCallingInner(): void
     {
         $address = new GeocodedAddress('Marienplatz', 'Marienplatz', '80331', 'München', 'Germany');
-        $inner   = $this->createMock(GeocoderInterface::class);
+        $inner = $this->createMock(GeocoderInterface::class);
         $inner->expects($this->once())->method('reverse')->willReturn($address);
 
         $decorator = new CachingGeocoderDecorator($inner, $this->makeCache());

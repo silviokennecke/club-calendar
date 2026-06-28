@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Unit;
@@ -28,21 +29,22 @@ class MapboxProxyServiceTest extends TestCase
     private function makeAcceptingFactory(): RateLimiterFactory
     {
         return new RateLimiterFactory([
-            'id'       => 'test_proxy',
-            'policy'   => 'fixed_window',
-            'limit'    => 1000,
+            'id' => 'test_proxy',
+            'policy' => 'fixed_window',
+            'limit' => 1000,
             'interval' => '1 day',
         ], new CacheStorage(new ArrayAdapter()));
     }
 
     private function makeDenyingFactory(): RateLimiterFactoryInterface
     {
-        $limit   = $this->createMock(RateLimit::class);
+        $limit = $this->createMock(RateLimit::class);
         $limit->method('isAccepted')->willReturn(false);
         $limiter = $this->createMock(LimiterInterface::class);
         $limiter->method('consume')->willReturn($limit);
         $factory = $this->createMock(RateLimiterFactoryInterface::class);
         $factory->method('create')->willReturn($limiter);
+
         return $factory;
     }
 
@@ -91,7 +93,7 @@ class MapboxProxyServiceTest extends TestCase
     public function testCachesSuccessfulGetResponse(): void
     {
         $httpClient = new MockHttpClient([new MockResponse('{"tile":1}', ['http_code' => 200])]);
-        $service    = new MapboxProxyService(
+        $service = new MapboxProxyService(
             $this->patterns,
             new ArrayAdapter(),
             $this->makeAcceptingFactory(),
@@ -99,7 +101,7 @@ class MapboxProxyServiceTest extends TestCase
             'test-token',
         );
 
-        $first  = $service->proxy('v4/mapbox.satellite/1/1/1', 'GET', [], null, 'application/json');
+        $first = $service->proxy('v4/mapbox.satellite/1/1/1', 'GET', [], null, 'application/json');
         $second = $service->proxy('v4/mapbox.satellite/1/1/1', 'GET', [], null, 'application/json');
 
         $this->assertSame($first->body, $second->body);
@@ -129,7 +131,7 @@ class MapboxProxyServiceTest extends TestCase
     public function testCaches404Response(): void
     {
         $httpClient = new MockHttpClient([new MockResponse('not found', ['http_code' => 404])]);
-        $service    = new MapboxProxyService(
+        $service = new MapboxProxyService(
             $this->patterns,
             new ArrayAdapter(),
             $this->makeAcceptingFactory(),
@@ -146,7 +148,7 @@ class MapboxProxyServiceTest extends TestCase
     public function testCacheKeyIsIndependentOfAccessTokenParam(): void
     {
         $httpClient = new MockHttpClient([new MockResponse('{}', ['http_code' => 200])]);
-        $service    = new MapboxProxyService(
+        $service = new MapboxProxyService(
             $this->patterns,
             new ArrayAdapter(),
             $this->makeAcceptingFactory(),

@@ -18,7 +18,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class EventTemplateService
 {
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(private EntityManagerInterface $em)
+    {
+    }
 
     public function listTemplates(Calendar $calendar): array
     {
@@ -184,42 +186,42 @@ readonly class EventTemplateService
     public function serialize(EventTemplate $template): array
     {
         return [
-            'id'         => $template->getId(),
+            'id' => $template->getId(),
             'calendarId' => $template->getCalendar()->getId(),
             'locationId' => $template->getLocation()?->getId(),
-            'name'       => $template->getName(),
-            'timezone'   => $template->getTimezone(),
-            'timeBegin'  => $template->getTimeBegin(),
-            'timeEnd'    => $template->getTimeEnd(),
-            'location'   => $template->getLocation() ? [
-                'id'        => $template->getLocation()->getId(),
-                'name'      => $template->getLocation()->getName(),
-                'street'    => $template->getLocation()->getStreet(),
-                'zip'       => $template->getLocation()->getZip(),
-                'city'      => $template->getLocation()->getCity(),
-                'country'   => $template->getLocation()->getCountry(),
-                'latitude'  => $template->getLocation()->getLatitude(),
+            'name' => $template->getName(),
+            'timezone' => $template->getTimezone(),
+            'timeBegin' => $template->getTimeBegin(),
+            'timeEnd' => $template->getTimeEnd(),
+            'location' => $template->getLocation() ? [
+                'id' => $template->getLocation()->getId(),
+                'name' => $template->getLocation()->getName(),
+                'street' => $template->getLocation()->getStreet(),
+                'zip' => $template->getLocation()->getZip(),
+                'city' => $template->getLocation()->getCity(),
+                'country' => $template->getLocation()->getCountry(),
+                'latitude' => $template->getLocation()->getLatitude(),
                 'longitude' => $template->getLocation()->getLongitude(),
             ] : null,
             'properties' => $template->getProperties()->map(fn ($etp) => [
                 'propertyId' => $etp->getProperty()->getId(),
-                'property'   => [
-                    'id'   => $etp->getProperty()->getId(),
+                'property' => [
+                    'id' => $etp->getProperty()->getId(),
                     'name' => $etp->getProperty()->getName(),
                     'icon' => $etp->getProperty()->getIcon(),
                 ],
             ])->toArray(),
             'features' => $template->getFeatures()->map(fn ($etf) => [
                 'featureId' => $etf->getFeature()->getId(),
-                'feature'   => [
-                    'id'   => $etf->getFeature()->getId(),
+                'feature' => [
+                    'id' => $etf->getFeature()->getId(),
                     'name' => $etf->getFeature()->getName(),
                 ],
             ])->toArray(),
             'targetGroups' => $template->getTargetGroups()->map(fn ($ettg) => [
                 'targetGroupId' => $ettg->getTargetGroup()->getId(),
-                'targetGroup'   => [
-                    'id'   => $ettg->getTargetGroup()->getId(),
+                'targetGroup' => [
+                    'id' => $ettg->getTargetGroup()->getId(),
                     'name' => $ettg->getTargetGroup()->getName(),
                 ],
             ])->toArray(),

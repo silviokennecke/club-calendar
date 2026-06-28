@@ -14,15 +14,15 @@ use App\Entity\Feature;
 use App\Entity\Location;
 use App\Entity\Property;
 use App\Entity\TargetGroup;
-use DateMalformedStringException;
-use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class EventService
 {
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(private EntityManagerInterface $em)
+    {
+    }
 
     public function listEvents(Calendar $calendar, ?string $from, ?string $to, ?array $targetGroupIds): array
     {
@@ -39,8 +39,8 @@ readonly class EventService
                 throw new BadRequestHttpException('Invalid from date');
             }
             try {
-                $qb->andWhere('e.date >= :from')->setParameter('from', new DateTimeImmutable($from));
-            } catch (DateMalformedStringException) {
+                $qb->andWhere('e.date >= :from')->setParameter('from', new \DateTimeImmutable($from));
+            } catch (\DateMalformedStringException) {
                 throw new BadRequestHttpException('Invalid from date');
             }
         }
@@ -49,8 +49,8 @@ readonly class EventService
                 throw new BadRequestHttpException('Invalid to date');
             }
             try {
-                $qb->andWhere('e.date <= :to')->setParameter('to', new DateTimeImmutable($to));
-            } catch (DateMalformedStringException) {
+                $qb->andWhere('e.date <= :to')->setParameter('to', new \DateTimeImmutable($to));
+            } catch (\DateMalformedStringException) {
                 throw new BadRequestHttpException('Invalid to date');
             }
         }
@@ -81,15 +81,15 @@ readonly class EventService
 
         $propertyIds = $overrides['propertyIds'] ?? array_map(
             fn ($p) => $p->getProperty()->getId(),
-            $template->getProperties()->toArray()
+            $template->getProperties()->toArray(),
         );
         $featureIds = $overrides['featureIds'] ?? array_map(
             fn ($f) => $f->getFeature()->getId(),
-            $template->getFeatures()->toArray()
+            $template->getFeatures()->toArray(),
         );
         $targetGroupIds = $overrides['targetGroupIds'] ?? array_map(
             fn ($t) => $t->getTargetGroup()->getId(),
-            $template->getTargetGroups()->toArray()
+            $template->getTargetGroups()->toArray(),
         );
         $locationId = array_key_exists('locationId', $overrides)
             ? $overrides['locationId']
@@ -104,8 +104,8 @@ readonly class EventService
             $event->setName($overrides['name'] ?? $template->getName());
             $event->setTimezone($overrides['timezone'] ?? $template->getTimezone());
             try {
-                $event->setDate(new DateTimeImmutable($dateStr));
-            } catch (DateMalformedStringException) {
+                $event->setDate(new \DateTimeImmutable($dateStr));
+            } catch (\DateMalformedStringException) {
                 throw new BadRequestHttpException(sprintf('Invalid date: %s', $dateStr));
             }
             $event->setTimeBegin($overrides['timeBegin'] ?? $template->getTimeBegin());
@@ -169,15 +169,15 @@ readonly class EventService
         }
         if (array_key_exists('date', $data)) {
             try {
-                $event->setDate(new DateTimeImmutable($data['date']));
-            } catch (DateMalformedStringException) {
+                $event->setDate(new \DateTimeImmutable($data['date']));
+            } catch (\DateMalformedStringException) {
                 throw new BadRequestHttpException('Invalid date');
             }
         }
         if (array_key_exists('dateEnd', $data)) {
             try {
-                $event->setDateEnd($data['dateEnd'] ? new DateTimeImmutable($data['dateEnd']) : null);
-            } catch (DateMalformedStringException) {
+                $event->setDateEnd($data['dateEnd'] ? new \DateTimeImmutable($data['dateEnd']) : null);
+            } catch (\DateMalformedStringException) {
                 throw new BadRequestHttpException('Invalid dateEnd');
             }
         }
@@ -211,7 +211,7 @@ readonly class EventService
         $featureIds = $data['featureIds'] ?? null;
         $targetGroupIds = $data['targetGroupIds'] ?? null;
 
-        if ($propertyIds !== null) {
+        if (null !== $propertyIds) {
             foreach ($event->getProperties() as $ep) {
                 $this->em->remove($ep);
             }
@@ -226,7 +226,7 @@ readonly class EventService
                 }
             }
         }
-        if ($featureIds !== null) {
+        if (null !== $featureIds) {
             foreach ($event->getFeatures() as $ef) {
                 $this->em->remove($ef);
             }
@@ -241,7 +241,7 @@ readonly class EventService
                 }
             }
         }
-        if ($targetGroupIds !== null) {
+        if (null !== $targetGroupIds) {
             foreach ($event->getTargetGroups() as $etg) {
                 $this->em->remove($etg);
             }
@@ -278,8 +278,8 @@ readonly class EventService
         $event->setCalendar($calendar);
         $event->setName($data['name']);
         try {
-            $event->setDate(new DateTimeImmutable($data['date']));
-        } catch (DateMalformedStringException) {
+            $event->setDate(new \DateTimeImmutable($data['date']));
+        } catch (\DateMalformedStringException) {
             throw new BadRequestHttpException('Invalid date');
         }
         $event->setTimeBegin($data['timeBegin']);
@@ -290,8 +290,8 @@ readonly class EventService
         }
         if (!empty($data['dateEnd'])) {
             try {
-                $event->setDateEnd(new DateTimeImmutable($data['dateEnd']));
-            } catch (DateMalformedStringException) {
+                $event->setDateEnd(new \DateTimeImmutable($data['dateEnd']));
+            } catch (\DateMalformedStringException) {
                 throw new BadRequestHttpException('Invalid dateEnd');
             }
         }
@@ -361,51 +361,51 @@ readonly class EventService
     public function serializeEvent(Event $event): array
     {
         return [
-            'id'              => $event->getId(),
-            'calendarId'      => $event->getCalendar()->getId(),
+            'id' => $event->getId(),
+            'calendarId' => $event->getCalendar()->getId(),
             'eventTemplateId' => $event->getTemplate()?->getId(),
-            'locationId'      => $event->getLocation()?->getId(),
-            'name'            => $event->getName(),
-            'timezone'        => $event->getTimezone(),
-            'date'            => $event->getDate()->format('Y-m-d'),
-            'dateEnd'         => $event->getDateEnd()?->format('Y-m-d'),
-            'timeBegin'       => $event->getTimeBegin(),
-            'timeEnd'         => $event->getTimeEnd(),
-            'isAllDay'        => $event->isAllDay(),
-            'isDraft'         => $event->isDraft(),
-            'location'        => $event->getLocation() ? [
-                'id'        => $event->getLocation()->getId(),
-                'name'      => $event->getLocation()->getName(),
-                'street'    => $event->getLocation()->getStreet(),
-                'zip'       => $event->getLocation()->getZip(),
-                'city'      => $event->getLocation()->getCity(),
-                'country'   => $event->getLocation()->getCountry(),
-                'latitude'  => $event->getLocation()->getLatitude(),
+            'locationId' => $event->getLocation()?->getId(),
+            'name' => $event->getName(),
+            'timezone' => $event->getTimezone(),
+            'date' => $event->getDate()->format('Y-m-d'),
+            'dateEnd' => $event->getDateEnd()?->format('Y-m-d'),
+            'timeBegin' => $event->getTimeBegin(),
+            'timeEnd' => $event->getTimeEnd(),
+            'isAllDay' => $event->isAllDay(),
+            'isDraft' => $event->isDraft(),
+            'location' => $event->getLocation() ? [
+                'id' => $event->getLocation()->getId(),
+                'name' => $event->getLocation()->getName(),
+                'street' => $event->getLocation()->getStreet(),
+                'zip' => $event->getLocation()->getZip(),
+                'city' => $event->getLocation()->getCity(),
+                'country' => $event->getLocation()->getCountry(),
+                'latitude' => $event->getLocation()->getLatitude(),
                 'longitude' => $event->getLocation()->getLongitude(),
             ] : null,
-            'template'        => $event->getTemplate() ? [
-                'id'   => $event->getTemplate()->getId(),
+            'template' => $event->getTemplate() ? [
+                'id' => $event->getTemplate()->getId(),
                 'name' => $event->getTemplate()->getName(),
             ] : null,
             'properties' => $event->getProperties()->map(fn ($ep) => [
                 'propertyId' => $ep->getProperty()->getId(),
-                'property'   => [
-                    'id'   => $ep->getProperty()->getId(),
+                'property' => [
+                    'id' => $ep->getProperty()->getId(),
                     'name' => $ep->getProperty()->getName(),
                     'icon' => $ep->getProperty()->getIcon(),
                 ],
             ])->toArray(),
             'features' => $event->getFeatures()->map(fn ($ef) => [
                 'featureId' => $ef->getFeature()->getId(),
-                'feature'   => [
-                    'id'   => $ef->getFeature()->getId(),
+                'feature' => [
+                    'id' => $ef->getFeature()->getId(),
                     'name' => $ef->getFeature()->getName(),
                 ],
             ])->toArray(),
             'targetGroups' => $event->getTargetGroups()->map(fn ($etg) => [
                 'targetGroupId' => $etg->getTargetGroup()->getId(),
-                'targetGroup'   => [
-                    'id'   => $etg->getTargetGroup()->getId(),
+                'targetGroup' => [
+                    'id' => $etg->getTargetGroup()->getId(),
                     'name' => $etg->getTargetGroup()->getName(),
                 ],
             ])->toArray(),

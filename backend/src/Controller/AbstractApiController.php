@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Controller;
@@ -24,6 +25,7 @@ abstract class AbstractApiController extends AbstractController
         if (!is_array($data)) {
             throw new BadRequestHttpException('Invalid JSON body');
         }
+
         return $data;
     }
 }

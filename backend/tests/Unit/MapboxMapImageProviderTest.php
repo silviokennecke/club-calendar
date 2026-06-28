@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Unit;
@@ -12,9 +13,9 @@ class MapboxMapImageProviderTest extends TestCase
 {
     public function testGetImageReturnsResponseBytes(): void
     {
-        $fakeBytes  = 'FAKEJPEG';
+        $fakeBytes = 'FAKEJPEG';
         $mockClient = new MockHttpClient(new MockResponse($fakeBytes, ['http_code' => 200]));
-        $provider   = new MapboxMapImageProvider($mockClient, 'pk.test_token');
+        $provider = new MapboxMapImageProvider($mockClient, 'pk.test_token');
 
         $result = $provider->getImage(11.575, 48.137, 14, 800, 288);
 
@@ -24,8 +25,9 @@ class MapboxMapImageProviderTest extends TestCase
     public function testGetImageBuildsCorrectUrl(): void
     {
         $capturedUrl = '';
-        $mockClient  = new MockHttpClient(function (string $method, string $url) use (&$capturedUrl): MockResponse {
+        $mockClient = new MockHttpClient(function (string $method, string $url) use (&$capturedUrl): MockResponse {
             $capturedUrl = $url;
+
             return new MockResponse('bytes');
         });
         $provider = new MapboxMapImageProvider($mockClient, 'pk.mytoken');
