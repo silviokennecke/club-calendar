@@ -59,7 +59,7 @@ jobs:
 
       - name: Install PHP dependencies
         working-directory: backend
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --no-scripts
 
       - name: Install Node dependencies
         run: npm ci
@@ -111,7 +111,7 @@ jobs:
 
       - name: Install PHP dependencies
         working-directory: backend
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --no-scripts
 
       - name: Install Node dependencies
         run: npm ci
@@ -184,7 +184,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: backend
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --no-scripts
 
       - name: Generate JWT keypair
         working-directory: backend
@@ -308,7 +308,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          composer install --no-interaction --prefer-dist -d backend
+          composer install --no-interaction --prefer-dist --no-scripts -d backend
           npm ci
 
       - name: Install Playwright browsers
