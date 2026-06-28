@@ -1,0 +1,40 @@
+framework:
+    rate_limiter:
+        geocoder_daily:
+            policy: fixed_window
+            limit: 3000
+            interval: '24 hours'
+        geocoder_hourly:
+            policy: fixed_window
+            limit: 50
+            interval: '1 hour'
+        mapbox_image_daily:
+            policy: fixed_window
+            limit: 2500
+            interval: '24 hours'
+        mapbox_image_weekly:
+            policy: fixed_window
+            limit: 13000
+            interval: '7 days'
+        mapbox_image_monthly:
+            policy: fixed_window
+            limit: 45000
+            interval: '30 days'
+        mapbox_image_system:
+            policy: compound
+            limiters: [mapbox_image_daily, mapbox_image_weekly, mapbox_image_monthly]
+        mapbox_proxy_daily:
+            policy: fixed_window
+            limit: 2500
+            interval: '24 hours'
+        mapbox_proxy_weekly:
+            policy: fixed_window
+            limit: 13000
+            interval: '7 days'
+        mapbox_proxy_monthly:
+            policy: fixed_window
+            limit: 45000
+            interval: '30 days'
+        mapbox_proxy_system:
+            policy: compound
+            limiters: [mapbox_proxy_daily, mapbox_proxy_weekly, mapbox_proxy_monthly]

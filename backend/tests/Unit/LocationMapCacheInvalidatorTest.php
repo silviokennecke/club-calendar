@@ -5,18 +5,21 @@ namespace App\Tests\Unit;
 
 use App\Entity\Location;
 use App\EventListener\LocationMapCacheInvalidator;
-use Doctrine\ORM\Event\PostUpdateEventArgs;
+use App\Service\Map\MapCacheKeyHelper;
 use Doctrine\ORM\Event\PreUpdateEventArgs;
-use Doctrine\Persistence\ObjectManager;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\Cache\CacheInterface;
 
 class LocationMapCacheInvalidatorTest extends TestCase
 {
+    private const int ZOOM   = 14;
+    private const int WIDTH  = 800;
+    private const int HEIGHT = 288;
+
     private function makeListener(): array
     {
         $cache    = $this->createMock(CacheInterface::class);
-        $listener = new LocationMapCacheInvalidator($cache);
+        $listener = new LocationMapCacheInvalidator($cache, self::ZOOM, self::WIDTH, self::HEIGHT);
         return [$listener, $cache];
     }
 
@@ -29,47 +32,61 @@ class LocationMapCacheInvalidatorTest extends TestCase
         return $args;
     }
 
-    private function postArgs(Location $location): PostUpdateEventArgs
+    private function locationWithCoords(): Location
     {
-        return new PostUpdateEventArgs($location, $this->createMock(ObjectManager::class));
+        $location = new Location();
+        $location->setLatitude(48.137);
+        $location->setLongitude(11.575);
+        return $location;
     }
 
-    public function testClearsCacheWhenLatitudeChanges(): void
+    public function testClearsCacheByCoordinateKeyWhenLatitudeChanges(): void
     {
         [$listener, $cache] = $this->makeListener();
-        $location = new Location();
-        $cache->expects($this->once())->method('delete')->with('location_' . $location->getId());
+        $location    = $this->locationWithCoords();
+        $expectedKey = MapCacheKeyHelper::forMapImage(11.575, 48.137, self::ZOOM, self::WIDTH, self::HEIGHT);
+
+        $cache->expects($this->once())->method('delete')->with($expectedKey);
 
         $listener->preUpdate($location, $this->preArgs(true, false));
-        $listener->postUpdate($location, $this->postArgs($location));
+        $listener->postUpdate($location);
     }
 
-    public function testClearsCacheWhenLongitudeChanges(): void
+    public function testClearsCacheByCoordinateKeyWhenLongitudeChanges(): void
     {
         [$listener, $cache] = $this->makeListener();
-        $location = new Location();
-        $cache->expects($this->once())->method('delete')->with('location_' . $location->getId());
+        $location    = $this->locationWithCoords();
+        $expectedKey = MapCacheKeyHelper::forMapImage(11.575, 48.137, self::ZOOM, self::WIDTH, self::HEIGHT);
+
+        $cache->expects($this->once())->method('delete')->with($expectedKey);
 
         $listener->preUpdate($location, $this->preArgs(false, true));
-        $listener->postUpdate($location, $this->postArgs($location));
+        $listener->postUpdate($location);
     }
 
     public function testDoesNotClearCacheWhenOnlyNameChanges(): void
     {
         [$listener, $cache] = $this->makeListener();
-        $location = new Location();
         $cache->expects($this->never())->method('delete');
 
-        $listener->preUpdate($location, $this->preArgs(false, false));
-        $listener->postUpdate($location, $this->postArgs($location));
+        $listener->preUpdate($this->locationWithCoords(), $this->preArgs(false, false));
+        $listener->postUpdate($this->locationWithCoords());
     }
 
     public function testDoesNotClearCacheIfPreUpdateNeverFired(): void
     {
         [$listener, $cache] = $this->makeListener();
-        $location = new Location();
         $cache->expects($this->never())->method('delete');
 
-        $listener->postUpdate($location, $this->postArgs($location));
+        $listener->postUpdate($this->locationWithCoords());
+    }
+
+    public function testDoesNotClearCacheWhenLocationHasNoCoordinates(): void
+    {
+        [$listener, $cache] = $this->makeListener();
+        $cache->expects($this->never())->method('delete');
+
+        $listener->preUpdate(new Location(), $this->preArgs(true, false));
+        $listener->postUpdate(new Location());
     }
 }

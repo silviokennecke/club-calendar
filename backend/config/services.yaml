@@ -2,7 +2,22 @@ parameters:
     env(MICROSOFT_TENANT_ID): 'common'
     microsoft_oidc_issuer: 'https://login.microsoftonline.com/%env(MICROSOFT_TENANT_ID)%/v2.0'
     env(MAPBOX_TOKEN): ''
-    env(MAP_IMAGE_CACHE_TTL): '2592000' # 30 days
+    env(MAP_IMAGE_CACHE_TTL): '2592000'  # 30 days
+    env(GEOCODER_CACHE_TTL): '3600'       # 1 hour
+    env(MAPBOX_PROXY_CACHE_TTL): '2592000' # 30 days
+    map.image.zoom: 14
+    map.image.width: 800
+    map.image.height: 288
+    mapbox.allowed_patterns:
+        - pattern: '^/v4/[^/]+/[0-9]+/[0-9]+/[0-9]+'
+          methods: ['GET']
+          rate_limited: true
+        - pattern: '^/styles/'
+          methods: ['GET']
+          rate_limited: false
+        - pattern: '^/fonts/'
+          methods: ['GET']
+          rate_limited: false
 
 services:
     _defaults:
@@ -34,13 +49,58 @@ services:
         arguments:
             $mapboxToken: '%env(MAPBOX_TOKEN)%'
 
+    App\Service\Map\CachingGeocoderDecorator:
+        arguments:
+            $inner: '@App\Service\Map\RateLimitedGeocoderDecorator'
+            $geocoderResponsesCache: '@geocoder_responses'
+
+    App\Service\Map\RateLimitedGeocoderDecorator:
+        arguments:
+            $inner: '@App\Service\Map\BazingaGeocoderAdapter'
+
+    App\Service\Map\CachingMapImageProvider:
+        arguments:
+            $inner: '@App\Service\Map\RateLimitedMapImageProvider'
+            $mapImagesCache: '@map_images'
+
+    App\Service\Map\RateLimitedMapImageProvider:
+        arguments:
+            $inner: '@App\Service\Map\MapboxMapImageProvider'
+
+    App\Service\Map\MapboxProxyService:
+        arguments:
+            $allowedPatterns: '%mapbox.allowed_patterns%'
+            $mapboxProxyCache: '@mapbox_proxy'
+            $mapboxToken: '%env(MAPBOX_TOKEN)%'
+
     App\EventListener\LocationMapCacheInvalidator:
         arguments:
             $mapImagesCache: '@map_images'
+            $imageZoom: '%map.image.zoom%'
+            $imageWidth: '%map.image.width%'
+            $imageHeight: '%map.image.height%'
 
     App\Controller\MapController:
         arguments:
-            $mapImagesCache: '@map_images'
+            $imageZoom: '%map.image.zoom%'
+            $imageWidth: '%map.image.width%'
+            $imageHeight: '%map.image.height%'
+
+    GeocoderInterface:
+        alias: App\Service\Map\CachingGeocoderDecorator
+        public: true
+
+    App\Service\Map\GeocoderInterface:
+        alias: App\Service\Map\CachingGeocoderDecorator
+        public: true
+
+    MapImageProviderInterface:
+        alias: App\Service\Map\CachingMapImageProvider
+        public: true
+
+    App\Service\Map\MapImageProviderInterface:
+        alias: App\Service\Map\CachingMapImageProvider
+        public: true
 
     App\Service\TokenService:
         arguments:

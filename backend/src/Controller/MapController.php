@@ -5,6 +5,7 @@ namespace App\Controller;
 
 use App\Entity\Event;
 use App\Entity\Location;
+use App\Exception\RateLimitExceededException;
 use App\Service\Map\GeocoderInterface;
 use App\Service\Map\MapImageProviderInterface;
 use Doctrine\ORM\EntityManagerInterface;
@@ -16,22 +17,19 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Contracts\Cache\CacheInterface;
 use Throwable;
 
 #[Route('/api/map')]
 class MapController extends AbstractController
 {
-    private const int IMAGE_WIDTH  = 800;
-    private const int IMAGE_HEIGHT = 288;
-    private const int IMAGE_ZOOM   = 14;
-
     public function __construct(
         private readonly GeocoderInterface $geocoder,
         private readonly MapImageProviderInterface $mapImageProvider,
         private readonly EntityManagerInterface $em,
-        private readonly CacheInterface $mapImagesCache,
         private readonly LoggerInterface $logger,
+        private readonly int $imageZoom,
+        private readonly int $imageWidth,
+        private readonly int $imageHeight,
     ) {}
 
     #[Route('/geocode/suggest', methods: ['GET'])]
@@ -49,6 +47,8 @@ class MapController extends AbstractController
 
         try {
             $results = $this->geocoder->suggest($query, $lat, $lng, $limit);
+        } catch (RateLimitExceededException) {
+            return new Response(null, 429);
         } catch (Throwable $e) {
             $this->logger->error('Geocoding suggest failed', ['exception' => $e]);
             throw new ServiceUnavailableHttpException(null, 'Geocoding service unavailable', $e);
@@ -76,6 +76,8 @@ class MapController extends AbstractController
 
         try {
             $address = $this->geocoder->reverse($lng, $lat);
+        } catch (RateLimitExceededException) {
+            return new Response(null, 429);
         } catch (Throwable $e) {
             $this->logger->error('Geocoding reverse failed', ['exception' => $e]);
             throw new ServiceUnavailableHttpException(null, 'Geocoding service unavailable', $e);
@@ -102,7 +104,7 @@ class MapController extends AbstractController
             throw new NotFoundHttpException('Location not found or has no coordinates');
         }
 
-        return $this->buildImageResponse($location->getId(), $location->getLongitude(), $location->getLatitude());
+        return $this->buildImageResponse($location->getLongitude(), $location->getLatitude());
     }
 
     #[Route('/image/event/{id}', methods: ['GET'])]
@@ -114,17 +116,16 @@ class MapController extends AbstractController
             throw new NotFoundHttpException('Event not found or has no location with coordinates');
         }
 
-        return $this->buildImageResponse($location->getId(), $location->getLongitude(), $location->getLatitude());
+        return $this->buildImageResponse($location->getLongitude(), $location->getLatitude());
     }
 
-    private function buildImageResponse(string $locationId, float $lng, float $lat): Response
+    private function buildImageResponse(float $lng, float $lat): Response
     {
-        $bytes = $this->mapImagesCache->get(
-            'location_' . $locationId,
-            function () use ($lng, $lat): string {
-                return $this->mapImageProvider->getImage($lng, $lat, self::IMAGE_ZOOM, self::IMAGE_WIDTH, self::IMAGE_HEIGHT);
-            },
-        );
+        try {
+            $bytes = $this->mapImageProvider->getImage($lng, $lat, $this->imageZoom, $this->imageWidth, $this->imageHeight);
+        } catch (RateLimitExceededException) {
+            return new Response(null, 429);
+        }
 
         return new Response($bytes, 200, [
             'Content-Type'  => 'image/jpeg',
