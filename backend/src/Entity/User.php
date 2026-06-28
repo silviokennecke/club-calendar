@@ -42,6 +42,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 10)]
     private string $language = 'en';
 
+    #[ORM\Column]
+    private bool $isEmailVerified = false;
+
+    #[ORM\Column]
+    private \DateTimeImmutable $createdAt;
+
     #[ORM\OneToMany(targetEntity: ClubUser::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
     private Collection $clubs;
 
@@ -57,6 +63,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->clubs = new ArrayCollection();
         $this->passkeys = new ArrayCollection();
         $this->oauthAccounts = new ArrayCollection();
+        $this->createdAt = new \DateTimeImmutable();
     }
 
     public function getId(): string
@@ -158,6 +165,23 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->language = $language;
 
         return $this;
+    }
+
+    public function isEmailVerified(): bool
+    {
+        return $this->isEmailVerified;
+    }
+
+    public function setIsEmailVerified(bool $isEmailVerified): static
+    {
+        $this->isEmailVerified = $isEmailVerified;
+
+        return $this;
+    }
+
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
     }
 
     /**
