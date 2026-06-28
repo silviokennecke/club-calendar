@@ -225,10 +225,17 @@ framework:
                 default_lifetime: '%env(int:MAP_IMAGE_CACHE_TTL)%'
             geocoder_responses:
                 adapter: cache.adapter.filesystem
-                default_lifetime: 3600
+                default_lifetime: '%env(int:GEOCODER_CACHE_TTL)%'
             mapbox_proxy:
                 adapter: cache.adapter.filesystem
-                default_lifetime: 2592000
+                default_lifetime: '%env(int:MAPBOX_PROXY_CACHE_TTL)%'
+```
+
+Default values declared in `services.yaml` `parameters:`:
+
+```yaml
+env(GEOCODER_CACHE_TTL): '3600'       # 1 hour
+env(MAPBOX_PROXY_CACHE_TTL): '2592000' # 30 days
 ```
 
 ---
