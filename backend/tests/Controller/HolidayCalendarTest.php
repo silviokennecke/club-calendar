@@ -1,11 +1,12 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Controller;
 
+use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
-use App\Service\TokenService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -21,8 +22,8 @@ class HolidayCalendarTest extends WebTestCase
     public static function setUpBeforeClass(): void
     {
         self::$client = static::createClient();
-        $container    = static::getContainer();
-        self::$em     = $container->get(EntityManagerInterface::class);
+        $container = static::getContainer();
+        self::$em = $container->get(EntityManagerInterface::class);
         self::$hasher = $container->get(UserPasswordHasherInterface::class);
         self::$tokens = $container->get(TokenService::class);
     }

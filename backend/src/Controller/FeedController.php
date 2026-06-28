@@ -20,7 +20,8 @@ class FeedController extends AbstractApiController
 {
     public function __construct(
         private readonly FeedService $feedService,
-    ) {}
+    ) {
+    }
 
     #[Route('', methods: ['GET'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]

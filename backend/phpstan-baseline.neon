@@ -1,0 +1,31 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Access to an undefined property Sabre\\VObject\\Component\\VEvent\:\:\$DTEND\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Service/HolidayCalendarService.php
+
+		-
+			message: '#^Access to an undefined property Sabre\\VObject\\Component\\VEvent\:\:\$DTSTART\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Service/HolidayCalendarService.php
+
+		-
+			message: '#^Access to an undefined property Sabre\\VObject\\Component\\VEvent\:\:\$DURATION\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Service/HolidayCalendarService.php
+
+		-
+			message: '#^Access to an undefined property Sabre\\VObject\\Component\\VEvent\:\:\$SUMMARY\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Service/HolidayCalendarService.php
+
+		-
+			message: '#^Access to an undefined property Sabre\\VObject\\Component\\VEvent\:\:\$UID\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Service/HolidayCalendarService.php

@@ -20,7 +20,8 @@ class WebAuthnService
         private readonly string $rpName,
         private readonly string $appSecret,
         private readonly string $appUrl,
-    ) {}
+    ) {
+    }
 
     public function getRegistrationOptions(User $user): array
     {
@@ -28,17 +29,17 @@ class WebAuthnService
         $challengeB64 = rtrim(strtr(base64_encode($challenge), '+/', '-_'), '=');
         $challengeToken = $this->createChallengeToken($challengeB64);
 
-        $excludeCredentials = $user->getPasskeys()->map(fn($p) => [
+        $excludeCredentials = $user->getPasskeys()->map(fn ($p) => [
             'type' => 'public-key',
-            'id'   => rtrim(strtr(base64_encode($p->getCredentialId()), '+/', '-_'), '='),
+            'id' => rtrim(strtr(base64_encode($p->getCredentialId()), '+/', '-_'), '='),
         ])->toArray();
 
         $options = [
             'challenge' => $challengeB64,
             'rp' => ['id' => $this->rpId, 'name' => $this->rpName],
             'user' => [
-                'id'          => rtrim(strtr(base64_encode((string) $user->getId()), '+/', '-_'), '='),
-                'name'        => $user->getEmail(),
+                'id' => rtrim(strtr(base64_encode((string) $user->getId()), '+/', '-_'), '='),
+                'name' => $user->getEmail(),
                 'displayName' => $user->getName(),
             ],
             'pubKeyCredParams' => [
@@ -46,12 +47,12 @@ class WebAuthnService
                 ['type' => 'public-key', 'alg' => -257],  // RS256
             ],
             'authenticatorSelection' => [
-                'residentKey'      => 'preferred',
+                'residentKey' => 'preferred',
                 'userVerification' => 'preferred',
             ],
-            'timeout'            => 60000,
+            'timeout' => 60000,
             'excludeCredentials' => $excludeCredentials,
-            'attestation'        => 'none',
+            'attestation' => 'none',
         ];
 
         return ['options' => $options, 'challengeToken' => $challengeToken];
@@ -76,7 +77,7 @@ class WebAuthnService
         // Normalize base64url → base64 and decode to bytes, then back to standard base64 for storage
         $credentialIdBytes = base64_decode(
             strtr($rawId, '-_', '+/')
-            . str_repeat('=', (4 - strlen($rawId) % 4) % 4)
+            .str_repeat('=', (4 - strlen($rawId) % 4) % 4),
         );
         $credentialIdStored = base64_encode($credentialIdBytes);
 
@@ -85,7 +86,7 @@ class WebAuthnService
         }
 
         $attestationObject = base64_decode(
-            strtr($responseData['response']['attestationObject'], '-_', '+/')
+            strtr($responseData['response']['attestationObject'], '-_', '+/'),
         );
 
         $existing = $this->em->getRepository(Passkey::class)->findOneBy(['credentialId' => $credentialIdStored]);
@@ -112,9 +113,9 @@ class WebAuthnService
         $challengeToken = $this->createChallengeToken($challengeB64);
 
         $options = [
-            'challenge'        => $challengeB64,
-            'rpId'             => $this->rpId,
-            'timeout'          => 60000,
+            'challenge' => $challengeB64,
+            'rpId' => $this->rpId,
+            'timeout' => 60000,
             'userVerification' => 'preferred',
             'allowCredentials' => [],
         ];
@@ -133,7 +134,7 @@ class WebAuthnService
 
         $credentialIdBytes = base64_decode(
             strtr($rawId, '-_', '+/')
-            . str_repeat('=', (4 - strlen($rawId) % 4) % 4)
+            .str_repeat('=', (4 - strlen($rawId) % 4) % 4),
         );
         $credentialIdStored = base64_encode($credentialIdBytes);
 
@@ -169,16 +170,17 @@ class WebAuthnService
     private function createChallengeToken(string $challengeBase64Url): string
     {
         $payload = ['ch' => $challengeBase64Url, 'exp' => time() + 300];
-        $header  = base64_encode(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
-        $body    = base64_encode(json_encode($payload));
-        $sig     = base64_encode(hash_hmac('sha256', "$header.$body", $this->appSecret, true));
+        $header = base64_encode(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
+        $body = base64_encode(json_encode($payload));
+        $sig = base64_encode(hash_hmac('sha256', "$header.$body", $this->appSecret, true));
+
         return "$header.$body.$sig";
     }
 
     private function decodeChallengeToken(string $token): string
     {
         $parts = explode('.', $token);
-        if (count($parts) !== 3) {
+        if (3 !== count($parts)) {
             throw new UnauthorizedHttpException('Bearer', 'Invalid challenge token');
         }
         [$header, $body, $sig] = $parts;
@@ -190,11 +192,12 @@ class WebAuthnService
         if (!is_array($payload) || ($payload['exp'] ?? 0) < time()) {
             throw new UnauthorizedHttpException('Bearer', 'Challenge expired');
         }
+
         return $payload['ch'];
     }
 
     private function generateCuid(): string
     {
-        return 'c' . bin2hex(random_bytes(12));
+        return 'c'.bin2hex(random_bytes(12));
     }
 }

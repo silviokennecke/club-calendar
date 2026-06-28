@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service\Map;
@@ -10,7 +11,8 @@ class MapboxMapImageProvider implements MapImageProviderInterface
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly string $mapboxToken,
-    ) {}
+    ) {
+    }
 
     public function getImage(float $lng, float $lat, int $zoom, int $width, int $height): string
     {

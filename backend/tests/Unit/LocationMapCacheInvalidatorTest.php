@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Unit;
@@ -12,14 +13,15 @@ use Symfony\Contracts\Cache\CacheInterface;
 
 class LocationMapCacheInvalidatorTest extends TestCase
 {
-    private const int ZOOM   = 14;
-    private const int WIDTH  = 800;
+    private const int ZOOM = 14;
+    private const int WIDTH = 800;
     private const int HEIGHT = 288;
 
     private function makeListener(): array
     {
-        $cache    = $this->createMock(CacheInterface::class);
+        $cache = $this->createMock(CacheInterface::class);
         $listener = new LocationMapCacheInvalidator($cache, self::ZOOM, self::WIDTH, self::HEIGHT);
+
         return [$listener, $cache];
     }
 
@@ -27,8 +29,9 @@ class LocationMapCacheInvalidatorTest extends TestCase
     {
         $args = $this->createMock(PreUpdateEventArgs::class);
         $args->method('hasChangedField')->willReturnCallback(
-            fn(string $f) => ($f === 'latitude' && $latChanged) || ($f === 'longitude' && $lngChanged)
+            fn (string $f) => ('latitude' === $f && $latChanged) || ('longitude' === $f && $lngChanged),
         );
+
         return $args;
     }
 
@@ -37,13 +40,14 @@ class LocationMapCacheInvalidatorTest extends TestCase
         $location = new Location();
         $location->setLatitude(48.137);
         $location->setLongitude(11.575);
+
         return $location;
     }
 
     public function testClearsCacheByCoordinateKeyWhenLatitudeChanges(): void
     {
         [$listener, $cache] = $this->makeListener();
-        $location    = $this->locationWithCoords();
+        $location = $this->locationWithCoords();
         $expectedKey = MapCacheKeyHelper::forMapImage(11.575, 48.137, self::ZOOM, self::WIDTH, self::HEIGHT);
 
         $cache->expects($this->once())->method('delete')->with($expectedKey);
@@ -55,7 +59,7 @@ class LocationMapCacheInvalidatorTest extends TestCase
     public function testClearsCacheByCoordinateKeyWhenLongitudeChanges(): void
     {
         [$listener, $cache] = $this->makeListener();
-        $location    = $this->locationWithCoords();
+        $location = $this->locationWithCoords();
         $expectedKey = MapCacheKeyHelper::forMapImage(11.575, 48.137, self::ZOOM, self::WIDTH, self::HEIGHT);
 
         $cache->expects($this->once())->method('delete')->with($expectedKey);

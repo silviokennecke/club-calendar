@@ -19,11 +19,13 @@ class CalendarMemberVoter extends Voter
 {
     public const string CALENDAR_MEMBER = 'CALENDAR_MEMBER';
 
-    public function __construct(private readonly EntityManagerInterface $em) {}
+    public function __construct(private readonly EntityManagerInterface $em)
+    {
+    }
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        return $attribute === self::CALENDAR_MEMBER && $subject instanceof Calendar;
+        return self::CALENDAR_MEMBER === $attribute && $subject instanceof Calendar;
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
@@ -42,6 +44,6 @@ class CalendarMemberVoter extends Voter
             'user' => $user,
         ]);
 
-        return $clubUser !== null;
+        return null !== $clubUser;
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Controller;
@@ -8,9 +9,8 @@ use App\Entity\CalendarFeed;
 use App\Enum\FeedVisibility;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
-use DateMalformedStringException;
-use Random\RandomException;
 use Doctrine\ORM\EntityManagerInterface;
+use Random\RandomException;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -24,8 +24,8 @@ class PublicTest extends WebTestCase
     public static function setUpBeforeClass(): void
     {
         self::$client = static::createClient();
-        $container    = static::getContainer();
-        self::$em     = $container->get(EntityManagerInterface::class);
+        $container = static::getContainer();
+        self::$em = $container->get(EntityManagerInterface::class);
         self::$hasher = $container->get(UserPasswordHasherInterface::class);
     }
 
@@ -37,7 +37,7 @@ class PublicTest extends WebTestCase
 
     private function createFeed(string $calendarId, FeedVisibility $visibility = FeedVisibility::PUBLIC, string $secret = 'test-secret'): CalendarFeed
     {
-        $feed     = new CalendarFeed();
+        $feed = new CalendarFeed();
         $calendar = self::$em->getRepository(Calendar::class)->find($calendarId);
         $feed->setCalendar($calendar);
         $feed->setName('Test Feed');
@@ -45,6 +45,7 @@ class PublicTest extends WebTestCase
         $feed->setSharedSecret($secret);
         self::$em->persist($feed);
         self::$em->flush();
+
         return $feed;
     }
 
@@ -55,7 +56,7 @@ class PublicTest extends WebTestCase
     }
 
     /**
-     * @throws DateMalformedStringException
+     * @throws \DateMalformedStringException
      */
     public function testIcsReturnsCalendarForPublicFeed(): void
     {
@@ -82,14 +83,14 @@ class PublicTest extends WebTestCase
     }
 
     /**
-     * @throws DateMalformedStringException
+     * @throws \DateMalformedStringException
      * @throws RandomException
      */
     public function testIcsReturnsCalendarForPrivateFeedWithCorrectSecret(): void
     {
         ['calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $secret = bin2hex(random_bytes(16));
-        $feed   = $this->createFeed($cal->getId(), FeedVisibility::PRIVATE, $secret);
+        $feed = $this->createFeed($cal->getId(), FeedVisibility::PRIVATE, $secret);
         TestHelper::createEvent(self::$em, $cal, ['isDraft' => false]);
         self::$client->request('GET', "/api/feed/{$feed->getId()}/ics?secret=$secret");
         $this->assertSame(200, self::$client->getResponse()->getStatusCode());
@@ -97,7 +98,7 @@ class PublicTest extends WebTestCase
     }
 
     /**
-     * @throws DateMalformedStringException
+     * @throws \DateMalformedStringException
      */
     public function testIcsExcludesDraftEvents(): void
     {
@@ -112,7 +113,7 @@ class PublicTest extends WebTestCase
     }
 
     /**
-     * @throws DateMalformedStringException
+     * @throws \DateMalformedStringException
      */
     public function testEventsEndpointReturnsJsonForPublicFeed(): void
     {
@@ -120,7 +121,7 @@ class PublicTest extends WebTestCase
         $feed = $this->createFeed($cal->getId());
         TestHelper::createEvent(self::$em, $cal, ['name' => 'JSON Event', 'isDraft' => false]);
         self::$client->request('GET', "/api/feed/{$feed->getId()}/events");
-        $r    = self::$client->getResponse();
+        $r = self::$client->getResponse();
         $body = json_decode((string) $r->getContent(), true);
         $this->assertSame(200, $r->getStatusCode());
         $this->assertSame('Test Feed', $body['feed']['name']);

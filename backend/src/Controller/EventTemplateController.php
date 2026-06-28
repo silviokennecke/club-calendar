@@ -20,7 +20,8 @@ class EventTemplateController extends AbstractApiController
 {
     public function __construct(
         private readonly EventTemplateService $templateService,
-    ) {}
+    ) {
+    }
 
     #[Route('', methods: ['GET'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]

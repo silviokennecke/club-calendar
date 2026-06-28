@@ -1,0 +1,21 @@
+#!/bin/sh
+set -e
+
+# ── 1. Secret scanning ────────────────────────────────────────────────────────
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --config .gitleaks.toml
+else
+  echo "⚠  gitleaks not installed — secret scan skipped."
+  echo "   Install with: brew install gitleaks"
+fi
+
+# ── 2. PHP CS Fixer (if any PHP files are staged) ────────────────────────────
+STAGED_PHP=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.php$' || true)
+if [ -n "$STAGED_PHP" ]; then
+  echo "Running PHP CS Fixer..."
+  (cd backend && vendor/bin/php-cs-fixer fix)
+  git add backend/src backend/tests
+fi
+
+# ── 3. Frontend files via lint-staged ─────────────────────────────────────────
+npx lint-staged

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Unit;
@@ -15,12 +16,13 @@ class RateLimitedMapImageProviderTest extends TestCase
 {
     private function makeFactory(bool $accepted): RateLimiterFactoryInterface
     {
-        $limit   = $this->createMock(RateLimit::class);
+        $limit = $this->createMock(RateLimit::class);
         $limit->method('isAccepted')->willReturn($accepted);
         $limiter = $this->createMock(LimiterInterface::class);
         $limiter->method('consume')->willReturn($limit);
         $factory = $this->createMock(RateLimiterFactoryInterface::class);
         $factory->method('create')->willReturn($limiter);
+
         return $factory;
     }
 

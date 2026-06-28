@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Controller;
@@ -26,13 +27,15 @@ class CalendarController extends AbstractApiController
         private readonly CalendarService $calendarService,
         private readonly ValidatorInterface $validator,
         private readonly SerializerInterface $serializer,
-    ) {}
+    ) {
+    }
 
     #[Route('', methods: ['GET'])]
     #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
     public function list(#[MapEntity(id: 'clubId')] Club $club, Request $request): JsonResponse
     {
-        $includeArchived = $request->query->get('includeArchived') === 'true';
+        $includeArchived = 'true' === $request->query->get('includeArchived');
+
         return new JsonResponse($this->calendarService->listCalendars($club, $includeArchived));
     }
 
@@ -43,12 +46,13 @@ class CalendarController extends AbstractApiController
         try {
             $dto = $this->serializer->deserialize($request->getContent(), CreateCalendarDto::class, 'json');
         } catch (SerializerException $e) {
-            throw new BadRequestHttpException('Invalid JSON body: ' . $e->getMessage(), $e);
+            throw new BadRequestHttpException('Invalid JSON body: '.$e->getMessage(), $e);
         }
         $this->validateDto($dto, $this->validator);
+
         return new JsonResponse(
             $this->calendarService->createCalendar($club, $dto->name, $dto->timezone),
-            Response::HTTP_CREATED
+            Response::HTTP_CREATED,
         );
     }
 
@@ -69,6 +73,7 @@ class CalendarController extends AbstractApiController
         Request $request,
     ): JsonResponse {
         $data = $this->decodeJson($request);
+
         return new JsonResponse($this->calendarService->updateCalendar($calendar, $data));
     }
 
@@ -79,6 +84,7 @@ class CalendarController extends AbstractApiController
         #[MapEntity(expr: 'repository.findByIdAndClubId(calendarId, clubId)')] Calendar $calendar,
     ): JsonResponse {
         $this->calendarService->deleteCalendar($calendar);
+
         return new JsonResponse(['ok' => true]);
     }
 

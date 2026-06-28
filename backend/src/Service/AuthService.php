@@ -1,14 +1,13 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service;
 
 use App\Entity\OAuthAccount;
 use App\Entity\User;
-use DateTimeInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
-use InvalidArgumentException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -19,7 +18,8 @@ readonly class AuthService
         private EntityManagerInterface $em,
         private UserPasswordHasherInterface $hasher,
         private TokenService $tokens,
-    ) {}
+    ) {
+    }
 
     public function register(string $name, string $email, string $password, ?string $language = null): array
     {
@@ -31,11 +31,12 @@ readonly class AuthService
         $user->setName($name);
         $user->setEmail($email);
         $user->setPassword($this->hasher->hashPassword($user, $password));
-        if ($language !== null && $language !== '') {
+        if (null !== $language && '' !== $language) {
             $user->setLanguage($language);
         }
         $this->em->persist($user);
         $this->em->flush();
+
         return $this->tokens->tokenResponse($user);
     }
 
@@ -48,6 +49,7 @@ readonly class AuthService
         if (!$this->hasher->isPasswordValid($user, $password)) {
             throw new UnauthorizedHttpException('Bearer', 'Invalid credentials');
         }
+
         return $this->tokens->tokenResponse($user);
     }
 
@@ -55,13 +57,14 @@ readonly class AuthService
     {
         try {
             $payload = $this->tokens->decodeRefreshToken($refreshToken);
-        } catch (InvalidArgumentException $e) {
+        } catch (\InvalidArgumentException $e) {
             throw new UnauthorizedHttpException('Bearer', $e->getMessage());
         }
         $user = $this->em->getRepository(User::class)->find($payload['sub']);
         if (!$user) {
             throw new UnauthorizedHttpException('Bearer', 'User not found');
         }
+
         return $this->tokens->tokenResponse($user);
     }
 
@@ -73,21 +76,22 @@ readonly class AuthService
         } catch (ORMException) {
             // entity already managed or detached; continue with current state
         }
+
         return [
-            'id'             => $user->getId(),
-            'name'           => $user->getName(),
-            'email'          => $user->getEmail(),
-            'dateFormat'     => $user->getDateFormat(),
+            'id' => $user->getId(),
+            'name' => $user->getName(),
+            'email' => $user->getEmail(),
+            'dateFormat' => $user->getDateFormat(),
             'firstDayOfWeek' => $user->getFirstDayOfWeek(),
-            'lastClubId'     => $user->getLastClubId(),
+            'lastClubId' => $user->getLastClubId(),
             'lastCalendarId' => $user->getLastCalendarId(),
-            'language'       => $user->getLanguage(),
-            'passkeys'       => $user->getPasskeys()->map(fn($p) => [
-                'id'         => $p->getId(),
+            'language' => $user->getLanguage(),
+            'passkeys' => $user->getPasskeys()->map(fn ($p) => [
+                'id' => $p->getId(),
                 'deviceName' => $p->getDeviceName(),
-                'createdAt'  => $p->getCreatedAt()->format(DateTimeInterface::ATOM),
+                'createdAt' => $p->getCreatedAt()->format(\DateTimeInterface::ATOM),
             ])->toArray(),
-            'oauthAccounts'  => $user->getOauthAccounts()->map(fn($a) => [
+            'oauthAccounts' => $user->getOauthAccounts()->map(fn ($a) => [
                 'provider' => $a->getProvider(),
             ])->toArray(),
         ];
@@ -95,18 +99,27 @@ readonly class AuthService
 
     public function updateMe(User $user, array $data): array
     {
-        if (array_key_exists('dateFormat', $data))     $user->setDateFormat($data['dateFormat']);
-        if (array_key_exists('firstDayOfWeek', $data)) $user->setFirstDayOfWeek($data['firstDayOfWeek']);
-        if (array_key_exists('lastClubId', $data))     $user->setLastClubId($data['lastClubId']);
-        if (array_key_exists('lastCalendarId', $data)) $user->setLastCalendarId($data['lastCalendarId']);
+        if (array_key_exists('dateFormat', $data)) {
+            $user->setDateFormat($data['dateFormat']);
+        }
+        if (array_key_exists('firstDayOfWeek', $data)) {
+            $user->setFirstDayOfWeek($data['firstDayOfWeek']);
+        }
+        if (array_key_exists('lastClubId', $data)) {
+            $user->setLastClubId($data['lastClubId']);
+        }
+        if (array_key_exists('lastCalendarId', $data)) {
+            $user->setLastCalendarId($data['lastCalendarId']);
+        }
         $this->em->flush();
+
         return [
-            'id'             => $user->getId(),
-            'name'           => $user->getName(),
-            'email'          => $user->getEmail(),
-            'dateFormat'     => $user->getDateFormat(),
+            'id' => $user->getId(),
+            'name' => $user->getName(),
+            'email' => $user->getEmail(),
+            'dateFormat' => $user->getDateFormat(),
             'firstDayOfWeek' => $user->getFirstDayOfWeek(),
-            'lastClubId'     => $user->getLastClubId(),
+            'lastClubId' => $user->getLastClubId(),
             'lastCalendarId' => $user->getLastCalendarId(),
         ];
     }
@@ -120,13 +133,13 @@ readonly class AuthService
     public function findOrCreateOAuthUser(string $provider, string $providerId, string $email, string $name): array
     {
         $existing = $this->em->getRepository(OAuthAccount::class)->findOneBy([
-            'provider'   => $provider,
+            'provider' => $provider,
             'providerId' => $providerId,
         ]);
         if ($existing) {
             $oauthUser = $existing->getUser();
             // Only remove orphaned accounts (where getUser() is null)
-            if ($oauthUser === null) {
+            if (null === $oauthUser) {
                 $this->em->remove($existing);
                 $this->em->flush();
             } else {
@@ -148,6 +161,7 @@ readonly class AuthService
         $account->setEmail($email);
         $this->em->persist($account);
         $this->em->flush();
+
         return $this->tokens->tokenResponse($user);
     }
 }

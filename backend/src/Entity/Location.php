@@ -13,7 +13,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\HasLifecycleCallbacks]
 class Location
 {
-    use \App\Entity\Trait\HasUpdatedAt;
+    use Trait\HasUpdatedAt;
     #[ORM\Id]
     #[ORM\Column(length: 36)]
     private string $id;

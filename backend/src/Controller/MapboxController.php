@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Controller;
@@ -11,7 +12,6 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Throwable;
 
 #[Route('/api/mapbox')]
 class MapboxController extends AbstractController
@@ -23,12 +23,13 @@ class MapboxController extends AbstractController
         private readonly MapboxProxyService $proxyService,
         private readonly string $mapboxToken,
         private readonly LoggerInterface $logger,
-    ) {}
+    ) {
+    }
 
     #[Route('/{domain}/{path}', name: 'mapbox_proxy', requirements: ['path' => '.+'], methods: ['GET', 'POST', 'PUT', 'PATCH'])]
     public function proxy(string $domain, string $path, Request $request): Response
     {
-        if ($this->mapboxToken === '') {
+        if ('' === $this->mapboxToken) {
             return $this->errorResponse('Map service not configured', 503);
         }
 
@@ -39,7 +40,7 @@ class MapboxController extends AbstractController
         $queryParams = $request->query->all();
         unset($queryParams['access_token']);
 
-        $body        = $request->getContent() ?: null;
+        $body = $request->getContent() ?: null;
         $contentType = $request->headers->get('Content-Type', 'application/json');
 
         try {
@@ -48,8 +49,9 @@ class MapboxController extends AbstractController
             return $this->errorResponse('Forbidden', 403);
         } catch (RateLimitExceededException) {
             return $this->errorResponse('Too many requests', 429);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('Mapbox proxy failed', ['exception' => $e, 'path' => $path]);
+
             return $this->errorResponse('Failed to reach map service', 502);
         }
 

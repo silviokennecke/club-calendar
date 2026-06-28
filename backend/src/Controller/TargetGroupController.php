@@ -20,7 +20,8 @@ class TargetGroupController extends AbstractApiController
 {
     public function __construct(
         private readonly TargetGroupService $targetGroupService,
-    ) {}
+    ) {
+    }
 
     #[Route('', methods: ['GET'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]

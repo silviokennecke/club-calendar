@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\OAuth;
@@ -60,7 +61,7 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
         if (empty($claims['email']) && !empty($userInfoUrl)) {
             try {
                 $response = $this->fetchResourceOwnerDetails($token);
-                $claims   = array_merge($claims, $response);
+                $claims = array_merge($claims, $response);
             } catch (\Throwable) {
                 // Fall back to ID token claims only
             }
@@ -71,20 +72,20 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
 
     private function discover(): array
     {
-        if ($this->discovery !== null) {
+        if (null !== $this->discovery) {
             return $this->discovery;
         }
 
-        if ($this->cache !== null) {
-            $cacheKey = 'discovery_' . md5($this->issuer);
-            $item     = $this->cache->getItem($cacheKey);
+        if (null !== $this->cache) {
+            $cacheKey = 'discovery_'.md5($this->issuer);
+            $item = $this->cache->getItem($cacheKey);
 
             if ($item->isHit()) {
                 return $this->discovery = $item->get();
             }
 
-            $url      = $this->issuer . '/.well-known/openid-configuration';
-            $response = $this->getHttpClient()->get($url);
+            $url = $this->issuer.'/.well-known/openid-configuration';
+            $response = $this->getHttpClient()->request('GET', $url);
             $document = json_decode((string) $response->getBody(), true) ?? [];
 
             $ttl = $this->parseCacheTtl($response);
@@ -97,8 +98,8 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
             return $this->discovery = $document;
         }
 
-        $url             = $this->issuer . '/.well-known/openid-configuration';
-        $response        = $this->getHttpClient()->get($url);
+        $url = $this->issuer.'/.well-known/openid-configuration';
+        $response = $this->getHttpClient()->request('GET', $url);
         $this->discovery = json_decode((string) $response->getBody(), true) ?? [];
 
         return $this->discovery;
@@ -114,6 +115,7 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
             }
             if (preg_match('/\bmax-age\s*=\s*(\d+)/i', $cacheControl, $m)) {
                 $age = (int) $response->getHeaderLine('Age');
+
                 return max(0, (int) $m[1] - $age);
             }
         }
@@ -121,7 +123,7 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
         $expires = $response->getHeaderLine('Expires');
         if (!empty($expires)) {
             $expiresAt = strtotime($expires);
-            if ($expiresAt !== false && $expiresAt > time()) {
+            if (false !== $expiresAt && $expiresAt > time()) {
                 return $expiresAt - (int) time();
             }
         }
@@ -137,13 +139,13 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
         }
 
         $parts = explode('.', $idToken);
-        if (count($parts) !== 3) {
+        if (3 !== count($parts)) {
             return [];
         }
 
-        $padded  = str_pad(strtr($parts[1], '-_', '+/'), (int) ceil(strlen($parts[1]) / 4) * 4, '=');
+        $padded = str_pad(strtr($parts[1], '-_', '+/'), (int) ceil(strlen($parts[1]) / 4) * 4, '=');
         $payload = base64_decode($padded, true);
 
-        return $payload !== false ? (json_decode($payload, true) ?? []) : [];
+        return false !== $payload ? (json_decode($payload, true) ?? []) : [];
     }
 }

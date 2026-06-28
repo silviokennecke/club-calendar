@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Controller;
@@ -28,12 +29,14 @@ class ClubController extends AbstractApiController
         private readonly CurrentUserResolver $userResolver,
         private readonly ValidatorInterface $validator,
         private readonly SerializerInterface $serializer,
-    ) {}
+    ) {
+    }
 
     #[Route('', methods: ['GET'])]
     public function list(): JsonResponse
     {
         $user = $this->userResolver->resolve();
+
         return new JsonResponse($this->clubService->listClubs($user));
     }
 
@@ -44,9 +47,10 @@ class ClubController extends AbstractApiController
         try {
             $dto = $this->serializer->deserialize($request->getContent(), CreateClubDto::class, 'json');
         } catch (SerializerException $e) {
-            throw new BadRequestHttpException('Invalid JSON body: ' . $e->getMessage(), $e);
+            throw new BadRequestHttpException('Invalid JSON body: '.$e->getMessage(), $e);
         }
         $this->validateDto($dto, $this->validator);
+
         return new JsonResponse($this->clubService->createClub($user, $dto->name, $dto->timezone), Response::HTTP_CREATED);
     }
 
@@ -62,6 +66,7 @@ class ClubController extends AbstractApiController
     public function update(#[MapEntity(id: 'clubId')] Club $club, Request $request): JsonResponse
     {
         $data = $this->decodeJson($request);
+
         return new JsonResponse($this->clubService->updateClub($club, $data));
     }
 
@@ -70,6 +75,7 @@ class ClubController extends AbstractApiController
     public function delete(#[MapEntity(id: 'clubId')] Club $club): JsonResponse
     {
         $this->clubService->deleteClub($club);
+
         return new JsonResponse(['ok' => true]);
     }
 
@@ -87,9 +93,10 @@ class ClubController extends AbstractApiController
         try {
             $dto = $this->serializer->deserialize($request->getContent(), AddMemberDto::class, 'json');
         } catch (SerializerException $e) {
-            throw new BadRequestHttpException('Invalid JSON body: ' . $e->getMessage(), $e);
+            throw new BadRequestHttpException('Invalid JSON body: '.$e->getMessage(), $e);
         }
         $this->validateDto($dto, $this->validator);
+
         return new JsonResponse($this->clubService->addMember($club, $dto->email), Response::HTTP_CREATED);
     }
 
@@ -98,6 +105,7 @@ class ClubController extends AbstractApiController
     public function removeMember(#[MapEntity(id: 'clubId')] Club $club, string $userId): JsonResponse
     {
         $this->clubService->removeMember($club, $userId);
+
         return new JsonResponse(['ok' => true]);
     }
 }

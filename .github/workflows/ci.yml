@@ -2,14 +2,147 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
     branches: [main]
 
+# Allow autofix job to push commits back to the branch
+permissions:
+  contents: write
+
 jobs:
-  backend:
-    name: Backend — build & tests
+  # ────────────────────────────────────────────────────────────────────────────
+  # 1. Secret scanning — always first, blocks everything
+  # ────────────────────────────────────────────────────────────────────────────
+  secret-scan:
+    name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history needed for accurate scanning
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}  # only needed for org/enterprise
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # 2. Auto-fix style issues and push the fixes back to the branch
+  # ────────────────────────────────────────────────────────────────────────────
+  autofix:
+    name: Auto-fix (PHP CS Fixer + ESLint + Prettier)
+    runs-on: ubuntu-latest
+    needs: secret-scan
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Use token so the pushed commit can trigger a new CI run
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: composer
+          coverage: none
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install PHP dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: PHP CS Fixer
+        working-directory: backend
+        run: vendor/bin/php-cs-fixer fix
+
+      - name: ESLint --fix
+        working-directory: frontend
+        run: npx eslint --fix || true  # fix what can be fixed; check job enforces the rest
+
+      - name: Prettier --write
+        working-directory: frontend
+        run: npx prettier --write .
+
+      - name: Commit & push fixes (if any)
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: auto-fix linting and formatting"
+          commit_author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # 3. Lint check — runs after autofix, so it sees the fixed code
+  # ────────────────────────────────────────────────────────────────────────────
+  lint-check:
+    name: Lint check
+    runs-on: ubuntu-latest
+    needs: autofix
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Fetch latest ref so we pick up any autofix commits
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: composer
+          coverage: none
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install PHP dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: PHP CS Fixer (dry-run)
+        working-directory: backend
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+
+      - name: PHPStan
+        working-directory: backend
+        run: vendor/bin/phpstan analyse --memory-limit=512M --no-progress
+
+      - name: ESLint
+        working-directory: frontend
+        run: npx eslint
+
+      - name: Prettier check
+        working-directory: frontend
+        run: npx prettier --check .
+
+      - name: TypeScript check
+        working-directory: frontend
+        run: npx tsc -p tsconfig.app.json --noEmit
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # 4. Backend tests (PHP/Symfony + PHPUnit)
+  # ────────────────────────────────────────────────────────────────────────────
+  backend-tests:
+    name: Backend tests (PHPUnit)
+    runs-on: ubuntu-latest
+    needs: secret-scan
 
     services:
       mysql:
@@ -41,6 +174,61 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pdo_mysql, intl
+          tools: composer
+          coverage: none
+
+      - name: Install dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Generate JWT keypair
+        working-directory: backend
+        env:
+          APP_ENV: test
+          APP_SECRET: ci-app-secret-for-testing-only
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
+          TEST_DATABASE_URL: mysql://root:root@127.0.0.1:3360/club_calendar_test
+          JWT_REFRESH_SECRET: ci-refresh-secret-at-least-32-chars-for-testing
+          FRONTEND_URL: http://localhost:5173
+        run: php bin/console lexik:jwt:generate-keypair --overwrite
+
+      - name: Run migrations
+        working-directory: backend
+        env:
+          APP_ENV: dev
+          APP_SECRET: ci-app-secret-for-testing-only
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
+          JWT_REFRESH_SECRET: ci-refresh-secret-at-least-32-chars-for-testing
+          FRONTEND_URL: http://localhost:5173
+        run: php bin/console doctrine:migrations:migrate --no-interaction
+
+      - name: Run PHPUnit
+        working-directory: backend
+        env:
+          APP_ENV: test
+          APP_SECRET: ci-app-secret-for-testing-only
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
+          TEST_DATABASE_URL: mysql://root:root@127.0.0.1:3360/club_calendar_test
+          JWT_REFRESH_SECRET: ci-refresh-secret-at-least-32-chars-for-testing
+          FRONTEND_URL: http://localhost:5173
+        run: php bin/phpunit
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # 5. Frontend unit tests (Vitest)
+  # ────────────────────────────────────────────────────────────────────────────
+  frontend-unit:
+    name: Frontend unit tests (Vitest)
+    runs-on: ubuntu-latest
+    needs: secret-scan
+
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -50,32 +238,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply migrations
-        working-directory: backend
-        env:
-          DATABASE_URL: mysql://root:root@localhost:3306/club_calendar
-        run: npx prisma migrate deploy
+      - name: Run Vitest
+        working-directory: frontend
+        run: npx vitest run
 
-      - name: TypeScript build
-        run: npm run build -w @club-calendar/backend
-
-      - name: Run tests
-        working-directory: backend
-        env:
-          DATABASE_URL: mysql://root:root@localhost:3306/club_calendar
-          TEST_DATABASE_URL: mysql://root:root@localhost:3360/club_calendar_test
-          JWT_ACCESS_SECRET: ci-access-secret-at-least-16-chars
-          JWT_REFRESH_SECRET: ci-refresh-secret-at-least-16-chars
-          FRONTEND_URL: http://localhost:3000
-          PORT: "3001"
-          NODE_ENV: test
-          WEBAUTHN_RP_ID: localhost
-          WEBAUTHN_RP_NAME: Club Calendar CI
-        run: npm test
-
+  # ────────────────────────────────────────────────────────────────────────────
+  # 6. i18n key parity (en ↔ de)
+  # ────────────────────────────────────────────────────────────────────────────
   i18n-check:
-    name: i18n — translation key parity (en ↔ de)
+    name: i18n key parity (en ↔ de)
     runs-on: ubuntu-latest
+    needs: secret-scan
 
     steps:
       - uses: actions/checkout@v4
@@ -93,10 +266,14 @@ jobs:
         working-directory: frontend
         run: npx vitest run src/lib/__tests__/i18n.test.ts --reporter=verbose
 
-  frontend:
-    name: Frontend — build & E2E
+  # ────────────────────────────────────────────────────────────────────────────
+  # 7. E2E tests (Playwright) — only on main branch to save CI time
+  # ────────────────────────────────────────────────────────────────────────────
+  e2e:
+    name: E2E tests (Playwright)
     runs-on: ubuntu-latest
-    needs: backend   # E2E needs the backend to work
+    needs: [backend-tests, frontend-unit]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
 
     services:
       mysql:
@@ -115,6 +292,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pdo_mysql, intl
+          tools: composer
+          coverage: none
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -122,52 +307,60 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          composer install --no-interaction --prefer-dist -d backend
+          npm ci
 
       - name: Install Playwright browsers
         working-directory: frontend
         run: npx playwright install --with-deps chromium
 
-      - name: Apply migrations & seed
+      - name: Generate JWT keypair
         working-directory: backend
         env:
-          DATABASE_URL: mysql://root:root@localhost:3306/club_calendar
-        run: |
-          npx prisma migrate deploy
-          npx prisma generate
-          npm run db:seed
+          APP_ENV: dev
+          APP_SECRET: ci-app-secret-for-testing-only
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
+          JWT_REFRESH_SECRET: ci-refresh-secret-at-least-32-chars-for-testing
+          FRONTEND_URL: http://localhost:5173
+        run: php bin/console lexik:jwt:generate-keypair --overwrite
 
-      - name: TypeScript build (frontend)
+      - name: Run migrations and seed
+        working-directory: backend
+        env:
+          APP_ENV: dev
+          APP_SECRET: ci-app-secret-for-testing-only
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
+          JWT_REFRESH_SECRET: ci-refresh-secret-at-least-32-chars-for-testing
+          FRONTEND_URL: http://localhost:5173
+        run: |
+          php bin/console doctrine:migrations:migrate --no-interaction
+          php bin/console doctrine:fixtures:load --no-interaction
+
+      - name: Build frontend
         working-directory: frontend
         env:
-          NEXT_PUBLIC_API_URL: http://localhost:3001
-          NEXT_PUBLIC_MAPBOX_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
+          VITE_API_URL: http://localhost:3001
+          VITE_MAPBOX_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
         run: npm run build
 
       - name: Start backend
         working-directory: backend
         env:
-          DATABASE_URL: mysql://root:root@localhost:3306/club_calendar
-          JWT_ACCESS_SECRET: ci-access-secret-at-least-16-chars
-          JWT_REFRESH_SECRET: ci-refresh-secret-at-least-16-chars
+          APP_ENV: dev
+          APP_SECRET: ci-app-secret-for-testing-only
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
+          JWT_REFRESH_SECRET: ci-refresh-secret-at-least-32-chars-for-testing
           FRONTEND_URL: http://localhost:3000
-          PORT: "3001"
-          NODE_ENV: production
-          WEBAUTHN_RP_ID: localhost
-          WEBAUTHN_RP_NAME: Club Calendar CI
-        run: node dist/index.js &
+        run: php -S 0.0.0.0:3001 -t public/ &
 
-      - name: Start frontend
+      - name: Start frontend preview
         working-directory: frontend
-        env:
-          NEXT_PUBLIC_API_URL: http://localhost:3001
-          NEXT_PUBLIC_MAPBOX_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
-          PORT: "3000"
-        run: npm start &
+        run: npx vite preview --port 3000 &
 
       - name: Wait for servers
         run: |
-          npx wait-on http://localhost:3001/health --timeout 30000
+          npx wait-on http://localhost:3001/api/health --timeout 30000
           npx wait-on http://localhost:3000 --timeout 30000
 
       - name: Run Playwright E2E tests

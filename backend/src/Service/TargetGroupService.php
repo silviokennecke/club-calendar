@@ -11,7 +11,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class TargetGroupService
 {
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(private EntityManagerInterface $em)
+    {
+    }
 
     public function list(Calendar $calendar): array
     {
@@ -65,9 +67,9 @@ readonly class TargetGroupService
     public function serialize(TargetGroup $targetGroup): array
     {
         return [
-            'id'         => $targetGroup->getId(),
+            'id' => $targetGroup->getId(),
             'calendarId' => $targetGroup->getCalendar()->getId(),
-            'name'       => $targetGroup->getName(),
+            'name' => $targetGroup->getName(),
         ];
     }
 }

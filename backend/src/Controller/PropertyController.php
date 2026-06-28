@@ -20,7 +20,8 @@ class PropertyController extends AbstractApiController
 {
     public function __construct(
         private readonly PropertyService $propertyService,
-    ) {}
+    ) {
+    }
 
     #[Route('', methods: ['GET'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]

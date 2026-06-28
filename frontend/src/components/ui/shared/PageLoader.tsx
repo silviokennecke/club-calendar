@@ -1,32 +1,32 @@
-import type { ReactNode } from 'react'
-import { cn } from '@/lib/utils'
+import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface FullPageLoaderProps {
-  message?: string
-  className?: string
+  message?: string;
+  className?: string;
 }
 
-export function FullPageLoader({ message = 'Loading…', className }: FullPageLoaderProps) {
+export function FullPageLoader({ message = "Loading…", className }: FullPageLoaderProps) {
   return (
-    <div className={cn('flex items-center justify-center min-h-screen bg-slate-50', className)}>
-      <p className="text-slate-400 text-sm">{message}</p>
+    <div className={cn("flex min-h-screen items-center justify-center bg-slate-50", className)}>
+      <p className="text-sm text-slate-400">{message}</p>
     </div>
-  )
+  );
 }
 
 interface FullPageErrorProps {
-  message: string
-  children?: ReactNode
-  className?: string
+  message: string;
+  children?: ReactNode;
+  className?: string;
 }
 
 export function FullPageError({ message, children, className }: FullPageErrorProps) {
   return (
-    <div className={cn('flex items-center justify-center min-h-screen bg-slate-50', className)}>
+    <div className={cn("flex min-h-screen items-center justify-center bg-slate-50", className)}>
       <div className="text-center">
         {children}
-        <p className="text-slate-600 font-medium">{message}</p>
+        <p className="font-medium text-slate-600">{message}</p>
       </div>
     </div>
-  )
+  );
 }

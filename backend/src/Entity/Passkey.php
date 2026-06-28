@@ -78,6 +78,7 @@ class Passkey
         if (is_resource($this->publicKey)) {
             return stream_get_contents($this->publicKey);
         }
+
         return $this->publicKey;
     }
 

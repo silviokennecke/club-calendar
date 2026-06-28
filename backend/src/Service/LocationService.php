@@ -11,7 +11,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class LocationService
 {
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(private EntityManagerInterface $em)
+    {
+    }
 
     public function list(Calendar $calendar): array
     {
@@ -58,10 +60,10 @@ readonly class LocationService
             $location->setCountry($data['country']);
         }
         if (array_key_exists('latitude', $data)) {
-            $location->setLatitude($data['latitude'] !== null ? (float) $data['latitude'] : null);
+            $location->setLatitude(null !== $data['latitude'] ? (float) $data['latitude'] : null);
         }
         if (array_key_exists('longitude', $data)) {
-            $location->setLongitude($data['longitude'] !== null ? (float) $data['longitude'] : null);
+            $location->setLongitude(null !== $data['longitude'] ? (float) $data['longitude'] : null);
         }
 
         $this->em->flush();
@@ -89,16 +91,16 @@ readonly class LocationService
     public function serialize(Location $location): array
     {
         return [
-            'id'         => $location->getId(),
+            'id' => $location->getId(),
             'calendarId' => $location->getCalendar()->getId(),
-            'name'       => $location->getName(),
-            'street'     => $location->getStreet(),
-            'zip'        => $location->getZip(),
-            'city'       => $location->getCity(),
-            'country'    => $location->getCountry(),
-            'latitude'   => $location->getLatitude(),
-            'longitude'  => $location->getLongitude(),
-            'updatedAt'  => $location->getUpdatedAt()->getTimestamp(),
+            'name' => $location->getName(),
+            'street' => $location->getStreet(),
+            'zip' => $location->getZip(),
+            'city' => $location->getCity(),
+            'country' => $location->getCountry(),
+            'latitude' => $location->getLatitude(),
+            'longitude' => $location->getLongitude(),
+            'updatedAt' => $location->getUpdatedAt()->getTimestamp(),
         ];
     }
 }

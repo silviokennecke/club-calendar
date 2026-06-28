@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Controller;
@@ -6,8 +7,6 @@ namespace App\Tests\Controller;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
-use DateMalformedStringException;
-use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -23,8 +22,8 @@ class ResourcesTest extends WebTestCase
     public static function setUpBeforeClass(): void
     {
         self::$client = static::createClient();
-        $container    = static::getContainer();
-        self::$em     = $container->get(EntityManagerInterface::class);
+        $container = static::getContainer();
+        self::$em = $container->get(EntityManagerInterface::class);
         self::$hasher = $container->get(UserPasswordHasherInterface::class);
         self::$tokens = $container->get(TokenService::class);
     }
@@ -84,16 +83,16 @@ class ResourcesTest extends WebTestCase
     // --- Archived calendar guard ---
 
     /**
-     * @throws DateMalformedStringException
+     * @throws \DateMalformedStringException
      */
     public function testArchivedCalendarBlocksWrites(): void
     {
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
-        $cal->setArchivedAt(new DateTimeImmutable());
+        $cal->setArchivedAt(new \DateTimeImmutable());
         self::$em->flush();
 
         $auth = TestHelper::authHeader($user, self::$tokens);
-        $r    = TestHelper::jsonRequest(self::$client, 'POST', "/api/calendars/{$cal->getId()}/events", [
+        $r = TestHelper::jsonRequest(self::$client, 'POST', "/api/calendars/{$cal->getId()}/events", [
             'name' => 'Blocked', 'date' => '2026-07-01', 'timeBegin' => '10:00', 'timeEnd' => '11:00',
         ], $auth);
         $this->assertSame(403, $r['status']);
@@ -102,11 +101,11 @@ class ResourcesTest extends WebTestCase
     public function testArchivedCalendarAllowsReads(): void
     {
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
-        $cal->setArchivedAt(new DateTimeImmutable());
+        $cal->setArchivedAt(new \DateTimeImmutable());
         self::$em->flush();
 
         $auth = TestHelper::authHeader($user, self::$tokens);
-        $r    = TestHelper::jsonRequest(self::$client, 'GET', "/api/calendars/{$cal->getId()}/events", [], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'GET', "/api/calendars/{$cal->getId()}/events", [], $auth);
         $this->assertSame(200, $r['status']);
     }
 }

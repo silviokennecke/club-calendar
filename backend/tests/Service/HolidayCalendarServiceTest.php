@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Service;
@@ -7,7 +8,6 @@ use App\Entity\Calendar;
 use App\Entity\HolidayCalendar;
 use App\Entity\HolidayEvent;
 use App\Service\HolidayCalendarService;
-use DateMalformedStringException;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
@@ -49,6 +49,7 @@ ICS;
     {
         $query = $this->createStub(Query::class);
         $query->method('setParameter')->willReturnSelf();
+
         return $query;
     }
 
@@ -67,7 +68,7 @@ ICS;
         $httpClient->method('request')->willReturn($response);
 
         $em = $this->createStub(EntityManagerInterface::class);
-        $em->method('persist')->willReturnCallback(function (object $e) use (&$captured) {
+        $em->method('persist')->willReturnCallback(function (object $e) use (&$captured): void {
             if ($e instanceof HolidayEvent) {
                 $captured[] = $e;
             }
@@ -80,6 +81,7 @@ ICS;
     private function makeHolidayCalendar(): HolidayCalendar
     {
         $calendar = $this->createStub(Calendar::class);
+
         return new HolidayCalendar($calendar, 'Test', 'https://example.com/holidays.ics');
     }
 
@@ -91,12 +93,12 @@ ICS;
      * TC-1: Two VEVENTs → count returns 2.
      *
      * @throws TransportExceptionInterface
-     * @throws DateMalformedStringException
+     * @throws \DateMalformedStringException
      */
     public function testFetchAndStoreReturnsTwoEvents(): void
     {
         $service = $this->makeService(self::SAMPLE_ICS);
-        $count   = $service->fetchAndStore($this->makeHolidayCalendar());
+        $count = $service->fetchAndStore($this->makeHolidayCalendar());
 
         $this->assertSame(2, $count);
     }
@@ -105,7 +107,7 @@ ICS;
      * TC-2: Multi-day event — DTEND exclusive → stored dateEnd is inclusive (DTEND − 1 day).
      *
      * @throws TransportExceptionInterface
-     * @throws DateMalformedStringException
+     * @throws \DateMalformedStringException
      */
     public function testMultiDayEventStoredAsInclusiveEnd(): void
     {
@@ -134,7 +136,7 @@ ICS;
      * TC-3: Single-day event (DTEND = DTSTART + 1 day) → dateEnd is null.
      *
      * @throws TransportExceptionInterface
-     * @throws DateMalformedStringException
+     * @throws \DateMalformedStringException
      */
     public function testSingleDayEventHasNullDateEnd(): void
     {
@@ -167,7 +169,7 @@ ICS;
      *   Because end > start, dateEnd should be stored as start + 1 day.
      *
      * @throws TransportExceptionInterface
-     * @throws DateMalformedStringException
+     * @throws \DateMalformedStringException
      */
     public function testEventWithDurationStoredCorrectly(): void
     {
@@ -196,7 +198,7 @@ ICS;
      * TC-5: DURATION:P1D (single-day) → end equals start → dateEnd is null.
      *
      * @throws TransportExceptionInterface
-     * @throws DateMalformedStringException
+     * @throws \DateMalformedStringException
      */
     public function testEventWithSingleDayDurationHasNullDateEnd(): void
     {
@@ -223,7 +225,7 @@ ICS;
      * TC-6: lastFetchedAt is set to a non-null DateTimeImmutable after a successful fetch.
      *
      * @throws TransportExceptionInterface
-     * @throws DateMalformedStringException
+     * @throws \DateMalformedStringException
      */
     public function testLastFetchedAtIsSetAfterFetch(): void
     {
@@ -232,7 +234,7 @@ ICS;
 
         $this->makeService(self::SAMPLE_ICS)->fetchAndStore($hc);
 
-        $this->assertInstanceOf(DateTimeImmutable::class, $hc->getLastFetchedAt());
+        $this->assertInstanceOf(\DateTimeImmutable::class, $hc->getLastFetchedAt());
     }
 
     /**
@@ -241,12 +243,12 @@ ICS;
      *       and this happens before any HolidayEvent is persisted.
      *
      * @throws TransportExceptionInterface
-     * @throws DateMalformedStringException
+     * @throws \DateMalformedStringException
      */
     public function testDeleteQueryIsExecutedBeforeInsert(): void
     {
-        $capturedDql      = '';
-        $deleteCalledAt   = -1;
+        $capturedDql = '';
+        $deleteCalledAt = -1;
         $persistCallCount = 0;
 
         $response = $this->createStub(ResponseInterface::class);
@@ -261,25 +263,27 @@ ICS;
         $queryMock->method('setParameter')->willReturnCallback(
             function (string $k, mixed $v) use ($queryMock, &$deleteCalledAt, &$persistCallCount) {
                 unset($v);
-                if ($k === 'hc') {
+                if ('hc' === $k) {
                     $deleteCalledAt = $persistCallCount;
                 }
+
                 return $queryMock;
-            }
+            },
         );
 
         $em = $this->createStub(EntityManagerInterface::class);
-        $em->method('persist')->willReturnCallback(function (object $e) use (&$persistCallCount) {
+        $em->method('persist')->willReturnCallback(function (object $e) use (&$persistCallCount): void {
             if ($e instanceof HolidayEvent) {
-                $persistCallCount++;
+                ++$persistCallCount;
             }
         });
         $em->method('flush');
         $em->method('createQuery')->willReturnCallback(
             function (string $dql) use ($queryMock, &$capturedDql) {
                 $capturedDql = $dql;
+
                 return $queryMock;
-            }
+            },
         );
 
         new HolidayCalendarService($httpClient, $em)->fetchAndStore($hc);
@@ -292,11 +296,11 @@ ICS;
     /**
      * TC-8: HttpClient throws TransportException → exception propagates out of fetchAndStore().
      *
-     * @throws DateMalformedStringException
+     * @throws \DateMalformedStringException
      */
     public function testFetchFailurePropagatesException(): void
     {
-        $transportException = new class ('Connection refused') extends Exception implements TransportExceptionInterface {};
+        $transportException = new class('Connection refused') extends \Exception implements TransportExceptionInterface {};
 
         $httpClient = $this->createStub(HttpClientInterface::class);
         $httpClient->method('request')->willThrowException($transportException);
@@ -315,7 +319,7 @@ ICS;
      * TC-9: Event with no UID field is skipped gracefully.
      *
      * @throws TransportExceptionInterface
-     * @throws DateMalformedStringException
+     * @throws \DateMalformedStringException
      */
     public function testEventWithNoUidIsSkipped(): void
     {
@@ -331,7 +335,7 @@ END:VCALENDAR
 ICS;
 
         $persisted = [];
-        $count     = $this->makeService($ics, $persisted)->fetchAndStore($this->makeHolidayCalendar());
+        $count = $this->makeService($ics, $persisted)->fetchAndStore($this->makeHolidayCalendar());
 
         $this->assertCount(0, $persisted, 'Event without UID should be skipped');
         $this->assertSame(0, $count);
@@ -341,7 +345,7 @@ ICS;
      * TC-10: Empty VCALENDAR (no VEVENTs) → returns 0, flush is still called.
      *
      * @throws TransportExceptionInterface
-     * @throws DateMalformedStringException
+     * @throws \DateMalformedStringException
      */
     public function testEmptyCalendarReturnsZeroAndFlushes(): void
     {
@@ -361,7 +365,7 @@ ICS;
         $httpClient->method('request')->willReturn($response);
 
         $em = $this->createStub(EntityManagerInterface::class);
-        $em->method('flush')->willReturnCallback(function () use (&$flushCalled) {
+        $em->method('flush')->willReturnCallback(function () use (&$flushCalled): void {
             $flushCalled = true;
         });
         $em->method('createQuery')->willReturn($this->makeQueryStub());

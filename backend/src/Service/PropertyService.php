@@ -11,7 +11,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class PropertyService
 {
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(private EntityManagerInterface $em)
+    {
+    }
 
     public function list(Calendar $calendar): array
     {
@@ -69,10 +71,10 @@ readonly class PropertyService
     public function serialize(Property $property): array
     {
         return [
-            'id'         => $property->getId(),
+            'id' => $property->getId(),
             'calendarId' => $property->getCalendar()->getId(),
-            'name'       => $property->getName(),
-            'icon'       => $property->getIcon(),
+            'name' => $property->getName(),
+            'icon' => $property->getIcon(),
         ];
     }
 }

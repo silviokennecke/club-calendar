@@ -19,8 +19,8 @@ final class Version20260628011709 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        $this->addSql("ALTER TABLE location ADD updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
-        $this->addSql("ALTER TABLE location ALTER updated_at DROP DEFAULT");
+        $this->addSql('ALTER TABLE location ADD updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP');
+        $this->addSql('ALTER TABLE location ALTER updated_at DROP DEFAULT');
     }
 
     public function down(Schema $schema): void

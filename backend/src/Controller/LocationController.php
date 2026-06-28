@@ -20,7 +20,8 @@ class LocationController extends AbstractApiController
 {
     public function __construct(
         private readonly LocationService $locationService,
-    ) {}
+    ) {
+    }
 
     #[Route('', methods: ['GET'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]

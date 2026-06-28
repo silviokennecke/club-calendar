@@ -1,13 +1,14 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\EventListener;
 
 use App\Entity\Location;
 use App\Service\Map\MapCacheKeyHelper;
+use Doctrine\Bundle\DoctrineBundle\Attribute\AsEntityListener;
 use Doctrine\ORM\Event\PreUpdateEventArgs;
 use Doctrine\ORM\Events;
-use Doctrine\Bundle\DoctrineBundle\Attribute\AsEntityListener;
 use Symfony\Contracts\Cache\CacheInterface;
 
 #[AsEntityListener(event: Events::preUpdate, entity: Location::class)]
@@ -22,14 +23,15 @@ class LocationMapCacheInvalidator
         private readonly int $imageZoom,
         private readonly int $imageWidth,
         private readonly int $imageHeight,
-    ) {}
+    ) {
+    }
 
     public function preUpdate(Location $location, PreUpdateEventArgs $args): void
     {
         if (
             ($args->hasChangedField('latitude') || $args->hasChangedField('longitude'))
-            && $location->getLatitude() !== null
-            && $location->getLongitude() !== null
+            && null !== $location->getLatitude()
+            && null !== $location->getLongitude()
         ) {
             $this->pendingCoords[$location->getId()] = [
                 'lat' => $location->getLatitude(),

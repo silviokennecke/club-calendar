@@ -20,7 +20,8 @@ class FeatureController extends AbstractApiController
 {
     public function __construct(
         private readonly FeatureService $featureService,
-    ) {}
+    ) {
+    }
 
     #[Route('', methods: ['GET'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]

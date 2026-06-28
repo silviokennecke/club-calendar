@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Unit;
@@ -66,7 +67,7 @@ class MapCacheKeyHelperTest extends TestCase
 
     public function testForProxyRequestStripsAccessToken(): void
     {
-        $with    = MapCacheKeyHelper::forProxyRequest('GET', '/v4/tile', ['access_token' => 'secret', 'x' => '1']);
+        $with = MapCacheKeyHelper::forProxyRequest('GET', '/v4/tile', ['access_token' => 'secret', 'x' => '1']);
         $without = MapCacheKeyHelper::forProxyRequest('GET', '/v4/tile', ['x' => '1']);
         $this->assertSame($with, $without);
     }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Controller;
@@ -17,7 +18,6 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Throwable;
 
 #[Route('/api/map')]
 class MapController extends AbstractController
@@ -30,38 +30,39 @@ class MapController extends AbstractController
         private readonly int $imageZoom,
         private readonly int $imageWidth,
         private readonly int $imageHeight,
-    ) {}
+    ) {
+    }
 
     #[Route('/geocode/suggest', methods: ['GET'])]
     #[IsGranted('ROLE_USER')]
     public function suggest(Request $request): Response
     {
         $query = trim((string) $request->query->get('q', ''));
-        if ($query === '') {
+        if ('' === $query) {
             return $this->json(['suggestions' => []]);
         }
 
-        $lat   = $request->query->has('lat') ? (float) $request->query->get('lat') : null;
-        $lng   = $request->query->has('lng') ? (float) $request->query->get('lng') : null;
+        $lat = $request->query->has('lat') ? (float) $request->query->get('lat') : null;
+        $lng = $request->query->has('lng') ? (float) $request->query->get('lng') : null;
         $limit = max(1, min(10, (int) $request->query->get('limit', 6)));
 
         try {
             $results = $this->geocoder->suggest($query, $lat, $lng, $limit);
         } catch (RateLimitExceededException) {
             return new Response(null, 429);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('Geocoding suggest failed', ['exception' => $e]);
             throw new ServiceUnavailableHttpException(null, 'Geocoding service unavailable', $e);
         }
 
         return $this->json([
-            'suggestions' => array_map(fn($r) => [
-                'label'   => $r->label,
-                'lat'     => $r->lat,
-                'lng'     => $r->lng,
-                'street'  => $r->street,
-                'zip'     => $r->zip,
-                'city'    => $r->city,
+            'suggestions' => array_map(fn ($r) => [
+                'label' => $r->label,
+                'lat' => $r->lat,
+                'lng' => $r->lng,
+                'street' => $r->street,
+                'zip' => $r->zip,
+                'city' => $r->city,
                 'country' => $r->country,
             ], $results),
         ]);
@@ -78,20 +79,20 @@ class MapController extends AbstractController
             $address = $this->geocoder->reverse($lng, $lat);
         } catch (RateLimitExceededException) {
             return new Response(null, 429);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('Geocoding reverse failed', ['exception' => $e]);
             throw new ServiceUnavailableHttpException(null, 'Geocoding service unavailable', $e);
         }
 
-        if ($address === null) {
+        if (null === $address) {
             throw new NotFoundHttpException('No address found for the given coordinates');
         }
 
         return $this->json([
-            'label'   => $address->label,
-            'street'  => $address->street,
-            'zip'     => $address->zip,
-            'city'    => $address->city,
+            'label' => $address->label,
+            'street' => $address->street,
+            'zip' => $address->zip,
+            'city' => $address->city,
             'country' => $address->country,
         ]);
     }
@@ -100,7 +101,7 @@ class MapController extends AbstractController
     public function locationImage(string $id): Response
     {
         $location = $this->em->find(Location::class, $id);
-        if ($location === null || $location->getLatitude() === null || $location->getLongitude() === null) {
+        if (null === $location || null === $location->getLatitude() || null === $location->getLongitude()) {
             throw new NotFoundHttpException('Location not found or has no coordinates');
         }
 
@@ -110,9 +111,9 @@ class MapController extends AbstractController
     #[Route('/image/event/{id}', methods: ['GET'])]
     public function eventImage(string $id): Response
     {
-        $event    = $this->em->find(Event::class, $id);
+        $event = $this->em->find(Event::class, $id);
         $location = $event?->getLocation();
-        if ($location === null || $location->getLatitude() === null || $location->getLongitude() === null) {
+        if (null === $location || null === $location->getLatitude() || null === $location->getLongitude()) {
             throw new NotFoundHttpException('Event not found or has no location with coordinates');
         }
 
@@ -128,7 +129,7 @@ class MapController extends AbstractController
         }
 
         return new Response($bytes, 200, [
-            'Content-Type'  => 'image/jpeg',
+            'Content-Type' => 'image/jpeg',
             'Cache-Control' => 'public, max-age=3600',
         ]);
     }

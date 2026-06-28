@@ -19,11 +19,13 @@ class ClubMemberVoter extends Voter
 {
     public const string CLUB_MEMBER = 'CLUB_MEMBER';
 
-    public function __construct(private readonly EntityManagerInterface $em) {}
+    public function __construct(private readonly EntityManagerInterface $em)
+    {
+    }
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        return $attribute === self::CLUB_MEMBER && $subject instanceof Club;
+        return self::CLUB_MEMBER === $attribute && $subject instanceof Club;
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
@@ -41,6 +43,6 @@ class ClubMemberVoter extends Voter
             'user' => $user,
         ]);
 
-        return $clubUser !== null;
+        return null !== $clubUser;
     }
 }

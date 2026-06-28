@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\OAuth;
@@ -7,7 +8,9 @@ use League\OAuth2\Client\Provider\ResourceOwnerInterface;
 
 class OidcResourceOwner implements ResourceOwnerInterface
 {
-    public function __construct(private readonly array $data) {}
+    public function __construct(private readonly array $data)
+    {
+    }
 
     public function getId(): string
     {

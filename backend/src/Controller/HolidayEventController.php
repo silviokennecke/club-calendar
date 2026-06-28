@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Controller;
@@ -6,8 +7,6 @@ namespace App\Controller;
 use App\Entity\Calendar;
 use App\Repository\HolidayEventRepository;
 use App\Security\CalendarMemberVoter;
-use DateMalformedStringException;
-use DateTimeImmutable;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,7 +19,8 @@ class HolidayEventController extends AbstractApiController
 {
     public function __construct(
         private readonly HolidayEventRepository $holidayEventRepo,
-    ) {}
+    ) {
+    }
 
     #[Route('', methods: ['GET'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
@@ -41,9 +41,9 @@ class HolidayEventController extends AbstractApiController
         }
 
         try {
-            $fromDate = new DateTimeImmutable($from);
-            $toDate = new DateTimeImmutable($to);
-        } catch (DateMalformedStringException) {
+            $fromDate = new \DateTimeImmutable($from);
+            $toDate = new \DateTimeImmutable($to);
+        } catch (\DateMalformedStringException) {
             throw new BadRequestHttpException('Invalid date format');
         }
 
@@ -54,11 +54,11 @@ class HolidayEventController extends AbstractApiController
         );
 
         return new JsonResponse(array_map(fn ($e) => [
-            'id'                => $e->getId(),
+            'id' => $e->getId(),
             'holidayCalendarId' => $e->getHolidayCalendar()->getId(),
-            'name'              => $e->getName(),
-            'date'              => $e->getDate()->format('Y-m-d'),
-            'dateEnd'           => $e->getDateEnd()?->format('Y-m-d'),
+            'name' => $e->getName(),
+            'date' => $e->getDate()->format('Y-m-d'),
+            'dateEnd' => $e->getDateEnd()?->format('Y-m-d'),
         ], $events));
     }
 }

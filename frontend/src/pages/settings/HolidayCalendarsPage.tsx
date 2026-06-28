@@ -1,110 +1,112 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useParams } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { useState, useEffect, useCallback } from "react";
+import { useParams } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog'
-import { FormField, SectionHeader } from '@/components/ui/shared'
+} from "@/components/ui/dialog";
+import { FormField, SectionHeader } from "@/components/ui/shared";
 import {
   getHolidayCalendars,
   createHolidayCalendar,
   deleteHolidayCalendar,
   refreshHolidayCalendar,
-} from '@/lib/api'
-import type { HolidayCalendar } from '@/lib/types'
-import { useTranslation } from 'react-i18next'
+} from "@/lib/api";
+import type { HolidayCalendar } from "@/lib/types";
+import { useTranslation } from "react-i18next";
 
 export default function HolidayCalendarsPage() {
-  const { t } = useTranslation()
-  const { calendarId } = useParams<{ calendarId: string }>()
+  const { t } = useTranslation();
+  const { calendarId } = useParams<{ calendarId: string }>();
 
-  const [items, setItems] = useState<HolidayCalendar[]>([])
-  const [loading, setLoading] = useState(true)
-  const [refreshingId, setRefreshingId] = useState<string | null>(null)
-  const [showAdd, setShowAdd] = useState(false)
-  const [form, setForm] = useState({ name: '', url: '' })
-  const [saving, setSaving] = useState(false)
-  const [addError, setAddError] = useState<string | null>(null)
+  const [items, setItems] = useState<HolidayCalendar[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ name: "", url: "" });
+  const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      setItems(await getHolidayCalendars(calendarId!))
+      setItems(await getHolidayCalendars(calendarId!));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [calendarId])
+  }, [calendarId]);
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load();
+  }, [load]);
 
   async function handleAdd() {
-    setSaving(true)
-    setAddError(null)
+    setSaving(true);
+    setAddError(null);
     try {
-      const created = await createHolidayCalendar(calendarId!, form)
-      setItems(prev => [...prev, created])
-      setShowAdd(false)
-      setForm({ name: '', url: '' })
+      const created = await createHolidayCalendar(calendarId!, form);
+      setItems((prev) => [...prev, created]);
+      setShowAdd(false);
+      setForm({ name: "", url: "" });
     } catch (e: unknown) {
-      setAddError(e instanceof Error ? e.message : 'Failed to create')
+      setAddError(e instanceof Error ? e.message : "Failed to create");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
   async function handleDelete(hcId: string) {
-    if (!window.confirm('Delete this holiday calendar and all its events?')) return
+    if (!window.confirm("Delete this holiday calendar and all its events?")) return;
     try {
-      await deleteHolidayCalendar(calendarId!, hcId)
-      setItems(prev => prev.filter(hc => hc.id !== hcId))
+      await deleteHolidayCalendar(calendarId!, hcId);
+      setItems((prev) => prev.filter((hc) => hc.id !== hcId));
     } catch (e: unknown) {
-      window.alert(e instanceof Error ? e.message : 'Delete failed')
+      window.alert(e instanceof Error ? e.message : "Delete failed");
     }
   }
 
   async function handleRefresh(hcId: string) {
-    setRefreshingId(hcId)
+    setRefreshingId(hcId);
     try {
-      const updated = await refreshHolidayCalendar(calendarId!, hcId)
-      setItems(prev => prev.map(hc => (hc.id === hcId ? updated : hc)))
+      const updated = await refreshHolidayCalendar(calendarId!, hcId);
+      setItems((prev) => prev.map((hc) => (hc.id === hcId ? updated : hc)));
     } catch (e: unknown) {
-      window.alert(e instanceof Error ? e.message : 'Refresh failed')
+      window.alert(e instanceof Error ? e.message : "Refresh failed");
     } finally {
-      setRefreshingId(null)
+      setRefreshingId(null);
     }
   }
 
   return (
     <div className="p-6">
       <SectionHeader
-        title={t('settings.holidays.title')}
-        action={<Button onClick={() => setShowAdd(true)}>{t('settings.holidays.newCalendar')}</Button>}
+        title={t("settings.holidays.title")}
+        action={
+          <Button onClick={() => setShowAdd(true)}>{t("settings.holidays.newCalendar")}</Button>
+        }
         className="mb-5"
       />
 
       {loading ? (
-        <p className="text-muted-foreground">{t('common.loading')}</p>
+        <p className="text-muted-foreground">{t("common.loading")}</p>
       ) : items.length === 0 ? (
-        <p className="text-muted-foreground">
-          {t('settings.holidays.noHolidayCalendars')}
-        </p>
+        <p className="text-muted-foreground">{t("settings.holidays.noHolidayCalendars")}</p>
       ) : (
         <ul className="space-y-3">
-          {items.map(hc => (
+          {items.map((hc) => (
             <li key={hc.id} className="flex items-start justify-between rounded-lg border p-4">
               <div>
                 <p className="font-medium">{hc.name}</p>
-                <p className="text-sm text-muted-foreground break-all">{hc.url}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t('settings.holidays.eventCount', { count: hc.eventCount })}
+                <p className="text-muted-foreground text-sm break-all">{hc.url}</p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  {t("settings.holidays.eventCount", { count: hc.eventCount })}
                   {hc.lastFetchedAt
-                    ? ` · ${t('settings.holidays.lastFetched', { date: new Date(hc.lastFetchedAt).toLocaleString() })}`
-                    : ` · ${t('settings.holidays.neverFetched')}`}
+                    ? ` · ${t("settings.holidays.lastFetched", { date: new Date(hc.lastFetchedAt).toLocaleString() })}`
+                    : ` · ${t("settings.holidays.neverFetched")}`}
                 </p>
               </div>
               <div className="ml-4 flex shrink-0 gap-2">
@@ -114,10 +116,12 @@ export default function HolidayCalendarsPage() {
                   disabled={refreshingId === hc.id}
                   onClick={() => handleRefresh(hc.id)}
                 >
-                  {refreshingId === hc.id ? t('settings.holidays.refreshing') : t('settings.holidays.refresh')}
+                  {refreshingId === hc.id
+                    ? t("settings.holidays.refreshing")
+                    : t("settings.holidays.refresh")}
                 </Button>
                 <Button variant="destructive" size="sm" onClick={() => handleDelete(hc.id)}>
-                  {t('common.delete')}
+                  {t("common.delete")}
                 </Button>
               </div>
             </li>
@@ -125,41 +129,47 @@ export default function HolidayCalendarsPage() {
         </ul>
       )}
 
-      <Dialog open={showAdd} onOpenChange={open => { setShowAdd(open); if (!open) setAddError(null) }}>
+      <Dialog
+        open={showAdd}
+        onOpenChange={(open) => {
+          setShowAdd(open);
+          if (!open) setAddError(null);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('settings.holidays.newCalendar')}</DialogTitle>
+            <DialogTitle>{t("settings.holidays.newCalendar")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <FormField label={t('common.name')}>
+            <FormField label={t("common.name")}>
               <Input
                 id="hc-name"
                 value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="German Public Holidays"
               />
             </FormField>
-            <FormField label={t('settings.holidays.url')}>
+            <FormField label={t("settings.holidays.url")}>
               <Input
                 id="hc-url"
                 type="url"
                 value={form.url}
-                onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
                 placeholder="https://calendar.google.com/calendar/ical/..."
               />
             </FormField>
-            {addError && <p className="text-sm text-destructive">{addError}</p>}
+            {addError && <p className="text-destructive text-sm">{addError}</p>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAdd(false)}>
-              {t('common.cancel')}
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleAdd} disabled={saving || !form.name || !form.url}>
-              {saving ? t('settings.holidays.adding') : t('settings.holidays.addAndFetch')}
+              {saving ? t("settings.holidays.adding") : t("settings.holidays.addAndFetch")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

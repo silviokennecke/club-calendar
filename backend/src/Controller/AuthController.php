@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Controller;
@@ -30,7 +31,8 @@ class AuthController extends AbstractApiController
         private readonly ClientRegistry $clientRegistry,
         #[Autowire(param: 'knpu_oauth2_client.providers_meta')]
         private readonly array $providersMeta,
-    ) {}
+    ) {
+    }
 
     #[Route('/register', methods: ['POST'])]
     public function register(Request $request): JsonResponse
@@ -38,10 +40,11 @@ class AuthController extends AbstractApiController
         try {
             $dto = $this->serializer->deserialize($request->getContent(), RegisterDto::class, 'json');
         } catch (SerializerException $e) {
-            throw new BadRequestHttpException('Invalid JSON body: ' . $e->getMessage(), $e);
+            throw new BadRequestHttpException('Invalid JSON body: '.$e->getMessage(), $e);
         }
         $this->validateDto($dto, $this->validator);
         $result = $this->auth->register($dto->name, $dto->email, $dto->password, $dto->language);
+
         return new JsonResponse($result, Response::HTTP_CREATED);
     }
 
@@ -51,20 +54,22 @@ class AuthController extends AbstractApiController
         try {
             $dto = $this->serializer->deserialize($request->getContent(), LoginDto::class, 'json');
         } catch (SerializerException $e) {
-            throw new BadRequestHttpException('Invalid JSON body: ' . $e->getMessage(), $e);
+            throw new BadRequestHttpException('Invalid JSON body: '.$e->getMessage(), $e);
         }
         $this->validateDto($dto, $this->validator);
+
         return new JsonResponse($this->auth->login($dto->email, $dto->password));
     }
 
     #[Route('/token', methods: ['POST'])]
     public function token(Request $request): JsonResponse
     {
-        $grantType    = $request->request->get('grant_type');
+        $grantType = $request->request->get('grant_type');
         $refreshToken = $request->request->get('refresh_token');
-        if ($grantType !== 'refresh_token' || empty($refreshToken)) {
+        if ('refresh_token' !== $grantType || empty($refreshToken)) {
             throw new BadRequestHttpException('Invalid grant type or missing refresh_token');
         }
+
         return new JsonResponse($this->auth->refresh($refreshToken));
     }
 
@@ -78,6 +83,7 @@ class AuthController extends AbstractApiController
     public function getMe(): JsonResponse
     {
         $user = $this->userResolver->resolve();
+
         return new JsonResponse($this->auth->getMe($user));
     }
 
@@ -87,11 +93,20 @@ class AuthController extends AbstractApiController
         $user = $this->userResolver->resolve();
         $data = $this->decodeJson($request);
         $dto = new UpdateMeDto();
-        if (array_key_exists('dateFormat', $data))     $dto->dateFormat     = $data['dateFormat'];
-        if (array_key_exists('firstDayOfWeek', $data)) $dto->firstDayOfWeek = $data['firstDayOfWeek'];
-        if (array_key_exists('lastClubId', $data))     $dto->lastClubId     = $data['lastClubId'];
-        if (array_key_exists('lastCalendarId', $data)) $dto->lastCalendarId = $data['lastCalendarId'];
+        if (array_key_exists('dateFormat', $data)) {
+            $dto->dateFormat = $data['dateFormat'];
+        }
+        if (array_key_exists('firstDayOfWeek', $data)) {
+            $dto->firstDayOfWeek = $data['firstDayOfWeek'];
+        }
+        if (array_key_exists('lastClubId', $data)) {
+            $dto->lastClubId = $data['lastClubId'];
+        }
+        if (array_key_exists('lastCalendarId', $data)) {
+            $dto->lastCalendarId = $data['lastCalendarId'];
+        }
         $this->validateDto($dto, $this->validator);
+
         return new JsonResponse($this->auth->updateMe($user, $data));
     }
 
@@ -100,6 +115,7 @@ class AuthController extends AbstractApiController
     {
         $user = $this->userResolver->resolve();
         $this->auth->deleteMe($user);
+
         return new JsonResponse(['ok' => true]);
     }
 
@@ -112,13 +128,14 @@ class AuthController extends AbstractApiController
             if (empty($_ENV["{$envPrefix}_CLIENT_ID"]) || empty($_ENV["{$envPrefix}_CLIENT_SECRET"])) {
                 continue;
             }
-            $meta     = $this->providersMeta[$id] ?? [];
+            $meta = $this->providersMeta[$id] ?? [];
             $result[] = [
-                'id'   => $id,
+                'id' => $id,
                 'name' => $meta['label'] ?? ucfirst($id),
-                'icon' => $meta['icon']  ?? $id,
+                'icon' => $meta['icon'] ?? $id,
             ];
         }
+
         return new JsonResponse($result);
     }
 }

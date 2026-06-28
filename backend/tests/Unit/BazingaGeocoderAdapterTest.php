@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Tests\Unit;
@@ -6,12 +7,9 @@ namespace App\Tests\Unit;
 use App\Service\Map\BazingaGeocoderAdapter;
 use App\Service\Map\GeocodedAddress;
 use App\Service\Map\SuggestionResult;
-use Geocoder\Collection;
 use Geocoder\Geocoder;
 use Geocoder\Model\Address;
 use Geocoder\Model\AddressCollection;
-use Geocoder\Query\GeocodeQuery;
-use Geocoder\Query\ReverseQuery;
 use PHPUnit\Framework\TestCase;
 
 class BazingaGeocoderAdapterTest extends TestCase
@@ -24,14 +22,14 @@ class BazingaGeocoderAdapterTest extends TestCase
     public function testSuggestReturnsNormalizedResults(): void
     {
         $geocoder = $this->createMock(Geocoder::class);
-        $address  = $this->makeAddress([
-            'latitude'     => 48.137,
-            'longitude'    => 11.575,
-            'streetName'   => 'Marienplatz',
+        $address = $this->makeAddress([
+            'latitude' => 48.137,
+            'longitude' => 11.575,
+            'streetName' => 'Marienplatz',
             'streetNumber' => '1',
-            'postalCode'   => '80331',
-            'locality'     => 'München',
-            'countryName'  => 'Germany',
+            'postalCode' => '80331',
+            'locality' => 'München',
+            'countryName' => 'Germany',
         ]);
         $geocoder->method('geocodeQuery')->willReturn(new AddressCollection([$address]));
 
@@ -59,17 +57,17 @@ class BazingaGeocoderAdapterTest extends TestCase
     public function testReverseReturnsGeocodedAddress(): void
     {
         $geocoder = $this->createMock(Geocoder::class);
-        $address  = $this->makeAddress([
-            'latitude'    => 48.137,
-            'longitude'   => 11.575,
-            'streetName'  => 'Marienplatz',
-            'locality'    => 'München',
+        $address = $this->makeAddress([
+            'latitude' => 48.137,
+            'longitude' => 11.575,
+            'streetName' => 'Marienplatz',
+            'locality' => 'München',
             'countryName' => 'Germany',
         ]);
         $geocoder->method('reverseQuery')->willReturn(new AddressCollection([$address]));
 
         $adapter = new BazingaGeocoderAdapter($geocoder);
-        $result  = $adapter->reverse(11.575, 48.137);
+        $result = $adapter->reverse(11.575, 48.137);
 
         $this->assertInstanceOf(GeocodedAddress::class, $result);
         $this->assertSame('München', $result->city);
