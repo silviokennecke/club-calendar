@@ -186,6 +186,10 @@ jobs:
         working-directory: backend
         run: composer install --no-interaction --prefer-dist --no-scripts
 
+      - name: Create .env for console commands
+        working-directory: backend
+        run: cp .env.example .env
+
       - name: Generate JWT keypair
         working-directory: backend
         env:
@@ -314,6 +318,10 @@ jobs:
       - name: Install Playwright browsers
         working-directory: frontend
         run: npx playwright install --with-deps chromium
+
+      - name: Create .env for console commands
+        working-directory: backend
+        run: cp .env.example .env
 
       - name: Generate JWT keypair
         working-directory: backend
