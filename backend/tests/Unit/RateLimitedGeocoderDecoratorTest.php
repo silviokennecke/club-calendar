@@ -25,7 +25,7 @@ class RateLimitedGeocoderDecoratorTest extends TestCase
         return $factory;
     }
 
-    private function makeDecorator(bool $dailyAccepted, bool $hourlyAccepted): RateLimitedGeocoderDecorator
+    private function makeDecorator(bool $systemAccepted, bool $userAccepted): RateLimitedGeocoderDecorator
     {
         $inner       = $this->createMock(GeocoderInterface::class);
         $inner->method('suggest')->willReturn([]);
@@ -34,8 +34,8 @@ class RateLimitedGeocoderDecoratorTest extends TestCase
         $userContext->method('getUserIdentifier')->willReturn('user-1');
         return new RateLimitedGeocoderDecorator(
             $inner,
-            $this->makeFactory($dailyAccepted),
-            $this->makeFactory($hourlyAccepted),
+            $this->makeFactory($systemAccepted),
+            $this->makeFactory($userAccepted),
             $userContext,
         );
     }
@@ -46,13 +46,13 @@ class RateLimitedGeocoderDecoratorTest extends TestCase
         $this->assertSame([], $result);
     }
 
-    public function testSuggestThrowsWhenDailyLimitExceeded(): void
+    public function testSuggestThrowsWhenSystemLimitExceeded(): void
     {
         $this->expectException(RateLimitExceededException::class);
         $this->makeDecorator(false, true)->suggest('test');
     }
 
-    public function testSuggestThrowsWhenHourlyLimitExceeded(): void
+    public function testSuggestThrowsWhenUserLimitExceeded(): void
     {
         $this->expectException(RateLimitExceededException::class);
         $this->makeDecorator(true, false)->suggest('test');
@@ -64,7 +64,7 @@ class RateLimitedGeocoderDecoratorTest extends TestCase
         $this->assertNull($result);
     }
 
-    public function testReverseThrowsWhenDailyLimitExceeded(): void
+    public function testReverseThrowsWhenSystemLimitExceeded(): void
     {
         $this->expectException(RateLimitExceededException::class);
         $this->makeDecorator(false, true)->reverse(11.5, 48.1);
