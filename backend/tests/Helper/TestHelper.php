@@ -28,6 +28,7 @@ class TestHelper
         $user->setName('Test User');
         $user->setEmail($email);
         $user->setPassword($hasher->hashPassword($user, $password));
+        $user->setIsEmailVerified(true);
         $em->persist($user);
         $em->flush();
 
