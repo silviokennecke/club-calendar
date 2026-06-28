@@ -22,13 +22,14 @@ class TestHelper
         UserPasswordHasherInterface $hasher,
         ?string $email = null,
         string $password = 'password123',
+        bool $isEmailVerified = true,
     ): User {
         $email ??= 'user'.uniqid().'@example.com';
         $user = new User();
         $user->setName('Test User');
         $user->setEmail($email);
         $user->setPassword($hasher->hashPassword($user, $password));
-        $user->setIsEmailVerified(true);
+        $user->setIsEmailVerified($isEmailVerified);
         $em->persist($user);
         $em->flush();
 
