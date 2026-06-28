@@ -29,6 +29,10 @@ services:
         arguments:
             $geocoder: '@geocoder.mapbox_de'
 
+    App\Service\Map\MapboxMapImageProvider:
+        arguments:
+            $mapboxToken: '%env(MAPBOX_TOKEN)%'
+
     App\Service\TokenService:
         arguments:
             $refreshSecret: '%env(JWT_REFRESH_SECRET)%'
