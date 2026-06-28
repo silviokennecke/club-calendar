@@ -340,9 +340,10 @@ jobs:
       - name: Generate JWT keypair
         working-directory: backend
         env:
-          APP_ENV: dev
+          APP_ENV: test
           APP_SECRET: ci-app-secret-for-testing-only
           DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
+          TEST_DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
           JWT_REFRESH_SECRET: ci-refresh-secret-at-least-32-chars-for-testing
           FRONTEND_URL: http://localhost:5173
         run: php bin/console lexik:jwt:generate-keypair --overwrite
@@ -350,9 +351,10 @@ jobs:
       - name: Run migrations and seed
         working-directory: backend
         env:
-          APP_ENV: dev
+          APP_ENV: test
           APP_SECRET: ci-app-secret-for-testing-only
           DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
+          TEST_DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
           JWT_REFRESH_SECRET: ci-refresh-secret-at-least-32-chars-for-testing
           FRONTEND_URL: http://localhost:5173
         run: |
@@ -369,12 +371,16 @@ jobs:
       - name: Start backend
         working-directory: backend
         env:
-          APP_ENV: dev
+          APP_ENV: test
           APP_SECRET: ci-app-secret-for-testing-only
           DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
+          TEST_DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
           JWT_REFRESH_SECRET: ci-refresh-secret-at-least-32-chars-for-testing
           FRONTEND_URL: http://localhost:3000
-        run: php -S 0.0.0.0:3001 -t public/ &
+          DEFAULT_URI: http://localhost:3001
+          WEBAUTHN_RP_ID: localhost
+          WEBAUTHN_RP_NAME: Club Calendar CI
+        run: php -S 0.0.0.0:3001 -t public/ > /tmp/php-server.log 2>&1 &
 
       - name: Start frontend preview
         working-directory: frontend
@@ -384,6 +390,16 @@ jobs:
         run: |
           npx wait-on http://localhost:3001/api/health --timeout 30000
           npx wait-on http://localhost:3000 --timeout 30000
+
+      - name: Smoke-test login API
+        run: |
+          echo "Testing login endpoint..."
+          curl -v -X POST http://localhost:3001/api/auth/login \
+            -H "Content-Type: application/json" \
+            -H "Origin: http://localhost:3000" \
+            -d '{"email":"admin@example.com","password":"password123"}' \
+            2>&1 | tee /tmp/login-smoke-test.log
+          echo "Exit code: $?"
 
       - name: Run Playwright E2E tests
         working-directory: frontend
@@ -397,4 +413,20 @@ jobs:
         with:
           name: playwright-report
           path: frontend/playwright-report/
+          retention-days: 7
+
+      - name: Upload backend server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-server-log
+          path: /tmp/php-server.log
+          retention-days: 7
+
+      - name: Upload login smoke test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: login-smoke-test
+          path: /tmp/login-smoke-test.log
           retention-days: 7
