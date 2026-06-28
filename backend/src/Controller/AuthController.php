@@ -41,7 +41,7 @@ class AuthController extends AbstractApiController
             throw new BadRequestHttpException('Invalid JSON body: ' . $e->getMessage(), $e);
         }
         $this->validateDto($dto, $this->validator);
-        $result = $this->auth->register($dto->name, $dto->email, $dto->password);
+        $result = $this->auth->register($dto->name, $dto->email, $dto->password, $dto->language);
         return new JsonResponse($result, Response::HTTP_CREATED);
     }
 

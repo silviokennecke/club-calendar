@@ -39,6 +39,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 36, nullable: true)]
     private ?string $lastCalendarId = null;
 
+    #[ORM\Column(length: 10)]
+    private string $language = 'en';
+
     #[ORM\OneToMany(targetEntity: ClubUser::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
     private Collection $clubs;
 
@@ -141,6 +144,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setLastCalendarId(?string $lastCalendarId): static
     {
         $this->lastCalendarId = $lastCalendarId;
+
+        return $this;
+    }
+
+    public function getLanguage(): string
+    {
+        return $this->language;
+    }
+
+    public function setLanguage(string $language): static
+    {
+        $this->language = $language;
 
         return $this;
     }

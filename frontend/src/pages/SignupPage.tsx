@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { apiPost } from '@/lib/api'
+import i18n from '@/lib/i18n'
 import { useAuth } from '@/lib/auth-context'
 import type { User } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -28,7 +29,7 @@ export default function SignupPage() {
     if (password.length < 8) { setError(t('auth.passwordTooShort')); return }
     setLoading(true)
     try {
-      const data = await apiPost<{ access_token: string; refresh_token: string; user: User }>('/api/auth/register', { name, email, password })
+      const data = await apiPost<{ access_token: string; refresh_token: string; user: User }>('/api/auth/register', { name, email, password, language: i18n.resolvedLanguage ?? 'en' })
       login(data.access_token, data.refresh_token, data.user)
       navigate('/clubs')
     } catch (e: unknown) {

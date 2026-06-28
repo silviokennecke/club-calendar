@@ -1,6 +1,14 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { apiGet, apiPatch, clearTokens, storeTokens, getAccessToken } from './api'
+import i18n from './i18n'
 import type { User } from './types'
+
+const SUPPORTED_LANGS = ['en', 'de']
+
+function applyUserLanguage(user: User) {
+  const lang = SUPPORTED_LANGS.includes(user.language) ? user.language : 'en'
+  i18n.changeLanguage(lang)
+}
 
 interface AuthContextValue {
   user: User | null
@@ -23,13 +31,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     apiGet<User>('/api/auth/me')
-      .then(setUser)
+      .then(user => { applyUserLanguage(user); setUser(user) })
       .catch(() => { clearTokens(); setUser(null) })
       .finally(() => setLoading(false))
   }, [])
 
   const login = (accessToken: string, refreshToken: string, user: User) => {
     storeTokens(accessToken, refreshToken)
+    applyUserLanguage(user)
     setUser(user)
   }
 
