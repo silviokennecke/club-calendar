@@ -2,6 +2,7 @@ parameters:
     env(MICROSOFT_TENANT_ID): 'common'
     microsoft_oidc_issuer: 'https://login.microsoftonline.com/%env(MICROSOFT_TENANT_ID)%/v2.0'
     env(MAPBOX_TOKEN): ''
+    env(MAP_IMAGE_CACHE_TTL): '86400'
 
 services:
     _defaults:
@@ -32,6 +33,10 @@ services:
     App\Service\Map\MapboxMapImageProvider:
         arguments:
             $mapboxToken: '%env(MAPBOX_TOKEN)%'
+
+    App\EventListener\LocationMapCacheInvalidator:
+        arguments:
+            $mapImagesCache: '@map_images'
 
     App\Service\TokenService:
         arguments:

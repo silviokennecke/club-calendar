@@ -3,4 +3,4 @@ framework:
         pools:
             map_images:
                 adapter: cache.adapter.filesystem
-                default_lifetime: '%env(int:default:86400:MAP_IMAGE_CACHE_TTL)%'
+                default_lifetime: '%env(int:MAP_IMAGE_CACHE_TTL)%'
