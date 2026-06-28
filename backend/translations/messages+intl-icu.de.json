@@ -1,0 +1,12 @@
+{
+    "email": {
+        "verify": {
+            "subject": "Bitte bestätige deine E-Mail-Adresse",
+            "greeting": "Hallo {name},",
+            "body": "Danke für deine Registrierung. Klicke bitte auf den Button unten, um deine E-Mail-Adresse zu bestätigen. Dieser Link ist 24 Stunden gültig.",
+            "button": "E-Mail-Adresse bestätigen",
+            "expiry_note": "Falls du kein Konto erstellt hast, kannst du diese E-Mail ignorieren.",
+            "ignore_note": "Dieser Link läuft in 24 Stunden ab."
+        }
+    }
+}

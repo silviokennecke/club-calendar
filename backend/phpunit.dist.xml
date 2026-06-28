@@ -23,6 +23,10 @@
 
         <env name="MAILER_DSN" value="null://null"/>
         <env name="MAILER_FROM" value="noreply@test.example.com"/>
+
+        <!-- ###+ symfony/mailer ### -->
+        <env name="MAILER_DSN" value="null://null"/>
+        <!-- ###- symfony/mailer ### -->
     </php>
 
     <testsuites>
