@@ -20,6 +20,9 @@
         <!-- ###+ nelmio/cors-bundle ### -->
         <env name="CORS_ALLOW_ORIGIN" value="'^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$'"/>
         <!-- ###- nelmio/cors-bundle ### -->
+
+        <env name="MAILER_DSN" value="null://null"/>
+        <env name="MAILER_FROM" value="noreply@test.example.com"/>
     </php>
 
     <testsuites>
