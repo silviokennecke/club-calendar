@@ -15,7 +15,10 @@ async function goToFeeds(page: Page) {
   await page.waitForLoadState("networkidle");
   if (!page.url().includes("/calendars/")) {
     // Still on clubs list — navigate through UI
-    await page.getByRole("main").getByText(/Schützenverein/i).click();
+    await page
+      .getByRole("main")
+      .getByText(/Schützenverein/i)
+      .click();
     await page.getByText(/Vereinskalender/i).click();
   }
   // Now on calendar page — click feeds link in sidebar
@@ -32,7 +35,12 @@ test.describe("Feeds", () => {
   test("public feed shows ICS URL", async ({ page }) => {
     await goToFeeds(page);
     // ICS URL should contain the feed API path
-    await expect(page.locator("code").filter({ hasText: /\/api\/feed\// }).first()).toBeVisible();
+    await expect(
+      page
+        .locator("code")
+        .filter({ hasText: /\/api\/feed\// })
+        .first(),
+    ).toBeVisible();
   });
 
   test("private feed shows shared secret toggle", async ({ page }) => {
