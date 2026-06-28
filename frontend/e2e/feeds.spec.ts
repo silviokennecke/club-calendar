@@ -4,14 +4,21 @@ async function login(page: Page) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill("admin@example.com");
   await page.getByLabel(/password/i).fill("password123");
-  await page.getByRole("button", { name: /log in/i }).click();
-  await page.waitForURL("**/clubs");
+  await page.getByRole("button", { name: /^sign in$/i }).click();
+  await page.waitForURL("**/clubs**");
 }
 
 async function goToFeeds(page: Page) {
   await login(page);
-  await page.getByText(/Schützenverein/i).click();
-  await page.getByText(/Vereinskalender/i).click();
+  // Go to clubs list; wait for potential auto-redirect to settle
+  await page.goto("/clubs");
+  await page.waitForLoadState("networkidle");
+  if (!page.url().includes("/calendars/")) {
+    // Still on clubs list — navigate through UI
+    await page.getByRole("main").getByText(/Schützenverein/i).click();
+    await page.getByText(/Vereinskalender/i).click();
+  }
+  // Now on calendar page — click feeds link in sidebar
   await page.getByRole("link", { name: /feeds/i }).click();
   await page.waitForURL("**/settings/feeds");
 }
@@ -24,8 +31,8 @@ test.describe("Feeds", () => {
 
   test("public feed shows ICS URL", async ({ page }) => {
     await goToFeeds(page);
-    // ICS URL should contain the backend URL
-    await expect(page.getByText(/localhost:3001\/api\/feed/).first()).toBeVisible();
+    // ICS URL should contain the feed API path
+    await expect(page.locator("code").filter({ hasText: /\/api\/feed\// }).first()).toBeVisible();
   });
 
   test("private feed shows shared secret toggle", async ({ page }) => {

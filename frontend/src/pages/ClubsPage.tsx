@@ -96,7 +96,11 @@ export default function ClubsPage() {
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {clubs.map((club) => (
-            <Card key={club.id} className="border-slate-200">
+            <Card
+              key={club.id}
+              className="cursor-pointer border-slate-200 transition-colors hover:border-slate-300 hover:bg-slate-50"
+              onClick={() => navigate(`/clubs/${club.id}`)}
+            >
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">{club.name}</CardTitle>
               </CardHeader>
