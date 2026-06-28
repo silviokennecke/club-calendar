@@ -231,6 +231,9 @@ jobs:
           TEST_DATABASE_URL: mysql://root:root@127.0.0.1:3360/club_calendar_test
           JWT_REFRESH_SECRET: ci-refresh-secret-at-least-32-chars-for-testing
           FRONTEND_URL: http://localhost:5173
+          DEFAULT_URI: http://localhost:3001
+          WEBAUTHN_RP_ID: localhost
+          WEBAUTHN_RP_NAME: Club Calendar CI
         run: php bin/phpunit
 
   # ────────────────────────────────────────────────────────────────────────────
