@@ -19,6 +19,16 @@ services:
         arguments:
             $mapboxToken: '%env(MAPBOX_TOKEN)%'
 
+    geocoder.mapbox_de:
+        class: Geocoder\StatefulGeocoder
+        arguments:
+            $provider: '@bazinga_geocoder.provider.mapbox'
+            $locale: 'de'
+
+    App\Service\Map\BazingaGeocoderAdapter:
+        arguments:
+            $geocoder: '@geocoder.mapbox_de'
+
     App\Service\TokenService:
         arguments:
             $refreshSecret: '%env(JWT_REFRESH_SECRET)%'
