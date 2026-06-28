@@ -3,29 +3,35 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\Event;
+use App\Entity\Location;
 use App\Service\Map\GeocoderInterface;
 use App\Service\Map\MapImageProviderInterface;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Cache\CacheInterface;
-use Symfony\Contracts\Cache\ItemInterface;
+use Throwable;
 
 #[Route('/api/map')]
 class MapController extends AbstractController
 {
-    private const IMAGE_WIDTH  = 800;
-    private const IMAGE_HEIGHT = 288;
-    private const IMAGE_ZOOM   = 14;
+    private const int IMAGE_WIDTH  = 800;
+    private const int IMAGE_HEIGHT = 288;
+    private const int IMAGE_ZOOM   = 14;
 
     public function __construct(
         private readonly GeocoderInterface $geocoder,
         private readonly MapImageProviderInterface $mapImageProvider,
         private readonly EntityManagerInterface $em,
         private readonly CacheInterface $mapImagesCache,
+        private readonly LoggerInterface $logger,
     ) {}
 
     #[Route('/geocode/suggest', methods: ['GET'])]
@@ -43,8 +49,9 @@ class MapController extends AbstractController
 
         try {
             $results = $this->geocoder->suggest($query, $lat, $lng, $limit);
-        } catch (\Throwable) {
-            return $this->json(['error' => 'Geocoding service unavailable'], 503);
+        } catch (Throwable $e) {
+            $this->logger->error('Geocoding suggest failed', ['exception' => $e]);
+            throw new ServiceUnavailableHttpException(null, 'Geocoding service unavailable', $e);
         }
 
         return $this->json([
@@ -69,12 +76,13 @@ class MapController extends AbstractController
 
         try {
             $address = $this->geocoder->reverse($lng, $lat);
-        } catch (\Throwable) {
-            return $this->json(['error' => 'Geocoding service unavailable'], 503);
+        } catch (Throwable $e) {
+            $this->logger->error('Geocoding reverse failed', ['exception' => $e]);
+            throw new ServiceUnavailableHttpException(null, 'Geocoding service unavailable', $e);
         }
 
         if ($address === null) {
-            return $this->json(['error' => 'No address found'], 404);
+            throw new NotFoundHttpException('No address found for the given coordinates');
         }
 
         return $this->json([
@@ -89,9 +97,9 @@ class MapController extends AbstractController
     #[Route('/image/location/{id}', methods: ['GET'])]
     public function locationImage(string $id): Response
     {
-        $location = $this->em->find(\App\Entity\Location::class, $id);
+        $location = $this->em->find(Location::class, $id);
         if ($location === null || $location->getLatitude() === null || $location->getLongitude() === null) {
-            return new Response('', 404);
+            throw new NotFoundHttpException('Location not found or has no coordinates');
         }
 
         return $this->buildImageResponse($location->getId(), $location->getLongitude(), $location->getLatitude());
@@ -100,10 +108,10 @@ class MapController extends AbstractController
     #[Route('/image/event/{id}', methods: ['GET'])]
     public function eventImage(string $id): Response
     {
-        $event    = $this->em->find(\App\Entity\Event::class, $id);
+        $event    = $this->em->find(Event::class, $id);
         $location = $event?->getLocation();
         if ($location === null || $location->getLatitude() === null || $location->getLongitude() === null) {
-            return new Response('', 404);
+            throw new NotFoundHttpException('Event not found or has no location with coordinates');
         }
 
         return $this->buildImageResponse($location->getId(), $location->getLongitude(), $location->getLatitude());
@@ -113,7 +121,7 @@ class MapController extends AbstractController
     {
         $bytes = $this->mapImagesCache->get(
             'location_' . $locationId,
-            function (ItemInterface $item) use ($lng, $lat): string {
+            function () use ($lng, $lat): string {
                 return $this->mapImageProvider->getImage($lng, $lat, self::IMAGE_ZOOM, self::IMAGE_WIDTH, self::IMAGE_HEIGHT);
             },
         );
