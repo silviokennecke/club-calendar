@@ -335,7 +335,12 @@ jobs:
 
       - name: Create .env for console commands
         working-directory: backend
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          # Write .env.local so the background PHP server reliably reads CI values.
+          # Process env vars may not propagate to orphaned background processes on
+          # GitHub Actions runners; .env.local is loaded by Symfony at runtime.
+          printf 'APP_ENV=dev\nAPP_SECRET=ci-app-secret-for-testing-only\nDATABASE_URL=mysql://root:root@127.0.0.1:3306/club_calendar\nJWT_REFRESH_SECRET=ci-refresh-secret-at-least-32-chars-for-testing\nFRONTEND_URL=http://localhost:3000\nDEFAULT_URI=http://localhost:3001\nWEBAUTHN_RP_ID=localhost\nWEBAUTHN_RP_NAME="Club Calendar CI"\n' > .env.local
 
       - name: Generate JWT keypair
         working-directory: backend
@@ -403,12 +408,19 @@ jobs:
       - name: Smoke-test login API
         run: |
           echo "Testing login endpoint..."
-          curl -v -X POST http://localhost:3001/api/auth/login \
+          response=$(curl -s -w '\n%{http_code}' -X POST http://localhost:3001/api/auth/login \
             -H "Content-Type: application/json" \
             -H "Origin: http://localhost:3000" \
-            -d '{"email":"admin@example.com","password":"password123"}' \
-            2>&1 | tee /tmp/login-smoke-test.log
-          echo "Exit code: $?"
+            -d '{"email":"admin@example.com","password":"password123"}')
+          http_code=$(echo "$response" | tail -1)
+          body=$(echo "$response" | head -1)
+          echo "HTTP $http_code: $body" | tee /tmp/login-smoke-test.log
+          if [ "$http_code" != "200" ]; then
+            echo "ERROR: Login returned HTTP $http_code (expected 200)"
+            # Show PHP error log for debugging
+            cat backend/var/log/dev.log 2>/dev/null || true
+            exit 1
+          fi
 
       - name: Run Playwright E2E tests
         working-directory: frontend
