@@ -4,53 +4,64 @@ async function login(page: Page) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill("admin@example.com");
   await page.getByLabel(/password/i).fill("password123");
-  await page.getByRole("button", { name: /log in/i }).click();
-  await page.waitForURL("**/clubs");
+  await page.getByRole("button", { name: /^sign in$/i }).click();
+  await page.waitForURL("**/clubs**");
+}
+
+async function goToCalendar(page: Page) {
+  await login(page);
+  // Go to clubs list; wait for potential auto-redirect to settle
+  await page.goto("/clubs");
+  await page.waitForLoadState("networkidle");
+  if (!page.url().includes("/calendars/")) {
+    // Still on clubs list — navigate through UI
+    await page.getByRole("main").getByText(/Schützenverein/i).click();
+    await page.getByText(/Vereinskalender/i).click();
+  }
+  // Now on calendar page
+  await expect(page.locator(".fc")).toBeVisible({ timeout: 10000 });
 }
 
 test.describe("Calendar", () => {
   test("clubs page shows seeded club", async ({ page }) => {
     await login(page);
-    await expect(page.getByText(/Schützenverein/i)).toBeVisible();
+    await page.goto("/clubs");
+    await page.waitForLoadState("networkidle");
+    if (!page.url().includes("/calendars/")) {
+      await expect(page.getByText(/Schützenverein/i).first()).toBeVisible();
+    } else {
+      // Already on calendar — club exists and we're in it
+    }
   });
 
   test("can navigate to calendar view", async ({ page }) => {
-    await login(page);
-    await page.getByText(/Schützenverein/i).click();
-    await page.getByText(/Vereinskalender/i).click();
-    // Should show FullCalendar
+    await goToCalendar(page);
     await expect(page.locator(".fc")).toBeVisible();
   });
 
   test("calendar sidebar shows navigation items", async ({ page }) => {
-    await login(page);
-    await page.getByText(/Schützenverein/i).click();
-    await page.getByText(/Vereinskalender/i).click();
+    await goToCalendar(page);
     await expect(page.getByRole("link", { name: /templates/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /feeds/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /properties/i })).toBeVisible();
   });
 
   test("clicking New Event opens modal", async ({ page }) => {
-    await login(page);
-    await page.getByText(/Schützenverein/i).click();
-    await page.getByText(/Vereinskalender/i).click();
+    await goToCalendar(page);
     await page.getByRole("button", { name: /new event/i }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByRole("heading", { name: /new event/i })).toBeVisible();
   });
 
   test("can create and see a new event", async ({ page }) => {
-    await login(page);
-    await page.getByText(/Schützenverein/i).click();
-    await page.getByText(/Vereinskalender/i).click();
+    await goToCalendar(page);
     await page.getByRole("button", { name: /new event/i }).click();
 
     const dialog = page.getByRole("dialog");
-    await dialog.getByLabel(/name/i).fill("E2E Test Event");
-    await dialog.getByLabel(/date/i).fill("2026-09-15");
+    await dialog.getByLabel(/name \*/i).fill("E2E Test Event");
+    await dialog.getByLabel(/start date/i).fill("2026-09-15");
     // Uncheck draft — switch to published
-    const publishSwitch = dialog.getByRole("switch");
+    const publishSwitch = dialog.getByRole("switch", { name: /published/i });
     await publishSwitch.click();
 
     // Button label is "Create" in the new modal

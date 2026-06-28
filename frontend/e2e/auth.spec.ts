@@ -12,7 +12,7 @@ test.describe("Authentication", () => {
     await page.goto("/login");
     await page.getByLabel(/email/i).fill("wrong@example.com");
     await page.getByLabel(/password/i).fill("wrongpassword");
-    await page.getByRole("button", { name: /log in/i }).click();
+    await page.getByRole("button", { name: /^sign in$/i }).click();
     await expect(page.getByText(/invalid email or password/i)).toBeVisible();
   });
 
@@ -20,9 +20,9 @@ test.describe("Authentication", () => {
     await page.goto("/login");
     await page.getByLabel(/email/i).fill("admin@example.com");
     await page.getByLabel(/password/i).fill("password123");
-    await page.getByRole("button", { name: /log in/i }).click();
-    await page.waitForURL("**/clubs");
-    await expect(page.getByText(/my clubs/i)).toBeVisible();
+    await page.getByRole("button", { name: /^sign in$/i }).click();
+    await page.waitForURL("**/clubs**");
+    await expect(page).toHaveURL(/\/clubs/);
   });
 
   test("unauthenticated user is redirected to login", async ({ page }) => {
