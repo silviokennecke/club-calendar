@@ -10,8 +10,8 @@ readonly class RateLimitedGeocoderDecorator implements GeocoderInterface
 {
     public function __construct(
         private GeocoderInterface $inner,
-        private RateLimiterFactoryInterface $geocoderDailyLimiter,
-        private RateLimiterFactoryInterface $geocoderHourlyLimiter,
+        private RateLimiterFactoryInterface $geocoderSystemLimiter,
+        private RateLimiterFactoryInterface $geocoderUserLimiter,
         private RequestUserContext $userContext,
     ) {}
 
@@ -29,14 +29,14 @@ readonly class RateLimitedGeocoderDecorator implements GeocoderInterface
 
     private function consume(): void
     {
-        $daily = $this->geocoderDailyLimiter->create('geocoder-system');
-        if (!$daily->consume()->isAccepted()) {
-            throw new RateLimitExceededException('Geocoder daily rate limit exceeded');
+        $system = $this->geocoderSystemLimiter->create('geocoder-system');
+        if (!$system->consume()->isAccepted()) {
+            throw new RateLimitExceededException('Geocoder system rate limit exceeded');
         }
 
-        $hourly = $this->geocoderHourlyLimiter->create($this->userContext->getUserIdentifier());
-        if (!$hourly->consume()->isAccepted()) {
-            throw new RateLimitExceededException('Geocoder hourly rate limit exceeded');
+        $user = $this->geocoderUserLimiter->create($this->userContext->getUserIdentifier());
+        if (!$user->consume()->isAccepted()) {
+            throw new RateLimitExceededException('Geocoder user rate limit exceeded');
         }
     }
 }

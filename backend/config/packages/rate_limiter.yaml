@@ -4,10 +4,16 @@ framework:
             policy: fixed_window
             limit: 3000
             interval: '24 hours'
+        geocoder_system:
+            policy: compound
+            limiters: [geocoder_daily]
         geocoder_hourly:
             policy: fixed_window
             limit: 50
             interval: '1 hour'
+        geocoder_user:
+            policy: compound
+            limiters: [geocoder_hourly]
         mapbox_image_daily:
             policy: fixed_window
             limit: 2500
