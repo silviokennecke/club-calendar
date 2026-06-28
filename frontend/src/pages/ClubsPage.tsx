@@ -71,7 +71,7 @@ export default function ClubsPage() {
           </Button>
         </div>
       </div>
-      <div className="mx-auto max-w-5xl p-8">
+      <main className="mx-auto max-w-5xl p-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-slate-900">{t("clubs.selectClub")}</h1>
           <Dialog open={open} onOpenChange={setOpen}>
@@ -110,7 +110,7 @@ export default function ClubsPage() {
             </Card>
           ))}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
