@@ -16,9 +16,9 @@ final class Version20260629000000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        $this->addSql("ALTER TABLE `user` ADD COLUMN is_email_verified TINYINT(1) NOT NULL DEFAULT 0");
+        $this->addSql('ALTER TABLE `user` ADD COLUMN is_email_verified TINYINT(1) NOT NULL DEFAULT 0');
         $this->addSql("ALTER TABLE `user` ADD COLUMN created_at DATETIME NOT NULL DEFAULT NOW() COMMENT '(DC2Type:datetime_immutable)'");
-        $this->addSql("UPDATE `user` SET is_email_verified = 1");
+        $this->addSql('UPDATE `user` SET is_email_verified = 1');
         $this->addSql("CREATE TABLE email_verification (
             id VARCHAR(36) NOT NULL,
             user_id VARCHAR(36) NOT NULL,
@@ -34,7 +34,7 @@ final class Version20260629000000 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
-        $this->addSql("DROP TABLE email_verification");
-        $this->addSql("ALTER TABLE `user` DROP COLUMN is_email_verified, DROP COLUMN created_at");
+        $this->addSql('DROP TABLE email_verification');
+        $this->addSql('ALTER TABLE `user` DROP COLUMN is_email_verified, DROP COLUMN created_at');
     }
 }
