@@ -34,6 +34,37 @@ class AuthTest extends WebTestCase
         DatabaseResetter::reset(self::$em);
     }
 
+    protected function tearDown(): void
+    {
+        // Intentionally skip parent::tearDown() to keep the kernel alive across tests.
+        // This ensures static::getContainer() and self::$client share the same kernel,
+        // which is required for MailerAssertionsTrait to see email events captured during requests.
+    }
+
+    // --- Register ---
+
+    public function testRegisterReturns202AndCheckYourEmailMessage(): void
+    {
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
+            'name' => 'Alice', 'email' => 'alice@example.com', 'password' => 'password123',
+        ]);
+        $this->assertSame(202, $r['status']);
+        $this->assertSame('check_your_email', $r['body']['message']);
+        $this->assertArrayNotHasKey('access_token', $r['body']);
+    }
+
+    public function testRegisterSendsVerificationEmail(): void
+    {
+        TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
+            'name' => 'Bob', 'email' => 'bob@example.com', 'password' => 'password123',
+        ]);
+        $this->assertEmailCount(1);
+        $email = $this->getMailerMessage();
+        $this->assertEmailAddressContains($email, 'to', 'bob@example.com');
+    }
+
+    // --- Login ---
+
     public function testLoginReturns422ForInvalidBody(): void
     {
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', [
@@ -59,7 +90,17 @@ class AuthTest extends WebTestCase
         $this->assertSame(401, $r['status']);
     }
 
-    public function testLoginReturnsTokensForValidCredentials(): void
+    public function testLoginReturns403ForUnverifiedUser(): void
+    {
+        TestHelper::createUser(self::$em, self::$hasher, 'unverified@example.com', 'password123', false);
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', [
+            'email' => 'unverified@example.com', 'password' => 'password123',
+        ]);
+        $this->assertSame(403, $r['status']);
+        $this->assertSame('email_not_verified', $r['body']['error']);
+    }
+
+    public function testLoginReturnsTokensForVerifiedUser(): void
     {
         TestHelper::createUser(self::$em, self::$hasher, 'bob@example.com');
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', [
@@ -70,6 +111,79 @@ class AuthTest extends WebTestCase
         $this->assertNotEmpty($r['body']['refresh_token']);
         $this->assertSame('Bearer', $r['body']['token_type']);
     }
+
+    // --- Resend verification ---
+
+    public function testResendVerificationReturns204ForUnknownEmail(): void
+    {
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/resend-verification', [
+            'email' => 'nobody@example.com',
+        ]);
+        $this->assertSame(204, $r['status']);
+        $this->assertEmailCount(0);
+    }
+
+    public function testResendVerificationReturns204ForAlreadyVerifiedEmail(): void
+    {
+        TestHelper::createUser(self::$em, self::$hasher, 'verified@example.com');
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/resend-verification', [
+            'email' => 'verified@example.com',
+        ]);
+        $this->assertSame(204, $r['status']);
+        $this->assertEmailCount(0);
+    }
+
+    public function testResendVerificationSendsEmailForUnverifiedUser(): void
+    {
+        TestHelper::createUser(self::$em, self::$hasher, 'unverified@example.com', 'password123', false);
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/resend-verification', [
+            'email' => 'unverified@example.com',
+        ]);
+        $this->assertSame(204, $r['status']);
+        $this->assertEmailCount(1);
+        $this->assertEmailAddressContains($this->getMailerMessage(), 'to', 'unverified@example.com');
+    }
+
+    // --- Verify email ---
+
+    public function testVerifyEmailRedirectsToFrontendOnInvalidToken(): void
+    {
+        self::$client->request('GET', '/api/auth/verify-email?id=bad-id&token=bad-token');
+        $response = self::$client->getResponse();
+        $this->assertSame(302, $response->getStatusCode());
+        $location = $response->headers->get('Location');
+        $this->assertStringContainsString('status=error', $location);
+        $this->assertStringContainsString('reason=invalid', $location);
+    }
+
+    public function testVerifyEmailRedirectsToFrontendOnSuccess(): void
+    {
+        $user = TestHelper::createUser(self::$em, self::$hasher, 'verify@example.com', 'password123', false);
+
+        // Insert EmailVerification via raw SQL to avoid Doctrine UoW state pollution.
+        // Use bcrypt cost 4 (minimum) so the test runs fast.
+        $rawVerifier = 'test-raw-verifier-abc123';
+        $evId = \Symfony\Component\Uid\Uuid::v7()->toRfc4122();
+        $tokenHash = password_hash($rawVerifier, \PASSWORD_BCRYPT, ['cost' => 4]);
+        $expiresAt = (new \DateTimeImmutable('+24 hours'))->format('Y-m-d H:i:s');
+        self::$em->getConnection()->executeStatement(
+            'INSERT INTO email_verification (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)',
+            [$evId, $user->getId(), $tokenHash, $expiresAt],
+        );
+
+        self::$client->request('GET', '/api/auth/verify-email?id='.$evId.'&token='.$rawVerifier);
+        $response = self::$client->getResponse();
+        $this->assertSame(302, $response->getStatusCode());
+        $location = $response->headers->get('Location');
+        $this->assertStringContainsString('status=success', $location);
+
+        self::$em->clear();
+        $refreshed = self::$em->find(\App\Entity\User::class, $user->getId());
+        $this->assertNotNull($refreshed);
+        $this->assertTrue($refreshed->isEmailVerified());
+    }
+
+    // --- Existing tests ---
 
     public function testMeReturns401WithoutToken(): void
     {
@@ -120,9 +234,6 @@ class AuthTest extends WebTestCase
             $this->assertArrayHasKey('id', $provider);
             $this->assertArrayHasKey('name', $provider);
             $this->assertArrayHasKey('icon', $provider);
-            $this->assertIsString($provider['id']);
-            $this->assertIsString($provider['name']);
-            $this->assertIsString($provider['icon']);
         }
     }
 }

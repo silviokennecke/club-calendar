@@ -6,15 +6,22 @@ namespace App\Controller;
 
 use App\Dto\Auth\LoginDto;
 use App\Dto\Auth\RegisterDto;
+use App\Dto\Auth\ResendVerificationDto;
 use App\Dto\Auth\UpdateMeDto;
+use App\Entity\User;
+use App\Exception\EmailNotVerifiedException;
 use App\Security\CurrentUserResolver;
 use App\Service\AuthService;
+use App\Service\EmailVerificationService;
+use Doctrine\ORM\EntityManagerInterface;
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\Exception\ExceptionInterface as SerializerException;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -29,8 +36,14 @@ class AuthController extends AbstractApiController
         private readonly ValidatorInterface $validator,
         private readonly SerializerInterface $serializer,
         private readonly ClientRegistry $clientRegistry,
+        private readonly EmailVerificationService $verificationService,
+        private readonly EntityManagerInterface $em,
+        #[Autowire(service: 'limiter.email_verification_resend')]
+        private readonly RateLimiterFactory $emailVerificationResendLimiter,
         #[Autowire(param: 'knpu_oauth2_client.providers_meta')]
         private readonly array $providersMeta,
+        #[Autowire(env: 'FRONTEND_URL')]
+        private readonly string $frontendUrl,
     ) {
     }
 
@@ -43,9 +56,9 @@ class AuthController extends AbstractApiController
             throw new BadRequestHttpException('Invalid JSON body: '.$e->getMessage(), $e);
         }
         $this->validateDto($dto, $this->validator);
-        $result = $this->auth->register($dto->name, $dto->email, $dto->password, $dto->language);
+        $this->auth->register($dto->name, $dto->email, $dto->password, $dto->language);
 
-        return new JsonResponse($result, Response::HTTP_CREATED);
+        return new JsonResponse(['message' => 'check_your_email'], Response::HTTP_ACCEPTED);
     }
 
     #[Route('/login', methods: ['POST'])]
@@ -57,8 +70,53 @@ class AuthController extends AbstractApiController
             throw new BadRequestHttpException('Invalid JSON body: '.$e->getMessage(), $e);
         }
         $this->validateDto($dto, $this->validator);
+        try {
+            return new JsonResponse($this->auth->login($dto->email, $dto->password));
+        } catch (EmailNotVerifiedException) {
+            return new JsonResponse(['error' => 'email_not_verified'], Response::HTTP_FORBIDDEN);
+        }
+    }
 
-        return new JsonResponse($this->auth->login($dto->email, $dto->password));
+    #[Route('/resend-verification', methods: ['POST'])]
+    public function resendVerification(Request $request): JsonResponse
+    {
+        try {
+            $dto = $this->serializer->deserialize($request->getContent(), ResendVerificationDto::class, 'json');
+        } catch (SerializerException $e) {
+            throw new BadRequestHttpException('Invalid JSON body: '.$e->getMessage(), $e);
+        }
+        $this->validateDto($dto, $this->validator);
+
+        $limiter = $this->emailVerificationResendLimiter->create($dto->email);
+        $limit = $limiter->consume();
+        if (!$limit->isAccepted()) {
+            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        }
+
+        $user = $this->em->getRepository(User::class)->findOneBy(['email' => $dto->email]);
+        if (!$user || $user->isEmailVerified()) {
+            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        }
+
+        $this->auth->sendVerificationEmail($user);
+
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+    }
+
+    #[Route('/verify-email', name: 'api_auth_verify_email', methods: ['GET'])]
+    public function verifyEmail(Request $request): RedirectResponse
+    {
+        $id = (string) $request->query->get('id', '');
+        $token = (string) $request->query->get('token', '');
+        $result = $this->verificationService->verify($id, $token);
+
+        if ('success' === $result) {
+            return new RedirectResponse($this->frontendUrl.'/auth/verify-email?status=success');
+        }
+
+        return new RedirectResponse(
+            $this->frontendUrl.'/auth/verify-email?status=error&reason='.$result,
+        );
     }
 
     #[Route('/token', methods: ['POST'])]

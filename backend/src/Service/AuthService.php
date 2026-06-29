@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\OAuthAccount;
 use App\Entity\User;
+use App\Exception\EmailNotVerifiedException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -18,10 +19,11 @@ readonly class AuthService
         private EntityManagerInterface $em,
         private UserPasswordHasherInterface $hasher,
         private TokenService $tokens,
+        private EmailVerificationMailer $verificationMailer,
     ) {
     }
 
-    public function register(string $name, string $email, string $password, ?string $language = null): array
+    public function register(string $name, string $email, string $password, ?string $language = null): void
     {
         $existing = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         if ($existing) {
@@ -36,8 +38,7 @@ readonly class AuthService
         }
         $this->em->persist($user);
         $this->em->flush();
-
-        return $this->tokens->tokenResponse($user);
+        $this->verificationMailer->send($user);
     }
 
     public function login(string $email, string $password): array
@@ -49,8 +50,16 @@ readonly class AuthService
         if (!$this->hasher->isPasswordValid($user, $password)) {
             throw new UnauthorizedHttpException('Bearer', 'Invalid credentials');
         }
+        if (!$user->isEmailVerified()) {
+            throw new EmailNotVerifiedException();
+        }
 
         return $this->tokens->tokenResponse($user);
+    }
+
+    public function sendVerificationEmail(User $user): void
+    {
+        $this->verificationMailer->send($user);
     }
 
     public function refresh(string $refreshToken): array
@@ -152,6 +161,7 @@ readonly class AuthService
             $user = new User();
             $user->setName($name);
             $user->setEmail($email);
+            $user->setIsEmailVerified(true);
             $this->em->persist($user);
         }
         $account = new OAuthAccount();

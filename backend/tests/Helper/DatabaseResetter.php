@@ -24,7 +24,8 @@ class DatabaseResetter
             'calendar_feed_target_group', 'calendar_feed',
             'target_group', 'location', 'feature', 'property',
             'holiday_event', 'holiday_calendar',
-            'calendar', 'club_user', 'passkey', 'oauth_account', 'club', 'user',
+            'calendar', 'club_user', 'passkey', 'oauth_account', 'club',
+            'email_verification', 'user',
         ];
 
         $conn->executeStatement('SET FOREIGN_KEY_CHECKS=0');

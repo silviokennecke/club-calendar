@@ -44,3 +44,7 @@ framework:
         mapbox_proxy_system:
             policy: compound
             limiters: [mapbox_proxy_daily, mapbox_proxy_weekly, mapbox_proxy_monthly]
+        email_verification_resend:
+            policy: sliding_window
+            limit: 3
+            interval: '1 hour'
