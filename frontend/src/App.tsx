@@ -7,6 +7,7 @@ import ProtectedRoute from "./components/layout/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
+import EmailVerifyPage from "./pages/EmailVerifyPage";
 import FeedPage from "./pages/FeedPage";
 import ClubsPage from "./pages/ClubsPage";
 import SetupPage from "./pages/SetupPage";
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
+            <Route path="/auth/verify-email" element={<EmailVerifyPage />} />
             <Route path="/feed/:feedId" element={<FeedPage />} />
 
             <Route element={<ProtectedRoute />}>

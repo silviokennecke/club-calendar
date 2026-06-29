@@ -40,7 +40,19 @@
     "passkey": "Mit Passkey anmelden",
     "passkeyWaiting": "Warte auf Passkey…",
     "passkeyFailed": "Passkey-Anmeldung fehlgeschlagen oder abgebrochen",
-    "completingSignIn": "Anmeldung wird abgeschlossen…"
+    "completingSignIn": "Anmeldung wird abgeschlossen…",
+    "checkYourEmail": "Überprüfe deine E-Mails",
+    "checkYourEmailMessage": "Wir haben einen Bestätigungslink an {{email}} gesendet. Klicke darauf, um dein Konto zu aktivieren.",
+    "emailNotVerified": "Deine E-Mail-Adresse wurde noch nicht bestätigt.",
+    "resendVerificationEmail": "Bestätigungs-E-Mail erneut senden",
+    "verificationEmailSent": "Bestätigungs-E-Mail gesendet. Bitte prüfe deinen Posteingang.",
+    "emailVerified": "Deine E-Mail-Adresse wurde bestätigt.",
+    "emailVerifiedLoginPrompt": "Du kannst dich jetzt in deinem Konto anmelden.",
+    "verificationLinkExpired": "Dieser Bestätigungslink ist abgelaufen.",
+    "verificationLinkInvalid": "Dieser Bestätigungslink ist nicht gültig.",
+    "verificationLinkAlreadyUsed": "Dieser Bestätigungslink wurde bereits verwendet.",
+    "backToLogin": "Zurück zur Anmeldung",
+    "requestNewLink": "Neuen Link anfordern"
   },
   "setup": {
     "welcome": "Willkommen bei Club Calendar",

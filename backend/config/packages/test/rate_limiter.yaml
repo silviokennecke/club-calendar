@@ -1,0 +1,6 @@
+framework:
+    rate_limiter:
+        email_verification_resend:
+            policy: sliding_window
+            limit: 1000
+            interval: '1 hour'

@@ -40,7 +40,19 @@
     "passkey": "Sign in with passkey",
     "passkeyWaiting": "Waiting for passkey…",
     "passkeyFailed": "Passkey login failed or was cancelled",
-    "completingSignIn": "Completing sign in…"
+    "completingSignIn": "Completing sign in…",
+    "checkYourEmail": "Check your email",
+    "checkYourEmailMessage": "We've sent a verification link to {{email}}. Click it to activate your account.",
+    "emailNotVerified": "Your email address has not been verified yet.",
+    "resendVerificationEmail": "Resend verification email",
+    "verificationEmailSent": "Verification email sent. Please check your inbox.",
+    "emailVerified": "Your email address has been verified.",
+    "emailVerifiedLoginPrompt": "You can now sign in to your account.",
+    "verificationLinkExpired": "This verification link has expired.",
+    "verificationLinkInvalid": "This verification link is not valid.",
+    "verificationLinkAlreadyUsed": "This verification link has already been used.",
+    "backToLogin": "Back to sign in",
+    "requestNewLink": "Request a new link"
   },
   "setup": {
     "welcome": "Welcome to Club Calendar",

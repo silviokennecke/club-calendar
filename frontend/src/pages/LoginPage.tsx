@@ -12,6 +12,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Separator } from "@/components/ui/separator";
 import { SsoProviderIcon } from "@/components/SsoProviderIcon";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { Alert } from "@/components/ui/shared";
 
 interface SsoProvider {
   id: string;
@@ -25,6 +26,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailNotVerified, setEmailNotVerified] = useState(false);
+  const [resendEmail, setResendEmail] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendDone, setResendDone] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [providers, setProviders] = useState<SsoProvider[]>([]);
   const { login } = useAuth();
@@ -40,6 +45,8 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setEmailNotVerified(false);
+    setResendDone(false);
     setLoading(true);
     try {
       const data = await apiPost<{ access_token: string; refresh_token: string; user: User }>(
@@ -48,10 +55,34 @@ export default function LoginPage() {
       );
       login(data.access_token, data.refresh_token, data.user);
       navigate("/clubs");
-    } catch {
-      setError(t("auth.invalidEmailOrPassword"));
+    } catch (err: unknown) {
+      if (err instanceof Error && (err as { status?: number }).status === 403) {
+        setEmailNotVerified(true);
+        setResendEmail(email);
+      } else {
+        setError(t("auth.invalidEmailOrPassword"));
+      }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    setResendLoading(true);
+    try {
+      const res = await apiFetch("/api/auth/resend-verification", {
+        method: "POST",
+        body: JSON.stringify({ email: resendEmail }),
+      });
+      if (!res.ok) {
+        throw new Error("Request failed");
+      }
+      // Server returns 204 No Content — no body to parse
+    } catch {
+      // silently ignore
+    } finally {
+      setResendLoading(false);
+      setResendDone(true);
     }
   }
 
@@ -128,6 +159,24 @@ export default function LoginPage() {
               />
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
+            {emailNotVerified && (
+              <Alert
+                variant="warning"
+                message={resendDone ? t("auth.verificationEmailSent") : t("auth.emailNotVerified")}
+                actions={
+                  !resendDone ? (
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={resendLoading}
+                      className="text-sm font-medium underline hover:no-underline"
+                    >
+                      {t("auth.resendVerificationEmail")}
+                    </button>
+                  ) : undefined
+                }
+              />
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? t("auth.signingIn") : t("auth.signIn")}
             </Button>
