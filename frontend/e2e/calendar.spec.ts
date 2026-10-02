@@ -19,7 +19,10 @@ async function goToCalendar(page: Page) {
       .getByRole("main")
       .getByText(/Schützenverein/i)
       .click();
-    await page.getByText(/Vereinskalender/i).click();
+    await page
+      .getByRole("main")
+      .getByText(/Vereinskalender/i)
+      .click();
   }
   // Now on calendar page
   await expect(page.locator(".fc")).toBeVisible({ timeout: 10000 });
@@ -44,9 +47,26 @@ test.describe("Calendar", () => {
 
   test("calendar sidebar shows navigation items", async ({ page }) => {
     await goToCalendar(page);
-    await expect(page.getByRole("link", { name: /templates/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /feeds/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /properties/i })).toBeVisible();
+    const nav = page.getByRole("navigation", { name: /^(areas|bereiche)$/i });
+    await expect(nav.getByRole("link", { name: /^(templates|vorlagen)$/i })).toBeVisible();
+    await expect(nav.getByRole("link", { name: /^(publish|veröffentlichen)$/i })).toBeVisible();
+    await expect(nav.getByRole("link", { name: /^(settings|einstellungen)$/i })).toBeVisible();
+    // The current area is marked for assistive technology
+    await expect(nav.getByRole("link", { name: /^(calendar|kalender)$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  test("settings pages are reachable via settings tabs", async ({ page }) => {
+    await goToCalendar(page);
+    await page
+      .getByRole("navigation", { name: /^(areas|bereiche)$/i })
+      .getByRole("link", { name: /^(settings|einstellungen)$/i })
+      .click();
+    await page.waitForURL("**/settings");
+    await page.getByRole("link", { name: /^(properties|eigenschaften)$/i }).click();
+    await page.waitForURL("**/settings/properties");
   });
 
   test("clicking New Event opens modal", async ({ page }) => {

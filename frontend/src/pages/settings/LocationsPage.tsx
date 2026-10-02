@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { FormField, EmptyState } from "@/components/ui/shared";
+import { Field, EmptyState } from "@/components/ui/shared";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -171,7 +171,7 @@ export default function LocationsPage() {
       )}
 
       {locations.length === 0 ? (
-        <EmptyState message={t("settings.locations.noLocations")} />
+        <EmptyState icon="map-pin" title={t("settings.locations.noLocations")} />
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {locations.map((loc) => {
@@ -249,40 +249,40 @@ export default function LocationsPage() {
           </DialogHeader>
 
           <div className="space-y-4 py-1">
-            <FormField label={t("settings.locations.nameOptional")}>
+            <Field label={t("settings.locations.nameOptional")}>
               <Input
                 placeholder="e.g. Main Hall"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               />
-            </FormField>
+            </Field>
 
-            <FormField label={t("settings.locations.street")}>
+            <Field label={t("settings.locations.street")}>
               <Input
                 placeholder="Musterstraße 1"
                 value={form.street}
                 onChange={(e) => setForm((f) => ({ ...f, street: e.target.value }))}
               />
-            </FormField>
+            </Field>
 
             <div className="grid grid-cols-3 gap-3">
-              <FormField label={t("settings.locations.zip")}>
+              <Field label={t("settings.locations.zip")}>
                 <Input
                   placeholder="12345"
                   value={form.zip}
                   onChange={(e) => setForm((f) => ({ ...f, zip: e.target.value }))}
                 />
-              </FormField>
-              <FormField label={t("settings.locations.city")} className="col-span-2">
+              </Field>
+              <Field label={t("settings.locations.city")} className="col-span-2">
                 <Input
                   placeholder="Berlin"
                   value={form.city}
                   onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
                 />
-              </FormField>
+              </Field>
             </div>
 
-            <FormField
+            <Field
               label={
                 <>
                   {t("settings.locations.country")}{" "}
@@ -297,9 +297,10 @@ export default function LocationsPage() {
                 value={form.country}
                 onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
               />
-            </FormField>
+            </Field>
 
-            <FormField
+            <Field
+              group
               label={
                 <>
                   {t("settings.locations.mapPosition")}{" "}
@@ -317,7 +318,7 @@ export default function LocationsPage() {
                   onPositionChange={handleMapPosition}
                 />
               </Suspense>
-            </FormField>
+            </Field>
           </div>
 
           <DialogFooter>

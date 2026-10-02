@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { LangSwitch, Logo } from "@/components/ui/shared";
 
 export default function SignupPage() {
   const { t } = useTranslation();
@@ -51,13 +51,12 @@ export default function SignupPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-slate-50">
       <div className="absolute top-4 right-4">
-        <LanguageSwitcher />
+        <LangSwitch />
       </div>
       <Card className="w-full max-w-sm border-slate-200 shadow-md">
         <CardHeader className="pb-2">
-          <div className="mb-1 flex items-center gap-2">
-            <span className="text-xl">📅</span>
-            <span className="text-sm text-slate-500">Club Calendar</span>
+          <div className="mb-1">
+            <Logo size={28} />
           </div>
           <CardTitle className="text-xl">
             {submitted ? t("auth.checkYourEmail") : t("auth.createAccount")}

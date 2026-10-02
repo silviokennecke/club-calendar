@@ -111,7 +111,9 @@
     "deleteAccount": "Delete my account",
     "deleteAccountConfirm": "This permanently deletes your account and all associated data. This cannot be undone.",
     "deleting": "Deleting…",
-    "deleteAccountButton": "Delete account"
+    "deleteAccountButton": "Delete account",
+    "deleteAccountTitle": "Delete account?",
+    "deleteAccountConsequence": "Deletes your account, your passkeys and linked sign-ins. You will be signed out."
   },
   "language": {
     "en": "English",
@@ -292,7 +294,10 @@
     "createCalendar": "Create Calendar",
     "calendarNamePlaceholder": "Calendar name",
     "noCalendars": "No calendars yet.",
-    "archived": "Archived"
+    "archived": "Archived",
+    "deleteClubTitle": "Delete club “{{name}}”?",
+    "deleteClubConsequence_one": "Deletes {{count}} calendar with all its events, templates and feeds.",
+    "deleteClubConsequence_other": "Deletes {{count}} calendars with all their events, templates and feeds."
   },
   "settings": {
     "title": "Settings",
@@ -391,6 +396,145 @@
       "neverFetched": "Never fetched",
       "addAndFetch": "Add & Fetch",
       "adding": "Adding…"
+    }
+  },
+  "brand": {
+    "name": "Club Calendar"
+  },
+  "ui": {
+    "field": {
+      "required": "(required)",
+      "optional": "(optional)"
+    },
+    "status": {
+      "published": "Published",
+      "draft": "Draft",
+      "holiday": "Holiday",
+      "archived": "Archived",
+      "new": "New",
+      "private": "Private",
+      "public": "Public",
+      "danger": "Error"
+    },
+    "toast": {
+      "region": "Notifications"
+    },
+    "confirm": {
+      "requireLabel": "Type “{{text}}” to confirm"
+    },
+    "copyField": {
+      "copy": "Copy",
+      "copied": "Copied",
+      "failed": "Copying did not work. Please select the text and copy it yourself.",
+      "announce": "{{label}} was copied to the clipboard.",
+      "showSecret": "Show secret",
+      "hideSecret": "Hide secret"
+    },
+    "chipSelect": {
+      "create": "Create new",
+      "createAndAssign": "Create and assign",
+      "placeholder": "Enter a new name"
+    },
+    "emojiPicker": {
+      "none": "No symbol",
+      "custom": "Custom symbol",
+      "customPlaceholder": "e.g. 🎳",
+      "apply": "Use symbol",
+      "more": "More symbols",
+      "hint": "Paste any emoji. Windows: Windows key + period. Mac: Control + Command + Space.",
+      "names": {
+        "trophy": "Trophy",
+        "target": "Target",
+        "outdoor": "Outdoors",
+        "registration": "Registration required",
+        "costume": "Traditional costume",
+        "food": "Food and cake",
+        "coffee": "Coffee",
+        "party": "Party",
+        "workDuty": "Work duty",
+        "carpool": "Carpool",
+        "accessible": "Accessible",
+        "announcement": "Announcement",
+        "music": "Music",
+        "ball": "Ball",
+        "star": "Star",
+        "group": "Group",
+        "membersOnly": "Members only",
+        "weather": "Weather dependent"
+      }
+    },
+    "stepper": {
+      "label": "Progress",
+      "done": "(done)"
+    },
+    "langSwitch": {
+      "label": "Language",
+      "de": "Deutsch",
+      "en": "English"
+    },
+    "search": {
+      "clear": "Clear search"
+    },
+    "theme": {
+      "label": "Appearance",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "Same as system"
+    }
+  },
+  "shell": {
+    "skipToContent": "Skip to content",
+    "sidebarLabel": "Sidebar",
+    "club": "Club",
+    "calendar": "Calendar",
+    "switchClub": "Switch club",
+    "switchCalendar": "Switch calendar",
+    "switchContext": "Switch club and calendar",
+    "allClubs": "Show all clubs",
+    "newClub": "Create new club",
+    "manageCalendars": "Manage calendars",
+    "archivedReadOnly": "Archived, read-only",
+    "archivedSuffix": "(archived)",
+    "navLabel": "Areas",
+    "groups": {
+      "events": "Events",
+      "setup": "Set up calendar",
+      "club": "Club"
+    },
+    "nav": {
+      "calendar": "Calendar",
+      "events": "All events",
+      "import": "Import events",
+      "templates": "Templates",
+      "settings": "Settings",
+      "feeds": "Publish",
+      "club": "Manage club"
+    },
+    "profile": "My profile",
+    "signOut": "Sign out",
+    "tabsLabel": "Main areas",
+    "tabs": {
+      "calendar": "Calendar",
+      "events": "Events",
+      "feeds": "Publish",
+      "more": "More"
+    },
+    "more": {
+      "title": "More",
+      "workingIn": "You are working in",
+      "areas": "Areas",
+      "areasNav": "More areas",
+      "allClubs": "All clubs",
+      "language": "Language"
+    },
+    "settingsTabs": {
+      "label": "Calendar settings",
+      "general": "General",
+      "properties": "Properties",
+      "features": "Features",
+      "targetGroups": "Target groups",
+      "locations": "Locations",
+      "holidays": "Holidays"
     }
   }
 }

@@ -6,7 +6,7 @@ import type { Calendar } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Check } from "lucide-react";
-import { FormField } from "@/components/ui/shared";
+import { Field } from "@/components/ui/shared";
 import { useTranslation } from "react-i18next";
 
 export default function CalendarSettingsPage() {
@@ -52,15 +52,15 @@ export default function CalendarSettingsPage() {
     <div className="max-w-lg p-6">
       <h2 className="mb-6 text-base font-semibold text-slate-900">{t("settings.title")}</h2>
       <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
-        <FormField label={t("settings.calendarName")}>
+        <Field label={t("settings.calendarName")}>
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSave()}
           />
-        </FormField>
+        </Field>
 
-        <FormField
+        <Field
           label={
             <>
               {t("settings.timezone")}{" "}
@@ -70,73 +70,80 @@ export default function CalendarSettingsPage() {
             </>
           }
         >
-          <div className="relative">
-            <Input
-              value={tzSearch || timezone}
-              onChange={(e) => {
-                setTzSearch(e.target.value);
-                setShowTzDropdown(true);
-              }}
-              onFocus={() => {
-                setTzSearch("");
-                setShowTzDropdown(true);
-              }}
-              onBlur={() => setTimeout(() => setShowTzDropdown(false), 150)}
-              placeholder="e.g. Europe/Berlin"
-              className="text-sm"
-            />
-            {showTzDropdown && (
-              <div className="absolute top-full right-0 left-0 z-20 mt-0.5 max-h-52 overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
-                <button
-                  type="button"
-                  onMouseDown={() => {
-                    setTimezone("");
-                    setTzSearch("");
-                    setShowTzDropdown(false);
+          {(control) => (
+            <>
+              <div className="relative">
+                <Input
+                  {...control}
+                  value={tzSearch || timezone}
+                  onChange={(e) => {
+                    setTzSearch(e.target.value);
+                    setShowTzDropdown(true);
                   }}
-                  className="w-full border-b border-slate-100 px-3 py-2 text-left text-xs text-slate-400 italic hover:bg-slate-50"
-                >
-                  — {t("settings.useClubDefault")} —
-                </button>
-                {(typeof Intl !== "undefined" && "supportedValuesOf" in Intl
-                  ? (
-                      Intl as unknown as { supportedValuesOf: (key: string) => string[] }
-                    ).supportedValuesOf("timeZone")
-                  : [
-                      "Europe/Berlin",
-                      "Europe/London",
-                      "America/New_York",
-                      "America/Los_Angeles",
-                      "Asia/Tokyo",
-                      "UTC",
-                    ]
-                )
-                  .filter((tz) => !tzSearch || tz.toLowerCase().includes(tzSearch.toLowerCase()))
-                  .slice(0, 50)
-                  .map((tz) => (
+                  onFocus={() => {
+                    setTzSearch("");
+                    setShowTzDropdown(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowTzDropdown(false), 150)}
+                  placeholder="e.g. Europe/Berlin"
+                  className="text-sm"
+                />
+                {showTzDropdown && (
+                  <div className="absolute top-full right-0 left-0 z-20 mt-0.5 max-h-52 overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
                     <button
-                      key={tz}
                       type="button"
                       onMouseDown={() => {
-                        setTimezone(tz);
+                        setTimezone("");
                         setTzSearch("");
                         setShowTzDropdown(false);
                       }}
-                      className={`w-full px-3 py-2 text-left text-xs hover:bg-slate-50 ${tz === timezone ? "bg-blue-50 font-medium text-blue-700" : "text-slate-700"}`}
+                      className="w-full border-b border-slate-100 px-3 py-2 text-left text-xs text-slate-400 italic hover:bg-slate-50"
                     >
-                      {tz}
+                      — {t("settings.useClubDefault")} —
                     </button>
-                  ))}
+                    {(typeof Intl !== "undefined" && "supportedValuesOf" in Intl
+                      ? (
+                          Intl as unknown as { supportedValuesOf: (key: string) => string[] }
+                        ).supportedValuesOf("timeZone")
+                      : [
+                          "Europe/Berlin",
+                          "Europe/London",
+                          "America/New_York",
+                          "America/Los_Angeles",
+                          "Asia/Tokyo",
+                          "UTC",
+                        ]
+                    )
+                      .filter(
+                        (tz) => !tzSearch || tz.toLowerCase().includes(tzSearch.toLowerCase()),
+                      )
+                      .slice(0, 50)
+                      .map((tz) => (
+                        <button
+                          key={tz}
+                          type="button"
+                          onMouseDown={() => {
+                            setTimezone(tz);
+                            setTzSearch("");
+                            setShowTzDropdown(false);
+                          }}
+                          className={`w-full px-3 py-2 text-left text-xs hover:bg-slate-50 ${tz === timezone ? "bg-blue-50 font-medium text-blue-700" : "text-slate-700"}`}
+                        >
+                          {tz}
+                        </button>
+                      ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          {timezone && (
-            <p className="text-xs text-slate-400">
-              {t("settings.currentTime")}{" "}
-              {new Date().toLocaleTimeString("de-DE", { timeZone: timezone })}
-            </p>
+              {timezone && (
+                <p className="text-xs text-slate-400">
+                  {t("settings.currentTime")}{" "}
+                  {new Date().toLocaleTimeString("de-DE", { timeZone: timezone })}
+                </p>
+              )}
+            </>
           )}
-        </FormField>
+        </Field>
 
         <Button disabled={saving || !name.trim()} onClick={handleSave} className="gap-1.5">
           {saved ? (

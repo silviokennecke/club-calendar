@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { FormField, SectionHeader } from "@/components/ui/shared";
+import { Field, SectionHeader } from "@/components/ui/shared";
 import {
   getHolidayCalendars,
   createHolidayCalendar,
@@ -141,23 +141,21 @@ export default function HolidayCalendarsPage() {
             <DialogTitle>{t("settings.holidays.newCalendar")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <FormField label={t("common.name")}>
+            <Field id="hc-name" label={t("common.name")}>
               <Input
-                id="hc-name"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="German Public Holidays"
               />
-            </FormField>
-            <FormField label={t("settings.holidays.url")}>
+            </Field>
+            <Field id="hc-url" label={t("settings.holidays.url")}>
               <Input
-                id="hc-url"
                 type="url"
                 value={form.url}
                 onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
                 placeholder="https://calendar.google.com/calendar/ical/..."
               />
-            </FormField>
+            </Field>
             {addError && <p className="text-destructive text-sm">{addError}</p>}
           </div>
           <DialogFooter>

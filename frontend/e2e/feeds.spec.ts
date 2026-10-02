@@ -19,10 +19,16 @@ async function goToFeeds(page: Page) {
       .getByRole("main")
       .getByText(/Schützenverein/i)
       .click();
-    await page.getByText(/Vereinskalender/i).click();
+    await page
+      .getByRole("main")
+      .getByText(/Vereinskalender/i)
+      .click();
   }
-  // Now on calendar page — click feeds link in sidebar
-  await page.getByRole("link", { name: /feeds/i }).click();
+  // Now on calendar page — click "Publish" in the sidebar navigation
+  await page
+    .getByRole("navigation", { name: /^(areas|bereiche)$/i })
+    .getByRole("link", { name: /^(publish|veröffentlichen)$/i })
+    .click();
   await page.waitForURL("**/settings/feeds");
 }
 

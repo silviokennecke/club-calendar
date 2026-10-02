@@ -203,7 +203,7 @@ export default function EventsListPage() {
         <div className="py-12 text-center text-sm text-slate-400">{t("events.loadingEvents")}</div>
       ) : sorted.length === 0 ? (
         <EmptyState
-          message={
+          title={
             search
               ? t("events.noSearchResults")
               : statusFilter === "published"
@@ -278,10 +278,10 @@ export default function EventsListPage() {
 
                   <div className="flex flex-wrap gap-1">
                     {tgNames.map((n) => (
-                      <TagBadge key={n} label={n} variant="purple" />
+                      <TagBadge key={n} label={n} tone="adult" />
                     ))}
                     {ev.features.map((f) => (
-                      <TagBadge key={f.feature.id} label={f.feature.name} variant="green" />
+                      <TagBadge key={f.feature.id} label={f.feature.name} tone="neutral" />
                     ))}
                   </div>
 

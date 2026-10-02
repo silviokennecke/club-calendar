@@ -13,9 +13,9 @@ import i18n from "@/lib/i18n";
 import type { CalendarEvent, TargetGroup, Calendar } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { Alert, FilterPillGroup, SearchInput } from "@/components/ui/shared";
+import { Banner, FilterPillGroup, SearchInput, buttonClass } from "@/components/ui/shared";
 import EventModal from "@/components/calendar/EventModal";
-import { Plus, Upload, ArchiveRestore } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 
 export default function CalendarPage() {
   const { clubId, calendarId } = useParams<{ clubId: string; calendarId: string }>();
@@ -232,20 +232,19 @@ export default function CalendarPage() {
   return (
     <div className="p-6">
       {isArchived && (
-        <Alert
-          variant="warning"
-          message={t("calendar.archivedNotice")}
-          className="rounded-none border-x-0 border-t-0 border-b"
-          actions={
-            <button
-              onClick={handleUnarchive}
-              className="flex items-center gap-1.5 text-xs font-medium whitespace-nowrap text-amber-700 hover:text-amber-900"
-            >
-              <ArchiveRestore className="h-3.5 w-3.5" />
+        <Banner
+          tone="warning"
+          icon="lock"
+          title={t("shell.archivedReadOnly")}
+          className="mb-6"
+          action={
+            <button type="button" onClick={handleUnarchive} className={buttonClass("secondary")}>
               {t("calendar.unarchive")}
             </button>
           }
-        />
+        >
+          {t("calendar.archivedNotice")}
+        </Banner>
       )}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-lg font-semibold text-slate-900">{t("calendar.title")}</h1>

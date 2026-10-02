@@ -8,9 +8,8 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
-import { FormField, DangerZoneConfirm } from "@/components/ui/shared";
-import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { Field, ConfirmDialog, LangSwitch, buttonClass } from "@/components/ui/shared";
+import { useTheme, type ThemePreference } from "@/lib/theme";
 import { Trash2, Plus, Key } from "lucide-react";
 
 interface PasskeyInfo {
@@ -32,10 +31,10 @@ export default function ProfilePage() {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { theme, setTheme } = useTheme();
   const [deviceName, setDeviceName] = useState("");
   const [registering, setRegistering] = useState(false);
   const [message, setMessage] = useState("");
-  const [deleting, setDeleting] = useState(false);
 
   const { data: profile, refetch } = useQuery<ProfileData>({
     queryKey: ["profile"],
@@ -79,14 +78,9 @@ export default function ProfilePage() {
   }
 
   async function handleDeleteAccount() {
-    setDeleting(true);
-    try {
-      await apiDelete("/api/auth/me");
-      logout();
-      navigate("/login", { replace: true });
-    } finally {
-      setDeleting(false);
-    }
+    await apiDelete("/api/auth/me");
+    logout();
+    navigate("/login", { replace: true });
   }
 
   void user;
@@ -155,9 +149,9 @@ export default function ProfilePage() {
       <div className="mt-6 space-y-3">
         <h3 className="text-sm font-semibold text-slate-800">{t("profile.localization")}</h3>
         <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
-          <FormField label={t("profile.dateFormat")}>
+          <Field label={t("profile.dateFormat")}>
             <select
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+              className="cc-input"
               value={profile?.dateFormat ?? "dd.MM.yyyy"}
               onChange={async (e) => {
                 await apiPatch("/api/auth/me", { dateFormat: e.target.value });
@@ -170,9 +164,9 @@ export default function ProfilePage() {
                 </option>
               ))}
             </select>
-          </FormField>
+          </Field>
 
-          <FormField label={t("profile.firstDayOfWeek")}>
+          <Field group label={t("profile.firstDayOfWeek")}>
             <div className="flex gap-2">
               {(
                 [
@@ -183,6 +177,7 @@ export default function ProfilePage() {
                 <button
                   key={opt.value}
                   type="button"
+                  aria-pressed={(profile?.firstDayOfWeek ?? 1) === opt.value}
                   onClick={async () => {
                     await apiPatch("/api/auth/me", { firstDayOfWeek: opt.value });
                     refetch();
@@ -193,26 +188,42 @@ export default function ProfilePage() {
                 </button>
               ))}
             </div>
-          </FormField>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label>{t("profile.language")}</Label>
-            <LanguageSwitcher
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
-              onChange={(language) => updateUser({ language })}
-            />
-          </div>
+          <Field group label={t("profile.language")}>
+            <LangSwitch onChange={(language) => updateUser({ language })} />
+          </Field>
+
+          <Field group label={t("ui.theme.label")}>
+            <div className="ap-seg" role="group" aria-label={t("ui.theme.label")}>
+              {(["light", "dark", "system"] as ThemePreference[]).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={theme === option}
+                  onClick={() => setTheme(option)}
+                >
+                  {t(`ui.theme.${option}`)}
+                </button>
+              ))}
+            </div>
+          </Field>
         </div>
       </div>
 
       <div className="mt-8 border-t border-slate-200 pt-6">
         <h3 className="mb-3 text-sm font-semibold text-red-600">{t("profile.dangerZone")}</h3>
-        <DangerZoneConfirm
-          triggerLabel={t("profile.deleteAccount")}
+        <ConfirmDialog
+          trigger={
+            <button type="button" className={buttonClass("danger")}>
+              {t("profile.deleteAccount")}
+            </button>
+          }
+          title={t("profile.deleteAccountTitle")}
           description={t("profile.deleteAccountConfirm")}
+          consequence={t("profile.deleteAccountConsequence")}
           confirmLabel={t("profile.deleteAccountButton")}
           onConfirm={handleDeleteAccount}
-          isLoading={deleting}
         />
       </div>
     </div>

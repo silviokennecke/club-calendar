@@ -10,10 +10,10 @@ interface Props {
 
 export function SectionHeader({ title, description, action, className }: Props) {
   return (
-    <div className={cn("mb-6 flex items-center justify-between", className)}>
+    <div className={cn("ap-pagehead", className)} style={{ alignItems: "center" }}>
       <div>
-        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-        {description && <p className="mt-0.5 text-sm text-slate-500">{description}</p>}
+        <h2 className="t-h3">{title}</h2>
+        {description && <p className="t-sm">{description}</p>}
       </div>
       {action}
     </div>
