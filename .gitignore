@@ -6,6 +6,8 @@ dist/
 .env
 .env.*
 !.env.example
+docker-compose.override.yml
+compose.override.yml
 # .claude/settings.json is intentionally committed for shared plugin config
 .claude/*
 !.claude/settings.json
