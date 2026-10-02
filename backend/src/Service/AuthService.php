@@ -114,6 +114,9 @@ readonly class AuthService
         if (array_key_exists('firstDayOfWeek', $data)) {
             $user->setFirstDayOfWeek($data['firstDayOfWeek']);
         }
+        if (array_key_exists('language', $data)) {
+            $user->setLanguage($data['language']);
+        }
         if (array_key_exists('lastClubId', $data)) {
             $user->setLastClubId($data['lastClubId']);
         }
@@ -128,6 +131,7 @@ readonly class AuthService
             'email' => $user->getEmail(),
             'dateFormat' => $user->getDateFormat(),
             'firstDayOfWeek' => $user->getFirstDayOfWeek(),
+            'language' => $user->getLanguage(),
             'lastClubId' => $user->getLastClubId(),
             'lastCalendarId' => $user->getLastCalendarId(),
         ];

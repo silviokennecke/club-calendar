@@ -29,7 +29,7 @@ interface ProfileData {
 }
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [deviceName, setDeviceName] = useState("");
@@ -197,7 +197,10 @@ export default function ProfilePage() {
 
           <div className="space-y-1.5">
             <Label>{t("profile.language")}</Label>
-            <LanguageSwitcher className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm" />
+            <LanguageSwitcher
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+              onChange={(language) => updateUser({ language })}
+            />
           </div>
         </div>
       </div>

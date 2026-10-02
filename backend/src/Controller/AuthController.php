@@ -157,6 +157,9 @@ class AuthController extends AbstractApiController
         if (array_key_exists('firstDayOfWeek', $data)) {
             $dto->firstDayOfWeek = $data['firstDayOfWeek'];
         }
+        if (array_key_exists('language', $data)) {
+            $dto->language = $data['language'];
+        }
         if (array_key_exists('lastClubId', $data)) {
             $dto->lastClubId = $data['lastClubId'];
         }
