@@ -14,7 +14,7 @@ A **Club** has one or more **Calendars** containing events, event templates, loc
 
 - `backend/` — Symfony API server (port 3001)
 - `frontend/` — Vite/React single-page app (port 5173)
-- `docker-compose.yml` — MySQL dev and test databases
+- `docker-compose.yml` — optional MySQL dev/test databases (any MySQL 8 instance works)
 
 ## Development Setup
 
@@ -23,49 +23,47 @@ A **Club** has one or more **Calendars** containing events, event templates, loc
 - PHP 8.4 with Composer
 - [Symfony CLI](https://symfony.com/download)
 - Node.js 22 (see `.nvmrc`) and npm
-- Docker (for MySQL and the optional Mailpit mail catcher)
+- MySQL 8 — either your own instance or the optional `docker-compose.yml` (Docker is not required by any npm/composer script)
 
-### 1. Start the databases
+### 1. Provide the databases
+
+Use any MySQL 8 server and set `DATABASE_URL` / `TEST_DATABASE_URL` in `backend/.env.local` (defaults: dev on port `3306`, tests on `3360`). With Docker, you can start both with:
 
 ```bash
-npm run db:up   # = docker compose up mysql mysql_test -d
+docker compose up mysql mysql_test -d
 ```
-
-This starts MySQL on port `3306` (dev) and `3360` (tests).
 
 ### 2. Backend
 
 ```bash
-cd backend
-composer install
-cp .env.example .env.local   # then adjust values if needed
+# from the repository root
+npm install                  # frontend + mail tooling
+npm run build:dev            # composer install + mail templates + frontend dev build
+cp backend/.env.example backend/.env.local   # then adjust values if needed
 ```
 
 Generate the JWT keypair (the passphrase defaults to `APP_SECRET`):
 
 ```bash
-php bin/console lexik:jwt:generate-keypair
+(cd backend && php bin/console lexik:jwt:generate-keypair)
 ```
 
 Run migrations and, optionally, load seed data:
 
 ```bash
-php bin/console doctrine:migrations:migrate
-php bin/console doctrine:fixtures:load   # optional
+npm run migrate
+npm run fixtures   # optional
 ```
 
 Start the API server on port 3001:
 
 ```bash
-symfony serve --port=3001 -d
+(cd backend && symfony serve --port=3001 -d)
 ```
 
 ### 3. Frontend
 
-From the repository root:
-
 ```bash
-npm install
 cp frontend/.env.local.example frontend/.env.local   # VITE_API_URL=http://localhost:3001
 npm run dev:frontend
 ```
@@ -77,15 +75,31 @@ The app is available at <http://localhost:5173>.
 The verification email is written in MJML. After editing `backend/templates/email/verify_email.mjml`, regenerate the Twig template:
 
 ```bash
-npm run mjml
+npm run build:mail -w backend
 ```
+
+## Scripts
+
+Run from the repository root:
+
+| Command                                  | Purpose                                                                          |
+|------------------------------------------|----------------------------------------------------------------------------------|
+| `npm run build:dev`                      | Dev build: `composer install`, mail templates, frontend dev build                |
+| `npm run build`                          | Production build: `composer install --no-dev -o`, mail templates, frontend build |
+| `npm run dev:frontend`                   | Start the Vite dev server                                                        |
+| `npm test`                               | Backend (PHPUnit) then frontend (Vitest) tests                                   |
+| `npm run test:backend` / `test:frontend` | Run one side only (backend needs the MySQL test DB)                              |
+| `npm run migrate` / `npm run fixtures`   | Run Doctrine migrations / load fixtures                                          |
+
+Per workspace (`-w backend` or `-w frontend`): backend has `build`, `build:dev`, `build:mail`, `test`, `migrate`, `fixtures`; frontend has `dev`, `build`, `build:dev`, `test`, `test:watch`, `lint`, `e2e`.
 
 ## Tests
 
 ```bash
 npm test                # backend (PHPUnit) then frontend (Vitest)
-npm run test:backend    # requires the MySQL test DB on port 3360
+npm run test:backend    # requires the MySQL test DB (TEST_DATABASE_URL)
 npm run test:frontend
+npm run test:watch -w frontend
 ```
 
 E2E tests (Playwright) need the backend and frontend dev servers running:

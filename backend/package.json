@@ -1,0 +1,15 @@
+{
+  "name": "backend",
+  "private": true,
+  "scripts": {
+    "build": "composer install --no-dev --optimize-autoloader --no-interaction && npm run build:mail",
+    "build:dev": "composer install --no-interaction && npm run build:mail",
+    "build:mail": "mjml templates/email/verify_email.mjml -o templates/email/verify_email.html.twig",
+    "test": "composer test",
+    "migrate": "composer migrate",
+    "fixtures": "composer fixtures"
+  },
+  "devDependencies": {
+    "mjml": "^5.3.0"
+  }
+}
