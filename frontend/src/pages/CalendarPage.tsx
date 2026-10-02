@@ -1,345 +1,397 @@
-import { useState, useRef, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useOutletContext, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import interactionPlugin from "@fullcalendar/interaction";
-import type { EventInput, EventClickArg, EventDropArg } from "@fullcalendar/core";
-import deLocale from "@fullcalendar/core/locales/de";
-import type { DateClickArg } from "@fullcalendar/interaction";
-import { apiGet, apiPatch, apiPost, getHolidayEvents } from "@/lib/api";
-import i18n from "@/lib/i18n";
-import type { CalendarEvent, TargetGroup, Calendar } from "@/lib/types";
+import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { Button } from "@/components/ui/button";
-import { Banner, FilterPillGroup, SearchInput, buttonClass } from "@/components/ui/shared";
+import { useIsMobile } from "@/lib/useMediaQuery";
+import type { Calendar, CalendarEvent, TargetGroup } from "@/lib/types";
+import { formatAddress } from "@/lib/types";
+import {
+  addDays,
+  formatMonthTitle,
+  formatNumericDate,
+  formatWeekRange,
+  isoWeek,
+  matchesSearch,
+  parseAnchor,
+  parseView,
+  shiftEventDates,
+  startOfWeek,
+  stepAnchor,
+  todayIn,
+  weekDays,
+  yearMonthOf,
+  type CalItem,
+  type IsoDate,
+  type WeekStart,
+} from "@/lib/calendar";
+import type { ShellData } from "@/components/layout/shellTypes";
+import { Banner, Button, EmptyState, LinkButton, toast } from "@/components/ui/shared";
 import EventModal from "@/components/calendar/EventModal";
-import { Plus, Upload } from "lucide-react";
+import { CalendarToolbar } from "@/components/calendar/CalendarToolbar";
+import { FilterBar } from "@/components/calendar/FilterBar";
+import { MonthView } from "@/components/calendar/MonthView";
+import { WeekView } from "@/components/calendar/WeekView";
+import { CalendarLegend } from "@/components/calendar/CalendarLegend";
+import { CalendarSkeleton } from "@/components/calendar/CalendarSkeleton";
+import { useCalendarData } from "@/components/calendar/useCalendarData";
+import { useLocale } from "@/components/calendar/useLocale";
+import { audienceTone } from "@/components/calendar/eventDisplay";
+import type { EventItemTag } from "@/components/calendar/EventItem";
 
+interface ModalState {
+  open: boolean;
+  event: CalendarEvent | null;
+  defaultDate?: string;
+  tab: "manual" | "template";
+}
+
+const CLOSED: ModalState = { open: false, event: null, tab: "manual" };
+
+/**
+ * Calendar (design: Calendar, CalendarWeek, CalendarArchived, CalendarStates, CalendarMobile).
+ * View and date live in the URL (?view=week&date=2026-10-08) so back/forward and links work.
+ */
 export default function CalendarPage() {
   const { clubId, calendarId } = useParams<{ clubId: string; calendarId: string }>();
+  const shell = useOutletContext<ShellData | undefined>();
   const qc = useQueryClient();
   const { user } = useAuth();
-  const { t, i18n: i18nHook } = useTranslation();
-  const fcLocale = i18nHook.resolvedLanguage === "de" ? deLocale : undefined;
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string | undefined>();
-  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const selectedGroupsRef = useRef<string[]>([]);
-  const searchQueryRef = useRef("");
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const calendarRef = useRef<InstanceType<typeof FullCalendar>>(null);
+  const { t } = useTranslation();
+  const locale = useLocale();
+  const isMobile = useIsMobile();
+  const titleId = `cal-title-${useId().replace(/:/g, "")}`;
+  const [params, setParams] = useSearchParams();
 
-  const { data: targetGroups = [] } = useQuery<TargetGroup[]>({
-    queryKey: ["targetGroups", calendarId],
-    queryFn: () => apiGet(`/api/calendars/${calendarId}/target-groups`),
-  });
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [modal, setModal] = useState<ModalState>(CLOSED);
+  const [restored, setRestored] = useState(false);
+  const [unarchiving, setUnarchiving] = useState(false);
 
   const { data: calendar, refetch: refetchCalendar } = useQuery<Calendar>({
     queryKey: ["calendar", clubId, calendarId],
     queryFn: () => apiGet<Calendar>(`/api/clubs/${clubId}/calendars/${calendarId}`),
   });
+  const { data: targetGroups = [] } = useQuery<TargetGroup[]>({
+    queryKey: ["targetGroups", calendarId],
+    queryFn: () => apiGet(`/api/calendars/${calendarId}/target-groups`),
+  });
 
+  const club = shell?.clubs.find((c) => c.id === clubId);
+  const today = todayIn(calendar?.timezone || club?.timezone);
+  const weekStart: WeekStart = user?.firstDayOfWeek === 0 ? 0 : 1;
+  const view = isMobile ? "month" : parseView(params.get("view"));
+  const anchor = parseAnchor(params.get("date"), today);
   const isArchived = !!calendar?.archivedAt;
+  const canEdit = !!calendar && !isArchived;
+  const filtering = search.trim() !== "" || selectedGroups.length > 0;
+
+  const data = useCalendarData({
+    calendarId: calendarId!,
+    view,
+    anchor,
+    weekStart,
+    targetGroupIds: selectedGroups,
+    checkEmpty: !filtering,
+  });
+
+  const items = useMemo<CalItem[]>(() => {
+    const events = data.eventItems.filter((i) => matchesSearch(i, search));
+    // Holidays only without a search or filter (design: they would not match anyway).
+    return filtering ? events : [...data.holidayItems, ...events];
+  }, [data.eventItems, data.holidayItems, search, filtering]);
+  const visibleEvents = items.filter((i) => i.kind === "event").length;
+
+  /**
+   * Focus moves within the grid replace the history entry; previous / next / today push one,
+   * so the browser's back button returns to the month or week shown before.
+   */
+  // The router commits URL changes in a transition, so `anchor` can lag behind fast repeated
+  // clicks on previous / next; keep the last requested date.
+  const latestAnchor = useRef(anchor);
+  useEffect(() => {
+    latestAnchor.current = anchor;
+  }, [anchor]);
+
+  const setAnchor = useCallback(
+    (date: IsoDate, { replace = true }: { replace?: boolean } = {}) => {
+      latestAnchor.current = date;
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("date", date);
+          if (view === "week") next.set("view", "week");
+          else next.delete("view");
+          return next;
+        },
+        { replace },
+      );
+    },
+    [setParams, view],
+  );
+
+  function navigate(direction: -1 | 1) {
+    setPanelOpen(false);
+    setAnchor(stepAnchor(view, latestAnchor.current, direction), { replace: false });
+  }
+
+  function hrefFor(v: "month" | "week") {
+    const next = new URLSearchParams(params);
+    next.set("date", anchor);
+    if (v === "week") next.set("view", "week");
+    else next.delete("view");
+    return `?${next.toString()}`;
+  }
+
+  const title =
+    view === "week"
+      ? t("calendar.weekTitle", {
+          // Mid-week day: with Sunday as first day, the Sunday belongs to the previous ISO week.
+          week: isoWeek(addDays(startOfWeek(anchor, weekStart), 3)).week,
+          range: formatWeekRange(startOfWeek(anchor, weekStart), locale),
+        })
+      : formatMonthTitle(yearMonthOf(anchor), locale);
+
+  // ——— Events ———
+  function openCreate(date?: string, tab: ModalState["tab"] = "manual") {
+    setModal({ open: true, event: null, defaultDate: date, tab });
+  }
+
+  function openItem(item: CalItem) {
+    if (item.kind !== "event") return;
+    setModal({ open: true, event: item.source as CalendarEvent, tab: "manual" });
+  }
+
+  async function patchDates(ev: CalendarEvent, dates: { date: string; dateEnd: string | null }) {
+    await apiPatch(`/api/calendars/${calendarId}/events/${ev.id}`, {
+      date: dates.date,
+      ...(ev.dateEnd || dates.dateEnd ? { dateEnd: dates.dateEnd } : {}),
+    });
+    await qc.invalidateQueries({ queryKey: ["events", calendarId] });
+  }
+
+  async function moveItem(item: CalItem, date: IsoDate) {
+    const ev = item.source as CalendarEvent;
+    const before = { date: ev.date.slice(0, 10), dateEnd: ev.dateEnd?.slice(0, 10) ?? null };
+    try {
+      await patchDates(ev, shiftEventDates(ev, date));
+      toast.success(t("calendar.move.success", { date: formatNumericDate(date, locale) }), {
+        action: {
+          label: t("calendar.move.undo"),
+          onClick: () => {
+            patchDates(ev, before)
+              .then(() => toast.success(t("calendar.move.undone")))
+              .catch(() => toast.error(t("calendar.move.failed")));
+          },
+        },
+      });
+    } catch {
+      toast.error(t("calendar.move.failed"));
+    }
+  }
 
   async function handleUnarchive() {
-    await apiPost(`/api/clubs/${clubId}/calendars/${calendarId}/unarchive`, {});
-    qc.invalidateQueries({ queryKey: ["calendars", clubId, "all"] });
-    refetchCalendar();
+    setUnarchiving(true);
+    try {
+      await apiPost(`/api/clubs/${clubId}/calendars/${calendarId}/unarchive`, {});
+      setRestored(true);
+      void qc.invalidateQueries({ queryKey: ["calendars", clubId] });
+      await refetchCalendar();
+    } catch {
+      toast.error(t("calendar.archived.failed"));
+    } finally {
+      setUnarchiving(false);
+    }
   }
 
-  function toggleGroup(id: string) {
-    setSelectedGroups((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      selectedGroupsRef.current = next;
-      setTimeout(() => calendarRef.current?.getApi().refetchEvents(), 0);
-      return next;
-    });
-  }
-
-  function clearFilter() {
-    selectedGroupsRef.current = [];
+  function resetFilters() {
+    setSearch("");
     setSelectedGroups([]);
-    setTimeout(() => calendarRef.current?.getApi().refetchEvents(), 0);
   }
 
-  function handleSearchChange(value: string) {
-    setSearchQuery(value);
-    searchQueryRef.current = value;
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(
-      () => calendarRef.current?.getApi().refetchEvents(),
-      300,
+  const placeOf = (item: CalItem) => {
+    const loc = (item.source as CalendarEvent).location;
+    return loc ? loc.name || formatAddress(loc) : null;
+  };
+  const tagsOf = (item: CalItem): EventItemTag[] =>
+    ((item.source as CalendarEvent).targetGroups ?? []).map(({ targetGroup }) => ({
+      id: targetGroup.id,
+      label: targetGroup.name,
+      tone: audienceTone(targetGroups.findIndex((g) => g.id === targetGroup.id)),
+    }));
+
+  // ——— Content by state ———
+  let content: ReactNode;
+  if (data.isLoading) {
+    content = <CalendarSkeleton />;
+  } else if (data.calendarEmpty && !filtering) {
+    content = (
+      <EmptyState
+        icon="calendar"
+        title={t("calendar.empty.title")}
+        text={isArchived ? t("calendar.empty.archivedText") : t("calendar.empty.text")}
+        actions={
+          canEdit && (
+            <>
+              <Button icon="plus" onClick={() => openCreate()}>
+                {t("calendar.create")}
+              </Button>
+              <LinkButton
+                variant="secondary"
+                icon="upload"
+                to={`/clubs/${clubId}/calendars/${calendarId}/import`}
+              >
+                {t("calendar.import")}
+              </LinkButton>
+            </>
+          )
+        }
+      />
+    );
+  } else if (search.trim() && visibleEvents === 0 && !data.isError) {
+    content = (
+      <EmptyState
+        icon="search"
+        title={t("calendar.noResults.title", { query: search.trim() })}
+        text={t("calendar.noResults.text")}
+        actions={
+          <Button variant="secondary" onClick={() => setSearch("")}>
+            {t("calendar.noResults.reset")}
+          </Button>
+        }
+      />
+    );
+  } else if (view === "week") {
+    content = (
+      <>
+        <WeekView
+          days={weekDays(anchor, weekStart)}
+          items={items}
+          today={today}
+          onOpenItem={openItem}
+        />
+        <CalendarLegend />
+      </>
+    );
+  } else {
+    content = (
+      <MonthView
+        month={yearMonthOf(anchor)}
+        weekStart={weekStart}
+        items={items}
+        today={today}
+        activeDate={anchor}
+        selectedDate={anchor}
+        panelOpen={panelOpen}
+        compact={isMobile}
+        labelledBy={titleId}
+        onMoveFocus={(date) => setAnchor(date)}
+        onSelectDay={(date) => {
+          setAnchor(date);
+          setPanelOpen(true);
+        }}
+        onClosePanel={() => setPanelOpen(false)}
+        onOpenItem={openItem}
+        onCreateOnDay={canEdit ? (date) => openCreate(date) : undefined}
+        onDropItem={canEdit && !isMobile ? moveItem : undefined}
+        placeOf={placeOf}
+        tagsOf={tagsOf}
+      />
     );
   }
 
-  function clearSearch() {
-    searchQueryRef.current = "";
-    setSearchQuery("");
-    calendarRef.current?.getApi().refetchEvents();
-  }
-
-  function openCreate(date?: string) {
-    setEditingEvent(null);
-    setSelectedDate(date);
-    setModalOpen(true);
-  }
-
-  function openEdit(event: CalendarEvent) {
-    setSelectedDate(undefined);
-    setEditingEvent(event);
-    setModalOpen(true);
-  }
-
-  function closeModal() {
-    setModalOpen(false);
-    setEditingEvent(null);
-    setSelectedDate(undefined);
-  }
-
-  function fetchEvents(
-    fetchInfo: { startStr: string; endStr: string },
-    successCallback: (events: EventInput[]) => void,
-    failureCallback: (err: Error) => void,
-  ) {
-    const tgParam =
-      selectedGroupsRef.current.length > 0
-        ? `&targetGroupIds=${selectedGroupsRef.current.join(",")}`
-        : "";
-    apiGet<CalendarEvent[]>(
-      `/api/calendars/${calendarId}/events?from=${fetchInfo.startStr.slice(0, 10)}&to=${fetchInfo.endStr.slice(0, 10)}${tgParam}`,
-    )
-      .then((events) => {
-        const q = searchQueryRef.current.trim().toLowerCase();
-        const filtered = q ? events.filter((ev) => ev.name.toLowerCase().includes(q)) : events;
-        successCallback(
-          filtered.map((ev) => {
-            const startDateStr = ev.date.slice(0, 10);
-            const endDateStr = ev.dateEnd?.slice(0, 10) ?? startDateStr;
-            const iconPrefix = ev.properties
-              .map((p) => p.property.icon)
-              .filter(Boolean)
-              .join("");
-            const title = [iconPrefix, ev.name].filter(Boolean).join(" ");
-
-            if (ev.isAllDay) {
-              const endExclusive = new Date(endDateStr);
-              endExclusive.setDate(endExclusive.getDate() + 1);
-              return {
-                id: String(ev.id),
-                title,
-                start: startDateStr,
-                end: endExclusive.toISOString().slice(0, 10),
-                allDay: true,
-                backgroundColor: ev.isDraft ? "#94a3b8" : "#2563eb",
-                borderColor: ev.isDraft ? "#94a3b8" : "#1d4ed8",
-                textColor: "#fff",
-                extendedProps: { event: ev },
-              };
-            }
-
-            return {
-              id: String(ev.id),
-              title,
-              start: `${startDateStr}T${ev.timeBegin}`,
-              end: `${endDateStr}T${ev.timeEnd}`,
-              backgroundColor: ev.isDraft ? "#94a3b8" : "#2563eb",
-              borderColor: ev.isDraft ? "#94a3b8" : "#1d4ed8",
-              textColor: "#fff",
-              extendedProps: { event: ev },
-            };
-          }),
-        );
-      })
-      .catch(failureCallback);
-  }
-
-  const fetchHolidayEvents = useCallback(
-    async (
-      info: { startStr: string; endStr: string },
-      successCallback: (events: EventInput[]) => void,
-      failureCallback: (error: Error) => void,
-    ) => {
-      try {
-        const from = info.startStr.slice(0, 10);
-        const to = info.endStr.slice(0, 10);
-        const holidays = await getHolidayEvents(calendarId!, from, to);
-        successCallback(
-          holidays.map((h) => ({
-            id: `holiday-${h.id}`,
-            title: h.name,
-            start: h.date,
-            end: h.dateEnd
-              ? new Date(new Date(h.dateEnd + "T00:00:00").getTime() + 86_400_000)
-                  .toISOString()
-                  .slice(0, 10)
-              : undefined,
-            allDay: true,
-            editable: false,
-            classNames: ["fc-holiday-event"],
-            extendedProps: { isHoliday: true },
-          })),
-        );
-      } catch (e) {
-        failureCallback(e instanceof Error ? e : new Error("Failed to load holidays"));
-      }
-    },
-    [calendarId],
-  );
-
-  function handleDateClick(info: DateClickArg) {
-    openCreate(info.dateStr);
-  }
-
-  function handleEventClick(info: EventClickArg) {
-    if (info.event.extendedProps?.isHoliday) return;
-    const ev = info.event.extendedProps.event as CalendarEvent;
-    openEdit(ev);
-  }
-
-  async function handleEventDrop(info: EventDropArg) {
-    if (info.event.extendedProps?.isHoliday) {
-      info.revert();
-      return;
-    }
-    const ev = info.event.extendedProps.event as CalendarEvent;
-    const newStartStr = info.event.startStr.slice(0, 10);
-
-    let newDateEnd: string | null = null;
-    if (ev.dateEnd) {
-      const oldStart = new Date(ev.date.slice(0, 10));
-      const oldEnd = new Date(ev.dateEnd.slice(0, 10));
-      const diffDays = Math.round((oldEnd.getTime() - oldStart.getTime()) / 86400000);
-      const newEnd = new Date(newStartStr);
-      newEnd.setDate(newEnd.getDate() + diffDays);
-      newDateEnd = newEnd.toISOString().slice(0, 10);
-    }
-
-    try {
-      await apiPatch(`/api/calendars/${calendarId}/events/${ev.id}`, {
-        date: newStartStr,
-        ...(newDateEnd !== null ? { dateEnd: newDateEnd } : {}),
-      });
-      qc.invalidateQueries({ queryKey: ["events", calendarId] });
-    } catch {
-      info.revert();
-    }
-  }
+  const base = `/clubs/${clubId}/calendars/${calendarId}`;
 
   return (
-    <div className="p-6">
-      {isArchived && (
+    <div className="ap-wrap">
+      {(isArchived || restored) && (
+        <div className="ap-stack" style={{ marginBottom: "var(--space-6)" }}>
+          {isArchived ? (
+            <Banner
+              tone="warning"
+              icon="lock"
+              title={t("shell.archivedReadOnly")}
+              action={
+                <Button variant="secondary" onClick={handleUnarchive} loading={unarchiving}>
+                  {t("calendar.archived.unarchive")}
+                </Button>
+              }
+            >
+              {t("calendar.archived.text")}
+            </Banner>
+          ) : (
+            <Banner tone="success">{t("calendar.archived.restored")}</Banner>
+          )}
+        </div>
+      )}
+
+      <CalendarToolbar
+        view={view}
+        title={title}
+        titleId={titleId}
+        monthHref={hrefFor("month")}
+        weekHref={hrefFor("week")}
+        listHref={`${base}/events`}
+        onPrev={() => navigate(-1)}
+        onNext={() => navigate(1)}
+        onToday={() => {
+          setPanelOpen(false);
+          setAnchor(today, { replace: latestAnchor.current === today });
+        }}
+        archived={isArchived}
+        onCreate={canEdit ? () => openCreate() : undefined}
+        onCreateFromTemplate={canEdit ? () => openCreate(undefined, "template") : undefined}
+        importHref={canEdit ? `${base}/import` : undefined}
+      />
+
+      <FilterBar
+        search={search}
+        onSearchChange={setSearch}
+        groups={targetGroups.map((g) => ({ id: g.id, label: g.name }))}
+        selectedGroups={selectedGroups}
+        onToggleGroup={(id) =>
+          setSelectedGroups((prev) =>
+            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+          )
+        }
+        onReset={resetFilters}
+      />
+
+      {data.isError && (
         <Banner
-          tone="warning"
-          icon="lock"
-          title={t("shell.archivedReadOnly")}
-          className="mb-6"
+          tone="danger"
+          title={t("calendar.error.title")}
+          className="mb-4"
           action={
-            <button type="button" onClick={handleUnarchive} className={buttonClass("secondary")}>
-              {t("calendar.unarchive")}
-            </button>
+            <Button variant="secondary" icon="refresh" onClick={data.refetch}>
+              {t("calendar.error.retry")}
+            </Button>
           }
         >
-          {t("calendar.archivedNotice")}
+          {t("calendar.error.text")}
         </Banner>
       )}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-lg font-semibold text-slate-900">{t("calendar.title")}</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <SearchInput
-            value={searchQuery}
-            onChange={(val) => (val === "" ? clearSearch() : handleSearchChange(val))}
-            placeholder={t("calendar.searchEvents")}
-          />
-          <Link to={`/clubs/${clubId}/calendars/${calendarId}/import`}>
-            <Button size="sm" variant="outline">
-              <Upload className="mr-1 h-3.5 w-3.5" />
-              {t("calendar.importIcs")}
-            </Button>
-          </Link>
-          <Button size="sm" onClick={() => openCreate()}>
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            {t("calendar.newEvent")}
-          </Button>
-        </div>
-      </div>
 
-      {targetGroups.length > 1 && (
-        <FilterPillGroup
-          label={t("calendar.filter")}
-          clearAllLabel={t("calendar.allGroups")}
-          items={targetGroups.map((tg) => ({ id: tg.id, label: tg.name }))}
-          selected={selectedGroups}
-          onChange={toggleGroup}
-          onClearAll={clearFilter}
-          className="mb-4"
-        />
+      {(!data.isError || data.hasData) && content}
+
+      {canEdit && isMobile && (
+        <Button className="ap-fab" icon="plus" onClick={() => openCreate(anchor)}>
+          {t("calendar.create")}
+        </Button>
       )}
-
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <FullCalendar
-          ref={calendarRef}
-          plugins={[dayGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
-          eventSources={[
-            { events: fetchEvents },
-            {
-              events: fetchHolidayEvents,
-              color: "#f97316",
-              textColor: "#ffffff",
-            },
-          ]}
-          eventClick={handleEventClick}
-          dateClick={handleDateClick}
-          editable={true}
-          eventDrop={handleEventDrop}
-          selectable={false}
-          firstDay={user?.firstDayOfWeek ?? 1}
-          displayEventTime={true}
-          eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
-          headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth" }}
-          height="auto"
-          eventContent={renderEvent}
-          locale={fcLocale}
-        />
-      </div>
-
-      <p className="mt-2 text-xs text-slate-400">{t("calendar.clickToEdit")}</p>
 
       <EventModal
         calendarId={calendarId!}
-        open={modalOpen}
-        onClose={closeModal}
-        defaultDate={selectedDate}
-        event={editingEvent}
+        open={modal.open}
+        onClose={() => setModal(CLOSED)}
+        defaultDate={modal.defaultDate}
+        event={modal.event}
+        initialTab={modal.tab}
+        readOnly={!canEdit}
       />
-    </div>
-  );
-}
-
-function renderEvent(info: {
-  event: {
-    title: string;
-    start: Date | null;
-    extendedProps: { event?: CalendarEvent; isHoliday?: boolean };
-  };
-  timeText: string;
-}) {
-  const { timeText, event } = info;
-
-  if (event.extendedProps.isHoliday) {
-    return <div className="truncate px-1 text-xs font-medium">{event.title}</div>;
-  }
-
-  const ev = event.extendedProps.event;
-  return (
-    <div className="truncate px-1 text-xs">
-      <span className="opacity-80">{timeText} </span>
-      <span className="font-medium">{event.title}</span>
-      {ev?.isDraft && <span className="ml-1 opacity-60">{i18n.t("calendar.draft")}</span>}
     </div>
   );
 }

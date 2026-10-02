@@ -223,19 +223,96 @@
   },
   "calendar": {
     "title": "Calendar",
-    "searchEvents": "Search events…",
-    "importIcs": "Import ICS",
-    "newEvent": "New Event",
-    "filter": "Filter:",
-    "allGroups": "All",
-    "archivedNotice": "This calendar is archived — it is read-only.",
-    "unarchive": "Unarchive",
-    "clickToEdit": "Click on an event to edit · Click a date to create",
-    "draft": "(draft)"
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week",
+    "today": "Today",
+    "weekTitle": "Week {{week}} · {{range}}",
+    "viewSwitch": "Switch view",
+    "views": {
+      "month": "Month",
+      "week": "Week",
+      "list": "List"
+    },
+    "create": "Create event",
+    "createMore": "More ways to create events",
+    "fromTemplate": "From template",
+    "import": "Import events",
+    "search": {
+      "label": "Search events",
+      "placeholder": "Name of an event"
+    },
+    "filter": {
+      "label": "Filter by target group",
+      "reset": "Reset filters"
+    },
+    "cell": {
+      "today": "today",
+      "events_one": "{{count}} event",
+      "events_other": "{{count}} events",
+      "holiday": "holiday {{name}}"
+    },
+    "more": "+{{count}} more",
+    "chip": {
+      "published": "(published)",
+      "draft": "Draft",
+      "holiday": "(holiday)",
+      "holidayTip": "Holiday: {{name}}"
+    },
+    "time": {
+      "range": "{{from}} – {{to}}",
+      "allDay": "All day",
+      "holiday": "Holiday",
+      "until": "until {{date}}"
+    },
+    "legend": {
+      "published": "Published",
+      "draft": "Draft, only visible internally",
+      "holiday": "Holiday, not editable",
+      "drag": "Events can be dragged to another day. Without a mouse: open the event and change the date."
+    },
+    "dayPanel": {
+      "empty": "There are no events on this day.",
+      "create": "Create event on this day",
+      "close": "Close day view"
+    },
+    "week": {
+      "heading": "Events this week",
+      "empty": "No events"
+    },
+    "loading": "Loading calendar",
+    "error": {
+      "title": "The calendar could not be loaded",
+      "text": "The connection was interrupted. Check your internet connection and load the calendar again.",
+      "retry": "Load again"
+    },
+    "empty": {
+      "title": "No events in this calendar yet",
+      "text": "Create the first event. It stays a draft until you publish it. Or import events from a file.",
+      "archivedText": "This archived calendar has no events."
+    },
+    "noResults": {
+      "title": "No events found for “{{query}}”",
+      "text": "Check the spelling or search for another name. An active target group filter can also hide events.",
+      "reset": "Reset search"
+    },
+    "archived": {
+      "text": "This calendar is archived and read-only. Events cannot be changed.",
+      "unarchive": "Unarchive",
+      "restored": "The calendar is active again. You can edit events.",
+      "failed": "The calendar could not be unarchived. Please try again."
+    },
+    "move": {
+      "success": "Event moved to {{date}}",
+      "undo": "Undo",
+      "undone": "Move undone",
+      "failed": "Moving failed. The event is back on its original day."
+    }
   },
   "eventModal": {
-    "newEvent": "New Event",
-    "editEvent": "Edit Event",
+    "newEvent": "New event",
+    "editEvent": "Edit event",
     "manual": "Manual",
     "fromTemplate": "From Template",
     "template": "Template",
@@ -255,6 +332,7 @@
     "noMatchingDates": "No dates match the rule in this range.",
     "published": "Published",
     "eventName": "Name *",
+    "eventNamePlaceholder": "Event name",
     "startDate": "Start date *",
     "endDate": "End date",
     "endDateOptional": "(optional)",
@@ -282,7 +360,17 @@
     "deleteEvent": "Delete event?",
     "cannotBeUndone": "This cannot be undone.",
     "weekdays": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-    "nthLabels": ["1st", "2nd", "3rd", "4th", "last"]
+    "nthLabels": ["1st", "2nd", "3rd", "4th", "last"],
+    "viewEvent": "View event",
+    "readOnlyNotice": "The calendar is archived. The event cannot be changed.",
+    "close": "Close",
+    "deleteText": "The event “{{name}}” will be deleted.",
+    "deleteConsequence": "It disappears from the calendar and from all published feeds. This cannot be undone.",
+    "deleted": "Event deleted",
+    "saved": "Saved.",
+    "saveFailed": "Saving failed. Please check your input and try again.",
+    "deleteFailed": "Deleting failed. Please try again.",
+    "draftHint": "Drafts are only visible internally."
   },
   "events": {
     "title": "Events",

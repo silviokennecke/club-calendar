@@ -34,6 +34,14 @@ This is a **Vite + React + React Router** SPA (not Next.js).
   step 2, `?new=1` forces a new club); `/clubs` is the club picker (`?select=1` skips the last-calendar redirect);
   `GuestRoute` sends signed-in users from /login, /signup, /forgot-password to /clubs.
 - Context switcher menus (`layout/ContextMenu.tsx`): disclosure with Escape, arrow keys, Home/End, Tab-out closes.
+- Calendar (no FullCalendar): pure date logic in `src/lib/calendar/` (`dates.ts` ISO-date arithmetic in UTC,
+  month grid, ISO weeks, `todayIn(timeZone)`; `items.ts` events/holidays as inclusive ranges, week lane layout,
+  `shiftEventDates`; `format.ts` Intl labels in the current language; `view.ts` URL view/anchor, ranges, grid keys),
+  all with Vitest tests. UI in `components/calendar/`: `MonthView` (desktop `MonthBoard` with event bars +
+  `DayPanel`, phones `MonthGrid` + day list), `WeekView`, `EventChip`, `EventItem`, `CalendarToolbar`/`MonthNav`,
+  `FilterBar`, `CalendarLegend`, `CalendarSkeleton`, `useCalendarData`, `useGridKeyboard` (roving tabindex).
+  The calendar page keeps view and date in the URL (`?view=week&date=2026-10-08`). `useIsMobile()` /
+  `useMediaQuery()` in `src/lib/useMediaQuery.ts`.
 - Icons: lucide-react via `<Icon glyph="..." />` (design glyph names, `shared/Icon.tsx`). No emojis as UI icons.
 - All texts via i18n (`src/locales/de.json`, `en.json`); shared component texts under `ui.*`, shell under `shell.*`.
 - Tests: Vitest + Testing Library (jsdom, setup in `src/test/setup.ts`, tests run in German).
@@ -46,6 +54,7 @@ Before writing raw Tailwind layout divs in a page, check `src/components/ui/shar
 | Component                                                                                | Use for                                                                 |
 | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | `Button` / `LinkButton` / `IconButton`                                                   | Buttons (primary, secondary, ghost, danger, danger-solid, ghost-danger) |
+| `SplitButton`                                                                            | Primary action + menu of alternatives (e.g. "Termin anlegen")           |
 | `buttonClass()`                                                                          | Button styling for other elements (e.g. dialog triggers)                |
 | `Field` + `TextInput`/`TextArea`/`NativeSelect`                                          | Label, hint, error, aria wiring (`group` mode for composite controls)   |
 | `Toggle`                                                                                 | On/off switch (`role="switch"`)                                         |
