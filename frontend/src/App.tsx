@@ -7,6 +7,7 @@ import ProtectedRoute from "./components/layout/ProtectedRoute";
 
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import EmailVerifyPage from "./pages/EmailVerifyPage";
 import FeedPage from "./pages/FeedPage";
@@ -37,6 +38,7 @@ export default function App() {
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
               <Route path="/auth/verify-email" element={<EmailVerifyPage />} />
               <Route path="/feed/:feedId" element={<FeedPage />} />

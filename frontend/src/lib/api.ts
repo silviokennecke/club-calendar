@@ -102,7 +102,9 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const res = await apiFetch(path, { method: "POST", body: JSON.stringify(body) });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Unknown error" }));
-    throw Object.assign(new Error(err.error ?? "Request failed"), { status: res.status });
+    throw Object.assign(new Error(err.error ?? err.detail ?? "Request failed"), {
+      status: res.status,
+    });
   }
   return res.json();
 }
@@ -111,7 +113,9 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   const res = await apiFetch(path, { method: "PATCH", body: JSON.stringify(body) });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Unknown error" }));
-    throw Object.assign(new Error(err.error ?? "Request failed"), { status: res.status });
+    throw Object.assign(new Error(err.error ?? err.detail ?? "Request failed"), {
+      status: res.status,
+    });
   }
   return res.json();
 }

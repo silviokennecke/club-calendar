@@ -1,17 +1,22 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { apiPost, apiFetch, BACKEND_URL } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import type { User } from "@/lib/types";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { SsoProviderIcon } from "@/components/SsoProviderIcon";
-import { Banner, LangSwitch, Logo, buttonClass } from "@/components/ui/shared";
+import {
+  Button,
+  Field,
+  Icon,
+  LinkButton,
+  PasswordField,
+  TextInput,
+  buttonClass,
+  type Glyph,
+} from "@/components/ui/shared";
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { FocusBanner } from "@/components/auth/FocusBanner";
+import { useResendVerification } from "@/components/auth/useResendVerification";
 
 interface SsoProvider {
   id: string;
@@ -19,33 +24,45 @@ interface SsoProvider {
   icon: string;
 }
 
+const PROVIDER_GLYPH: Record<string, Glyph> = { microsoft: "building" };
+
+type LoginProblem = "wrong" | "unverified" | "passkey" | null;
+
 export default function LoginPage() {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [problem, setProblem] = useState<LoginProblem>(null);
+  // Bumped on every new problem so the banner remounts and takes focus again.
+  const [problemKey, setProblemKey] = useState(0);
+  // The OAuth callback redirects here with ?error=... when the provider sign-in failed.
+  const [ssoError, setSsoError] = useState(searchParams.has("error"));
   const [loading, setLoading] = useState(false);
-  const [emailNotVerified, setEmailNotVerified] = useState(false);
-  const [resendEmail, setResendEmail] = useState("");
-  const [resendLoading, setResendLoading] = useState(false);
-  const [resendDone, setResendDone] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [providers, setProviders] = useState<SsoProvider[]>([]);
+  const resend = useResendVerification();
   const { login } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/api/auth/providers`)
       .then((r) => r.json())
-      .then(setProviders)
+      .then((list) => setProviders(Array.isArray(list) ? list : []))
       .catch(() => {});
   }, []);
 
+  function show(next: LoginProblem) {
+    setSsoError(false);
+    setProblem(next);
+    setProblemKey((k) => k + 1);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setEmailNotVerified(false);
-    setResendDone(false);
+    setProblem(null);
+    setSsoError(false);
+    resend.reset();
     setLoading(true);
     try {
       const data = await apiPost<{ access_token: string; refresh_token: string; user: User }>(
@@ -56,44 +73,25 @@ export default function LoginPage() {
       navigate("/clubs");
     } catch (err: unknown) {
       if (err instanceof Error && (err as { status?: number }).status === 403) {
-        setEmailNotVerified(true);
-        setResendEmail(email);
+        show("unverified");
       } else {
-        setError(t("auth.invalidEmailOrPassword"));
+        show("wrong");
       }
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleResend() {
-    setResendLoading(true);
-    try {
-      const res = await apiFetch("/api/auth/resend-verification", {
-        method: "POST",
-        body: JSON.stringify({ email: resendEmail }),
-      });
-      if (!res.ok) {
-        throw new Error("Request failed");
-      }
-      // Server returns 204 No Content — no body to parse
-    } catch {
-      // silently ignore
-    } finally {
-      setResendLoading(false);
-      setResendDone(true);
-    }
-  }
-
   async function handlePasskey() {
-    setError("");
+    setProblem(null);
+    setSsoError(false);
     setPasskeyLoading(true);
     try {
       const { startAuthentication } = await import("@simplewebauthn/browser");
       const optRes = await apiFetch("/api/auth/webauthn/authenticate/options");
 
       const { options, challengeToken } = (await optRes.json()) as {
-        options: any;
+        options: Parameters<typeof startAuthentication>[0]["optionsJSON"];
         challengeToken: string;
       };
       const response = await startAuthentication({ optionsJSON: options });
@@ -102,7 +100,7 @@ export default function LoginPage() {
         body: JSON.stringify({ challengeToken, response }),
       });
       if (!verifyRes.ok) {
-        setError(t("auth.passkeyFailed"));
+        show("passkey");
         return;
       }
       const data = (await verifyRes.json()) as {
@@ -114,116 +112,125 @@ export default function LoginPage() {
       navigate("/clubs");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "";
-      if (!msg.includes("cancel") && !msg.includes("abort")) setError(t("auth.passkeyFailed"));
+      if (!msg.includes("cancel") && !msg.includes("abort")) show("passkey");
     } finally {
       setPasskeyLoading(false);
     }
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-slate-50">
-      <div className="absolute top-4 right-4">
-        <LangSwitch />
-      </div>
-      <Card className="w-full max-w-sm border-slate-200 shadow-md">
-        <CardHeader className="pb-2">
-          <div className="mb-1">
-            <Logo size={28} />
-          </div>
-          <CardTitle className="text-xl">{t("auth.signIn")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="space-y-1">
-              <Label htmlFor="email">{t("auth.email")}</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="password">{t("auth.password")}</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            {emailNotVerified && (
-              <Banner
-                tone={resendDone ? "success" : "warning"}
-                action={
-                  !resendDone ? (
-                    <button
-                      type="button"
-                      onClick={handleResend}
-                      disabled={resendLoading}
-                      className={buttonClass("secondary")}
-                    >
-                      {t("auth.resendVerificationEmail")}
-                    </button>
-                  ) : undefined
-                }
-              >
-                {resendDone ? t("auth.verificationEmailSent") : t("auth.emailNotVerified")}
-              </Banner>
-            )}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? t("auth.signingIn") : t("auth.signIn")}
+    <AuthLayout
+      title={t("auth.signIn")}
+      footer={
+        <>
+          {t("auth.noAccount")}{" "}
+          <Link to="/signup" className="ap-link">
+            {t("auth.createAccount")}
+          </Link>
+        </>
+      }
+    >
+      {problem === "wrong" && (
+        <FocusBanner
+          key={problemKey}
+          tone="danger"
+          title={t("auth.login.wrongTitle")}
+          action={
+            <LinkButton to="/forgot-password" variant="secondary">
+              {t("auth.login.resetPassword")}
+            </LinkButton>
+          }
+        >
+          {t("auth.login.wrongText")}
+        </FocusBanner>
+      )}
+      {problem === "unverified" && !resend.done && (
+        <FocusBanner
+          key={problemKey}
+          tone="warning"
+          title={t("auth.login.unverifiedTitle")}
+          action={
+            <Button
+              variant="secondary"
+              loading={resend.loading}
+              onClick={() => resend.resend(email)}
+            >
+              {t("auth.login.resend")}
             </Button>
-          </form>
+          }
+        >
+          {t("auth.login.unverifiedText")}
+        </FocusBanner>
+      )}
+      {problem === "unverified" && resend.done && (
+        <FocusBanner tone="success" title={t("auth.login.sentTitle")}>
+          {t("auth.login.sentText")}
+        </FocusBanner>
+      )}
+      {problem === "passkey" && (
+        <FocusBanner key={problemKey} tone="danger" title={t("auth.login.passkeyErrorTitle")}>
+          {t("auth.login.passkeyErrorText")}
+        </FocusBanner>
+      )}
+      {ssoError && (
+        <FocusBanner tone="danger" title={t("auth.login.ssoErrorTitle")}>
+          {t("auth.login.ssoErrorText")}
+        </FocusBanner>
+      )}
 
-          <Button
-            variant="outline"
-            className="w-full gap-2"
-            disabled={passkeyLoading}
-            onClick={handlePasskey}
+      <form className="ap-form" aria-label={t("auth.login.formLabel")} onSubmit={handleSubmit}>
+        <Field label={t("auth.email")}>
+          <TextInput
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="username"
+            inputMode="email"
+          />
+        </Field>
+        <PasswordField
+          label={t("auth.password")}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="current-password"
+        />
+        <Link
+          to="/forgot-password"
+          className="ap-link t-sm min-h-tap inline-flex items-center self-start"
+        >
+          {t("auth.login.forgot")}
+        </Link>
+        <Button type="submit" block loading={loading} loadingLabel={t("auth.signingIn")}>
+          {t("auth.signIn")}
+        </Button>
+      </form>
+
+      <div className="ap-divider-text">
+        <span>{t("auth.or")}</span>
+      </div>
+      <div className="ap-stack ap-stack--sm">
+        <Button
+          variant="sso"
+          icon="key"
+          loading={passkeyLoading}
+          loadingLabel={t("auth.passkeyWaiting")}
+          onClick={handlePasskey}
+        >
+          {t("auth.passkey")}
+        </Button>
+        {providers.map((provider) => (
+          <a
+            key={provider.id}
+            href={`${BACKEND_URL}/api/auth/oauth/${provider.id}`}
+            className={buttonClass("sso")}
           >
-            🔑 {passkeyLoading ? t("auth.passkeyWaiting") : t("auth.passkey")}
-          </Button>
-
-          {providers.length > 0 && (
-            <>
-              <div className="relative">
-                <Separator />
-                <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-xs text-slate-400">
-                  {t("auth.orContinueWith")}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {providers.map((provider) => (
-                  <a
-                    key={provider.id}
-                    href={`${BACKEND_URL}/api/auth/oauth/${provider.id}`}
-                    className="block"
-                  >
-                    <Button variant="outline" className="w-full justify-center gap-2">
-                      <SsoProviderIcon icon={provider.icon} />
-                      {provider.name}
-                    </Button>
-                  </a>
-                ))}
-              </div>
-            </>
-          )}
-        </CardContent>
-        <CardFooter className="justify-center pt-0">
-          <p className="text-sm text-slate-500">
-            {t("auth.noAccount")}{" "}
-            <Link to="/signup" className="font-medium text-blue-600 hover:underline">
-              {t("auth.signUp")}
-            </Link>
-          </p>
-        </CardFooter>
-      </Card>
-    </div>
+            <Icon glyph={PROVIDER_GLYPH[provider.id] ?? "globe"} size={20} />
+            {t("auth.login.signInWith", { provider: provider.name })}
+          </a>
+        ))}
+      </div>
+    </AuthLayout>
   );
 }

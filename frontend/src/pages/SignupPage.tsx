@@ -1,36 +1,60 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { apiPost } from "@/lib/api";
 import i18n from "@/lib/i18n";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { LangSwitch, Logo } from "@/components/ui/shared";
+import { Button, Field, LinkButton, PasswordField, TextInput } from "@/components/ui/shared";
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { FocusBanner } from "@/components/auth/FocusBanner";
+
+const MIN_PASSWORD_LENGTH = 8;
+
+interface FieldErrors {
+  name?: string;
+  email?: string;
+  password?: string;
+  confirm?: string;
+}
+
+type Problem = "missing" | "short" | "mismatch" | "exists" | "generic";
 
 export default function SignupPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [problem, setProblem] = useState<Problem | null>(null);
+  const [problemKey, setProblemKey] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [submittedEmail, setSubmittedEmail] = useState("");
+
+  function fail(next: Problem, fieldErrors: FieldErrors = {}) {
+    setErrors(fieldErrors);
+    setProblem(next);
+    setProblemKey((k) => k + 1);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    if (password !== confirm) {
-      setError(t("auth.passwordsDoNotMatch"));
+    setProblem(null);
+    setErrors({});
+
+    const found: FieldErrors = {};
+    if (!name.trim()) found.name = t("auth.register.nameMissing");
+    if (!email.trim()) found.email = t("auth.register.emailMissing");
+    if (!password) found.password = t("auth.register.passwordMissing");
+    else if (password.length < MIN_PASSWORD_LENGTH)
+      found.password = t("auth.register.passwordShortField");
+    if (password && confirm !== password) found.confirm = t("auth.register.confirmMismatchField");
+
+    if (Object.keys(found).length > 0) {
+      const empty = !name.trim() || !email.trim() || !password;
+      fail(empty ? "missing" : password.length < MIN_PASSWORD_LENGTH ? "short" : "mismatch", found);
       return;
     }
-    if (password.length < 8) {
-      setError(t("auth.passwordTooShort"));
-      return;
-    }
+
     setLoading(true);
     try {
       await apiPost("/api/auth/register", {
@@ -39,98 +63,87 @@ export default function SignupPage() {
         password,
         language: i18n.resolvedLanguage ?? "en",
       });
-      setSubmittedEmail(email);
-      setSubmitted(true);
-    } catch (e: unknown) {
-      setError((e as Error).message ?? t("auth.signingUp"));
+      navigate(`/auth/verify-email?email=${encodeURIComponent(email)}`);
+    } catch (err: unknown) {
+      const status = (err as { status?: number }).status;
+      const message = (err as Error).message;
+      if (status === 400 && message === "Email already in use") {
+        fail("exists", { email: t("auth.register.emailExistsField") });
+      } else {
+        fail("generic");
+      }
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-slate-50">
-      <div className="absolute top-4 right-4">
-        <LangSwitch />
-      </div>
-      <Card className="w-full max-w-sm border-slate-200 shadow-md">
-        <CardHeader className="pb-2">
-          <div className="mb-1">
-            <Logo size={28} />
-          </div>
-          <CardTitle className="text-xl">
-            {submitted ? t("auth.checkYourEmail") : t("auth.createAccount")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {submitted ? (
-            <p className="text-sm text-slate-600">
-              {t("auth.checkYourEmailMessage", { email: submittedEmail })}
-            </p>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div className="space-y-1">
-                <Label htmlFor="name">{t("auth.fullName")}</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  autoComplete="name"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="email">{t("auth.email")}</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="password">{t("auth.password")}</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  autoComplete="new-password"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="confirm">{t("auth.confirmPassword")}</Label>
-                <Input
-                  id="confirm"
-                  type="password"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  required
-                  autoComplete="new-password"
-                />
-              </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? t("auth.creatingAccount") : t("auth.createAccount")}
-              </Button>
-            </form>
-          )}
-        </CardContent>
-        {!submitted && (
-          <CardFooter className="justify-center pt-0">
-            <p className="text-sm text-slate-500">
-              {t("auth.alreadyHaveAccount")}{" "}
-              <Link to="/login" className="font-medium text-blue-600 hover:underline">
-                {t("auth.signIn")}
-              </Link>
-            </p>
-          </CardFooter>
-        )}
-      </Card>
-    </div>
+    <AuthLayout
+      title={t("auth.createAccount")}
+      footer={
+        <>
+          {t("auth.register.haveAccount")}{" "}
+          <Link to="/login" className="ap-link">
+            {t("auth.signIn")}
+          </Link>
+        </>
+      }
+    >
+      {problem && (
+        <FocusBanner
+          key={problemKey}
+          tone="danger"
+          title={t("auth.register.errorTitle")}
+          action={
+            problem === "exists" ? (
+              <LinkButton to="/login" variant="secondary">
+                {t("auth.register.toLogin")}
+              </LinkButton>
+            ) : undefined
+          }
+        >
+          {t(`auth.register.problem.${problem}`)}
+        </FocusBanner>
+      )}
+      <form
+        className="ap-form"
+        aria-label={t("auth.createAccount")}
+        onSubmit={handleSubmit}
+        noValidate
+      >
+        <Field label={t("auth.register.name")} required error={errors.name}>
+          <TextInput value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+        </Field>
+        <Field label={t("auth.email")} required error={errors.email}>
+          <TextInput
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            inputMode="email"
+          />
+        </Field>
+        <PasswordField
+          label={t("auth.password")}
+          requiredLabel
+          hint={t("auth.register.passwordHint")}
+          error={errors.password}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="new-password"
+        />
+        <PasswordField
+          label={t("auth.register.confirmPassword")}
+          requiredLabel
+          error={errors.confirm}
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          autoComplete="new-password"
+        />
+        <Button type="submit" block loading={loading} loadingLabel={t("auth.creatingAccount")}>
+          {t("auth.createAccount")}
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }
