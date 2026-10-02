@@ -66,6 +66,8 @@ export function ChipSelect({
       onChange([...selected, id]);
       setCreating(false);
       setDraft("");
+    } catch {
+      // The caller reports the failure (e.g. a toast); the row stays open for another try.
     } finally {
       setBusy(false);
     }
@@ -107,6 +109,11 @@ export function ChipSelect({
                   if (e.key === "Enter") {
                     e.preventDefault();
                     void add();
+                  } else if (e.key === "Escape") {
+                    // Close the create row without closing a surrounding dialog.
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setCreating(false);
                   }
                 }}
               />

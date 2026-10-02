@@ -1,0 +1,269 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import EventNewPage from "../EventNewPage";
+import EventTemplatePickPage from "../EventTemplatePickPage";
+import EventFromTemplatePage from "../EventFromTemplatePage";
+import EventsExportPage from "../EventsExportPage";
+import { BASE, PATTERN, groups, makeEvent, renderRoute } from "./testUtils";
+
+const apiGet = vi.fn();
+const apiPost = vi.fn();
+const getHolidayEvents = vi.fn();
+const download = vi.fn();
+
+vi.mock("@/lib/api", () => ({
+  apiGet: (...a: unknown[]) => apiGet(...a),
+  apiPost: (...a: unknown[]) => apiPost(...a),
+  apiPatch: vi.fn(),
+  apiDelete: vi.fn(),
+  getHolidayEvents: (...a: unknown[]) => getHolidayEvents(...a),
+}));
+vi.mock("@/lib/events/ics", async (orig) => ({
+  ...(await orig<typeof import("@/lib/events/ics")>()),
+  downloadTextFile: (...a: unknown[]) => download(...a),
+}));
+
+const templates = [
+  {
+    id: "t1",
+    calendarId: "k1",
+    name: "Training Luftgewehr",
+    timezone: "Europe/Berlin",
+    timeBegin: "19:00:00",
+    timeEnd: "21:00",
+    locationId: "l1",
+    location: { id: "l1", calendarid: "k1", name: "Schützenhaus Waldblick" },
+    properties: [],
+    features: [],
+    targetGroups: [],
+  },
+  {
+    id: "t2",
+    calendarId: "k1",
+    name: "Jugendtraining",
+    timezone: "Europe/Berlin",
+    timeBegin: "18:00",
+    timeEnd: "19:30",
+    locationId: null,
+    location: null,
+    properties: [],
+    features: [],
+    targetGroups: [],
+  },
+];
+
+const events = [
+  makeEvent({
+    id: "1",
+    name: "Training",
+    date: "2026-10-01",
+    targetGroups: [{ targetGroup: groups[1] }],
+  }),
+  makeEvent({
+    id: "2",
+    name: "Jugend",
+    date: "2026-10-05",
+    targetGroups: [{ targetGroup: groups[0] }],
+  }),
+  makeEvent({ id: "3", name: "Vorstand", date: "2026-10-07", isDraft: true }),
+  makeEvent({ id: "4", name: "Fest", date: "2026-11-24" }),
+];
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(2026, 9, 2, 12, 0, 0));
+  for (const fn of [apiGet, apiPost, getHolidayEvents, download]) fn.mockReset();
+  apiGet.mockImplementation((path: string) => {
+    if (path === "/api/clubs/c1/calendars/k1")
+      return Promise.resolve({
+        id: "k1",
+        clubid: "c1",
+        name: "Schießbetrieb 2026",
+        timezone: "Europe/Berlin",
+      });
+    if (path.endsWith("/templates")) return Promise.resolve(templates);
+    if (path.endsWith("/target-groups")) return Promise.resolve(groups);
+    if (path === "/api/calendars/k1/events") return Promise.resolve(events);
+    return Promise.resolve([]);
+  });
+  apiPost.mockResolvedValue([]);
+  getHolidayEvents.mockResolvedValue([
+    {
+      id: "h",
+      holidayCalendarId: "hc",
+      name: "Reformationstag",
+      date: "2026-10-31",
+      dateEnd: null,
+    },
+  ]);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("create choice", () => {
+  it("offers blank, template and import and keeps the date", async () => {
+    renderRoute(`${PATTERN}/events/new`, `${BASE}/events/new?date=2026-10-14`, <EventNewPage />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Termin anlegen" })).toHaveFocus();
+    expect(screen.getByRole("link", { name: /Neuer Termin/ })).toHaveAttribute(
+      "href",
+      `${BASE}/events/new/form?date=2026-10-14`,
+    );
+    expect(screen.getByRole("link", { name: /Aus Vorlage/ })).toHaveAttribute(
+      "href",
+      `${BASE}/events/new/template?date=2026-10-14`,
+    );
+    expect(
+      screen.getByRole("link", { name: "Oder Termine aus einer ICS-Datei importieren" }),
+    ).toHaveAttribute("href", `${BASE}/import`);
+  });
+});
+
+describe("template picker", () => {
+  it("lists templates as radio options and continues with the chosen one", async () => {
+    const user = userEvent.setup();
+    renderRoute(
+      `${PATTERN}/events/new/template`,
+      `${BASE}/events/new/template`,
+      <EventTemplatePickPage />,
+    );
+    const group = await screen.findByRole("group", { name: "Vorlage" });
+    const first = within(group).getByRole("radio", { name: /Training Luftgewehr/ });
+    expect(first).toBeChecked();
+    expect(group).toHaveTextContent("19:00 – 21:00 · Schützenhaus Waldblick");
+    await user.click(within(group).getByRole("radio", { name: /Jugendtraining/ }));
+    await user.click(screen.getByRole("button", { name: "Weiter" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent(
+      `${BASE}/events/new/template/t2`,
+    );
+  });
+});
+
+describe("event from template", () => {
+  function renderSeries(query = "") {
+    return renderRoute(
+      `${PATTERN}/events/new/template/:templateId`,
+      `${BASE}/events/new/template/t1${query}`,
+      <EventFromTemplatePage />,
+    );
+  }
+
+  it("creates a single event from the template", async () => {
+    const user = userEvent.setup();
+    renderSeries("?date=2026-10-15");
+    expect(await screen.findByText("Training Luftgewehr")).toBeVisible();
+    expect(screen.getByLabelText(/^Datum/)).toHaveValue("2026-10-15");
+    expect(screen.getByText("1 Termin wird angelegt.")).toBeVisible();
+    expect(screen.getByText("Do 15.10.2026")).toBeVisible();
+    // Shown for the chosen template and for the preview row (design: EventSeries).
+    expect(screen.getAllByText("19:00–21:00 Uhr · Schützenhaus Waldblick")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: "Vorher anpassen" })).toHaveAttribute(
+      "href",
+      `${BASE}/events/new/form?templateId=t1&date=2026-10-15`,
+    );
+    await user.click(screen.getByRole("button", { name: "Veröffentlicht" }));
+    await user.click(screen.getByRole("button", { name: "1 Termin anlegen und veröffentlichen" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith("/api/calendars/k1/events/from-template", {
+        templateId: "t1",
+        dates: ["2026-10-15"],
+        overrides: { isDraft: false },
+      }),
+    );
+    expect(await screen.findByTestId("location")).toHaveTextContent(BASE);
+  });
+
+  it("previews a series with skipped holidays, but cannot create it yet", async () => {
+    const user = userEvent.setup();
+    renderSeries("?date=2026-10-03");
+    await user.click(await screen.findByRole("button", { name: "Terminserie" }));
+    await user.selectOptions(screen.getByLabelText("Wochentag"), "6");
+    await user.clear(screen.getByLabelText(/^Bis/));
+    await user.type(screen.getByLabelText(/^Bis/), "2026-10-31");
+    expect(
+      await screen.findByText("4 Termine würden angelegt. 1 Feiertag wird ausgelassen."),
+    ).toBeVisible();
+    expect(screen.getByText("wird ausgelassen")).toBeVisible();
+    expect(screen.getByText("1 Tag ausgenommen")).toBeVisible();
+    expect(getHolidayEvents).toHaveBeenCalledWith("k1", "2026-10-03", "2026-10-31");
+
+    await user.click(screen.getByRole("checkbox", { name: /Feiertage auslassen/ }));
+    expect(screen.getByText("5 Termine würden angelegt.")).toBeVisible();
+    expect(screen.getByText("liegt auf Reformationstag")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Monatlich am n-ten Wochentag" }));
+    await user.click(screen.getByRole("button", { name: "Letzter" }));
+    expect(screen.getByText("1 Termin würde angelegt.")).toBeVisible();
+
+    expect(screen.getByText("Bald verfügbar")).toBeVisible();
+    const create = screen.getByRole("button", { name: /Termin als Entwurf anlegen/ });
+    expect(create).toBeDisabled();
+    expect(create).toHaveAccessibleName("1 Termin als Entwurf anlegen (Bald verfügbar)");
+    expect(apiPost).not.toHaveBeenCalled();
+  });
+
+  it("warns when no day matches", async () => {
+    const user = userEvent.setup();
+    renderSeries("?date=2026-10-05");
+    await user.click(await screen.findByRole("button", { name: "Terminserie" }));
+    await user.clear(screen.getByLabelText(/^Bis/));
+    await user.type(screen.getByLabelText(/^Bis/), "2026-10-06");
+    await user.selectOptions(screen.getByLabelText("Wochentag"), "5");
+    expect(
+      await screen.findByText(
+        "Im gewählten Zeitraum gibt es keine passenden Tage. Ändere den Wochentag oder den Zeitraum.",
+      ),
+    ).toBeVisible();
+    expect(screen.getByText("Es entstehen keine Termine.")).toBeVisible();
+  });
+});
+
+describe("export", () => {
+  function renderExport() {
+    return renderRoute(`${PATTERN}/events/export`, `${BASE}/events/export`, <EventsExportPage />);
+  }
+
+  it("counts what gets exported and downloads an ICS file", async () => {
+    const user = userEvent.setup();
+    renderExport();
+    expect(await screen.findByText("3 Termine werden exportiert")).toBeVisible();
+    await user.click(screen.getByRole("radio", { name: /Dieser Monat/ }));
+    expect(screen.getByText("2 Termine werden exportiert")).toBeVisible();
+    await user.click(screen.getByRole("radio", { name: /Auch Entwürfe/ }));
+    expect(screen.getByText("3 Termine werden exportiert")).toBeVisible();
+    expect(
+      screen.getByText(
+        "Entwürfe stehen dann in deiner Datei. In Feeds bleiben sie weiterhin ausgeschlossen.",
+      ),
+    ).toBeVisible();
+    await user.click(
+      within(screen.getByRole("group", { name: "Zielgruppen filtern" })).getByRole("button", {
+        name: "Jugend",
+      }),
+    );
+    expect(screen.getByText("1 Termin wird exportiert")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "ICS-Datei laden" }));
+    expect(download).toHaveBeenCalledTimes(1);
+    const [ics, name] = download.mock.calls[0] as [string, string];
+    expect(name).toBe("schiessbetrieb-2026.ics");
+    expect(ics).toContain("SUMMARY:Jugend");
+    expect(ics).toContain("DTSTART:20261005T170000Z");
+    expect(ics).not.toContain("SUMMARY:Training");
+  });
+
+  it("disables the download when nothing matches", async () => {
+    const user = userEvent.setup();
+    renderExport();
+    await screen.findByText("3 Termine werden exportiert");
+    await user.click(screen.getByRole("radio", { name: /Von – bis/ }));
+    await user.clear(screen.getByLabelText("Von"));
+    await user.type(screen.getByLabelText("Von"), "2027-01-01");
+    await user.clear(screen.getByLabelText("Bis"));
+    await user.type(screen.getByLabelText("Bis"), "2027-01-31");
+    expect(screen.getByText("Keine Termine werden exportiert")).toBeVisible();
+    expect(screen.getByRole("button", { name: "ICS-Datei laden" })).toBeDisabled();
+  });
+});

@@ -10,7 +10,7 @@ interface Props {
   /** Next action(s), e.g. a primary LinkButton. */
   actions?: ReactNode;
   /** Heading level for the title (default h2). */
-  headingLevel?: "h2" | "h3";
+  headingLevel?: "h1" | "h2" | "h3";
   className?: string;
 }
 

@@ -373,31 +373,346 @@
     "draftHint": "Entwürfe sind nur intern sichtbar."
   },
   "events": {
-    "title": "Veranstaltungen",
-    "search": "Suchen…",
-    "allTab": "Alle ({{count}})",
-    "publishedTab": "Veröffentlicht ({{count}})",
-    "draftTab": "Entwurf ({{count}})",
-    "selectedCount": "{{count}} ausgewählt",
-    "publish": "Veröffentlichen",
-    "markAsDraft": "Als Entwurf markieren",
-    "loadingEvents": "Laden…",
-    "noSearchResults": "Keine Veranstaltungen entsprechen Ihrer Suche.",
-    "noPublished": "Keine veröffentlichten Veranstaltungen.",
-    "noDraft": "Keine Entwürfe.",
-    "noEvents": "Noch keine Veranstaltungen.",
-    "colName": "Name",
-    "colDate": "Datum",
-    "colStart": "Start",
-    "colEnd": "Ende",
-    "colTags": "Tags",
-    "colStatus": "Status",
-    "allDay": "Ganztägig",
-    "draftStatus": "Entwurf",
-    "publishedStatus": "Veröffentlicht",
-    "deleteConfirm": "{{count}} Veranstaltung(en) löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.",
-    "countFiltered": "{{count}} Veranstaltung(en) (gefiltert)",
-    "count": "{{count}} Veranstaltung(en)"
+    "and": "und",
+    "list": {
+      "title": "Alle Termine",
+      "subtitle_one": "{{calendar}} · 1 Termin",
+      "subtitle_other": "{{calendar}} · {{count}} Termine",
+      "export": "Termine exportieren",
+      "create": "Termin anlegen",
+      "searchLabel": "Termine nach Namen suchen",
+      "searchPlaceholder": "Termine suchen",
+      "statusFilter": "Nach Status filtern",
+      "tabs": {
+        "all": "Alle",
+        "published": "Veröffentlicht",
+        "draft": "Entwurf"
+      },
+      "groupFilter": "Nach Zielgruppe filtern",
+      "resetFilter": "Filter zurücksetzen",
+      "caption": "Termine des Kalenders {{calendar}}, sortiert nach Datum und Startzeit",
+      "col": {
+        "select": "Alle angezeigten Termine auswählen",
+        "name": "Name",
+        "date": "Datum",
+        "time": "Zeit",
+        "place": "Ort",
+        "audiences": "Zielgruppen",
+        "features": "Features",
+        "status": "Status"
+      },
+      "selectOne": "{{name}} am {{date}} auswählen",
+      "allDay": "Ganztägig",
+      "timeRange": "{{from}} – {{to}}",
+      "none": "–",
+      "noneLabel": "keine",
+      "footer_one": "{{shown}} von 1 Termin",
+      "footer_other": "{{shown}} von {{count}} Terminen",
+      "loading": "Termine werden geladen.",
+      "readOnly": "Termine lassen sich ansehen und exportieren, aber nicht ändern.",
+      "error": {
+        "title": "Die Termine konnten nicht geladen werden.",
+        "text": "Prüfe deine Verbindung und versuche es noch einmal.",
+        "retry": "Erneut laden"
+      },
+      "empty": {
+        "noEvents": {
+          "title": "Noch keine Termine",
+          "text": "Lege den ersten Termin an oder übernimm Termine aus einer ICS-Datei. Neue Termine bleiben Entwürfe, bis du sie veröffentlichst.",
+          "import": "Termine importieren"
+        },
+        "noSearchHits": {
+          "title": "Keine Treffer für „{{query}}“",
+          "text": "Prüfe die Schreibweise oder suche nach einem Teil des Namens.",
+          "reset": "Suche zurücksetzen"
+        },
+        "noPublished": {
+          "title": "Noch nichts veröffentlicht",
+          "text": "Alle Termine sind noch Entwürfe. In den Feeds erscheinen nur veröffentlichte Termine.",
+          "showDrafts": "Entwürfe ansehen"
+        },
+        "noDrafts": {
+          "title": "Keine Entwürfe",
+          "text": "Alle Termine sind veröffentlicht. Neue Termine beginnen als Entwurf.",
+          "showAll": "Alle Termine ansehen"
+        },
+        "noFilterHits": {
+          "title": "Keine Termine gefunden",
+          "text": "Zu deiner Suche oder diesem Filter gibt es keine Termine.",
+          "reset": "Filter zurücksetzen"
+        }
+      },
+      "bulk": {
+        "region": "Sammelaktionen",
+        "selected": "{{count}} ausgewählt",
+        "publish": "Veröffentlichen",
+        "draft": "Als Entwurf markieren",
+        "delete": "Löschen",
+        "clear": "Auswahl aufheben",
+        "published_one": "1 Termin veröffentlicht.",
+        "published_other": "{{count}} Termine veröffentlicht.",
+        "drafted_one": "1 Termin als Entwurf markiert.",
+        "drafted_other": "{{count}} Termine als Entwurf markiert.",
+        "failed": "Nicht alle Termine konnten geändert werden. Bitte versuche es erneut."
+      }
+    },
+    "delete": {
+      "title": "Termin „{{name}}“ löschen?",
+      "text": "Der Termin am {{date}} wird dauerhaft entfernt.",
+      "consequence": "Der Termin verschwindet aus dem Kalender und aus allen Feeds. Das lässt sich nicht rückgängig machen.",
+      "confirm": "Termin löschen",
+      "done": "Termin gelöscht.",
+      "failed": "Löschen fehlgeschlagen. Bitte versuche es erneut.",
+      "manyTitle_one": "1 Termin löschen?",
+      "manyTitle_other": "{{count}} Termine löschen?",
+      "manyText": "Die ausgewählten Termine werden dauerhaft entfernt: {{list}}.",
+      "more_one": "1 weiterer",
+      "more_other": "{{count}} weitere",
+      "manyConsequenceDrafts_one": "Löscht 1 Entwurf unwiderruflich. Veröffentlichte Termine sind nicht betroffen.",
+      "manyConsequenceDrafts_other": "Löscht {{count}} Entwürfe unwiderruflich. Veröffentlichte Termine sind nicht betroffen.",
+      "manyConsequence_one": "Der Termin verschwindet auch aus allen Feeds. Das lässt sich nicht rückgängig machen.",
+      "manyConsequence_other": "Die {{count}} Termine verschwinden auch aus allen Feeds. Das lässt sich nicht rückgängig machen.",
+      "manyConfirm_one": "1 Termin löschen",
+      "manyConfirm_other": "{{count}} Termine löschen",
+      "manyDone_one": "1 Termin gelöscht.",
+      "manyDone_other": "{{count}} Termine gelöscht.",
+      "manyFailed": "Nicht alle Termine konnten gelöscht werden. Bitte versuche es erneut."
+    },
+    "new": {
+      "title": "Termin anlegen",
+      "subtitle": "Wie möchtest du starten?",
+      "close": "Schließen",
+      "blank": {
+        "title": "Neuer Termin",
+        "text": "Beginne leer und trage alle Angaben selbst ein."
+      },
+      "template": {
+        "title": "Aus Vorlage",
+        "text": "Übernimm Zeiten, Ort und Zielgruppen und lege auch Terminreihen an."
+      },
+      "import": "Oder Termine aus einer ICS-Datei importieren",
+      "archived": {
+        "title": "Kalender archiviert",
+        "text": "In einem archivierten Kalender lassen sich keine Termine anlegen. Termine ansehen und exportieren geht weiterhin.",
+        "back": "Zu allen Terminen"
+      }
+    },
+    "form": {
+      "newTitle": "Neuer Termin",
+      "newSubtitle": "Der neue Termin ist zunächst ein Entwurf.",
+      "editTitle": "Termin bearbeiten",
+      "viewTitle": "Termin ansehen",
+      "closeNew": "Schließen, Termin verwerfen",
+      "closeEdit": "Schließen, Änderungen verwerfen",
+      "close": "Schließen",
+      "dateTaken": "Datum aus dem Kalender übernommen: {{date}}.",
+      "templateTaken": "Angaben aus der Vorlage „{{name}}“ übernommen. Du kannst sie hier anpassen.",
+      "publishedNotice": "Änderungen sind sofort in den Feeds sichtbar.",
+      "readOnly": "Der Kalender ist archiviert. Der Termin lässt sich nicht ändern.",
+      "errorTitle": "Der Termin ist noch nicht vollständig.",
+      "sections": {
+        "basic": "Grunddaten",
+        "status": "Status",
+        "place": "Ort",
+        "tags": "Eigenschaften, Features und Zielgruppen"
+      },
+      "name": "Name",
+      "namePlaceholder": "z. B. Training Luftgewehr",
+      "date": "Startdatum",
+      "dateEnd": "Enddatum",
+      "dateEndHint": "Nur für mehrtägige Termine.",
+      "dates": "Datum",
+      "times": "Uhrzeit",
+      "allDay": "Ganztägig",
+      "allDayHint": "Dann entfallen Start- und Endzeit.",
+      "timeBegin": "Startzeit",
+      "timeEnd": "Endzeit",
+      "status": {
+        "label": "Status des Termins",
+        "draft": "Entwurf",
+        "published": "Veröffentlicht",
+        "hint": "Entwürfe sieht nur dein Verein. Veröffentlichte Termine erscheinen in den Feeds."
+      },
+      "place": {
+        "label": "Ort",
+        "none": "Kein Ort ausgewählt",
+        "noAddress": "Adresse noch nicht erfasst",
+        "fix": "Position korrigieren",
+        "fixHint": "Marker auf der Karte verschieben oder in die Karte klicken.",
+        "create": "Neuen Ort anlegen",
+        "newName": "Name des neuen Orts",
+        "newPlaceholder": "z. B. Gasthof Zur Linde",
+        "createAndAssign": "Ort anlegen und zuweisen",
+        "empty": "Wähle einen Ort, dann siehst du ihn hier auf der Karte.",
+        "map": "Karte mit dem Ort {{name}}",
+        "noPosition": "Für diesen Ort ist noch keine Position gesetzt. Mit „Position korrigieren“ setzt du sie auf der Karte.",
+        "positionSaved": "Position gespeichert.",
+        "positionFailed": "Die Position konnte nicht gespeichert werden.",
+        "createFailed": "Der Ort konnte nicht angelegt werden."
+      },
+      "properties": "Eigenschaften",
+      "createProperty": "Neue Eigenschaft anlegen",
+      "features": "Features",
+      "createFeature": "Neues Feature anlegen",
+      "targetGroups": "Zielgruppen",
+      "createTargetGroup": "Neue Zielgruppe anlegen",
+      "targetGroupsHint": "Ohne Auswahl gilt der Termin für alle.",
+      "createFailed": "Das konnte nicht angelegt werden. Bitte versuche es erneut.",
+      "back": "Zurück",
+      "save": "Termin speichern",
+      "saving": "Wird gespeichert …",
+      "delete": "Termin löschen",
+      "saved": "Termin gespeichert.",
+      "saveFailed": "Speichern fehlgeschlagen. Bitte prüfe die Eingaben und versuche es erneut.",
+      "loading": "Termin wird geladen.",
+      "notFound": {
+        "title": "Termin nicht gefunden",
+        "text": "Der Termin wurde gelöscht oder gehört zu einem anderen Kalender.",
+        "back": "Zu den Terminen"
+      },
+      "loadError": {
+        "title": "Der Termin konnte nicht geladen werden.",
+        "text": "Prüfe deine Verbindung und versuche es noch einmal.",
+        "retry": "Erneut laden"
+      },
+      "errors": {
+        "nameRequired": "Bitte gib einen Namen ein.",
+        "dateRequired": "Bitte wähle ein Startdatum.",
+        "dateInvalid": "Das Startdatum ist ungültig.",
+        "dateEndInvalid": "Das Enddatum ist ungültig.",
+        "dateEndBeforeStart": "Das Enddatum liegt vor dem Startdatum.",
+        "timeBeginRequired": "Bitte gib eine Startzeit ein.",
+        "timeEndRequired": "Bitte gib eine Endzeit ein.",
+        "timeEndBeforeStart": "Die Endzeit liegt vor der Startzeit."
+      }
+    },
+    "templatePick": {
+      "title": "Vorlage wählen",
+      "subtitle": "Aus der Vorlage entstehen ein Termin oder eine Terminreihe. Alles bleibt Entwurf.",
+      "legend": "Vorlage",
+      "meta": "{{from}} – {{to}}",
+      "next": "Weiter",
+      "back": "Zurück",
+      "loading": "Vorlagen werden geladen.",
+      "error": "Die Vorlagen konnten nicht geladen werden.",
+      "empty": {
+        "title": "Noch keine Vorlagen",
+        "text": "Lege eine Vorlage an, um wiederkehrende Termine schneller zu erstellen.",
+        "action": "Zu den Vorlagen"
+      }
+    },
+    "series": {
+      "title": "Termin aus Vorlage",
+      "subtitle": "Lege einen Termin oder gleich eine ganze Serie an.",
+      "close": "Schließen, nichts anlegen",
+      "chosen": "Gewählte Vorlage",
+      "change": "Vorlage ändern",
+      "step": "Schritt {{n}}: ",
+      "kindTitle": "Einzelner Termin oder Terminserie",
+      "kindLabel": "Art",
+      "single": "Einzelner Termin",
+      "series": "Terminserie",
+      "dateTitle": "Datum",
+      "ruleTitle": "Serienregel",
+      "date": "Datum",
+      "rhythm": "Rhythmus",
+      "rhythms": {
+        "weekly": "Wöchentlich",
+        "biweekly": "Zweiwöchentlich",
+        "monthly": "Monatlich am n-ten Wochentag"
+      },
+      "nthLegend": "Welcher Wochentag im Monat?",
+      "nth": {
+        "1": "1.",
+        "2": "2.",
+        "3": "3.",
+        "4": "4.",
+        "5": "Letzter"
+      },
+      "weekday": "Wochentag",
+      "from": "Von",
+      "to": "Bis",
+      "skipHolidays": "Feiertage auslassen",
+      "skipped_one": "1 Tag ausgenommen",
+      "skipped_other": "{{count}} Tage ausgenommen",
+      "noHolidays": "Keine Feiertage im Zeitraum",
+      "holidaysKept_one": "1 Feiertag bleibt in der Serie",
+      "holidaysKept_other": "{{count}} Feiertage bleiben in der Serie",
+      "preview": "Vorschau",
+      "count_one": "1 Termin wird angelegt.",
+      "count_other": "{{count}} Termine werden angelegt.",
+      "countPreview_one": "1 Termin würde angelegt.",
+      "countPreview_other": "{{count}} Termine würden angelegt.",
+      "countNone": "Es entstehen keine Termine.",
+      "holidaysSkipped_one": "1 Feiertag wird ausgelassen.",
+      "holidaysSkipped_other": "{{count}} Feiertage werden ausgelassen.",
+      "previewEmpty": "Hier erscheinen die Termine, sobald es passende Tage gibt.",
+      "noMatch": "Im gewählten Zeitraum gibt es keine passenden Tage. Ändere den Wochentag oder den Zeitraum.",
+      "skippedNote": "wird ausgelassen",
+      "holidayNote": "liegt auf {{name}}",
+      "timeRange": "{{from}}–{{to}} Uhr",
+      "allDay": "Ganztägig",
+      "statusSingle": "Status des Termins",
+      "statusSeries": "Status der Serie",
+      "createDraft_one": "1 Termin als Entwurf anlegen",
+      "createDraft_other": "{{count}} Termine als Entwurf anlegen",
+      "createPublished_one": "1 Termin anlegen und veröffentlichen",
+      "createPublished_other": "{{count}} Termine anlegen und veröffentlichen",
+      "nothing": "Keine Termine zum Anlegen",
+      "soon": "Bald verfügbar",
+      "soonText": "Terminserien lassen sich noch nicht anlegen. Die Vorschau zeigt schon, welche Termine entstehen würden. Lege bis dahin einzelne Termine an.",
+      "customize": "Vorher anpassen",
+      "created": "Termin angelegt.",
+      "failed": "Der Termin konnte nicht angelegt werden. Bitte versuche es erneut.",
+      "dateRequired": "Bitte wähle ein Datum.",
+      "notFound": "Die Vorlage gibt es nicht mehr. Wähle eine andere."
+    },
+    "export": {
+      "title": "Termine exportieren",
+      "back": "Zu den Terminen",
+      "intro": "Du bekommst eine ICS-Datei, die du in andere Kalender-Apps importieren kannst. Sie ändert sich danach nicht mehr. Für laufend aktuelle Termine abonnierst du besser einen Feed.",
+      "feeds": "Zu den Feeds",
+      "range": {
+        "title": "Zeitraum",
+        "all": "Ganzer Kalender",
+        "allHint": "Alle Termine von {{calendar}}",
+        "month": "Dieser Monat",
+        "custom": "Von – bis",
+        "customHint": "Eigenen Zeitraum festlegen",
+        "from": "Von",
+        "to": "Bis",
+        "invalid": "Das Ende liegt vor dem Anfang."
+      },
+      "status": {
+        "title": "Status",
+        "legend": "Welche Termine?",
+        "published": "Nur veröffentlichte Termine",
+        "publishedHint": "Das ist das, was auch Gäste sehen.",
+        "drafts": "Auch Entwürfe",
+        "draftsHint": "Entwürfe sind sonst nur für deinen Verein sichtbar.",
+        "draftsNotice": "Entwürfe stehen dann in deiner Datei. In Feeds bleiben sie weiterhin ausgeschlossen."
+      },
+      "audiences": {
+        "title": "Zielgruppen",
+        "label": "Zielgruppen filtern",
+        "hint": "Ohne Auswahl werden alle Zielgruppen exportiert.",
+        "none": "Dieser Kalender hat noch keine Zielgruppen."
+      },
+      "preview": {
+        "title": "Vorschau",
+        "count_one": "1 Termin wird exportiert",
+        "count_other": "{{count}} Termine werden exportiert",
+        "none": "Keine Termine werden exportiert",
+        "noneHint": "Ändere den Zeitraum oder die Auswahl, damit Termine in der Datei landen."
+      },
+      "download": "ICS-Datei laden",
+      "cancel": "Abbrechen",
+      "done": "Datei wurde erstellt.",
+      "ics": {
+        "features": "Features",
+        "targetGroups": "Zielgruppen"
+      }
+    }
   },
   "import": {
     "title": "Veranstaltungen aus ICS importieren",
@@ -658,6 +973,16 @@
     },
     "passwordField": {
       "toggle": "Passwort anzeigen"
+    },
+    "unsaved": {
+      "title": "Änderungen verwerfen?",
+      "text": "Du hast Änderungen noch nicht gespeichert.",
+      "consequence": "Wenn du die Seite jetzt verlässt, gehen sie verloren.",
+      "confirm": "Änderungen verwerfen",
+      "cancel": "Weiter bearbeiten"
+    },
+    "errorSummary": {
+      "intro": "Bitte prüfe diese Angaben:"
     }
   },
   "shell": {

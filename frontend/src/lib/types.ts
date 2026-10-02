@@ -105,6 +105,8 @@ export interface CalendarEvent {
   isDraft: boolean;
   locationId: string | null;
   location: Location | null;
+  /** Template the event was created from (null for manual events). */
+  eventTemplateId?: string | null;
   properties: { property: Property }[];
   features: { feature: Feature }[];
   targetGroups: { targetGroup: TargetGroup }[];
