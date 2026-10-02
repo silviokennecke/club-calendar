@@ -1,11 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import interactionPlugin from "@fullcalendar/interaction";
-import type { EventInput, EventClickArg } from "@fullcalendar/core";
-import deLocale from "@fullcalendar/core/locales/de";
+import {
+  eventToItem,
+  formatMonthTitle,
+  stepAnchor,
+  todayIn,
+  yearMonthOf,
+  type CalItem,
+} from "@/lib/calendar";
+import { useIsMobile } from "@/lib/useMediaQuery";
+import { MonthView } from "@/components/calendar/MonthView";
+import { MonthNav } from "@/components/calendar/MonthNav";
+import { useLocale } from "@/components/calendar/useLocale";
 import { Button } from "@/components/ui/button";
 import {
   TagBadge,
@@ -181,8 +188,13 @@ function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
 }
 
 export default function FeedPage() {
-  const { t, i18n } = useTranslation();
-  const fcLocale = i18n.resolvedLanguage === "de" ? deLocale : undefined;
+  const { t } = useTranslation();
+  const locale = useLocale();
+  const isMobile = useIsMobile();
+  const titleId = `feed-month-${useId().replace(/:/g, "")}`;
+  const today = todayIn();
+  const [anchor, setAnchor] = useState(today);
+  const [panelOpen, setPanelOpen] = useState(false);
   const { feedId } = useParams<{ feedId: string }>();
   const [searchParams] = useSearchParams();
   const secret = searchParams.get("secret") ?? undefined;
@@ -234,43 +246,11 @@ export default function FeedPage() {
     return url.toString();
   }
 
-  const fcEvents: EventInput[] = filtered.map((ev) => {
-    const startDateStr = ev.date.slice(0, 10);
-    const endDateStr = ev.dateEnd?.slice(0, 10) ?? startDateStr;
-    const icons = ev.properties
-      .map((p) => p.property.icon)
-      .filter(Boolean)
-      .join("");
+  const items: CalItem<FeedEvent>[] = filtered.map((ev) => eventToItem(ev));
 
-    if (ev.isAllDay) {
-      const endExclusive = new Date(endDateStr);
-      endExclusive.setDate(endExclusive.getDate() + 1);
-      return {
-        id: String(ev.id),
-        title: [icons, ev.name].filter(Boolean).join(" "),
-        start: startDateStr,
-        end: endExclusive.toISOString().slice(0, 10),
-        allDay: true,
-        backgroundColor: "#2563eb",
-        borderColor: "#1d4ed8",
-        extendedProps: { event: ev },
-      };
-    }
-
-    return {
-      id: String(ev.id),
-      title: [icons, ev.name].filter(Boolean).join(" "),
-      start: `${startDateStr}T${ev.timeBegin}`,
-      end: `${endDateStr}T${ev.timeEnd}`,
-      backgroundColor: "#2563eb",
-      borderColor: "#1d4ed8",
-      extendedProps: { event: ev },
-    };
-  });
-
-  function handleEventClick(info: EventClickArg) {
-    const ev = info.event.extendedProps.event as FeedEvent;
-    setSelectedEvent(ev);
+  function step(direction: -1 | 1) {
+    setPanelOpen(false);
+    setAnchor((a) => stepAnchor("month", a, direction));
   }
 
   if (loading) return <FullPageLoader message={t("feed.loading")} />;
@@ -327,18 +307,40 @@ export default function FeedPage() {
       </div>
 
       <div className="mx-auto max-w-4xl px-6 py-6">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <FullCalendar
-            plugins={[dayGridPlugin, interactionPlugin]}
-            initialView="dayGridMonth"
-            events={fcEvents}
-            eventClick={handleEventClick}
-            displayEventTime
-            eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
-            headerToolbar={{ left: "prev,next today", center: "title", right: "" }}
-            height="auto"
-            locale={fcLocale}
-          />
+        <div className="ap-panel">
+          <div className="ap-stack">
+            <MonthNav
+              as="h2"
+              title={formatMonthTitle(yearMonthOf(anchor), locale)}
+              titleId={titleId}
+              onPrev={() => step(-1)}
+              onNext={() => step(1)}
+              onToday={() => {
+                setPanelOpen(false);
+                setAnchor(today);
+              }}
+            />
+            <MonthView
+              month={yearMonthOf(anchor)}
+              weekStart={1}
+              items={items}
+              today={today}
+              activeDate={anchor}
+              selectedDate={anchor}
+              panelOpen={panelOpen}
+              compact={isMobile}
+              labelledBy={titleId}
+              onMoveFocus={setAnchor}
+              onSelectDay={(date) => {
+                setAnchor(date);
+                setPanelOpen(true);
+              }}
+              onClosePanel={() => setPanelOpen(false)}
+              onOpenItem={(item) => setSelectedEvent(item.source as FeedEvent)}
+              placeOf={(item) => (item.source as FeedEvent).location?.name}
+              showHolidayLegend={false}
+            />
+          </div>
         </div>
         {selected.length > 0 && (
           <p className="mt-3 text-center text-xs text-slate-400">

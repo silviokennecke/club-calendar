@@ -223,19 +223,96 @@
   },
   "calendar": {
     "title": "Kalender",
-    "searchEvents": "Veranstaltungen suchen…",
-    "importIcs": "ICS importieren",
-    "newEvent": "Neue Veranstaltung",
-    "filter": "Filter:",
-    "allGroups": "Alle",
-    "archivedNotice": "Dieser Kalender ist archiviert – er ist schreibgeschützt.",
-    "unarchive": "Archivierung aufheben",
-    "clickToEdit": "Ereignis anklicken zum Bearbeiten · Datum anklicken zum Erstellen",
-    "draft": "(Entwurf)"
+    "prevMonth": "Vorheriger Monat",
+    "nextMonth": "Nächster Monat",
+    "prevWeek": "Vorherige Woche",
+    "nextWeek": "Nächste Woche",
+    "today": "Heute",
+    "weekTitle": "KW {{week}} · {{range}}",
+    "viewSwitch": "Ansicht wechseln",
+    "views": {
+      "month": "Monat",
+      "week": "Woche",
+      "list": "Liste"
+    },
+    "create": "Termin anlegen",
+    "createMore": "Weitere Wege, Termine anzulegen",
+    "fromTemplate": "Aus Vorlage",
+    "import": "Termine importieren",
+    "search": {
+      "label": "Termine suchen",
+      "placeholder": "Name eines Termins"
+    },
+    "filter": {
+      "label": "Nach Zielgruppe filtern",
+      "reset": "Filter zurücksetzen"
+    },
+    "cell": {
+      "today": "heute",
+      "events_one": "{{count}} Termin",
+      "events_other": "{{count}} Termine",
+      "holiday": "Feiertag {{name}}"
+    },
+    "more": "+{{count}} weitere",
+    "chip": {
+      "published": "(veröffentlicht)",
+      "draft": "Entwurf",
+      "holiday": "(Feiertag)",
+      "holidayTip": "Feiertag: {{name}}"
+    },
+    "time": {
+      "range": "{{from}} bis {{to}} Uhr",
+      "allDay": "Ganztägig",
+      "holiday": "Feiertag",
+      "until": "bis {{date}}"
+    },
+    "legend": {
+      "published": "Veröffentlicht",
+      "draft": "Entwurf, nur intern sichtbar",
+      "holiday": "Feiertag, nicht bearbeitbar",
+      "drag": "Termine lassen sich auf einen anderen Tag ziehen. Ohne Maus: Termin öffnen und Datum ändern."
+    },
+    "dayPanel": {
+      "empty": "An diesem Tag gibt es keine Termine.",
+      "create": "Termin an diesem Tag anlegen",
+      "close": "Tagesansicht schließen"
+    },
+    "week": {
+      "heading": "Termine der Woche",
+      "empty": "Keine Termine"
+    },
+    "loading": "Kalender wird geladen",
+    "error": {
+      "title": "Der Kalender wurde nicht geladen",
+      "text": "Die Verbindung wurde unterbrochen. Prüfe deine Internetverbindung und lade den Kalender erneut.",
+      "retry": "Erneut laden"
+    },
+    "empty": {
+      "title": "Noch keine Termine in diesem Kalender",
+      "text": "Lege den ersten Termin an. Er bleibt ein Entwurf, bis du ihn veröffentlichst. Oder übernimm Termine aus einer Datei.",
+      "archivedText": "Dieser archivierte Kalender enthält keine Termine."
+    },
+    "noResults": {
+      "title": "Keine Termine zu „{{query}}“ gefunden",
+      "text": "Prüfe die Schreibweise oder suche nach einem anderen Namen. Auch ein gesetzter Zielgruppen-Filter kann Termine ausblenden.",
+      "reset": "Suche zurücksetzen"
+    },
+    "archived": {
+      "text": "Dieser Kalender ist archiviert und schreibgeschützt. Termine lassen sich nicht ändern.",
+      "unarchive": "Archivierung aufheben",
+      "restored": "Kalender ist wieder aktiv. Du kannst Termine bearbeiten.",
+      "failed": "Die Archivierung konnte nicht aufgehoben werden. Bitte versuche es erneut."
+    },
+    "move": {
+      "success": "Termin auf {{date}} verschoben",
+      "undo": "Rückgängig",
+      "undone": "Verschieben rückgängig gemacht",
+      "failed": "Verschieben fehlgeschlagen. Der Termin ist wieder am alten Tag."
+    }
   },
   "eventModal": {
-    "newEvent": "Neue Veranstaltung",
-    "editEvent": "Veranstaltung bearbeiten",
+    "newEvent": "Neuer Termin",
+    "editEvent": "Termin bearbeiten",
     "manual": "Manuell",
     "fromTemplate": "Aus Vorlage",
     "template": "Vorlage",
@@ -255,6 +332,7 @@
     "noMatchingDates": "Keine Daten entsprechen der Regel in diesem Zeitraum.",
     "published": "Veröffentlicht",
     "eventName": "Name *",
+    "eventNamePlaceholder": "Name des Termins",
     "startDate": "Startdatum *",
     "endDate": "Enddatum",
     "endDateOptional": "(optional)",
@@ -279,10 +357,20 @@
     "newTargetGroup": "Zielgruppe",
     "saving": "Speichern...",
     "createEvents": "{{count}} Veranstaltungen erstellen",
-    "deleteEvent": "Veranstaltung löschen?",
+    "deleteEvent": "Termin löschen?",
     "cannotBeUndone": "Dieser Vorgang kann nicht rückgängig gemacht werden.",
     "weekdays": ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"],
-    "nthLabels": ["1.", "2.", "3.", "4.", "letzter"]
+    "nthLabels": ["1.", "2.", "3.", "4.", "letzter"],
+    "viewEvent": "Termin ansehen",
+    "readOnlyNotice": "Der Kalender ist archiviert. Der Termin lässt sich nicht ändern.",
+    "close": "Schließen",
+    "deleteText": "Der Termin „{{name}}“ wird gelöscht.",
+    "deleteConsequence": "Er verschwindet aus dem Kalender und aus allen veröffentlichten Feeds. Das lässt sich nicht rückgängig machen.",
+    "deleted": "Termin gelöscht",
+    "saved": "Gespeichert.",
+    "saveFailed": "Speichern fehlgeschlagen. Bitte prüfe die Eingaben und versuche es erneut.",
+    "deleteFailed": "Löschen fehlgeschlagen. Bitte versuche es erneut.",
+    "draftHint": "Entwürfe sind nur intern sichtbar."
   },
   "events": {
     "title": "Veranstaltungen",
