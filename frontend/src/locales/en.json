@@ -21,38 +21,100 @@
   },
   "auth": {
     "signIn": "Sign in",
-    "signUp": "Sign up",
     "signOut": "Sign out",
-    "signingIn": "Signing in…",
-    "signingUp": "Signing up…",
-    "createAccount": "Create account",
-    "creatingAccount": "Creating account…",
     "email": "Email",
     "password": "Password",
-    "fullName": "Full name",
-    "confirmPassword": "Confirm password",
-    "passwordsDoNotMatch": "Passwords do not match",
-    "passwordTooShort": "Password must be at least 8 characters",
-    "invalidEmailOrPassword": "Invalid email or password",
-    "orContinueWith": "or continue with",
+    "signingIn": "Signing in…",
+    "createAccount": "Create account",
+    "creatingAccount": "Creating account…",
     "noAccount": "No account?",
-    "alreadyHaveAccount": "Already have an account?",
     "passkey": "Sign in with passkey",
     "passkeyWaiting": "Waiting for passkey…",
-    "passkeyFailed": "Passkey login failed or was cancelled",
     "completingSignIn": "Completing sign in…",
-    "checkYourEmail": "Check your email",
-    "checkYourEmailMessage": "We've sent a verification link to {{email}}. Click it to activate your account.",
-    "emailNotVerified": "Your email address has not been verified yet.",
-    "resendVerificationEmail": "Resend verification email",
-    "verificationEmailSent": "Verification email sent. Please check your inbox.",
-    "emailVerified": "Your email address has been verified.",
-    "emailVerifiedLoginPrompt": "You can now sign in to your account.",
-    "verificationLinkExpired": "This verification link has expired.",
-    "verificationLinkInvalid": "This verification link is not valid.",
-    "verificationLinkAlreadyUsed": "This verification link has already been used.",
     "backToLogin": "Back to sign in",
-    "requestNewLink": "Request a new link"
+    "or": "or",
+    "login": {
+      "formLabel": "Sign-in form",
+      "wrongTitle": "Email or password is incorrect",
+      "wrongText": "Please check your details and try again. If you forgot your password, reset it.",
+      "resetPassword": "Reset password",
+      "unverifiedTitle": "Email address not confirmed yet",
+      "unverifiedText": "Please open the link in the email we sent you. Then you can sign in. No email? We will send you a new one.",
+      "resend": "Resend confirmation email",
+      "sentTitle": "Confirmation email sent",
+      "sentText": "We sent you a new email. Please also check your spam folder.",
+      "passkeyErrorTitle": "Passkey sign-in not possible",
+      "passkeyErrorText": "Passkey sign-in was cancelled or did not work. Try again or sign in with your password.",
+      "ssoErrorTitle": "Sign-in with Google or Microsoft not possible",
+      "ssoErrorText": "Signing in with the provider did not work. Try again or sign in with email and password.",
+      "forgot": "Forgot password?",
+      "signInWith": "Sign in with {{provider}}"
+    },
+    "register": {
+      "name": "Name",
+      "haveAccount": "Already have an account?",
+      "passwordHint": "At least 8 characters",
+      "confirmPassword": "Repeat password",
+      "errorTitle": "The account has not been created yet",
+      "toLogin": "Go to sign in",
+      "nameMissing": "Please enter your name.",
+      "emailMissing": "Please enter your email address.",
+      "passwordMissing": "Please choose a password.",
+      "passwordShortField": "The password is too short. Please enter at least 8 characters.",
+      "confirmMismatchField": "The passwords do not match. Please enter the same password again.",
+      "emailExistsField": "There is already an account for this email address. Please sign in.",
+      "problem": {
+        "missing": "Please fill in all required fields.",
+        "short": "Your password is too short. Please choose a password with at least 8 characters.",
+        "mismatch": "The two passwords do not match. Please enter the same password in both fields.",
+        "exists": "There is already an account with this email address. Sign in or reset your password.",
+        "generic": "The account could not be created. Please check your details and try again."
+      }
+    },
+    "verify": {
+      "toLogin": "Go to sign in",
+      "requestNew": "Request a new confirmation email",
+      "resend": "Resend confirmation email",
+      "alreadyConfirmed": "Already confirmed?",
+      "success": {
+        "title": "Email address confirmed",
+        "text": "Thanks, your email address is confirmed. You can sign in now."
+      },
+      "expired": {
+        "title": "The link has expired",
+        "text": "This confirmation link is no longer valid. Request a new confirmation email."
+      },
+      "used": {
+        "title": "The link has already been used",
+        "text": "Your email address is already confirmed. You can sign in right away."
+      },
+      "invalid": {
+        "title": "The link is invalid",
+        "text": "Something is wrong with this link. Copy it completely from the email or request a new confirmation email."
+      },
+      "pending": {
+        "title": "Please confirm your email address",
+        "textWithEmail": "We sent an email to <strong>{{email}}</strong>. You can only sign in after confirming.",
+        "textNoEmail": "We will send you an email with a confirmation link. You can only sign in after confirming.",
+        "step1": "Open the email from Club Calendar.",
+        "step2": "Click the confirmation link in the email.",
+        "step3": "Then sign in with your email address and password.",
+        "hintTitle": "Nothing arrived?",
+        "hintText": "Also check your spam folder. It can take a few minutes for the email to arrive.",
+        "sent": "We sent you a new email."
+      }
+    },
+    "forgot": {
+      "title": "Forgot your password?",
+      "intro": "Enter the email address of your account. We will send you a link to set a new password.",
+      "formLabel": "Reset",
+      "submit": "Send reset link",
+      "soonTitle": "Coming soon",
+      "soonText": "Resetting by email is not available yet. If you cannot sign in, contact your club administration."
+    },
+    "callback": {
+      "title": "Sign in"
+    }
   },
   "setup": {
     "welcome": "Welcome to Club Calendar",
@@ -480,6 +542,9 @@
       "light": "Light",
       "dark": "Dark",
       "system": "Same as system"
+    },
+    "passwordField": {
+      "toggle": "Show password"
     }
   },
   "shell": {

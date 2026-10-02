@@ -8,6 +8,7 @@ export { buttonClass } from "./buttonClass";
 export type { ButtonVariant } from "./buttonClass";
 export { Field, TextInput, TextArea, NativeSelect } from "./Field";
 export type { FieldControlProps } from "./Field";
+export { PasswordField } from "./PasswordField";
 export { Toggle } from "./Toggle";
 export { Tag, TagBadge, TagBadgeRow } from "./Tag";
 export type { TagTone } from "./Tag";

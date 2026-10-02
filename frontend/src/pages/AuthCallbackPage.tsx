@@ -3,9 +3,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { storeTokens, apiGet } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { FullPageLoader } from "@/components/ui/shared";
+import { Icon } from "@/components/ui/shared";
+import { AuthLayout } from "@/components/auth/AuthLayout";
 import type { User } from "@/lib/types";
 
+/**
+ * SSO return point: stores the tokens, loads the user and continues to /clubs.
+ * Any failure goes back to /login?error=..., where the login page explains it.
+ */
 export default function AuthCallbackPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -18,18 +23,14 @@ export default function AuthCallbackPage() {
     const error = searchParams.get("error");
 
     if (error) {
-      navigate(`/login?error=${error}`, { replace: true });
+      navigate(`/login?error=${encodeURIComponent(error)}`, { replace: true });
       return;
     }
     if (!token) {
-      navigate("/login", { replace: true });
+      navigate("/login?error=oauth_failed", { replace: true });
       return;
     }
-    if (refreshToken) {
-      storeTokens(token, refreshToken);
-    } else {
-      storeTokens(token, "");
-    }
+    storeTokens(token, refreshToken ?? "");
     apiGet<User>("/api/auth/me")
       .then((user) => {
         login(token, refreshToken ?? "", user);
@@ -38,5 +39,12 @@ export default function AuthCallbackPage() {
       .catch(() => navigate("/login?error=oauth_failed", { replace: true }));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return <FullPageLoader message={t("auth.completingSignIn")} />;
+  return (
+    <AuthLayout title={t("auth.callback.title")}>
+      <p className="t-body t-muted flex items-center gap-2" role="status" aria-busy="true">
+        <Icon glyph="loader" size={20} className="animate-spin motion-reduce:animate-none" />
+        {t("auth.completingSignIn")}
+      </p>
+    </AuthLayout>
+  );
 }

@@ -21,38 +21,100 @@
   },
   "auth": {
     "signIn": "Anmelden",
-    "signUp": "Registrieren",
     "signOut": "Abmelden",
-    "signingIn": "Anmelden…",
-    "signingUp": "Registrieren…",
-    "createAccount": "Konto erstellen",
-    "creatingAccount": "Konto wird erstellt…",
     "email": "E-Mail",
     "password": "Passwort",
-    "fullName": "Vollständiger Name",
-    "confirmPassword": "Passwort bestätigen",
-    "passwordsDoNotMatch": "Passwörter stimmen nicht überein",
-    "passwordTooShort": "Passwort muss mindestens 8 Zeichen lang sein",
-    "invalidEmailOrPassword": "Ungültige E-Mail-Adresse oder Passwort",
-    "orContinueWith": "oder weiter mit",
+    "signingIn": "Anmelden…",
+    "createAccount": "Konto erstellen",
+    "creatingAccount": "Konto wird erstellt…",
     "noAccount": "Noch kein Konto?",
-    "alreadyHaveAccount": "Bereits ein Konto?",
     "passkey": "Mit Passkey anmelden",
     "passkeyWaiting": "Warte auf Passkey…",
-    "passkeyFailed": "Passkey-Anmeldung fehlgeschlagen oder abgebrochen",
     "completingSignIn": "Anmeldung wird abgeschlossen…",
-    "checkYourEmail": "Überprüfe deine E-Mails",
-    "checkYourEmailMessage": "Wir haben einen Bestätigungslink an {{email}} gesendet. Klicke darauf, um dein Konto zu aktivieren.",
-    "emailNotVerified": "Deine E-Mail-Adresse wurde noch nicht bestätigt.",
-    "resendVerificationEmail": "Bestätigungs-E-Mail erneut senden",
-    "verificationEmailSent": "Bestätigungs-E-Mail gesendet. Bitte prüfe deinen Posteingang.",
-    "emailVerified": "Deine E-Mail-Adresse wurde bestätigt.",
-    "emailVerifiedLoginPrompt": "Du kannst dich jetzt in deinem Konto anmelden.",
-    "verificationLinkExpired": "Dieser Bestätigungslink ist abgelaufen.",
-    "verificationLinkInvalid": "Dieser Bestätigungslink ist nicht gültig.",
-    "verificationLinkAlreadyUsed": "Dieser Bestätigungslink wurde bereits verwendet.",
     "backToLogin": "Zurück zur Anmeldung",
-    "requestNewLink": "Neuen Link anfordern"
+    "or": "oder",
+    "login": {
+      "formLabel": "Anmeldeformular",
+      "wrongTitle": "E-Mail oder Passwort stimmt nicht",
+      "wrongText": "Bitte prüfe deine Eingaben und versuche es noch einmal. Wenn du dein Passwort vergessen hast, setze es zurück.",
+      "resetPassword": "Passwort zurücksetzen",
+      "unverifiedTitle": "E-Mail-Adresse noch nicht bestätigt",
+      "unverifiedText": "Bitte öffne den Link in der Mail, die wir dir geschickt haben. Dann kannst du dich anmelden. Keine Mail bekommen? Wir senden dir eine neue.",
+      "resend": "Bestätigungsmail erneut senden",
+      "sentTitle": "Bestätigungsmail gesendet",
+      "sentText": "Wir haben dir eine neue E-Mail geschickt. Schau auch im Spamordner nach.",
+      "passkeyErrorTitle": "Anmeldung mit Passkey nicht möglich",
+      "passkeyErrorText": "Die Passkey-Anmeldung wurde abgebrochen oder hat nicht geklappt. Versuche es erneut oder melde dich mit deinem Passwort an.",
+      "ssoErrorTitle": "Anmeldung mit Google oder Microsoft nicht möglich",
+      "ssoErrorText": "Die Anmeldung über den Anbieter hat nicht geklappt. Versuche es erneut oder melde dich mit E-Mail und Passwort an.",
+      "forgot": "Passwort vergessen?",
+      "signInWith": "Mit {{provider}} anmelden"
+    },
+    "register": {
+      "name": "Name",
+      "haveAccount": "Schon ein Konto?",
+      "passwordHint": "Mindestens 8 Zeichen",
+      "confirmPassword": "Passwort wiederholen",
+      "errorTitle": "Das Konto wurde noch nicht erstellt",
+      "toLogin": "Zur Anmeldung",
+      "nameMissing": "Bitte gib deinen Namen ein.",
+      "emailMissing": "Bitte gib deine E-Mail-Adresse ein.",
+      "passwordMissing": "Bitte wähle ein Passwort.",
+      "passwordShortField": "Das Passwort ist zu kurz. Bitte gib mindestens 8 Zeichen ein.",
+      "confirmMismatchField": "Die Passwörter sind nicht gleich. Bitte gib dasselbe Passwort noch einmal ein.",
+      "emailExistsField": "Für diese E-Mail-Adresse gibt es schon ein Konto. Bitte melde dich an.",
+      "problem": {
+        "missing": "Bitte fülle alle Pflichtfelder aus.",
+        "short": "Dein Passwort ist zu kurz. Bitte wähle ein Passwort mit mindestens 8 Zeichen.",
+        "mismatch": "Die beiden Passwörter sind nicht gleich. Bitte gib dasselbe Passwort in beiden Feldern ein.",
+        "exists": "Mit dieser E-Mail-Adresse gibt es schon ein Konto. Melde dich an oder setze dein Passwort zurück.",
+        "generic": "Das Konto konnte nicht erstellt werden. Bitte prüfe deine Angaben und versuche es noch einmal."
+      }
+    },
+    "verify": {
+      "toLogin": "Zur Anmeldung",
+      "requestNew": "Neue Bestätigungsmail anfordern",
+      "resend": "Bestätigungsmail erneut senden",
+      "alreadyConfirmed": "Schon bestätigt?",
+      "success": {
+        "title": "E-Mail-Adresse bestätigt",
+        "text": "Danke, deine E-Mail-Adresse ist bestätigt. Du kannst dich jetzt anmelden."
+      },
+      "expired": {
+        "title": "Der Link ist abgelaufen",
+        "text": "Dieser Bestätigungslink ist nicht mehr gültig. Fordere eine neue Bestätigungsmail an."
+      },
+      "used": {
+        "title": "Der Link wurde schon benutzt",
+        "text": "Deine E-Mail-Adresse ist bereits bestätigt. Du kannst dich direkt anmelden."
+      },
+      "invalid": {
+        "title": "Der Link ist ungültig",
+        "text": "Mit diesem Link stimmt etwas nicht. Kopiere ihn vollständig aus der Mail oder fordere eine neue Bestätigungsmail an."
+      },
+      "pending": {
+        "title": "Bitte bestätige deine E-Mail-Adresse",
+        "textWithEmail": "Wir haben eine E-Mail an <strong>{{email}}</strong> geschickt. Erst nach der Bestätigung kannst du dich anmelden.",
+        "textNoEmail": "Wir schicken dir eine E-Mail mit einem Bestätigungslink. Erst nach der Bestätigung kannst du dich anmelden.",
+        "step1": "Öffne die E-Mail von Club Calendar.",
+        "step2": "Klicke in der Mail auf den Bestätigungslink.",
+        "step3": "Melde dich danach mit deiner E-Mail-Adresse und deinem Passwort an.",
+        "hintTitle": "Nichts angekommen?",
+        "hintText": "Schau auch im Spamordner nach. Es kann ein paar Minuten dauern, bis die Mail da ist.",
+        "sent": "Wir haben dir eine neue E-Mail geschickt."
+      }
+    },
+    "forgot": {
+      "title": "Passwort vergessen?",
+      "intro": "Gib die E-Mail-Adresse deines Kontos ein. Wir schicken dir einen Link, mit dem du ein neues Passwort festlegst.",
+      "formLabel": "Zurücksetzen",
+      "submit": "Link zum Zurücksetzen senden",
+      "soonTitle": "Bald verfügbar",
+      "soonText": "Das Zurücksetzen per E-Mail ist noch nicht freigeschaltet. Wenn du dich nicht anmelden kannst, wende dich an die Verwaltung deines Vereins."
+    },
+    "callback": {
+      "title": "Anmeldung"
+    }
   },
   "setup": {
     "welcome": "Willkommen bei Club Calendar",
@@ -480,6 +542,9 @@
       "light": "Hell",
       "dark": "Dunkel",
       "system": "Wie System"
+    },
+    "passwordField": {
+      "toggle": "Passwort anzeigen"
     }
   },
   "shell": {
