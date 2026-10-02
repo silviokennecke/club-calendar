@@ -17,7 +17,12 @@ import SetupPage from "./pages/SetupPage";
 import ProfilePage from "./pages/ProfilePage";
 import ClubPage from "./pages/ClubPage";
 import CalendarPage from "./pages/CalendarPage";
-import EventsListPage from "./pages/EventsListPage";
+import EventsListPage from "./pages/events/EventsListPage";
+import EventNewPage from "./pages/events/EventNewPage";
+import EventFormPage from "./pages/events/EventFormPage";
+import EventTemplatePickPage from "./pages/events/EventTemplatePickPage";
+import EventFromTemplatePage from "./pages/events/EventFromTemplatePage";
+import EventsExportPage from "./pages/events/EventsExportPage";
 import ImportPage from "./pages/ImportPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import MorePage from "./pages/MorePage";
@@ -55,6 +60,30 @@ export default function App() {
                 <Route
                   path="/clubs/:clubId/calendars/:calendarId/events"
                   element={<EventsListPage />}
+                />
+                <Route
+                  path="/clubs/:clubId/calendars/:calendarId/events/new"
+                  element={<EventNewPage />}
+                />
+                <Route
+                  path="/clubs/:clubId/calendars/:calendarId/events/new/form"
+                  element={<EventFormPage />}
+                />
+                <Route
+                  path="/clubs/:clubId/calendars/:calendarId/events/new/template"
+                  element={<EventTemplatePickPage />}
+                />
+                <Route
+                  path="/clubs/:clubId/calendars/:calendarId/events/new/template/:templateId"
+                  element={<EventFromTemplatePage />}
+                />
+                <Route
+                  path="/clubs/:clubId/calendars/:calendarId/events/export"
+                  element={<EventsExportPage />}
+                />
+                <Route
+                  path="/clubs/:clubId/calendars/:calendarId/events/:eventId"
+                  element={<EventFormPage />}
                 />
                 <Route
                   path="/clubs/:clubId/calendars/:calendarId/import"

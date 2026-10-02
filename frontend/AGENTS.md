@@ -6,7 +6,7 @@ This is a **Vite + React + React Router** SPA (not Next.js).
 
 - Routing: React Router v7 (`react-router-dom`) with `BrowserRouter`
 - All routes defined in `src/App.tsx`
-- Page components live in `src/pages/` and `src/pages/settings/`
+- Page components live in `src/pages/`, `src/pages/settings/` and `src/pages/events/`
 - Protected routes wrapped in `src/components/layout/ProtectedRoute.tsx`
 - No SSR, no server components, no API routes
 - Environment variable: `VITE_API_URL` (not `NEXT_PUBLIC_API_URL`)
@@ -42,6 +42,17 @@ This is a **Vite + React + React Router** SPA (not Next.js).
   `FilterBar`, `CalendarLegend`, `CalendarSkeleton`, `useCalendarData`, `useGridKeyboard` (roving tabindex).
   The calendar page keeps view and date in the URL (`?view=week&date=2026-10-08`). `useIsMobile()` /
   `useMediaQuery()` in `src/lib/useMediaQuery.ts`.
+- Events (phase 4): own routed pages instead of the old EventModal (all in `src/App.tsx`, URL helpers in
+  `components/events/routes.ts`): `…/events` list (`?status=draft&q=`), `…/events/new` choice (`?date=`),
+  `…/events/new/form` form (`?date=`, `?templateId=` pre-fills from a template), `…/events/new/template` picker,
+  `…/events/new/template/:templateId` single event / series preview (series creation disabled), `…/events/export`
+  (client-side ICS), `…/events/:eventId` edit (read-only in archived calendars). Router state `{ from }` is the
+  return target of close / save / delete (`useEventPage().returnTo`). Pure logic in `src/lib/events/` (`form.ts`
+  values/validation/payload, `list.ts` tabs/search/groups, `series.ts` rule dates + holidays, `ics.ts` export,
+  `format.ts`), with Vitest tests. UI in `components/events/` (`EventsTable`, `LocationSection` +
+  lazy `EventLocationMap`, `StatusSeg`, `EventPageHead`, `useEventResources`, `useEventPage`).
+- Unsaved changes: `useUnsavedChanges(dirty)` (`src/lib/useUnsavedChanges.ts`) + `<UnsavedChangesDialog>`;
+  intercepts in-app link clicks and `guard(fn)` navigation, plus `beforeunload` (BrowserRouter has no `useBlocker`).
 - Icons: lucide-react via `<Icon glyph="..." />` (design glyph names, `shared/Icon.tsx`). No emojis as UI icons.
 - All texts via i18n (`src/locales/de.json`, `en.json`); shared component texts under `ui.*`, shell under `shell.*`.
 - Tests: Vitest + Testing Library (jsdom, setup in `src/test/setup.ts`, tests run in German).
@@ -70,6 +81,8 @@ Before writing raw Tailwind layout divs in a page, check `src/components/ui/shar
 | `Stepper`                                                                                | Setup progress                                                          |
 | `LangSwitch`                                                                             | Language (bound to i18next)                                             |
 | `Skeleton`                                                                               | Loading placeholders (`aria-busy` on the region)                        |
+| `ErrorSummary`                                                                           | Form error list with links to the fields, focus after a failed submit   |
+| `UnsavedChangesDialog`                                                                   | "Änderungen verwerfen?" (with `useUnsavedChanges`)                      |
 | `Logo`, `Icon`                                                                           | Brand mark, design glyphs                                               |
 | `SectionHeader`, `ListCard`, `ListRow`, `SearchInput`, `FullPageLoader`, `FullPageError` | Legacy helpers, restyled with tokens                                    |
 

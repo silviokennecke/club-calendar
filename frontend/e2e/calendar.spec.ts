@@ -65,15 +65,17 @@ test.describe("Calendar", () => {
     await page.waitForURL("**/settings/properties");
   });
 
-  test("clicking Create event opens modal", async ({ page }) => {
+  test("clicking Create event opens the create choice", async ({ page }) => {
     await goToCalendar(page);
     // Split button in the page head (the empty state may offer the same action).
     await page
       .getByRole("button", { name: /^create event$/i })
       .first()
       .click();
-    await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(page.getByRole("heading", { name: /new event/i })).toBeVisible();
+    await page.waitForURL("**/events/new");
+    await expect(page.getByRole("heading", { level: 1, name: "Create event" })).toBeVisible();
+    await expect(page.getByRole("link", { name: /New event/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /From template/ })).toBeVisible();
   });
 
   test("can create and see a new event", async ({ page }) => {
@@ -84,14 +86,14 @@ test.describe("Calendar", () => {
       .first()
       .click();
 
-    const dialog = page.getByRole("dialog");
-    await dialog.getByLabel(/name \*/i).fill("E2E Test Event");
-    await dialog.getByLabel(/start date/i).fill("2026-09-15");
-    // Uncheck draft — switch to published
-    await dialog.getByRole("switch", { name: /published/i }).click();
-
-    await dialog.getByRole("button", { name: /^create$/i }).click();
-    await expect(dialog).not.toBeVisible({ timeout: 8000 });
+    await page.getByRole("link", { name: /New event/ }).click();
+    await page.getByLabel(/^Name/).fill("E2E Test Event");
+    await page.getByLabel(/^Start date/).fill("2026-09-15");
+    await page.getByRole("button", { name: "Published", exact: true }).click();
+    await page.getByRole("button", { name: "Save event" }).click();
+    // Back on the calendar page.
+    await page.waitForURL(/\/calendars\/[^/]+$/, { timeout: 8000 });
+    await expect(page.getByText("Event saved.")).toBeVisible();
   });
 });
 
@@ -268,24 +270,27 @@ test.describe("Kalender (Redesign)", () => {
     await openCalendar(page, seeded);
 
     await page.getByRole("button", { name: "Termin anlegen", exact: true }).click();
-    const dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("heading", { name: "Neuer Termin" })).toBeVisible();
-    await dialog.getByLabel("Name *").fill("E2E Herbstfest");
-    await dialog.getByLabel("Startdatum *").fill("2026-10-24");
-    await dialog.getByRole("switch", { name: /Veröffentlicht/ }).click();
-    await dialog.getByRole("button", { name: "Erstellen" }).click();
-    await expect(dialog).toBeHidden();
-    await expect(page.getByText("Gespeichert.")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Termin anlegen" })).toBeVisible();
+    await page.getByRole("link", { name: /Neuer Termin/ }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Neuer Termin" })).toBeVisible();
+    await page.getByLabel("Name (Pflicht)").fill("E2E Herbstfest");
+    await page.getByLabel("Startdatum (Pflicht)").fill("2026-10-24");
+    await page.getByRole("button", { name: "Veröffentlicht", exact: true }).click();
+    await page.getByRole("button", { name: "Termin speichern" }).click();
+    await expect(page.getByText("Termin gespeichert.")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Oktober 2026");
 
     const chip = page.getByTitle(/^E2E Herbstfest, 19:00 bis 21:00 Uhr \(veröffentlicht\)$/);
     await expect(chip).toBeVisible();
     await chip.click();
-    await expect(dialog.getByRole("heading", { name: "Termin bearbeiten" })).toBeVisible();
-    await expect(dialog.getByLabel("Name *")).toHaveValue("E2E Herbstfest");
-    await dialog.getByRole("button", { name: "Löschen" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Termin bearbeiten" })).toBeVisible();
+    await expect(page.getByLabel("Name (Pflicht)")).toHaveValue("E2E Herbstfest");
+    await page.getByRole("button", { name: "Termin löschen" }).click();
     const confirm = page.getByRole("alertdialog");
-    await expect(confirm).toContainText("Der Termin „E2E Herbstfest“ wird gelöscht.");
-    await confirm.getByRole("button", { name: "Löschen" }).click();
+    await expect(confirm).toContainText("Termin „E2E Herbstfest“ löschen?");
+    await expect(confirm).toContainText("Der Termin am Sa 24.10.2026 wird dauerhaft entfernt.");
+    await confirm.getByRole("button", { name: "Termin löschen" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Oktober 2026");
     await expect(page.getByTitle(/^E2E Herbstfest/)).toHaveCount(0);
   });
 
@@ -301,12 +306,12 @@ test.describe("Kalender (Redesign)", () => {
 
     await expect(page.getByText("Archiviert, schreibgeschützt").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Termin anlegen", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Termine exportieren" })).toBeVisible();
     await page.getByTitle(/^Training Luftgewehr/).click();
-    const dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("heading", { name: "Termin ansehen" })).toBeVisible();
-    await expect(dialog.getByLabel("Name *")).toBeDisabled();
-    await expect(dialog.getByRole("button", { name: "Löschen" })).toHaveCount(0);
-    await dialog.getByRole("button", { name: "Schließen" }).last().click();
+    await expect(page.getByRole("heading", { level: 1, name: "Termin ansehen" })).toBeVisible();
+    await expect(page.getByLabel("Name (Pflicht)")).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Termin löschen" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Schließen", exact: true }).last().click();
 
     await page.getByRole("button", { name: "Archivierung aufheben" }).click();
     await expect(
@@ -339,6 +344,7 @@ test.describe("Kalender (Redesign)", () => {
     const fab = page.locator(".ap-fab");
     await expect(fab).toBeVisible();
     await fab.click();
-    await expect(page.getByRole("dialog").getByLabel("Startdatum *")).toHaveValue("2026-10-08");
+    await page.getByRole("link", { name: /Neuer Termin/ }).click();
+    await expect(page.getByLabel("Startdatum (Pflicht)")).toHaveValue("2026-10-08");
   });
 });

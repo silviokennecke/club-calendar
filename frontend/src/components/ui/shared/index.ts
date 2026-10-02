@@ -36,3 +36,6 @@ export { ListRow } from "./ListRow";
 export { FilterPillGroup } from "./FilterPillGroup";
 export { SearchInput } from "./SearchInput";
 export { FullPageLoader, FullPageError } from "./PageLoader";
+export { ErrorSummary } from "./ErrorSummary";
+export type { ErrorSummaryItem } from "./ErrorSummary";
+export { UnsavedChangesDialog } from "./UnsavedChangesDialog";

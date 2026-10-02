@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { useOutletContext, useParams, useSearchParams } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  useOutletContext,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiGet, apiPatch, apiPost } from "@/lib/api";
@@ -28,7 +34,6 @@ import {
 } from "@/lib/calendar";
 import type { ShellData } from "@/components/layout/shellTypes";
 import { Banner, Button, EmptyState, LinkButton, toast } from "@/components/ui/shared";
-import EventModal from "@/components/calendar/EventModal";
 import { CalendarToolbar } from "@/components/calendar/CalendarToolbar";
 import { FilterBar } from "@/components/calendar/FilterBar";
 import { MonthView } from "@/components/calendar/MonthView";
@@ -39,15 +44,7 @@ import { useCalendarData } from "@/components/calendar/useCalendarData";
 import { useLocale } from "@/components/calendar/useLocale";
 import { audienceTone } from "@/components/calendar/eventDisplay";
 import type { EventItemTag } from "@/components/calendar/EventItem";
-
-interface ModalState {
-  open: boolean;
-  event: CalendarEvent | null;
-  defaultDate?: string;
-  tab: "manual" | "template";
-}
-
-const CLOSED: ModalState = { open: false, event: null, tab: "manual" };
+import { eventRoutes } from "@/components/events/routes";
 
 /**
  * Calendar (design: Calendar, CalendarWeek, CalendarArchived, CalendarStates, CalendarMobile).
@@ -63,11 +60,12 @@ export default function CalendarPage() {
   const isMobile = useIsMobile();
   const titleId = `cal-title-${useId().replace(/:/g, "")}`;
   const [params, setParams] = useSearchParams();
+  const routerNavigate = useNavigate();
+  const location = useLocation();
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
-  const [modal, setModal] = useState<ModalState>(CLOSED);
   const [restored, setRestored] = useState(false);
   const [unarchiving, setUnarchiving] = useState(false);
 
@@ -155,14 +153,24 @@ export default function CalendarPage() {
         })
       : formatMonthTitle(yearMonthOf(anchor), locale);
 
-  // ——— Events ———
-  function openCreate(date?: string, tab: ModalState["tab"] = "manual") {
-    setModal({ open: true, event: null, defaultDate: date, tab });
+  // ——— Events (own pages; "from" brings close / save back to this view and date) ———
+  const base = `/clubs/${clubId}/calendars/${calendarId}`;
+  const routes = eventRoutes(base);
+  const navState = { from: location.pathname + location.search };
+
+  /** "Termin anlegen": choice blank / template / import (design: EventNew). */
+  function openCreate(date?: string) {
+    routerNavigate(routes.create(date), { state: navState });
+  }
+
+  /** Day panel "Termin an diesem Tag anlegen": straight to the form with the date. */
+  function openCreateOnDay(date: IsoDate) {
+    routerNavigate(routes.form(date), { state: navState });
   }
 
   function openItem(item: CalItem) {
     if (item.kind !== "event") return;
-    setModal({ open: true, event: item.source as CalendarEvent, tab: "manual" });
+    routerNavigate(routes.edit(item.id), { state: navState });
   }
 
   async function patchDates(ev: CalendarEvent, dates: { date: string; dateEnd: string | null }) {
@@ -295,15 +303,13 @@ export default function CalendarPage() {
         }}
         onClosePanel={() => setPanelOpen(false)}
         onOpenItem={openItem}
-        onCreateOnDay={canEdit ? (date) => openCreate(date) : undefined}
+        onCreateOnDay={canEdit ? openCreateOnDay : undefined}
         onDropItem={canEdit && !isMobile ? moveItem : undefined}
         placeOf={placeOf}
         tagsOf={tagsOf}
       />
     );
   }
-
-  const base = `/clubs/${clubId}/calendars/${calendarId}`;
 
   return (
     <div className="ap-wrap">
@@ -343,7 +349,9 @@ export default function CalendarPage() {
         }}
         archived={isArchived}
         onCreate={canEdit ? () => openCreate() : undefined}
-        onCreateFromTemplate={canEdit ? () => openCreate(undefined, "template") : undefined}
+        onCreateFromTemplate={
+          canEdit ? () => routerNavigate(routes.pickTemplate(), { state: navState }) : undefined
+        }
         importHref={canEdit ? `${base}/import` : undefined}
       />
 
@@ -358,6 +366,13 @@ export default function CalendarPage() {
           )
         }
         onReset={resetFilters}
+        actions={
+          isArchived && (
+            <LinkButton variant="secondary" icon="download" to={routes.export}>
+              {t("events.list.export")}
+            </LinkButton>
+          )
+        }
       />
 
       {data.isError && (
@@ -382,16 +397,6 @@ export default function CalendarPage() {
           {t("calendar.create")}
         </Button>
       )}
-
-      <EventModal
-        calendarId={calendarId!}
-        open={modal.open}
-        onClose={() => setModal(CLOSED)}
-        defaultDate={modal.defaultDate}
-        event={modal.event}
-        initialTab={modal.tab}
-        readOnly={!canEdit}
-      />
     </div>
   );
 }

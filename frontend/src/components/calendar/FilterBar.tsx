@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Field, FilterPillGroup, TextInput } from "@/components/ui/shared";
 
@@ -8,6 +9,8 @@ interface FilterBarProps {
   selectedGroups: string[];
   onToggleGroup: (id: string) => void;
   onReset: () => void;
+  /** Extra actions at the end of the bar (e.g. "Termine exportieren" in archived calendars). */
+  actions?: ReactNode;
 }
 
 /**
@@ -21,6 +24,7 @@ export function FilterBar({
   selectedGroups,
   onToggleGroup,
   onReset,
+  actions,
 }: FilterBarProps) {
   const { t } = useTranslation();
   const active = selectedGroups.length > 0 || search.trim() !== "";
@@ -49,6 +53,11 @@ export function FilterBar({
         <Button variant="ghost" onClick={onReset}>
           {t("calendar.filter.reset")}
         </Button>
+      )}
+      {actions && (
+        <div className="ap-actions" style={{ marginLeft: "auto" }}>
+          {actions}
+        </div>
       )}
     </div>
   );

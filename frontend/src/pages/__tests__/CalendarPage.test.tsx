@@ -274,20 +274,30 @@ describe("CalendarPage – month view", () => {
     await user.click(within(g).getByRole("button", { name: /^14\. Oktober/ }));
     expect(await screen.findByText("An diesem Tag gibt es keine Termine.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Termin an diesem Tag anlegen" }));
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByRole("heading", { name: "Neuer Termin" })).toBeInTheDocument();
-    expect(within(dialog).getByLabelText("Startdatum *")).toHaveValue("2026-10-14");
+    // Straight to the form page with the day as start date (design: EventNewForm).
+    expect(await screen.findByTestId("location")).toHaveTextContent(
+      "/clubs/c1/calendars/k1/events/new/form?date=2026-10-14",
+    );
   });
 
-  it("opens an event from its chip", async () => {
+  it("opens an event from its chip on its own page", async () => {
     const user = userEvent.setup();
     renderPage();
     await grid();
     await user.click(await screen.findByTitle(/^Training Luftgewehr/));
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByRole("heading", { name: "Termin bearbeiten" })).toBeInTheDocument();
-    expect(within(dialog).getByLabelText("Name *")).toHaveValue("Training Luftgewehr");
-    expect(within(dialog).getByRole("button", { name: "Löschen" })).toBeInTheDocument();
+    expect(await screen.findByTestId("location")).toHaveTextContent(
+      "/clubs/c1/calendars/k1/events/e1",
+    );
+  });
+
+  it("opens the create choice from the split button", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await grid();
+    await user.click(screen.getByRole("button", { name: "Termin anlegen" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent(
+      /^\/clubs\/c1\/calendars\/k1\/events\/new$/,
+    );
   });
 });
 
@@ -386,10 +396,8 @@ describe("CalendarPage – create menu", () => {
 
     await user.click(toggle);
     await user.click(screen.getByRole("button", { name: "Aus Vorlage" }));
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByRole("button", { name: "Aus Vorlage" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
+    expect(await screen.findByTestId("location")).toHaveTextContent(
+      "/clubs/c1/calendars/k1/events/new/template",
     );
   });
 });
@@ -417,13 +425,11 @@ describe("CalendarPage – archived calendar", () => {
     await user.click(within(g).getByRole("button", { name: /^14\. Oktober/ }));
     expect(await screen.findByText("An diesem Tag gibt es keine Termine.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Termin an diesem Tag anlegen" })).toBeNull();
-    await user.click(await screen.findByTitle(/^Training Luftgewehr/));
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByRole("heading", { name: "Termin ansehen" })).toBeInTheDocument();
-    expect(within(dialog).getByLabelText("Name *")).toBeDisabled();
-    expect(within(dialog).queryByRole("button", { name: "Löschen" })).toBeNull();
-    expect(within(dialog).queryByRole("button", { name: "Speichern" })).toBeNull();
-    await user.click(within(dialog).getAllByRole("button", { name: "Schließen" })[0]);
+    // Archived calendars can still be exported (design: CalendarArchived).
+    expect(screen.getByRole("link", { name: "Termine exportieren" })).toHaveAttribute(
+      "href",
+      "/clubs/c1/calendars/k1/events/export",
+    );
 
     calendar = { id: "k1", clubid: "c1", name: "Saison 2025", archivedAt: null };
     await user.click(screen.getByRole("button", { name: "Archivierung aufheben" }));
@@ -550,8 +556,8 @@ describe("CalendarPage – phone width", () => {
         .find((b) => b.classList.contains("ap-fab"));
       expect(fab).toBeDefined();
       await user.click(fab!);
-      expect(within(await screen.findByRole("dialog")).getByLabelText("Startdatum *")).toHaveValue(
-        "2026-10-08",
+      expect(await screen.findByTestId("location")).toHaveTextContent(
+        "/clubs/c1/calendars/k1/events/new?date=2026-10-08",
       );
     } finally {
       window.matchMedia = original;

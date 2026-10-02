@@ -373,31 +373,346 @@
     "draftHint": "Drafts are only visible internally."
   },
   "events": {
-    "title": "Events",
-    "search": "Search…",
-    "allTab": "All ({{count}})",
-    "publishedTab": "Published ({{count}})",
-    "draftTab": "Draft ({{count}})",
-    "selectedCount": "{{count}} selected",
-    "publish": "Publish",
-    "markAsDraft": "Mark as draft",
-    "loadingEvents": "Loading…",
-    "noSearchResults": "No events match your search.",
-    "noPublished": "No published events.",
-    "noDraft": "No draft events.",
-    "noEvents": "No events yet.",
-    "colName": "Name",
-    "colDate": "Date",
-    "colStart": "Start",
-    "colEnd": "End",
-    "colTags": "Tags",
-    "colStatus": "Status",
-    "allDay": "All day",
-    "draftStatus": "Draft",
-    "publishedStatus": "Published",
-    "deleteConfirm": "Delete {{count}} event(s)? This cannot be undone.",
-    "countFiltered": "{{count}} event(s) (filtered)",
-    "count": "{{count}} event(s)"
+    "and": "and",
+    "list": {
+      "title": "All events",
+      "subtitle_one": "{{calendar}} · 1 event",
+      "subtitle_other": "{{calendar}} · {{count}} events",
+      "export": "Export events",
+      "create": "Create event",
+      "searchLabel": "Search events by name",
+      "searchPlaceholder": "Search events",
+      "statusFilter": "Filter by status",
+      "tabs": {
+        "all": "All",
+        "published": "Published",
+        "draft": "Draft"
+      },
+      "groupFilter": "Filter by audience",
+      "resetFilter": "Reset filters",
+      "caption": "Events of the calendar {{calendar}}, sorted by date and start time",
+      "col": {
+        "select": "Select all shown events",
+        "name": "Name",
+        "date": "Date",
+        "time": "Time",
+        "place": "Location",
+        "audiences": "Audiences",
+        "features": "Features",
+        "status": "Status"
+      },
+      "selectOne": "Select {{name}} on {{date}}",
+      "allDay": "All day",
+      "timeRange": "{{from}} – {{to}}",
+      "none": "–",
+      "noneLabel": "none",
+      "footer_one": "{{shown}} of 1 event",
+      "footer_other": "{{shown}} of {{count}} events",
+      "loading": "Loading events.",
+      "readOnly": "Events can be viewed and exported, but not changed.",
+      "error": {
+        "title": "The events could not be loaded.",
+        "text": "Check your connection and try again.",
+        "retry": "Reload"
+      },
+      "empty": {
+        "noEvents": {
+          "title": "No events yet",
+          "text": "Create the first event or take over events from an ICS file. New events stay drafts until you publish them.",
+          "import": "Import events"
+        },
+        "noSearchHits": {
+          "title": "No results for “{{query}}”",
+          "text": "Check the spelling or search for part of the name.",
+          "reset": "Reset search"
+        },
+        "noPublished": {
+          "title": "Nothing published yet",
+          "text": "All events are still drafts. Only published events appear in the feeds.",
+          "showDrafts": "View drafts"
+        },
+        "noDrafts": {
+          "title": "No drafts",
+          "text": "All events are published. New events start as drafts.",
+          "showAll": "View all events"
+        },
+        "noFilterHits": {
+          "title": "No events found",
+          "text": "There are no events for your search or this filter.",
+          "reset": "Reset filters"
+        }
+      },
+      "bulk": {
+        "region": "Bulk actions",
+        "selected": "{{count}} selected",
+        "publish": "Publish",
+        "draft": "Mark as draft",
+        "delete": "Delete",
+        "clear": "Clear selection",
+        "published_one": "1 event published.",
+        "published_other": "{{count}} events published.",
+        "drafted_one": "1 event marked as draft.",
+        "drafted_other": "{{count}} events marked as draft.",
+        "failed": "Not all events could be changed. Please try again."
+      }
+    },
+    "delete": {
+      "title": "Delete event “{{name}}”?",
+      "text": "The event on {{date}} will be removed permanently.",
+      "consequence": "The event disappears from the calendar and from all feeds. This cannot be undone.",
+      "confirm": "Delete event",
+      "done": "Event deleted.",
+      "failed": "Deleting failed. Please try again.",
+      "manyTitle_one": "Delete 1 event?",
+      "manyTitle_other": "Delete {{count}} events?",
+      "manyText": "The selected events will be removed permanently: {{list}}.",
+      "more_one": "1 more",
+      "more_other": "{{count}} more",
+      "manyConsequenceDrafts_one": "Deletes 1 draft irrevocably. Published events are not affected.",
+      "manyConsequenceDrafts_other": "Deletes {{count}} drafts irrevocably. Published events are not affected.",
+      "manyConsequence_one": "The event also disappears from all feeds. This cannot be undone.",
+      "manyConsequence_other": "The {{count}} events also disappear from all feeds. This cannot be undone.",
+      "manyConfirm_one": "Delete 1 event",
+      "manyConfirm_other": "Delete {{count}} events",
+      "manyDone_one": "1 event deleted.",
+      "manyDone_other": "{{count}} events deleted.",
+      "manyFailed": "Not all events could be deleted. Please try again."
+    },
+    "new": {
+      "title": "Create event",
+      "subtitle": "How would you like to start?",
+      "close": "Close",
+      "blank": {
+        "title": "New event",
+        "text": "Start empty and enter all details yourself."
+      },
+      "template": {
+        "title": "From template",
+        "text": "Take over times, location and audiences, and create event series too."
+      },
+      "import": "Or import events from an ICS file",
+      "archived": {
+        "title": "Calendar archived",
+        "text": "You can't create events in an archived calendar. Viewing and exporting events still works.",
+        "back": "To all events"
+      }
+    },
+    "form": {
+      "newTitle": "New event",
+      "newSubtitle": "The new event starts as a draft.",
+      "editTitle": "Edit event",
+      "viewTitle": "View event",
+      "closeNew": "Close, discard event",
+      "closeEdit": "Close, discard changes",
+      "close": "Close",
+      "dateTaken": "Date taken from the calendar: {{date}}.",
+      "templateTaken": "Details taken from the template “{{name}}”. You can adjust them here.",
+      "publishedNotice": "Changes are visible in the feeds immediately.",
+      "readOnly": "The calendar is archived. The event cannot be changed.",
+      "errorTitle": "The event is not complete yet.",
+      "sections": {
+        "basic": "Basics",
+        "status": "Status",
+        "place": "Location",
+        "tags": "Properties, features and audiences"
+      },
+      "name": "Name",
+      "namePlaceholder": "e.g. Air rifle training",
+      "date": "Start date",
+      "dateEnd": "End date",
+      "dateEndHint": "Only for events spanning several days.",
+      "dates": "Date",
+      "times": "Time",
+      "allDay": "All day",
+      "allDayHint": "Start and end time are then omitted.",
+      "timeBegin": "Start time",
+      "timeEnd": "End time",
+      "status": {
+        "label": "Status of the event",
+        "draft": "Draft",
+        "published": "Published",
+        "hint": "Only your club sees drafts. Published events appear in the feeds."
+      },
+      "place": {
+        "label": "Location",
+        "none": "No location selected",
+        "noAddress": "No address yet",
+        "fix": "Correct position",
+        "fixHint": "Drag the marker on the map or click into the map.",
+        "create": "Create new location",
+        "newName": "Name of the new location",
+        "newPlaceholder": "e.g. Linden Inn",
+        "createAndAssign": "Create and assign location",
+        "empty": "Choose a location to see it on the map here.",
+        "map": "Map showing {{name}}",
+        "noPosition": "This location has no position yet. Use “Correct position” to set it on the map.",
+        "positionSaved": "Position saved.",
+        "positionFailed": "The position could not be saved.",
+        "createFailed": "The location could not be created."
+      },
+      "properties": "Properties",
+      "createProperty": "Create new property",
+      "features": "Features",
+      "createFeature": "Create new feature",
+      "targetGroups": "Audiences",
+      "createTargetGroup": "Create new audience",
+      "targetGroupsHint": "Without a selection the event is for everyone.",
+      "createFailed": "This could not be created. Please try again.",
+      "back": "Back",
+      "save": "Save event",
+      "saving": "Saving …",
+      "delete": "Delete event",
+      "saved": "Event saved.",
+      "saveFailed": "Saving failed. Please check your input and try again.",
+      "loading": "Loading event.",
+      "notFound": {
+        "title": "Event not found",
+        "text": "The event was deleted or belongs to another calendar.",
+        "back": "To the events"
+      },
+      "loadError": {
+        "title": "The event could not be loaded.",
+        "text": "Check your connection and try again.",
+        "retry": "Reload"
+      },
+      "errors": {
+        "nameRequired": "Please enter a name.",
+        "dateRequired": "Please choose a start date.",
+        "dateInvalid": "The start date is invalid.",
+        "dateEndInvalid": "The end date is invalid.",
+        "dateEndBeforeStart": "The end date is before the start date.",
+        "timeBeginRequired": "Please enter a start time.",
+        "timeEndRequired": "Please enter an end time.",
+        "timeEndBeforeStart": "The end time is before the start time."
+      }
+    },
+    "templatePick": {
+      "title": "Choose template",
+      "subtitle": "The template becomes one event or an event series. Everything stays a draft.",
+      "legend": "Template",
+      "meta": "{{from}} – {{to}}",
+      "next": "Next",
+      "back": "Back",
+      "loading": "Loading templates.",
+      "error": "The templates could not be loaded.",
+      "empty": {
+        "title": "No templates yet",
+        "text": "Create a template to set up recurring events faster.",
+        "action": "To the templates"
+      }
+    },
+    "series": {
+      "title": "Event from template",
+      "subtitle": "Create one event or a whole series at once.",
+      "close": "Close, create nothing",
+      "chosen": "Selected template",
+      "change": "Change template",
+      "step": "Step {{n}}: ",
+      "kindTitle": "Single event or event series",
+      "kindLabel": "Kind",
+      "single": "Single event",
+      "series": "Event series",
+      "dateTitle": "Date",
+      "ruleTitle": "Series rule",
+      "date": "Date",
+      "rhythm": "Rhythm",
+      "rhythms": {
+        "weekly": "Weekly",
+        "biweekly": "Every two weeks",
+        "monthly": "Monthly on the n-th weekday"
+      },
+      "nthLegend": "Which weekday of the month?",
+      "nth": {
+        "1": "1st",
+        "2": "2nd",
+        "3": "3rd",
+        "4": "4th",
+        "5": "Last"
+      },
+      "weekday": "Weekday",
+      "from": "From",
+      "to": "To",
+      "skipHolidays": "Skip holidays",
+      "skipped_one": "1 day excluded",
+      "skipped_other": "{{count}} days excluded",
+      "noHolidays": "No holidays in this period",
+      "holidaysKept_one": "1 holiday stays in the series",
+      "holidaysKept_other": "{{count}} holidays stay in the series",
+      "preview": "Preview",
+      "count_one": "1 event will be created.",
+      "count_other": "{{count}} events will be created.",
+      "countPreview_one": "1 event would be created.",
+      "countPreview_other": "{{count}} events would be created.",
+      "countNone": "No events result from this.",
+      "holidaysSkipped_one": "1 holiday is skipped.",
+      "holidaysSkipped_other": "{{count}} holidays are skipped.",
+      "previewEmpty": "The events appear here as soon as there are matching days.",
+      "noMatch": "There are no matching days in the selected period. Change the weekday or the period.",
+      "skippedNote": "is skipped",
+      "holidayNote": "falls on {{name}}",
+      "timeRange": "{{from}}–{{to}}",
+      "allDay": "All day",
+      "statusSingle": "Status of the event",
+      "statusSeries": "Status of the series",
+      "createDraft_one": "Create 1 event as draft",
+      "createDraft_other": "Create {{count}} events as drafts",
+      "createPublished_one": "Create and publish 1 event",
+      "createPublished_other": "Create and publish {{count}} events",
+      "nothing": "No events to create",
+      "soon": "Coming soon",
+      "soonText": "Event series cannot be created yet. The preview already shows which events would result. Until then, create single events.",
+      "customize": "Adjust first",
+      "created": "Event created.",
+      "failed": "The event could not be created. Please try again.",
+      "dateRequired": "Please choose a date.",
+      "notFound": "This template no longer exists. Choose another one."
+    },
+    "export": {
+      "title": "Export events",
+      "back": "To the events",
+      "intro": "You get an ICS file that you can import into other calendar apps. It does not change afterwards. For events that stay up to date, subscribe to a feed instead.",
+      "feeds": "To the feeds",
+      "range": {
+        "title": "Period",
+        "all": "Whole calendar",
+        "allHint": "All events of {{calendar}}",
+        "month": "This month",
+        "custom": "From – to",
+        "customHint": "Set your own period",
+        "from": "From",
+        "to": "To",
+        "invalid": "The end is before the start."
+      },
+      "status": {
+        "title": "Status",
+        "legend": "Which events?",
+        "published": "Published events only",
+        "publishedHint": "This is what guests see as well.",
+        "drafts": "Drafts too",
+        "draftsHint": "Otherwise drafts are only visible to your club.",
+        "draftsNotice": "Drafts will then be in your file. They remain excluded from feeds."
+      },
+      "audiences": {
+        "title": "Audiences",
+        "label": "Filter audiences",
+        "hint": "Without a selection all audiences are exported.",
+        "none": "This calendar has no audiences yet."
+      },
+      "preview": {
+        "title": "Preview",
+        "count_one": "1 event will be exported",
+        "count_other": "{{count}} events will be exported",
+        "none": "No events will be exported",
+        "noneHint": "Change the period or the selection so that events end up in the file."
+      },
+      "download": "Download ICS file",
+      "cancel": "Cancel",
+      "done": "File was created.",
+      "ics": {
+        "features": "Features",
+        "targetGroups": "Audiences"
+      }
+    }
   },
   "import": {
     "title": "Import Events from ICS",
@@ -658,6 +973,16 @@
     },
     "passwordField": {
       "toggle": "Show password"
+    },
+    "unsaved": {
+      "title": "Discard changes?",
+      "text": "You have changes that are not saved yet.",
+      "consequence": "If you leave the page now, they will be lost.",
+      "confirm": "Discard changes",
+      "cancel": "Keep editing"
+    },
+    "errorSummary": {
+      "intro": "Please check these entries:"
     }
   },
   "shell": {
