@@ -22,6 +22,7 @@ class AppFixtures extends Fixture
         $user->setEmail('admin@example.com');
         // Pre-computed bcrypt hash of "password123" (cost 10) — avoids hasher DI complexity
         $user->setPassword('$2y$10$g.3Hzn/vGFX3dtFoBzovpeukTOps.EFBhaLmnJcMROaBm7NHJViq6');
+        $user->setIsEmailVerified(true);
         $manager->persist($user);
 
         $club = new Club();
