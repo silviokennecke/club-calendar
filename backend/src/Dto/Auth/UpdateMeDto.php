@@ -14,6 +14,9 @@ class UpdateMeDto
     #[Assert\Range(min: 0, max: 6)]
     public ?int $firstDayOfWeek = null;
 
+    #[Assert\Choice(choices: ['en', 'de'])]
+    public ?string $language = null;
+
     public ?string $lastClubId = null;
 
     public ?string $lastCalendarId = null;

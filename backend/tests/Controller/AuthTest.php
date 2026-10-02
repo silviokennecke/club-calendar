@@ -200,6 +200,25 @@ class AuthTest extends WebTestCase
         $this->assertSame('carol@example.com', $r['body']['email']);
     }
 
+    public function testUpdateMePersistsLanguage(): void
+    {
+        $user = TestHelper::createUser(self::$em, self::$hasher, 'lang@example.com');
+        $auth = TestHelper::authHeader($user, self::$tokens);
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', ['language' => 'de'], $auth);
+        $this->assertSame(200, $r['status']);
+        $this->assertSame('de', $r['body']['language']);
+        $r = TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], $auth);
+        $this->assertSame('de', $r['body']['language']);
+    }
+
+    public function testUpdateMeRejectsUnsupportedLanguage(): void
+    {
+        $user = TestHelper::createUser(self::$em, self::$hasher, 'lang2@example.com');
+        $auth = TestHelper::authHeader($user, self::$tokens);
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', ['language' => 'xx'], $auth);
+        $this->assertSame(422, $r['status']);
+    }
+
     public function testTokenRefreshReturnsNewAccessToken(): void
     {
         TestHelper::createUser(self::$em, self::$hasher, 'dave@example.com');

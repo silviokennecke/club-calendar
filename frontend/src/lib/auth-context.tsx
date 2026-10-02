@@ -19,6 +19,7 @@ interface AuthContextValue {
     lastClubId?: string | null;
     lastCalendarId?: string | null;
     dateFormat?: string;
+    language?: string;
     firstDayOfWeek?: number;
   }) => Promise<void>;
 }
