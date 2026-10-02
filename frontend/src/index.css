@@ -1535,6 +1535,55 @@
   }
 }
 
+/* Club picker and setup (design cc-app.css: .ap-cols-3, .ap-spread, .ap-evcard, .ap-actions--split) */
+@layer components {
+  .ap-spread {
+    justify-content: space-between;
+  }
+  .ap-actions--split {
+    justify-content: space-between;
+  }
+  .ap-cols-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+  .ap-evcard {
+    position: relative;
+    align-items: flex-start;
+  }
+  .ap-evcard:hover {
+    background: var(--surface);
+  }
+  .ap-evcard a {
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .ap-evcard a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-lg);
+  }
+  .ap-evcard a:focus-visible {
+    outline: none;
+  }
+  .ap-evcard a:focus-visible::after {
+    outline: 3px solid var(--brand);
+    outline-offset: 2px;
+  }
+  @media (max-width: 960px) {
+    .ap-cols-3 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 720px) {
+    .ap-cols-3 {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+
 /* FullCalendar (removed in a later phase) */
 .fc-holiday-event .fc-event-main {
   opacity: 0.45;

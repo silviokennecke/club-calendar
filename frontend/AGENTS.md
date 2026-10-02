@@ -29,6 +29,11 @@ This is a **Vite + React + React Router** SPA (not Next.js).
 - Mobile breakpoint: 720px. App frame: `src/components/layout/AppShell.tsx` (Sidebar, Topbar, Tabbar,
   SettingsTabs, skip link); navigation mapping in `layout/navigation.ts`. Child routes get `ShellData`
   via `useOutletContext()`.
+- Auth/setup frame: `components/auth/AuthLayout.tsx` (card, `top` for the Stepper, `headerEnd`, `bare` for the
+  club picker, `headingRef` for focus). `/setup` is the onboarding (Stepper Verein/Kalender; `?clubId=` resumes
+  step 2, `?new=1` forces a new club); `/clubs` is the club picker (`?select=1` skips the last-calendar redirect);
+  `GuestRoute` sends signed-in users from /login, /signup, /forgot-password to /clubs.
+- Context switcher menus (`layout/ContextMenu.tsx`): disclosure with Escape, arrow keys, Home/End, Tab-out closes.
 - Icons: lucide-react via `<Icon glyph="..." />` (design glyph names, `shared/Icon.tsx`). No emojis as UI icons.
 - All texts via i18n (`src/locales/de.json`, `en.json`); shared component texts under `ui.*`, shell under `shell.*`.
 - Tests: Vitest + Testing Library (jsdom, setup in `src/test/setup.ts`, tests run in German).

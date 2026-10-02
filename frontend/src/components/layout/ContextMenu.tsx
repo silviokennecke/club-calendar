@@ -1,4 +1,10 @@
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  type KeyboardEvent as ReactKeyEvent,
+  type ReactNode,
+} from "react";
 import { Icon, type Glyph } from "@/components/ui/shared";
 
 interface ContextMenuProps {
@@ -30,6 +36,42 @@ export function ContextMenu({
   const panelId = `ctx-${useId().replace(/:/g, "")}`;
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const focusOnOpen = useRef(false);
+
+  // Opened with the arrow keys: move focus into the panel.
+  useEffect(() => {
+    if (open && focusOnOpen.current) menuItems()[0]?.focus();
+    focusOnOpen.current = false;
+  }, [open]);
+
+  function menuItems(): HTMLElement[] {
+    return Array.from(panelRef.current?.querySelectorAll<HTMLElement>("a[href], button") ?? []);
+  }
+
+  function onTriggerKey(e: ReactKeyEvent<HTMLButtonElement>) {
+    if (e.key !== "ArrowDown") return;
+    e.preventDefault();
+    if (open) menuItems()[0]?.focus();
+    else {
+      focusOnOpen.current = true;
+      onOpenChange(true);
+    }
+  }
+
+  /** Arrow keys, Home and End move between the entries (Tab and Escape keep working as usual). */
+  function onPanelKey(e: ReactKeyEvent<HTMLDivElement>) {
+    const items = menuItems();
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    let next: number | null = null;
+    if (e.key === "ArrowDown") next = (index + 1) % items.length;
+    else if (e.key === "ArrowUp") next = (index - 1 + items.length) % items.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = items.length - 1;
+    if (next === null) return;
+    e.preventDefault();
+    items[next]?.focus();
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -51,7 +93,15 @@ export function ContextMenu({
   }, [open, onOpenChange]);
 
   return (
-    <div className="ap-ctxwrap" ref={wrapRef}>
+    <div
+      className="ap-ctxwrap"
+      ref={wrapRef}
+      onBlur={(e) => {
+        // Tabbing out of the switcher closes it.
+        const to = e.relatedTarget as Node | null;
+        if (open && to && !wrapRef.current?.contains(to)) onOpenChange(false);
+      }}
+    >
       <button
         ref={triggerRef}
         type="button"
@@ -59,6 +109,7 @@ export function ContextMenu({
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => onOpenChange(!open)}
+        onKeyDown={onTriggerKey}
       >
         {icon && <Icon glyph={icon} size={22} />}
         <span className="ap-ctxtext">
@@ -68,7 +119,14 @@ export function ContextMenu({
         <Icon glyph={open ? "chevron-up" : "chevron-down"} size={18} />
       </button>
       {open && (
-        <div className="ap-menu" id={panelId} role="region" aria-label={menuLabel}>
+        <div
+          className="ap-menu"
+          id={panelId}
+          role="region"
+          aria-label={menuLabel}
+          ref={panelRef}
+          onKeyDown={onPanelKey}
+        >
           {children}
         </div>
       )}
