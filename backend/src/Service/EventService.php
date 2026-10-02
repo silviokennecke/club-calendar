@@ -212,49 +212,43 @@ readonly class EventService
         $targetGroupIds = $data['targetGroupIds'] ?? null;
 
         if (null !== $propertyIds) {
-            foreach ($event->getProperties() as $ep) {
-                $this->em->remove($ep);
-            }
-            $event->getProperties()->clear();
-            foreach ($propertyIds as $pid) {
-                $prop = $this->em->getRepository(Property::class)->find($pid);
-                if ($prop) {
-                    $ep = new EventProperty();
-                    $ep->setEvent($event);
-                    $ep->setProperty($prop);
-                    $this->em->persist($ep);
-                }
-            }
+            LinkCollectionSync::sync(
+                $this->em,
+                $event->getProperties(),
+                $propertyIds,
+                fn (EventProperty $ep) => $ep->getProperty()->getId(),
+                function (string $id) use ($event): ?EventProperty {
+                    $prop = $this->em->getRepository(Property::class)->find($id);
+
+                    return $prop ? (new EventProperty())->setEvent($event)->setProperty($prop) : null;
+                },
+            );
         }
         if (null !== $featureIds) {
-            foreach ($event->getFeatures() as $ef) {
-                $this->em->remove($ef);
-            }
-            $event->getFeatures()->clear();
-            foreach ($featureIds as $fid) {
-                $feat = $this->em->getRepository(Feature::class)->find($fid);
-                if ($feat) {
-                    $ef = new EventFeature();
-                    $ef->setEvent($event);
-                    $ef->setFeature($feat);
-                    $this->em->persist($ef);
-                }
-            }
+            LinkCollectionSync::sync(
+                $this->em,
+                $event->getFeatures(),
+                $featureIds,
+                fn (EventFeature $ef) => $ef->getFeature()->getId(),
+                function (string $id) use ($event): ?EventFeature {
+                    $feat = $this->em->getRepository(Feature::class)->find($id);
+
+                    return $feat ? (new EventFeature())->setEvent($event)->setFeature($feat) : null;
+                },
+            );
         }
         if (null !== $targetGroupIds) {
-            foreach ($event->getTargetGroups() as $etg) {
-                $this->em->remove($etg);
-            }
-            $event->getTargetGroups()->clear();
-            foreach ($targetGroupIds as $tgid) {
-                $tg = $this->em->getRepository(TargetGroup::class)->find($tgid);
-                if ($tg) {
-                    $etg = new EventTargetGroup();
-                    $etg->setEvent($event);
-                    $etg->setTargetGroup($tg);
-                    $this->em->persist($etg);
-                }
-            }
+            LinkCollectionSync::sync(
+                $this->em,
+                $event->getTargetGroups(),
+                $targetGroupIds,
+                fn (EventTargetGroup $etg) => $etg->getTargetGroup()->getId(),
+                function (string $id) use ($event): ?EventTargetGroup {
+                    $tg = $this->em->getRepository(TargetGroup::class)->find($id);
+
+                    return $tg ? (new EventTargetGroup())->setEvent($event)->setTargetGroup($tg) : null;
+                },
+            );
         }
 
         $this->em->flush();
@@ -394,21 +388,21 @@ readonly class EventService
                     'name' => $ep->getProperty()->getName(),
                     'icon' => $ep->getProperty()->getIcon(),
                 ],
-            ])->toArray(),
+            ])->getValues(),
             'features' => $event->getFeatures()->map(fn ($ef) => [
                 'featureId' => $ef->getFeature()->getId(),
                 'feature' => [
                     'id' => $ef->getFeature()->getId(),
                     'name' => $ef->getFeature()->getName(),
                 ],
-            ])->toArray(),
+            ])->getValues(),
             'targetGroups' => $event->getTargetGroups()->map(fn ($etg) => [
                 'targetGroupId' => $etg->getTargetGroup()->getId(),
                 'targetGroup' => [
                     'id' => $etg->getTargetGroup()->getId(),
                     'name' => $etg->getTargetGroup()->getName(),
                 ],
-            ])->toArray(),
+            ])->getValues(),
         ];
     }
 }
