@@ -1,22 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Club Calendar">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
-    <clipPath id="cc-page"><rect x="11" y="15" width="42" height="38" rx="7"/></clipPath>
+    <clipPath id="p"><rect x="6" y="8" width="52" height="50" rx="9"/></clipPath>
   </defs>
-  <rect width="64" height="64" rx="14" fill="#1e3a8a"/>
-  <rect x="11" y="15" width="42" height="38" rx="7" fill="#fff"/>
-  <path d="M11 22a7 7 0 0 1 7-7h28a7 7 0 0 1 7 7v6H11z" fill="#f59e0b"/>
-  <rect x="20" y="9" width="5" height="12" rx="2.5" fill="#fff" stroke="#1e3a8a" stroke-width="2"/>
-  <rect x="39" y="9" width="5" height="12" rx="2.5" fill="#fff" stroke="#1e3a8a" stroke-width="2"/>
-  <g clip-path="url(#cc-page)">
-    <g fill="#94a3b8">
-      <circle cx="20.5" cy="38" r="3.2"/>
-      <path d="M13 56v-6a7.5 7.5 0 0 1 15 0v6z"/>
-      <circle cx="43.5" cy="38" r="3.2"/>
-      <path d="M36 56v-6a7.5 7.5 0 0 1 15 0v6z"/>
-    </g>
-    <g fill="#1e3a8a" stroke="#fff" stroke-width="1.5">
-      <circle cx="32" cy="35.5" r="4.2"/>
-      <path d="M23 56v-6.5a9 9 0 0 1 18 0V56z"/>
-    </g>
+  <rect x="6" y="8" width="52" height="50" rx="9" fill="#fff"/>
+  <g clip-path="url(#p)">
+    <rect x="6" y="8" width="52" height="16" fill="#f59e0b"/>
+    <circle cx="32" cy="38" r="7" fill="#1e3a8a"/>
+    <path d="M17 62v-8a15 15 0 0 1 30 0v8z" fill="#1e3a8a"/>
   </g>
+  <rect x="6" y="8" width="52" height="50" rx="9" fill="none" stroke="#1e3a8a" stroke-width="4"/>
 </svg>
