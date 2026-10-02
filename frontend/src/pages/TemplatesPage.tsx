@@ -61,7 +61,7 @@ export default function TemplatesPage() {
       />
 
       {templates.length === 0 ? (
-        <EmptyState message={t("templates.noTemplates")} />
+        <EmptyState icon="layers" title={t("templates.noTemplates")} />
       ) : (
         <div className="space-y-3">
           {templates.map((tmpl) => (
@@ -121,14 +121,14 @@ export default function TemplatesPage() {
                     key={p.property.id}
                     label={p.property.name}
                     icon={p.property.icon}
-                    variant="slate"
+                    tone="brand"
                   />
                 ))}
                 {tmpl.features.map((f) => (
-                  <TagBadge key={f.feature.id} label={f.feature.name} variant="green" />
+                  <TagBadge key={f.feature.id} label={f.feature.name} tone="neutral" />
                 ))}
                 {tmpl.targetGroups.map((tg) => (
-                  <TagBadge key={tg.targetGroup.id} label={tg.targetGroup.name} variant="purple" />
+                  <TagBadge key={tg.targetGroup.id} label={tg.targetGroup.name} tone="adult" />
                 ))}
               </div>
             </div>

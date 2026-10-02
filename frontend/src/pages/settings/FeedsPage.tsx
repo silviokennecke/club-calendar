@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { FormField, SectionHeader, EmptyState, TagBadge } from "@/components/ui/shared";
+import { Field, SectionHeader, EmptyState, TagBadge } from "@/components/ui/shared";
 import {
   Dialog,
   DialogContent,
@@ -144,7 +144,7 @@ export default function FeedsPage() {
       />
 
       {feeds.length === 0 ? (
-        <EmptyState message={t("settings.feeds.noFeeds")} />
+        <EmptyState icon="rss" title={t("settings.feeds.noFeeds")} />
       ) : (
         <div className="space-y-4">
           {feeds.map((feed) => {
@@ -179,7 +179,7 @@ export default function FeedsPage() {
                     {tgNames.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {tgNames.map((name) => (
-                          <TagBadge key={name} label={name} variant="purple" />
+                          <TagBadge key={name} label={name} tone="adult" />
                         ))}
                       </div>
                     )}
@@ -315,19 +315,21 @@ export default function FeedsPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <FormField label={t("settings.feeds.feedName")}>
+            <Field label={t("settings.feeds.feedName")}>
               <Input
                 placeholder="e.g. Public Calendar"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               />
-            </FormField>
+            </Field>
 
-            <FormField label={t("settings.feeds.visibility")}>
+            <Field group label={t("settings.feeds.visibility")}>
               <div className="flex gap-2">
                 {(["PUBLIC", "PRIVATE"] as const).map((v) => (
                   <button
                     key={v}
+                    type="button"
+                    aria-pressed={form.visibility === v}
                     onClick={() => setForm((f) => ({ ...f, visibility: v }))}
                     className={`flex-1 rounded-md border py-2 text-sm transition-colors ${form.visibility === v ? "border-blue-300 bg-blue-50 font-medium text-blue-700" : "border-slate-200 text-slate-600 hover:border-slate-300"}`}
                   >
@@ -340,10 +342,11 @@ export default function FeedsPage() {
               {form.visibility === "PRIVATE" && (
                 <p className="text-xs text-slate-400">{t("settings.feeds.privateSecretInfo")}</p>
               )}
-            </FormField>
+            </Field>
 
             {targetGroups.length > 0 && (
-              <FormField
+              <Field
+                group
                 label={
                   <>
                     {t("settings.feeds.targetGroups")}{" "}
@@ -358,6 +361,7 @@ export default function FeedsPage() {
                     <button
                       key={tg.id}
                       type="button"
+                      aria-pressed={form.targetGroupIds.includes(tg.id)}
                       onClick={() => toggleTargetGroup(tg.id)}
                       className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${form.targetGroupIds.includes(tg.id) ? "border-purple-300 bg-purple-100 text-purple-700" : "border-slate-200 text-slate-600 hover:border-slate-300"}`}
                     >
@@ -365,7 +369,7 @@ export default function FeedsPage() {
                     </button>
                   ))}
                 </div>
-              </FormField>
+              </Field>
             )}
           </div>
           <DialogFooter>

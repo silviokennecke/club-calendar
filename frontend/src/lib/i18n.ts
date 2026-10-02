@@ -23,4 +23,11 @@ i18n
     interpolation: { escapeValue: false },
   });
 
+// Keep <html lang> in sync for screen readers and hyphenation.
+function syncHtmlLang(lng: string | undefined) {
+  if (typeof document !== "undefined" && lng) document.documentElement.lang = lng.slice(0, 2);
+}
+syncHtmlLang(i18n.resolvedLanguage);
+i18n.on("languageChanged", syncHtmlLang);
+
 export default i18n;

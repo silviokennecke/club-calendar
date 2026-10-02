@@ -13,11 +13,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  FormField,
+  Field,
   SectionHeader,
   ListCard,
   ListRow,
-  DangerZoneConfirm,
+  ConfirmDialog,
+  buttonClass,
 } from "@/components/ui/shared";
 import { CalendarDays, Check, Plus, Archive, ArchiveRestore, Copy } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -40,7 +41,6 @@ export default function ClubPage() {
   const [nameSaved, setNameSaved] = useState(false);
   const [nameSaving, setNameSaving] = useState(false);
   const [confirmDeleteCalId, setConfirmDeleteCalId] = useState<string | null>(null);
-  const [deletingClub, setDeletingClub] = useState(false);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   const { data: club } = useQuery<Club>({
@@ -140,14 +140,9 @@ export default function ClubPage() {
   }
 
   async function handleDeleteClub() {
-    setDeletingClub(true);
-    try {
-      await apiDelete(`/api/clubs/${clubId}`);
-      qc.invalidateQueries({ queryKey: ["clubs"] });
-      navigate("/clubs", { replace: true });
-    } finally {
-      setDeletingClub(false);
-    }
+    await apiDelete(`/api/clubs/${clubId}`);
+    qc.invalidateQueries({ queryKey: ["clubs"] });
+    navigate("/clubs", { replace: true });
   }
 
   function CalendarCard({ cal, archived = false }: { cal: Calendar; archived?: boolean }) {
@@ -246,41 +241,49 @@ export default function ClubPage() {
     <div className="max-w-lg p-6">
       <h2 className="mb-4 text-base font-semibold text-slate-900">{t("club.title")}</h2>
       <div className="mb-4 rounded-xl border border-slate-200 bg-white p-5">
-        <FormField label={t("club.clubName")}>
-          <div className="flex gap-2">
-            <Input
-              value={clubName}
-              onChange={(e) => setClubName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSaveClubName()}
-            />
-            <Button
-              size="sm"
-              disabled={nameSaving || !clubName.trim() || clubName === club?.name}
-              onClick={handleSaveClubName}
-              className="gap-1.5"
-            >
-              {nameSaved ? (
-                <>
-                  <Check className="h-3.5 w-3.5" />
-                  {t("club.saved")}
-                </>
-              ) : nameSaving ? (
-                t("club.saving")
-              ) : (
-                t("club.save")
-              )}
-            </Button>
-          </div>
-        </FormField>
+        <Field label={t("club.clubName")}>
+          {(control) => (
+            <div className="flex gap-2">
+              <Input
+                {...control}
+                value={clubName}
+                onChange={(e) => setClubName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveClubName()}
+              />
+              <Button
+                size="sm"
+                disabled={nameSaving || !clubName.trim() || clubName === club?.name}
+                onClick={handleSaveClubName}
+                className="gap-1.5"
+              >
+                {nameSaved ? (
+                  <>
+                    <Check className="h-3.5 w-3.5" />
+                    {t("club.saved")}
+                  </>
+                ) : nameSaving ? (
+                  t("club.saving")
+                ) : (
+                  t("club.save")
+                )}
+              </Button>
+            </div>
+          )}
+        </Field>
       </div>
 
       <div className="mb-10">
-        <DangerZoneConfirm
-          triggerLabel={t("club.deleteThisClub")}
+        <ConfirmDialog
+          trigger={
+            <button type="button" className={buttonClass("danger")}>
+              {t("club.deleteThisClub")}
+            </button>
+          }
+          title={t("club.deleteClubTitle", { name: club?.name ?? "" })}
           description={t("club.deleteClubConfirm")}
+          consequence={t("club.deleteClubConsequence", { count: calendars.length })}
           confirmLabel={t("club.deleteClub")}
           onConfirm={handleDeleteClub}
-          isLoading={deletingClub}
         />
       </div>
 

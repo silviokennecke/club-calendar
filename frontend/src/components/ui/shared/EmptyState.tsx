@@ -1,22 +1,41 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Icon, type Glyph } from "./Icon";
 
 interface Props {
-  message: string;
-  icon?: ReactNode;
+  title: ReactNode;
+  /** Why it is empty / what to do next. */
+  text?: ReactNode;
+  icon?: Glyph;
+  /** Next action(s), e.g. a primary LinkButton. */
+  actions?: ReactNode;
+  /** Heading level for the title (default h2). */
+  headingLevel?: "h2" | "h3";
   className?: string;
 }
 
-export function EmptyState({ message, icon, className }: Props) {
+/** Empty list: explains why it is empty and offers the next step. */
+export function EmptyState({
+  title,
+  text,
+  icon = "calendar",
+  actions,
+  headingLevel = "h2",
+  className,
+}: Props) {
+  const Heading = headingLevel;
   return (
-    <div
-      className={cn(
-        "rounded-xl border border-dashed border-slate-200 py-12 text-center text-sm text-slate-400",
-        className,
+    <div className={cn("ap-empty", className)}>
+      <span className="ap-empty-icon">
+        <Icon glyph={icon} size={28} />
+      </span>
+      <Heading className="t-h3">{title}</Heading>
+      {text && <p className="t-body">{text}</p>}
+      {actions && (
+        <div className="ap-actions" style={{ justifyContent: "center" }}>
+          {actions}
+        </div>
       )}
-    >
-      {icon && <div className="mb-2">{icon}</div>}
-      {message}
     </div>
   );
 }

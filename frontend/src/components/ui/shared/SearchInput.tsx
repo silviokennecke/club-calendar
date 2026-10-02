@@ -1,31 +1,46 @@
-import { Search, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { useId } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { Icon } from "./Icon";
+import { IconButton } from "./Button";
 
 interface Props {
   value: string;
   onChange: (val: string) => void;
   placeholder?: string;
+  /** Accessible label (visually hidden); defaults to the placeholder. */
+  label?: string;
   className?: string;
 }
 
-export function SearchInput({ value, onChange, placeholder = "Search…", className }: Props) {
+export function SearchInput({ value, onChange, placeholder, label, className }: Props) {
+  const { t } = useTranslation();
+  const id = `search-${useId().replace(/:/g, "")}`;
+  const ph = placeholder ?? t("common.search");
   return (
-    <div className={cn("relative", className)}>
-      <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-      <Input
+    <div className={cn("ap-search", className)}>
+      <span className="ap-search-icon">
+        <Icon glyph="search" size={20} />
+      </span>
+      <label className="ap-sr" htmlFor={id}>
+        {label ?? ph}
+      </label>
+      <input
+        id={id}
+        type="search"
+        className="cc-input"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="h-8 w-48 pr-8 pl-8 text-sm"
+        placeholder={ph}
       />
       {value && (
-        <button
+        <IconButton
+          className="ap-search-clear"
+          icon="x"
+          size={18}
+          label={t("ui.search.clear")}
           onClick={() => onChange("")}
-          className="absolute top-1/2 right-2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+        />
       )}
     </div>
   );

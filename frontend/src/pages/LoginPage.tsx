@@ -11,8 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { SsoProviderIcon } from "@/components/SsoProviderIcon";
-import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
-import { Alert } from "@/components/ui/shared";
+import { Banner, LangSwitch, Logo, buttonClass } from "@/components/ui/shared";
 
 interface SsoProvider {
   id: string;
@@ -124,13 +123,12 @@ export default function LoginPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-slate-50">
       <div className="absolute top-4 right-4">
-        <LanguageSwitcher />
+        <LangSwitch />
       </div>
       <Card className="w-full max-w-sm border-slate-200 shadow-md">
         <CardHeader className="pb-2">
-          <div className="mb-1 flex items-center gap-2">
-            <span className="text-xl">📅</span>
-            <span className="text-sm text-slate-500">Club Calendar</span>
+          <div className="mb-1">
+            <Logo size={28} />
           </div>
           <CardTitle className="text-xl">{t("auth.signIn")}</CardTitle>
         </CardHeader>
@@ -160,22 +158,23 @@ export default function LoginPage() {
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             {emailNotVerified && (
-              <Alert
-                variant="warning"
-                message={resendDone ? t("auth.verificationEmailSent") : t("auth.emailNotVerified")}
-                actions={
+              <Banner
+                tone={resendDone ? "success" : "warning"}
+                action={
                   !resendDone ? (
                     <button
                       type="button"
                       onClick={handleResend}
                       disabled={resendLoading}
-                      className="text-sm font-medium underline hover:no-underline"
+                      className={buttonClass("secondary")}
                     >
                       {t("auth.resendVerificationEmail")}
                     </button>
                   ) : undefined
                 }
-              />
+              >
+                {resendDone ? t("auth.verificationEmailSent") : t("auth.emailNotVerified")}
+              </Banner>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? t("auth.signingIn") : t("auth.signIn")}

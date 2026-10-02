@@ -111,7 +111,9 @@
     "deleteAccount": "Mein Konto löschen",
     "deleteAccountConfirm": "Dies löscht Ihr Konto und alle zugehörigen Daten dauerhaft. Dieser Vorgang kann nicht rückgängig gemacht werden.",
     "deleting": "Löschen…",
-    "deleteAccountButton": "Konto löschen"
+    "deleteAccountButton": "Konto löschen",
+    "deleteAccountTitle": "Konto löschen?",
+    "deleteAccountConsequence": "Löscht dein Konto, deine Passkeys und verknüpften Anmeldungen. Du wirst abgemeldet."
   },
   "language": {
     "en": "English",
@@ -292,7 +294,10 @@
     "createCalendar": "Kalender erstellen",
     "calendarNamePlaceholder": "Kalendername",
     "noCalendars": "Noch keine Kalender.",
-    "archived": "Archiviert"
+    "archived": "Archiviert",
+    "deleteClubTitle": "Verein „{{name}}“ löschen?",
+    "deleteClubConsequence_one": "Löscht {{count}} Kalender mit allen Terminen, Vorlagen und Feeds.",
+    "deleteClubConsequence_other": "Löscht {{count}} Kalender mit allen Terminen, Vorlagen und Feeds."
   },
   "settings": {
     "title": "Einstellungen",
@@ -391,6 +396,145 @@
       "neverFetched": "Noch nie abgerufen",
       "addAndFetch": "Hinzufügen & Abrufen",
       "adding": "Wird hinzugefügt…"
+    }
+  },
+  "brand": {
+    "name": "Club Calendar"
+  },
+  "ui": {
+    "field": {
+      "required": "(Pflicht)",
+      "optional": "(optional)"
+    },
+    "status": {
+      "published": "Veröffentlicht",
+      "draft": "Entwurf",
+      "holiday": "Feiertag",
+      "archived": "Archiviert",
+      "new": "Neu",
+      "private": "Privat",
+      "public": "Öffentlich",
+      "danger": "Fehler"
+    },
+    "toast": {
+      "region": "Benachrichtigungen"
+    },
+    "confirm": {
+      "requireLabel": "Zur Bestätigung „{{text}}“ eingeben"
+    },
+    "copyField": {
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "failed": "Kopieren hat nicht geklappt. Bitte markiere den Text und kopiere ihn selbst.",
+      "announce": "{{label}} wurde in die Zwischenablage kopiert.",
+      "showSecret": "Geheimnis anzeigen",
+      "hideSecret": "Geheimnis verbergen"
+    },
+    "chipSelect": {
+      "create": "Neu anlegen",
+      "createAndAssign": "Anlegen und zuweisen",
+      "placeholder": "Neuen Namen eingeben"
+    },
+    "emojiPicker": {
+      "none": "Kein Symbol",
+      "custom": "Eigenes Symbol",
+      "customPlaceholder": "z. B. 🎳",
+      "apply": "Symbol übernehmen",
+      "more": "Weitere Symbole",
+      "hint": "Füge ein beliebiges Emoji ein. Windows: Windows-Taste + Punkt. Mac: Control + Befehl + Leertaste.",
+      "names": {
+        "trophy": "Pokal",
+        "target": "Zielscheibe",
+        "outdoor": "Draußen",
+        "registration": "Anmeldung nötig",
+        "costume": "Tracht",
+        "food": "Essen und Kuchen",
+        "coffee": "Kaffee",
+        "party": "Feier",
+        "workDuty": "Arbeitsdienst",
+        "carpool": "Fahrgemeinschaft",
+        "accessible": "Barrierefrei",
+        "announcement": "Ankündigung",
+        "music": "Musik",
+        "ball": "Ball",
+        "star": "Stern",
+        "group": "Gruppe",
+        "membersOnly": "Nur Mitglieder",
+        "weather": "Wetterabhängig"
+      }
+    },
+    "stepper": {
+      "label": "Fortschritt",
+      "done": "(erledigt)"
+    },
+    "langSwitch": {
+      "label": "Sprache",
+      "de": "Deutsch",
+      "en": "English"
+    },
+    "search": {
+      "clear": "Suche leeren"
+    },
+    "theme": {
+      "label": "Darstellung",
+      "light": "Hell",
+      "dark": "Dunkel",
+      "system": "Wie System"
+    }
+  },
+  "shell": {
+    "skipToContent": "Zum Inhalt springen",
+    "sidebarLabel": "Seitenleiste",
+    "club": "Verein",
+    "calendar": "Kalender",
+    "switchClub": "Verein wechseln",
+    "switchCalendar": "Kalender wechseln",
+    "switchContext": "Verein und Kalender wechseln",
+    "allClubs": "Alle Vereine anzeigen",
+    "newClub": "Neuen Verein anlegen",
+    "manageCalendars": "Kalender verwalten",
+    "archivedReadOnly": "Archiviert, schreibgeschützt",
+    "archivedSuffix": "(archiviert)",
+    "navLabel": "Bereiche",
+    "groups": {
+      "events": "Termine",
+      "setup": "Kalender einrichten",
+      "club": "Verein"
+    },
+    "nav": {
+      "calendar": "Kalender",
+      "events": "Alle Termine",
+      "import": "Termine importieren",
+      "templates": "Vorlagen",
+      "settings": "Einstellungen",
+      "feeds": "Veröffentlichen",
+      "club": "Verein verwalten"
+    },
+    "profile": "Mein Profil",
+    "signOut": "Abmelden",
+    "tabsLabel": "Hauptbereiche",
+    "tabs": {
+      "calendar": "Kalender",
+      "events": "Termine",
+      "feeds": "Veröffentlichen",
+      "more": "Mehr"
+    },
+    "more": {
+      "title": "Mehr",
+      "workingIn": "Du arbeitest in",
+      "areas": "Bereiche",
+      "areasNav": "Weitere Bereiche",
+      "allClubs": "Alle Vereine",
+      "language": "Sprache"
+    },
+    "settingsTabs": {
+      "label": "Einstellungen des Kalenders",
+      "general": "Allgemein",
+      "properties": "Eigenschaften",
+      "features": "Features",
+      "targetGroups": "Zielgruppen",
+      "locations": "Orte",
+      "holidays": "Feiertage"
     }
   }
 }

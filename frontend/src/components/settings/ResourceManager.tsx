@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, lazy, Suspense } from "react";
+import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -16,61 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Pencil, Trash2, Plus, Check, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-// @emoji-mart/react doesn't ship TS types; we load it lazily to keep it out of the main bundle
-
-const EmojiPicker = lazy(() =>
-  import("@emoji-mart/react").then((m: any) => ({ default: m.Picker ?? m.default ?? m })),
-) as any;
-
-interface EmojiPickerFieldProps {
-  value: string;
-  onChange: (val: string) => void;
-}
-
-function EmojiPickerField({ value, onChange }: EmojiPickerFieldProps) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    if (open) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-white text-xl transition-colors hover:bg-slate-50"
-        title="Pick emoji"
-      >
-        {value || <span className="text-sm text-slate-300">😀</span>}
-      </button>
-      {open && (
-        <div className="absolute top-full left-0 z-50 mt-1 overflow-hidden rounded-xl shadow-xl">
-          <Suspense fallback={null}>
-            {React.createElement(EmojiPicker, {
-              onEmojiSelect: (e: { native: string }) => {
-                onChange(e.native);
-                setOpen(false);
-              },
-              theme: "light",
-              previewPosition: "none",
-              skinTonePosition: "none",
-              navPosition: "bottom",
-              perLine: 8,
-              maxFrequentRows: 1,
-            })}
-          </Suspense>
-        </div>
-      )}
-    </div>
-  );
-}
-
+import { EmojiPicker } from "@/components/ui/shared";
 interface Field {
   key: string;
   label: string;
@@ -174,8 +120,10 @@ export default function ResourceManager({
           <div className="flex flex-wrap gap-2">
             {fields.map((f) =>
               f.type === "emoji" ? (
-                <EmojiPickerField
+                <EmojiPicker
                   key={f.key}
+                  className="w-full"
+                  label={f.label}
                   value={createValues[f.key] ?? ""}
                   onChange={(val) => setCreateValues((v) => ({ ...v, [f.key]: val }))}
                 />
@@ -217,8 +165,10 @@ export default function ResourceManager({
                   <div className="flex flex-wrap gap-2">
                     {fields.map((f) =>
                       f.type === "emoji" ? (
-                        <EmojiPickerField
+                        <EmojiPicker
                           key={f.key}
+                          className="w-full"
+                          label={f.label}
                           value={editValues[f.key] ?? ""}
                           onChange={(val) => setEditValues((v) => ({ ...v, [f.key]: val }))}
                         />

@@ -7,8 +7,13 @@ import interactionPlugin from "@fullcalendar/interaction";
 import type { EventInput, EventClickArg } from "@fullcalendar/core";
 import deLocale from "@fullcalendar/core/locales/de";
 import { Button } from "@/components/ui/button";
-import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
-import { TagBadge, FilterPillGroup, FullPageLoader, FullPageError } from "@/components/ui/shared";
+import {
+  TagBadge,
+  FilterPillGroup,
+  FullPageLoader,
+  FullPageError,
+  LangSwitch,
+} from "@/components/ui/shared";
 import { Calendar, Download, X, MapPin, Clock, Tag, Users, Sparkles } from "lucide-react";
 import { formatAddress } from "@/lib/types";
 
@@ -137,7 +142,7 @@ function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
               <Users className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
               <div className="flex flex-wrap gap-1">
                 {ev.targetGroups.map((t) => (
-                  <TagBadge key={t.targetGroup.id} label={t.targetGroup.name} variant="purple" />
+                  <TagBadge key={t.targetGroup.id} label={t.targetGroup.name} tone="adult" />
                 ))}
               </div>
             </div>
@@ -152,7 +157,7 @@ function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
                     key={p.property.id}
                     label={p.property.name}
                     icon={p.property.icon}
-                    variant="blue"
+                    tone="brand"
                   />
                 ))}
               </div>
@@ -164,7 +169,7 @@ function EventDetail({ ev, onClose }: { ev: FeedEvent; onClose: () => void }) {
               <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
               <div className="flex flex-wrap gap-1">
                 {ev.features.map((f) => (
-                  <TagBadge key={f.feature.id} label={f.feature.name} variant="green" />
+                  <TagBadge key={f.feature.id} label={f.feature.name} tone="neutral" />
                 ))}
               </div>
             </div>
@@ -291,7 +296,7 @@ export default function FeedPage() {
               <h1 className="text-xl font-bold text-slate-900">{feedName}</h1>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <LanguageSwitcher />
+              <LangSwitch />
               <a href={buildUrl("webcal")}>
                 <Button size="sm" className="gap-1.5">
                   <Calendar className="h-3.5 w-3.5" />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiGet, apiPost } from "@/lib/api";
@@ -21,6 +21,9 @@ export default function ClubsPage() {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  // "?select=1" (from the club switcher) shows the list instead of jumping to the last calendar.
+  const [searchParams] = useSearchParams();
+  const explicitSelect = searchParams.has("select");
   const [redirected, setRedirected] = useState(false);
   const [newClubName, setNewClubName] = useState("");
   const [open, setOpen] = useState(false);
@@ -36,7 +39,7 @@ export default function ClubsPage() {
 
   useEffect(() => {
     if (isLoading || redirected) return;
-    if (user?.lastClubId && user?.lastCalendarId) {
+    if (!explicitSelect && user?.lastClubId && user?.lastCalendarId) {
       const clubExists = clubs.some((c) => c.id === user.lastClubId);
       if (clubs.length > 0 && clubExists) {
         setRedirected(true);
@@ -48,7 +51,7 @@ export default function ClubsPage() {
       setRedirected(true);
       navigate("/setup", { replace: true });
     }
-  }, [user, clubs, isLoading, redirected, navigate]);
+  }, [user, clubs, isLoading, redirected, navigate, explicitSelect]);
 
   async function handleCreate() {
     if (!newClubName.trim()) return;

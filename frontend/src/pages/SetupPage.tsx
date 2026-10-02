@@ -9,7 +9,7 @@ import type { Club, Calendar } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CalendarDays, Building2, Check } from "lucide-react";
-import { FormField } from "@/components/ui/shared";
+import { Field } from "@/components/ui/shared";
 
 export default function SetupPage() {
   const { t } = useTranslation();
@@ -105,7 +105,7 @@ export default function SetupPage() {
             <h1 className="mb-1 text-xl font-bold text-slate-900">{t("setup.welcome")}</h1>
             <p className="mb-6 text-sm text-slate-500">{t("setup.setupClubFirst")}</p>
             <div className="space-y-4">
-              <FormField label={t("setup.clubName")}>
+              <Field label={t("setup.clubName")}>
                 <Input
                   placeholder={t("setup.clubNamePlaceholder")}
                   value={clubName}
@@ -113,7 +113,7 @@ export default function SetupPage() {
                   onKeyDown={(e) => e.key === "Enter" && handleCreateClub()}
                   autoFocus
                 />
-              </FormField>
+              </Field>
               <Button
                 className="w-full"
                 disabled={loading || !clubName.trim()}
@@ -135,14 +135,14 @@ export default function SetupPage() {
               {t("setup.forClub", { club: createdClub?.name ?? "" })}
             </p>
             <div className="space-y-4">
-              <FormField label={t("setup.calendarName")}>
+              <Field label={t("setup.calendarName")}>
                 <Input
                   value={calendarName}
                   onChange={(e) => setCalendarName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleCreateCalendar()}
                   autoFocus
                 />
-              </FormField>
+              </Field>
               <Button
                 className="w-full"
                 disabled={loading || !calendarName.trim()}

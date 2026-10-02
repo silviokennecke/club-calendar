@@ -1,4 +1,6 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { Chip } from "./ChipSelect";
 
 interface FilterItem {
   id: string;
@@ -15,38 +17,33 @@ interface Props {
   className?: string;
 }
 
+/** Filter chips (aria-pressed) with an optional "all" chip. */
 export function FilterPillGroup({
   label,
-  clearAllLabel = "All",
+  clearAllLabel,
   items,
   selected,
   onChange,
   onClearAll,
   className,
 }: Props) {
-  const pillBase = "text-xs px-3 py-1.5 rounded-full border transition-colors";
-  const active = "bg-blue-600 border-blue-600 text-white";
-  const inactive = "border-slate-200 text-slate-600 hover:border-slate-300 bg-white";
-
+  const { t } = useTranslation();
   return (
-    <div className={cn("flex flex-wrap items-center gap-2", className)}>
-      {label && <span className="text-xs text-slate-500">{label}</span>}
+    <div className={cn("ap-chips", className)} role="group" aria-label={label}>
+      {label && (
+        <span className="t-sm t-muted" aria-hidden="true">
+          {label}
+        </span>
+      )}
       {onClearAll && (
-        <button
-          onClick={onClearAll}
-          className={cn(pillBase, selected.length === 0 ? active : inactive)}
-        >
-          {clearAllLabel}
-        </button>
+        <Chip pressed={selected.length === 0} onClick={onClearAll}>
+          {clearAllLabel ?? t("common.all")}
+        </Chip>
       )}
       {items.map((item) => (
-        <button
-          key={item.id}
-          onClick={() => onChange(item.id)}
-          className={cn(pillBase, selected.includes(item.id) ? active : inactive)}
-        >
+        <Chip key={item.id} pressed={selected.includes(item.id)} onClick={() => onChange(item.id)}>
           {item.label}
-        </button>
+        </Chip>
       ))}
     </div>
   );

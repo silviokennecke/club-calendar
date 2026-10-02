@@ -15,16 +15,17 @@ export function ListCard<T extends { id: string | number }>({
   className,
 }: Props<T>) {
   return (
-    <div
-      className={cn(
-        "divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white",
-        className,
-      )}
-    >
+    <div className={cn("ap-panel ap-panel--flush", className)}>
       {items.length === 0 ? (
-        <p className="p-4 text-sm text-slate-400">{emptyMessage}</p>
+        <p className="t-sm t-muted p-4">{emptyMessage}</p>
       ) : (
-        items.map((item) => <div key={item.id}>{renderItem(item)}</div>)
+        <ul className="ap-list">
+          {items.map((item) => (
+            <li key={item.id} className="border-border border-t first:border-t-0">
+              {renderItem(item)}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

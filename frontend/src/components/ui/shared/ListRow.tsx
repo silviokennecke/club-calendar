@@ -10,12 +10,12 @@ interface Props {
 
 export function ListRow({ title, subtitle, actions, className }: Props) {
   return (
-    <div className={cn("flex items-center justify-between px-4 py-3", className)}>
-      <div>
-        <p className="text-sm font-medium text-slate-900">{title}</p>
-        {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}
+    <div className={cn("ap-listrow", className)}>
+      <div className="ap-listrow-main">
+        <b>{title}</b>
+        {subtitle && <span>{subtitle}</span>}
       </div>
-      {actions && <div className="flex shrink-0 items-center gap-1">{actions}</div>}
+      {actions && <div className="ap-actions shrink-0">{actions}</div>}
     </div>
   );
 }
