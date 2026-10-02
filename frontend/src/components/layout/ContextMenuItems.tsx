@@ -45,7 +45,7 @@ export function ClubMenuItems({
           </Link>
         </>
       )}
-      <Link className="ap-menuitem" to="/setup" onClick={onNavigate}>
+      <Link className="ap-menuitem" to="/setup?new=1" onClick={onNavigate}>
         <Icon glyph="plus" size={18} />
         <span>{t("shell.newClub")}</span>
       </Link>

@@ -1,44 +1,45 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { FullPageLoader } from "@/components/ui/shared";
-import type { Club } from "@/lib/types";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Banner,
+  Button,
+  EmptyState,
+  FullPageLoader,
+  Icon,
+  LinkButton,
+} from "@/components/ui/shared";
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { ClubCard } from "@/components/clubs/ClubCard";
+import { initials } from "@/components/layout/navigation";
+import type { Club } from "@/lib/types";
 
+/**
+ * Club picker (design: ClubPicker). Without `?select=1` the user is sent straight to the last used
+ * calendar (or to /setup when they have no club yet); the club switcher links here with select=1.
+ */
 export default function ClubsPage() {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  // "?select=1" (from the club switcher) shows the list instead of jumping to the last calendar.
   const [searchParams] = useSearchParams();
   const explicitSelect = searchParams.has("select");
   const [redirected, setRedirected] = useState(false);
-  const [newClubName, setNewClubName] = useState("");
-  const [open, setOpen] = useState(false);
 
   const {
     data: clubs = [],
     isLoading,
-    refetch,
+    isError,
   } = useQuery({
     queryKey: ["clubs"],
     queryFn: () => apiGet<Club[]>("/api/clubs"),
   });
 
   useEffect(() => {
-    if (isLoading || redirected) return;
+    if (isLoading || isError || redirected) return;
     if (!explicitSelect && user?.lastClubId && user?.lastCalendarId) {
       const clubExists = clubs.some((c) => c.id === user.lastClubId);
       if (clubs.length > 0 && clubExists) {
@@ -47,73 +48,90 @@ export default function ClubsPage() {
         return;
       }
     }
-    if (!isLoading && clubs.length === 0) {
+    // No club yet: onboarding. (With ?select=1 the empty state below explains it instead.)
+    if (clubs.length === 0 && !explicitSelect) {
       setRedirected(true);
       navigate("/setup", { replace: true });
     }
-  }, [user, clubs, isLoading, redirected, navigate, explicitSelect]);
-
-  async function handleCreate() {
-    if (!newClubName.trim()) return;
-    await apiPost("/api/clubs", { name: newClubName, timezone: "Europe/Berlin" });
-    setNewClubName("");
-    setOpen(false);
-    refetch();
-  }
+  }, [user, clubs, isLoading, isError, redirected, navigate, explicitSelect]);
 
   if (isLoading || redirected) return <FullPageLoader />;
 
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
-        <span className="text-lg font-semibold text-slate-900">📅 Club Calendar</span>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-slate-500">{user?.email}</span>
-          <Button variant="ghost" size="sm" onClick={logout}>
-            {t("auth.signOut")}
-          </Button>
-        </div>
-      </div>
-      <main className="mx-auto max-w-5xl p-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900">{t("clubs.selectClub")}</h1>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger render={<Button size="sm" />}>{t("clubs.newClub")}</DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t("clubs.createClubTitle")}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 pt-2">
-                <Input
-                  placeholder={t("clubs.clubName")}
-                  value={newClubName}
-                  onChange={(e) => setNewClubName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-                />
-                <Button className="w-full" onClick={handleCreate}>
-                  {t("clubs.create")}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {clubs.map((club) => (
-            <Card
-              key={club.id}
-              className="cursor-pointer border-slate-200 transition-colors hover:border-slate-300 hover:bg-slate-50"
-              onClick={() => navigate(`/clubs/${club.id}`)}
-            >
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">{club.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-slate-500">{club.timezone}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </main>
+  const name = user?.name || user?.email || "";
+  const headerEnd = (
+    <div className="ap-row">
+      <span className="ap-avatar" aria-hidden="true">
+        {initials(name)}
+      </span>
+      <span className="t-label">{name}</span>
+      <Button variant="ghost" icon="log-out" onClick={logout}>
+        {t("clubs.signOut")}
+      </Button>
     </div>
+  );
+
+  if (isError) {
+    return (
+      <AuthLayout bare title={t("clubs.selectClub")} headerEnd={headerEnd}>
+        <Banner tone="danger" title={t("clubs.errorTitle")}>
+          {t("clubs.errorText")}
+        </Banner>
+      </AuthLayout>
+    );
+  }
+
+  if (clubs.length === 0) {
+    return (
+      <AuthLayout bare title={t("clubs.selectClub")} headerEnd={headerEnd}>
+        <EmptyState
+          icon="building"
+          title={t("clubs.emptyTitle")}
+          text={t("clubs.emptyText")}
+          actions={
+            <LinkButton to="/setup?new=1" icon="plus">
+              {t("clubs.newClub")}
+            </LinkButton>
+          }
+        />
+      </AuthLayout>
+    );
+  }
+
+  return (
+    <AuthLayout
+      bare
+      title={t("clubs.selectClub")}
+      intro={clubs.length > 1 ? t("clubs.selectIntro") : t("clubs.selectIntroOne")}
+      headerEnd={headerEnd}
+    >
+      <div className="ap-cols-3">
+        {clubs.map((club) => (
+          <ClubCard
+            key={club.id}
+            club={club}
+            lastClubId={user?.lastClubId}
+            lastCalendarId={user?.lastCalendarId}
+          />
+        ))}
+        <article
+          className="ap-panel ap-evcard ap-stack ap-stack--sm"
+          style={{
+            alignItems: "stretch",
+            border: "1.5px dashed var(--border-strong)",
+            boxShadow: "none",
+          }}
+        >
+          <h2 className="t-h3 ap-row ap-row--nowrap">
+            <Icon glyph="plus" size={20} />
+            <Link to="/setup?new=1" aria-describedby="club-new-meta">
+              {t("clubs.newClub")}
+            </Link>
+          </h2>
+          <p className="t-sm t-muted" id="club-new-meta">
+            {t("clubs.newClubText")}
+          </p>
+        </article>
+      </div>
+    </AuthLayout>
   );
 }

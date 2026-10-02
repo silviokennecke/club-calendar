@@ -4,6 +4,7 @@ import { AuthProvider } from "./lib/auth-context";
 import { ThemeProvider } from "./lib/ThemeProvider";
 import { Toaster } from "./components/ui/shared";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
+import GuestRoute from "./components/layout/GuestRoute";
 
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
@@ -36,9 +37,11 @@ export default function App() {
           <AuthProvider>
             <Routes>
               <Route path="/" element={<Navigate to="/login" replace />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/signup" element={<SignupPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route element={<GuestRoute />}>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/signup" element={<SignupPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              </Route>
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
               <Route path="/auth/verify-email" element={<EmailVerifyPage />} />
               <Route path="/feed/:feedId" element={<FeedPage />} />

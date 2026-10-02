@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, type ReactNode, type Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Icon, LangSwitch, Logo, type Glyph } from "@/components/ui/shared";
@@ -15,6 +15,14 @@ interface AuthLayoutProps {
   wide?: boolean;
   /** Line below the card content, e.g. "No account? Register". */
   footer?: ReactNode;
+  /** Content above the heading inside the card (e.g. the setup Stepper). */
+  top?: ReactNode;
+  /** Replaces the language switch in the header (e.g. user name + sign out). */
+  headerEnd?: ReactNode;
+  /** Page layout without a card (club picker): heading and children sit directly on the page. */
+  bare?: boolean;
+  /** Ref for the h1, so flows can move focus to it when the step changes. */
+  headingRef?: Ref<HTMLHeadingElement>;
   children?: ReactNode;
 }
 
@@ -35,6 +43,10 @@ export function AuthLayout({
   iconTone = "brand",
   wide,
   footer,
+  top,
+  headerEnd,
+  bare,
+  headingRef,
   children,
 }: AuthLayoutProps) {
   const { t } = useTranslation();
@@ -46,6 +58,19 @@ export function AuthLayout({
       document.title = previous;
     };
   }, [title]);
+  const heading = (
+    <h1 className="t-h1 ap-focus-target" tabIndex={headingRef ? -1 : undefined} ref={headingRef}>
+      {title}
+    </h1>
+  );
+  const head = intro ? (
+    <div className="ap-stack ap-stack--sm">
+      {heading}
+      <div className={cn("t-body", bare && "t-muted")}>{intro}</div>
+    </div>
+  ) : (
+    heading
+  );
   return (
     <div className="ap ap-auth">
       <a className="ap-skip cc-btn cc-btn--primary" href="#main">
@@ -53,26 +78,32 @@ export function AuthLayout({
       </a>
       <header className="ap-auth-top">
         <Logo />
-        <LangSwitch />
+        {headerEnd ?? <LangSwitch />}
       </header>
-      <main className="ap-auth-body" id="main" tabIndex={-1}>
-        <div className={cn("ap-authcard", wide && "ap-authcard--wide")}>
-          {icon && (
-            <span className={cn("ap-dialog-icon", TONE_CLASS[iconTone])} aria-hidden="true">
-              <Icon glyph={icon} size={24} />
-            </span>
-          )}
-          {intro ? (
-            <div className="ap-stack ap-stack--sm">
-              <h1 className="t-h1">{title}</h1>
-              <div className="t-body">{intro}</div>
-            </div>
-          ) : (
-            <h1 className="t-h1">{title}</h1>
-          )}
-          {children}
-          {footer && <p className="ap-auth-foot">{footer}</p>}
-        </div>
+      <main
+        className="ap-auth-body"
+        id="main"
+        tabIndex={-1}
+        style={bare ? { alignItems: "flex-start" } : undefined}
+      >
+        {bare ? (
+          <div className="ap-wrap ap-stack ap-stack--lg" style={{ width: "100%" }}>
+            {head}
+            {children}
+          </div>
+        ) : (
+          <div className={cn("ap-authcard", wide && "ap-authcard--wide")}>
+            {top}
+            {icon && (
+              <span className={cn("ap-dialog-icon", TONE_CLASS[iconTone])} aria-hidden="true">
+                <Icon glyph={icon} size={24} />
+              </span>
+            )}
+            {head}
+            {children}
+            {footer && <p className="ap-auth-foot">{footer}</p>}
+          </div>
+        )}
       </main>
     </div>
   );

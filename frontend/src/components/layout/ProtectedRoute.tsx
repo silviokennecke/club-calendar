@@ -25,7 +25,8 @@ export default function ProtectedRoute() {
 
   if (loading || !user) return <FullPageLoader />;
 
-  if (pathname === "/setup") return <Outlet />;
+  // Club picker and onboarding are standalone pages (no sidebar), even for users with a last club.
+  if (pathname === "/setup" || pathname === "/clubs") return <Outlet />;
 
   const fromUrl = parseContextFromPath(pathname);
   const lastClubId = user.lastClubId ? String(user.lastClubId) : null;

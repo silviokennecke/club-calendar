@@ -15,14 +15,12 @@ async function goToCalendar(page: Page) {
   await page.waitForLoadState("networkidle");
   if (!page.url().includes("/calendars/")) {
     // Still on clubs list — navigate through UI
+    // The club card opens the club's (last used or first) calendar directly.
     await page
       .getByRole("main")
       .getByText(/Schützenverein/i)
       .click();
-    await page
-      .getByRole("main")
-      .getByText(/Vereinskalender/i)
-      .click();
+    await page.waitForURL("**/calendars/**");
   }
   // Now on calendar page
   await expect(page.locator(".fc")).toBeVisible({ timeout: 10000 });
