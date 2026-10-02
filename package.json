@@ -9,12 +9,14 @@
     "node": ">=22"
   },
   "scripts": {
+    "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
+    "build:dev": "npm run build:dev --workspace=backend && npm run build:dev --workspace=frontend",
     "dev:frontend": "npm run dev --workspace=frontend",
-    "mjml": "mjml backend/templates/email/verify_email.mjml -o backend/templates/email/verify_email.html.twig",
-    "test": "composer test -d backend && npm run test --workspace=frontend",
-    "test:backend": "composer test -d backend",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "npm run test --workspace=backend",
     "test:frontend": "npm run test --workspace=frontend",
-    "db:up": "docker compose up mysql mysql_test -d",
+    "migrate": "npm run migrate --workspace=backend",
+    "fixtures": "npm run fixtures --workspace=backend",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -32,7 +34,6 @@
   "devDependencies": {
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
-    "mjml": "^5.3.0",
     "wait-on": "^9.0.10"
   }
 }

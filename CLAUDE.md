@@ -52,13 +52,22 @@ symfony serve --port=3001 -d
 npm run dev:frontend
 ```
 
+## Build & Scripts
+
+From the repo root (none require Docker):
+
+- `npm run build:dev` / `npm run build` — dev / production build (composer install, mail templates, frontend)
+- `npm run dev:frontend`, `npm test`, `npm run test:backend`, `npm run test:frontend`
+- `npm run migrate`, `npm run fixtures` — Doctrine migrations / fixtures
+- `npm run build:mail -w backend` — compile MJML email templates (`backend` is an npm workspace for this)
+
 ## Tests
 
 ```bash
 # Backend (PHPUnit — requires MySQL test DB on port 3360)
 cd backend && composer test
 
-# Frontend (Vitest)
+# Frontend (Vitest, single run; `npm run test:watch -w frontend` for watch mode)
 npm test -w frontend
 
 # All
