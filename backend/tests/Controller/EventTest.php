@@ -104,4 +104,59 @@ class EventTest extends WebTestCase
         $r = TestHelper::jsonRequest(self::$client, 'GET', "/api/calendars/{$cal->getId()}/events?from=notadate", [], $auth);
         $this->assertSame(400, $r['status']);
     }
+
+    public function testUpdateKeepsUnchangedAndSyncsChangedAssignments(): void
+    {
+        ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
+        $auth = TestHelper::authHeader($user, self::$tokens);
+        $base = "/api/calendars/{$cal->getId()}";
+        $youth = TestHelper::jsonRequest(self::$client, 'POST', "$base/target-groups", ['name' => 'Jugend'], $auth)['body']['id'];
+        $adults = TestHelper::jsonRequest(self::$client, 'POST', "$base/target-groups", ['name' => 'Erwachsene'], $auth)['body']['id'];
+        $created = TestHelper::jsonRequest(self::$client, 'POST', "$base/events", [
+            'name' => 'Training', 'date' => '2026-10-01', 'timeBegin' => '19:00', 'timeEnd' => '21:00',
+            'targetGroupIds' => [$youth], 'propertyIds' => [], 'featureIds' => [],
+        ], $auth);
+        $this->assertSame(201, $created['status']);
+        $id = $created['body']['id'];
+        self::$em->clear();
+
+        // The edit form sends all assignments, including unchanged ones.
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/events/$id", [
+            'name' => 'Training neu', 'targetGroupIds' => [$youth, $adults], 'propertyIds' => [], 'featureIds' => [],
+        ], $auth);
+        $this->assertSame(200, $r['status']);
+        self::$em->clear();
+
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/events/$id", ['targetGroupIds' => [$adults]], $auth);
+        $this->assertSame(200, $r['status']);
+        // The response must reflect the new assignments as a JSON list (no gaps after removals).
+        $this->assertTrue(array_is_list($r['body']['targetGroups']));
+        $this->assertSame([$adults], array_map(fn ($g) => $g['targetGroup']['id'], $r['body']['targetGroups']));
+        self::$em->clear();
+
+        $r = TestHelper::jsonRequest(self::$client, 'GET', "$base/events/$id", [], $auth);
+        $this->assertSame('Training neu', $r['body']['name']);
+        $ids = array_map(fn ($g) => $g['targetGroup']['id'], $r['body']['targetGroups']);
+        $this->assertSame([$adults], $ids);
+        self::$em->clear();
+
+        // Duplicates and unknown ids in the input are ignored; an empty list removes everything.
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/events/$id", [
+            'targetGroupIds' => [$youth, $youth, $adults, 'unknown-id'],
+        ], $auth);
+        $this->assertSame(200, $r['status']);
+        $ids = array_map(fn ($g) => $g['targetGroup']['id'], $r['body']['targetGroups']);
+        sort($ids);
+        $expected = [$youth, $adults];
+        sort($expected);
+        $this->assertSame($expected, $ids);
+        self::$em->clear();
+
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/events/$id", ['targetGroupIds' => []], $auth);
+        $this->assertSame(200, $r['status']);
+        $this->assertSame([], $r['body']['targetGroups']);
+        self::$em->clear();
+        $r = TestHelper::jsonRequest(self::$client, 'GET', "$base/events/$id", [], $auth);
+        $this->assertSame([], $r['body']['targetGroups']);
+    }
 }

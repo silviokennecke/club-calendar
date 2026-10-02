@@ -80,6 +80,37 @@ class ResourcesTest extends WebTestCase
         $this->assertSame(200, $delete['status']);
     }
 
+    public function testTemplateUpdateKeepsUnchangedAndSyncsChangedAssignments(): void
+    {
+        ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
+        $auth = TestHelper::authHeader($user, self::$tokens);
+        $calBase = "/api/calendars/{$cal->getId()}";
+        $youth = TestHelper::jsonRequest(self::$client, 'POST', "$calBase/target-groups", ['name' => 'Jugend'], $auth)['body']['id'];
+        $adults = TestHelper::jsonRequest(self::$client, 'POST', "$calBase/target-groups", ['name' => 'Erwachsene'], $auth)['body']['id'];
+        $create = TestHelper::jsonRequest(self::$client, 'POST', "$calBase/templates", [
+            'name' => 'Training', 'timezone' => 'Europe/Berlin', 'timeBegin' => '18:00', 'timeEnd' => '20:00',
+            'targetGroupIds' => [$youth],
+        ], $auth);
+        $this->assertSame(201, $create['status']);
+        $id = $create['body']['id'];
+        self::$em->clear();
+
+        // Sending an unchanged assignment again must not fail (identity collision on composite ids).
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$calBase/templates/$id", [
+            'targetGroupIds' => [$youth, $adults], 'propertyIds' => [], 'featureIds' => [],
+        ], $auth);
+        $this->assertSame(200, $r['status']);
+        self::$em->clear();
+
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$calBase/templates/$id", ['targetGroupIds' => [$adults]], $auth);
+        $this->assertSame(200, $r['status']);
+        $this->assertSame([$adults], array_map(fn ($g) => $g['targetGroup']['id'], $r['body']['targetGroups']));
+        self::$em->clear();
+
+        $r = TestHelper::jsonRequest(self::$client, 'GET', "$calBase/templates/$id", [], $auth);
+        $this->assertSame([$adults], array_map(fn ($g) => $g['targetGroup']['id'], $r['body']['targetGroups']));
+    }
+
     // --- Archived calendar guard ---
 
     /**

@@ -84,50 +84,45 @@ readonly class EventTemplateService
             }
         }
 
+        $inCalendar = fn (?object $entity) => null !== $entity && $entity->getCalendar()->getId() === $calendar->getId();
         if (array_key_exists('propertyIds', $data)) {
-            foreach ($template->getProperties() as $ep) {
-                $this->em->remove($ep);
-            }
-            $template->getProperties()->clear();
-            foreach ($data['propertyIds'] as $pid) {
-                $prop = $this->em->getRepository(Property::class)->find($pid);
-                if ($prop && $prop->getCalendar()->getId() === $calendar->getId()) {
-                    $etp = new EventTemplateProperty();
-                    $etp->setTemplate($template);
-                    $etp->setProperty($prop);
-                    $this->em->persist($etp);
-                }
-            }
+            LinkCollectionSync::sync(
+                $this->em,
+                $template->getProperties(),
+                $data['propertyIds'] ?? [],
+                fn (EventTemplateProperty $etp) => $etp->getProperty()->getId(),
+                function (string $id) use ($template, $inCalendar): ?EventTemplateProperty {
+                    $prop = $this->em->getRepository(Property::class)->find($id);
+
+                    return $inCalendar($prop) ? (new EventTemplateProperty())->setTemplate($template)->setProperty($prop) : null;
+                },
+            );
         }
         if (array_key_exists('featureIds', $data)) {
-            foreach ($template->getFeatures() as $ef) {
-                $this->em->remove($ef);
-            }
-            $template->getFeatures()->clear();
-            foreach ($data['featureIds'] as $fid) {
-                $feat = $this->em->getRepository(Feature::class)->find($fid);
-                if ($feat && $feat->getCalendar()->getId() === $calendar->getId()) {
-                    $etf = new EventTemplateFeature();
-                    $etf->setTemplate($template);
-                    $etf->setFeature($feat);
-                    $this->em->persist($etf);
-                }
-            }
+            LinkCollectionSync::sync(
+                $this->em,
+                $template->getFeatures(),
+                $data['featureIds'] ?? [],
+                fn (EventTemplateFeature $etf) => $etf->getFeature()->getId(),
+                function (string $id) use ($template, $inCalendar): ?EventTemplateFeature {
+                    $feat = $this->em->getRepository(Feature::class)->find($id);
+
+                    return $inCalendar($feat) ? (new EventTemplateFeature())->setTemplate($template)->setFeature($feat) : null;
+                },
+            );
         }
         if (array_key_exists('targetGroupIds', $data)) {
-            foreach ($template->getTargetGroups() as $etg) {
-                $this->em->remove($etg);
-            }
-            $template->getTargetGroups()->clear();
-            foreach ($data['targetGroupIds'] as $tgid) {
-                $tg = $this->em->getRepository(TargetGroup::class)->find($tgid);
-                if ($tg && $tg->getCalendar()->getId() === $calendar->getId()) {
-                    $ettg = new EventTemplateTargetGroup();
-                    $ettg->setTemplate($template);
-                    $ettg->setTargetGroup($tg);
-                    $this->em->persist($ettg);
-                }
-            }
+            LinkCollectionSync::sync(
+                $this->em,
+                $template->getTargetGroups(),
+                $data['targetGroupIds'] ?? [],
+                fn (EventTemplateTargetGroup $ettg) => $ettg->getTargetGroup()->getId(),
+                function (string $id) use ($template, $inCalendar): ?EventTemplateTargetGroup {
+                    $tg = $this->em->getRepository(TargetGroup::class)->find($id);
+
+                    return $inCalendar($tg) ? (new EventTemplateTargetGroup())->setTemplate($template)->setTargetGroup($tg) : null;
+                },
+            );
         }
 
         $this->em->flush();
@@ -210,21 +205,21 @@ readonly class EventTemplateService
                     'name' => $etp->getProperty()->getName(),
                     'icon' => $etp->getProperty()->getIcon(),
                 ],
-            ])->toArray(),
+            ])->getValues(),
             'features' => $template->getFeatures()->map(fn ($etf) => [
                 'featureId' => $etf->getFeature()->getId(),
                 'feature' => [
                     'id' => $etf->getFeature()->getId(),
                     'name' => $etf->getFeature()->getName(),
                 ],
-            ])->toArray(),
+            ])->getValues(),
             'targetGroups' => $template->getTargetGroups()->map(fn ($ettg) => [
                 'targetGroupId' => $ettg->getTargetGroup()->getId(),
                 'targetGroup' => [
                     'id' => $ettg->getTargetGroup()->getId(),
                     'name' => $ettg->getTargetGroup()->getName(),
                 ],
-            ])->toArray(),
+            ])->getValues(),
         ];
     }
 }
