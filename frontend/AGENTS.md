@@ -51,6 +51,16 @@ This is a **Vite + React + React Router** SPA (not Next.js).
   values/validation/payload, `list.ts` tabs/search/groups, `series.ts` rule dates + holidays, `ics.ts` export,
   `format.ts`), with Vitest tests. UI in `components/events/` (`EventsTable`, `LocationSection` +
   lazy `EventLocationMap`, `StatusSeg`, `EventPageHead`, `useEventResources`, `useEventPage`).
+- Import (phase 5): `…/import` is one page with a Stepper (Datei, Prüfen, Fertig; state in `pages/ImportPage.tsx`,
+  UI in `components/import/`: `ImportUpload` file input + drop zone, `ImportReview` bulk panel / groups / summary bar,
+  `ReviewGroup`, `ImportEditDialog`, `ImportDone`). Pure logic in `src/lib/import/` (`ics.ts` parser incl. unfolding,
+  TZID/UTC, all-day end, skipped events; `review.ts` items, groups by name, place matching, bulk id diffs, duplicates,
+  payload, chunks of 500) with Vitest tests. No backend dry run: the file is parsed in the browser, only the reviewed
+  events are sent (new places are created first via `POST …/locations`).
+- Templates (phase 5): own routed pages `…/templates` (`TemplatesPage`: cards, `?q=` search, delete dialog),
+  `…/templates/new` and `…/templates/:templateId` (`TemplateEditPage`, read-only in archived calendars); pure logic in
+  `src/lib/templates/` (`form.ts`). `components/events/AssignmentFields` (properties / features / target groups with
+  inline creation) is shared by the event form, the template form and the import review. The old TemplateModal is gone.
 - Unsaved changes: `useUnsavedChanges(dirty)` (`src/lib/useUnsavedChanges.ts`) + `<UnsavedChangesDialog>`;
   intercepts in-app link clicks and `guard(fn)` navigation, plus `beforeunload` (BrowserRouter has no `useBlocker`).
 - Icons: lucide-react via `<Icon glyph="..." />` (design glyph names, `shared/Icon.tsx`). No emojis as UI icons.

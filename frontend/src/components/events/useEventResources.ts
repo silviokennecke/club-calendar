@@ -28,7 +28,14 @@ export function useEventResources(calendarId: string) {
     return created;
   }
 
+  const queries = [properties, features, targetGroups, locations];
+
   return {
+    /** Some list is still loading for the first time. */
+    loading: queries.some((q) => q.isPending && !q.isError),
+    /** Some list could not be loaded. */
+    failed: queries.some((q) => q.isError && !q.data),
+    reload: () => queries.forEach((q) => void q.refetch()),
     properties: properties.data ?? [],
     features: features.data ?? [],
     targetGroups: targetGroups.data ?? [],

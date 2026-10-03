@@ -25,6 +25,7 @@ import EventFromTemplatePage from "./pages/events/EventFromTemplatePage";
 import EventsExportPage from "./pages/events/EventsExportPage";
 import ImportPage from "./pages/ImportPage";
 import TemplatesPage from "./pages/TemplatesPage";
+import TemplateEditPage from "./pages/TemplateEditPage";
 import MorePage from "./pages/MorePage";
 import CalendarSettingsPage from "./pages/settings/CalendarSettingsPage";
 import FeedsPage from "./pages/settings/FeedsPage";
@@ -92,6 +93,14 @@ export default function App() {
                 <Route
                   path="/clubs/:clubId/calendars/:calendarId/templates"
                   element={<TemplatesPage />}
+                />
+                <Route
+                  path="/clubs/:clubId/calendars/:calendarId/templates/new"
+                  element={<TemplateEditPage />}
+                />
+                <Route
+                  path="/clubs/:clubId/calendars/:calendarId/templates/:templateId"
+                  element={<TemplateEditPage />}
                 />
                 <Route path="/clubs/:clubId/calendars/:calendarId/more" element={<MorePage />} />
                 <Route

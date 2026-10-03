@@ -1,150 +1,284 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiDelete } from "@/lib/api";
-import type { EventTemplate } from "@/lib/types";
-import { formatAddress } from "@/lib/types";
-import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { SectionHeader, EmptyState, TagBadge } from "@/components/ui/shared";
-import { Plus, Pencil, Trash2, Clock, MapPin } from "lucide-react";
-import TemplateModal from "@/components/templates/TemplateModal";
 import { useTranslation } from "react-i18next";
+import { apiDelete, apiGet } from "@/lib/api";
+import { matchesTemplateQuery } from "@/lib/templates";
+import type { EventTemplate, TargetGroup } from "@/lib/types";
+import {
+  Banner,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  Icon,
+  IconButton,
+  LinkButton,
+  SearchInput,
+  Skeleton,
+  Tag,
+  toast,
+} from "@/components/ui/shared";
+import { useEventPage } from "@/components/events/useEventPage";
+import { audienceTone } from "@/components/calendar/eventDisplay";
+import { locationName } from "@/lib/events";
 
+/**
+ * Templates of a calendar (design: Templates): cards with time, place, audiences and tags, a search,
+ * the empty state and "Termin aus Vorlage" / "Bearbeiten" / delete. Creating and editing happen on
+ * their own pages (…/templates/new, …/templates/:templateId).
+ */
 export default function TemplatesPage() {
-  const { t } = useTranslation();
-  const { calendarId } = useParams<{ calendarId: string }>();
+  const page = useEventPage();
   const qc = useQueryClient();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<EventTemplate | null>(null);
+  const { t } = useTranslation();
+  const location = useLocation();
+  const [params, setParams] = useSearchParams();
+  const query = params.get("q") ?? "";
+  const [deleting, setDeleting] = useState<EventTemplate | null>(null);
+  const here = location.pathname + location.search;
+  const readOnly = page.isArchived;
 
-  const { data: templates = [] } = useQuery<EventTemplate[]>({
-    queryKey: ["templates", calendarId],
-    queryFn: () => apiGet(`/api/calendars/${calendarId}/templates`),
+  const templates = useQuery<EventTemplate[]>({
+    queryKey: ["templates", page.calendarId],
+    queryFn: () => apiGet<EventTemplate[]>(`/api/calendars/${page.calendarId}/templates`),
   });
+  const groups = useQuery<TargetGroup[]>({
+    queryKey: ["targetGroups", page.calendarId],
+    queryFn: () => apiGet<TargetGroup[]>(`/api/calendars/${page.calendarId}/target-groups`),
+  });
+  const toneOf = (id: string) => audienceTone((groups.data ?? []).findIndex((g) => g.id === id));
 
-  async function handleDelete(id: string) {
-    await apiDelete(`/api/calendars/${calendarId}/templates/${id}`);
-    qc.invalidateQueries({ queryKey: ["templates", calendarId] });
+  const all = templates.data ?? [];
+  const shown = all.filter((tpl) => matchesTemplateQuery(tpl, query));
+
+  function setQuery(q: string) {
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (q) next.set("q", q);
+        else next.delete("q");
+        return next;
+      },
+      { replace: true },
+    );
   }
 
-  function openCreate() {
-    setEditingTemplate(null);
-    setModalOpen(true);
+  async function remove(tpl: EventTemplate) {
+    try {
+      await apiDelete(`/api/calendars/${page.calendarId}/templates/${tpl.id}`);
+      await qc.invalidateQueries({ queryKey: ["templates", page.calendarId] });
+      toast.success(t("templates.delete.done"));
+    } catch {
+      toast.error(t("templates.delete.failed"));
+    }
   }
-  function openEdit(tmpl: EventTemplate) {
-    setEditingTemplate(tmpl);
-    setModalOpen(true);
+
+  let content;
+  if (templates.isLoading) {
+    content = (
+      <div className="ap-stack" aria-busy="true">
+        <p className="ap-sr" role="status">
+          {t("templates.loading")}
+        </p>
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} style={{ display: "block", height: 160 }} />
+        ))}
+      </div>
+    );
+  } else if (templates.isError && !templates.data) {
+    content = (
+      <Banner
+        tone="danger"
+        title={t("templates.loadError.title")}
+        action={
+          <Button variant="secondary" icon="refresh" onClick={() => templates.refetch()}>
+            {t("templates.loadError.retry")}
+          </Button>
+        }
+      >
+        {t("templates.loadError.text")}
+      </Banner>
+    );
+  } else if (all.length === 0) {
+    content = (
+      <section className="ap-panel" aria-label={t("templates.empty.label")}>
+        <EmptyState
+          icon="layers"
+          title={t("templates.empty.title")}
+          text={t("templates.empty.text")}
+          actions={
+            readOnly ? undefined : (
+              <LinkButton icon="plus" to={page.routes.templateNew} state={{ from: here }}>
+                {t("templates.create")}
+              </LinkButton>
+            )
+          }
+        />
+      </section>
+    );
+  } else if (shown.length === 0) {
+    content = (
+      <section className="ap-panel">
+        <EmptyState
+          icon="search"
+          title={t("templates.noHits.title", { query: query.trim() })}
+          text={t("templates.noHits.text")}
+          actions={
+            <Button variant="secondary" onClick={() => setQuery("")}>
+              {t("templates.noHits.reset")}
+            </Button>
+          }
+        />
+      </section>
+    );
+  } else {
+    content = (
+      <ul className="ap-stack" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+        {shown.map((tpl) => {
+          const extras: { id: string; name: string; icon?: string | null }[] = [
+            ...tpl.properties.map((p) => ({
+              id: `p-${p.property.id}`,
+              name: p.property.name,
+              icon: p.property.icon,
+            })),
+            ...tpl.features.map((f) => ({ id: `f-${f.feature.id}`, name: f.feature.name })),
+          ];
+          return (
+            <li key={tpl.id} className="ap-panel ap-stack">
+              <div
+                className="ap-row ap-row--nowrap"
+                style={{ justifyContent: "space-between", alignItems: "flex-start" }}
+              >
+                <div className="ap-stack ap-stack--sm">
+                  <h2 className="t-h2">{tpl.name}</h2>
+                  <p className="ap-row t-body">
+                    <Icon glyph="clock" size={18} />
+                    {t("templates.time", {
+                      from: tpl.timeBegin.slice(0, 5),
+                      to: tpl.timeEnd.slice(0, 5),
+                    })}
+                    <span aria-hidden="true">·</span>
+                    <Icon glyph="map-pin" size={18} />
+                    {tpl.location ? locationName(tpl.location) : t("templates.noPlace")}
+                  </p>
+                </div>
+                {!readOnly && (
+                  <IconButton
+                    icon="trash"
+                    variant="danger"
+                    label={t("templates.deleteLabel", { name: tpl.name })}
+                    onClick={() => setDeleting(tpl)}
+                  />
+                )}
+              </div>
+              <div className="ap-stack ap-stack--sm">
+                <div className="ap-row" style={{ gap: "var(--space-2)" }}>
+                  <span className="t-label">{t("templates.audiences")}</span>
+                  {tpl.targetGroups.length > 0 ? (
+                    <span className="cc-tags">
+                      {tpl.targetGroups.map(({ targetGroup }) => (
+                        <Tag key={targetGroup.id} tone={toneOf(targetGroup.id)}>
+                          {targetGroup.name}
+                        </Tag>
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="t-sm t-muted">{t("templates.everyone")}</span>
+                  )}
+                </div>
+                <div className="ap-row" style={{ gap: "var(--space-2)" }}>
+                  <span className="t-label">{t("templates.extras")}</span>
+                  {extras.length > 0 ? (
+                    <span className="cc-tags">
+                      {extras.map((x) => (
+                        <Tag key={x.id} emoji={x.icon}>
+                          {x.name}
+                        </Tag>
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="t-sm t-muted">{t("templates.noExtras")}</span>
+                  )}
+                </div>
+              </div>
+              <div className="ap-actions">
+                {!readOnly && (
+                  <LinkButton
+                    variant="secondary"
+                    to={page.routes.fromTemplate(tpl.id)}
+                    state={{ from: here }}
+                  >
+                    {t("templates.useTemplate")}
+                  </LinkButton>
+                )}
+                <LinkButton
+                  variant="secondary"
+                  to={page.routes.template(tpl.id)}
+                  state={{ from: here }}
+                  aria-label={t(readOnly ? "templates.viewLabel" : "templates.editLabel", {
+                    name: tpl.name,
+                  })}
+                >
+                  {t(readOnly ? "templates.view" : "templates.edit")}
+                </LinkButton>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    );
   }
 
   return (
-    <div className="max-w-3xl p-6">
-      <SectionHeader
-        title={t("templates.title")}
-        description={t("templates.description")}
-        action={
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            {t("templates.newTemplate")}
-          </Button>
-        }
-      />
+    <div className="ap-wrap">
+      <header className="ap-pagehead">
+        <div>
+          <h1 className="t-h1">{t("templates.title")}</h1>
+          <p className="t-body t-prose">{t("templates.description")}</p>
+        </div>
+        {!readOnly && (
+          <div className="ap-actions">
+            <LinkButton icon="plus" to={page.routes.templateNew} state={{ from: here }}>
+              {t("templates.create")}
+            </LinkButton>
+          </div>
+        )}
+      </header>
 
-      {templates.length === 0 ? (
-        <EmptyState icon="layers" title={t("templates.noTemplates")} />
-      ) : (
-        <div className="space-y-3">
-          {templates.map((tmpl) => (
-            <div key={tmpl.id} className="rounded-xl border border-slate-200 bg-white p-5">
-              <div className="mb-3 flex items-start justify-between">
-                <div>
-                  <h3 className="font-medium text-slate-900">{tmpl.name}</h3>
-                  <div className="mt-1.5 flex items-center gap-3 text-sm text-slate-500">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
-                      {tmpl.timeBegin}–{tmpl.timeEnd}
-                    </span>
-                    {tmpl.location && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-3.5 w-3.5" />
-                        {tmpl.location.name ?? formatAddress(tmpl.location)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => openEdit(tmpl)}
-                    className="rounded p-1.5 text-slate-400 hover:text-slate-600"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <AlertDialog>
-                    <AlertDialogTrigger
-                      render={
-                        <button className="rounded p-1.5 text-slate-400 hover:text-red-500" />
-                      }
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>{t("templates.deleteTemplate")}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {t("templates.deleteTemplateInfo")}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(tmpl.id)}>
-                          {t("common.delete")}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
+      {readOnly && (
+        <Banner tone="warning" icon="lock" title={t("shell.archivedReadOnly")} className="mb-4">
+          {t("templates.readOnly")}
+        </Banner>
+      )}
 
-              <div className="flex flex-wrap gap-1.5">
-                {tmpl.properties.map((p) => (
-                  <TagBadge
-                    key={p.property.id}
-                    label={p.property.name}
-                    icon={p.property.icon}
-                    tone="brand"
-                  />
-                ))}
-                {tmpl.features.map((f) => (
-                  <TagBadge key={f.feature.id} label={f.feature.name} tone="neutral" />
-                ))}
-                {tmpl.targetGroups.map((tg) => (
-                  <TagBadge key={tg.targetGroup.id} label={tg.targetGroup.name} tone="adult" />
-                ))}
-              </div>
-            </div>
-          ))}
+      {all.length > 0 && (
+        <div className="ap-toolbar" style={{ marginBottom: "var(--space-4)" }}>
+          <SearchInput
+            className="ap-toolbar-search"
+            value={query}
+            onChange={setQuery}
+            placeholder={t("templates.search")}
+          />
+          <p className="t-sm t-muted" role="status">
+            {query.trim() ? t("templates.hits", { count: shown.length, total: all.length }) : ""}
+          </p>
         </div>
       )}
 
-      <TemplateModal
-        calendarId={calendarId!}
-        open={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          setEditingTemplate(null);
-        }}
-        template={editingTemplate}
-      />
+      {content}
+
+      {deleting && (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => !open && setDeleting(null)}
+          icon="trash"
+          title={t("templates.delete.title", { name: deleting.name })}
+          description={t("templates.delete.text")}
+          consequence={t("templates.delete.consequence")}
+          confirmLabel={t("templates.delete.confirm")}
+          onConfirm={() => remove(deleting)}
+        />
+      )}
     </div>
   );
 }

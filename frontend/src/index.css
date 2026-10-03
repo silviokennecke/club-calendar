@@ -2482,3 +2482,80 @@
     flex: 1 1 auto;
   }
 }
+
+/* Import and templates (design cc-app.css: .ap-fileinput, .ap-panel-head, review list and bar) */
+@layer components {
+  .ap-panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+  .ap-panel-head p {
+    margin-top: var(--space-1);
+  }
+  .ap-dialog--wide {
+    width: min(720px, calc(100% - 32px));
+  }
+  .ap-fileinput {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    min-height: 220px;
+    padding: var(--space-6);
+    border: 2px dashed var(--border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--surface-raised);
+    text-align: center;
+  }
+  .ap-fileinput--active {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+  }
+  /* The real file input is visually hidden; its focus shows on the button-like label. */
+  .ap-fileinput:has(input[type="file"]:focus-visible) label.cc-btn {
+    outline: 3px solid var(--brand);
+    outline-offset: 2px;
+  }
+  .ap-checkhit input {
+    width: 24px;
+    height: 24px;
+    margin: 0;
+    accent-color: var(--brand);
+  }
+  .ap-reviewlist {
+    list-style: none;
+    margin: 0;
+  }
+  .ap-reviewgroup + .ap-reviewgroup {
+    border-top: 1px solid var(--border);
+  }
+  .ap-reviewbar {
+    position: sticky;
+    bottom: var(--space-4);
+    z-index: 10;
+  }
+  .ap-reviewbar-panel {
+    padding: var(--space-3) var(--space-4);
+    box-shadow: var(--shadow-md);
+  }
+  @media (max-width: 720px) {
+    .ap-reviewbar {
+      bottom: calc(72px + var(--space-2));
+    }
+    .ap-reviewbar .ap-row,
+    .ap-reviewbar .ap-actions {
+      flex-direction: column;
+      align-items: stretch;
+      width: 100%;
+    }
+    .ap-reviewbar .cc-btn {
+      width: 100%;
+    }
+  }
+}
