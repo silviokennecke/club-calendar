@@ -139,46 +139,84 @@ describe("MasterList", () => {
     expect(screen.getByLabelText(/^Name/)).toHaveValue("Siegerehrung");
   });
 
-  it("renames inline: Enter saves, focus returns to the edit button", async () => {
+  it("renames in a dialog: Enter saves, focus returns to the edit button", async () => {
     const user = userEvent.setup();
     renderList("features");
     await screen.findByRole("list");
     await user.click(screen.getByRole("button", { name: "Draußen bearbeiten" }));
-    const input = await screen.findByLabelText(/^Name/, { selector: "#ml-edit-p2" });
+    const dialog = await screen.findByRole("dialog", { name: "Feature bearbeiten" });
+    const input = within(dialog).getByLabelText(/^Name/);
+    expect(input).toHaveValue("Draußen");
     expect(input).toHaveFocus();
     await user.clear(input);
     await user.type(input, "Im Freien{Enter}");
     await waitFor(() =>
       expect(apiPatch).toHaveBeenCalledWith("/api/calendars/k1/features/p2", { name: "Im Freien" }),
     );
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Draußen bearbeiten" })).toHaveFocus(),
     );
   });
 
-  it("cancels an inline rename with Escape without saving", async () => {
+  it("cancels the rename dialog with Escape without saving and returns focus", async () => {
+    const user = userEvent.setup();
+    renderList("features");
+    await screen.findByRole("list");
+    const trigger = screen.getByRole("button", { name: "Wettkampf bearbeiten" });
+    await user.click(trigger);
+    const dialog = await screen.findByRole("dialog", { name: "Feature bearbeiten" });
+    await user.type(within(dialog).getByLabelText(/^Name/), "xyz");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(apiPatch).not.toHaveBeenCalled();
+    expect(screen.getByText("Wettkampf")).toBeInTheDocument();
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it("cancels the rename dialog with the cancel button", async () => {
     const user = userEvent.setup();
     renderList("features");
     await screen.findByRole("list");
     await user.click(screen.getByRole("button", { name: "Wettkampf bearbeiten" }));
-    const input = await screen.findByLabelText(/^Name/, { selector: "#ml-edit-p1" });
-    await user.type(input, "xyz");
-    await user.keyboard("{Escape}");
-    expect(screen.queryByLabelText(/^Name/, { selector: "#ml-edit-p1" })).not.toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Abbrechen" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(apiPatch).not.toHaveBeenCalled();
-    expect(screen.getByText("Wettkampf")).toBeInTheDocument();
   });
 
-  it("rejects a rename to an existing name", async () => {
+  it("rejects a rename to an existing name with an error summary in the dialog", async () => {
     const user = userEvent.setup();
     renderList("features");
     await screen.findByRole("list");
     await user.click(screen.getByRole("button", { name: "Draußen bearbeiten" }));
-    const input = await screen.findByLabelText(/^Name/, { selector: "#ml-edit-p2" });
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByLabelText(/^Name/);
     await user.clear(input);
     await user.type(input, "wettkampf{Enter}");
-    expect(await screen.findByRole("alert")).toHaveTextContent("Diesen Namen gibt es schon");
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Diesen Namen gibt es schon",
+    );
+    expect(input).toHaveAccessibleDescription(/Diesen Namen gibt es schon/);
     expect(apiPatch).not.toHaveBeenCalled();
+    // The dialog stays open so the name can be fixed.
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("shows an error in the dialog when saving fails and keeps the input", async () => {
+    apiPatch.mockRejectedValue(new Error("boom"));
+    const user = userEvent.setup();
+    renderList("features");
+    await screen.findByRole("list");
+    await user.click(screen.getByRole("button", { name: "Draußen bearbeiten" }));
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByLabelText(/^Name/);
+    await user.clear(input);
+    await user.type(input, "Neu{Enter}");
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Die Änderung konnte nicht gespeichert werden",
+    );
+    expect(input).toHaveValue("Neu");
   });
 
   it("saves the symbol of a property when renaming", async () => {
@@ -186,9 +224,9 @@ describe("MasterList", () => {
     renderList("properties");
     await screen.findByRole("list");
     await user.click(screen.getByRole("button", { name: "Draußen bearbeiten" }));
-    const form = await screen.findByRole("form", { name: "Eigenschaft bearbeiten: Draußen" });
-    await user.click(within(form).getByRole("button", { name: "Draußen" }));
-    await user.click(within(form).getByRole("button", { name: "Änderung speichern" }));
+    const dialog = await screen.findByRole("dialog", { name: "Eigenschaft bearbeiten" });
+    await user.click(within(dialog).getByRole("button", { name: "Draußen" }));
+    await user.click(within(dialog).getByRole("button", { name: "Änderung speichern" }));
     await waitFor(() =>
       expect(apiPatch).toHaveBeenCalledWith("/api/calendars/k1/properties/p2", {
         name: "Draußen",

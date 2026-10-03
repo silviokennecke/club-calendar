@@ -1,0 +1,247 @@
+import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
+import { API, PASSWORD, createVerifiedUser, login, seedClub } from "./helpers";
+
+// ——— Profil (phase 7): Sprache, Darstellung, Datumsformat, Passkeys, Konto ———
+
+async function seed(request: APIRequestContext, name: string) {
+  const email = await createVerifiedUser(request, name);
+  const club = await seedClub(request, email, `${name} Verein`);
+  return { name, email, ...club };
+}
+
+/** Opens the calendar first (so the club is "last used" and the app shell shows), then the profile. */
+async function openProfile(
+  page: Page,
+  s: { email: string; clubId: string; calendarId: string; headers: Record<string, string> },
+  request: APIRequestContext,
+) {
+  await login(page, s.email);
+  await page.waitForURL(/\/clubs/);
+  await page.goto(`/clubs/${s.clubId}/calendars/${s.calendarId}`);
+  // The calendar page stores the club as "last used" a moment after it opened; only then does
+  // /profile (which has no club in its URL) render inside the app shell for good.
+  await expect.poll(async () => (await me(request, s.headers)).lastClubId).toBe(s.clubId);
+  await page
+    .getByRole("complementary")
+    .getByRole("link", { name: /Mein Profil/ })
+    .click();
+  await expect(page.getByRole("heading", { level: 1, name: "Profil" })).toBeVisible();
+}
+
+const me = async (request: APIRequestContext, headers: Record<string, string>) =>
+  (await request.get(`${API}/api/auth/me`, { headers })).json();
+
+test.describe("Profil", () => {
+  test.use({ locale: "de-DE", timezoneId: "Europe/Berlin" });
+
+  test("zeigt Konto, Anmeldungen und Passkeys; Sidebar führt zum Profil", async ({
+    page,
+    request,
+  }) => {
+    const s = await seed(request, "Profil Kopf");
+    await login(page, s.email);
+    await page.waitForURL(/\/clubs/);
+    await page.goto(`/clubs/${s.clubId}/calendars/${s.calendarId}`);
+    await page
+      .getByRole("complementary")
+      .getByRole("link", { name: /Mein Profil/ })
+      .click();
+    await expect(page).toHaveURL(/\/profile$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Profil" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Profil Kopf" })).toBeVisible();
+    await expect(page.getByText(s.email)).toBeVisible();
+    await expect(
+      page.getByText("Name und E-Mail können hier noch nicht geändert werden."),
+    ).toBeVisible();
+    await expect(page.getByText("Du hast noch keinen Passkey eingerichtet.")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Verknüpfte Anmeldungen" })).toBeVisible();
+  });
+
+  test("Sprache wird am Konto gespeichert und gilt nach dem Neuladen", async ({
+    page,
+    request,
+  }) => {
+    const s = await seed(request, "Profil Sprache");
+    await openProfile(page, s, request);
+    const prefs = page.getByRole("region", { name: "Persönliche Einstellungen" });
+    const lang = prefs.getByRole("group", { name: "Sprache" }).last();
+    await expect(lang.getByRole("button", { name: "Deutsch" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await lang.getByRole("button", { name: "English" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Profile" })).toBeVisible();
+    await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+    await expect.poll(async () => (await me(request, s.headers)).language).toBe("en");
+
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: "Profile" })).toBeVisible();
+    await page
+      .getByRole("region", { name: "Personal settings" })
+      .getByRole("group", { name: "Language" })
+      .last()
+      .getByRole("button", { name: "Deutsch" })
+      .click();
+    await expect(page.getByRole("heading", { level: 1, name: "Profil" })).toBeVisible();
+    await expect.poll(async () => (await me(request, s.headers)).language).toBe("de");
+  });
+
+  test("Darstellung: Hell, Dunkel, System; bleibt im Browser erhalten", async ({
+    page,
+    request,
+  }) => {
+    const s = await seed(request, "Profil Theme");
+    await openProfile(page, s, request);
+    const group = page.getByRole("group", { name: "Darstellung" });
+    const html = page.locator("html");
+    await expect(group.getByRole("button", { name: "Wie System" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await group.getByRole("button", { name: "Dunkel" }).click();
+    await expect(html).toHaveAttribute("data-theme", "dark");
+    await expect(group.getByRole("button", { name: "Dunkel" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    // Kontrast: heller Text auf dunklem Grund
+    const colors = await page.evaluate(() => {
+      const cs = getComputedStyle(document.body);
+      return { bg: cs.backgroundColor, fg: cs.color };
+    });
+    const lum = (c: string) => {
+      const [r, g, b] = (c.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    expect(lum(colors.bg)).toBeLessThan(lum(colors.fg));
+
+    await page.reload();
+    await expect(html).toHaveAttribute("data-theme", "dark");
+    await group.getByRole("button", { name: "Hell" }).click();
+    await expect(html).toHaveAttribute("data-theme", "light");
+    await group.getByRole("button", { name: "Wie System" }).click();
+    await expect(group.getByRole("button", { name: "Wie System" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    // Nur lokal: nichts davon liegt am Konto
+    expect(Object.keys(await me(request, s.headers))).not.toContain("theme");
+  });
+
+  test("Datumsformat und erster Wochentag werden sofort gespeichert", async ({ page, request }) => {
+    const s = await seed(request, "Profil Format");
+    await openProfile(page, s, request);
+    const prefs = page.getByRole("region", { name: "Persönliche Einstellungen" });
+    await expect(prefs.getByRole("radio", { name: "31.12.2026" })).toBeChecked();
+    await prefs.getByRole("radio", { name: "2026-12-31" }).check();
+    await expect(page.getByText("Gespeichert", { exact: true })).toBeVisible();
+    await expect.poll(async () => (await me(request, s.headers)).dateFormat).toBe("yyyy-MM-dd");
+    await prefs.getByRole("button", { name: "Sonntag" }).click();
+    await expect(prefs.getByRole("button", { name: "Sonntag" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect.poll(async () => (await me(request, s.headers)).firstDayOfWeek).toBe(0);
+    await page.reload();
+    await expect(prefs.getByRole("radio", { name: "2026-12-31" })).toBeChecked();
+    await expect(prefs.getByRole("button", { name: "Sonntag" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  test("Passkey-Oberfläche: abgebrochen und fehlgeschlagen ohne Authenticator", async ({
+    page,
+    request,
+  }) => {
+    const s = await seed(request, "Profil Passkey");
+    await openProfile(page, s, request);
+    // Der Browser meldet "abgebrochen" (Nutzer schließt den Systemdialog).
+    await page.evaluate(() => {
+      navigator.credentials.create = () =>
+        Promise.reject(new DOMException("The operation was cancelled", "NotAllowedError"));
+    });
+    const add = page.getByRole("button", { name: "Passkey auf diesem Gerät einrichten" });
+    await page.getByLabel(/^Gerätename/).fill("Büro-PC");
+    await add.click();
+    await expect(page.getByText(/Das Einrichten wurde abgebrochen/)).toBeVisible();
+    await expect(page.getByLabel(/^Gerätename/)).toHaveValue("Büro-PC");
+    // Ein anderer Fehler: eigene Meldung als Alarm
+    await page.evaluate(() => {
+      navigator.credentials.create = () =>
+        Promise.reject(new DOMException("Device not supported", "NotSupportedError"));
+    });
+    await add.click();
+    await expect(page.getByRole("alert")).toContainText(
+      "Der Passkey konnte nicht eingerichtet werden.",
+    );
+    expect((await me(request, s.headers)).passkeys).toHaveLength(0);
+  });
+
+  test("Passkey hinzufügen und entfernen mit virtuellem Authenticator", async ({
+    page,
+    request,
+  }) => {
+    const s = await seed(request, "Profil Virtuell");
+    await openProfile(page, s, request);
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("WebAuthn.enable");
+    await cdp.send("WebAuthn.addVirtualAuthenticator", {
+      options: {
+        protocol: "ctap2",
+        transport: "internal",
+        hasResidentKey: true,
+        hasUserVerification: true,
+        isUserVerified: true,
+        automaticPresenceSimulation: true,
+      },
+    });
+
+    await page.getByLabel(/^Gerätename/).fill("Test-Laptop");
+    await page.getByRole("button", { name: "Passkey auf diesem Gerät einrichten" }).click();
+    await expect(page.getByText("Passkey „Test-Laptop“ wurde hinzugefügt.")).toBeVisible();
+    const list = page.getByRole("list", { name: "Deine Passkeys (1)" });
+    await expect(list).toContainText("Test-Laptop");
+    await expect(list).toContainText("hinzugefügt am");
+    await expect(page.getByLabel(/^Gerätename/)).toHaveValue("");
+    expect((await me(request, s.headers)).passkeys).toHaveLength(1);
+
+    // Entfernen: Abbrechen ändert nichts, Bestätigen entfernt
+    await page.getByRole("button", { name: "Passkey „Test-Laptop“ entfernen" }).click();
+    const dialog = page.getByRole("alertdialog", { name: "Passkey „Test-Laptop“ entfernen?" });
+    await expect(dialog).toContainText("Deine anderen Anmeldewege bleiben bestehen.");
+    await dialog.getByRole("button", { name: "Abbrechen" }).click();
+    await expect(list).toContainText("Test-Laptop");
+    await page.getByRole("button", { name: "Passkey „Test-Laptop“ entfernen" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Passkey entfernen" }).click();
+    await expect(page.getByText("Du hast noch keinen Passkey eingerichtet.")).toBeVisible();
+    expect((await me(request, s.headers)).passkeys).toHaveLength(0);
+  });
+
+  test("Abmelden führt zur Anmeldung", async ({ page, request }) => {
+    const s = await seed(request, "Profil Abmelden");
+    await openProfile(page, s, request);
+    await page.getByRole("main").getByRole("button", { name: "Abmelden" }).click();
+    await expect(page).toHaveURL(/\/login/);
+  });
+
+  test("Konto löschen verlangt die E-Mail-Adresse", async ({ page, request }) => {
+    const s = await seed(request, "Profil Löschen");
+    await openProfile(page, s, request);
+    await page.getByRole("button", { name: "Konto löschen" }).click();
+    const dialog = page.getByRole("alertdialog", { name: "Konto löschen?" });
+    await expect(dialog).toContainText("Du wirst abgemeldet.");
+    const confirm = dialog.getByRole("button", { name: "Konto löschen" });
+    await expect(confirm).toBeDisabled();
+    await dialog.getByLabel("Zur Bestätigung deine E-Mail-Adresse eingeben").fill(s.email);
+    // Activate by keyboard: the page unmounts as soon as the account is gone, which makes a mouse
+    // click's "element detached" bookkeeping flaky.
+    await confirm.focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/login/);
+    const res = await request.post(`${API}/api/auth/login`, {
+      data: { email: s.email, password: PASSWORD },
+    });
+    expect(res.ok()).toBeFalsy();
+  });
+});

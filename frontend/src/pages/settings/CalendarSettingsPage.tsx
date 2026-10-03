@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { Trans, useTranslation } from "react-i18next";
 import {
   Banner,
   Button,
-  ConfirmDialog,
   ErrorSummary,
   Field,
   NativeSelect,
@@ -15,12 +15,11 @@ import {
 } from "@/components/ui/shared";
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
 import { useSettingsPage } from "@/components/settings/useSettingsPage";
-import { useCalendarActions } from "@/components/settings/useCalendarActions";
 import { useLocale } from "@/components/calendar/useLocale";
-import { apiGet, apiPatch } from "@/lib/api";
+import { apiPatch } from "@/lib/api";
 import { formatClock, timeZoneList } from "@/lib/settings";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
-import type { Calendar, CalendarEvent, CalendarFeed, EventTemplate } from "@/lib/types";
+import type { Calendar } from "@/lib/types";
 
 interface FormValues {
   name: string;
@@ -39,8 +38,9 @@ function useNow(intervalMs = 30_000) {
 }
 
 /**
- * Settings "Allgemein" (design: SettingsGeneral): name and time zone, plus archive, duplicate and
- * delete of the calendar. Archived calendars are read-only (banner with "Archivierung aufheben").
+ * Settings "Allgemein" (design: SettingsGeneral): name and time zone. Archiving, duplicating and
+ * deleting a calendar live on the club page (linked at the end); archived calendars are read-only
+ * (banner with "Archivierung aufheben").
  */
 export default function CalendarSettingsPage() {
   const page = useSettingsPage();
@@ -58,7 +58,6 @@ function GeneralForm({ calendar }: { calendar: Calendar }) {
   const page = useSettingsPage();
   const { clubId, calendarId, readOnly } = page;
   const clubZone = page.club?.timezone ?? "";
-  const actions = useCalendarActions(clubId, calendarId, calendar.name);
 
   const saved: FormValues = useMemo(
     () => ({
@@ -210,123 +209,13 @@ function GeneralForm({ calendar }: { calendar: Calendar }) {
         )}
       </form>
 
-      <ManageSection calendar={calendar} actions={actions} />
+      <p className="t-body t-muted">
+        <Trans
+          i18nKey="settings.general.manageHint"
+          components={{ clubLink: <Link className="ap-link" to={`/clubs/${clubId}`} /> }}
+        />
+      </p>
       <UnsavedChangesDialog {...guard.dialog} />
     </>
-  );
-}
-
-function ManageSection({
-  calendar,
-  actions,
-}: {
-  calendar: Calendar;
-  actions: ReturnType<typeof useCalendarActions>;
-}) {
-  const { t } = useTranslation();
-  const { calendarId, readOnly } = useSettingsPage();
-  const [deleteOpen, setDeleteOpen] = useState(false);
-
-  // What deleting removes; fetched only when the dialog opens.
-  const scope = useQuery({
-    queryKey: ["calendarScope", calendarId],
-    enabled: deleteOpen,
-    staleTime: 0,
-    gcTime: 0,
-    queryFn: async () => {
-      const [events, templates, feeds] = await Promise.all([
-        apiGet<CalendarEvent[]>(`/api/calendars/${calendarId}/events`),
-        apiGet<EventTemplate[]>(`/api/calendars/${calendarId}/templates`),
-        apiGet<CalendarFeed[]>(`/api/calendars/${calendarId}/feeds`),
-      ]);
-      return { events: events.length, templates: templates.length, feeds: feeds.length };
-    },
-  });
-
-  let consequence: string;
-  if (scope.isError) consequence = t("settings.delete.consequence.unknown");
-  else if (!scope.data) consequence = t("settings.delete.consequence.loading");
-  else
-    consequence = t("settings.delete.consequence.counts", {
-      name: calendar.name,
-      events: scope.data.events,
-      templates: scope.data.templates,
-      feeds: scope.data.feeds,
-    });
-
-  return (
-    <section className="ap-stack" aria-labelledby="gen-manage-h">
-      <h2 className="t-h3" id="gen-manage-h">
-        {t("settings.manage.title")}
-      </h2>
-      <ul className="ap-panel ap-panel--flush ap-list">
-        <li className="ap-listrow ap-listrow--wrap">
-          <div className="ap-listrow-main" style={{ minWidth: 220 }}>
-            <b>{t("settings.duplicate.title")}</b>
-            <span>{t("settings.duplicate.text")}</span>
-          </div>
-          <Button
-            variant="secondary"
-            icon="copy"
-            onClick={() => void actions.duplicate()}
-            loading={actions.busy === "duplicate"}
-          >
-            {t("settings.duplicate.action")}
-          </Button>
-        </li>
-        <li className="ap-listrow ap-listrow--wrap">
-          <div className="ap-listrow-main" style={{ minWidth: 220 }}>
-            <b>{readOnly ? t("settings.archived.title") : t("settings.archive.title")}</b>
-            <span>{readOnly ? t("settings.archived.rowText") : t("settings.archive.text")}</span>
-          </div>
-          {readOnly ? (
-            <Button
-              variant="secondary"
-              icon="refresh"
-              onClick={() => void actions.unarchive()}
-              loading={actions.busy === "unarchive"}
-            >
-              {t("calendar.archived.unarchive")}
-            </Button>
-          ) : (
-            <ConfirmDialog
-              trigger={
-                <Button variant="secondary" icon="archive" loading={actions.busy === "archive"}>
-                  {t("settings.archive.action")}
-                </Button>
-              }
-              tone="primary"
-              icon="archive"
-              title={t("settings.archive.confirmTitle", { name: calendar.name })}
-              description={t("settings.archive.confirmText")}
-              consequence={t("settings.archive.consequence")}
-              confirmLabel={t("settings.archive.action")}
-              onConfirm={actions.archive}
-            />
-          )}
-        </li>
-        <li className="ap-listrow ap-listrow--wrap">
-          <div className="ap-listrow-main" style={{ minWidth: 220 }}>
-            <b>{t("settings.delete.title")}</b>
-            <span>{t("settings.delete.text")}</span>
-          </div>
-          <Button variant="ghost-danger" icon="trash" onClick={() => setDeleteOpen(true)}>
-            {t("settings.delete.action")}
-          </Button>
-        </li>
-      </ul>
-      {deleteOpen && (
-        <ConfirmDialog
-          open
-          onOpenChange={setDeleteOpen}
-          icon="trash"
-          title={t("settings.delete.confirmTitle", { name: calendar.name })}
-          description={t("settings.delete.confirmText")}
-          consequence={consequence}
-          confirmLabel={t("settings.delete.confirm")}
-          onConfirm={actions.remove}
-        />
-      )}
-    </section>
   );
 }

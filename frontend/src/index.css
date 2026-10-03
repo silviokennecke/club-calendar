@@ -2207,6 +2207,11 @@
   .ap-table tbody tr:first-child td {
     border-top: 0;
   }
+  .ap-table .ap-col-actions {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+  }
   .ap-table tbody tr:hover td {
     background: var(--surface);
   }
@@ -2453,6 +2458,11 @@
       padding: var(--space-1) 0;
       border: 0 !important;
       background: transparent !important;
+    }
+    .ap-table td.ap-col-actions {
+      width: 100%;
+      white-space: normal;
+      text-align: left;
     }
     .ap-table td[data-label]::before {
       content: attr(data-label);

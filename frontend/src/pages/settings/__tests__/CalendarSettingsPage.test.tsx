@@ -110,57 +110,17 @@ describe("CalendarSettingsPage", () => {
     expect(name).toHaveValue("Schießbetrieb 2026 neu");
   });
 
-  it("archives after confirming", async () => {
-    const user = userEvent.setup();
+  it("no longer manages the calendar here but points to the club page", async () => {
     renderRoute(route, url, <CalendarSettingsPage />);
-    await user.click(await screen.findByRole("button", { name: "Kalender archivieren" }));
-    const dialog = await screen.findByRole("alertdialog", {
-      name: "Kalender „Schießbetrieb 2026“ archivieren?",
-    });
-    expect(apiPost).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole("button", { name: "Kalender archivieren" }));
-    await waitFor(() => expect(apiPost).toHaveBeenCalledWith(`${calPath}/archive`, {}));
+    await screen.findByLabelText(/^Kalendername/);
+    for (const name of ["Kalender archivieren", "Kalender duplizieren", "Kalender löschen"]) {
+      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    }
+    const link = screen.getByRole("link", { name: "Verein verwalten" });
+    expect(link).toHaveAttribute("href", "/clubs/c1");
   });
 
-  it("duplicates, names the copy in the UI language and opens it", async () => {
-    const user = userEvent.setup();
-    renderRoute(route, url, <CalendarSettingsPage />);
-    await user.click(await screen.findByRole("button", { name: "Kalender duplizieren" }));
-    await waitFor(() => expect(apiPost).toHaveBeenCalledWith(`${calPath}/duplicate`, {}));
-    await waitFor(() =>
-      expect(apiPatch).toHaveBeenCalledWith("/api/clubs/c1/calendars/k2", {
-        name: "Kopie von Schießbetrieb 2026",
-      }),
-    );
-    // The copy opens: its calendar is requested.
-    await waitFor(() => expect(apiGet).toHaveBeenCalledWith("/api/clubs/c1/calendars/k2"));
-  });
-
-  it("deletes only after confirming and names what is lost", async () => {
-    const user = userEvent.setup();
-    renderRoute(route, url, <CalendarSettingsPage />);
-    await user.click(await screen.findByRole("button", { name: "Kalender löschen" }));
-    const dialog = await screen.findByRole("alertdialog", {
-      name: "Kalender „Schießbetrieb 2026“ löschen?",
-    });
-    await waitFor(() => expect(dialog).toHaveTextContent("Termine (3), Vorlagen (1), Feeds (2)"));
-    expect(apiDelete).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole("button", { name: "Kalender löschen" }));
-    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith(calPath));
-    expect(await screen.findByTestId("location")).toHaveTextContent("/clubs/c1");
-  });
-
-  it("cancelling the delete dialog deletes nothing", async () => {
-    const user = userEvent.setup();
-    renderRoute(route, url, <CalendarSettingsPage />);
-    await user.click(await screen.findByRole("button", { name: "Kalender löschen" }));
-    await user.click(
-      within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Abbrechen" }),
-    );
-    expect(apiDelete).not.toHaveBeenCalled();
-  });
-
-  it("is read-only in an archived calendar and offers to restore it", async () => {
+  it("is read-only in an archived calendar and offers to restore it in the banner", async () => {
     calendar = { ...calendar, archivedAt: "2026-01-01T00:00:00+00:00" };
     const user = userEvent.setup();
     renderRoute(route, url, <CalendarSettingsPage />);
@@ -170,11 +130,8 @@ describe("CalendarSettingsPage", () => {
     expect(
       screen.queryByRole("button", { name: "Einstellungen speichern" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Kalender archivieren" })).not.toBeInTheDocument();
     expect(screen.getByText("Archiviert, schreibgeschützt")).toBeInTheDocument();
-    const buttons = screen.getAllByRole("button", { name: "Archivierung aufheben" });
-    expect(buttons.length).toBeGreaterThanOrEqual(1);
-    await user.click(buttons[0]);
+    await user.click(screen.getByRole("button", { name: "Archivierung aufheben" }));
     await waitFor(() => expect(apiPost).toHaveBeenCalledWith(`${calPath}/unarchive`, {}));
   });
 });

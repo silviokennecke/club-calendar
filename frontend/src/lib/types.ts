@@ -29,7 +29,7 @@ export interface CalendarFeed {
   name: string;
   visibility: "PUBLIC" | "PRIVATE";
   sharedSecret: string;
-  targetGroups: { targetGroupid: string }[];
+  targetGroups: { feedId: string; targetGroupId: string }[];
 }
 
 export interface Property {

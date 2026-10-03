@@ -177,31 +177,6 @@
     "profile": "Profile",
     "signOut": "Sign out"
   },
-  "profile": {
-    "title": "Profile",
-    "passkeys": "Passkeys",
-    "passkeyDescription": "Passkeys let you sign in with biometrics or a hardware key — no password needed.",
-    "deviceName": "Device name (optional)",
-    "waiting": "Waiting…",
-    "addPasskey": "Add passkey",
-    "passkeyRegistered": "Passkey registered!",
-    "registrationFailed": "Registration failed",
-    "registrationFailedOrCancelled": "Registration failed or cancelled",
-    "addedOn": "Added {{date}}",
-    "localization": "Localization",
-    "dateFormat": "Date format",
-    "firstDayOfWeek": "First day of week",
-    "monday": "Monday",
-    "sunday": "Sunday",
-    "language": "Language",
-    "dangerZone": "Danger Zone",
-    "deleteAccount": "Delete my account",
-    "deleteAccountConfirm": "This permanently deletes your account and all associated data. This cannot be undone.",
-    "deleting": "Deleting…",
-    "deleteAccountButton": "Delete account",
-    "deleteAccountTitle": "Delete account?",
-    "deleteAccountConsequence": "Deletes your account, your passkeys and linked sign-ins. You will be signed out."
-  },
   "language": {
     "en": "English",
     "de": "Deutsch"
@@ -973,32 +948,6 @@
       }
     }
   },
-  "club": {
-    "title": "Club",
-    "clubName": "Club name",
-    "timezone": "Timezone",
-    "save": "Save",
-    "saving": "Saving…",
-    "saved": "Saved!",
-    "members": "Members",
-    "noMembers": "No members yet.",
-    "addMember": "Add",
-    "inviteMember": "Invite member",
-    "removeMember": "Remove",
-    "leaveClub": "Leave club",
-    "deleteClub": "Delete club",
-    "deleteClubConfirm": "This will permanently delete the club and all its calendars and events. This cannot be undone.",
-    "deleteThisClub": "Delete this club",
-    "calendars": "Calendars",
-    "newCalendarButton": "New",
-    "createCalendar": "Create Calendar",
-    "calendarNamePlaceholder": "Calendar name",
-    "noCalendars": "No calendars yet.",
-    "archived": "Archived",
-    "deleteClubTitle": "Delete club “{{name}}”?",
-    "deleteClubConsequence_one": "Deletes {{count}} calendar with all its events, templates and feeds.",
-    "deleteClubConsequence_other": "Deletes {{count}} calendars with all their events, templates and feeds."
-  },
   "settings": {
     "title": "Settings",
     "loading": "Loading settings …",
@@ -1009,14 +958,10 @@
     },
     "archived": {
       "text": "This calendar is archived. You can only view its settings. Restore it to change them.",
-      "title": "Restore calendar",
-      "rowText": "The calendar is read-only. Restore it to change events and settings again.",
       "restored": "Calendar restored. It is active again.",
       "failed": "The calendar could not be restored. Please try again."
     },
     "archive": {
-      "title": "Archive calendar",
-      "text": "The calendar becomes read-only and is taken out of public feeds. You can restore it at any time.",
       "action": "Archive calendar",
       "confirmTitle": "Archive calendar “{{name}}”?",
       "confirmText": "The calendar is kept but can no longer be changed.",
@@ -1025,17 +970,12 @@
       "failed": "The calendar could not be archived. Please try again."
     },
     "duplicate": {
-      "title": "Duplicate calendar",
-      "text": "Creates a copy with properties, features, audiences, places, templates and feeds. Events are not copied.",
-      "action": "Duplicate calendar",
       "copyName": "Copy of {{name}}",
       "done": "Calendar duplicated. You are now in the copy.",
-      "failed": "The calendar could not be duplicated. Please try again."
+      "failed": "The calendar could not be duplicated. Please try again.",
+      "doneStay": "Calendar “{{name}}” was created."
     },
     "delete": {
-      "title": "Delete calendar",
-      "text": "Deletes the calendar with everything that belongs to it. This cannot be undone.",
-      "action": "Delete calendar",
       "confirmTitle": "Delete calendar “{{name}}”?",
       "confirmText": "The calendar is removed permanently.",
       "confirm": "Delete calendar",
@@ -1046,9 +986,6 @@
         "unknown": "All events, templates, feeds, places and assignments of this calendar are deleted. Published feed addresses stop working.",
         "counts": "This deletes all events ({{events}}), templates ({{templates}}), feeds ({{feeds}}), places and assignments of this calendar. Published feed addresses stop working."
       }
-    },
-    "manage": {
-      "title": "Manage calendar"
     },
     "general": {
       "calendar": "Calendar",
@@ -1067,7 +1004,8 @@
       "saveFailed": {
         "title": "Not saved",
         "text": "The settings could not be saved. Please try again."
-      }
+      },
+      "manageHint": "To duplicate, archive or delete a calendar, go to <clubLink>Manage club</clubLink>."
     },
     "master": {
       "loading": "Loading list …",
@@ -1100,9 +1038,9 @@
         "deleteFailed": "The property “{{name}}” could not be deleted.",
         "createFailed": "The property could not be created. Please try again.",
         "loadError": "The properties could not be loaded.",
-        "editLabel": "{{name}} edit",
-        "deleteLabel": "{{name}} delete",
-        "editTitle": "Property edit: {{name}}",
+        "editLabel": "Edit {{name}}",
+        "deleteLabel": "Delete {{name}}",
+        "editTitle": "Edit property",
         "deleteTitle": "Delete property “{{name}}”?",
         "deleteText": "“{{name}}” is removed from the list of properties.",
         "deleteConfirm": "Delete property",
@@ -1114,7 +1052,8 @@
           "events_other": "{{count}} events lose their link to “{{name}}”. The events themselves stay.",
           "templates_one": "{{count}} template loses the link.",
           "templates_other": "{{count}} templates lose the link."
-        }
+        },
+        "editText": "Change the name and symbol of “{{name}}”."
       },
       "features": {
         "description": "Features are extras at an event, e.g. bonus shooting. You pick them when creating an event.",
@@ -1130,9 +1069,9 @@
         "deleteFailed": "The feature “{{name}}” could not be deleted.",
         "createFailed": "The feature could not be created. Please try again.",
         "loadError": "The features could not be loaded.",
-        "editLabel": "{{name}} edit",
-        "deleteLabel": "{{name}} delete",
-        "editTitle": "Feature edit: {{name}}",
+        "editLabel": "Edit {{name}}",
+        "deleteLabel": "Delete {{name}}",
+        "editTitle": "Edit feature",
         "deleteTitle": "Delete feature “{{name}}”?",
         "deleteText": "“{{name}}” is removed from the list of features.",
         "deleteConfirm": "Delete feature",
@@ -1144,7 +1083,8 @@
           "events_other": "{{count}} events lose their link to “{{name}}”. The events themselves stay.",
           "templates_one": "{{count}} template loses the link.",
           "templates_other": "{{count}} templates lose the link."
-        }
+        },
+        "editText": "Change the name of “{{name}}”."
       },
       "audiences": {
         "description": "Audiences say who an event is for, e.g. youth. Visitors can filter the calendar by them, and subscriptions can be limited to audiences.",
@@ -1160,9 +1100,9 @@
         "deleteFailed": "The audience “{{name}}” could not be deleted.",
         "createFailed": "The audience could not be created. Please try again.",
         "loadError": "The audiences could not be loaded.",
-        "editLabel": "{{name}} edit",
-        "deleteLabel": "{{name}} delete",
-        "editTitle": "Audience edit: {{name}}",
+        "editLabel": "Edit {{name}}",
+        "deleteLabel": "Delete {{name}}",
+        "editTitle": "Edit audience",
         "deleteTitle": "Delete audience “{{name}}”?",
         "deleteText": "“{{name}}” is removed from the list of audiences.",
         "deleteConfirm": "Delete audience",
@@ -1174,7 +1114,8 @@
           "events_other": "{{count}} events lose their link to “{{name}}”. The events themselves stay.",
           "templates_one": "{{count}} template loses the link.",
           "templates_other": "{{count}} templates lose the link."
-        }
+        },
+        "editText": "Change the name of “{{name}}”."
       }
     },
     "places": {
@@ -1327,35 +1268,6 @@
       "previewLoading": "Loading holidays …",
       "previewError": "The holidays could not be loaded.",
       "previewEmpty": "There are no entries in the next 12 months."
-    },
-    "feeds": {
-      "title": "Feeds",
-      "description": "Publish your calendar as an ICS feed for Apple Calendar, Google Calendar, etc.",
-      "newFeed": "New Feed",
-      "editFeed": "Edit Feed",
-      "feedName": "Name",
-      "visibility": "Visibility",
-      "public": "Public",
-      "private": "Private",
-      "targetGroups": "Target Groups",
-      "icsUrl": "ICS URL",
-      "webcalUrl": "Webcal URL",
-      "webUrl": "Web URL",
-      "openInApp": "Open in App",
-      "open": "Open ↗",
-      "copy": "Copy",
-      "copied": "Copied!",
-      "sharedSecret": "Shared Secret",
-      "showSecret": "Show secret",
-      "hideSecret": "Hide secret",
-      "createFeed": "Create Feed",
-      "regeneratingWarning": "Regenerating will break existing subscriptions.",
-      "privateSecretInfo": "A shared secret will be generated automatically.",
-      "deleteFeed": "Delete feed?",
-      "cannotBeUndone": "This cannot be undone.",
-      "saving": "Saving…",
-      "noFeeds": "No feeds yet.",
-      "allGroups": "All groups"
     }
   },
   "brand": {
@@ -1508,6 +1420,300 @@
       "targetGroups": "Target groups",
       "locations": "Locations",
       "holidays": "Holidays"
+    }
+  },
+  "club": {
+    "title": "Manage club",
+    "subtitle": "{{name}} · Time zone {{zone}}",
+    "allClubs": "All clubs",
+    "retry": "Try again",
+    "loading": "Loading club …",
+    "notFound": {
+      "title": "Club not found",
+      "text": "This club does not exist, or you are no longer a member."
+    },
+    "loadError": {
+      "title": "The club could not be loaded.",
+      "text": "Check your connection and try again."
+    },
+    "name": {
+      "title": "Club name",
+      "text": "The name appears in the sidebar and for all members.",
+      "label": "Club name",
+      "error": "Please enter a name for the club.",
+      "failed": "The name could not be saved. Please try again.",
+      "errorSummary": "The club name is not saved yet.",
+      "save": "Save name",
+      "saved": "Club name saved."
+    },
+    "members": {
+      "title": "Members",
+      "text": "All members have the same rights and can make changes.",
+      "loading": "Loading members …",
+      "loadError": "The members could not be loaded.",
+      "emptyTitle": "No members",
+      "empty": "This club has no members yet.",
+      "caption": "Members of the club ({{count}})",
+      "colName": "Name",
+      "colEmail": "Email",
+      "colAction": "Action",
+      "you": "You",
+      "remove": "Remove",
+      "leave": "Leave club",
+      "removeLabel": "Remove {{name}}",
+      "leaveLabel": "Leave club {{club}}",
+      "removeTitle": "Remove {{name}}?",
+      "removeText": "{{name}} will be removed from the club {{club}}.",
+      "removeConsequence": "They can no longer see the club, any calendar or feed. Their account stays.",
+      "removeConfirm": "Remove member",
+      "leaveTitle": "Leave club?",
+      "leaveText": "You are leaving the club {{club}}.",
+      "leaveConsequence": "You lose access to all calendars, events and feeds of this club. The other members keep it.",
+      "leaveLastConsequence": "You are the last member. The club is left without members and nobody can open or delete it afterwards.",
+      "leaveConfirm": "Leave club",
+      "removed": "{{name}} was removed from the club.",
+      "removeFailed": "The member could not be removed. Please try again.",
+      "left": "You left the club {{club}}.",
+      "leaveFailed": "You could not leave the club. Please try again.",
+      "addTitle": "Add member",
+      "emailLabel": "Email address",
+      "emailHint": "The person already needs a Club Calendar account.",
+      "emailPlaceholder": "name@example.com",
+      "add": "Add member",
+      "added": "{{email}} was added to the club.",
+      "errorSummary": "The member could not be added yet.",
+      "problem": {
+        "empty": "Please enter an email address.",
+        "invalid": "Please enter a valid email address.",
+        "duplicate": "This person is already a member of the club.",
+        "notFound": "There is no account for this email address. Please check the address or ask the person to register first.",
+        "failed": "The member could not be added. Please try again."
+      }
+    },
+    "calendars": {
+      "title": "Calendars",
+      "text": "Archived calendars are read-only and listed further down.",
+      "create": "Create calendar",
+      "createSubmit": "Create calendar",
+      "nameLabel": "Calendar name",
+      "namePlaceholder": "e.g. Shooting season 2027",
+      "nameError": "Please enter a name for the calendar.",
+      "createFailed": "The calendar could not be created. Please try again.",
+      "errorSummary": "The calendar is not created yet.",
+      "created": "Calendar “{{name}}” was created.",
+      "loading": "Loading calendars …",
+      "loadError": "The calendars could not be loaded.",
+      "emptyTitle": "No active calendar yet",
+      "empty": "Create a calendar to plan events.",
+      "zone": "Time zone {{zone}}",
+      "archivedOn": "Archived on {{date}}",
+      "archivedTitle": "Archived calendars",
+      "archivedText": "Archived calendars can be viewed but not edited.",
+      "open": "Open",
+      "view": "View",
+      "duplicate": "Duplicate",
+      "archive": "Archive",
+      "restore": "Restore",
+      "delete": "Delete",
+      "openLabel": "Open calendar {{name}}",
+      "viewLabel": "View calendar {{name}}",
+      "duplicateLabel": "Duplicate calendar {{name}}",
+      "archiveLabel": "Archive calendar {{name}}",
+      "restoreLabel": "Restore {{name}} from the archive",
+      "deleteLabel": "Delete calendar {{name}}"
+    },
+    "danger": {
+      "title": "Danger zone",
+      "text": "Permanently deletes the club, all calendars, events, feeds and templates.",
+      "action": "Delete club",
+      "confirmTitle": "Delete club “{{name}}”?",
+      "confirmText": "The club will be deleted permanently.",
+      "consequence": "Permanently deletes the club, all calendars, events, feeds and templates. All members lose access.",
+      "confirm": "Delete club",
+      "requireLabel": "Type the club name to confirm",
+      "done": "The club “{{name}}” was deleted.",
+      "failed": "The club could not be deleted. Please try again."
+    }
+  },
+  "feeds": {
+    "title": "Publish",
+    "count_one": "{{count}} feed",
+    "count_other": "{{count}} feeds",
+    "export": "Export calendar",
+    "create": "Create feed",
+    "intro": "Feeds make your calendar visible to members and guests – as a web page and as a subscription for calendar apps. Feeds only contain published events; drafts stay internal.",
+    "archived": "This calendar is archived. Feeds can be viewed but not changed. Public feeds deliver nothing until you restore the calendar.",
+    "loading": "Loading feeds …",
+    "loadError": {
+      "title": "The feeds could not be loaded.",
+      "text": "Check your connection and try again.",
+      "retry": "Try again"
+    },
+    "empty": {
+      "label": "No feeds",
+      "title": "No feed yet",
+      "text": "Create a feed so members and guests can see or subscribe to your calendar.",
+      "readOnly": "This archived calendar has no feeds."
+    },
+    "audiencesOf": "Audiences of {{name}}",
+    "allAudiences": "All audiences",
+    "showAccess": "Show addresses",
+    "hideAccess": "Hide addresses",
+    "edit": "Edit",
+    "editLabel": "Edit feed “{{name}}”",
+    "deleteLabel": "Delete feed “{{name}}”",
+    "access": {
+      "secret": "Secret",
+      "secretHint": "The secret is part of every address of this feed.",
+      "secretWarning": "Only share the addresses with people who should see this calendar. Anyone who knows the secret can read the feed.",
+      "ics": "ICS address",
+      "icsHint": "For calendar apps and programs that subscribe to a web address.",
+      "webcal": "Subscription address (webcal)",
+      "webcalOpen": "Open in calendar app",
+      "webcalHint": "Opens your calendar app directly and sets up the subscription.",
+      "web": "Web view address",
+      "webOpen": "Open",
+      "webHint": "The page for members and guests, without sign-in."
+    },
+    "delete": {
+      "title": "Delete feed “{{name}}”?",
+      "text": "The feed will be deleted permanently.",
+      "consequence": "The three addresses stop working. Anyone who subscribed to the feed gets no more updates.",
+      "confirm": "Delete feed",
+      "done": "Feed “{{name}}” deleted.",
+      "failed": "The feed could not be deleted. Please try again."
+    },
+    "regen": {
+      "action": "Regenerate secret",
+      "title": "Regenerate secret?",
+      "text": "The feed gets a new secret and therefore new addresses.",
+      "consequence": "Existing subscriptions stop working. Everyone has to enter the new subscription address.",
+      "confirm": "Regenerate secret",
+      "done": "New secret created. The addresses of the feed have changed.",
+      "failed": "The secret could not be regenerated. Please try again."
+    },
+    "secret": {
+      "title": "Secret",
+      "text": "The secret is part of every address of this feed. Only people who know it can see the calendar.",
+      "hint": "Show it, copy it or pass it on to authorized people."
+    },
+    "form": {
+      "loading": "Loading feed …",
+      "back": "Back to Publish",
+      "newTitle": "Create feed",
+      "editTitle": "Edit feed",
+      "viewTitle": "Feed “{{name}}”",
+      "notFound": {
+        "title": "Feed not found",
+        "text": "This feed no longer exists. It may have been deleted."
+      },
+      "intro": "A feed only contains published events. Drafts stay internal.",
+      "readOnly": "This calendar is archived. The feed can only be viewed.",
+      "errorTitle": "The feed is not complete yet.",
+      "basics": "Basics",
+      "name": "Name",
+      "nameHint": "This is how the feed is named in your overview.",
+      "namePlaceholder": "e.g. Public calendar",
+      "nameError": "Please enter a name for the feed.",
+      "visibility": "Visibility",
+      "vis": {
+        "public": {
+          "label": "Public",
+          "text": "Anyone with the link can see the calendar."
+        },
+        "private": {
+          "label": "Private",
+          "text": "Only with the secret in the address."
+        }
+      },
+      "audiences": "Audiences",
+      "audiencesHint": "Without a selection the feed contains all audiences.",
+      "audiencesNone": "This calendar has no audiences yet. The feed contains all events.",
+      "audiencesError": "The audiences could not be loaded.",
+      "access": "Addresses",
+      "accessNew": "The three addresses (ICS, subscription and web view) appear here once you have saved the feed.",
+      "save": "Save feed",
+      "saving": "Saving …",
+      "delete": "Delete feed",
+      "created": "Feed “{{name}}” created.",
+      "saved": "Feed “{{name}}” saved.",
+      "saveFailed": "The feed could not be saved. Please try again."
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "intro": "Your account and personal settings.",
+    "signOut": "Sign out",
+    "toClubs": "All clubs",
+    "loading": "Loading profile …",
+    "loadError": {
+      "title": "The profile could not be loaded.",
+      "text": "Passkeys and linked sign-ins are not available right now.",
+      "retry": "Try again"
+    },
+    "me": {
+      "readOnly": "Name and email cannot be changed here yet."
+    },
+    "sso": {
+      "title": "Linked sign-ins",
+      "text": "Use them to sign in without a password.",
+      "none": "No sign-in through a provider such as Google or Microsoft is linked.",
+      "linked": "Connected",
+      "notLinked": "Not connected",
+      "link": "Link account",
+      "unlink": "Unlink",
+      "linkLabel": "Link {{name}} account",
+      "unlinkLabel": "Unlink {{name}}",
+      "soon": "Coming soon: linking and unlinking is not possible here yet."
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "text": "With a passkey you sign in with a fingerprint, face recognition or your device PIN.",
+      "none": "You have not set up a passkey yet.",
+      "listLabel": "Your passkeys ({{count}})",
+      "addedOn": "added on {{date}}",
+      "remove": "Remove",
+      "removeLabel": "Remove passkey “{{name}}”",
+      "removeTitle": "Remove passkey “{{name}}”?",
+      "removeText": "The passkey “{{name}}” will be deleted from your account.",
+      "removeConsequence": "You can no longer sign in with this device using a passkey. Your other ways to sign in stay.",
+      "removeConfirm": "Remove passkey",
+      "removed": "Passkey “{{name}}” removed.",
+      "removeFailed": "The passkey could not be removed. Please try again.",
+      "addTitle": "Add a new passkey",
+      "deviceLabel": "Device name",
+      "deviceHint": "The name helps you recognize the device in the list later.",
+      "devicePlaceholder": "e.g. Office PC",
+      "thisDevice": "This device",
+      "add": "Set up a passkey on this device",
+      "waiting": "Waiting for your device …",
+      "added": "Passkey “{{name}}” was added.",
+      "error": "The passkey could not be set up. Check whether your device supports passkeys and try again.",
+      "cancelled": "Setup was cancelled. You can try again at any time.",
+      "unsupported": "This browser does not support passkeys."
+    },
+    "prefs": {
+      "title": "Personal settings",
+      "text": "Changes apply immediately.",
+      "dateFormat": "Date format",
+      "firstDay": "First day of the week",
+      "monday": "Monday",
+      "sunday": "Sunday",
+      "language": "Language",
+      "themeHint": "Applies to this browser only.",
+      "saved": "Saved",
+      "saveFailed": "The setting could not be saved. Please try again."
+    },
+    "danger": {
+      "title": "Danger zone",
+      "text": "Permanently deletes your account with all passkeys and linked sign-ins.",
+      "action": "Delete account",
+      "confirmTitle": "Delete account?",
+      "confirmText": "This deletes your account permanently. This cannot be undone.",
+      "consequence": "Deletes your account, your passkeys and linked sign-ins. You will be signed out.",
+      "confirm": "Delete account",
+      "requireLabel": "Type your email address to confirm",
+      "failed": "The account could not be deleted. Please try again."
     }
   }
 }

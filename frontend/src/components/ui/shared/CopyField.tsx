@@ -54,7 +54,7 @@ export function CopyField({ label, value, hint, secret, openHref, openLabel, id 
       <label className="cc-label" htmlFor={inputId}>
         {label}
       </label>
-      <div className="ap-row ap-row--nowrap" style={{ gap: 8, alignItems: "stretch" }}>
+      <div className="ap-row" style={{ gap: 8, alignItems: "stretch" }}>
         <input
           id={inputId}
           className="cc-input ap-code"
@@ -62,7 +62,7 @@ export function CopyField({ label, value, hint, secret, openHref, openLabel, id 
           readOnly
           value={shown}
           aria-describedby={hintId}
-          style={{ flex: 1, minWidth: 0 }}
+          style={{ flex: "1 1 240px", minWidth: 0 }}
           onFocus={(e) => (!secret || revealed) && e.currentTarget.select()}
         />
         {secret && (

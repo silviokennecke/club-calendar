@@ -177,31 +177,6 @@
     "profile": "Profil",
     "signOut": "Abmelden"
   },
-  "profile": {
-    "title": "Profil",
-    "passkeys": "Passkeys",
-    "passkeyDescription": "Passkeys ermöglichen die Anmeldung mit Biometrie oder einem Hardware-Schlüssel – kein Passwort erforderlich.",
-    "deviceName": "Gerätename (optional)",
-    "waiting": "Warten…",
-    "addPasskey": "Passkey hinzufügen",
-    "passkeyRegistered": "Passkey registriert!",
-    "registrationFailed": "Registrierung fehlgeschlagen",
-    "registrationFailedOrCancelled": "Registrierung fehlgeschlagen oder abgebrochen",
-    "addedOn": "Hinzugefügt am {{date}}",
-    "localization": "Lokalisierung",
-    "dateFormat": "Datumsformat",
-    "firstDayOfWeek": "Erster Wochentag",
-    "monday": "Montag",
-    "sunday": "Sonntag",
-    "language": "Sprache",
-    "dangerZone": "Gefahrenzone",
-    "deleteAccount": "Mein Konto löschen",
-    "deleteAccountConfirm": "Dies löscht Ihr Konto und alle zugehörigen Daten dauerhaft. Dieser Vorgang kann nicht rückgängig gemacht werden.",
-    "deleting": "Löschen…",
-    "deleteAccountButton": "Konto löschen",
-    "deleteAccountTitle": "Konto löschen?",
-    "deleteAccountConsequence": "Löscht dein Konto, deine Passkeys und verknüpften Anmeldungen. Du wirst abgemeldet."
-  },
   "language": {
     "en": "English",
     "de": "Deutsch"
@@ -973,32 +948,6 @@
       }
     }
   },
-  "club": {
-    "title": "Verein",
-    "clubName": "Vereinsname",
-    "timezone": "Zeitzone",
-    "save": "Speichern",
-    "saving": "Speichern…",
-    "saved": "Gespeichert!",
-    "members": "Mitglieder",
-    "noMembers": "Noch keine Mitglieder.",
-    "addMember": "Hinzufügen",
-    "inviteMember": "Mitglied einladen",
-    "removeMember": "Entfernen",
-    "leaveClub": "Verein verlassen",
-    "deleteClub": "Verein löschen",
-    "deleteClubConfirm": "Dies löscht den Verein und alle seine Kalender und Veranstaltungen dauerhaft. Dieser Vorgang kann nicht rückgängig gemacht werden.",
-    "deleteThisClub": "Diesen Verein löschen",
-    "calendars": "Kalender",
-    "newCalendarButton": "Neu",
-    "createCalendar": "Kalender erstellen",
-    "calendarNamePlaceholder": "Kalendername",
-    "noCalendars": "Noch keine Kalender.",
-    "archived": "Archiviert",
-    "deleteClubTitle": "Verein „{{name}}“ löschen?",
-    "deleteClubConsequence_one": "Löscht {{count}} Kalender mit allen Terminen, Vorlagen und Feeds.",
-    "deleteClubConsequence_other": "Löscht {{count}} Kalender mit allen Terminen, Vorlagen und Feeds."
-  },
   "settings": {
     "title": "Einstellungen",
     "loading": "Einstellungen werden geladen …",
@@ -1009,14 +958,10 @@
     },
     "archived": {
       "text": "Dieser Kalender ist archiviert. Einstellungen lassen sich nur ansehen. Hebe die Archivierung auf, um sie zu ändern.",
-      "title": "Archivierung aufheben",
-      "rowText": "Der Kalender ist schreibgeschützt. Hebe die Archivierung auf, um Termine und Einstellungen wieder zu ändern.",
       "restored": "Archivierung aufgehoben. Der Kalender ist wieder aktiv.",
       "failed": "Die Archivierung konnte nicht aufgehoben werden. Bitte versuche es erneut."
     },
     "archive": {
-      "title": "Kalender archivieren",
-      "text": "Der Kalender wird schreibgeschützt und aus öffentlichen Feeds genommen. Du kannst ihn jederzeit wieder aktivieren.",
       "action": "Kalender archivieren",
       "confirmTitle": "Kalender „{{name}}“ archivieren?",
       "confirmText": "Der Kalender bleibt erhalten, lässt sich aber nicht mehr ändern.",
@@ -1025,17 +970,12 @@
       "failed": "Der Kalender konnte nicht archiviert werden. Bitte versuche es erneut."
     },
     "duplicate": {
-      "title": "Kalender duplizieren",
-      "text": "Legt eine Kopie mit Eigenschaften, Features, Zielgruppen, Orten, Vorlagen und Feeds an. Termine werden nicht kopiert.",
-      "action": "Kalender duplizieren",
       "copyName": "Kopie von {{name}}",
       "done": "Kalender dupliziert. Du bist jetzt in der Kopie.",
-      "failed": "Der Kalender konnte nicht dupliziert werden. Bitte versuche es erneut."
+      "failed": "Der Kalender konnte nicht dupliziert werden. Bitte versuche es erneut.",
+      "doneStay": "Kalender „{{name}}“ wurde angelegt."
     },
     "delete": {
-      "title": "Kalender löschen",
-      "text": "Löscht den Kalender mit allem, was dazugehört. Das lässt sich nicht rückgängig machen.",
-      "action": "Kalender löschen",
       "confirmTitle": "Kalender „{{name}}“ löschen?",
       "confirmText": "Der Kalender wird dauerhaft entfernt.",
       "confirm": "Kalender löschen",
@@ -1046,9 +986,6 @@
         "unknown": "Alle Termine, Vorlagen, Feeds, Orte und Zuordnungen dieses Kalenders werden gelöscht. Veröffentlichte Feed-Adressen funktionieren danach nicht mehr.",
         "counts": "Gelöscht werden alle Termine ({{events}}), Vorlagen ({{templates}}), Feeds ({{feeds}}), Orte und Zuordnungen dieses Kalenders. Veröffentlichte Feed-Adressen funktionieren danach nicht mehr."
       }
-    },
-    "manage": {
-      "title": "Kalender verwalten"
     },
     "general": {
       "calendar": "Kalender",
@@ -1067,7 +1004,8 @@
       "saveFailed": {
         "title": "Nicht gespeichert",
         "text": "Die Einstellungen konnten nicht gespeichert werden. Bitte versuche es erneut."
-      }
+      },
+      "manageHint": "Kalender duplizieren, archivieren oder löschen findest du unter <clubLink>Verein verwalten</clubLink>."
     },
     "master": {
       "loading": "Liste wird geladen …",
@@ -1102,7 +1040,7 @@
         "loadError": "Die Eigenschaften konnten nicht geladen werden.",
         "editLabel": "{{name}} bearbeiten",
         "deleteLabel": "{{name}} löschen",
-        "editTitle": "Eigenschaft bearbeiten: {{name}}",
+        "editTitle": "Eigenschaft bearbeiten",
         "deleteTitle": "Eigenschaft „{{name}}“ löschen?",
         "deleteText": "„{{name}}“ wird aus der Liste der Eigenschaften entfernt.",
         "deleteConfirm": "Eigenschaft löschen",
@@ -1114,7 +1052,8 @@
           "events_other": "{{count}} Termine verlieren die Zuordnung zu „{{name}}“. Die Termine selbst bleiben erhalten.",
           "templates_one": "{{count}} Vorlage verliert die Zuordnung.",
           "templates_other": "{{count}} Vorlagen verlieren die Zuordnung."
-        }
+        },
+        "editText": "Name und Symbol von „{{name}}“ ändern."
       },
       "features": {
         "description": "Features sind Zusatzangebote an einem Termin, z. B. Bonusschießen. Du wählst sie beim Anlegen eines Termins aus.",
@@ -1132,7 +1071,7 @@
         "loadError": "Die Features konnten nicht geladen werden.",
         "editLabel": "{{name}} bearbeiten",
         "deleteLabel": "{{name}} löschen",
-        "editTitle": "Feature bearbeiten: {{name}}",
+        "editTitle": "Feature bearbeiten",
         "deleteTitle": "Feature „{{name}}“ löschen?",
         "deleteText": "„{{name}}“ wird aus der Liste der Features entfernt.",
         "deleteConfirm": "Feature löschen",
@@ -1144,7 +1083,8 @@
           "events_other": "{{count}} Termine verlieren die Zuordnung zu „{{name}}“. Die Termine selbst bleiben erhalten.",
           "templates_one": "{{count}} Vorlage verliert die Zuordnung.",
           "templates_other": "{{count}} Vorlagen verlieren die Zuordnung."
-        }
+        },
+        "editText": "Namen von „{{name}}“ ändern."
       },
       "audiences": {
         "description": "Zielgruppen sagen, für wen ein Termin gedacht ist, z. B. Jugend. Besucher können den Kalender danach filtern, und Abos lassen sich auf Zielgruppen beschränken.",
@@ -1162,7 +1102,7 @@
         "loadError": "Die Zielgruppen konnten nicht geladen werden.",
         "editLabel": "{{name}} bearbeiten",
         "deleteLabel": "{{name}} löschen",
-        "editTitle": "Zielgruppe bearbeiten: {{name}}",
+        "editTitle": "Zielgruppe bearbeiten",
         "deleteTitle": "Zielgruppe „{{name}}“ löschen?",
         "deleteText": "„{{name}}“ wird aus der Liste der Zielgruppen entfernt.",
         "deleteConfirm": "Zielgruppe löschen",
@@ -1174,7 +1114,8 @@
           "events_other": "{{count}} Termine verlieren die Zuordnung zu „{{name}}“. Die Termine selbst bleiben erhalten.",
           "templates_one": "{{count}} Vorlage verliert die Zuordnung.",
           "templates_other": "{{count}} Vorlagen verlieren die Zuordnung."
-        }
+        },
+        "editText": "Namen von „{{name}}“ ändern."
       }
     },
     "places": {
@@ -1327,35 +1268,6 @@
       "previewLoading": "Feiertage werden geladen …",
       "previewError": "Die Feiertage konnten nicht geladen werden.",
       "previewEmpty": "In den nächsten 12 Monaten gibt es keine Einträge."
-    },
-    "feeds": {
-      "title": "Feeds",
-      "description": "Veröffentlichen Sie Ihren Kalender als ICS-Feed für Apple Calendar, Google Calendar usw.",
-      "newFeed": "Neuer Feed",
-      "editFeed": "Feed bearbeiten",
-      "feedName": "Name",
-      "visibility": "Sichtbarkeit",
-      "public": "Öffentlich",
-      "private": "Privat",
-      "targetGroups": "Zielgruppen",
-      "icsUrl": "ICS-URL",
-      "webcalUrl": "Webcal-URL",
-      "webUrl": "Web-URL",
-      "openInApp": "In App öffnen",
-      "open": "Öffnen ↗",
-      "copy": "Kopieren",
-      "copied": "Kopiert!",
-      "sharedSecret": "Gemeinsames Geheimnis",
-      "showSecret": "Schlüssel anzeigen",
-      "hideSecret": "Schlüssel verbergen",
-      "createFeed": "Feed erstellen",
-      "regeneratingWarning": "Durch Neugenerierung werden bestehende Abonnements unterbrochen.",
-      "privateSecretInfo": "Ein gemeinsamer Schlüssel wird automatisch generiert.",
-      "deleteFeed": "Feed löschen?",
-      "cannotBeUndone": "Dieser Vorgang kann nicht rückgängig gemacht werden.",
-      "saving": "Speichern…",
-      "noFeeds": "Noch keine Feeds.",
-      "allGroups": "Alle Gruppen"
     }
   },
   "brand": {
@@ -1508,6 +1420,300 @@
       "targetGroups": "Zielgruppen",
       "locations": "Orte",
       "holidays": "Feiertage"
+    }
+  },
+  "club": {
+    "title": "Verein verwalten",
+    "subtitle": "{{name}} · Zeitzone {{zone}}",
+    "allClubs": "Zu allen Vereinen",
+    "retry": "Erneut versuchen",
+    "loading": "Verein wird geladen …",
+    "notFound": {
+      "title": "Verein nicht gefunden",
+      "text": "Diesen Verein gibt es nicht, oder du bist kein Mitglied mehr."
+    },
+    "loadError": {
+      "title": "Der Verein konnte nicht geladen werden.",
+      "text": "Prüfe deine Verbindung und versuche es erneut."
+    },
+    "name": {
+      "title": "Vereinsname",
+      "text": "Der Name erscheint in der Seitenleiste und für alle Mitglieder.",
+      "label": "Name des Vereins",
+      "error": "Bitte gib einen Namen für den Verein ein.",
+      "failed": "Der Name konnte nicht gespeichert werden. Bitte versuche es erneut.",
+      "errorSummary": "Der Vereinsname ist noch nicht gespeichert.",
+      "save": "Namen speichern",
+      "saved": "Vereinsname gespeichert."
+    },
+    "members": {
+      "title": "Mitglieder",
+      "text": "Alle Mitglieder haben dieselben Rechte und können Änderungen machen.",
+      "loading": "Mitglieder werden geladen …",
+      "loadError": "Die Mitglieder konnten nicht geladen werden.",
+      "emptyTitle": "Keine Mitglieder",
+      "empty": "Dieser Verein hat noch keine Mitglieder.",
+      "caption": "Mitglieder des Vereins ({{count}})",
+      "colName": "Name",
+      "colEmail": "E-Mail",
+      "colAction": "Aktion",
+      "you": "Du",
+      "remove": "Entfernen",
+      "leave": "Verein verlassen",
+      "removeLabel": "{{name}} entfernen",
+      "leaveLabel": "Verein {{club}} verlassen",
+      "removeTitle": "{{name}} entfernen?",
+      "removeText": "{{name}} wird aus dem Verein {{club}} entfernt.",
+      "removeConsequence": "Die Person kann den Verein, alle Kalender und Feeds nicht mehr sehen. Ihr Konto bleibt bestehen.",
+      "removeConfirm": "Mitglied entfernen",
+      "leaveTitle": "Verein verlassen?",
+      "leaveText": "Du verlässt den Verein {{club}}.",
+      "leaveConsequence": "Du verlierst den Zugriff auf alle Kalender, Termine und Feeds dieses Vereins. Die anderen Mitglieder behalten ihn.",
+      "leaveLastConsequence": "Du bist das letzte Mitglied. Der Verein bleibt ohne Mitglied zurück und niemand kann ihn danach noch öffnen oder löschen.",
+      "leaveConfirm": "Verein verlassen",
+      "removed": "{{name}} wurde aus dem Verein entfernt.",
+      "removeFailed": "Das Mitglied konnte nicht entfernt werden. Bitte versuche es erneut.",
+      "left": "Du hast den Verein {{club}} verlassen.",
+      "leaveFailed": "Du konntest den Verein nicht verlassen. Bitte versuche es erneut.",
+      "addTitle": "Mitglied hinzufügen",
+      "emailLabel": "E-Mail-Adresse",
+      "emailHint": "Die Person braucht bereits ein Club-Calendar-Konto.",
+      "emailPlaceholder": "name@beispiel.de",
+      "add": "Mitglied hinzufügen",
+      "added": "{{email}} wurde zum Verein hinzugefügt.",
+      "errorSummary": "Das Mitglied konnte noch nicht hinzugefügt werden.",
+      "problem": {
+        "empty": "Bitte gib eine E-Mail-Adresse ein.",
+        "invalid": "Bitte gib eine gültige E-Mail-Adresse ein.",
+        "duplicate": "Diese Person ist schon Mitglied im Verein.",
+        "notFound": "Zu dieser E-Mail-Adresse gibt es kein Konto. Bitte prüfe die Adresse oder bitte die Person, sich zuerst zu registrieren.",
+        "failed": "Das Mitglied konnte nicht hinzugefügt werden. Bitte versuche es erneut."
+      }
+    },
+    "calendars": {
+      "title": "Kalender",
+      "text": "Archivierte Kalender sind schreibgeschützt und stehen weiter unten.",
+      "create": "Kalender anlegen",
+      "createSubmit": "Kalender anlegen",
+      "nameLabel": "Name des Kalenders",
+      "namePlaceholder": "z. B. Schießbetrieb 2027",
+      "nameError": "Bitte gib einen Namen für den Kalender ein.",
+      "createFailed": "Der Kalender konnte nicht angelegt werden. Bitte versuche es erneut.",
+      "errorSummary": "Der Kalender ist noch nicht angelegt.",
+      "created": "Kalender „{{name}}“ wurde angelegt.",
+      "loading": "Kalender werden geladen …",
+      "loadError": "Die Kalender konnten nicht geladen werden.",
+      "emptyTitle": "Noch kein aktiver Kalender",
+      "empty": "Lege einen Kalender an, um Termine zu planen.",
+      "zone": "Zeitzone {{zone}}",
+      "archivedOn": "Archiviert am {{date}}",
+      "archivedTitle": "Archivierte Kalender",
+      "archivedText": "Archivierte Kalender lassen sich ansehen, aber nicht bearbeiten.",
+      "open": "Öffnen",
+      "view": "Ansehen",
+      "duplicate": "Duplizieren",
+      "archive": "Archivieren",
+      "restore": "Wiederherstellen",
+      "delete": "Löschen",
+      "openLabel": "Kalender {{name}} öffnen",
+      "viewLabel": "Kalender {{name}} ansehen",
+      "duplicateLabel": "Kalender {{name}} duplizieren",
+      "archiveLabel": "Kalender {{name}} archivieren",
+      "restoreLabel": "Archivierung von {{name}} aufheben",
+      "deleteLabel": "Kalender {{name}} löschen"
+    },
+    "danger": {
+      "title": "Gefahrenbereich",
+      "text": "Löscht den Verein, alle Kalender, Termine, Feeds und Vorlagen unwiderruflich.",
+      "action": "Verein löschen",
+      "confirmTitle": "Verein „{{name}}“ löschen?",
+      "confirmText": "Der Verein wird dauerhaft gelöscht.",
+      "consequence": "Löscht den Verein, alle Kalender, Termine, Feeds und Vorlagen unwiderruflich. Alle Mitglieder verlieren den Zugriff.",
+      "confirm": "Verein löschen",
+      "requireLabel": "Vereinsname zur Bestätigung eingeben",
+      "done": "Der Verein „{{name}}“ wurde gelöscht.",
+      "failed": "Der Verein konnte nicht gelöscht werden. Bitte versuche es erneut."
+    }
+  },
+  "feeds": {
+    "title": "Veröffentlichen",
+    "count_one": "{{count}} Feed",
+    "count_other": "{{count}} Feeds",
+    "export": "Kalender exportieren",
+    "create": "Feed anlegen",
+    "intro": "Mit Feeds machst du deinen Kalender für Mitglieder und Gäste sichtbar – als Webseite und als Abo für Kalender-Apps. In Feeds erscheinen nur veröffentlichte Termine; Entwürfe bleiben intern.",
+    "archived": "Dieser Kalender ist archiviert. Feeds lassen sich ansehen, aber nicht ändern. Öffentliche Feeds liefern nichts, bis du die Archivierung aufhebst.",
+    "loading": "Feeds werden geladen …",
+    "loadError": {
+      "title": "Die Feeds konnten nicht geladen werden.",
+      "text": "Prüfe deine Verbindung und versuche es erneut.",
+      "retry": "Erneut versuchen"
+    },
+    "empty": {
+      "label": "Keine Feeds",
+      "title": "Noch kein Feed",
+      "text": "Lege einen Feed an, damit Mitglieder und Gäste deinen Kalender sehen oder abonnieren können.",
+      "readOnly": "Dieser archivierte Kalender hat keine Feeds."
+    },
+    "audiencesOf": "Zielgruppen von {{name}}",
+    "allAudiences": "Alle Zielgruppen",
+    "showAccess": "Zugänge anzeigen",
+    "hideAccess": "Zugänge verbergen",
+    "edit": "Bearbeiten",
+    "editLabel": "Feed „{{name}}“ bearbeiten",
+    "deleteLabel": "Feed „{{name}}“ löschen",
+    "access": {
+      "secret": "Geheimnis",
+      "secretHint": "Das Geheimnis ist Teil jeder Adresse dieses Feeds.",
+      "secretWarning": "Gib die Adressen nur an Personen weiter, die diesen Kalender sehen sollen. Wer das Geheimnis kennt, kann den Feed lesen.",
+      "ics": "ICS-Adresse",
+      "icsHint": "Für Kalender-Apps und Programme, die eine Internetadresse abonnieren.",
+      "webcal": "Abo-Adresse (webcal)",
+      "webcalOpen": "Im Kalender-App öffnen",
+      "webcalHint": "Öffnet direkt deine Kalender-App und richtet das Abo ein.",
+      "web": "Adresse der Webansicht",
+      "webOpen": "Öffnen",
+      "webHint": "Die Seite für Mitglieder und Gäste, ohne Anmeldung."
+    },
+    "delete": {
+      "title": "Feed „{{name}}“ löschen?",
+      "text": "Der Feed wird dauerhaft gelöscht.",
+      "consequence": "Die drei Adressen funktionieren danach nicht mehr. Wer den Feed abonniert hat, bekommt keine Updates mehr.",
+      "confirm": "Feed löschen",
+      "done": "Feed „{{name}}“ gelöscht.",
+      "failed": "Der Feed konnte nicht gelöscht werden. Bitte versuche es erneut."
+    },
+    "regen": {
+      "action": "Geheimnis neu erzeugen",
+      "title": "Geheimnis neu erzeugen?",
+      "text": "Der Feed bekommt ein neues Geheimnis und damit neue Adressen.",
+      "consequence": "Bestehende Abonnements werden unterbrochen. Alle müssen die neue Abo-Adresse eintragen.",
+      "confirm": "Geheimnis neu erzeugen",
+      "done": "Neues Geheimnis erzeugt. Die Adressen des Feeds haben sich geändert.",
+      "failed": "Das Geheimnis konnte nicht erneuert werden. Bitte versuche es erneut."
+    },
+    "secret": {
+      "title": "Geheimnis",
+      "text": "Das Geheimnis ist Teil jeder Adresse dieses Feeds. Nur wer es kennt, kann den Kalender sehen.",
+      "hint": "Anzeigen, kopieren oder an Berechtigte weitergeben."
+    },
+    "form": {
+      "loading": "Feed wird geladen …",
+      "back": "Zurück zu Veröffentlichen",
+      "newTitle": "Feed anlegen",
+      "editTitle": "Feed bearbeiten",
+      "viewTitle": "Feed „{{name}}“",
+      "notFound": {
+        "title": "Feed nicht gefunden",
+        "text": "Diesen Feed gibt es nicht mehr. Vielleicht wurde er gelöscht."
+      },
+      "intro": "Ein Feed enthält nur veröffentlichte Termine. Entwürfe bleiben intern.",
+      "readOnly": "Dieser Kalender ist archiviert. Der Feed lässt sich nur ansehen.",
+      "errorTitle": "Der Feed ist noch nicht vollständig.",
+      "basics": "Grunddaten",
+      "name": "Name",
+      "nameHint": "So heißt der Feed in deiner Übersicht.",
+      "namePlaceholder": "z. B. Öffentlicher Kalender",
+      "nameError": "Bitte gib einen Namen für den Feed ein.",
+      "visibility": "Sichtbarkeit",
+      "vis": {
+        "public": {
+          "label": "Öffentlich",
+          "text": "Jeder mit dem Link kann den Kalender sehen."
+        },
+        "private": {
+          "label": "Privat",
+          "text": "Nur mit Geheimnis in der Adresse."
+        }
+      },
+      "audiences": "Zielgruppen",
+      "audiencesHint": "Ohne Auswahl enthält der Feed alle Zielgruppen.",
+      "audiencesNone": "In diesem Kalender gibt es noch keine Zielgruppen. Der Feed enthält alle Termine.",
+      "audiencesError": "Die Zielgruppen konnten nicht geladen werden.",
+      "access": "Zugänge",
+      "accessNew": "Die drei Adressen (ICS, Abo und Webansicht) erscheinen hier, sobald du den Feed gespeichert hast.",
+      "save": "Feed speichern",
+      "saving": "Speichern …",
+      "delete": "Feed löschen",
+      "created": "Feed „{{name}}“ angelegt.",
+      "saved": "Feed „{{name}}“ gespeichert.",
+      "saveFailed": "Der Feed konnte nicht gespeichert werden. Bitte versuche es erneut."
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "intro": "Dein Konto und deine persönlichen Einstellungen.",
+    "signOut": "Abmelden",
+    "toClubs": "Zu allen Vereinen",
+    "loading": "Profil wird geladen …",
+    "loadError": {
+      "title": "Das Profil konnte nicht geladen werden.",
+      "text": "Passkeys und verknüpfte Anmeldungen sind gerade nicht verfügbar.",
+      "retry": "Erneut versuchen"
+    },
+    "me": {
+      "readOnly": "Name und E-Mail können hier noch nicht geändert werden."
+    },
+    "sso": {
+      "title": "Verknüpfte Anmeldungen",
+      "text": "Damit meldest du dich ohne Passwort an.",
+      "none": "Es ist keine Anmeldung über einen Anbieter wie Google oder Microsoft verknüpft.",
+      "linked": "Verbunden",
+      "notLinked": "Nicht verbunden",
+      "link": "Konto verknüpfen",
+      "unlink": "Verknüpfung trennen",
+      "linkLabel": "{{name}}-Konto verknüpfen",
+      "unlinkLabel": "{{name}}-Verknüpfung trennen",
+      "soon": "Bald verfügbar: Verknüpfen und Trennen ist hier noch nicht möglich."
+    },
+    "passkeys": {
+      "title": "Passkeys",
+      "text": "Mit einem Passkey meldest du dich per Fingerabdruck, Gesichtserkennung oder Geräte-PIN an.",
+      "none": "Du hast noch keinen Passkey eingerichtet.",
+      "listLabel": "Deine Passkeys ({{count}})",
+      "addedOn": "hinzugefügt am {{date}}",
+      "remove": "Entfernen",
+      "removeLabel": "Passkey „{{name}}“ entfernen",
+      "removeTitle": "Passkey „{{name}}“ entfernen?",
+      "removeText": "Der Passkey „{{name}}“ wird aus deinem Konto gelöscht.",
+      "removeConsequence": "Mit diesem Gerät kannst du dich danach nicht mehr per Passkey anmelden. Deine anderen Anmeldewege bleiben bestehen.",
+      "removeConfirm": "Passkey entfernen",
+      "removed": "Passkey „{{name}}“ entfernt.",
+      "removeFailed": "Der Passkey konnte nicht entfernt werden. Bitte versuche es erneut.",
+      "addTitle": "Neuen Passkey hinzufügen",
+      "deviceLabel": "Gerätename",
+      "deviceHint": "Mit dem Namen erkennst du das Gerät später in der Liste.",
+      "devicePlaceholder": "z. B. Büro-PC",
+      "thisDevice": "Dieses Gerät",
+      "add": "Passkey auf diesem Gerät einrichten",
+      "waiting": "Warte auf dein Gerät …",
+      "added": "Passkey „{{name}}“ wurde hinzugefügt.",
+      "error": "Der Passkey konnte nicht eingerichtet werden. Prüfe, ob dein Gerät Passkeys unterstützt, und versuche es erneut.",
+      "cancelled": "Das Einrichten wurde abgebrochen. Du kannst es jederzeit erneut versuchen.",
+      "unsupported": "Dieser Browser unterstützt keine Passkeys."
+    },
+    "prefs": {
+      "title": "Persönliche Einstellungen",
+      "text": "Änderungen gelten sofort.",
+      "dateFormat": "Datumsformat",
+      "firstDay": "Erster Wochentag",
+      "monday": "Montag",
+      "sunday": "Sonntag",
+      "language": "Sprache",
+      "themeHint": "Gilt nur in diesem Browser.",
+      "saved": "Gespeichert",
+      "saveFailed": "Die Einstellung konnte nicht gespeichert werden. Bitte versuche es erneut."
+    },
+    "danger": {
+      "title": "Gefahrenbereich",
+      "text": "Löscht dein Konto mit allen Passkeys und verknüpften Anmeldungen unwiderruflich.",
+      "action": "Konto löschen",
+      "confirmTitle": "Konto löschen?",
+      "confirmText": "Dies löscht dein Konto dauerhaft. Dieser Vorgang kann nicht rückgängig gemacht werden.",
+      "consequence": "Löscht dein Konto, deine Passkeys und verknüpften Anmeldungen. Du wirst abgemeldet.",
+      "confirm": "Konto löschen",
+      "requireLabel": "Zur Bestätigung deine E-Mail-Adresse eingeben",
+      "failed": "Das Konto konnte nicht gelöscht werden. Bitte versuche es erneut."
     }
   }
 }

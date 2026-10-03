@@ -29,6 +29,7 @@ import TemplateEditPage from "./pages/TemplateEditPage";
 import MorePage from "./pages/MorePage";
 import CalendarSettingsPage from "./pages/settings/CalendarSettingsPage";
 import FeedsPage from "./pages/settings/FeedsPage";
+import FeedEditPage from "./pages/settings/FeedEditPage";
 import PropertiesPage from "./pages/settings/PropertiesPage";
 import FeaturesPage from "./pages/settings/FeaturesPage";
 import LocationsPage from "./pages/settings/LocationsPage";
@@ -110,6 +111,14 @@ export default function App() {
                 <Route
                   path="/clubs/:clubId/calendars/:calendarId/settings/feeds"
                   element={<FeedsPage />}
+                />
+                <Route
+                  path="/clubs/:clubId/calendars/:calendarId/settings/feeds/new"
+                  element={<FeedEditPage />}
+                />
+                <Route
+                  path="/clubs/:clubId/calendars/:calendarId/settings/feeds/:feedId"
+                  element={<FeedEditPage />}
                 />
                 <Route
                   path="/clubs/:clubId/calendars/:calendarId/settings/properties"

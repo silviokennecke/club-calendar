@@ -61,6 +61,44 @@ This is a **Vite + React + React Router** SPA (not Next.js).
   `…/templates/new` and `…/templates/:templateId` (`TemplateEditPage`, read-only in archived calendars); pure logic in
   `src/lib/templates/` (`form.ts`). `components/events/AssignmentFields` (properties / features / target groups with
   inline creation) is shared by the event form, the template form and the import review. The old TemplateModal is gone.
+- Settings (phase 6): all pages below `…/settings` use `components/settings/SettingsLayout` (heading with club and
+  calendar, `SettingsTabs`, the read-only banner of archived calendars with "Archivierung aufheben", skeleton /
+  error states; `wide` for the places page). `useSettingsPage()` = `useEventPage()` + club + `readOnly`.
+  Pure logic in `src/lib/settings/` (`masterList.ts` name check + usage counts, `location.ts`, `holidays.ts`,
+  `timezones.ts`) with Vitest tests. Pages: `CalendarSettingsPage` (name, time zone; archiving / duplicating /
+  deleting are NOT here, a text link leads to the club page), `PropertiesPage` / `FeaturesPage` /
+  `TargetGroupsPage` (thin wrappers of `<MasterList kind=…>`), `LocationsPage`, `HolidayCalendarsPage`.
+  - `MasterList` (properties, features, audiences): add form, list, rename in a `FormDialog` (label, error summary,
+    Enter saves, Escape cancels, focus returns to the edit button), delete with the usage counts (it loads all
+    events and templates when the dialog opens).
+  - Places: `components/locations/` – `LocationPanel` (form), `AddressSearch` (geocoding via the backend, live
+    hit count), `CoordinateFields` (keyboard alternative to the map), `PositionMap` (click / drag, lazy),
+    `LocationsOverviewMap` (pins are buttons, the list is the alternative), `MapBoundary` (a failing map never
+    takes the page down), `useMapbox` / `mapboxProxy`. `HolidayPreview` (next twelve months, loaded on open).
+  - `useCalendarActions(clubId, calendarId, name, { stay })` = archive / unarchive / duplicate / delete with toasts;
+    `stay` keeps the club page in place. `CalendarDeleteDialog` = delete confirmation with event / template / feed
+    counts.
+- Publish, club, profile (phase 7):
+  - Feeds: list `…/settings/feeds` (`pages/settings/FeedsPage`: visibility as `StatusBadge` word + icon, audience
+    tags, addresses behind a disclosure, first feed open, a freshly saved one opens via router state `{ open }`),
+    `…/settings/feeds/new` and `…/settings/feeds/:feedId` (`FeedEditPage`: name, visibility radios, audience chips,
+    secret panel with "Geheimnis neu erzeugen" behind a `ConfirmDialog`, addresses of the saved feed; archived
+    calendars are read-only). The backend has no single-feed GET, the page picks the feed from the list. UI in
+    `components/feeds/` (`FeedAccess` = CopyFields for secret / ICS / webcal / web, `AudienceTags`, `useFeeds`);
+    pure logic in `src/lib/feeds/` (`feedAddresses`: private feeds carry `?secret=` in every address, form values,
+    payload). The old emoji icons are gone: visibility is always icon + word.
+  - Club: `/clubs/:clubId` (`pages/ClubPage`, in `components/club/`: `ClubNameSection`, `MembersSection` (table,
+    remove / leave with `ConfirmDialog`, add by e-mail with 404 -> "no account"), `CalendarsSection` (create form,
+    one `CalendarRow` per calendar with open / duplicate / archive / delete, archived list with restore). Deleting
+    the club asks to type its name (`ConfirmDialog` `requireText`). Pure logic: `src/lib/club/`.
+  - Profile: `/profile` (`pages/ProfilePage`, `components/profile/`: `LinkedLoginsSection` (read-only, link / unlink
+    disabled "Bald verfügbar"), `PasskeysSection` (WebAuthn via `@simplewebauthn/browser`, remove with
+    `ConfirmDialog`), `PreferencesSection` (date format, first weekday and language are saved on the account at
+    once, theme only in this browser)). Without a last-used club the page uses the `AuthLayout` frame instead of
+    the app shell. Pure logic: `src/lib/profile/`.
+  - Dialog guidance: use a controlled `open` state for `ConfirmDialog` when the page re-renders while it is open
+    (trigger mode closed the dialog when data arrived in the browser). `FormDialog` (shared) is the dialog shell for
+    forms.
 - Unsaved changes: `useUnsavedChanges(dirty)` (`src/lib/useUnsavedChanges.ts`) + `<UnsavedChangesDialog>`;
   intercepts in-app link clicks and `guard(fn)` navigation, plus `beforeunload` (BrowserRouter has no `useBlocker`).
 - Icons: lucide-react via `<Icon glyph="..." />` (design glyph names, `shared/Icon.tsx`). No emojis as UI icons.
@@ -72,29 +110,30 @@ This is a **Vite + React + React Router** SPA (not Next.js).
 Before writing raw Tailwind layout divs in a page, check `src/components/ui/shared/` first
 (import from `@/components/ui/shared`):
 
-| Component                                                                                | Use for                                                                 |
-| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `Button` / `LinkButton` / `IconButton`                                                   | Buttons (primary, secondary, ghost, danger, danger-solid, ghost-danger) |
-| `SplitButton`                                                                            | Primary action + menu of alternatives (e.g. "Termin anlegen")           |
-| `buttonClass()`                                                                          | Button styling for other elements (e.g. dialog triggers)                |
-| `Field` + `TextInput`/`TextArea`/`NativeSelect`                                          | Label, hint, error, aria wiring (`group` mode for composite controls)   |
-| `Toggle`                                                                                 | On/off switch (`role="switch"`)                                         |
-| `Tag` / `TagBadge` / `TagBadgeRow`                                                       | Audience/property/feature labels (tones)                                |
-| `StatusBadge`                                                                            | Status as icon + word (published, draft, holiday, archived, ...)        |
-| `Banner`                                                                                 | Persistent info/warning/danger/success notice                           |
-| `Toaster` / `toast`                                                                      | Short feedback (sonner, styled)                                         |
-| `EmptyState`                                                                             | Empty lists with explanation and next action                            |
-| `ConfirmDialog`                                                                          | Destructive confirmations incl. consequences                            |
-| `CopyField`                                                                              | URLs/secrets with copy feedback                                         |
-| `Chip` / `ChipSelect` / `FilterPillGroup`                                                | Toggle chips, multi-select with create, filters                         |
-| `EmojiPicker`                                                                            | Club-chosen symbols (presets, custom, emoji-mart lazy)                  |
-| `Stepper`                                                                                | Setup progress                                                          |
-| `LangSwitch`                                                                             | Language (bound to i18next)                                             |
-| `Skeleton`                                                                               | Loading placeholders (`aria-busy` on the region)                        |
-| `ErrorSummary`                                                                           | Form error list with links to the fields, focus after a failed submit   |
-| `UnsavedChangesDialog`                                                                   | "Änderungen verwerfen?" (with `useUnsavedChanges`)                      |
-| `Logo`, `Icon`                                                                           | Brand mark, design glyphs                                               |
-| `SectionHeader`, `ListCard`, `ListRow`, `SearchInput`, `FullPageLoader`, `FullPageError` | Legacy helpers, restyled with tokens                                    |
+| Component                                                                                | Use for                                                                  |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `Button` / `LinkButton` / `IconButton`                                                   | Buttons (primary, secondary, ghost, danger, danger-solid, ghost-danger)  |
+| `SplitButton`                                                                            | Primary action + menu of alternatives (e.g. "Termin anlegen")            |
+| `buttonClass()`                                                                          | Button styling for other elements (e.g. dialog triggers)                 |
+| `Field` + `TextInput`/`TextArea`/`NativeSelect`                                          | Label, hint, error, aria wiring (`group` mode for composite controls)    |
+| `Toggle`                                                                                 | On/off switch (`role="switch"`)                                          |
+| `Tag` / `TagBadge` / `TagBadgeRow`                                                       | Audience/property/feature labels (tones)                                 |
+| `StatusBadge`                                                                            | Status as icon + word (published, draft, holiday, archived, ...)         |
+| `Banner`                                                                                 | Persistent info/warning/danger/success notice                            |
+| `Toaster` / `toast`                                                                      | Short feedback (sonner, styled)                                          |
+| `EmptyState`                                                                             | Empty lists with explanation and next action                             |
+| `ConfirmDialog`                                                                          | Destructive confirmations incl. consequences                             |
+| `FormDialog`                                                                             | Dialog with a form (title, fields, footer; Enter submits, Escape closes) |
+| `CopyField`                                                                              | URLs/secrets with copy feedback                                          |
+| `Chip` / `ChipSelect` / `FilterPillGroup`                                                | Toggle chips, multi-select with create, filters                          |
+| `EmojiPicker`                                                                            | Club-chosen symbols (presets, custom, emoji-mart lazy)                   |
+| `Stepper`                                                                                | Setup progress                                                           |
+| `LangSwitch`                                                                             | Language (bound to i18next)                                              |
+| `Skeleton`                                                                               | Loading placeholders (`aria-busy` on the region)                         |
+| `ErrorSummary`                                                                           | Form error list with links to the fields, focus after a failed submit    |
+| `UnsavedChangesDialog`                                                                   | "Änderungen verwerfen?" (with `useUnsavedChanges`)                       |
+| `Logo`, `Icon`                                                                           | Brand mark, design glyphs                                                |
+| `SectionHeader`, `ListCard`, `ListRow`, `SearchInput`, `FullPageLoader`, `FullPageError` | Legacy helpers, restyled with tokens                                     |
 
 For Mapbox maps: use `useMapbox` from `src/components/locations/useMapbox.ts`.
 
