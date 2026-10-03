@@ -12,6 +12,7 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import EmailVerifyPage from "./pages/EmailVerifyPage";
 import FeedPage from "./pages/FeedPage";
+import PublicEventPage from "./pages/PublicEventPage";
 import ClubsPage from "./pages/ClubsPage";
 import SetupPage from "./pages/SetupPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -52,6 +53,7 @@ export default function App() {
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
               <Route path="/auth/verify-email" element={<EmailVerifyPage />} />
               <Route path="/feed/:feedId" element={<FeedPage />} />
+              <Route path="/feed/:feedId/events/:eventId" element={<PublicEventPage />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route path="/clubs" element={<ClubsPage />} />

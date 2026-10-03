@@ -20,6 +20,8 @@ interface EventItemProps {
   /** Opens the event; holidays are never clickable. */
   onOpen?: (item: CalItem) => void;
   headingLevel?: "h3" | "h4";
+  /** Status badge (default); the public view lists published events only and hides it. */
+  showStatus?: boolean;
 }
 
 /**
@@ -33,6 +35,7 @@ export function EventItem({
   tags = [],
   onOpen,
   headingLevel = "h3",
+  showStatus = true,
 }: EventItemProps) {
   const { t } = useTranslation();
   const locale = useLocale();
@@ -73,7 +76,7 @@ export function EventItem({
               </>
             )}
           </Heading>
-          <StatusBadge status={status} />
+          {showStatus && <StatusBadge status={status} />}
         </div>
         <p className="cc-meta">{meta}</p>
         {tags.length > 0 && (

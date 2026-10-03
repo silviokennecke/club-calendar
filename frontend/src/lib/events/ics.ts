@@ -102,6 +102,12 @@ function utcStamp(d: Date): string {
   );
 }
 
+/** Local date-time without zone ("20261024T150000"). */
+function floatingStamp(date: IsoDate, time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  return `${dateValue(date)}T${pad(h || 0)}${pad(m || 0)}00`;
+}
+
 function dateValue(iso: IsoDate): string {
   return iso.replace(/-/g, "");
 }
@@ -137,7 +143,27 @@ export function foldLine(line: string): string {
   return out.join("\r\n ");
 }
 
-function locationText(loc: Location): string {
+/** What the file needs of an event (admin events and public feed events both fit). */
+export interface IcsEvent {
+  id: string;
+  name: string;
+  date: string;
+  dateEnd?: string | null;
+  timeBegin: string;
+  timeEnd: string;
+  isAllDay?: boolean;
+  timezone?: string | null;
+  isDraft?: boolean;
+  location?: Pick<
+    Location,
+    "name" | "street" | "zip" | "city" | "country" | "latitude" | "longitude"
+  > | null;
+  properties: { property: { icon: string | null } }[];
+  features: { feature: { name: string } }[];
+  targetGroups: { targetGroup: { name: string } }[];
+}
+
+function locationText(loc: NonNullable<IcsEvent["location"]>): string {
   return [loc.name, formatAddress(loc)].filter(Boolean).join(", ");
 }
 
@@ -150,7 +176,7 @@ export interface IcsOptions {
   now?: Date;
 }
 
-function eventLines(ev: CalendarEvent, opts: IcsOptions, stamp: string): string[] {
+function eventLines(ev: IcsEvent, opts: IcsOptions, stamp: string): string[] {
   const start = ev.date.slice(0, 10);
   const end = ev.dateEnd ? ev.dateEnd.slice(0, 10) : start;
   const icons = ev.properties
@@ -168,8 +194,14 @@ function eventLines(ev: CalendarEvent, opts: IcsOptions, stamp: string): string[
     lines.push(`DTEND;VALUE=DATE:${dateValue(addDays(end, 1))}`);
   } else {
     const zone = ev.timezone || opts.timeZone;
-    lines.push(`DTSTART:${utcStamp(zonedTimeToUtc(start, ev.timeBegin, zone))}`);
-    lines.push(`DTEND:${utcStamp(zonedTimeToUtc(end, ev.timeEnd, zone))}`);
+    if (zone) {
+      lines.push(`DTSTART:${utcStamp(zonedTimeToUtc(start, ev.timeBegin, zone))}`);
+      lines.push(`DTEND:${utcStamp(zonedTimeToUtc(end, ev.timeEnd, zone))}`);
+    } else {
+      // Unknown zone (public feed events without one): floating local time keeps "15:00" as shown.
+      lines.push(`DTSTART:${floatingStamp(start, ev.timeBegin)}`);
+      lines.push(`DTEND:${floatingStamp(end, ev.timeEnd)}`);
+    }
   }
   const description = [
     ev.features.length > 0
@@ -192,7 +224,7 @@ function eventLines(ev: CalendarEvent, opts: IcsOptions, stamp: string): string[
 }
 
 /** A complete VCALENDAR with CRLF line endings and folded lines. */
-export function buildIcs(events: CalendarEvent[], opts: IcsOptions): string {
+export function buildIcs(events: IcsEvent[], opts: IcsOptions): string {
   const stamp = utcStamp(opts.now ?? new Date());
   const lines = [
     "BEGIN:VCALENDAR",
@@ -206,6 +238,14 @@ export function buildIcs(events: CalendarEvent[], opts: IcsOptions): string {
     "END:VCALENDAR",
   ];
   return lines.map(foldLine).join("\r\n") + "\r\n";
+}
+
+/**
+ * A one-event file for "Zum Kalender hinzufügen" on the public event page. Same UID as the
+ * feed (`event-<id>@club-calendar`), so a later subscription replaces instead of duplicating it.
+ */
+export function buildEventIcs(event: IcsEvent, opts: IcsOptions): string {
+  return buildIcs([event], opts);
 }
 
 /** File name like "schiessbetrieb-2026.ics". */

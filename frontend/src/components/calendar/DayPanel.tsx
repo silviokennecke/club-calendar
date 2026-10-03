@@ -17,6 +17,7 @@ interface DayPanelProps {
   placeOf?: (item: CalItem) => string | null | undefined;
   tagsOf?: (item: CalItem) => EventItemTag[];
   className?: string;
+  showStatus?: boolean;
 }
 
 /**
@@ -25,7 +26,7 @@ interface DayPanelProps {
  * focus (ref) when the panel is opened from the grid.
  */
 export const DayPanel = forwardRef<HTMLHeadingElement, DayPanelProps>(function DayPanel(
-  { date, items, onOpenItem, onCreate, onClose, placeOf, tagsOf, className },
+  { date, items, onOpenItem, onCreate, onClose, placeOf, tagsOf, className, showStatus },
   headingRef,
 ) {
   const { t } = useTranslation();
@@ -63,6 +64,7 @@ export const DayPanel = forwardRef<HTMLHeadingElement, DayPanelProps>(function D
                 place={placeOf?.(item)}
                 tags={tagsOf?.(item)}
                 onOpen={onOpenItem}
+                showStatus={showStatus}
               />
             </li>
           ))}

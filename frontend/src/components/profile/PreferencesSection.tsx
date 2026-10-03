@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Field, LangSwitch, toast } from "@/components/ui/shared";
+import { Field, LangSwitch, ThemeSwitch, toast } from "@/components/ui/shared";
 import { useAuth } from "@/lib/auth-context";
 import { dateFormatChoices } from "@/lib/profile";
-import { useTheme, type ThemePreference } from "@/lib/theme";
 
-const THEMES: ThemePreference[] = ["light", "dark", "system"];
 const WEEKDAYS = [
   { value: 1, key: "monday" },
   { value: 0, key: "sunday" },
@@ -19,7 +17,6 @@ const WEEKDAYS = [
 export function PreferencesSection() {
   const { t, i18n } = useTranslation();
   const { user, updateUser } = useAuth();
-  const { theme, setTheme } = useTheme();
   // The choice shows immediately; it is taken back when saving fails.
   const [pending, setPending] = useState<{ dateFormat?: string; firstDayOfWeek?: number }>({});
   const dateFormat = pending.dateFormat ?? user?.dateFormat ?? "dd.MM.yyyy";
@@ -90,18 +87,7 @@ export function PreferencesSection() {
         </Field>
 
         <Field group label={t("ui.theme.label")} hint={t("profile.prefs.themeHint")}>
-          <div className="ap-seg">
-            {THEMES.map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={theme === option}
-                onClick={() => setTheme(option)}
-              >
-                {t(`ui.theme.${option}`)}
-              </button>
-            ))}
-          </div>
+          <ThemeSwitch />
         </Field>
       </div>
     </section>

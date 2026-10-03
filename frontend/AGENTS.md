@@ -99,6 +99,18 @@ This is a **Vite + React + React Router** SPA (not Next.js).
   - Dialog guidance: use a controlled `open` state for `ConfirmDialog` when the page re-renders while it is open
     (trigger mode closed the dialog when data arrived in the browser). `FormDialog` (shared) is the dialog shell for
     forms.
+- Public access (phase 8, no app shell, no sign-in): `pages/FeedPage` (`/feed/:feedId`) and `pages/PublicEventPage`
+  (`/feed/:feedId/events/:eventId`) share `components/feed/` (`PublicShell` = skip link, brand row with `LangSwitch` +
+  `ThemeSwitch`, header, `<main id="main">`, footer; `usePublicHead` sets `<meta name="referrer" content="no-referrer">`,
+  `noindex` when `?secret=` is present or the page is an error state and a title without the secret; `usePublicFeed` =
+  react-query over `fetchPublicFeed` with `referrerPolicy: "no-referrer"`, no auth headers, no retries; `PublicStates`
+  = loading / private (403) / not found (404) / load error with retry; lazy `PublicEventMap` with `useMapbox`, text
+  alternative = address + "In Karten-App öffnen"). Pure logic in `src/lib/feeds/public.ts` (error kinds, `feedTimeZone` =
+  most frequent event zone because the API has none, audiences, filter, month counts, subscribe addresses, in-app
+  paths that keep `?secret=`). View state lives in the URL (`date`, `view=list`, `q`, `groups`, plus `secret`); the event
+  page returns via router state `{ from }`. `MonthView`/`EventItem`/`CalendarLegend` take `publicView` / `showStatus` /
+  `showDraft` (no status badges, no draft legend). The one-event ICS file is `buildEventIcs` (`lib/events/ics.ts`;
+  floating local time when no zone is known). `ThemeSwitch` (shared) is also used by the profile.
 - Unsaved changes: `useUnsavedChanges(dirty)` (`src/lib/useUnsavedChanges.ts`) + `<UnsavedChangesDialog>`;
   intercepts in-app link clicks and `guard(fn)` navigation, plus `beforeunload` (BrowserRouter has no `useBlocker`).
 - Icons: lucide-react via `<Icon glyph="..." />` (design glyph names, `shared/Icon.tsx`). No emojis as UI icons.
@@ -129,6 +141,7 @@ Before writing raw Tailwind layout divs in a page, check `src/components/ui/shar
 | `EmojiPicker`                                                                            | Club-chosen symbols (presets, custom, emoji-mart lazy)                   |
 | `Stepper`                                                                                | Setup progress                                                           |
 | `LangSwitch`                                                                             | Language (bound to i18next)                                              |
+| `ThemeSwitch`                                                                            | Hell / Dunkel / Wie System (profile, public pages)                       |
 | `Skeleton`                                                                               | Loading placeholders (`aria-busy` on the region)                         |
 | `ErrorSummary`                                                                           | Form error list with links to the fields, focus after a failed submit    |
 | `UnsavedChangesDialog`                                                                   | "Änderungen verwerfen?" (with `useUnsavedChanges`)                       |
