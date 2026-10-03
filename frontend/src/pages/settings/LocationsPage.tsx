@@ -1,359 +1,427 @@
-import { useState, lazy, Suspense } from "react";
-import { useParams } from "react-router-dom";
+import { lazy, Suspense, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api";
-import type { Location } from "@/lib/types";
-import { formatAddress, formatLocationLabel } from "@/lib/types";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Field, EmptyState } from "@/components/ui/shared";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Plus, MapPin, Pencil, Trash2 } from "lucide-react";
-import type { GeocodedAddress } from "@/components/locations/MapPicker";
 import { useTranslation } from "react-i18next";
+import {
+  Banner,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  Icon,
+  IconButton,
+  Skeleton,
+  UnsavedChangesDialog,
+  toast,
+} from "@/components/ui/shared";
+import { LocationPanel } from "@/components/locations/LocationPanel";
+import { MapBoundary } from "@/components/locations/MapBoundary";
+import type { AddressSuggestion } from "@/components/locations/AddressSearch";
+import { SettingsLayout } from "@/components/settings/SettingsLayout";
+import { useSettingsPage } from "@/components/settings/useSettingsPage";
+import { apiDelete, apiFetch, apiGet, apiPatch, apiPost } from "@/lib/api";
+import { formatAddress, type CalendarEvent, type EventTemplate, type Location } from "@/lib/types";
+import {
+  EMPTY_LOCATION_FORM,
+  countLocationUsage,
+  fillEmptyAddress,
+  hasPosition,
+  locationFormValid,
+  locationPayload,
+  locationToForm,
+  placeTitle,
+  sameLocationForm,
+  type AddressField,
+  type GeocodedAddress,
+  type LocationForm,
+} from "@/lib/settings";
+import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 
-void formatLocationLabel;
-
-const MapPicker = lazy(() => import("@/components/locations/MapPicker"));
 const LocationsOverviewMap = lazy(() => import("@/components/locations/LocationsOverviewMap"));
 
-interface FormState {
-  name: string;
-  street: string;
-  zip: string;
-  city: string;
-  country: string;
-  latitude: number | null;
-  longitude: number | null;
-}
-
-const emptyForm: FormState = {
-  name: "",
-  street: "",
-  zip: "",
-  city: "",
-  country: "",
-  latitude: null,
-  longitude: null,
-};
-
+/**
+ * Settings "Orte" (design: SettingsPlaces, SettingsPlacesMobile): overview map and list on the
+ * left, form panel on the right (stacked on phones). The list and the form are the full way to
+ * manage places; the maps are an addition (text alternative, coordinate fields).
+ */
 export default function LocationsPage() {
   const { t } = useTranslation();
-  const { calendarId } = useParams<{ calendarId: string }>();
   const qc = useQueryClient();
+  const page = useSettingsPage();
+  const { calendarId, readOnly } = page;
+  const queryKey = ["locations", calendarId];
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const list = useQuery<Location[]>({
+    queryKey,
+    queryFn: () => apiGet<Location[]>(`/api/calendars/${calendarId}/locations`),
+  });
+  const places = useMemo(() => list.data ?? [], [list.data]);
+
+  // editId: place in the form, null = new place
+  const [editId, setEditId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [form, setForm] = useState<LocationForm>(EMPTY_LOCATION_FORM);
+  const [baseline, setBaseline] = useState<LocationForm>(EMPTY_LOCATION_FORM);
+  const [filled, setFilled] = useState<AddressField[]>([]);
+  const [invalid, setInvalid] = useState(false);
+  const [signal, setSignal] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Location | null>(null);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [deleting, setDeleting] = useState<Location | null>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const reverseSeq = useRef(0);
 
-  const { data: locations = [] } = useQuery<Location[]>({
-    queryKey: ["locations", calendarId],
-    queryFn: () => apiGet(`/api/calendars/${calendarId}/locations`),
+  const dirty = !sameLocationForm(form, baseline);
+  const guard = useUnsavedChanges(dirty);
+  const editing = editId ? places.find((p) => p.id === editId) : undefined;
+
+  const usage = useQuery({
+    queryKey: ["usage", "locations", calendarId],
+    enabled: !!deleting,
+    staleTime: 0,
+    gcTime: 0,
+    queryFn: async () => {
+      const [events, templates] = await Promise.all([
+        apiGet<CalendarEvent[]>(`/api/calendars/${calendarId}/events`),
+        apiGet<EventTemplate[]>(`/api/calendars/${calendarId}/templates`),
+      ]);
+      return { events, templates };
+    },
   });
 
-  const locationsWithCoords = locations.filter(
-    (l): l is Location & { latitude: number; longitude: number } =>
-      l.latitude != null && l.longitude != null,
-  );
-
-  function openCreate() {
-    setEditingLocation(null);
-    setForm(emptyForm);
-    setModalOpen(true);
+  function load(id: string | null, next: LocationForm, select: string | null) {
+    reverseSeq.current++;
+    setEditId(id);
+    setSelectedId(select);
+    setForm(next);
+    setBaseline(next);
+    setFilled([]);
+    setInvalid(false);
+    setFailed(false);
   }
 
-  function openEdit(loc: Location) {
-    setEditingLocation(loc);
-    setForm({
-      name: loc.name ?? "",
-      street: loc.street ?? "",
-      zip: loc.zip ?? "",
-      city: loc.city ?? "",
-      country: loc.country ?? "",
-      latitude: loc.latitude ?? null,
-      longitude: loc.longitude ?? null,
+  function focusPanel() {
+    setTimeout(() => {
+      const panel = document.getElementById("place-panel");
+      panel?.scrollIntoView?.({ block: "start" });
+      headingRef.current?.focus({ preventScroll: true });
+    }, 0);
+  }
+
+  function startNew() {
+    guard.guard(() => {
+      load(null, EMPTY_LOCATION_FORM, null);
+      focusPanel();
     });
-    setModalOpen(true);
   }
 
-  function closeModal() {
-    setModalOpen(false);
-    setEditingLocation(null);
-    setForm(emptyForm);
+  function startEdit(loc: Location) {
+    guard.guard(() => {
+      load(loc.id, locationToForm(loc), loc.id);
+      focusPanel();
+    });
   }
 
-  function handleMapPosition(lat: number, lng: number, geocoded: GeocodedAddress) {
+  function change(patch: Partial<LocationForm>) {
+    setForm((f) => ({ ...f, ...patch }));
+    setInvalid(false);
+    setFailed(false);
+    if ("street" in patch || "zip" in patch || "city" in patch || "country" in patch) {
+      setFilled([]);
+    }
+  }
+
+  function onSuggestion(s: AddressSuggestion) {
+    reverseSeq.current++;
+    setFilled([]);
+    setInvalid(false);
     setForm((f) => ({
       ...f,
-      latitude: lat,
-      longitude: lng,
-      street: f.street || geocoded.street || "",
-      zip: f.zip || geocoded.zip || "",
-      city: f.city || geocoded.city || "",
-      country: f.country || geocoded.country || "",
+      street: s.street ?? "",
+      zip: s.zip ?? "",
+      city: s.city ?? "",
+      country: s.country ?? "",
+      latitude: s.lat,
+      longitude: s.lng,
     }));
   }
 
-  const mapPickerAddress = formatAddress(form) || form.street || undefined;
-
-  async function handleSave() {
-    setSaving(true);
+  async function onPick(latitude: number, longitude: number) {
+    const mine = ++reverseSeq.current;
+    setForm((f) => ({ ...f, latitude, longitude }));
+    setInvalid(false);
     try {
-      const payload = {
-        name: form.name.trim() || null,
-        street: form.street.trim() || null,
-        zip: form.zip.trim() || null,
-        city: form.city.trim() || null,
-        country: form.country.trim() || null,
-        latitude: form.latitude,
-        longitude: form.longitude,
-      };
-      if (editingLocation) {
-        await apiPatch(`/api/calendars/${calendarId}/locations/${editingLocation.id}`, payload);
-      } else {
-        await apiPost(`/api/calendars/${calendarId}/locations`, payload);
-      }
-      qc.invalidateQueries({ queryKey: ["locations", calendarId] });
-      closeModal();
+      const res = await apiFetch(`/api/map/geocode/reverse?lat=${latitude}&lng=${longitude}`);
+      if (!res.ok || mine !== reverseSeq.current) return;
+      const geo = (await res.json()) as GeocodedAddress;
+      setForm((f) => {
+        const result = fillEmptyAddress(f, geo);
+        setFilled(result.filled);
+        return result.form;
+      });
+    } catch {
+      // The position stays; the address fields can be typed.
+    }
+  }
+
+  async function save() {
+    if (!locationFormValid(form)) {
+      setInvalid(true);
+      setSignal((n) => n + 1);
+      return;
+    }
+    setSaving(true);
+    setFailed(false);
+    try {
+      const payload = locationPayload(form);
+      const saved = editId
+        ? await apiPatch<Location>(`/api/calendars/${calendarId}/locations/${editId}`, payload)
+        : await apiPost<Location>(`/api/calendars/${calendarId}/locations`, payload);
+      await qc.invalidateQueries({ queryKey });
+      // Events and templates show the place.
+      void qc.invalidateQueries({ queryKey: ["events", calendarId] });
+      void qc.invalidateQueries({ queryKey: ["templates", calendarId] });
+      const next = locationToForm(saved);
+      setEditId(saved.id);
+      setSelectedId(saved.id);
+      setForm(next);
+      setBaseline(next);
+      setFilled([]);
+      toast.success(t("settings.places.saved"));
+    } catch {
+      setFailed(true);
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleDelete() {
-    if (!deleteTarget) return;
-    await apiDelete(`/api/calendars/${calendarId}/locations/${deleteTarget.id}`);
-    qc.invalidateQueries({ queryKey: ["locations", calendarId] });
-    setDeleteTarget(null);
+  function cancel() {
+    if (editing) {
+      load(editing.id, locationToForm(editing), editing.id);
+    } else {
+      load(null, EMPTY_LOCATION_FORM, null);
+    }
+  }
+
+  async function confirmDelete(loc: Location) {
+    try {
+      await apiDelete(`/api/calendars/${calendarId}/locations/${loc.id}`);
+      await qc.invalidateQueries({ queryKey });
+      void qc.invalidateQueries({ queryKey: ["events", calendarId] });
+      void qc.invalidateQueries({ queryKey: ["templates", calendarId] });
+      load(null, EMPTY_LOCATION_FORM, null);
+      toast.success(t("settings.places.deleted", { name: placeTitle(loc) ?? "" }));
+      focusPanel();
+    } catch {
+      toast.error(t("settings.places.deleteFailed"));
+    }
+  }
+
+  function consequence() {
+    if (!deleting) return "";
+    if (usage.isError) return t("settings.places.delete.consequence.unknown");
+    if (!usage.data) return t("settings.places.delete.consequence.loading");
+    const n = countLocationUsage(deleting.id, usage.data.events, usage.data.templates);
+    const parts: string[] = [];
+    if (n.events > 0)
+      parts.push(t("settings.places.delete.consequence.events", { count: n.events }));
+    if (n.templates > 0)
+      parts.push(t("settings.places.delete.consequence.templates", { count: n.templates }));
+    return parts.length > 0 ? parts.join(" ") : t("settings.places.delete.consequence.none");
+  }
+
+  // Stable identity: the map re-frames its pins whenever this array changes (not on every keystroke).
+  const pins = useMemo(
+    () =>
+      places.filter(hasPosition).map((p) => ({
+        id: p.id,
+        title: placeTitle(p) ?? t("settings.places.unnamed"),
+        latitude: p.latitude!,
+        longitude: p.longitude!,
+      })),
+    [places, t],
+  );
+
+  let listArea;
+  if (list.isLoading) {
+    listArea = (
+      <div className="ap-stack" aria-busy="true">
+        <p className="ap-sr" role="status">
+          {t("settings.places.loading")}
+        </p>
+        <Skeleton style={{ display: "block", height: 220 }} />
+        <Skeleton style={{ display: "block", height: 160 }} />
+      </div>
+    );
+  } else if (list.isError && !list.data) {
+    listArea = (
+      <Banner
+        tone="danger"
+        title={t("settings.places.loadError.title")}
+        action={
+          <Button variant="secondary" icon="refresh" onClick={() => void list.refetch()}>
+            {t("settings.places.loadError.retry")}
+          </Button>
+        }
+      >
+        {t("settings.places.loadError.text")}
+      </Banner>
+    );
+  } else if (places.length === 0) {
+    listArea = (
+      <div className="ap-panel">
+        <EmptyState
+          icon="map-pin"
+          title={t("settings.places.empty.title")}
+          text={readOnly ? t("settings.places.empty.readOnly") : t("settings.places.empty.text")}
+          actions={
+            readOnly ? undefined : (
+              <Button icon="plus" onClick={startNew}>
+                {t("settings.places.create")}
+              </Button>
+            )
+          }
+        />
+      </div>
+    );
+  } else {
+    listArea = (
+      <>
+        {pins.length > 0 ? (
+          <>
+            <p className="ap-sr" id="pl-overview-desc">
+              {t("settings.places.overviewDesc", { count: pins.length })}
+            </p>
+            <MapBoundary
+              fallback={
+                <p className="ap-panel ap-panel--sunken t-sm">{t("settings.places.mapFailed")}</p>
+              }
+            >
+              <Suspense fallback={<Skeleton style={{ display: "block", height: 360 }} />}>
+                <LocationsOverviewMap
+                  locations={pins}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                  label={t("settings.places.overview", { count: pins.length })}
+                  describedBy="pl-overview-desc"
+                  note={t("settings.places.overviewNote")}
+                />
+              </Suspense>
+            </MapBoundary>
+          </>
+        ) : (
+          <p className="ap-panel ap-panel--sunken t-sm t-muted">{t("settings.places.noPins")}</p>
+        )}
+        <section className="ap-stack ap-stack--sm" aria-labelledby="pl-list-h">
+          <h2 className="t-h3" id="pl-list-h">
+            {t("settings.places.listTitle", { count: places.length })}
+          </h2>
+          <ul className="ap-panel ap-panel--flush ap-list">
+            {places.map((loc) => {
+              const title = placeTitle(loc) ?? t("settings.places.unnamed");
+              const marked = selectedId === loc.id;
+              return (
+                <li
+                  key={loc.id}
+                  className={`ap-listrow ap-listrow--wrap${marked ? "ap-listrow--current" : ""}`}
+                  aria-current={marked || undefined}
+                >
+                  <div className="ap-listrow-main" style={{ minWidth: 180 }}>
+                    <b>{title}</b>
+                    <span>
+                      {loc.name ? formatAddress(loc) : formatAddress({ ...loc, street: "" })}
+                    </span>
+                    {marked && (
+                      <span
+                        className="ap-badge ap-badge--public"
+                        style={{ display: "inline-flex", marginTop: "var(--space-1)" }}
+                      >
+                        <Icon glyph="check" size={14} />
+                        {editId === loc.id && !readOnly
+                          ? t("settings.places.inForm")
+                          : t("settings.places.marked")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="ap-actions">
+                    {hasPosition(loc) ? (
+                      <Button
+                        variant="secondary"
+                        icon="map-pin"
+                        aria-pressed={marked}
+                        aria-label={t("settings.places.showLabel", { name: title })}
+                        onClick={() => setSelectedId(loc.id)}
+                      >
+                        {t("settings.places.show")}
+                      </Button>
+                    ) : (
+                      <span className="t-sm t-muted">{t("settings.places.noPosition")}</span>
+                    )}
+                    {!readOnly && (
+                      <IconButton
+                        icon="edit"
+                        label={t("settings.places.editLabel", { name: title })}
+                        onClick={() => startEdit(loc)}
+                      />
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      </>
+    );
   }
 
   return (
-    <div className="max-w-4xl space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">{t("settings.locations.description")}</p>
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="mr-1 h-3.5 w-3.5" />
-          {t("settings.locations.newLocation")}
-        </Button>
+    <SettingsLayout
+      wide
+      actions={
+        !readOnly && (
+          <Button icon="plus" onClick={startNew}>
+            {t("settings.places.create")}
+          </Button>
+        )
+      }
+    >
+      <p className="t-body t-muted t-prose">{t("settings.places.description")}</p>
+      <div className="ap-split">
+        <div className="ap-stack">{listArea}</div>
+        {!readOnly && (
+          <LocationPanel
+            isNew={!editId}
+            placeName={editing ? (placeTitle(editing) ?? t("settings.places.unnamed")) : undefined}
+            form={form}
+            onChange={change}
+            onSuggestion={onSuggestion}
+            onPick={(lat, lng) => void onPick(lat, lng)}
+            filled={filled}
+            invalid={invalid}
+            signal={signal}
+            saving={saving}
+            failed={failed}
+            onSave={() => void save()}
+            onCancel={cancel}
+            onDelete={editing ? () => setDeleting(editing) : undefined}
+            headingRef={headingRef}
+          />
+        )}
       </div>
 
-      {locationsWithCoords.length > 0 && (
-        <Suspense fallback={<div className="h-72 animate-pulse rounded-xl bg-slate-100" />}>
-          <LocationsOverviewMap
-            locations={locationsWithCoords}
-            selectedId={hoveredId}
-            onSelect={(id) => {
-              const loc = locations.find((l) => l.id === id);
-              if (loc) openEdit(loc);
-            }}
-            height="h-72"
-          />
-        </Suspense>
-      )}
-
-      {locations.length === 0 ? (
-        <EmptyState icon="map-pin" title={t("settings.locations.noLocations")} />
-      ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {locations.map((loc) => {
-            const addr = formatAddress(loc);
-            void addr;
-            return (
-              <div
-                key={loc.id}
-                className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-blue-200 hover:shadow-sm"
-                onMouseEnter={() => setHoveredId(loc.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                onClick={() => openEdit(loc)}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 items-start gap-2">
-                    <MapPin
-                      className={`mt-0.5 h-4 w-4 shrink-0 transition-colors ${loc.latitude != null ? "text-blue-500" : "text-slate-300"}`}
-                    />
-                    <div className="min-w-0">
-                      {loc.name && (
-                        <p className="truncate text-sm font-semibold text-slate-900">{loc.name}</p>
-                      )}
-                      {loc.street && (
-                        <p
-                          className={`truncate text-sm ${loc.name ? "text-slate-500" : "font-medium text-slate-800"}`}
-                        >
-                          {loc.street}
-                        </p>
-                      )}
-                      {(loc.zip || loc.city) && (
-                        <p className="truncate text-sm text-slate-400">
-                          {[loc.zip, loc.city].filter(Boolean).join(" ")}
-                        </p>
-                      )}
-                      {loc.latitude != null && (
-                        <p className="mt-0.5 font-mono text-xs text-slate-400">
-                          {loc.latitude.toFixed(4)}, {loc.longitude!.toFixed(4)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEdit(loc);
-                      }}
-                      className="rounded p-1 text-slate-400 hover:text-slate-600"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteTarget(loc);
-                      }}
-                      className="rounded p-1 text-slate-400 hover:text-red-500"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
+      {deleting && (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => !open && setDeleting(null)}
+          icon="trash"
+          title={t("settings.places.delete.title", {
+            name: placeTitle(deleting) ?? t("settings.places.unnamed"),
           })}
-        </div>
+          description={t("settings.places.delete.text")}
+          consequence={consequence()}
+          confirmLabel={t("settings.places.delete.confirm")}
+          onConfirm={() => confirmDelete(deleting)}
+        />
       )}
-
-      <Dialog open={modalOpen} onOpenChange={(v) => !v && closeModal()}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editingLocation ? t("common.edit") : t("settings.locations.newLocation")}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 py-1">
-            <Field label={t("settings.locations.nameOptional")}>
-              <Input
-                placeholder="e.g. Main Hall"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              />
-            </Field>
-
-            <Field label={t("settings.locations.street")}>
-              <Input
-                placeholder="Musterstraße 1"
-                value={form.street}
-                onChange={(e) => setForm((f) => ({ ...f, street: e.target.value }))}
-              />
-            </Field>
-
-            <div className="grid grid-cols-3 gap-3">
-              <Field label={t("settings.locations.zip")}>
-                <Input
-                  placeholder="12345"
-                  value={form.zip}
-                  onChange={(e) => setForm((f) => ({ ...f, zip: e.target.value }))}
-                />
-              </Field>
-              <Field label={t("settings.locations.city")} className="col-span-2">
-                <Input
-                  placeholder="Berlin"
-                  value={form.city}
-                  onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-                />
-              </Field>
-            </div>
-
-            <Field
-              label={
-                <>
-                  {t("settings.locations.country")}{" "}
-                  <span className="font-normal text-slate-400">
-                    {t("settings.locations.optional")}
-                  </span>
-                </>
-              }
-            >
-              <Input
-                placeholder="Germany"
-                value={form.country}
-                onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
-              />
-            </Field>
-
-            <Field
-              group
-              label={
-                <>
-                  {t("settings.locations.mapPosition")}{" "}
-                  <span className="font-normal text-slate-400">
-                    ({t("settings.locations.mapPositionHint")})
-                  </span>
-                </>
-              }
-            >
-              <Suspense fallback={<div className="h-56 animate-pulse rounded-lg bg-slate-100" />}>
-                <MapPicker
-                  latitude={form.latitude}
-                  longitude={form.longitude}
-                  address={mapPickerAddress}
-                  onPositionChange={handleMapPosition}
-                />
-              </Suspense>
-            </Field>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={closeModal}>
-              {t("common.cancel")}
-            </Button>
-            <Button disabled={saving} onClick={handleSave}>
-              {saving
-                ? t("common.saving")
-                : editingLocation
-                  ? t("common.save")
-                  : t("settings.locations.addLocation")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={deleteTarget !== null} onOpenChange={(v) => !v && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("settings.locations.deleteLocation")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              &ldquo;
-              {deleteTarget
-                ? (deleteTarget.name ?? formatAddress(deleteTarget) ?? "this location")
-                : ""}
-              &rdquo; {t("settings.locations.cannotBeUndone")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>{t("common.delete")}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+      <UnsavedChangesDialog {...guard.dialog} />
+    </SettingsLayout>
   );
 }

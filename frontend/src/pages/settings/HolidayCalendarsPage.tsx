@@ -1,173 +1,325 @@
-import { useState, useEffect, useCallback } from "react";
-import { useParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState, type FormEvent } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Field, SectionHeader } from "@/components/ui/shared";
+  Banner,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  ErrorSummary,
+  Field,
+  Skeleton,
+  TextInput,
+  toast,
+} from "@/components/ui/shared";
+import { SettingsLayout } from "@/components/settings/SettingsLayout";
+import { HolidayPreview } from "@/components/settings/HolidayPreview";
+import { useSettingsPage } from "@/components/settings/useSettingsPage";
+import { useLocale } from "@/components/calendar/useLocale";
 import {
-  getHolidayCalendars,
   createHolidayCalendar,
   deleteHolidayCalendar,
+  getHolidayCalendars,
   refreshHolidayCalendar,
 } from "@/lib/api";
+import { formatFetched, validateHolidayForm, type HolidayFormProblem } from "@/lib/settings";
 import type { HolidayCalendar } from "@/lib/types";
-import { useTranslation } from "react-i18next";
 
+/**
+ * Settings "Feiertage" (design: SettingsHolidays): holiday calendars from an ICS address — add,
+ * refresh, delete, with status (count, last fetch), per-calendar holiday list and errors.
+ */
 export default function HolidayCalendarsPage() {
   const { t } = useTranslation();
-  const { calendarId } = useParams<{ calendarId: string }>();
+  const locale = useLocale();
+  const qc = useQueryClient();
+  const page = useSettingsPage();
+  const { calendarId, readOnly, timeZone } = page;
+  const queryKey = ["holidayCalendars", calendarId];
 
-  const [items, setItems] = useState<HolidayCalendar[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshingId, setRefreshingId] = useState<string | null>(null);
-  const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: "", url: "" });
-  const [saving, setSaving] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
+  const list = useQuery<HolidayCalendar[]>({
+    queryKey,
+    queryFn: () => getHolidayCalendars(calendarId),
+  });
+  const items = list.data ?? [];
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      setItems(await getHolidayCalendars(calendarId!));
-    } finally {
-      setLoading(false);
-    }
-  }, [calendarId]);
+  const [name, setName] = useState("");
+  const [url, setUrl] = useState("");
+  const [problem, setProblem] = useState<HolidayFormProblem>({});
+  const [signal, setSignal] = useState(0);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<"fetch" | "other" | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [rowErrors, setRowErrors] = useState<Record<string, boolean>>({});
+  const [deleting, setDeleting] = useState<HolidayCalendar | null>(null);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const problemText = {
+    name: { empty: t("settings.holidays.errors.nameEmpty") },
+    url: {
+      empty: t("settings.holidays.errors.urlEmpty"),
+      invalid: t("settings.holidays.errors.urlInvalid"),
+    },
+  };
+  const summary = [
+    ...(problem.name ? [{ fieldId: "hol-name", message: problemText.name[problem.name] }] : []),
+    ...(problem.url ? [{ fieldId: "hol-url", message: problemText.url[problem.url] }] : []),
+  ];
 
-  async function handleAdd() {
-    setSaving(true);
+  async function submitAdd(e: FormEvent) {
+    e.preventDefault();
+    const found = validateHolidayForm(name, url);
     setAddError(null);
+    setProblem(found);
+    if (found.name || found.url) {
+      setSignal((n) => n + 1);
+      return;
+    }
+    setAdding(true);
     try {
-      const created = await createHolidayCalendar(calendarId!, form);
-      setItems((prev) => [...prev, created]);
-      setShowAdd(false);
-      setForm({ name: "", url: "" });
-    } catch (e: unknown) {
-      setAddError(e instanceof Error ? e.message : "Failed to create");
+      const created = await createHolidayCalendar(calendarId, {
+        name: name.trim(),
+        url: url.trim(),
+      });
+      await qc.invalidateQueries({ queryKey });
+      void qc.invalidateQueries({ queryKey: ["holidayEvents", calendarId] });
+      setName("");
+      setUrl("");
+      toast.success(t("settings.holidays.added", { count: created.eventCount }));
+    } catch (error) {
+      setAddError((error as { status?: number }).status === 422 ? "fetch" : "other");
     } finally {
-      setSaving(false);
+      setAdding(false);
     }
   }
 
-  async function handleDelete(hcId: string) {
-    if (!window.confirm("Delete this holiday calendar and all its events?")) return;
+  async function refresh(hc: HolidayCalendar) {
+    setBusyId(hc.id);
+    setRowErrors((r) => ({ ...r, [hc.id]: false }));
     try {
-      await deleteHolidayCalendar(calendarId!, hcId);
-      setItems((prev) => prev.filter((hc) => hc.id !== hcId));
-    } catch (e: unknown) {
-      window.alert(e instanceof Error ? e.message : "Delete failed");
+      const updated = await refreshHolidayCalendar(calendarId, hc.id);
+      await qc.invalidateQueries({ queryKey });
+      void qc.invalidateQueries({ queryKey: ["holidayEvents", calendarId] });
+      toast.success(t("settings.holidays.refreshed", { count: updated.eventCount }));
+    } catch {
+      setRowErrors((r) => ({ ...r, [hc.id]: true }));
+    } finally {
+      setBusyId(null);
     }
   }
 
-  async function handleRefresh(hcId: string) {
-    setRefreshingId(hcId);
+  async function remove(hc: HolidayCalendar) {
     try {
-      const updated = await refreshHolidayCalendar(calendarId!, hcId);
-      setItems((prev) => prev.map((hc) => (hc.id === hcId ? updated : hc)));
-    } catch (e: unknown) {
-      window.alert(e instanceof Error ? e.message : "Refresh failed");
-    } finally {
-      setRefreshingId(null);
+      await deleteHolidayCalendar(calendarId, hc.id);
+      await qc.invalidateQueries({ queryKey });
+      void qc.invalidateQueries({ queryKey: ["holidayEvents", calendarId] });
+      toast.success(t("settings.holidays.deleted", { name: hc.name }));
+    } catch {
+      toast.error(t("settings.holidays.deleteFailed", { name: hc.name }));
     }
+  }
+
+  let listContent;
+  if (list.isLoading) {
+    listContent = (
+      <div className="ap-stack" aria-busy="true">
+        <p className="ap-sr" role="status">
+          {t("settings.holidays.loading")}
+        </p>
+        <Skeleton style={{ display: "block", height: 72 }} />
+      </div>
+    );
+  } else if (list.isError && !list.data) {
+    listContent = (
+      <Banner
+        tone="danger"
+        title={t("settings.holidays.loadError.title")}
+        action={
+          <Button variant="secondary" icon="refresh" onClick={() => void list.refetch()}>
+            {t("settings.holidays.loadError.retry")}
+          </Button>
+        }
+      >
+        {t("settings.holidays.loadError.text")}
+      </Banner>
+    );
+  } else if (items.length === 0) {
+    listContent = (
+      <div className="ap-panel">
+        <EmptyState
+          icon="flag"
+          title={t("settings.holidays.empty.title")}
+          text={
+            readOnly ? t("settings.holidays.empty.readOnly") : t("settings.holidays.empty.text")
+          }
+          actions={
+            readOnly ? undefined : (
+              <Button icon="plus" onClick={() => document.getElementById("hol-name")?.focus()}>
+                {t("settings.holidays.empty.action")}
+              </Button>
+            )
+          }
+        />
+      </div>
+    );
+  } else {
+    listContent = (
+      <ul className="ap-panel ap-panel--flush ap-list" aria-labelledby="hol-list-h">
+        {items.map((hc) => {
+          const busy = busyId === hc.id;
+          const fetched = hc.lastFetchedAt ? formatFetched(hc.lastFetchedAt, timeZone, locale) : "";
+          return (
+            <li
+              key={hc.id}
+              className="ap-listrow ap-listrow--wrap"
+              aria-busy={busy || undefined}
+              style={{ alignItems: "flex-start" }}
+            >
+              <div className="ap-listrow-main" style={{ minWidth: 220 }}>
+                <b>{hc.name}</b>
+                <span style={{ overflowWrap: "anywhere" }}>{hc.url}</span>
+                <span>
+                  {busy
+                    ? t("settings.holidays.refreshing")
+                    : fetched
+                      ? t("settings.holidays.meta", { count: hc.eventCount, date: fetched })
+                      : t("settings.holidays.metaNever", { count: hc.eventCount })}
+                </span>
+                {rowErrors[hc.id] && (
+                  <span role="alert" style={{ color: "var(--danger)", fontWeight: 600 }}>
+                    {t("settings.holidays.refreshFailed")}
+                  </span>
+                )}
+                {hc.eventCount > 0 && (
+                  <HolidayPreview
+                    calendarId={calendarId}
+                    holidayCalendarId={hc.id}
+                    holidayCalendarName={hc.name}
+                    timeZone={timeZone}
+                  />
+                )}
+              </div>
+              {!readOnly && (
+                <div className="ap-actions">
+                  <Button
+                    variant="secondary"
+                    icon="refresh"
+                    loading={busy}
+                    loadingLabel={t("settings.holidays.refreshing")}
+                    aria-label={t("settings.holidays.refreshLabel", { name: hc.name })}
+                    onClick={() => void refresh(hc)}
+                  >
+                    {t("settings.holidays.refresh")}
+                  </Button>
+                  <Button
+                    variant="ghost-danger"
+                    icon="trash"
+                    aria-label={t("settings.holidays.deleteLabel", { name: hc.name })}
+                    onClick={() => setDeleting(hc)}
+                  >
+                    {t("common.delete")}
+                  </Button>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    );
   }
 
   return (
-    <div className="p-6">
-      <SectionHeader
-        title={t("settings.holidays.title")}
-        action={
-          <Button onClick={() => setShowAdd(true)}>{t("settings.holidays.newCalendar")}</Button>
-        }
-        className="mb-5"
-      />
+    <SettingsLayout>
+      <p className="t-body t-muted t-prose">{t("settings.holidays.description")}</p>
 
-      {loading ? (
-        <p className="text-muted-foreground">{t("common.loading")}</p>
-      ) : items.length === 0 ? (
-        <p className="text-muted-foreground">{t("settings.holidays.noHolidayCalendars")}</p>
-      ) : (
-        <ul className="space-y-3">
-          {items.map((hc) => (
-            <li key={hc.id} className="flex items-start justify-between rounded-lg border p-4">
-              <div>
-                <p className="font-medium">{hc.name}</p>
-                <p className="text-muted-foreground text-sm break-all">{hc.url}</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  {t("settings.holidays.eventCount", { count: hc.eventCount })}
-                  {hc.lastFetchedAt
-                    ? ` · ${t("settings.holidays.lastFetched", { date: new Date(hc.lastFetchedAt).toLocaleString() })}`
-                    : ` · ${t("settings.holidays.neverFetched")}`}
-                </p>
-              </div>
-              <div className="ml-4 flex shrink-0 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={refreshingId === hc.id}
-                  onClick={() => handleRefresh(hc.id)}
-                >
-                  {refreshingId === hc.id
-                    ? t("settings.holidays.refreshing")
-                    : t("settings.holidays.refresh")}
-                </Button>
-                <Button variant="destructive" size="sm" onClick={() => handleDelete(hc.id)}>
-                  {t("common.delete")}
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
+      {!readOnly && (
+        <section className="ap-panel" aria-labelledby="hol-add-h">
+          <form className="ap-form" noValidate onSubmit={(e) => void submitAdd(e)}>
+            <h2 className="t-h3" id="hol-add-h">
+              {t("settings.holidays.addTitle")}
+            </h2>
+            <ErrorSummary
+              title={t("settings.holidays.errorSummary")}
+              errors={summary}
+              focusSignal={signal}
+            />
+            {addError && (
+              <Banner tone="danger">
+                {addError === "fetch"
+                  ? t("settings.holidays.fetchError")
+                  : t("settings.holidays.addFailed")}
+              </Banner>
+            )}
+            <Field
+              id="hol-name"
+              label={t("settings.holidays.nameLabel")}
+              required
+              error={problem.name ? problemText.name[problem.name] : undefined}
+            >
+              <TextInput
+                value={name}
+                maxLength={255}
+                autoComplete="off"
+                placeholder={t("settings.holidays.namePlaceholder")}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setProblem((p) => ({ ...p, name: undefined }));
+                }}
+              />
+            </Field>
+            <Field
+              id="hol-url"
+              label={t("settings.holidays.urlLabel")}
+              required
+              hint={t("settings.holidays.urlHint")}
+              error={problem.url ? problemText.url[problem.url] : undefined}
+            >
+              <TextInput
+                type="url"
+                inputMode="url"
+                autoComplete="off"
+                value={url}
+                maxLength={2048}
+                placeholder="https://"
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  setProblem((p) => ({ ...p, url: undefined }));
+                  setAddError(null);
+                }}
+              />
+            </Field>
+            <div className="ap-actions">
+              <Button
+                type="submit"
+                icon="plus"
+                loading={adding}
+                loadingLabel={t("settings.holidays.adding")}
+              >
+                {t("settings.holidays.add")}
+              </Button>
+            </div>
+          </form>
+        </section>
       )}
 
-      <Dialog
-        open={showAdd}
-        onOpenChange={(open) => {
-          setShowAdd(open);
-          if (!open) setAddError(null);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("settings.holidays.newCalendar")}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <Field id="hc-name" label={t("common.name")}>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="German Public Holidays"
-              />
-            </Field>
-            <Field id="hc-url" label={t("settings.holidays.url")}>
-              <Input
-                type="url"
-                value={form.url}
-                onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-                placeholder="https://calendar.google.com/calendar/ical/..."
-              />
-            </Field>
-            {addError && <p className="text-destructive text-sm">{addError}</p>}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAdd(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button onClick={handleAdd} disabled={saving || !form.name || !form.url}>
-              {saving ? t("settings.holidays.adding") : t("settings.holidays.addAndFetch")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+      <section className="ap-stack" aria-labelledby="hol-list-h">
+        <h2 className="t-h3" id="hol-list-h">
+          {t("settings.holidays.listTitle", { count: items.length })}
+        </h2>
+        {listContent}
+      </section>
+
+      {deleting && (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => !open && setDeleting(null)}
+          icon="trash"
+          title={t("settings.holidays.delete.title", { name: deleting.name })}
+          description={t("settings.holidays.delete.text")}
+          consequence={t("settings.holidays.delete.consequence")}
+          confirmLabel={t("settings.holidays.delete.confirm")}
+          onConfirm={() => remove(deleting)}
+        />
+      )}
+    </SettingsLayout>
   );
 }

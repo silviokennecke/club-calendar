@@ -25,3 +25,9 @@ Fortlaufend ergänzt während des Redesigns.
 - Phase 5: Der Import ist nicht atomar. Neue Orte werden vorab einzeln per `POST …/locations` angelegt (Name aus dem LOCATION-Text), die Termine dann in Blöcken zu 500; schlägt ein späterer Block fehl, bleiben Orte und frühere Blöcke bestehen (UI meldet "nur teilweise gelungen"). Ein Endpoint, der Orte und Termine in einer Transaktion anlegt und die Zähler (neue Orte, übersprungene Termine) liefert, wäre robuster. `importEvents` prüft außerdem nicht, ob Ort, Eigenschaften, Features und Zielgruppen zum Kalender gehören (wie bei `createEvent`), und `date`/`timeBegin`/`timeEnd` fehlen ohne saubere Fehlermeldung (500 statt 400).
 - Phase 5: Vorlagen verlangen `timezone`, `timeBegin` und `timeEnd` (Pflicht im Backend); das Design zeigt die Zeiten als optional. Die Vorlagenseite füllt 19:00 – 21:00 vor und verlangt beide Zeiten. Optional wäre im Backend nur mit nullable Spalten möglich.
 - Phase 5: Die Vorlagenliste hat keine Zähler, wie viele Termine aus einer Vorlage entstanden sind; der Lösch-Dialog nennt die Folge allgemein ("Bereits erzeugte Termine bleiben unverändert"). Ein `eventCount` je Vorlage würde die Aussage konkretisieren.
+
+## Phase 6 (Einstellungen)
+- Keine Zähler, wie viele Termine, Vorlagen oder Feeds ein Eintrag (Eigenschaft, Feature, Zielgruppe) oder ein Kalender hat. Für die Lösch-Hinweise lädt das Frontend beim Öffnen des Dialogs alle Termine und Vorlagen und zählt selbst.
+- `POST …/calendars/{id}/duplicate` vergibt den englischen Namen "Copy of …" ohne Sprachbezug (das Frontend benennt direkt per PATCH um).
+- Namen von Eigenschaften, Features und Zielgruppen werden im Backend nicht auf Duplikate geprüft, nur im Frontend.
+- Eine Liste der Feiertage je Feiertagskalender gibt es nur über den Zeitraum-Endpoint `holiday-events`.

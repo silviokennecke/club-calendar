@@ -1001,15 +1001,333 @@
   },
   "settings": {
     "title": "Settings",
-    "calendarName": "Calendar name",
-    "timezone": "Timezone",
-    "save": "Save",
-    "saved": "Saved!",
-    "archiveCalendar": "Archive calendar",
-    "archiveConfirm": "This will make the calendar read-only. It can be unarchived later.",
-    "overridesClubDefault": "overrides club default",
-    "useClubDefault": "Use club default",
-    "currentTime": "Current time:",
+    "loading": "Loading settings …",
+    "loadError": {
+      "title": "The calendar could not be loaded.",
+      "text": "Check your connection and try again.",
+      "retry": "Try again"
+    },
+    "archived": {
+      "text": "This calendar is archived. You can only view its settings. Restore it to change them.",
+      "title": "Restore calendar",
+      "rowText": "The calendar is read-only. Restore it to change events and settings again.",
+      "restored": "Calendar restored. It is active again.",
+      "failed": "The calendar could not be restored. Please try again."
+    },
+    "archive": {
+      "title": "Archive calendar",
+      "text": "The calendar becomes read-only and is taken out of public feeds. You can restore it at any time.",
+      "action": "Archive calendar",
+      "confirmTitle": "Archive calendar “{{name}}”?",
+      "confirmText": "The calendar is kept but can no longer be changed.",
+      "consequence": "Events and settings are read-only afterwards. Public feeds deliver nothing until you restore the calendar.",
+      "done": "Calendar archived.",
+      "failed": "The calendar could not be archived. Please try again."
+    },
+    "duplicate": {
+      "title": "Duplicate calendar",
+      "text": "Creates a copy with properties, features, audiences, places, templates and feeds. Events are not copied.",
+      "action": "Duplicate calendar",
+      "copyName": "Copy of {{name}}",
+      "done": "Calendar duplicated. You are now in the copy.",
+      "failed": "The calendar could not be duplicated. Please try again."
+    },
+    "delete": {
+      "title": "Delete calendar",
+      "text": "Deletes the calendar with everything that belongs to it. This cannot be undone.",
+      "action": "Delete calendar",
+      "confirmTitle": "Delete calendar “{{name}}”?",
+      "confirmText": "The calendar is removed permanently.",
+      "confirm": "Delete calendar",
+      "done": "Calendar deleted.",
+      "failed": "The calendar could not be deleted. Please try again.",
+      "consequence": {
+        "loading": "Working out the scope …",
+        "unknown": "All events, templates, feeds, places and assignments of this calendar are deleted. Published feed addresses stop working.",
+        "counts": "This deletes all events ({{events}}), templates ({{templates}}), feeds ({{feeds}}), places and assignments of this calendar. Published feed addresses stop working."
+      }
+    },
+    "manage": {
+      "title": "Manage calendar"
+    },
+    "general": {
+      "calendar": "Calendar",
+      "nameLabel": "Calendar name",
+      "nameHint": "The name appears in the calendar picker and in subscriptions.",
+      "nameError": "Please enter a calendar name.",
+      "errorSummary": "The settings are not complete yet.",
+      "timezone": "Time zone",
+      "useClub": "Use the club’s time zone",
+      "ownZone": "Time zone of this calendar",
+      "ownZoneHint": "Events of this calendar are shown in this time zone.",
+      "clock": "Current time in {{zone}}: {{time}} ({{date}})",
+      "clockHint": "For checking: this is the time right now in the selected time zone.",
+      "save": "Save settings",
+      "saved": "Saved",
+      "saveFailed": {
+        "title": "Not saved",
+        "text": "The settings could not be saved. Please try again."
+      }
+    },
+    "master": {
+      "loading": "Loading list …",
+      "loadError": {
+        "title": "The list could not be loaded.",
+        "retry": "Try again"
+      },
+      "errorSummary": "The entry is not complete yet.",
+      "nameLabel": "Name",
+      "symbolLabel": "Symbol (optional)",
+      "saveEdit": "Save change",
+      "saveFailed": "The change could not be saved. Please try again.",
+      "saved": "Saved",
+      "preview": "How it looks on an event",
+      "problem": {
+        "empty": "Please enter a name.",
+        "duplicate": "This name already exists. Please choose another."
+      },
+      "properties": {
+        "description": "Properties are characteristics with a symbol, e.g. costume. They appear on the event in the calendar.",
+        "addTitle": "Add a new property",
+        "create": "Create property",
+        "placeholder": "e.g. Costume",
+        "emptyTitle": "No properties yet",
+        "emptyText": "Create the first property, for example “Costume”. It then appears on the event in the calendar.",
+        "emptyReadOnly": "This calendar has no properties.",
+        "listTitle": "Existing properties ({{count}})",
+        "created": "Property “{{name}}” created",
+        "deleted": "“{{name}}” deleted",
+        "deleteFailed": "The property “{{name}}” could not be deleted.",
+        "createFailed": "The property could not be created. Please try again.",
+        "loadError": "The properties could not be loaded.",
+        "editLabel": "{{name}} edit",
+        "deleteLabel": "{{name}} delete",
+        "editTitle": "Property edit: {{name}}",
+        "deleteTitle": "Delete property “{{name}}”?",
+        "deleteText": "“{{name}}” is removed from the list of properties.",
+        "deleteConfirm": "Delete property",
+        "consequence": {
+          "loading": "Working out the affected events …",
+          "unknown": "Events and templates lose their link to “{{name}}”. The events themselves stay.",
+          "none": "“{{name}}” is not used by any event or template right now.",
+          "events_one": "{{count}} event loses its link to “{{name}}”. The event itself stays.",
+          "events_other": "{{count}} events lose their link to “{{name}}”. The events themselves stay.",
+          "templates_one": "{{count}} template loses the link.",
+          "templates_other": "{{count}} templates lose the link."
+        }
+      },
+      "features": {
+        "description": "Features are extras at an event, e.g. bonus shooting. You pick them when creating an event.",
+        "addTitle": "Add a new feature",
+        "create": "Create feature",
+        "placeholder": "e.g. Bonus shooting",
+        "emptyTitle": "No features yet",
+        "emptyText": "Create the first feature, for example “Bonus shooting”. Features show extras at an event.",
+        "emptyReadOnly": "This calendar has no features.",
+        "listTitle": "Existing features ({{count}})",
+        "created": "Feature “{{name}}” created",
+        "deleted": "“{{name}}” deleted",
+        "deleteFailed": "The feature “{{name}}” could not be deleted.",
+        "createFailed": "The feature could not be created. Please try again.",
+        "loadError": "The features could not be loaded.",
+        "editLabel": "{{name}} edit",
+        "deleteLabel": "{{name}} delete",
+        "editTitle": "Feature edit: {{name}}",
+        "deleteTitle": "Delete feature “{{name}}”?",
+        "deleteText": "“{{name}}” is removed from the list of features.",
+        "deleteConfirm": "Delete feature",
+        "consequence": {
+          "loading": "Working out the affected events …",
+          "unknown": "Events and templates lose their link to “{{name}}”. The events themselves stay.",
+          "none": "“{{name}}” is not used by any event or template right now.",
+          "events_one": "{{count}} event loses its link to “{{name}}”. The event itself stays.",
+          "events_other": "{{count}} events lose their link to “{{name}}”. The events themselves stay.",
+          "templates_one": "{{count}} template loses the link.",
+          "templates_other": "{{count}} templates lose the link."
+        }
+      },
+      "audiences": {
+        "description": "Audiences say who an event is for, e.g. youth. Visitors can filter the calendar by them, and subscriptions can be limited to audiences.",
+        "addTitle": "Add a new audience",
+        "create": "Create audience",
+        "placeholder": "e.g. Youth",
+        "emptyTitle": "No audiences yet",
+        "emptyText": "Create the first audience, for example “Youth”. It lets you filter events and subscriptions by audience.",
+        "emptyReadOnly": "This calendar has no audiences.",
+        "listTitle": "Existing audiences ({{count}})",
+        "created": "Audience “{{name}}” created",
+        "deleted": "“{{name}}” deleted",
+        "deleteFailed": "The audience “{{name}}” could not be deleted.",
+        "createFailed": "The audience could not be created. Please try again.",
+        "loadError": "The audiences could not be loaded.",
+        "editLabel": "{{name}} edit",
+        "deleteLabel": "{{name}} delete",
+        "editTitle": "Audience edit: {{name}}",
+        "deleteTitle": "Delete audience “{{name}}”?",
+        "deleteText": "“{{name}}” is removed from the list of audiences.",
+        "deleteConfirm": "Delete audience",
+        "consequence": {
+          "loading": "Working out the affected events …",
+          "unknown": "Events and templates lose their link to “{{name}}”. The events themselves stay. Feeds that only contain this audience become empty.",
+          "none": "“{{name}}” is not used by any event or template right now.",
+          "events_one": "{{count}} event loses its link to “{{name}}”. The event itself stays.",
+          "events_other": "{{count}} events lose their link to “{{name}}”. The events themselves stay.",
+          "templates_one": "{{count}} template loses the link.",
+          "templates_other": "{{count}} templates lose the link."
+        }
+      }
+    },
+    "places": {
+      "description": "Places are your club’s meeting points. You pick them when creating an event. The map shows all places at a glance.",
+      "create": "Create place",
+      "loading": "Loading places …",
+      "loadError": {
+        "title": "The places could not be loaded.",
+        "text": "Check your connection and try again.",
+        "retry": "Try again"
+      },
+      "empty": {
+        "title": "No places yet",
+        "text": "Create the first place, for example your clubhouse. You can then pick it for every event.",
+        "readOnly": "This calendar has no places."
+      },
+      "overview_one": "Overview map with {{count}} place",
+      "overview_other": "Overview map with {{count}} places",
+      "overviewNote": "Overview map of all places",
+      "overviewDesc_one": "The map shows {{count}} place with a position. All places are also in the list below.",
+      "overviewDesc_other": "The map shows {{count}} places with a position. All places are also in the list below.",
+      "noPins": "No place has a position yet, so there is no overview map. Set the position in the form.",
+      "listTitle": "All places ({{count}})",
+      "unnamed": "Unnamed place",
+      "marked": "Marked on map",
+      "inForm": "Open in the form",
+      "show": "Show on map",
+      "showLabel": "Show {{name}} on map",
+      "noPosition": "No position",
+      "editLabel": "Edit {{name}}",
+      "newTitle": "Create new place",
+      "editTitle": "Edit place",
+      "newSub": "Search for an address or enter it by hand.",
+      "errorSummary": "The place is not complete yet.",
+      "nameOrStreet": "Please enter at least a name or a street.",
+      "saveFailed": {
+        "title": "Not saved",
+        "text": "The place could not be saved. Please try again."
+      },
+      "filled": "Empty address fields were filled in from the position: {{fields}}.",
+      "fields": {
+        "street": "Street",
+        "zip": "ZIP",
+        "city": "City",
+        "country": "Country"
+      },
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. Waldblick shooting lodge",
+      "streetLabel": "Street",
+      "zipLabel": "ZIP",
+      "cityLabel": "City",
+      "countryLabel": "Country",
+      "positionMap": "Map with the position of the place",
+      "positionNote": "Position of the place",
+      "positionHint": "Click the map or drag the marker to set the position. Without the map, enter the coordinates below.",
+      "mapUnavailable": "The map view is not available right now.",
+      "mapFailed": "The map could not be loaded. The list and the form still work.",
+      "save": "Save place",
+      "saved": "Place saved",
+      "deleted": "Place “{{name}}” deleted",
+      "deleteFailed": "The place could not be deleted. Please try again.",
+      "delete": {
+        "action": "Delete place",
+        "title": "Delete place “{{name}}”?",
+        "text": "The place is removed from the list and the map. The events themselves stay.",
+        "confirm": "Delete place",
+        "consequence": {
+          "loading": "Working out the affected events …",
+          "unknown": "Events at this place have no place afterwards.",
+          "none": "No event or template takes place here right now.",
+          "events_one": "{{count}} event at this place has no place afterwards.",
+          "events_other": "{{count}} events at this place have no place afterwards.",
+          "templates_one": "{{count}} template loses its default place.",
+          "templates_other": "{{count}} templates lose their default place."
+        }
+      },
+      "search": {
+        "label": "Search address",
+        "hint": "Pick a suggestion to set the fields and the position.",
+        "placeholder": "Enter street and town",
+        "loading": "Searching …",
+        "found_one": "{{count}} suggestion found",
+        "found_other": "{{count}} suggestions found",
+        "none": "No suggestions found. You can also enter the address by hand.",
+        "error": "Address search is not available right now. Enter the address by hand.",
+        "limit": "Too many searches. Please wait a moment and try again.",
+        "results": "Address suggestions"
+      },
+      "coordinates": {
+        "summary": "Enter coordinates by hand",
+        "hint": "An alternative to the map, e.g. with the keyboard. Both values are saved together.",
+        "latitude": "Latitude",
+        "longitude": "Longitude",
+        "invalid": "Please enter a number between −{{limit}} and {{limit}}."
+      }
+    },
+    "holidays": {
+      "loading": "Loading holiday calendars …",
+      "loadError": {
+        "title": "The holiday calendars could not be loaded.",
+        "text": "Check your connection and try again.",
+        "retry": "Try again"
+      },
+      "empty": {
+        "title": "No holiday calendars yet",
+        "text": "Add a holiday calendar through its ICS address. The holidays then appear in the calendar.",
+        "readOnly": "No holiday calendars are linked to this calendar.",
+        "action": "Add holiday calendar"
+      },
+      "description": "Holiday calendars are loaded from an ICS address. The holidays appear in the calendar and can be skipped in series.",
+      "addTitle": "Add holiday calendar",
+      "errorSummary": "The holiday calendar is not complete yet.",
+      "fetchError": "The address could not be fetched. Check the URL and try again.",
+      "addFailed": "The holiday calendar could not be added. Please try again.",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. Public holidays Germany",
+      "urlLabel": "ICS address",
+      "urlHint": "The address usually ends in .ics and starts with https://.",
+      "errors": {
+        "nameEmpty": "Please enter a name.",
+        "urlEmpty": "Please enter an ICS address.",
+        "urlInvalid": "Please enter an address that starts with https://."
+      },
+      "add": "Add and fetch",
+      "adding": "Fetching …",
+      "added_one": "Added: {{count}} entry",
+      "added_other": "Added: {{count}} entries",
+      "refreshed_one": "Updated: {{count}} entry",
+      "refreshed_other": "Updated: {{count}} entries",
+      "deleted": "Holiday calendar “{{name}}” deleted",
+      "deleteFailed": "The holiday calendar “{{name}}” could not be deleted.",
+      "listTitle": "Linked calendars ({{count}})",
+      "meta_one": "{{count}} entry · last fetched {{date}}",
+      "meta_other": "{{count}} entries · last fetched {{date}}",
+      "metaNever_one": "{{count}} entry · never fetched",
+      "metaNever_other": "{{count}} entries · never fetched",
+      "refreshing": "Updating …",
+      "refresh": "Update now",
+      "refreshLabel": "Update {{name}} now",
+      "refreshFailed": "The update did not work. The holidays fetched last are kept.",
+      "deleteLabel": "Delete {{name}}",
+      "delete": {
+        "title": "Delete holiday calendar “{{name}}”?",
+        "text": "The linked calendar is removed. Your own events stay unchanged.",
+        "consequence": "The holidays disappear from the calendar and from series planning.",
+        "confirm": "Delete holiday calendar"
+      },
+      "preview": "Show holidays of the next 12 months",
+      "previewLabel": "Show the holidays of {{name}}",
+      "previewLoading": "Loading holidays …",
+      "previewError": "The holidays could not be loaded.",
+      "previewEmpty": "There are no entries in the next 12 months."
+    },
     "feeds": {
       "title": "Feeds",
       "description": "Publish your calendar as an ICS feed for Apple Calendar, Google Calendar, etc.",
@@ -1038,64 +1356,6 @@
       "saving": "Saving…",
       "noFeeds": "No feeds yet.",
       "allGroups": "All groups"
-    },
-    "properties": {
-      "title": "Properties",
-      "description": "Properties are tags shown on events (e.g. dress code, equipment). They can have an emoji icon.",
-      "newProperty": "New Property",
-      "icon": "Icon",
-      "noProperties": "No properties yet.",
-      "deleteProperty": "Delete property?",
-      "cannotBeUndone": "This cannot be undone."
-    },
-    "features": {
-      "title": "Features",
-      "description": "Features are special activities or offerings at an event (e.g. Bonusschießen).",
-      "newFeature": "New Feature",
-      "noFeatures": "No features yet.",
-      "deleteFeature": "Delete feature?",
-      "cannotBeUndone": "This cannot be undone."
-    },
-    "targetGroups": {
-      "title": "Target Groups",
-      "description": "Target groups define audience segments (e.g. Jugend, Erwachsene). Used to filter calendar feeds.",
-      "newTargetGroup": "New Target Group",
-      "noTargetGroups": "No target groups yet.",
-      "deleteTargetGroup": "Delete target group?",
-      "cannotBeUndone": "This cannot be undone."
-    },
-    "locations": {
-      "title": "Locations",
-      "description": "Locations can be assigned to events and templates as the default venue.",
-      "newLocation": "New Location",
-      "street": "Street",
-      "zip": "ZIP",
-      "city": "City",
-      "country": "Country",
-      "optional": "(optional)",
-      "addLocation": "Add Location",
-      "nameOptional": "Name (optional)",
-      "mapPosition": "Map position",
-      "mapPositionHint": "search or click/drag",
-      "noLocations": "No locations yet.",
-      "deleteLocation": "Delete location?",
-      "cannotBeUndone": "This cannot be undone.",
-      "viewOnMap": "View on map"
-    },
-    "holidays": {
-      "title": "Holiday Calendars",
-      "newCalendar": "New Holiday Calendar",
-      "url": "ICS URL",
-      "noHolidayCalendars": "No holiday calendars yet.",
-      "lastFetched": "Last fetched: {{date}}",
-      "eventCount": "{{count}} events",
-      "refresh": "Refresh",
-      "refreshing": "Refreshing…",
-      "deleteCalendar": "Delete holiday calendar?",
-      "cannotBeUndone": "This cannot be undone.",
-      "neverFetched": "Never fetched",
-      "addAndFetch": "Add & Fetch",
-      "adding": "Adding…"
     }
   },
   "brand": {

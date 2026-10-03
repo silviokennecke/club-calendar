@@ -1,13 +1,14 @@
 import { useEffect, useRef } from "react";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { useTranslation } from "react-i18next";
 import { useMapbox } from "./useMapbox";
 
-interface LocationPin {
+type MapboxGLModule = typeof import("mapbox-gl").default;
+
+export interface LocationPin {
   id: string;
-  name?: string | null;
-  street?: string | null;
-  zip?: string | null;
-  city?: string | null;
+  /** Accessible name and tooltip of the pin. */
+  title: string;
   latitude: number;
   longitude: number;
 }
@@ -16,105 +17,135 @@ interface Props {
   locations: LocationPin[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
-  height?: string;
+  /** Accessible name of the map region. */
+  label: string;
+  /** Id of an element that describes the map (the list is the full alternative). */
+  describedBy?: string;
+  /** Short caption in the map corner. */
+  note?: string;
+  height?: number;
 }
 
+/**
+ * Overview of all positioned locations (design: MapView). Pins are real buttons (keyboard,
+ * accessible names); the list next to the map is the complete alternative for screen readers.
+ */
 export default function LocationsOverviewMap({
   locations,
   selectedId,
   onSelect,
-  height = "h-72",
+  label,
+  describedBy,
+  note,
+  height = 360,
 }: Props) {
-  // Keep markers in a ref so we can update them without remounting the map
-  const markersRef = useRef<{ id: string; marker: mapboxgl.Marker }[]>([]);
+  const { t } = useTranslation();
+  const markersRef = useRef<{ id: string; marker: mapboxgl.Marker; el: HTMLButtonElement }[]>([]);
+  const glRef = useRef<MapboxGLModule | null>(null);
+  const locationsRef = useRef(locations);
+  const selectedRef = useRef(selectedId);
+  const onSelectRef = useRef(onSelect);
+  locationsRef.current = locations;
+  selectedRef.current = selectedId;
+  onSelectRef.current = onSelect;
 
-  const { mapContainerRef, mapRef } = useMapbox({
-    onReady: (map, mapboxgl) => {
-      map.on("load", () => {
-        addMarkers(mapboxgl, map);
-        fitBounds(map);
-      });
+  const { mapContainerRef, mapRef, failed } = useMapbox({
+    label,
+    describedBy,
+    onReady: (map, gl) => {
+      glRef.current = gl;
+      syncMarkers();
+      fit(map);
     },
   });
 
-  useEffect(() => {
-    return () => {
-      markersRef.current = [];
-    };
-  }, []);
-
-  // Update markers when locations change (after initial load)
-  useEffect(() => {
+  function syncMarkers() {
     const map = mapRef.current;
-    if (!map || !map.loaded()) return;
-
-    import("mapbox-gl").then(({ default: mapboxgl }) => {
-      // Remove old markers
-      markersRef.current.forEach(({ marker }) => marker.remove());
-      markersRef.current = [];
-      addMarkers(mapboxgl, map);
-      if (locations.length > 0) fitBounds(map);
-    });
-  }, [locations]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Highlight selected marker
-  useEffect(() => {
-    markersRef.current.forEach(({ id, marker }) => {
-      const el = marker.getElement();
-      if (id === selectedId) {
-        el.style.filter = "hue-rotate(120deg) brightness(1.2)";
-        el.style.zIndex = "10";
-      } else {
-        el.style.filter = "";
-        el.style.zIndex = "";
+    const gl = glRef.current;
+    if (!map || !gl) return;
+    markersRef.current.forEach(({ marker }) => marker.remove());
+    markersRef.current = locationsRef.current.map((loc) => {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "ap-pin";
+      el.setAttribute("aria-label", loc.title);
+      el.title = loc.title;
+      if (loc.id === selectedRef.current) {
+        el.setAttribute("aria-current", "true");
+        el.style.zIndex = "2";
       }
-    });
-  }, [selectedId]);
-
-  function addMarkers(mapboxgl: typeof import("mapbox-gl").default, map: mapboxgl.Map) {
-    for (const loc of locations) {
-      const el = document.createElement("div");
-      el.className = "cursor-pointer";
-      el.innerHTML = `<div style="width:28px;height:28px;background:#2563eb;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>`;
-      const addrLine = [loc.street, [loc.zip, loc.city].filter(Boolean).join(" ")]
-        .filter(Boolean)
-        .join(", ");
-      el.title = loc.name ?? addrLine;
-      el.addEventListener("click", () => onSelect?.(loc.id));
-
-      const marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
+      el.addEventListener("click", () => onSelectRef.current?.(loc.id));
+      const marker = new gl.Marker({ element: el, anchor: "bottom" })
         .setLngLat([loc.longitude, loc.latitude])
-        .setPopup(
-          new mapboxgl.Popup({ offset: 25 }).setHTML(
-            `<div style="font-size:12px"><strong>${loc.name ?? addrLine}</strong>${loc.name && addrLine ? `<br/><span style="color:#64748b">${addrLine}</span>` : ""}</div>`,
-          ),
-        )
         .addTo(map);
-      markersRef.current.push({ id: loc.id, marker });
-    }
+      // Mapbox labels custom marker elements role="img"; a native button keeps its own role.
+      el.removeAttribute("role");
+      return { id: loc.id, marker, el };
+    });
   }
 
-  function fitBounds(map: mapboxgl.Map) {
-    if (locations.length === 0) return;
-    if (locations.length === 1) {
-      map.flyTo({ center: [locations[0].longitude, locations[0].latitude], zoom: 14 });
+  function fit(map: mapboxgl.Map) {
+    const list = locationsRef.current;
+    if (list.length === 0) return;
+    if (list.length === 1) {
+      map.jumpTo({ center: [list[0].longitude, list[0].latitude], zoom: 14 });
       return;
     }
-    const lngs = locations.map((l) => l.longitude);
-    const lats = locations.map((l) => l.latitude);
+    const lngs = list.map((l) => l.longitude);
+    const lats = list.map((l) => l.latitude);
     map.fitBounds(
       [
         [Math.min(...lngs), Math.min(...lats)],
         [Math.max(...lngs), Math.max(...lats)],
       ],
-      { padding: 60, maxZoom: 14 },
+      { padding: 60, maxZoom: 14, duration: 0 },
     );
   }
 
+  // Locations changed: rebuild the pins and frame them.
+  useEffect(() => {
+    if (!mapRef.current || !glRef.current) return;
+    syncMarkers();
+    fit(mapRef.current);
+  }, [locations]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Selection changed: mark the pin and bring it into view.
+  useEffect(() => {
+    markersRef.current.forEach(({ id, el }) => {
+      if (id === selectedId) {
+        el.setAttribute("aria-current", "true");
+        el.style.zIndex = "2";
+      } else {
+        el.removeAttribute("aria-current");
+        el.style.zIndex = "";
+      }
+    });
+    const loc = locationsRef.current.find((l) => l.id === selectedId);
+    if (loc && mapRef.current) {
+      mapRef.current.easeTo({ center: [loc.longitude, loc.latitude], duration: 400 });
+    }
+  }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <div
-      ref={mapContainerRef}
-      className={`w-full ${height} overflow-hidden rounded-xl border border-slate-200`}
-    />
+    <div className="ap-map" style={{ height }}>
+      <div ref={mapContainerRef} style={{ height: "100%" }} />
+      {note && <span className="ap-map-note ap-map-note--top">{note}</span>}
+      {failed && (
+        <span
+          className="ap-map-note"
+          role="status"
+          style={{
+            top: "50%",
+            bottom: "auto",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            maxWidth: "80%",
+            textAlign: "center",
+          }}
+        >
+          {t("settings.places.mapUnavailable")}
+        </span>
+      )}
+    </div>
   );
 }

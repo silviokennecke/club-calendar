@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiGet } from "@/lib/api";
@@ -8,8 +8,6 @@ import type { Calendar, Club } from "@/lib/types";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { Tabbar } from "./Tabbar";
-import { SettingsTabs } from "./SettingsTabs";
-import { activeNavKey } from "./navigation";
 import type { ShellData } from "./shellTypes";
 
 interface AppShellProps {
@@ -31,7 +29,6 @@ export function AppShell({
 }: AppShellProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
   const { user, logout, updateUser } = useAuth();
   const trackedRef = useRef("");
 
@@ -89,8 +86,6 @@ export function AppShell({
     [clubs, calendars, clubId, calendarId, user, onSelectClub, logout],
   );
 
-  const showSettingsTabs = activeNavKey(pathname, clubId, calendarId) === "settings";
-
   return (
     <div className="ap ap-page">
       <a className="ap-skip cc-btn cc-btn--primary" href="#main">
@@ -99,7 +94,6 @@ export function AppShell({
       <Sidebar data={data} />
       <Topbar data={data} />
       <main className="ap-main" id="main" tabIndex={-1}>
-        {showSettingsTabs && calendarId && <SettingsTabs clubId={clubId} calendarId={calendarId} />}
         <Outlet context={data} />
       </main>
       {calendarId && <Tabbar clubId={clubId} calendarId={calendarId} />}

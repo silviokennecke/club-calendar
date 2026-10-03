@@ -1001,15 +1001,333 @@
   },
   "settings": {
     "title": "Einstellungen",
-    "calendarName": "Kalendername",
-    "timezone": "Zeitzone",
-    "save": "Speichern",
-    "saved": "Gespeichert!",
-    "archiveCalendar": "Kalender archivieren",
-    "archiveConfirm": "Der Kalender wird schreibgeschützt. Er kann später wiederhergestellt werden.",
-    "overridesClubDefault": "überschreibt Vereinsstandard",
-    "useClubDefault": "Vereinsstandard verwenden",
-    "currentTime": "Aktuelle Uhrzeit:",
+    "loading": "Einstellungen werden geladen …",
+    "loadError": {
+      "title": "Der Kalender konnte nicht geladen werden.",
+      "text": "Prüfe deine Verbindung und versuche es erneut.",
+      "retry": "Erneut versuchen"
+    },
+    "archived": {
+      "text": "Dieser Kalender ist archiviert. Einstellungen lassen sich nur ansehen. Hebe die Archivierung auf, um sie zu ändern.",
+      "title": "Archivierung aufheben",
+      "rowText": "Der Kalender ist schreibgeschützt. Hebe die Archivierung auf, um Termine und Einstellungen wieder zu ändern.",
+      "restored": "Archivierung aufgehoben. Der Kalender ist wieder aktiv.",
+      "failed": "Die Archivierung konnte nicht aufgehoben werden. Bitte versuche es erneut."
+    },
+    "archive": {
+      "title": "Kalender archivieren",
+      "text": "Der Kalender wird schreibgeschützt und aus öffentlichen Feeds genommen. Du kannst ihn jederzeit wieder aktivieren.",
+      "action": "Kalender archivieren",
+      "confirmTitle": "Kalender „{{name}}“ archivieren?",
+      "confirmText": "Der Kalender bleibt erhalten, lässt sich aber nicht mehr ändern.",
+      "consequence": "Termine und Einstellungen sind danach nur lesbar. Öffentliche Feeds liefern nichts mehr, bis du die Archivierung aufhebst.",
+      "done": "Kalender archiviert.",
+      "failed": "Der Kalender konnte nicht archiviert werden. Bitte versuche es erneut."
+    },
+    "duplicate": {
+      "title": "Kalender duplizieren",
+      "text": "Legt eine Kopie mit Eigenschaften, Features, Zielgruppen, Orten, Vorlagen und Feeds an. Termine werden nicht kopiert.",
+      "action": "Kalender duplizieren",
+      "copyName": "Kopie von {{name}}",
+      "done": "Kalender dupliziert. Du bist jetzt in der Kopie.",
+      "failed": "Der Kalender konnte nicht dupliziert werden. Bitte versuche es erneut."
+    },
+    "delete": {
+      "title": "Kalender löschen",
+      "text": "Löscht den Kalender mit allem, was dazugehört. Das lässt sich nicht rückgängig machen.",
+      "action": "Kalender löschen",
+      "confirmTitle": "Kalender „{{name}}“ löschen?",
+      "confirmText": "Der Kalender wird dauerhaft entfernt.",
+      "confirm": "Kalender löschen",
+      "done": "Kalender gelöscht.",
+      "failed": "Der Kalender konnte nicht gelöscht werden. Bitte versuche es erneut.",
+      "consequence": {
+        "loading": "Der Umfang wird ermittelt …",
+        "unknown": "Alle Termine, Vorlagen, Feeds, Orte und Zuordnungen dieses Kalenders werden gelöscht. Veröffentlichte Feed-Adressen funktionieren danach nicht mehr.",
+        "counts": "Gelöscht werden alle Termine ({{events}}), Vorlagen ({{templates}}), Feeds ({{feeds}}), Orte und Zuordnungen dieses Kalenders. Veröffentlichte Feed-Adressen funktionieren danach nicht mehr."
+      }
+    },
+    "manage": {
+      "title": "Kalender verwalten"
+    },
+    "general": {
+      "calendar": "Kalender",
+      "nameLabel": "Kalendername",
+      "nameHint": "Der Name erscheint in der Kalenderauswahl und in Abos.",
+      "nameError": "Bitte einen Kalendernamen eingeben.",
+      "errorSummary": "Die Einstellungen sind noch nicht vollständig.",
+      "timezone": "Zeitzone",
+      "useClub": "Zeitzone des Vereins verwenden",
+      "ownZone": "Zeitzone dieses Kalenders",
+      "ownZoneHint": "Termine dieses Kalenders werden in dieser Zeitzone angezeigt.",
+      "clock": "Aktuelle Uhrzeit in {{zone}}: {{time}} Uhr ({{date}})",
+      "clockHint": "Zur Kontrolle: So spät ist es gerade in der gewählten Zeitzone.",
+      "save": "Einstellungen speichern",
+      "saved": "Gespeichert",
+      "saveFailed": {
+        "title": "Nicht gespeichert",
+        "text": "Die Einstellungen konnten nicht gespeichert werden. Bitte versuche es erneut."
+      }
+    },
+    "master": {
+      "loading": "Liste wird geladen …",
+      "loadError": {
+        "title": "Die Liste konnte nicht geladen werden.",
+        "retry": "Erneut versuchen"
+      },
+      "errorSummary": "Der Eintrag ist noch nicht vollständig.",
+      "nameLabel": "Name",
+      "symbolLabel": "Symbol (optional)",
+      "saveEdit": "Änderung speichern",
+      "saveFailed": "Die Änderung konnte nicht gespeichert werden. Bitte versuche es erneut.",
+      "saved": "Gespeichert",
+      "preview": "So sieht es am Termin aus",
+      "problem": {
+        "empty": "Bitte einen Namen eingeben.",
+        "duplicate": "Diesen Namen gibt es schon. Bitte einen anderen wählen."
+      },
+      "properties": {
+        "description": "Eigenschaften sind Merkmale mit Symbol, z. B. Schützentracht. Sie erscheinen am Termin im Kalender.",
+        "addTitle": "Neue Eigenschaft hinzufügen",
+        "create": "Eigenschaft anlegen",
+        "placeholder": "z. B. Schützentracht",
+        "emptyTitle": "Noch keine Eigenschaften",
+        "emptyText": "Lege die erste Eigenschaft an, zum Beispiel „Schützentracht“. Sie erscheint danach am Termin im Kalender.",
+        "emptyReadOnly": "In diesem Kalender gibt es keine Eigenschaften.",
+        "listTitle": "Vorhandene Eigenschaften ({{count}})",
+        "created": "Eigenschaft „{{name}}“ angelegt",
+        "deleted": "„{{name}}“ gelöscht",
+        "deleteFailed": "Die Eigenschaft „{{name}}“ konnte nicht gelöscht werden.",
+        "createFailed": "Die Eigenschaft konnte nicht angelegt werden. Bitte versuche es erneut.",
+        "loadError": "Die Eigenschaften konnten nicht geladen werden.",
+        "editLabel": "{{name}} bearbeiten",
+        "deleteLabel": "{{name}} löschen",
+        "editTitle": "Eigenschaft bearbeiten: {{name}}",
+        "deleteTitle": "Eigenschaft „{{name}}“ löschen?",
+        "deleteText": "„{{name}}“ wird aus der Liste der Eigenschaften entfernt.",
+        "deleteConfirm": "Eigenschaft löschen",
+        "consequence": {
+          "loading": "Betroffene Termine werden ermittelt …",
+          "unknown": "Termine und Vorlagen verlieren die Zuordnung zu „{{name}}“. Die Termine selbst bleiben erhalten.",
+          "none": "„{{name}}“ ist aktuell keinem Termin und keiner Vorlage zugeordnet.",
+          "events_one": "{{count}} Termin verliert die Zuordnung zu „{{name}}“. Der Termin selbst bleibt erhalten.",
+          "events_other": "{{count}} Termine verlieren die Zuordnung zu „{{name}}“. Die Termine selbst bleiben erhalten.",
+          "templates_one": "{{count}} Vorlage verliert die Zuordnung.",
+          "templates_other": "{{count}} Vorlagen verlieren die Zuordnung."
+        }
+      },
+      "features": {
+        "description": "Features sind Zusatzangebote an einem Termin, z. B. Bonusschießen. Du wählst sie beim Anlegen eines Termins aus.",
+        "addTitle": "Neues Feature hinzufügen",
+        "create": "Feature anlegen",
+        "placeholder": "z. B. Bonusschießen",
+        "emptyTitle": "Noch keine Features",
+        "emptyText": "Lege das erste Feature an, zum Beispiel „Bonusschießen“. Features zeigen Zusatzangebote an einem Termin.",
+        "emptyReadOnly": "In diesem Kalender gibt es keine Features.",
+        "listTitle": "Vorhandene Features ({{count}})",
+        "created": "Feature „{{name}}“ angelegt",
+        "deleted": "„{{name}}“ gelöscht",
+        "deleteFailed": "Das Feature „{{name}}“ konnte nicht gelöscht werden.",
+        "createFailed": "Das Feature konnte nicht angelegt werden. Bitte versuche es erneut.",
+        "loadError": "Die Features konnten nicht geladen werden.",
+        "editLabel": "{{name}} bearbeiten",
+        "deleteLabel": "{{name}} löschen",
+        "editTitle": "Feature bearbeiten: {{name}}",
+        "deleteTitle": "Feature „{{name}}“ löschen?",
+        "deleteText": "„{{name}}“ wird aus der Liste der Features entfernt.",
+        "deleteConfirm": "Feature löschen",
+        "consequence": {
+          "loading": "Betroffene Termine werden ermittelt …",
+          "unknown": "Termine und Vorlagen verlieren die Zuordnung zu „{{name}}“. Die Termine selbst bleiben erhalten.",
+          "none": "„{{name}}“ ist aktuell keinem Termin und keiner Vorlage zugeordnet.",
+          "events_one": "{{count}} Termin verliert die Zuordnung zu „{{name}}“. Der Termin selbst bleibt erhalten.",
+          "events_other": "{{count}} Termine verlieren die Zuordnung zu „{{name}}“. Die Termine selbst bleiben erhalten.",
+          "templates_one": "{{count}} Vorlage verliert die Zuordnung.",
+          "templates_other": "{{count}} Vorlagen verlieren die Zuordnung."
+        }
+      },
+      "audiences": {
+        "description": "Zielgruppen sagen, für wen ein Termin gedacht ist, z. B. Jugend. Besucher können den Kalender danach filtern, und Abos lassen sich auf Zielgruppen beschränken.",
+        "addTitle": "Neue Zielgruppe hinzufügen",
+        "create": "Zielgruppe anlegen",
+        "placeholder": "z. B. Jugend",
+        "emptyTitle": "Noch keine Zielgruppen",
+        "emptyText": "Lege die erste Zielgruppe an, zum Beispiel „Jugend“. Damit lassen sich Termine und Abos nach Zielgruppe filtern.",
+        "emptyReadOnly": "In diesem Kalender gibt es keine Zielgruppen.",
+        "listTitle": "Vorhandene Zielgruppen ({{count}})",
+        "created": "Zielgruppe „{{name}}“ angelegt",
+        "deleted": "„{{name}}“ gelöscht",
+        "deleteFailed": "Die Zielgruppe „{{name}}“ konnte nicht gelöscht werden.",
+        "createFailed": "Die Zielgruppe konnte nicht angelegt werden. Bitte versuche es erneut.",
+        "loadError": "Die Zielgruppen konnten nicht geladen werden.",
+        "editLabel": "{{name}} bearbeiten",
+        "deleteLabel": "{{name}} löschen",
+        "editTitle": "Zielgruppe bearbeiten: {{name}}",
+        "deleteTitle": "Zielgruppe „{{name}}“ löschen?",
+        "deleteText": "„{{name}}“ wird aus der Liste der Zielgruppen entfernt.",
+        "deleteConfirm": "Zielgruppe löschen",
+        "consequence": {
+          "loading": "Betroffene Termine werden ermittelt …",
+          "unknown": "Termine und Vorlagen verlieren die Zuordnung zu „{{name}}“. Die Termine selbst bleiben erhalten. Feeds, die nur diese Zielgruppe enthalten, werden leer.",
+          "none": "„{{name}}“ ist aktuell keinem Termin und keiner Vorlage zugeordnet.",
+          "events_one": "{{count}} Termin verliert die Zuordnung zu „{{name}}“. Der Termin selbst bleibt erhalten.",
+          "events_other": "{{count}} Termine verlieren die Zuordnung zu „{{name}}“. Die Termine selbst bleiben erhalten.",
+          "templates_one": "{{count}} Vorlage verliert die Zuordnung.",
+          "templates_other": "{{count}} Vorlagen verlieren die Zuordnung."
+        }
+      }
+    },
+    "places": {
+      "description": "Orte sind Treffpunkte deines Vereins. Du wählst sie beim Anlegen eines Termins aus. Auf der Karte siehst du alle Orte auf einen Blick.",
+      "create": "Ort anlegen",
+      "loading": "Orte werden geladen …",
+      "loadError": {
+        "title": "Die Orte konnten nicht geladen werden.",
+        "text": "Prüfe deine Verbindung und versuche es erneut.",
+        "retry": "Erneut versuchen"
+      },
+      "empty": {
+        "title": "Noch keine Orte",
+        "text": "Lege den ersten Ort an, zum Beispiel dein Vereinsheim. Danach kannst du ihn bei jedem Termin auswählen.",
+        "readOnly": "In diesem Kalender gibt es keine Orte."
+      },
+      "overview_one": "Übersichtskarte mit {{count}} Ort",
+      "overview_other": "Übersichtskarte mit {{count}} Orten",
+      "overviewNote": "Übersichtskarte aller Orte",
+      "overviewDesc_one": "Die Karte zeigt {{count}} Ort mit Position. Alle Orte stehen auch in der Liste darunter.",
+      "overviewDesc_other": "Die Karte zeigt {{count}} Orte mit Position. Alle Orte stehen auch in der Liste darunter.",
+      "noPins": "Noch kein Ort hat eine Position, deshalb gibt es keine Übersichtskarte. Setze die Position im Formular.",
+      "listTitle": "Alle Orte ({{count}})",
+      "unnamed": "Ort ohne Namen",
+      "marked": "Auf Karte markiert",
+      "inForm": "Im Formular geöffnet",
+      "show": "Auf Karte zeigen",
+      "showLabel": "{{name}} auf Karte zeigen",
+      "noPosition": "Keine Position",
+      "editLabel": "{{name}} bearbeiten",
+      "newTitle": "Neuen Ort anlegen",
+      "editTitle": "Ort bearbeiten",
+      "newSub": "Suche eine Adresse oder trage sie von Hand ein.",
+      "errorSummary": "Der Ort ist noch nicht vollständig.",
+      "nameOrStreet": "Bitte mindestens einen Namen oder eine Straße eingeben.",
+      "saveFailed": {
+        "title": "Nicht gespeichert",
+        "text": "Der Ort konnte nicht gespeichert werden. Bitte versuche es erneut."
+      },
+      "filled": "Leere Adressfelder wurden aus der Position ergänzt: {{fields}}.",
+      "fields": {
+        "street": "Straße",
+        "zip": "PLZ",
+        "city": "Stadt",
+        "country": "Land"
+      },
+      "nameLabel": "Name",
+      "namePlaceholder": "z. B. Schützenhaus Waldblick",
+      "streetLabel": "Straße",
+      "zipLabel": "PLZ",
+      "cityLabel": "Stadt",
+      "countryLabel": "Land",
+      "positionMap": "Karte mit der Position des Ortes",
+      "positionNote": "Position des Ortes",
+      "positionHint": "In die Karte klicken oder die Markierung verschieben, um die Position zu setzen. Ohne Karte trägst du die Koordinaten darunter ein.",
+      "mapUnavailable": "Die Kartenansicht ist gerade nicht verfügbar.",
+      "mapFailed": "Die Karte konnte nicht geladen werden. Die Liste und das Formular funktionieren weiterhin.",
+      "save": "Ort speichern",
+      "saved": "Ort gespeichert",
+      "deleted": "Ort „{{name}}“ gelöscht",
+      "deleteFailed": "Der Ort konnte nicht gelöscht werden. Bitte versuche es erneut.",
+      "delete": {
+        "action": "Ort löschen",
+        "title": "Ort „{{name}}“ löschen?",
+        "text": "Der Ort wird aus der Liste und von der Karte entfernt. Die Termine selbst bleiben erhalten.",
+        "confirm": "Ort löschen",
+        "consequence": {
+          "loading": "Betroffene Termine werden ermittelt …",
+          "unknown": "Termine mit diesem Ort haben danach keinen Ort mehr.",
+          "none": "Aktuell findet kein Termin und keine Vorlage an diesem Ort statt.",
+          "events_one": "{{count}} Termin mit diesem Ort hat danach keinen Ort mehr.",
+          "events_other": "{{count}} Termine mit diesem Ort haben danach keinen Ort mehr.",
+          "templates_one": "{{count}} Vorlage verliert ihren Standardort.",
+          "templates_other": "{{count}} Vorlagen verlieren ihren Standardort."
+        }
+      },
+      "search": {
+        "label": "Adresse suchen",
+        "hint": "Wähle einen Vorschlag, um die Felder und die Position zu setzen.",
+        "placeholder": "Straße und Ort eingeben",
+        "loading": "Suche läuft …",
+        "found_one": "{{count}} Vorschlag gefunden",
+        "found_other": "{{count}} Vorschläge gefunden",
+        "none": "Keine Vorschläge gefunden. Du kannst die Adresse auch von Hand eintragen.",
+        "error": "Die Adresssuche ist gerade nicht verfügbar. Trage die Adresse von Hand ein.",
+        "limit": "Zu viele Suchanfragen. Bitte warte einen Moment und versuche es erneut.",
+        "results": "Adressvorschläge"
+      },
+      "coordinates": {
+        "summary": "Koordinaten von Hand eingeben",
+        "hint": "Alternative zur Karte, z. B. mit der Tastatur. Beide Werte werden zusammen gespeichert.",
+        "latitude": "Breitengrad",
+        "longitude": "Längengrad",
+        "invalid": "Bitte eine Zahl zwischen −{{limit}} und {{limit}} eingeben."
+      }
+    },
+    "holidays": {
+      "loading": "Feiertagskalender werden geladen …",
+      "loadError": {
+        "title": "Die Feiertagskalender konnten nicht geladen werden.",
+        "text": "Prüfe deine Verbindung und versuche es erneut.",
+        "retry": "Erneut versuchen"
+      },
+      "empty": {
+        "title": "Noch keine Feiertagskalender",
+        "text": "Binde einen Feiertagskalender über seine ICS-Adresse ein. Die Feiertage erscheinen dann im Kalender.",
+        "readOnly": "In diesem Kalender sind keine Feiertagskalender eingebunden.",
+        "action": "Feiertagskalender hinzufügen"
+      },
+      "description": "Feiertagskalender werden aus einer ICS-Adresse geladen. Die Feiertage erscheinen im Kalender und lassen sich in Serien auslassen.",
+      "addTitle": "Feiertagskalender hinzufügen",
+      "errorSummary": "Der Feiertagskalender ist noch nicht vollständig.",
+      "fetchError": "Die Adresse konnte nicht abgerufen werden. Prüfe die URL und versuche es erneut.",
+      "addFailed": "Der Feiertagskalender konnte nicht hinzugefügt werden. Bitte versuche es erneut.",
+      "nameLabel": "Name",
+      "namePlaceholder": "z. B. Feiertage Deutschland",
+      "urlLabel": "ICS-Adresse",
+      "urlHint": "Die Adresse endet meist auf .ics und beginnt mit https://.",
+      "errors": {
+        "nameEmpty": "Bitte einen Namen eingeben.",
+        "urlEmpty": "Bitte eine ICS-Adresse eingeben.",
+        "urlInvalid": "Bitte eine Adresse eingeben, die mit https:// beginnt."
+      },
+      "add": "Hinzufügen und abrufen",
+      "adding": "Wird abgerufen …",
+      "added_one": "Hinzugefügt: {{count}} Eintrag",
+      "added_other": "Hinzugefügt: {{count}} Einträge",
+      "refreshed_one": "Aktualisiert: {{count}} Eintrag",
+      "refreshed_other": "Aktualisiert: {{count}} Einträge",
+      "deleted": "Feiertagskalender „{{name}}“ gelöscht",
+      "deleteFailed": "Der Feiertagskalender „{{name}}“ konnte nicht gelöscht werden.",
+      "listTitle": "Eingebundene Kalender ({{count}})",
+      "meta_one": "{{count}} Eintrag · zuletzt abgerufen {{date}}",
+      "meta_other": "{{count}} Einträge · zuletzt abgerufen {{date}}",
+      "metaNever_one": "{{count}} Eintrag · noch nie abgerufen",
+      "metaNever_other": "{{count}} Einträge · noch nie abgerufen",
+      "refreshing": "Wird aktualisiert …",
+      "refresh": "Jetzt aktualisieren",
+      "refreshLabel": "{{name}} jetzt aktualisieren",
+      "refreshFailed": "Die Aktualisierung hat nicht geklappt. Die zuletzt abgerufenen Feiertage bleiben erhalten.",
+      "deleteLabel": "{{name}} löschen",
+      "delete": {
+        "title": "Feiertagskalender „{{name}}“ löschen?",
+        "text": "Der eingebundene Kalender wird entfernt. Deine eigenen Termine bleiben unverändert.",
+        "consequence": "Die Feiertage verschwinden aus dem Kalender und aus der Serienplanung.",
+        "confirm": "Feiertagskalender löschen"
+      },
+      "preview": "Feiertage der nächsten 12 Monate anzeigen",
+      "previewLabel": "Feiertage von {{name}} anzeigen",
+      "previewLoading": "Feiertage werden geladen …",
+      "previewError": "Die Feiertage konnten nicht geladen werden.",
+      "previewEmpty": "In den nächsten 12 Monaten gibt es keine Einträge."
+    },
     "feeds": {
       "title": "Feeds",
       "description": "Veröffentlichen Sie Ihren Kalender als ICS-Feed für Apple Calendar, Google Calendar usw.",
@@ -1038,64 +1356,6 @@
       "saving": "Speichern…",
       "noFeeds": "Noch keine Feeds.",
       "allGroups": "Alle Gruppen"
-    },
-    "properties": {
-      "title": "Eigenschaften",
-      "description": "Eigenschaften sind Tags, die bei Veranstaltungen angezeigt werden (z. B. Dresscode, Ausrüstung). Sie können ein Emoji-Symbol haben.",
-      "newProperty": "Neue Eigenschaft",
-      "icon": "Symbol",
-      "noProperties": "Noch keine Eigenschaften.",
-      "deleteProperty": "Eigenschaft löschen?",
-      "cannotBeUndone": "Dieser Vorgang kann nicht rückgängig gemacht werden."
-    },
-    "features": {
-      "title": "Features",
-      "description": "Features sind besondere Aktivitäten oder Angebote bei einer Veranstaltung (z. B. Bonusschießen).",
-      "newFeature": "Neues Feature",
-      "noFeatures": "Noch keine Features.",
-      "deleteFeature": "Feature löschen?",
-      "cannotBeUndone": "Dieser Vorgang kann nicht rückgängig gemacht werden."
-    },
-    "targetGroups": {
-      "title": "Zielgruppen",
-      "description": "Zielgruppen definieren Zielgruppensegmente (z. B. Jugend, Erwachsene). Werden zur Filterung von Kalender-Feeds verwendet.",
-      "newTargetGroup": "Neue Zielgruppe",
-      "noTargetGroups": "Noch keine Zielgruppen.",
-      "deleteTargetGroup": "Zielgruppe löschen?",
-      "cannotBeUndone": "Dieser Vorgang kann nicht rückgängig gemacht werden."
-    },
-    "locations": {
-      "title": "Orte",
-      "description": "Orte können Veranstaltungen und Vorlagen als Standardveranstaltungsort zugewiesen werden.",
-      "newLocation": "Neuer Ort",
-      "street": "Straße",
-      "zip": "PLZ",
-      "city": "Stadt",
-      "country": "Land",
-      "optional": "(optional)",
-      "addLocation": "Ort hinzufügen",
-      "nameOptional": "Name (optional)",
-      "mapPosition": "Kartenposition",
-      "mapPositionHint": "suchen oder klicken/ziehen",
-      "noLocations": "Noch keine Orte.",
-      "deleteLocation": "Ort löschen?",
-      "cannotBeUndone": "Dieser Vorgang kann nicht rückgängig gemacht werden.",
-      "viewOnMap": "Auf Karte ansehen"
-    },
-    "holidays": {
-      "title": "Feiertagskalender",
-      "newCalendar": "Neuer Feiertagskalender",
-      "url": "ICS-URL",
-      "noHolidayCalendars": "Noch keine Feiertagskalender.",
-      "lastFetched": "Zuletzt abgerufen: {{date}}",
-      "eventCount": "{{count}} Ereignisse",
-      "refresh": "Aktualisieren",
-      "refreshing": "Wird aktualisiert…",
-      "deleteCalendar": "Feiertagskalender löschen?",
-      "cannotBeUndone": "Dieser Vorgang kann nicht rückgängig gemacht werden.",
-      "neverFetched": "Noch nie abgerufen",
-      "addAndFetch": "Hinzufügen & Abrufen",
-      "adding": "Wird hinzugefügt…"
     }
   },
   "brand": {
