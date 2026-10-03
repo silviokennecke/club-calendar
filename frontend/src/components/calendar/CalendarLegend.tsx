@@ -5,10 +5,12 @@ interface Props {
   showHoliday?: boolean;
   /** Adds the drag hint (only where events can be moved). */
   showDragHint?: boolean;
+  /** The draft entry; the public view never shows drafts. */
+  showDraft?: boolean;
 }
 
 /** Explains the chip styles (design: ap-legend). */
-export function CalendarLegend({ showHoliday = true, showDragHint }: Props) {
+export function CalendarLegend({ showHoliday = true, showDragHint, showDraft = true }: Props) {
   const { t } = useTranslation();
   return (
     <div className="ap-legend">
@@ -16,10 +18,12 @@ export function CalendarLegend({ showHoliday = true, showDragHint }: Props) {
         <i className="ap-sw ap-sw--published" aria-hidden="true" />
         {t("calendar.legend.published")}
       </span>
-      <span>
-        <i className="ap-sw ap-sw--draft" aria-hidden="true" />
-        {t("calendar.legend.draft")}
-      </span>
+      {showDraft && (
+        <span>
+          <i className="ap-sw ap-sw--draft" aria-hidden="true" />
+          {t("calendar.legend.draft")}
+        </span>
+      )}
       {showHoliday && (
         <span>
           <i className="ap-sw ap-sw--holiday" aria-hidden="true" />

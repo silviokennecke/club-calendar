@@ -182,19 +182,73 @@
     "de": "Deutsch"
   },
   "feed": {
-    "loading": "Loading...",
-    "privateError": "This feed is private. A valid key is required.",
-    "notFoundError": "Feed not found or not published.",
-    "loadError": "Failed to load calendar.",
-    "publicCalendar": "Public Calendar",
-    "subscribe": "Subscribe",
-    "filter": "Filter:",
-    "allGroups": "All",
-    "allDay": "All day",
-    "openInMaps": "Open in Maps ↗",
-    "locationMapAlt": "Location map",
-    "clickForDetails": "Click an event for details",
-    "showingCount": "Showing {{filtered}} of {{total}} events · Subscription reflects this filter"
+    "brand": "Public calendar",
+    "loading": "Loading calendar.",
+    "timeZoneNote": "All times are in the {{zone}} time zone.",
+    "subscribe": "Subscribe to calendar",
+    "downloadIcs": "Download ICS file",
+    "addressToggle": "Show subscription address",
+    "addressLabel": "Address for subscribing (ICS)",
+    "addressHint": "Add this address as a subscription in your calendar app.",
+    "view": {
+      "label": "View",
+      "month": "Month",
+      "list": "List"
+    },
+    "counter_one": "Showing {{shown}} of {{count}} event",
+    "counter_other": "Showing {{shown}} of {{count}} events",
+    "subscriptionFilter": "Your subscription uses this selection.",
+    "noneInMonth": "There are no published events this month.",
+    "listHeading": "Events in {{month}}",
+    "noResults": {
+      "searchTitle": "No events found for “{{query}}”",
+      "filterTitle": "No events for this selection",
+      "text": "Check the spelling or choose another audience.",
+      "reset": "Reset selection"
+    },
+    "empty": {
+      "title": "No events published yet",
+      "text": "As soon as the club publishes events they appear here. You can subscribe to the calendar already."
+    },
+    "states": {
+      "private": {
+        "title": "This calendar is private",
+        "text": "The link is incomplete or no longer valid. Please ask the club for the current link."
+      },
+      "notFound": {
+        "title": "Calendar not found",
+        "text": "This calendar does not exist or is not published."
+      },
+      "error": {
+        "banner": "The calendar could not be loaded.",
+        "bannerText": "The connection was interrupted. Check your network and try again.",
+        "title": "Calendar unavailable",
+        "text": "Your selection is kept. It usually only takes a moment.",
+        "retry": "Try again"
+      }
+    },
+    "footer": "Provided with Club Calendar",
+    "event": {
+      "back": "Back to calendar",
+      "date": "Date",
+      "time": "Time",
+      "timeRange": "{{from}} to {{to}}",
+      "allDay": "All day",
+      "dateRange": "{{from}} to {{to}}",
+      "place": "Place",
+      "mapLabel": "Map with a marker for {{place}}",
+      "mapUnavailable": "The map is not available right now. The address is shown above.",
+      "openMap": "Open in maps app",
+      "properties": "Properties",
+      "features": "Features",
+      "audiences": "Audiences",
+      "addToCalendar": "Add to calendar",
+      "addToCalendarHint": "Downloads an ICS file for this event only.",
+      "notFound": {
+        "title": "Event not found",
+        "text": "This event no longer exists or is not published."
+      }
+    }
   },
   "calendar": {
     "title": "Calendar",

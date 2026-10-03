@@ -35,6 +35,8 @@ export interface MonthViewProps {
   placeOf?: (item: CalItem) => string | null | undefined;
   tagsOf?: (item: CalItem) => EventItemTag[];
   showHolidayLegend?: boolean;
+  /** Public view: no status badges and no draft entry in the legend (drafts are never shown). */
+  publicView?: boolean;
 }
 
 /**
@@ -61,6 +63,7 @@ export function MonthView({
   placeOf,
   tagsOf,
   showHolidayLegend = true,
+  publicView = false,
 }: MonthViewProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -94,6 +97,7 @@ export function MonthView({
       onClose={compact ? undefined : closePanel}
       placeOf={placeOf}
       tagsOf={tagsOf}
+      showStatus={!publicView}
       className={compact ? undefined : "ap-panel"}
     />
   );
@@ -140,7 +144,11 @@ export function MonthView({
         />
         {panelOpen && panel}
       </div>
-      <CalendarLegend showHoliday={showHolidayLegend} showDragHint={!!onDropItem} />
+      <CalendarLegend
+        showHoliday={showHolidayLegend}
+        showDragHint={!!onDropItem}
+        showDraft={!publicView}
+      />
     </div>
   );
 }

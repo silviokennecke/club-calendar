@@ -182,19 +182,73 @@
     "de": "Deutsch"
   },
   "feed": {
-    "loading": "Laden...",
-    "privateError": "Dieser Feed ist privat. Ein gültiger Schlüssel ist erforderlich.",
-    "notFoundError": "Feed nicht gefunden oder nicht veröffentlicht.",
-    "loadError": "Kalender konnte nicht geladen werden.",
-    "publicCalendar": "Öffentlicher Kalender",
-    "subscribe": "Abonnieren",
-    "filter": "Filter:",
-    "allGroups": "Alle",
-    "allDay": "Ganztägig",
-    "openInMaps": "In Karten öffnen ↗",
-    "locationMapAlt": "Standortkarte",
-    "clickForDetails": "Ereignis anklicken für Details",
-    "showingCount": "{{filtered}} von {{total}} Ereignissen · Abonnement berücksichtigt diesen Filter"
+    "brand": "Öffentlicher Kalender",
+    "loading": "Kalender wird geladen.",
+    "timeZoneNote": "Alle Uhrzeiten gelten in der Zeitzone {{zone}}.",
+    "subscribe": "Kalender abonnieren",
+    "downloadIcs": "Als ICS-Datei laden",
+    "addressToggle": "Abo-Adresse anzeigen",
+    "addressLabel": "Adresse zum Abonnieren (ICS)",
+    "addressHint": "Füge diese Adresse in deiner Kalender-App als Abo hinzu.",
+    "view": {
+      "label": "Ansicht",
+      "month": "Monat",
+      "list": "Liste"
+    },
+    "counter_one": "Zeige {{shown}} von {{count}} Termin",
+    "counter_other": "Zeige {{shown}} von {{count}} Terminen",
+    "subscriptionFilter": "Dein Abo übernimmt diese Auswahl.",
+    "noneInMonth": "In diesem Monat gibt es keine veröffentlichten Termine.",
+    "listHeading": "Termine im {{month}}",
+    "noResults": {
+      "searchTitle": "Keine Termine zu „{{query}}“ gefunden",
+      "filterTitle": "Keine Termine für diese Auswahl",
+      "text": "Prüfe die Schreibweise oder wähle eine andere Zielgruppe.",
+      "reset": "Auswahl zurücksetzen"
+    },
+    "empty": {
+      "title": "Noch keine Termine veröffentlicht",
+      "text": "Sobald der Verein Termine veröffentlicht, erscheinen sie hier. Du kannst den Kalender schon abonnieren."
+    },
+    "states": {
+      "private": {
+        "title": "Dieser Kalender ist privat",
+        "text": "Der Link ist unvollständig oder nicht mehr gültig. Bitte frage beim Verein nach dem aktuellen Link."
+      },
+      "notFound": {
+        "title": "Kalender nicht gefunden",
+        "text": "Diesen Kalender gibt es nicht oder er ist nicht veröffentlicht."
+      },
+      "error": {
+        "banner": "Der Kalender konnte nicht geladen werden.",
+        "bannerText": "Die Verbindung ist unterbrochen. Prüfe dein Netz und versuche es erneut.",
+        "title": "Kalender nicht verfügbar",
+        "text": "Deine Auswahl bleibt dabei erhalten. Es dauert meist nur einen Moment.",
+        "retry": "Erneut versuchen"
+      }
+    },
+    "footer": "Bereitgestellt mit Club Calendar",
+    "event": {
+      "back": "Zurück zum Kalender",
+      "date": "Datum",
+      "time": "Uhrzeit",
+      "timeRange": "{{from}} bis {{to}} Uhr",
+      "allDay": "Ganztägig",
+      "dateRange": "{{from}} bis {{to}}",
+      "place": "Ort",
+      "mapLabel": "Karte mit Markierung für {{place}}",
+      "mapUnavailable": "Die Karte ist gerade nicht verfügbar. Die Adresse steht oben.",
+      "openMap": "In Karten-App öffnen",
+      "properties": "Eigenschaften",
+      "features": "Features",
+      "audiences": "Zielgruppen",
+      "addToCalendar": "Zum Kalender hinzufügen",
+      "addToCalendarHint": "Lädt eine ICS-Datei nur für diesen Termin.",
+      "notFound": {
+        "title": "Termin nicht gefunden",
+        "text": "Diesen Termin gibt es nicht mehr oder er ist nicht veröffentlicht."
+      }
+    }
   },
   "calendar": {
     "title": "Kalender",

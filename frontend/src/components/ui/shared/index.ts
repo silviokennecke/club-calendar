@@ -30,6 +30,7 @@ export { EmojiPicker } from "./EmojiPicker";
 export { Stepper } from "./Stepper";
 export { LangSwitch, SUPPORTED_LANGUAGES } from "./LangSwitch";
 export type { Language } from "./LangSwitch";
+export { ThemeSwitch } from "./ThemeSwitch";
 export { Skeleton } from "./Skeleton";
 export { SectionHeader } from "./SectionHeader";
 export { ListCard } from "./ListCard";
