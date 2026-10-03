@@ -4,19 +4,17 @@ declare(strict_types=1);
 
 namespace Deployer;
 
+require __DIR__.'/deployer_recipe.php';
+
 /*
- * Deployer (https://deployer.org) config. For now it only builds the project;
- * the deployment itself is done by hand.
+ * Deployer (https://deployer.org) config.
  *
- *     npm run deploy:build        (= backend/vendor/bin/dep build)
+ *     npm run deploy:build     only build (.deploy/build)
+ *     npm run deploy           build, upload, set up on the server
  *
  * Settings come from ./.env (see .env.example) or from real environment
  * variables, so the same file works locally and in a pipeline.
- *
- * Result: backend/ with compiled mail templates and the built SPA in
- * backend/public (next to index.php and .htaccess), ready to be shipped.
- * Composer dependencies are not touched: `composer install --no-dev` would
- * remove Deployer itself from the local vendor dir, so run it on the target.
+ * The flow itself lives in deployer_recipe.php.
  */
 
 const ROOT = __DIR__;
@@ -48,31 +46,25 @@ function loadDotenv(string $file): void
 
 loadDotenv(ROOT.'/.env');
 
-localhost('local');
-
-desc('Compiles mail templates and builds the frontend into backend/public');
-task('build', function () {
-    if (!is_dir(ROOT.'/node_modules')) {
-        runLocally('npm ci', cwd: ROOT, timeout: null);
+// Target server, from .env: DEPLOY_HOST, DEPLOY_USER, DEPLOY_PATH (docroot = <path>/current/public)
+// optional: DEPLOY_PORT, DEPLOY_KEY (identity file), DEPLOY_PHP (remote php binary)
+foreach (['DEPLOY_HOST', 'DEPLOY_USER', 'DEPLOY_PATH'] as $required) {
+    if (false === getenv($required) || '' === getenv($required)) {
+        throw new \RuntimeException("$required is not set (see .env.example)");
     }
+}
 
-    info('Compiling mail templates');
-    runLocally('npm run build:mail -w backend', cwd: ROOT);
-
-    info('Building frontend');
-    // VITE_API_URL (public URL of the deployment) from .env overrides frontend/.env*
-    $api = getenv('VITE_API_URL');
-    runLocally(
-        'npm run build -w frontend',
-        cwd: ROOT,
-        timeout: null,
-        env: false !== $api && '' !== $api ? ['VITE_API_URL' => rtrim($api, '/')] : null,
-    );
-
-    foreach (['index.html', '.htaccess', 'index.php'] as $file) {
-        if (!is_file(ROOT."/backend/public/$file")) {
-            throw error("backend/public/$file is missing after the build");
-        }
-    }
-    info('Build ready in backend/public');
-});
+$host = host(getenv('DEPLOY_HOST'))
+    ->setRemoteUser(getenv('DEPLOY_USER'))
+    ->setDeployPath(rtrim(getenv('DEPLOY_PATH'), '/'))
+    ->set('writable_mode', 'chmod')
+    ->set('writable_recursive', true);
+if (false !== getenv('DEPLOY_PORT')) {
+    $host->setPort(getenv('DEPLOY_PORT'));
+}
+if (false !== getenv('DEPLOY_KEY')) {
+    $host->setIdentityFile(getenv('DEPLOY_KEY'));
+}
+if (false !== getenv('DEPLOY_PHP')) {
+    $host->set('bin/php', getenv('DEPLOY_PHP'));
+}
