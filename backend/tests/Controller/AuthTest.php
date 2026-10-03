@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller;
 
+use App\Entity\Passkey;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
@@ -198,6 +199,32 @@ class AuthTest extends WebTestCase
         $r = TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], $auth);
         $this->assertSame(200, $r['status']);
         $this->assertSame('carol@example.com', $r['body']['email']);
+    }
+
+    public function testMeListsPasskeysOfAUserLoadedFromTheDatabase(): void
+    {
+        $user = TestHelper::createUser(self::$em, self::$hasher, 'passkey@example.com');
+        $passkey = (new Passkey())
+            ->setId('pk-1')
+            ->setUser($user)
+            ->setCredentialId('credential-1')
+            ->setPublicKey('binary-public-key')
+            ->setDeviceName('Büro-PC');
+        self::$em->persist($passkey);
+        self::$em->flush();
+        // The blob column is hydrated as a stream: load the passkey fresh from the database.
+        self::$em->clear();
+
+        $auth = TestHelper::authHeader($user, self::$tokens);
+        $r = TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], $auth);
+        $this->assertSame(200, $r['status']);
+        $this->assertCount(1, $r['body']['passkeys']);
+        $this->assertSame('Büro-PC', $r['body']['passkeys'][0]['deviceName']);
+
+        $loaded = self::$em->getRepository(Passkey::class)->find('pk-1');
+        $this->assertSame('binary-public-key', $loaded->getPublicKey());
+        // Reading twice must give the same bytes.
+        $this->assertSame('binary-public-key', $loaded->getPublicKey());
     }
 
     public function testUpdateMePersistsLanguage(): void

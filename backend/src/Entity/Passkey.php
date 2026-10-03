@@ -20,8 +20,10 @@ class Passkey
     #[ORM\Column(length: 700, unique: true)]
     private string $credentialId;
 
+    // A blob column is hydrated as a stream resource, so the property cannot be typed `string`.
+    /** @var string|resource */
     #[ORM\Column(type: 'blob')]
-    private string $publicKey;
+    private mixed $publicKey;
 
     #[ORM\Column(type: 'bigint', options: ['default' => 0])]
     private int $counter = 0;
@@ -76,7 +78,9 @@ class Passkey
     public function getPublicKey(): string
     {
         if (is_resource($this->publicKey)) {
-            return stream_get_contents($this->publicKey);
+            rewind($this->publicKey);
+
+            return (string) stream_get_contents($this->publicKey);
         }
 
         return $this->publicKey;
