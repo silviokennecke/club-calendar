@@ -13,4 +13,3 @@ compose.override.yml
 # .claude/settings.json is intentionally committed for shared plugin config
 .claude/*
 !.claude/settings.json
-.deploy/

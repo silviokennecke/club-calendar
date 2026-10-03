@@ -86,7 +86,7 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 
 ## Deployment
 
-`npm run deploy -- <target>` runs Deployer (`deploy.php`, `deployer/deployer` is a backend dev dependency): builds locally into `.deploy/<target>` (MJML, Vite build moved into `backend/public/`), uploads it as a new release, then composer install, migrations, cache warmup and symlink switch on the server; `backend/vendor/bin/dep rollback <target>` reverts. Targets are configured in the root `.env` (see `.env.example`) or real env vars (pipelines). `backend/public/.htaccess` routes `/api/*` to Symfony and everything else to the SPA's `index.html`; the docroot is `<deploy_path>/current/public`. The server keeps `.env.local` and `config/jwt/*.pem` in `shared/`.
+`npm run deploy:build` runs Deployer (`deploy.php`; `deployer/deployer` is a backend dev dependency) and only builds: it compiles the MJML mail templates and builds the frontend straight into `backend/public/` (configured in `frontend/vite.config.ts`; built files are gitignored). `VITE_API_URL` (public URL) comes from the root `.env` or the environment. Shipping `backend/` to the server is done manually (run `composer install --no-dev` there). `backend/public/.htaccess` routes `/api/*` to Symfony and everything else to the SPA's `index.html`.
 
 ## Domain Concepts
 
