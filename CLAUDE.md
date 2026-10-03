@@ -86,7 +86,7 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 
 ## Deployment
 
-`./deploy.sh [target] [--dry-run] [--skip-build]` builds in `.deploy/` (no-dev composer install, MJML, Vite build moved into `backend/public/`) and rsyncs to the server over SSH, then runs migrations and cache warmup. Targets are configured in the root `.env` (see `.env.example`) or real env vars (pipelines). `backend/public/.htaccess` routes `/api/*` to Symfony and everything else to the SPA's `index.html`. The server keeps its own `var/`, `.env.local` and `config/jwt/*.pem`.
+`npm run deploy -- <target>` runs Deployer (`deploy.php`, `deployer/deployer` is a backend dev dependency): builds locally into `.deploy/<target>` (MJML, Vite build moved into `backend/public/`), uploads it as a new release, then composer install, migrations, cache warmup and symlink switch on the server; `backend/vendor/bin/dep rollback <target>` reverts. Targets are configured in the root `.env` (see `.env.example`) or real env vars (pipelines). `backend/public/.htaccess` routes `/api/*` to Symfony and everything else to the SPA's `index.html`; the docroot is `<deploy_path>/current/public`. The server keeps `.env.local` and `config/jwt/*.pem` in `shared/`.
 
 ## Domain Concepts
 
