@@ -84,6 +84,10 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 4. **Always use UUIDs for entity IDs** — never use auto-increment integers. Use `Uuid::v7()->toRfc4122()` assigned in the constructor, with `#[ORM\Column(length: 36)]` (no `#[ORM\GeneratedValue]`). The `getId()` return type must be `string`, not `?int`.
 5. **Use shared UI components** — Before adding structural JSX or Tailwind layout patterns to a frontend page, check `frontend/src/components/ui/shared/` for existing components: `FormField`, `SectionHeader`, `EmptyState`, `ListCard`, `ListRow`, `TagBadge`, `TagBadgeRow`, `FilterPillGroup`, `DangerZoneConfirm`, `SearchInput`, `FullPageLoader`, `FullPageError`, `Alert`. Import from `@/components/ui/shared`. For Mapbox maps, use `useMapbox` from `frontend/src/components/locations/useMapbox.ts` instead of duplicating the initialization boilerplate.
 
+## Deployment
+
+`./deploy.sh [target] [--dry-run] [--skip-build]` builds in `.deploy/` (no-dev composer install, MJML, Vite build moved into `backend/public/`) and rsyncs to the server over SSH, then runs migrations and cache warmup. Targets are configured in the root `.env` (see `.env.example`) or real env vars (pipelines). `backend/public/.htaccess` routes `/api/*` to Symfony and everything else to the SPA's `index.html`. The server keeps its own `var/`, `.env.local` and `config/jwt/*.pem`.
+
 ## Domain Concepts
 
 - **Club** — the top-level entity; has one or more Calendars; managed by Users
