@@ -28,6 +28,9 @@ export function useEventPage() {
     base,
     calendar,
     calendarLoading: calendarQuery.isLoading,
+    /** The calendar could not be loaded (and nothing is cached). */
+    calendarFailed: calendarQuery.isError && !calendar,
+    reloadCalendar: () => void calendarQuery.refetch(),
     isArchived: !!calendar?.archivedAt,
     timeZone,
     today: todayIn(timeZone),
