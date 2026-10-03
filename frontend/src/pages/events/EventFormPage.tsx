@@ -20,7 +20,6 @@ import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import {
   Banner,
   Button,
-  ChipSelect,
   ConfirmDialog,
   EmptyState,
   ErrorSummary,
@@ -34,6 +33,7 @@ import {
 } from "@/components/ui/shared";
 import { EventPageHead } from "@/components/events/EventPageHead";
 import { StatusSeg } from "@/components/events/StatusSeg";
+import { AssignmentFields } from "@/components/events/AssignmentFields";
 import { LocationSection } from "@/components/events/LocationSection";
 import { useEventPage } from "@/components/events/useEventPage";
 import { ArchivedCreateGuard } from "@/components/events/ArchivedCreateGuard";
@@ -415,35 +415,11 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
             <h2 className="t-h2" id="sec-tags">
               {t("events.form.sections.tags")}
             </h2>
-            <ChipSelect
-              label={t("events.form.properties")}
-              options={res.properties.map((p) => ({
-                id: p.id,
-                label: p.icon ? `${p.icon} ${p.name}` : p.name,
-              }))}
-              selected={values.propertyIds}
-              onChange={(ids) => set("propertyIds", ids)}
-              onCreate={readOnly ? undefined : (name) => createAndReport(res.createProperty, name)}
-              createLabel={t("events.form.createProperty")}
-            />
-            <ChipSelect
-              label={t("events.form.features")}
-              options={res.features.map((f) => ({ id: f.id, label: f.name }))}
-              selected={values.featureIds}
-              onChange={(ids) => set("featureIds", ids)}
-              onCreate={readOnly ? undefined : (name) => createAndReport(res.createFeature, name)}
-              createLabel={t("events.form.createFeature")}
-            />
-            <ChipSelect
-              label={t("events.form.targetGroups")}
-              options={res.targetGroups.map((g) => ({ id: g.id, label: g.name }))}
-              selected={values.targetGroupIds}
-              onChange={(ids) => set("targetGroupIds", ids)}
-              onCreate={
-                readOnly ? undefined : (name) => createAndReport(res.createTargetGroup, name)
-              }
-              createLabel={t("events.form.createTargetGroup")}
-              hint={t("events.form.targetGroupsHint")}
+            <AssignmentFields
+              resources={res}
+              value={values}
+              onChange={(field, ids) => set(field, ids)}
+              readOnly={readOnly}
             />
           </section>
         </fieldset>
@@ -500,13 +476,4 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
       <UnsavedChangesDialog {...unsaved.dialog} />
     </div>
   );
-
-  async function createAndReport(fn: (name: string) => Promise<{ id: string }>, name: string) {
-    try {
-      return (await fn(name)).id;
-    } catch (err) {
-      toast.error(t("events.form.createFailed"));
-      throw err;
-    }
-  }
 }

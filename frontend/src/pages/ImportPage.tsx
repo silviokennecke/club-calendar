@@ -1,926 +1,204 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { useParams, Link } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost } from "@/lib/api";
-import type { Property, Feature, TargetGroup, Location } from "@/lib/types";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { apiPost } from "@/lib/api";
 import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  Upload,
-  Check,
-  Pencil,
-  X,
-  Settings2,
-} from "lucide-react";
+  IMPORT_CHUNK,
+  buildItems,
+  chunk,
+  groupItems,
+  newPlaceKey,
+  summarizeImport,
+  toImportPayload,
+  type ImportItem,
+} from "@/lib/import";
+import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
+import { Banner, Button, Stepper, UnsavedChangesDialog } from "@/components/ui/shared";
+import { ArchivedCreateGuard } from "@/components/events/ArchivedCreateGuard";
+import { useAllEvents, useEventPage } from "@/components/events/useEventPage";
+import { useEventResources } from "@/components/events/useEventResources";
+import { ImportDone, type ImportResult } from "@/components/import/ImportDone";
+import { ImportReview } from "@/components/import/ImportReview";
+import { ImportUpload, type ParsedFile } from "@/components/import/ImportUpload";
 
-interface ParsedEvent {
-  uid: string;
-  name: string;
-  date: string;
-  dateEnd: string;
-  timeBegin: string;
-  timeEnd: string;
-  timezone: string | null;
-  locationText: string;
-  isAllDay: boolean;
-  isDraft: boolean;
-  propertyIds: string[];
-  featureIds: string[];
-  targetGroupIds: string[];
-  selected: boolean;
+type Step = "upload" | "review" | "done";
+
+/**
+ * ICS import in three steps (design: Import, ImportReview, ImportDone) with a Stepper. The backend
+ * only offers `POST …/events/import`, no dry run, so the file is parsed and checked in the browser
+ * and only the reviewed events are sent (docs/redesign/BACKEND-GAPS.md).
+ */
+export default function ImportPage() {
+  return (
+    <ArchivedCreateGuard>
+      <Import />
+    </ArchivedCreateGuard>
+  );
 }
 
-function parseIcs(text: string): ParsedEvent[] {
-  const events: ParsedEvent[] = [];
-  const blocks = text.split("BEGIN:VEVENT").slice(1);
-  for (const block of blocks) {
-    try {
-      const get = (key: string) => {
-        const match = block.match(new RegExp(`(?:^|\\n)${key}[^:]*:([^\\r\\n]*)`, "i"));
-        return match ? match[1].trim() : "";
-      };
-      const summary = get("SUMMARY").replace(/\\,/g, ",").replace(/\\n/g, " ").replace(/\\/g, "");
-      if (!summary) continue;
-      const uid = get("UID") || `imported-${Math.random().toString(36).slice(2)}`;
-      const dtstart = get("DTSTART");
-      if (!dtstart) continue;
-      let date = "",
-        timeBegin = "00:00",
-        timezone: string | null = null;
-      const tzMatch = block.match(/DTSTART;TZID=([^:]+):/i);
-      if (tzMatch) timezone = tzMatch[1].trim();
-      if (dtstart.length >= 8) {
-        date = `${dtstart.slice(0, 4)}-${dtstart.slice(4, 6)}-${dtstart.slice(6, 8)}`;
-      }
-      if (!date) continue;
-      const isAllDay = dtstart.length === 8;
-      if (!isAllDay && dtstart.length >= 13) {
-        timeBegin = `${dtstart.slice(9, 11)}:${dtstart.slice(11, 13)}`;
-      }
-      const dtend = get("DTEND");
-      let timeEnd = timeBegin;
-      let dateEnd = "";
+function Import() {
+  const { t } = useTranslation();
+  const page = useEventPage();
+  const qc = useQueryClient();
+  const resources = useEventResources(page.calendarId);
+  const existing = useAllEvents(page.calendarId);
 
-      if (dtend) {
-        const dtendDate = `${dtend.slice(0, 4)}-${dtend.slice(4, 6)}-${dtend.slice(6, 8)}`;
-        if (isAllDay) {
-          const dtendParsed = new Date(dtendDate);
-          dtendParsed.setDate(dtendParsed.getDate() - 1);
-          const dtendAdjusted = dtendParsed.toISOString().slice(0, 10);
-          if (dtendAdjusted !== date) dateEnd = dtendAdjusted;
-        } else if (dtend.length >= 13) {
-          if (dtendDate !== date) {
-            dateEnd = dtendDate;
-          }
-          timeEnd = `${dtend.slice(9, 11)}:${dtend.slice(11, 13)}`;
-        }
+  const [step, setStep] = useState<Step>("upload");
+  const [file, setFile] = useState<ParsedFile | null>(null);
+  const [items, setItems] = useState<ImportItem[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const itemsOf = useRef<ParsedFile | null>(null);
+
+  const unsaved = useUnsavedChanges(step === "review" && !importing);
+  const groups = useMemo(() => groupItems(items), [items]);
+
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (step !== "done") heading.current?.focus({ preventScroll: true });
+  }, [step]);
+
+  function onParsed(parsed: ParsedFile) {
+    setFile(parsed);
+    // Coming back with the same file keeps the edits made in the review.
+    if (itemsOf.current !== parsed) {
+      itemsOf.current = parsed;
+      setItems(buildItems(parsed.events));
+    }
+    setStep("review");
+  }
+
+  function reset() {
+    setFile(null);
+    setItems([]);
+    itemsOf.current = null;
+    setResult(null);
+    setStep("upload");
+  }
+
+  async function runImport() {
+    if (!file || importing) return;
+    const chosen = items.filter((i) => i.selected);
+    if (chosen.length === 0) return;
+    const summary = summarizeImport(items, resources.locations);
+    setImporting(true);
+    let imported = 0;
+    try {
+      const newPlaceIds = new Map<string, string>();
+      for (const name of summary.newPlaces) {
+        const created = await resources.createLocation(name);
+        newPlaceIds.set(newPlaceKey(name), created.id);
       }
-      const locationText = get("LOCATION")
-        .replace(/\\,/g, ",")
-        .replace(/\\n/g, " ")
-        .replace(/\\/g, "");
-      events.push({
-        uid,
-        name: summary,
-        date,
-        dateEnd,
-        timeBegin,
-        timeEnd,
-        timezone,
-        locationText,
-        isDraft: true,
-        isAllDay,
-        propertyIds: [],
-        featureIds: [],
-        targetGroupIds: [],
-        selected: true,
+      const payloads = chosen.map((i) => toImportPayload(i, resources.locations, newPlaceIds));
+      for (const events of chunk(payloads, IMPORT_CHUNK)) {
+        const res = await apiPost<{ imported: number }>(
+          `/api/calendars/${page.calendarId}/events/import`,
+          { events },
+        );
+        imported += res.imported;
+      }
+      setResult({
+        kind: "ok",
+        imported,
+        drafts: summary.drafts,
+        published: summary.published,
+        newPlaces: summary.newPlaces,
+        unselected: summary.unselected,
+        invalid: file.skipped.length,
       });
     } catch {
-      /* skip malformed */
-    }
-  }
-  return events;
-}
-
-function RelationFields({
-  properties,
-  features,
-  targetGroups,
-  propertyIds,
-  featureIds,
-  targetGroupIds,
-  onToggleProp,
-  onToggleFeat,
-  onToggleTg,
-}: {
-  properties: Property[];
-  features: Feature[];
-  targetGroups: TargetGroup[];
-  propertyIds: string[];
-  featureIds: string[];
-  targetGroupIds: string[];
-  onToggleProp: (id: string) => void;
-  onToggleFeat: (id: string) => void;
-  onToggleTg: (id: string) => void;
-}) {
-  return (
-    <>
-      {targetGroups.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="w-16 text-xs text-slate-500">Groups</span>
-          {targetGroups.map((tg) => (
-            <button
-              key={tg.id}
-              type="button"
-              onClick={() => onToggleTg(tg.id)}
-              className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${targetGroupIds.includes(tg.id) ? "border-purple-300 bg-purple-100 text-purple-700" : "border-slate-200 text-slate-600 hover:border-purple-200"}`}
-            >
-              {tg.name}
-            </button>
-          ))}
-        </div>
-      )}
-      {properties.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="w-16 text-xs text-slate-500">Properties</span>
-          {properties.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => onToggleProp(p.id)}
-              className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${propertyIds.includes(p.id) ? "border-blue-300 bg-blue-100 text-blue-700" : "border-slate-200 text-slate-600 hover:border-blue-200"}`}
-            >
-              {p.icon && <span className="mr-1">{p.icon}</span>}
-              {p.name}
-            </button>
-          ))}
-        </div>
-      )}
-      {features.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="w-16 text-xs text-slate-500">Features</span>
-          {features.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => onToggleFeat(f.id)}
-              className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${featureIds.includes(f.id) ? "border-green-300 bg-green-100 text-green-700" : "border-slate-200 text-slate-600 hover:border-green-200"}`}
-            >
-              {f.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </>
-  );
-}
-
-function RowEditor({
-  ev,
-  properties,
-  features,
-  targetGroups,
-  onSave,
-  onClose,
-}: {
-  ev: ParsedEvent;
-  properties: Property[];
-  features: Feature[];
-  targetGroups: TargetGroup[];
-  onSave: (patch: Partial<ParsedEvent>) => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  const [name, setName] = useState(ev.name);
-  const [date, setDate] = useState(ev.date);
-  const [dateEnd, setDateEnd] = useState(ev.dateEnd);
-  const [timeBegin, setTimeBegin] = useState(ev.timeBegin);
-  const [timeEnd, setTimeEnd] = useState(ev.timeEnd);
-  const [isDraft, setIsDraft] = useState(ev.isDraft);
-  const [isAllDay, setIsAllDay] = useState(ev.isAllDay);
-  const [propertyIds, setPropertyIds] = useState(ev.propertyIds);
-  const [featureIds, setFeatureIds] = useState(ev.featureIds);
-  const [targetGroupIds, setTargetGroupIds] = useState(ev.targetGroupIds);
-  function toggle<T>(arr: T[], val: T) {
-    return arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
-  }
-  return (
-    <div className="space-y-3 border-t border-blue-100 bg-blue-50/60 px-4 py-3">
-      <div className="flex flex-wrap gap-2">
-        <div className="min-w-40 flex-1 space-y-1">
-          <Label className="text-xs">{t("import.name")}</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8 text-sm" />
-        </div>
-        <div className="min-w-36 space-y-1">
-          <Label className="text-xs">{t("import.date")}</Label>
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="h-8 w-full text-sm"
-          />
-        </div>
-        <div className="min-w-36 space-y-1">
-          <Label className="text-xs">{t("eventModal.endDate")}</Label>
-          <Input
-            type="date"
-            value={dateEnd}
-            className="h-8 w-full text-sm"
-            onChange={(e) => setDateEnd(e.target.value)}
-          />
-        </div>
-        <div className="flex items-end gap-2 pb-0.5">
-          <Switch id={`allday-${ev.uid}`} checked={isAllDay} onCheckedChange={setIsAllDay} />
-          <Label htmlFor={`allday-${ev.uid}`} className="text-xs">
-            {t("eventModal.allDay")}
-          </Label>
-        </div>
-        {!isAllDay && (
-          <>
-            <div className="min-w-28 space-y-1">
-              <Label className="text-xs">{t("import.start")}</Label>
-              <Input
-                type="time"
-                value={timeBegin}
-                onChange={(e) => setTimeBegin(e.target.value)}
-                className="h-8 w-full text-sm"
-              />
-            </div>
-            <div className="min-w-28 space-y-1">
-              <Label className="text-xs">{t("import.end")}</Label>
-              <Input
-                type="time"
-                value={timeEnd}
-                onChange={(e) => setTimeEnd(e.target.value)}
-                className="h-8 w-full text-sm"
-              />
-            </div>
-          </>
-        )}
-        <div className="flex items-end gap-2 pb-0.5">
-          <Switch id={`d-${ev.uid}`} checked={!isDraft} onCheckedChange={(v) => setIsDraft(!v)} />
-          <Label htmlFor={`d-${ev.uid}`} className="text-xs">
-            {t("common.published")}
-          </Label>
-        </div>
-      </div>
-      <RelationFields
-        {...{ properties, features, targetGroups, propertyIds, featureIds, targetGroupIds }}
-        onToggleProp={(id) => setPropertyIds(toggle(propertyIds, id))}
-        onToggleFeat={(id) => setFeatureIds(toggle(featureIds, id))}
-        onToggleTg={(id) => setTargetGroupIds(toggle(targetGroupIds, id))}
-      />
-      <div className="flex gap-2 pt-1">
-        <Button
-          size="sm"
-          onClick={() => {
-            onSave({
-              name,
-              date,
-              dateEnd,
-              timeBegin,
-              timeEnd,
-              isDraft,
-              isAllDay,
-              propertyIds,
-              featureIds,
-              targetGroupIds,
-            });
-            onClose();
-          }}
-        >
-          <Check className="mr-1 h-3.5 w-3.5" />
-          {t("common.apply")}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={onClose}>
-          <X className="mr-1 h-3.5 w-3.5" />
-          {t("common.cancel")}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function GroupEditor({
-  groupName,
-  items,
-  properties,
-  features,
-  targetGroups,
-  onApply,
-  onClose,
-}: {
-  groupName: string;
-  items: ParsedEvent[];
-  properties: Property[];
-  features: Feature[];
-  targetGroups: TargetGroup[];
-  onApply: (patch: Partial<ParsedEvent>) => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  const first = items[0];
-  const [name, setName] = useState(groupName);
-  const [timeBegin, setTimeBegin] = useState(first.timeBegin);
-  const [timeEnd, setTimeEnd] = useState(first.timeEnd);
-  const [isDraft, setIsDraft] = useState(first.isDraft);
-  const [isAllDay, setIsAllDay] = useState(first.isAllDay);
-  const [propertyIds, setPropertyIds] = useState<string[]>(
-    first.propertyIds.filter((id) => items.every((e) => e.propertyIds.includes(id))),
-  );
-  const [featureIds, setFeatureIds] = useState<string[]>(
-    first.featureIds.filter((id) => items.every((e) => e.featureIds.includes(id))),
-  );
-  const [targetGroupIds, setTargetGroupIds] = useState<string[]>(
-    first.targetGroupIds.filter((id) => items.every((e) => e.targetGroupIds.includes(id))),
-  );
-  function toggle<T>(arr: T[], val: T) {
-    return arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
-  }
-  return (
-    <div className="space-y-3 border-b border-amber-200 bg-amber-50/60 px-4 py-4">
-      <p className="text-xs font-semibold tracking-wide text-amber-800 uppercase">
-        {t("import.editAllInGroup", { count: items.length })}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <div className="min-w-40 flex-1 space-y-1">
-          <Label className="text-xs">{t("import.renameAll")}</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8 text-sm" />
-        </div>
-        <div className="flex items-end gap-2 pb-0.5">
-          <Switch id={`gallday-${groupName}`} checked={isAllDay} onCheckedChange={setIsAllDay} />
-          <Label htmlFor={`gallday-${groupName}`} className="text-xs">
-            {t("eventModal.allDay")}
-          </Label>
-        </div>
-        {!isAllDay && (
-          <>
-            <div className="min-w-28 space-y-1">
-              <Label className="text-xs">{t("import.startAll")}</Label>
-              <Input
-                type="time"
-                value={timeBegin}
-                onChange={(e) => setTimeBegin(e.target.value)}
-                className="h-8 w-full text-sm"
-              />
-            </div>
-            <div className="min-w-28 space-y-1">
-              <Label className="text-xs">{t("import.endAll")}</Label>
-              <Input
-                type="time"
-                value={timeEnd}
-                onChange={(e) => setTimeEnd(e.target.value)}
-                className="h-8 w-full text-sm"
-              />
-            </div>
-          </>
-        )}
-        <div className="flex items-end gap-2 pb-0.5">
-          <Switch
-            id={`gd-${groupName}`}
-            checked={!isDraft}
-            onCheckedChange={(v) => setIsDraft(!v)}
-          />
-          <Label htmlFor={`gd-${groupName}`} className="text-xs">
-            {t("common.published")}
-          </Label>
-        </div>
-      </div>
-      <RelationFields
-        {...{ properties, features, targetGroups, propertyIds, featureIds, targetGroupIds }}
-        onToggleProp={(id) => setPropertyIds(toggle(propertyIds, id))}
-        onToggleFeat={(id) => setFeatureIds(toggle(featureIds, id))}
-        onToggleTg={(id) => setTargetGroupIds(toggle(targetGroupIds, id))}
-      />
-      <div className="flex gap-2 pt-1">
-        <Button
-          size="sm"
-          onClick={() => {
-            onApply({
-              name,
-              timeBegin,
-              timeEnd,
-              isDraft,
-              isAllDay,
-              propertyIds,
-              featureIds,
-              targetGroupIds,
-            });
-            onClose();
-          }}
-        >
-          <Check className="mr-1 h-3.5 w-3.5" />
-          {t("import.applyToAll", { count: items.length })}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={onClose}>
-          <X className="mr-1 h-3.5 w-3.5" />
-          {t("common.cancel")}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-export default function ImportPage() {
-  const { t } = useTranslation();
-  const { clubId, calendarId } = useParams<{ clubId: string; calendarId: string }>();
-  const qc = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [step, setStep] = useState<"upload" | "review" | "done">("upload");
-  const [events, setEvents] = useState<ParsedEvent[]>([]);
-  const [importing, setImporting] = useState(false);
-  const [importedCount, setImportedCount] = useState(0);
-  const [dragOver, setDragOver] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [editingUid, setEditingUid] = useState<string | null>(null);
-  const [editingGroup, setEditingGroup] = useState<string | null>(null);
-
-  const { data: properties = [] } = useQuery<Property[]>({
-    queryKey: ["properties", calendarId],
-    queryFn: () => apiGet(`/api/calendars/${calendarId}/properties`),
-    enabled: step === "review",
-  });
-  const { data: features = [] } = useQuery<Feature[]>({
-    queryKey: ["features", calendarId],
-    queryFn: () => apiGet(`/api/calendars/${calendarId}/features`),
-    enabled: step === "review",
-  });
-  const { data: targetGroups = [] } = useQuery<TargetGroup[]>({
-    queryKey: ["targetGroups", calendarId],
-    queryFn: () => apiGet(`/api/calendars/${calendarId}/target-groups`),
-    enabled: step === "review",
-  });
-  const { data: locations = [] } = useQuery<Location[]>({
-    queryKey: ["locations", calendarId],
-    queryFn: () => apiGet(`/api/calendars/${calendarId}/locations`),
-    enabled: step === "review",
-  });
-
-  const groups = useMemo(() => {
-    const map = new Map<string, ParsedEvent[]>();
-    for (const ev of events) {
-      const key = ev.name;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(ev);
-    }
-    return Array.from(map.entries()).map(([name, items]) => ({ name, items }));
-  }, [events]);
-
-  function handleFile(file: File) {
-    if (!file.name.endsWith(".ics") && file.type !== "text/calendar") {
-      alert(t("import.invalidFile"));
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const parsed = parseIcs(text);
-      if (parsed.length === 0) {
-        alert(t("import.noEventsFound"));
-        return;
-      }
-      setEvents(parsed);
-      setExpandedGroups(new Set());
-      setStep("review");
-    };
-    reader.readAsText(file);
-  }
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function updateEvent(uid: string, patch: Partial<ParsedEvent>) {
-    setEvents((prev) => prev.map((ev) => (ev.uid === uid ? { ...ev, ...patch } : ev)));
-  }
-
-  function updateGroup(groupName: string, patch: Partial<ParsedEvent>) {
-    setEvents((prev) => prev.map((ev) => (ev.name === groupName ? { ...ev, ...patch } : ev)));
-  }
-
-  function toggleGroupExpand(name: string) {
-    setExpandedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
-      } else {
-        next.add(name);
-      }
-      return next;
-    });
-  }
-
-  function toggleGroupSelection(groupName: string) {
-    const groupItems = events.filter((e) => e.name === groupName);
-    const allSel = groupItems.every((e) => e.selected);
-    setEvents((prev) => prev.map((e) => (e.name === groupName ? { ...e, selected: !allSel } : e)));
-  }
-
-  const selectedEvents = events.filter((e) => e.selected);
-  const allSelected = events.length > 0 && selectedEvents.length === events.length;
-
-  function toggleAll() {
-    const n = !allSelected;
-    setEvents((prev) => prev.map((e) => ({ ...e, selected: n })));
-  }
-  function bulkSetDraft(isDraft: boolean) {
-    setEvents((prev) => prev.map((e) => (e.selected ? { ...e, isDraft } : e)));
-  }
-  function bulkToggleIds(field: "propertyIds" | "featureIds" | "targetGroupIds", id: string) {
-    const allHave = selectedEvents.every((e) => e[field].includes(id));
-    setEvents((prev) =>
-      prev.map((e) => {
-        if (!e.selected) return e;
-        const arr = e[field];
-        return {
-          ...e,
-          [field]: allHave ? arr.filter((x) => x !== id) : [...new Set([...arr, id])],
-        };
-      }),
-    );
-  }
-
-  async function handleImport() {
-    const toImport = events.filter((e) => e.selected);
-    if (toImport.length === 0) return;
-    setImporting(true);
-    try {
-      const uniqueTexts = [...new Set(toImport.map((e) => e.locationText).filter(Boolean))];
-      const locationIdMap = new Map<string, string>();
-      for (const text of uniqueTexts) {
-        const existing = locations.find(
-          (l) => (l.street ?? "").toLowerCase() === text.toLowerCase(),
-        );
-        if (existing) {
-          locationIdMap.set(text, existing.id);
-        } else {
-          const created = await apiPost<Location>(`/api/calendars/${calendarId}/locations`, {
-            street: text,
-          });
-          locationIdMap.set(text, created.id);
-        }
-      }
-      const result = await apiPost<{ imported: number }>(
-        `/api/calendars/${calendarId}/events/import`,
-        {
-          events: toImport.map(({ uid: _uid, selected: _s, locationText, ...rest }) => ({
-            ...rest,
-            dateEnd: rest.dateEnd || null,
-            locationId: locationText ? (locationIdMap.get(locationText) ?? null) : null,
-          })),
-        },
-      );
-      qc.invalidateQueries({ queryKey: ["events", calendarId] });
-      qc.invalidateQueries({ queryKey: ["locations", calendarId] });
-      setImportedCount(result.imported);
-      setStep("done");
-    } catch (e) {
-      alert((e as Error).message ?? t("import.importFailed"));
+      setResult({
+        kind: "error",
+        imported,
+        notImported: items
+          .filter((i) => i.selected)
+          .slice(imported)
+          .map((i) => ({ name: i.name, date: i.date, dateEnd: i.dateEnd })),
+      });
     } finally {
+      await qc.invalidateQueries({ queryKey: ["events", page.calendarId] });
       setImporting(false);
+      setStep("done");
     }
   }
 
+  const steps = [t("import.steps.file"), t("import.steps.review"), t("import.steps.done")];
+  const stepNo = step === "upload" ? 1 : step === "review" ? 2 : 3;
+
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center gap-3">
-        <Link
-          to={`/clubs/${clubId}/calendars/${calendarId}`}
-          className="text-slate-400 hover:text-slate-600"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Link>
-        <h1 className="text-base font-semibold text-slate-900">{t("import.title")}</h1>
-      </div>
+    <div className={step === "review" ? "ap-wrap" : "ap-wrap--narrow"}>
+      <div className="ap-stack ap-stack--lg">
+        <Stepper steps={steps} current={stepNo} />
 
-      {step === "upload" && (
-        <div
-          className={`cursor-pointer rounded-xl border-2 border-dashed p-12 text-center transition-colors ${dragOver ? "border-blue-400 bg-blue-50" : "border-slate-200 hover:border-slate-300"}`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <Upload className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-          <p className="font-medium text-slate-600">{t("import.dropFile")}</p>
-          <p className="mt-1 text-sm text-slate-400">{t("import.orClick")}</p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".ics,text/calendar"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleFile(f);
-            }}
-          />
-        </div>
-      )}
+        {step === "upload" && (
+          <>
+            <header className="ap-stack">
+              <h1 className="t-h1 ap-focus-target" ref={heading} tabIndex={-1}>
+                {t("import.title")}
+              </h1>
+              <p className="t-body t-prose">{t("import.upload.intro")}</p>
+              <Banner tone="info" title={t("import.upload.series.title")}>
+                {t("import.upload.series.text")}
+              </Banner>
+            </header>
+            <ImportUpload
+              cancelTo={page.base}
+              timeZone={page.timeZone}
+              initial={file}
+              onParsed={onParsed}
+            />
+          </>
+        )}
 
-      {step === "review" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-600">
-              <span className="font-semibold">{events.length}</span>{" "}
-              {t("import.eventsCount", {
-                events: events.length,
-                groups: groups.length,
-                selected: selectedEvents.length,
-              })}
-            </p>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setStep("upload");
-                  setEvents([]);
-                }}
-              >
-                {t("import.back")}
-              </Button>
-              <Button
-                size="sm"
-                disabled={importing || selectedEvents.length === 0}
-                onClick={handleImport}
-              >
-                {importing
-                  ? t("import.importing")
-                  : t("import.importCount", { count: selectedEvents.length })}
-              </Button>
-            </div>
-          </div>
-
-          {selectedEvents.length > 0 && (
-            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-semibold tracking-wide text-slate-600 uppercase">
-                {t("import.bulkAssign", { count: selectedEvents.length })}
+        {step === "review" && file && (
+          <>
+            <header>
+              <h1 className="t-h1 ap-focus-target" ref={heading} tabIndex={-1}>
+                {t("import.review.title", { file: file.fileName, count: items.length })}
+              </h1>
+              <p className="t-body t-muted" style={{ marginTop: "var(--space-2)" }}>
+                {t("import.review.subtitle", { count: groups.length })}
               </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="w-20 text-xs text-slate-500">{t("import.status")}</span>
-                <button
-                  onClick={() => bulkSetDraft(false)}
-                  className="rounded-full border border-slate-200 px-2.5 py-1 text-xs transition-colors hover:border-blue-300 hover:bg-blue-50"
-                >
-                  {t("common.published")}
-                </button>
-                <button
-                  onClick={() => bulkSetDraft(true)}
-                  className="rounded-full border border-slate-200 px-2.5 py-1 text-xs transition-colors hover:border-slate-300"
-                >
-                  {t("common.draft")}
-                </button>
-              </div>
-              {targetGroups.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="w-20 text-xs text-slate-500">{t("import.groups")}</span>
-                  {targetGroups.map((tg) => {
-                    const all = selectedEvents.every((e) => e.targetGroupIds.includes(tg.id));
-                    return (
-                      <button
-                        key={tg.id}
-                        onClick={() => bulkToggleIds("targetGroupIds", tg.id)}
-                        className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${all ? "border-purple-300 bg-purple-100 text-purple-700" : "border-slate-200 text-slate-600 hover:border-purple-200"}`}
-                      >
-                        {tg.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              {properties.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="w-20 text-xs text-slate-500">Properties</span>
-                  {properties.map((p) => {
-                    const all = selectedEvents.every((e) => e.propertyIds.includes(p.id));
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={() => bulkToggleIds("propertyIds", p.id)}
-                        className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${all ? "border-blue-300 bg-blue-100 text-blue-700" : "border-slate-200 text-slate-600 hover:border-blue-200"}`}
-                      >
-                        {p.icon && <span className="mr-1">{p.icon}</span>}
-                        {p.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              {features.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="w-20 text-xs text-slate-500">Features</span>
-                  {features.map((f) => {
-                    const all = selectedEvents.every((e) => e.featureIds.includes(f.id));
-                    return (
-                      <button
-                        key={f.id}
-                        onClick={() => bulkToggleIds("featureIds", f.id)}
-                        className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${all ? "border-green-300 bg-green-100 text-green-700" : "border-slate-200 text-slate-600 hover:border-green-200"}`}
-                      >
-                        {f.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+            </header>
+            {resources.failed && (
+              <Banner
+                tone="danger"
+                title={t("import.review.loadError.title")}
+                action={
+                  <Button variant="secondary" icon="refresh" onClick={resources.reload}>
+                    {t("import.review.loadError.retry")}
+                  </Button>
+                }
+              >
+                {t("import.review.loadError.text")}
+              </Banner>
+            )}
+            <ImportReview
+              items={items}
+              onItemsChange={setItems}
+              skippedCount={file.skipped.length}
+              locations={resources.locations}
+              resources={resources}
+              existing={existing.data ?? []}
+              importing={importing}
+              blocked={resources.loading || resources.failed}
+              onBack={() => setStep("upload")}
+              onImport={runImport}
+            />
+          </>
+        )}
 
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="grid grid-cols-[2rem_1.5rem_1fr_6rem_4rem_4rem_4rem_2.5rem_2.5rem] gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500">
-              <input
-                type="checkbox"
-                checked={allSelected}
-                onChange={toggleAll}
-                className="mt-0.5"
-              />
-              <span />
-              <span>{t("import.name")}</span>
-              <span>{t("import.date")}</span>
-              <span>{t("import.start")}</span>
-              <span>{t("import.end")}</span>
-              <span>{t("import.location")}</span>
-              <span />
-              <span />
-            </div>
-
-            <div className="max-h-[55vh] divide-y divide-slate-100 overflow-y-auto">
-              {groups.map(({ name: groupName, items }) => {
-                const isExpanded = expandedGroups.has(groupName);
-                const groupSelected = items.filter((e) => e.selected).length;
-                const allGroupSelected = groupSelected === items.length;
-                const isGroupEditing = editingGroup === groupName;
-                const locTexts = [...new Set(items.map((e) => e.locationText).filter(Boolean))];
-
-                return (
-                  <div key={groupName}>
-                    <div
-                      className={`grid grid-cols-[2rem_1.5rem_1fr_6rem_4rem_4rem_4rem_2.5rem_2.5rem] items-center gap-2 bg-slate-50/80 px-4 py-2.5 transition-colors hover:bg-slate-100/60 ${groupSelected === 0 ? "opacity-60" : ""}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={allGroupSelected}
-                        onChange={() => toggleGroupSelection(groupName)}
-                        className="mt-0.5"
-                      />
-                      <button
-                        onClick={() => {
-                          toggleGroupExpand(groupName);
-                          if (isGroupEditing) setEditingGroup(null);
-                        }}
-                        className="text-slate-400 hover:text-slate-600"
-                      >
-                        {isExpanded ? (
-                          <ChevronDown className="h-3.5 w-3.5" />
-                        ) : (
-                          <ChevronRight className="h-3.5 w-3.5" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => toggleGroupExpand(groupName)}
-                        className="truncate text-left text-sm font-medium text-slate-800 hover:text-slate-900"
-                      >
-                        {groupName}
-                      </button>
-                      <span className="col-span-3">
-                        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
-                          {items.length} event{items.length !== 1 ? "s" : ""}
-                          {groupSelected < items.length ? ` · ${groupSelected} sel.` : ""}
-                        </span>
-                      </span>
-                      <span className="truncate text-xs text-slate-400">
-                        {locTexts.length === 1
-                          ? locTexts[0]
-                          : locTexts.length > 1
-                            ? t("import.locationCount", { count: locTexts.length })
-                            : ""}
-                      </span>
-                      <button
-                        onClick={() => {
-                          setEditingGroup(isGroupEditing ? null : groupName);
-                          setEditingUid(null);
-                        }}
-                        className={`rounded p-1 transition-colors ${isGroupEditing ? "bg-amber-100 text-amber-600" : "text-slate-400 hover:bg-slate-100 hover:text-slate-600"}`}
-                        title="Edit all events in this group"
-                      >
-                        {isGroupEditing ? (
-                          <X className="h-3.5 w-3.5" />
-                        ) : (
-                          <Settings2 className="h-3.5 w-3.5" />
-                        )}
-                      </button>
-                      <span />
-                    </div>
-
-                    {isGroupEditing && (
-                      <GroupEditor
-                        groupName={groupName}
-                        items={items}
-                        properties={properties}
-                        features={features}
-                        targetGroups={targetGroups}
-                        onApply={(patch) => updateGroup(groupName, patch)}
-                        onClose={() => setEditingGroup(null)}
-                      />
-                    )}
-
-                    {isExpanded &&
-                      items.map((ev) => (
-                        <div key={ev.uid} className="border-t border-slate-100">
-                          <div
-                            className={`grid grid-cols-[2rem_1.5rem_1fr_6rem_4rem_4rem_4rem_2.5rem_2.5rem] items-center gap-2 px-4 py-2 text-sm ${!ev.selected ? "opacity-50" : ""} ${editingUid === ev.uid ? "bg-blue-50/40" : "hover:bg-slate-50/50"}`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={ev.selected}
-                              onChange={(e) => updateEvent(ev.uid, { selected: e.target.checked })}
-                            />
-                            <span />
-                            <span className="truncate text-sm text-slate-700">{ev.name}</span>
-                            <span className="font-mono text-xs text-slate-500">
-                              {ev.dateEnd ? `${ev.date} – ${ev.dateEnd}` : ev.date}
-                            </span>
-                            <span className="font-mono text-xs text-slate-500">
-                              {ev.isAllDay ? "—" : ev.timeBegin}
-                            </span>
-                            <span className="font-mono text-xs text-slate-500">
-                              {ev.isAllDay ? t("import.allDay") : ev.timeEnd}
-                              <span
-                                className={`ml-1 rounded-full px-1 text-xs ${ev.isDraft ? "bg-slate-100 text-slate-400" : "bg-green-100 text-green-700"}`}
-                              >
-                                {ev.isDraft ? "·" : "✓"}
-                              </span>
-                            </span>
-                            <span
-                              className="truncate text-xs text-slate-400"
-                              title={ev.locationText}
-                            >
-                              {ev.locationText || "—"}
-                            </span>
-                            <button
-                              onClick={() => {
-                                setEditingUid(editingUid === ev.uid ? null : ev.uid);
-                                setEditingGroup(null);
-                              }}
-                              className={`rounded p-1 transition-colors ${editingUid === ev.uid ? "bg-blue-100 text-blue-600" : "text-slate-400 hover:bg-slate-100 hover:text-slate-600"}`}
-                              title="Edit this event"
-                            >
-                              {editingUid === ev.uid ? (
-                                <X className="h-3.5 w-3.5" />
-                              ) : (
-                                <Pencil className="h-3.5 w-3.5" />
-                              )}
-                            </button>
-                            <span />
-                          </div>
-                          {editingUid === ev.uid && (
-                            <RowEditor
-                              ev={ev}
-                              properties={properties}
-                              features={features}
-                              targetGroups={targetGroups}
-                              onSave={(patch) => updateEvent(ev.uid, patch)}
-                              onClose={() => setEditingUid(null)}
-                            />
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {step === "done" && (
-        <div className="py-16 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
-            <Check className="h-7 w-7 text-green-600" />
-          </div>
-          <h2 className="mb-2 text-lg font-semibold text-slate-900">
-            {t("import.importedSuccess", { count: importedCount })}
-          </h2>
-          <p className="mb-6 text-sm text-slate-500">{t("import.addedToCalendar")}</p>
-          <Link to={`/clubs/${clubId}/calendars/${calendarId}`}>
-            <Button>{t("import.viewCalendar")}</Button>
-          </Link>
-        </div>
-      )}
+        {step === "done" && result && (
+          <ImportDone
+            result={result}
+            calendarUrl={page.base}
+            eventsUrl={page.routes.list}
+            onRetry={() => setStep("review")}
+            onAnother={reset}
+          />
+        )}
+      </div>
+      <UnsavedChangesDialog {...unsaved.dialog} />
     </div>
   );
 }

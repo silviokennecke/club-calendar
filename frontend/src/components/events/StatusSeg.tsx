@@ -3,7 +3,8 @@ import { Icon } from "@/components/ui/shared";
 import type { EventStatus } from "@/lib/events";
 
 interface StatusSegProps {
-  value: EventStatus;
+  /** Null when the edited items differ (neither button pressed). */
+  value: EventStatus | null;
   onChange: (value: EventStatus) => void;
   /** Accessible name of the group (default "Status des Termins"). */
   label?: string;

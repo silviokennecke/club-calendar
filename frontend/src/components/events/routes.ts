@@ -22,6 +22,10 @@ export function eventRoutes(base: string) {
     export: `${base}/events/export`,
     import: `${base}/import`,
     templates: `${base}/templates`,
+    /** New template (design: TemplateEdit, mode new). */
+    templateNew: `${base}/templates/new`,
+    /** Edit a template (design: TemplateEdit). */
+    template: (templateId: string) => `${base}/templates/${templateId}`,
     feeds: `${base}/settings/feeds`,
   };
 }
