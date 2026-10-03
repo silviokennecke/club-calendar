@@ -65,6 +65,17 @@ if (false !== getenv('DEPLOY_PORT')) {
 if (false !== getenv('DEPLOY_KEY')) {
     $host->setIdentityFile(getenv('DEPLOY_KEY'));
 }
+// Password auth: Deployer shells out to plain ssh/rsync, so feed the password via SSH_ASKPASS
+// (OpenSSH >= 8.4). Prefer keys; this is for servers that only offer passwords.
+if (false !== getenv('DEPLOY_PASSWORD') && '' !== getenv('DEPLOY_PASSWORD')) {
+    $askpass = ROOT.'/.deploy/askpass.sh';
+    @mkdir(dirname($askpass), 0700, true);
+    file_put_contents($askpass, "#!/bin/sh\nprintf '%s\\n' \"\$DEPLOY_PASSWORD\"\n");
+    chmod($askpass, 0700);
+    putenv("SSH_ASKPASS=$askpass");
+    putenv('SSH_ASKPASS_REQUIRE=force');
+    $host->setSshArguments(['-o PreferredAuthentications=password,keyboard-interactive', '-o PubkeyAuthentication=no']);
+}
 if (false !== getenv('DEPLOY_PHP')) {
     $host->set('bin/php', getenv('DEPLOY_PHP'));
 }
