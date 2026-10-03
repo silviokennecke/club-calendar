@@ -100,6 +100,7 @@ test.describe("Einstellungen", () => {
       created: "Eigenschaft „Rollstuhlgerecht“ angelegt",
       deleteTitle: "Eigenschaft „Barrierefrei“ löschen?",
       deleteConfirm: "Eigenschaft löschen",
+      editTitle: "Eigenschaft bearbeiten",
       empty: "Noch keine Eigenschaften",
     },
     {
@@ -110,6 +111,7 @@ test.describe("Einstellungen", () => {
       created: "Feature „Rollstuhlgerecht“ angelegt",
       deleteTitle: "Feature „Barrierefrei“ löschen?",
       deleteConfirm: "Feature löschen",
+      editTitle: "Feature bearbeiten",
       empty: "Noch keine Features",
     },
     {
@@ -120,6 +122,7 @@ test.describe("Einstellungen", () => {
       created: "Zielgruppe „Rollstuhlgerecht“ angelegt",
       deleteTitle: "Zielgruppe „Barrierefrei“ löschen?",
       deleteConfirm: "Zielgruppe löschen",
+      editTitle: "Zielgruppe bearbeiten",
       empty: "Noch keine Zielgruppen",
     },
   ];
@@ -157,22 +160,31 @@ test.describe("Einstellungen", () => {
       await expect(page.getByRole("alert")).toContainText("Diesen Namen gibt es schon.");
       await page.getByLabel(/^Name/).fill("");
 
-      // Umbenennen inline per Tastatur: Enter speichert
+      // Umbenennen im Dialog per Tastatur: Enter speichert, Fokus kehrt zum Auslöser zurück
       await page.getByRole("button", { name: "Rollstuhlgerecht bearbeiten" }).click();
-      const edit = page.locator('input[id^="ml-edit-"]');
+      const editDialog = page.getByRole("dialog", { name: new RegExp(`^${k.editTitle}$`) });
+      const edit = editDialog.getByLabel(/^Name/);
       await expect(edit).toBeFocused();
+      await expect(edit).toHaveValue("Rollstuhlgerecht");
+      // Leerer Name: Fehlerzusammenfassung im Dialog, Dialog bleibt offen
+      await edit.fill("");
+      await edit.press("Enter");
+      await expect(editDialog.getByRole("alert")).toContainText("Bitte einen Namen eingeben.");
       await edit.fill("Barrierefrei");
       await edit.press("Enter");
+      await expect(editDialog).toHaveCount(0);
       await expect(list).toContainText("Barrierefrei");
       await expect(list).not.toContainText("Rollstuhlgerecht");
       await expect(page.getByRole("button", { name: "Barrierefrei bearbeiten" })).toBeFocused();
 
-      // Escape bricht ab
+      // Escape bricht ab, Fokus kehrt zurück
       await page.getByRole("button", { name: "Barrierefrei bearbeiten" }).click();
-      await page.locator('input[id^="ml-edit-"]').fill("Verworfen");
+      await editDialog.getByLabel(/^Name/).fill("Verworfen");
       await page.keyboard.press("Escape");
+      await expect(editDialog).toHaveCount(0);
       await expect(list).toContainText("Barrierefrei");
       await expect(list).not.toContainText("Verworfen");
+      await expect(page.getByRole("button", { name: "Barrierefrei bearbeiten" })).toBeFocused();
 
       // Löschen mit Folgen
       await page.getByRole("button", { name: "Barrierefrei löschen" }).click();
@@ -305,47 +317,23 @@ test.describe("Einstellungen", () => {
     await expect(page.getByLabel(/^Name/)).toHaveValue("Feiertage Test");
   });
 
-  test("Kalender archivieren, wieder aufheben und duplizieren", async ({ page, request }) => {
-    const s = await seed(request, "Settings Archiv");
+  test("Allgemein verweist für Kalender-Verwaltung auf die Vereinsseite", async ({
+    page,
+    request,
+  }) => {
+    const s = await seed(request, "Settings Verweis");
     await openSettings(page, s.email, `${s.base}/settings`);
 
-    // Archivieren mit Bestätigung
-    await page.getByRole("button", { name: "Kalender archivieren" }).click();
-    const dialog = page.getByRole("alertdialog", {
-      name: `Kalender „${s.calendarName}“ archivieren?`,
-    });
-    await expect(dialog).toContainText("nur lesbar");
-    await dialog.getByRole("button", { name: "Kalender archivieren" }).click();
-    await expect(page.getByText("Kalender archiviert.")).toBeVisible();
-    await expect(page.getByText("Archiviert, schreibgeschützt").first()).toBeVisible();
-    await expect(page.getByLabel(/^Kalendername/)).not.toBeEditable();
-    await expect(page.getByRole("button", { name: "Einstellungen speichern" })).toHaveCount(0);
-
-    // Wieder aufheben über das Banner
-    await page.getByRole("status").getByRole("button", { name: "Archivierung aufheben" }).click();
-    await expect(page.getByText("Archivierung aufgehoben.")).toBeVisible();
-    await expect(page.getByLabel(/^Kalendername/)).toBeEnabled();
-    await expect(page.getByRole("button", { name: "Kalender archivieren" })).toBeVisible();
-
-    // Duplizieren: die Kopie öffnet sich mit eigenem Namen
-    await page.getByRole("button", { name: "Kalender duplizieren" }).click();
-    await expect(page.getByText("Kalender dupliziert.")).toBeVisible();
-    await expect(page.getByLabel(/^Kalendername/)).toHaveValue(`Kopie von ${s.calendarName}`);
-    await expect(page).not.toHaveURL(new RegExp(`${s.calendarId}`));
-
-    // Die Kopie löschen: Bestätigung mit Folgen, danach Vereinsseite
-    await page.getByRole("button", { name: "Kalender löschen" }).click();
-    const del = page.getByRole("alertdialog", {
-      name: `Kalender „Kopie von ${s.calendarName}“ löschen?`,
-    });
-    await expect(del).toContainText("Termine (0)");
-    await del.getByRole("button", { name: "Kalender löschen" }).click();
+    // Duplizieren, Archivieren und Löschen gibt es hier nicht mehr (Design: Verein verwalten).
+    for (const name of ["Kalender archivieren", "Kalender duplizieren", "Kalender löschen"]) {
+      await expect(page.getByRole("button", { name })).toHaveCount(0);
+    }
+    await page.getByRole("link", { name: "Verein verwalten" }).last().click();
     await expect(page).toHaveURL(new RegExp(`/clubs/${s.clubId}$`));
-    const calendars = await (
-      await request.get(`${API}/api/clubs/${s.clubId}/calendars`, { headers: s.headers })
-    ).json();
-    expect(calendars).toHaveLength(1);
-    expect(calendars[0].id).toBe(s.calendarId);
+    await expect(page.getByRole("heading", { level: 1, name: "Verein verwalten" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: `Kalender ${s.calendarName} duplizieren` }),
+    ).toBeVisible();
   });
 
   test("Archivierter Kalender: alle Einstellungen nur lesbar", async ({ page, request }) => {

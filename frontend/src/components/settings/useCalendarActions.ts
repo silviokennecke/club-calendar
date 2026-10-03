@@ -7,8 +7,24 @@ import { apiDelete, apiPatch, apiPost } from "@/lib/api";
 import type { Calendar } from "@/lib/types";
 import { calendarBase } from "@/components/layout/navigation";
 
-/** Archive, restore, duplicate and delete the calendar of the settings pages (with feedback). */
-export function useCalendarActions(clubId: string, calendarId: string, calendarName?: string) {
+interface CalendarActionsOptions {
+  /**
+   * Stay on the page after duplicating or deleting (club page, where the list updates in place)
+   * instead of opening the copy / leaving for the club page.
+   */
+  stay?: boolean;
+}
+
+/**
+ * Archive, restore, duplicate and delete one calendar (with feedback). Used by the club page
+ * (calendar management) and by the archived banner of the settings pages.
+ */
+export function useCalendarActions(
+  clubId: string,
+  calendarId: string,
+  calendarName?: string,
+  { stay = false }: CalendarActionsOptions = {},
+) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -52,22 +68,26 @@ export function useCalendarActions(clubId: string, calendarId: string, calendarN
           );
         }
         await qc.invalidateQueries({ queryKey: ["calendars", clubId] });
-        toast.success(t("settings.duplicate.done"));
-        navigate(`${calendarBase(clubId, copy.id)}/settings`);
+        if (stay) {
+          toast.success(t("settings.duplicate.doneStay", { name: name || copy.name }));
+        } else {
+          toast.success(t("settings.duplicate.done"));
+          navigate(`${calendarBase(clubId, copy.id)}/settings`);
+        }
       } catch {
         toast.error(t("settings.duplicate.failed"));
       } finally {
         setBusy(null);
       }
     },
-    /** Deletes the calendar and leaves for the club page; throws nothing (shows a toast). */
+    /** Deletes the calendar (and leaves for the club page unless `stay`); shows a toast on failure. */
     async remove() {
       try {
         await apiDelete(`/api/clubs/${clubId}/calendars/${calendarId}`);
         qc.removeQueries({ queryKey: ["calendar", clubId, calendarId] });
         await qc.invalidateQueries({ queryKey: ["calendars", clubId] });
         toast.success(t("settings.delete.done"));
-        navigate(`/clubs/${clubId}`);
+        if (!stay) navigate(`/clubs/${clubId}`);
       } catch {
         toast.error(t("settings.delete.failed"));
       }

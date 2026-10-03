@@ -22,6 +22,7 @@ export { Toaster } from "./Toast";
 export { toast } from "sonner";
 export { EmptyState } from "./EmptyState";
 export { ConfirmDialog } from "./ConfirmDialog";
+export { FormDialog } from "./FormDialog";
 export { CopyField } from "./CopyField";
 export { Chip, ChipSelect } from "./ChipSelect";
 export type { ChipOption } from "./ChipSelect";

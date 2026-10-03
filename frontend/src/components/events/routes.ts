@@ -27,6 +27,10 @@ export function eventRoutes(base: string) {
     /** Edit a template (design: TemplateEdit). */
     template: (templateId: string) => `${base}/templates/${templateId}`,
     feeds: `${base}/settings/feeds`,
+    /** New feed (design: FeedEdit, mode new). */
+    feedNew: `${base}/settings/feeds/new`,
+    /** Edit a feed (design: FeedEdit). */
+    feed: (feedId: string) => `${base}/settings/feeds/${feedId}`,
   };
 }
 

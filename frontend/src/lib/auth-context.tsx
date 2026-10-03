@@ -21,7 +21,7 @@ interface AuthContextValue {
     dateFormat?: string;
     language?: string;
     firstDayOfWeek?: number;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -59,12 +59,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  /** Saves profile settings on the account; resolves to false when the request failed. */
   const updateUser = async (data: Parameters<AuthContextValue["updateUser"]>[0]) => {
     try {
       const updated = await apiPatch<User>("/api/auth/me", data);
       setUser(updated);
+      return true;
     } catch {
-      /* ignore */
+      return false;
     }
   };
 

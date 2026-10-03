@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { FullPageLoader } from "@/components/ui/shared";
@@ -18,6 +18,11 @@ export default function ProtectedRoute() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  // The club of the last club or calendar URL: pages without a club in the URL (profile) keep the
+  // app shell even while the "last used club" of the user is still being saved.
+  const [visitedClubId, setVisitedClubId] = useState<string | null>(null);
+  const urlClubId = parseContextFromPath(pathname)?.clubId ?? null;
+  if (urlClubId && urlClubId !== visitedClubId) setVisitedClubId(urlClubId);
 
   useEffect(() => {
     if (!loading && !user) navigate("/login", { replace: true });
@@ -26,13 +31,17 @@ export default function ProtectedRoute() {
   if (loading || !user) return <FullPageLoader />;
 
   // Club picker and onboarding are standalone pages (no sidebar), even for users with a last club.
-  if (pathname === "/setup" || pathname === "/clubs") return <Outlet />;
+  if (pathname === "/setup" || pathname === "/clubs") {
+    // Leaving a club (picker, deleted or left club): do not carry it over to the profile page.
+    if (visitedClubId) setVisitedClubId(null);
+    return <Outlet />;
+  }
 
   const fromUrl = parseContextFromPath(pathname);
   const lastClubId = user.lastClubId ? String(user.lastClubId) : null;
   const lastCalendarId = user.lastCalendarId ? String(user.lastCalendarId) : null;
 
-  const clubId = fromUrl?.clubId ?? lastClubId;
+  const clubId = fromUrl?.clubId ?? lastClubId ?? visitedClubId;
   let calendarId = fromUrl?.calendarId ?? null;
   if (!calendarId && clubId && clubId === lastClubId) calendarId = lastCalendarId;
 

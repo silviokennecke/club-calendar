@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
@@ -9,6 +9,7 @@ import {
   EmptyState,
   ErrorSummary,
   Field,
+  FormDialog,
   IconButton,
   Skeleton,
   Tag,
@@ -43,8 +44,8 @@ interface MasterListProps {
 
 /**
  * One building block for properties, features and audiences (design: SettingsMasterList): add form,
- * list with inline rename (Enter saves, Escape cancels), delete with the consequences for events
- * and templates, empty / loading / error states.
+ * list, rename in a dialog (Enter saves, Escape cancels, focus returns to the edit button), delete with
+ * the consequences for events and templates, empty / loading / error states.
  */
 export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
   const { t } = useTranslation();
@@ -68,8 +69,8 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
   const addInputRef = useRef<HTMLInputElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
-  // Inline rename
-  const [editId, setEditId] = useState<string | null>(null);
+  // Rename dialog
+  const [editing, setEditing] = useState<MasterItem | null>(null);
   const [editName, setEditName] = useState("");
   const [editIcon, setEditIcon] = useState("");
   const [editProblem, setEditProblem] = useState<NameProblem | null>(null);
@@ -94,10 +95,6 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
   });
 
   const problemText = (p: NameProblem) => t(`settings.master.problem.${p}`);
-
-  function focusLater(id: string) {
-    setTimeout(() => document.getElementById(id)?.focus(), 0);
-  }
 
   async function submitAdd(e: FormEvent) {
     e.preventDefault();
@@ -126,23 +123,23 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
   }
 
   function startEdit(item: MasterItem) {
-    setEditId(item.id);
+    setEditing(item);
     setEditName(item.name);
     setEditIcon(item.icon ?? "");
     setEditProblem(null);
     setEditFailed(false);
-    focusLater(`ml-edit-${item.id}`);
   }
 
-  function stopEdit(id: string) {
-    setEditId(null);
+  function stopEdit() {
+    if (saving) return;
+    setEditing(null);
     setEditProblem(null);
     setEditFailed(false);
-    focusLater(`ml-edit-btn-${id}`);
   }
 
-  async function submitEdit(e: FormEvent, item: MasterItem) {
-    e.preventDefault();
+  async function submitEdit() {
+    if (!editing) return;
+    const item = editing;
     const problem = validateName(editName, items, item.id);
     setEditFailed(false);
     if (problem) {
@@ -162,19 +159,12 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
       void qc.invalidateQueries({ queryKey: ["events", calendarId] });
       void qc.invalidateQueries({ queryKey: ["templates", calendarId] });
       toast.success(t("settings.master.saved"));
-      stopEdit(item.id);
+      setEditing(null);
     } catch {
       setEditFailed(true);
+      setEditSignal((n) => n + 1);
     } finally {
       setSaving(false);
-    }
-  }
-
-  function onEditKeyDown(e: KeyboardEvent, item: MasterItem) {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopPropagation();
-      stopEdit(item.id);
     }
   }
 
@@ -184,7 +174,6 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
       await qc.invalidateQueries({ queryKey });
       void qc.invalidateQueries({ queryKey: ["events", calendarId] });
       void qc.invalidateQueries({ queryKey: ["templates", calendarId] });
-      if (editId === item.id) setEditId(null);
       toast.success(tk("deleted", { name: item.name }));
       setTimeout(() => headingRef.current?.focus(), 0);
     } catch {
@@ -251,94 +240,40 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
   } else {
     listContent = (
       <ul className="ap-panel ap-panel--flush ap-list" aria-labelledby={`ml-list-h-${kind}`}>
-        {items.map((item, index) =>
-          editId === item.id ? (
-            <li key={item.id} className="ap-listrow ap-listrow--edit">
-              <form
-                className="ap-form ap-grow"
-                noValidate
-                onSubmit={(e) => void submitEdit(e, item)}
-                onKeyDown={(e) => onEditKeyDown(e, item)}
-                aria-label={tk("editTitle", { name: item.name })}
-              >
-                <ErrorSummary
-                  title={t("settings.master.errorSummary")}
-                  errors={
-                    editProblem
-                      ? [{ fieldId: `ml-edit-${item.id}`, message: problemText(editProblem) }]
-                      : []
-                  }
-                  focusSignal={editSignal}
+        {items.map((item, index) => (
+          <li key={item.id} className="ap-listrow">
+            {cfg.hasSymbol && item.icon && (
+              <span className="ap-symbol" aria-hidden="true">
+                {item.icon}
+              </span>
+            )}
+            <div className="ap-listrow-main">
+              <b>{item.name}</b>
+            </div>
+            {cfg.hasTone && (
+              <span className="ap-row" aria-hidden="true" style={{ gap: "var(--space-2)" }}>
+                <span className="t-cap t-muted ap-hide-m">{t("settings.master.preview")}</span>
+                <Tag tone={audienceTone(index)}>{item.name}</Tag>
+              </span>
+            )}
+            {!readOnly && (
+              <>
+                <IconButton
+                  id={`ml-edit-btn-${item.id}`}
+                  icon="edit"
+                  label={tk("editLabel", { name: item.name })}
+                  onClick={() => startEdit(item)}
                 />
-                {editFailed && <Banner tone="danger">{t("settings.master.saveFailed")}</Banner>}
-                <Field
-                  id={`ml-edit-${item.id}`}
-                  label={t("settings.master.nameLabel")}
-                  required
-                  error={editProblem ? problemText(editProblem) : undefined}
-                >
-                  <TextInput
-                    value={editName}
-                    maxLength={255}
-                    autoComplete="off"
-                    onChange={(e) => {
-                      setEditName(e.target.value);
-                      setEditProblem(null);
-                    }}
-                  />
-                </Field>
-                {cfg.hasSymbol && (
-                  <EmojiPicker
-                    label={t("settings.master.symbolLabel")}
-                    value={editIcon}
-                    onChange={setEditIcon}
-                  />
-                )}
-                <div className="ap-actions">
-                  <Button type="submit" loading={saving}>
-                    {t("settings.master.saveEdit")}
-                  </Button>
-                  <Button variant="secondary" onClick={() => stopEdit(item.id)} disabled={saving}>
-                    {t("common.cancel")}
-                  </Button>
-                </div>
-              </form>
-            </li>
-          ) : (
-            <li key={item.id} className="ap-listrow">
-              {cfg.hasSymbol && item.icon && (
-                <span className="ap-symbol" aria-hidden="true">
-                  {item.icon}
-                </span>
-              )}
-              <div className="ap-listrow-main">
-                <b>{item.name}</b>
-              </div>
-              {cfg.hasTone && (
-                <span className="ap-row" aria-hidden="true" style={{ gap: "var(--space-2)" }}>
-                  <span className="t-cap t-muted ap-hide-m">{t("settings.master.preview")}</span>
-                  <Tag tone={audienceTone(index)}>{item.name}</Tag>
-                </span>
-              )}
-              {!readOnly && (
-                <>
-                  <IconButton
-                    id={`ml-edit-btn-${item.id}`}
-                    icon="edit"
-                    label={tk("editLabel", { name: item.name })}
-                    onClick={() => startEdit(item)}
-                  />
-                  <IconButton
-                    icon="trash"
-                    variant="danger"
-                    label={tk("deleteLabel", { name: item.name })}
-                    onClick={() => setDeleting(item)}
-                  />
-                </>
-              )}
-            </li>
-          ),
-        )}
+                <IconButton
+                  icon="trash"
+                  variant="danger"
+                  label={tk("deleteLabel", { name: item.name })}
+                  onClick={() => setDeleting(item)}
+                />
+              </>
+            )}
+          </li>
+        ))}
       </ul>
     );
   }
@@ -397,6 +332,59 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
         </h2>
         {listContent}
       </section>
+
+      {editing && (
+        <FormDialog
+          open
+          onOpenChange={(open) => !open && stopEdit()}
+          title={tk("editTitle")}
+          description={tk("editText", { name: editing.name })}
+          onSubmit={() => void submitEdit()}
+          finalFocus={() => document.getElementById(`ml-edit-btn-${editing.id}`)}
+          actions={
+            <>
+              <Button variant="secondary" onClick={stopEdit} disabled={saving}>
+                {t("common.cancel")}
+              </Button>
+              <Button type="submit" loading={saving}>
+                {t("settings.master.saveEdit")}
+              </Button>
+            </>
+          }
+        >
+          <ErrorSummary
+            title={t("settings.master.errorSummary")}
+            errors={
+              editProblem ? [{ fieldId: "ml-edit-name", message: problemText(editProblem) }] : []
+            }
+            focusSignal={editSignal}
+          />
+          {editFailed && <Banner tone="danger">{t("settings.master.saveFailed")}</Banner>}
+          <Field
+            id="ml-edit-name"
+            label={t("settings.master.nameLabel")}
+            required
+            error={editProblem ? problemText(editProblem) : undefined}
+          >
+            <TextInput
+              value={editName}
+              maxLength={255}
+              autoComplete="off"
+              onChange={(e) => {
+                setEditName(e.target.value);
+                setEditProblem(null);
+              }}
+            />
+          </Field>
+          {cfg.hasSymbol && (
+            <EmojiPicker
+              label={t("settings.master.symbolLabel")}
+              value={editIcon}
+              onChange={setEditIcon}
+            />
+          )}
+        </FormDialog>
+      )}
 
       {deleting && (
         <ConfirmDialog
