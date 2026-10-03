@@ -17,7 +17,7 @@
     "test:frontend": "npm run test --workspace=frontend",
     "migrate": "npm run migrate --workspace=backend",
     "fixtures": "npm run fixtures --workspace=backend",
-    "deploy": "backend/vendor/bin/dep deploy",
+    "deploy:build": "backend/vendor/bin/dep build",
     "prepare": "husky"
   },
   "lint-staged": {

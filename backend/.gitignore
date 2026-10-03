@@ -22,3 +22,9 @@
 ###> friendsofphp/php-cs-fixer ###
 /.php-cs-fixer.cache
 ###< friendsofphp/php-cs-fixer ###
+
+###> frontend build (vite, see frontend/vite.config.ts) ###
+/public/*
+!/public/index.php
+!/public/.htaccess
+###< frontend build ###
