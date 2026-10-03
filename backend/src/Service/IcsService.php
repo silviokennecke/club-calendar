@@ -104,14 +104,12 @@ class IcsService
         $endDateStr = $event->getDateEnd() ? $event->getDateEnd()->format('Y-m-d') : $startDateStr;
 
         if ($event->isAllDay()) {
-            // All-day: end date is exclusive (add 1 day)
-            $endDate = new \DateTimeImmutable($endDateStr);
-            $endDate = $endDate->modify('+1 day');
-
+            // All-day: MultiDay takes the last day inclusive and writes DTEND as last day + 1
+            // (RFC 5545: exclusive end), so the stored end date is passed as it is.
             $occurrence = $event->getDateEnd()
                 ? new MultiDay(
                     new ICalDate(new \DateTimeImmutable($startDateStr)),
-                    new ICalDate($endDate),
+                    new ICalDate(new \DateTimeImmutable($endDateStr)),
                 )
                 : new SingleDay(new ICalDate(new \DateTimeImmutable($startDateStr)));
 

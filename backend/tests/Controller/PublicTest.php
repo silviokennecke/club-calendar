@@ -6,6 +6,9 @@ namespace App\Tests\Controller;
 
 use App\Entity\Calendar;
 use App\Entity\CalendarFeed;
+use App\Entity\CalendarFeedTargetGroup;
+use App\Entity\EventTargetGroup;
+use App\Entity\TargetGroup;
 use App\Enum\FeedVisibility;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
@@ -127,5 +130,76 @@ class PublicTest extends WebTestCase
         $this->assertSame('Test Feed', $body['feed']['name']);
         $names = array_column($body['events'], 'name');
         $this->assertContains('JSON Event', $names);
+    }
+
+    /**
+     * @throws \DateMalformedStringException
+     */
+    public function testIcsWritesExclusiveEndForMultiDayAllDayEvent(): void
+    {
+        ['calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
+        $feed = $this->createFeed($cal->getId());
+        $multi = TestHelper::createEvent(self::$em, $cal, ['name' => 'Reise', 'date' => '2026-10-28', 'isDraft' => false]);
+        $multi->setIsAllDay(true);
+        $multi->setDateEnd(new \DateTimeImmutable('2026-10-30'));
+        $single = TestHelper::createEvent(self::$em, $cal, ['name' => 'Ausflug', 'date' => '2026-10-24', 'isDraft' => false]);
+        $single->setIsAllDay(true);
+        self::$em->flush();
+
+        self::$client->request('GET', "/api/feed/{$feed->getId()}/ics");
+        $content = (string) self::$client->getResponse()->getContent();
+
+        // Last day Oct 30 inclusive -> DTEND Oct 31 (exclusive), not Nov 1
+        $this->assertStringContainsString("DTSTART;VALUE=DATE:20261028\r\nDTEND;VALUE=DATE:20261031", $content);
+        $this->assertStringNotContainsString('DTEND;VALUE=DATE:20261101', $content);
+        $this->assertStringContainsString('DTSTART;VALUE=DATE:20261024', $content);
+    }
+
+    /**
+     * @throws \DateMalformedStringException
+     */
+    public function testFeedTargetGroupsCannotBeWidenedByQuery(): void
+    {
+        ['calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
+        $youth = new TargetGroup();
+        $youth->setCalendar($cal);
+        $youth->setName('Jugend');
+        $adults = new TargetGroup();
+        $adults->setCalendar($cal);
+        $adults->setName('Erwachsene');
+        self::$em->persist($youth);
+        self::$em->persist($adults);
+        foreach ([['Jugendtraining', $youth], ['Erwachsenentraining', $adults]] as [$name, $group]) {
+            $event = TestHelper::createEvent(self::$em, $cal, ['name' => $name, 'isDraft' => false]);
+            $link = new EventTargetGroup();
+            $link->setEvent($event);
+            $link->setTargetGroup($group);
+            self::$em->persist($link);
+        }
+        $feed = $this->createFeed($cal->getId());
+        $feedLink = new CalendarFeedTargetGroup();
+        $feedLink->setFeed($feed);
+        $feedLink->setTargetGroup($youth);
+        self::$em->persist($feedLink);
+        self::$em->flush();
+        self::$em->clear();
+
+        $feedId = $feed->getId();
+        $youthId = $youth->getId();
+        $adultsId = $adults->getId();
+        $names = function (string $query) use ($feedId): array {
+            self::$client->request('GET', "/api/feed/{$feedId}/events{$query}");
+            $body = json_decode((string) self::$client->getResponse()->getContent(), true);
+
+            return array_column($body['events'], 'name');
+        };
+
+        $this->assertSame(['Jugendtraining'], $names(''));
+        $this->assertSame(['Jugendtraining'], $names('?targetGroupIds='.$youthId));
+        // Another audience than the feed's own: nothing, not the other group's events
+        $this->assertSame([], $names('?targetGroupIds='.$adultsId));
+        $this->assertSame(['Jugendtraining'], $names('?targetGroupIds='.$adultsId.','.$youthId));
+        self::$client->request('GET', "/api/feed/{$feedId}/ics?targetGroupIds={$adultsId}");
+        $this->assertStringNotContainsString('Erwachsenentraining', (string) self::$client->getResponse()->getContent());
     }
 }

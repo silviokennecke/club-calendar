@@ -76,8 +76,18 @@ class PublicFeedService
             ->orderBy('e.date', 'ASC')
             ->addOrderBy('e.timeBegin', 'ASC');
 
-        // Apply target group filter: use query param TGs, or fall back to feed's own TGs if configured
-        $effectiveTgIds = $targetGroupIds ?? (count($feedTargetGroupIds) > 0 ? $feedTargetGroupIds : null);
+        // Target group filter: the query narrows the selection, but never beyond the feed's own
+        // target groups (a feed limited to "Jugend" must not deliver other audiences on request).
+        $effectiveTgIds = $targetGroupIds;
+        if (count($feedTargetGroupIds) > 0) {
+            $effectiveTgIds = null === $targetGroupIds
+                ? $feedTargetGroupIds
+                : array_values(array_intersect($targetGroupIds, $feedTargetGroupIds));
+            if ([] === $effectiveTgIds) {
+                // Nothing the feed may show was requested
+                $qb->andWhere('1 = 0');
+            }
+        }
         if ($effectiveTgIds) {
             $qb->andWhere('EXISTS (SELECT etg FROM App\Entity\EventTargetGroup etg WHERE etg.event = e AND etg.targetGroup IN (:tgIds))')
                ->setParameter('tgIds', $effectiveTgIds);
