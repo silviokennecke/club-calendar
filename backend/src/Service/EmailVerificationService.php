@@ -70,9 +70,33 @@ readonly class EmailVerificationService
 
         $ev->setUsedAt(new \DateTimeImmutable());
         $user = $ev->getUser();
+        if (!$user->isEmailVerified()) {
+            $this->revokeUnprovenSsoAccess($user);
+        }
         $user->setIsEmailVerified(true);
         $this->em->flush();
 
         return 'success';
+    }
+
+    /**
+     * The owner of the address confirms it. Until now the address was unconfirmed, so every SSO link of this
+     * account came from a provider that did not vouch for the address (Microsoft, or email_verified=false:
+     * a verified Google/Apple login would have confirmed it), and every passkey was added in such a session
+     * (password logins require a confirmed address). Whoever set those up did not prove to own the address:
+     * remove them and end all sessions, otherwise they keep access to the now confirmed account. The
+     * password stays: it belongs to the local registration this link confirms.
+     */
+    private function revokeUnprovenSsoAccess(User $user): void
+    {
+        foreach ($user->getOauthAccounts()->toArray() as $account) {
+            $user->getOauthAccounts()->removeElement($account);
+            $this->em->remove($account);
+        }
+        foreach ($user->getPasskeys()->toArray() as $passkey) {
+            $user->getPasskeys()->removeElement($passkey);
+            $this->em->remove($passkey);
+        }
+        $user->invalidateTokens();
     }
 }
