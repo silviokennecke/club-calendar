@@ -33,6 +33,8 @@ class PruneUnverifiedUsersCommand extends Command
             ->delete(User::class, 'u')
             ->where('u.isEmailVerified = :verified')
             ->andWhere('u.createdAt < :cutoff')
+            // SSO users whose provider does not confirm the address (Microsoft) stay unverified but are active.
+            ->andWhere('NOT EXISTS (SELECT a.id FROM App\Entity\OAuthAccount a WHERE a.user = u)')
             ->setParameter('verified', false)
             ->setParameter('cutoff', $cutoff)
             ->getQuery()
