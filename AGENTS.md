@@ -51,7 +51,7 @@ $this->denyAccessUnlessGranted(ArchivedCalendarVoter::NOT_ARCHIVED, $calendar); 
 - **Access token**: short-lived JWT (15 min), `Authorization: Bearer <token>` header
 - **Refresh token**: HMAC-SHA256 signed JWT (7 days), client-managed in `sessionStorage`
 - **Refresh grant**: `POST /api/auth/token` with `application/x-www-form-urlencoded` body
-- **No cookies** — the backend sets no cookies
+- **No auth cookies** — the backend sets no session/auth cookies (only the short-lived OAuth `oauth_state_nonce` cookie that binds the SSO `state` to the browser)
 
 ## Entity Conventions
 
