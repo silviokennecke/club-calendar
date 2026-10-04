@@ -125,32 +125,58 @@ Fortlaufend ergänzt während des Redesigns.
   - Trifft ein verifizierter Google-/Apple-Login auf einen Nutzer, dessen Adresse nie bestätigt wurde (z. B.
     Vorab-Registrierung mit fremder Adresse oder ein per Microsoft angelegtes Konto), übernimmt der verifizierte
     Eigentümer das Konto: Passwort, Passkeys, andere SSO-Verknüpfungen und offene Bestätigungslinks werden vorher
-    entfernt, die Adresse gilt dann als bestätigt. Eine Vorab-Registrierung blockiert oder kapert das SSO-Konto damit nicht.
+    entfernt und alle bestehenden Sitzungen beendet (siehe unten), die Adresse gilt dann als bestätigt. Eine Vorab-Registrierung blockiert oder kapert das SSO-Konto damit nicht.
   - Verknüpft wird nur, wenn die gespeicherte Adresse bis auf ASCII-Groß/Kleinschreibung identisch ist: die Kollation
     `utf8mb4_unicode_ci` der Spalte `user.email` setzt auch `ä`=`a`, `ß`=`ss`, Vollbreiten-Zeichen und angehängte
     Leerzeichen gleich (`alice@gmäil.com` hätte sonst `alice@gmail.com` übernommen); solche Logins enden mit `account_exists`.
   - Neue SSO-Nutzer gelten nur als E-Mail-bestätigt, wenn der Provider es bestätigt.
   Tests: `tests/Controller/OAuthTest.php` (gefälschte Provider-Clients).
+- Sitzungen nach Entzug von Zugangsdaten (behoben, hoch): Die Konto-Übernahme durch einen verifizierten
+  Google-/Apple-Login entfernte Passwort, Passkeys und SSO-Verknüpfungen, ließ aber bestehende Sitzungen leben: Wer das
+  unbestätigte Konto vorher per Microsoft (oder Google mit unbestätigter Adresse) mit der Adresse des Opfers angelegt
+  hatte, behielt mit seinem Refresh-Token unbegrenzt Zugriff (jeder Refresh gab ein neues 7-Tage-Token aus).
+  Jetzt hat `user.token_version` (Migration `Version20261004130000`, Standard 0) einen Zähler; Access- und Refresh-Token
+  tragen ihn als Claim `tv` und die Nutzer-ID als `uid`. Abgelehnt (401) werden Tokens mit anderer Version bzw. fremder
+  `uid`: beim Refresh (`AuthService::refresh`) und bei jeder JWT-Anmeldung (`App\Security\SessionVersionListener`,
+  `CheckPassportEvent` der Firewall `api`, der Nutzer ist dort schon aus der DB geladen). Ein Zähler statt eines
+  Zeitstempels: `iat` hat Sekundenauflösung; so entscheidet die Reihenfolge (vor/nach der Invalidierung), nicht die Uhr,
+  auch innerhalb derselben Sekunde und unabhängig von Zeitzonen. Tokens ohne Claims (vor dem Update ausgestellt) zählen
+  als Version 0 und bleiben bis zur ersten Invalidierung gültig. Erhöht wird die Version bei
+  - der SSO-Übernahme mit Bereinigung (die Tokens des Eigentümers werden danach ausgestellt),
+  - der Bestätigung der Adresse per Link (`EmailVerificationService::verify`), wenn sie vorher unbestätigt war: Dabei
+    werden jetzt auch alle SSO-Verknüpfungen und Passkeys entfernt. Bei unbestätigter Adresse stammen SSO-Verknüpfungen
+    immer von Logins ohne verifizierte Provider-Adresse (Microsoft oder `email_verified=false`; ein verifizierter Login
+    hätte die Adresse bestätigt) und Passkeys aus solchen Sitzungen (Passwort-Login verlangt eine bestätigte Adresse).
+    Vorher blieb die fremde Microsoft-Verknüpfung nach der Bestätigung bestehen, und ein späterer Google-Login des
+    Eigentümers verknüpfte ohne Bereinigung (nachgestellt). Das Passwort bleibt (es gehört zur bestätigten lokalen
+    Registrierung). Folge für echte Microsoft-Nutzer, die ihre Adresse per Link bestätigen (nur über
+    `resend-verification` erreichbar): Microsoft-Login und Passkeys sind danach weg, Anmeldung nur noch per Google/Apple.
+  - Konto-Löschung: Der Nutzer ist weg (Refresh per `sub`, Access per E-Mail findet ihn nicht); neu: ein Access-Token des
+    gelöschten Kontos öffnet auch kein neu registriertes Konto mit derselben Adresse mehr (`uid`).
+  - Passkey entfernen erhöht die Version nicht (würde die eigene Sitzung beenden, das Frontend bekäme keine neuen
+    Tokens); Passwort-Endpoints gibt es nicht.
+  Frontend: 401 -> ein Refresh-Versuch -> 401 -> Tokens löschen, `/login` (kein erneuter Versuch ohne Token). Behoben:
+  Mit ungespeicherten Änderungen hielt die `beforeunload`-Rückfrage von `useUnsavedChanges` diese Weiterleitung auf
+  (abbrechen = Seite ohne Tokens, jeder weitere Aufruf 401 ohne Weiterleitung); nach abgelehnter Sitzung fragt sie nicht
+  mehr (`src/lib/sessionEnd.ts`).
+  Tests: `tests/Controller/SessionInvalidationTest.php` (gegen den alten Code rot), Passkey-Login-Sitzung in `WebAuthnTest`,
+  E2E `e2e/session-revoked.spec.ts` (Seite und Termin-Dialog mit ungespeicherten Änderungen, Neuladen).
 - Gemeldet, nicht behoben (Features bzw. größere Umbauten):
-  - **Offen, hoch:** Die Konto-Übernahme durch einen verifizierten Google-/Apple-Login entfernt Passwort, Passkeys und
-    SSO-Verknüpfungen, beendet aber keine bestehenden Sitzungen. Wer das unbestätigte Konto vorher per Microsoft (oder
-    Google mit unbestätigter Adresse) mit der Adresse des Opfers angelegt hat, behält mit seinem Refresh-Token Zugriff
-    auf das jetzt dem Opfer gehörende Konto, und weil jeder Refresh ein neues 7-Tage-Token ausgibt, unbegrenzt
-    (nachgestellt: `POST /api/auth/token` und `GET /api/auth/me` liefern nach der Übernahme 200). Behebung braucht
-    widerrufbare Tokens (z. B. `user.token_version` in Access- und Refresh-Token, beim Entfernen der Zugangsdaten erhöht).
-    Verwandt: `POST /api/auth/resend-verification` schickt auch für solche SSO-Konten einen Bestätigungslink; bestätigt
-    der Eigentümer darüber die Adresse, bleibt die fremde Microsoft-Verknüpfung bestehen (`EmailVerificationService::verify`
-    setzt nur das Flag), und ein späterer Google-Login des Eigentümers verknüpft ohne Bereinigung mit diesem Konto. Der
-    Angreifer meldet sich dann weiter per Microsoft an.
   - Ein per Microsoft angelegtes unbestätigtes Konto mit fremder Adresse blockiert dauerhaft die lokale Registrierung des
     Eigentümers (`app:prune-unverified-users` löscht SSO-Konten nicht); siehe auch unten.
   - Kein Rate-Limiting für `/api/auth/login`, `/api/auth/token`, Passkey-Verify und OAuth-Callback.
-  - Refresh-Tokens werden nicht rotiert und sind nicht widerrufbar (zustandslos, 7 Tage): Wiederverwendung bleibt
-    unbemerkt, Abmelden und Konto-/Passkey-Entfernen beenden bestehende Sitzungen nicht. Bräuchte eine Token-Tabelle.
+  - Refresh-Tokens werden nicht rotiert und sind einzeln nicht widerrufbar (zustandslos, 7 Tage): Wiederverwendung bleibt
+    unbemerkt, Abmelden und Passkey-Entfernen beenden bestehende Sitzungen nicht (nur `user.token_version` beendet alle
+    Sitzungen eines Nutzers, siehe oben; ein „überall abmelden“ gibt es nicht). Bräuchte eine Token-Tabelle.
   - Passwort-Hashing: `App\Entity\User` nutzt explizit `bcrypt` (Symfony-Standardkosten 13) statt `auto`; bcrypt kürzt nach
     72 Bytes, `RegisterDto` hat keine Maximallänge. Umstellung auf `auto` (argon2id) ist mit Rehash bei Anmeldung möglich.
-  - Lokale Vorab-Registrierung: Registriert jemand mit fremder Adresse und klickt der echte Eigentümer später den
-    Bestätigungslink, gilt das Passwort des Registrierenden. Ohne Passwort-Reset gibt es keinen Ausweg.
+  - **Offen, mittel:** Lokale Vorab-Registrierung: Registriert jemand mit fremder Adresse und eigenem Passwort und klickt
+    der echte Eigentümer den (unaufgefordert erhaltenen) Bestätigungslink, gilt das Passwort des Registrierenden: Er meldet
+    sich danach an, auch neben einem späteren Google-Login des Eigentümers (die Adresse ist dann bestätigt, keine
+    Bereinigung). Die Sitzungs-Invalidierung hilft hier nicht (vor der Bestätigung gibt es keine Sitzung). Nachgestellt in
+    `SessionInvalidationTest::testPreRegisteredPasswordStillWorksAfterTheOwnerConfirms`. Voraussetzung: das Opfer klickt
+    einen Link zu einer Registrierung, die es nicht angelegt hat. Behebung braucht ein Feature (z. B. Passwort bei der
+    Bestätigung neu setzen bzw. Passwort-Reset); das Passwort beim Bestätigen zu löschen sperrte ohne Reset den Eigentümer aus.
   - Ein per Microsoft angelegtes (unbestätigtes) Konto blockiert eine spätere lokale Registrierung mit derselben Adresse
     (`Email already in use`); erst ein Google-/Apple-Login mit bestätigter Adresse löst das.
   - `OidcProvider` prüft beim ID-Token weder Signatur noch `aud`/`iss`/`exp` (das Token kommt direkt vom Token-Endpoint

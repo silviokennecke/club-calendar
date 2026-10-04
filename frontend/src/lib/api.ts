@@ -1,3 +1,4 @@
+import { markSessionEnded } from "./sessionEnd";
 import type { HolidayCalendar, HolidayEvent } from "./types";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
@@ -62,6 +63,15 @@ export function clearAccessToken() {
   clearTokens();
 }
 
+/** The session was rejected: forget the tokens and leave for the login page (without unsaved-changes prompt). */
+function endSession() {
+  clearTokens();
+  if (typeof window !== "undefined") {
+    markSessionEnded();
+    window.location.href = "/login";
+  }
+}
+
 export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const token = getAccessToken();
   const headers: Record<string, string> = {
@@ -90,12 +100,10 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
         headers["Authorization"] = `Bearer ${data.access_token}`;
         res = await fetch(BASE_URL + path, { ...options, headers });
       } else {
-        clearTokens();
-        if (typeof window !== "undefined") window.location.href = "/login";
+        endSession();
       }
     } else {
-      clearTokens();
-      if (typeof window !== "undefined") window.location.href = "/login";
+      endSession();
     }
   }
 

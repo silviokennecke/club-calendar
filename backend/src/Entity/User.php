@@ -48,6 +48,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
+    /**
+     * Version of the sessions (access and refresh tokens carry it as claim "tv"). Raising it ends every
+     * session issued before. A counter instead of a time cut-off: iat has one-second resolution, and a
+     * token issued in the same second must be decided by the order of issue, not by the clock.
+     */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $tokenVersion = 0;
+
     #[ORM\OneToMany(targetEntity: ClubUser::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
     private Collection $clubs;
 
@@ -182,6 +190,19 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getTokenVersion(): int
+    {
+        return $this->tokenVersion;
+    }
+
+    /** Ends all sessions issued so far; tokens issued afterwards carry the new version. */
+    public function invalidateTokens(): static
+    {
+        ++$this->tokenVersion;
+
+        return $this;
     }
 
     /**
