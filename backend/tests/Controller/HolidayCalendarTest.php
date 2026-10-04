@@ -109,4 +109,18 @@ class HolidayCalendarTest extends WebTestCase
 
         $this->assertSame(404, $r['status']);
     }
+
+    public function testListHolidayEventsIncludesHolidaysOverlappingTheRange(): void
+    {
+        ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
+        $hc = new \App\Entity\HolidayCalendar($cal, 'Ferien', 'https://example.com/ferien.ics');
+        self::$em->persist($hc);
+        self::$em->persist(new \App\Entity\HolidayEvent($hc, 'u1', 'Sommerferien', new \DateTimeImmutable('2026-05-20'), new \DateTimeImmutable('2026-06-05')));
+        self::$em->persist(new \App\Entity\HolidayEvent($hc, 'u2', 'Pfingsten', new \DateTimeImmutable('2026-05-25'), null));
+        self::$em->flush();
+        $auth = TestHelper::authHeader($user, self::$tokens);
+        $r = TestHelper::jsonRequest(self::$client, 'GET', "/api/calendars/{$cal->getId()}/holiday-events?from=2026-06-01&to=2026-06-30", [], $auth);
+        $this->assertSame(200, $r['status']);
+        $this->assertSame(['Sommerferien'], array_column($r['body'], 'name'));
+    }
 }

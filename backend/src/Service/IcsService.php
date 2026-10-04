@@ -9,6 +9,7 @@ use App\Entity\Club;
 use App\Entity\Event;
 use Eluceo\iCal\Domain\Entity\Calendar;
 use Eluceo\iCal\Domain\Entity\Event as ICalEvent;
+use Eluceo\iCal\Domain\Entity\TimeZone as ICalTimeZone;
 use Eluceo\iCal\Domain\ValueObject\Date as ICalDate;
 use Eluceo\iCal\Domain\ValueObject\DateTime as ICalDateTime;
 use Eluceo\iCal\Domain\ValueObject\GeographicPosition;
@@ -25,9 +26,17 @@ class IcsService
     {
         $calendar = new Calendar();
 
+        /** @var array<string, array{\DateTimeImmutable, \DateTimeImmutable}> $zoneRanges */
+        $zoneRanges = [];
         foreach ($events as $event) {
-            $icalEvent = $this->buildEvent($event, $club->getTimezone());
+            $icalEvent = $this->buildEvent($event, $this->fallbackTimezone($event, $club), $zoneRanges);
             $calendar->addEvent($icalEvent);
+        }
+
+        // RFC 5545 3.2.19: every TZID used needs a VTIMEZONE; without it strict clients (e.g. ical.js,
+        // Outlook) read the times as floating local time of the reader.
+        foreach ($zoneRanges as $tz => [$from, $until]) {
+            $calendar->addTimeZone(ICalTimeZone::createFromPhpDateTimeZone(new \DateTimeZone($tz), $from->modify('-1 day'), $until->modify('+1 day')));
         }
 
         $factory = new CalendarFactory();
@@ -54,9 +63,23 @@ class IcsService
         return $icsStr;
     }
 
-    private function buildEvent(Event $event, string $clubTimezone): ICalEvent
+    /**
+     * Zone for events without a (valid) own zone: calendar, then club, then UTC. Values stored before
+     * time zones were validated (e.g. Windows names from an Outlook import) must not break the feed.
+     */
+    private function fallbackTimezone(Event $event, Club $club): string
     {
-        $tz = $event->getTimezone() ?? $clubTimezone;
+        return Input::canonicalTimezone($event->getCalendar()->getTimezone())
+            ?? Input::canonicalTimezone($club->getTimezone())
+            ?? 'UTC';
+    }
+
+    /**
+     * @param array<string, array{\DateTimeImmutable, \DateTimeImmutable}> $zoneRanges time span per zone used (for VTIMEZONE)
+     */
+    private function buildEvent(Event $event, string $fallbackTimezone, array &$zoneRanges): ICalEvent
+    {
+        $tz = Input::canonicalTimezone($event->getTimezone()) ?? $fallbackTimezone;
         $uid = new UniqueIdentifier('event-'.$event->getId().'@club-calendar');
 
         // Build summary: icons + name
@@ -103,7 +126,19 @@ class IcsService
         $startDateStr = $event->getDate()->format('Y-m-d');
         $endDateStr = $event->getDateEnd() ? $event->getDateEnd()->format('Y-m-d') : $startDateStr;
 
-        if ($event->isAllDay()) {
+        $start = $end = null;
+        if (!$event->isAllDay()) {
+            // Timed: parse start and end in the event timezone (a stored invalid time falls back to all-day)
+            try {
+                $tzObj = new \DateTimeZone($tz);
+                $start = new \DateTimeImmutable("$startDateStr {$event->getTimeBegin()}", $tzObj);
+                $end = new \DateTimeImmutable("$endDateStr {$event->getTimeEnd()}", $tzObj);
+            } catch (\Exception) {
+                $start = $end = null;
+            }
+        }
+
+        if (null === $start || null === $end) {
             // All-day: MultiDay takes the last day inclusive and writes DTEND as last day + 1
             // (RFC 5545: exclusive end), so the stored end date is passed as it is.
             $occurrence = $event->getDateEnd()
@@ -115,11 +150,8 @@ class IcsService
 
             $icalEvent->setOccurrence($occurrence);
         } else {
-            // Timed: parse start and end in the event timezone
-            $tzObj = new \DateTimeZone($tz);
-            $start = new \DateTimeImmutable("$startDateStr {$event->getTimeBegin()}", $tzObj);
-            $end = new \DateTimeImmutable("$endDateStr {$event->getTimeEnd()}", $tzObj);
-
+            [$from, $until] = $zoneRanges[$tz] ?? [$start, $end];
+            $zoneRanges[$tz] = [min($from, $start), max($until, $end)];
             $icalEvent->setOccurrence(new TimeSpan(
                 new ICalDateTime($start, true),
                 new ICalDateTime($end, true),

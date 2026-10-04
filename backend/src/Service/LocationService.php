@@ -26,11 +26,11 @@ readonly class LocationService
     {
         $location = new Location();
         $location->setCalendar($calendar);
-        $location->setName($data['name'] ?? null);
-        $location->setStreet($data['street'] ?? null);
-        $location->setZip($data['zip'] ?? null);
-        $location->setCity($data['city'] ?? null);
-        $location->setCountry($data['country'] ?? null);
+        $location->setName(Input::nullableString($data, 'name'));
+        $location->setStreet(Input::nullableString($data, 'street'));
+        $location->setZip(Input::nullableString($data, 'zip', 20));
+        $location->setCity(Input::nullableString($data, 'city'));
+        $location->setCountry(Input::nullableString($data, 'country', 100));
         $location->setLatitude(isset($data['latitude']) ? (float) $data['latitude'] : null);
         $location->setLongitude(isset($data['longitude']) ? (float) $data['longitude'] : null);
 
@@ -45,19 +45,19 @@ readonly class LocationService
         $location = $this->find($id, $calendar);
 
         if (array_key_exists('name', $data)) {
-            $location->setName($data['name']);
+            $location->setName(Input::nullableString($data, 'name'));
         }
         if (array_key_exists('street', $data)) {
-            $location->setStreet($data['street']);
+            $location->setStreet(Input::nullableString($data, 'street'));
         }
         if (array_key_exists('zip', $data)) {
-            $location->setZip($data['zip']);
+            $location->setZip(Input::nullableString($data, 'zip', 20));
         }
         if (array_key_exists('city', $data)) {
-            $location->setCity($data['city']);
+            $location->setCity(Input::nullableString($data, 'city'));
         }
         if (array_key_exists('country', $data)) {
-            $location->setCountry($data['country']);
+            $location->setCountry(Input::nullableString($data, 'country', 100));
         }
         if (array_key_exists('latitude', $data)) {
             $location->setLatitude(null !== $data['latitude'] ? (float) $data['latitude'] : null);

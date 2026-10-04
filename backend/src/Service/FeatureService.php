@@ -26,7 +26,7 @@ readonly class FeatureService
     {
         $feature = new Feature();
         $feature->setCalendar($calendar);
-        $feature->setName($data['name']);
+        $feature->setName(Input::string($data, 'name'));
 
         $this->em->persist($feature);
         $this->em->flush();
@@ -39,7 +39,7 @@ readonly class FeatureService
         $feature = $this->find($id, $calendar);
 
         if (array_key_exists('name', $data)) {
-            $feature->setName($data['name']);
+            $feature->setName(Input::string($data, 'name'));
         }
 
         $this->em->flush();

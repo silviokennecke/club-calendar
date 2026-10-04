@@ -112,7 +112,8 @@ class MapController extends AbstractController
     public function eventImage(string $id): Response
     {
         $event = $this->em->find(Event::class, $id);
-        $location = $event?->getLocation();
+        // Public endpoint: drafts are not published anywhere, so their location is not either
+        $location = null !== $event && !$event->isDraft() ? $event->getLocation() : null;
         if (null === $location || null === $location->getLatitude() || null === $location->getLongitude()) {
             throw new NotFoundHttpException('Event not found or has no location with coordinates');
         }

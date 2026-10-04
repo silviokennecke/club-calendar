@@ -26,7 +26,7 @@ readonly class TargetGroupService
     {
         $targetGroup = new TargetGroup();
         $targetGroup->setCalendar($calendar);
-        $targetGroup->setName($data['name']);
+        $targetGroup->setName(Input::string($data, 'name'));
 
         $this->em->persist($targetGroup);
         $this->em->flush();
@@ -39,7 +39,7 @@ readonly class TargetGroupService
         $targetGroup = $this->find($id, $calendar);
 
         if (array_key_exists('name', $data)) {
-            $targetGroup->setName($data['name']);
+            $targetGroup->setName(Input::string($data, 'name'));
         }
 
         $this->em->flush();

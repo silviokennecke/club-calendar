@@ -16,12 +16,15 @@ use App\Entity\Property;
 use App\Entity\TargetGroup;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class EventService
 {
-    public function __construct(private EntityManagerInterface $em)
-    {
+    public function __construct(
+        private EntityManagerInterface $em,
+        private CalendarReferences $references,
+    ) {
     }
 
     public function listEvents(Calendar $calendar, ?string $from, ?string $to, ?array $targetGroupIds): array
@@ -39,7 +42,8 @@ readonly class EventService
                 throw new BadRequestHttpException('Invalid from date');
             }
             try {
-                $qb->andWhere('e.date >= :from')->setParameter('from', new \DateTimeImmutable($from));
+                // Overlap: multi-day events that started before the range but reach into it are included
+                $qb->andWhere('COALESCE(e.dateEnd, e.date) >= :from')->setParameter('from', new \DateTimeImmutable($from));
             } catch (\DateMalformedStringException) {
                 throw new BadRequestHttpException('Invalid from date');
             }
@@ -65,8 +69,6 @@ readonly class EventService
     public function createEvent(Calendar $calendar, array $data): array
     {
         $event = $this->buildEvent($calendar, $data);
-        $this->em->persist($event);
-        $this->syncRelations($event, $data);
         $this->em->flush();
 
         return $this->serializeEvent($event);
@@ -79,53 +81,31 @@ readonly class EventService
             throw new NotFoundHttpException('Template not found');
         }
 
-        $propertyIds = $overrides['propertyIds'] ?? array_map(
-            fn ($p) => $p->getProperty()->getId(),
-            $template->getProperties()->toArray(),
-        );
-        $featureIds = $overrides['featureIds'] ?? array_map(
-            fn ($f) => $f->getFeature()->getId(),
-            $template->getFeatures()->toArray(),
-        );
-        $targetGroupIds = $overrides['targetGroupIds'] ?? array_map(
-            fn ($t) => $t->getTargetGroup()->getId(),
-            $template->getTargetGroups()->toArray(),
-        );
-        $locationId = array_key_exists('locationId', $overrides)
-            ? $overrides['locationId']
-            : $template->getLocation()?->getId();
-        $isDraft = $overrides['isDraft'] ?? true;
+        $input = [
+            'name' => $template->getName(),
+            'timezone' => $template->getTimezone(),
+            'timeBegin' => $template->getTimeBegin(),
+            'timeEnd' => $template->getTimeEnd(),
+            'isDraft' => true,
+            'locationId' => $template->getLocation()?->getId(),
+            'eventTemplateId' => $template->getId(),
+            'propertyIds' => array_map(fn ($p) => $p->getProperty()->getId(), $template->getProperties()->toArray()),
+            'featureIds' => array_map(fn ($f) => $f->getFeature()->getId(), $template->getFeatures()->toArray()),
+            'targetGroupIds' => array_map(fn ($t) => $t->getTargetGroup()->getId(), $template->getTargetGroups()->toArray()),
+        ];
+        foreach (['name', 'timezone', 'timeBegin', 'timeEnd', 'isAllDay', 'isDraft', 'propertyIds', 'featureIds', 'targetGroupIds'] as $key) {
+            if (isset($overrides[$key])) {
+                $input[$key] = $overrides[$key];
+            }
+        }
+        if (array_key_exists('locationId', $overrides)) {
+            $input['locationId'] = $overrides['locationId'];
+        }
 
         $events = [];
         foreach ($dates as $dateStr) {
-            $event = new Event();
-            $event->setCalendar($calendar);
-            $event->setTemplate($template);
-            $event->setName($overrides['name'] ?? $template->getName());
-            $event->setTimezone($overrides['timezone'] ?? $template->getTimezone());
-            try {
-                $event->setDate(new \DateTimeImmutable($dateStr));
-            } catch (\DateMalformedStringException) {
-                throw new BadRequestHttpException(sprintf('Invalid date: %s', $dateStr));
-            }
-            $event->setTimeBegin($overrides['timeBegin'] ?? $template->getTimeBegin());
-            $event->setTimeEnd($overrides['timeEnd'] ?? $template->getTimeEnd());
-            $event->setIsDraft($isDraft);
-
-            if (isset($overrides['isAllDay'])) {
-                $event->setIsAllDay($overrides['isAllDay']);
-            }
-
-            if ($locationId) {
-                $loc = $this->em->getRepository(Location::class)->find($locationId);
-                if ($loc) {
-                    $event->setLocation($loc);
-                }
-            }
-
-            $this->em->persist($event);
-            $this->syncManyToMany($event, $propertyIds, $featureIds, $targetGroupIds);
-            $events[] = $event;
+            $input['date'] = $dateStr;
+            $events[] = $this->buildEvent($calendar, $input);
         }
         $this->em->flush();
 
@@ -134,10 +114,16 @@ readonly class EventService
 
     public function importEvents(Calendar $calendar, array $eventsData): int
     {
-        foreach ($eventsData as $data) {
-            $event = $this->buildEvent($calendar, $data);
-            $this->em->persist($event);
-            $this->syncRelations($event, $data);
+        foreach (array_values($eventsData) as $i => $data) {
+            try {
+                if (!is_array($data)) {
+                    throw new BadRequestHttpException('event must be an object');
+                }
+                $this->buildEvent($calendar, $data);
+            } catch (HttpException $e) {
+                // Name the failing entry; nothing is stored (no flush)
+                throw new HttpException($e->getStatusCode(), sprintf('events[%d]: %s', $i, $e->getMessage()), $e);
+            }
         }
         $this->em->flush();
 
@@ -146,111 +132,13 @@ readonly class EventService
 
     public function getEvent(string $id, Calendar $calendar): array
     {
-        $event = $this->em->getRepository(Event::class)->find($id);
-        if (!$event || $event->getCalendar()->getId() !== $calendar->getId()) {
-            throw new NotFoundHttpException('Event not found');
-        }
-
-        return $this->serializeEvent($event);
+        return $this->serializeEvent($this->findEvent($id, $calendar));
     }
 
     public function updateEvent(string $id, Calendar $calendar, array $data): array
     {
-        $event = $this->em->getRepository(Event::class)->find($id);
-        if (!$event || $event->getCalendar()->getId() !== $calendar->getId()) {
-            throw new NotFoundHttpException('Event not found');
-        }
-
-        if (array_key_exists('name', $data)) {
-            $event->setName($data['name']);
-        }
-        if (array_key_exists('timezone', $data)) {
-            $event->setTimezone($data['timezone']);
-        }
-        if (array_key_exists('date', $data)) {
-            try {
-                $event->setDate(new \DateTimeImmutable($data['date']));
-            } catch (\DateMalformedStringException) {
-                throw new BadRequestHttpException('Invalid date');
-            }
-        }
-        if (array_key_exists('dateEnd', $data)) {
-            try {
-                $event->setDateEnd($data['dateEnd'] ? new \DateTimeImmutable($data['dateEnd']) : null);
-            } catch (\DateMalformedStringException) {
-                throw new BadRequestHttpException('Invalid dateEnd');
-            }
-        }
-        if (array_key_exists('timeBegin', $data)) {
-            $event->setTimeBegin($data['timeBegin']);
-        }
-        if (array_key_exists('timeEnd', $data)) {
-            $event->setTimeEnd($data['timeEnd']);
-        }
-        if (array_key_exists('isAllDay', $data)) {
-            $event->setIsAllDay($data['isAllDay']);
-        }
-        if (array_key_exists('isDraft', $data)) {
-            $event->setIsDraft($data['isDraft']);
-        }
-
-        if (array_key_exists('locationId', $data)) {
-            $loc = $data['locationId']
-                ? $this->em->getRepository(Location::class)->find($data['locationId'])
-                : null;
-            $event->setLocation($loc);
-        }
-        if (array_key_exists('eventTemplateId', $data)) {
-            $tmpl = $data['eventTemplateId']
-                ? $this->em->getRepository(EventTemplate::class)->find($data['eventTemplateId'])
-                : null;
-            $event->setTemplate($tmpl);
-        }
-
-        $propertyIds = $data['propertyIds'] ?? null;
-        $featureIds = $data['featureIds'] ?? null;
-        $targetGroupIds = $data['targetGroupIds'] ?? null;
-
-        if (null !== $propertyIds) {
-            LinkCollectionSync::sync(
-                $this->em,
-                $event->getProperties(),
-                $propertyIds,
-                fn (EventProperty $ep) => $ep->getProperty()->getId(),
-                function (string $id) use ($event): ?EventProperty {
-                    $prop = $this->em->getRepository(Property::class)->find($id);
-
-                    return $prop ? (new EventProperty())->setEvent($event)->setProperty($prop) : null;
-                },
-            );
-        }
-        if (null !== $featureIds) {
-            LinkCollectionSync::sync(
-                $this->em,
-                $event->getFeatures(),
-                $featureIds,
-                fn (EventFeature $ef) => $ef->getFeature()->getId(),
-                function (string $id) use ($event): ?EventFeature {
-                    $feat = $this->em->getRepository(Feature::class)->find($id);
-
-                    return $feat ? (new EventFeature())->setEvent($event)->setFeature($feat) : null;
-                },
-            );
-        }
-        if (null !== $targetGroupIds) {
-            LinkCollectionSync::sync(
-                $this->em,
-                $event->getTargetGroups(),
-                $targetGroupIds,
-                fn (EventTargetGroup $etg) => $etg->getTargetGroup()->getId(),
-                function (string $id) use ($event): ?EventTargetGroup {
-                    $tg = $this->em->getRepository(TargetGroup::class)->find($id);
-
-                    return $tg ? (new EventTargetGroup())->setEvent($event)->setTargetGroup($tg) : null;
-                },
-            );
-        }
-
+        $event = $this->findEvent($id, $calendar);
+        $this->applyInput($event, $calendar, $data, true);
         $this->em->flush();
 
         return $this->serializeEvent($event);
@@ -258,97 +146,108 @@ readonly class EventService
 
     public function deleteEvent(string $id, Calendar $calendar): void
     {
-        $event = $this->em->getRepository(Event::class)->find($id);
-        if (!$event || $event->getCalendar()->getId() !== $calendar->getId()) {
-            throw new NotFoundHttpException('Event not found');
-        }
+        $event = $this->findEvent($id, $calendar);
         $this->em->remove($event);
         $this->em->flush();
     }
 
-    private function buildEvent(Calendar $calendar, array $data): Event
+    private function findEvent(string $id, Calendar $calendar): Event
     {
-        $event = new Event();
-        $event->setCalendar($calendar);
-        $event->setName($data['name']);
-        try {
-            $event->setDate(new \DateTimeImmutable($data['date']));
-        } catch (\DateMalformedStringException) {
-            throw new BadRequestHttpException('Invalid date');
-        }
-        $event->setTimeBegin($data['timeBegin']);
-        $event->setTimeEnd($data['timeEnd']);
-
-        if (isset($data['timezone'])) {
-            $event->setTimezone($data['timezone']);
-        }
-        if (!empty($data['dateEnd'])) {
-            try {
-                $event->setDateEnd(new \DateTimeImmutable($data['dateEnd']));
-            } catch (\DateMalformedStringException) {
-                throw new BadRequestHttpException('Invalid dateEnd');
-            }
-        }
-        if (isset($data['isAllDay'])) {
-            $event->setIsAllDay($data['isAllDay']);
-        }
-        if (isset($data['isDraft'])) {
-            $event->setIsDraft($data['isDraft']);
-        }
-        if (!empty($data['locationId'])) {
-            $loc = $this->em->getRepository(Location::class)->find($data['locationId']);
-            if ($loc) {
-                $event->setLocation($loc);
-            }
-        }
-        if (!empty($data['eventTemplateId'])) {
-            $tmpl = $this->em->getRepository(EventTemplate::class)->find($data['eventTemplateId']);
-            if ($tmpl) {
-                $event->setTemplate($tmpl);
-            }
+        $event = $this->em->getRepository(Event::class)->find($id);
+        if (!$event || $event->getCalendar()->getId() !== $calendar->getId()) {
+            throw new NotFoundHttpException('Event not found');
         }
 
         return $event;
     }
 
-    private function syncRelations(Event $event, array $data): void
+    /** New, persisted (not flushed) event from request data. */
+    private function buildEvent(Calendar $calendar, array $data): Event
     {
-        $this->syncManyToMany(
-            $event,
-            $data['propertyIds'] ?? [],
-            $data['featureIds'] ?? [],
-            $data['targetGroupIds'] ?? [],
-        );
+        $event = new Event();
+        $event->setCalendar($calendar);
+        $this->applyInput($event, $calendar, $data, false);
+        $this->em->persist($event);
+
+        return $event;
     }
 
-    private function syncManyToMany(Event $event, array $propertyIds, array $featureIds, array $targetGroupIds): void
+    /**
+     * Validates and applies request data. All referenced records must belong to the same calendar;
+     * unknown ids and ids of other calendars are rejected alike (422), so nothing about other calendars leaks.
+     *
+     * @param bool $partial PATCH: only the given keys are applied, nothing is required
+     */
+    private function applyInput(Event $event, Calendar $calendar, array $data, bool $partial): void
     {
-        foreach ($propertyIds as $pid) {
-            $prop = $this->em->getRepository(Property::class)->find($pid);
-            if ($prop) {
-                $ep = new EventProperty();
-                $ep->setEvent($event);
-                $ep->setProperty($prop);
-                $this->em->persist($ep);
+        $has = fn (string $key) => !$partial || array_key_exists($key, $data);
+        // PATCH: a missing or null id list leaves the assignments unchanged
+        $hasList = fn (string $key) => !$partial || null !== ($data[$key] ?? null);
+
+        if ($has('name')) {
+            $event->setName(Input::string($data, 'name'));
+        }
+        if ($has('timezone')) {
+            $event->setTimezone(Input::timezone($data, 'timezone'));
+        }
+        if ($has('date')) {
+            $event->setDate(Input::date($data, 'date'));
+        }
+        if ($has('dateEnd')) {
+            $dateEnd = $data['dateEnd'] ?? null;
+            $event->setDateEnd(null === $dateEnd || '' === $dateEnd ? null : Input::parseDate($dateEnd, 'dateEnd'));
+        }
+        if ($has('timeBegin')) {
+            $event->setTimeBegin(Input::time($data, 'timeBegin'));
+        }
+        if ($has('timeEnd')) {
+            $event->setTimeEnd(Input::time($data, 'timeEnd'));
+        }
+        foreach (['isAllDay' => $event->setIsAllDay(...), 'isDraft' => $event->setIsDraft(...)] as $key => $set) {
+            if (array_key_exists($key, $data) && null !== $data[$key]) {
+                $set(Input::bool($data, $key));
             }
         }
-        foreach ($featureIds as $fid) {
-            $feat = $this->em->getRepository(Feature::class)->find($fid);
-            if ($feat) {
-                $ef = new EventFeature();
-                $ef->setEvent($event);
-                $ef->setFeature($feat);
-                $this->em->persist($ef);
-            }
+        if (null !== $event->getDateEnd() && $event->getDateEnd() < $event->getDate()) {
+            throw new BadRequestHttpException('dateEnd must not be before date');
         }
-        foreach ($targetGroupIds as $tgid) {
-            $tg = $this->em->getRepository(TargetGroup::class)->find($tgid);
-            if ($tg) {
-                $etg = new EventTargetGroup();
-                $etg->setEvent($event);
-                $etg->setTargetGroup($tg);
-                $this->em->persist($etg);
-            }
+
+        if ($has('locationId')) {
+            $event->setLocation($this->references->find(Location::class, $calendar, $data['locationId'] ?? null, 'locationId'));
+        }
+        if ($has('eventTemplateId')) {
+            $event->setTemplate($this->references->find(EventTemplate::class, $calendar, $data['eventTemplateId'] ?? null, 'eventTemplateId'));
+        }
+
+        if ($hasList('propertyIds')) {
+            $properties = $this->references->findAll(Property::class, $calendar, Input::idList($data, 'propertyIds'), 'propertyIds');
+            LinkCollectionSync::sync(
+                $this->em,
+                $event->getProperties(),
+                array_keys($properties),
+                fn (EventProperty $ep) => $ep->getProperty()->getId(),
+                fn (string $id) => (new EventProperty())->setEvent($event)->setProperty($properties[$id]),
+            );
+        }
+        if ($hasList('featureIds')) {
+            $features = $this->references->findAll(Feature::class, $calendar, Input::idList($data, 'featureIds'), 'featureIds');
+            LinkCollectionSync::sync(
+                $this->em,
+                $event->getFeatures(),
+                array_keys($features),
+                fn (EventFeature $ef) => $ef->getFeature()->getId(),
+                fn (string $id) => (new EventFeature())->setEvent($event)->setFeature($features[$id]),
+            );
+        }
+        if ($hasList('targetGroupIds')) {
+            $groups = $this->references->findAll(TargetGroup::class, $calendar, Input::idList($data, 'targetGroupIds'), 'targetGroupIds');
+            LinkCollectionSync::sync(
+                $this->em,
+                $event->getTargetGroups(),
+                array_keys($groups),
+                fn (EventTargetGroup $etg) => $etg->getTargetGroup()->getId(),
+                fn (string $id) => (new EventTargetGroup())->setEvent($event)->setTargetGroup($groups[$id]),
+            );
         }
     }
 
