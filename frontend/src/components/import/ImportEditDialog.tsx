@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { useTranslation } from "react-i18next";
-import { Dialog, DialogOverlay, DialogPortal } from "@/components/ui/dialog";
 import { validateEvent, type EventStatus } from "@/lib/events";
 import {
   applyIds,
@@ -25,6 +23,7 @@ import {
   Button,
   ErrorSummary,
   Field,
+  FormDialog,
   NativeSelect,
   TextInput,
 } from "@/components/ui/shared";
@@ -168,155 +167,137 @@ export function ImportEditDialog({
     : t("import.dialog.itemTitle");
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogPortal>
-        <DialogOverlay className="bg-scrim supports-backdrop-filter:backdrop-blur-none" />
-        <DialogPrimitive.Popup className="ap-dialog ap-dialog--wide fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2 outline-none max-[720px]:top-auto max-[720px]:bottom-0 max-[720px]:translate-y-0 max-[720px]:rounded-b-none">
-          <DialogPrimitive.Title className="t-h2">{title}</DialogPrimitive.Title>
-          <DialogPrimitive.Description className="ap-sr">
-            {t("import.dialog.description")}
-          </DialogPrimitive.Description>
-          {isGroup && (
-            <Banner tone="info" title={t("import.dialog.groupNoticeTitle")}>
-              {t("import.dialog.groupNotice", { count: members.length })}
-            </Banner>
-          )}
-          <ErrorSummary
-            title={t("import.dialog.errorTitle")}
-            errors={summary}
-            focusSignal={submits}
-          />
-          <form
-            className="ap-form"
-            noValidate
-            onSubmit={(e) => {
-              e.preventDefault();
-              apply();
-            }}
-          >
+    <FormDialog
+      open
+      onOpenChange={(open) => !open && onClose()}
+      wide
+      title={title}
+      description={t("import.dialog.description")}
+      onSubmit={apply}
+      actions={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+          <Button type="submit">{t("import.dialog.apply")}</Button>
+        </>
+      }
+    >
+      {isGroup && (
+        <Banner tone="info" title={t("import.dialog.groupNoticeTitle")}>
+          {t("import.dialog.groupNotice", { count: members.length })}
+        </Banner>
+      )}
+      <ErrorSummary title={t("import.dialog.errorTitle")} errors={summary} focusSignal={submits} />
+      <Field
+        id={FIELD.name}
+        label={isGroup ? t("import.dialog.groupName") : t("events.form.name")}
+        required
+        error={errorFor("name")}
+      >
+        <TextInput
+          value={values.name}
+          autoComplete="off"
+          onChange={(e) => set("name", e.target.value)}
+        />
+      </Field>
+      {!isGroup && (
+        <fieldset className="ap-fieldset">
+          <legend className="ap-sr">{t("events.form.dates")}</legend>
+          <div className="ap-inputrow">
+            <Field id={FIELD.date} label={t("events.form.date")} required error={errorFor("date")}>
+              <TextInput
+                type="date"
+                value={values.date}
+                onChange={(e) => set("date", e.target.value)}
+              />
+            </Field>
             <Field
-              id={FIELD.name}
-              label={isGroup ? t("import.dialog.groupName") : t("events.form.name")}
-              required
-              error={errorFor("name")}
+              id={FIELD.dateEnd}
+              label={t("events.form.dateEnd")}
+              hint={t("events.form.dateEndHint")}
+              error={errorFor("dateEnd")}
             >
               <TextInput
-                value={values.name}
-                autoComplete="off"
-                onChange={(e) => set("name", e.target.value)}
+                type="date"
+                value={values.dateEnd}
+                min={values.date || undefined}
+                onChange={(e) => set("dateEnd", e.target.value)}
               />
             </Field>
-            {!isGroup && (
-              <fieldset className="ap-fieldset">
-                <legend className="ap-sr">{t("events.form.dates")}</legend>
-                <div className="ap-inputrow">
-                  <Field
-                    id={FIELD.date}
-                    label={t("events.form.date")}
-                    required
-                    error={errorFor("date")}
-                  >
-                    <TextInput
-                      type="date"
-                      value={values.date}
-                      onChange={(e) => set("date", e.target.value)}
-                    />
-                  </Field>
-                  <Field
-                    id={FIELD.dateEnd}
-                    label={t("events.form.dateEnd")}
-                    hint={t("events.form.dateEndHint")}
-                    error={errorFor("dateEnd")}
-                  >
-                    <TextInput
-                      type="date"
-                      value={values.dateEnd}
-                      min={values.date || undefined}
-                      onChange={(e) => set("dateEnd", e.target.value)}
-                    />
-                  </Field>
-                </div>
-              </fieldset>
-            )}
-            <label className="ap-check">
-              <input
-                type="checkbox"
-                checked={values.isAllDay}
-                onChange={(e) => set("isAllDay", e.target.checked)}
+          </div>
+        </fieldset>
+      )}
+      <label className="ap-check">
+        <input
+          type="checkbox"
+          checked={values.isAllDay}
+          onChange={(e) => set("isAllDay", e.target.checked)}
+        />
+        <span>{t("events.form.allDay")}</span>
+      </label>
+      {!values.isAllDay && (
+        <fieldset className="ap-fieldset">
+          <legend className="ap-sr">{t("events.form.times")}</legend>
+          <div className="ap-inputrow">
+            <Field
+              id={FIELD.timeBegin}
+              label={t("events.form.timeBegin")}
+              required
+              error={errorFor("timeBegin")}
+            >
+              <TextInput
+                type="time"
+                value={values.timeBegin}
+                onChange={(e) => set("timeBegin", e.target.value)}
               />
-              <span>{t("events.form.allDay")}</span>
-            </label>
-            {!values.isAllDay && (
-              <fieldset className="ap-fieldset">
-                <legend className="ap-sr">{t("events.form.times")}</legend>
-                <div className="ap-inputrow">
-                  <Field
-                    id={FIELD.timeBegin}
-                    label={t("events.form.timeBegin")}
-                    required
-                    error={errorFor("timeBegin")}
-                  >
-                    <TextInput
-                      type="time"
-                      value={values.timeBegin}
-                      onChange={(e) => set("timeBegin", e.target.value)}
-                    />
-                  </Field>
-                  <Field
-                    id={FIELD.timeEnd}
-                    label={t("events.form.timeEnd")}
-                    required
-                    error={errorFor("timeEnd")}
-                  >
-                    <TextInput
-                      type="time"
-                      value={values.timeEnd}
-                      onChange={(e) => set("timeEnd", e.target.value)}
-                    />
-                  </Field>
-                </div>
-              </fieldset>
-            )}
-            <fieldset className="ap-fieldset">
-              <legend>{t("events.form.status.label")}</legend>
-              <StatusSeg value={values.status} onChange={(s) => set("status", s)} />
-            </fieldset>
-            <Field id="imp-place" label={t("import.dialog.place")} optional>
-              <NativeSelect value={values.place} onChange={(e) => set("place", e.target.value)}>
-                {values.place === MIXED && (
-                  <option value={MIXED} disabled>
-                    {t("import.dialog.placeMixed")}
-                  </option>
-                )}
-                <option value="">{t("import.dialog.noPlace")}</option>
-                {locations.map((l) => (
-                  <option key={l.id} value={`id:${l.id}`}>
-                    {locationName(l)}
-                  </option>
-                ))}
-                {newNames.map((name) => (
-                  <option key={name} value={placeToValue({ kind: "new", name })}>
-                    {t("import.dialog.placeNew", {
-                      name: placeLabel({ kind: "new", name }, locations),
-                    })}
-                  </option>
-                ))}
-              </NativeSelect>
             </Field>
-            <AssignmentFields
-              resources={resources}
-              value={values}
-              onChange={(field, ids) => set(field, ids)}
-            />
-            <div className="ap-dialog-foot">
-              <Button variant="secondary" onClick={onClose}>
-                {t("common.cancel")}
-              </Button>
-              <Button type="submit">{t("import.dialog.apply")}</Button>
-            </div>
-          </form>
-        </DialogPrimitive.Popup>
-      </DialogPortal>
-    </Dialog>
+            <Field
+              id={FIELD.timeEnd}
+              label={t("events.form.timeEnd")}
+              required
+              error={errorFor("timeEnd")}
+            >
+              <TextInput
+                type="time"
+                value={values.timeEnd}
+                onChange={(e) => set("timeEnd", e.target.value)}
+              />
+            </Field>
+          </div>
+        </fieldset>
+      )}
+      <fieldset className="ap-fieldset">
+        <legend>{t("events.form.status.label")}</legend>
+        <StatusSeg value={values.status} onChange={(s) => set("status", s)} />
+      </fieldset>
+      <Field id="imp-place" label={t("import.dialog.place")} optional>
+        <NativeSelect value={values.place} onChange={(e) => set("place", e.target.value)}>
+          {values.place === MIXED && (
+            <option value={MIXED} disabled>
+              {t("import.dialog.placeMixed")}
+            </option>
+          )}
+          <option value="">{t("import.dialog.noPlace")}</option>
+          {locations.map((l) => (
+            <option key={l.id} value={`id:${l.id}`}>
+              {locationName(l)}
+            </option>
+          ))}
+          {newNames.map((name) => (
+            <option key={name} value={placeToValue({ kind: "new", name })}>
+              {t("import.dialog.placeNew", {
+                name: placeLabel({ kind: "new", name }, locations),
+              })}
+            </option>
+          ))}
+        </NativeSelect>
+      </Field>
+      <AssignmentFields
+        resources={resources}
+        value={values}
+        onChange={(field, ids) => set(field, ids)}
+      />
+    </FormDialog>
   );
 }

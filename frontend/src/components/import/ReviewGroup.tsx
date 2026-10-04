@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
@@ -11,6 +12,9 @@ import { formatEventDates } from "@/lib/events";
 import type { Location } from "@/lib/types";
 import { Button, Icon, StatusBadge } from "@/components/ui/shared";
 import { useLocale } from "@/components/calendar/useLocale";
+
+/** Rows rendered per group at first and added by each "show more" (files can hold thousands of events). */
+export const GROUP_PAGE_SIZE = 100;
 
 interface ReviewGroupProps {
   group: ImportGroup;
@@ -42,6 +46,11 @@ export function ReviewGroup({
   const { t } = useTranslation();
   const locale = useLocale();
   const { items } = group;
+  // Only the first rows of a group are rendered; selection and counts always cover all events.
+  const [shown, setShown] = useState(GROUP_PAGE_SIZE);
+  const visible = items.slice(0, shown);
+  const remaining = items.length - visible.length;
+  const focusRow = useRef<number | null>(null);
   const name = group.name ?? t("import.review.othersName");
   const state = selectionState(items);
   const selected = items.filter((i) => i.selected).length;
@@ -51,6 +60,21 @@ export function ReviewGroup({
     ? t("import.review.singleCount", { count: items.length })
     : t("import.review.groupCount", { count: items.length });
   const isNewPlace = place !== "mixed" && place.kind === "new";
+
+  // After "show more" focus moves to the first new row (the button may disappear).
+  useEffect(() => {
+    if (focusRow.current === null) return;
+    const index = focusRow.current;
+    focusRow.current = null;
+    document
+      .querySelector<HTMLElement>(`#${tableId} tbody tr:nth-child(${index + 1}) input`)
+      ?.focus();
+  }, [shown, tableId]);
+
+  function showMore() {
+    focusRow.current = visible.length;
+    setShown((n) => n + GROUP_PAGE_SIZE);
+  }
 
   const checkLabel =
     state === "all"
@@ -130,7 +154,7 @@ export function ReviewGroup({
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => {
+              {visible.map((item) => {
                 const dates = formatEventDates(item, locale);
                 const itemPlace = placeLabel(resolvePlace(item, locations), locations);
                 return (
@@ -193,6 +217,18 @@ export function ReviewGroup({
               })}
             </tbody>
           </table>
+          {items.length > GROUP_PAGE_SIZE && (
+            <div className="ap-row" style={{ padding: "var(--space-3) var(--space-4)" }}>
+              <p className="t-sm t-muted" role="status">
+                {t("import.review.shownOf", { shown: visible.length, count: items.length })}
+              </p>
+              {remaining > 0 && (
+                <Button variant="secondary" onClick={showMore}>
+                  {t("import.review.showMore", { count: Math.min(remaining, GROUP_PAGE_SIZE) })}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </li>

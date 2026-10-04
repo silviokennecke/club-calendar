@@ -14,10 +14,12 @@ interface Pending {
  * - intercepts clicks on in-app links anywhere on the page (sidebar, tab bar, back links),
  * - wraps the page's own navigation through `guard(fn)`,
  * - blocks the browser's back / forward buttons (the dialog renders a router blocker; only in the
- *   app's data router, plain `<MemoryRouter>` tests skip it).
+ *   app's data router, plain `<MemoryRouter>` tests skip it). `blockSamePath` also holds back / forward
+ *   entries with the same address (steps of a page kept in the history state, like the import).
  * Call `allow()` right before navigating away after saving or deleting.
  */
-export function useUnsavedChanges(dirty: boolean) {
+export function useUnsavedChanges(dirty: boolean, options: { blockSamePath?: boolean } = {}) {
+  const blockSamePath = !!options.blockSamePath;
   const navigate = useNavigate();
   const [pending, setPending] = useState<Pending | null>(null);
   // Set once the changes were saved or discarded; navigation is free from then on.
@@ -95,7 +97,7 @@ export function useUnsavedChanges(dirty: boolean) {
         setPending(null);
         action?.run();
       },
-      blocker: { shouldBlock, onBlocked },
+      blocker: { shouldBlock, onBlocked, samePath: blockSamePath },
     },
   };
 }

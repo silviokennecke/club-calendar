@@ -1,0 +1,61 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { Calendar } from "@/lib/types";
+import { pickCalendar } from "../pickCalendar";
+import { readLastCalendar, rememberLastCalendar } from "../lastCalendar";
+
+const cal = (id: string, archived = false) =>
+  ({
+    id,
+    name: id,
+    clubid: "c1",
+    archivedAt: archived ? "2026-01-01T00:00:00Z" : null,
+  }) as Calendar;
+const list = [cal("old", true), cal("k1"), cal("k2")];
+
+describe("pickCalendar", () => {
+  it("prefers the calendar remembered for the club in this browser", () => {
+    expect(pickCalendar(list, "c1", null, null, "k2")?.id).toBe("k2");
+    expect(pickCalendar(list, "c1", "c1", "k1", "k2")?.id).toBe("k2");
+  });
+
+  it("ignores remembered ids that are unknown, deleted or archived", () => {
+    expect(pickCalendar(list, "c1", null, null, "gone")?.id).toBe("k1");
+    expect(pickCalendar(list, "c1", null, null, "old")?.id).toBe("k1");
+  });
+
+  it("falls back to the account's last calendar of its last club, then the first active one", () => {
+    expect(pickCalendar(list, "c1", "c1", "k2")?.id).toBe("k2");
+    expect(pickCalendar(list, "c1", "c9", "k2")?.id).toBe("k1");
+    expect(pickCalendar([cal("old", true)], "c1")?.id).toBe("old");
+    expect(pickCalendar([], "c1")).toBeUndefined();
+  });
+});
+
+describe("lastCalendar storage", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("keeps one calendar per club", () => {
+    rememberLastCalendar("u1", "c1", "k2");
+    rememberLastCalendar("u1", "c2", "x9");
+    expect(readLastCalendar("u1", "c1")).toBe("k2");
+    expect(readLastCalendar("u1", "c2")).toBe("x9");
+    expect(readLastCalendar("u1", "c3")).toBeNull();
+  });
+
+  it("keeps the choice per account (shared browser, shared club)", () => {
+    rememberLastCalendar("u1", "c1", "k2");
+    expect(readLastCalendar("u2", "c1")).toBeNull();
+    expect(readLastCalendar(undefined, "c1")).toBeNull();
+  });
+
+  it("survives a browser that blocks storage", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    expect(() => rememberLastCalendar("u1", "c1", "k1")).not.toThrow();
+    expect(readLastCalendar("u1", "c1")).toBeNull();
+  });
+});

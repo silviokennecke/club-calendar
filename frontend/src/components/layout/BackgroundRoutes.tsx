@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Routes, useLocation } from "react-router-dom";
 import { modalBackground } from "@/lib/modalRoutes";
 import { useModalFocusReturn } from "@/lib/modalFocus";
+import { useHistoryFocus } from "@/lib/historyFocus";
 
 interface BackgroundRoutesProps {
   /** `<Route>`s of the pages. */
@@ -20,6 +21,7 @@ export function BackgroundRoutes({ pages, modals }: BackgroundRoutesProps) {
   const location = useLocation();
   const background = modalBackground(location);
   useModalFocusReturn(!!background);
+  useHistoryFocus();
 
   return (
     <>

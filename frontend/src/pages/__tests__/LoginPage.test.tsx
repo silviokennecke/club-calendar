@@ -88,6 +88,47 @@ describe("LoginPage", () => {
     expect(await screen.findByTestId("location")).toHaveTextContent("/clubs");
   });
 
+  it("has no native validation bubble: empty fields get translated errors, focus on the first one", async () => {
+    const user = userEvent.setup();
+    renderLogin();
+    expect(screen.getByRole("form", { name: "Anmeldeformular" })).toHaveAttribute("novalidate");
+    await user.click(screen.getByRole("button", { name: "Anmelden" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Die Anmeldung ist noch nicht vollständig");
+    expect(alert).toHaveTextContent("Bitte gib deine E-Mail-Adresse ein.");
+    expect(alert).toHaveTextContent("Bitte gib dein Passwort ein.");
+    const email = screen.getByLabelText("E-Mail");
+    expect(email).toHaveFocus();
+    expect(email).toHaveAttribute("aria-invalid", "true");
+    expect(email).toHaveAccessibleDescription("Bitte gib deine E-Mail-Adresse ein.");
+    expect(screen.getByLabelText("Passwort")).toHaveAttribute("aria-invalid", "true");
+    expect(apiPost).not.toHaveBeenCalled();
+
+    // The summary links to the fields.
+    await user.click(screen.getByRole("link", { name: "Bitte gib dein Passwort ein." }));
+    expect(screen.getByLabelText("Passwort")).toHaveFocus();
+  });
+
+  it("focuses the password when only that is missing and rejects a malformed email", async () => {
+    const user = userEvent.setup();
+    renderLogin();
+    await user.type(screen.getByLabelText("E-Mail"), "alex@beispiel.de");
+    await user.click(screen.getByRole("button", { name: "Anmelden" }));
+    expect(screen.getByLabelText("Passwort")).toHaveFocus();
+    expect(screen.getByLabelText("E-Mail")).not.toHaveAttribute("aria-invalid");
+
+    await user.clear(screen.getByLabelText("E-Mail"));
+    await user.type(screen.getByLabelText("E-Mail"), "kein-at-zeichen");
+    await user.type(screen.getByLabelText("Passwort"), "geheim123");
+    await user.click(screen.getByRole("button", { name: "Anmelden" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Bitte gib eine gültige E-Mail-Adresse ein",
+    );
+    expect(screen.getByLabelText("E-Mail")).toHaveFocus();
+    expect(apiPost).not.toHaveBeenCalled();
+  });
+
   it("shows a focused alert banner with a reset link for wrong credentials", async () => {
     apiPost.mockRejectedValue(Object.assign(new Error("Invalid credentials"), { status: 401 }));
     renderLogin();

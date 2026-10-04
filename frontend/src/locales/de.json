@@ -48,7 +48,11 @@
       "ssoErrorTitle": "Anmeldung mit Google oder Microsoft nicht möglich",
       "ssoErrorText": "Die Anmeldung über den Anbieter hat nicht geklappt. Versuche es erneut oder melde dich mit E-Mail und Passwort an.",
       "forgot": "Passwort vergessen?",
-      "signInWith": "Mit {{provider}} anmelden"
+      "signInWith": "Mit {{provider}} anmelden",
+      "errorTitle": "Die Anmeldung ist noch nicht vollständig",
+      "emailMissing": "Bitte gib deine E-Mail-Adresse ein.",
+      "emailInvalid": "Bitte gib eine gültige E-Mail-Adresse ein, zum Beispiel name@beispiel.de.",
+      "passwordMissing": "Bitte gib dein Passwort ein."
     },
     "register": {
       "name": "Name",
@@ -857,7 +861,14 @@
         "title": "Orte, Eigenschaften oder Zielgruppen konnten nicht geladen werden",
         "text": "Ohne diese Angaben lässt sich der Import nicht sicher starten.",
         "retry": "Erneut laden"
-      }
+      },
+      "encoding": {
+        "title": "Die Datei ist nicht UTF-8-kodiert",
+        "text": "Wir haben sie als Windows-1252 gelesen. Prüfe vor dem Import, ob Umlaute und Sonderzeichen in Namen und Orten richtig angezeigt werden."
+      },
+      "shownOf": "{{shown}} von {{count}} Terminen angezeigt",
+      "showMore_one": "Weiteren Termin anzeigen",
+      "showMore_other": "{{count}} weitere Termine anzeigen"
     },
     "dialog": {
       "groupTitle": "Gruppe bearbeiten: {{name}}",
@@ -1042,6 +1053,12 @@
         "loading": "Der Umfang wird ermittelt …",
         "unknown": "Alle Termine, Vorlagen, Feeds, Orte und Zuordnungen dieses Kalenders werden gelöscht. Veröffentlichte Feed-Adressen funktionieren danach nicht mehr.",
         "counts": "Gelöscht werden alle Termine ({{events}}), Vorlagen ({{templates}}), Feeds ({{feeds}}), Orte und Zuordnungen dieses Kalenders. Veröffentlichte Feed-Adressen funktionieren danach nicht mehr."
+      },
+      "archived": {
+        "title": "Archivierten Kalender „{{name}}“ löschen?",
+        "text": "Der archivierte Kalender wird dauerhaft gelöscht.",
+        "consequenceCounts": "Löscht {{name}} mit allen Terminen ({{events}}), Vorlagen ({{templates}}) und Feeds ({{feeds}}) unwiderruflich. Eine Wiederherstellung ist danach nicht mehr möglich.",
+        "consequenceUnknown": "Löscht den Kalender mit allen Terminen, Vorlagen und Feeds unwiderruflich. Eine Wiederherstellung ist danach nicht mehr möglich."
       }
     },
     "general": {
@@ -1266,8 +1283,10 @@
         "hint": "Alternative zur Karte, z. B. mit der Tastatur. Beide Werte werden zusammen gespeichert.",
         "latitude": "Breitengrad",
         "longitude": "Längengrad",
-        "invalid": "Bitte eine Zahl zwischen −{{limit}} und {{limit}} eingeben."
-      }
+        "invalid": "Bitte eine Zahl zwischen −{{limit}} und {{limit}} eingeben.",
+        "summaryItem": "{{label}}: {{message}}"
+      },
+      "errorSummaryCoordinates": "Der Ort wurde noch nicht gespeichert. Bitte korrigiere die Koordinaten."
     },
     "holidays": {
       "loading": "Feiertagskalender werden geladen …",
@@ -1477,7 +1496,9 @@
       "targetGroups": "Zielgruppen",
       "locations": "Orte",
       "holidays": "Feiertage"
-    }
+    },
+    "unavailable": "Nicht verfügbar",
+    "toClubPicker": "Zur Vereinsauswahl"
   },
   "club": {
     "title": "Verein verwalten",

@@ -66,6 +66,60 @@ async function openImport(page: Page, email: string, base: string) {
 test.describe("Import", () => {
   test.use({ locale: "de-DE", timezoneId: "Europe/Berlin" });
 
+  test("Browser-Zurück und -Vor gehen die Import-Schritte durch", async ({ page, request }) => {
+    const seeded = await seed(request, "Import Verlauf");
+    await openImport(page, seeded.email, seeded.base);
+    const importUrl = page.url();
+
+    await page.locator("#ics-file").setInputFiles(icsFile());
+    await expect(page.getByText("Schiessplan-2026.ics: 5 Termine erkannt")).toBeVisible();
+    await page.getByRole("button", { name: /Datei prüfen/ }).click();
+    const reviewHeading = page.getByRole("heading", {
+      level: 1,
+      name: "Schiessplan-2026.ics: 5 Termine erkannt",
+    });
+    await expect(reviewHeading).toBeVisible();
+    expect(page.url()).toBe(importUrl);
+
+    // Zurück aus der Prüfung: Warnung, "Weiter bearbeiten" bleibt in der Prüfung
+    await page.goBack();
+    const unsaved = page.getByRole("alertdialog");
+    await expect(unsaved).toBeVisible();
+    await unsaved.getByRole("button", { name: "Weiter bearbeiten" }).click();
+    await expect(unsaved).toBeHidden();
+    await expect(reviewHeading).toBeVisible();
+    expect(page.url()).toBe(importUrl);
+
+    // Verwerfen: Datei-Schritt, die Seite wurde nicht verlassen
+    await page.goBack();
+    await unsaved.getByRole("button", { name: "Änderungen verwerfen" }).click();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Termine importieren" }),
+    ).toBeVisible();
+    expect(page.url()).toBe(importUrl);
+
+    // Vor: wieder die Prüfung (Datei und Auswahl sind noch da)
+    await page.goForward();
+    await expect(reviewHeading).toBeVisible();
+    await expect(page.getByText("5 von 5 ausgewählt")).toBeVisible();
+
+    // Importieren, dann Zurück: Datei-Schritt, kein zweiter Import der alten Auswahl
+    await page.getByRole("button", { name: /Termine importieren$/ }).click();
+    await expect(page.getByRole("heading", { level: 1, name: /importiert/ })).toBeVisible();
+    await page.goBack();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Termine importieren" }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /Datei prüfen/ })).toBeDisabled();
+    expect(page.url()).toBe(importUrl);
+    // Vor in den Ergebnis-Schritt zeigt nichts Altes
+    await page.goForward();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Termine importieren" }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /Datei prüfen/ })).toBeDisabled();
+  });
+
   test("ICS hochladen, prüfen, importieren und Ergebnis", async ({ page, request }) => {
     const seeded = await seed(request, "Import Ablauf");
     await openImport(page, seeded.email, seeded.base);

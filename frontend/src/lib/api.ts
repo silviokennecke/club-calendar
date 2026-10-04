@@ -4,6 +4,16 @@ const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
 export const BACKEND_URL = BASE_URL;
 
+/** Failed API call; `status` is the HTTP status (react-query uses it to decide about retries). */
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 let accessToken: string | null = null;
 
 export function storeTokens(newAccessToken: string, newRefreshToken: string) {
@@ -94,7 +104,7 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
 
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await apiFetch(path);
-  if (!res.ok) throw new Error(`API error ${res.status}`);
+  if (!res.ok) throw new ApiError(`API error ${res.status}`, res.status);
   return res.json();
 }
 
@@ -102,9 +112,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const res = await apiFetch(path, { method: "POST", body: JSON.stringify(body) });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Unknown error" }));
-    throw Object.assign(new Error(err.error ?? err.detail ?? "Request failed"), {
-      status: res.status,
-    });
+    throw new ApiError(err.error ?? err.detail ?? "Request failed", res.status);
   }
   return res.json();
 }
@@ -113,16 +121,14 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   const res = await apiFetch(path, { method: "PATCH", body: JSON.stringify(body) });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Unknown error" }));
-    throw Object.assign(new Error(err.error ?? err.detail ?? "Request failed"), {
-      status: res.status,
-    });
+    throw new ApiError(err.error ?? err.detail ?? "Request failed", res.status);
   }
   return res.json();
 }
 
 export async function apiDelete(path: string): Promise<void> {
   const res = await apiFetch(path, { method: "DELETE" });
-  if (!res.ok) throw new Error(`API error ${res.status}`);
+  if (!res.ok) throw new ApiError(`API error ${res.status}`, res.status);
 }
 
 export function getHolidayCalendars(calendarId: string): Promise<HolidayCalendar[]> {

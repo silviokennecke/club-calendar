@@ -11,6 +11,7 @@ import {
   Skeleton,
   UnsavedChangesDialog,
   toast,
+  type ErrorSummaryItem,
 } from "@/components/ui/shared";
 import { LocationPanel } from "@/components/locations/LocationPanel";
 import { MapBoundary } from "@/components/locations/MapBoundary";
@@ -62,6 +63,11 @@ export default function LocationsPage() {
   const [baseline, setBaseline] = useState<LocationForm>(EMPTY_LOCATION_FORM);
   const [filled, setFilled] = useState<AddressField[]>([]);
   const [invalid, setInvalid] = useState(false);
+  // Text in the coordinate fields that is not a number: it is not part of `form` (it parses to null),
+  // so saving would silently drop it. `coordRefused` = a save was refused because of it.
+  const [coordErrors, setCoordErrors] = useState<ErrorSummaryItem[]>([]);
+  const [coordRefused, setCoordRefused] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const [signal, setSignal] = useState(0);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -95,6 +101,9 @@ export default function LocationsPage() {
     setBaseline(next);
     setFilled([]);
     setInvalid(false);
+    setCoordErrors([]);
+    setCoordRefused(false);
+    setFormKey((k) => k + 1);
     setFailed(false);
   }
 
@@ -163,8 +172,10 @@ export default function LocationsPage() {
   }
 
   async function save() {
-    if (!locationFormValid(form)) {
-      setInvalid(true);
+    const nameMissing = !locationFormValid(form);
+    if (nameMissing || coordErrors.length > 0) {
+      setInvalid(nameMissing);
+      setCoordRefused(coordErrors.length > 0);
       setSignal((n) => n + 1);
       return;
     }
@@ -396,6 +407,9 @@ export default function LocationsPage() {
             onPick={(lat, lng) => void onPick(lat, lng)}
             filled={filled}
             invalid={invalid}
+            coordinateErrors={coordRefused ? coordErrors : []}
+            onCoordinateErrors={setCoordErrors}
+            formKey={formKey}
             signal={signal}
             saving={saving}
             failed={failed}
