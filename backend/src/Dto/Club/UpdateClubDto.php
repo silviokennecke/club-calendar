@@ -12,5 +12,6 @@ class UpdateClubDto
     public ?string $name = null;
 
     #[Assert\Length(min: 1)]
+    #[Assert\Timezone(zone: \DateTimeZone::ALL_WITH_BC)]
     public ?string $timezone = null;
 }

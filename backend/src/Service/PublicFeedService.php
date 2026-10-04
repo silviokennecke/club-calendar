@@ -46,16 +46,17 @@ class PublicFeedService
             throw new NotFoundHttpException('Feed not found');
         }
 
-        // Archived calendar → 404
-        if (null !== $feed->getCalendar()->getArchivedAt()) {
-            throw new NotFoundHttpException('Feed not found');
-        }
-
-        // Private feed: check secret
+        // Private feed: check the secret first, so that nothing about the feed (e.g. that its calendar
+        // is archived) is revealed without access.
         if (FeedVisibility::PRIVATE === $feed->getVisibility()) {
             if (!$secret || !hash_equals($feed->getSharedSecret(), $secret)) {
                 throw new AccessDeniedHttpException('Invalid or missing secret');
             }
+        }
+
+        // Archived calendar → 404
+        if (null !== $feed->getCalendar()->getArchivedAt()) {
+            throw new NotFoundHttpException('Feed not found');
         }
 
         return $feed;

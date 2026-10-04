@@ -206,6 +206,11 @@ class MapControllerTest extends WebTestCase
 
         static::getContainer()->set(\App\Service\Map\MapImageProviderInterface::class, $this->fakeImageProvider());
 
+        // New events are drafts: not published, so the public endpoint does not know them
+        $this->client->request('GET', "/api/map/image/event/$eventId");
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+
+        TestHelper::jsonRequest($this->client, 'PATCH', "/api/calendars/{$cal->getId()}/events/$eventId", ['isDraft' => false], $auth);
         $this->client->request('GET', "/api/map/image/event/$eventId");
         $response = $this->client->getResponse();
 

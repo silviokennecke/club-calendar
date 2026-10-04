@@ -74,6 +74,24 @@ class EventTest extends WebTestCase
     /**
      * @throws \DateMalformedStringException
      */
+    public function testDateRangeIncludesMultiDayEventsOverlappingTheRange(): void
+    {
+        ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
+        $running = TestHelper::createEvent(self::$em, $cal, ['name' => 'Zeltlager', 'date' => '2026-05-28']);
+        $running->setDateEnd(new \DateTimeImmutable('2026-06-03'));
+        $ended = TestHelper::createEvent(self::$em, $cal, ['name' => 'Vorbei', 'date' => '2026-05-20']);
+        $ended->setDateEnd(new \DateTimeImmutable('2026-05-31'));
+        TestHelper::createEvent(self::$em, $cal, ['name' => 'Letzter Tag', 'date' => '2026-06-30']);
+        self::$em->flush();
+        $auth = TestHelper::authHeader($user, self::$tokens);
+        $r = TestHelper::jsonRequest(self::$client, 'GET', "/api/calendars/{$cal->getId()}/events?from=2026-06-01&to=2026-06-30", [], $auth);
+        $this->assertSame(200, $r['status']);
+        $this->assertSame(['Zeltlager', 'Letzter Tag'], array_column($r['body'], 'name'));
+    }
+
+    /**
+     * @throws \DateMalformedStringException
+     */
     public function testCreatesEventsFromTemplate(): void
     {
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
@@ -140,9 +158,16 @@ class EventTest extends WebTestCase
         $this->assertSame([$adults], $ids);
         self::$em->clear();
 
-        // Duplicates and unknown ids in the input are ignored; an empty list removes everything.
+        // Unknown ids are rejected (like ids of other calendars), nothing is changed.
         $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/events/$id", [
-            'targetGroupIds' => [$youth, $youth, $adults, 'unknown-id'],
+            'targetGroupIds' => [$youth, 'unknown-id'],
+        ], $auth);
+        $this->assertSame(422, $r['status']);
+        self::$em->clear();
+
+        // Duplicates in the input are ignored; an empty list removes everything.
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/events/$id", [
+            'targetGroupIds' => [$youth, $youth, $adults],
         ], $auth);
         $this->assertSame(200, $r['status']);
         $ids = array_map(fn ($g) => $g['targetGroup']['id'], $r['body']['targetGroups']);

@@ -31,6 +31,16 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
+    # Holiday feed URLs come from users: the client checks every resolved address and every redirect
+    # target (IPv4 and IPv6) against private networks; assertSafeUrl() only sees the first host.
+    holiday_calendar.http_client:
+        class: Symfony\Component\HttpClient\NoPrivateNetworkHttpClient
+        arguments: ['@http_client']
+
+    App\Service\HolidayCalendarService:
+        arguments:
+            $httpClient: '@holiday_calendar.http_client'
+
     App\Controller\MapboxController:
         arguments:
             $mapboxToken: '%env(MAPBOX_TOKEN)%'
