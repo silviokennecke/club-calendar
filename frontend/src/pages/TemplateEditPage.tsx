@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
+import { keepExisting, saveDroppingDeletedReferences } from "@/lib/staleReferences";
 import { locationName } from "@/lib/events";
 import {
   TIMEZONES,
@@ -176,10 +177,24 @@ function TemplateEditor({ template }: { template?: EventTemplate }) {
     if (errors.length > 0) return;
     setSaving(true);
     try {
-      const body = toTemplatePayload(values, clubTimezone);
-      if (template)
-        await apiPatch(`/api/calendars/${page.calendarId}/templates/${template.id}`, body);
-      else await apiPost(`/api/calendars/${page.calendarId}/templates`, body);
+      await saveDroppingDeletedReferences(
+        qc,
+        page.calendarId,
+        ["properties", "features", "targetGroups", "locations"],
+        toTemplatePayload(values, clubTimezone),
+        (body) =>
+          template
+            ? apiPatch(`/api/calendars/${page.calendarId}/templates/${template.id}`, body)
+            : apiPost(`/api/calendars/${page.calendarId}/templates`, body),
+        (body, existing) => ({
+          ...body,
+          propertyIds: keepExisting(body.propertyIds, existing.properties),
+          featureIds: keepExisting(body.featureIds, existing.features),
+          targetGroupIds: keepExisting(body.targetGroupIds, existing.targetGroups),
+          locationId:
+            body.locationId && existing.locations.has(body.locationId) ? body.locationId : null,
+        }),
+      );
       await qc.invalidateQueries({ queryKey: ["templates", page.calendarId] });
       toast.success(t("templates.form.saved"));
       navigate(returnTo);
