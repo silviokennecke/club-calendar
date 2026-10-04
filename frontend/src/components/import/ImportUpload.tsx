@@ -1,11 +1,19 @@
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import { isIcsFile, parseIcs, type IcsParseResult } from "@/lib/import";
+import {
+  decodeIcsBytes,
+  isIcsFile,
+  parseIcs,
+  type IcsEncoding,
+  type IcsParseResult,
+} from "@/lib/import";
 import { Banner, Button, Icon, LinkButton, Skeleton } from "@/components/ui/shared";
 
 export interface ParsedFile extends IcsParseResult {
   fileName: string;
+  /** How the bytes were read; "windows-1252" = not valid UTF-8, the review shows a notice. */
+  encoding: IcsEncoding;
 }
 
 type Phase = "idle" | "reading" | "ready" | "wrongType" | "empty" | "unreadable";
@@ -20,12 +28,12 @@ interface ImportUploadProps {
   onParsed: (file: ParsedFile) => void;
 }
 
-function readText(file: File): Promise<string> {
+function readBytes(file: File): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
     reader.onerror = () => reject(reader.error);
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
   });
 }
 
@@ -50,12 +58,14 @@ export function ImportUpload({ cancelTo, timeZone, initial, onParsed }: ImportUp
     }
     setPhase("reading");
     try {
-      const result = parseIcs(await readText(chosen), { timeZone });
+      // Strict UTF-8 first, windows-1252 as the fallback (the review tells the user about it).
+      const decoded = decodeIcsBytes(await readBytes(chosen));
+      const result = parseIcs(decoded.text, { timeZone });
       if (result.events.length === 0 && result.skipped.length === 0) {
         setPhase("empty");
         return;
       }
-      setFile({ ...result, fileName: chosen.name });
+      setFile({ ...result, fileName: chosen.name, encoding: decoded.encoding });
       setPhase(result.events.length === 0 ? "empty" : "ready");
     } catch {
       setPhase("unreadable");

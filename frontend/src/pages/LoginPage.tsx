@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import type { User } from "@/lib/types";
 import {
   Button,
+  ErrorSummary,
   Field,
   Icon,
   LinkButton,
@@ -28,12 +29,23 @@ const PROVIDER_GLYPH: Record<string, Glyph> = { microsoft: "building" };
 
 type LoginProblem = "wrong" | "unverified" | "passkey" | null;
 
+interface FieldErrors {
+  email?: string;
+  password?: string;
+}
+
+const EMAIL_ID = "login-email";
+const PASSWORD_ID = "login-password";
+/** Loose check (something@something.tld); the backend decides whether the account exists. */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function LoginPage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [problem, setProblem] = useState<LoginProblem>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
   // Bumped on every new problem so the banner remounts and takes focus again.
   const [problemKey, setProblemKey] = useState(0);
   // The OAuth callback redirects here with ?error=... when the provider sign-in failed.
@@ -63,6 +75,20 @@ export default function LoginPage() {
     setProblem(null);
     setSsoError(false);
     resend.reset();
+
+    // The browser's own "Please fill out this field" bubble is not translated and cannot be styled,
+    // so the form has noValidate and checks the fields itself (focus goes to the first invalid one).
+    const found: FieldErrors = {};
+    if (!email.trim()) found.email = t("auth.login.emailMissing");
+    else if (!EMAIL_SHAPE.test(email.trim())) found.email = t("auth.login.emailInvalid");
+    if (!password) found.password = t("auth.login.passwordMissing");
+    setErrors(found);
+    const firstInvalid = found.email ? EMAIL_ID : found.password ? PASSWORD_ID : null;
+    if (firstInvalid) {
+      document.getElementById(firstInvalid)?.focus();
+      return;
+    }
+
     setLoading(true);
     try {
       const data = await apiPost<{ access_token: string; refresh_token: string; user: User }>(
@@ -178,8 +204,20 @@ export default function LoginPage() {
         </FocusBanner>
       )}
 
-      <form className="ap-form" aria-label={t("auth.login.formLabel")} onSubmit={handleSubmit}>
-        <Field label={t("auth.email")}>
+      <form
+        className="ap-form"
+        aria-label={t("auth.login.formLabel")}
+        onSubmit={handleSubmit}
+        noValidate
+      >
+        <ErrorSummary
+          title={t("auth.login.errorTitle")}
+          errors={[
+            ...(errors.email ? [{ fieldId: EMAIL_ID, message: errors.email }] : []),
+            ...(errors.password ? [{ fieldId: PASSWORD_ID, message: errors.password }] : []),
+          ]}
+        />
+        <Field id={EMAIL_ID} label={t("auth.email")} error={errors.email}>
           <TextInput
             type="email"
             value={email}
@@ -190,7 +228,9 @@ export default function LoginPage() {
           />
         </Field>
         <PasswordField
+          id={PASSWORD_ID}
           label={t("auth.password")}
+          error={errors.password}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required

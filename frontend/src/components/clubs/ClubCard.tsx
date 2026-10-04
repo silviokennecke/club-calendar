@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { apiGet } from "@/lib/api";
 import { Icon } from "@/components/ui/shared";
 import { pickCalendar } from "@/lib/pickCalendar";
+import { readLastCalendar } from "@/lib/lastCalendar";
 import type { Calendar, Club } from "@/lib/types";
 
 interface ClubCardProps {
@@ -12,6 +13,8 @@ interface ClubCardProps {
   /** Club and calendar the user worked in last (the card for that club is badged and opens it). */
   lastClubId?: string | null;
   lastCalendarId?: string | null;
+  /** Account the per-club calendar choice of this browser belongs to. */
+  userId?: string;
 }
 
 const calendarsKey = (clubId: string) => ["calendars", clubId, "all"];
@@ -19,7 +22,7 @@ const fetchCalendars = (clubId: string) =>
   apiGet<Calendar[]>(`/api/clubs/${clubId}/calendars?includeArchived=true`);
 
 /** Club entry of the club picker (design: ClubPicker): name link, last-used badge, counts. */
-export function ClubCard({ club, lastClubId, lastCalendarId }: ClubCardProps) {
+export function ClubCard({ club, lastClubId, lastCalendarId, userId }: ClubCardProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -35,7 +38,15 @@ export function ClubCard({ club, lastClubId, lastCalendarId }: ClubCardProps) {
     queryFn: () => apiGet(`/api/clubs/${club.id}/members`),
   });
 
-  const target = calendars ? pickCalendar(calendars, club.id, lastClubId, lastCalendarId) : null;
+  const target = calendars
+    ? pickCalendar(
+        calendars,
+        club.id,
+        lastClubId,
+        lastCalendarId,
+        readLastCalendar(userId, club.id),
+      )
+    : null;
   const href = !calendars
     ? `/clubs/${club.id}`
     : target
@@ -51,7 +62,13 @@ export function ClubCard({ club, lastClubId, lastCalendarId }: ClubCardProps) {
         queryKey: calendarsKey(club.id),
         queryFn: () => fetchCalendars(club.id),
       });
-      const picked = pickCalendar(list, club.id, lastClubId, lastCalendarId);
+      const picked = pickCalendar(
+        list,
+        club.id,
+        lastClubId,
+        lastCalendarId,
+        readLastCalendar(userId, club.id),
+      );
       navigate(picked ? `/clubs/${club.id}/calendars/${picked.id}` : `/setup?clubId=${club.id}`);
     } catch {
       // The calendar list could not be loaded: fall back to the club page (it shows its own error).

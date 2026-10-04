@@ -48,7 +48,11 @@
       "ssoErrorTitle": "Sign-in with Google or Microsoft not possible",
       "ssoErrorText": "Signing in with the provider did not work. Try again or sign in with email and password.",
       "forgot": "Forgot password?",
-      "signInWith": "Sign in with {{provider}}"
+      "signInWith": "Sign in with {{provider}}",
+      "errorTitle": "The sign-in is not complete yet",
+      "emailMissing": "Please enter your email address.",
+      "emailInvalid": "Please enter a valid email address, for example name@example.com.",
+      "passwordMissing": "Please enter your password."
     },
     "register": {
       "name": "Name",
@@ -857,7 +861,14 @@
         "title": "Places, properties or audiences could not be loaded",
         "text": "Without them the import cannot be started safely.",
         "retry": "Reload"
-      }
+      },
+      "encoding": {
+        "title": "The file is not UTF-8 encoded",
+        "text": "We read it as Windows-1252. Before importing, check that umlauts and special characters in names and places look right."
+      },
+      "shownOf": "Showing {{shown}} of {{count}} events",
+      "showMore_one": "Show 1 more event",
+      "showMore_other": "Show {{count}} more events"
     },
     "dialog": {
       "groupTitle": "Edit group: {{name}}",
@@ -1042,6 +1053,12 @@
         "loading": "Working out the scope …",
         "unknown": "All events, templates, feeds, places and assignments of this calendar are deleted. Published feed addresses stop working.",
         "counts": "This deletes all events ({{events}}), templates ({{templates}}), feeds ({{feeds}}), places and assignments of this calendar. Published feed addresses stop working."
+      },
+      "archived": {
+        "title": "Delete archived calendar “{{name}}”?",
+        "text": "The archived calendar will be deleted permanently.",
+        "consequenceCounts": "Permanently deletes {{name}} with all events ({{events}}), templates ({{templates}}) and feeds ({{feeds}}). It cannot be restored afterwards.",
+        "consequenceUnknown": "Permanently deletes the calendar with all events, templates and feeds. It cannot be restored afterwards."
       }
     },
     "general": {
@@ -1266,8 +1283,10 @@
         "hint": "An alternative to the map, e.g. with the keyboard. Both values are saved together.",
         "latitude": "Latitude",
         "longitude": "Longitude",
-        "invalid": "Please enter a number between −{{limit}} and {{limit}}."
-      }
+        "invalid": "Please enter a number between −{{limit}} and {{limit}}.",
+        "summaryItem": "{{label}}: {{message}}"
+      },
+      "errorSummaryCoordinates": "The place has not been saved yet. Please correct the coordinates."
     },
     "holidays": {
       "loading": "Loading holiday calendars …",
@@ -1477,7 +1496,9 @@
       "targetGroups": "Target groups",
       "locations": "Locations",
       "holidays": "Holidays"
-    }
+    },
+    "unavailable": "Not available",
+    "toClubPicker": "Go to club selection"
   },
   "club": {
     "title": "Manage club",

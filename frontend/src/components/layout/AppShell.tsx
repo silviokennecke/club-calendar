@@ -3,6 +3,8 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiGet } from "@/lib/api";
+import { pickCalendar } from "@/lib/pickCalendar";
+import { readLastCalendar, rememberLastCalendar } from "@/lib/lastCalendar";
 import { useAuth } from "@/lib/auth-context";
 import type { Calendar, Club } from "@/lib/types";
 import { Sidebar } from "./Sidebar";
@@ -32,16 +34,30 @@ export function AppShell({
   const { user, logout, updateUser } = useAuth();
   const trackedRef = useRef("");
 
-  const { data: clubs = [] } = useQuery<Club[]>({
+  const { data: clubsData, isLoading: clubsLoading } = useQuery<Club[]>({
     queryKey: ["clubs"],
     queryFn: () => apiGet("/api/clubs"),
   });
 
-  const { data: calendars = [], isLoading: calendarsLoading } = useQuery<Calendar[]>({
+  const clubs = useMemo(() => clubsData ?? [], [clubsData]);
+  const {
+    data: calendarsData,
+    isLoading: calendarsLoading,
+    isError: calendarsFailed,
+  } = useQuery<Calendar[]>({
     // Same query as the club page: archived calendars are listed in the switcher, too.
     queryKey: ["calendars", clubId, "all"],
     queryFn: () => apiGet(`/api/clubs/${clubId}/calendars?includeArchived=true`),
   });
+
+  const calendars = useMemo(() => calendarsData ?? [], [calendarsData]);
+  // A club that is not in the user's list (foreign / deleted) or whose calendars cannot be loaded.
+  const contextState: ShellData["contextState"] =
+    calendarsFailed || (!!clubsData && !clubs.some((c) => c.id === clubId))
+      ? "unavailable"
+      : clubsLoading || calendarsLoading
+        ? "loading"
+        : "ready";
 
   const calendarId =
     requestedCalendarId && (calendarsLoading || calendars.some((c) => c.id === requestedCalendarId))
@@ -57,20 +73,35 @@ export function AppShell({
     void updateUser({ lastClubId: clubId, lastCalendarId: calendarId });
   }, [clubId, calendarId, trackLastUsed]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // A club without calendars goes to setup to create one.
+  // Remember the calendar per club in this browser (club switches reopen it). Only one that exists in
+  // this club counts, so a stale id in the URL is never stored.
   useEffect(() => {
-    if (calendarsLoading || calendars.length > 0) return;
+    if (!trackLastUsed || !calendarId || !calendars.some((c) => c.id === calendarId)) return;
+    rememberLastCalendar(user?.id, clubId, calendarId);
+  }, [user?.id, clubId, calendarId, calendars, trackLastUsed]);
+
+  // A club without calendars goes to setup to create one (not when loading them failed).
+  useEffect(() => {
+    if (calendarsLoading || calendarsFailed || calendars.length > 0) return;
     navigate(`/setup?clubId=${clubId}`, { replace: true });
-  }, [calendars, calendarsLoading, navigate, clubId]);
+  }, [calendars, calendarsLoading, calendarsFailed, navigate, clubId]);
 
   const onSelectClub = useCallback(
     async (newClubId: string) => {
       if (newClubId === clubId) return;
       const cals = await apiGet<Calendar[]>(`/api/clubs/${newClubId}/calendars`);
-      if (cals.length > 0) navigate(`/clubs/${newClubId}/calendars/${cals[0].id}`);
+      // The calendar last used in that club, not simply the first one.
+      const target = pickCalendar(
+        cals,
+        newClubId,
+        user?.lastClubId ? String(user.lastClubId) : null,
+        user?.lastCalendarId ? String(user.lastCalendarId) : null,
+        readLastCalendar(user?.id, newClubId),
+      );
+      if (target) navigate(`/clubs/${newClubId}/calendars/${target.id}`);
       else navigate(`/setup?clubId=${newClubId}`);
     },
-    [clubId, navigate],
+    [clubId, navigate, user?.id, user?.lastClubId, user?.lastCalendarId],
   );
 
   const data: ShellData = useMemo(
@@ -79,11 +110,12 @@ export function AppShell({
       calendars,
       clubId,
       calendarId,
+      contextState,
       userName: user?.name || user?.email || "",
       onSelectClub: (id) => void onSelectClub(id),
       onLogout: logout,
     }),
-    [clubs, calendars, clubId, calendarId, user, onSelectClub, logout],
+    [clubs, calendars, clubId, calendarId, contextState, user, onSelectClub, logout],
   );
 
   return (

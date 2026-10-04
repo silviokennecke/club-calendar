@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate, Outlet, Route, RouterProvider } from "react-router-dom";
 import { ReactQueryProvider } from "./lib/react-query-provider";
-import { AuthProvider, useAuth } from "./lib/auth-context";
+import { useAuth } from "./lib/auth-context";
+import { AuthProvider } from "./lib/AuthProvider";
 import { ThemeProvider } from "./lib/ThemeProvider";
 import { ModalFrame, Toaster } from "./components/ui/shared";
 import ProtectedRoute from "./components/layout/ProtectedRoute";

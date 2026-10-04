@@ -20,8 +20,8 @@ type Step = 1 | 2;
 
 /**
  * Onboarding (design: Onboarding / OnboardingCalendar): step 1 creates a club, step 2 its first
- * calendar. Resumes at step 2 when the user already has a club without calendar (`?clubId=`), and
- * `?new=1` forces a fresh club even if the user already belongs to others.
+ * calendar. Always starts at step 1 (new club); `?clubId=` continues at step 2 for that club (a club
+ * without calendar). `?new=1` is the same as no parameter.
  */
 export default function SetupPage() {
   const { t } = useTranslation();
@@ -30,7 +30,6 @@ export default function SetupPage() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const clubIdParam = searchParams.get("clubId");
-  const forceNew = searchParams.has("new");
 
   const [step, setStep] = useState<Step>(1);
   const [clubName, setClubName] = useState("");
@@ -55,19 +54,14 @@ export default function SetupPage() {
     retry: false,
   });
 
-  const { data: existingClubs = [], isLoading: existingClubsLoading } = useQuery<Club[]>({
-    queryKey: ["clubs"],
-    queryFn: () => apiGet<Club[]>("/api/clubs"),
-    enabled: !clubIdParam && !forceNew,
-  });
-
-  const detecting = clubIdParam ? paramClubLoading : forceNew ? false : existingClubsLoading;
+  // Without `?clubId=` the page always starts at step 1 (a new club), also for users with clubs.
+  const detecting = clubIdParam ? paramClubLoading : false;
 
   const suggestion = () => t("setup.calendarSuggestion", { year: new Date().getFullYear() });
 
   useEffect(() => {
     if (detecting) return;
-    const club = clubIdParam ? (paramClub ?? null) : forceNew ? null : (existingClubs[0] ?? null);
+    const club = clubIdParam ? (paramClub ?? null) : null;
     if (!club) return;
     setCreatedClub(club);
     setCalendarName(suggestion());

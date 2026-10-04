@@ -59,3 +59,9 @@ Fortlaufend ergänzt während des Redesigns.
 
 ## Korrektur Phase 4/8 (Termine als Modals)
 - Keine neuen Lücken. Weiterhin relevant: Der öffentliche Termin-Dialog lädt bei einem geteilten Link den ganzen Feed, um einen Termin zu finden und den Feed im Hintergrund zu zeigen (Einzel-Endpoint `GET /api/feed/{id}/events/{eventId}` fehlt, siehe Phase 8). Ein Deep-Link auf `…/events/:eventId` lädt den Termin einzeln und danach den Kalender im Monat des Termins.
+
+## Frontend-Nacharbeiten (Beobachtungen)
+- `GET /api/calendars/{id}/holiday-events?from&to` filtert nach dem Startdatum. Feiertage, die vor `from` beginnen und in den Zeitraum hineinreichen (Ferien), fehlen deshalb; das Frontend fragt 31 Tage früher ab und filtert auf Überlappung. Besser: der Endpoint liefert alle Feiertage, die den Zeitraum überlappen.
+- Fremder / unbekannter Verein: `GET /api/clubs/{id}/calendars` und `GET /api/clubs/{id}` antworten mit 4xx; das Frontend zeigt dafür "Nicht verfügbar" und versucht nicht erneut. Ein einheitlicher Fehlercode (403 für fremde, 404 für nicht vorhandene) wäre für die Texte hilfreich; heute unterscheidet das Frontend sie nicht.
+- ICS-Import: `Event.timezone` wird jetzt aus Windows-Zeitzonennamen (Outlook) auf IANA abgebildet. Das Backend validiert `timezone` weiterhin nicht gegen die IANA-Liste (ein ungültiger Name würde den Feed brechen); eine Validierung (`DateTimeZone::listIdentifiers`) mit 422 wäre sinnvoll.
+- ICS-Import: Dateien in windows-1252 liest das Frontend selbst; das Backend bekommt immer UTF-8-JSON.
