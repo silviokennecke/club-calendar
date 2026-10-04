@@ -69,6 +69,13 @@ const october = [
 
 let calendar: Record<string, unknown> = { id: "k1", clubid: "c1", name: "Schießbetrieb" };
 let events: unknown[] = october;
+let extraHolidays: {
+  id: string;
+  holidayCalendarId: string;
+  name: string;
+  date: string;
+  dateEnd: string | null;
+}[] = [];
 let failEvents = false;
 
 function mockApi() {
@@ -102,6 +109,7 @@ function mockApi() {
           date: "2026-10-03",
           dateEnd: null,
         },
+        ...extraHolidays,
       ].filter((h) => h.date >= from && h.date <= to),
     ),
   );
@@ -161,6 +169,7 @@ beforeEach(() => {
   calendar = { id: "k1", clubid: "c1", name: "Schießbetrieb" };
   events = october;
   failEvents = false;
+  extraHolidays = [];
   apiGet.mockReset();
   apiPost.mockReset();
   apiPatch.mockReset();
@@ -177,6 +186,36 @@ async function grid() {
 }
 
 describe("CalendarPage – month view", () => {
+  it("shows holidays that began before the visible range and reach into it", async () => {
+    extraHolidays = [
+      // Autumn break from mid September: starts before the grid (28 Sep), ends on 5 Oct.
+      {
+        id: "h2",
+        holidayCalendarId: "hc",
+        name: "Herbstferien",
+        date: "2026-09-14",
+        dateEnd: "2026-10-05",
+      },
+      // Ended long before the grid: must not show.
+      {
+        id: "h3",
+        holidayCalendarId: "hc",
+        name: "Sommerferien",
+        date: "2026-08-10",
+        dateEnd: "2026-08-25",
+      },
+    ];
+    renderPage();
+    const g = await grid();
+    expect(
+      await within(g).findByRole("button", { name: /5\. Oktober.*Feiertag Herbstferien/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Sommerferien")).toBeNull();
+    // The request starts 31 days before the grid, like the events request.
+    const [, from] = getHolidayEvents.mock.calls[0];
+    expect(from).toBe("2026-08-28");
+  });
+
   it("shows the current month with events, holidays and today", async () => {
     renderPage();
     const g = await grid();

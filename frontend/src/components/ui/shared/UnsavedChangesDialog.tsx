@@ -7,6 +7,8 @@ interface BlockerProps {
   /** Read at navigation time (a ref behind it), true while there are unsaved changes. */
   shouldBlock: () => boolean;
   onBlocked: (proceed: () => void, reset: () => void) => void;
+  /** Also block back / forward entries with the same path and query (steps kept in the history state). */
+  samePath?: boolean;
 }
 
 interface UnsavedChangesDialogProps {
@@ -52,14 +54,15 @@ export function UnsavedChangesDialog({
  * Holds back / forward (POP) navigations while there are unsaved changes; links and the page's own
  * navigation are handled by `useUnsavedChanges` itself.
  */
-function HistoryBlocker({ shouldBlock, onBlocked }: BlockerProps) {
+function HistoryBlocker({ shouldBlock, onBlocked, samePath }: BlockerProps) {
   const when = useCallback<BlockerFunction>(
     ({ historyAction, currentLocation, nextLocation }) =>
       historyAction === "POP" &&
       shouldBlock() &&
-      currentLocation.pathname + currentLocation.search !==
-        nextLocation.pathname + nextLocation.search,
-    [shouldBlock],
+      (!!samePath ||
+        currentLocation.pathname + currentLocation.search !==
+          nextLocation.pathname + nextLocation.search),
+    [shouldBlock, samePath],
   );
   const blocker = useBlocker(when);
   const ref = useRef(blocker);

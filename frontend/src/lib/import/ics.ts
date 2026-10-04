@@ -4,6 +4,7 @@
  * `POST …/events/import`.
  */
 import { addDays, isValidIso, type IsoDate } from "@/lib/calendar";
+import { windowsZoneToIana } from "./windowsZones";
 
 export interface ParsedIcsEvent {
   uid: string;
@@ -106,10 +107,16 @@ function parseWhen(prop: Prop | undefined): When | "invalid" | null {
   };
 }
 
-/** The IANA zone name, or null for unknown ones (Outlook's "W. Europe Standard Time"); the
- * backend builds a DateTimeZone from the event's zone, so an unknown name would break the feed. */
+/**
+ * The IANA zone name for a TZID: real IANA names are kept, Windows names ("W. Europe Standard Time",
+ * written by Outlook) are mapped via a table, everything else is null (the backend builds a
+ * DateTimeZone from the event's zone, so an unknown name would break the feed).
+ */
 function validZone(tzid: string | undefined): string | null {
-  if (!tzid || !/^[A-Za-z_]+(?:[/+-][A-Za-z0-9_+-]+)*$/.test(tzid)) return null;
+  if (!tzid) return null;
+  const mapped = windowsZoneToIana(tzid);
+  if (mapped) return mapped;
+  if (!/^[A-Za-z_]+(?:[/+-][A-Za-z0-9_+-]+)*$/.test(tzid)) return null;
   try {
     new Intl.DateTimeFormat("en", { timeZone: tzid });
     return tzid;

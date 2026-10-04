@@ -18,6 +18,8 @@ export default function MorePage() {
   const data = useOutletContext<ShellData>();
   const club = data.clubs.find((c) => c.id === data.clubId);
   const calendar = data.calendars.find((c) => c.id === data.calendarId);
+  const fallback =
+    data.contextState === "unavailable" ? t("shell.unavailable") : t("common.loading");
   const base = data.calendarId ? calendarBase(data.clubId, data.calendarId) : null;
 
   const rows: Row[] = [
@@ -46,11 +48,11 @@ export default function MorePage() {
           <dl className="ap-stack ap-stack--sm" style={{ marginTop: 8 }}>
             <div>
               <dt className="t-sm t-muted">{t("shell.club")}</dt>
-              <dd className="t-body m-0 font-bold">{club?.name ?? t("common.loading")}</dd>
+              <dd className="t-body m-0 font-bold">{club?.name ?? fallback}</dd>
             </div>
             <div>
               <dt className="t-sm t-muted">{t("shell.calendar")}</dt>
-              <dd className="t-body m-0 font-bold">{calendar?.name ?? t("common.loading")}</dd>
+              <dd className="t-body m-0 font-bold">{calendar?.name ?? fallback}</dd>
             </div>
           </dl>
         </section>

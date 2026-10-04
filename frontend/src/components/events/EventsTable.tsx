@@ -42,127 +42,131 @@ export function EventsTable({
   const columns = selectable ? 8 : 7;
 
   return (
-    <table className="ap-table">
-      <caption className="ap-sr">{caption}</caption>
-      <thead>
-        <tr>
-          {selectable && (
-            <th scope="col" className="ap-col-check">
-              <label className="ap-checkhit">
-                <input
-                  type="checkbox"
-                  aria-label={t("events.list.col.select")}
-                  checked={allChecked}
-                  ref={(el) => {
-                    if (el) el.indeterminate = someChecked;
-                  }}
-                  onChange={onToggleAll}
-                />
-              </label>
-            </th>
-          )}
-          <th scope="col">{t("events.list.col.name")}</th>
-          <th scope="col">{t("events.list.col.date")}</th>
-          <th scope="col">{t("events.list.col.time")}</th>
-          <th scope="col">{t("events.list.col.place")}</th>
-          <th scope="col">{t("events.list.col.audiences")}</th>
-          <th scope="col">{t("events.list.col.features")}</th>
-          <th scope="col">{t("events.list.col.status")}</th>
-        </tr>
-      </thead>
-      {groupByMonth(events).map((group) => (
-        <tbody key={group.key}>
+    <div className="ap-tablescroll">
+      <table className="ap-table">
+        <caption className="ap-sr">{caption}</caption>
+        <thead>
           <tr>
-            <th scope="rowgroup" colSpan={columns} className="ap-table-group">
-              {formatMonthTitle(yearMonthOf(group.month), locale)}
-            </th>
+            {selectable && (
+              <th scope="col" className="ap-col-check">
+                <label className="ap-checkhit">
+                  <input
+                    type="checkbox"
+                    aria-label={t("events.list.col.select")}
+                    checked={allChecked}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someChecked;
+                    }}
+                    onChange={onToggleAll}
+                  />
+                </label>
+              </th>
+            )}
+            <th scope="col">{t("events.list.col.name")}</th>
+            <th scope="col">{t("events.list.col.date")}</th>
+            <th scope="col">{t("events.list.col.time")}</th>
+            <th scope="col">{t("events.list.col.place")}</th>
+            <th scope="col">{t("events.list.col.audiences")}</th>
+            <th scope="col">{t("events.list.col.features")}</th>
+            <th scope="col">{t("events.list.col.status")}</th>
           </tr>
-          {group.events.map((ev) => {
-            const isSel = selectable && selected.has(ev.id);
-            const withIcons = ev.properties.filter((p) => p.property.icon);
-            const dates = formatEventDates(ev, locale);
-            return (
-              <tr key={ev.id} data-selected={isSel || undefined}>
-                {selectable && (
-                  <td className="ap-col-check">
-                    <label className="ap-checkhit">
-                      <input
-                        type="checkbox"
-                        aria-label={t("events.list.selectOne", { name: ev.name, date: dates })}
-                        checked={isSel}
-                        onChange={() => onToggle(ev.id)}
-                      />
-                    </label>
+        </thead>
+        {groupByMonth(events).map((group) => (
+          <tbody key={group.key}>
+            <tr>
+              <th scope="rowgroup" colSpan={columns} className="ap-table-group">
+                {formatMonthTitle(yearMonthOf(group.month), locale)}
+              </th>
+            </tr>
+            {group.events.map((ev) => {
+              const isSel = selectable && selected.has(ev.id);
+              const withIcons = ev.properties.filter((p) => p.property.icon);
+              const dates = formatEventDates(ev, locale);
+              return (
+                <tr key={ev.id} data-selected={isSel || undefined}>
+                  {selectable && (
+                    <td className="ap-col-check">
+                      <label className="ap-checkhit">
+                        <input
+                          type="checkbox"
+                          aria-label={t("events.list.selectOne", { name: ev.name, date: dates })}
+                          checked={isSel}
+                          onChange={() => onToggle(ev.id)}
+                        />
+                      </label>
+                    </td>
+                  )}
+                  <td data-label={t("events.list.col.name")}>
+                    <Link
+                      className="ap-rowlink"
+                      to={hrefOf(ev)}
+                      state={linkState}
+                      data-event-id={ev.id}
+                    >
+                      {ev.name}
+                    </Link>
+                    {withIcons.length > 0 && (
+                      <>
+                        {" "}
+                        <span
+                          className="ap-ico"
+                          role="img"
+                          aria-label={withIcons.map((p) => p.property.name).join(", ")}
+                        >
+                          {withIcons.map((p) => p.property.icon).join("")}
+                        </span>
+                      </>
+                    )}
                   </td>
-                )}
-                <td data-label={t("events.list.col.name")}>
-                  <Link
-                    className="ap-rowlink"
-                    to={hrefOf(ev)}
-                    state={linkState}
-                    data-event-id={ev.id}
-                  >
-                    {ev.name}
-                  </Link>
-                  {withIcons.length > 0 && (
-                    <>
-                      {" "}
-                      <span
-                        className="ap-ico"
-                        role="img"
-                        aria-label={withIcons.map((p) => p.property.name).join(", ")}
-                      >
-                        {withIcons.map((p) => p.property.icon).join("")}
-                      </span>
-                    </>
-                  )}
-                </td>
-                <td data-label={t("events.list.col.date")}>{dates}</td>
-                <td data-label={t("events.list.col.time")}>
-                  {ev.isAllDay
-                    ? t("events.list.allDay")
-                    : t("events.list.timeRange", {
-                        from: ev.timeBegin.slice(0, 5),
-                        to: ev.timeEnd.slice(0, 5),
-                      })}
-                </td>
-                <td data-label={t("events.list.col.place")}>
-                  {ev.location ? locationName(ev.location) : <Empty />}
-                </td>
-                <td data-label={t("events.list.col.audiences")}>
-                  {ev.targetGroups.length > 0 ? (
-                    <div className="cc-tags">
-                      {ev.targetGroups.map(({ targetGroup }) => (
-                        <Tag key={targetGroup.id} tone={toneOf(targetGroup.id)}>
-                          {targetGroup.name}
-                        </Tag>
-                      ))}
-                    </div>
-                  ) : (
-                    <Empty />
-                  )}
-                </td>
-                <td data-label={t("events.list.col.features")}>
-                  {ev.features.length > 0 ? (
-                    ev.features.map((f, i) => (
-                      <Fragment key={f.feature.id}>
-                        {i > 0 && ", "}
-                        {f.feature.name}
-                      </Fragment>
-                    ))
-                  ) : (
-                    <Empty />
-                  )}
-                </td>
-                <td data-label={t("events.list.col.status")}>
-                  <StatusBadge status={ev.isDraft ? "draft" : "published"} />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      ))}
-    </table>
+                  <td data-label={t("events.list.col.date")} className="ap-col-nowrap">
+                    {dates}
+                  </td>
+                  <td data-label={t("events.list.col.time")} className="ap-col-nowrap">
+                    {ev.isAllDay
+                      ? t("events.list.allDay")
+                      : t("events.list.timeRange", {
+                          from: ev.timeBegin.slice(0, 5),
+                          to: ev.timeEnd.slice(0, 5),
+                        })}
+                  </td>
+                  <td data-label={t("events.list.col.place")}>
+                    {ev.location ? locationName(ev.location) : <Empty />}
+                  </td>
+                  <td data-label={t("events.list.col.audiences")}>
+                    {ev.targetGroups.length > 0 ? (
+                      <div className="cc-tags">
+                        {ev.targetGroups.map(({ targetGroup }) => (
+                          <Tag key={targetGroup.id} tone={toneOf(targetGroup.id)}>
+                            {targetGroup.name}
+                          </Tag>
+                        ))}
+                      </div>
+                    ) : (
+                      <Empty />
+                    )}
+                  </td>
+                  <td data-label={t("events.list.col.features")}>
+                    {ev.features.length > 0 ? (
+                      ev.features.map((f, i) => (
+                        <Fragment key={f.feature.id}>
+                          {i > 0 && ", "}
+                          {f.feature.name}
+                        </Fragment>
+                      ))
+                    ) : (
+                      <Empty />
+                    )}
+                  </td>
+                  <td data-label={t("events.list.col.status")}>
+                    <StatusBadge status={ev.isDraft ? "draft" : "published"} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        ))}
+      </table>
+    </div>
   );
 }
 

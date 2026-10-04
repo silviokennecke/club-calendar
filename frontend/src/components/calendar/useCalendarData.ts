@@ -50,9 +50,11 @@ export function useCalendarData({
     placeholderData: keepPreviousData,
   });
 
+  // Same look-back as the events: a holiday that began before the visible range and reaches into it
+  // (the endpoint filters by start date) is fetched too and kept by the overlap filter below.
   const holidaysQuery = useQuery<HolidayEvent[]>({
-    queryKey: ["holidayEvents", calendarId, from, to],
-    queryFn: () => getHolidayEvents(calendarId, from, to),
+    queryKey: ["holidayEvents", calendarId, fetchFrom, to],
+    queryFn: () => getHolidayEvents(calendarId, fetchFrom, to),
     placeholderData: keepPreviousData,
   });
 

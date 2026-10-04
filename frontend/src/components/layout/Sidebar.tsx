@@ -20,6 +20,8 @@ export function Sidebar({ data }: { data: ShellData }) {
   const club = data.clubs.find((c) => c.id === data.clubId);
   const calendar = data.calendars.find((c) => c.id === data.calendarId);
   const close = () => setMenu(null);
+  const unavailable = data.contextState === "unavailable";
+  const fallback = unavailable ? t("shell.unavailable") : t("common.loading");
 
   return (
     <aside className="ap-side" aria-label={t("shell.sidebarLabel")}>
@@ -30,7 +32,7 @@ export function Sidebar({ data }: { data: ShellData }) {
       <div className="ap-ctx">
         <ContextMenu
           caption={t("shell.club")}
-          value={club?.name ?? t("common.loading")}
+          value={club?.name ?? fallback}
           icon="building"
           menuLabel={t("shell.switchClub")}
           open={menu === "club"}
@@ -42,7 +44,7 @@ export function Sidebar({ data }: { data: ShellData }) {
 
         <ContextMenu
           caption={t("shell.calendar")}
-          value={calendar?.name ?? t("common.loading")}
+          value={calendar?.name ?? fallback}
           icon="calendar"
           menuLabel={t("shell.switchCalendar")}
           open={menu === "calendar"}
@@ -51,6 +53,13 @@ export function Sidebar({ data }: { data: ShellData }) {
           <div className="ap-menu-title">{t("shell.switchCalendar")}</div>
           <CalendarMenuItems data={data} onNavigate={close} />
         </ContextMenu>
+
+        {unavailable && (
+          <Link className="ap-navlink" to="/clubs?select=1">
+            <Icon glyph="list" size={20} />
+            {t("shell.toClubPicker")}
+          </Link>
+        )}
 
         {calendar?.archivedAt && (
           <div>

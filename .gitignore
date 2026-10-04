@@ -14,3 +14,7 @@ compose.override.yml
 .claude/*
 !.claude/settings.json
 .deploy/
+
+# Playwright output
+frontend/test-results/
+frontend/playwright-report/

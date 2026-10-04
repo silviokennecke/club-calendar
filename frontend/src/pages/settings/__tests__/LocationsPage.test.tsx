@@ -263,6 +263,37 @@ describe("LocationsPage", () => {
     expect(screen.getByText("Bitte eine Zahl zwischen −90 und 90 eingeben.")).toBeInTheDocument();
   });
 
+  it("refuses to save while a coordinate field holds text that is not a number", async () => {
+    const user = userEvent.setup();
+    renderRoute(route, url, <LocationsPage />);
+    await screen.findByRole("heading", { name: "Alle Orte (2)" });
+    await user.type(screen.getByLabelText(/^Name/), "Waldlichtung");
+    await user.click(screen.getByText("Koordinaten von Hand eingeben"));
+    await user.type(screen.getByLabelText("Breitengrad"), "abc");
+    await user.click(screen.getByRole("button", { name: "Ort speichern" }));
+
+    expect(apiPost).not.toHaveBeenCalled();
+    const summary = await screen.findByRole("alert");
+    expect(summary).toHaveFocus();
+    expect(summary).toHaveTextContent("Bitte korrigiere die Koordinaten");
+    expect(summary).toHaveTextContent("Breitengrad: Bitte eine Zahl zwischen −90 und 90 eingeben.");
+    expect(screen.getByLabelText("Breitengrad")).toHaveAttribute("aria-invalid", "true");
+
+    // The summary links to the field; a valid value lets the save through.
+    await user.click(within(summary).getByRole("link"));
+    expect(screen.getByLabelText("Breitengrad")).toHaveFocus();
+    await user.clear(screen.getByLabelText("Breitengrad"));
+    await user.type(screen.getByLabelText("Breitengrad"), "47.5");
+    await user.type(screen.getByLabelText("Längengrad"), "10.25");
+    await user.click(screen.getByRole("button", { name: "Ort speichern" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith(
+        "/api/calendars/k1/locations",
+        expect.objectContaining({ latitude: 47.5, longitude: 10.25 }),
+      ),
+    );
+  });
+
   it("edits a place and saves with PATCH", async () => {
     const user = userEvent.setup();
     renderRoute(route, url, <LocationsPage />);
