@@ -24,6 +24,7 @@ import { useEventPage } from "@/components/events/useEventPage";
 import { FeedAccess } from "@/components/feeds/FeedAccess";
 import { useFeeds } from "@/components/feeds/useFeeds";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
+import { keepExisting, saveDroppingDeletedReferences } from "@/lib/staleReferences";
 import {
   emptyFeedValues,
   feedValuesFromRecord,
@@ -163,16 +164,21 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
     setSaveFailed(false);
     try {
       const body = toFeedPayload(values);
-      let savedId = feed?.id;
-      if (feed) {
-        await apiPatch(`/api/calendars/${page.calendarId}/feeds/${feed.id}`, body);
-      } else {
-        const created = await apiPost<CalendarFeed>(
-          `/api/calendars/${page.calendarId}/feeds`,
-          body,
-        );
-        savedId = created.id;
-      }
+      const saved = await saveDroppingDeletedReferences(
+        qc,
+        page.calendarId,
+        ["targetGroups"],
+        body,
+        (b) =>
+          feed
+            ? apiPatch<CalendarFeed>(`/api/calendars/${page.calendarId}/feeds/${feed.id}`, b)
+            : apiPost<CalendarFeed>(`/api/calendars/${page.calendarId}/feeds`, b),
+        (b, existing) => ({
+          ...b,
+          targetGroupIds: keepExisting(b.targetGroupIds, existing.targetGroups),
+        }),
+      );
+      const savedId = feed?.id ?? saved.id;
       await qc.invalidateQueries({ queryKey: ["feeds", page.calendarId] });
       toast.success(t(isNew ? "feeds.form.created" : "feeds.form.saved", { name: body.name }));
       navigate(page.routes.feeds, { state: { open: savedId } });

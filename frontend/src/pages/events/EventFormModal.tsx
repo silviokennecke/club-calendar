@@ -14,7 +14,9 @@ import {
   valuesFromTemplate,
   type EventField,
   type EventFormValues,
+  type EventPayload,
 } from "@/lib/events";
+import { keepExisting, saveDroppingDeletedReferences } from "@/lib/staleReferences";
 import type { CalendarEvent, EventTemplate } from "@/lib/types";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import {
@@ -237,12 +239,30 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
     setSaving(true);
     setSaveFailed(false);
     try {
-      const body = toEventPayload(values);
-      let savedId = event?.id;
-      if (event) await apiPatch(`/api/calendars/${page.calendarId}/events/${event.id}`, body);
-      else
-        savedId = (await apiPost<{ id?: string }>(`/api/calendars/${page.calendarId}/events`, body))
-          ?.id;
+      const send = (body: EventPayload) =>
+        event
+          ? apiPatch<{ id?: string }>(`/api/calendars/${page.calendarId}/events/${event.id}`, body)
+          : apiPost<{ id?: string }>(`/api/calendars/${page.calendarId}/events`, body);
+      const saved = await saveDroppingDeletedReferences(
+        qc,
+        page.calendarId,
+        ["properties", "features", "targetGroups", "locations", "templates"],
+        toEventPayload(values),
+        send,
+        (body, existing) => ({
+          ...body,
+          propertyIds: keepExisting(body.propertyIds, existing.properties),
+          featureIds: keepExisting(body.featureIds, existing.features),
+          targetGroupIds: keepExisting(body.targetGroupIds, existing.targetGroups),
+          locationId:
+            body.locationId && existing.locations.has(body.locationId) ? body.locationId : null,
+          eventTemplateId:
+            body.eventTemplateId && existing.templates.has(body.eventTemplateId)
+              ? body.eventTemplateId
+              : undefined,
+        }),
+      );
+      const savedId = event?.id ?? saved?.id;
       await qc.invalidateQueries({ queryKey: ["events", page.calendarId] });
       toast.success(t("events.form.saved"));
       // Back on the page, focus the saved event (if it is shown there).
