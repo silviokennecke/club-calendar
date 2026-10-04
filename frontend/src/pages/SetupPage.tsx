@@ -94,9 +94,11 @@ export default function SetupPage() {
         // Back from step 2: rename instead of creating a second club.
         if (club.name !== name) club = await apiPatch<Club>(`/api/clubs/${club.id}`, { name });
       } else {
+        // Browsers without a configured zone report "Etc/Unknown", which the backend rejects.
+        const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
         club = await apiPost<Club>("/api/clubs", {
           name,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Berlin",
+          timezone: detected && detected !== "Etc/Unknown" ? detected : "Europe/Berlin",
         });
         setClubIsNew(true);
         setCalendarName(suggestion());
