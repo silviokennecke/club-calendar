@@ -31,8 +31,8 @@ This is a **Vite + React + React Router** SPA (not Next.js).
   SettingsTabs, skip link); navigation mapping in `layout/navigation.ts`. Child routes get `ShellData`
   via `useOutletContext()`.
 - Auth/setup frame: `components/auth/AuthLayout.tsx` (card, `top` for the Stepper, `headerEnd`, `bare` for the
-  club picker, `headingRef` for focus). `/setup` is the onboarding (Stepper Verein/Kalender; `?clubId=` resumes
-  step 2, `?new=1` forces a new club); `/clubs` is the club picker (`?select=1` skips the last-calendar redirect);
+  club picker, `headingRef` for focus). `/setup` is the onboarding (Stepper Verein/Kalender; always starts at step 1 (new
+  club), `?clubId=` continues at step 2 for that club); `/clubs` is the club picker (`?select=1` skips the last-calendar redirect);
   `GuestRoute` sends signed-in users from /login, /signup, /forgot-password to /clubs.
 - Context switcher menus (`layout/ContextMenu.tsx`): disclosure with Escape, arrow keys, Home/End, Tab-out closes.
 - Calendar (no FullCalendar): pure date logic in `src/lib/calendar/` (`dates.ts` ISO-date arithmetic in UTC,
@@ -138,6 +138,52 @@ This is a **Vite + React + React Router** SPA (not Next.js).
 - Icons: lucide-react via `<Icon glyph="..." />` (design glyph names, `shared/Icon.tsx`). No emojis as UI icons.
 - All texts via i18n (`src/locales/de.json`, `en.json`); shared component texts under `ui.*`, shell under `shell.*`.
 - Tests: Vitest + Testing Library (jsdom, setup in `src/test/setup.ts`, tests run in German).
+- API errors: `lib/api.ts` throws `ApiError` (with `status`) from `apiGet/apiPost/apiPatch/apiDelete`. The react-query
+  default `retry` (`lib/queryRetry.ts`) does not retry 4xx (401/403/404 show their error state at once), 5xx and
+  network errors get 2 retries. Auth: `lib/auth-context.ts` (context + `useAuth`), `lib/AuthProvider.tsx` (provider);
+  shadcn variants live in `ui/button-variants.ts` / `ui/badge-variants.ts` (lint: `--max-warnings 0`).
+- Club / calendar switch: `lib/lastCalendar.ts` remembers the last calendar per club in localStorage
+  (`lastCalendar:<clubId>`, guarded); `pickCalendar(…, rememberedId)` prefers it (only if it exists and is not
+  archived), then the account's last pair, then the first active calendar. `AppShell` exposes
+  `ShellData.contextState` (`loading | ready | unavailable`): a club that is not the user's or whose calendars fail to
+  load shows "Nicht verfügbar" + link to the club picker in Sidebar / Topbar instead of "Laden…".
+- History focus: `lib/historyFocus.ts` (`useHistoryFocus` in `BackgroundRoutes`) moves focus to the page `h1`
+  (else `#main`) after back / forward between different pages; not for dialogs (own focus logic) or query-only changes.
+- Import details: the step is kept in the history state (`{ importStep: "review" | "done" }`, same URL), so back /
+  forward move between the steps; `useUnsavedChanges(dirty, { blockSamePath: true })` also holds same-path POPs; the
+  result step replaces the review entry (back never reaches a second import). Files are decoded by
+  `lib/import/decode.ts` (strict UTF-8, else windows-1252 with a notice in the review; BOM / UTF-16 handled), TZIDs
+  go through `lib/import/windowsZones.ts` (Windows names -> IANA, unknown -> null). `ReviewGroup` renders the first
+  100 events of a group and adds 100 per "weitere anzeigen" (selection and counts cover all events; measured with
+  5000 events in `e2e/import-large.spec.ts`).
+- Contrast: tags carry a 3:1 outline (`--border-strong`), skeletons use `--skeleton` / `--skeleton-pulse` plus the
+  same outline; `src/lib/__tests__/contrast.test.ts` computes the ratios of the tokens for both themes.
+
+## E2E (Playwright, `frontend/e2e/`)
+
+The suite registers users and writes data, so it only runs against an isolated local environment, never the dev
+API / database (`frontend/.env.local` points `VITE_API_URL` at `https://api.club-calendar.test`).
+`e2e/global-setup.ts` aborts with a clear message when `PLAYWRIGHT_BASE_URL`, `E2E_API_URL`, `VITE_API_URL` or the
+`VITE_API_URL` the running dev server uses is not on localhost (`e2e/safety.ts`, tested in Vitest).
+
+```bash
+# 1. own database on the test MySQL (port 3360, root/root)
+docker compose up mysql_test -d
+export DATABASE_URL="mysql://root:root@127.0.0.1:3360/club_calendar_e2e?serverVersion=8.0&charset=utf8mb4"
+cd backend && php bin/console doctrine:database:create --if-not-exists \
+  && php bin/console doctrine:migrations:migrate -n && php bin/console doctrine:fixtures:load -n
+# 2. backend (own terminal, same DATABASE_URL)
+FRONTEND_URL=http://localhost:5199 MAILER_DSN=null://null php -S 127.0.0.1:3001 -t public
+# 3. frontend
+cd frontend && VITE_API_URL=http://localhost:3001 npx vite --port 5199
+# 4. tests
+PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend
+# afterwards: stop both servers and drop the database
+mysql -h127.0.0.1 -P3360 -uroot -proot -e "DROP DATABASE club_calendar_e2e"
+```
+
+`frontend/test-results/` and `playwright-report/` are git-ignored. Key presses that open a file chooser go through
+`pressForFileChooser` (`e2e/helpers.ts`; a plain `Promise.all([waitForEvent, press])` races the interception).
 
 ## Shared UI Components
 

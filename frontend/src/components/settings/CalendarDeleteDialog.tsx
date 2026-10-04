@@ -30,24 +30,38 @@ export function CalendarDeleteDialog({ calendar, onClose, onConfirm }: CalendarD
     },
   });
 
+  // Archived calendars get their own wording (design: Club.dc.html deleteArchived): no restore afterwards.
+  const archived = !!calendar.archivedAt;
   let consequence: string;
-  if (scope.isError) consequence = t("settings.delete.consequence.unknown");
+  if (scope.isError)
+    consequence = t(
+      archived
+        ? "settings.delete.archived.consequenceUnknown"
+        : "settings.delete.consequence.unknown",
+    );
   else if (!scope.data) consequence = t("settings.delete.consequence.loading");
   else
-    consequence = t("settings.delete.consequence.counts", {
-      name: calendar.name,
-      events: scope.data.events,
-      templates: scope.data.templates,
-      feeds: scope.data.feeds,
-    });
+    consequence = t(
+      archived
+        ? "settings.delete.archived.consequenceCounts"
+        : "settings.delete.consequence.counts",
+      {
+        name: calendar.name,
+        events: scope.data.events,
+        templates: scope.data.templates,
+        feeds: scope.data.feeds,
+      },
+    );
 
   return (
     <ConfirmDialog
       open
       onOpenChange={(open) => !open && onClose()}
       icon="trash"
-      title={t("settings.delete.confirmTitle", { name: calendar.name })}
-      description={t("settings.delete.confirmText")}
+      title={t(archived ? "settings.delete.archived.title" : "settings.delete.confirmTitle", {
+        name: calendar.name,
+      })}
+      description={t(archived ? "settings.delete.archived.text" : "settings.delete.confirmText")}
       consequence={consequence}
       confirmLabel={t("settings.delete.confirm")}
       onConfirm={onConfirm}

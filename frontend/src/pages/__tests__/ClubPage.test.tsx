@@ -264,6 +264,23 @@ describe("ClubPage", () => {
     expect(screen.queryByTestId("location")).not.toBeInTheDocument();
   });
 
+  it("uses its own wording for deleting an archived calendar (no restore afterwards)", async () => {
+    const user = userEvent.setup();
+    renderClub();
+    await user.click(await screen.findByRole("button", { name: "Kalender Saison 2025 löschen" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Archivierten Kalender „Saison 2025“ löschen?",
+    });
+    expect(dialog).toHaveTextContent("Der archivierte Kalender wird dauerhaft gelöscht.");
+    await waitFor(() =>
+      expect(dialog).toHaveTextContent(
+        "Löscht Saison 2025 mit allen Terminen (3), Vorlagen (1) und Feeds (2) unwiderruflich. Eine Wiederherstellung ist danach nicht mehr möglich.",
+      ),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Kalender löschen" }));
+    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/clubs/c1/calendars/k0"));
+  });
+
   it("deletes the club only after typing its name", async () => {
     const user = userEvent.setup();
     renderClub();

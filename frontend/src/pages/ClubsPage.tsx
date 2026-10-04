@@ -111,6 +111,7 @@ export default function ClubsPage() {
             club={club}
             lastClubId={user?.lastClubId}
             lastCalendarId={user?.lastCalendarId}
+            userId={user?.id}
           />
         ))}
         <article

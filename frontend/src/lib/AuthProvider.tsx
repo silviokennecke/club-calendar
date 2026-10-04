@@ -1,5 +1,7 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPatch, clearTokens, storeTokens, getAccessToken } from "./api";
+import { AuthContext, type AuthContextValue } from "./auth-context";
 import i18n from "./i18n";
 import type { User } from "./types";
 
@@ -10,23 +12,8 @@ function applyUserLanguage(user: User) {
   i18n.changeLanguage(lang);
 }
 
-interface AuthContextValue {
-  user: User | null;
-  loading: boolean;
-  login: (accessToken: string, refreshToken: string, user: User) => void;
-  logout: () => void;
-  updateUser: (data: {
-    lastClubId?: string | null;
-    lastCalendarId?: string | null;
-    dateFormat?: string;
-    language?: string;
-    firstDayOfWeek?: number;
-  }) => Promise<boolean>;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
-
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -56,6 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     clearTokens();
+    // Cached clubs/events of this account must not show up for the next one in the same tab.
+    queryClient.clear();
     setUser(null);
   };
 
@@ -75,10 +64,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
-  return ctx;
 }

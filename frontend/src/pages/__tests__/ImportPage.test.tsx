@@ -122,6 +122,37 @@ describe("ImportPage – upload", () => {
     expect(screen.getByRole("button", { name: /Datei prüfen/ })).toBeDisabled();
   });
 
+  it("reads umlauts of a UTF-8 file correctly and shows no encoding notice", async () => {
+    const user = userEvent.setup();
+    const content = ics.replace(/Training Luftgewehr/g, "Schützentraining für Groß und Klein");
+    await openReview(user, content);
+    expect(
+      (await screen.findAllByText(/Schützentraining für Groß und Klein/)).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText("Die Datei ist nicht UTF-8-kodiert")).toBeNull();
+  });
+
+  it("falls back to windows-1252 for a file that is not UTF-8 and says so in the review", async () => {
+    const user = userEvent.setup();
+    renderRoute(route, url, <ImportPage />);
+    await screen.findByRole("heading", { name: "Termine importieren", level: 1 });
+    // "Schützenfest" with ü as the single byte 0xFC (windows-1252), invalid as UTF-8.
+    const head = new TextEncoder().encode(ics.replace("Herbstfest", "Sch"));
+    const marker = new TextEncoder().encode("Sch");
+    const at = head.findIndex((_, i) => marker.every((b, k) => head[i + k] === b));
+    const bytes = new Uint8Array([
+      ...head.slice(0, at + 3),
+      0xfc,
+      ...new TextEncoder().encode("tzenfest"),
+      ...head.slice(at + 3),
+    ]);
+    await user.upload(fileInput(), new File([bytes], "alt.ics", { type: "text/calendar" }));
+    await user.click(await screen.findByRole("button", { name: /Datei prüfen/ }));
+    expect((await screen.findAllByText(/Schützenfest/)).length).toBeGreaterThan(0);
+    expect(screen.getByText("Die Datei ist nicht UTF-8-kodiert")).toBeInTheDocument();
+    expect(screen.getByText(/Windows-1252 gelesen/)).toBeInTheDocument();
+  });
+
   it("announces the chosen file and enables the review", async () => {
     const user = userEvent.setup();
     renderRoute(route, url, <ImportPage />);
@@ -215,6 +246,21 @@ describe("ImportPage – review", () => {
     expect(screen.getByRole("heading", { name: "Training Kleinkaliber" })).toBeInTheDocument();
   });
 
+  it("closes the edit dialog with Escape and returns focus to its button (shared FormDialog)", async () => {
+    const user = userEvent.setup();
+    await openReview(user);
+    const opener = screen.getByRole("button", { name: "Gruppe Training Luftgewehr bearbeiten" });
+    await user.click(opener);
+    const dialog = await screen.findByRole("dialog", {
+      name: "Gruppe bearbeiten: Training Luftgewehr",
+    });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(opener).toHaveFocus());
+  });
+
   it("edits one event", async () => {
     const user = userEvent.setup();
     await openReview(user);
@@ -230,6 +276,52 @@ describe("ImportPage – review", () => {
     await user.click(within(dialog).getByRole("button", { name: "Änderungen übernehmen" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(screen.getByText(/19:00 bis 22:30|19:00 – 22:30/)).toBeInTheDocument();
+  });
+});
+
+describe("ImportPage – large groups", () => {
+  const many = (n: number) =>
+    [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      ...Array.from({ length: n }, (_, i) => {
+        const d = new Date(Date.UTC(2027, 0, 1 + i)).toISOString().slice(0, 10).replace(/-/g, "");
+        return [
+          "BEGIN:VEVENT",
+          `UID:m${i}`,
+          "SUMMARY:Training",
+          `DTSTART:${d}T190000`,
+          `DTEND:${d}T210000`,
+          "END:VEVENT",
+        ].join("\r\n");
+      }),
+      "END:VCALENDAR",
+    ].join("\r\n");
+
+  it("renders only the first 100 events of a group, adds more by button and counts all", async () => {
+    const user = userEvent.setup();
+    await openReview(user, many(230));
+    const table = screen.getByRole("table", { name: "Termine der Gruppe Training" });
+    expect(within(table).getAllByRole("checkbox", { name: /auswählen$/ })).toHaveLength(100);
+    expect(screen.getByText("100 von 230 Terminen angezeigt")).toBeInTheDocument();
+    expect(screen.getByText("230 von 230 ausgewählt")).toBeInTheDocument();
+
+    // A change in the visible part counts, the group checkbox covers the hidden events, too.
+    await user.click(within(table).getAllByRole("checkbox", { name: /auswählen$/ })[0]);
+    expect(screen.getByText("229 von 230 ausgewählt")).toBeInTheDocument();
+    await user.click(screen.getByRole("checkbox", { name: /^Training: 229 von 230/ }));
+    expect(screen.getByText("230 von 230 ausgewählt")).toBeInTheDocument();
+
+    const more = screen.getByRole("button", { name: "100 weitere Termine anzeigen" });
+    await user.click(more);
+    expect(within(table).getAllByRole("checkbox", { name: /auswählen$/ })).toHaveLength(200);
+    // Focus moves to the first new row
+    const rows = within(table).getAllByRole("checkbox", { name: /auswählen$/ });
+    expect(rows[100]).toHaveFocus();
+    await user.click(screen.getByRole("button", { name: "30 weitere Termine anzeigen" }));
+    expect(within(table).getAllByRole("checkbox", { name: /auswählen$/ })).toHaveLength(230);
+    expect(screen.getByText("230 von 230 Terminen angezeigt")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /weitere Termine anzeigen/ })).toBeNull();
   });
 });
 

@@ -65,3 +65,19 @@ export async function seedClub(request: APIRequestContext, email: string, clubNa
   ).json();
   return { clubId: club.id as string, calendarId: calendar.id as string, headers };
 }
+
+/**
+ * Presses `key` and waits for the file chooser it opens.
+ *
+ * `page.waitForEvent("filechooser")` only starts intercepting the dialog once the browser has processed
+ * the (fire-and-forget) "intercept file chooser" command. With `Promise.all([waitForEvent, press])` the key
+ * press can overtake it: the click on the input still happens, but the native dialog opens
+ * un-intercepted and no `filechooser` event ever arrives (a failure in roughly every 20th run). The
+ * round trip in between guarantees the interception is active before the key is pressed.
+ */
+export async function pressForFileChooser(page: Page, key: string) {
+  const chooser = page.waitForEvent("filechooser", { timeout: 5000 });
+  await page.evaluate(() => undefined);
+  await page.keyboard.press(key);
+  return chooser;
+}

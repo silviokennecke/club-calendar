@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiPost } from "@/lib/api";
@@ -43,20 +44,59 @@ function Import() {
   const resources = useEventResources(page.calendarId);
   const existing = useAllEvents(page.calendarId);
 
-  const [step, setStep] = useState<Step>("upload");
+  const navigate = useNavigate();
+  const location = useLocation();
   const [file, setFile] = useState<ParsedFile | null>(null);
   const [items, setItems] = useState<ImportItem[]>([]);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const itemsOf = useRef<ParsedFile | null>(null);
 
-  const unsaved = useUnsavedChanges(step === "review" && !importing);
+  // The step lives in the history entry's state (`{ importStep }`), so the browser's back / forward
+  // buttons move between the steps. A step whose data is gone (reload, forward into a step after the
+  // state was dropped) shows the file step instead.
+  const wanted = (location.state as { importStep?: Step } | null)?.importStep;
+  const step: Step =
+    wanted === "review" && file ? "review" : wanted === "done" && result ? "done" : "upload";
+  const goTo = (to: Step | null, replace: boolean) =>
+    navigate(location.pathname + location.search, {
+      replace,
+      state: to ? { importStep: to } : null,
+    });
+
+  const unsaved = useUnsavedChanges(step === "review" && !importing, { blockSamePath: true });
   const groups = useMemo(() => groupItems(items), [items]);
+
+  // The import may still run when the user leaves the page; its end must not navigate back here.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (step !== "done") heading.current?.focus({ preventScroll: true });
   }, [step]);
+
+  // A history entry that names a step whose data is gone (reload on the review, forward into the
+  // result after leaving it) is cleaned up, so going back later cannot land on a stale step again.
+  useEffect(() => {
+    if (wanted && wanted !== step)
+      navigate(location.pathname + location.search, { replace: true, state: null });
+  }, [wanted, step, navigate, location.pathname, location.search]);
+
+  // Back from the result to the file step must not offer the finished import again: drop it all.
+  useEffect(() => {
+    if (step === "upload" && result) {
+      setFile(null);
+      setItems([]);
+      itemsOf.current = null;
+      setResult(null);
+    }
+  }, [step, result]);
 
   function onParsed(parsed: ParsedFile) {
     setFile(parsed);
@@ -65,7 +105,13 @@ function Import() {
       itemsOf.current = parsed;
       setItems(buildItems(parsed.events));
     }
-    setStep("review");
+    goTo("review", false);
+  }
+
+  /** "Zurück" of the review = the browser's back button (one history entry per step). */
+  function back() {
+    unsaved.allow();
+    navigate(-1);
   }
 
   function reset() {
@@ -73,7 +119,7 @@ function Import() {
     setItems([]);
     itemsOf.current = null;
     setResult(null);
-    setStep("upload");
+    goTo(null, true);
   }
 
   async function runImport() {
@@ -118,7 +164,8 @@ function Import() {
     } finally {
       await qc.invalidateQueries({ queryKey: ["events", page.calendarId] });
       setImporting(false);
-      setStep("done");
+      // Replaces the review entry: back from the result leads to the file step, never to the review.
+      if (mounted.current) goTo("done", true);
     }
   }
 
@@ -144,7 +191,7 @@ function Import() {
             <ImportUpload
               cancelTo={page.base}
               timeZone={page.timeZone}
-              initial={file}
+              initial={result ? null : file}
               onParsed={onParsed}
             />
           </>
@@ -160,6 +207,11 @@ function Import() {
                 {t("import.review.subtitle", { count: groups.length })}
               </p>
             </header>
+            {file.encoding === "windows-1252" && (
+              <Banner tone="warning" title={t("import.review.encoding.title")}>
+                {t("import.review.encoding.text")}
+              </Banner>
+            )}
             {resources.failed && (
               <Banner
                 tone="danger"
@@ -182,7 +234,7 @@ function Import() {
               existing={existing.data ?? []}
               importing={importing}
               blocked={resources.loading || resources.failed}
-              onBack={() => setStep("upload")}
+              onBack={back}
               onImport={runImport}
             />
           </>
@@ -193,7 +245,7 @@ function Import() {
             result={result}
             calendarUrl={page.base}
             eventsUrl={page.routes.list}
-            onRetry={() => setStep("review")}
+            onRetry={() => goTo("review", true)}
             onAnother={reset}
           />
         )}

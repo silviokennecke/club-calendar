@@ -1,5 +1,5 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
-import { API, createVerifiedUser, login, seedClub } from "./helpers";
+import { API, createVerifiedUser, login, pressForFileChooser, seedClub } from "./helpers";
 
 // ——— Import and templates by keyboard (phase 5): focus, live regions, dialogs, unsaved changes ———
 
@@ -75,10 +75,7 @@ test.describe("Import und Vorlagen per Tastatur", () => {
     await expect(input).toBeFocused();
 
     // Enter öffnet den Dateidialog
-    const [chooser] = await Promise.all([
-      page.waitForEvent("filechooser", { timeout: 5000 }),
-      page.keyboard.press("Enter"),
-    ]);
+    const chooser = await pressForFileChooser(page, "Enter");
     await chooser.setFiles({
       name: "plan.ics",
       mimeType: "text/calendar",
@@ -196,10 +193,7 @@ test.describe("Import und Vorlagen per Tastatur", () => {
     await page.goto(`${seeded.base}/import`);
     const input = page.locator("#ics-file");
     await tabTo(page, input);
-    const [chooser] = await Promise.all([
-      page.waitForEvent("filechooser", { timeout: 5000 }),
-      page.keyboard.press("Space"),
-    ]);
+    const chooser = await pressForFileChooser(page, "Space");
     expect(chooser.isMultiple()).toBe(false);
   });
 

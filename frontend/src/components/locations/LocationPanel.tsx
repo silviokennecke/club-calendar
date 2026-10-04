@@ -1,6 +1,14 @@
 import { lazy, Suspense, type Ref } from "react";
 import { useTranslation } from "react-i18next";
-import { Banner, Button, ErrorSummary, Field, Skeleton, TextInput } from "@/components/ui/shared";
+import {
+  Banner,
+  Button,
+  ErrorSummary,
+  Field,
+  Skeleton,
+  TextInput,
+  type ErrorSummaryItem,
+} from "@/components/ui/shared";
 import type { AddressField, LocationForm } from "@/lib/settings";
 import { AddressSearch, type AddressSuggestion } from "./AddressSearch";
 import { CoordinateFields } from "./CoordinateFields";
@@ -19,6 +27,11 @@ interface LocationPanelProps {
   /** Address fields filled in from the picked position (info banner). */
   filled: AddressField[];
   invalid: boolean;
+  /** Typed coordinates that are not numbers (shown in the summary after a refused save). */
+  coordinateErrors: ErrorSummaryItem[];
+  onCoordinateErrors: (errors: ErrorSummaryItem[]) => void;
+  /** Changes whenever another place is loaded, so the typed texts of the coordinate fields reset. */
+  formKey: number;
   signal: number;
   saving: boolean;
   failed: boolean;
@@ -38,6 +51,9 @@ export function LocationPanel({
   onPick,
   filled,
   invalid,
+  coordinateErrors,
+  onCoordinateErrors,
+  formKey,
   signal,
   saving,
   failed,
@@ -77,10 +93,17 @@ export function LocationPanel({
         }}
       >
         <ErrorSummary
-          title={t("settings.places.errorSummary")}
-          errors={
-            invalid ? [{ fieldId: "pl-name", message: t("settings.places.nameOrStreet") }] : []
+          title={
+            invalid
+              ? t("settings.places.errorSummary")
+              : t("settings.places.errorSummaryCoordinates")
           }
+          errors={[
+            ...(invalid
+              ? [{ fieldId: "pl-name", message: t("settings.places.nameOrStreet") }]
+              : []),
+            ...coordinateErrors,
+          ]}
           focusSignal={signal}
         />
         {failed && (
@@ -147,6 +170,8 @@ export function LocationPanel({
             {t("settings.places.positionHint")}
           </p>
           <CoordinateFields
+            key={formKey}
+            onErrorsChange={onCoordinateErrors}
             latitude={form.latitude}
             longitude={form.longitude}
             onChange={(latitude, longitude) => onChange({ latitude, longitude })}

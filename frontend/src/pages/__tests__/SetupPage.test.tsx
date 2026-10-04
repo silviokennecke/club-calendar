@@ -170,11 +170,23 @@ describe("SetupPage step 2 (calendar)", () => {
 });
 
 describe("SetupPage with existing clubs", () => {
-  it("jumps to step 2 for the first club without ?new", async () => {
+  it("starts at step 1 (new club) without parameters, even if the user has clubs", async () => {
     apiGet.mockImplementation((path: string) =>
       Promise.resolve(path === "/api/clubs" ? [club] : []),
     );
     renderSetup();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Willkommen bei Club Calendar" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Verein angelegt")).toBeNull();
+    expect(apiGet).not.toHaveBeenCalledWith("/api/clubs");
+  });
+
+  it("continues at step 2 for the club in ?clubId=", async () => {
+    apiGet.mockImplementation((path: string) =>
+      Promise.resolve(path === "/api/clubs/c1" ? club : []),
+    );
+    renderSetup("/setup?clubId=c1");
     expect(
       await screen.findByRole("heading", { level: 1, name: "Ersten Kalender anlegen" }),
     ).toBeInTheDocument();

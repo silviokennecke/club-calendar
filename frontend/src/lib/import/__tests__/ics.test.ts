@@ -170,15 +170,23 @@ describe("parseIcs: RFC 5545 corner cases", () => {
     expect(parseDuration("P")).toBeNull();
   });
 
-  it("drops time zone names that are not IANA zones (Outlook), keeps real ones", () => {
+  it("maps Windows time zone names (Outlook) to IANA, keeps real ones, drops unknown ones", () => {
     const { events } = parseIcs(
       wrap(
         vevent("SUMMARY:A", "DTSTART;TZID=W. Europe Standard Time:20261012T190000"),
         vevent("SUMMARY:B", "DTSTART;TZID=America/New_York:20261012T190000"),
         vevent("SUMMARY:C", 'DTSTART;TZID="Europe/Berlin":20261012T190000'),
+        vevent("SUMMARY:D", 'DTSTART;TZID="Central European Standard Time":20261012T190000'),
+        vevent("SUMMARY:E", "DTSTART;TZID=Customized Time Zone:20261012T190000"),
       ),
     );
-    expect(events.map((e) => e.timezone)).toEqual([null, "America/New_York", "Europe/Berlin"]);
+    expect(events.map((e) => e.timezone)).toEqual([
+      "Europe/Berlin",
+      "America/New_York",
+      "Europe/Berlin",
+      "Europe/Warsaw",
+      null,
+    ]);
     expect(events[0].timeBegin).toBe("19:00");
   });
 
