@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -26,6 +26,7 @@ import {
   type PublicFeedEvent,
 } from "@/lib/feeds/public";
 import { toggleId } from "@/lib/feeds";
+import type { ModalNavState } from "@/lib/modalRoutes";
 import { formatAddress } from "@/lib/types";
 import { useIsMobile } from "@/lib/useMediaQuery";
 import { audienceTone } from "@/components/calendar/eventDisplay";
@@ -42,7 +43,7 @@ import { Button, CopyField, EmptyState, Icon, buttonClass } from "@/components/u
 /**
  * Public calendar of a feed (design: Public, PublicMobile, PublicStates). No sign-in, no app
  * shell. Month / list, audience filter, search and the date live in the URL (next to `?secret=`
- * of private feeds), so the event page can bring the visitor back to the same view.
+ * of private feeds); event details open as a dialog above it (`PublicEventModal`).
  */
 export default function FeedPage() {
   const { t } = useTranslation();
@@ -149,17 +150,6 @@ function FeedCalendar({ data, feedId, secret }: FeedCalendarProps) {
   const titleId = `feed-month-${useId().replace(/:/g, "")}`;
   const [panelOpen, setPanelOpen] = useState(false);
 
-  // Back from an event page ("Zurück zum Kalender"): focus the month title, the opened item is gone.
-  const cameBack = (location.state as { back?: boolean } | null)?.back === true;
-  useEffect(() => {
-    if (!cameBack) return;
-    const title = document.getElementById(titleId);
-    if (title) {
-      title.tabIndex = -1;
-      title.focus({ preventScroll: true });
-    }
-  }, [cameBack, titleId]);
-
   const events = data.events;
   const audiences = useMemo(() => feedAudiences(events), [events]);
   // "Today" in the calendar's time zone (the events' zone), not the visitor's.
@@ -205,9 +195,12 @@ function FeedCalendar({ data, feedId, secret }: FeedCalendarProps) {
     update({ date }, replace);
   }
 
+  /** Event details open as a dialog above this view (the view path is stored without the secret). */
   function openItem(item: CalItem) {
     navigate(publicEventPath(feedId, item.id, secret), {
-      state: { from: viewPathWithoutSecret(location.pathname, location.search) },
+      state: {
+        background: viewPathWithoutSecret(location.pathname, location.search),
+      } satisfies ModalNavState,
     });
   }
 

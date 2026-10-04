@@ -1,27 +1,41 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiGet } from "@/lib/api";
 import type { EventTemplate } from "@/lib/types";
-import { Banner, Button, EmptyState, Icon, LinkButton, Skeleton } from "@/components/ui/shared";
-import { EventPageHead } from "@/components/events/EventPageHead";
+import { Banner, Button, EmptyState, Icon, LinkButton, Modal } from "@/components/ui/shared";
 import { useEventPage } from "@/components/events/useEventPage";
 import { useTemplateMeta } from "@/components/events/useTemplateMeta";
-import { ArchivedCreateGuard } from "@/components/events/ArchivedCreateGuard";
+import { CreateGateBody, ModalSkeleton } from "@/components/events/CreateGate";
+import { createGate } from "@/components/events/createGateState";
+import { useModalNav } from "@/lib/useModalNav";
 
-/** "Vorlage wählen" (design: EventNewTemplate, route …/events/new/template?date=). */
-export default function EventTemplatePickPage() {
+/**
+ * "Vorlage wählen" (design: EventNewTemplate; step of the create dialog,
+ * route …/events/new/template?date=).
+ */
+export default function EventTemplatePickModal() {
+  const page = useEventPage();
+  const nav = useModalNav();
+  const { t } = useTranslation();
+  const gate = createGate(page);
   return (
-    <ArchivedCreateGuard>
-      <TemplatePick />
-    </ArchivedCreateGuard>
+    <Modal
+      size="wide"
+      title={gate === "archived" ? t("events.new.archived.title") : t("events.templatePick.title")}
+      subtitle={gate ? undefined : t("events.templatePick.subtitle")}
+      closeLabel={t("events.new.close")}
+      onClose={nav.close}
+    >
+      {gate ? <CreateGateBody gate={gate} page={page} onClose={nav.close} /> : <TemplatePick />}
+    </Modal>
   );
 }
 
 function TemplatePick() {
   const page = useEventPage();
-  const navigate = useNavigate();
+  const nav = useModalNav();
   const { t } = useTranslation();
   const meta = useTemplateMeta();
   const [params] = useSearchParams();
@@ -37,21 +51,12 @@ function TemplatePick() {
 
   function next(e: FormEvent) {
     e.preventDefault();
-    if (selected) navigate(page.routes.fromTemplate(selected, date), { state: page.navState });
+    if (selected) nav.step(page.routes.fromTemplate(selected, date));
   }
 
   let body;
   if (templates.isLoading) {
-    body = (
-      <div className="ap-stack" aria-busy="true">
-        <p className="ap-sr" role="status">
-          {t("events.templatePick.loading")}
-        </p>
-        {[0, 1, 2].map((i) => (
-          <Skeleton key={i} style={{ display: "block", height: 64 }} />
-        ))}
-      </div>
-    );
+    body = <ModalSkeleton label={t("events.templatePick.loading")} />;
   } else if (templates.isError) {
     body = (
       <Banner
@@ -101,20 +106,13 @@ function TemplatePick() {
   }
 
   return (
-    <form className="ap-pagedialog ap-pagedialog--wide" onSubmit={next}>
-      <EventPageHead
-        title={t("events.templatePick.title")}
-        subtitle={t("events.templatePick.subtitle")}
-        closeLabel={t("events.new.close")}
-        onClose={() => navigate(page.returnTo)}
-      />
+    <form className="ap-stack ap-stack--lg" onSubmit={next}>
       {body}
       <div className="ap-dialog-foot ap-dialog-foot--split">
         <LinkButton
           variant="secondary"
           icon="arrow-left"
-          to={page.routes.create(date)}
-          state={page.navState}
+          {...nav.stepLink(page.routes.create(date))}
         >
           {t("events.templatePick.back")}
         </LinkButton>

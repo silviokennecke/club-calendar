@@ -11,7 +11,7 @@ interface EventsTableProps {
   events: CalendarEvent[];
   caption: string;
   hrefOf: (ev: CalendarEvent) => string;
-  /** Router state for the row links (return target). */
+  /** Router state for the row links (the event dialog opens above the list). */
   linkState?: unknown;
   toneOf: (groupId: string) => TagTone;
   /** Omit to hide the selection column (read-only calendars). */
@@ -96,7 +96,12 @@ export function EventsTable({
                   </td>
                 )}
                 <td data-label={t("events.list.col.name")}>
-                  <Link className="ap-rowlink" to={hrefOf(ev)} state={linkState}>
+                  <Link
+                    className="ap-rowlink"
+                    to={hrefOf(ev)}
+                    state={linkState}
+                    data-event-id={ev.id}
+                  >
                     {ev.name}
                   </Link>
                   {withIcons.length > 0 && (

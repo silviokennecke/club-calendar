@@ -61,7 +61,12 @@ export function EventItem({
         <div className="ap-evcard-head">
           <Heading>
             {clickable ? (
-              <button type="button" className="ap-evcard-link" onClick={() => onOpen(item)}>
+              <button
+                type="button"
+                className="ap-evcard-link"
+                data-event-id={item.id}
+                onClick={() => onOpen(item)}
+              >
                 {item.title}
               </button>
             ) : (

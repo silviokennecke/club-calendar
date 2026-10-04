@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import EventNewPage from "../EventNewPage";
-import EventTemplatePickPage from "../EventTemplatePickPage";
-import EventFromTemplatePage from "../EventFromTemplatePage";
+import EventNewModal from "../EventNewModal";
+import EventTemplatePickModal from "../EventTemplatePickModal";
+import EventFromTemplateModal from "../EventFromTemplateModal";
 import EventsExportPage from "../EventsExportPage";
 import { BASE, PATTERN, groups, makeEvent, renderRoute } from "./testUtils";
 
@@ -104,9 +104,55 @@ afterEach(() => {
 });
 
 describe("create choice", () => {
+  it("is a modal dialog labelled by its heading", async () => {
+    renderRoute(`${PATTERN}/events/new`, `${BASE}/events/new`, <EventNewModal />);
+    const dialog = await screen.findByRole("dialog", { name: "Termin anlegen" });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    await waitFor(() => expect(dialog).toHaveAccessibleDescription("Wie möchtest du starten?"));
+    expect(within(dialog).getByRole("button", { name: "Schließen" })).toBeVisible();
+  });
+
+  it("closes with Escape and returns to the page it was opened from", async () => {
+    const user = userEvent.setup();
+    renderRoute(`${PATTERN}/events/new`, `${BASE}/events/new`, <EventNewModal />, {
+      background: `${BASE}/events?status=draft`,
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { level: 1, name: "Termin anlegen" })).toHaveFocus(),
+    );
+    await user.keyboard("{Escape}");
+    expect(await screen.findByTestId("location")).toHaveTextContent(`${BASE}/events?status=draft`);
+  });
+
+  it("closes with the x button back to the calendar when it was opened directly", async () => {
+    const user = userEvent.setup();
+    renderRoute(`${PATTERN}/events/new`, `${BASE}/events/new?date=2026-10-14`, <EventNewModal />);
+    await user.click(await screen.findByRole("button", { name: "Schließen" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent(`${BASE}?date=2026-10-14`);
+  });
+
+  it("shows the archive notice instead of the choice in an archived calendar", async () => {
+    apiGet.mockImplementation((path: string) =>
+      Promise.resolve(
+        path === "/api/clubs/c1/calendars/k1"
+          ? { id: "k1", clubid: "c1", name: "Alt", archivedAt: "2026-01-01T00:00:00Z" }
+          : [],
+      ),
+    );
+    renderRoute(`${PATTERN}/events/new`, `${BASE}/events/new`, <EventNewModal />);
+    expect(await screen.findByRole("dialog", { name: "Kalender archiviert" })).toBeVisible();
+    expect(screen.queryByRole("link", { name: /Neuer Termin/ })).toBeNull();
+    expect(screen.getByRole("link", { name: "Zu allen Terminen" })).toHaveAttribute(
+      "href",
+      `${BASE}/events`,
+    );
+  });
+
   it("offers blank, template and import and keeps the date", async () => {
-    renderRoute(`${PATTERN}/events/new`, `${BASE}/events/new?date=2026-10-14`, <EventNewPage />);
-    expect(await screen.findByRole("heading", { level: 1, name: "Termin anlegen" })).toHaveFocus();
+    renderRoute(`${PATTERN}/events/new`, `${BASE}/events/new?date=2026-10-14`, <EventNewModal />);
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { level: 1, name: "Termin anlegen" })).toHaveFocus(),
+    );
     expect(screen.getByRole("link", { name: /Neuer Termin/ })).toHaveAttribute(
       "href",
       `${BASE}/events/new/form?date=2026-10-14`,
@@ -127,7 +173,7 @@ describe("template picker", () => {
     renderRoute(
       `${PATTERN}/events/new/template`,
       `${BASE}/events/new/template`,
-      <EventTemplatePickPage />,
+      <EventTemplatePickModal />,
     );
     const group = await screen.findByRole("group", { name: "Vorlage" });
     const first = within(group).getByRole("radio", { name: /Training Luftgewehr/ });
@@ -139,6 +185,18 @@ describe("template picker", () => {
       `${BASE}/events/new/template/t2`,
     );
   });
+  it("goes one step back to the choice", async () => {
+    const user = userEvent.setup();
+    renderRoute(
+      `${PATTERN}/events/new/template`,
+      `${BASE}/events/new/template?date=2026-10-14`,
+      <EventTemplatePickModal />,
+    );
+    await user.click(await screen.findByRole("link", { name: "Zurück" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent(
+      `${BASE}/events/new?date=2026-10-14`,
+    );
+  });
 });
 
 describe("event from template", () => {
@@ -146,7 +204,7 @@ describe("event from template", () => {
     return renderRoute(
       `${PATTERN}/events/new/template/:templateId`,
       `${BASE}/events/new/template/t1${query}`,
-      <EventFromTemplatePage />,
+      <EventFromTemplateModal />,
     );
   }
 

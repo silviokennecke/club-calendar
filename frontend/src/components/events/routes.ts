@@ -34,7 +34,7 @@ export function eventRoutes(base: string) {
   };
 }
 
-/** Router state: where "close" / "save" return to (calendar with its view, or the list). */
+/** Router state of the pages below a calendar (templates, feeds): where "close" / "save" return to. */
 export interface EventNavState {
   from?: string;
 }

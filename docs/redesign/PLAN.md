@@ -18,12 +18,17 @@ Design-Quelle (lokal, read-only): `/private/tmp/claude-501/-Users-kennecke-Proje
 1. Zugang (Sonnet): Login, Registrierung, E-Mail bestätigen, Passwort vergessen (deaktiviert), Fehlerzustände, SSO-Callback.
 2. Einrichtung und Wechsel (Sonnet): Vereinsauswahl, Onboarding (Stepper Verein, Kalender), Kontextwechsel.
 3. Kalender (Opus): eigene Monats- und Wochenansicht, Filter, Suche, archivierter Kalender, Zustände, mobil.
-4. Termine (Opus): Liste, Neu-Auswahl, Formular, Aus Vorlage, Serie (deaktiviert), Export, Dialoge.
+4. Termine (Opus): Liste, Neu-Auswahl, Formular, Aus Vorlage, Serie (deaktiviert), Export, Dialoge. Neu-Auswahl bis Bearbeiten sind Modals über Kalender/Liste (siehe Korrektur unten).
 5. Import und Vorlagen (Sonnet): Import, Review, Fertig, Vorlagenliste, Vorlage bearbeiten.
 6. Einstellungen (Sonnet): Allgemein, Eigenschaften, Features, Zielgruppen, Orte (Karte), Feiertage.
 7. Veröffentlichen, Verein, Profil (Sonnet): Feeds, FeedEdit, Verein verwalten, Profil inkl. Theme-Schalter.
-8. Öffentlicher Zugriff (Sonnet): Public-Feed, Termin-Detail, Zustände.
+8. Öffentlicher Zugriff (Sonnet): Public-Feed, Termin-Detail (Modal über dem Feed), Zustände.
 9. Abschluss (Opus): FullCalendar und ungenutzte shadcn-Teile entfernen, E2E komplett, CLAUDE.md/AGENTS.md aktualisieren, Backend-Lücken finalisieren.
+
+## Korrektur Phase 4 und 8: Termine sind Modals
+- Termin anlegen (Auswahl), Neuer Termin, Vorlage wählen, Termin aus Vorlage/Serie und Termin bearbeiten sind im Design Dialoge über dem Kalender (bzw. der Terminliste), mobil Bottom-Sheets; der öffentliche Termin ist ein Dialog über dem öffentlichen Feed. Export, Import, Vorlagen und Einstellungen bleiben Seiten.
+- Umsetzung: geroutete Modals (Background-Location-Pattern). Die URLs (`…/events/new`, `…/events/new/form`, `…/events/new/template[/:templateId]`, `…/events/:eventId`, `/feed/:feedId/events/:eventId`) bleiben teilbar; ein Direktaufruf zeigt Kalender bzw. Feed (im Monat des Termins) im Hintergrund. Hintergrund inert, Schritte ersetzen den History-Eintrag, Browser-Zurück schließt (bei ungespeicherten Änderungen erst nachfragen). Details: `frontend/AGENTS.md` (Routed modals).
+- Baustein: `Modal` / `ModalFrame` / `DialogFrame` in `components/ui/shared/` (auch Basis von `FormDialog`).
 
 ## Regeln für alle Agents
 - Nur `frontend/` ändern (Ausnahme: dokumentierter Bug im Backend). Kein Commit; der Orchestrator committet nach erfolgreicher Verifikation.

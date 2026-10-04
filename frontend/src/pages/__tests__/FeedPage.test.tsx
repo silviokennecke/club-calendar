@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { MemoryRouter, Route, useLocation } from "react-router-dom";
 import FeedPage from "../FeedPage";
-import PublicEventPage from "../PublicEventPage";
+import PublicEventModal from "../PublicEventModal";
+import { BackgroundRoutes } from "@/components/layout/BackgroundRoutes";
+import { ModalFrame } from "@/components/ui/shared";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 
 vi.mock("@/components/feed/PublicEventMap", () => ({
@@ -84,10 +86,14 @@ function renderAt(path: string) {
     <ThemeProvider>
       <QueryClientProvider client={client}>
         <MemoryRouter initialEntries={[path]}>
-          <Routes>
-            <Route path="/feed/:feedId" element={<FeedPage />} />
-            <Route path="/feed/:feedId/events/:eventId" element={<PublicEventPage />} />
-          </Routes>
+          <BackgroundRoutes
+            pages={<Route path="/feed/:feedId" element={<FeedPage />} />}
+            modals={
+              <Route element={<ModalFrame />}>
+                <Route path="/feed/:feedId/events/:eventId" element={<PublicEventModal />} />
+              </Route>
+            }
+          />
           <Probe />
         </MemoryRouter>
       </QueryClientProvider>
@@ -297,22 +303,45 @@ describe("FeedPage", () => {
     expect(within(list).getAllByRole("listitem")).toHaveLength(3);
     // published only: no status badge on the public page
     expect(within(list).queryByText("Veröffentlicht")).not.toBeInTheDocument();
-    await user.click(within(list).getByRole("button", { name: "Herbstfest" }));
-    expect(
-      await screen.findByRole("heading", { level: 1, name: "Herbstfest" }),
-    ).toBeInTheDocument();
+    const opener = within(list).getByRole("button", { name: "Herbstfest" });
+    await user.click(opener);
+    const dialog = await screen.findByRole("dialog", { name: "Herbstfest" });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
     expect(screen.getByTestId("location")).toHaveTextContent(`/feed/f1/events/e3?secret=${SECRET}`);
-    // the way back keeps view and secret
-    await user.click(screen.getByRole("link", { name: "Zurück zum Kalender" }));
+    // The feed stays below the dialog (same view), but inert and hidden from screen readers.
+    const feedHeading = screen.getByRole("heading", {
+      level: 1,
+      name: "Schießbetrieb 2026",
+      hidden: true,
+    });
+    expect(feedHeading.closest("[inert]")).not.toBeNull();
+    expect(screen.queryByRole("heading", { level: 1, name: "Schießbetrieb 2026" })).toBeNull();
+    // The router state keeps the view, never the secret.
+    expect(JSON.stringify(window.history.state ?? "")).not.toContain(SECRET);
+    // Closing goes back to the same view with the secret, focus returns to the opener.
+    await user.click(within(dialog).getAllByRole("button", { name: "Schließen" })[0]);
     expect(
       await screen.findByRole("heading", { level: 1, name: "Schießbetrieb 2026" }),
     ).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByTestId("location")).toHaveTextContent(`secret=${SECRET}`);
     expect(screen.getByTestId("location")).toHaveTextContent("view=list");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Herbstfest" })).toHaveFocus());
+  });
+
+  it("closes the event dialog with Escape", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderAt("/feed/f1?date=2026-10-01&view=list");
+    await screen.findByRole("heading", { level: 1, name: "Schießbetrieb 2026" });
+    await user.click(screen.getByRole("button", { name: "Jugendtraining" }));
+    await screen.findByRole("dialog", { name: "Jugendtraining" });
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByTestId("location")).toHaveTextContent("/feed/f1?date=2026-10-01&view=list");
   });
 });
 
-describe("PublicEventPage", () => {
+describe("PublicEventModal", () => {
   it("shows date, time, place with map and its text alternative, tags and add-to-calendar", async () => {
     const created: Blob[] = [];
     URL.createObjectURL = (b: Blob | MediaSource) => (created.push(b as Blob), "blob:test");
@@ -325,6 +354,15 @@ describe("PublicEventPage", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Herbstfest" }),
     ).toBeInTheDocument();
+    // A shared link shows the feed at the event's month below the dialog.
+    expect(screen.getByRole("dialog", { name: /Herbstfest/ })).toHaveAccessibleDescription(
+      "Schießbetrieb 2026",
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { level: 2, name: "Oktober 2026", hidden: true }),
+      ).toBeInTheDocument(),
+    );
     expect(screen.getByText("Sa 24.10.2026")).toBeInTheDocument();
     expect(screen.getByText("15:00 bis 22:00 Uhr")).toBeInTheDocument();
     const place = screen.getByRole("region", { name: "Ort" });
@@ -364,10 +402,9 @@ describe("PublicEventPage", () => {
         events: [event({ id: "x1", name: "<b>fett</b>", date: "2026-10-08" })],
       });
     renderAt("/feed/f1/events/x1");
-    expect(
-      await screen.findByRole("heading", { level: 1, name: "<b>fett</b>" }),
-    ).toBeInTheDocument();
-    expect(document.querySelector("main b")).toBeNull();
+    const heading = await screen.findByRole("heading", { level: 1, name: "<b>fett</b>" });
+    expect(heading.querySelector("b")).toBeNull();
+    expect(screen.getByRole("dialog")).toHaveAccessibleDescription("<img src=x onerror=alert(1)>");
     expect(document.querySelector("img[src=x]")).toBeNull();
   });
 
@@ -376,10 +413,11 @@ describe("PublicEventPage", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Termin nicht gefunden" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Zurück zum Kalender" })).toHaveAttribute(
-      "href",
-      `/feed/f1?secret=${SECRET}`,
-    );
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    await user.click(screen.getByRole("button", { name: "Zum Kalender" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByTestId("location")).toHaveTextContent(`/feed/f1?secret=${SECRET}`);
+    expect(document.querySelector('meta[name="robots"]')).not.toBeNull();
   });
 
   it("shows the private state for a missing secret", async () => {

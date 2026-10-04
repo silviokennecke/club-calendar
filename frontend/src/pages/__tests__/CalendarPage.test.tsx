@@ -2,8 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createEvent, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { MemoryRouter, Route, useLocation } from "react-router-dom";
 import CalendarPage from "../CalendarPage";
+import { BackgroundRoutes } from "@/components/layout/BackgroundRoutes";
+import { Modal, ModalFrame } from "@/components/ui/shared";
+import { useModalNav } from "@/lib/useModalNav";
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
@@ -109,23 +112,43 @@ function Probe() {
   return <div data-testid="location">{loc.pathname + loc.search}</div>;
 }
 
+/** Stand-in for the event dialogs: shows its URL, closes like them. */
+function ModalProbe() {
+  const loc = useLocation();
+  const nav = useModalNav();
+  return (
+    <Modal title="Termin-Dialog" closeLabel="Schließen" onClose={nav.close}>
+      <p data-testid="modal-location">{loc.pathname + loc.search}</p>
+    </Modal>
+  );
+}
+
 function renderPage(path = "/clubs/c1/calendars/k1") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route
-            path="/clubs/:clubId/calendars/:calendarId"
-            element={
-              <>
-                <CalendarPage />
-                <Probe />
-              </>
-            }
-          />
-          <Route path="*" element={<Probe />} />
-        </Routes>
+        <BackgroundRoutes
+          pages={
+            <>
+              <Route
+                path="/clubs/:clubId/calendars/:calendarId"
+                element={
+                  <>
+                    <CalendarPage />
+                    <Probe />
+                  </>
+                }
+              />
+              <Route path="*" element={<Probe />} />
+            </>
+          }
+          modals={
+            <Route element={<ModalFrame />}>
+              <Route path="*" element={<ModalProbe />} />
+            </Route>
+          }
+        />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -274,20 +297,46 @@ describe("CalendarPage – month view", () => {
     await user.click(within(g).getByRole("button", { name: /^14\. Oktober/ }));
     expect(await screen.findByText("An diesem Tag gibt es keine Termine.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Termin an diesem Tag anlegen" }));
-    // Straight to the form page with the day as start date (design: EventNewForm).
-    expect(await screen.findByTestId("location")).toHaveTextContent(
+    // Straight to the form dialog with the day as start date (design: EventNewForm).
+    expect(await screen.findByTestId("modal-location")).toHaveTextContent(
       "/clubs/c1/calendars/k1/events/new/form?date=2026-10-14",
     );
   });
 
-  it("opens an event from its chip on its own page", async () => {
+  it("opens an event from its chip as a dialog above the calendar", async () => {
+    const user = userEvent.setup();
+    renderPage("/clubs/c1/calendars/k1?date=2026-10-08");
+    const g = await grid();
+    const chip = await screen.findByTitle(/^Training Luftgewehr/);
+    await user.click(chip);
+    expect(await screen.findByTestId("modal-location")).toHaveTextContent(
+      "/clubs/c1/calendars/k1/events/e1",
+    );
+    // The calendar stays (same month), inert and hidden from screen readers.
+    expect(screen.getByRole("dialog", { name: "Termin-Dialog" })).toBeVisible();
+    expect(g).toBeInTheDocument();
+    expect(g.closest("[inert]")).not.toBeNull();
+    expect(screen.queryByRole("grid")).toBeNull();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      "/clubs/c1/calendars/k1?date=2026-10-08",
+    );
+    // Closing (history back) returns to the calendar, focus to the chip.
+    await user.click(screen.getByRole("button", { name: "Schließen" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(g.closest("[inert]")).toBeNull();
+    await waitFor(() => expect(chip).toHaveFocus());
+  });
+
+  it("closes the dialog with Escape back to the calendar", async () => {
     const user = userEvent.setup();
     renderPage();
     await grid();
-    await user.click(await screen.findByTitle(/^Training Luftgewehr/));
-    expect(await screen.findByTestId("location")).toHaveTextContent(
-      "/clubs/c1/calendars/k1/events/e1",
-    );
+    await user.click(screen.getByRole("button", { name: "Termin anlegen" }));
+    await screen.findByRole("dialog", { name: "Termin-Dialog" });
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByTestId("location")).toHaveTextContent(/^\/clubs\/c1\/calendars\/k1$/);
+    expect(screen.getByRole("button", { name: "Termin anlegen" })).toHaveFocus();
   });
 
   it("opens the create choice from the split button", async () => {
@@ -295,7 +344,7 @@ describe("CalendarPage – month view", () => {
     renderPage();
     await grid();
     await user.click(screen.getByRole("button", { name: "Termin anlegen" }));
-    expect(await screen.findByTestId("location")).toHaveTextContent(
+    expect(await screen.findByTestId("modal-location")).toHaveTextContent(
       /^\/clubs\/c1\/calendars\/k1\/events\/new$/,
     );
   });
@@ -396,7 +445,7 @@ describe("CalendarPage – create menu", () => {
 
     await user.click(toggle);
     await user.click(screen.getByRole("button", { name: "Aus Vorlage" }));
-    expect(await screen.findByTestId("location")).toHaveTextContent(
+    expect(await screen.findByTestId("modal-location")).toHaveTextContent(
       "/clubs/c1/calendars/k1/events/new/template",
     );
   });
@@ -556,7 +605,7 @@ describe("CalendarPage – phone width", () => {
         .find((b) => b.classList.contains("ap-fab"));
       expect(fab).toBeDefined();
       await user.click(fab!);
-      expect(await screen.findByTestId("location")).toHaveTextContent(
+      expect(await screen.findByTestId("modal-location")).toHaveTextContent(
         "/clubs/c1/calendars/k1/events/new?date=2026-10-08",
       );
     } finally {

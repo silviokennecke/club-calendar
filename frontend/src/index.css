@@ -2353,31 +2353,13 @@
     color: var(--ink-muted);
     font: 500 12px/16px var(--font-sans);
   }
-  /* Dialog-like pages (design: EventNew, EventForm, EventSeries as modals; here routed pages) */
+  /* Notice pages of ArchivedCreateGuard (import, templates, feeds in archived calendars) */
   .ap-pagedialog {
     display: flex;
     flex-direction: column;
     gap: var(--space-6);
     max-width: 880px;
     margin: 0 auto;
-  }
-  .ap-pagedialog--wide {
-    max-width: 760px;
-  }
-  .ap-pagedialog-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-4);
-  }
-  .ap-pagedialog .ap-dialog-foot {
-    position: sticky;
-    bottom: 0;
-    z-index: 5;
-    margin-top: var(--space-2);
-    padding: var(--space-3) 0;
-    background: var(--surface);
-    border-top: 1px solid var(--border);
   }
   .ap-dialog-foot--split {
     justify-content: space-between;
@@ -2415,6 +2397,10 @@
     list-style: disc;
   }
   .ap-errorsummary a {
+    /* WCAG 2.5.8: stacked links need a 24px target */
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
     color: inherit;
     text-decoration: underline;
     font-weight: 600;
@@ -2430,9 +2416,6 @@
     }
     .ap-dialog-foot--split .cc-btn {
       flex: 1 1 auto;
-    }
-    .ap-pagedialog .ap-dialog-foot {
-      bottom: 72px;
     }
 
     .ap-table thead {
@@ -2493,11 +2476,118 @@
   }
 }
 
-/* Unlayered like the global mobile block above (which sets dialog footer buttons to 100%):
-   on the routed event pages the footer buttons sit side by side when they fit. */
+/* Dialogs above a page (design cc-app.css: .ap-scrim, .ap-dialog--wide/--xl/--form,
+   .ap-dialog-head, .ap-dialog-foot--split). Unlayered like the global mobile block above.
+   The scrim is Base UI's Dialog.Viewport; below 720px the dialog is a bottom sheet. */
+.ap-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--scrim);
+}
+.ap-scrim > .ap-dialog {
+  width: min(520px, 100%);
+  max-height: calc(100dvh - 32px);
+  overscroll-behavior: contain;
+  animation: ap-dialog-in 160ms ease-out;
+}
+.ap-scrim > .ap-dialog--wide {
+  width: min(760px, 100%);
+}
+.ap-scrim > .ap-dialog--xl {
+  width: min(880px, 100%);
+  gap: var(--space-6);
+}
+.ap-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.ap-dialog-head > .ap-iconbtn {
+  flex: none;
+}
+.ap-dialog--form .ap-panel {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+}
+.ap-dialog--form .ap-form-section {
+  padding-block: var(--space-4);
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}
+.ap-dialog--form form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-bottom: var(--space-2);
+}
+.ap-dialog--form .ap-panel--flush {
+  padding-block: var(--space-4);
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}
+.ap-dialog--form .ap-panel--flush > div:first-child {
+  padding-inline: 0 !important;
+  padding-top: 0 !important;
+}
+.ap-dialog--form .ap-panel--flush .ap-listrow {
+  padding-inline: 0;
+}
+.ap-dialog--form .ap-panel--flush > p {
+  padding-inline: 0 !important;
+}
+/* Footer stays reachable while a long form scrolls inside the dialog. */
+.ap-dialog--form .ap-dialog-foot {
+  position: sticky;
+  bottom: calc(-1 * var(--space-6));
+  z-index: 2;
+  margin: 0 calc(-1 * var(--space-6)) calc(-1 * var(--space-6));
+  padding: var(--space-3) var(--space-6);
+  background: var(--surface-raised);
+  border-top: 1px solid var(--border);
+}
+@keyframes ap-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
 @media (max-width: 720px) {
-  .ap-pagedialog .ap-dialog-foot .cc-btn {
+  .ap-scrim {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .ap-scrim > .ap-dialog {
+    width: 100%;
+    max-height: calc(100dvh - var(--space-4));
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-bottom: 0;
+    animation-name: ap-sheet-in;
+    animation-duration: 200ms;
+  }
+  .ap-dialog-foot--split .cc-btn {
     flex: 1 1 auto;
+  }
+  .ap-dialog--form .ap-dialog-foot {
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+  }
+}
+@keyframes ap-sheet-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ap-scrim > .ap-dialog {
+    animation: none;
   }
 }
 
