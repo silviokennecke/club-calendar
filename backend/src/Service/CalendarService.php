@@ -67,10 +67,10 @@ class CalendarService
     public function updateCalendar(Calendar $calendar, array $data): array
     {
         if (array_key_exists('name', $data)) {
-            $calendar->setName($data['name']);
+            $calendar->setName(Input::string($data, 'name'));
         }
         if (array_key_exists('timezone', $data)) {
-            $calendar->setTimezone($data['timezone']);
+            $calendar->setTimezone(Input::timezone($data, 'timezone'));
         }
         $this->em->flush();
 

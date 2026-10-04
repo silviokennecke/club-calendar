@@ -13,5 +13,6 @@ class CreateCalendarDto
     public string $name = '';
 
     #[Assert\Length(max: 100)]
+    #[Assert\Timezone(zone: \DateTimeZone::ALL_WITH_BC)]
     public ?string $timezone = null;
 }

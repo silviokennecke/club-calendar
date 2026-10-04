@@ -202,4 +202,45 @@ class PublicTest extends WebTestCase
         self::$client->request('GET', "/api/feed/{$feedId}/ics?targetGroupIds={$adultsId}");
         $this->assertStringNotContainsString('Erwachsenentraining', (string) self::$client->getResponse()->getContent());
     }
+
+    public function testArchivedPrivateFeedRequiresSecretBeforeRevealingArchiveState(): void
+    {
+        ['calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
+        $feed = $this->createFeed($cal->getId(), FeedVisibility::PRIVATE, 'archived-feed-secret');
+        $cal->setArchivedAt(new \DateTimeImmutable());
+        self::$em->flush();
+        foreach (['events', 'ics'] as $endpoint) {
+            self::$client->request('GET', "/api/feed/{$feed->getId()}/$endpoint");
+            $this->assertSame(403, self::$client->getResponse()->getStatusCode(), $endpoint);
+            self::$client->request('GET', "/api/feed/{$feed->getId()}/$endpoint?secret=wrong");
+            $this->assertSame(403, self::$client->getResponse()->getStatusCode(), $endpoint);
+            self::$client->request('GET', "/api/feed/{$feed->getId()}/$endpoint?secret=archived-feed-secret");
+            $this->assertSame(404, self::$client->getResponse()->getStatusCode(), $endpoint);
+        }
+    }
+
+    /**
+     * @throws \DateMalformedStringException
+     */
+    public function testIcsSurvivesStoredInvalidTimezone(): void
+    {
+        ['calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
+        $cal->setTimezone('America/New_York');
+        $feed = $this->createFeed($cal->getId());
+        $event = TestHelper::createEvent(self::$em, $cal, ['name' => 'Outlook', 'isDraft' => false]);
+        // Stored before validation existed (e.g. a Windows zone name from an Outlook import)
+        $event->setTimezone('W. Europe Standard Time');
+        self::$em->flush();
+
+        self::$client->request('GET', "/api/feed/{$feed->getId()}/ics");
+        $r = self::$client->getResponse();
+        $this->assertSame(200, $r->getStatusCode());
+        $content = (string) $r->getContent();
+        $this->assertStringContainsString('Outlook', $content);
+        // Falls back to the calendar time zone (before: club time zone, and the invalid zone broke the feed)
+        $this->assertStringContainsString('DTSTART;TZID=America/New_York:20260701T180000', $content);
+        // RFC 5545: each TZID needs a VTIMEZONE, otherwise strict clients read floating local time
+        $this->assertMatchesRegularExpression('/BEGIN:VTIMEZONE\r?\nTZID:America\/New_York\r?\n/', $content);
+        $this->assertSame(1, substr_count($content, 'BEGIN:VTIMEZONE'));
+    }
 }

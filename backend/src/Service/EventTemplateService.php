@@ -18,8 +18,10 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class EventTemplateService
 {
-    public function __construct(private EntityManagerInterface $em)
-    {
+    public function __construct(
+        private EntityManagerInterface $em,
+        private CalendarReferences $references,
+    ) {
     }
 
     public function listTemplates(Calendar $calendar): array
@@ -33,20 +35,8 @@ readonly class EventTemplateService
     {
         $template = new EventTemplate();
         $template->setCalendar($calendar);
-        $template->setName($data['name']);
-        $template->setTimezone($data['timezone']);
-        $template->setTimeBegin($data['timeBegin']);
-        $template->setTimeEnd($data['timeEnd']);
-
-        if (!empty($data['locationId'])) {
-            $loc = $this->em->getRepository(Location::class)->find($data['locationId']);
-            if ($loc && $loc->getCalendar()->getId() === $calendar->getId()) {
-                $template->setLocation($loc);
-            }
-        }
-
+        $this->applyInput($template, $calendar, $data, false);
         $this->em->persist($template);
-        $this->syncRelations($template, $data, $calendar);
         $this->em->flush();
 
         return $this->serialize($template);
@@ -62,69 +52,7 @@ readonly class EventTemplateService
     public function updateTemplate(string $id, Calendar $calendar, array $data): array
     {
         $template = $this->findTemplate($id, $calendar);
-
-        if (array_key_exists('name', $data)) {
-            $template->setName($data['name']);
-        }
-        if (array_key_exists('timezone', $data)) {
-            $template->setTimezone($data['timezone']);
-        }
-        if (array_key_exists('timeBegin', $data)) {
-            $template->setTimeBegin($data['timeBegin']);
-        }
-        if (array_key_exists('timeEnd', $data)) {
-            $template->setTimeEnd($data['timeEnd']);
-        }
-        if (array_key_exists('locationId', $data)) {
-            if ($data['locationId']) {
-                $loc = $this->em->getRepository(Location::class)->find($data['locationId']);
-                $template->setLocation(($loc && $loc->getCalendar()->getId() === $calendar->getId()) ? $loc : null);
-            } else {
-                $template->setLocation(null);
-            }
-        }
-
-        $inCalendar = fn (?object $entity) => null !== $entity && $entity->getCalendar()->getId() === $calendar->getId();
-        if (array_key_exists('propertyIds', $data)) {
-            LinkCollectionSync::sync(
-                $this->em,
-                $template->getProperties(),
-                $data['propertyIds'] ?? [],
-                fn (EventTemplateProperty $etp) => $etp->getProperty()->getId(),
-                function (string $id) use ($template, $inCalendar): ?EventTemplateProperty {
-                    $prop = $this->em->getRepository(Property::class)->find($id);
-
-                    return $inCalendar($prop) ? (new EventTemplateProperty())->setTemplate($template)->setProperty($prop) : null;
-                },
-            );
-        }
-        if (array_key_exists('featureIds', $data)) {
-            LinkCollectionSync::sync(
-                $this->em,
-                $template->getFeatures(),
-                $data['featureIds'] ?? [],
-                fn (EventTemplateFeature $etf) => $etf->getFeature()->getId(),
-                function (string $id) use ($template, $inCalendar): ?EventTemplateFeature {
-                    $feat = $this->em->getRepository(Feature::class)->find($id);
-
-                    return $inCalendar($feat) ? (new EventTemplateFeature())->setTemplate($template)->setFeature($feat) : null;
-                },
-            );
-        }
-        if (array_key_exists('targetGroupIds', $data)) {
-            LinkCollectionSync::sync(
-                $this->em,
-                $template->getTargetGroups(),
-                $data['targetGroupIds'] ?? [],
-                fn (EventTemplateTargetGroup $ettg) => $ettg->getTargetGroup()->getId(),
-                function (string $id) use ($template, $inCalendar): ?EventTemplateTargetGroup {
-                    $tg = $this->em->getRepository(TargetGroup::class)->find($id);
-
-                    return $inCalendar($tg) ? (new EventTemplateTargetGroup())->setTemplate($template)->setTargetGroup($tg) : null;
-                },
-            );
-        }
-
+        $this->applyInput($template, $calendar, $data, true);
         $this->em->flush();
 
         return $this->serialize($template);
@@ -147,34 +75,60 @@ readonly class EventTemplateService
         return $template;
     }
 
-    private function syncRelations(EventTemplate $template, array $data, Calendar $calendar): void
+    /**
+     * Validates and applies request data; referenced records must belong to the template's calendar (422).
+     *
+     * @param bool $partial PATCH: only the given keys are applied, nothing is required
+     */
+    private function applyInput(EventTemplate $template, Calendar $calendar, array $data, bool $partial): void
     {
-        foreach ($data['propertyIds'] ?? [] as $pid) {
-            $prop = $this->em->getRepository(Property::class)->find($pid);
-            if ($prop && $prop->getCalendar()->getId() === $calendar->getId()) {
-                $etp = new EventTemplateProperty();
-                $etp->setTemplate($template);
-                $etp->setProperty($prop);
-                $this->em->persist($etp);
-            }
+        $has = fn (string $key) => !$partial || array_key_exists($key, $data);
+
+        if ($has('name')) {
+            $template->setName(Input::string($data, 'name'));
         }
-        foreach ($data['featureIds'] ?? [] as $fid) {
-            $feat = $this->em->getRepository(Feature::class)->find($fid);
-            if ($feat && $feat->getCalendar()->getId() === $calendar->getId()) {
-                $etf = new EventTemplateFeature();
-                $etf->setTemplate($template);
-                $etf->setFeature($feat);
-                $this->em->persist($etf);
-            }
+        if ($has('timezone')) {
+            $template->setTimezone((string) Input::timezone($data, 'timezone', false));
         }
-        foreach ($data['targetGroupIds'] ?? [] as $tgid) {
-            $tg = $this->em->getRepository(TargetGroup::class)->find($tgid);
-            if ($tg && $tg->getCalendar()->getId() === $calendar->getId()) {
-                $ettg = new EventTemplateTargetGroup();
-                $ettg->setTemplate($template);
-                $ettg->setTargetGroup($tg);
-                $this->em->persist($ettg);
-            }
+        if ($has('timeBegin')) {
+            $template->setTimeBegin(Input::time($data, 'timeBegin'));
+        }
+        if ($has('timeEnd')) {
+            $template->setTimeEnd(Input::time($data, 'timeEnd'));
+        }
+        if ($has('locationId')) {
+            $template->setLocation($this->references->find(Location::class, $calendar, $data['locationId'] ?? null, 'locationId'));
+        }
+
+        if ($has('propertyIds')) {
+            $properties = $this->references->findAll(Property::class, $calendar, Input::idList($data, 'propertyIds'), 'propertyIds');
+            LinkCollectionSync::sync(
+                $this->em,
+                $template->getProperties(),
+                array_keys($properties),
+                fn (EventTemplateProperty $etp) => $etp->getProperty()->getId(),
+                fn (string $id) => (new EventTemplateProperty())->setTemplate($template)->setProperty($properties[$id]),
+            );
+        }
+        if ($has('featureIds')) {
+            $features = $this->references->findAll(Feature::class, $calendar, Input::idList($data, 'featureIds'), 'featureIds');
+            LinkCollectionSync::sync(
+                $this->em,
+                $template->getFeatures(),
+                array_keys($features),
+                fn (EventTemplateFeature $etf) => $etf->getFeature()->getId(),
+                fn (string $id) => (new EventTemplateFeature())->setTemplate($template)->setFeature($features[$id]),
+            );
+        }
+        if ($has('targetGroupIds')) {
+            $groups = $this->references->findAll(TargetGroup::class, $calendar, Input::idList($data, 'targetGroupIds'), 'targetGroupIds');
+            LinkCollectionSync::sync(
+                $this->em,
+                $template->getTargetGroups(),
+                array_keys($groups),
+                fn (EventTemplateTargetGroup $ettg) => $ettg->getTargetGroup()->getId(),
+                fn (string $id) => (new EventTemplateTargetGroup())->setTemplate($template)->setTargetGroup($groups[$id]),
+            );
         }
     }
 

@@ -57,6 +57,18 @@ class MapboxProxyService
 
     private function matchPattern(string $path, string $method): array
     {
+        // The HTTP client removes dot segments ("styles/../geocoding" -> "geocoding"): they would lead
+        // past the allow-listed prefix to any Mapbox API with the server token. It also treats encoded
+        // dots ("%2e%2e", reaching here from a double-encoded request) as dot segments: check decoded.
+        $decoded = $path;
+        do {
+            $previous = $decoded;
+            $decoded = rawurldecode($decoded);
+        } while ($decoded !== $previous);
+        if (preg_match('#(^|/)\.{1,2}(/|$)#', $decoded) || str_contains($decoded, '\\')) {
+            throw new ProxyDeniedException("Path not allowed: $path");
+        }
+
         foreach ($this->allowedPatterns as $pattern) {
             if (
                 preg_match('#'.$pattern['pattern'].'#', "/$path")

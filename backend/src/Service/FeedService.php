@@ -15,8 +15,10 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class FeedService
 {
-    public function __construct(private EntityManagerInterface $em)
-    {
+    public function __construct(
+        private EntityManagerInterface $em,
+        private CalendarReferences $references,
+    ) {
     }
 
     public function list(Calendar $calendar): array
@@ -28,26 +30,13 @@ readonly class FeedService
 
     public function create(Calendar $calendar, array $data): array
     {
-        if (empty($data['name'])) {
-            throw new BadRequestHttpException('name is required');
-        }
-        if (empty($data['visibility'])) {
-            throw new BadRequestHttpException('visibility is required');
-        }
-
-        $visibility = FeedVisibility::tryFrom($data['visibility']);
-        if (null === $visibility) {
-            throw new BadRequestHttpException('visibility must be PUBLIC or PRIVATE');
-        }
-
         $feed = new CalendarFeed();
         $feed->setCalendar($calendar);
-        $feed->setName($data['name']);
-        $feed->setVisibility($visibility);
+        $feed->setName(Input::string($data, 'name'));
+        $feed->setVisibility($this->visibility($data));
         $feed->setSharedSecret(bin2hex(random_bytes(16)));
-
         $this->em->persist($feed);
-        $this->syncTargetGroups($feed, $data['targetGroupIds'] ?? [], $calendar);
+        $this->syncTargetGroups($feed, $calendar, $data);
         $this->em->flush();
 
         return $this->serialize($feed);
@@ -58,34 +47,32 @@ readonly class FeedService
         $feed = $this->find($id, $calendar);
 
         if (array_key_exists('name', $data)) {
-            $feed->setName($data['name']);
+            $feed->setName(Input::string($data, 'name'));
         }
         if (array_key_exists('visibility', $data)) {
-            $visibility = FeedVisibility::tryFrom($data['visibility']);
-            if (null === $visibility) {
-                throw new BadRequestHttpException('visibility must be PUBLIC or PRIVATE');
-            }
-            $feed->setVisibility($visibility);
+            $feed->setVisibility($this->visibility($data));
         }
         if (array_key_exists('targetGroupIds', $data)) {
-            $newIds = $data['targetGroupIds'];
-            $keptIds = [];
-            foreach ($feed->getTargetGroups() as $ftg) {
-                $tgId = $ftg->getTargetGroup()->getId();
-                if (in_array($tgId, $newIds, true)) {
-                    $keptIds[] = $tgId;
-                } else {
-                    $this->em->remove($ftg);
-                    $feed->getTargetGroups()->removeElement($ftg);
-                }
-            }
-            $toAdd = array_values(array_filter($newIds, fn ($id) => !in_array($id, $keptIds, true)));
-            $this->syncTargetGroups($feed, $toAdd, $calendar);
+            $this->syncTargetGroups($feed, $calendar, $data);
         }
 
         $this->em->flush();
 
         return $this->serialize($feed);
+    }
+
+    private function visibility(array $data): FeedVisibility
+    {
+        $value = $data['visibility'] ?? null;
+        if (null === $value || '' === $value) {
+            throw new BadRequestHttpException('visibility is required');
+        }
+        $visibility = is_string($value) ? FeedVisibility::tryFrom($value) : null;
+        if (null === $visibility) {
+            throw new BadRequestHttpException('visibility must be PUBLIC or PRIVATE');
+        }
+
+        return $visibility;
     }
 
     public function delete(string $id, Calendar $calendar): void
@@ -114,17 +101,16 @@ readonly class FeedService
         return $feed;
     }
 
-    private function syncTargetGroups(CalendarFeed $feed, array $targetGroupIds, Calendar $calendar): void
+    private function syncTargetGroups(CalendarFeed $feed, Calendar $calendar, array $data): void
     {
-        foreach ($targetGroupIds as $tgid) {
-            $tg = $this->em->getRepository(TargetGroup::class)->find($tgid);
-            if ($tg && $tg->getCalendar()->getId() === $calendar->getId()) {
-                $ftg = new CalendarFeedTargetGroup();
-                $ftg->setFeed($feed);
-                $ftg->setTargetGroup($tg);
-                $this->em->persist($ftg);
-            }
-        }
+        $groups = $this->references->findAll(TargetGroup::class, $calendar, Input::idList($data, 'targetGroupIds'), 'targetGroupIds');
+        LinkCollectionSync::sync(
+            $this->em,
+            $feed->getTargetGroups(),
+            array_keys($groups),
+            fn (CalendarFeedTargetGroup $ftg) => $ftg->getTargetGroup()->getId(),
+            fn (string $id) => (new CalendarFeedTargetGroup())->setFeed($feed)->setTargetGroup($groups[$id]),
+        );
     }
 
     public function serialize(CalendarFeed $feed): array
@@ -138,7 +124,7 @@ readonly class FeedService
             'targetGroups' => $feed->getTargetGroups()->map(fn (CalendarFeedTargetGroup $ftg) => [
                 'feedId' => $ftg->getFeed()->getId(),
                 'targetGroupId' => $ftg->getTargetGroup()->getId(),
-            ])->toArray(),
+            ])->getValues(),
         ];
     }
 }

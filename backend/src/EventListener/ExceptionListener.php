@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\EventListener;
 
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
@@ -20,6 +21,8 @@ class ExceptionListener
 {
     public function __construct(
         private readonly ErrorListener $httpErrorListener,
+        #[Autowire(param: 'kernel.project_dir')]
+        private readonly string $projectDir = '',
     ) {
     }
 
@@ -39,26 +42,42 @@ class ExceptionListener
 
         if ($exception instanceof HttpExceptionInterface) {
             $status = $exception->getStatusCode();
-            $event->setResponse($this->problemResponse($status, $this->statusTitle($status), $exception->getMessage()));
+            $event->setResponse($this->problemResponse($status, $this->statusTitle($status), $this->publicDetail($exception, $status)));
 
             return;
         }
 
         // Symfony security exceptions not wrapped in HttpException
         if ($exception instanceof AccessDeniedException) {
-            $event->setResponse($this->problemResponse(403, 'Forbidden', $exception->getMessage()));
+            $event->setResponse($this->problemResponse(403, 'Forbidden', $this->publicDetail($exception, 403)));
 
             return;
         }
 
         if ($exception instanceof AuthenticationException) {
-            $event->setResponse($this->problemResponse(401, 'Unauthorized', $exception->getMessage()));
+            $event->setResponse($this->problemResponse(401, 'Unauthorized', $this->publicDetail($exception, 401)));
 
             return;
         }
 
         // Unknown exception: 500
         $event->setResponse($this->problemResponse(500, 'Internal Server Error', 'An unexpected error occurred.'));
+    }
+
+    /**
+     * Messages of exceptions thrown by the application itself are meant for clients ("Event not found").
+     * Framework messages (entity resolver, router, ...) name internal classes and URLs: they are replaced
+     * by the generic status title (the full message is still logged).
+     */
+    private function publicDetail(\Throwable $exception, int $status): string
+    {
+        $message = $exception->getMessage();
+        $thrownByApp = '' !== $this->projectDir && str_starts_with($exception->getFile(), $this->projectDir.'/src/');
+        if (!$thrownByApp || '' === $message || preg_match('/\w\\\\\w/', $message)) {
+            return $this->statusTitle($status);
+        }
+
+        return $message;
     }
 
     private function problemResponse(int $status, string $title, string $detail): JsonResponse
