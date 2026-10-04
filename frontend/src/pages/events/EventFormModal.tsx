@@ -1,5 +1,5 @@
-import { useMemo, useState, type FormEvent } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
@@ -21,24 +21,26 @@ import {
   Banner,
   Button,
   ConfirmDialog,
-  EmptyState,
   ErrorSummary,
   Field,
   LinkButton,
-  Skeleton,
+  Modal,
   StatusBadge,
   TextInput,
   UnsavedChangesDialog,
   toast,
+  useModalInitialFocus,
 } from "@/components/ui/shared";
-import { EventPageHead } from "@/components/events/EventPageHead";
 import { StatusSeg } from "@/components/events/StatusSeg";
 import { AssignmentFields } from "@/components/events/AssignmentFields";
 import { LocationSection } from "@/components/events/LocationSection";
 import { useEventPage } from "@/components/events/useEventPage";
-import { ArchivedCreateGuard } from "@/components/events/ArchivedCreateGuard";
+import { CreateGateBody, ModalSkeleton } from "@/components/events/CreateGate";
+import { createGate } from "@/components/events/createGateState";
 import { useEventResources } from "@/components/events/useEventResources";
 import { useLocale } from "@/components/calendar/useLocale";
+import { useModalNav } from "@/lib/useModalNav";
+import { eventSelector, focusAfterModalClose } from "@/lib/modalFocus";
 
 /** Field ids, also the targets of the error summary links. */
 const FIELD_IDS: Record<EventField, string> = {
@@ -51,29 +53,20 @@ const FIELD_IDS: Record<EventField, string> = {
 
 /**
  * New event (design: EventNewForm, route …/events/new/form?date=&templateId=) and edit / view
- * (design: EventForm, EventFormMobile, route …/events/:eventId). Loads the data, then hands
- * the initial values to the editor.
+ * (design: EventForm, EventFormMobile, route …/events/:eventId) as a dialog above the calendar or
+ * the list. Loads the data, then hands the initial values to the editor. Creating is impossible in
+ * archived calendars (notice instead of the form); existing events open read-only there.
  */
-export default function EventFormPage() {
-  const { eventId } = useParams<{ eventId: string }>();
-  // Creating is impossible in archived calendars; existing events open read-only.
-  return eventId ? (
-    <EventFormLoader />
-  ) : (
-    <ArchivedCreateGuard>
-      <EventFormLoader />
-    </ArchivedCreateGuard>
-  );
-}
-
-function EventFormLoader() {
+export default function EventFormModal() {
   const { eventId } = useParams<{ eventId: string }>();
   const [params] = useSearchParams();
   const page = useEventPage();
+  const nav = useModalNav();
   const { t } = useTranslation();
   const isNew = !eventId;
   const presetDate = params.get("date");
   const templateId = params.get("templateId");
+  const gate = isNew ? createGate(page) : null;
 
   const eventQuery = useQuery<CalendarEvent>({
     queryKey: ["events", page.calendarId, "one", eventId],
@@ -88,44 +81,63 @@ function EventFormLoader() {
   });
   const template = templateId ? templatesQuery.data?.find((x) => x.id === templateId) : undefined;
 
+  // A deep link to an event: show the calendar at the event's month below the dialog.
+  const eventDate = eventQuery.data?.date.slice(0, 10);
+  const { hasStoredBackground, setBackground } = nav;
+  useEffect(() => {
+    if (!isNew && eventDate && !hasStoredBackground)
+      setBackground(`${page.base}?date=${eventDate}`);
+  }, [isNew, eventDate, hasStoredBackground, setBackground, page.base]);
+
   const loading =
     page.calendarLoading ||
     (!isNew && eventQuery.isPending && !eventQuery.isError) ||
     (isNew && !!templateId && templatesQuery.isPending && !templatesQuery.isError);
 
+  const newTitle = t("events.form.newTitle");
+  const closeNew = t("events.form.closeNew");
+
+  if (gate === "archived" || gate === "failed") {
+    return (
+      <Modal
+        title={gate === "archived" ? t("events.new.archived.title") : newTitle}
+        closeLabel={closeNew}
+        onClose={nav.close}
+      >
+        <CreateGateBody gate={gate} page={page} onClose={nav.close} />
+      </Modal>
+    );
+  }
+
   if (loading) {
     return (
-      <div className="ap-pagedialog" aria-busy="true">
-        <p className="ap-sr" role="status">
-          {t("events.form.loading")}
-        </p>
-        <Skeleton style={{ display: "block", height: 40, width: "50%" }} />
-        <Skeleton style={{ display: "block", height: 320 }} />
-      </div>
+      <Modal
+        size="xl"
+        form
+        title={isNew ? newTitle : t("events.form.loadingTitle")}
+        closeLabel={isNew ? closeNew : t("events.form.close")}
+        onClose={nav.close}
+      >
+        <ModalSkeleton label={t("events.form.loading")} tall />
+      </Modal>
     );
   }
 
   if (!isNew && eventQuery.isError) {
     const status = (eventQuery.error as { message?: string })?.message ?? "";
-    const notFound = /404/.test(status);
+    // No access to the calendar (403) reads like an unknown event, not like a network error.
+    const notFound = /\b40[34]\b/.test(status);
     return (
-      <div className="ap-pagedialog">
+      <Modal
+        title={notFound ? t("events.form.notFound.title") : t("events.form.loadError.title")}
+        closeLabel={t("events.form.close")}
+        onClose={nav.close}
+      >
         {notFound ? (
-          <EmptyState
-            icon="search"
-            headingLevel="h2"
-            title={t("events.form.notFound.title")}
-            text={t("events.form.notFound.text")}
-            actions={
-              <LinkButton variant="secondary" icon="arrow-left" to={page.routes.list}>
-                {t("events.form.notFound.back")}
-              </LinkButton>
-            }
-          />
+          <p className="t-body">{t("events.form.notFound.text")}</p>
         ) : (
           <Banner
             tone="danger"
-            title={t("events.form.loadError.title")}
             action={
               <Button variant="secondary" icon="refresh" onClick={() => eventQuery.refetch()}>
                 {t("events.form.loadError.retry")}
@@ -135,7 +147,15 @@ function EventFormLoader() {
             {t("events.form.loadError.text")}
           </Banner>
         )}
-      </div>
+        <div className="ap-dialog-foot">
+          {notFound && (
+            <LinkButton variant="secondary" icon="list" to={page.routes.list}>
+              {t("events.form.notFound.back")}
+            </LinkButton>
+          )}
+          <Button onClick={nav.close}>{t("events.form.close")}</Button>
+        </div>
+      </Modal>
     );
   }
 
@@ -165,8 +185,8 @@ interface EventEditorProps {
 
 function EventEditor({ initial, event, template, presetDate }: EventEditorProps) {
   const page = useEventPage();
+  const nav = useModalNav();
   const res = useEventResources(page.calendarId);
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const { t } = useTranslation();
   const locale = useLocale();
@@ -178,9 +198,13 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   const [submits, setSubmits] = useState(0);
   const [saving, setSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  // Also shown in the dialog: toasts sit behind the modal for screen readers.
+  const [saveFailed, setSaveFailed] = useState(false);
 
   const dirty = !readOnly && isFormDirty(initial, values);
   const unsaved = useUnsavedChanges(dirty);
+  // Start in the first field (the heading when read-only).
+  useModalInitialFocus(FIELD_IDS.name, !readOnly);
 
   const errors = useMemo(() => validateEvent(values), [values]);
   // Inline errors appear once a field was left or after "save"; an end before the start at once.
@@ -202,7 +226,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   const blur = (field: EventField) => () => setTouched((prev) => new Set(prev).add(field));
 
   function leave() {
-    unsaved.guard(() => navigate(page.returnTo));
+    unsaved.guard(nav.close);
   }
 
   async function onSubmit(e: FormEvent) {
@@ -211,14 +235,22 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
     setSubmits((n) => n + 1);
     if (errors.length > 0) return;
     setSaving(true);
+    setSaveFailed(false);
     try {
       const body = toEventPayload(values);
+      let savedId = event?.id;
       if (event) await apiPatch(`/api/calendars/${page.calendarId}/events/${event.id}`, body);
-      else await apiPost(`/api/calendars/${page.calendarId}/events`, body);
+      else
+        savedId = (await apiPost<{ id?: string }>(`/api/calendars/${page.calendarId}/events`, body))
+          ?.id;
       await qc.invalidateQueries({ queryKey: ["events", page.calendarId] });
       toast.success(t("events.form.saved"));
-      navigate(page.returnTo);
+      // Back on the page, focus the saved event (if it is shown there).
+      focusAfterModalClose(savedId ? eventSelector(savedId) : null);
+      unsaved.allow();
+      nav.close();
     } catch {
+      setSaveFailed(true);
       toast.error(t("events.form.saveFailed"));
     } finally {
       setSaving(false);
@@ -233,7 +265,8 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
       await qc.invalidateQueries({ queryKey: ["events", page.calendarId] });
       toast.success(t("events.delete.done"));
       setDeleteOpen(false);
-      navigate(page.returnTo === page.routes.edit(event.id) ? page.routes.list : page.returnTo);
+      unsaved.allow();
+      nav.close();
     } catch {
       toast.error(t("events.delete.failed"));
     }
@@ -251,21 +284,23 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   }));
 
   return (
-    <div className="ap-pagedialog">
-      <EventPageHead
-        title={title}
-        subtitle={isNew ? t("events.form.newSubtitle") : page.calendar?.name}
-        extra={event && <StatusBadge status={values.status === "draft" ? "draft" : "published"} />}
-        closeLabel={
-          readOnly
-            ? t("events.form.close")
-            : isNew
-              ? t("events.form.closeNew")
-              : t("events.form.closeEdit")
-        }
-        onClose={leave}
-      />
-
+    <Modal
+      size="xl"
+      form
+      title={title}
+      subtitle={isNew ? t("events.form.newSubtitle") : page.calendar?.name}
+      headExtra={
+        event && <StatusBadge status={values.status === "draft" ? "draft" : "published"} />
+      }
+      closeLabel={
+        readOnly
+          ? t("events.form.close")
+          : isNew
+            ? t("events.form.closeNew")
+            : t("events.form.closeEdit")
+      }
+      onClose={leave}
+    >
       {readOnly && (
         <Banner tone="warning" icon="lock">
           {t("events.form.readOnly")}
@@ -282,6 +317,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
       {!isNew && !readOnly && values.status === "published" && (
         <Banner tone="info">{t("events.form.publishedNotice")}</Banner>
       )}
+      {saveFailed && <Banner tone="danger">{t("events.form.saveFailed")}</Banner>}
       <ErrorSummary title={t("events.form.errorTitle")} errors={summary} focusSignal={submits} />
 
       <form className="ap-form" style={{ gap: "var(--space-6)" }} noValidate onSubmit={onSubmit}>
@@ -435,7 +471,11 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
               icon="arrow-left"
               onClick={() =>
                 unsaved.guard(() =>
-                  navigate(page.routes.create(presetDate), { state: page.navState }),
+                  nav.step(
+                    template
+                      ? page.routes.fromTemplate(template.id, presetDate)
+                      : page.routes.create(presetDate),
+                  ),
                 )
               }
             >
@@ -474,6 +514,6 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
         />
       )}
       <UnsavedChangesDialog {...unsaved.dialog} />
-    </div>
+    </Modal>
   );
 }

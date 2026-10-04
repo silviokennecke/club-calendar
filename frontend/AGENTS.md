@@ -4,8 +4,9 @@ This is a **Vite + React + React Router** SPA (not Next.js).
 
 ## Key conventions
 
-- Routing: React Router v7 (`react-router-dom`) with `BrowserRouter`
-- All routes defined in `src/App.tsx`
+- Routing: React Router v7 (`react-router-dom`), data router (`createBrowserRouter` with one splat route; needed
+  for `useBlocker`); the routes stay declarative `<Route>`s in `AppRoutes`
+- All routes defined in `src/App.tsx`, rendered through `components/layout/BackgroundRoutes` (routed modals, below)
 - Page components live in `src/pages/`, `src/pages/settings/` and `src/pages/events/`
 - Protected routes wrapped in `src/components/layout/ProtectedRoute.tsx`
 - No SSR, no server components, no API routes
@@ -42,15 +43,33 @@ This is a **Vite + React + React Router** SPA (not Next.js).
   `FilterBar`, `CalendarLegend`, `CalendarSkeleton`, `useCalendarData`, `useGridKeyboard` (roving tabindex).
   The calendar page keeps view and date in the URL (`?view=week&date=2026-10-08`). `useIsMobile()` /
   `useMediaQuery()` in `src/lib/useMediaQuery.ts`.
-- Events (phase 4): own routed pages instead of the old EventModal (all in `src/App.tsx`, URL helpers in
-  `components/events/routes.ts`): `…/events` list (`?status=draft&q=`), `…/events/new` choice (`?date=`),
-  `…/events/new/form` form (`?date=`, `?templateId=` pre-fills from a template), `…/events/new/template` picker,
-  `…/events/new/template/:templateId` single event / series preview (series creation disabled), `…/events/export`
-  (client-side ICS), `…/events/:eventId` edit (read-only in archived calendars). Router state `{ from }` is the
-  return target of close / save / delete (`useEventPage().returnTo`). Pure logic in `src/lib/events/` (`form.ts`
-  values/validation/payload, `list.ts` tabs/search/groups, `series.ts` rule dates + holidays, `ics.ts` export,
-  `format.ts`), with Vitest tests. UI in `components/events/` (`EventsTable`, `LocationSection` +
-  lazy `EventLocationMap`, `StatusSeg`, `EventPageHead`, `useEventResources`, `useEventPage`).
+- Routed modals (background-location pattern): the event dialogs and the public event detail have their own,
+  deep-linkable URLs but render as a dialog above a background page. `src/lib/modalRoutes.ts` (pure, tested):
+  `matchModal(path)` knows the modal paths, `modalBackground(location)` = router state `background` (path + query
+  of the opening page; public pages store it without `?secret=`, `publicBackPath` adds the secret from the address
+  again) or, for deep links, the calendar (`?date=` of the dialog) / the public feed. `BackgroundRoutes` renders the
+  pages at the background location inside a `display: contents` wrapper with `inert` (the page stays mounted and
+  visible, its state survives), the modal routes on top, and returns focus (`lib/modalFocus.ts`:
+  `focusAfterModalClose(eventSelector(id))` focuses the saved event via `data-event-id`, else the opener, else
+  `#main`). Openers pass `state={openModalState(location)}` (calendar: create, split button, day panel
+  "Termin am … anlegen", FAB, chips / items; list: rows, create, FAB, empty states; templates: "Termin aus
+  Vorlage"). Inside a modal `useModalNav()` (`lib/useModalNav.ts`): `step(to)` / `stepLink(to)` replace the
+  history entry (one entry per dialog, so the browser's back button closes it), `close()` = history back (or
+  replace to the background for deep links / `direct`), `setBackground(path)` lets a deep link show the event's
+  month below. The modal routes share one `ModalFrame` layout route, so focus trap, scroll lock and focus return
+  stay while the steps swap.
+- Events (phase 4, dialogs since the phase 4/8 correction; URL helpers in `components/events/routes.ts`):
+  `…/events` list page (`?status=draft&q=`); dialogs (`pages/events/*Modal.tsx`): `…/events/new` choice
+  (`?date=`, design EventNew), `…/events/new/form` form (`?date=`, `?templateId=` pre-fills from a template,
+  EventNewForm), `…/events/new/template` picker (EventNewTemplate), `…/events/new/template/:templateId` single event /
+  series preview (series creation disabled, EventSeries), `…/events/:eventId` edit (EventForm, read-only in
+  archived calendars); `…/events/export` stays a page (client-side ICS). Create dialogs of archived calendars show
+  the archive notice instead of the form (`CreateGateBody`, `createGateState.ts`). Save / delete invalidate
+  `["events", calendarId]`, toast, `unsaved.allow()`, close; save failures are also shown in the dialog (toasts sit
+  behind the modal for screen readers). Pure logic in `src/lib/events/` (`form.ts` values/validation/payload,
+  `list.ts` tabs/search/groups, `series.ts` rule dates + holidays, `ics.ts` export, `format.ts`), with Vitest tests.
+  UI in `components/events/` (`EventsTable`, `LocationSection` + lazy `EventLocationMap`, `StatusSeg`,
+  `CreateGate`, `useEventResources`, `useEventPage`, `ArchivedCreateGuard` for the import / template / feed pages).
 - Import (phase 5): `…/import` is one page with a Stepper (Datei, Prüfen, Fertig; state in `pages/ImportPage.tsx`,
   UI in `components/import/`: `ImportUpload` file input + drop zone, `ImportReview` bulk panel / groups / summary bar,
   `ReviewGroup`, `ImportEditDialog`, `ImportDone`). Pure logic in `src/lib/import/` (`ics.ts` parser incl. unfolding,
@@ -97,10 +116,11 @@ This is a **Vite + React + React Router** SPA (not Next.js).
     once, theme only in this browser)). Without a last-used club the page uses the `AuthLayout` frame instead of
     the app shell. Pure logic: `src/lib/profile/`.
   - Dialog guidance: use a controlled `open` state for `ConfirmDialog` when the page re-renders while it is open
-    (trigger mode closed the dialog when data arrived in the browser). `FormDialog` (shared) is the dialog shell for
-    forms.
-- Public access (phase 8, no app shell, no sign-in): `pages/FeedPage` (`/feed/:feedId`) and `pages/PublicEventPage`
-  (`/feed/:feedId/events/:eventId`) share `components/feed/` (`PublicShell` = skip link, brand row with `LangSwitch` +
+    (trigger mode closed the dialog when data arrived in the browser). `FormDialog` (shared) is the small dialog for
+    forms, `Modal` the routed / large dialog; both build on `DialogFrame`.
+- Public access (phase 8, no app shell, no sign-in): `pages/FeedPage` (`/feed/:feedId`) and the dialog
+  `pages/PublicEventModal` (`/feed/:feedId/events/:eventId`, above the feed; a shared link shows the feed at the
+  event's month below; unknown events, drafts and feed errors are states of the dialog) share `components/feed/` (`PublicShell` = skip link, brand row with `LangSwitch` +
   `ThemeSwitch`, header, `<main id="main">`, footer; `usePublicHead` sets `<meta name="referrer" content="no-referrer">`,
   `noindex` when `?secret=` is present or the page is an error state and a title without the secret; `usePublicFeed` =
   react-query over `fetchPublicFeed` with `referrerPolicy: "no-referrer"`, no auth headers, no retries; `PublicStates`
@@ -108,11 +128,13 @@ This is a **Vite + React + React Router** SPA (not Next.js).
   alternative = address + "In Karten-App öffnen"). Pure logic in `src/lib/feeds/public.ts` (error kinds, `feedTimeZone` =
   most frequent event zone because the API has none, audiences, filter, month counts, subscribe addresses, in-app
   paths that keep `?secret=`). View state lives in the URL (`date`, `view=list`, `q`, `groups`, plus `secret`); the event
-  page returns via router state `{ from }`. `MonthView`/`EventItem`/`CalendarLegend` take `publicView` / `showStatus` /
+  dialog keeps it as router state `background` without the secret. `MonthView`/`EventItem`/`CalendarLegend` take `publicView` / `showStatus` /
   `showDraft` (no status badges, no draft legend). The one-event ICS file is `buildEventIcs` (`lib/events/ics.ts`;
   floating local time when no zone is known). `ThemeSwitch` (shared) is also used by the profile.
-- Unsaved changes: `useUnsavedChanges(dirty)` (`src/lib/useUnsavedChanges.ts`) + `<UnsavedChangesDialog>`;
-  intercepts in-app link clicks and `guard(fn)` navigation, plus `beforeunload` (BrowserRouter has no `useBlocker`).
+- Unsaved changes: `useUnsavedChanges(dirty)` (`src/lib/useUnsavedChanges.ts`) + `<UnsavedChangesDialog {...dialog}>`;
+  intercepts in-app link clicks and `guard(fn)` navigation, `beforeunload`, and the browser's back / forward
+  buttons (`useBlocker` for POP navigations, rendered by the dialog only inside the data router, so `<MemoryRouter>`
+  tests work unchanged). Call `allow()` before navigating away after a save / delete.
 - Icons: lucide-react via `<Icon glyph="..." />` (design glyph names, `shared/Icon.tsx`). No emojis as UI icons.
 - All texts via i18n (`src/locales/de.json`, `en.json`); shared component texts under `ui.*`, shell under `shell.*`.
 - Tests: Vitest + Testing Library (jsdom, setup in `src/test/setup.ts`, tests run in German).
@@ -122,31 +144,33 @@ This is a **Vite + React + React Router** SPA (not Next.js).
 Before writing raw Tailwind layout divs in a page, check `src/components/ui/shared/` first
 (import from `@/components/ui/shared`):
 
-| Component                                                                                | Use for                                                                  |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `Button` / `LinkButton` / `IconButton`                                                   | Buttons (primary, secondary, ghost, danger, danger-solid, ghost-danger)  |
-| `SplitButton`                                                                            | Primary action + menu of alternatives (e.g. "Termin anlegen")            |
-| `buttonClass()`                                                                          | Button styling for other elements (e.g. dialog triggers)                 |
-| `Field` + `TextInput`/`TextArea`/`NativeSelect`                                          | Label, hint, error, aria wiring (`group` mode for composite controls)    |
-| `Toggle`                                                                                 | On/off switch (`role="switch"`)                                          |
-| `Tag` / `TagBadge` / `TagBadgeRow`                                                       | Audience/property/feature labels (tones)                                 |
-| `StatusBadge`                                                                            | Status as icon + word (published, draft, holiday, archived, ...)         |
-| `Banner`                                                                                 | Persistent info/warning/danger/success notice                            |
-| `Toaster` / `toast`                                                                      | Short feedback (sonner, styled)                                          |
-| `EmptyState`                                                                             | Empty lists with explanation and next action                             |
-| `ConfirmDialog`                                                                          | Destructive confirmations incl. consequences                             |
-| `FormDialog`                                                                             | Dialog with a form (title, fields, footer; Enter submits, Escape closes) |
-| `CopyField`                                                                              | URLs/secrets with copy feedback                                          |
-| `Chip` / `ChipSelect` / `FilterPillGroup`                                                | Toggle chips, multi-select with create, filters                          |
-| `EmojiPicker`                                                                            | Club-chosen symbols (presets, custom, emoji-mart lazy)                   |
-| `Stepper`                                                                                | Setup progress                                                           |
-| `LangSwitch`                                                                             | Language (bound to i18next)                                              |
-| `ThemeSwitch`                                                                            | Hell / Dunkel / Wie System (profile, public pages)                       |
-| `Skeleton`                                                                               | Loading placeholders (`aria-busy` on the region)                         |
-| `ErrorSummary`                                                                           | Form error list with links to the fields, focus after a failed submit    |
-| `UnsavedChangesDialog`                                                                   | "Änderungen verwerfen?" (with `useUnsavedChanges`)                       |
-| `Logo`, `Icon`                                                                           | Brand mark, design glyphs                                                |
-| `SectionHeader`, `ListCard`, `ListRow`, `SearchInput`, `FullPageLoader`, `FullPageError` | Legacy helpers, restyled with tokens                                     |
+| Component                                                                                | Use for                                                                                         |
+| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `Button` / `LinkButton` / `IconButton`                                                   | Buttons (primary, secondary, ghost, danger, danger-solid, ghost-danger)                         |
+| `SplitButton`                                                                            | Primary action + menu of alternatives (e.g. "Termin anlegen")                                   |
+| `buttonClass()`                                                                          | Button styling for other elements (e.g. dialog triggers)                                        |
+| `Field` + `TextInput`/`TextArea`/`NativeSelect`                                          | Label, hint, error, aria wiring (`group` mode for composite controls)                           |
+| `Toggle`                                                                                 | On/off switch (`role="switch"`)                                                                 |
+| `Tag` / `TagBadge` / `TagBadgeRow`                                                       | Audience/property/feature labels (tones)                                                        |
+| `StatusBadge`                                                                            | Status as icon + word (published, draft, holiday, archived, ...)                                |
+| `Banner`                                                                                 | Persistent info/warning/danger/success notice                                                   |
+| `Toaster` / `toast`                                                                      | Short feedback (sonner, styled)                                                                 |
+| `EmptyState`                                                                             | Empty lists with explanation and next action                                                    |
+| `ConfirmDialog`                                                                          | Destructive confirmations incl. consequences                                                    |
+| `FormDialog`                                                                             | Dialog with a form (title, fields, footer; Enter submits, Escape closes)                        |
+| `Modal` / `ModalFrame` / `useModalInitialFocus`                                          | Large dialog with h1, subtitle, x button (`closeLabel`), sizes, form layout; steps in one frame |
+| `DialogFrame`                                                                            | Base dialog shell (scrim, focus trap, scroll lock, bottom sheet < 720px)                        |
+| `CopyField`                                                                              | URLs/secrets with copy feedback                                                                 |
+| `Chip` / `ChipSelect` / `FilterPillGroup`                                                | Toggle chips, multi-select with create, filters                                                 |
+| `EmojiPicker`                                                                            | Club-chosen symbols (presets, custom, emoji-mart lazy)                                          |
+| `Stepper`                                                                                | Setup progress                                                                                  |
+| `LangSwitch`                                                                             | Language (bound to i18next)                                                                     |
+| `ThemeSwitch`                                                                            | Hell / Dunkel / Wie System (profile, public pages)                                              |
+| `Skeleton`                                                                               | Loading placeholders (`aria-busy` on the region)                                                |
+| `ErrorSummary`                                                                           | Form error list with links to the fields, focus after a failed submit                           |
+| `UnsavedChangesDialog`                                                                   | "Änderungen verwerfen?" (with `useUnsavedChanges`)                                              |
+| `Logo`, `Icon`                                                                           | Brand mark, design glyphs                                                                       |
+| `SectionHeader`, `ListCard`, `ListRow`, `SearchInput`, `FullPageLoader`, `FullPageError` | Legacy helpers, restyled with tokens                                                            |
 
 For Mapbox maps: use `useMapbox` from `src/components/locations/useMapbox.ts`.
 

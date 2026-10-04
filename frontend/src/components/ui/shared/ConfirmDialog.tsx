@@ -76,7 +76,11 @@ export function ConfirmDialog({
     <AlertDialog open={open} onOpenChange={(next) => setOpen(next)}>
       {trigger && <AlertDialogPrimitive.Trigger render={trigger} />}
       <AlertDialogPortal>
-        <AlertDialogOverlay className="bg-scrim supports-backdrop-filter:backdrop-blur-none" />
+        {/* forceRender: also dim a dialog below (delete / unsaved above the event dialog). */}
+        <AlertDialogOverlay
+          forceRender
+          className="bg-scrim supports-backdrop-filter:backdrop-blur-none"
+        />
         <AlertDialogPrimitive.Popup
           initialFocus={cancelRef}
           className="ap-dialog fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2 outline-none max-[720px]:top-auto max-[720px]:bottom-0 max-[720px]:translate-y-0 max-[720px]:rounded-b-none"

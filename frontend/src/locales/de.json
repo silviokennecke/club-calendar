@@ -229,7 +229,6 @@
     },
     "footer": "Bereitgestellt mit Club Calendar",
     "event": {
-      "back": "Zurück zum Kalender",
       "date": "Datum",
       "time": "Uhrzeit",
       "timeRange": "{{from}} bis {{to}} Uhr",
@@ -247,7 +246,10 @@
       "notFound": {
         "title": "Termin nicht gefunden",
         "text": "Diesen Termin gibt es nicht mehr oder er ist nicht veröffentlicht."
-      }
+      },
+      "close": "Schließen",
+      "loadingTitle": "Termin wird geladen",
+      "backToFeed": "Zum Kalender"
     }
   },
   "calendar": {
@@ -613,7 +615,8 @@
         "timeBeginRequired": "Bitte gib eine Startzeit ein.",
         "timeEndRequired": "Bitte gib eine Endzeit ein.",
         "timeEndBeforeStart": "Die Endzeit liegt vor der Startzeit."
-      }
+      },
+      "loadingTitle": "Termin wird geladen"
     },
     "templatePick": {
       "title": "Vorlage wählen",

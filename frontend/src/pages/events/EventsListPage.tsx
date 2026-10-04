@@ -15,6 +15,7 @@ import {
   type StatusTab,
 } from "@/lib/events";
 import type { TargetGroup } from "@/lib/types";
+import { openModalState, type ModalNavState } from "@/lib/modalRoutes";
 import {
   Banner,
   Button,
@@ -74,7 +75,8 @@ export default function EventsListPage() {
   const selectedEvents = shown.filter((e) => selected.has(e.id));
   const groupList = groups.data ?? [];
   const toneOf = (id: string) => audienceTone(groupList.findIndex((g) => g.id === id));
-  const here = location.pathname + location.search;
+  // Event dialogs open above this list (with its tab, search and filter).
+  const modalState = openModalState(location);
 
   function setParam(key: "status" | "q", value: string) {
     // Router updates run in a transition: `prev` / `params` can still be the state before a
@@ -197,6 +199,7 @@ export default function EventsListPage() {
           query={query.trim()}
           canEdit={canEdit}
           routes={page.routes}
+          modalState={modalState}
           onReset={resetAll}
           onTab={pickTab}
         />
@@ -209,7 +212,7 @@ export default function EventsListPage() {
           events={shown}
           caption={t("events.list.caption", { calendar: page.calendar?.name ?? "" })}
           hrefOf={(ev) => page.routes.edit(ev.id)}
-          linkState={{ from: here }}
+          linkState={modalState}
           toneOf={toneOf}
           selected={canEdit ? selected : undefined}
           onToggle={canEdit ? toggle : undefined}
@@ -239,7 +242,7 @@ export default function EventsListPage() {
               icon="plus"
               className="ap-hide-m"
               to={page.routes.create()}
-              state={{ from: here }}
+              state={modalState}
             >
               {t("events.list.create")}
             </LinkButton>
@@ -389,7 +392,7 @@ export default function EventsListPage() {
       )}
 
       {canEdit && (
-        <LinkButton className="ap-fab" icon="plus" to={page.routes.create()} state={{ from: here }}>
+        <LinkButton className="ap-fab" icon="plus" to={page.routes.create()} state={modalState}>
           {t("events.list.create")}
         </LinkButton>
       )}
@@ -417,18 +420,21 @@ interface ListEmptyProps {
   query: string;
   canEdit: boolean;
   routes: ReturnType<typeof useEventPage>["routes"];
+  /** Router state that opens the create dialog above the list. */
+  modalState: ModalNavState;
   onReset: () => void;
   onTab: (tab: StatusTab) => void;
 }
 
 /** Empty states (design: EventsStates). */
-function ListEmpty({ kind, query, canEdit, routes, onReset, onTab }: ListEmptyProps) {
+function ListEmpty({ kind, query, canEdit, routes, modalState, onReset, onTab }: ListEmptyProps) {
   const { t } = useTranslation();
   const create = canEdit && (
     <LinkButton
       icon="plus"
       variant={kind === "noPublished" ? "secondary" : "primary"}
       to={routes.create()}
+      state={modalState}
     >
       {t("events.list.create")}
     </LinkButton>

@@ -348,3 +348,214 @@ test.describe("Kalender (Redesign)", () => {
     await expect(page.getByLabel("Startdatum (Pflicht)")).toHaveValue("2026-10-08");
   });
 });
+
+// ——— Event dialogs above the calendar (routed modals) ———
+
+test.describe("Termin-Dialoge", () => {
+  test.use({ locale: "de-DE", timezoneId: "Europe/Berlin" });
+
+  test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(new Date("2026-10-02T10:00:00+02:00"));
+  });
+
+  const focusInDialog = (page: Page) =>
+    page.evaluate(() => {
+      const dialog = document.querySelector('[role="dialog"]');
+      return !!dialog && dialog.contains(document.activeElement);
+    });
+
+  test("Anlegen am Tag: Datum vorbelegt, Kalender bleibt inert im Hintergrund, Fokus zurück", async ({
+    page,
+    request,
+  }) => {
+    const seeded = await seedCalendar(request, "Dialog Tag");
+    await openCalendar(page, seeded, "?date=2026-10-14");
+    const grid = page.getByRole("grid", { name: "Oktober 2026" });
+    await grid.getByRole("button", { name: /^14\. Oktober/ }).click();
+    const create = page.getByRole("button", { name: "Termin an diesem Tag anlegen" });
+    await create.click();
+
+    const dialog = page.getByRole("dialog", { name: "Neuer Termin" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveAttribute("aria-modal", "true");
+    await expect(page).toHaveURL(/\/events\/new\/form\?date=2026-10-14$/);
+    await expect(
+      dialog.getByText("Datum aus dem Kalender übernommen: Mi 14.10.2026."),
+    ).toBeVisible();
+    await expect(page.getByLabel("Startdatum (Pflicht)")).toHaveValue("2026-10-14");
+    await expect(page.getByLabel("Name (Pflicht)")).toBeFocused();
+
+    // The calendar stays visible below, but inert and hidden from assistive technology.
+    await expect(page.locator("[inert] .cc-cal, [inert] [role=grid]").first()).toBeAttached();
+    await expect(page.getByRole("grid")).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () =>
+          getComputedStyle(document.body).overflow === "hidden" ||
+          document.documentElement.style.overflow === "hidden" ||
+          getComputedStyle(document.documentElement).overflow === "hidden",
+      ),
+    ).toBe(true);
+
+    // Focus trap: Tab and Shift+Tab stay in the dialog.
+    for (let i = 0; i < 25; i++) {
+      await page.keyboard.press("Tab");
+      expect(await focusInDialog(page)).toBe(true);
+    }
+    for (let i = 0; i < 5; i++) {
+      await page.keyboard.press("Shift+Tab");
+      expect(await focusInDialog(page)).toBe(true);
+    }
+
+    // Escape without changes closes; focus returns to the trigger, the calendar is usable again.
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(page).toHaveURL(/\/calendars\/[^/]+\?date=2026-10-14$/);
+    await expect(create).toBeFocused();
+    await expect(page.getByRole("grid", { name: "Oktober 2026" })).toBeVisible();
+  });
+
+  test("Speichern schließt den Dialog und fokussiert den neuen Termin", async ({
+    page,
+    request,
+  }) => {
+    const seeded = await seedCalendar(request, "Dialog Speichern");
+    await openCalendar(page, seeded, "?date=2026-10-14");
+    await page
+      .getByRole("grid", { name: "Oktober 2026" })
+      .getByRole("button", { name: /^14\. Oktober/ })
+      .click();
+    await page.getByRole("button", { name: "Termin an diesem Tag anlegen" }).click();
+    await page.getByLabel("Name (Pflicht)").fill("Dialog Herbstfest");
+    await page.getByRole("button", { name: "Veröffentlicht", exact: true }).click();
+    await page.getByRole("button", { name: "Termin speichern" }).click();
+    await expect(page.getByText("Termin gespeichert.")).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page).toHaveURL(/\/calendars\/[^/]+\?date=2026-10-14$/);
+    const chip = page.getByTitle(/^Dialog Herbstfest/).first();
+    await expect(chip).toBeVisible();
+    await expect(page.locator("[data-event-id]:focus")).toContainText("Dialog Herbstfest");
+  });
+
+  test("Zurück im Browser schließt; Schritt zurück im Dialog; Deep-Link zeigt den Monat", async ({
+    page,
+    request,
+  }) => {
+    const seeded = await seedCalendar(request, "Dialog Zurueck");
+    await openCalendar(page, seeded);
+
+    // Chip opens the edit dialog above the calendar; the browser's back button closes it.
+    await page.getByTitle(/^Training Luftgewehr/).click();
+    const edit = page.getByRole("dialog", { name: "Termin bearbeiten" });
+    await expect(edit).toBeVisible();
+    await expect(edit).toContainText("Dialog Zurueck Verein Termine");
+    await expect(edit.getByText("Veröffentlicht").first()).toBeVisible();
+    await expect(edit.getByText("Änderungen sind sofort in den Feeds sichtbar.")).toBeVisible();
+    await expect(edit.getByRole("button", { name: "Termin löschen" })).toBeVisible();
+    const eventUrl = page.url();
+    await page.goBack();
+    await expect(edit).toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`${seeded.url}$`));
+
+    // Steps replace each other: choice -> template picker -> back -> choice; back closes.
+    await page.getByRole("button", { name: "Termin anlegen", exact: true }).click();
+    const create = page.getByRole("dialog", { name: "Termin anlegen" });
+    await create.getByRole("link", { name: /Aus Vorlage/ }).click();
+    await expect(page.getByRole("dialog", { name: "Vorlage wählen" })).toBeVisible();
+    await page.getByRole("link", { name: "Zurück" }).click();
+    await expect(create).toBeVisible();
+    await expect(create.getByRole("heading", { level: 1 })).toBeFocused();
+    await page.goBack();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`${seeded.url}$`));
+
+    // A deep link opens the dialog above the calendar at the event's month.
+    await page.goto(eventUrl.replace(/\?.*$/, ""));
+    await expect(page.getByRole("dialog", { name: "Termin bearbeiten" })).toBeVisible();
+    await expect(page.locator("[inert] h1")).toHaveText("Oktober 2026");
+    await page.getByRole("button", { name: "Schließen, Änderungen verwerfen" }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page).toHaveURL(/\?date=2026-10-08$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Oktober 2026");
+  });
+
+  test("Archiv: Termin schreibgeschützt im Dialog, Anlegen zeigt den Hinweis", async ({
+    page,
+    request,
+  }) => {
+    const seeded = await seedCalendar(request, "Dialog Archiv");
+    const headers = await authHeaders(request, seeded.email);
+    const res = await request.post(
+      `${API}/api/clubs/${seeded.clubId}/calendars/${seeded.calendarId}/archive`,
+      { headers },
+    );
+    expect(res.ok()).toBeTruthy();
+    await openCalendar(page, seeded);
+
+    await page.getByTitle(/^Training Luftgewehr/).click();
+    const view = page.getByRole("dialog", { name: "Termin ansehen" });
+    await expect(view).toBeVisible();
+    await expect(view.getByRole("heading", { level: 1 })).toBeFocused();
+    await expect(view.getByLabel("Name (Pflicht)")).toBeDisabled();
+    await expect(view.getByRole("button", { name: "Termin speichern" })).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(view).toHaveCount(0);
+
+    await page.goto(`${seeded.url}/events/new/form?date=2026-10-20`);
+    const notice = page.getByRole("dialog", { name: "Kalender archiviert" });
+    await expect(notice).toBeVisible();
+    await expect(notice.getByLabel("Name (Pflicht)")).toHaveCount(0);
+    await notice.getByRole("button", { name: "Schließen", exact: true }).last().click();
+    await expect(page).toHaveURL(/\?date=2026-10-20$/);
+  });
+
+  test("Mobil: Bottom-Sheet, Tap-Ziele, Kontrast hell und dunkel", async ({ page, request }) => {
+    const seeded = await seedCalendar(request, "Dialog Mobil");
+    await page.setViewportSize({ width: 390, height: 844 });
+    // Reduced motion: the sheet appears without sliding in.
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await openCalendar(page, seeded);
+    await page.locator(".ap-fab").click();
+    const sheet = page.getByRole("dialog", { name: "Termin anlegen" });
+    await expect(sheet).toBeVisible();
+    const box = (await sheet.boundingBox())!;
+    expect(Math.round(box.width)).toBe(390);
+    expect(Math.round(box.y + box.height)).toBe(844);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+    const close = (await sheet.getByRole("button", { name: "Schließen" }).boundingBox())!;
+    expect(close.height).toBeGreaterThanOrEqual(44);
+    expect(close.width).toBeGreaterThanOrEqual(44);
+
+    await sheet.getByRole("link", { name: /Neuer Termin/ }).click();
+    const form = page.getByRole("dialog", { name: "Neuer Termin" });
+    // Long form: the dialog scrolls, head reachable, footer sticks to the bottom.
+    const scrolls = await form.evaluate((el) => el.scrollHeight > el.clientHeight);
+    expect(scrolls).toBe(true);
+    const save = page.getByRole("button", { name: "Termin speichern" });
+    await expect(save).toBeInViewport();
+    const saveBox = (await save.boundingBox())!;
+    expect(saveBox.height).toBeGreaterThanOrEqual(44);
+
+    // Text and surface contrast of the dialog in light and dark mode (WCAG AA 4.5:1).
+    const contrast = () =>
+      form.evaluate((el) => {
+        const rgb = (c: string) => (c.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+        const lum = (c: string) => {
+          const [r, g, b] = rgb(c).map((v) => {
+            const s = v / 255;
+            return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+          });
+          return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        };
+        const style = getComputedStyle(el);
+        const h1 = getComputedStyle(el.querySelector("h1")!);
+        const [a, b] = [lum(h1.color), lum(style.backgroundColor)].sort((x, y) => y - x);
+        return (a + 0.05) / (b + 0.05);
+      });
+    expect(await contrast()).toBeGreaterThanOrEqual(4.5);
+    await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
+    expect(await contrast()).toBeGreaterThanOrEqual(4.5);
+  });
+});

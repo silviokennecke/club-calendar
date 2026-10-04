@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import EventFormPage from "../EventFormPage";
+import EventFormModal from "../EventFormModal";
 import { BASE, PATTERN, groups, makeEvent, renderRoute } from "./testUtils";
 
 const apiGet = vi.fn();
@@ -70,6 +70,8 @@ beforeEach(() => {
     if (path.endsWith("/templates")) return Promise.resolve([template]);
     if (path === "/api/calendars/k1/events/e1") return Promise.resolve(existing);
     if (path === "/api/calendars/k1/events/gone") return Promise.reject(new Error("API error 404"));
+    if (path === "/api/calendars/k1/events/foreign")
+      return Promise.reject(new Error("API error 403"));
     return Promise.resolve([]);
   });
   apiPost.mockResolvedValue({ id: "new" });
@@ -81,17 +83,66 @@ const newRoute = `${PATTERN}/events/new/form`;
 const editRoute = `${PATTERN}/events/:eventId`;
 
 function renderNew(query = "", state?: unknown) {
-  return renderRoute(newRoute, `${BASE}/events/new/form${query}`, <EventFormPage />, state);
+  return renderRoute(newRoute, `${BASE}/events/new/form${query}`, <EventFormModal />, state);
 }
 function renderEdit(id = "e1", state?: unknown) {
-  return renderRoute(editRoute, `${BASE}/events/${id}`, <EventFormPage />, state);
+  return renderRoute(editRoute, `${BASE}/events/${id}`, <EventFormModal />, state);
 }
 
-describe("EventFormPage – new event", () => {
+describe("EventFormModal – new event", () => {
+  it("opens as a form dialog and starts in the first field", async () => {
+    renderNew("?date=2026-10-14");
+    const name = await screen.findByLabelText(/^Name/);
+    const dialog = screen.getByRole("dialog", { name: "Neuer Termin" });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(dialog).toHaveClass("ap-dialog--xl", "ap-dialog--form");
+    expect(dialog).toHaveAccessibleDescription("Der neue Termin ist zunächst ein Entwurf.");
+    await waitFor(() => expect(name).toHaveFocus());
+  });
+
+  it("asks before Escape discards changes", async () => {
+    const user = userEvent.setup();
+    renderNew("?date=2026-10-14", { background: `${BASE}?date=2026-10-14` });
+    await user.type(await screen.findByLabelText(/^Name/), "Entwurf");
+    await user.keyboard("{Escape}");
+    const confirm = await screen.findByRole("alertdialog");
+    expect(confirm).toHaveTextContent("Änderungen verwerfen?");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(screen.getByRole("dialog", { name: "Neuer Termin" })).toBeVisible();
+    expect(screen.getByLabelText(/^Name/)).toHaveValue("Entwurf");
+
+    await user.keyboard("{Escape}");
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Änderungen verwerfen",
+      }),
+    );
+    expect(await screen.findByTestId("location")).toHaveTextContent(`${BASE}?date=2026-10-14`);
+  });
+
+  it("goes one step back to the choice and keeps the date", async () => {
+    const user = userEvent.setup();
+    renderNew("?date=2026-10-14");
+    await screen.findByLabelText(/^Name/);
+    await user.click(screen.getByRole("button", { name: "Zurück" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent(
+      `${BASE}/events/new?date=2026-10-14`,
+    );
+  });
+
+  it("shows the archive notice instead of the form in an archived calendar", async () => {
+    calendar = { ...calendar, archivedAt: "2026-01-01T00:00:00Z" };
+    renderNew("?date=2026-10-14");
+    expect(await screen.findByRole("dialog", { name: "Kalender archiviert" })).toBeVisible();
+    expect(screen.queryByLabelText(/^Name/)).toBeNull();
+  });
+
   it("validates on save, lists the errors with links and focuses the summary", async () => {
     const user = userEvent.setup();
     renderNew();
-    expect(await screen.findByRole("heading", { level: 1, name: "Neuer Termin" })).toBeVisible();
+    await screen.findByLabelText(/^Name/);
+    expect(screen.getByRole("heading", { level: 1, name: "Neuer Termin" })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Termin speichern" }));
 
     const summary = await screen.findByRole("alert");
@@ -112,7 +163,7 @@ describe("EventFormPage – new event", () => {
 
   it("creates a multi-day all-day event and returns to where it came from", async () => {
     const user = userEvent.setup();
-    renderNew("?date=2026-10-14", { from: `${BASE}?view=week&date=2026-10-14` });
+    renderNew("?date=2026-10-14", { background: `${BASE}?view=week&date=2026-10-14` });
     expect(
       await screen.findByText("Datum aus dem Kalender übernommen: Mi 14.10.2026."),
     ).toBeVisible();
@@ -223,7 +274,7 @@ describe("EventFormPage – new event", () => {
 
   it("asks before discarding unsaved changes", async () => {
     const user = userEvent.setup();
-    renderNew("?date=2026-10-14", { from: `${BASE}/events` });
+    renderNew("?date=2026-10-14", { background: `${BASE}/events` });
     await user.type(await screen.findByLabelText(/^Name/), "Entwurf");
     await user.click(screen.getByRole("button", { name: "Schließen, Termin verwerfen" }));
     const dialog = await screen.findByRole("alertdialog");
@@ -244,18 +295,24 @@ describe("EventFormPage – new event", () => {
   it("closes without asking when nothing changed", async () => {
     const user = userEvent.setup();
     renderNew("?date=2026-10-14");
-    await user.click(await screen.findByRole("button", { name: "Schließen, Termin verwerfen" }));
-    expect(await screen.findByTestId("location")).toHaveTextContent(BASE);
+    await screen.findByLabelText(/^Name/);
+    await user.click(screen.getByRole("button", { name: "Schließen, Termin verwerfen" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent(`${BASE}?date=2026-10-14`);
   });
 });
 
-describe("EventFormPage – edit", () => {
+describe("EventFormModal – edit", () => {
   it("loads the event, shows status and saves changes with PATCH", async () => {
     const user = userEvent.setup();
-    renderEdit("e1", { from: `${BASE}/events?status=published` });
+    renderEdit("e1", { background: `${BASE}/events?status=published` });
     const name = await screen.findByLabelText(/^Name/);
     expect(name).toHaveValue("Herbstfest");
     expect(screen.getByRole("heading", { level: 1, name: "Termin bearbeiten" })).toBeVisible();
+    const dialog = screen.getByRole("dialog", { name: "Termin bearbeiten" });
+    expect(dialog).toHaveAccessibleDescription("Schießbetrieb 2026");
+    expect(
+      within(dialog).getByRole("button", { name: "Schließen, Änderungen verwerfen" }),
+    ).toBeVisible();
     expect(screen.getByText("Änderungen sind sofort in den Feeds sichtbar.")).toBeVisible();
     await user.clear(name);
     await user.type(name, "Herbstfest 2026");
@@ -288,7 +345,9 @@ describe("EventFormPage – edit", () => {
   it("is read-only in an archived calendar", async () => {
     calendar = { ...calendar, archivedAt: "2026-01-01T00:00:00Z" };
     renderEdit();
-    expect(await screen.findByRole("heading", { level: 1, name: "Termin ansehen" })).toBeVisible();
+    const heading = await screen.findByRole("heading", { level: 1, name: "Termin ansehen" });
+    expect(screen.getByRole("dialog", { name: "Termin ansehen" })).toBeVisible();
+    await waitFor(() => expect(heading).toHaveFocus());
     expect(
       screen.getByText("Der Kalender ist archiviert. Der Termin lässt sich nicht ändern."),
     ).toBeVisible();
@@ -304,5 +363,24 @@ describe("EventFormPage – edit", () => {
       "href",
       `${BASE}/events`,
     );
+  });
+
+  it("treats an event without access (403) as not found, not as a network error", async () => {
+    renderEdit("foreign");
+    expect(await screen.findByRole("heading", { name: "Termin nicht gefunden" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Erneut laden" })).toBeNull();
+  });
+
+  it("shows a load error instead of the form when the calendar cannot be loaded", async () => {
+    const base = apiGet.getMockImplementation()!;
+    apiGet.mockImplementation((path: string) =>
+      path === "/api/clubs/c1/calendars/k1"
+        ? Promise.reject(new Error("API error 404"))
+        : base(path),
+    );
+    renderRoute(newRoute, `${BASE}/events/new/form`, <EventFormModal />);
+    expect(await screen.findByText("Der Kalender wurde nicht geladen")).toBeVisible();
+    expect(screen.queryByLabelText(/^Name/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Erneut laden" })).toBeVisible();
   });
 });

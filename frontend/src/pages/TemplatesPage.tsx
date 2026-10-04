@@ -19,6 +19,7 @@ import {
   toast,
 } from "@/components/ui/shared";
 import { useEventPage } from "@/components/events/useEventPage";
+import { openModalState } from "@/lib/modalRoutes";
 import { audienceTone } from "@/components/calendar/eventDisplay";
 import { locationName } from "@/lib/events";
 
@@ -206,7 +207,7 @@ export default function TemplatesPage() {
                   <LinkButton
                     variant="secondary"
                     to={page.routes.fromTemplate(tpl.id)}
-                    state={{ from: here }}
+                    state={openModalState(location)}
                   >
                     {t("templates.useTemplate")}
                   </LinkButton>

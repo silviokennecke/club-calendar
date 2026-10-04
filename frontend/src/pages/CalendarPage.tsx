@@ -45,6 +45,7 @@ import { useLocale } from "@/components/calendar/useLocale";
 import { audienceTone } from "@/components/calendar/eventDisplay";
 import type { EventItemTag } from "@/components/calendar/EventItem";
 import { eventRoutes } from "@/components/events/routes";
+import { openModalState } from "@/lib/modalRoutes";
 
 /**
  * Calendar (design: Calendar, CalendarWeek, CalendarArchived, CalendarStates, CalendarMobile).
@@ -153,17 +154,17 @@ export default function CalendarPage() {
         })
       : formatMonthTitle(yearMonthOf(anchor), locale);
 
-  // ——— Events (own pages; "from" brings close / save back to this view and date) ———
+  // ——— Events (dialogs above this view and date: router state `background`) ———
   const base = `/clubs/${clubId}/calendars/${calendarId}`;
   const routes = eventRoutes(base);
-  const navState = { from: location.pathname + location.search };
+  const navState = openModalState(location);
 
   /** "Termin anlegen": choice blank / template / import (design: EventNew). */
   function openCreate(date?: string) {
     routerNavigate(routes.create(date), { state: navState });
   }
 
-  /** Day panel "Termin an diesem Tag anlegen": straight to the form with the date. */
+  /** Day panel "Termin am … anlegen": straight to the form with the date. */
   function openCreateOnDay(date: IsoDate) {
     routerNavigate(routes.form(date), { state: navState });
   }

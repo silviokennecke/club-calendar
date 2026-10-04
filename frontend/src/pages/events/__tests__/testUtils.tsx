@@ -40,20 +40,26 @@ function Probe() {
   return <div data-testid="location">{loc.pathname + loc.search}</div>;
 }
 
-/** Renders one event route inside a router; other paths show a location probe. */
+function entry(url: string, state?: unknown) {
+  return {
+    pathname: url.split("?")[0],
+    search: url.includes("?") ? `?${url.split("?")[1]}` : "",
+    state,
+  };
+}
+
+/**
+ * Renders one event route inside a router; other paths show a location probe. With a router
+ * state `{ background }` (a dialog opened from that page) the background page is the history
+ * entry before, so closing the dialog (history back) lands there.
+ */
 export function renderRoute(path: string, url: string, element: ReactElement, state?: unknown) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const background = (state as { background?: string } | undefined)?.background;
+  const entries = background ? [entry(background), entry(url, state)] : [entry(url, state)];
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter
-        initialEntries={[
-          {
-            pathname: url.split("?")[0],
-            search: url.includes("?") ? `?${url.split("?")[1]}` : "",
-            state,
-          },
-        ]}
-      >
+      <MemoryRouter initialEntries={entries} initialIndex={entries.length - 1}>
         <Routes>
           <Route path={path} element={element} />
           <Route path="*" element={<Probe />} />

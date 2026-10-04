@@ -119,10 +119,16 @@ test.describe("Vorlagen", () => {
       .filter({ hasText: "Training Luftgewehr (Halle)" })
       .getByRole("link", { name: "Termin aus Vorlage" })
       .click();
-    await expect(page.getByRole("heading", { level: 1, name: "Termin aus Vorlage" })).toBeVisible();
+    // A dialog above the template list (which stays below, inert).
+    const fromTemplate = page.getByRole("dialog", { name: "Termin aus Vorlage" });
+    await expect(fromTemplate).toBeVisible();
+    await expect(fromTemplate).toContainText("Training Luftgewehr (Halle)");
+    await expect(page.locator("[inert] h1")).toBeAttached();
     await page.getByLabel("Datum (Pflicht)").fill("2026-10-22");
     await page.getByRole("button", { name: "1 Termin als Entwurf anlegen" }).click();
     await expect(page.getByText("Termin angelegt.")).toBeVisible();
+    await expect(fromTemplate).toHaveCount(0);
+    await expect(page).toHaveURL(/\/templates$/);
     await page.goto(`${seeded.base}/events`);
     const created = page.getByRole("row").filter({ hasText: "22.10.2026" });
     await expect(created).toContainText("Training Luftgewehr (Halle)");

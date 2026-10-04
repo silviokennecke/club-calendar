@@ -229,7 +229,6 @@
     },
     "footer": "Provided with Club Calendar",
     "event": {
-      "back": "Back to calendar",
       "date": "Date",
       "time": "Time",
       "timeRange": "{{from}} to {{to}}",
@@ -247,7 +246,10 @@
       "notFound": {
         "title": "Event not found",
         "text": "This event no longer exists or is not published."
-      }
+      },
+      "close": "Close",
+      "loadingTitle": "Loading event",
+      "backToFeed": "Back to the calendar"
     }
   },
   "calendar": {
@@ -613,7 +615,8 @@
         "timeBeginRequired": "Please enter a start time.",
         "timeEndRequired": "Please enter an end time.",
         "timeEndBeforeStart": "The end time is before the start time."
-      }
+      },
+      "loadingTitle": "Loading event"
     },
     "templatePick": {
       "title": "Choose template",

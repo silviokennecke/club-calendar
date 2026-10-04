@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useRef } from "react";
-import { useLocation, useParams, useSearchParams } from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { formatWeekdayDate } from "@/lib/events/format";
 import { buildEventIcs, downloadTextFile, icsFileName } from "@/lib/events/ics";
@@ -8,93 +8,111 @@ import {
   feedTimeZone,
   findPublicEvent,
   mapLinkFor,
-  publicBackPath,
+  publicFeedPath,
   type PublicFeedEvent,
 } from "@/lib/feeds/public";
 import { formatAddress } from "@/lib/types";
+import { useModalNav } from "@/lib/useModalNav";
 import { audienceTone } from "@/components/calendar/eventDisplay";
 import { useLocale } from "@/components/calendar/useLocale";
-import { PublicShell } from "@/components/feed/PublicShell";
-import { PublicError, PublicLoading } from "@/components/feed/PublicStates";
+import { ModalSkeleton } from "@/components/events/CreateGate";
 import { usePublicFeed } from "@/components/feed/usePublicFeed";
+import { usePublicHead } from "@/components/feed/usePublicHead";
 import { MapBoundary } from "@/components/locations/MapBoundary";
-import {
-  Button,
-  EmptyState,
-  Icon,
-  LinkButton,
-  Skeleton,
-  Tag,
-  buttonClass,
-} from "@/components/ui/shared";
+import { Button, Icon, Modal, Skeleton, Tag, buttonClass } from "@/components/ui/shared";
 
 const PublicEventMap = lazy(() => import("@/components/feed/PublicEventMap"));
 
 /**
- * Public event page (design: PublicEvent, PublicEventMobile): date and time, place with map and
- * text alternative, properties, features and audiences, "Zum Kalender hinzufügen" (one-event ICS
- * file made in the browser) and the way back. The feed endpoint has no single-event route, the
- * event is picked from the feed (shared query cache with the calendar page).
+ * Public event details (design: PublicEvent, PublicEventMobile) as a dialog above the public feed;
+ * the URL /feed/:feedId/events/:eventId stays shareable (a direct call shows the feed below, at the
+ * event's month). Date and time, place with map and text alternative, properties, features and
+ * audiences, "Zum Kalender hinzufügen" (one-event ICS file made in the browser). The feed endpoint
+ * has no single-event route, the event is picked from the feed (shared query cache with the feed).
+ * The router state keeps the way back without the secret; the secret comes from the address.
  */
-export default function PublicEventPage() {
+export default function PublicEventModal() {
   const { t } = useTranslation();
-  const { feedId, eventId } = useParams<{ feedId: string; eventId: string }>();
+  const { feedId = "", eventId } = useParams<{ feedId: string; eventId: string }>();
   const [params] = useSearchParams();
   const secret = params.get("secret") || undefined;
   const feed = usePublicFeed(feedId, secret);
-  const location = useLocation();
+  const nav = useModalNav();
 
-  if (feed.isPending)
+  const event = feed.data ? findPublicEvent(feed.data.events, eventId) : undefined;
+  const eventDate = event?.date.slice(0, 10);
+  const { hasStoredBackground, setBackground } = nav;
+  // A shared link: show the feed at the event's month below the dialog (stored without the secret).
+  useEffect(() => {
+    if (!eventDate || hasStoredBackground) return;
+    setBackground(publicFeedPath(feedId, undefined, { date: eventDate }));
+  }, [eventDate, hasStoredBackground, setBackground, feedId]);
+
+  const title = event
+    ? `${event.name} – ${feed.data!.feed.name}`
+    : feed.data
+      ? t("feed.event.notFound.title")
+      : t("feed.brand");
+  // Private feeds (secret in the address) and states without an event are not indexed.
+  usePublicHead({ title, noindex: !!secret || !event });
+
+  const close = t("feed.event.close");
+
+  if (feed.isPending) {
     return (
-      <PublicShell noindex>
-        <PublicLoading />
-      </PublicShell>
+      <Modal
+        size="wide"
+        title={t("feed.event.loadingTitle")}
+        closeLabel={close}
+        onClose={nav.close}
+      >
+        <ModalSkeleton label={t("feed.loading")} />
+      </Modal>
     );
-  if (!feed.data)
-    return (
-      <PublicShell noindex>
-        <PublicError kind={feed.errorKind ?? "error"} onRetry={() => void feed.refetch()} />
-      </PublicShell>
-    );
+  }
 
-  const event = findPublicEvent(feed.data.events, eventId);
-  // The way back keeps month and filter (router state without the secret) and the secret of the address.
-  const backTo = publicBackPath(
-    feedId!,
-    secret,
-    (location.state as { from?: string } | null)?.from,
-    { date: event?.date.slice(0, 10) },
-  );
-
-  if (!event) {
+  if (!feed.data || !event) {
+    // The feed itself failed (private, unknown, load error) or the event is unknown / a draft.
+    const kind = feed.data ? "eventNotFound" : (feed.errorKind ?? "error");
+    const titleKey =
+      kind === "eventNotFound"
+        ? "feed.event.notFound.title"
+        : kind === "private"
+          ? "feed.states.private.title"
+          : kind === "notFound"
+            ? "feed.states.notFound.title"
+            : "feed.states.error.title";
+    const textKey =
+      kind === "eventNotFound"
+        ? "feed.event.notFound.text"
+        : kind === "private"
+          ? "feed.states.private.text"
+          : kind === "notFound"
+            ? "feed.states.notFound.text"
+            : "feed.states.error.text";
     return (
-      <PublicShell noindex>
-        <div style={{ padding: "var(--space-8) 0" }}>
-          <EmptyState
-            headingLevel="h1"
-            title={t("feed.event.notFound.title")}
-            text={t("feed.event.notFound.text")}
-            actions={
-              <LinkButton icon="arrow-left" to={backTo}>
-                {t("feed.event.back")}
-              </LinkButton>
-            }
-          />
+      <Modal size="wide" title={t(titleKey)} closeLabel={close} onClose={nav.close}>
+        <p className="t-body">{t(textKey)}</p>
+        <div className="ap-dialog-foot">
+          {kind === "error" && (
+            <Button variant="secondary" icon="refresh" onClick={() => void feed.refetch()}>
+              {t("feed.states.error.retry")}
+            </Button>
+          )}
+          <Button onClick={nav.close}>{t("feed.event.backToFeed")}</Button>
         </div>
-      </PublicShell>
+      </Modal>
     );
   }
 
   return (
-    <PublicShell title={`${event.name} – ${feed.data.feed.name}`} noindex={!!secret}>
-      <EventDetail
-        event={event}
-        feedName={feed.data.feed.name}
-        zone={feedTimeZone(feed.data.events)}
-        audiences={feedAudiences(feed.data.events)}
-        backTo={backTo}
-      />
-    </PublicShell>
+    <EventDetail
+      event={event}
+      feedName={feed.data.feed.name}
+      zone={feedTimeZone(feed.data.events)}
+      audiences={feedAudiences(feed.data.events)}
+      onClose={nav.close}
+    />
   );
 }
 
@@ -103,17 +121,12 @@ interface EventDetailProps {
   feedName: string;
   zone: string | null;
   audiences: { id: string; name: string }[];
-  backTo: string;
+  onClose: () => void;
 }
 
-function EventDetail({ event, feedName, zone, audiences, backTo }: EventDetailProps) {
+function EventDetail({ event, feedName, zone, audiences, onClose }: EventDetailProps) {
   const { t } = useTranslation();
   const locale = useLocale();
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  // The calendar item that opened this page is gone: start at the event's title.
-  useEffect(() => {
-    headingRef.current?.focus({ preventScroll: true });
-  }, [event.id]);
   const start = event.date.slice(0, 10);
   const end = event.dateEnd ? event.dateEnd.slice(0, 10) : start;
   const dateText =
@@ -148,35 +161,25 @@ function EventDetail({ event, feedName, zone, audiences, backTo }: EventDetailPr
   }
 
   return (
-    <article
-      className="ap-stack ap-stack--lg"
-      style={{ padding: "var(--space-6) 0 var(--space-4)" }}
+    <Modal
+      size="wide"
+      title={event.name}
+      titleAside={
+        icons.length > 0 && (
+          <span
+            className="ap-ico"
+            style={{ fontSize: 20 }}
+            role="img"
+            aria-label={icons.map((p) => p.property.name).join(", ")}
+          >
+            {icons.map((p) => p.property.icon).join("")}
+          </span>
+        )
+      }
+      subtitle={feedName}
+      closeLabel={t("feed.event.close")}
+      onClose={onClose}
     >
-      <div>
-        <LinkButton variant="ghost" icon="arrow-left" to={backTo} state={{ back: true }}>
-          {t("feed.event.back")}
-        </LinkButton>
-      </div>
-
-      <header className="ap-stack ap-stack--sm">
-        <div className="ap-row" style={{ gap: "var(--space-2)" }}>
-          <h1 className="t-h1" ref={headingRef} tabIndex={-1}>
-            {event.name}
-          </h1>
-          {icons.length > 0 && (
-            <span
-              className="ap-ico"
-              style={{ fontSize: 24 }}
-              role="img"
-              aria-label={icons.map((p) => p.property.name).join(", ")}
-            >
-              {icons.map((p) => p.property.icon).join("")}
-            </span>
-          )}
-        </div>
-        <p className="t-sm t-muted">{feedName}</p>
-      </header>
-
       <dl className="ap-cols-2" style={{ margin: 0 }}>
         <div className="ap-datafield">
           <dt>{t("feed.event.date")}</dt>
@@ -292,14 +295,15 @@ function EventDetail({ event, feedName, zone, audiences, backTo }: EventDetailPr
         </div>
       )}
 
-      <div className="ap-stack ap-stack--sm">
-        <div>
-          <Button icon="calendar" onClick={addToCalendar}>
-            {t("feed.event.addToCalendar")}
-          </Button>
-        </div>
-        <p className="t-sm t-muted">{t("feed.event.addToCalendarHint")}</p>
+      <p className="t-sm t-muted">{t("feed.event.addToCalendarHint")}</p>
+      <div className="ap-dialog-foot">
+        <Button variant="secondary" onClick={onClose}>
+          {t("feed.event.close")}
+        </Button>
+        <Button icon="calendar" onClick={addToCalendar}>
+          {t("feed.event.addToCalendar")}
+        </Button>
       </div>
-    </article>
+    </Modal>
   );
 }

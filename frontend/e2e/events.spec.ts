@@ -117,8 +117,15 @@ test.describe("Termine", () => {
     await openList(page, seeded);
 
     await page.getByRole("link", { name: "Termin anlegen" }).first().click();
-    await page.getByRole("link", { name: /Neuer Termin/ }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Neuer Termin" })).toBeFocused();
+    const choice = page.getByRole("dialog", { name: "Termin anlegen" });
+    await expect(choice).toBeVisible();
+    await expect(choice.getByRole("heading", { level: 1 })).toBeFocused();
+    await choice.getByRole("link", { name: /Neuer Termin/ }).click();
+    // Same dialog, next step: the form starts in its first field.
+    const dialog = page.getByRole("dialog", { name: "Neuer Termin" });
+    await expect(dialog).toHaveAttribute("aria-modal", "true");
+    await expect(page.getByLabel("Name (Pflicht)")).toBeFocused();
+    await expect(page).toHaveURL(/\/events\/new\/form$/);
 
     await page.getByRole("button", { name: "Termin speichern" }).click();
     const summary = page
@@ -237,21 +244,28 @@ test.describe("Termine", () => {
 
     await rowLink(page, "Jugendtraining").click();
     await page.getByLabel("Name (Pflicht)").fill("Jugendtraining neu");
-    await page
-      .getByRole("navigation", { name: "Bereiche" })
-      .getByRole("link", { name: "Vorlagen" })
-      .click();
+    // Escape asks first.
+    await page.keyboard.press("Escape");
     const dialog = page.getByRole("alertdialog");
     await expect(dialog).toContainText("Änderungen verwerfen?");
     await dialog.getByRole("button", { name: "Weiter bearbeiten" }).click();
+    await expect(page.getByLabel("Name (Pflicht)")).toHaveValue("Jugendtraining neu");
+    // So does the browser's back button; the dialog stays open.
+    await page.goBack();
+    await expect(page.getByRole("alertdialog")).toContainText("Änderungen verwerfen?");
+    await page.getByRole("alertdialog").getByRole("button", { name: "Weiter bearbeiten" }).click();
+    await expect(page.getByRole("dialog", { name: "Termin bearbeiten" })).toBeVisible();
+    await expect(page).toHaveURL(/\/events\/[0-9a-f-]{36}$/);
     await expect(page.getByLabel("Name (Pflicht)")).toHaveValue("Jugendtraining neu");
     await page.getByRole("button", { name: "Schließen, Änderungen verwerfen" }).click();
     await page
       .getByRole("alertdialog")
       .getByRole("button", { name: "Änderungen verwerfen" })
       .click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 1, name: "Alle Termine" })).toBeVisible();
     await expect(rowLink(page, "Jugendtraining")).toBeVisible();
+    await expect(rowLink(page, "Jugendtraining")).toBeFocused();
 
     await page.getByRole("link", { name: "Termine exportieren" }).click();
     await expect(
@@ -290,6 +304,13 @@ test.describe("Termine", () => {
     await expect(fab).toBeVisible();
     await fab.click();
     await page.getByRole("link", { name: /Neuer Termin/ }).click();
+    // Bottom sheet: full width, anchored at the bottom, no horizontal scrolling.
+    const sheet = await page.getByRole("dialog", { name: "Neuer Termin" }).boundingBox();
+    expect(sheet!.width).toBeCloseTo(390, 0);
+    expect(sheet!.y + sheet!.height).toBeCloseTo(900, 0);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
     await page.getByLabel("Name (Pflicht)").fill("Mobil angelegt");
     await page.getByLabel("Startdatum (Pflicht)").fill("2026-10-09");
     const save = page.getByRole("button", { name: "Termin speichern" });

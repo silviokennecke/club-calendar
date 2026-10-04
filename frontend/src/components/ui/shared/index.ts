@@ -23,6 +23,8 @@ export { toast } from "sonner";
 export { EmptyState } from "./EmptyState";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { FormDialog } from "./FormDialog";
+export { DialogFrame, Modal, ModalFrame, useModalInitialFocus } from "./Modal";
+export type { ModalProps } from "./Modal";
 export { CopyField } from "./CopyField";
 export { Chip, ChipSelect } from "./ChipSelect";
 export type { ChipOption } from "./ChipSelect";

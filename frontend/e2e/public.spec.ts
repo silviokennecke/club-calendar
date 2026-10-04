@@ -220,22 +220,26 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(page).toHaveURL(
       new RegExp(`/feed/${seed.publicFeedId}/events/${seed.herbstfestId}`),
     );
-    await expect(page.getByRole("heading", { level: 1, name: "Herbstfest" })).toBeFocused();
-    await expect(page.getByText("Sa 24.10.2026")).toBeVisible();
-    await expect(page.getByText("15:00 bis 22:00 Uhr")).toBeVisible();
-    const place = page.getByRole("region", { name: "Ort" });
+    // Details open as a dialog above the feed (design: PublicEvent).
+    const dialog = page.getByRole("dialog", { name: "Herbstfest" });
+    await expect(dialog).toHaveAttribute("aria-modal", "true");
+    await expect(dialog.getByRole("heading", { level: 1, name: "Herbstfest" })).toBeFocused();
+    await expect(page.locator("[inert]").getByText(seed.feedName).first()).toBeAttached();
+    await expect(dialog.getByText("Sa 24.10.2026")).toBeVisible();
+    await expect(dialog.getByText("15:00 bis 22:00 Uhr")).toBeVisible();
+    const place = dialog.getByRole("region", { name: "Ort" });
     await expect(place.getByText("Vereinsheim Mitte")).toBeVisible();
     await expect(place.getByText(/Marktplatz 5, 12345 Musterstadt/)).toBeVisible();
     await expect(place.getByRole("link", { name: "In Karten-App öffnen" })).toHaveAttribute(
       "href",
       /openstreetmap\.org/,
     );
-    await expect(page.getByRole("region", { name: "Eigenschaften" })).toContainText("Draußen");
-    await expect(page.getByRole("region", { name: "Features" })).toContainText("Getränkeverkauf");
-    await expect(page.getByRole("region", { name: "Zielgruppen" })).toContainText("Jugend");
+    await expect(dialog.getByRole("region", { name: "Eigenschaften" })).toContainText("Draußen");
+    await expect(dialog.getByRole("region", { name: "Features" })).toContainText("Getränkeverkauf");
+    await expect(dialog.getByRole("region", { name: "Zielgruppen" })).toContainText("Jugend");
     // Einzeltermin als ICS
     const download = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Zum Kalender hinzufügen" }).click();
+    await dialog.getByRole("button", { name: "Zum Kalender hinzufügen" }).click();
     const file = await download;
     expect(file.suggestedFilename()).toBe("herbstfest.ics");
     const path = await file.path();
@@ -243,12 +247,14 @@ test.describe("Öffentlicher Kalender", () => {
     expect(text).toContain(`UID:event-${seed.herbstfestId}@club-calendar`);
     expect(text).toContain("DTSTART:20261024T130000Z");
     expect(text.match(/BEGIN:VEVENT/g)).toHaveLength(1);
-    // Zurück: Monat, Ansicht und Filter bleiben
-    await page.getByRole("link", { name: "Zurück zum Kalender" }).click();
+    // Schließen: Monat, Ansicht und Filter bleiben, Fokus zurück auf den Termin in der Liste
+    await dialog.getByRole("button", { name: "Schließen" }).last().click();
+    await expect(dialog).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 1, name: seed.feedName })).toBeVisible();
-    // Das angeklickte Listenelement ist weg: Fokus auf dem Monatstitel statt am Seitenanfang
     await expect(
-      page.getByRole("heading", { level: 2, name: "Oktober 2026", exact: true }),
+      page
+        .getByRole("region", { name: "Termine im Oktober 2026" })
+        .getByRole("button", { name: "Herbstfest" }),
     ).toBeFocused();
     await expect(page.getByRole("button", { name: "Liste" })).toHaveAttribute(
       "aria-pressed",
@@ -258,6 +264,22 @@ test.describe("Öffentlicher Kalender", () => {
       "aria-pressed",
       "true",
     );
+    // Escape und Zurück im Browser schließen ebenfalls.
+    await page
+      .getByRole("region", { name: "Termine im Oktober 2026" })
+      .getByRole("button", { name: "Herbstfest" })
+      .click();
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await page
+      .getByRole("region", { name: "Termine im Oktober 2026" })
+      .getByRole("button", { name: "Herbstfest" })
+      .click();
+    await expect(dialog).toBeVisible();
+    await page.goBack();
+    await expect(dialog).toHaveCount(0);
+    await expect(page).toHaveURL(/view=list/);
   });
 
   test("Zustände: unbekannter Feed, privat ohne und mit falschem Geheimnis", async ({ page }) => {
@@ -299,6 +321,42 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(page.getByRole("heading", { level: 1, name: seed.feedName })).toBeVisible();
   });
 
+  test("geteilter Link auf einen Termin: Dialog über dem Feed im Monat des Termins", async ({
+    page,
+  }) => {
+    await page.goto(
+      `/feed/${seed.privateFeedId}/events/${seed.herbstfestId}?secret=${seed.secret}`,
+    );
+    const dialog = page.getByRole("dialog", { name: "Herbstfest" });
+    await expect(dialog).toBeVisible();
+    await expect(page.locator('meta[name="robots"]').last()).toHaveAttribute("content", /noindex/);
+    expect(await page.title()).not.toContain(seed.secret);
+    // The feed below shows the event's month; history state never holds the secret.
+    await expect(
+      page
+        .locator("[inert]")
+        .getByRole("heading", { level: 2, name: "Oktober 2026", includeHidden: true }),
+    ).toBeAttached();
+    expect(JSON.stringify(await page.evaluate(() => window.history.state))).not.toContain(
+      seed.secret,
+    );
+    await dialog.getByRole("button", { name: "Schließen" }).first().click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page).toHaveURL(
+      new RegExp(`/feed/${seed.privateFeedId}\\?date=2026-10-24&secret=${seed.secret}$`),
+    );
+    await expect(page.getByRole("heading", { level: 1, name: "Vorstand intern" })).toBeVisible();
+
+    // Unknown (or draft) event: "not found" in the dialog, the feed stays below.
+    await page.goto(`/feed/${seed.privateFeedId}/events/unbekannt?secret=${seed.secret}`);
+    const missing = page.getByRole("dialog", { name: "Termin nicht gefunden" });
+    await expect(missing).toBeVisible();
+    await missing.getByRole("button", { name: "Zum Kalender" }).click();
+    await expect(page).toHaveURL(
+      new RegExp(`/feed/${seed.privateFeedId}\\?secret=${seed.secret}$`),
+    );
+  });
+
   test("privater Feed mit Geheimnis: Inhalt, Adresse mit Geheimnis, kein Leak (Titel, Referrer, Dritte)", async ({
     page,
   }) => {
@@ -327,20 +385,22 @@ test.describe("Öffentlicher Kalender", () => {
       .getByRole("region", { name: "Termine im Oktober 2026" })
       .getByRole("button", { name: "Herbstfest" })
       .click();
-    await expect(page.getByRole("heading", { level: 1, name: "Herbstfest" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Herbstfest" })).toBeVisible();
     await expect(page).toHaveURL(new RegExp(`secret=${seed.secret}`));
     expect(await page.title()).not.toContain(seed.secret);
     // Router-State (history.state) trägt das Geheimnis nicht; der Rückweg setzt es aus der Adresse wieder ein
     expect(JSON.stringify(await page.evaluate(() => window.history.state))).not.toContain(
       seed.secret,
     );
-    await page.getByRole("link", { name: "Zurück zum Kalender" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Schließen" }).last().click();
     await expect(page).toHaveURL(
       new RegExp(`/feed/${seed.privateFeedId}\\?.*secret=${seed.secret}`),
     );
     await expect(
       page.getByRole("grid").or(page.getByRole("region", { name: /Termine im/ })),
     ).toBeVisible();
+    // Focus returns to the list item that opened the dialog.
+    await expect(page.getByRole("button", { name: "Herbstfest" })).toBeFocused();
     await page.waitForTimeout(500);
     // Kein Request an eine andere Herkunft (API, Karten-Proxy) trägt die Seitenadresse als Referer;
     // gleiche Herkunft (die App selbst vor dem ersten Rendern) ist unkritisch.
@@ -427,12 +487,27 @@ test.describe("Öffentlicher Kalender", () => {
         .getByRole("region", { name: "Termine im Oktober 2026" })
         .getByRole("button", { name: "Herbstfest" })
         .click();
-      await expect(page.getByRole("heading", { level: 1, name: "Herbstfest" })).toBeVisible();
+      const sheet = page.getByRole("dialog", { name: "Herbstfest" });
+      await expect(sheet).toBeVisible();
       expect(await noOverflow()).toBe(true);
-      for (const name of ["Zurück zum Kalender", "In Karten-App öffnen"]) {
-        const box = await page.getByRole("link", { name }).boundingBox();
-        expect(box!.height).toBeGreaterThanOrEqual(44);
+      // Bottom sheet: full width, at the bottom of the screen.
+      await expect
+        .poll(async () => {
+          const b = (await sheet.boundingBox())!;
+          return [Math.round(b.width), Math.round(b.y + b.height)];
+        })
+        .toEqual([390, 844]);
+      for (const target of [
+        sheet.getByRole("link", { name: "In Karten-App öffnen" }),
+        sheet.getByRole("button", { name: "Zum Kalender hinzufügen" }),
+        ...(await sheet.getByRole("button", { name: "Schließen" }).all()),
+      ]) {
+        const box = (await target.boundingBox())!;
+        expect(box.height).toBeGreaterThanOrEqual(44);
+        expect(box.width).toBeGreaterThanOrEqual(44);
       }
+      await sheet.getByRole("button", { name: "Schließen" }).first().click();
+      await expect(sheet).toHaveCount(0);
       // Dunkel
       await page.getByRole("button", { name: "Dunkel" }).click();
       expect(await noOverflow()).toBe(true);

@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiGet, apiPost, getHolidayEvents } from "@/lib/api";
@@ -20,17 +20,19 @@ import {
   EmptyState,
   Field,
   LinkButton,
+  Modal,
   NativeSelect,
-  Skeleton,
   StatusBadge,
   TextInput,
   toast,
 } from "@/components/ui/shared";
-import { EventPageHead } from "@/components/events/EventPageHead";
 import { StatusSeg } from "@/components/events/StatusSeg";
 import { useEventPage } from "@/components/events/useEventPage";
 import { useLocale } from "@/components/calendar/useLocale";
-import { ArchivedCreateGuard } from "@/components/events/ArchivedCreateGuard";
+import { CreateGateBody, ModalSkeleton } from "@/components/events/CreateGate";
+import { createGate } from "@/components/events/createGateState";
+import { useModalNav } from "@/lib/useModalNav";
+import { eventSelector, focusAfterModalClose } from "@/lib/modalFocus";
 
 const RHYTHMS: SeriesRhythm[] = ["weekly", "biweekly", "monthly"];
 const NTHS: SeriesNth[] = [1, 2, 3, 4, 5];
@@ -38,64 +40,66 @@ const NTHS: SeriesNth[] = [1, 2, 3, 4, 5];
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 /**
- * Event from a template (design: EventSeries, route …/events/new/template/:templateId?date=).
- * A single event is created through `POST …/events/from-template`. The series part is complete
- * as UI with a client-side preview, but creating a series is disabled ("Bald verfügbar") until
- * the backend supports recurrence rules (docs/redesign/BACKEND-GAPS.md).
+ * Event from a template (design: EventSeries; step of the create dialog,
+ * route …/events/new/template/:templateId?date=). A single event is created through
+ * `POST …/events/from-template`. The series part is complete as UI with a client-side preview,
+ * but creating a series is disabled ("Bald verfügbar") until the backend supports recurrence
+ * rules (docs/redesign/BACKEND-GAPS.md).
  */
-export default function EventFromTemplatePage() {
-  return (
-    <ArchivedCreateGuard>
-      <FromTemplate />
-    </ArchivedCreateGuard>
-  );
-}
-
-function FromTemplate() {
+export default function EventFromTemplateModal() {
   const { templateId = "" } = useParams<{ templateId: string }>();
   const page = useEventPage();
+  const nav = useModalNav();
   const { t } = useTranslation();
   const [params] = useSearchParams();
+  const gate = createGate(page);
 
   const templates = useQuery<EventTemplate[]>({
     queryKey: ["templates", page.calendarId],
     queryFn: () => apiGet<EventTemplate[]>(`/api/calendars/${page.calendarId}/templates`),
+    enabled: !gate,
   });
   const template = templates.data?.find((x) => x.id === templateId);
-
-  if (templates.isLoading || page.calendarLoading) {
-    return (
-      <div className="ap-pagedialog" aria-busy="true">
-        <p className="ap-sr" role="status">
-          {t("events.templatePick.loading")}
-        </p>
-        <Skeleton style={{ display: "block", height: 40, width: "50%" }} />
-        <Skeleton style={{ display: "block", height: 320 }} />
-      </div>
-    );
-  }
-  if (!template) {
-    return (
-      <div className="ap-pagedialog">
-        <EmptyState
-          icon="layers"
-          title={t("events.series.notFound")}
-          actions={
-            <LinkButton variant="secondary" to={page.routes.pickTemplate(params.get("date"))}>
-              {t("events.series.change")}
-            </LinkButton>
-          }
-        />
-      </div>
-    );
-  }
   const preset = params.get("date");
+
+  let body;
+  if (gate) {
+    body = <CreateGateBody gate={gate} page={page} onClose={nav.close} />;
+  } else if (templates.isPending && !templates.isError) {
+    body = <ModalSkeleton label={t("events.templatePick.loading")} tall />;
+  } else if (!template) {
+    body = (
+      <EmptyState
+        icon="layers"
+        title={t("events.series.notFound")}
+        actions={
+          <LinkButton variant="secondary" {...nav.stepLink(page.routes.pickTemplate(preset))}>
+            {t("events.series.change")}
+          </LinkButton>
+        }
+      />
+    );
+  } else {
+    body = (
+      <SeriesForm
+        key={template.id}
+        template={template}
+        presetDate={isValidIso(preset) ? preset : null}
+      />
+    );
+  }
+
   return (
-    <SeriesForm
-      key={template.id}
-      template={template}
-      presetDate={isValidIso(preset) ? preset : null}
-    />
+    <Modal
+      size="xl"
+      form
+      title={gate === "archived" ? t("events.new.archived.title") : t("events.series.title")}
+      subtitle={gate ? undefined : t("events.series.subtitle")}
+      closeLabel={t("events.series.close")}
+      onClose={nav.close}
+    >
+      {body}
+    </Modal>
   );
 }
 
@@ -122,7 +126,7 @@ function SeriesForm({
   presetDate: string | null;
 }) {
   const page = useEventPage();
-  const navigate = useNavigate();
+  const nav = useModalNav();
   const qc = useQueryClient();
   const { t } = useTranslation();
   const locale = useLocale();
@@ -138,6 +142,8 @@ function SeriesForm({
   const [skip, setSkip] = useState(true);
   const [status, setStatus] = useState<EventStatus>("draft");
   const [saving, setSaving] = useState(false);
+  // Also shown in the dialog: toasts sit behind the modal for screen readers.
+  const [failed, setFailed] = useState(false);
   const [dateError, setDateError] = useState(false);
 
   const series = mode === "series";
@@ -188,16 +194,23 @@ function SeriesForm({
       return;
     }
     setSaving(true);
+    setFailed(false);
     try {
-      await apiPost(`/api/calendars/${page.calendarId}/events/from-template`, {
-        templateId: template.id,
-        dates: [date],
-        overrides: { isDraft: status === "draft" },
-      });
+      const created = await apiPost<{ id: string }[]>(
+        `/api/calendars/${page.calendarId}/events/from-template`,
+        {
+          templateId: template.id,
+          dates: [date],
+          overrides: { isDraft: status === "draft" },
+        },
+      );
       await qc.invalidateQueries({ queryKey: ["events", page.calendarId] });
       toast.success(t("events.series.created"));
-      navigate(page.returnTo);
+      const first = Array.isArray(created) ? created[0]?.id : undefined;
+      focusAfterModalClose(first ? eventSelector(first) : null);
+      nav.close();
     } catch {
+      setFailed(true);
       toast.error(t("events.series.failed"));
     } finally {
       setSaving(false);
@@ -212,13 +225,7 @@ function SeriesForm({
         : t("events.series.createPublished", { count: n });
 
   return (
-    <form className="ap-pagedialog" noValidate onSubmit={onSubmit}>
-      <EventPageHead
-        title={t("events.series.title")}
-        subtitle={t("events.series.subtitle")}
-        closeLabel={t("events.series.close")}
-        onClose={() => navigate(page.returnTo)}
-      />
+    <form noValidate onSubmit={onSubmit}>
       <div className="ap-chosen">
         <div className="ap-grow">
           <span className="t-sm t-muted" style={{ display: "block" }}>
@@ -231,15 +238,12 @@ function SeriesForm({
             {[time, place].filter(Boolean).join(" · ")}
           </span>
         </div>
-        <LinkButton
-          variant="secondary"
-          to={page.routes.pickTemplate(presetDate)}
-          state={page.navState}
-        >
+        <LinkButton variant="secondary" {...nav.stepLink(page.routes.pickTemplate(presetDate))}>
           {t("events.series.change")}
         </LinkButton>
       </div>
 
+      {failed && <Banner tone="danger">{t("events.series.failed")}</Banner>}
       {series && rangeValid && n === 0 && !holidays.isLoading && (
         <Banner tone="warning">{t("events.series.noMatch")}</Banner>
       )}
@@ -435,8 +439,7 @@ function SeriesForm({
         <LinkButton
           variant="secondary"
           icon="arrow-left"
-          to={page.routes.pickTemplate(presetDate)}
-          state={page.navState}
+          {...nav.stepLink(page.routes.pickTemplate(presetDate))}
         >
           {t("events.form.back")}
         </LinkButton>
@@ -445,8 +448,7 @@ function SeriesForm({
             <LinkButton
               variant="secondary"
               icon="edit"
-              to={page.routes.form(date, template.id)}
-              state={page.navState}
+              {...nav.stepLink(page.routes.form(date, template.id))}
             >
               {t("events.series.customize")}
             </LinkButton>
