@@ -19,7 +19,7 @@ class TokenService
 
     public function createAccessToken(User $user): string
     {
-        return $this->jwtManager->create($user);
+        return $this->jwtManager->createFromPayload($user, $this->sessionClaims($user));
     }
 
     public function createRefreshToken(User $user): string
@@ -28,7 +28,7 @@ class TokenService
             'sub' => $user->getId(),
             'exp' => time() + self::REFRESH_TTL,
             'type' => 'refresh',
-        ];
+        ] + $this->sessionClaims($user);
         $header = base64_encode(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
         $body = base64_encode(json_encode($payload));
         $sig = hash_hmac('sha256', "$header.$body", $this->refreshSecret, true);
@@ -53,6 +53,29 @@ class TokenService
         }
 
         return $payload;
+    }
+
+    /**
+     * Whether a token payload (access or refresh) still belongs to the user's current sessions: issued for
+     * this account (not a deleted one with the same address) and not before the last invalidation.
+     * Tokens issued before the claims existed have neither "uid" nor "tv" and count as version 0.
+     *
+     * @param array<string, mixed> $payload
+     */
+    public function isCurrentSession(User $user, array $payload): bool
+    {
+        if (array_key_exists('uid', $payload) && $payload['uid'] !== $user->getId()) {
+            return false;
+        }
+        $version = $payload['tv'] ?? 0;
+
+        return is_int($version) && $version === $user->getTokenVersion();
+    }
+
+    /** @return array{uid: string, tv: int} */
+    private function sessionClaims(User $user): array
+    {
+        return ['uid' => $user->getId(), 'tv' => $user->getTokenVersion()];
     }
 
     public function tokenResponse(User $user): array

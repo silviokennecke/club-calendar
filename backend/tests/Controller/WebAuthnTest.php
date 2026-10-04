@@ -121,6 +121,12 @@ class WebAuthnTest extends WebTestCase
         $this->assertSame('alice@example.com', $r['body']['user']['email']);
         $this->assertNotEmpty($r['body']['access_token']);
         $this->assertNotEmpty($r['body']['refresh_token']);
+
+        // The issued session works (access token and refresh).
+        $me = TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], 'Bearer '.$r['body']['access_token']);
+        $this->assertSame(200, $me['status'], $me['content']);
+        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'refresh_token', 'refresh_token' => $r['body']['refresh_token']]);
+        $this->assertSame(200, self::$client->getResponse()->getStatusCode());
     }
 
     public function testCounterIsStoredAndMustIncrease(): void

@@ -71,9 +71,13 @@ readonly class AuthService
         } catch (\InvalidArgumentException $e) {
             throw new UnauthorizedHttpException('Bearer', $e->getMessage());
         }
-        $user = $this->em->getRepository(User::class)->find($payload['sub']);
+        $user = is_string($payload['sub'] ?? null) ? $this->em->getRepository(User::class)->find($payload['sub']) : null;
         if (!$user) {
             throw new UnauthorizedHttpException('Bearer', 'User not found');
+        }
+        // Sessions end when the account's credentials were revoked (e.g. SSO takeover of an unconfirmed account).
+        if (!$this->tokens->isCurrentSession($user, $payload)) {
+            throw new UnauthorizedHttpException('Bearer', 'Refresh token revoked');
         }
 
         return $this->tokens->tokenResponse($user);
@@ -219,6 +223,9 @@ readonly class AuthService
      */
     private function revokeUnprovenCredentials(User $user): void
     {
+        // Ends the sessions as well: tokens issued so far would otherwise keep (and, by refreshing, extend)
+        // the access of whoever used the removed credentials. The owner's tokens are issued afterwards.
+        $user->invalidateTokens();
         $user->setPassword(null);
         foreach ($user->getPasskeys()->toArray() as $passkey) {
             $user->getPasskeys()->removeElement($passkey);

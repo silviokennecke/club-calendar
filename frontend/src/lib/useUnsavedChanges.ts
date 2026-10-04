@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { isSessionEnded } from "./sessionEnd";
 
 interface Pending {
   run: () => void;
@@ -32,6 +33,8 @@ export function useUnsavedChanges(dirty: boolean, options: { blockSamePath?: boo
   useEffect(() => {
     if (!dirty) return;
     function onBeforeUnload(e: BeforeUnloadEvent) {
+      // The session ended: the forced redirect to the login page must not be held by a prompt.
+      if (isSessionEnded()) return;
       e.preventDefault();
       e.returnValue = "";
     }
