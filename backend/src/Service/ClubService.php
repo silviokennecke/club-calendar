@@ -56,10 +56,10 @@ readonly class ClubService
     public function updateClub(Club $club, array $data): array
     {
         if (isset($data['name'])) {
-            $club->setName($data['name']);
+            $club->setName(Input::string($data, 'name'));
         }
         if (isset($data['timezone'])) {
-            $club->setTimezone($data['timezone']);
+            $club->setTimezone((string) Input::timezone($data, 'timezone', false));
         }
         $this->em->flush();
 

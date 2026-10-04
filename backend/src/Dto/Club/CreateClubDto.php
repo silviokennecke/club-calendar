@@ -14,5 +14,6 @@ class CreateClubDto
 
     #[Assert\NotBlank]
     #[Assert\Length(min: 1)]
+    #[Assert\Timezone(zone: \DateTimeZone::ALL_WITH_BC)]
     public string $timezone = 'Europe/Berlin';
 }

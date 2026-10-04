@@ -26,8 +26,8 @@ readonly class PropertyService
     {
         $property = new Property();
         $property->setCalendar($calendar);
-        $property->setName($data['name']);
-        $property->setIcon($data['icon'] ?? null);
+        $property->setName(Input::string($data, 'name'));
+        $property->setIcon(Input::nullableString($data, 'icon', 32));
 
         $this->em->persist($property);
         $this->em->flush();
@@ -40,10 +40,10 @@ readonly class PropertyService
         $property = $this->find($id, $calendar);
 
         if (array_key_exists('name', $data)) {
-            $property->setName($data['name']);
+            $property->setName(Input::string($data, 'name'));
         }
         if (array_key_exists('icon', $data)) {
-            $property->setIcon($data['icon']);
+            $property->setIcon(Input::nullableString($data, 'icon', 32));
         }
 
         $this->em->flush();

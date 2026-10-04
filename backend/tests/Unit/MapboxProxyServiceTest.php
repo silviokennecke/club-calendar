@@ -65,6 +65,32 @@ class MapboxProxyServiceTest extends TestCase
         $this->makeService()->proxy('unknown/path', 'GET', [], null, 'application/json');
     }
 
+    /**
+     * Dot segments are removed by the HTTP client ("styles/../geocoding" becomes "geocoding"), so they
+     * would turn the allow-listed prefix into access to every Mapbox API with the server token.
+     */
+    public function testRejectsDotSegmentsAndBackslashesInPath(): void
+    {
+        $sent = [];
+        $client = new MockHttpClient(function (string $method, string $url) use (&$sent) {
+            $sent[] = $url;
+
+            return new MockResponse('{}', ['http_code' => 200]);
+        });
+        $service = new MapboxProxyService($this->patterns, new ArrayAdapter(), $this->makeAcceptingFactory(), $client, 'test-token');
+        foreach (['styles/../geocoding/v5/mapbox.places/x.json', 'styles/v1/../../tokens/v2', 'fonts/./../datasets/v1/u', 'styles/..', 'styles/v1\\..\\x', 'styles/%2e%2e/geocoding/v5/mapbox.places/x.json', 'styles/.%2E/tokens/v2', 'styles/%252e%252e/tokens/v2'] as $path) {
+            try {
+                $service->proxy($path, 'GET', [], null, 'application/json');
+                $this->fail("not rejected: $path");
+            } catch (ProxyDeniedException) {
+            }
+        }
+        $this->assertSame([], $sent);
+        // Dots inside a segment stay allowed (e.g. style ids, font ranges)
+        $service->proxy('fonts/v1/mapbox/DIN Pro Medium/0-255.pbf', 'GET', [], null, 'application/json');
+        $this->assertCount(1, $sent);
+    }
+
     public function testThrowsProxyDeniedExceptionForDisallowedMethod(): void
     {
         $this->expectException(ProxyDeniedException::class);
