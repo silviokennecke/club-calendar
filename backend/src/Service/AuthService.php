@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\EmailVerification;
 use App\Entity\OAuthAccount;
 use App\Entity\User;
 use App\Exception\EmailNotVerifiedException;
+use App\Exception\OAuthAccountConflictException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -143,7 +145,26 @@ readonly class AuthService
         $this->em->flush();
     }
 
-    public function findOrCreateOAuthUser(string $provider, string $providerId, string $email, string $name): array
+    /**
+     * Providers whose "email_verified" claim is trusted. Microsoft (Entra ID / personal accounts) has no
+     * reliable claim: the address in the token can be set by the tenant or the user without proof.
+     */
+    public const array PROVIDERS_WITH_VERIFIED_EMAIL_CLAIM = ['google', 'apple'];
+
+    /**
+     * Signs in with an SSO account.
+     *
+     * - A known provider account signs in its user.
+     * - Otherwise the account is linked to the user with the same e-mail address only if the provider
+     *   confirms the address as verified. If that user never confirmed the address (pre-registered by
+     *   someone else, or created by an SSO login without verified e-mail), the credentials that did not
+     *   prove ownership (password, passkeys, other SSO links, pending confirmations) are removed first.
+     * - Without a verified address an existing user is never linked ({@see OAuthAccountConflictException}).
+     * - A new user is marked e-mail-verified only if the provider confirms the address.
+     *
+     * @throws OAuthAccountConflictException
+     */
+    public function findOrCreateOAuthUser(string $provider, string $providerId, string $email, string $name, bool $providerSaysEmailVerified = false): array
     {
         $existing = $this->em->getRepository(OAuthAccount::class)->findOneBy([
             'provider' => $provider,
@@ -160,12 +181,25 @@ readonly class AuthService
                 return $this->tokens->tokenResponse($oauthUser);
             }
         }
+        $emailVerified = $providerSaysEmailVerified
+            && in_array($provider, self::PROVIDERS_WITH_VERIFIED_EMAIL_CLAIM, true);
+
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
-        if (!$user) {
+        if ($user) {
+            // The column collation (utf8mb4_unicode_ci) also equates "ä" with "a", "ß" with "ss" or full-width
+            // letters: link only if the addresses are the same apart from ASCII letter case.
+            if (!$emailVerified || 0 !== strcasecmp($user->getEmail(), $email)) {
+                throw new OAuthAccountConflictException('An account with this e-mail address already exists');
+            }
+            if (!$user->isEmailVerified()) {
+                $this->revokeUnprovenCredentials($user);
+                $user->setIsEmailVerified(true);
+            }
+        } else {
             $user = new User();
             $user->setName($name);
             $user->setEmail($email);
-            $user->setIsEmailVerified(true);
+            $user->setIsEmailVerified($emailVerified);
             $this->em->persist($user);
         }
         $account = new OAuthAccount();
@@ -177,5 +211,28 @@ readonly class AuthService
         $this->em->flush();
 
         return $this->tokens->tokenResponse($user);
+    }
+
+    /**
+     * The address was never confirmed for this user, so whoever set up its password, passkeys or other
+     * SSO links did not prove to own it. They lose access before the verified owner takes the account.
+     */
+    private function revokeUnprovenCredentials(User $user): void
+    {
+        $user->setPassword(null);
+        foreach ($user->getPasskeys()->toArray() as $passkey) {
+            $user->getPasskeys()->removeElement($passkey);
+            $this->em->remove($passkey);
+        }
+        foreach ($user->getOauthAccounts()->toArray() as $account) {
+            $user->getOauthAccounts()->removeElement($account);
+            $this->em->remove($account);
+        }
+        $this->em->createQueryBuilder()
+            ->delete(EmailVerification::class, 'v')
+            ->where('v.user = :user')
+            ->setParameter('user', $user)
+            ->getQuery()
+            ->execute();
     }
 }

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { API } from "./helpers";
 
 // The auth pages are tested in German (the design's source language).
 test.use({ locale: "de-DE" });
@@ -52,6 +53,25 @@ test.describe("Login", () => {
   test("failed SSO shows an explanation on the login page", async ({ page }) => {
     await page.goto("/auth/callback?error=oauth_failed");
     await expect(page).toHaveURL(/\/login\?error=/);
+    await expect(page.getByRole("alert")).toContainText(
+      "Anmeldung mit Google oder Microsoft nicht möglich",
+    );
+  });
+
+  for (const code of ["invalid_state", "account_exists", "email_missing"]) {
+    test(`SSO error code ${code} shows the explanation`, async ({ page }) => {
+      await page.goto(`/auth/callback?error=${code}`);
+      await expect(page).toHaveURL(new RegExp(`/login\\?error=${code}`));
+      await expect(page.getByRole("alert")).toContainText(
+        "Anmeldung mit Google oder Microsoft nicht möglich",
+      );
+    });
+  }
+
+  test("SSO callback without the browser's state is rejected by the API", async ({ page }) => {
+    // Login CSRF: a callback URL that was not started in this browser must not sign in.
+    await page.goto(`${API}/api/auth/oauth/google/callback?code=x&state=forged`);
+    await expect(page).toHaveURL(/\/login\?error=invalid_state/);
     await expect(page.getByRole("alert")).toContainText(
       "Anmeldung mit Google oder Microsoft nicht möglich",
     );

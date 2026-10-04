@@ -103,10 +103,11 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 ## Auth
 
 - OAuth2-compliant: short-lived access token (15 min) + long-lived refresh token (7 days), both in `sessionStorage`
-- No cookies. Frontend owns both tokens.
+- No auth cookies. Frontend owns both tokens. (Only the OAuth flow sets a short-lived HttpOnly `oauth_state_nonce` cookie on the API host to bind `state` to the browser.)
 - Refresh: `POST /api/auth/token` (form-encoded: `grant_type=refresh_token&refresh_token=<token>`)
 - Keys: RSA keypair in `backend/config/jwt/` (gitignored); `JWT_REFRESH_SECRET` for HMAC refresh tokens
-- OAuth SSO: Google + Microsoft (redirect → callback → `{FRONTEND_URL}/auth/callback?token=X&refresh_token=Y`)
+- OAuth SSO: Google + Microsoft (redirect → callback → `{FRONTEND_URL}/auth/callback?token=X&refresh_token=Y`, errors `?error=<code>`); signed, single-use `state`; e-mail linking only with a trusted `email_verified` (Google/Apple, never Microsoft), see `docs/redesign/BACKEND-GAPS.md` (Sicherheit)
+- Passkeys: verified with `web-auth/webauthn-lib`; challenge in a signed, single-use `challengeToken` (`auth_nonce` table); allowed origin = `FRONTEND_URL`, `WEBAUTHN_RP_ID`, `WEBAUTHN_USER_VERIFICATION` (default `preferred`)
 
 ## ICS Feed Endpoint
 
