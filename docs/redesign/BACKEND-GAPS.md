@@ -43,7 +43,7 @@ Fortlaufend ergänzt während des Redesigns.
 - Verein: Jedes Mitglied darf jedes andere (und sich selbst, auch als letztes Mitglied) entfernen und den Verein löschen; es gibt keine Rollen und keinen Schutz davor, einen Verein ohne Mitglied zurückzulassen. `POST …/members` legt für eine bereits eingetragene Person nichts an und antwortet trotzdem erfolgreich (das Frontend prüft Duplikate lokal); die 404-Antwort "User not found" verrät, ob zu einer E-Mail-Adresse ein Konto existiert (vom Design so gewollt: "Zu dieser E-Mail-Adresse gibt es kein Konto").
 - Verein: `PATCH /api/clubs/{id}` kann die Zeitzone ändern; das Design zeigt sie nur in der Seitenkopfzeile, daher gibt es in der UI kein Feld dafür.
 - CORS (**behoben**, Bugfix-Runde Backend): 404-Antworten, die schon beim Auflösen der Route-Entity entstehen (`#[MapEntity]`, z. B. `GET /api/clubs/<unbekannte-id>`), enthalten keine `Access-Control-Allow-Origin`-Header; der Browser kann den Status dann nicht lesen (TypeError statt 404). Das Frontend erkennt "Verein nicht gefunden" deshalb zusätzlich über die Vereinsliste. Fehler, die erst im Service entstehen (z. B. `POST …/members` 404), sind nicht betroffen.
-- Sicherheit (Verifikation Phase 7): `WebAuthnService::verifyAuthentication` prüft weder Signatur noch authenticatorData gegen den gespeicherten öffentlichen Schlüssel; es genügt eine bekannte credentialId und ein clientDataJSON mit `type: webauthn.get` (der Challenge-Token wird nicht mit der clientData-Challenge abgeglichen). Die Registrierung speichert zudem das rohe attestationObject als "publicKey". Passkey-Anmeldung ist damit nicht belastbar abgesichert; nicht Teil des Redesigns, aber vor produktiver Nutzung zu beheben.
+- (Behoben, siehe Abschnitt Sicherheit) Sicherheit (Verifikation Phase 7): `WebAuthnService::verifyAuthentication` prüfte weder Signatur noch authenticatorData gegen den gespeicherten öffentlichen Schlüssel; es genügt eine bekannte credentialId und ein clientDataJSON mit `type: webauthn.get` (der Challenge-Token wird nicht mit der clientData-Challenge abgeglichen). Die Registrierung speichert zudem das rohe attestationObject als "publicKey". Passkey-Anmeldung ist damit nicht belastbar abgesichert; nicht Teil des Redesigns, aber vor produktiver Nutzung zu beheben.
 
 ## Phase 8 (Öffentlicher Zugriff)
 - `GET /api/feed/{id}/events` liefert nur `feed: {id, name}`: weder Vereins- noch Kalendername (Design: Kopf "Schützenverein Waldblick" + "Schießbetrieb 2026"), keine Beschreibung, keine Sichtbarkeit (privat/öffentlich) und keine Zeitzone. Die Seite zeigt nur den Feed-Namen als h1. Nötig: `feed.clubName`, `feed.calendarName`, `feed.timezone` (und `visibility`, damit private Feeds ohne `?secret=` im URL als solche erkannt werden; heute wird `noindex` allein an der Anwesenheit von `?secret=` festgemacht).
@@ -80,4 +80,88 @@ Fortlaufend ergänzt während des Redesigns.
 - Mapbox-Proxy: Punkt-Segmente im Pfad (`styles/../geocoding/…`, auch kodiert `%2e%2e` aus doppelt kodierten Anfragen) wurden vom HTTP-Client aufgelöst und führten am erlaubten Präfix vorbei mit dem Server-Token zu beliebigen Mapbox-APIs. Jetzt 403 (Test `MapboxProxyServiceTest::testRejectsDotSegmentsAndBackslashesInPath`).
 - Feiertagskalender (SSRF): `assertSafeUrl()` erkannte IPv6-Hosts in Klammern (`http://[::1]/`, `[::ffff:127.0.0.1]`, `[fd00::1]`) nicht und prüfte Weiterleitungen nicht. Der `HolidayCalendarService` nutzt jetzt einen `NoPrivateNetworkHttpClient` (`config/services.yaml`), der jede aufgelöste Adresse und jedes Weiterleitungsziel prüft. Test `Unit\HolidayCalendarServiceTest`.
 - `composer audit` meldete 6 Advisories für `guzzlehttp/guzzle` 7.12.3: Update innerhalb der Constraints auf 7.15.5 (mit `guzzlehttp/psr7` 2.13.1, `guzzlehttp/promises` 2.5.3, nur `composer.lock`); `composer audit` ist jetzt ohne Befund.
-- Weitere Funde (nicht behoben, keine kleinen Fehler bzw. Feature-Themen): `GET /api/map/image/event/{id}` liefert das Kartenbild auch für veröffentlichte Termine, die nur in privaten Feeds stehen, und `GET /api/map/image/location/{id}` für jeden Ort (jeweils nur mit bekannter UUID; eine Prüfung bräuchte einen Feed-/Geheimnis-Bezug im Endpoint). Passkey-Anmeldung prüft keine Signatur (siehe Phase 7, kritisch). OAuth: `use_state: false` (kein CSRF-Schutz im OAuth-Ablauf) und Verknüpfung mit einem bestehenden Konto allein über die gemeldete E-Mail ohne `email_verified`-Prüfung. ID-Listen haben keine Längenbegrenzung (eine Abfrage je ID). Ein ICS-Import mit veraltetem TZID wie `US/Pacific-New` (Browser kennt ihn, PHP nicht) scheitert insgesamt mit 422. Mitglieder dürfen alle anderen entfernen (Rollen fehlen, siehe Phase 7).
+- Weitere Funde (nicht behoben, keine kleinen Fehler bzw. Feature-Themen): `GET /api/map/image/event/{id}` liefert das Kartenbild auch für veröffentlichte Termine, die nur in privaten Feeds stehen, und `GET /api/map/image/location/{id}` für jeden Ort (jeweils nur mit bekannter UUID; eine Prüfung bräuchte einen Feed-/Geheimnis-Bezug im Endpoint). Passkey-Anmeldung ohne Signaturprüfung, OAuth ohne State und Verknüpfung allein über die E-Mail: inzwischen behoben (Abschnitt Sicherheit). ID-Listen haben keine Längenbegrenzung (eine Abfrage je ID). Ein ICS-Import mit veraltetem TZID wie `US/Pacific-New` (Browser kennt ihn, PHP nicht) scheitert insgesamt mit 422. Mitglieder dürfen alle anderen entfernen (Rollen fehlen, siehe Phase 7).
+
+## Sicherheit (Authentifizierung)
+
+- Passkeys (behoben, kritisch): Anmeldung und Registrierung werden jetzt vollständig mit `web-auth/webauthn-lib` geprüft.
+  Die Challenge erzeugt der Server; sie reist im `challengeToken` der options-Antwort (HMAC mit aus `APP_SECRET`
+  abgeleitetem Schlüssel, zweckgebunden `webauthn.get` / `webauthn.create`, 5 Minuten, bei der Registrierung an den
+  angemeldeten Nutzer gebunden) und wird beim ersten Einreichen verbraucht (Tabelle `auth_nonce`, eindeutiger Index,
+  daher auch bei parallelen Anfragen nur einmal). Geprüft werden `clientDataJSON` (Typ, Challenge, Origin = `FRONTEND_URL`),
+  rpIdHash (`WEBAUTHN_RP_ID`), User-Present, User-Verified nur bei `WEBAUTHN_USER_VERIFICATION=required`
+  (Standard `preferred`), Signatur mit dem gespeicherten öffentlichen Schlüssel, Signaturzähler (muss steigen, 0/0 wird
+  toleriert; ein Rückschritt gilt als Klon und wird abgelehnt), userHandle = Eigentümer des Passkeys, bei der
+  Registrierung zusätzlich Attestation (`none`, `packed`) und eindeutige Credential-ID (kein Überschreiben fremder
+  Passkeys). Die Origin muss zusätzlich exakt der serialisierten Origin von `FRONTEND_URL` entsprechen (die Bibliothek
+  normalisiert per `parse_url()` und ließ z. B. einen angehängten NUL oder Pfad durch), `crossOrigin: true` wird abgelehnt.
+  Jeder Anmeldefehler antwortet gleich (401 `Invalid passkey`), auch bei unbekannter Credential-ID; fehlerhafte
+  Anfragekörper (kein JSON-Objekt, fehlende/falsch typisierte Felder, `deviceName` > 255 Zeichen, Credential-ID zu lang
+  für die Spalte) enden in 400 statt 500. `auth_nonce` vergleicht in UTC (vorher wurden verbrauchte Einträge auf einem
+  Server mit nicht-UTC-Zeitzone beim nächsten Aufräumen sofort gelöscht, Replay innerhalb der Token-Laufzeit möglich).
+  Gespeichert wird jetzt der COSE-Schlüssel; Alt-Einträge (rohes attestationObject) funktionieren weiter und werden bei der
+  ersten Anmeldung umgeschrieben. API und Frontend unverändert. Tests: `tests/Controller/WebAuthnTest.php` (Software-Authenticator,
+  Schlüssel zur Laufzeit erzeugt), E2E `profile.spec.ts` (Anmelden mit Passkey, Replay der mitgeschnittenen Antwort -> 401).
+- OAuth-State (behoben): `GET /api/auth/oauth/{provider}` gibt einen signierten `state` mit (Provider-gebunden, 10 Minuten,
+  einmalig) und setzt dieselbe Zufalls-Nonce in ein kurzlebiges Cookie `oauth_state_nonce` (HttpOnly, Secure,
+  SameSite=None wegen Apples form_post, Pfad `/api/auth/oauth`, nur auf dem API-Host, keine Zugangsdaten). Der Callback
+  akzeptiert nur einen State, der verifiziert, zum Provider passt, zum Cookie des Browsers passt, der den Ablauf
+  gestartet hat, und noch nicht benutzt wurde. Ein reines HMAC-State ohne Browserbindung hätte Login-CSRF nicht
+  verhindert (der Angreifer kann sich selbst einen gültigen State holen). Fehler leiten wie bisher auf
+  `{FRONTEND_URL}/auth/callback?error=<code>` (Frontend zeigt das SSO-Banner auf `/login`); statt der Exception-Meldung
+  steht dort jetzt ein Code: `invalid_state`, `oauth_failed`, `email_missing`, `account_exists`. Tokens gehen nur an
+  `{FRONTEND_URL}/auth/callback?token=…&refresh_token=…` (Format unverändert).
+- Konto-Verknüpfung per E-Mail (behoben), Policy:
+  - Ein bekanntes Provider-Konto (Provider + `sub`) meldet seinen Nutzer an.
+  - Sonst wird nur verknüpft, wenn der Provider die Adresse ausdrücklich als verifiziert meldet. Vertrauenswürdig ist
+    das Claim `email_verified` nur bei Google und Apple (`AuthService::PROVIDERS_WITH_VERIFIED_EMAIL_CLAIM`).
+  - Microsoft liefert kein verlässliches Flag (die Adresse im Token kann vom Mandanten bzw. Nutzer ohne Nachweis
+    gesetzt sein): Microsoft verknüpft nie automatisch. Gibt es schon einen Nutzer mit der Adresse, endet die Anmeldung mit
+    `error=account_exists`; sonst wird ein neues Konto angelegt, aber nicht als E-Mail-bestätigt markiert.
+    Auswirkung für Microsoft-Nutzer: Wer schon ein Konto mit Passwort oder Google hat, kann Microsoft nicht
+    hinzufügen (es gibt noch keinen Verknüpfen-Endpoint, siehe Phase 7); per Microsoft angelegte Konten können sich
+    weiter per Microsoft und Passkey anmelden, aber nicht per Passwort (es gibt keins). `app:prune-unverified-users`
+    löscht Konten mit SSO-Verknüpfung nicht mehr.
+  - Trifft ein verifizierter Google-/Apple-Login auf einen Nutzer, dessen Adresse nie bestätigt wurde (z. B.
+    Vorab-Registrierung mit fremder Adresse oder ein per Microsoft angelegtes Konto), übernimmt der verifizierte
+    Eigentümer das Konto: Passwort, Passkeys, andere SSO-Verknüpfungen und offene Bestätigungslinks werden vorher
+    entfernt, die Adresse gilt dann als bestätigt. Eine Vorab-Registrierung blockiert oder kapert das SSO-Konto damit nicht.
+  - Verknüpft wird nur, wenn die gespeicherte Adresse bis auf ASCII-Groß/Kleinschreibung identisch ist: die Kollation
+    `utf8mb4_unicode_ci` der Spalte `user.email` setzt auch `ä`=`a`, `ß`=`ss`, Vollbreiten-Zeichen und angehängte
+    Leerzeichen gleich (`alice@gmäil.com` hätte sonst `alice@gmail.com` übernommen); solche Logins enden mit `account_exists`.
+  - Neue SSO-Nutzer gelten nur als E-Mail-bestätigt, wenn der Provider es bestätigt.
+  Tests: `tests/Controller/OAuthTest.php` (gefälschte Provider-Clients).
+- Gemeldet, nicht behoben (Features bzw. größere Umbauten):
+  - **Offen, hoch:** Die Konto-Übernahme durch einen verifizierten Google-/Apple-Login entfernt Passwort, Passkeys und
+    SSO-Verknüpfungen, beendet aber keine bestehenden Sitzungen. Wer das unbestätigte Konto vorher per Microsoft (oder
+    Google mit unbestätigter Adresse) mit der Adresse des Opfers angelegt hat, behält mit seinem Refresh-Token Zugriff
+    auf das jetzt dem Opfer gehörende Konto, und weil jeder Refresh ein neues 7-Tage-Token ausgibt, unbegrenzt
+    (nachgestellt: `POST /api/auth/token` und `GET /api/auth/me` liefern nach der Übernahme 200). Behebung braucht
+    widerrufbare Tokens (z. B. `user.token_version` in Access- und Refresh-Token, beim Entfernen der Zugangsdaten erhöht).
+    Verwandt: `POST /api/auth/resend-verification` schickt auch für solche SSO-Konten einen Bestätigungslink; bestätigt
+    der Eigentümer darüber die Adresse, bleibt die fremde Microsoft-Verknüpfung bestehen (`EmailVerificationService::verify`
+    setzt nur das Flag), und ein späterer Google-Login des Eigentümers verknüpft ohne Bereinigung mit diesem Konto. Der
+    Angreifer meldet sich dann weiter per Microsoft an.
+  - Ein per Microsoft angelegtes unbestätigtes Konto mit fremder Adresse blockiert dauerhaft die lokale Registrierung des
+    Eigentümers (`app:prune-unverified-users` löscht SSO-Konten nicht); siehe auch unten.
+  - Kein Rate-Limiting für `/api/auth/login`, `/api/auth/token`, Passkey-Verify und OAuth-Callback.
+  - Refresh-Tokens werden nicht rotiert und sind nicht widerrufbar (zustandslos, 7 Tage): Wiederverwendung bleibt
+    unbemerkt, Abmelden und Konto-/Passkey-Entfernen beenden bestehende Sitzungen nicht. Bräuchte eine Token-Tabelle.
+  - Passwort-Hashing: `App\Entity\User` nutzt explizit `bcrypt` (Symfony-Standardkosten 13) statt `auto`; bcrypt kürzt nach
+    72 Bytes, `RegisterDto` hat keine Maximallänge. Umstellung auf `auto` (argon2id) ist mit Rehash bei Anmeldung möglich.
+  - Lokale Vorab-Registrierung: Registriert jemand mit fremder Adresse und klickt der echte Eigentümer später den
+    Bestätigungslink, gilt das Passwort des Registrierenden. Ohne Passwort-Reset gibt es keinen Ausweg.
+  - Ein per Microsoft angelegtes (unbestätigtes) Konto blockiert eine spätere lokale Registrierung mit derselben Adresse
+    (`Email already in use`); erst ein Google-/Apple-Login mit bestätigter Adresse löst das.
+  - `OidcProvider` prüft beim ID-Token weder Signatur noch `aud`/`iss`/`exp` (das Token kommt direkt vom Token-Endpoint
+    über TLS, das ist nach OIDC zulässig; die Claim-Prüfungen fehlen trotzdem). Im Code-Flow mit Client-Secret nicht
+    ausnutzbar; `iss` wäre bei Microsoft `common` mandantenabhängig und daher kein trivialer Fix.
+  - Tokens gehen als Query (`/auth/callback?token=…&refresh_token=…`) an das Frontend: sie landen in Browser-Verlauf und
+    ggf. Server-Logs des Frontend-Hosts (Referrer nur, falls die Callback-Seite externe Ressourcen lädt). Ein Fragment
+    (`#token=…`) wäre besser, erfordert aber eine Frontend- und Backend-Änderung.
+  - Das State-Cookie ist `Secure; SameSite=None`: Chrome/Firefox akzeptieren es auch auf `http://localhost`, Safari
+    nicht zuverlässig; lokales SSO daher mit HTTPS (Symfony CLI/Herd) oder Chrome/Firefox testen.
+  - `WEBAUTHN_USER_VERIFICATION=preferred` (Standard) lässt Passkeys ohne PIN/Biometrie (nur Besitz) zu;
+    `required` wäre strenger, schließt aber Sicherheitsschlüssel ohne PIN aus.
+  - `APP_SECRET` (signiert Challenges und State) und `JWT_REFRESH_SECRET` haben in `.env` Platzhalterwerte; in Produktion
+    müssen sie gesetzt sein.

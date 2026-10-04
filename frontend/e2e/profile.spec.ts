@@ -218,6 +218,48 @@ test.describe("Profil", () => {
     expect((await me(request, s.headers)).passkeys).toHaveLength(0);
   });
 
+  test("Anmelden mit Passkey (virtueller Authenticator), Wiederverwendung scheitert", async ({
+    page,
+    request,
+  }) => {
+    const s = await seed(request, "Profil Passkey Login");
+    await openProfile(page, s, request);
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("WebAuthn.enable");
+    const { authenticatorId } = await cdp.send("WebAuthn.addVirtualAuthenticator", {
+      options: {
+        protocol: "ctap2",
+        transport: "internal",
+        hasResidentKey: true,
+        hasUserVerification: true,
+        isUserVerified: true,
+        automaticPresenceSimulation: true,
+      },
+    });
+    await page.getByLabel(/^Gerätename/).fill("Login-Laptop");
+    await page.getByRole("button", { name: "Passkey auf diesem Gerät einrichten" }).click();
+    await expect(page.getByText("Passkey „Login-Laptop“ wurde hinzugefügt.")).toBeVisible();
+
+    await page.getByRole("main").getByRole("button", { name: "Abmelden" }).click();
+    await expect(page).toHaveURL(/\/login/);
+
+    // Capture what the browser sends, to replay it afterwards.
+    const verify = page.waitForRequest(
+      (r) => r.url().endsWith("/api/auth/webauthn/authenticate/verify") && r.method() === "POST",
+    );
+    await page.getByRole("button", { name: "Mit Passkey anmelden" }).click();
+    const sent = (await verify).postData() ?? "";
+    await page.waitForURL(/\/clubs/);
+    const { credentials } = await cdp.send("WebAuthn.getCredentials", { authenticatorId });
+    expect(credentials[0].signCount).toBeGreaterThan(0);
+
+    // The same signed response (and challenge token) is accepted only once.
+    const replay = await request.post(`${API}/api/auth/webauthn/authenticate/verify`, {
+      data: JSON.parse(sent),
+    });
+    expect(replay.status()).toBe(401);
+  });
+
   test("Abmelden führt zur Anmeldung", async ({ page, request }) => {
     const s = await seed(request, "Profil Abmelden");
     await openProfile(page, s, request);

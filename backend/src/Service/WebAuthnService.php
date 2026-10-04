@@ -6,39 +6,108 @@ namespace App\Service;
 
 use App\Entity\Passkey;
 use App\Entity\User;
+use App\Security\NonceStore;
+use App\Security\SignedTokenService;
+use Cose\Algorithm\Manager;
+use Cose\Algorithm\Signature\ECDSA\ES256;
+use Cose\Algorithm\Signature\RSA\RS256;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
+use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
+use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Uid\Uuid;
+use Webauthn\AttestationStatement\AttestationObject;
+use Webauthn\AttestationStatement\AttestationStatementSupportManager;
+use Webauthn\AttestationStatement\PackedAttestationStatementSupport;
+use Webauthn\AuthenticatorAssertionResponse;
+use Webauthn\AuthenticatorAssertionResponseValidator;
+use Webauthn\AuthenticatorAttestationResponse;
+use Webauthn\AuthenticatorAttestationResponseValidator;
+use Webauthn\AuthenticatorSelectionCriteria;
+use Webauthn\CeremonyStep\CeremonyStepManagerFactory;
+use Webauthn\Counter\ThrowExceptionIfInvalid;
+use Webauthn\CredentialRecord;
+use Webauthn\Denormalizer\WebauthnSerializerFactory;
+use Webauthn\PublicKeyCredential;
+use Webauthn\PublicKeyCredentialCreationOptions;
+use Webauthn\PublicKeyCredentialParameters;
+use Webauthn\PublicKeyCredentialRequestOptions;
+use Webauthn\PublicKeyCredentialRpEntity;
+use Webauthn\PublicKeyCredentialUserEntity;
+use Webauthn\TrustPath\EmptyTrustPath;
 
+/**
+ * Passkey registration and sign-in.
+ *
+ * The API is cookie-less, so the server-generated challenge travels to the client inside an HMAC-signed
+ * "challengeToken" (purpose-bound, 5 minutes, bound to the user for registrations). The token is consumed
+ * on first use ({@see NonceStore}), and the response is verified with web-auth/webauthn-lib: client data
+ * type/challenge/origin, rpIdHash, user presence (and verification if configured), attestation, the
+ * signature against the stored public key, the signature counter and the user handle.
+ */
 class WebAuthnService
 {
+    private const string PURPOSE_CREATE = 'webauthn.create';
+    private const string PURPOSE_GET = 'webauthn.get';
+    private const int CHALLENGE_TTL = 300;
+    private const int TIMEOUT_MS = 60000;
+
+    private readonly SerializerInterface&DenormalizerInterface $serializer;
+    private readonly string $expectedOrigin;
+    private readonly CeremonyStepManagerFactory $ceremonies;
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly TokenService $tokens,
+        private readonly SignedTokenService $signedTokens,
+        private readonly NonceStore $nonces,
+        private readonly LoggerInterface $logger,
         private readonly string $rpId,
         private readonly string $rpName,
-        private readonly string $appSecret,
-        private readonly string $appUrl,
+        private readonly string $allowedOrigin,
+        private readonly string $userVerification = AuthenticatorSelectionCriteria::USER_VERIFICATION_REQUIREMENT_PREFERRED,
     ) {
+        $algorithms = Manager::create()->add(ES256::create(), RS256::create());
+        $attestationSupport = AttestationStatementSupportManager::create([
+            PackedAttestationStatementSupport::create($algorithms),
+        ]);
+        $serializer = (new WebauthnSerializerFactory($attestationSupport))->create();
+        if (!$serializer instanceof DenormalizerInterface) {
+            throw new \LogicException('The WebAuthn serializer cannot denormalize');
+        }
+        $this->serializer = $serializer;
+
+        $this->ceremonies = new CeremonyStepManagerFactory();
+        $this->ceremonies->setAlgorithmManager($algorithms);
+        $this->ceremonies->setAttestationStatementSupportManager($attestationSupport);
+        $this->ceremonies->setAllowedOrigins([$this->allowedOrigin]);
+        $this->expectedOrigin = self::serializeOrigin($this->allowedOrigin);
+        $this->ceremonies->setCounterChecker(new ThrowExceptionIfInvalid($this->logger));
     }
 
     public function getRegistrationOptions(User $user): array
     {
         $challenge = random_bytes(32);
-        $challengeB64 = rtrim(strtr(base64_encode($challenge), '+/', '-_'), '=');
-        $challengeToken = $this->createChallengeToken($challengeB64);
+        $challengeB64 = SignedTokenService::b64($challenge);
+        $challengeToken = $this->signedTokens->issue(
+            self::PURPOSE_CREATE,
+            ['ch' => $challengeB64, 'sub' => $user->getId()],
+            self::CHALLENGE_TTL,
+        );
 
-        $excludeCredentials = $user->getPasskeys()->map(fn ($p) => [
+        $excludeCredentials = array_values($user->getPasskeys()->map(fn (Passkey $p) => [
             'type' => 'public-key',
-            'id' => rtrim(strtr(base64_encode($p->getCredentialId()), '+/', '-_'), '='),
-        ])->toArray();
+            'id' => SignedTokenService::b64((string) base64_decode($p->getCredentialId(), true)),
+        ])->toArray());
 
         $options = [
             'challenge' => $challengeB64,
             'rp' => ['id' => $this->rpId, 'name' => $this->rpName],
             'user' => [
-                'id' => rtrim(strtr(base64_encode((string) $user->getId()), '+/', '-_'), '='),
+                'id' => SignedTokenService::b64($user->getId()),
                 'name' => $user->getEmail(),
                 'displayName' => $user->getName(),
             ],
@@ -48,9 +117,9 @@ class WebAuthnService
             ],
             'authenticatorSelection' => [
                 'residentKey' => 'preferred',
-                'userVerification' => 'preferred',
+                'userVerification' => $this->userVerification,
             ],
-            'timeout' => 60000,
+            'timeout' => self::TIMEOUT_MS,
             'excludeCredentials' => $excludeCredentials,
             'attestation' => 'none',
         ];
@@ -60,35 +129,53 @@ class WebAuthnService
 
     public function verifyRegistration(User $user, string $challengeToken, array $responseData, ?string $deviceName): void
     {
-        $this->decodeChallengeToken($challengeToken);
-
-        $clientDataJSON = base64_decode(strtr($responseData['response']['clientDataJSON'] ?? '', '-_', '+/'));
-        $clientData = json_decode($clientDataJSON, true);
-
-        if (!is_array($clientData) || ($clientData['type'] ?? '') !== 'webauthn.create') {
-            throw new BadRequestHttpException('Invalid response type');
+        $claims = $this->signedTokens->verify(self::PURPOSE_CREATE, $challengeToken);
+        if (null === $claims || ($claims['sub'] ?? null) !== $user->getId() || !is_string($claims['ch'] ?? null)) {
+            throw new BadRequestHttpException('Invalid passkey registration');
+        }
+        if (!$this->nonces->consume(self::PURPOSE_CREATE, $claims['ch'], $claims['exp'])) {
+            throw new BadRequestHttpException('Invalid passkey registration');
         }
 
-        $rawId = $responseData['rawId'] ?? $responseData['id'] ?? '';
-        if (empty($rawId)) {
-            throw new BadRequestHttpException('Missing credential id');
+        try {
+            $credential = $this->parseCredential($responseData);
+            $response = $credential->response;
+            // The library accepts either client data type in both ceremonies; insist on the right one.
+            if (!$response instanceof AuthenticatorAttestationResponse || 'webauthn.create' !== $response->clientDataJSON->type
+                || !$this->isExpectedOrigin($response)) {
+                throw new \InvalidArgumentException('Not an attestation response');
+            }
+
+            $options = PublicKeyCredentialCreationOptions::create(
+                PublicKeyCredentialRpEntity::create($this->rpName, $this->rpId),
+                PublicKeyCredentialUserEntity::create($user->getEmail(), $user->getId(), $user->getName()),
+                $this->decodeChallenge($claims['ch']),
+                [PublicKeyCredentialParameters::createPk(-7), PublicKeyCredentialParameters::createPk(-257)],
+                AuthenticatorSelectionCriteria::create(
+                    null,
+                    $this->userVerification,
+                    AuthenticatorSelectionCriteria::RESIDENT_KEY_REQUIREMENT_PREFERRED,
+                ),
+                PublicKeyCredentialCreationOptions::ATTESTATION_CONVEYANCE_PREFERENCE_NONE,
+                [],
+                self::TIMEOUT_MS,
+            );
+
+            $record = AuthenticatorAttestationResponseValidator::create($this->ceremonies->creationCeremony())
+                ->check($response, $options, $this->rpId);
+        } catch (\Throwable $e) {
+            $this->logger->info('Passkey registration rejected', ['exception' => $e]);
+            throw new BadRequestHttpException('Invalid passkey registration');
         }
 
-        // Normalize base64url → base64 and decode to bytes, then back to standard base64 for storage
-        $credentialIdBytes = base64_decode(
-            strtr($rawId, '-_', '+/')
-            .str_repeat('=', (4 - strlen($rawId) % 4) % 4),
-        );
-        $credentialIdStored = base64_encode($credentialIdBytes);
-
-        if (empty($responseData['response']['attestationObject'] ?? '')) {
-            throw new BadRequestHttpException('Missing attestationObject');
+        if (!hash_equals($record->publicKeyCredentialId, $credential->rawId)) {
+            throw new BadRequestHttpException('Invalid passkey registration');
         }
 
-        $attestationObject = base64_decode(
-            strtr($responseData['response']['attestationObject'], '-_', '+/'),
-        );
-
+        $credentialIdStored = base64_encode($record->publicKeyCredentialId);
+        if (strlen($credentialIdStored) > 700) { // passkey.credential_id column length
+            throw new BadRequestHttpException('Invalid passkey registration');
+        }
         $existing = $this->em->getRepository(Passkey::class)->findOneBy(['credentialId' => $credentialIdStored]);
         if ($existing) {
             throw new BadRequestHttpException('Credential already registered');
@@ -98,8 +185,8 @@ class WebAuthnService
         $passkey->setId($this->generateCuid());
         $passkey->setUser($user);
         $passkey->setCredentialId($credentialIdStored);
-        $passkey->setPublicKey($attestationObject);
-        $passkey->setCounter(0);
+        $passkey->setPublicKey($record->credentialPublicKey);
+        $passkey->setCounter($record->counter);
         $passkey->setDeviceName($deviceName);
 
         $this->em->persist($passkey);
@@ -109,52 +196,83 @@ class WebAuthnService
     public function getAuthenticationOptions(): array
     {
         $challenge = random_bytes(32);
-        $challengeB64 = rtrim(strtr(base64_encode($challenge), '+/', '-_'), '=');
-        $challengeToken = $this->createChallengeToken($challengeB64);
+        $challengeB64 = SignedTokenService::b64($challenge);
+        $challengeToken = $this->signedTokens->issue(self::PURPOSE_GET, ['ch' => $challengeB64], self::CHALLENGE_TTL);
 
         $options = [
             'challenge' => $challengeB64,
             'rpId' => $this->rpId,
-            'timeout' => 60000,
-            'userVerification' => 'preferred',
+            'timeout' => self::TIMEOUT_MS,
+            'userVerification' => $this->userVerification,
             'allowCredentials' => [],
         ];
 
         return ['options' => $options, 'challengeToken' => $challengeToken];
     }
 
+    /**
+     * Every failure ends in the same 401, so the response does not reveal whether a credential ID exists.
+     */
     public function verifyAuthentication(string $challengeToken, array $responseData): array
     {
-        $this->decodeChallengeToken($challengeToken);
-
-        $rawId = $responseData['rawId'] ?? $responseData['id'] ?? '';
-        if (empty($rawId)) {
-            throw new BadRequestHttpException('Missing credential id');
+        $claims = $this->signedTokens->verify(self::PURPOSE_GET, $challengeToken);
+        if (null === $claims || !is_string($claims['ch'] ?? null)
+            || !$this->nonces->consume(self::PURPOSE_GET, $claims['ch'], $claims['exp'])) {
+            throw $this->authenticationFailed();
         }
 
-        $credentialIdBytes = base64_decode(
-            strtr($rawId, '-_', '+/')
-            .str_repeat('=', (4 - strlen($rawId) % 4) % 4),
-        );
-        $credentialIdStored = base64_encode($credentialIdBytes);
+        try {
+            $credential = $this->parseCredential($responseData);
+            $response = $credential->response;
+            if (!$response instanceof AuthenticatorAssertionResponse || 'webauthn.get' !== $response->clientDataJSON->type
+                || !$this->isExpectedOrigin($response)) {
+                throw new \InvalidArgumentException('Not an assertion response');
+            }
+        } catch (\Throwable $e) {
+            $this->logger->info('Passkey sign-in rejected: unreadable response', ['exception' => $e]);
+            throw $this->authenticationFailed();
+        }
 
-        $passkey = $this->em->getRepository(Passkey::class)->findOneBy(['credentialId' => $credentialIdStored]);
+        $passkey = $this->em->getRepository(Passkey::class)->findOneBy(['credentialId' => base64_encode($credential->rawId)]);
         if (!$passkey) {
-            throw new UnauthorizedHttpException('Bearer', 'Unknown passkey');
+            throw $this->authenticationFailed();
+        }
+        $user = $passkey->getUser();
+
+        try {
+            $record = CredentialRecord::create(
+                $credential->rawId,
+                'public-key',
+                [],
+                'none',
+                EmptyTrustPath::create(),
+                Uuid::fromString('00000000-0000-0000-0000-000000000000'),
+                $this->cosePublicKey($passkey, $credential->rawId),
+                $user->getId(),
+                $passkey->getCounter(),
+            );
+            $options = PublicKeyCredentialRequestOptions::create(
+                $this->decodeChallenge($claims['ch']),
+                $this->rpId,
+                [],
+                $this->userVerification,
+                self::TIMEOUT_MS,
+            );
+
+            // userHandle = null: the user was not identified beforehand, so the response must carry the
+            // user handle and it must match the credential's owner.
+            $updated = AuthenticatorAssertionResponseValidator::create($this->ceremonies->requestCeremony())
+                ->check($record, $response, $options, $this->rpId, null);
+        } catch (\Throwable $e) {
+            $this->logger->warning('Passkey sign-in rejected', ['passkey' => $passkey->getId(), 'exception' => $e]);
+            throw $this->authenticationFailed();
         }
 
-        $clientDataJSON = base64_decode(strtr($responseData['response']['clientDataJSON'] ?? '', '-_', '+/'));
-        $clientData = json_decode($clientDataJSON, true);
-
-        if (!is_array($clientData) || ($clientData['type'] ?? '') !== 'webauthn.get') {
-            throw new BadRequestHttpException('Invalid response type');
-        }
-
-        // Increment counter (basic clone detection; strict check can be added later)
-        $passkey->setCounter($passkey->getCounter() + 1);
+        $passkey->setCounter($updated->counter);
+        $passkey->setPublicKey($updated->credentialPublicKey);
         $this->em->flush();
 
-        return $this->tokens->tokenResponse($passkey->getUser());
+        return $this->tokens->tokenResponse($user);
     }
 
     public function deletePasskey(string $id, User $user): void
@@ -167,33 +285,76 @@ class WebAuthnService
         $this->em->flush();
     }
 
-    private function createChallengeToken(string $challengeBase64Url): string
+    private function authenticationFailed(): UnauthorizedHttpException
     {
-        $payload = ['ch' => $challengeBase64Url, 'exp' => time() + 300];
-        $header = base64_encode(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
-        $body = base64_encode(json_encode($payload));
-        $sig = base64_encode(hash_hmac('sha256', "$header.$body", $this->appSecret, true));
-
-        return "$header.$body.$sig";
+        return new UnauthorizedHttpException('Bearer', 'Invalid passkey');
     }
 
-    private function decodeChallengeToken(string $token): string
+    private function parseCredential(array $responseData): PublicKeyCredential
     {
-        $parts = explode('.', $token);
-        if (3 !== count($parts)) {
-            throw new UnauthorizedHttpException('Bearer', 'Invalid challenge token');
-        }
-        [$header, $body, $sig] = $parts;
-        $expected = base64_encode(hash_hmac('sha256', "$header.$body", $this->appSecret, true));
-        if (!hash_equals($expected, $sig)) {
-            throw new UnauthorizedHttpException('Bearer', 'Invalid challenge token');
-        }
-        $payload = json_decode(base64_decode($body), true);
-        if (!is_array($payload) || ($payload['exp'] ?? 0) < time()) {
-            throw new UnauthorizedHttpException('Bearer', 'Challenge expired');
+        $credential = $this->serializer->deserialize(
+            json_encode($responseData, \JSON_THROW_ON_ERROR),
+            PublicKeyCredential::class,
+            'json',
+        );
+        if (!$credential instanceof PublicKeyCredential || 'public-key' !== $credential->type) {
+            throw new \InvalidArgumentException('Invalid credential');
         }
 
-        return $payload['ch'];
+        return $credential;
+    }
+
+    /**
+     * The library compares origins after parse_url() normalisation (which also accepts e.g. a trailing NUL
+     * or a path); browsers send the serialised origin, so it must match exactly. The frontend never runs in
+     * a cross-origin iframe, so such a ceremony is rejected too.
+     */
+    private function isExpectedOrigin(AuthenticatorAssertionResponse|AuthenticatorAttestationResponse $response): bool
+    {
+        return $response->clientDataJSON->origin === $this->expectedOrigin && true !== $response->clientDataJSON->crossOrigin;
+    }
+
+    private static function serializeOrigin(string $url): string
+    {
+        $parts = parse_url($url);
+        if (!is_array($parts) || !isset($parts['scheme'], $parts['host'])) {
+            throw new \InvalidArgumentException('FRONTEND_URL must be an absolute URL');
+        }
+        $scheme = strtolower($parts['scheme']);
+        $port = $parts['port'] ?? null;
+        $defaultPort = ['https' => 443, 'http' => 80][$scheme] ?? null;
+
+        return $scheme.'://'.strtolower($parts['host']).(null !== $port && $port !== $defaultPort ? ':'.$port : '');
+    }
+
+    private function decodeChallenge(string $challengeB64): string
+    {
+        $bytes = base64_decode(strtr($challengeB64, '-_', '+/'), true);
+        if (false === $bytes || 32 !== strlen($bytes)) {
+            throw new \InvalidArgumentException('Invalid challenge');
+        }
+
+        return $bytes;
+    }
+
+    /**
+     * Passkeys registered before the verified flow stored the whole attestation object instead of the
+     * COSE public key; the key is taken from its attested credential data (and rewritten on success).
+     */
+    private function cosePublicKey(Passkey $passkey, string $credentialId): string
+    {
+        $stored = $passkey->getPublicKey();
+        try {
+            $attestation = $this->serializer->denormalize($stored, AttestationObject::class);
+        } catch (\Throwable) {
+            return $stored;
+        }
+        $data = $attestation instanceof AttestationObject ? $attestation->authData->attestedCredentialData : null;
+        if (null === $data || null === $data->credentialPublicKey || !hash_equals($data->credentialId, $credentialId)) {
+            throw new \RuntimeException('Stored passkey has no usable public key');
+        }
+
+        return $data->credentialPublicKey;
     }
 
     private function generateCuid(): string
