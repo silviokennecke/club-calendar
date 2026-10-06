@@ -27,7 +27,7 @@ export interface SeriesRule {
 }
 
 /** Safety limit for the preview (about ten years of weekly dates). */
-export const MAX_SERIES_DATES = 520;
+const MAX_SERIES_DATES = 520;
 
 /** Dates of a rule between `from` and `to` (inclusive), in order. */
 export function seriesDates(rule: SeriesRule): IsoDate[] {

@@ -16,14 +16,14 @@ type ListEvent = Pick<CalendarEvent, "name" | "date" | "timeBegin" | "isDraft" |
   targetGroups: { targetGroup: { id: string } }[];
 };
 
-export function matchesStatus(ev: Pick<CalendarEvent, "isDraft">, tab: StatusTab): boolean {
+function matchesStatus(ev: Pick<CalendarEvent, "isDraft">, tab: StatusTab): boolean {
   if (tab === "published") return !ev.isDraft;
   if (tab === "draft") return ev.isDraft;
   return true;
 }
 
 /** Case-insensitive search in the event name. */
-export function matchesQuery(ev: Pick<CalendarEvent, "name">, query: string): boolean {
+function matchesQuery(ev: Pick<CalendarEvent, "name">, query: string): boolean {
   const q = query.trim().toLocaleLowerCase();
   return !q || ev.name.toLocaleLowerCase().includes(q);
 }
@@ -43,7 +43,7 @@ export interface ListFilter {
 }
 
 /** Date, then all-day first, then start time, then name. */
-export function compareEvents(a: ListEvent, b: ListEvent): number {
+function compareEvents(a: ListEvent, b: ListEvent): number {
   const d = a.date.slice(0, 10).localeCompare(b.date.slice(0, 10));
   if (d !== 0) return d;
   if (!!a.isAllDay !== !!b.isAllDay) return a.isAllDay ? -1 : 1;

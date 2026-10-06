@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -11,6 +11,7 @@ import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { Tabbar } from "./Tabbar";
 import type { ShellData } from "./shellTypes";
+import { FullPageLoader } from "@/components/ui/shared";
 
 interface AppShellProps {
   clubId: string;
@@ -126,7 +127,10 @@ export function AppShell({
       <Sidebar data={data} />
       <Topbar data={data} />
       <main className="ap-main" id="main" tabIndex={-1}>
-        <Outlet context={data} />
+        {/* First load of a lazy page: keep the shell, show the loading state in the content area. */}
+        <Suspense fallback={<FullPageLoader className="min-h-[50vh]" />}>
+          <Outlet context={data} />
+        </Suspense>
       </main>
       {calendarId && <Tabbar clubId={clubId} calendarId={calendarId} />}
     </div>

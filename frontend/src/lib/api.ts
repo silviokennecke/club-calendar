@@ -25,13 +25,6 @@ export function storeTokens(newAccessToken: string, newRefreshToken: string) {
   }
 }
 
-export function setAccessToken(token: string) {
-  accessToken = token;
-  if (typeof window !== "undefined") {
-    sessionStorage.setItem("access_token", token);
-  }
-}
-
 export function getAccessToken(): string | null {
   if (accessToken) return accessToken;
   if (typeof window !== "undefined") {
@@ -41,7 +34,7 @@ export function getAccessToken(): string | null {
   return null;
 }
 
-export function getRefreshToken(): string | null {
+function getRefreshToken(): string | null {
   if (typeof window !== "undefined") {
     return sessionStorage.getItem("refresh_token");
   }
@@ -56,11 +49,6 @@ export function clearTokens() {
     // Also remove old key in case it exists
     sessionStorage.removeItem("accessToken");
   }
-}
-
-/** @deprecated Use clearTokens() instead */
-export function clearAccessToken() {
-  clearTokens();
 }
 
 /** The session was rejected: forget the tokens and leave for the login page (without unsaved-changes prompt). */
@@ -148,14 +136,6 @@ export function createHolidayCalendar(
   data: { name: string; url: string },
 ): Promise<HolidayCalendar> {
   return apiPost<HolidayCalendar>(`/api/calendars/${calendarId}/holiday-calendars`, data);
-}
-
-export function updateHolidayCalendar(
-  calendarId: string,
-  id: string,
-  data: { name: string; url: string },
-): Promise<HolidayCalendar> {
-  return apiPatch<HolidayCalendar>(`/api/calendars/${calendarId}/holiday-calendars/${id}`, data);
 }
 
 export function deleteHolidayCalendar(calendarId: string, id: string): Promise<void> {

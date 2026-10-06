@@ -492,9 +492,6 @@
   .ap-skip:focus {
     top: var(--space-2);
   }
-  .ap-show-m {
-    display: none !important;
-  }
 
   /* Typography */
   .t-display {
@@ -964,9 +961,6 @@
     top: 50%;
     transform: translateY(-50%);
   }
-  .ap-req {
-    color: var(--danger);
-  }
   .ap-code {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 14px;
@@ -1416,9 +1410,6 @@
   }
   .ap-hide-m {
     display: none !important;
-  }
-  .ap-show-m {
-    display: block !important;
   }
   .ap-side {
     display: none;
@@ -2012,9 +2003,6 @@
   }
   .cc-day:hover {
     background: var(--surface-sunken);
-  }
-  .cc-day--muted {
-    color: var(--ink-muted);
   }
   .cc-day--today {
     border-color: var(--ink);
@@ -2702,11 +2690,6 @@
     top: var(--space-2);
     bottom: auto;
     max-width: calc(100% - 64px);
-  }
-  .ap-listrow--edit {
-    align-items: flex-start;
-    flex-wrap: wrap;
-    background: var(--surface-sunken);
   }
   .ap-listrow--current {
     background: var(--brand-soft);
