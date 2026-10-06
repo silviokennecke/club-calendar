@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPatch, clearTokens, storeTokens, getAccessToken } from "./api";
+import { ApiError, apiGet, apiPatch, clearTokens, storeTokens, getAccessToken } from "./api";
 import { AuthContext, type AuthContextValue } from "./auth-context";
 import i18n from "./i18n";
 import type { User } from "./types";
@@ -28,8 +28,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         applyUserLanguage(user);
         setUser(user);
       })
-      .catch(() => {
-        clearTokens();
+      .catch((err: unknown) => {
+        // Only a server answer invalidates the session. A network error is no verdict: when the page is left
+        // while /me is in flight (reload, address bar), the browser aborts the request, and clearing the tokens
+        // then would sign the user out of the page they are going to.
+        if (err instanceof ApiError) clearTokens();
         setUser(null);
       })
       .finally(() => setLoading(false));

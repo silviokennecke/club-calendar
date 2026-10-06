@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor, within } from "@testing-library/react";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ImportPage from "../ImportPage";
 import { BASE, PATTERN, groups, renderRoute } from "../events/__tests__/testUtils";
@@ -206,6 +206,48 @@ describe("ImportPage – review", () => {
     await user.click(screen.getByRole("button", { name: "Auswahl aufheben" }));
     expect(screen.getByText("0 von 3 ausgewählt")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Termine importieren" })).toBeDisabled();
+  });
+
+  it("labels the preset draft status in the bulk panel (design: Entwurf (voreingestellt))", async () => {
+    const user = userEvent.setup();
+    await openReview(user);
+    expect(screen.getByRole("button", { name: "Entwurf (voreingestellt)" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("puts the import button before Zurück on phones and after it on desktop", async () => {
+    const order = () => {
+      const buttons = screen
+        .getAllByRole("button")
+        .map((b) => b.textContent ?? "")
+        .filter((n) => n === "Zurück" || /Termine importieren$/.test(n));
+      return buttons;
+    };
+    const user = userEvent.setup();
+    await openReview(user);
+    expect(order()).toEqual(["Zurück", "3 Termine importieren"]);
+
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === "(max-width: 720px)",
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    try {
+      const mobileUser = userEvent.setup();
+      cleanup();
+      await openReview(mobileUser);
+      expect(order()).toEqual(["3 Termine importieren", "Zurück"]);
+    } finally {
+      window.matchMedia = original;
+    }
   });
 
   it("marks events that already exist and can deselect them", async () => {

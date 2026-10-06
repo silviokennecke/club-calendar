@@ -74,6 +74,35 @@ export function countUsage(
   };
 }
 
+/** At most this many event names are listed in a delete consequence (design: Dialogs.dc.html). */
+export const MAX_NAMED_EVENTS = 3;
+
+function uniqueNames(items: ReadonlyArray<{ name: string }>): string[] {
+  return [...new Set(items.map((i) => (i.name ?? "").trim()).filter(Boolean))];
+}
+
+/**
+ * Distinct names of the events an item is assigned to, for "Bei 2 Terminen (A, B) …"
+ * (design: Dialogs.dc.html); empty when more than `max` events are affected.
+ */
+export function affectedEventNames(
+  kind: MasterKind,
+  id: string,
+  events: ReadonlyArray<Assigned & { name: string }>,
+  max = MAX_NAMED_EVENTS,
+): string[] {
+  const hit = events.filter((e) => uses(kind, id, e));
+  return hit.length > max ? [] : uniqueNames(hit);
+}
+
+/** Distinct names of the templates that use a location as their default place. */
+export function locationTemplateNames(
+  id: string,
+  templates: ReadonlyArray<{ locationId: string | null; name: string }>,
+): string[] {
+  return uniqueNames(templates.filter((tpl) => tpl.locationId === id));
+}
+
 /** How many events and templates take place at a location. */
 export function countLocationUsage(
   id: string,

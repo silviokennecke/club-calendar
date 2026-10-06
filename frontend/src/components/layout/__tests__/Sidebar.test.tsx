@@ -52,6 +52,7 @@ describe("Sidebar navigation", () => {
     [`${base}/settings`, "Einstellungen"],
     [`${base}/settings/properties`, "Einstellungen"],
     [`${base}/settings/feeds`, "Veröffentlichen"],
+    [`${base}/events/export`, "Veröffentlichen"],
     ["/clubs/c1", "Verein verwalten"],
   ])("marks exactly one link as current on %s", (path, label) => {
     renderAt(path);
@@ -124,6 +125,7 @@ describe("Tabbar", () => {
     [`${base}/settings/feeds`, "Veröffentlichen"],
     [`${base}/settings`, "Mehr"],
     [`${base}/more`, "Mehr"],
+    [`${base}/events/export`, "Veröffentlichen"],
   ])("highlights the right tab on %s", (path, label) => {
     render(
       <MemoryRouter initialEntries={[path]}>

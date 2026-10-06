@@ -240,6 +240,12 @@ describe("ClubPage", () => {
     const dialog = await screen.findByRole("alertdialog", {
       name: "Kalender „Jugend“ archivieren?",
     });
+    expect(dialog).toHaveTextContent(
+      "Der Kalender wandert in die Liste der archivierten Kalender.",
+    );
+    expect(dialog).toHaveTextContent(
+      "Der Kalender ist danach gesperrt: Niemand kann Termine anlegen, ändern oder löschen.",
+    );
     expect(apiPost).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Kalender archivieren" }));
     await waitFor(() =>
@@ -257,7 +263,12 @@ describe("ClubPage", () => {
     renderClub();
     await user.click(await screen.findByRole("button", { name: "Kalender Jugend löschen" }));
     const dialog = await screen.findByRole("alertdialog", { name: "Kalender „Jugend“ löschen?" });
-    await waitFor(() => expect(dialog).toHaveTextContent("Termine (3), Vorlagen (1), Feeds (2)"));
+    expect(dialog).toHaveTextContent("Der Kalender wird dauerhaft gelöscht.");
+    await waitFor(() =>
+      expect(dialog).toHaveTextContent(
+        "Löscht den Kalender mit allen 3 Terminen und seinen Feeds unwiderruflich. Die Adressen der Feeds funktionieren danach nicht mehr.",
+      ),
+    );
     expect(apiDelete).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Kalender löschen" }));
     await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/clubs/c1/calendars/k2"));
@@ -274,7 +285,7 @@ describe("ClubPage", () => {
     expect(dialog).toHaveTextContent("Der archivierte Kalender wird dauerhaft gelöscht.");
     await waitFor(() =>
       expect(dialog).toHaveTextContent(
-        "Löscht Saison 2025 mit allen Terminen (3), Vorlagen (1) und Feeds (2) unwiderruflich. Eine Wiederherstellung ist danach nicht mehr möglich.",
+        "Löscht Saison 2025 mit allen Terminen und Feeds unwiderruflich. Eine Wiederherstellung ist danach nicht mehr möglich.",
       ),
     );
     await user.click(within(dialog).getByRole("button", { name: "Kalender löschen" }));

@@ -814,7 +814,8 @@
         "none": "Wähle unten Termine aus, um sie gemeinsam zu ändern.",
         "draftHint": "Entwürfe sieht nur dein Verein. Du kannst sie später veröffentlichen.",
         "publishedHint": "Veröffentlichte Termine sind nach dem Import sofort in öffentlichen Feeds sichtbar.",
-        "targetGroupsHint": "Zeigt, was alle ausgewählten Termine gemeinsam haben. Ohne Auswahl gilt ein Termin für alle."
+        "targetGroupsHint": "Zeigt, was alle ausgewählten Termine gemeinsam haben. Ohne Auswahl gilt ein Termin für alle.",
+        "draftDefault": "Entwurf (voreingestellt)"
       },
       "list": "Termine prüfen",
       "selectAll": "Alle auswählen",
@@ -1032,8 +1033,8 @@
     "archive": {
       "action": "Kalender archivieren",
       "confirmTitle": "Kalender „{{name}}“ archivieren?",
-      "confirmText": "Der Kalender bleibt erhalten, lässt sich aber nicht mehr ändern.",
-      "consequence": "Termine und Einstellungen sind danach nur lesbar. Öffentliche Feeds liefern nichts mehr, bis du die Archivierung aufhebst.",
+      "confirmText": "Der Kalender wandert in die Liste der archivierten Kalender.",
+      "consequence": "Der Kalender ist danach gesperrt: Niemand kann Termine anlegen, ändern oder löschen. Seine Feeds liefern bis dahin keine Termine mehr. Du kannst die Archivierung jederzeit aufheben.",
       "done": "Kalender archiviert.",
       "failed": "Der Kalender konnte nicht archiviert werden. Bitte versuche es erneut."
     },
@@ -1045,20 +1046,21 @@
     },
     "delete": {
       "confirmTitle": "Kalender „{{name}}“ löschen?",
-      "confirmText": "Der Kalender wird dauerhaft entfernt.",
+      "confirmText": "Der Kalender wird dauerhaft gelöscht.",
       "confirm": "Kalender löschen",
       "done": "Kalender gelöscht.",
       "failed": "Der Kalender konnte nicht gelöscht werden. Bitte versuche es erneut.",
       "consequence": {
         "loading": "Der Umfang wird ermittelt …",
-        "unknown": "Alle Termine, Vorlagen, Feeds, Orte und Zuordnungen dieses Kalenders werden gelöscht. Veröffentlichte Feed-Adressen funktionieren danach nicht mehr.",
-        "counts": "Gelöscht werden alle Termine ({{events}}), Vorlagen ({{templates}}), Feeds ({{feeds}}), Orte und Zuordnungen dieses Kalenders. Veröffentlichte Feed-Adressen funktionieren danach nicht mehr."
+        "unknown": "Löscht den Kalender mit allen Terminen und seinen Feeds unwiderruflich. Die Adressen der Feeds funktionieren danach nicht mehr.",
+        "noEvents": "Löscht den Kalender und seine Feeds unwiderruflich. Die Adressen der Feeds funktionieren danach nicht mehr.",
+        "events_one": "Löscht den Kalender mit seinem 1 Termin und seinen Feeds unwiderruflich. Die Adressen der Feeds funktionieren danach nicht mehr.",
+        "events_other": "Löscht den Kalender mit allen {{count}} Terminen und seinen Feeds unwiderruflich. Die Adressen der Feeds funktionieren danach nicht mehr."
       },
       "archived": {
         "title": "Archivierten Kalender „{{name}}“ löschen?",
         "text": "Der archivierte Kalender wird dauerhaft gelöscht.",
-        "consequenceCounts": "Löscht {{name}} mit allen Terminen ({{events}}), Vorlagen ({{templates}}) und Feeds ({{feeds}}) unwiderruflich. Eine Wiederherstellung ist danach nicht mehr möglich.",
-        "consequenceUnknown": "Löscht den Kalender mit allen Terminen, Vorlagen und Feeds unwiderruflich. Eine Wiederherstellung ist danach nicht mehr möglich."
+        "consequence": "Löscht {{name}} mit allen Terminen und Feeds unwiderruflich. Eine Wiederherstellung ist danach nicht mehr möglich."
       }
     },
     "general": {
@@ -1116,16 +1118,18 @@
         "deleteLabel": "{{name}} löschen",
         "editTitle": "Eigenschaft bearbeiten",
         "deleteTitle": "Eigenschaft „{{name}}“ löschen?",
-        "deleteText": "„{{name}}“ wird aus der Liste der Eigenschaften entfernt.",
+        "deleteText": "Die Eigenschaft wird aus der Liste entfernt.",
         "deleteConfirm": "Eigenschaft löschen",
         "consequence": {
           "loading": "Betroffene Termine werden ermittelt …",
-          "unknown": "Termine und Vorlagen verlieren die Zuordnung zu „{{name}}“. Die Termine selbst bleiben erhalten.",
+          "unknown": "Bei allen Terminen und Vorlagen mit „{{name}}“ wird die Zuordnung entfernt. Die Termine selbst bleiben bestehen.",
           "none": "„{{name}}“ ist aktuell keinem Termin und keiner Vorlage zugeordnet.",
-          "events_one": "{{count}} Termin verliert die Zuordnung zu „{{name}}“. Der Termin selbst bleibt erhalten.",
-          "events_other": "{{count}} Termine verlieren die Zuordnung zu „{{name}}“. Die Termine selbst bleiben erhalten.",
           "templates_one": "{{count}} Vorlage verliert die Zuordnung.",
-          "templates_other": "{{count}} Vorlagen verlieren die Zuordnung."
+          "templates_other": "{{count}} Vorlagen verlieren die Zuordnung.",
+          "events_one": "Bei 1 Termin wird die Zuordnung entfernt. Der Termin selbst bleibt bestehen.",
+          "events_other": "Bei {{count}} Terminen wird die Zuordnung entfernt. Die Termine selbst bleiben bestehen.",
+          "eventsNamed_one": "Bei 1 Termin ({{names}}) wird die Zuordnung entfernt. Der Termin selbst bleibt bestehen.",
+          "eventsNamed_other": "Bei {{count}} Terminen ({{names}}) wird die Zuordnung entfernt. Die Termine selbst bleiben bestehen."
         },
         "editText": "Name und Symbol von „{{name}}“ ändern."
       },
@@ -1147,16 +1151,18 @@
         "deleteLabel": "{{name}} löschen",
         "editTitle": "Feature bearbeiten",
         "deleteTitle": "Feature „{{name}}“ löschen?",
-        "deleteText": "„{{name}}“ wird aus der Liste der Features entfernt.",
+        "deleteText": "Das Feature wird aus der Liste entfernt.",
         "deleteConfirm": "Feature löschen",
         "consequence": {
           "loading": "Betroffene Termine werden ermittelt …",
-          "unknown": "Termine und Vorlagen verlieren die Zuordnung zu „{{name}}“. Die Termine selbst bleiben erhalten.",
+          "unknown": "Bei allen Terminen und Vorlagen mit „{{name}}“ wird die Zuordnung entfernt. Die Termine selbst bleiben bestehen.",
           "none": "„{{name}}“ ist aktuell keinem Termin und keiner Vorlage zugeordnet.",
-          "events_one": "{{count}} Termin verliert die Zuordnung zu „{{name}}“. Der Termin selbst bleibt erhalten.",
-          "events_other": "{{count}} Termine verlieren die Zuordnung zu „{{name}}“. Die Termine selbst bleiben erhalten.",
           "templates_one": "{{count}} Vorlage verliert die Zuordnung.",
-          "templates_other": "{{count}} Vorlagen verlieren die Zuordnung."
+          "templates_other": "{{count}} Vorlagen verlieren die Zuordnung.",
+          "events_one": "Bei 1 Termin wird die Zuordnung entfernt. Der Termin selbst bleibt bestehen.",
+          "events_other": "Bei {{count}} Terminen wird die Zuordnung entfernt. Die Termine selbst bleiben bestehen.",
+          "eventsNamed_one": "Bei 1 Termin ({{names}}) wird die Zuordnung entfernt. Der Termin selbst bleibt bestehen.",
+          "eventsNamed_other": "Bei {{count}} Terminen ({{names}}) wird die Zuordnung entfernt. Die Termine selbst bleiben bestehen."
         },
         "editText": "Namen von „{{name}}“ ändern."
       },
@@ -1178,16 +1184,19 @@
         "deleteLabel": "{{name}} löschen",
         "editTitle": "Zielgruppe bearbeiten",
         "deleteTitle": "Zielgruppe „{{name}}“ löschen?",
-        "deleteText": "„{{name}}“ wird aus der Liste der Zielgruppen entfernt.",
+        "deleteText": "Die Zielgruppe wird aus der Liste entfernt.",
         "deleteConfirm": "Zielgruppe löschen",
         "consequence": {
           "loading": "Betroffene Termine werden ermittelt …",
-          "unknown": "Termine und Vorlagen verlieren die Zuordnung zu „{{name}}“. Die Termine selbst bleiben erhalten. Feeds, die nur diese Zielgruppe enthalten, werden leer.",
+          "unknown": "Bei allen Terminen und Vorlagen mit „{{name}}“ wird die Zuordnung entfernt.",
           "none": "„{{name}}“ ist aktuell keinem Termin und keiner Vorlage zugeordnet.",
-          "events_one": "{{count}} Termin verliert die Zuordnung zu „{{name}}“. Der Termin selbst bleibt erhalten.",
-          "events_other": "{{count}} Termine verlieren die Zuordnung zu „{{name}}“. Die Termine selbst bleiben erhalten.",
           "templates_one": "{{count}} Vorlage verliert die Zuordnung.",
-          "templates_other": "{{count}} Vorlagen verlieren die Zuordnung."
+          "templates_other": "{{count}} Vorlagen verlieren die Zuordnung.",
+          "events_one": "Bei 1 Termin wird die Zuordnung entfernt.",
+          "events_other": "Bei {{count}} Terminen wird die Zuordnung entfernt.",
+          "eventsNamed_one": "Bei 1 Termin ({{names}}) wird die Zuordnung entfernt.",
+          "eventsNamed_other": "Bei {{count}} Terminen ({{names}}) wird die Zuordnung entfernt.",
+          "feeds": "Feeds, die diese Zielgruppe ausgewählt haben, verlieren sie aus ihrer Auswahl."
         },
         "editText": "Namen von „{{name}}“ ändern."
       }
@@ -1254,7 +1263,7 @@
       "delete": {
         "action": "Ort löschen",
         "title": "Ort „{{name}}“ löschen?",
-        "text": "Der Ort wird aus der Liste und von der Karte entfernt. Die Termine selbst bleiben erhalten.",
+        "text": "Der Ort wird samt Kartenposition entfernt.",
         "confirm": "Ort löschen",
         "consequence": {
           "loading": "Betroffene Termine werden ermittelt …",
@@ -1263,7 +1272,8 @@
           "events_one": "{{count}} Termin mit diesem Ort hat danach keinen Ort mehr.",
           "events_other": "{{count}} Termine mit diesem Ort haben danach keinen Ort mehr.",
           "templates_one": "{{count}} Vorlage verliert ihren Standardort.",
-          "templates_other": "{{count}} Vorlagen verlieren ihren Standardort."
+          "templates_other": "{{count}} Vorlagen verlieren ihren Standardort.",
+          "templateNamed": "Die Vorlage „{{name}}“ verliert ihren Standardort."
         }
       },
       "search": {
@@ -1331,12 +1341,15 @@
       "refreshing": "Wird aktualisiert …",
       "refresh": "Jetzt aktualisieren",
       "refreshLabel": "{{name}} jetzt aktualisieren",
+      "refreshingLabel": "{{name}} wird aktualisiert",
       "refreshFailed": "Die Aktualisierung hat nicht geklappt. Die zuletzt abgerufenen Feiertage bleiben erhalten.",
       "deleteLabel": "{{name}} löschen",
       "delete": {
         "title": "Feiertagskalender „{{name}}“ löschen?",
         "text": "Der eingebundene Kalender wird entfernt. Deine eigenen Termine bleiben unverändert.",
-        "consequence": "Die Feiertage verschwinden aus dem Kalender und aus der Serienplanung.",
+        "consequence": "Die Feiertage verschwinden aus dem Kalender und lassen sich in Serien nicht mehr aussparen. Die Quelle im Internet bleibt unverändert.",
+        "consequenceCount_one": "Der Feiertag verschwindet aus dem Kalender und lässt sich in Serien nicht mehr aussparen. Die Quelle im Internet bleibt unverändert.",
+        "consequenceCount_other": "Die {{count}} Feiertage verschwinden aus dem Kalender und lassen sich in Serien nicht mehr aussparen. Die Quelle im Internet bleibt unverändert.",
         "confirm": "Feiertagskalender löschen"
       },
       "preview": "Feiertage der nächsten 12 Monate anzeigen",
@@ -1664,7 +1677,7 @@
     "regen": {
       "action": "Geheimnis neu erzeugen",
       "title": "Geheimnis neu erzeugen?",
-      "text": "Der Feed bekommt ein neues Geheimnis und damit neue Adressen.",
+      "text": "Der Feed „{{name}}“ bekommt ein neues Geheimnis und damit neue Adressen.",
       "consequence": "Bestehende Abonnements werden unterbrochen. Alle müssen die neue Abo-Adresse eintragen.",
       "confirm": "Geheimnis neu erzeugen",
       "done": "Neues Geheimnis erzeugt. Die Adressen des Feeds haben sich geändert.",

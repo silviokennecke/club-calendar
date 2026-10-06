@@ -156,6 +156,9 @@ describe("HolidayCalendarsPage", () => {
     );
     const busyRow = (await screen.findAllByRole("listitem"))[0];
     expect(busyRow).toHaveAttribute("aria-busy", "true");
+    expect(
+      within(busyRow).getByRole("button", { name: "Feiertage Deutschland wird aktualisiert" }),
+    ).toBeInTheDocument();
     expect(busyRow).toHaveTextContent("Wird aktualisiert …");
     finish(de);
     await waitFor(() => expect(busyRow).not.toHaveAttribute("aria-busy"));
@@ -182,11 +185,23 @@ describe("HolidayCalendarsPage", () => {
       name: "Feiertagskalender „Schulferien“ löschen?",
     });
     expect(dialog).toHaveTextContent(
-      "Die Feiertage verschwinden aus dem Kalender und aus der Serienplanung.",
+      "Die Feiertage verschwinden aus dem Kalender und lassen sich in Serien nicht mehr aussparen. Die Quelle im Internet bleibt unverändert.",
     );
     expect(deleteHolidayCalendar).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Feiertagskalender löschen" }));
     await waitFor(() => expect(deleteHolidayCalendar).toHaveBeenCalledWith("k1", "h2"));
+  });
+
+  it("names the number of holidays in the delete consequence", async () => {
+    const user = userEvent.setup();
+    renderRoute(route, url, <HolidayCalendarsPage />);
+    await user.click(await screen.findByRole("button", { name: "Feiertage Deutschland löschen" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Feiertagskalender „Feiertage Deutschland“ löschen?",
+    });
+    expect(dialog).toHaveTextContent(
+      "Die 16 Feiertage verschwinden aus dem Kalender und lassen sich in Serien nicht mehr aussparen. Die Quelle im Internet bleibt unverändert.",
+    );
   });
 
   it("shows the empty state", async () => {
