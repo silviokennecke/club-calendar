@@ -13,4 +13,11 @@ localhost zeigt.
    (gleiche `DATABASE_URL` in der Umgebung).
 3. Frontend: `cd frontend && VITE_API_URL=http://localhost:3001 npx vite --port 5199`.
 4. Tests: `PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend`.
-5. Aufräumen: Server auf 3001 / 5199 beenden, `DROP DATABASE club_calendar_e2e`.
+5. Fehlerseite im Produktions-Build (optional): `e2e/error-page.spec.ts` prüft gegen den Dev-Server die 404-Seite und
+   einen blockierten Seiten-Import (im Dev-Modus gibt es kein `vite:preloadError`, also keinen automatischen Reload).
+   Den Reload-Schutz (genau ein Reload, dann Fehlerseite) testet ein Test, der nur mit `E2E_PREVIEW_URL` läuft:
+   `VITE_API_URL=http://localhost:3001 npx vite build --outDir /tmp/e2e-dist` (in `frontend/`),
+   `npx vite preview --outDir /tmp/e2e-dist --port 5198`, dann
+   `E2E_PREVIEW_URL=http://localhost:5198 PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend -- error-page`.
+   Ohne `E2E_PREVIEW_URL` wird dieser Test übersprungen.
+6. Aufräumen: Server auf 3001 / 5199 beenden, `DROP DATABASE club_calendar_e2e`.

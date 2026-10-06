@@ -1713,5 +1713,22 @@
       "requireLabel": "Zur Bestätigung deine E-Mail-Adresse eingeben",
       "failed": "Das Konto konnte nicht gelöscht werden. Bitte versuche es erneut."
     }
+  },
+  "errorPage": {
+    "details": "Technische Details (nur in der Entwicklung)",
+    "reload": "Seite neu laden",
+    "home": "Zur Startseite",
+    "notFound": {
+      "title": "Seite nicht gefunden",
+      "text": "Diese Adresse gibt es nicht oder nicht mehr. Prüfe den Link oder gehe zur Startseite."
+    },
+    "load": {
+      "title": "Die Seite konnte nicht geladen werden",
+      "text": "Möglicherweise wurde die Anwendung gerade aktualisiert. Lade die Seite neu, um die aktuelle Version zu holen. Besteht das Problem weiter, prüfe deine Internetverbindung."
+    },
+    "generic": {
+      "title": "Da ist etwas schiefgelaufen",
+      "text": "Die Seite konnte nicht angezeigt werden. Lade sie neu oder gehe zur Startseite. Bereits gespeicherte Daten sind davon nicht betroffen."
+    }
   }
 }
