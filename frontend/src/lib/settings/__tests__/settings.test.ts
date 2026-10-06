@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_LOCATION_FORM,
+  affectedEventNames,
   countLocationUsage,
+  locationTemplateNames,
   countUsage,
   fillEmptyAddress,
   formatClock,
@@ -60,6 +62,34 @@ describe("countUsage", () => {
       events: 2,
       templates: 1,
     });
+  });
+});
+
+describe("names in delete consequences", () => {
+  const ev = (name: string, id: string) => ({
+    name,
+    properties: [{ property: { id } }],
+    features: [],
+    targetGroups: [],
+  });
+
+  it("lists distinct event names up to three events, none above", () => {
+    const evs = [ev("Herbstfest", "p1"), ev("Training", "p1"), ev("Training", "p1"), ev("X", "p2")];
+    expect(affectedEventNames("properties", "p1", evs as never)).toEqual([
+      "Herbstfest",
+      "Training",
+    ]);
+    expect(affectedEventNames("properties", "p1", [...evs, ev("Y", "p1")] as never)).toEqual([]);
+    expect(affectedEventNames("properties", "p9", evs as never)).toEqual([]);
+  });
+
+  it("names the templates of a location", () => {
+    const tpls = [
+      { locationId: "l1", name: "Vereinsabend" },
+      { locationId: "l2", name: "Training" },
+    ];
+    expect(locationTemplateNames("l1", tpls)).toEqual(["Vereinsabend"]);
+    expect(locationTemplateNames("l3", tpls)).toEqual([]);
   });
 });
 

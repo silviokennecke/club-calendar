@@ -22,6 +22,7 @@ import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
 import type { CalendarEvent, EventTemplate } from "@/lib/types";
 import {
   MASTER_KINDS,
+  affectedEventNames,
   countUsage,
   validateName,
   type MasterItem,
@@ -181,14 +182,26 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
     }
   }
 
+  /** Design (Dialogs.dc.html): "Bei 2 Terminen (A, B) wird die Zuordnung entfernt. …"; audiences add the feeds. */
   function consequence(item: MasterItem) {
-    if (usage.isError) return tk("consequence.unknown", { name: item.name });
-    if (!usage.data) return tk("consequence.loading");
-    const n = countUsage(kind, item.id, usage.data.events, usage.data.templates);
+    if (!usage.data && !usage.isError) return tk("consequence.loading");
     const parts: string[] = [];
-    if (n.events > 0) parts.push(tk("consequence.events", { count: n.events, name: item.name }));
-    if (n.templates > 0) parts.push(tk("consequence.templates", { count: n.templates }));
-    return parts.length > 0 ? parts.join(" ") : tk("consequence.none", { name: item.name });
+    if (usage.isError || !usage.data) {
+      parts.push(tk("consequence.unknown", { name: item.name }));
+    } else {
+      const n = countUsage(kind, item.id, usage.data.events, usage.data.templates);
+      const names = affectedEventNames(kind, item.id, usage.data.events);
+      if (n.events > 0)
+        parts.push(
+          names.length > 0
+            ? tk("consequence.eventsNamed", { count: n.events, names: names.join(", ") })
+            : tk("consequence.events", { count: n.events }),
+        );
+      if (n.templates > 0) parts.push(tk("consequence.templates", { count: n.templates }));
+      if (parts.length === 0) parts.push(tk("consequence.none", { name: item.name }));
+    }
+    if (kind === "audiences") parts.push(tk("consequence.feeds"));
+    return parts.join(" ");
   }
 
   const addErrors = addProblem
@@ -392,7 +405,7 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
           onOpenChange={(open) => !open && setDeleting(null)}
           icon="trash"
           title={tk("deleteTitle", { name: deleting.name })}
-          description={tk("deleteText", { name: deleting.name })}
+          description={tk("deleteText")}
           consequence={consequence(deleting)}
           confirmLabel={tk("deleteConfirm")}
           onConfirm={() => confirmDelete(deleting)}

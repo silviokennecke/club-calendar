@@ -814,7 +814,8 @@
         "none": "Select events below to change them together.",
         "draftHint": "Only your club sees drafts. You can publish them later.",
         "publishedHint": "Published events are visible in public feeds right after the import.",
-        "targetGroupsHint": "Shows what all selected events have in common. Without a selection an event applies to everyone."
+        "targetGroupsHint": "Shows what all selected events have in common. Without a selection an event applies to everyone.",
+        "draftDefault": "Draft (default)"
       },
       "list": "Review events",
       "selectAll": "Select all",
@@ -1032,8 +1033,8 @@
     "archive": {
       "action": "Archive calendar",
       "confirmTitle": "Archive calendar “{{name}}”?",
-      "confirmText": "The calendar is kept but can no longer be changed.",
-      "consequence": "Events and settings are read-only afterwards. Public feeds deliver nothing until you restore the calendar.",
+      "confirmText": "The calendar moves to the list of archived calendars.",
+      "consequence": "The calendar is locked afterwards: nobody can create, change or delete events. Its feeds deliver no events until then. You can restore it at any time.",
       "done": "Calendar archived.",
       "failed": "The calendar could not be archived. Please try again."
     },
@@ -1045,20 +1046,21 @@
     },
     "delete": {
       "confirmTitle": "Delete calendar “{{name}}”?",
-      "confirmText": "The calendar is removed permanently.",
+      "confirmText": "The calendar will be deleted permanently.",
       "confirm": "Delete calendar",
       "done": "Calendar deleted.",
       "failed": "The calendar could not be deleted. Please try again.",
       "consequence": {
         "loading": "Working out the scope …",
-        "unknown": "All events, templates, feeds, places and assignments of this calendar are deleted. Published feed addresses stop working.",
-        "counts": "This deletes all events ({{events}}), templates ({{templates}}), feeds ({{feeds}}), places and assignments of this calendar. Published feed addresses stop working."
+        "unknown": "Permanently deletes the calendar with all its events and feeds. The feed addresses stop working.",
+        "noEvents": "Permanently deletes the calendar and its feeds. The feed addresses stop working.",
+        "events_one": "Permanently deletes the calendar with its 1 event and its feeds. The feed addresses stop working.",
+        "events_other": "Permanently deletes the calendar with all {{count}} events and its feeds. The feed addresses stop working."
       },
       "archived": {
         "title": "Delete archived calendar “{{name}}”?",
         "text": "The archived calendar will be deleted permanently.",
-        "consequenceCounts": "Permanently deletes {{name}} with all events ({{events}}), templates ({{templates}}) and feeds ({{feeds}}). It cannot be restored afterwards.",
-        "consequenceUnknown": "Permanently deletes the calendar with all events, templates and feeds. It cannot be restored afterwards."
+        "consequence": "Permanently deletes {{name}} with all events and feeds. It cannot be restored afterwards."
       }
     },
     "general": {
@@ -1116,16 +1118,18 @@
         "deleteLabel": "Delete {{name}}",
         "editTitle": "Edit property",
         "deleteTitle": "Delete property “{{name}}”?",
-        "deleteText": "“{{name}}” is removed from the list of properties.",
+        "deleteText": "The property is removed from the list.",
         "deleteConfirm": "Delete property",
         "consequence": {
           "loading": "Working out the affected events …",
-          "unknown": "Events and templates lose their link to “{{name}}”. The events themselves stay.",
+          "unknown": "The link is removed from all events and templates with “{{name}}”. The events themselves stay.",
           "none": "“{{name}}” is not used by any event or template right now.",
-          "events_one": "{{count}} event loses its link to “{{name}}”. The event itself stays.",
-          "events_other": "{{count}} events lose their link to “{{name}}”. The events themselves stay.",
           "templates_one": "{{count}} template loses the link.",
-          "templates_other": "{{count}} templates lose the link."
+          "templates_other": "{{count}} templates lose the link.",
+          "events_one": "The link is removed from 1 event. The event itself stays.",
+          "events_other": "The link is removed from {{count}} events. The events themselves stay.",
+          "eventsNamed_one": "The link is removed from 1 event ({{names}}). The event itself stays.",
+          "eventsNamed_other": "The link is removed from {{count}} events ({{names}}). The events themselves stay."
         },
         "editText": "Change the name and symbol of “{{name}}”."
       },
@@ -1147,16 +1151,18 @@
         "deleteLabel": "Delete {{name}}",
         "editTitle": "Edit feature",
         "deleteTitle": "Delete feature “{{name}}”?",
-        "deleteText": "“{{name}}” is removed from the list of features.",
+        "deleteText": "The feature is removed from the list.",
         "deleteConfirm": "Delete feature",
         "consequence": {
           "loading": "Working out the affected events …",
-          "unknown": "Events and templates lose their link to “{{name}}”. The events themselves stay.",
+          "unknown": "The link is removed from all events and templates with “{{name}}”. The events themselves stay.",
           "none": "“{{name}}” is not used by any event or template right now.",
-          "events_one": "{{count}} event loses its link to “{{name}}”. The event itself stays.",
-          "events_other": "{{count}} events lose their link to “{{name}}”. The events themselves stay.",
           "templates_one": "{{count}} template loses the link.",
-          "templates_other": "{{count}} templates lose the link."
+          "templates_other": "{{count}} templates lose the link.",
+          "events_one": "The link is removed from 1 event. The event itself stays.",
+          "events_other": "The link is removed from {{count}} events. The events themselves stay.",
+          "eventsNamed_one": "The link is removed from 1 event ({{names}}). The event itself stays.",
+          "eventsNamed_other": "The link is removed from {{count}} events ({{names}}). The events themselves stay."
         },
         "editText": "Change the name of “{{name}}”."
       },
@@ -1178,16 +1184,19 @@
         "deleteLabel": "Delete {{name}}",
         "editTitle": "Edit audience",
         "deleteTitle": "Delete audience “{{name}}”?",
-        "deleteText": "“{{name}}” is removed from the list of audiences.",
+        "deleteText": "The audience is removed from the list.",
         "deleteConfirm": "Delete audience",
         "consequence": {
           "loading": "Working out the affected events …",
-          "unknown": "Events and templates lose their link to “{{name}}”. The events themselves stay. Feeds that only contain this audience become empty.",
+          "unknown": "The link is removed from all events and templates with “{{name}}”.",
           "none": "“{{name}}” is not used by any event or template right now.",
-          "events_one": "{{count}} event loses its link to “{{name}}”. The event itself stays.",
-          "events_other": "{{count}} events lose their link to “{{name}}”. The events themselves stay.",
           "templates_one": "{{count}} template loses the link.",
-          "templates_other": "{{count}} templates lose the link."
+          "templates_other": "{{count}} templates lose the link.",
+          "events_one": "The link is removed from 1 event.",
+          "events_other": "The link is removed from {{count}} events.",
+          "eventsNamed_one": "The link is removed from 1 event ({{names}}).",
+          "eventsNamed_other": "The link is removed from {{count}} events ({{names}}).",
+          "feeds": "Feeds that selected this audience lose it from their selection."
         },
         "editText": "Change the name of “{{name}}”."
       }
@@ -1254,7 +1263,7 @@
       "delete": {
         "action": "Delete place",
         "title": "Delete place “{{name}}”?",
-        "text": "The place is removed from the list and the map. The events themselves stay.",
+        "text": "The place is removed together with its map position.",
         "confirm": "Delete place",
         "consequence": {
           "loading": "Working out the affected events …",
@@ -1263,7 +1272,8 @@
           "events_one": "{{count}} event at this place has no place afterwards.",
           "events_other": "{{count}} events at this place have no place afterwards.",
           "templates_one": "{{count}} template loses its default place.",
-          "templates_other": "{{count}} templates lose their default place."
+          "templates_other": "{{count}} templates lose their default place.",
+          "templateNamed": "The template “{{name}}” loses its default place."
         }
       },
       "search": {
@@ -1331,12 +1341,15 @@
       "refreshing": "Updating …",
       "refresh": "Update now",
       "refreshLabel": "Update {{name}} now",
+      "refreshingLabel": "Updating {{name}}",
       "refreshFailed": "The update did not work. The holidays fetched last are kept.",
       "deleteLabel": "Delete {{name}}",
       "delete": {
         "title": "Delete holiday calendar “{{name}}”?",
         "text": "The linked calendar is removed. Your own events stay unchanged.",
-        "consequence": "The holidays disappear from the calendar and from series planning.",
+        "consequence": "The holidays disappear from the calendar and can no longer be skipped in series. The source on the internet stays unchanged.",
+        "consequenceCount_one": "The holiday disappears from the calendar and can no longer be skipped in series. The source on the internet stays unchanged.",
+        "consequenceCount_other": "The {{count}} holidays disappear from the calendar and can no longer be skipped in series. The source on the internet stays unchanged.",
         "confirm": "Delete holiday calendar"
       },
       "preview": "Show holidays of the next 12 months",
@@ -1664,7 +1677,7 @@
     "regen": {
       "action": "Regenerate secret",
       "title": "Regenerate secret?",
-      "text": "The feed gets a new secret and therefore new addresses.",
+      "text": "The feed “{{name}}” gets a new secret and therefore new addresses.",
       "consequence": "Existing subscriptions stop working. Everyone has to enter the new subscription address.",
       "confirm": "Regenerate secret",
       "done": "New secret created. The addresses of the feed have changed.",

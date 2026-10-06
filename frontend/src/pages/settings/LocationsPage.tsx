@@ -23,6 +23,7 @@ import { formatAddress, type CalendarEvent, type EventTemplate, type Location } 
 import {
   EMPTY_LOCATION_FORM,
   countLocationUsage,
+  locationTemplateNames,
   fillEmptyAddress,
   hasPosition,
   locationFormValid,
@@ -35,6 +36,7 @@ import {
   type LocationForm,
 } from "@/lib/settings";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
+import { cn } from "@/lib/utils";
 
 const LocationsOverviewMap = lazy(() => import("@/components/locations/LocationsOverviewMap"));
 
@@ -234,7 +236,11 @@ export default function LocationsPage() {
     const parts: string[] = [];
     if (n.events > 0)
       parts.push(t("settings.places.delete.consequence.events", { count: n.events }));
-    if (n.templates > 0)
+    // Design (Dialogs.dc.html): one template is named ("Die Vorlage „Vereinsabend“ verliert …").
+    const templateNames = locationTemplateNames(deleting.id, usage.data.templates);
+    if (n.templates === 1 && templateNames.length === 1)
+      parts.push(t("settings.places.delete.consequence.templateNamed", { name: templateNames[0] }));
+    else if (n.templates > 0)
       parts.push(t("settings.places.delete.consequence.templates", { count: n.templates }));
     return parts.length > 0 ? parts.join(" ") : t("settings.places.delete.consequence.none");
   }
@@ -332,7 +338,7 @@ export default function LocationsPage() {
               return (
                 <li
                   key={loc.id}
-                  className={`ap-listrow ap-listrow--wrap${marked ? "ap-listrow--current" : ""}`}
+                  className={cn("ap-listrow ap-listrow--wrap", marked && "ap-listrow--current")}
                   aria-current={marked || undefined}
                 >
                   <div className="ap-listrow-main" style={{ minWidth: 180 }}>

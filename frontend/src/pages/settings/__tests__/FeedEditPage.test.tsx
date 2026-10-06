@@ -176,6 +176,9 @@ describe("FeedEditPage (edit)", () => {
     renderEdit("f2");
     await user.click(await screen.findByRole("button", { name: "Geheimnis neu erzeugen" }));
     const dialog = await screen.findByRole("alertdialog", { name: "Geheimnis neu erzeugen?" });
+    expect(dialog).toHaveTextContent(
+      "Der Feed „Vorstand intern“ bekommt ein neues Geheimnis und damit neue Adressen.",
+    );
     expect(dialog).toHaveTextContent("Bestehende Abonnements werden unterbrochen.");
     expect(apiPost).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Abbrechen" }));

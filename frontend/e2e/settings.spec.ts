@@ -226,7 +226,7 @@ test.describe("Einstellungen", () => {
     await openSettings(page, s.email, `${s.base}/settings/properties`);
     await page.getByRole("button", { name: "Draußen löschen" }).click();
     await expect(page.getByRole("alertdialog")).toContainText(
-      "2 Termine verlieren die Zuordnung zu „Draußen“",
+      "Bei 2 Terminen (Termin 2026-10-10, Termin 2026-10-17) wird die Zuordnung entfernt.",
     );
     await page.getByRole("button", { name: "Abbrechen" }).click();
     await expect(page.getByRole("alertdialog")).toHaveCount(0);

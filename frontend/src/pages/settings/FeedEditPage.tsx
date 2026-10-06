@@ -381,7 +381,7 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
             onOpenChange={setRegenOpen}
             icon="refresh"
             title={t("feeds.regen.title")}
-            description={t("feeds.regen.text")}
+            description={t("feeds.regen.text", { name: feed.name })}
             consequence={t("feeds.regen.consequence")}
             confirmLabel={t("feeds.regen.confirm")}
             onConfirm={regenerate}
