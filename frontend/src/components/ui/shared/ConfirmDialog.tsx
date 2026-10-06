@@ -1,7 +1,6 @@
 import { useId, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog";
 import { useTranslation } from "react-i18next";
-import { AlertDialog, AlertDialogOverlay, AlertDialogPortal } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { Icon, type Glyph } from "./Icon";
 import { buttonClass } from "./buttonClass";
@@ -73,13 +72,13 @@ export function ConfirmDialog({
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={(next) => setOpen(next)}>
+    <AlertDialogPrimitive.Root open={open} onOpenChange={(next) => setOpen(next)}>
       {trigger && <AlertDialogPrimitive.Trigger render={trigger} />}
-      <AlertDialogPortal>
+      <AlertDialogPrimitive.Portal>
         {/* forceRender: also dim a dialog below (delete / unsaved above the event dialog). */}
-        <AlertDialogOverlay
+        <AlertDialogPrimitive.Backdrop
           forceRender
-          className="bg-scrim supports-backdrop-filter:backdrop-blur-none"
+          className="data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 bg-scrim fixed inset-0 isolate z-50 duration-100"
         />
         <AlertDialogPrimitive.Popup
           initialFocus={cancelRef}
@@ -131,7 +130,7 @@ export function ConfirmDialog({
             </button>
           </div>
         </AlertDialogPrimitive.Popup>
-      </AlertDialogPortal>
-    </AlertDialog>
+      </AlertDialogPrimitive.Portal>
+    </AlertDialogPrimitive.Root>
   );
 }

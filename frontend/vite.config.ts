@@ -18,7 +18,27 @@ const cleanPreviousBuild = {
 
 export default defineConfig({
   plugins: [react(), cleanPreviousBuild],
-  build: { outDir, emptyOutDir: false },
+  build: {
+    outDir,
+    emptyOutDir: false,
+    rollupOptions: {
+      output: {
+        // Long-lived vendor chunks (cached across app releases). Pages and dialogs are split per
+        // route (src/pages/lazy.ts); mapbox-gl and emoji-mart stay in their own lazy chunks.
+        manualChunks(id) {
+          if (!id.includes("/node_modules/")) return undefined;
+          if (
+            /\/node_modules\/(react|react-dom|scheduler|react-router|react-router-dom)\//.test(id)
+          )
+            return "vendor-react";
+          if (id.includes("/node_modules/@tanstack/")) return "vendor-query";
+          if (/\/node_modules\/(i18next|react-i18next|i18next-browser-languagedetector)\//.test(id))
+            return "vendor-i18n";
+          return undefined;
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

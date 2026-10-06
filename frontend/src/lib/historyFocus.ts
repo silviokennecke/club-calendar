@@ -8,7 +8,7 @@ import { matchModal } from "./modalRoutes";
  * Skipped for dialogs opening / closing (they have their own focus handling, `modalFocus.ts`) and
  * for changes of the query only (month switch, filters), which keep the page and its focus.
  */
-export function focusPageStart(root: Document = document): boolean {
+function focusPageStart(root: Document = document): boolean {
   const heading = root.querySelector<HTMLElement>("main h1, #main h1");
   const target = heading ?? root.getElementById("main");
   if (!target) return false;

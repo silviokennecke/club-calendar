@@ -1,10 +1,12 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
-import i18n from "@/lib/i18n";
+import i18n, { i18nReady } from "@/lib/i18n";
 
-// Tests run in German (the design's source language).
-void i18n.changeLanguage("de");
+// Tests run in German (the design's source language). Wait for the initial language detection
+// (jsdom reports English, which loads lazily) so it cannot switch back afterwards.
+await i18nReady;
+await i18n.changeLanguage("de");
 
 // jsdom has no matchMedia; default to "light" system preference. Tests may override it.
 if (typeof window !== "undefined" && !window.matchMedia) {

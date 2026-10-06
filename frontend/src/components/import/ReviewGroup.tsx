@@ -14,7 +14,7 @@ import { Button, Icon, StatusBadge } from "@/components/ui/shared";
 import { useLocale } from "@/components/calendar/useLocale";
 
 /** Rows rendered per group at first and added by each "show more" (files can hold thousands of events). */
-export const GROUP_PAGE_SIZE = 100;
+const GROUP_PAGE_SIZE = 100;
 
 interface ReviewGroupProps {
   group: ImportGroup;

@@ -8,36 +8,38 @@ import ProtectedRoute from "./components/layout/ProtectedRoute";
 import GuestRoute from "./components/layout/GuestRoute";
 import { BackgroundRoutes } from "./components/layout/BackgroundRoutes";
 
-import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/SignupPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import AuthCallbackPage from "./pages/AuthCallbackPage";
-import EmailVerifyPage from "./pages/EmailVerifyPage";
-import FeedPage from "./pages/FeedPage";
-import PublicEventModal from "./pages/PublicEventModal";
-import ClubsPage from "./pages/ClubsPage";
-import SetupPage from "./pages/SetupPage";
-import ProfilePage from "./pages/ProfilePage";
-import ClubPage from "./pages/ClubPage";
-import CalendarPage from "./pages/CalendarPage";
-import EventsListPage from "./pages/events/EventsListPage";
-import EventNewModal from "./pages/events/EventNewModal";
-import EventFormModal from "./pages/events/EventFormModal";
-import EventTemplatePickModal from "./pages/events/EventTemplatePickModal";
-import EventFromTemplateModal from "./pages/events/EventFromTemplateModal";
-import EventsExportPage from "./pages/events/EventsExportPage";
-import ImportPage from "./pages/ImportPage";
-import TemplatesPage from "./pages/TemplatesPage";
-import TemplateEditPage from "./pages/TemplateEditPage";
-import MorePage from "./pages/MorePage";
-import CalendarSettingsPage from "./pages/settings/CalendarSettingsPage";
-import FeedsPage from "./pages/settings/FeedsPage";
-import FeedEditPage from "./pages/settings/FeedEditPage";
-import PropertiesPage from "./pages/settings/PropertiesPage";
-import FeaturesPage from "./pages/settings/FeaturesPage";
-import LocationsPage from "./pages/settings/LocationsPage";
-import TargetGroupsPage from "./pages/settings/TargetGroupsPage";
-import HolidayCalendarsPage from "./pages/settings/HolidayCalendarsPage";
+import {
+  AuthCallbackPage,
+  CalendarPage,
+  CalendarSettingsPage,
+  ClubPage,
+  ClubsPage,
+  EmailVerifyPage,
+  EventFormModal,
+  EventFromTemplateModal,
+  EventNewModal,
+  EventsExportPage,
+  EventsListPage,
+  EventTemplatePickModal,
+  FeaturesPage,
+  FeedEditPage,
+  FeedPage,
+  FeedsPage,
+  ForgotPasswordPage,
+  HolidayCalendarsPage,
+  ImportPage,
+  LocationsPage,
+  LoginPage,
+  MorePage,
+  ProfilePage,
+  PropertiesPage,
+  PublicEventModal,
+  SetupPage,
+  SignupPage,
+  TargetGroupsPage,
+  TemplateEditPage,
+  TemplatesPage,
+} from "./pages/lazy";
 
 const CAL = "/clubs/:clubId/calendars/:calendarId";
 
