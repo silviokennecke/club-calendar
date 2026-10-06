@@ -143,7 +143,7 @@ export function resolvePlace(item: ImportItem, locations: Location[]): PlaceRef 
   return match ? { kind: "existing", id: match.id } : { kind: "new", name: item.locationText };
 }
 
-export function placeKey(place: PlaceRef): string {
+function placeKey(place: PlaceRef): string {
   return place.kind === "none"
     ? ""
     : place.kind === "existing"

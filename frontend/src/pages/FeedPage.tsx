@@ -1,4 +1,4 @@
-import { useCallback, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -39,6 +39,7 @@ import { PublicShell } from "@/components/feed/PublicShell";
 import { PublicError, PublicLoading } from "@/components/feed/PublicStates";
 import { usePublicFeed } from "@/components/feed/usePublicFeed";
 import { Button, CopyField, EmptyState, Icon, buttonClass } from "@/components/ui/shared";
+import { preloadPublicEventModal } from "./lazy";
 
 /**
  * Public calendar of a feed (design: Public, PublicMobile, PublicStates). No sign-in, no app
@@ -46,6 +47,7 @@ import { Button, CopyField, EmptyState, Icon, buttonClass } from "@/components/u
  * of private feeds); event details open as a dialog above it (`PublicEventModal`).
  */
 export default function FeedPage() {
+  useEffect(preloadPublicEventModal, []);
   const { t } = useTranslation();
   const { feedId } = useParams<{ feedId: string }>();
   const [params] = useSearchParams();

@@ -75,7 +75,7 @@ export function countUsage(
 }
 
 /** At most this many event names are listed in a delete consequence (design: Dialogs.dc.html). */
-export const MAX_NAMED_EVENTS = 3;
+const MAX_NAMED_EVENTS = 3;
 
 function uniqueNames(items: ReadonlyArray<{ name: string }>): string[] {
   return [...new Set(items.map((i) => (i.name ?? "").trim()).filter(Boolean))];

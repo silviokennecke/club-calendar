@@ -1,5 +1,8 @@
 # Club Calendar — Agent Guide
 
+Project overview, stack, scripts and working rules: `CLAUDE.md`. Frontend conventions (Vite SPA, design system,
+routed modals, E2E): `frontend/AGENTS.md`. Redesign final state and open backend gaps: `docs/redesign/`.
+
 ## Backend Module Structure
 
 The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers are thin; business logic lives in Services.
@@ -19,7 +22,10 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | Locations | `/api/calendars/{calendarId}/locations` | `LocationController` | `LocationService` |
 | Feeds | `/api/calendars/{calendarId}/feeds` | `FeedController` | `FeedService` |
 | Public Feed | `/api/feed` | `PublicFeedController` | `PublicFeedService`, `IcsService` |
-| Mapbox Proxy | `/api/mapbox` | `MapboxController` | — |
+| Holiday Calendars | `/api/calendars/{calendarId}/holiday-calendars`, `…/holiday-events` | `HolidayCalendarController`, `HolidayEventController` | `HolidayCalendarService` |
+| Mapbox Proxy | `/api/mapbox` | `MapboxController` | `Map\MapboxProxyService` |
+| Map images / geocoding | `/api/map` | `MapController` | `Map\*` (cached, rate-limited providers) |
+| Health | `/api/health` | `HealthController` | — |
 
 ## Common Infrastructure
 
@@ -31,9 +37,14 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | `src/Security/ArchivedCalendarVoter.php` | Blocks writes to archived calendars (`NOT_ARCHIVED`) |
 | `src/EventListener/ExceptionListener.php` | Converts all exceptions to RFC 7807 `application/problem+json` |
 | `src/Controller/AbstractApiController.php` | Base controller with `validateDto()` and `decodeJson()` helpers |
-| `src/Service/TokenService.php` | Creates JWT access tokens (lexik) and HMAC refresh tokens |
+| `src/Service/TokenService.php` | Creates JWT access tokens (lexik) and HMAC refresh tokens (claims `uid`, `tv` = `user.token_version`) |
+| `src/Security/SessionVersionListener.php` | Rejects JWTs whose `tv`/`uid` no longer match the user (sessions ended after credential resets) |
+| `src/Security/SignedTokenService.php`, `NonceStore.php` | Signed, purpose-bound, single-use tokens (passkey challenges, OAuth `state`; table `auth_nonce`) |
+| `src/Service/CalendarReferences.php` | Resolves location/template/property/feature/target-group IDs within one calendar (unknown or foreign → 422) |
+| `src/Service/LinkCollectionSync.php` | Syncs join-table collections by diff (deduplicated IDs, no identity collisions) |
+| `src/Service/Input.php` | Typed input validation helpers (400 with field name) |
 | `config/packages/security.yaml` | Stateless JWT firewall; public routes allowlist |
-| `migrations/Version20260625000000.php` | Initial schema migration (all tables in snake_case) |
+| `migrations/` | Doctrine migrations (initial schema `Version20260625000000`, all tables in snake_case; latest `Version20261004120000` `auth_nonce`, `Version20261004130000` `user.token_version`) |
 
 ## Security Pattern
 
@@ -52,11 +63,12 @@ $this->denyAccessUnlessGranted(ArchivedCalendarVoter::NOT_ARCHIVED, $calendar); 
 - **Refresh token**: HMAC-SHA256 signed JWT (7 days), client-managed in `sessionStorage`
 - **Refresh grant**: `POST /api/auth/token` with `application/x-www-form-urlencoded` body
 - **No auth cookies** — the backend sets no session/auth cookies (only the short-lived OAuth `oauth_state_nonce` cookie that binds the SSO `state` to the browser)
+- **Passkeys** — verified with `web-auth/webauthn-lib` (`WebAuthnService`), see `CLAUDE.md` (Auth) and `docs/redesign/BACKEND-GAPS.md`
 
 ## Entity Conventions
 
 - PHP camelCase properties → snake_case DB columns (UnderscoreNamingStrategy)
-- All relations use cascade delete matching the Prisma schema
+- All relations use cascade delete (carried over from the original Prisma schema)
 - Join table entities (e.g. `EventProperty`, `ClubUser`) use composite `#[ORM\Id]`
 - `FeedVisibility` is a PHP 8.1 backed enum mapped via `enumType`
 - **Entity IDs are always UUIDs** — use `#[ORM\Column(length: 36)]` with `Uuid::v7()->toRfc4122()` assigned in the constructor. Never use `#[ORM\GeneratedValue]` or `int` IDs. `getId()` returns `string`.

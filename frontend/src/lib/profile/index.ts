@@ -2,7 +2,7 @@
 import { DATE_FORMAT_OPTIONS, formatDate } from "@/lib/dateFormat";
 
 /** Example date shown for each date format (design: 31.12.2026). */
-export const DATE_FORMAT_EXAMPLE_DATE = "2026-12-31";
+const DATE_FORMAT_EXAMPLE_DATE = "2026-12-31";
 
 export function dateFormatChoices() {
   return DATE_FORMAT_OPTIONS.map((o) => ({

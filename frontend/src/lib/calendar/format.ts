@@ -24,11 +24,6 @@ export function formatMonthTitle(ym: YearMonth, locale: string): string {
   return fmt(locale, { month: "long", year: "numeric" }).format(Date.UTC(ym.year, ym.month, 1));
 }
 
-/** "Oktober" / "October". */
-export function formatMonthName(ym: YearMonth, locale: string): string {
-  return fmt(locale, { month: "long" }).format(Date.UTC(ym.year, ym.month, 1));
-}
-
 /** Weekday names in display order: short ("Mo", "Mon") or long ("Montag"). */
 export function weekdayNames(
   locale: string,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -22,6 +22,7 @@ import { useEventPage } from "@/components/events/useEventPage";
 import { openModalState } from "@/lib/modalRoutes";
 import { audienceTone } from "@/components/calendar/eventDisplay";
 import { locationName } from "@/lib/events";
+import { preloadEventModals } from "./lazy";
 
 /**
  * Templates of a calendar (design: Templates): cards with time, place, audiences and tags, a search,
@@ -29,6 +30,7 @@ import { locationName } from "@/lib/events";
  * their own pages (…/templates/new, …/templates/:templateId).
  */
 export default function TemplatesPage() {
+  useEffect(preloadEventModals, []);
   const page = useEventPage();
   const qc = useQueryClient();
   const { t } = useTranslation();

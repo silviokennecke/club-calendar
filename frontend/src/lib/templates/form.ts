@@ -20,7 +20,7 @@ export interface TemplateFormValues {
   targetGroupIds: string[];
 }
 
-export const FALLBACK_TIMEZONE = "Europe/Berlin";
+const FALLBACK_TIMEZONE = "Europe/Berlin";
 /** Zones offered in the select (design: TemplateEdit); the current value is added if missing. */
 export const TIMEZONES = [
   "Europe/Berlin",

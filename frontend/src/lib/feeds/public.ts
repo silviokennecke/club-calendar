@@ -2,7 +2,7 @@
 import { overlapsRange, type IsoDate } from "@/lib/calendar";
 import { matchesGroups } from "@/lib/events/list";
 
-export const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
 export interface PublicFeedLocation {
   id: string;
