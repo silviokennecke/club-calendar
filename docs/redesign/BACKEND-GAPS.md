@@ -1,193 +1,265 @@
-# Backend-Lücken (Features, die das Design braucht, das Backend aber nicht bietet)
+# Backend-Lücken und offene Risiken (Endstand Redesign)
 
-Fortlaufend ergänzt während des Redesigns.
+Stand: 2026-10-06, nach Phase 9. Hier steht, was das Design braucht und das Backend (noch) nicht bietet, welche
+Sicherheitsrisiken offen sind, welche Backend-Fehler während des Redesigns behoben wurden und was im Betrieb zu tun
+ist. Zuordnung zu den Artboards: `COVERAGE.md`; Umsetzungsplan: `PLAN.md`; E2E-Umgebung: `E2E.md`.
 
-- Passwort vergessen / zurücksetzen: kein Endpoint (Design: ForgotPassword).
-- Terminserien (wiederkehrende Termine): Event hat keine Wiederholungsregel (Design: EventSeries).
-- Phase 0: Verein löschen – der Bestätigungsdialog soll den Umfang nennen ("Löscht 14 Termine und 2 Feeds"). Es gibt keinen Endpoint mit Zählern (Termine/Feeds je Verein bzw. Kalender); aktuell wird nur die Anzahl der Kalender genannt.
-- Phase 0: Theme-Wahl (Hell/Dunkel/System) wird nur im Browser (localStorage) gespeichert, nicht am Benutzer (bewusst laut Plan; nur relevant, falls geräteübergreifend gewünscht).
-- Phase 1: Registrierung/Login-Fehler kommen als RFC-7807-JSON (`detail`), nur Login-403 als `{error: "email_not_verified"}`. Das Frontend erkennt "E-Mail bereits vergeben" am Text `Email already in use` (apiPost liest jetzt `error ?? detail`). Ein stabiler Fehlercode (z. B. `code: "email_taken"`) im Backend wäre robuster.
-- Phase 1: `/api/auth/oauth/*`-Fehler werden als Klartext-Message in `?error=` weitergereicht; das Frontend zeigt nur eine generische SSO-Meldung. Ein Fehlercode wäre nötig, um Ursachen (abgelehnt, E-Mail unbestätigt beim Anbieter, ...) zu unterscheiden.
-- Phase 1: Passwort-vergessen-Seite (`/forgot-password`) ist gebaut, Absenden deaktiviert ("Bald verfügbar"); der Zustand "Prüfe dein Postfach" aus ForgotPassword.dc.html fehlt bis ein Reset-Endpoint existiert.
-- Phase 2: `GET /api/clubs` liefert keine Zähler. Die Vereinsauswahl ("3 Kalender · 3 Mitglieder") holt dafür je Verein `/calendars?includeArchived=true` und `/members` (N+1 Requests). Ein `calendarCount`/`memberCount` in der Club-Liste wäre schlanker.
-- Phase 2: Es gibt keinen verifizierten Weg, in E2E-Tests einen Nutzer ohne Mailversand zu bestätigen (MAILER_DSN=null). `e2e/onboarding.spec.ts` setzt `is_email_verified` per PHP-PDO direkt in der E2E-Datenbank. Ein Test-/Dev-Endpoint oder eine Console-Command (`app:user:verify <email>`) wäre sauberer.
-- Phase 2: Beim Vereinswechsel in der Shell wird der erste (nicht archivierte) Kalender des Zielvereins geöffnet; "zuletzt genutzter Kalender je Verein" wird nur für den zuletzt genutzten Verein gespeichert (`lastClubId`/`lastCalendarId` am Benutzer).
-- Phase 3 (**behoben**, Bugfix-Runde Backend: Überlappungsfilter, Test `EventTest::testDateRangeIncludesMultiDayEventsOverlappingTheRange`; der Frontend-Vorlauf ist jetzt unnötig, aber harmlos): `GET /api/calendars/{id}/events?from&to` filtert nur nach dem Startdatum (`e.date` zwischen from und to). Mehrtägige Termine, die vor dem sichtbaren Zeitraum beginnen, fehlen dadurch. Das Frontend lädt deshalb 31 Tage früher und filtert lokal nach Überlappung (`MULTI_DAY_LOOKBACK_DAYS` in `src/lib/calendar/view.ts`); längere Termine können weiterhin fehlen. Nötig: Überlappungsfilter (`date <= to AND COALESCE(dateEnd, date) >= from`).
-- Phase 3: Kein Zähler/Existenz-Endpoint für Termine eines Kalenders. Für den Leerzustand "Noch keine Termine in diesem Kalender" lädt das Frontend (nur wenn der sichtbare Zeitraum leer ist) einmal die komplette Terminliste ohne Zeitraum. Besser: `eventCount` am Kalender oder `?limit=1`.
-- Phase 3: Zielgruppen haben keine Farbe/Tonalität. Die Tag-Farben (Jugend/Erwachsene/Senioren im Design) vergibt das Frontend reihum nach Position in der Zielgruppenliste.
-- Phase 3: Der öffentliche Feed (`/api/feed/{id}/events`) liefert keine Feiertage; die öffentliche Monatsansicht zeigt daher keine.
-- Phase 4 (Bug, behoben): `PATCH /api/calendars/{id}/events/{eventId}` mit unveränderten Zuordnungen (`targetGroupIds`/`propertyIds`/`featureIds` enthalten eine schon zugeordnete ID) lief in `EntityIdentityCollisionException` (500), weil alle Verknüpfungen gelöscht und im selben Flush neu angelegt wurden (zusammengesetzte IDs). Das Formular sendet immer alle Zuordnungen, Bearbeiten mit Zielgruppe schlug also immer fehl (auch schon im alten EventModal). Behoben in `EventService::updateEvent` und (gleicher Fehler) `EventTemplateService::updateTemplate`: nur Differenz entfernen/hinzufügen (`App\Service\LinkCollectionSync`). Außerdem lieferte die PATCH-Antwort nach dem Entfernen einer Zuordnung ein JSON-Objekt statt einer Liste (Lücken in den Collection-Keys); Serialisierung nutzt jetzt `getValues()`. Tests `EventTest::testUpdateKeepsUnchangedAndSyncsChangedAssignments`, `ResourcesTest::testTemplateUpdateKeepsUnchangedAndSyncsChangedAssignments`. Doppelte IDs beim Anlegen (`POST …/events`, `…/templates`, Import, from-template, Feeds) liefen ebenfalls in die Identity-Kollision (500): **behoben** (Bugfix-Runde Backend, siehe unten).
-- Phase 4 (**behoben**, Bugfix-Runde Backend: fremde und unbekannte IDs → 422): `EventService::updateEvent`/`createEvent` prüfen nicht, ob Ort, Eigenschaften, Features und Zielgruppen zum selben Kalender gehören (Templates tun das). Fremde IDs ließen sich zuordnen.
-- Phase 4: Terminserien. Die Seite "Termin aus Vorlage" (Design: EventSeries) ist komplett gebaut; Serienregel (wöchentlich, zweiwöchentlich, n-ter Wochentag), Feiertage auslassen und die Vorschau laufen clientseitig (`src/lib/events/series.ts`). "Serie anlegen" ist deaktiviert ("Bald verfügbar"). Einzeltermine aus Vorlage nutzen `POST …/events/from-template` mit einem Datum. Hinweis: Der Endpoint nimmt schon mehrere Daten an und legt unverbundene Einzeltermine an (das alte EventModal tat das); für echte Serien fehlen eine Serien-ID/Regel am Event und Endpoints für "nur dieser Termin / alle Termine der Serie" (Design: Serien-Dialoge).
-- Phase 4: Export. Es gibt keinen Export-Endpoint. Die Export-Seite (Design: Export) baut die ICS-Datei im Browser aus `GET …/events` (`src/lib/events/ics.ts`, gleiche UID/Summary/Description wie `IcsService`, Zeiten in UTC, kein VTIMEZONE, kein `X-APPLE-STRUCTURED-LOCATION`). Besser: `GET /api/calendars/{id}/events.ics?from&to&includeDrafts&targetGroupIds` auf Basis von `IcsService`. CSV-Export ist nicht im Design und nicht gebaut.
-- Phase 4: Sammelaktionen der Terminliste (veröffentlichen, als Entwurf markieren, löschen) laufen als einzelne Requests je Termin (`Promise.allSettled`). Ein Bulk-Endpoint (`PATCH/DELETE …/events` mit `ids`) wäre atomar und schneller.
-- Phase 5: Import ohne Vorab-Prüfung. `POST …/events/import` legt direkt an (kein Dry-Run, keine Fehler je Termin, nur `{imported}` zurück, max. 500 pro Request). Die Prüfansicht parst die ICS-Datei deshalb im Browser (`src/lib/import/ics.ts`, UTC-Zeiten werden in die Kalender-Zeitzone umgerechnet, Serienregeln/RRULE werden nicht ausgeschrieben). Nötig wäre ein serverseitiger Parser/Dry-Run (`POST …/events/import/preview`) mit Duplikat-Erkennung (UID, Name + Datum), Serienauflösung und je Termin Fehlern; zudem ein stabiler Import-Bezug (z. B. `externalUid`), damit ein erneuter Import denselben Termin erkennt. Das Duplikat-Hinweis-Banner vergleicht aktuell clientseitig Name + Datum mit der geladenen Terminliste.
-- Phase 5: Der Import ist nicht atomar. Neue Orte werden vorab einzeln per `POST …/locations` angelegt (Name aus dem LOCATION-Text), die Termine dann in Blöcken zu 500; schlägt ein späterer Block fehl, bleiben Orte und frühere Blöcke bestehen (UI meldet "nur teilweise gelungen"). Ein Endpoint, der Orte und Termine in einer Transaktion anlegt und die Zähler (neue Orte, übersprungene Termine) liefert, wäre robuster. `importEvents` prüft außerdem nicht, ob Ort, Eigenschaften, Features und Zielgruppen zum Kalender gehören (wie bei `createEvent`), und `date`/`timeBegin`/`timeEnd` fehlen ohne saubere Fehlermeldung (500 statt 400). (**Behoben**, Bugfix-Runde Backend: 400 mit `events[n]: …`, fremde IDs 422; Atomarität/Dry-Run bleiben offen.)
-- Phase 5: Vorlagen verlangen `timezone`, `timeBegin` und `timeEnd` (Pflicht im Backend); das Design zeigt die Zeiten als optional. Die Vorlagenseite füllt 19:00 – 21:00 vor und verlangt beide Zeiten. Optional wäre im Backend nur mit nullable Spalten möglich.
-- Phase 5: Die Vorlagenliste hat keine Zähler, wie viele Termine aus einer Vorlage entstanden sind; der Lösch-Dialog nennt die Folge allgemein ("Bereits erzeugte Termine bleiben unverändert"). Ein `eventCount` je Vorlage würde die Aussage konkretisieren.
+## Kurzfassung und Prioritäten
 
-## Phase 6 (Einstellungen)
-- Keine Zähler, wie viele Termine, Vorlagen oder Feeds ein Eintrag (Eigenschaft, Feature, Zielgruppe) oder ein Kalender hat. Für die Lösch-Hinweise lädt das Frontend beim Öffnen des Dialogs alle Termine und Vorlagen und zählt selbst.
-- `POST …/calendars/{id}/duplicate` vergibt den englischen Namen "Copy of …" ohne Sprachbezug (das Frontend benennt direkt per PATCH um).
-- Namen von Eigenschaften, Features und Zielgruppen werden im Backend nicht auf Duplikate geprüft, nur im Frontend.
-- Eine Liste der Feiertage je Feiertagskalender gibt es nur über den Zeitraum-Endpoint `holiday-events`.
+1. **Vor produktiver Nutzung (Betrieb):** Migrationen `Version20261004120000` (Tabelle `auth_nonce`) und
+   `Version20261004130000` (`user.token_version`) auf Dev und Prod ausführen; `APP_SECRET`, `JWT_REFRESH_SECRET` und
+   `WEBAUTHN_*` in Produktion setzen; SSO nur über HTTPS (State-Cookie). Siehe "Betrieb".
+2. **Sicherheit, mittel:** Vorab-Registrierung mit fremder Adresse (Passwort des Registrierenden gilt nach dem Klick
+   des Eigentümers), fehlendes Rate-Limiting, nicht rotierende/widerrufbare Refresh-Tokens. Siehe "Offene
+   Sicherheitsrisiken".
+3. **Features mit sichtbarer UI-Lücke ("Bald verfügbar"):** Passwort vergessen/zurücksetzen, Terminserien,
+   SSO verknüpfen/trennen, Profil (Name/E-Mail/Passwort) ändern.
+4. **Zähler und Einzel-Endpoints** (N+1-Requests im Frontend): `calendarCount`/`memberCount` je Verein,
+   `eventCount` je Kalender/Vorlage/Eintrag, Einzel-GET für Feed und öffentlichen Termin, Vereins-/Kalendername
+   und Zeitzone im öffentlichen Feed.
+5. **Robustheit:** serverseitiger Import mit Dry-Run und Transaktion, Export-Endpoint, Bulk-Endpoints, stabile
+   Fehlercodes.
 
-## Phase 7 (Veröffentlichen, Verein, Profil)
-- Bug (behoben): Nach dem Registrieren eines Passkeys antwortete `GET /api/auth/me` mit 500 (`Cannot assign resource to property App\Entity\Passkey::$publicKey of type string`): die Blob-Spalte wird von Doctrine als Stream hydriert, die Property war aber `string`. Betroffen war jeder Benutzer mit Passkey (die App konnte ihn danach nicht mehr laden). Behoben in `Passkey` (Property `mixed`, `getPublicKey()` liest den Stream); Test `AuthTest::testMeListsPasskeysOfAUserLoadedFromTheDatabase`.
-- Profil: Name, E-Mail und Passwort lassen sich nicht ändern (kein Endpoint; `PATCH /api/auth/me` kennt nur Datumsformat, Wochentag, Sprache, zuletzt genutzter Verein/Kalender). Das Design zeigt dafür nur den Hinweis "Name und E-Mail können hier noch nicht geändert werden." (gebaut); "Passwort ändern" ist im Design nicht vorgesehen und fehlt daher auch in der UI.
-- Verknüpfte Anmeldungen: `GET /api/auth/me` liefert nur `oauthAccounts[].provider`, `GET /api/auth/providers` die konfigurierten Anbieter. Es gibt keinen Endpoint zum Verknüpfen mit dem angemeldeten Konto (der OAuth-Start legt ein Konto an oder meldet an) und keinen zum Trennen. Die Profilseite zeigt den Status (Verbunden / Nicht verbunden), die Aktionen sind deaktiviert ("Bald verfügbar"). Außerdem fehlt ein Schutz "mindestens eine Anmeldemethode muss bleiben" (Design-Hinweis) im Backend.
-- Passkeys: Die Liste kennt nur Gerätename und Datum (`createdAt`), kein "zuletzt benutzt". Der Name ist optional; ohne Angabe sendet das Frontend "Dieses Gerät" bzw. "This device" (Backend-Default wäre `null`).
-- Feeds: Es gibt keinen Endpoint für einen einzelnen Feed (`GET …/feeds/{id}`); die Bearbeiten-Seite lädt die Liste und sucht den Feed heraus. Das Geheimnis wird auch für öffentliche Feeds erzeugt und ausgeliefert (nur bei privaten relevant). Der Typ im Frontend hieß fälschlich `targetGroupid` (API: `targetGroupId`), dadurch zeigte die alte Feedliste keine Zielgruppen; korrigiert.
-- Feeds: Die öffentliche Webansicht-Adresse ist im Frontend `…/feed/{id}?secret=…` (Route der App), die ICS-Adresse `{API}/api/feed/{id}/ics?secret=…`. Das Design zeigt kurze, sprechende Adressen (`/k/<verein>/<feed>`, `?key=`); dafür bräuchte es Slugs je Verein und Feed im Backend.
-- Verein: Kein Zähler "n Termine" je Kalender (Design: Kalenderliste der Vereinsseite); die Zeile zeigt stattdessen die Zeitzone. Ein `eventCount` am Kalender würde die Zeile und den Lösch-Dialog (heute: Zählen über drei Listen-Requests) vereinfachen.
-- Verein: Jedes Mitglied darf jedes andere (und sich selbst, auch als letztes Mitglied) entfernen und den Verein löschen; es gibt keine Rollen und keinen Schutz davor, einen Verein ohne Mitglied zurückzulassen. `POST …/members` legt für eine bereits eingetragene Person nichts an und antwortet trotzdem erfolgreich (das Frontend prüft Duplikate lokal); die 404-Antwort "User not found" verrät, ob zu einer E-Mail-Adresse ein Konto existiert (vom Design so gewollt: "Zu dieser E-Mail-Adresse gibt es kein Konto").
-- Verein: `PATCH /api/clubs/{id}` kann die Zeitzone ändern; das Design zeigt sie nur in der Seitenkopfzeile, daher gibt es in der UI kein Feld dafür.
-- CORS (**behoben**, Bugfix-Runde Backend): 404-Antworten, die schon beim Auflösen der Route-Entity entstehen (`#[MapEntity]`, z. B. `GET /api/clubs/<unbekannte-id>`), enthalten keine `Access-Control-Allow-Origin`-Header; der Browser kann den Status dann nicht lesen (TypeError statt 404). Das Frontend erkennt "Verein nicht gefunden" deshalb zusätzlich über die Vereinsliste. Fehler, die erst im Service entstehen (z. B. `POST …/members` 404), sind nicht betroffen.
-- (Behoben, siehe Abschnitt Sicherheit) Sicherheit (Verifikation Phase 7): `WebAuthnService::verifyAuthentication` prüfte weder Signatur noch authenticatorData gegen den gespeicherten öffentlichen Schlüssel; es genügt eine bekannte credentialId und ein clientDataJSON mit `type: webauthn.get` (der Challenge-Token wird nicht mit der clientData-Challenge abgeglichen). Die Registrierung speichert zudem das rohe attestationObject als "publicKey". Passkey-Anmeldung ist damit nicht belastbar abgesichert; nicht Teil des Redesigns, aber vor produktiver Nutzung zu beheben.
+## Offene Backend-Features
 
-## Phase 8 (Öffentlicher Zugriff)
-- `GET /api/feed/{id}/events` liefert nur `feed: {id, name}`: weder Vereins- noch Kalendername (Design: Kopf "Schützenverein Waldblick" + "Schießbetrieb 2026"), keine Beschreibung, keine Sichtbarkeit (privat/öffentlich) und keine Zeitzone. Die Seite zeigt nur den Feed-Namen als h1. Nötig: `feed.clubName`, `feed.calendarName`, `feed.timezone` (und `visibility`, damit private Feeds ohne `?secret=` im URL als solche erkannt werden; heute wird `noindex` allein an der Anwesenheit von `?secret=` festgemacht).
-- Zeitzone: `Event.timezone` ist `null` für Termine, die im Terminformular angelegt wurden (das Formular sendet keine Zone; `IcsService` fällt dann auf die Vereinszeitzone zurück, der öffentliche Endpoint liefert diesen Fallback nicht). Das Frontend nimmt die häufigste Zone der Termine; gibt es keine, wird "heute" in der Browser-Zeitzone berechnet, der Hinweis "Alle Uhrzeiten gelten in der Zeitzone …" entfällt, und die Einzeltermin-ICS-Datei schreibt schwebende Ortszeit. Behebung: wirksame Zeitzone (`event.timezone ?? calendar.timezone ?? club.timezone`) im Feed-Endpoint ausliefern.
-- Kein Einzel-Endpoint für öffentliche Termine (`GET /api/feed/{id}/events/{eventId}`): die Detailseite lädt die ganze Feed-Liste und sucht den Termin heraus (geteilter Cache mit der Kalenderseite). Bei großen Feeds wäre ein Einzelabruf (und ein Zeitraumfilter `from`/`to` am Feed-Endpoint) schlanker.
-- Archivierte Kalender und unbekannte Feeds antworten beide mit 404; die Seite zeigt "Kalender nicht gefunden oder nicht veröffentlicht". Ein eigener Zustand "Kalender archiviert" (Hinweis an Gäste) braucht einen eigenen Status/Code.
-- Fehlerantworten 403/404 des Feed-Endpoints sind RFC-7807-JSON ohne stabilen Fehlercode; das Frontend unterscheidet nur über den HTTP-Status (403 = privat, falsches oder fehlendes Geheimnis sind nicht unterscheidbar, was für Gäste auch gewollt ist).
-- `Referrer-Policy` / `X-Robots-Tag` kann die SPA nur per `<meta>` setzen (`no-referrer`, `noindex` bei `?secret=`); stärker ist ein HTTP-Header am Webserver für `/feed/*` (in `deploy.php`/Server-Konfiguration).
-- Der Feed-Endpoint liefert keine Feiertage (schon in Phase 3 notiert); die öffentliche Monatsansicht zeigt daher keine.
-- `/api/map/image/location/{id}` (statisches Kartenbild) ist öffentlich, die interaktive Karte nutzt den Mapbox-Proxy `/api/mapbox/*`; beide laufen über das Backend, das Geheimnis wird nie an Dritte weitergegeben. Rate-Limit des Bild-Endpoints gilt pro Client.
-- Bug (behoben, Verifikation Phase 8): Der ICS-Feed schrieb für mehrtägige ganztägige Termine `DTEND` einen Tag zu spät (Enddatum 30.10. ergab `DTEND;VALUE=DATE:20261101` statt `20261031`): `IcsService` addierte einen Tag, obwohl `MultiDay` den letzten Tag inklusiv nimmt und selbst +1 schreibt. Test `PublicTest::testIcsWritesExclusiveEndForMultiDayAllDayEvent`.
-- Bug (behoben, Verifikation Phase 8): `?targetGroupIds=` am öffentlichen Feed (`/events`, `/ics`) ersetzte die Zielgruppen-Einschränkung des Feeds, ein auf "Jugend" begrenzter Feed lieferte auf Anfrage die Termine anderer Zielgruppen. Jetzt wird geschnitten (nie mehr als der Feed selbst zeigt). Test `PublicTest::testFeedTargetGroupsCannotBeWidenedByQuery`.
+### Auth und Konten
 
-## Korrektur Phase 4/8 (Termine als Modals)
-- Keine neuen Lücken. Weiterhin relevant: Der öffentliche Termin-Dialog lädt bei einem geteilten Link den ganzen Feed, um einen Termin zu finden und den Feed im Hintergrund zu zeigen (Einzel-Endpoint `GET /api/feed/{id}/events/{eventId}` fehlt, siehe Phase 8). Ein Deep-Link auf `…/events/:eventId` lädt den Termin einzeln und danach den Kalender im Monat des Termins.
+- **Passwort vergessen / zurücksetzen:** kein Endpoint (Design: ForgotPassword). Die Seite `/forgot-password` ist
+  gebaut, Absenden deaktiviert ("Bald verfügbar"); der Zustand "Prüfe dein Postfach" fehlt (COVERAGE L2). Ein
+  Reset wäre auch die Behebung des Vorab-Registrierungs-Risikos (siehe unten).
+- **Profil:** Name, E-Mail und Passwort lassen sich nicht ändern (`PATCH /api/auth/me` kennt nur Datumsformat,
+  Wochentag, Sprache, zuletzt genutzter Verein/Kalender). Die UI zeigt den Design-Hinweis "Name und E-Mail können
+  hier noch nicht geändert werden."; "Passwort ändern" ist im Design nicht vorgesehen und fehlt daher auch in der UI.
+- **Verknüpfte Anmeldungen:** `GET /api/auth/me` liefert nur `oauthAccounts[].provider`, `GET /api/auth/providers`
+  die konfigurierten Anbieter. Es gibt keinen Endpoint zum Verknüpfen mit dem angemeldeten Konto (der OAuth-Start
+  legt ein Konto an oder meldet an) und keinen zum Trennen; die Profilseite zeigt den Status, die Aktionen sind
+  deaktiviert (COVERAGE L4). Der Schutz "mindestens eine Anmeldemethode muss bleiben" fehlt im Backend. Folge der
+  SSO-Policy: Microsoft-Nutzer mit bestehendem Passwort-/Google-Konto können Microsoft nicht hinzufügen.
+- **Passkeys:** Die Liste kennt nur Gerätename und `createdAt`, kein "zuletzt benutzt". Der Name ist optional;
+  ohne Angabe sendet das Frontend "Dieses Gerät" / "This device" (Backend-Default wäre `null`).
+- **Fehlercodes Registrierung/Login:** Fehler kommen als RFC-7807-JSON (`detail`), nur Login-403 als
+  `{error: "email_not_verified"}`. Das Frontend erkennt "E-Mail bereits vergeben" am Text `Email already in use`
+  (`apiPost` liest `error ?? detail`). Ein stabiler Code (z. B. `code: "email_taken"`) wäre robuster.
+- **OAuth-Fehler:** Seit dem Sicherheits-Fix kommen Codes (`invalid_state`, `oauth_failed`, `email_missing`,
+  `account_exists`) in `?error=`; das Frontend zeigt dafür noch eine generische SSO-Meldung. Feinere Codes (vom
+  Anbieter abgelehnt, E-Mail beim Anbieter unbestätigt, ...) und eigene Texte wären möglich.
+- **Theme** wird nur im Browser (localStorage) gespeichert, nicht am Benutzer (bewusst laut Plan; nur relevant,
+  falls geräteübergreifend gewünscht).
+- **E2E-Bestätigung:** Kein verifizierter Weg, in E2E-Tests einen Nutzer ohne Mailversand zu bestätigen
+  (`MAILER_DSN=null`); `e2e/onboarding.spec.ts` setzt `is_email_verified` per PHP-PDO direkt in der E2E-Datenbank.
+  Sauberer wäre eine Console-Command (`app:user:verify <email>`) oder ein Test-Endpoint.
+- **Zuletzt genutzter Kalender:** Am Benutzer stehen nur `lastClubId`/`lastCalendarId` (ein Paar). Den letzten
+  Kalender je Verein merkt sich das Frontend im Browser (`lastCalendar:<clubId>`); geräteübergreifend bräuchte es
+  ein Feld je Mitgliedschaft.
 
-## Frontend-Nacharbeiten (Beobachtungen)
-- (Nicht reproduzierbar, Bugfix-Runde Backend: `HolidayEventRepository` filtert bereits auf Überlappung; Test `HolidayCalendarTest::testListHolidayEventsIncludesHolidaysOverlappingTheRange`.) `GET /api/calendars/{id}/holiday-events?from&to` filtert nach dem Startdatum. Feiertage, die vor `from` beginnen und in den Zeitraum hineinreichen (Ferien), fehlen deshalb; das Frontend fragt 31 Tage früher ab und filtert auf Überlappung. Besser: der Endpoint liefert alle Feiertage, die den Zeitraum überlappen.
-- Fremder / unbekannter Verein: `GET /api/clubs/{id}/calendars` und `GET /api/clubs/{id}` antworten mit 4xx; das Frontend zeigt dafür "Nicht verfügbar" und versucht nicht erneut. Ein einheitlicher Fehlercode (403 für fremde, 404 für nicht vorhandene) wäre für die Texte hilfreich; heute unterscheidet das Frontend sie nicht.
-- ICS-Import: `Event.timezone` wird jetzt aus Windows-Zeitzonennamen (Outlook) auf IANA abgebildet. Das Backend validiert `timezone` weiterhin nicht gegen die IANA-Liste (ein ungültiger Name würde den Feed brechen); eine Validierung (`DateTimeZone::listIdentifiers`) mit 422 wäre sinnvoll. (**Behoben**, Bugfix-Runde Backend.)
-- ICS-Import: Dateien in windows-1252 liest das Frontend selbst; das Backend bekommt immer UTF-8-JSON.
+### Termine und Serien
 
-## Bugfix-Runde Backend
-- Doppelte IDs in `targetGroupIds`/`propertyIds`/`featureIds` (Termin anlegen, Vorlage anlegen, Import, `from-template`, Feeds anlegen/ändern) führten zu `EntityIdentityCollisionException` (500). Behoben: alle Zuordnungen laufen über `LinkCollectionSync` (dedupliziert). Die Antworten von `POST …/events` und `POST …/feeds` enthalten die Zuordnungen jetzt auch direkt (vorher leer bis zum nächsten Laden). Tests `InputIntegrityTest::testCreate*WithDuplicateAssignmentIds`, `…testImportAndFromTemplate…`, `…testFeedWithDuplicateTargetGroupIds`.
-- Mandantentrennung: Termin (Anlegen, Ändern, Import, `from-template`-Overrides), Vorlage und Feed prüfen jetzt, dass Ort, Vorlage, Eigenschaften, Features und Zielgruppen zum selben Kalender gehören (`App\Service\CalendarReferences`). Unbekannte und fremde IDs werden gleich behandelt: 422 `<feld>: unknown id "…" in this calendar` (nichts über fremde Kalender wird preisgegeben). **Verhaltensänderung:** Bisher wurden unbekannte IDs beim Termin-PATCH ignoriert und fremde bei Vorlage/Feed stillschweigend verworfen. Tests `InputIntegrityTest::test*AnotherCalendar`.
-- Eingaben: Pflichtfelder und Typen werden geprüft (400 statt 500): Termin/Import `name`, `date`/`dateEnd` (`YYYY-MM-DD`, `dateEnd` nicht vor `date`), `timeBegin`/`timeEnd` (`HH:MM`, Sekunden werden abgeschnitten), `isAllDay`/`isDraft` (bool), ID-Listen; Vorlage `name`/`timezone`/Zeiten; Name bei Eigenschaft/Feature/Zielgruppe/Feed/Kalender/Verein; Texte der Orte (Längen). Der Import nennt den fehlerhaften Eintrag (`events[3]: …`) und speichert nichts. Tests `InputIntegrityTest::testImportRejectsMissingOrInvalidFields`, `…testUpdateRejectsInvalidFields`, `…testResourcesRejectMissingName`, `…testClubAndCalendarUpdateRejectInvalidName`.
-- Zeitzonen: Termin, Vorlage, Kalender und Verein nehmen nur gültige IANA-Namen (inkl. Alt-Aliasse wie `Asia/Calcutta`), sonst 422. `IcsService` fällt bei einem schon gespeicherten ungültigen Namen auf Kalender-, dann Vereinszeitzone (dann UTC) zurück und nutzt die Kalenderzeitzone jetzt auch für Termine ohne eigene Zone (vorher nur die Vereinszeitzone); eine gespeicherte ungültige Uhrzeit ergibt einen Ganztagstermin statt eines kaputten Feeds. Tests `InputIntegrityTest::testInvalidTimezonesAreRejected`, `PublicTest::testIcsSurvivesStoredInvalidTimezone`.
-- ICS-Feed ohne VTIMEZONE: `IcsService` schrieb `DTSTART;TZID=…` ohne `VTIMEZONE`-Komponente (RFC 5545 3.2.19 verlangt eine je TZID). Strenge Clients (z. B. ical.js, Outlook) lesen die Zeiten dann als schwebende Ortszeit des Lesers, Termine in Kalendern mit anderer Zone als der des Lesers lagen falsch. Behoben: je genutzter Zone eine `VTIMEZONE` mit den Übergängen im Zeitraum der Termine. Test `PublicTest::testIcsSurvivesStoredInvalidTimezone` (prüft die Komponente mit).
-- Frontend-Folge der 422 für unbekannte IDs: Ein Formular (Termin, Vorlage, Feed), das vor dem Löschen einer Eigenschaft/Zielgruppe/eines Ortes geöffnet wurde, sendet die gelöschte ID weiter; bisher ignorierte das Backend sie beim PATCH, jetzt 422. Das Frontend lädt bei dieser Antwort die Listen neu, lässt Gelöschtes weg und speichert einmal erneut (`src/lib/staleReferences.ts`, E2E `stale-assignments.spec.ts`). Die Einrichtung sendet `Etc/Unknown` (Browser ohne Zeitzone) nicht mehr als Vereinszeitzone, weil das Backend sie jetzt ablehnt. Restfall: Ein Import, dessen Zuordnungen während der Prüfansicht gelöscht wurden, bricht mit Fehlermeldung ab (nichts wird still verworfen).
-- Öffentlicher Feed: Ein privater Feed eines archivierten Kalenders antwortete ohne/mit falschem Geheimnis mit 404 statt 403 (verriet den Archivstatus). Jetzt erst Geheimnis (403), dann Archiv (404). Test `PublicTest::testArchivedPrivateFeedRequiresSecretBeforeRevealingArchiveState`.
-- Fehlerantworten: 404 aus `#[MapEntity]` (und alle anderen Fehler beim Auflösen von Controller-Argumenten) kamen ohne CORS-Header: Ursache war ein Fehler in `symfony/http-kernel` 8.1.0 (`ResponseEvent` bekam die falsche Metadaten-Klasse, die `kernel.response`-Listener liefen nicht). Behoben durch Update auf 8.1.1 (nur `composer.lock`, `composer.json` unverändert). Außerdem enthält `detail` bei Fehlern aus dem Framework (Entity-Resolver, Router, …) keine Klassennamen/URLs mehr, sondern den Status-Titel (z. B. "Not Found"); Meldungen aus dem eigenen Code ("Event not found", "User not found") bleiben. Test `ErrorResponseTest`.
-- `PATCH …/feeds/{id}` lieferte nach dem Entfernen einer Zielgruppe `targetGroups` als JSON-Objekt statt Liste (gleiches Problem wie bei Terminen). Behoben (`getValues()`).
-- Kartenbild `GET /api/map/image/event/{id}` (öffentlich) lieferte den Ort auch für Entwürfe: Entwürfe antworten jetzt 404 (Test `MapControllerTest::testEventImageReturnsJpeg`). Der Endpoint wird von Frontend und Mails derzeit nicht genutzt.
-- Mapbox-Proxy: Punkt-Segmente im Pfad (`styles/../geocoding/…`, auch kodiert `%2e%2e` aus doppelt kodierten Anfragen) wurden vom HTTP-Client aufgelöst und führten am erlaubten Präfix vorbei mit dem Server-Token zu beliebigen Mapbox-APIs. Jetzt 403 (Test `MapboxProxyServiceTest::testRejectsDotSegmentsAndBackslashesInPath`).
-- Feiertagskalender (SSRF): `assertSafeUrl()` erkannte IPv6-Hosts in Klammern (`http://[::1]/`, `[::ffff:127.0.0.1]`, `[fd00::1]`) nicht und prüfte Weiterleitungen nicht. Der `HolidayCalendarService` nutzt jetzt einen `NoPrivateNetworkHttpClient` (`config/services.yaml`), der jede aufgelöste Adresse und jedes Weiterleitungsziel prüft. Test `Unit\HolidayCalendarServiceTest`.
-- `composer audit` meldete 6 Advisories für `guzzlehttp/guzzle` 7.12.3: Update innerhalb der Constraints auf 7.15.5 (mit `guzzlehttp/psr7` 2.13.1, `guzzlehttp/promises` 2.5.3, nur `composer.lock`); `composer audit` ist jetzt ohne Befund.
-- Weitere Funde (nicht behoben, keine kleinen Fehler bzw. Feature-Themen): `GET /api/map/image/event/{id}` liefert das Kartenbild auch für veröffentlichte Termine, die nur in privaten Feeds stehen, und `GET /api/map/image/location/{id}` für jeden Ort (jeweils nur mit bekannter UUID; eine Prüfung bräuchte einen Feed-/Geheimnis-Bezug im Endpoint). Passkey-Anmeldung ohne Signaturprüfung, OAuth ohne State und Verknüpfung allein über die E-Mail: inzwischen behoben (Abschnitt Sicherheit). ID-Listen haben keine Längenbegrenzung (eine Abfrage je ID). Ein ICS-Import mit veraltetem TZID wie `US/Pacific-New` (Browser kennt ihn, PHP nicht) scheitert insgesamt mit 422. Mitglieder dürfen alle anderen entfernen (Rollen fehlen, siehe Phase 7).
+- **Terminserien:** Event hat keine Wiederholungsregel (Design: EventSeries). Die Seite "Termin aus Vorlage" ist
+  gebaut; Regel (wöchentlich, zweiwöchentlich, n-ter Wochentag), Feiertage auslassen und Vorschau laufen
+  clientseitig (`src/lib/events/series.ts`), "Serie anlegen" ist deaktiviert (COVERAGE L3). Einzeltermine nutzen
+  `POST …/events/from-template` mit einem Datum; der Endpoint nimmt schon mehrere Daten an und legt unverbundene
+  Einzeltermine an. Für echte Serien fehlen Serien-ID/Regel am Event und Endpoints für "nur dieser Termin / alle
+  Termine der Serie" (Design: Serien-Dialoge).
+- **Sammelaktionen** der Terminliste (veröffentlichen, Entwurf, löschen) laufen als Einzel-Requests
+  (`Promise.allSettled`). Ein Bulk-Endpoint (`PATCH/DELETE …/events` mit `ids`) wäre atomar und schneller.
+- **Leerzustand "Noch keine Termine":** kein Zähler/Existenz-Endpoint; das Frontend lädt (nur bei leerem Zeitraum)
+  einmal die komplette Terminliste. Besser `eventCount` am Kalender oder `?limit=1`.
+- **Zielgruppen** haben keine Farbe/Tonalität; das Frontend vergibt die Tag-Töne reihum nach Position.
+- **Vorlagen-Zeiten:** `timezone`, `timeBegin`, `timeEnd` sind im Backend Pflicht; das Design zeigt die Zeiten als
+  optional. Die Vorlagenseite füllt 19:00 – 21:00 vor und verlangt beide Zeiten (nullable Spalten nötig).
+- **Zeitzone der Termine:** `Event.timezone` ist `null` für Termine aus dem Terminformular (es sendet keine Zone);
+  `IcsService` fällt auf Kalender-, dann Vereinszeitzone zurück, der öffentliche Feed-Endpoint liefert diesen
+  Fallback aber nicht (siehe Feeds).
+- **Zeitraum-Abfrage:** Der Überlappungsfilter für `…/events?from&to` ist behoben (siehe "Behobene Bugs"); der
+  Frontend-Vorlauf (`MULTI_DAY_LOOKBACK_DAYS` in `src/lib/calendar/view.ts`, 31 Tage) ist seitdem unnötig, aber harmlos.
 
-## Sicherheit (Authentifizierung)
+### Feeds und öffentlicher Zugriff
 
-- Passkeys (behoben, kritisch): Anmeldung und Registrierung werden jetzt vollständig mit `web-auth/webauthn-lib` geprüft.
-  Die Challenge erzeugt der Server; sie reist im `challengeToken` der options-Antwort (HMAC mit aus `APP_SECRET`
-  abgeleitetem Schlüssel, zweckgebunden `webauthn.get` / `webauthn.create`, 5 Minuten, bei der Registrierung an den
-  angemeldeten Nutzer gebunden) und wird beim ersten Einreichen verbraucht (Tabelle `auth_nonce`, eindeutiger Index,
-  daher auch bei parallelen Anfragen nur einmal). Geprüft werden `clientDataJSON` (Typ, Challenge, Origin = `FRONTEND_URL`),
-  rpIdHash (`WEBAUTHN_RP_ID`), User-Present, User-Verified nur bei `WEBAUTHN_USER_VERIFICATION=required`
-  (Standard `preferred`), Signatur mit dem gespeicherten öffentlichen Schlüssel, Signaturzähler (muss steigen, 0/0 wird
-  toleriert; ein Rückschritt gilt als Klon und wird abgelehnt), userHandle = Eigentümer des Passkeys, bei der
-  Registrierung zusätzlich Attestation (`none`, `packed`) und eindeutige Credential-ID (kein Überschreiben fremder
-  Passkeys). Die Origin muss zusätzlich exakt der serialisierten Origin von `FRONTEND_URL` entsprechen (die Bibliothek
-  normalisiert per `parse_url()` und ließ z. B. einen angehängten NUL oder Pfad durch), `crossOrigin: true` wird abgelehnt.
-  Jeder Anmeldefehler antwortet gleich (401 `Invalid passkey`), auch bei unbekannter Credential-ID; fehlerhafte
-  Anfragekörper (kein JSON-Objekt, fehlende/falsch typisierte Felder, `deviceName` > 255 Zeichen, Credential-ID zu lang
-  für die Spalte) enden in 400 statt 500. `auth_nonce` vergleicht in UTC (vorher wurden verbrauchte Einträge auf einem
-  Server mit nicht-UTC-Zeitzone beim nächsten Aufräumen sofort gelöscht, Replay innerhalb der Token-Laufzeit möglich).
-  Gespeichert wird jetzt der COSE-Schlüssel; Alt-Einträge (rohes attestationObject) funktionieren weiter und werden bei der
-  ersten Anmeldung umgeschrieben. API und Frontend unverändert. Tests: `tests/Controller/WebAuthnTest.php` (Software-Authenticator,
-  Schlüssel zur Laufzeit erzeugt), E2E `profile.spec.ts` (Anmelden mit Passkey, Replay der mitgeschnittenen Antwort -> 401).
-- OAuth-State (behoben): `GET /api/auth/oauth/{provider}` gibt einen signierten `state` mit (Provider-gebunden, 10 Minuten,
-  einmalig) und setzt dieselbe Zufalls-Nonce in ein kurzlebiges Cookie `oauth_state_nonce` (HttpOnly, Secure,
-  SameSite=None wegen Apples form_post, Pfad `/api/auth/oauth`, nur auf dem API-Host, keine Zugangsdaten). Der Callback
-  akzeptiert nur einen State, der verifiziert, zum Provider passt, zum Cookie des Browsers passt, der den Ablauf
-  gestartet hat, und noch nicht benutzt wurde. Ein reines HMAC-State ohne Browserbindung hätte Login-CSRF nicht
-  verhindert (der Angreifer kann sich selbst einen gültigen State holen). Fehler leiten wie bisher auf
-  `{FRONTEND_URL}/auth/callback?error=<code>` (Frontend zeigt das SSO-Banner auf `/login`); statt der Exception-Meldung
-  steht dort jetzt ein Code: `invalid_state`, `oauth_failed`, `email_missing`, `account_exists`. Tokens gehen nur an
-  `{FRONTEND_URL}/auth/callback?token=…&refresh_token=…` (Format unverändert).
-- Konto-Verknüpfung per E-Mail (behoben), Policy:
-  - Ein bekanntes Provider-Konto (Provider + `sub`) meldet seinen Nutzer an.
-  - Sonst wird nur verknüpft, wenn der Provider die Adresse ausdrücklich als verifiziert meldet. Vertrauenswürdig ist
-    das Claim `email_verified` nur bei Google und Apple (`AuthService::PROVIDERS_WITH_VERIFIED_EMAIL_CLAIM`).
-  - Microsoft liefert kein verlässliches Flag (die Adresse im Token kann vom Mandanten bzw. Nutzer ohne Nachweis
-    gesetzt sein): Microsoft verknüpft nie automatisch. Gibt es schon einen Nutzer mit der Adresse, endet die Anmeldung mit
-    `error=account_exists`; sonst wird ein neues Konto angelegt, aber nicht als E-Mail-bestätigt markiert.
-    Auswirkung für Microsoft-Nutzer: Wer schon ein Konto mit Passwort oder Google hat, kann Microsoft nicht
-    hinzufügen (es gibt noch keinen Verknüpfen-Endpoint, siehe Phase 7); per Microsoft angelegte Konten können sich
-    weiter per Microsoft und Passkey anmelden, aber nicht per Passwort (es gibt keins). `app:prune-unverified-users`
-    löscht Konten mit SSO-Verknüpfung nicht mehr.
-  - Trifft ein verifizierter Google-/Apple-Login auf einen Nutzer, dessen Adresse nie bestätigt wurde (z. B.
-    Vorab-Registrierung mit fremder Adresse oder ein per Microsoft angelegtes Konto), übernimmt der verifizierte
-    Eigentümer das Konto: Passwort, Passkeys, andere SSO-Verknüpfungen und offene Bestätigungslinks werden vorher
-    entfernt und alle bestehenden Sitzungen beendet (siehe unten), die Adresse gilt dann als bestätigt. Eine Vorab-Registrierung blockiert oder kapert das SSO-Konto damit nicht.
-  - Verknüpft wird nur, wenn die gespeicherte Adresse bis auf ASCII-Groß/Kleinschreibung identisch ist: die Kollation
-    `utf8mb4_unicode_ci` der Spalte `user.email` setzt auch `ä`=`a`, `ß`=`ss`, Vollbreiten-Zeichen und angehängte
-    Leerzeichen gleich (`alice@gmäil.com` hätte sonst `alice@gmail.com` übernommen); solche Logins enden mit `account_exists`.
-  - Neue SSO-Nutzer gelten nur als E-Mail-bestätigt, wenn der Provider es bestätigt.
-  Tests: `tests/Controller/OAuthTest.php` (gefälschte Provider-Clients).
-- Sitzungen nach Entzug von Zugangsdaten (behoben, hoch): Die Konto-Übernahme durch einen verifizierten
-  Google-/Apple-Login entfernte Passwort, Passkeys und SSO-Verknüpfungen, ließ aber bestehende Sitzungen leben: Wer das
-  unbestätigte Konto vorher per Microsoft (oder Google mit unbestätigter Adresse) mit der Adresse des Opfers angelegt
-  hatte, behielt mit seinem Refresh-Token unbegrenzt Zugriff (jeder Refresh gab ein neues 7-Tage-Token aus).
-  Jetzt hat `user.token_version` (Migration `Version20261004130000`, Standard 0) einen Zähler; Access- und Refresh-Token
-  tragen ihn als Claim `tv` und die Nutzer-ID als `uid`. Abgelehnt (401) werden Tokens mit anderer Version bzw. fremder
-  `uid`: beim Refresh (`AuthService::refresh`) und bei jeder JWT-Anmeldung (`App\Security\SessionVersionListener`,
-  `CheckPassportEvent` der Firewall `api`, der Nutzer ist dort schon aus der DB geladen). Ein Zähler statt eines
-  Zeitstempels: `iat` hat Sekundenauflösung; so entscheidet die Reihenfolge (vor/nach der Invalidierung), nicht die Uhr,
-  auch innerhalb derselben Sekunde und unabhängig von Zeitzonen. Tokens ohne Claims (vor dem Update ausgestellt) zählen
-  als Version 0 und bleiben bis zur ersten Invalidierung gültig. Erhöht wird die Version bei
-  - der SSO-Übernahme mit Bereinigung (die Tokens des Eigentümers werden danach ausgestellt),
-  - der Bestätigung der Adresse per Link (`EmailVerificationService::verify`), wenn sie vorher unbestätigt war: Dabei
-    werden jetzt auch alle SSO-Verknüpfungen und Passkeys entfernt. Bei unbestätigter Adresse stammen SSO-Verknüpfungen
-    immer von Logins ohne verifizierte Provider-Adresse (Microsoft oder `email_verified=false`; ein verifizierter Login
-    hätte die Adresse bestätigt) und Passkeys aus solchen Sitzungen (Passwort-Login verlangt eine bestätigte Adresse).
-    Vorher blieb die fremde Microsoft-Verknüpfung nach der Bestätigung bestehen, und ein späterer Google-Login des
-    Eigentümers verknüpfte ohne Bereinigung (nachgestellt). Das Passwort bleibt (es gehört zur bestätigten lokalen
-    Registrierung). Folge für echte Microsoft-Nutzer, die ihre Adresse per Link bestätigen (nur über
-    `resend-verification` erreichbar): Microsoft-Login und Passkeys sind danach weg, Anmeldung nur noch per Google/Apple.
-  - Konto-Löschung: Der Nutzer ist weg (Refresh per `sub`, Access per E-Mail findet ihn nicht); neu: ein Access-Token des
-    gelöschten Kontos öffnet auch kein neu registriertes Konto mit derselben Adresse mehr (`uid`).
-  - Passkey entfernen erhöht die Version nicht (würde die eigene Sitzung beenden, das Frontend bekäme keine neuen
-    Tokens); Passwort-Endpoints gibt es nicht.
-  Frontend: 401 -> ein Refresh-Versuch -> 401 -> Tokens löschen, `/login` (kein erneuter Versuch ohne Token). Behoben:
-  Mit ungespeicherten Änderungen hielt die `beforeunload`-Rückfrage von `useUnsavedChanges` diese Weiterleitung auf
-  (abbrechen = Seite ohne Tokens, jeder weitere Aufruf 401 ohne Weiterleitung); nach abgelehnter Sitzung fragt sie nicht
-  mehr (`src/lib/sessionEnd.ts`).
-  Tests: `tests/Controller/SessionInvalidationTest.php` (gegen den alten Code rot), Passkey-Login-Sitzung in `WebAuthnTest`,
-  E2E `e2e/session-revoked.spec.ts` (Seite und Termin-Dialog mit ungespeicherten Änderungen, Neuladen).
-- Gemeldet, nicht behoben (Features bzw. größere Umbauten):
-  - Ein per Microsoft angelegtes unbestätigtes Konto mit fremder Adresse blockiert dauerhaft die lokale Registrierung des
-    Eigentümers (`app:prune-unverified-users` löscht SSO-Konten nicht); siehe auch unten.
-  - Kein Rate-Limiting für `/api/auth/login`, `/api/auth/token`, Passkey-Verify und OAuth-Callback.
-  - Refresh-Tokens werden nicht rotiert und sind einzeln nicht widerrufbar (zustandslos, 7 Tage): Wiederverwendung bleibt
-    unbemerkt, Abmelden und Passkey-Entfernen beenden bestehende Sitzungen nicht (nur `user.token_version` beendet alle
-    Sitzungen eines Nutzers, siehe oben; ein „überall abmelden“ gibt es nicht). Bräuchte eine Token-Tabelle.
-  - Passwort-Hashing: `App\Entity\User` nutzt explizit `bcrypt` (Symfony-Standardkosten 13) statt `auto`; bcrypt kürzt nach
-    72 Bytes, `RegisterDto` hat keine Maximallänge. Umstellung auf `auto` (argon2id) ist mit Rehash bei Anmeldung möglich.
-  - **Offen, mittel:** Lokale Vorab-Registrierung: Registriert jemand mit fremder Adresse und eigenem Passwort und klickt
-    der echte Eigentümer den (unaufgefordert erhaltenen) Bestätigungslink, gilt das Passwort des Registrierenden: Er meldet
-    sich danach an, auch neben einem späteren Google-Login des Eigentümers (die Adresse ist dann bestätigt, keine
-    Bereinigung). Die Sitzungs-Invalidierung hilft hier nicht (vor der Bestätigung gibt es keine Sitzung). Nachgestellt in
-    `SessionInvalidationTest::testPreRegisteredPasswordStillWorksAfterTheOwnerConfirms`. Voraussetzung: das Opfer klickt
-    einen Link zu einer Registrierung, die es nicht angelegt hat. Behebung braucht ein Feature (z. B. Passwort bei der
-    Bestätigung neu setzen bzw. Passwort-Reset); das Passwort beim Bestätigen zu löschen sperrte ohne Reset den Eigentümer aus.
-  - Ein per Microsoft angelegtes (unbestätigtes) Konto blockiert eine spätere lokale Registrierung mit derselben Adresse
-    (`Email already in use`); erst ein Google-/Apple-Login mit bestätigter Adresse löst das.
-  - `OidcProvider` prüft beim ID-Token weder Signatur noch `aud`/`iss`/`exp` (das Token kommt direkt vom Token-Endpoint
-    über TLS, das ist nach OIDC zulässig; die Claim-Prüfungen fehlen trotzdem). Im Code-Flow mit Client-Secret nicht
-    ausnutzbar; `iss` wäre bei Microsoft `common` mandantenabhängig und daher kein trivialer Fix.
-  - Tokens gehen als Query (`/auth/callback?token=…&refresh_token=…`) an das Frontend: sie landen in Browser-Verlauf und
-    ggf. Server-Logs des Frontend-Hosts (Referrer nur, falls die Callback-Seite externe Ressourcen lädt). Ein Fragment
-    (`#token=…`) wäre besser, erfordert aber eine Frontend- und Backend-Änderung.
-  - Das State-Cookie ist `Secure; SameSite=None`: Chrome/Firefox akzeptieren es auch auf `http://localhost`, Safari
-    nicht zuverlässig; lokales SSO daher mit HTTPS (Symfony CLI/Herd) oder Chrome/Firefox testen.
-  - `WEBAUTHN_USER_VERIFICATION=preferred` (Standard) lässt Passkeys ohne PIN/Biometrie (nur Besitz) zu;
-    `required` wäre strenger, schließt aber Sicherheitsschlüssel ohne PIN aus.
-  - `APP_SECRET` (signiert Challenges und State) und `JWT_REFRESH_SECRET` haben in `.env` Platzhalterwerte; in Produktion
-    müssen sie gesetzt sein.
+- **Öffentlicher Kopf:** `GET /api/feed/{id}/events` liefert nur `feed: {id, name}`: kein Vereins- und
+  Kalendername (Design: "Schützenverein Waldblick" + "Schießbetrieb 2026"), keine Beschreibung, keine Sichtbarkeit,
+  keine Zeitzone. Nötig: `feed.clubName`, `feed.calendarName`, `feed.timezone`, `visibility` (heute wird `noindex`
+  allein an `?secret=` festgemacht) (COVERAGE L5).
+- **Wirksame Zeitzone** (`event.timezone ?? calendar.timezone ?? club.timezone`) im Feed-Endpoint ausliefern. Das
+  Frontend nimmt die häufigste Zone der Termine; ohne Zone wird "heute" in der Browser-Zeitzone berechnet, der
+  Zeitzonenhinweis entfällt und die Einzeltermin-ICS schreibt schwebende Ortszeit.
+- **Einzel-Endpoints:** kein `GET /api/feed/{id}/events/{eventId}` (der öffentliche Termin-Dialog lädt bei einem
+  geteilten Link den ganzen Feed, um den Termin zu finden und den Feed im Hintergrund zu zeigen) und kein
+  Zeitraumfilter `from`/`to` am Feed-Endpoint; kein `GET …/feeds/{id}` (die Bearbeiten-Seite sucht den Feed aus der
+  Liste). Ein Deep-Link auf `…/events/:eventId` (interner Termin-Dialog) lädt den Termin einzeln und danach den
+  Kalender im Monat des Termins.
+- **Feiertage** fehlen im öffentlichen Feed; die öffentliche Monatsansicht zeigt daher keine.
+- **Kurze Adressen:** Das Design zeigt `/k/<verein>/<feed>` und `?key=`; dafür bräuchte es Slugs je Verein und
+  Feed. Heute: Webansicht `…/feed/{id}?secret=…`, ICS `{API}/api/feed/{id}/ics?secret=…`.
+- **Geheimnis** wird auch für öffentliche Feeds erzeugt und ausgeliefert (nur bei privaten relevant).
+- (Frontend, behoben) Der Feed-Typ hieß `targetGroupid` (API: `targetGroupId`), die alte Feedliste zeigte daher keine
+  Zielgruppen.
+- **Archiviert vs. unbekannt:** beide 404; die Seite zeigt "Kalender nicht gefunden oder nicht veröffentlicht".
+  Ein Zustand "Kalender archiviert" bräuchte einen eigenen Status/Code. 403/404 sind RFC-7807 ohne stabilen Code;
+  falsches und fehlendes Geheimnis sind nicht unterscheidbar (für Gäste gewollt).
+- **Header:** `Referrer-Policy` / `X-Robots-Tag` setzt die SPA nur per `<meta>` (`no-referrer`, `noindex` bei
+  `?secret=`); stärker wäre ein HTTP-Header am Webserver für `/feed/*`.
+- **Karten:** `/api/map/image/location/{id}` (statisches Bild) ist öffentlich, die interaktive Karte nutzt den
+  Mapbox-Proxy `/api/mapbox/*`; beide über das Backend, das Token geht nie an Dritte. Rate-Limit des Bild-Endpoints
+  gilt pro Client. Zum Datenschutz siehe "Offene Sicherheitsrisiken".
+
+### Import und Export
+
+- **Import ohne Vorab-Prüfung:** `POST …/events/import` legt direkt an (kein Dry-Run, nur `{imported}`, max. 500
+  pro Request). Die Prüfansicht parst die ICS-Datei im Browser (`src/lib/import/ics.ts`: UTC in Kalenderzone,
+  RRULE wird nicht ausgeschrieben, Windows-Zeitzonennamen auf IANA, windows-1252 wird im Browser gelesen, das
+  Backend bekommt immer UTF-8-JSON). Nötig: `POST …/events/import/preview` mit Duplikat-Erkennung (UID, Name +
+  Datum), Serienauflösung und Fehlern je Termin, dazu ein stabiler Import-Bezug (`externalUid`). Das Duplikat-Banner
+  vergleicht heute clientseitig Name + Datum.
+- **Import nicht atomar:** Neue Orte werden vorab einzeln per `POST …/locations` angelegt, Termine in Blöcken zu 500;
+  scheitert ein späterer Block, bleiben Orte und frühere Blöcke (UI: "nur teilweise gelungen"). Ein Endpoint für
+  Orte + Termine in einer Transaktion mit Zählern (neue Orte, übersprungene Termine) wäre robuster. Restfall: Wurden
+  Zuordnungen während der Prüfansicht gelöscht, bricht der Import mit Fehlermeldung ab.
+- **Veraltete TZIDs** wie `US/Pacific-New` (Browser kennt sie, PHP nicht) lassen einen Import insgesamt mit 422
+  scheitern.
+- **Export:** kein Endpoint. Die Export-Seite baut die ICS-Datei im Browser aus `GET …/events`
+  (`src/lib/events/ics.ts`, gleiche UID/Summary/Description wie `IcsService`, Zeiten in UTC, kein VTIMEZONE, kein
+  `X-APPLE-STRUCTURED-LOCATION`). Besser: `GET /api/calendars/{id}/events.ics?from&to&includeDrafts&targetGroupIds`
+  auf Basis von `IcsService`. CSV-Export ist weder im Design noch gebaut.
+
+### Zähler und Listen
+
+- `GET /api/clubs` ohne Zähler: Die Vereinsauswahl ("3 Kalender · 3 Mitglieder") holt je Verein
+  `/calendars?includeArchived=true` und `/members` (N+1). Nötig: `calendarCount`/`memberCount`.
+- Kein "n Termine" je Kalender (Vereinsseite zeigt stattdessen die Zeitzone, COVERAGE L5); der Kalender-Lösch-Dialog
+  zählt über drei Listen-Requests. Nötig: `eventCount` am Kalender.
+- Verein löschen: Der Dialog soll den Umfang nennen ("Löscht 14 Termine und 2 Feeds"); ohne Zähler-Endpoint nennt er
+  nur die Anzahl der Kalender.
+- Eigenschaften, Features, Zielgruppen: keine Nutzungszähler (Termine, Vorlagen, Feeds); der Lösch-Dialog lädt beim
+  Öffnen alle Termine und Vorlagen und zählt selbst.
+- Vorlagen: kein `eventCount` (der Lösch-Dialog formuliert die Folge allgemein).
+- Feiertage je Feiertagskalender gibt es nur über den Zeitraum-Endpoint `holiday-events`.
+- `POST …/calendars/{id}/duplicate` vergibt "Copy of …" ohne Sprachbezug (das Frontend benennt per PATCH um).
+- Namen von Eigenschaften, Features und Zielgruppen werden nur im Frontend auf Duplikate geprüft.
+- ID-Listen (`targetGroupIds` usw.) haben keine Längenbegrenzung (eine Abfrage je ID).
+
+### Rollen und Mitglieder
+
+- Keine Rollen: Jedes Mitglied darf jedes andere (und sich selbst, auch als letztes Mitglied) entfernen und den
+  Verein löschen; kein Schutz vor einem Verein ohne Mitglied.
+- `POST …/members` für eine bereits eingetragene Person legt nichts an und antwortet trotzdem erfolgreich (das
+  Frontend prüft Duplikate lokal). Die 404 "User not found" verrät, ob zu einer Adresse ein Konto existiert (vom
+  Design so gewollt: "Zu dieser E-Mail-Adresse gibt es kein Konto").
+- `PATCH /api/clubs/{id}` kann die Zeitzone ändern; das Design zeigt sie nur im Seitenkopf, daher kein UI-Feld.
+- Fremder vs. unbekannter Verein: `GET /api/clubs/{id}` und `…/calendars` antworten mit 4xx; das Frontend zeigt
+  "Nicht verfügbar". Einheitlich 403 (fremd) / 404 (nicht vorhanden) wäre für die Texte hilfreich.
+
+### Dokumentation und Betrieb
+
+- Root-`AGENTS.md` listet die Backend-Module und die Bausteine der Bugfix-/Sicherheits-Runden (`CalendarReferences`,
+  `LinkCollectionSync`, `Input`, `SessionVersionListener`, `SignedTokenService`/`NonceStore`) nur knapp; das
+  Verhalten ist hier unter "Behobene Bugs" beschrieben. Eine API-Referenz (OpenAPI) gibt es nicht; das Frontend
+  leitet Typen von Hand ab (`frontend/src/lib/types.ts`).
+- Kein Test-/Dev-Weg zur Nutzerbestätigung (siehe Auth), kein eigener E2E-Seed außer den Fixtures.
+
+## Offene Sicherheitsrisiken
+
+| Schweregrad | Risiko | Details / mögliche Behebung |
+| --- | --- | --- |
+| mittel | **Pre-Hijacking bei lokaler Vorab-Registrierung** | Registriert jemand mit fremder Adresse und eigenem Passwort und klickt der echte Eigentümer den (unaufgefordert erhaltenen) Bestätigungslink, gilt das Passwort des Registrierenden: Er meldet sich danach an, auch neben einem späteren Google-Login des Eigentümers (Adresse ist dann bestätigt, keine Bereinigung). Die Sitzungs-Invalidierung hilft nicht (vor der Bestätigung gibt es keine Sitzung). Nachgestellt in `SessionInvalidationTest::testPreRegisteredPasswordStillWorksAfterTheOwnerConfirms`. Voraussetzung: Das Opfer klickt einen Link zu einer Registrierung, die es nicht angelegt hat. Behebung braucht ein Feature (Passwort bei der Bestätigung neu setzen bzw. Passwort-Reset); das Passwort beim Bestätigen zu löschen sperrte ohne Reset den Eigentümer aus. |
+| mittel | **Kein Rate-Limiting** | `/api/auth/login`, `/api/auth/token`, Passkey-Verify und OAuth-Callback sind unbegrenzt (Brute Force, Credential Stuffing). Symfony RateLimiter je IP + Konto. |
+| mittel | **Refresh-Tokens ohne Rotation/Widerruf** | Zustandslos, 7 Tage: Wiederverwendung bleibt unbemerkt, Abmelden und Passkey-Entfernen beenden bestehende Sitzungen nicht. Nur `user.token_version` beendet alle Sitzungen eines Nutzers; "überall abmelden" gibt es nicht. Bräuchte eine Token-Tabelle. |
+| niedrig–mittel | **Tokens im Query** | SSO leitet auf `/auth/callback?token=…&refresh_token=…`: Tokens landen in Browser-Verlauf und ggf. Server-Logs des Frontend-Hosts (Referrer nur, falls die Callback-Seite externe Ressourcen lädt). Fragment (`#token=…`) wäre besser (Frontend + Backend). |
+| niedrig–mittel | **Karten-Bilder privater Termine/Orte** | `GET /api/map/image/event/{id}` liefert das Kartenbild auch für veröffentlichte Termine, die nur in privaten Feeds stehen, `GET /api/map/image/location/{id}` für jeden Ort (jeweils nur mit bekannter UUID; Entwürfe antworten 404). Eine Prüfung bräuchte einen Feed-/Geheimnis-Bezug. Der Event-Endpoint wird von Frontend und Mails derzeit nicht genutzt. |
+| niedrig | **ID-Token-Claims ungeprüft** | `OidcProvider` prüft beim ID-Token weder Signatur noch `aud`/`iss`/`exp`. Das Token kommt direkt vom Token-Endpoint über TLS (nach OIDC zulässig), im Code-Flow mit Client-Secret nicht ausnutzbar; `iss` ist bei Microsoft `common` mandantenabhängig, daher kein trivialer Fix. |
+| niedrig | **Microsoft-Konto blockiert Registrierung** | Ein per Microsoft angelegtes unbestätigtes Konto mit fremder Adresse blockiert dauerhaft die lokale Registrierung des Eigentümers (`Email already in use`; `app:prune-unverified-users` löscht SSO-Konten nicht). Erst ein Google-/Apple-Login mit bestätigter Adresse löst das. |
+| niedrig | **Passwort-Hashing** | `App\Entity\User` nutzt explizit `bcrypt` (Kosten 13) statt `auto`; bcrypt kürzt nach 72 Bytes, `RegisterDto` hat keine Maximallänge. Umstellung auf `auto` (argon2id) mit Rehash bei Anmeldung möglich. |
+| niedrig | **User-Verification optional** | `WEBAUTHN_USER_VERIFICATION=preferred` (Standard) lässt Passkeys ohne PIN/Biometrie (nur Besitz) zu; `required` ist strenger, schließt aber Sicherheitsschlüssel ohne PIN aus. |
+| Betrieb | **Platzhalter-Geheimnisse** | `APP_SECRET` (signiert Challenges und OAuth-State) und `JWT_REFRESH_SECRET` haben in `.env` Platzhalter; in Produktion müssen sie gesetzt sein (siehe "Betrieb"). |
+| Hinweis | **Konto-Enumeration Mitglieder** | `POST …/members` 404 "User not found" verrät, ob ein Konto existiert (vom Design gewollt). |
+
+## Behobene Bugs (Backend)
+
+Alle mit Tests; Details in den Commits.
+
+- **`b6537e7`** – Termin/Vorlage mit unveränderten Zuordnungen ändern lief in `EntityIdentityCollisionException`
+  (500), weil alle Verknüpfungen gelöscht und im selben Flush neu angelegt wurden (Bearbeiten mit Zielgruppe schlug
+  immer fehl). Jetzt nur Differenz (`App\Service\LinkCollectionSync`); PATCH-Antworten liefern Listen statt
+  Objekten (`getValues()`). Tests `EventTest::testUpdateKeepsUnchangedAndSyncsChangedAssignments`,
+  `ResourcesTest::testTemplateUpdateKeepsUnchangedAndSyncsChangedAssignments`.
+- **Phase 7** – `GET /api/auth/me` antwortete nach dem Registrieren eines Passkeys mit 500 (Blob als Stream
+  hydriert, Property `string`). `Passkey` liest den Stream; Test `AuthTest::testMeListsPasskeysOfAUserLoadedFromTheDatabase`.
+- **`eaa9831`** – ICS: mehrtägige Ganztagstermine hatten `DTEND` einen Tag zu spät
+  (`PublicTest::testIcsWritesExclusiveEndForMultiDayAllDayEvent`); `?targetGroupIds=` am öffentlichen Feed konnte die
+  Zielgruppen-Einschränkung des Feeds erweitern, jetzt Schnittmenge (`PublicTest::testFeedTargetGroupsCannotBeWidenedByQuery`).
+- **`7b218c2`** – Bugfix-Runde Backend:
+  - Doppelte IDs in Zuordnungen (Termin/Vorlage/Import/`from-template`/Feeds) → 500; jetzt dedupliziert, Antworten von
+    `POST …/events` und `POST …/feeds` enthalten die Zuordnungen direkt (`InputIntegrityTest::testCreate*WithDuplicateAssignmentIds` u. a.).
+  - Mandantentrennung: Ort, Vorlage, Eigenschaften, Features, Zielgruppen müssen zum Kalender gehören
+    (`App\Service\CalendarReferences`); unbekannte und fremde IDs → 422 `<feld>: unknown id "…" in this calendar`.
+    **Verhaltensänderung:** vorher wurden unbekannte IDs beim Termin-PATCH ignoriert und fremde bei Vorlage/Feed
+    verworfen. Frontend-Folge: veraltete Formulare laden bei 422 neu und speichern einmal erneut
+    (`src/lib/staleReferences.ts`, E2E `stale-assignments.spec.ts`).
+  - Eingabeprüfung (400 statt 500) für Pflichtfelder/Formate von Termin, Import (`events[n]: …`, nichts wird
+    gespeichert), Vorlage, Namen, Ortstexte.
+  - Zeitzonen nur gültige IANA-Namen (inkl. Alt-Aliasse), sonst 422; `IcsService` fällt bei gespeicherten
+    ungültigen Namen auf Kalender-, Vereins-, dann UTC-Zone zurück, ungültige Uhrzeit → Ganztagstermin. Das
+    Onboarding sendet `Etc/Unknown` nicht mehr.
+  - ICS mit `VTIMEZONE` je genutzter TZID (RFC 5545; strenge Clients lasen Zeiten sonst als schwebend).
+  - Überlappungsfilter für `…/events?from&to` (`EventTest::testDateRangeIncludesMultiDayEventsOverlappingTheRange`);
+    `holiday-events` filterte bereits auf Überlappung (`HolidayCalendarTest::testListHolidayEventsIncludesHolidaysOverlappingTheRange`).
+  - Privater Feed eines archivierten Kalenders verriet den Archivstatus (404 vor 403); jetzt erst Geheimnis, dann
+    Archiv (`PublicTest::testArchivedPrivateFeedRequiresSecretBeforeRevealingArchiveState`).
+  - CORS-Header fehlten bei 404 aus `#[MapEntity]` (Fehler in `symfony/http-kernel` 8.1.0, Update auf 8.1.1); `detail`
+    von Framework-Fehlern ohne Klassennamen/URLs (`ErrorResponseTest`).
+  - `PATCH …/feeds/{id}` lieferte `targetGroups` als Objekt statt Liste.
+  - Kartenbild `GET /api/map/image/event/{id}` lieferte Orte von Entwürfen (jetzt 404).
+  - Mapbox-Proxy: Punkt-Segmente (`../`, `%2e%2e`) führten mit dem Server-Token zu beliebigen Mapbox-APIs (jetzt 403,
+    `MapboxProxyServiceTest::testRejectsDotSegmentsAndBackslashesInPath`).
+  - SSRF Feiertagskalender: IPv6-Hosts in Klammern und Weiterleitungen wurden nicht geprüft; jetzt
+    `NoPrivateNetworkHttpClient` (`Unit\HolidayCalendarServiceTest`).
+  - `composer audit`: `guzzlehttp/guzzle` 7.12.3 → 7.15.5 (nur `composer.lock`), ohne Befund.
+- **`fe1dc8c`** – Sicherheit Authentifizierung:
+  - **Passkeys (kritisch):** `verifyAuthentication` prüfte weder Signatur noch authenticatorData, die Registrierung
+    speicherte das rohe attestationObject. Jetzt vollständige Prüfung mit `web-auth/webauthn-lib`: Server-Challenge im
+    `challengeToken` (HMAC aus `APP_SECRET`, zweckgebunden, 5 Minuten, bei Registrierung an den Nutzer gebunden),
+    einmalig über Tabelle `auth_nonce` (eindeutiger Index, Vergleich in UTC); geprüft werden `clientDataJSON` (Typ,
+    Challenge, Origin exakt = serialisierte Origin von `FRONTEND_URL`, `crossOrigin: true` abgelehnt), rpIdHash
+    (`WEBAUTHN_RP_ID`), User-Present, User-Verified nur bei `required`, Signatur, Signaturzähler (Rückschritt = Klon),
+    userHandle, Attestation (`none`, `packed`), eindeutige Credential-ID. Einheitlich 401 `Invalid passkey`, kaputte
+    Anfragen 400. COSE-Schlüssel gespeichert, Alt-Einträge werden bei der ersten Anmeldung umgeschrieben. Tests
+    `tests/Controller/WebAuthnTest.php`, E2E `profile.spec.ts` (inkl. Replay → 401).
+  - **OAuth-State:** signierter, providergebundener, einmaliger `state` (10 Minuten) + gleiche Nonce im Cookie
+    `oauth_state_nonce` (HttpOnly, Secure, SameSite=None wegen Apples form_post, Pfad `/api/auth/oauth`, nur API-Host)
+    gegen Login-CSRF. Fehler als Codes in `?error=`.
+  - **Konto-Verknüpfung per E-Mail:** bekanntes Provider-Konto (Provider + `sub`) meldet an; sonst nur bei
+    vertrauenswürdigem `email_verified` (Google, Apple; `AuthService::PROVIDERS_WITH_VERIFIED_EMAIL_CLAIM`).
+    Microsoft verknüpft nie automatisch (bestehende Adresse → `account_exists`, sonst neues unbestätigtes Konto).
+    Verifizierter Login auf ein nie bestätigtes Konto übernimmt es mit Bereinigung (Passwort, Passkeys, andere
+    SSO-Verknüpfungen, offene Bestätigungslinks). Verknüpft wird nur bei bis auf ASCII-Groß/Kleinschreibung
+    identischer Adresse (Kollation `utf8mb4_unicode_ci` setzt `ä`=`a`, `ß`=`ss` gleich). Neue SSO-Nutzer gelten nur
+    als bestätigt, wenn der Provider es bestätigt; `app:prune-unverified-users` löscht SSO-Konten nicht mehr. Tests
+    `tests/Controller/OAuthTest.php`.
+- **`9cc6f10`** – Sitzungen nach Entzug von Zugangsdaten (hoch): Die SSO-Übernahme ließ bestehende Sitzungen des
+  Angreifers leben (Refresh gab unbegrenzt neue Tokens). Jetzt `user.token_version` (Migration
+  `Version20261004130000`), Claims `tv` + `uid` in Access- und Refresh-Token, geprüft beim Refresh
+  (`AuthService::refresh`) und bei jeder JWT-Anmeldung (`App\Security\SessionVersionListener`). Erhöht bei
+  SSO-Übernahme und bei der ersten Bestätigung der Adresse per Link (dabei werden auch SSO-Verknüpfungen und Passkeys
+  aus der unbestätigten Zeit entfernt, das Passwort bleibt). Alt-Tokens ohne Claims zählen als Version 0. Ein
+  Access-Token eines gelöschten Kontos öffnet kein neu registriertes Konto mit derselben Adresse (`uid`). Passkey
+  entfernen erhöht die Version nicht. Frontend: 401 → ein Refresh → 401 → Tokens löschen, `/login`, ohne
+  Rückfrage zu ungespeicherten Änderungen (`src/lib/sessionEnd.ts`). Tests
+  `tests/Controller/SessionInvalidationTest.php`, E2E `e2e/session-revoked.spec.ts`.
+  Folge für Microsoft-Nutzer, die ihre Adresse per Link bestätigen (nur über `resend-verification` erreichbar):
+  Microsoft-Login und Passkeys sind danach weg.
+
+## Betrieb
+
+- **Migrationen** auf Dev und Prod ausführen (`npm run migrate`; Deploy macht es automatisch):
+  `Version20261004120000` (Tabelle `auth_nonce` für einmalige Passkey-Challenges/OAuth-States) und
+  `Version20261004130000` (`user.token_version`, Standard 0).
+- **Umgebungsvariablen (Produktion):**
+  - `APP_SECRET` und `JWT_REFRESH_SECRET` müssen gesetzt sein (in `.env` stehen Platzhalter); `APP_SECRET` signiert
+    Passkey-Challenges und OAuth-State, ein Wechsel macht laufende Anmeldevorgänge ungültig.
+  - `WEBAUTHN_RP_ID` (Domain des Frontends), `WEBAUTHN_RP_NAME`, optional `WEBAUTHN_USER_VERIFICATION`
+    (`preferred` Standard, `required` strenger). Erlaubte Origin ist `FRONTEND_URL` (exakt).
+- **HTTPS für SSO:** Das State-Cookie ist `Secure; SameSite=None`. Chrome/Firefox akzeptieren es auf
+  `http://localhost`, Safari nicht zuverlässig; lokales SSO daher mit HTTPS (Symfony CLI/Herd) oder Chrome/Firefox.
+- **Webserver:** optional HTTP-Header `Referrer-Policy: no-referrer` und `X-Robots-Tag: noindex` für `/feed/*`
+  (die SPA setzt nur `<meta>`).
+- **Nach einem Deploy** fehlen die Chunks des vorigen Releases; das Frontend lädt bei einem fehlgeschlagenen
+  Chunk-Import einmal neu (`vite:preloadError` in `frontend/src/main.tsx`).

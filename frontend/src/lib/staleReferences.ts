@@ -21,7 +21,7 @@ const PATHS: Record<ReferenceKind, string> = {
 };
 
 /** Reloads reference lists of a calendar (also updating the cached lists) and returns their ids. */
-export async function freshReferenceIds(
+async function freshReferenceIds(
   qc: QueryClient,
   calendarId: string,
   kinds: ReferenceKind[],

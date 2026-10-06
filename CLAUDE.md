@@ -15,13 +15,20 @@ A web app for clubs to manage and publish event calendars.
 - **Validation:** `symfony/validator` (DTO constraints)
 - **Tests:** PHPUnit 11 + `symfony/test-pack`
 - **Runtime (frontend):** Node.js v22, TypeScript
-- **Frontend:** Vite + React 19 + React Router v7, Tailwind CSS + shadcn/ui, FullCalendar (static SPA build)
+- **Frontend:** Vite SPA + React 19 + React Router v7 (data router, routed modals), TanStack Query, Tailwind CSS v4
+  with the redesign's design tokens (`src/index.css`), shared building blocks on a minimal shadcn/Base UI basis,
+  i18next (de/en), light/dark/system theme; own month/week calendar views (no FullCalendar); Mapbox GL and emoji-mart
+  loaded lazily; route-level code splitting (`src/pages/lazy.ts`)
+- **Frontend tests:** Vitest + Testing Library, Playwright (E2E)
 - **Database:** MySQL 8
 
 ## Monorepo Structure
 
-- `backend/` — Symfony API server (port 3001)
-- `frontend/` — Next.js app (port 3000)
+- `backend/` — Symfony API server (port 3001); also serves the built SPA from `backend/public/`
+- `frontend/` — Vite/React single-page app (dev server port 5173, `npm run dev:frontend`); conventions in
+  `frontend/AGENTS.md`
+- `docs/redesign/` — redesign plan and final state: `PLAN.md`, `COVERAGE.md` (design coverage per artboard),
+  `BACKEND-GAPS.md` (missing backend features, open security risks, fixed backend bugs, operations), `E2E.md`
 
 ## Dev Setup
 
@@ -40,15 +47,20 @@ php bin/console doctrine:fixtures:load
 
 # 5. Install frontend dependencies (from repo root)
 npm install
+
+# 6. Frontend API URL (VITE_API_URL=http://localhost:3001)
+cp frontend/.env.local.example frontend/.env.local
 ```
+
+JWT keys: `cd backend && php bin/console lexik:jwt:generate-keypair` (see README.md).
 
 ## Running
 
 ```bash
 # Backend (port 3001)
-symfony serve --port=3001 -d
+cd backend && symfony serve --port=3001 -d
 
-# Frontend (port 3000)
+# Frontend (Vite dev server, http://localhost:5173)
 npm run dev:frontend
 ```
 
@@ -60,6 +72,7 @@ From the repo root (none require Docker):
 - `npm run dev:frontend`, `npm test`, `npm run test:backend`, `npm run test:frontend`
 - `npm run migrate`, `npm run fixtures` — Doctrine migrations / fixtures
 - `npm run build:mail -w backend` — compile MJML email templates (`backend` is an npm workspace for this)
+- `npm run lint -w frontend` — ESLint (`--max-warnings 0`) + Prettier check; `npm run format -w frontend` fixes formatting
 
 ## Tests
 
@@ -82,7 +95,8 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 2. **Keep CLAUDE.md and AGENTS.md up to date** — update these files whenever the stack, architecture, or module structure changes.
 3. **Write tests** — add PHPUnit integration tests for every backend feature (`tests/Controller/*.php`). E2E tests use Playwright (`frontend/e2e/`).
 4. **Always use UUIDs for entity IDs** — never use auto-increment integers. Use `Uuid::v7()->toRfc4122()` assigned in the constructor, with `#[ORM\Column(length: 36)]` (no `#[ORM\GeneratedValue]`). The `getId()` return type must be `string`, not `?int`.
-5. **Use shared UI components** — Before adding structural JSX or Tailwind layout patterns to a frontend page, check `frontend/src/components/ui/shared/` for existing components: `FormField`, `SectionHeader`, `EmptyState`, `ListCard`, `ListRow`, `TagBadge`, `TagBadgeRow`, `FilterPillGroup`, `DangerZoneConfirm`, `SearchInput`, `FullPageLoader`, `FullPageError`, `Alert`. Import from `@/components/ui/shared`. For Mapbox maps, use `useMapbox` from `frontend/src/components/locations/useMapbox.ts` instead of duplicating the initialization boilerplate.
+5. **Use shared UI components** — Before adding structural JSX or Tailwind layout patterns to a frontend page, check `frontend/src/components/ui/shared/` (exports in `index.ts`, table in `frontend/AGENTS.md`), e.g. `Button`/`LinkButton`/`IconButton`, `SplitButton`, `Field` + `TextInput`/`TextArea`/`NativeSelect`, `PasswordField`, `Toggle`, `Tag`, `StatusBadge`, `Banner`, `toast`, `EmptyState`, `ConfirmDialog`, `FormDialog`, `Modal`/`ModalFrame`/`DialogFrame`, `CopyField`, `Chip`/`ChipSelect`, `FilterPillGroup`, `SearchInput`, `EmojiPicker`, `Stepper`, `LangSwitch`, `ThemeSwitch`, `Skeleton`, `FullPageLoader`, `ErrorSummary`, `UnsavedChangesDialog`, `Logo`, `Icon`. Import from `@/components/ui/shared`. For Mapbox maps, use `useMapbox` from `frontend/src/components/locations/useMapbox.ts` instead of duplicating the initialization boilerplate.
+6. **Texts via i18n** — every UI text is a key in `frontend/src/locales/de.json` and `en.json` (identical keys and placeholders, enforced by `src/lib/__tests__/i18n.test.ts`); remove keys that are no longer used.
 
 ## Deployment
 
@@ -90,15 +104,17 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 
 ## Domain Concepts
 
-- **Club** — the top-level entity; has one or more Calendars; managed by Users
-- **Calendar** — belongs to a Club; contains Events, EventTemplates, and reference data
+- **Club** — the top-level entity; has one or more Calendars; managed by its members (Users via `ClubUser`, no roles yet)
+- **Calendar** — belongs to a Club; contains Events, EventTemplates, and reference data; can be archived (read-only) or duplicated
 - **CalendarFeed** — a publishable view of a Calendar (ICS + web); can be public or private (shared-secret protected)
 - **Event** — a single occurrence on a Calendar; may be based on an EventTemplate
 - **EventTemplate** — reusable event definition (name, time, location, properties)
 - **Property** — a tag/attribute for events (e.g. "Schützentracht"); can have an emoji icon
 - **Feature** — an optional add-on for events (e.g. "Bonusschießen")
 - **TargetGroup** — audience filter for events (e.g. "Schüler", "Jugend", "Erwachsene")
-- **Location** — a venue with an address; scoped to a Calendar
+- **Location** — a venue with an address and optional map position; scoped to a Calendar
+- **HolidayCalendar** — an external ICS source of holidays/school breaks for a Calendar (`HolidayEvent`s); shown in the calendar views and skipped in series previews
+- **User** — signs in with password, Google/Microsoft SSO (`OAuthAccount`) or passkeys (`Passkey`); e-mail double opt-in (`EmailVerification`)
 
 ## Auth
 
@@ -118,21 +134,17 @@ GET /api/feed/:feedId/ics?secret=<token>   # for private feeds
 
 ## E2E Tests
 
-E2E tests use Playwright. Run them while backend + frontend dev servers are running:
+Playwright (`frontend/e2e/`). The suite registers users and writes data, so it runs **only against an isolated local
+environment**: own database `club_calendar_e2e` on the test MySQL (port 3360), backend via `php -S 127.0.0.1:3001`,
+Vite on port 5199. `e2e/global-setup.ts` aborts when `PLAYWRIGHT_BASE_URL`, `E2E_API_URL`, `VITE_API_URL` or the API
+URL of the running Vite server is not on localhost (`frontend/.env.local` points at the dev API). Step-by-step setup
+and cleanup: `docs/redesign/E2E.md` (also in `frontend/AGENTS.md`).
 
 ```bash
-# Start servers first:
-npm run dev:backend &
-npm run dev:frontend &
-
-# Run E2E tests:
-npm run e2e -w frontend
-
-# Interactive UI mode:
-npm run e2e:ui -w frontend
+PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend   # after the setup from E2E.md
+npm run e2e:ui -w frontend                                          # interactive UI mode
 ```
 
-Test files in `frontend/e2e/`:
-- `auth.spec.ts` — login, redirect, error handling
-- `calendar.spec.ts` — calendar navigation, event modal
-- `feeds.spec.ts` — feed management, ICS URL validation
+Specs in `frontend/e2e/`: `auth`, `onboarding`, `calendar`, `events`, `templates`, `import`, `import-keyboard`,
+`import-large`, `settings`, `feeds`, `club`, `profile`, `public`, `regressions`, `session-revoked`,
+`stale-assignments` (`*.spec.ts`); helpers in `helpers.ts`, guard in `safety.ts` / `global-setup.ts`.

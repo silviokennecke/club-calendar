@@ -32,6 +32,7 @@ import { EventsTable } from "@/components/events/EventsTable";
 import { useAllEvents, useEventPage } from "@/components/events/useEventPage";
 import { audienceTone } from "@/components/calendar/eventDisplay";
 import { useLocale } from "@/components/calendar/useLocale";
+import { preloadEventModals } from "../lazy";
 
 /** Names in the bulk delete dialog; more are summarized ("und 3 weitere"). */
 const MAX_NAMED = 5;
@@ -42,6 +43,7 @@ const MAX_NAMED = 5;
  * Tab and search live in the URL (?status=draft&q=…).
  */
 export default function EventsListPage() {
+  useEffect(preloadEventModals, []);
   const page = useEventPage();
   const qc = useQueryClient();
   const { t } = useTranslation();

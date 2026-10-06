@@ -46,6 +46,7 @@ import { audienceTone } from "@/components/calendar/eventDisplay";
 import type { EventItemTag } from "@/components/calendar/EventItem";
 import { eventRoutes } from "@/components/events/routes";
 import { openModalState } from "@/lib/modalRoutes";
+import { preloadEventModals } from "./lazy";
 
 /**
  * Calendar (design: Calendar, CalendarWeek, CalendarArchived, CalendarStates, CalendarMobile).
@@ -111,6 +112,8 @@ export default function CalendarPage() {
   // The router commits URL changes in a transition, so `anchor` can lag behind fast repeated
   // clicks on previous / next; keep the last requested date.
   const latestAnchor = useRef(anchor);
+  // The event dialogs open from here: load their chunks in the background.
+  useEffect(preloadEventModals, []);
   useEffect(() => {
     latestAnchor.current = anchor;
   }, [anchor]);

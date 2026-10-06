@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- component + its focus hook */
 import {
+  Suspense,
   createContext,
   useContext,
   useEffect,
@@ -14,6 +15,7 @@ import { Outlet } from "react-router-dom";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { cn } from "@/lib/utils";
 import { IconButton } from "./Button";
+import { FullPageLoader } from "./PageLoader";
 
 type FocusTarget =
   boolean | RefObject<HTMLElement | null> | (() => HTMLElement | boolean | null | void);
@@ -125,9 +127,32 @@ export function ModalFrame({ children }: { children?: ReactNode }) {
         variant.form && "ap-dialog--form",
       )}
     >
-      <FrameContext.Provider value={ctx}>{children ?? <Outlet />}</FrameContext.Provider>
+      <FrameContext.Provider value={ctx}>
+        {/* The dialog's content renders in Base UI's portal after a layout effect, outside the router's
+            transition: a lazy dialog chunk that is still loading suspends here (loading state in the
+            dialog), not in the page-level boundary (which would hide the whole page). */}
+        <Suspense fallback={<ModalLoading />}>{children ?? <Outlet />}</Suspense>
+      </FrameContext.Provider>
     </DialogFrame>
   );
+}
+
+/** Loading state inside a routed dialog; moves focus to the step's start once the content is there. */
+function ModalLoading() {
+  const ctx = useContext(FrameContext);
+  useEffect(
+    () => () => {
+      requestAnimationFrame(() => {
+        const fieldId = ctx?.startFieldRef.current;
+        const target = (fieldId && document.getElementById(fieldId)) || ctx?.headingRef.current;
+        const active = document.activeElement;
+        const onFrame = !active || active === document.body || active.matches(".ap-dialog");
+        if (target && onFrame) target.focus({ preventScroll: true });
+      });
+    },
+    [ctx],
+  );
+  return <FullPageLoader className="min-h-40" />;
 }
 
 export interface ModalProps {

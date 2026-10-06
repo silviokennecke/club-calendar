@@ -72,12 +72,6 @@ export function formatAddress(loc: Pick<Location, "street" | "zip" | "city" | "c
   return parts.join(", ");
 }
 
-export function formatLocationLabel(loc: Location): string {
-  const addr = formatAddress(loc);
-  if (loc.name && addr) return `${loc.name} — ${addr}`;
-  return loc.name ?? addr ?? "";
-}
-
 export interface EventTemplate {
   id: string;
   calendarId: string;

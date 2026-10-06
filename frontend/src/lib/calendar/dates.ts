@@ -27,7 +27,7 @@ export function toIso(year: number, month: number, day: number): IsoDate {
   return fromUtcMs(Date.UTC(year, month, day));
 }
 
-export function fromUtcMs(ms: number): IsoDate {
+function fromUtcMs(ms: number): IsoDate {
   const d = new Date(ms);
   return `${pad(d.getUTCFullYear(), 4)}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
@@ -166,10 +166,4 @@ export function todayIn(timeZone?: string | null, now: Date = new Date()): IsoDa
     }
   }
   return toIso(now.getFullYear(), now.getMonth(), now.getDate());
-}
-
-export function clampIso(iso: IsoDate, min: IsoDate, max: IsoDate): IsoDate {
-  if (iso < min) return min;
-  if (iso > max) return max;
-  return iso;
 }

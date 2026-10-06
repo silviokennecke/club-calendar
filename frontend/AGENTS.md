@@ -2,6 +2,11 @@
 
 This is a **Vite + React + React Router** SPA (not Next.js).
 
+Contents: [Key conventions](#key-conventions) · [Design system and areas](#design-system-and-areas) (tokens, theme,
+shell, calendar, routed modals, events, import, templates, settings, publish / club / profile, public access,
+unsaved changes, i18n, API errors, history focus, contrast) · [E2E](#e2e-playwright-frontende2e) ·
+[Shared UI components](#shared-ui-components) · [Build](#build)
+
 ## Key conventions
 
 - Routing: React Router v7 (`react-router-dom`), data router (`createBrowserRouter` with one splat route; needed
@@ -13,9 +18,24 @@ This is a **Vite + React + React Router** SPA (not Next.js).
 - Environment variable: `VITE_API_URL` (not `NEXT_PUBLIC_API_URL`)
 - Navigation: `useNavigate()` / `useParams()` / `useLocation()` from `react-router-dom`
 - Links: `<Link to="...">` (not `href`)
-- Lazy loading: `React.lazy()` + `<Suspense>` (not `next/dynamic`)
+- Lazy loading: `React.lazy()` + `<Suspense>` (not `next/dynamic`). Every page and routed modal is lazy
+  (`src/pages/lazy.ts`, imported by `App.tsx`); new pages are added there. Suspense boundaries: one in
+  `BackgroundRoutes` around pages + modals (first load; later page navigations run in the router's transition, so
+  the current page stays until the next chunk is loaded), one around the `Outlet` of `AppShell` (first load keeps
+  sidebar / tab bar) and one inside `ModalFrame` (the dialog content renders in a portal outside the transition: a
+  dialog chunk that is still loading shows a loading state in the open dialog, focus then moves to the step's
+  start). Pages that open the event dialogs call
+  `useEffect(preloadEventModals, [])` (calendar, event list, templates; `FeedPage`: `preloadPublicEventModal`).
+  Large libraries stay in their own lazy chunks (mapbox-gl via the map components, emoji-mart via `EmojiMartPanel`);
+  vendor chunks (`vendor-react`, `vendor-query`, `vendor-i18n`) are set in `vite.config.ts` `manualChunks`.
+- i18n: German is bundled, English (`locales/en.json`) is a lazy chunk loaded by an inline i18next backend
+  (`src/lib/i18n.ts`); `main.tsx` renders after `i18nReady`. A failed chunk import after a deploy reloads the page
+  once (`vite:preloadError` in `main.tsx`).
 
-## Design system (redesign, see `docs/redesign/PLAN.md`)
+## Design system and areas
+
+Background: `docs/redesign/PLAN.md` (plan, all phases done), `docs/redesign/BACKEND-GAPS.md` (what the backend
+does not offer yet and how the frontend works around it).
 
 - Artboard-by-artboard mapping, deliberate deviations and open gaps: `docs/redesign/COVERAGE.md`. Confirmation
   dialogs follow the wording of the design's `Dialogs.dc.html` (see the table there).
@@ -61,7 +81,7 @@ This is a **Vite + React + React Router** SPA (not Next.js).
   replace to the background for deep links / `direct`), `setBackground(path)` lets a deep link show the event's
   month below. The modal routes share one `ModalFrame` layout route, so focus trap, scroll lock and focus return
   stay while the steps swap.
-- Events (phase 4, dialogs since the phase 4/8 correction; URL helpers in `components/events/routes.ts`):
+- Events (create / edit are routed dialogs; URL helpers in `components/events/routes.ts`):
   `…/events` list page (`?status=draft&q=`); dialogs (`pages/events/*Modal.tsx`): `…/events/new` choice
   (`?date=`, design EventNew), `…/events/new/form` form (`?date=`, `?templateId=` pre-fills from a template,
   EventNewForm), `…/events/new/template` picker (EventNewTemplate), `…/events/new/template/:templateId` single event /
@@ -73,17 +93,17 @@ This is a **Vite + React + React Router** SPA (not Next.js).
   `list.ts` tabs/search/groups, `series.ts` rule dates + holidays, `ics.ts` export, `format.ts`), with Vitest tests.
   UI in `components/events/` (`EventsTable`, `LocationSection` + lazy `EventLocationMap`, `StatusSeg`,
   `CreateGate`, `useEventResources`, `useEventPage`, `ArchivedCreateGuard` for the import / template / feed pages).
-- Import (phase 5): `…/import` is one page with a Stepper (Datei, Prüfen, Fertig; state in `pages/ImportPage.tsx`,
+- Import: `…/import` is one page with a Stepper (Datei, Prüfen, Fertig; state in `pages/ImportPage.tsx`,
   UI in `components/import/`: `ImportUpload` file input + drop zone, `ImportReview` bulk panel / groups / summary bar,
   `ReviewGroup`, `ImportEditDialog`, `ImportDone`). Pure logic in `src/lib/import/` (`ics.ts` parser incl. unfolding,
   TZID/UTC, all-day end, skipped events; `review.ts` items, groups by name, place matching, bulk id diffs, duplicates,
   payload, chunks of 500) with Vitest tests. No backend dry run: the file is parsed in the browser, only the reviewed
   events are sent (new places are created first via `POST …/locations`).
-- Templates (phase 5): own routed pages `…/templates` (`TemplatesPage`: cards, `?q=` search, delete dialog),
+- Templates: own routed pages `…/templates` (`TemplatesPage`: cards, `?q=` search, delete dialog),
   `…/templates/new` and `…/templates/:templateId` (`TemplateEditPage`, read-only in archived calendars); pure logic in
   `src/lib/templates/` (`form.ts`). `components/events/AssignmentFields` (properties / features / target groups with
-  inline creation) is shared by the event form, the template form and the import review. The old TemplateModal is gone.
-- Settings (phase 6): all pages below `…/settings` use `components/settings/SettingsLayout` (heading with club and
+  inline creation) is shared by the event form, the template form and the import review.
+- Settings: all pages below `…/settings` use `components/settings/SettingsLayout` (heading with club and
   calendar, `SettingsTabs`, the read-only banner of archived calendars with "Archivierung aufheben", skeleton /
   error states; `wide` for the places page). `useSettingsPage()` = `useEventPage()` + club + `readOnly`.
   Pure logic in `src/lib/settings/` (`masterList.ts` name check + usage counts, `location.ts`, `holidays.ts`,
@@ -100,7 +120,7 @@ This is a **Vite + React + React Router** SPA (not Next.js).
   - `useCalendarActions(clubId, calendarId, name, { stay })` = archive / unarchive / duplicate / delete with toasts;
     `stay` keeps the club page in place. `CalendarDeleteDialog` = delete confirmation with event / template / feed
     counts.
-- Publish, club, profile (phase 7):
+- Publish, club, profile:
   - Feeds: list `…/settings/feeds` (`pages/settings/FeedsPage`: visibility as `StatusBadge` word + icon, audience
     tags, addresses behind a disclosure, first feed open, a freshly saved one opens via router state `{ open }`),
     `…/settings/feeds/new` and `…/settings/feeds/:feedId` (`FeedEditPage`: name, visibility radios, audience chips,
@@ -108,7 +128,7 @@ This is a **Vite + React + React Router** SPA (not Next.js).
     calendars are read-only). The backend has no single-feed GET, the page picks the feed from the list. UI in
     `components/feeds/` (`FeedAccess` = CopyFields for secret / ICS / webcal / web, `AudienceTags`, `useFeeds`);
     pure logic in `src/lib/feeds/` (`feedAddresses`: private feeds carry `?secret=` in every address, form values,
-    payload). The old emoji icons are gone: visibility is always icon + word.
+    payload). Visibility is always icon + word (no emoji icons).
   - Club: `/clubs/:clubId` (`pages/ClubPage`, in `components/club/`: `ClubNameSection`, `MembersSection` (table,
     remove / leave with `ConfirmDialog`, add by e-mail with 404 -> "no account"), `CalendarsSection` (create form,
     one `CalendarRow` per calendar with open / duplicate / archive / delete, archived list with restore). Deleting
@@ -121,7 +141,7 @@ This is a **Vite + React + React Router** SPA (not Next.js).
   - Dialog guidance: use a controlled `open` state for `ConfirmDialog` when the page re-renders while it is open
     (trigger mode closed the dialog when data arrived in the browser). `FormDialog` (shared) is the small dialog for
     forms, `Modal` the routed / large dialog; both build on `DialogFrame`.
-- Public access (phase 8, no app shell, no sign-in): `pages/FeedPage` (`/feed/:feedId`) and the dialog
+- Public access (no app shell, no sign-in): `pages/FeedPage` (`/feed/:feedId`) and the dialog
   `pages/PublicEventModal` (`/feed/:feedId/events/:eventId`, above the feed; a shared link shows the feed at the
   event's month below; unknown events, drafts and feed errors are states of the dialog) share `components/feed/` (`PublicShell` = skip link, brand row with `LangSwitch` +
   `ThemeSwitch`, header, `<main id="main">`, footer; `usePublicHead` sets `<meta name="referrer" content="no-referrer">`,
@@ -173,13 +193,13 @@ API / database (`frontend/.env.local` points `VITE_API_URL` at `https://api.club
 # 1. own database on the test MySQL (port 3360, root/root)
 docker compose up mysql_test -d
 export DATABASE_URL="mysql://root:root@127.0.0.1:3360/club_calendar_e2e?serverVersion=8.0&charset=utf8mb4"
-cd backend && php bin/console doctrine:database:create --if-not-exists \
-  && php bin/console doctrine:migrations:migrate -n && php bin/console doctrine:fixtures:load -n
-# 2. backend (own terminal, same DATABASE_URL)
-FRONTEND_URL=http://localhost:5199 MAILER_DSN=null://null php -S 127.0.0.1:3001 -t public
-# 3. frontend
+(cd backend && php bin/console doctrine:database:create --if-not-exists \
+  && php bin/console doctrine:migrations:migrate -n && php bin/console doctrine:fixtures:load -n)
+# 2. backend (own terminal in the repo root, same DATABASE_URL)
+FRONTEND_URL=http://localhost:5199 MAILER_DSN=null://null php -S 127.0.0.1:3001 -t backend/public
+# 3. frontend (own terminal in the repo root)
 cd frontend && VITE_API_URL=http://localhost:3001 npx vite --port 5199
-# 4. tests
+# 4. tests (repo root)
 PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend
 # afterwards: stop both servers and drop the database
 mysql -h127.0.0.1 -P3360 -uroot -proot -e "DROP DATABASE club_calendar_e2e"
@@ -193,37 +213,41 @@ mysql -h127.0.0.1 -P3360 -uroot -proot -e "DROP DATABASE club_calendar_e2e"
 Before writing raw Tailwind layout divs in a page, check `src/components/ui/shared/` first
 (import from `@/components/ui/shared`):
 
-| Component                                                                                | Use for                                                                                         |
-| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `Button` / `LinkButton` / `IconButton`                                                   | Buttons (primary, secondary, ghost, danger, danger-solid, ghost-danger)                         |
-| `SplitButton`                                                                            | Primary action + menu of alternatives (e.g. "Termin anlegen")                                   |
-| `buttonClass()`                                                                          | Button styling for other elements (e.g. dialog triggers)                                        |
-| `Field` + `TextInput`/`TextArea`/`NativeSelect`                                          | Label, hint, error, aria wiring (`group` mode for composite controls)                           |
-| `Toggle`                                                                                 | On/off switch (`role="switch"`)                                                                 |
-| `Tag` / `TagBadge` / `TagBadgeRow`                                                       | Audience/property/feature labels (tones)                                                        |
-| `StatusBadge`                                                                            | Status as icon + word (published, draft, holiday, archived, ...)                                |
-| `Banner`                                                                                 | Persistent info/warning/danger/success notice                                                   |
-| `Toaster` / `toast`                                                                      | Short feedback (sonner, styled)                                                                 |
-| `EmptyState`                                                                             | Empty lists with explanation and next action                                                    |
-| `ConfirmDialog`                                                                          | Destructive confirmations incl. consequences                                                    |
-| `FormDialog`                                                                             | Dialog with a form (title, fields, footer; Enter submits, Escape closes)                        |
-| `Modal` / `ModalFrame` / `useModalInitialFocus`                                          | Large dialog with h1, subtitle, x button (`closeLabel`), sizes, form layout; steps in one frame |
-| `DialogFrame`                                                                            | Base dialog shell (scrim, focus trap, scroll lock, bottom sheet < 720px)                        |
-| `CopyField`                                                                              | URLs/secrets with copy feedback                                                                 |
-| `Chip` / `ChipSelect` / `FilterPillGroup`                                                | Toggle chips, multi-select with create, filters                                                 |
-| `EmojiPicker`                                                                            | Club-chosen symbols (presets, custom, emoji-mart lazy)                                          |
-| `Stepper`                                                                                | Setup progress                                                                                  |
-| `LangSwitch`                                                                             | Language (bound to i18next)                                                                     |
-| `ThemeSwitch`                                                                            | Hell / Dunkel / Wie System (profile, public pages)                                              |
-| `Skeleton`                                                                               | Loading placeholders (`aria-busy` on the region)                                                |
-| `ErrorSummary`                                                                           | Form error list with links to the fields, focus after a failed submit                           |
-| `UnsavedChangesDialog`                                                                   | "Änderungen verwerfen?" (with `useUnsavedChanges`)                                              |
-| `Logo`, `Icon`                                                                           | Brand mark, design glyphs                                                                       |
-| `SectionHeader`, `ListCard`, `ListRow`, `SearchInput`, `FullPageLoader`, `FullPageError` | Legacy helpers, restyled with tokens                                                            |
+| Component                                       | Use for                                                                                         |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `Button` / `LinkButton` / `IconButton`          | Buttons (primary, secondary, ghost, danger, danger-solid, ghost-danger)                         |
+| `SplitButton`                                   | Primary action + menu of alternatives (e.g. "Termin anlegen")                                   |
+| `buttonClass()`                                 | Button styling for other elements (e.g. dialog triggers)                                        |
+| `Field` + `TextInput`/`TextArea`/`NativeSelect` | Label, hint, error, aria wiring (`group` mode for composite controls)                           |
+| `PasswordField`                                 | Password input with show / hide toggle                                                          |
+| `Toggle`                                        | On/off switch (`role="switch"`)                                                                 |
+| `Tag`                                           | Audience/property/feature labels (tones, optional emoji)                                        |
+| `StatusBadge`                                   | Status as icon + word (published, draft, holiday, archived, ...)                                |
+| `Banner`                                        | Persistent info/warning/danger/success notice                                                   |
+| `Toaster` / `toast`                             | Short feedback (sonner, styled)                                                                 |
+| `EmptyState`                                    | Empty lists with explanation and next action                                                    |
+| `ConfirmDialog`                                 | Destructive confirmations incl. consequences                                                    |
+| `FormDialog`                                    | Dialog with a form (title, fields, footer; Enter submits, Escape closes)                        |
+| `Modal` / `ModalFrame` / `useModalInitialFocus` | Large dialog with h1, subtitle, x button (`closeLabel`), sizes, form layout; steps in one frame |
+| `DialogFrame`                                   | Base dialog shell (scrim, focus trap, scroll lock, bottom sheet < 720px)                        |
+| `CopyField`                                     | URLs/secrets with copy feedback                                                                 |
+| `Chip` / `ChipSelect` / `FilterPillGroup`       | Toggle chips, multi-select with create, filters                                                 |
+| `EmojiPicker`                                   | Club-chosen symbols (presets, custom, emoji-mart lazy)                                          |
+| `Stepper`                                       | Setup progress                                                                                  |
+| `LangSwitch`                                    | Language (bound to i18next)                                                                     |
+| `ThemeSwitch`                                   | Hell / Dunkel / Wie System (profile, public pages)                                              |
+| `Skeleton`                                      | Loading placeholders (`aria-busy` on the region)                                                |
+| `ErrorSummary`                                  | Form error list with links to the fields, focus after a failed submit                           |
+| `UnsavedChangesDialog`                          | "Änderungen verwerfen?" (with `useUnsavedChanges`)                                              |
+| `Logo`, `Icon`                                  | Brand mark, design glyphs                                                                       |
+| `SearchInput`                                   | Search field (`ap-search`) for lists and the calendar                                           |
+| `FullPageLoader`                                | Page loading state (`role="status"`, `aria-busy`); also the lazy-route Suspense fallback        |
 
 For Mapbox maps: use `useMapbox` from `src/components/locations/useMapbox.ts`.
 
 ## Build
 
-`npm run build` outputs static files to `dist/`. Serve with any webserver.
-For SPA routing, the webserver must redirect all 404s to `index.html`.
+`npm run build -w frontend` (type check + `vite build`) writes the SPA into `backend/public/` (`index.html` +
+`assets/`, see `vite.config.ts`; `index.php` and `.htaccess` there stay). `backend/public/.htaccess` routes `/api/*`
+to Symfony and everything else to `index.html`. Bundle check: the build prints chunk sizes; the entry chunk should
+stay small (pages and dialogs are lazy, see Key conventions).

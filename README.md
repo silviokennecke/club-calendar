@@ -7,13 +7,14 @@ A **Club** has one or more **Calendars** containing events, event templates, loc
 ## Tech Stack
 
 - **Backend:** PHP 8.4, Symfony 8.1, Doctrine ORM + Migrations, JWT auth (`lexik/jwt-authentication-bundle`), MySQL 8
-- **Frontend:** Vite, React 19, React Router 7, TypeScript, Tailwind CSS, shadcn/ui, FullCalendar
+- **Frontend:** Vite, React 19, React Router 7, TypeScript, TanStack Query, Tailwind CSS (design tokens), i18next (de/en), own month/week calendar views, Mapbox GL
 - **Tests:** PHPUnit (backend), Vitest (frontend unit), Playwright (E2E)
 
 ## Repository Layout
 
 - `backend/` — Symfony API server (port 3001)
-- `frontend/` — Vite/React single-page app (port 5173)
+- `frontend/` — Vite/React single-page app (dev server port 5173; the build goes into `backend/public/`)
+- `docs/redesign/` — redesign plan, design coverage, open backend gaps, E2E setup
 - `docker-compose.yml` — optional MySQL dev/test databases (any MySQL 8 instance works)
 
 ## Development Setup
@@ -91,7 +92,7 @@ Run from the repository root:
 | `npm run test:backend` / `test:frontend` | Run one side only (backend needs the MySQL test DB)                              |
 | `npm run migrate` / `npm run fixtures`   | Run Doctrine migrations / load fixtures                                          |
 
-Per workspace (`-w backend` or `-w frontend`): backend has `build`, `build:dev`, `build:mail`, `test`, `migrate`, `fixtures`; frontend has `dev`, `build`, `build:dev`, `test`, `test:watch`, `lint`, `e2e`.
+Per workspace (`-w backend` or `-w frontend`): backend has `build`, `build:dev`, `build:mail`, `test`, `migrate`, `fixtures`; frontend has `dev`, `build`, `build:dev`, `preview`, `test`, `test:watch`, `lint`, `format`, `e2e`, `e2e:ui`.
 
 ## Tests
 
@@ -102,10 +103,12 @@ npm run test:frontend
 npm run test:watch -w frontend
 ```
 
-E2E tests (Playwright) need the backend and frontend dev servers running:
+E2E tests (Playwright) register users and write data, so they only run against an isolated local environment
+(own database on the test MySQL, backend on port 3001, Vite on port 5199; `frontend/e2e/global-setup.ts` refuses
+non-local URLs). Setup and cleanup: [`docs/redesign/E2E.md`](docs/redesign/E2E.md).
 
 ```bash
-npm run e2e -w frontend
+PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend
 npm run e2e:ui -w frontend   # interactive mode
 ```
 
