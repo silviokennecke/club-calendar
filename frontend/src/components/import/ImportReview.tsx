@@ -12,6 +12,7 @@ import {
   type ImportItem,
 } from "@/lib/import";
 import type { Location } from "@/lib/types";
+import { useIsMobile } from "@/lib/useMediaQuery";
 import { Banner, Button } from "@/components/ui/shared";
 import { AssignmentFields } from "@/components/events/AssignmentFields";
 import { StatusSeg } from "@/components/events/StatusSeg";
@@ -54,6 +55,7 @@ export function ImportReview({
   onImport,
 }: ImportReviewProps) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const groups = useMemo(() => groupItems(items), [items]);
   const [open, setOpen] = useState<Set<string>>(
     () => new Set(groups.slice(0, 1).map((g) => g.key)),
@@ -89,15 +91,21 @@ export function ImportReview({
       ? t("import.review.importLabelNone")
       : t("import.review.importLabel", { count: selected.length });
 
+  const backButton = (
+    <Button variant="secondary" onClick={onBack} disabled={importing}>
+      {t("common.back")}
+    </Button>
+  );
+
   const bar = (
     <>
       <p className="t-label" role="status">
         {t("import.review.selected", { selected: selected.length, total: items.length })}
       </p>
+      {/* Design: desktop "Zurück" before the import button, phones the import button on top
+          (DOM order follows the visual order, so the focus order matches). */}
       <div className="ap-actions">
-        <Button variant="secondary" onClick={onBack} disabled={importing}>
-          {t("common.back")}
-        </Button>
+        {!isMobile && backButton}
         <Button
           disabled={selected.length === 0 || blocked}
           loading={importing}
@@ -106,6 +114,7 @@ export function ImportReview({
         >
           {importLabel}
         </Button>
+        {isMobile && backButton}
       </div>
     </>
   );
@@ -164,6 +173,7 @@ export function ImportReview({
             <StatusSeg
               value={bulkStatus}
               hintId="bulk-status-hint"
+              draftLabel={t("import.review.bulk.draftDefault")}
               onChange={(status) =>
                 onItemsChange((all) => patchItems(all, (i) => i.selected, { status }))
               }

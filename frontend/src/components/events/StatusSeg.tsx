@@ -9,10 +9,12 @@ interface StatusSegProps {
   /** Accessible name of the group (default "Status des Termins"). */
   label?: string;
   hintId?: string;
+  /** Word of the draft button (import review: "Entwurf (voreingestellt)"). */
+  draftLabel?: string;
 }
 
 /** Draft / published switch as two toggle buttons (design: ap-seg with aria-pressed). */
-export function StatusSeg({ value, onChange, label, hintId }: StatusSegProps) {
+export function StatusSeg({ value, onChange, label, hintId, draftLabel }: StatusSegProps) {
   const { t } = useTranslation();
   return (
     <div
@@ -24,7 +26,7 @@ export function StatusSeg({ value, onChange, label, hintId }: StatusSegProps) {
     >
       <button type="button" aria-pressed={value === "draft"} onClick={() => onChange("draft")}>
         <Icon glyph="edit" size={16} />
-        {t("events.form.status.draft")}
+        {draftLabel ?? t("events.form.status.draft")}
       </button>
       <button
         type="button"

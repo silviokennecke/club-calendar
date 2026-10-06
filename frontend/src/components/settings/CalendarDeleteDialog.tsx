@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { ConfirmDialog } from "@/components/ui/shared";
 import { apiGet } from "@/lib/api";
-import type { Calendar, CalendarEvent, CalendarFeed, EventTemplate } from "@/lib/types";
+import type { Calendar, CalendarEvent } from "@/lib/types";
 
 interface CalendarDeleteDialogProps {
   calendar: Calendar;
@@ -11,47 +11,31 @@ interface CalendarDeleteDialogProps {
 }
 
 /**
- * "Kalender löschen?" with the consequences (design: Club.dc.html deleteCalendar). Counts the events,
- * templates and feeds when the dialog opens, because the backend offers no counters.
+ * "Kalender löschen?" with the consequences (design: Club.dc.html deleteCalendar / deleteArchived,
+ * Dialogs.dc.html "Kalender löschen"). An active calendar names its number of events ("Löscht den
+ * Kalender mit allen 6 Terminen und seinen Feeds …"), counted when the dialog opens because the backend
+ * offers no counters; an archived calendar uses the fixed "no restore" wording.
  */
 export function CalendarDeleteDialog({ calendar, onClose, onConfirm }: CalendarDeleteDialogProps) {
   const { t } = useTranslation();
+  const archived = !!calendar.archivedAt;
   const scope = useQuery({
     queryKey: ["calendarScope", calendar.id],
+    enabled: !archived,
     staleTime: 0,
     gcTime: 0,
     queryFn: async () => {
-      const [events, templates, feeds] = await Promise.all([
-        apiGet<CalendarEvent[]>(`/api/calendars/${calendar.id}/events`),
-        apiGet<EventTemplate[]>(`/api/calendars/${calendar.id}/templates`),
-        apiGet<CalendarFeed[]>(`/api/calendars/${calendar.id}/feeds`),
-      ]);
-      return { events: events.length, templates: templates.length, feeds: feeds.length };
+      const events = await apiGet<CalendarEvent[]>(`/api/calendars/${calendar.id}/events`);
+      return { events: events.length };
     },
   });
 
-  // Archived calendars get their own wording (design: Club.dc.html deleteArchived): no restore afterwards.
-  const archived = !!calendar.archivedAt;
   let consequence: string;
-  if (scope.isError)
-    consequence = t(
-      archived
-        ? "settings.delete.archived.consequenceUnknown"
-        : "settings.delete.consequence.unknown",
-    );
+  if (archived) consequence = t("settings.delete.archived.consequence", { name: calendar.name });
+  else if (scope.isError) consequence = t("settings.delete.consequence.unknown");
   else if (!scope.data) consequence = t("settings.delete.consequence.loading");
-  else
-    consequence = t(
-      archived
-        ? "settings.delete.archived.consequenceCounts"
-        : "settings.delete.consequence.counts",
-      {
-        name: calendar.name,
-        events: scope.data.events,
-        templates: scope.data.templates,
-        feeds: scope.data.feeds,
-      },
-    );
+  else if (scope.data.events === 0) consequence = t("settings.delete.consequence.noEvents");
+  else consequence = t("settings.delete.consequence.events", { count: scope.data.events });
 
   return (
     <ConfirmDialog

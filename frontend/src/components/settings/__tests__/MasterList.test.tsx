@@ -41,11 +41,13 @@ beforeEach(() => {
   ];
   events = [
     {
+      name: "Arbeitsdienst Schießstand",
       properties: [{ property: { id: "p1" } }],
       features: [],
       targetGroups: [],
     },
     {
+      name: "Herbstfest",
       properties: [{ property: { id: "p1" } }],
       features: [],
       targetGroups: [],
@@ -244,12 +246,37 @@ describe("MasterList", () => {
     });
     await waitFor(() =>
       expect(dialog).toHaveTextContent(
-        "2 Termine verlieren die Zuordnung zu „Wettkampf“. Die Termine selbst bleiben erhalten. 1 Vorlage verliert die Zuordnung.",
+        "Bei 2 Terminen (Arbeitsdienst Schießstand, Herbstfest) wird die Zuordnung entfernt. Die Termine selbst bleiben bestehen. 1 Vorlage verliert die Zuordnung.",
       ),
     );
     expect(apiDelete).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Eigenschaft löschen" }));
     await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/calendars/k1/properties/p1"));
+  });
+
+  it("uses the design wording for audiences: count without names, feeds lose the audience", async () => {
+    items = [{ id: "g1", name: "Senioren" }];
+    events = Array.from({ length: 5 }, (_, i) => ({
+      name: `Termin ${i + 1}`,
+      properties: [],
+      features: [],
+      targetGroups: [{ targetGroup: { id: "g1" } }],
+    }));
+    templates = [];
+    const user = userEvent.setup();
+    renderList("audiences");
+    await user.click(await screen.findByRole("button", { name: "Senioren löschen" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Zielgruppe „Senioren“ löschen?",
+    });
+    expect(dialog).toHaveAccessibleDescription(
+      expect.stringContaining("Die Zielgruppe wird aus der Liste entfernt."),
+    );
+    await waitFor(() =>
+      expect(dialog).toHaveTextContent(
+        "Bei 5 Terminen wird die Zuordnung entfernt. Feeds, die diese Zielgruppe ausgewählt haben, verlieren sie aus ihrer Auswahl.",
+      ),
+    );
   });
 
   it("says so when an item is not in use, and falls back when the counts fail", async () => {
@@ -274,7 +301,7 @@ describe("MasterList", () => {
     const dialog = await screen.findByRole("alertdialog");
     await waitFor(() =>
       expect(dialog).toHaveTextContent(
-        "Termine und Vorlagen verlieren die Zuordnung zu „Wettkampf“.",
+        "Bei allen Terminen und Vorlagen mit „Wettkampf“ wird die Zuordnung entfernt. Die Termine selbst bleiben bestehen.",
       ),
     );
   });
