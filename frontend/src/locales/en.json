@@ -1713,5 +1713,22 @@
       "requireLabel": "Type your email address to confirm",
       "failed": "The account could not be deleted. Please try again."
     }
+  },
+  "errorPage": {
+    "details": "Technical details (development only)",
+    "reload": "Reload page",
+    "home": "Go to home page",
+    "notFound": {
+      "title": "Page not found",
+      "text": "This address does not exist (any more). Check the link or go to the home page."
+    },
+    "load": {
+      "title": "The page could not be loaded",
+      "text": "The application may just have been updated. Reload the page to get the latest version. If the problem persists, check your internet connection."
+    },
+    "generic": {
+      "title": "Something went wrong",
+      "text": "The page could not be displayed. Reload it or go to the home page. Data you have already saved is not affected."
+    }
   }
 }
