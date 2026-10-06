@@ -90,7 +90,8 @@ beforeEach(() => {
     if (path.endsWith("/locations")) return Promise.resolve(locations);
     if (path.endsWith("/events"))
       return Promise.resolve([{ locationId: "l1" }, { locationId: "l1" }, { locationId: null }]);
-    if (path.endsWith("/templates")) return Promise.resolve([{ locationId: "l1" }]);
+    if (path.endsWith("/templates"))
+      return Promise.resolve([{ locationId: "l1", name: "Vereinsabend" }]);
     return Promise.resolve([]);
   });
   apiPost.mockImplementation((_p: string, body: object) => Promise.resolve({ id: "l9", ...body }));
@@ -160,6 +161,10 @@ describe("LocationsPage", () => {
     );
     expect(screen.getByTestId("overview-map")).toHaveAttribute("data-selected", "l1");
     expect(screen.getByText("Auf Karte markiert")).toBeInTheDocument();
+    const markedRow = screen.getByText("Auf Karte markiert").closest("li")!;
+    expect(markedRow).toHaveAttribute("aria-current", "true");
+    expect(markedRow.classList).toContain("ap-listrow--current");
+    expect(markedRow.classList).toContain("ap-listrow--wrap");
     expect(
       screen.getByRole("button", { name: "Schützenhaus Waldblick auf Karte zeigen" }),
     ).toHaveAttribute("aria-pressed", "true");
@@ -339,7 +344,7 @@ describe("LocationsPage", () => {
     });
     await waitFor(() =>
       expect(dialog).toHaveTextContent(
-        "2 Termine mit diesem Ort haben danach keinen Ort mehr. 1 Vorlage verliert ihren Standardort.",
+        "2 Termine mit diesem Ort haben danach keinen Ort mehr. Die Vorlage „Vereinsabend“ verliert ihren Standardort.",
       ),
     );
     expect(apiDelete).not.toHaveBeenCalled();

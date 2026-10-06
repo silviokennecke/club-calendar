@@ -179,7 +179,10 @@ test.describe("Verein verwalten", () => {
     const copy = `Kopie von ${s.calendarName}`;
     await page.getByRole("button", { name: `Kalender ${copy} archivieren` }).click();
     const dialog = page.getByRole("alertdialog", { name: `Kalender „${copy}“ archivieren?` });
-    await expect(dialog).toContainText("nur lesbar");
+    await expect(dialog).toContainText(
+      "Der Kalender wandert in die Liste der archivierten Kalender.",
+    );
+    await expect(dialog).toContainText("Niemand kann Termine anlegen, ändern oder löschen.");
     await dialog.getByRole("button", { name: "Abbrechen" }).click();
     expect((await calendars(request, s)).filter((c) => c.archivedAt)).toHaveLength(0);
     await page.getByRole("button", { name: `Kalender ${copy} archivieren` }).click();
@@ -206,11 +209,13 @@ test.describe("Verein verwalten", () => {
     await expect(page.getByRole("list", { name: "Archivierte Kalender" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: `Kalender ${copy} archivieren` })).toBeVisible();
 
-    // Löschen: Folgen-Dialog mit Zählern; Abbrechen löscht nichts
+    // Löschen: Folgen-Dialog mit Umfang (Dialogs.dc.html); Abbrechen löscht nichts
     await page.getByRole("button", { name: `Kalender ${copy} löschen` }).click();
     const del = page.getByRole("alertdialog", { name: `Kalender „${copy}“ löschen?` });
-    await expect(del).toContainText("Termine (0)");
-    await expect(del).toContainText("Feeds (0)");
+    await expect(del).toContainText("Der Kalender wird dauerhaft gelöscht.");
+    await expect(del).toContainText(
+      "Löscht den Kalender und seine Feeds unwiderruflich. Die Adressen der Feeds funktionieren danach nicht mehr.",
+    );
     await del.getByRole("button", { name: "Abbrechen" }).click();
     expect(await calendars(request, s)).toHaveLength(3);
     await page.getByRole("button", { name: `Kalender ${copy} löschen` }).click();

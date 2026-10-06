@@ -100,6 +100,8 @@ export function activeNavKey(
   if (!calendarId) return null;
   const base = calendarBase(clubId, calendarId);
   if (path === base) return "calendar";
+  // Design (Export.dc.html): the export page belongs to "Veröffentlichen".
+  if (path === `${base}/events/export`) return "feeds";
   if (path.startsWith(`${base}/events`)) return "events";
   if (path.startsWith(`${base}/import`)) return "import";
   if (path.startsWith(`${base}/templates`)) return "templates";

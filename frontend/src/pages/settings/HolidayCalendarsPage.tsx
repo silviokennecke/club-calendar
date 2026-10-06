@@ -205,7 +205,10 @@ export default function HolidayCalendarsPage() {
                     icon="refresh"
                     loading={busy}
                     loadingLabel={t("settings.holidays.refreshing")}
-                    aria-label={t("settings.holidays.refreshLabel", { name: hc.name })}
+                    aria-label={t(
+                      busy ? "settings.holidays.refreshingLabel" : "settings.holidays.refreshLabel",
+                      { name: hc.name },
+                    )}
                     onClick={() => void refresh(hc)}
                   >
                     {t("settings.holidays.refresh")}
@@ -315,7 +318,11 @@ export default function HolidayCalendarsPage() {
           icon="trash"
           title={t("settings.holidays.delete.title", { name: deleting.name })}
           description={t("settings.holidays.delete.text")}
-          consequence={t("settings.holidays.delete.consequence")}
+          consequence={
+            deleting.eventCount > 0
+              ? t("settings.holidays.delete.consequenceCount", { count: deleting.eventCount })
+              : t("settings.holidays.delete.consequence")
+          }
           confirmLabel={t("settings.holidays.delete.confirm")}
           onConfirm={() => remove(deleting)}
         />

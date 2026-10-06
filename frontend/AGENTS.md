@@ -17,6 +17,9 @@ This is a **Vite + React + React Router** SPA (not Next.js).
 
 ## Design system (redesign, see `docs/redesign/PLAN.md`)
 
+- Artboard-by-artboard mapping, deliberate deviations and open gaps: `docs/redesign/COVERAGE.md`. Confirmation
+  dialogs follow the wording of the design's `Dialogs.dc.html` (see the table there).
+
 - Tokens + component classes live in `src/index.css` (design `cc-tokens.css`, `.cc-*`, `.ap-*`, `.t-*`).
   Tailwind utilities map to tokens: `bg-surface`, `bg-surface-raised`, `bg-surface-sunken`, `text-ink`,
   `text-ink-muted`, `border-border`, `border-border-strong`, `bg-brand`, `text-on-brand`, `bg-brand-soft`,
