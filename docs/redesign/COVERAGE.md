@@ -117,6 +117,14 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 | PublicEventMobile.dc.html | `PublicEventModal` als Bottom-Sheet | vollständig |
 | PublicStates.dc.html | `feed/PublicStates.tsx` (Laden, privat/Schlüssel fehlt, nicht gefunden, Ladefehler mit "Erneut versuchen") | vollständig; Ladefehler-Text "Deine Auswahl bleibt dabei erhalten" statt "Deine Eingaben gehen dabei nicht verloren" (Gäste haben keine Eingaben, nur Filter) |
 
+## Fehlerzustände der Anwendung
+
+Kein eigenes Artboard; Wortlaut und Optik nach PublicStates / CalendarStates (EmptyState + Banner, `AuthLayout`-Karte).
+
+| Zustand | Umsetzung | Status |
+| --- | --- | --- |
+| Unbekannte URL (404), Chunk-/Ladefehler nach einem Deploy, unerwarteter Render-Fehler | `components/error/ErrorPage.tsx` (`errorElement` des Routers, Catch-All-Route, `AppErrorBoundary` in `main.tsx`), `lib/loadError.ts`; h1 mit Fokus, "Seite neu laden", "Zur Startseite", "Zurück" (404); Details nur in der Entwicklung; Notfalltext auf Deutsch ohne i18n; Reload-Schutz `lib/chunkReload.ts` (ein Reload pro Sitzung und Datei) | vollständig (ersetzt die Router-Standardseite "Unexpected Application Error!"; axe 0 Verstöße, 1440/390, hell/dunkel) |
+
 ## Bausteine
 
 | Artboard | Umsetzung (`components/ui/shared/`) | Status |

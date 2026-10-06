@@ -7,6 +7,7 @@ import { ModalFrame, Toaster } from "./components/ui/shared";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import GuestRoute from "./components/layout/GuestRoute";
 import { BackgroundRoutes } from "./components/layout/BackgroundRoutes";
+import { NotFoundPage, RouteErrorPage } from "./components/error/ErrorPage";
 
 import {
   AuthCallbackPage,
@@ -123,6 +124,7 @@ function AppRoutes() {
               element={<HolidayCalendarsPage />}
             />
           </Route>
+          <Route path="*" element={<NotFoundPage />} />
         </>
       }
       modals={
@@ -166,8 +168,11 @@ function Root() {
 }
 
 // Data router (for useBlocker: unsaved changes also hold the browser's back button); the app's
-// routes stay declarative in AppRoutes.
-const router = createBrowserRouter([{ path: "*", element: <Root /> }]);
+// routes stay declarative in AppRoutes. `errorElement`: render errors and failed chunk loads show the
+// error page instead of the router default; unknown URLs end at the catch-all route in AppRoutes.
+const router = createBrowserRouter([
+  { path: "*", element: <Root />, errorElement: <RouteErrorPage /> },
+]);
 
 export default function App() {
   return (
