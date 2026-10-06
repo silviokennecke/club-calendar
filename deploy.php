@@ -74,6 +74,9 @@ if (false !== getenv('DEPLOY_PASSWORD') && '' !== getenv('DEPLOY_PASSWORD')) {
     chmod($askpass, 0700);
     putenv("SSH_ASKPASS=$askpass");
     putenv('SSH_ASKPASS_REQUIRE=force');
+    $_SERVER['SSH_ASKPASS'] = getenv('SSH_ASKPASS');
+    $_SERVER['SSH_ASKPASS_REQUIRE'] = getenv('SSH_ASKPASS_REQUIRE');
+    $_SERVER['DEPLOY_PASSWORD'] = getenv('DEPLOY_PASSWORD');
     $host->setSshArguments(['-o PreferredAuthentications=password,keyboard-interactive', '-o PubkeyAuthentication=no']);
 }
 if (false !== getenv('DEPLOY_PHP')) {
