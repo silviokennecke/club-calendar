@@ -146,5 +146,5 @@ npm run e2e:ui -w frontend                                          # interactiv
 ```
 
 Specs in `frontend/e2e/`: `auth`, `onboarding`, `calendar`, `events`, `templates`, `import`, `import-keyboard`,
-`import-large`, `settings`, `feeds`, `club`, `profile`, `public`, `regressions`, `session-revoked`,
+`import-large`, `error-page`, `settings`, `feeds`, `club`, `profile`, `public`, `regressions`, `session-revoked`,
 `stale-assignments` (`*.spec.ts`); helpers in `helpers.ts`, guard in `safety.ts` / `global-setup.ts`.

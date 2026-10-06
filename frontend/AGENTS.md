@@ -28,9 +28,26 @@ unsaved changes, i18n, API errors, history focus, contrast) · [E2E](#e2e-playwr
   `useEffect(preloadEventModals, [])` (calendar, event list, templates; `FeedPage`: `preloadPublicEventModal`).
   Large libraries stay in their own lazy chunks (mapbox-gl via the map components, emoji-mart via `EmojiMartPanel`);
   vendor chunks (`vendor-react`, `vendor-query`, `vendor-i18n`) are set in `vite.config.ts` `manualChunks`.
+  Pages are wrapped by `lazyPage` (`lazy.ts`), see "Error page and reload guard" below.
+- Error page and reload guard: `components/error/ErrorPage.tsx` (eager, in the entry chunk) is the router's
+  `errorElement` (`App.tsx`), the catch-all `<Route path="*">` of `AppRoutes` (404) and, as `AppErrorBoundary`, the
+  outermost boundary in `main.tsx` (errors in the theme provider or router). `lib/loadError.ts` sorts an error into
+  `notFound` (status 404), `load` (failed dynamic import / chunk, typically after a deploy: hint to reload) and
+  `generic`. `ErrorScreen` needs only i18n (no router, auth or query context): `AuthLayout` card with icon, h1
+  (focused on display, `document.title`), skip link, actions "Seite neu laden" (`location.reload`), "Zur Startseite"
+  (plain `<a href="/">`, a fresh document) and "Zurück" (404 only). Texts: `errorPage.*` (de + en). If the texts are
+  not available, `ErrorScreen` falls back to a hard-coded German emergency text (the only hard-coded UI strings;
+  commented). Technical details (stack) appear in a `<details>` in development only, never in production.
+  `vite:preloadError` (`main.tsx` -> `lib/chunkReload.ts` `handlePreloadError`) reloads once per browser session and
+  failed file (sessionStorage `chunkReloads`: map of failed file URL -> time; no usable sessionStorage means no
+  reload); if the same file still fails afterwards the error surfaces and the error page shows instead of a loop.
+  After `preventDefault()` Vite's preload helper resolves the import with `undefined` (React.lazy would log
+  "Cannot read properties of undefined (reading 'default')"): `lazyPage` keeps such an import pending
+  (`untilReload`) while the page reloads. E2E: `e2e/error-page.spec.ts` (404, blocked page module on the dev server;
+  the production flow runs with `E2E_PREVIEW_URL`, see `docs/redesign/E2E.md`).
 - i18n: German is bundled, English (`locales/en.json`) is a lazy chunk loaded by an inline i18next backend
   (`src/lib/i18n.ts`); `main.tsx` renders after `i18nReady`. A failed chunk import after a deploy reloads the page
-  once (`vite:preloadError` in `main.tsx`).
+  once (`vite:preloadError` in `main.tsx`, guard and error page: see "Error page and reload guard").
 
 ## Design system and areas
 
