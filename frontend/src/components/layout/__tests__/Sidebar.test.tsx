@@ -15,8 +15,8 @@ function data(overrides: Partial<ShellData> = {}): ShellData {
       { id: "c2", name: "Segelclub Möwe e. V.", timezone: "Europe/Berlin" },
     ],
     calendars: [
-      { id: "k1", clubid: "c1", name: "Schießbetrieb 2026" },
-      { id: "k2", clubid: "c1", name: "Saison 2025", archivedAt: "2025-12-31T00:00:00Z" },
+      { id: "k1", clubId: "c1", name: "Schießbetrieb 2026" },
+      { id: "k2", clubId: "c1", name: "Saison 2025", archivedAt: "2025-12-31T00:00:00Z" },
     ],
     clubId: "c1",
     calendarId: "k1",

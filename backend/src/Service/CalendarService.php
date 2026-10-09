@@ -20,8 +20,10 @@ use Doctrine\ORM\EntityManagerInterface;
 
 class CalendarService
 {
-    public function __construct(private readonly EntityManagerInterface $em)
-    {
+    public function __construct(
+        private readonly EntityManagerInterface $em,
+        private readonly UsageCounts $counts,
+    ) {
     }
 
     public function listCalendars(Club $club, bool $includeArchived = false): array
@@ -49,7 +51,9 @@ class CalendarService
             return strcmp($a->getName(), $b->getName());
         });
 
-        return array_map(fn (Calendar $c) => $this->serializeCalendar($c), $calendars);
+        $counts = $this->counts->byCalendar(array_map(fn (Calendar $c) => $c->getId(), $calendars));
+
+        return array_map(fn (Calendar $c) => $this->serializeCalendar($c, $counts), $calendars);
     }
 
     public function createCalendar(Club $club, string $name, ?string $timezone): array
@@ -99,11 +103,14 @@ class CalendarService
         return $this->serializeCalendar($calendar);
     }
 
-    public function duplicateCalendar(Calendar $source): array
+    /**
+     * @param string|null $name name of the copy (the client sends it localized); default "Copy of …"
+     */
+    public function duplicateCalendar(Calendar $source, ?string $name = null): array
     {
         $newCal = new Calendar();
         $newCal->setClub($source->getClub());
-        $newCal->setName('Copy of '.$source->getName());
+        $newCal->setName($name ?? mb_substr('Copy of '.$source->getName(), 0, 255));
         $newCal->setTimezone($source->getTimezone());
         $this->em->persist($newCal);
 
@@ -218,14 +225,25 @@ class CalendarService
         return $this->serializeCalendar($newCal);
     }
 
-    public function serializeCalendar(Calendar $cal): array
+    /**
+     * Counters: precomputed for a list (UsageCounts::byCalendar), else counted for this calendar.
+     *
+     * @param array{events: array<string, int>, templates: array<string, int>, feeds: array<string, int>}|null $counts
+     */
+    public function serializeCalendar(Calendar $cal, ?array $counts = null): array
     {
+        $id = $cal->getId();
+        $counts ??= $this->counts->byCalendar([$id]);
+
         return [
-            'id' => $cal->getId(),
+            'id' => $id,
             'clubId' => $cal->getClub()->getId(),
             'name' => $cal->getName(),
             'timezone' => $cal->getTimezone(),
             'archivedAt' => $cal->getArchivedAt()?->format(\DateTimeInterface::ATOM),
+            'eventCount' => $counts['events'][$id] ?? 0,
+            'templateCount' => $counts['templates'][$id] ?? 0,
+            'feedCount' => $counts['feeds'][$id] ?? 0,
         ];
     }
 }

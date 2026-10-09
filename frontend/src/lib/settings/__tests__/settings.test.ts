@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_LOCATION_FORM,
-  affectedEventNames,
-  countLocationUsage,
-  locationTemplateNames,
-  countUsage,
+  locationTemplateName,
+  masterConsequence,
   fillEmptyAddress,
   formatClock,
   formatFetched,
@@ -35,61 +33,58 @@ describe("validateName", () => {
   });
 });
 
-describe("countUsage", () => {
-  const events = [
-    { properties: [{ property: { id: "p1" } }], features: [], targetGroups: [] },
-    { properties: [], features: [{ feature: { id: "f1" } }], targetGroups: [] },
-    {
-      properties: [{ property: { id: "p1" } }],
-      features: [],
-      targetGroups: [{ targetGroup: { id: "g1" } }],
-    },
-  ] as never[];
-  const templates = [
-    { properties: [], features: [], targetGroups: [{ targetGroup: { id: "g1" } }] },
-  ] as never[];
-
-  it("counts events and templates per kind", () => {
-    expect(countUsage("properties", "p1", events, templates)).toEqual({ events: 2, templates: 0 });
-    expect(countUsage("features", "f1", events, templates)).toEqual({ events: 1, templates: 0 });
-    expect(countUsage("audiences", "g1", events, templates)).toEqual({ events: 1, templates: 1 });
-    expect(countUsage("audiences", "none", events, templates)).toEqual({ events: 0, templates: 0 });
+describe("masterConsequence", () => {
+  // Echo translator: key + options, so the test sees which text and values are used
+  const tk = (key: string, opts?: Record<string, unknown>) =>
+    opts ? `${key}${JSON.stringify(opts)}` : key;
+  const usage = (events: number, templates: number, eventNames: string[] = [], feeds?: number) => ({
+    events,
+    templates,
+    eventNames,
+    ...(feeds === undefined ? {} : { feeds }),
   });
 
-  it("counts a location's events and templates", () => {
-    const evs = [{ locationId: "l1" }, { locationId: null }, { locationId: "l1" }];
-    expect(countLocationUsage("l1", evs, [{ locationId: "l1" }, { locationId: "l2" }])).toEqual({
-      events: 2,
-      templates: 1,
-    });
+  it("names up to three events with the names from the backend", () => {
+    expect(
+      masterConsequence("properties", { name: "Draußen", usage: usage(2, 0, ["A", "B"]) }, tk),
+    ).toBe('consequence.eventsNamed{"count":2,"names":"A, B"}');
+  });
+
+  it("counts events without names and adds templates", () => {
+    expect(masterConsequence("features", { name: "X", usage: usage(5, 2) }, tk)).toBe(
+      'consequence.events{"count":5} consequence.templates{"count":2}',
+    );
+  });
+
+  it("says when nothing uses the item", () => {
+    expect(masterConsequence("properties", { name: "Leer", usage: usage(0, 0) }, tk)).toBe(
+      'consequence.none{"name":"Leer"}',
+    );
+  });
+
+  it("adds the feed sentence for audiences only when feeds use them", () => {
+    expect(masterConsequence("audiences", { name: "J", usage: usage(0, 0, [], 1) }, tk)).toBe(
+      'consequence.none{"name":"J"} consequence.feeds',
+    );
+    expect(masterConsequence("audiences", { name: "J", usage: usage(1, 0, ["A"], 0) }, tk)).toBe(
+      'consequence.eventsNamed{"count":1,"names":"A"}',
+    );
+  });
+
+  it("falls back to a general wording without usage", () => {
+    expect(masterConsequence("audiences", { name: "J" }, tk)).toBe(
+      'consequence.unknown{"name":"J"} consequence.feeds',
+    );
   });
 });
 
-describe("names in delete consequences", () => {
-  const ev = (name: string, id: string) => ({
-    name,
-    properties: [{ property: { id } }],
-    features: [],
-    targetGroups: [],
-  });
-
-  it("lists distinct event names up to three events, none above", () => {
-    const evs = [ev("Herbstfest", "p1"), ev("Training", "p1"), ev("Training", "p1"), ev("X", "p2")];
-    expect(affectedEventNames("properties", "p1", evs as never)).toEqual([
-      "Herbstfest",
-      "Training",
-    ]);
-    expect(affectedEventNames("properties", "p1", [...evs, ev("Y", "p1")] as never)).toEqual([]);
-    expect(affectedEventNames("properties", "p9", evs as never)).toEqual([]);
-  });
-
-  it("names the templates of a location", () => {
-    const tpls = [
-      { locationId: "l1", name: "Vereinsabend" },
-      { locationId: "l2", name: "Training" },
-    ];
-    expect(locationTemplateNames("l1", tpls)).toEqual(["Vereinsabend"]);
-    expect(locationTemplateNames("l3", tpls)).toEqual([]);
+describe("locationTemplateName", () => {
+  it("names the one template of a place", () => {
+    expect(locationTemplateName({ events: 0, templates: 1, templateNames: ["Vereinsabend"] })).toBe(
+      "Vereinsabend",
+    );
+    expect(locationTemplateName({ events: 0, templates: 2, templateNames: ["A", "B"] })).toBeNull();
+    expect(locationTemplateName(undefined)).toBeNull();
   });
 });
 

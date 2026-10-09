@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { templateTimes } from "@/lib/templates";
 import { apiGet, apiPost, getHolidayEvents } from "@/lib/api";
 import { addDays, dayOfWeek, isValidIso, weekdayNames, type IsoDate } from "@/lib/calendar";
 import {
@@ -163,12 +164,9 @@ function SeriesForm({
   const preview = seriesPreview(candidates, series ? (holidays.data ?? []) : [], series && skip);
   const n = preview.dates.length;
   const names = weekdayNames(locale, 0, "long");
-  const time = template.timeBegin
-    ? t("events.series.timeRange", {
-        from: template.timeBegin.slice(0, 5),
-        to: template.timeEnd.slice(0, 5),
-      })
-    : t("events.series.allDay");
+  // A template without times creates all-day events (backend rule, see BACKEND-GAPS.md)
+  const times = templateTimes(template);
+  const time = times ? t("events.series.timeRange", times) : t("events.series.allDay");
   const place = template.location ? locationName(template.location) : null;
 
   let countText = n === 0 ? t("events.series.countNone") : "";

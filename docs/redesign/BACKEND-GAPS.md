@@ -1,22 +1,21 @@
 # Backend-Lücken und offene Risiken (Endstand Redesign)
 
-Stand: 2026-10-06, nach Phase 9. Hier steht, was das Design braucht und das Backend (noch) nicht bietet, welche
+Stand: 2026-10-09, nach Paket 1 des Umsetzungsplans (`BACKEND-PLAN.md`; vorher: 2026-10-06, nach Phase 9). Hier steht, was das Design braucht und das Backend (noch) nicht bietet, welche
 Sicherheitsrisiken offen sind, welche Backend-Fehler während des Redesigns behoben wurden und was im Betrieb zu tun
 ist. Zuordnung zu den Artboards: `COVERAGE.md`; Umsetzungsplan: `PLAN.md`; E2E-Umgebung: `E2E.md`.
 
 ## Kurzfassung und Prioritäten
 
-1. **Vor produktiver Nutzung (Betrieb):** Migrationen `Version20261004120000` (Tabelle `auth_nonce`) und
-   `Version20261004130000` (`user.token_version`) auf Dev und Prod ausführen; `APP_SECRET`, `JWT_REFRESH_SECRET` und
+1. **Vor produktiver Nutzung (Betrieb):** Migrationen `Version20261004120000` (Tabelle `auth_nonce`),
+   `Version20261004130000` (`user.token_version`) und `Version20261009120000` (Vorlagen-Zeiten) auf Dev und Prod ausführen; `APP_SECRET`, `JWT_REFRESH_SECRET` und
    `WEBAUTHN_*` in Produktion setzen; SSO nur über HTTPS (State-Cookie). Siehe "Betrieb".
 2. **Sicherheit, mittel:** Vorab-Registrierung mit fremder Adresse (Passwort des Registrierenden gilt nach dem Klick
    des Eigentümers), fehlendes Rate-Limiting, nicht rotierende/widerrufbare Refresh-Tokens. Siehe "Offene
    Sicherheitsrisiken".
 3. **Features mit sichtbarer UI-Lücke ("Bald verfügbar"):** Passwort vergessen/zurücksetzen, Terminserien,
    SSO verknüpfen/trennen, Profil (Name/E-Mail/Passwort) ändern.
-4. **Zähler und Einzel-Endpoints** (N+1-Requests im Frontend): `calendarCount`/`memberCount` je Verein,
-   `eventCount` je Kalender/Vorlage/Eintrag, Einzel-GET für Feed und öffentlichen Termin, Vereins-/Kalendername
-   und Zeitzone im öffentlichen Feed.
+4. **Zähler und Einzel-Endpoints:** umgesetzt (Paket 1, siehe "Umgesetzt (Paket 1)"). Offen bleiben kurze
+   Feed-Adressen (Slugs) und ein Zustand "Kalender archiviert" im öffentlichen Feed.
 5. **Robustheit:** serverseitiger Import mit Dry-Run und Transaktion, Export-Endpoint, Bulk-Endpoints, stabile
    Fehlercodes.
 
@@ -62,32 +61,13 @@ ist. Zuordnung zu den Artboards: `COVERAGE.md`; Umsetzungsplan: `PLAN.md`; E2E-U
   Termine der Serie" (Design: Serien-Dialoge).
 - **Sammelaktionen** der Terminliste (veröffentlichen, Entwurf, löschen) laufen als Einzel-Requests
   (`Promise.allSettled`). Ein Bulk-Endpoint (`PATCH/DELETE …/events` mit `ids`) wäre atomar und schneller.
-- **Leerzustand "Noch keine Termine":** kein Zähler/Existenz-Endpoint; das Frontend lädt (nur bei leerem Zeitraum)
-  einmal die komplette Terminliste. Besser `eventCount` am Kalender oder `?limit=1`.
 - **Zielgruppen** haben keine Farbe/Tonalität; das Frontend vergibt die Tag-Töne reihum nach Position.
-- **Vorlagen-Zeiten:** `timezone`, `timeBegin`, `timeEnd` sind im Backend Pflicht; das Design zeigt die Zeiten als
-  optional. Die Vorlagenseite füllt 19:00 – 21:00 vor und verlangt beide Zeiten (nullable Spalten nötig).
 - **Zeitzone der Termine:** `Event.timezone` ist `null` für Termine aus dem Terminformular (es sendet keine Zone);
-  `IcsService` fällt auf Kalender-, dann Vereinszeitzone zurück, der öffentliche Feed-Endpoint liefert diesen
-  Fallback aber nicht (siehe Feeds).
-- **Zeitraum-Abfrage:** Der Überlappungsfilter für `…/events?from&to` ist behoben (siehe "Behobene Bugs"); der
-  Frontend-Vorlauf (`MULTI_DAY_LOOKBACK_DAYS` in `src/lib/calendar/view.ts`, 31 Tage) ist seitdem unnötig, aber harmlos.
+  `IcsService` und der öffentliche Feed fallen auf Kalender-, dann Vereinszeitzone zurück (seit Paket 1). Die interne
+  Terminliste liefert weiterhin die gespeicherte Zone (`null` möglich).
 
 ### Feeds und öffentlicher Zugriff
 
-- **Öffentlicher Kopf:** `GET /api/feed/{id}/events` liefert nur `feed: {id, name}`: kein Vereins- und
-  Kalendername (Design: "Schützenverein Waldblick" + "Schießbetrieb 2026"), keine Beschreibung, keine Sichtbarkeit,
-  keine Zeitzone. Nötig: `feed.clubName`, `feed.calendarName`, `feed.timezone`, `visibility` (heute wird `noindex`
-  allein an `?secret=` festgemacht) (COVERAGE L5).
-- **Wirksame Zeitzone** (`event.timezone ?? calendar.timezone ?? club.timezone`) im Feed-Endpoint ausliefern. Das
-  Frontend nimmt die häufigste Zone der Termine; ohne Zone wird "heute" in der Browser-Zeitzone berechnet, der
-  Zeitzonenhinweis entfällt und die Einzeltermin-ICS schreibt schwebende Ortszeit.
-- **Einzel-Endpoints:** kein `GET /api/feed/{id}/events/{eventId}` (der öffentliche Termin-Dialog lädt bei einem
-  geteilten Link den ganzen Feed, um den Termin zu finden und den Feed im Hintergrund zu zeigen) und kein
-  Zeitraumfilter `from`/`to` am Feed-Endpoint; kein `GET …/feeds/{id}` (die Bearbeiten-Seite sucht den Feed aus der
-  Liste). Ein Deep-Link auf `…/events/:eventId` (interner Termin-Dialog) lädt den Termin einzeln und danach den
-  Kalender im Monat des Termins.
-- **Feiertage** fehlen im öffentlichen Feed; die öffentliche Monatsansicht zeigt daher keine.
 - **Kurze Adressen:** Das Design zeigt `/k/<verein>/<feed>` und `?key=`; dafür bräuchte es Slugs je Verein und
   Feed. Heute: Webansicht `…/feed/{id}?secret=…`, ICS `{API}/api/feed/{id}/ics?secret=…`.
 - **Geheimnis** wird auch für öffentliche Feeds erzeugt und ausgeliefert (nur bei privaten relevant).
@@ -97,7 +77,7 @@ ist. Zuordnung zu den Artboards: `COVERAGE.md`; Umsetzungsplan: `PLAN.md`; E2E-U
   Ein Zustand "Kalender archiviert" bräuchte einen eigenen Status/Code. 403/404 sind RFC-7807 ohne stabilen Code;
   falsches und fehlendes Geheimnis sind nicht unterscheidbar (für Gäste gewollt).
 - **Header:** `Referrer-Policy` / `X-Robots-Tag` setzt die SPA nur per `<meta>` (`no-referrer`, `noindex` bei
-  `?secret=`); stärker wäre ein HTTP-Header am Webserver für `/feed/*`.
+  privaten Feeds laut `visibility` und bei Fehlerzuständen); stärker wäre ein HTTP-Header am Webserver für `/feed/*`.
 - **Karten:** `/api/map/image/location/{id}` (statisches Bild) ist öffentlich, die interaktive Karte nutzt den
   Mapbox-Proxy `/api/mapbox/*`; beide über das Backend, das Token geht nie an Dritte. Rate-Limit des Bild-Endpoints
   gilt pro Client. Zum Datenschutz siehe "Offene Sicherheitsrisiken".
@@ -123,18 +103,8 @@ ist. Zuordnung zu den Artboards: `COVERAGE.md`; Umsetzungsplan: `PLAN.md`; E2E-U
 
 ### Zähler und Listen
 
-- `GET /api/clubs` ohne Zähler: Die Vereinsauswahl ("3 Kalender · 3 Mitglieder") holt je Verein
-  `/calendars?includeArchived=true` und `/members` (N+1). Nötig: `calendarCount`/`memberCount`.
-- Kein "n Termine" je Kalender (Vereinsseite zeigt stattdessen die Zeitzone, COVERAGE L5); der Kalender-Lösch-Dialog
-  zählt über drei Listen-Requests. Nötig: `eventCount` am Kalender.
-- Verein löschen: Der Dialog soll den Umfang nennen ("Löscht 14 Termine und 2 Feeds"); ohne Zähler-Endpoint nennt er
-  nur die Anzahl der Kalender.
-- Eigenschaften, Features, Zielgruppen: keine Nutzungszähler (Termine, Vorlagen, Feeds); der Lösch-Dialog lädt beim
-  Öffnen alle Termine und Vorlagen und zählt selbst.
-- Vorlagen: kein `eventCount` (der Lösch-Dialog formuliert die Folge allgemein).
-- Feiertage je Feiertagskalender gibt es nur über den Zeitraum-Endpoint `holiday-events`.
-- `POST …/calendars/{id}/duplicate` vergibt "Copy of …" ohne Sprachbezug (das Frontend benennt per PATCH um).
-- Namen von Eigenschaften, Features und Zielgruppen werden nur im Frontend auf Duplikate geprüft.
+- Feiertage je Feiertagskalender gibt es nur über den Zeitraum-Endpoint `holiday-events` (und im öffentlichen Feed).
+- Bestehende doppelte Namen (vor Paket 1 angelegt) bleiben erhalten; es gibt keinen Unique-Index (siehe Paket 1).
 - ID-Listen (`targetGroupIds` usw.) haben keine Längenbegrenzung (eine Abfrage je ID).
 
 ### Rollen und Mitglieder
@@ -155,6 +125,67 @@ ist. Zuordnung zu den Artboards: `COVERAGE.md`; Umsetzungsplan: `PLAN.md`; E2E-U
   Verhalten ist hier unter "Behobene Bugs" beschrieben. Eine API-Referenz (OpenAPI) gibt es nicht; das Frontend
   leitet Typen von Hand ab (`frontend/src/lib/types.ts`).
 - Kein Test-/Dev-Weg zur Nutzerbestätigung (siehe Auth), kein eigener E2E-Seed außer den Fixtures.
+
+## Umgesetzt (Paket 1)
+
+Zähler, Einzel-Endpoints, öffentlicher Kopf, optionale Vorlagen-Zeiten (`BACKEND-PLAN.md` Paket 1). Alle Zähler sind
+je Zähler EINE gruppierte Abfrage über alle Zeilen einer Liste (`App\Service\UsageCounts`; Nachweis ohne N+1:
+`CountersTest::test*RunsTheSameNumberOfQueries*` mit dem Test-Abfragezähler `tests/Helper/QueryCounter`, nur in
+`config/services_test.yaml`). Neue Felder sind Ergänzungen; bestehende Antwortformen bleiben gleich.
+
+- **Vereine:** `GET /api/clubs` und `GET /api/clubs/{id}` liefern `calendarCount` (aktive), `archivedCalendarCount`,
+  `memberCount` (`_count.calendars` = alle Kalender bleibt). `GET /api/clubs/{id}` zusätzlich `eventCount` und
+  `feedCount` (Summe über alle Kalender, auch archivierte = Umfang des Löschens). Frontend: Vereinsauswahl ohne
+  Requests je Verein (Kalenderliste nur beim Öffnen eines Vereins), Lösch-Dialog "Löscht den Verein mit 2 Kalendern,
+  14 Terminen und 2 Feeds sowie allen Vorlagen unwiderruflich. …".
+- **Kalender:** Liste und Einzel-GET (und die übrigen Kalender-Antworten) liefern `eventCount`, `templateCount`,
+  `feedCount`. Frontend: Kalenderzeile "n Termine" (COVERAGE L5), Kalender-Lösch-Dialog per Einzel-GET statt
+  Terminliste, Leerzustand "Noch keine Termine in diesem Kalender" per `eventCount` statt kompletter Terminliste.
+- **Nutzung:** Listen von Eigenschaften/Features `usage: {events, templates, eventNames}`, Zielgruppen zusätzlich
+  `feeds`, Orte `usage: {events, templates, templateNames}`, Vorlagen (Liste + Einzel-GET) `eventCount` (Termine mit
+  `event_template_id`). `eventNames`/`templateNames`: eindeutige Namen nur bei höchstens 3 Treffern (sonst `[]`,
+  Design Dialogs.dc.html nennt Namen nur bei wenigen Terminen), eine zweite Abfrage nur für diese Einträge.
+  Frontend: Lösch-Dialoge laden keine Termin-/Vorlagenlisten mehr (die Liste wird beim Öffnen neu geladen).
+- **Einzel-Feed:** `GET /api/calendars/{calendarId}/feeds/{feedId}` (gleiche Serialisierung wie die Liste; Feed eines
+  anderen Kalenders 404, Nicht-Mitglied 403). Frontend: `FeedEditPage` lädt den Feed einzeln.
+- **Öffentlicher Feed:** `GET /api/feed/{id}/events` liefert `feed: {id, name, clubName, calendarName, timezone,
+  visibility, eventCount, audiences}` (`timezone` = Kalender, sonst Verein, sonst UTC; `visibility` mit den Werten der
+  Feed-API `PUBLIC|PRIVATE`; `eventCount`/`audiences` = alle veröffentlichten Termine des Feeds bzw. deren Zielgruppen,
+  unabhängig von `from`/`to`, damit Filter-Chips und Leerzustand beim monatsweisen Laden stabil bleiben); jeder Termin
+  trägt die wirksame Zone (`event.timezone` ?? Kalender ?? Verein); optionale `from`/`to` (YYYY-MM-DD, Überlappung wie
+  intern, ungültig oder `to` < `from` → 400, Prüfung erst nach Geheimnis/Archiv); `holidays: [{id,
+  holidayCalendarId, name, date, dateEnd}]` des Kalenders (mit `from`/`to` nur der Zeitraum).
+  Neu `GET /api/feed/{id}/events/{eventId}` → `{feed, event}`: Geheimnis zuerst (403 auch für unbekannte Termine und
+  Entwürfe, kein Orakel), dann archivierter Kalender 404, dann Termin (Entwurf, anderer Kalender, außerhalb der
+  Zielgruppen des Feeds, unbekannt → 404). Frontend: Kopf "Verein" + "Kalender" (Design Public), Zeitzone und "heute"
+  aus der API, `noindex` nach `visibility`, Feiertage in der Monatsansicht, Laden je Monatsraster (`from`/`to`),
+  Termin-Dialog über den Einzel-Endpoint (aus dem Feed geöffnet zuerst mit den Daten des Feeds, ohne Ladezustand);
+  bei 404 unterscheidet eine kleine Feed-Abfrage "Termin nicht gefunden" von "Kalender nicht gefunden". Tests
+  `PublicFeedDetailsTest`. Liste und ICS laden Ort und Zuordnungen aller Termine gebündelt (Doctrine
+  `FETCH_EAGER` je Abfrage, eine Abfrage je Zuordnung statt je Termin; Nachweis
+  `PublicFeedDetailsTest::testFeedListRunsTheSameNumberOfQueriesForMoreEvents`).
+- **Kalender duplizieren:** `POST …/calendars/{id}/duplicate` nimmt optional `{name}` (sonst "Copy of …"); das Frontend
+  sendet "Kopie von …" direkt (kein PATCH mehr).
+- **Doppelte Namen:** Eigenschaften, Features, Zielgruppen: Create/PATCH lehnen einen Namen ab, den es im Kalender
+  schon gibt (trim inkl. geschützter und anderer Unicode-Leerzeichen wie `String.trim()` im Frontend,
+  Groß/Kleinschreibung egal auch bei Umlauten, Vergleich in PHP, nicht per Datenbank-Kollation: "Ältere" ≠ "Altere",
+  "Schießen" ≠ "Schiessen"; keine Unicode-Normalisierung, NFC "ä" ≠ NFD "a"+"̈"):
+  422 `{code: "duplicate_name", field: "name"}` (neu: `App\Exception\ApiProblemException`, `ExceptionListener`
+  ergänzt `code`/`field` im RFC-7807-Body; `ApiError.code` im Frontend). Bestehende Duplikate bleiben unberührt
+  (kein Unique-Index). Ohne Index können zwei gleichzeitige Anlagen mit demselben Namen beide durchgehen (Race,
+  akzeptiert: nur Komfortprüfung, keine Integritätsregel). Frontend: `MasterList` zeigt den Fehler am Feld.
+- **Vorlagen-Zeiten optional:** Migration `Version20261009120000` macht `event_template.timezone`, `time_begin`,
+  `time_end` nullable (Bestandsdaten unverändert; `down` füllt Leerwerte mit Europe/Berlin, 19:00, 21:00). Zeiten nur
+  paarweise (eine allein → 400), Zeitzone optional (ungültig → 422). **Regel:** Hat die Vorlage keine Zeiten und
+  bringt die Anfrage (`POST …/events/from-template`, `overrides.timeBegin/timeEnd`) keine, wird der Termin
+  ganztägig (`isAllDay: true`, gespeichert als 00:00 – 23:59 wie Ganztagstermine aus Formular und Import);
+  `overrides.isAllDay: false` ohne Zeiten → 400. Bringt die Anfrage Zeiten mit, gilt der Termin mit diesen Zeiten.
+  Termine haben weiterhin immer Zeiten, ICS/öffentliche/interne Listen sind unverändert (`TemplateTimesTest`). Der
+  Import kennt keine Vorlagen-Zeiten (er sendet eigene Zeiten). Frontend: Vorlagenformular startet leer (Design
+  TemplateEdit), Karten/Auswahl/Termin-aus-Vorlage zeigen "Ganztägig"; das Terminformular mit Vorlage ohne Zeiten
+  startet als ganztägig (gleiche Regel wie im Backend).
+- **Aufgeräumt:** Frontend-Vorlauf `MULTI_DAY_LOOKBACK_DAYS` / `fetchRange` entfernt (Termine und Feiertage werden
+  serverseitig nach Überlappung gefiltert).
 
 ## Offene Sicherheitsrisiken
 
@@ -250,8 +281,8 @@ Alle mit Tests; Details in den Commits.
 ## Betrieb
 
 - **Migrationen** auf Dev und Prod ausführen (`npm run migrate`; Deploy macht es automatisch):
-  `Version20261004120000` (Tabelle `auth_nonce` für einmalige Passkey-Challenges/OAuth-States) und
-  `Version20261004130000` (`user.token_version`, Standard 0).
+  `Version20261004120000` (Tabelle `auth_nonce` für einmalige Passkey-Challenges/OAuth-States),
+  `Version20261004130000` (`user.token_version`, Standard 0) und `Version20261009120000` (Vorlagen-Zeiten nullable).
 - **Umgebungsvariablen (Produktion):**
   - `APP_SECRET` und `JWT_REFRESH_SECRET` müssen gesetzt sein (in `.env` stehen Platzhalter); `APP_SECRET` signiert
     Passkey-Challenges und OAuth-State, ein Wechsel macht laufende Anmeldevorgänge ungültig.

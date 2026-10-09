@@ -143,7 +143,8 @@ test.describe("Verein verwalten", () => {
     await openClub(page, s);
     const active = page.getByRole("list").filter({ hasText: s.calendarName }).first();
     await expect(active.getByRole("listitem")).toHaveCount(1);
-    await expect(active).toContainText("Zeitzone Europe/Berlin");
+    // Design (Club): the row names the number of events (counted by the API)
+    await expect(active).toContainText("0 Termine");
 
     // Anlegen: Formular klappt auf, Validierung, Fokus zurück zum Auslöser
     const toggle = page.getByRole("button", { name: "Kalender anlegen", expanded: false });
@@ -244,11 +245,26 @@ test.describe("Verein verwalten", () => {
 
   test("Verein löschen verlangt die Eingabe des Namens", async ({ page, request }) => {
     const s = await seed(request, "Club Löschen");
+    const add = async (path: string, data: object) =>
+      expect(
+        (
+          await request.post(`${API}/api/calendars/${s.calendarId}/${path}`, {
+            headers: s.headers,
+            data,
+          })
+        ).ok(),
+      ).toBeTruthy();
+    for (const date of ["2026-10-10", "2026-10-17"])
+      await add("events", { name: "Training", date, timeBegin: "19:00", timeEnd: "21:00" });
+    await add("feeds", { name: "Alle", visibility: "PUBLIC" });
     await openClub(page, s);
     await expect(page.getByRole("heading", { name: "Gefahrenbereich" })).toBeVisible();
     await page.getByRole("button", { name: "Verein löschen" }).click();
     const dialog = page.getByRole("alertdialog", { name: `Verein „${s.clubName}“ löschen?` });
-    await expect(dialog).toContainText("Alle Mitglieder verlieren den Zugriff.");
+    // Scope from GET /api/clubs/:id (Dialogs.dc.html "Verein löschen")
+    await expect(dialog).toContainText(
+      "Löscht den Verein mit 1 Kalender, 2 Terminen und 1 Feed sowie allen Vorlagen unwiderruflich. Alle Mitglieder verlieren den Zugriff.",
+    );
     const confirm = dialog.getByRole("button", { name: "Verein löschen" });
     await expect(confirm).toBeDisabled();
     const input = dialog.getByLabel("Vereinsname zur Bestätigung eingeben");

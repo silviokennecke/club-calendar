@@ -4,6 +4,8 @@ import {
   emptyTemplateValues,
   isTemplateDirty,
   matchesTemplateQuery,
+  templateDeleteConsequence,
+  templateTimes,
   toTemplatePayload,
   validateTemplate,
   valuesFromTemplateRecord,
@@ -24,13 +26,21 @@ const tpl: EventTemplate = {
 };
 
 describe("template form values", () => {
-  it("starts with default times and the club zone", () => {
+  it("starts empty (no times) with the club zone (design: new templates start empty)", () => {
     expect(emptyTemplateValues()).toMatchObject({
       name: "",
       useClubTimezone: true,
-      timeBegin: "19:00",
-      timeEnd: "21:00",
+      timeBegin: "",
+      timeEnd: "",
     });
+  });
+
+  it("maps a template without times or zone", () => {
+    const v = valuesFromTemplateRecord(
+      { ...tpl, timezone: null, timeBegin: null, timeEnd: null },
+      "Europe/Berlin",
+    );
+    expect(v).toMatchObject({ useClubTimezone: true, timeBegin: "", timeEnd: "" });
   });
 
   it("maps a template and detects the club zone", () => {
@@ -51,15 +61,18 @@ describe("template form values", () => {
 });
 
 describe("validateTemplate", () => {
-  it("requires a name and sane times", () => {
+  it("requires a name; times are optional but come in pairs and in order", () => {
     const ok = { ...emptyTemplateValues(), name: "Training" };
     expect(validateTemplate(ok)).toEqual([]);
+    expect(validateTemplate({ ...ok, timeBegin: "19:00", timeEnd: "21:00" })).toEqual([]);
     expect(validateTemplate({ ...ok, name: "  " })).toEqual([
       { field: "name", code: "nameRequired" },
     ]);
-    expect(validateTemplate({ ...ok, timeBegin: "", timeEnd: "" }).map((e) => e.code)).toEqual([
-      "timeBeginRequired",
-      "timeEndRequired",
+    expect(validateTemplate({ ...ok, timeBegin: "19:00" })).toEqual([
+      { field: "timeEnd", code: "timeEndRequired" },
+    ]);
+    expect(validateTemplate({ ...ok, timeEnd: "21:00" })).toEqual([
+      { field: "timeBegin", code: "timeBeginRequired" },
     ]);
     expect(validateTemplate({ ...ok, timeBegin: "21:00", timeEnd: "19:00" })).toEqual([
       { field: "timeEnd", code: "timeEndBeforeStart" },
@@ -79,6 +92,35 @@ describe("toTemplatePayload", () => {
       "Europe/London",
     );
     expect(toTemplatePayload(v, null).timezone).toBe("Europe/London");
+  });
+
+  it("sends null times for a template without times (all-day events)", () => {
+    const v = { ...emptyTemplateValues(), name: "Fest" };
+    expect(toTemplatePayload(v, "Europe/Berlin")).toMatchObject({ timeBegin: null, timeEnd: null });
+    expect(toTemplatePayload({ ...v, timeBegin: "19:00", timeEnd: "21:00" }, null)).toMatchObject({
+      timeBegin: "19:00",
+      timeEnd: "21:00",
+    });
+  });
+});
+
+describe("templateTimes / templateDeleteConsequence", () => {
+  it("gives HH:MM times or null without times", () => {
+    expect(templateTimes(tpl)).toEqual({ from: "19:00", to: "21:00" });
+    expect(templateTimes({ timeBegin: null, timeEnd: null })).toBeNull();
+  });
+
+  it("names how many events came from the template", () => {
+    const t = (key: string, opts?: Record<string, unknown>) =>
+      opts ? `${key}:${String(opts.count)}` : key;
+    expect(templateDeleteConsequence({ eventCount: 4 }, t)).toBe(
+      "templates.delete.consequenceCount:4",
+    );
+    expect(templateDeleteConsequence({ eventCount: 0 }, t)).toBe(
+      "templates.delete.consequenceNone",
+    );
+    expect(templateDeleteConsequence({}, t)).toBe("templates.delete.consequence");
+    expect(templateDeleteConsequence(undefined, t)).toBe("templates.delete.consequence");
   });
 });
 

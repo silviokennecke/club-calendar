@@ -40,6 +40,13 @@ class FeedController extends AbstractApiController
         return new JsonResponse($this->feedService->create($calendar, $data), Response::HTTP_CREATED);
     }
 
+    #[Route('/{feedId}', methods: ['GET'])]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    public function getOne(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId): JsonResponse
+    {
+        return new JsonResponse($this->feedService->get($feedId, $calendar));
+    }
+
     #[Route('/{feedId}', methods: ['PATCH'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]

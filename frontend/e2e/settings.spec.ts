@@ -223,11 +223,25 @@ test.describe("Einstellungen", () => {
       });
       expect(res.ok(), await res.text()).toBeTruthy();
     }
+    // The backend rejects a duplicate name (case and spaces ignored) with a stable code
+    const dup = await request.post(`${API}/api/calendars/${s.calendarId}/properties`, {
+      headers: s.headers,
+      data: { name: " draußen " },
+    });
+    expect(dup.status()).toBe(422);
+    expect(await dup.json()).toMatchObject({ code: "duplicate_name", field: "name" });
+
+    const listRequests: string[] = [];
+    page.on("request", (req) => {
+      if (/\/(events|templates)(\?|$)/.test(req.url())) listRequests.push(req.url());
+    });
     await openSettings(page, s.email, `${s.base}/settings/properties`);
     await page.getByRole("button", { name: "Draußen löschen" }).click();
+    // Names and counts come with the property list (usage), no event / template list is loaded
     await expect(page.getByRole("alertdialog")).toContainText(
       "Bei 2 Terminen (Termin 2026-10-10, Termin 2026-10-17) wird die Zuordnung entfernt.",
     );
+    expect(listRequests).toEqual([]);
     await page.getByRole("button", { name: "Abbrechen" }).click();
     await expect(page.getByRole("alertdialog")).toHaveCount(0);
   });

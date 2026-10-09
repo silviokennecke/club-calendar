@@ -18,12 +18,10 @@ import {
   type Glyph,
 } from "@/components/ui/shared";
 import { audienceTone } from "@/components/calendar/eventDisplay";
-import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
-import type { CalendarEvent, EventTemplate } from "@/lib/types";
+import { apiDelete, apiGet, apiPatch, apiPost, isDuplicateNameError } from "@/lib/api";
 import {
   MASTER_KINDS,
-  affectedEventNames,
-  countUsage,
+  masterConsequence,
   validateName,
   type MasterItem,
   type MasterKind,
@@ -79,21 +77,13 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
   const [saving, setSaving] = useState(false);
   const [editFailed, setEditFailed] = useState(false);
 
-  // Delete
+  // Delete: the consequences come from the list's `usage` (counted by the backend), refreshed when the
+  // dialog opens so that events created meanwhile are counted.
   const [deleting, setDeleting] = useState<MasterItem | null>(null);
-  const usage = useQuery({
-    queryKey: ["usage", cfg.queryKey, calendarId],
-    enabled: !!deleting,
-    staleTime: 0,
-    gcTime: 0,
-    queryFn: async () => {
-      const [events, templates] = await Promise.all([
-        apiGet<CalendarEvent[]>(`/api/calendars/${calendarId}/events`),
-        apiGet<EventTemplate[]>(`/api/calendars/${calendarId}/templates`),
-      ]);
-      return { events, templates };
-    },
-  });
+  function openDelete(item: MasterItem) {
+    setDeleting(item);
+    void list.refetch();
+  }
 
   const problemText = (p: NameProblem) => t(`settings.master.problem.${p}`);
 
@@ -116,8 +106,13 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
       setDraftIcon("");
       toast.success(tk("created", { name }));
       addInputRef.current?.focus();
-    } catch {
-      setAddFailed(true);
+    } catch (error) {
+      // Someone else added the name meanwhile: the backend rejects duplicates per calendar.
+      if (isDuplicateNameError(error)) {
+        setAddProblem("duplicate");
+        setAddSignal((n) => n + 1);
+        void qc.invalidateQueries({ queryKey });
+      } else setAddFailed(true);
     } finally {
       setAdding(false);
     }
@@ -161,8 +156,11 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
       void qc.invalidateQueries({ queryKey: ["templates", calendarId] });
       toast.success(t("settings.master.saved"));
       setEditing(null);
-    } catch {
-      setEditFailed(true);
+    } catch (error) {
+      if (isDuplicateNameError(error)) {
+        setEditProblem("duplicate");
+        void qc.invalidateQueries({ queryKey });
+      } else setEditFailed(true);
       setEditSignal((n) => n + 1);
     } finally {
       setSaving(false);
@@ -184,24 +182,9 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
 
   /** Design (Dialogs.dc.html): "Bei 2 Terminen (A, B) wird die Zuordnung entfernt. …"; audiences add the feeds. */
   function consequence(item: MasterItem) {
-    if (!usage.data && !usage.isError) return tk("consequence.loading");
-    const parts: string[] = [];
-    if (usage.isError || !usage.data) {
-      parts.push(tk("consequence.unknown", { name: item.name }));
-    } else {
-      const n = countUsage(kind, item.id, usage.data.events, usage.data.templates);
-      const names = affectedEventNames(kind, item.id, usage.data.events);
-      if (n.events > 0)
-        parts.push(
-          names.length > 0
-            ? tk("consequence.eventsNamed", { count: n.events, names: names.join(", ") })
-            : tk("consequence.events", { count: n.events }),
-        );
-      if (n.templates > 0) parts.push(tk("consequence.templates", { count: n.templates }));
-      if (parts.length === 0) parts.push(tk("consequence.none", { name: item.name }));
-    }
-    if (kind === "audiences") parts.push(tk("consequence.feeds"));
-    return parts.join(" ");
+    const current = items.find((i) => i.id === item.id) ?? item;
+    if (list.isFetching && !current.usage) return tk("consequence.loading");
+    return masterConsequence(kind, current, tk);
   }
 
   const addErrors = addProblem
@@ -281,7 +264,7 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
                   icon="trash"
                   variant="danger"
                   label={tk("deleteLabel", { name: item.name })}
-                  onClick={() => setDeleting(item)}
+                  onClick={() => openDelete(item)}
                 />
               </>
             )}

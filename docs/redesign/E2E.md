@@ -21,3 +21,8 @@ localhost zeigt.
    `E2E_PREVIEW_URL=http://localhost:5198 PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend -- error-page`.
    Ohne `E2E_PREVIEW_URL` wird dieser Test übersprungen.
 6. Aufräumen: Server auf 3001 / 5199 beenden, `DROP DATABASE club_calendar_e2e`.
+
+Xdebug: Läuft PhpStorm (oder eine andere IDE) mit Debug-Listener auf Port 9003, warten PHP-Prozesse dort auf den
+Debugger und hängen. Dann `XDEBUG_MODE=off` setzen, für den PHP-Server (Schritt 2), für Konsolenbefehle (Schritt 1)
+und für Playwright (Schritt 4): `e2e/helpers.ts` bestätigt Nutzer per `php -r` (PDO) in der E2E-Datenbank, dieser
+PHP-Aufruf hängt sonst ebenfalls.

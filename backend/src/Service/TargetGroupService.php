@@ -11,22 +11,30 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class TargetGroupService
 {
-    public function __construct(private EntityManagerInterface $em)
-    {
+    public function __construct(
+        private EntityManagerInterface $em,
+        private UniqueNames $names,
+        private UsageCounts $counts,
+    ) {
     }
 
     public function list(Calendar $calendar): array
     {
         $items = $this->em->getRepository(TargetGroup::class)->findBy(['calendar' => $calendar]);
 
-        return array_map(fn (TargetGroup $tg) => $this->serialize($tg), $items);
+        $usage = $this->counts->targetGroupUsage($calendar);
+
+        // usage: what deleting the item detaches it from (eventNames only when at most 3 events are affected)
+        return array_map(fn (TargetGroup $tg) => $this->serialize($tg) + ['usage' => $usage[$tg->getId()] ?? null], $items);
     }
 
     public function create(Calendar $calendar, array $data): array
     {
         $targetGroup = new TargetGroup();
         $targetGroup->setCalendar($calendar);
-        $targetGroup->setName(Input::string($data, 'name'));
+        $name = Input::string($data, 'name');
+        $this->names->assertUnique(TargetGroup::class, $calendar, $name);
+        $targetGroup->setName($name);
 
         $this->em->persist($targetGroup);
         $this->em->flush();
@@ -39,7 +47,9 @@ readonly class TargetGroupService
         $targetGroup = $this->find($id, $calendar);
 
         if (array_key_exists('name', $data)) {
-            $targetGroup->setName(Input::string($data, 'name'));
+            $name = Input::string($data, 'name');
+            $this->names->assertUnique(TargetGroup::class, $calendar, $name, $targetGroup->getId());
+            $targetGroup->setName($name);
         }
 
         $this->em->flush();

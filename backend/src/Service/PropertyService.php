@@ -11,22 +11,30 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class PropertyService
 {
-    public function __construct(private EntityManagerInterface $em)
-    {
+    public function __construct(
+        private EntityManagerInterface $em,
+        private UniqueNames $names,
+        private UsageCounts $counts,
+    ) {
     }
 
     public function list(Calendar $calendar): array
     {
         $items = $this->em->getRepository(Property::class)->findBy(['calendar' => $calendar]);
 
-        return array_map(fn (Property $p) => $this->serialize($p), $items);
+        $usage = $this->counts->propertyUsage($calendar);
+
+        // usage: what deleting the item detaches it from (eventNames only when at most 3 events are affected)
+        return array_map(fn (Property $p) => $this->serialize($p) + ['usage' => $usage[$p->getId()] ?? null], $items);
     }
 
     public function create(Calendar $calendar, array $data): array
     {
         $property = new Property();
         $property->setCalendar($calendar);
-        $property->setName(Input::string($data, 'name'));
+        $name = Input::string($data, 'name');
+        $this->names->assertUnique(Property::class, $calendar, $name);
+        $property->setName($name);
         $property->setIcon(Input::nullableString($data, 'icon', 32));
 
         $this->em->persist($property);
@@ -40,7 +48,9 @@ readonly class PropertyService
         $property = $this->find($id, $calendar);
 
         if (array_key_exists('name', $data)) {
-            $property->setName(Input::string($data, 'name'));
+            $name = Input::string($data, 'name');
+            $this->names->assertUnique(Property::class, $calendar, $name, $property->getId());
+            $property->setName($name);
         }
         if (array_key_exists('icon', $data)) {
             $property->setIcon(Input::nullableString($data, 'icon', 32));

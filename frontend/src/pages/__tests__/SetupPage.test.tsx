@@ -125,7 +125,7 @@ describe("SetupPage step 2 (calendar)", () => {
     await toStep2();
     const input = screen.getByLabelText(/Name des Kalenders/);
     expect(input).toHaveValue(`Vereinstermine ${new Date().getFullYear()}`);
-    apiPost.mockResolvedValueOnce({ id: "k1", clubid: "c1", name: "Saison" });
+    apiPost.mockResolvedValueOnce({ id: "k1", clubId: "c1", name: "Saison" });
     await userEvent.clear(input);
     await userEvent.type(input, "Saison");
     await userEvent.click(screen.getByRole("button", { name: "Kalender anlegen" }));

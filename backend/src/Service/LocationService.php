@@ -11,15 +11,20 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class LocationService
 {
-    public function __construct(private EntityManagerInterface $em)
-    {
+    public function __construct(
+        private EntityManagerInterface $em,
+        private UsageCounts $counts,
+    ) {
     }
 
     public function list(Calendar $calendar): array
     {
         $items = $this->em->getRepository(Location::class)->findBy(['calendar' => $calendar]);
 
-        return array_map(fn (Location $l) => $this->serialize($l), $items);
+        $usage = $this->counts->locationUsage($calendar);
+
+        // usage: events / templates at this place (templateNames only when at most 3 templates use it)
+        return array_map(fn (Location $l) => $this->serialize($l) + ['usage' => $usage[$l->getId()] ?? null], $items);
     }
 
     public function create(Calendar $calendar, array $data): array

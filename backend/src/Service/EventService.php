@@ -98,6 +98,15 @@ readonly class EventService
                 $input[$key] = $overrides[$key];
             }
         }
+        // A template without times creates all-day events unless the request brings its own times
+        // (stored as 00:00 – 23:59 like all-day events from the form and the import).
+        if (null === $input['timeBegin'] && null === $input['timeEnd']) {
+            $input['isAllDay'] ??= true;
+            if ($input['isAllDay']) {
+                $input['timeBegin'] = '00:00';
+                $input['timeEnd'] = '23:59';
+            }
+        }
         if (array_key_exists('locationId', $overrides)) {
             $input['locationId'] = $overrides['locationId'];
         }

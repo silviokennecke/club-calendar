@@ -58,7 +58,7 @@ function fileInput() {
 }
 
 beforeEach(() => {
-  calendar = { id: "k1", clubid: "c1", name: "Schießbetrieb 2026" };
+  calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026" };
   existing = [];
   apiGet.mockReset();
   apiPost.mockReset();

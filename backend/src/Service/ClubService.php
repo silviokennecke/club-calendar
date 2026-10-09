@@ -12,24 +12,44 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class ClubService
 {
-    public function __construct(private readonly EntityManagerInterface $em)
-    {
+    public function __construct(
+        private readonly EntityManagerInterface $em,
+        private readonly UsageCounts $counts,
+    ) {
     }
 
+    /**
+     * The user's clubs with calendar and member counters (one grouped query per counter).
+     */
     public function listClubs(User $user): array
     {
-        $clubUsers = $this->em->getRepository(ClubUser::class)->findBy(['user' => $user]);
+        /** @var list<Club> $clubs */
+        $clubs = $this->em->createQueryBuilder()
+            ->select('c')
+            ->from(Club::class, 'c')
+            ->join(ClubUser::class, 'cu', 'WITH', 'cu.club = c')
+            ->where('cu.user = :user')
+            ->setParameter('user', $user)
+            ->getQuery()
+            ->getResult();
 
-        return array_map(function (ClubUser $cu) {
-            $club = $cu->getClub();
+        $ids = array_map(fn (Club $c) => $c->getId(), $clubs);
+        $calendars = $this->counts->calendarsByClub($ids);
+        $members = $this->counts->membersByClub($ids);
+
+        return array_map(function (Club $club) use ($calendars, $members) {
+            $cals = $calendars[$club->getId()] ?? ['active' => 0, 'archived' => 0];
 
             return [
                 'id' => $club->getId(),
                 'name' => $club->getName(),
                 'timezone' => $club->getTimezone(),
-                '_count' => ['calendars' => $club->getCalendars()->count()],
+                'calendarCount' => $cals['active'],
+                'archivedCalendarCount' => $cals['archived'],
+                'memberCount' => $members[$club->getId()] ?? 0,
+                '_count' => ['calendars' => $cals['active'] + $cals['archived']],
             ];
-        }, $clubUsers);
+        }, $clubs);
     }
 
     public function createClub(User $user, string $name, string $timezone = 'Europe/Berlin'): array
@@ -48,9 +68,22 @@ readonly class ClubService
         return $this->serializeClub($club);
     }
 
+    /**
+     * One club with its counters; `eventCount` and `feedCount` sum up all calendars (also archived
+     * ones), i.e. what deleting the club removes.
+     */
     public function getClub(Club $club): array
     {
-        return $this->serializeClub($club);
+        $id = $club->getId();
+        $cals = $this->counts->calendarsByClub([$id])[$id] ?? ['active' => 0, 'archived' => 0];
+
+        return $this->serializeClub($club) + [
+            'calendarCount' => $cals['active'],
+            'archivedCalendarCount' => $cals['archived'],
+            'memberCount' => $this->counts->membersByClub([$id])[$id] ?? 0,
+            'eventCount' => $this->counts->eventsByClub([$id])[$id] ?? 0,
+            'feedCount' => $this->counts->feedsByClub([$id])[$id] ?? 0,
+        ];
     }
 
     public function updateClub(Club $club, array $data): array

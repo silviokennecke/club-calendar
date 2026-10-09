@@ -78,7 +78,8 @@ does not offer yet and how the frontend works around it).
 - Calendar (no FullCalendar): pure date logic in `src/lib/calendar/` (`dates.ts` ISO-date arithmetic in UTC,
   month grid, ISO weeks, `todayIn(timeZone)`; `items.ts` events/holidays as inclusive ranges, week lane layout,
   `shiftEventDates`; `format.ts` Intl labels in the current language; `view.ts` URL view/anchor, ranges, grid keys),
-  all with Vitest tests. UI in `components/calendar/`: `MonthView` (desktop `MonthBoard` with event bars +
+  all with Vitest tests. Events and holidays are loaded for exactly the visible range (the API filters by overlap, no
+  look-back); "Noch keine Termine in diesem Kalender" uses the calendar's `eventCount`. UI in `components/calendar/`: `MonthView` (desktop `MonthBoard` with event bars +
   `DayPanel`, phones `MonthGrid` + day list), `WeekView`, `EventChip`, `EventItem`, `CalendarToolbar`/`MonthNav`,
   `FilterBar`, `CalendarLegend`, `CalendarSkeleton`, `useCalendarData`, `useGridKeyboard` (roving tabindex).
   The calendar page keeps view and date in the URL (`?view=week&date=2026-10-08`). `useIsMobile()` /
@@ -116,40 +117,47 @@ does not offer yet and how the frontend works around it).
   TZID/UTC, all-day end, skipped events; `review.ts` items, groups by name, place matching, bulk id diffs, duplicates,
   payload, chunks of 500) with Vitest tests. No backend dry run: the file is parsed in the browser, only the reviewed
   events are sent (new places are created first via `POST …/locations`).
-- Templates: own routed pages `…/templates` (`TemplatesPage`: cards, `?q=` search, delete dialog),
-  `…/templates/new` and `…/templates/:templateId` (`TemplateEditPage`, read-only in archived calendars); pure logic in
-  `src/lib/templates/` (`form.ts`). `components/events/AssignmentFields` (properties / features / target groups with
+- Templates: own routed pages `…/templates` (`TemplatesPage`: cards, `?q=` search, delete dialog with the
+  template's `eventCount`), `…/templates/new` and `…/templates/:templateId` (`TemplateEditPage`, read-only in archived
+  calendars); pure logic in `src/lib/templates/` (`form.ts`: values, validation, payload, `templateTimes`,
+  `templateDeleteConsequence`). Times are optional (new templates start empty, only both or none); a template
+  without times creates all-day events and shows "Ganztägig" on cards, in the picker and in "Termin aus Vorlage". `components/events/AssignmentFields` (properties / features / target groups with
   inline creation) is shared by the event form, the template form and the import review.
 - Settings: all pages below `…/settings` use `components/settings/SettingsLayout` (heading with club and
   calendar, `SettingsTabs`, the read-only banner of archived calendars with "Archivierung aufheben", skeleton /
   error states; `wide` for the places page). `useSettingsPage()` = `useEventPage()` + club + `readOnly`.
-  Pure logic in `src/lib/settings/` (`masterList.ts` name check + usage counts, `location.ts`, `holidays.ts`,
+  Pure logic in `src/lib/settings/` (`masterList.ts` name check + delete consequences from the API's `usage`, `location.ts`, `holidays.ts`,
   `timezones.ts`) with Vitest tests. Pages: `CalendarSettingsPage` (name, time zone; archiving / duplicating /
   deleting are NOT here, a text link leads to the club page), `PropertiesPage` / `FeaturesPage` /
   `TargetGroupsPage` (thin wrappers of `<MasterList kind=…>`), `LocationsPage`, `HolidayCalendarsPage`.
   - `MasterList` (properties, features, audiences): add form, list, rename in a `FormDialog` (label, error summary,
-    Enter saves, Escape cancels, focus returns to the edit button), delete with the usage counts (it loads all
-    events and templates when the dialog opens).
+    Enter saves, Escape cancels, focus returns to the edit button), delete with the usage counts of the list
+    endpoint (`usage: {events, templates, feeds?, eventNames}`; the list is refetched when the dialog opens, no event
+    or template lists). The backend rejects duplicate names with 422 `code: "duplicate_name"` (`isDuplicateNameError`
+    in `lib/api.ts`, `ApiError.code`); the form shows it at the field.
   - Places: `components/locations/` – `LocationPanel` (form), `AddressSearch` (geocoding via the backend, live
     hit count), `CoordinateFields` (keyboard alternative to the map), `PositionMap` (click / drag, lazy),
     `LocationsOverviewMap` (pins are buttons, the list is the alternative), `MapBoundary` (a failing map never
     takes the page down), `useMapbox` / `mapboxProxy`. `HolidayPreview` (next twelve months, loaded on open).
   - `useCalendarActions(clubId, calendarId, name, { stay })` = archive / unarchive / duplicate / delete with toasts;
-    `stay` keeps the club page in place. `CalendarDeleteDialog` = delete confirmation with event / template / feed
-    counts.
+    `stay` keeps the club page in place; duplicating sends the localized name in the POST. `CalendarDeleteDialog` =
+    delete confirmation with the calendar's `eventCount` (single GET when it opens).
 - Publish, club, profile:
   - Feeds: list `…/settings/feeds` (`pages/settings/FeedsPage`: visibility as `StatusBadge` word + icon, audience
     tags, addresses behind a disclosure, first feed open, a freshly saved one opens via router state `{ open }`),
     `…/settings/feeds/new` and `…/settings/feeds/:feedId` (`FeedEditPage`: name, visibility radios, audience chips,
     secret panel with "Geheimnis neu erzeugen" behind a `ConfirmDialog`, addresses of the saved feed; archived
-    calendars are read-only). The backend has no single-feed GET, the page picks the feed from the list. UI in
+    calendars are read-only). The page loads its feed with the single GET (`useFeed`, key below
+    `["feeds", calendarId]`, so list invalidations refresh it). UI in
     `components/feeds/` (`FeedAccess` = CopyFields for secret / ICS / webcal / web, `AudienceTags`, `useFeeds`);
     pure logic in `src/lib/feeds/` (`feedAddresses`: private feeds carry `?secret=` in every address, form values,
     payload). Visibility is always icon + word (no emoji icons).
   - Club: `/clubs/:clubId` (`pages/ClubPage`, in `components/club/`: `ClubNameSection`, `MembersSection` (table,
     remove / leave with `ConfirmDialog`, add by e-mail with 404 -> "no account"), `CalendarsSection` (create form,
-    one `CalendarRow` per calendar with open / duplicate / archive / delete, archived list with restore). Deleting
-    the club asks to type its name (`ConfirmDialog` `requireText`). Pure logic: `src/lib/club/`.
+    one `CalendarRow` per calendar with open / duplicate / archive / delete, archived list with restore). Rows show "n Termine"
+    (`eventCount`). Deleting the club asks to type its name (`ConfirmDialog` `requireText`) and names the scope from
+    the club's counters (`clubDeleteConsequence`). Pure logic: `src/lib/club/`. The club picker (`ClubsPage` /
+    `ClubCard`) shows the counters of `GET /api/clubs` and loads a club's calendars only when it is opened.
   - Profile: `/profile` (`pages/ProfilePage`, `components/profile/`: `LinkedLoginsSection` (read-only, link / unlink
     disabled "Bald verfügbar"), `PasskeysSection` (WebAuthn via `@simplewebauthn/browser`, remove with
     `ConfirmDialog`), `PreferencesSection` (date format, first weekday and language are saved on the account at
@@ -162,15 +170,19 @@ does not offer yet and how the frontend works around it).
   `pages/PublicEventModal` (`/feed/:feedId/events/:eventId`, above the feed; a shared link shows the feed at the
   event's month below; unknown events, drafts and feed errors are states of the dialog) share `components/feed/` (`PublicShell` = skip link, brand row with `LangSwitch` +
   `ThemeSwitch`, header, `<main id="main">`, footer; `usePublicHead` sets `<meta name="referrer" content="no-referrer">`,
-  `noindex` when `?secret=` is present or the page is an error state and a title without the secret; `usePublicFeed` =
-  react-query over `fetchPublicFeed` with `referrerPolicy: "no-referrer"`, no auth headers, no retries; `PublicStates`
+  `noindex` for private feeds (`feed.visibility`) and error states, and a title without the secret; `usePublicFeed` =
+  react-query over `fetchPublicFeed` for the visible month grid (`from`/`to`, the previous month stays while loading)
+  with `referrerPolicy: "no-referrer"`, no auth headers, no retries; `usePublicEvent` = the single-event endpoint for
+  the dialog (placeholder from the feed cache; on 404 a one-day feed request tells "event not found" from "feed not
+  found"); `PublicStates`
   = loading / private (403) / not found (404) / load error with retry; lazy `PublicEventMap` with `useMapbox`, text
-  alternative = address + "In Karten-App öffnen"). Pure logic in `src/lib/feeds/public.ts` (error kinds, `feedTimeZone` =
-  most frequent event zone because the API has none, audiences, filter, month counts, subscribe addresses, in-app
+  alternative = address + "In Karten-App öffnen"). Pure logic in `src/lib/feeds/public.ts` (error kinds, the header (club and calendar name, zone,
+  `eventCount`, `audiences`) comes from the API; "today" and the zone note use `feed.timezone`, the month view shows
+  the calendar's holidays; filter, month counts, subscribe addresses, in-app
   paths that keep `?secret=`). View state lives in the URL (`date`, `view=list`, `q`, `groups`, plus `secret`); the event
   dialog keeps it as router state `background` without the secret. `MonthView`/`EventItem`/`CalendarLegend` take `publicView` / `showStatus` /
   `showDraft` (no status badges, no draft legend). The one-event ICS file is `buildEventIcs` (`lib/events/ics.ts`;
-  floating local time when no zone is known). `ThemeSwitch` (shared) is also used by the profile.
+  in the event's effective zone from the API). `ThemeSwitch` (shared) is also used by the profile.
 - Unsaved changes: `useUnsavedChanges(dirty)` (`src/lib/useUnsavedChanges.ts`) + `<UnsavedChangesDialog {...dialog}>`;
   intercepts in-app link clicks and `guard(fn)` navigation, `beforeunload`, and the browser's back / forward
   buttons (`useBlocker` for POP navigations, rendered by the dialog only inside the data router, so `<MemoryRouter>`

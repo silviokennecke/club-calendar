@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/components/ui/shared";
-import { apiDelete, apiPatch, apiPost } from "@/lib/api";
+import { apiDelete, apiPost } from "@/lib/api";
 import type { Calendar } from "@/lib/types";
 import { calendarBase } from "@/components/layout/navigation";
 
@@ -56,20 +56,17 @@ export function useCalendarActions(
     async duplicate() {
       setBusy("duplicate");
       try {
+        // The copy gets its name in the UI language right away (backend default: "Copy of …").
+        const name = calendarName
+          ? t("settings.duplicate.copyName", { name: calendarName }).trim().slice(0, 255)
+          : "";
         const copy = await apiPost<Calendar>(
           `/api/clubs/${clubId}/calendars/${calendarId}/duplicate`,
-          {},
+          name ? { name } : {},
         );
-        // The backend names the copy "Copy of …"; give it a name in the UI language.
-        const name = t("settings.duplicate.copyName", { name: calendarName ?? "" }).trim();
-        if (calendarName && name) {
-          await apiPatch(`/api/clubs/${clubId}/calendars/${copy.id}`, { name }).catch(
-            () => undefined,
-          );
-        }
         await qc.invalidateQueries({ queryKey: ["calendars", clubId] });
         if (stay) {
-          toast.success(t("settings.duplicate.doneStay", { name: name || copy.name }));
+          toast.success(t("settings.duplicate.doneStay", { name: copy.name }));
         } else {
           toast.success(t("settings.duplicate.done"));
           navigate(`${calendarBase(clubId, copy.id)}/settings`);

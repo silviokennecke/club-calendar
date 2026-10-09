@@ -90,6 +90,7 @@ export default function CalendarPage() {
   const filtering = search.trim() !== "" || selectedGroups.length > 0;
 
   const data = useCalendarData({
+    clubId: clubId!,
     calendarId: calendarId!,
     view,
     anchor,

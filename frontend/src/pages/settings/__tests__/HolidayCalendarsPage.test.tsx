@@ -42,7 +42,7 @@ const route = `${PATTERN}/settings/holiday-calendars`;
 const url = `${BASE}/settings/holiday-calendars`;
 
 beforeEach(() => {
-  calendar = { id: "k1", clubid: "c1", name: "Schießbetrieb 2026", timezone: "Europe/Berlin" };
+  calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026", timezone: "Europe/Berlin" };
   holidays = [de, ferien];
   for (const fn of [
     apiGet,
