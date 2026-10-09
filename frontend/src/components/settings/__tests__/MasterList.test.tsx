@@ -15,11 +15,17 @@ vi.mock("@/lib/api", () => ({
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiPatch: (...a: unknown[]) => apiPatch(...a),
   apiDelete: (...a: unknown[]) => apiDelete(...a),
+  isDuplicateNameError: (e: { status?: number; code?: string } | null) =>
+    e?.status === 422 && e?.code === "duplicate_name",
 }));
 
-let items: { id: string; name: string; icon?: string | null }[];
-let events: unknown[];
-let templates: unknown[];
+interface Usage {
+  events: number;
+  templates: number;
+  feeds?: number;
+  eventNames: string[];
+}
+let items: { id: string; name: string; icon?: string | null; usage?: Usage }[];
 
 function renderList(kind: "properties" | "features" | "audiences", readOnly = false) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -36,30 +42,21 @@ const apiPath = { properties: "properties", features: "features", audiences: "ta
 
 beforeEach(() => {
   items = [
-    { id: "p1", name: "Wettkampf", icon: "🏆" },
-    { id: "p2", name: "Draußen", icon: null },
-  ];
-  events = [
+    // usage as the list endpoint counts it (names only up to three events)
     {
-      name: "Arbeitsdienst Schießstand",
-      properties: [{ property: { id: "p1" } }],
-      features: [],
-      targetGroups: [],
+      id: "p1",
+      name: "Wettkampf",
+      icon: "🏆",
+      usage: {
+        events: 2,
+        templates: 1,
+        eventNames: ["Arbeitsdienst Schießstand", "Herbstfest"],
+      },
     },
-    {
-      name: "Herbstfest",
-      properties: [{ property: { id: "p1" } }],
-      features: [],
-      targetGroups: [],
-    },
+    { id: "p2", name: "Draußen", icon: null, usage: { events: 0, templates: 0, eventNames: [] } },
   ];
-  templates = [{ properties: [{ property: { id: "p1" } }], features: [], targetGroups: [] }];
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete]) fn.mockReset();
-  apiGet.mockImplementation((path: string) => {
-    if (path.endsWith("/events")) return Promise.resolve(events);
-    if (path.endsWith("/templates")) return Promise.resolve(templates);
-    return Promise.resolve(items);
-  });
+  apiGet.mockImplementation(() => Promise.resolve(items));
   apiPost.mockResolvedValue({ id: "new" });
   apiPatch.mockResolvedValue({});
   apiDelete.mockResolvedValue(undefined);
@@ -149,7 +146,8 @@ describe("MasterList", () => {
     const dialog = await screen.findByRole("dialog", { name: "Feature bearbeiten" });
     const input = within(dialog).getByLabelText(/^Name/);
     expect(input).toHaveValue("Draußen");
-    expect(input).toHaveFocus();
+    // The dialog moves the focus after opening (async)
+    await waitFor(() => expect(input).toHaveFocus());
     await user.clear(input);
     await user.type(input, "Im Freien{Enter}");
     await waitFor(() =>
@@ -249,20 +247,18 @@ describe("MasterList", () => {
         "Bei 2 Terminen (Arbeitsdienst Schießstand, Herbstfest) wird die Zuordnung entfernt. Die Termine selbst bleiben bestehen. 1 Vorlage verliert die Zuordnung.",
       ),
     );
+    // No event or template lists: the counts come with the list (reloaded when the dialog opens)
+    expect(apiGet.mock.calls.every(([path]) => path === "/api/calendars/k1/properties")).toBe(true);
+    expect(apiGet.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(apiDelete).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Eigenschaft löschen" }));
     await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/calendars/k1/properties/p1"));
   });
 
   it("uses the design wording for audiences: count without names, feeds lose the audience", async () => {
-    items = [{ id: "g1", name: "Senioren" }];
-    events = Array.from({ length: 5 }, (_, i) => ({
-      name: `Termin ${i + 1}`,
-      properties: [],
-      features: [],
-      targetGroups: [{ targetGroup: { id: "g1" } }],
-    }));
-    templates = [];
+    items = [
+      { id: "g1", name: "Senioren", usage: { events: 5, templates: 0, feeds: 2, eventNames: [] } },
+    ];
     const user = userEvent.setup();
     renderList("audiences");
     await user.click(await screen.findByRole("button", { name: "Senioren löschen" }));
@@ -291,10 +287,38 @@ describe("MasterList", () => {
     );
   });
 
-  it("falls back to a general consequence when the usage cannot be loaded", async () => {
-    apiGet.mockImplementation((path: string) =>
-      path.endsWith("/events") ? Promise.reject(new Error("x")) : Promise.resolve(items),
+  it("leaves the feed sentence out when no feed uses the audience", async () => {
+    items = [
+      {
+        id: "g1",
+        name: "Senioren",
+        usage: { events: 1, templates: 0, feeds: 0, eventNames: ["Fest"] },
+      },
+    ];
+    const user = userEvent.setup();
+    renderList("audiences");
+    await user.click(await screen.findByRole("button", { name: "Senioren löschen" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await waitFor(() =>
+      expect(dialog).toHaveTextContent("Bei 1 Termin (Fest) wird die Zuordnung entfernt."),
     );
+    expect(dialog).not.toHaveTextContent("Feeds, die diese Zielgruppe");
+  });
+
+  it("shows the backend's duplicate check at the field", async () => {
+    apiPost.mockRejectedValue(
+      Object.assign(new Error("dup"), { status: 422, code: "duplicate_name" }),
+    );
+    const user = userEvent.setup();
+    renderList("features");
+    await screen.findByRole("list");
+    await user.type(screen.getByLabelText(/^Name/), "Siegerehrung");
+    await user.click(screen.getByRole("button", { name: "Feature anlegen" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Diesen Namen gibt es schon");
+  });
+
+  it("falls back to a general consequence when the usage is unknown", async () => {
+    items = items.map(({ usage: _usage, ...rest }) => rest);
     const user = userEvent.setup();
     renderList("properties");
     await user.click(await screen.findByRole("button", { name: "Wettkampf löschen" }));

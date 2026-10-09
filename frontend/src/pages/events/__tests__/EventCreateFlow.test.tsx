@@ -78,7 +78,7 @@ beforeEach(() => {
     if (path === "/api/clubs/c1/calendars/k1")
       return Promise.resolve({
         id: "k1",
-        clubid: "c1",
+        clubId: "c1",
         name: "Schießbetrieb 2026",
         timezone: "Europe/Berlin",
       });
@@ -135,7 +135,7 @@ describe("create choice", () => {
     apiGet.mockImplementation((path: string) =>
       Promise.resolve(
         path === "/api/clubs/c1/calendars/k1"
-          ? { id: "k1", clubid: "c1", name: "Alt", archivedAt: "2026-01-01T00:00:00Z" }
+          ? { id: "k1", clubId: "c1", name: "Alt", archivedAt: "2026-01-01T00:00:00Z" }
           : [],
       ),
     );

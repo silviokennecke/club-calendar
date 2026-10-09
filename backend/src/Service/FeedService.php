@@ -28,6 +28,12 @@ readonly class FeedService
         return array_map(fn (CalendarFeed $f) => $this->serialize($f), $items);
     }
 
+    /** One feed of the calendar (a feed of another calendar is 404, like an unknown id). */
+    public function get(string $id, Calendar $calendar): array
+    {
+        return $this->serialize($this->find($id, $calendar));
+    }
+
     public function create(Calendar $calendar, array $data): array
     {
         $feed = new CalendarFeed();

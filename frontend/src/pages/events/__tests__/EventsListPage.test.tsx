@@ -48,7 +48,7 @@ let calendar: Record<string, unknown>;
 let events: unknown[] | Error;
 
 beforeEach(() => {
-  calendar = { id: "k1", clubid: "c1", name: "Schießbetrieb 2026" };
+  calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026" };
   events = sample;
   for (const fn of [apiGet, apiPatch, apiDelete]) fn.mockReset();
   apiGet.mockImplementation((path: string) => {

@@ -59,7 +59,7 @@ let calendar: Record<string, unknown>;
 let templates: unknown[];
 
 beforeEach(() => {
-  calendar = { id: "k1", clubid: "c1", name: "Schießbetrieb 2026", timezone: "Europe/Berlin" };
+  calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026", timezone: "Europe/Berlin" };
   templates = [makeTemplate(), youthTemplate];
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete]) fn.mockReset();
   apiGet.mockImplementation((path: string) => {
@@ -106,6 +106,28 @@ describe("TemplatesPage", () => {
       "href",
       `${BASE}/templates/new`,
     );
+  });
+
+  it("shows a template without times as all-day", async () => {
+    templates = [makeTemplate({ timeBegin: null, timeEnd: null, timezone: null })];
+    renderRoute(listRoute, listUrl, <TemplatesPage />);
+    const [item] = await screen.findAllByRole("listitem");
+    expect(within(item).getByText(/Ganztägig/)).toBeInTheDocument();
+  });
+
+  it("names how many events were created from a template when deleting it", async () => {
+    templates = [makeTemplate({ eventCount: 4 })];
+    const user = userEvent.setup();
+    renderRoute(listRoute, listUrl, <TemplatesPage />);
+    await user.click(
+      await screen.findByRole("button", { name: "Vorlage Training Luftgewehr löschen" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      await within(dialog).findByText(
+        "Die 4 bereits aus dieser Vorlage erzeugten Termine bleiben unverändert.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("shows the empty state with a way to create a template", async () => {
@@ -196,8 +218,15 @@ describe("TemplateEditPage – new", () => {
     expect(apiPost).not.toHaveBeenCalled();
 
     await user.type(screen.getByLabelText(/Name/, { selector: "input" }), " Vereinsabend ");
-    await user.clear(screen.getByLabelText(/Startzeit/));
+    // Times are optional, but only together (design: new templates start empty)
+    expect(screen.getByLabelText(/Startzeit/)).toHaveValue("");
     await user.type(screen.getByLabelText(/Startzeit/), "20:00");
+    await user.click(screen.getByRole("button", { name: "Vorlage speichern" }));
+    expect(await screen.findByLabelText(/Endzeit/)).toHaveAccessibleDescription(
+      expect.stringContaining("Bitte gib auch eine Endzeit ein oder lass beide Zeiten leer."),
+    );
+    expect(apiPost).not.toHaveBeenCalled();
+    await user.type(screen.getByLabelText(/Endzeit/), "21:00");
     await user.selectOptions(screen.getByLabelText(/Standardort/), "l2");
     await user.click(await screen.findByRole("button", { name: "Bonusschießen" }));
     await user.click(screen.getByRole("button", { name: "Erwachsene" }));
@@ -215,6 +244,24 @@ describe("TemplateEditPage – new", () => {
       targetGroupIds: ["g2"],
     });
     expect(await screen.findByTestId("location")).toHaveTextContent(`${BASE}/templates`);
+  });
+
+  it("saves a template without times (events from it are all-day)", async () => {
+    const user = userEvent.setup();
+    renderRoute(route, url, <TemplateEditPage />);
+    await screen.findByRole("heading", { level: 1, name: "Neue Vorlage" });
+    expect(screen.getByLabelText(/Endzeit/)).toHaveAccessibleDescription(
+      expect.stringContaining(
+        "Ohne Start- und Endzeit werden Termine aus dieser Vorlage ganztägig.",
+      ),
+    );
+    await user.type(screen.getByLabelText(/Name/, { selector: "input" }), "Vereinsfest");
+    await user.click(screen.getByRole("button", { name: "Vorlage speichern" }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalled());
+    expect(apiPost).toHaveBeenCalledWith(
+      "/api/calendars/k1/templates",
+      expect.objectContaining({ name: "Vereinsfest", timeBegin: null, timeEnd: null }),
+    );
   });
 
   it("offers the zone select when not using the club zone", async () => {

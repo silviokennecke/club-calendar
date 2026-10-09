@@ -27,14 +27,16 @@ class EventTemplate
     #[ORM\Column(length: 255)]
     private string $name;
 
-    #[ORM\Column(length: 100)]
-    private string $timezone;
+    /** null: events from this template use the calendar's (else the club's) time zone */
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $timezone = null;
 
-    #[ORM\Column(length: 5)]
-    private string $timeBegin;
+    /** null (together with timeEnd): events from this template are all-day unless the request sends times */
+    #[ORM\Column(length: 5, nullable: true)]
+    private ?string $timeBegin = null;
 
-    #[ORM\Column(length: 5)]
-    private string $timeEnd;
+    #[ORM\Column(length: 5, nullable: true)]
+    private ?string $timeEnd = null;
 
     #[ORM\OneToMany(targetEntity: Event::class, mappedBy: 'template')]
     private Collection $events;
@@ -98,36 +100,36 @@ class EventTemplate
         return $this;
     }
 
-    public function getTimezone(): string
+    public function getTimezone(): ?string
     {
         return $this->timezone;
     }
 
-    public function setTimezone(string $timezone): static
+    public function setTimezone(?string $timezone): static
     {
         $this->timezone = $timezone;
 
         return $this;
     }
 
-    public function getTimeBegin(): string
+    public function getTimeBegin(): ?string
     {
         return $this->timeBegin;
     }
 
-    public function setTimeBegin(string $timeBegin): static
+    public function setTimeBegin(?string $timeBegin): static
     {
         $this->timeBegin = $timeBegin;
 
         return $this;
     }
 
-    public function getTimeEnd(): string
+    public function getTimeEnd(): ?string
     {
         return $this->timeEnd;
     }
 
-    public function setTimeEnd(string $timeEnd): static
+    public function setTimeEnd(?string $timeEnd): static
     {
         $this->timeEnd = $timeEnd;
 

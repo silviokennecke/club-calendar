@@ -36,21 +36,6 @@ export function visibleRange(
   return monthGridRange(yearMonthOf(anchor), weekStart);
 }
 
-/**
- * The events API filters by start date only, so multi-day events that started before the
- * visible range would be missing. Fetch this many days earlier and filter by overlap locally.
- */
-export const MULTI_DAY_LOOKBACK_DAYS = 31;
-
-export function fetchRange(
-  view: CalendarView,
-  anchor: IsoDate,
-  weekStart: WeekStart = 1,
-): [IsoDate, IsoDate] {
-  const [from, to] = visibleRange(view, anchor, weekStart);
-  return [addDays(from, -MULTI_DAY_LOOKBACK_DAYS), to];
-}
-
 /** Anchor after "previous" (-1) / "next" (+1). */
 export function stepAnchor(view: CalendarView, anchor: IsoDate, direction: -1 | 1): IsoDate {
   return view === "week" ? addDays(anchor, 7 * direction) : addMonthsClamped(anchor, direction);

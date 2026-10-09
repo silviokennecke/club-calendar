@@ -7,7 +7,7 @@ const cal = (id: string, archived = false) =>
   ({
     id,
     name: id,
-    clubid: "c1",
+    clubId: "c1",
     archivedAt: archived ? "2026-01-01T00:00:00Z" : null,
   }) as Calendar;
 const list = [cal("old", true), cal("k1"), cal("k2")];

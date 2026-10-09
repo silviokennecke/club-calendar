@@ -1,0 +1,4 @@
+services:
+    # Counts SQL statements in tests (N+1 checks, e.g. CountersTest)
+    App\Tests\Helper\QueryCounter:
+        tags: ['doctrine.middleware']

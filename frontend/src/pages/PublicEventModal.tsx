@@ -3,20 +3,19 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { formatWeekdayDate } from "@/lib/events/format";
 import { buildEventIcs, downloadTextFile, icsFileName } from "@/lib/events/ics";
+import { todayIn } from "@/lib/calendar";
 import {
-  feedAudiences,
-  feedTimeZone,
-  findPublicEvent,
   mapLinkFor,
   publicFeedPath,
   type PublicFeedEvent,
+  type PublicFeedHeader,
 } from "@/lib/feeds/public";
 import { formatAddress } from "@/lib/types";
 import { useModalNav } from "@/lib/useModalNav";
 import { audienceTone } from "@/components/calendar/eventDisplay";
 import { useLocale } from "@/components/calendar/useLocale";
 import { ModalSkeleton } from "@/components/events/CreateGate";
-import { usePublicFeed } from "@/components/feed/usePublicFeed";
+import { usePublicEvent, usePublicFeed } from "@/components/feed/usePublicFeed";
 import { usePublicHead } from "@/components/feed/usePublicHead";
 import { MapBoundary } from "@/components/locations/MapBoundary";
 import { Button, Icon, Modal, Skeleton, Tag, buttonClass } from "@/components/ui/shared";
@@ -27,19 +26,27 @@ const PublicEventMap = lazy(() => import("@/components/feed/PublicEventMap"));
  * Public event details (design: PublicEvent, PublicEventMobile) as a dialog above the public feed;
  * the URL /feed/:feedId/events/:eventId stays shareable (a direct call shows the feed below, at the
  * event's month). Date and time, place with map and text alternative, properties, features and
- * audiences, "Zum Kalender hinzufügen" (one-event ICS file made in the browser). The feed endpoint
- * has no single-event route, the event is picked from the feed (shared query cache with the feed).
- * The router state keeps the way back without the secret; the secret comes from the address.
+ * audiences, "Zum Kalender hinzufügen" (one-event ICS file made in the browser). The event comes from
+ * the single-event endpoint (the background feed loads its month on its own). A 404 there is an
+ * unknown feed or an unknown event: a small feed request tells them apart. The router state keeps the
+ * way back without the secret; the secret comes from the address.
  */
 export default function PublicEventModal() {
   const { t } = useTranslation();
   const { feedId = "", eventId } = useParams<{ feedId: string; eventId: string }>();
   const [params] = useSearchParams();
   const secret = params.get("secret") || undefined;
-  const feed = usePublicFeed(feedId, secret);
+  const one = usePublicEvent(feedId, eventId, secret);
   const nav = useModalNav();
+  // Only after a 404: does the feed exist (then the event is unknown) or not?
+  const probeDay = todayIn(null);
+  const feedProbe = usePublicFeed(one.errorKind === "notFound" ? feedId : undefined, secret, {
+    from: probeDay,
+    to: probeDay,
+  });
 
-  const event = feed.data ? findPublicEvent(feed.data.events, eventId) : undefined;
+  const event = one.data?.event;
+  const header = one.data?.feed ?? feedProbe.data?.feed;
   const eventDate = event?.date.slice(0, 10);
   const { hasStoredBackground, setBackground } = nav;
   // A shared link: show the feed at the event's month below the dialog (stored without the secret).
@@ -49,16 +56,16 @@ export default function PublicEventModal() {
   }, [eventDate, hasStoredBackground, setBackground, feedId]);
 
   const title = event
-    ? `${event.name} – ${feed.data!.feed.name}`
-    : feed.data
+    ? `${event.name} – ${header!.name}`
+    : header
       ? t("feed.event.notFound.title")
       : t("feed.brand");
-  // Private feeds (secret in the address) and states without an event are not indexed.
-  usePublicHead({ title, noindex: !!secret || !event });
+  // Private feeds and states without an event are not indexed.
+  usePublicHead({ title, noindex: !event || header?.visibility !== "PUBLIC" });
 
   const close = t("feed.event.close");
 
-  if (feed.isPending) {
+  if (one.isPending || (one.errorKind === "notFound" && feedProbe.isPending)) {
     return (
       <Modal
         size="wide"
@@ -71,9 +78,14 @@ export default function PublicEventModal() {
     );
   }
 
-  if (!feed.data || !event) {
-    // The feed itself failed (private, unknown, load error) or the event is unknown / a draft.
-    const kind = feed.data ? "eventNotFound" : (feed.errorKind ?? "error");
+  if (!one.data || !event) {
+    // The feed failed (private, unknown, load error) or the event is unknown / a draft.
+    const kind =
+      one.errorKind === "notFound"
+        ? feedProbe.data
+          ? "eventNotFound"
+          : (feedProbe.errorKind ?? "error")
+        : (one.errorKind ?? "error");
     const titleKey =
       kind === "eventNotFound"
         ? "feed.event.notFound.title"
@@ -95,7 +107,14 @@ export default function PublicEventModal() {
         <p className="t-body">{t(textKey)}</p>
         <div className="ap-dialog-foot">
           {kind === "error" && (
-            <Button variant="secondary" icon="refresh" onClick={() => void feed.refetch()}>
+            <Button
+              variant="secondary"
+              icon="refresh"
+              onClick={() => {
+                void one.refetch();
+                if (one.errorKind === "notFound") void feedProbe.refetch();
+              }}
+            >
               {t("feed.states.error.retry")}
             </Button>
           )}
@@ -105,26 +124,19 @@ export default function PublicEventModal() {
     );
   }
 
-  return (
-    <EventDetail
-      event={event}
-      feedName={feed.data.feed.name}
-      zone={feedTimeZone(feed.data.events)}
-      audiences={feedAudiences(feed.data.events)}
-      onClose={nav.close}
-    />
-  );
+  return <EventDetail event={event} feed={one.data.feed} onClose={nav.close} />;
 }
 
 interface EventDetailProps {
   event: PublicFeedEvent;
-  feedName: string;
-  zone: string | null;
-  audiences: { id: string; name: string }[];
+  feed: PublicFeedHeader;
   onClose: () => void;
 }
 
-function EventDetail({ event, feedName, zone, audiences, onClose }: EventDetailProps) {
+function EventDetail({ event, feed, onClose }: EventDetailProps) {
+  const audiences = feed.audiences;
+  // Effective zone of the event (the API sends event, else calendar, else club zone)
+  const zone = event.timezone ?? feed.timezone;
   const { t } = useTranslation();
   const locale = useLocale();
   const start = event.date.slice(0, 10);
@@ -150,7 +162,7 @@ function EventDetail({ event, feedName, zone, audiences, onClose }: EventDetailP
 
   function addToCalendar() {
     const ics = buildEventIcs(event, {
-      calendarName: feedName,
+      calendarName: feed.calendarName,
       timeZone: zone,
       labels: {
         features: t("events.export.ics.features"),
@@ -176,7 +188,7 @@ function EventDetail({ event, feedName, zone, audiences, onClose }: EventDetailP
           </span>
         )
       }
-      subtitle={feedName}
+      subtitle={t("feed.event.subtitle", { club: feed.clubName, calendar: feed.calendarName })}
       closeLabel={t("feed.event.close")}
       onClose={onClose}
     >

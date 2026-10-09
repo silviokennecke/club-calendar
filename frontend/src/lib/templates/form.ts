@@ -1,8 +1,8 @@
 /**
  * Template form: values, validation and the request body (pure, no React).
- * Mirrors lib/events/form.ts; times are "HH:MM" as the native inputs deliver them.
+ * Mirrors lib/events/form.ts; times are "HH:MM" as the native inputs deliver them. Times are optional
+ * (design: TemplateEdit, new templates start empty): a template without times creates all-day events.
  */
-import { DEFAULT_TIME_BEGIN, DEFAULT_TIME_END } from "@/lib/events";
 import type { EventTemplate } from "@/lib/types";
 
 export interface TemplateFormValues {
@@ -11,6 +11,7 @@ export interface TemplateFormValues {
   useClubTimezone: boolean;
   /** Only used when `useClubTimezone` is off. */
   timezone: string;
+  /** Both empty: events from the template are all-day. */
   timeBegin: string;
   timeEnd: string;
   /** Empty = no default location. */
@@ -35,8 +36,8 @@ export function emptyTemplateValues(): TemplateFormValues {
     name: "",
     useClubTimezone: true,
     timezone: FALLBACK_TIMEZONE,
-    timeBegin: DEFAULT_TIME_BEGIN,
-    timeEnd: DEFAULT_TIME_END,
+    timeBegin: "",
+    timeEnd: "",
     locationId: "",
     propertyIds: [],
     featureIds: [],
@@ -56,10 +57,11 @@ export function valuesFromTemplateRecord(
 ): TemplateFormValues {
   return {
     name: tpl.name,
-    useClubTimezone: !!clubTimezone && tpl.timezone === clubTimezone,
+    // A template without own zone follows the calendar / club
+    useClubTimezone: !tpl.timezone || (!!clubTimezone && tpl.timezone === clubTimezone),
     timezone: tpl.timezone || FALLBACK_TIMEZONE,
-    timeBegin: shortTime(tpl.timeBegin) || DEFAULT_TIME_BEGIN,
-    timeEnd: shortTime(tpl.timeEnd) || DEFAULT_TIME_END,
+    timeBegin: shortTime(tpl.timeBegin),
+    timeEnd: shortTime(tpl.timeEnd),
     locationId: tpl.locationId ?? tpl.location?.id ?? "",
     propertyIds: tpl.properties.map((p) => p.property.id),
     featureIds: tpl.features.map((f) => f.feature.id),
@@ -76,12 +78,15 @@ export interface TemplateFormError {
   code: TemplateErrorCode;
 }
 
-/** All problems in display order (top to bottom of the form). */
+/**
+ * All problems in display order (top to bottom of the form). Times are optional but come in pairs:
+ * both empty (all-day events) or both set.
+ */
 export function validateTemplate(v: TemplateFormValues): TemplateFormError[] {
   const errors: TemplateFormError[] = [];
   if (!v.name.trim()) errors.push({ field: "name", code: "nameRequired" });
-  if (!v.timeBegin) errors.push({ field: "timeBegin", code: "timeBeginRequired" });
-  if (!v.timeEnd) errors.push({ field: "timeEnd", code: "timeEndRequired" });
+  if (!v.timeBegin && v.timeEnd) errors.push({ field: "timeBegin", code: "timeBeginRequired" });
+  if (v.timeBegin && !v.timeEnd) errors.push({ field: "timeEnd", code: "timeEndRequired" });
   if (v.timeBegin && v.timeEnd && v.timeEnd < v.timeBegin)
     errors.push({ field: "timeEnd", code: "timeEndBeforeStart" });
   return errors;
@@ -90,8 +95,9 @@ export function validateTemplate(v: TemplateFormValues): TemplateFormError[] {
 export interface TemplatePayload {
   name: string;
   timezone: string;
-  timeBegin: string;
-  timeEnd: string;
+  /** null (both): events from the template are all-day. */
+  timeBegin: string | null;
+  timeEnd: string | null;
   locationId: string | null;
   propertyIds: string[];
   featureIds: string[];
@@ -106,8 +112,8 @@ export function toTemplatePayload(
   return {
     name: v.name.trim(),
     timezone: v.useClubTimezone ? (clubTimezone ?? v.timezone) : v.timezone,
-    timeBegin: v.timeBegin,
-    timeEnd: v.timeEnd,
+    timeBegin: v.timeBegin || null,
+    timeEnd: v.timeEnd || null,
     locationId: v.locationId || null,
     propertyIds: v.propertyIds,
     featureIds: v.featureIds,
@@ -147,4 +153,27 @@ export function matchesTemplateQuery(tpl: EventTemplate, query: string): boolean
     ...tpl.targetGroups.map((g) => g.targetGroup.name),
   ];
   return haystack.some((h) => h?.toLowerCase().includes(q));
+}
+
+/** "HH:MM" start and end of a template, or null when it has no times (all-day events). */
+export function templateTimes(
+  tpl: Pick<EventTemplate, "timeBegin" | "timeEnd">,
+): { from: string; to: string } | null {
+  const from = shortTime(tpl.timeBegin);
+  const to = shortTime(tpl.timeEnd);
+  return from && to ? { from, to } : null;
+}
+
+/**
+ * Consequence of deleting a template (design: Templates / TemplateEdit "Bereits aus dieser Vorlage
+ * erzeugte Termine bleiben unverändert."), with the template's `eventCount` when the API sent it.
+ */
+export function templateDeleteConsequence(
+  tpl: Pick<EventTemplate, "eventCount"> | undefined | null,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
+  const count = tpl?.eventCount;
+  if (count === undefined) return t("templates.delete.consequence");
+  if (count === 0) return t("templates.delete.consequenceNone");
+  return t("templates.delete.consequenceCount", { count });
 }

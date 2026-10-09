@@ -19,11 +19,10 @@ import type { AddressSuggestion } from "@/components/locations/AddressSearch";
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
 import { useSettingsPage } from "@/components/settings/useSettingsPage";
 import { apiDelete, apiFetch, apiGet, apiPatch, apiPost } from "@/lib/api";
-import { formatAddress, type CalendarEvent, type EventTemplate, type Location } from "@/lib/types";
+import { formatAddress, type Location } from "@/lib/types";
 import {
   EMPTY_LOCATION_FORM,
-  countLocationUsage,
-  locationTemplateNames,
+  locationTemplateName,
   fillEmptyAddress,
   hasPosition,
   locationFormValid,
@@ -80,20 +79,6 @@ export default function LocationsPage() {
   const dirty = !sameLocationForm(form, baseline);
   const guard = useUnsavedChanges(dirty);
   const editing = editId ? places.find((p) => p.id === editId) : undefined;
-
-  const usage = useQuery({
-    queryKey: ["usage", "locations", calendarId],
-    enabled: !!deleting,
-    staleTime: 0,
-    gcTime: 0,
-    queryFn: async () => {
-      const [events, templates] = await Promise.all([
-        apiGet<CalendarEvent[]>(`/api/calendars/${calendarId}/events`),
-        apiGet<EventTemplate[]>(`/api/calendars/${calendarId}/templates`),
-      ]);
-      return { events, templates };
-    },
-  });
 
   function load(id: string | null, next: LocationForm, select: string | null) {
     reverseSeq.current++;
@@ -228,20 +213,23 @@ export default function LocationsPage() {
     }
   }
 
+  /** Design (Dialogs.dc.html): counts and the one template name come with the list (`usage`). */
   function consequence() {
     if (!deleting) return "";
-    if (usage.isError) return t("settings.places.delete.consequence.unknown");
-    if (!usage.data) return t("settings.places.delete.consequence.loading");
-    const n = countLocationUsage(deleting.id, usage.data.events, usage.data.templates);
+    const usage = (places.find((p) => p.id === deleting.id) ?? deleting).usage;
+    if (!usage) {
+      return list.isFetching
+        ? t("settings.places.delete.consequence.loading")
+        : t("settings.places.delete.consequence.unknown");
+    }
     const parts: string[] = [];
-    if (n.events > 0)
-      parts.push(t("settings.places.delete.consequence.events", { count: n.events }));
-    // Design (Dialogs.dc.html): one template is named ("Die Vorlage „Vereinsabend“ verliert …").
-    const templateNames = locationTemplateNames(deleting.id, usage.data.templates);
-    if (n.templates === 1 && templateNames.length === 1)
-      parts.push(t("settings.places.delete.consequence.templateNamed", { name: templateNames[0] }));
-    else if (n.templates > 0)
-      parts.push(t("settings.places.delete.consequence.templates", { count: n.templates }));
+    if (usage.events > 0)
+      parts.push(t("settings.places.delete.consequence.events", { count: usage.events }));
+    const templateName = locationTemplateName(usage);
+    if (templateName)
+      parts.push(t("settings.places.delete.consequence.templateNamed", { name: templateName }));
+    else if (usage.templates > 0)
+      parts.push(t("settings.places.delete.consequence.templates", { count: usage.templates }));
     return parts.length > 0 ? parts.join(" ") : t("settings.places.delete.consequence.none");
   }
 
@@ -421,7 +409,15 @@ export default function LocationsPage() {
             failed={failed}
             onSave={() => void save()}
             onCancel={cancel}
-            onDelete={editing ? () => setDeleting(editing) : undefined}
+            onDelete={
+              editing
+                ? () => {
+                    setDeleting(editing);
+                    // Fresh usage counts for the consequence
+                    void list.refetch();
+                  }
+                : undefined
+            }
             headingRef={headingRef}
           />
         )}

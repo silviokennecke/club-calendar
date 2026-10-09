@@ -1,4 +1,4 @@
-import type { CalendarEvent, EventTemplate } from "@/lib/types";
+import type { LocationUsage, ReferenceUsage } from "@/lib/types";
 
 /** The three reference lists managed by the same screen (design: SettingsMasterList). */
 export type MasterKind = "properties" | "features" | "audiences";
@@ -7,6 +7,8 @@ export interface MasterItem {
   id: string;
   name: string;
   icon?: string | null;
+  /** From the list endpoint: events / templates (/ feeds) the item is assigned to. */
+  usage?: ReferenceUsage;
 }
 
 export interface MasterKindConfig {
@@ -43,74 +45,42 @@ export function validateName(
   return null;
 }
 
-export interface Usage {
-  events: number;
-  templates: number;
-}
-
-type Assigned = Pick<CalendarEvent, "properties" | "features" | "targetGroups">;
-
-function uses(kind: MasterKind, id: string, item: Assigned): boolean {
-  switch (kind) {
-    case "properties":
-      return item.properties.some((p) => p.property.id === id);
-    case "features":
-      return item.features.some((f) => f.feature.id === id);
-    case "audiences":
-      return item.targetGroups.some((g) => g.targetGroup.id === id);
-  }
-}
-
-/** How many events and templates reference an item (what deleting it detaches it from). */
-export function countUsage(
-  kind: MasterKind,
-  id: string,
-  events: ReadonlyArray<Assigned>,
-  templates: ReadonlyArray<Pick<EventTemplate, "properties" | "features" | "targetGroups">>,
-): Usage {
-  return {
-    events: events.filter((e) => uses(kind, id, e)).length,
-    templates: templates.filter((tpl) => uses(kind, id, tpl)).length,
-  };
-}
-
-/** At most this many event names are listed in a delete consequence (design: Dialogs.dc.html). */
-const MAX_NAMED_EVENTS = 3;
-
-function uniqueNames(items: ReadonlyArray<{ name: string }>): string[] {
-  return [...new Set(items.map((i) => (i.name ?? "").trim()).filter(Boolean))];
-}
+/** Translator of one master kind (`settings.master.<kind>.…`). */
+export type KindTranslate = (key: string, opts?: Record<string, unknown>) => string;
 
 /**
- * Distinct names of the events an item is assigned to, for "Bei 2 Terminen (A, B) …"
- * (design: Dialogs.dc.html); empty when more than `max` events are affected.
+ * Consequence of deleting a property / feature / audience (design: Dialogs.dc.html): "Bei 2 Terminen
+ * (A, B) wird die Zuordnung entfernt. …" with the names the backend sends for up to 3 events, the
+ * templates (not in the design) and, for audiences with feeds, the feed sentence. Without `usage`
+ * (list not loaded) a general wording.
  */
-export function affectedEventNames(
+export function masterConsequence(
   kind: MasterKind,
-  id: string,
-  events: ReadonlyArray<Assigned & { name: string }>,
-  max = MAX_NAMED_EVENTS,
-): string[] {
-  const hit = events.filter((e) => uses(kind, id, e));
-  return hit.length > max ? [] : uniqueNames(hit);
+  item: Pick<MasterItem, "name" | "usage">,
+  tk: KindTranslate,
+): string {
+  const u = item.usage;
+  const parts: string[] = [];
+  if (!u) {
+    parts.push(tk("consequence.unknown", { name: item.name }));
+    if (kind === "audiences") parts.push(tk("consequence.feeds"));
+    return parts.join(" ");
+  }
+  if (u.events > 0)
+    parts.push(
+      u.eventNames.length > 0
+        ? tk("consequence.eventsNamed", { count: u.events, names: u.eventNames.join(", ") })
+        : tk("consequence.events", { count: u.events }),
+    );
+  if (u.templates > 0) parts.push(tk("consequence.templates", { count: u.templates }));
+  if (parts.length === 0) parts.push(tk("consequence.none", { name: item.name }));
+  if (kind === "audiences" && (u.feeds ?? 0) > 0) parts.push(tk("consequence.feeds"));
+  return parts.join(" ");
 }
 
-/** Distinct names of the templates that use a location as their default place. */
-export function locationTemplateNames(
-  id: string,
-  templates: ReadonlyArray<{ locationId: string | null; name: string }>,
-): string[] {
-  return uniqueNames(templates.filter((tpl) => tpl.locationId === id));
-}
-
-/** How many events and templates take place at a location. */
-export function countLocationUsage(
-  id: string,
-  events: ReadonlyArray<{ locationId: string | null }>,
-  templates: ReadonlyArray<{ locationId: string | null }>,
-): Usage {
-  return {
-    events: events.filter((e) => e.locationId === id).length,
-    templates: templates.filter((tpl) => tpl.locationId === id).length,
-  };
+/** Template named in the place delete consequence when exactly one template uses the place. */
+export function locationTemplateName(usage: LocationUsage | undefined): string | null {
+  return usage && usage.templates === 1 && usage.templateNames.length === 1
+    ? usage.templateNames[0]
+    : null;
 }

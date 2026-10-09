@@ -130,7 +130,13 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 ```
 GET /api/feed/:feedId/ics
 GET /api/feed/:feedId/ics?secret=<token>   # for private feeds
+GET /api/feed/:feedId/events[?from=YYYY-MM-DD&to=YYYY-MM-DD]   # web view: header (club, calendar, zone, visibility), events, holidays
+GET /api/feed/:feedId/events/:eventId                          # one published event (secret checked first)
 ```
+
+Counters for lists and delete dialogs (clubs, calendars, `usage` of reference data, `eventCount` of templates) come
+from the API in one grouped query per counter (`App\Service\UsageCounts`); the frontend never loads whole lists just
+to count. Details: `docs/redesign/BACKEND-GAPS.md` ("Umgesetzt (Paket 1)").
 
 ## E2E Tests
 

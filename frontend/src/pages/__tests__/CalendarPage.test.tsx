@@ -67,7 +67,7 @@ const october = [
   }),
 ];
 
-let calendar: Record<string, unknown> = { id: "k1", clubid: "c1", name: "Schießbetrieb" };
+let calendar: Record<string, unknown> = { id: "k1", clubId: "c1", name: "Schießbetrieb" };
 let events: unknown[] = october;
 let extraHolidays: {
   id: string;
@@ -80,7 +80,9 @@ let failEvents = false;
 
 function mockApi() {
   apiGet.mockImplementation((path: string) => {
-    if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
+    // The single GET carries the calendar's eventCount (empty-state check)
+    if (path === "/api/clubs/c1/calendars/k1")
+      return Promise.resolve({ ...calendar, eventCount: events.length });
     if (path === "/api/calendars/k1/target-groups") return Promise.resolve(groups);
     if (path.startsWith("/api/calendars/k1/events")) {
       if (failEvents) return Promise.reject(new Error("offline"));
@@ -88,10 +90,17 @@ function mockApi() {
       const from = url.searchParams.get("from");
       const to = url.searchParams.get("to");
       const tg = url.searchParams.get("targetGroupIds");
+      // Like the backend: overlap of [date, dateEnd] with [from, to]
       return Promise.resolve(
-        (events as { date: string; targetGroups: { targetGroup: { id: string } }[] }[]).filter(
+        (
+          events as {
+            date: string;
+            dateEnd?: string | null;
+            targetGroups: { targetGroup: { id: string } }[];
+          }[]
+        ).filter(
           (e) =>
-            (!from || e.date >= from) &&
+            (!from || (e.dateEnd ?? e.date) >= from) &&
             (!to || e.date <= to) &&
             (!tg || e.targetGroups.some((g) => tg.split(",").includes(g.targetGroup.id))),
         ),
@@ -110,7 +119,7 @@ function mockApi() {
           dateEnd: null,
         },
         ...extraHolidays,
-      ].filter((h) => h.date >= from && h.date <= to),
+      ].filter((h) => (h.dateEnd ?? h.date) >= from && h.date <= to),
     ),
   );
 }
@@ -166,7 +175,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   // Local noon: "today" is 2 October in every browser time zone (the calendar has none).
   vi.setSystemTime(new Date(2026, 9, 2, 12, 0, 0));
-  calendar = { id: "k1", clubid: "c1", name: "Schießbetrieb" };
+  calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb" };
   events = october;
   failEvents = false;
   extraHolidays = [];
@@ -211,9 +220,10 @@ describe("CalendarPage – month view", () => {
       await within(g).findByRole("button", { name: /5\. Oktober.*Feiertag Herbstferien/ }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Sommerferien")).toBeNull();
-    // The request starts 31 days before the grid, like the events request.
-    const [, from] = getHolidayEvents.mock.calls[0];
-    expect(from).toBe("2026-08-28");
+    // The API filters by overlap: the request covers exactly the grid (no look-back).
+    const [, from, to] = getHolidayEvents.mock.calls[0];
+    expect([from, to]).toEqual(["2026-09-28", "2026-11-01"]);
+    expect(apiGet).toHaveBeenCalledWith("/api/calendars/k1/events?from=2026-09-28&to=2026-11-01");
   });
 
   it("shows the current month with events, holidays and today", async () => {
@@ -492,7 +502,7 @@ describe("CalendarPage – create menu", () => {
 
 describe("CalendarPage – archived calendar", () => {
   beforeEach(() => {
-    calendar = { id: "k1", clubid: "c1", name: "Saison 2025", archivedAt: "2026-01-10T00:00:00Z" };
+    calendar = { id: "k1", clubId: "c1", name: "Saison 2025", archivedAt: "2026-01-10T00:00:00Z" };
   });
 
   it("is read-only and can be unarchived", async () => {
@@ -519,7 +529,7 @@ describe("CalendarPage – archived calendar", () => {
       "/clubs/c1/calendars/k1/events/export",
     );
 
-    calendar = { id: "k1", clubid: "c1", name: "Saison 2025", archivedAt: null };
+    calendar = { id: "k1", clubId: "c1", name: "Saison 2025", archivedAt: null };
     await user.click(screen.getByRole("button", { name: "Archivierung aufheben" }));
     expect(apiPost).toHaveBeenCalledWith("/api/clubs/c1/calendars/k1/unarchive", {});
     expect(
@@ -537,7 +547,8 @@ describe("CalendarPage – states", () => {
       await screen.findByRole("heading", { name: "Noch keine Termine in diesem Kalender" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Termine importieren" })).toBeInTheDocument();
-    expect(apiGet).toHaveBeenCalledWith("/api/calendars/k1/events");
+    // The calendar's eventCount answers it, no full event list is loaded
+    expect(apiGet).not.toHaveBeenCalledWith("/api/calendars/k1/events");
   });
 
   it("does not claim the calendar is empty when only the month is", async () => {
@@ -545,7 +556,11 @@ describe("CalendarPage – states", () => {
     renderPage();
     const g = await grid();
     expect(g).toBeInTheDocument();
-    await waitFor(() => expect(apiGet).toHaveBeenCalledWith("/api/calendars/k1/events"));
+    await waitFor(() =>
+      expect(
+        apiGet.mock.calls.filter(([p]) => p === "/api/clubs/c1/calendars/k1").length,
+      ).toBeGreaterThanOrEqual(2),
+    );
     expect(
       screen.queryByRole("heading", { name: "Noch keine Termine in diesem Kalender" }),
     ).toBeNull();

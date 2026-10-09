@@ -3,7 +3,7 @@ import { useLocation, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiDelete, apiGet } from "@/lib/api";
-import { matchesTemplateQuery } from "@/lib/templates";
+import { matchesTemplateQuery, templateDeleteConsequence, templateTimes } from "@/lib/templates";
 import type { EventTemplate, TargetGroup } from "@/lib/types";
 import {
   Banner,
@@ -138,6 +138,7 @@ export default function TemplatesPage() {
     content = (
       <ul className="ap-stack" style={{ listStyle: "none", margin: 0, padding: 0 }}>
         {shown.map((tpl) => {
+          const times = templateTimes(tpl);
           const extras: { id: string; name: string; icon?: string | null }[] = [
             ...tpl.properties.map((p) => ({
               id: `p-${p.property.id}`,
@@ -156,10 +157,7 @@ export default function TemplatesPage() {
                   <h2 className="t-h2">{tpl.name}</h2>
                   <p className="ap-row t-body">
                     <Icon glyph="clock" size={18} />
-                    {t("templates.time", {
-                      from: tpl.timeBegin.slice(0, 5),
-                      to: tpl.timeEnd.slice(0, 5),
-                    })}
+                    {times ? t("templates.time", times) : t("templates.allDay")}
                     <span aria-hidden="true">·</span>
                     <Icon glyph="map-pin" size={18} />
                     {tpl.location ? locationName(tpl.location) : t("templates.noPlace")}
@@ -170,7 +168,11 @@ export default function TemplatesPage() {
                     icon="trash"
                     variant="danger"
                     label={t("templates.deleteLabel", { name: tpl.name })}
-                    onClick={() => setDeleting(tpl)}
+                    onClick={() => {
+                      setDeleting(tpl);
+                      // Fresh eventCount for the consequence
+                      void templates.refetch();
+                    }}
                   />
                 )}
               </div>
@@ -277,7 +279,10 @@ export default function TemplatesPage() {
           icon="trash"
           title={t("templates.delete.title", { name: deleting.name })}
           description={t("templates.delete.text")}
-          consequence={t("templates.delete.consequence")}
+          consequence={templateDeleteConsequence(
+            all.find((x) => x.id === deleting.id) ?? deleting,
+            t,
+          )}
           confirmLabel={t("templates.delete.confirm")}
           onConfirm={() => remove(deleting)}
         />

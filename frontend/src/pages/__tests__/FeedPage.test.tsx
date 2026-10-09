@@ -65,6 +65,68 @@ const feedEvents = [
   }),
 ];
 
+const CLUB = "Schützenverein Waldblick";
+const CALENDAR = "Schießbetrieb 2026";
+
+type Ev = ReturnType<typeof event> & { id: string; date: string; dateEnd: string | null };
+interface Holiday {
+  id: string;
+  holidayCalendarId: string;
+  name: string;
+  date: string;
+  dateEnd: string | null;
+}
+
+/**
+ * Stand-in for the public feed API: header with club / calendar / zone / visibility / counters,
+ * events and holidays filtered by overlap with from/to, and the single-event endpoint (404 for
+ * unknown ids).
+ */
+function feedApi({
+  header = {},
+  events: given = feedEvents,
+  holidays = [] as Holiday[],
+}: { header?: Record<string, unknown>; events?: unknown[]; holidays?: Holiday[] } = {}) {
+  const events = given as Ev[];
+  return (url: string) => {
+    const u = new URL(url);
+    const m = u.pathname.match(/^\/api\/feed\/([^/]+)\/events(?:\/([^/]+))?$/);
+    if (!m) return json({ detail: "Not Found" }, 404);
+    const audiences = new Map<string, string>();
+    for (const ev of events)
+      for (const { targetGroup } of ev.targetGroups as {
+        targetGroup: { id: string; name: string };
+      }[])
+        audiences.set(targetGroup.id, targetGroup.name);
+    const feed = {
+      id: m[1],
+      name: "Alle Termine",
+      clubName: CLUB,
+      calendarName: CALENDAR,
+      timezone: "Europe/Berlin",
+      visibility: "PUBLIC",
+      eventCount: events.length,
+      audiences: [...audiences]
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+      ...header,
+    };
+    if (m[2]) {
+      const found = events.find((ev) => ev.id === decodeURIComponent(m[2]));
+      return found ? json({ feed, event: found }) : json({ detail: "Event not found" }, 404);
+    }
+    const from = u.searchParams.get("from");
+    const to = u.searchParams.get("to");
+    const overlaps = (start: string, end: string | null) =>
+      (!from || (end ?? start) >= from) && (!to || start <= to);
+    return json({
+      feed,
+      events: events.filter((ev) => overlaps(ev.date as string, ev.dateEnd as string | null)),
+      holidays: holidays.filter((h) => overlaps(h.date, h.dateEnd)),
+    });
+  };
+}
+
 let respond: (url: string) => Response | Promise<Response>;
 const fetchMock = vi.fn((url: string) => Promise.resolve(respond(url)));
 
@@ -104,7 +166,7 @@ function renderAt(path: string) {
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-03T12:00:00Z"));
-  respond = () => json({ feed: { id: "f1", name: "Schießbetrieb 2026" }, events: feedEvents });
+  respond = feedApi();
   vi.stubGlobal("fetch", fetchMock);
   fetchMock.mockClear();
 });
@@ -121,9 +183,9 @@ describe("FeedPage", () => {
   it("shows a loading state first, then the feed with header, switches and footer", async () => {
     renderAt("/feed/f1");
     expect(screen.getByRole("status")).toHaveTextContent("Kalender wird geladen.");
-    expect(
-      await screen.findByRole("heading", { level: 1, name: "Schießbetrieb 2026" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: CLUB })).toBeInTheDocument();
+    // Design (Public): club as title, calendar below, zone from the API
+    expect(screen.getByText(CALENDAR)).toBeInTheDocument();
     expect(
       screen.getByText("Alle Uhrzeiten gelten in der Zeitzone Europe/Berlin."),
     ).toBeInTheDocument();
@@ -142,12 +204,36 @@ describe("FeedPage", () => {
     const sub = screen.getByRole("link", { name: "Kalender abonnieren" });
     expect(sub.getAttribute("href")).toMatch(/^webcal:\/\/.*\/api\/feed\/f1\/ics$/);
     expect(screen.getByRole("link", { name: "Als ICS-Datei laden" })).toHaveAttribute("download");
-    expect(document.title).toBe("Schießbetrieb 2026 – Öffentlicher Kalender");
+    expect(document.title).toBe("Alle Termine – Öffentlicher Kalender");
+  });
+
+  it("loads only the visible month grid, with its holidays", async () => {
+    respond = feedApi({
+      holidays: [
+        {
+          id: "h1",
+          holidayCalendarId: "hc",
+          name: "Tag der Deutschen Einheit",
+          date: "2026-10-03",
+          dateEnd: null,
+        },
+      ],
+    });
+    renderAt("/feed/f1");
+    await screen.findByRole("heading", { level: 1, name: CLUB });
+    const [url] = fetchMock.mock.calls[0] as unknown as [string];
+    expect(url).toContain("/api/feed/f1/events?from=2026-09-28&to=2026-11-01");
+    expect(
+      within(screen.getByRole("grid")).getByRole("button", {
+        name: /3\. Oktober.*Feiertag Tag der Deutschen Einheit/,
+      }),
+    ).toBeInTheDocument();
   });
 
   it("requests without credentials and never leaks the secret into title or referrer", async () => {
+    respond = feedApi({ header: { visibility: "PRIVATE" } });
     renderAt(`/feed/f1?secret=${SECRET}`);
-    await screen.findByRole("heading", { level: 1, name: "Schießbetrieb 2026" });
+    await screen.findByRole("heading", { level: 1, name: CLUB });
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toContain(`secret=${SECRET}`);
     expect(init.referrerPolicy).toBe("no-referrer");
@@ -166,9 +252,9 @@ describe("FeedPage", () => {
     ).toContain(`secret=${SECRET}`);
   });
 
-  it("is indexable without a secret", async () => {
-    renderAt("/feed/f1");
-    await screen.findByRole("heading", { level: 1, name: "Schießbetrieb 2026" });
+  it("is indexable when the feed is public (even with a secret in the address)", async () => {
+    renderAt(`/feed/f1?secret=${SECRET}`);
+    await screen.findByRole("heading", { level: 1, name: CLUB });
     expect(document.head.querySelector("meta[name=robots]")).toBeNull();
     expect(document.head.querySelector("meta[name=referrer]")).toHaveAttribute(
       "content",
@@ -180,14 +266,14 @@ describe("FeedPage", () => {
     // 2026-10-03 23:30 UTC is already 04.10. in Berlin
     vi.setSystemTime(new Date("2026-10-03T23:30:00Z"));
     renderAt("/feed/f1");
-    await screen.findByRole("heading", { level: 1, name: "Schießbetrieb 2026" });
+    await screen.findByRole("heading", { level: 1, name: CLUB });
     const grid = screen.getByRole("grid");
     expect(within(grid).getByLabelText(/^4\. Oktober, heute/)).toBeInTheDocument();
     expect(within(grid).queryByLabelText(/^3\. Oktober, heute/)).not.toBeInTheDocument();
   });
 
   it("shows the empty state when no event is published", async () => {
-    respond = () => json({ feed: { id: "f1", name: "Leer" }, events: [] });
+    respond = feedApi({ events: [] });
     renderAt("/feed/f1");
     expect(
       await screen.findByRole("heading", { name: "Noch keine Termine veröffentlicht" }),
@@ -221,8 +307,8 @@ describe("FeedPage", () => {
 
   it("shows a load error with retry and recovers", async () => {
     let fail = true;
-    respond = () =>
-      fail ? json({}, 500) : json({ feed: { id: "f1", name: "Wieder da" }, events: feedEvents });
+    const api = feedApi({ header: { clubName: "Wieder da" } });
+    respond = (url) => (fail ? json({}, 500) : api(url));
     renderAt("/feed/f1");
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Der Kalender konnte nicht geladen werden.",
@@ -250,7 +336,7 @@ describe("FeedPage", () => {
   it("filters by audience, counts the month and passes the choice to the subscription", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderAt("/feed/f1");
-    await screen.findByRole("heading", { level: 1, name: "Schießbetrieb 2026" });
+    await screen.findByRole("heading", { level: 1, name: CLUB });
     expect(screen.getByText("Zeige 3 von 3 Terminen")).toBeInTheDocument();
     const chip = screen.getByRole("button", { name: "Erwachsene" });
     expect(chip).toHaveAttribute("aria-pressed", "false");
@@ -269,7 +355,7 @@ describe("FeedPage", () => {
   it("searches by name and offers a way out when nothing matches", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderAt("/feed/f1");
-    await screen.findByRole("heading", { level: 1, name: "Schießbetrieb 2026" });
+    await screen.findByRole("heading", { level: 1, name: CLUB });
     await user.type(screen.getByRole("searchbox", { name: "Termine suchen" }), "herbst");
     expect(screen.getByText("Zeige 1 von 3 Terminen")).toBeInTheDocument();
     await user.clear(screen.getByRole("searchbox", { name: "Termine suchen" }));
@@ -281,15 +367,30 @@ describe("FeedPage", () => {
     expect(screen.getByText("Zeige 3 von 3 Terminen")).toBeInTheDocument();
   });
 
+  it("keeps the audience chips of the whole feed in a month without those audiences", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderAt("/feed/f1?groups=tg-j");
+    await screen.findByRole("heading", { level: 1, name: CLUB });
+    await user.click(screen.getByRole("button", { name: "Nächster Monat" }));
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "November 2026" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Jugend" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("location")).toHaveTextContent("groups=tg-j");
+  });
+
   it("navigates months and says so when a month has no events", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderAt("/feed/f1");
-    await screen.findByRole("heading", { level: 1, name: "Schießbetrieb 2026" });
+    await screen.findByRole("heading", { level: 1, name: CLUB });
     await user.click(screen.getByRole("button", { name: "Nächster Monat" }));
     expect(screen.getByRole("heading", { level: 2, name: "November 2026" })).toBeInTheDocument();
     expect(
-      screen.getByText("In diesem Monat gibt es keine veröffentlichten Termine."),
+      await screen.findByText("In diesem Monat gibt es keine veröffentlichten Termine."),
     ).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(([u]) => String(u).includes("from=2026-10-26&to=2026-12-06")),
+    ).toBe(true);
     await user.click(screen.getByRole("button", { name: "Heute" }));
     expect(screen.getByRole("heading", { level: 2, name: "Oktober 2026" })).toBeInTheDocument();
   });
@@ -297,7 +398,7 @@ describe("FeedPage", () => {
   it("switches to the list of the month and opens an event page that keeps the secret", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderAt(`/feed/f1?secret=${SECRET}`);
-    await screen.findByRole("heading", { level: 1, name: "Schießbetrieb 2026" });
+    await screen.findByRole("heading", { level: 1, name: CLUB });
     await user.click(screen.getByRole("button", { name: "Liste" }));
     const list = screen.getByRole("region", { name: "Termine im Oktober 2026" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(3);
@@ -307,22 +408,23 @@ describe("FeedPage", () => {
     await user.click(opener);
     const dialog = await screen.findByRole("dialog", { name: "Herbstfest" });
     expect(dialog).toHaveAttribute("aria-modal", "true");
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([u]) =>
+          String(u).includes(`/api/feed/f1/events/e3?secret=${SECRET}`),
+        ),
+      ).toBe(true),
+    );
     expect(screen.getByTestId("location")).toHaveTextContent(`/feed/f1/events/e3?secret=${SECRET}`);
     // The feed stays below the dialog (same view), but inert and hidden from screen readers.
-    const feedHeading = screen.getByRole("heading", {
-      level: 1,
-      name: "Schießbetrieb 2026",
-      hidden: true,
-    });
+    const feedHeading = screen.getByRole("heading", { level: 1, name: CLUB, hidden: true });
     expect(feedHeading.closest("[inert]")).not.toBeNull();
-    expect(screen.queryByRole("heading", { level: 1, name: "Schießbetrieb 2026" })).toBeNull();
+    expect(screen.queryByRole("heading", { level: 1, name: CLUB })).toBeNull();
     // The router state keeps the view, never the secret.
     expect(JSON.stringify(window.history.state ?? "")).not.toContain(SECRET);
     // Closing goes back to the same view with the secret, focus returns to the opener.
     await user.click(within(dialog).getAllByRole("button", { name: "Schließen" })[0]);
-    expect(
-      await screen.findByRole("heading", { level: 1, name: "Schießbetrieb 2026" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: CLUB })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByTestId("location")).toHaveTextContent(`secret=${SECRET}`);
     expect(screen.getByTestId("location")).toHaveTextContent("view=list");
@@ -332,7 +434,7 @@ describe("FeedPage", () => {
   it("closes the event dialog with Escape", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderAt("/feed/f1?date=2026-10-01&view=list");
-    await screen.findByRole("heading", { level: 1, name: "Schießbetrieb 2026" });
+    await screen.findByRole("heading", { level: 1, name: CLUB });
     await user.click(screen.getByRole("button", { name: "Jugendtraining" }));
     await screen.findByRole("dialog", { name: "Jugendtraining" });
     await user.keyboard("{Escape}");
@@ -355,8 +457,13 @@ describe("PublicEventModal", () => {
       await screen.findByRole("heading", { level: 1, name: "Herbstfest" }),
     ).toBeInTheDocument();
     // A shared link shows the feed at the event's month below the dialog.
+    // Design (PublicEvent): "Schützenverein Waldblick · Schießbetrieb 2026"
     expect(screen.getByRole("dialog", { name: /Herbstfest/ })).toHaveAccessibleDescription(
-      "Schießbetrieb 2026",
+      `${CLUB} · ${CALENDAR}`,
+    );
+    // The event came from the single-event endpoint
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes("/api/feed/f1/events/e3"))).toBe(
+      true,
     );
     await waitFor(() =>
       expect(
@@ -396,19 +503,21 @@ describe("PublicEventModal", () => {
   });
 
   it("renders names as text, never as markup", async () => {
-    respond = () =>
-      json({
-        feed: { id: "f1", name: "<img src=x onerror=alert(1)>" },
-        events: [event({ id: "x1", name: "<b>fett</b>", date: "2026-10-08" })],
-      });
+    respond = feedApi({
+      header: { clubName: "<img src=x onerror=alert(1)>" },
+      events: [event({ id: "x1", name: "<b>fett</b>", date: "2026-10-08" })],
+    });
     renderAt("/feed/f1/events/x1");
     const heading = await screen.findByRole("heading", { level: 1, name: "<b>fett</b>" });
     expect(heading.querySelector("b")).toBeNull();
-    expect(screen.getByRole("dialog")).toHaveAccessibleDescription("<img src=x onerror=alert(1)>");
+    expect(screen.getByRole("dialog")).toHaveAccessibleDescription(
+      `<img src=x onerror=alert(1)> · ${CALENDAR}`,
+    );
     expect(document.querySelector("img[src=x]")).toBeNull();
   });
 
   it("explains an unknown or unpublished event and leads back", async () => {
+    respond = feedApi({ header: { visibility: "PRIVATE" } });
     renderAt(`/feed/f1/events/unbekannt?secret=${SECRET}`);
     expect(
       await screen.findByRole("heading", { level: 1, name: "Termin nicht gefunden" }),
@@ -420,6 +529,14 @@ describe("PublicEventModal", () => {
     expect(document.querySelector('meta[name="robots"]')).not.toBeNull();
   });
 
+  it("tells an unknown feed apart from an unknown event", async () => {
+    respond = () => json({ detail: "Not Found" }, 404);
+    renderAt("/feed/nope/events/e1");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Kalender nicht gefunden" }),
+    ).toBeInTheDocument();
+  });
+
   it("shows the private state for a missing secret", async () => {
     respond = () => json({}, 403);
     renderAt("/feed/f1/events/e1");
@@ -429,19 +546,17 @@ describe("PublicEventModal", () => {
   });
 
   it("shows multi-day and all-day events as a period", async () => {
-    respond = () =>
-      json({
-        feed: { id: "f1", name: "F" },
-        events: [
-          event({
-            id: "m1",
-            name: "Pokalschießen",
-            date: "2026-10-10",
-            dateEnd: "2026-10-11",
-            isAllDay: true,
-          }),
-        ],
-      });
+    respond = feedApi({
+      events: [
+        event({
+          id: "m1",
+          name: "Pokalschießen",
+          date: "2026-10-10",
+          dateEnd: "2026-10-11",
+          isAllDay: true,
+        }),
+      ],
+    });
     renderAt("/feed/f1/events/m1");
     await screen.findByRole("heading", { level: 1, name: "Pokalschießen" });
     expect(screen.getByText("Sa 10.10.2026 bis So 11.10.2026")).toBeInTheDocument();
