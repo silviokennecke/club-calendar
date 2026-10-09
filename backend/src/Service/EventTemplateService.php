@@ -14,6 +14,7 @@ use App\Entity\Location;
 use App\Entity\Property;
 use App\Entity\TargetGroup;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class EventTemplateService
@@ -21,6 +22,7 @@ readonly class EventTemplateService
     public function __construct(
         private EntityManagerInterface $em,
         private CalendarReferences $references,
+        private UsageCounts $counts,
     ) {
     }
 
@@ -28,7 +30,9 @@ readonly class EventTemplateService
     {
         $templates = $this->em->getRepository(EventTemplate::class)->findBy(['calendar' => $calendar]);
 
-        return array_map(fn (EventTemplate $t) => $this->serialize($t), $templates);
+        $eventCounts = $this->counts->eventsByTemplate($calendar);
+
+        return array_map(fn (EventTemplate $t) => $this->serialize($t) + ['eventCount' => $eventCounts[$t->getId()] ?? 0], $templates);
     }
 
     public function createTemplate(Calendar $calendar, array $data): array
@@ -46,7 +50,7 @@ readonly class EventTemplateService
     {
         $template = $this->findTemplate($id, $calendar);
 
-        return $this->serialize($template);
+        return $this->serialize($template) + ['eventCount' => $this->counts->eventsByTemplate($calendar)[$template->getId()] ?? 0];
     }
 
     public function updateTemplate(string $id, Calendar $calendar, array $data): array
@@ -87,14 +91,18 @@ readonly class EventTemplateService
         if ($has('name')) {
             $template->setName(Input::string($data, 'name'));
         }
+        // Times and zone are optional; without times, events from the template are all-day (EventService)
         if ($has('timezone')) {
-            $template->setTimezone((string) Input::timezone($data, 'timezone', false));
+            $template->setTimezone(Input::timezone($data, 'timezone'));
         }
         if ($has('timeBegin')) {
-            $template->setTimeBegin(Input::time($data, 'timeBegin'));
+            $template->setTimeBegin(Input::nullableTime($data, 'timeBegin'));
         }
         if ($has('timeEnd')) {
-            $template->setTimeEnd(Input::time($data, 'timeEnd'));
+            $template->setTimeEnd(Input::nullableTime($data, 'timeEnd'));
+        }
+        if ((null === $template->getTimeBegin()) !== (null === $template->getTimeEnd())) {
+            throw new BadRequestHttpException('timeBegin and timeEnd must both be given or both be empty');
         }
         if ($has('locationId')) {
             $template->setLocation($this->references->find(Location::class, $calendar, $data['locationId'] ?? null, 'locationId'));

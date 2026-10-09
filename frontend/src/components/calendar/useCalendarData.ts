@@ -1,10 +1,9 @@
 import { useMemo } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiGet, getHolidayEvents } from "@/lib/api";
-import type { CalendarEvent, HolidayEvent } from "@/lib/types";
+import type { Calendar, CalendarEvent, HolidayEvent } from "@/lib/types";
 import {
   eventToItem,
-  fetchRange,
   holidayToItem,
   overlapsRange,
   visibleRange,
@@ -15,6 +14,7 @@ import {
 } from "@/lib/calendar";
 
 interface Options {
+  clubId: string;
   calendarId: string;
   view: CalendarView;
   anchor: IsoDate;
@@ -26,10 +26,11 @@ interface Options {
 }
 
 /**
- * Loads the events (incl. multi-day events that started earlier) and holidays of the visible
- * range. Previous data stays visible while the next range loads.
+ * Loads the events and holidays of the visible range (the API includes multi-day entries that
+ * overlap it). Previous data stays visible while the next range loads.
  */
 export function useCalendarData({
+  clubId,
   calendarId,
   view,
   anchor,
@@ -37,24 +38,23 @@ export function useCalendarData({
   targetGroupIds,
   checkEmpty,
 }: Options) {
+  // The events and holiday endpoints filter by overlap, so multi-day entries that started before the
+  // visible range are included without fetching earlier days.
   const [from, to] = visibleRange(view, anchor, weekStart);
-  const [fetchFrom] = fetchRange(view, anchor, weekStart);
   const tg = [...targetGroupIds].sort().join(",");
 
   const eventsQuery = useQuery<CalendarEvent[]>({
-    queryKey: ["events", calendarId, fetchFrom, to, tg],
+    queryKey: ["events", calendarId, from, to, tg],
     queryFn: () =>
       apiGet<CalendarEvent[]>(
-        `/api/calendars/${calendarId}/events?from=${fetchFrom}&to=${to}${tg ? `&targetGroupIds=${tg}` : ""}`,
+        `/api/calendars/${calendarId}/events?from=${from}&to=${to}${tg ? `&targetGroupIds=${tg}` : ""}`,
       ),
     placeholderData: keepPreviousData,
   });
 
-  // Same look-back as the events: a holiday that began before the visible range and reaches into it
-  // (the endpoint filters by start date) is fetched too and kept by the overlap filter below.
   const holidaysQuery = useQuery<HolidayEvent[]>({
-    queryKey: ["holidayEvents", calendarId, fetchFrom, to],
-    queryFn: () => getHolidayEvents(calendarId, fetchFrom, to),
+    queryKey: ["holidayEvents", calendarId, from, to],
+    queryFn: () => getHolidayEvents(calendarId, from, to),
     placeholderData: keepPreviousData,
   });
 
@@ -75,10 +75,11 @@ export function useCalendarData({
 
   const rangeEmpty =
     eventsQuery.isSuccess && !eventsQuery.isPlaceholderData && eventItems.length === 0;
-  // The API has no count endpoint: only when nothing is visible, ask for any event at all.
-  const anyQuery = useQuery<CalendarEvent[]>({
-    queryKey: ["events", calendarId, "any"],
-    queryFn: () => apiGet<CalendarEvent[]>(`/api/calendars/${calendarId}/events`),
+  // Only when nothing is visible: does the calendar have any event at all? (`eventCount` of the
+  // calendar; the key lies below ["events", calendarId], so saving an event refreshes it.)
+  const countQuery = useQuery<Calendar>({
+    queryKey: ["events", calendarId, "count"],
+    queryFn: () => apiGet<Calendar>(`/api/clubs/${clubId}/calendars/${calendarId}`),
     enabled: checkEmpty && rangeEmpty && targetGroupIds.length === 0,
   });
 
@@ -94,6 +95,6 @@ export function useCalendarData({
       void eventsQuery.refetch();
       void holidaysQuery.refetch();
     },
-    calendarEmpty: rangeEmpty && anyQuery.isSuccess && anyQuery.data.length === 0,
+    calendarEmpty: rangeEmpty && countQuery.isSuccess && countQuery.data.eventCount === 0,
   };
 }

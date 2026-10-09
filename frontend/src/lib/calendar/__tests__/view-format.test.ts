@@ -9,15 +9,7 @@ import {
   formatWeekdayDayMonth,
   weekdayNames,
 } from "../format";
-import {
-  MULTI_DAY_LOOKBACK_DAYS,
-  fetchRange,
-  gridKeyTarget,
-  parseAnchor,
-  parseView,
-  stepAnchor,
-  visibleRange,
-} from "../view";
+import { gridKeyTarget, parseAnchor, parseView, stepAnchor, visibleRange } from "../view";
 
 describe("format (Intl, current language)", () => {
   it("formats month titles in German and English", () => {
@@ -57,13 +49,9 @@ describe("view helpers", () => {
     expect(parseAnchor(null, "2026-10-02")).toBe("2026-10-02");
   });
 
-  it("computes visible and fetch ranges", () => {
+  it("computes visible ranges", () => {
     expect(visibleRange("month", "2026-10-15")).toEqual(["2026-09-28", "2026-11-01"]);
     expect(visibleRange("week", "2026-10-08")).toEqual(["2026-10-05", "2026-10-11"]);
-    const [from, to] = fetchRange("week", "2026-10-08");
-    expect(to).toBe("2026-10-11");
-    expect(from).toBe("2026-09-04");
-    expect(MULTI_DAY_LOOKBACK_DAYS).toBeGreaterThanOrEqual(28);
   });
 
   it("steps months (clamped) and weeks", () => {

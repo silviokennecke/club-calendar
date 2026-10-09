@@ -85,6 +85,17 @@ final class Input
         return substr($value, 0, 5);
     }
 
+    /** Optional time of day "HH:MM" (null or "" = no time). */
+    public static function nullableTime(array $data, string $key): ?string
+    {
+        $value = $data[$key] ?? null;
+        if (null === $value || '' === $value) {
+            return null;
+        }
+
+        return self::time($data, $key);
+    }
+
     /**
      * @return list<string>
      */

@@ -16,8 +16,8 @@ import { MembersSection } from "@/components/club/MembersSection";
 import { CalendarsSection } from "@/components/club/CalendarsSection";
 import { apiDelete, apiGet } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { clubDeleteConsequence } from "@/lib/club";
 import type { Club } from "@/lib/types";
-
 /**
  * Club management (design: Club, ClubMobile): name, members, calendars (incl. archived, with
  * duplicate / archive / delete) and the danger zone. Calendar and club deletion name their
@@ -114,7 +114,15 @@ export default function ClubPage() {
               </h2>
               <p>{t("club.danger.text")}</p>
             </div>
-            <Button variant="danger" icon="trash" onClick={() => setDeleteOpen(true)}>
+            <Button
+              variant="danger"
+              icon="trash"
+              onClick={() => {
+                // Fresh counters for the consequence ("… mit 14 Terminen und 2 Feeds …")
+                void query.refetch();
+                setDeleteOpen(true);
+              }}
+            >
               {t("club.danger.action")}
             </Button>
           </div>
@@ -125,7 +133,7 @@ export default function ClubPage() {
           icon="trash"
           title={t("club.danger.confirmTitle", { name: club.name })}
           description={t("club.danger.confirmText")}
-          consequence={t("club.danger.consequence")}
+          consequence={clubDeleteConsequence(club, t)}
           confirmLabel={t("club.danger.confirm")}
           requireText={club.name}
           requireLabel={t("club.danger.requireLabel")}

@@ -256,7 +256,9 @@ function CalendarRow({
     ? t("club.calendars.archivedOn", {
         date: formatDate(calendar.archivedAt ?? "", user?.dateFormat ?? "dd.MM.yyyy"),
       })
-    : t("club.calendars.zone", { zone: calendar.timezone || club.timezone });
+    : calendar.eventCount !== undefined
+      ? t("club.calendars.events", { count: calendar.eventCount })
+      : t("club.calendars.zone", { zone: calendar.timezone || club.timezone });
 
   return (
     <li className="ap-listrow ap-listrow--wrap">
@@ -331,6 +333,7 @@ function CalendarRow({
       </div>
       {deleting && (
         <CalendarDeleteDialog
+          clubId={club.id}
           calendar={calendar}
           onClose={() => setDeleting(false)}
           onConfirm={then(actions.remove)}

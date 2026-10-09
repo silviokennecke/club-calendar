@@ -333,7 +333,8 @@ class InputIntegrityTest extends WebTestCase
             $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/$res", ['icon' => 'x'], $auth);
             $this->assertSame(400, $r['status'], $res);
         }
-        $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/templates", ['name' => 'T'], $auth);
+        // Times are optional since templates may create all-day events (TemplateTimesTest); the name is not
+        $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/templates", ['timeBegin' => '19:00', 'timeEnd' => '21:00'], $auth);
         $this->assertSame(400, $r['status'], 'templates');
     }
 

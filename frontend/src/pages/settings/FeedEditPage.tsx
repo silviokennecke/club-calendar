@@ -22,7 +22,7 @@ import {
 import { ArchivedCreateGuard } from "@/components/events/ArchivedCreateGuard";
 import { useEventPage } from "@/components/events/useEventPage";
 import { FeedAccess } from "@/components/feeds/FeedAccess";
-import { useFeeds } from "@/components/feeds/useFeeds";
+import { useFeed, useFeeds } from "@/components/feeds/useFeeds";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
 import { keepExisting, saveDroppingDeletedReferences } from "@/lib/staleReferences";
 import {
@@ -63,11 +63,12 @@ function FeedLoader() {
   const { feedId } = useParams<{ feedId: string }>();
   const page = useEventPage();
   const { t } = useTranslation();
-  const data = useFeeds(page.calendarId);
+  const one = useFeed(page.calendarId, feedId);
   const isNew = !feedId;
-  const feed = data.feeds.data?.find((f) => f.id === feedId);
+  const feed = one.data;
+  const notFound = (one.error as { status?: number } | null)?.status === 404;
 
-  if (page.calendarLoading || (data.feeds.isPending && !data.feeds.isError)) {
+  if (page.calendarLoading || (!isNew && one.isPending && !one.isError)) {
     return (
       <div className="ap-wrap--narrow" aria-busy="true">
         <p className="ap-sr" role="status">
@@ -80,14 +81,14 @@ function FeedLoader() {
       </div>
     );
   }
-  if (data.feeds.isError && !data.feeds.data) {
+  if (!isNew && one.isError && !feed && !notFound) {
     return (
       <div className="ap-wrap--narrow">
         <Banner
           tone="danger"
           title={t("feeds.loadError.title")}
           action={
-            <Button variant="secondary" icon="refresh" onClick={() => void data.feeds.refetch()}>
+            <Button variant="secondary" icon="refresh" onClick={() => void one.refetch()}>
               {t("feeds.loadError.retry")}
             </Button>
           }
@@ -119,7 +120,7 @@ function FeedLoader() {
 
 function FeedEditor({ feed }: { feed?: CalendarFeed }) {
   const page = useEventPage();
-  const data = useFeeds(page.calendarId);
+  const data = useFeeds(page.calendarId, { withList: false });
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { t } = useTranslation();

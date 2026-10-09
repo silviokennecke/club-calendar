@@ -9,6 +9,7 @@ import {
   TIMEZONES,
   emptyTemplateValues,
   isTemplateDirty,
+  templateDeleteConsequence,
   toTemplatePayload,
   validateTemplate,
   valuesFromTemplateRecord,
@@ -311,7 +312,7 @@ function TemplateEditor({ template }: { template?: EventTemplate }) {
                   id={FIELD_IDS.timeBegin}
                   label={t("templates.form.start")}
                   hint={t("templates.form.startHint")}
-                  required
+                  optional
                   error={errorFor("timeBegin")}
                 >
                   <TextInput
@@ -324,7 +325,8 @@ function TemplateEditor({ template }: { template?: EventTemplate }) {
                 <Field
                   id={FIELD_IDS.timeEnd}
                   label={t("templates.form.end")}
-                  required
+                  hint={t("templates.form.endHint")}
+                  optional
                   error={errorFor("timeEnd")}
                 >
                   <TextInput
@@ -387,7 +389,7 @@ function TemplateEditor({ template }: { template?: EventTemplate }) {
           icon="trash"
           title={t("templates.delete.title", { name: template.name })}
           description={t("templates.delete.text")}
-          consequence={t("templates.delete.consequence")}
+          consequence={templateDeleteConsequence(template, t)}
           confirmLabel={t("templates.delete.confirm")}
           onConfirm={onDelete}
         />

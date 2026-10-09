@@ -11,22 +11,30 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class FeatureService
 {
-    public function __construct(private EntityManagerInterface $em)
-    {
+    public function __construct(
+        private EntityManagerInterface $em,
+        private UniqueNames $names,
+        private UsageCounts $counts,
+    ) {
     }
 
     public function list(Calendar $calendar): array
     {
         $items = $this->em->getRepository(Feature::class)->findBy(['calendar' => $calendar]);
 
-        return array_map(fn (Feature $f) => $this->serialize($f), $items);
+        $usage = $this->counts->featureUsage($calendar);
+
+        // usage: what deleting the item detaches it from (eventNames only when at most 3 events are affected)
+        return array_map(fn (Feature $f) => $this->serialize($f) + ['usage' => $usage[$f->getId()] ?? null], $items);
     }
 
     public function create(Calendar $calendar, array $data): array
     {
         $feature = new Feature();
         $feature->setCalendar($calendar);
-        $feature->setName(Input::string($data, 'name'));
+        $name = Input::string($data, 'name');
+        $this->names->assertUnique(Feature::class, $calendar, $name);
+        $feature->setName($name);
 
         $this->em->persist($feature);
         $this->em->flush();
@@ -39,7 +47,9 @@ readonly class FeatureService
         $feature = $this->find($id, $calendar);
 
         if (array_key_exists('name', $data)) {
-            $feature->setName(Input::string($data, 'name'));
+            $name = Input::string($data, 'name');
+            $this->names->assertUnique(Feature::class, $calendar, $name, $feature->getId());
+            $feature->setName($name);
         }
 
         $this->em->flush();

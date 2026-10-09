@@ -178,6 +178,13 @@ describe("valuesFromTemplate", () => {
   it("ignores an invalid preset date", () => {
     expect(valuesFromTemplate(tpl, "kaputt").date).toBe("");
   });
+
+  it("makes the event all-day when the template has no times", () => {
+    const v = valuesFromTemplate({ ...tpl, timezone: null, timeBegin: null, timeEnd: null });
+    expect(v.isAllDay).toBe(true);
+    // the hidden time inputs keep usable defaults for switching all-day off
+    expect(v.timeBegin).toMatch(/^\d\d:\d\d$/);
+  });
 });
 
 describe("isFormDirty", () => {

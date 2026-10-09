@@ -20,7 +20,17 @@ vi.mock("@/lib/auth-context", () => ({
   useAuth: () => ({ user: { id: "u1", dateFormat: "dd.MM.yyyy" }, updateUser }),
 }));
 
-const club = { id: "c1", name: "Schützenverein Waldblick", timezone: "Europe/Berlin" };
+// Counters of GET /api/clubs/:id (delete dialog) and of the calendar list (rows, delete dialog)
+const club = {
+  id: "c1",
+  name: "Schützenverein Waldblick",
+  timezone: "Europe/Berlin",
+  calendarCount: 2,
+  archivedCalendarCount: 1,
+  memberCount: 2,
+  eventCount: 14,
+  feedCount: 2,
+};
 let members: { id: string; name: string; email: string }[];
 let calendars: Record<string, unknown>[];
 let clubError: Error | null;
@@ -36,9 +46,9 @@ beforeEach(() => {
     { id: "u2", name: "Mara Sommer", email: "mara@beispiel.de" },
   ];
   calendars = [
-    { id: "k1", name: "Schießbetrieb 2026", timezone: null },
-    { id: "k2", name: "Jugend", timezone: "Europe/Vienna" },
-    { id: "k0", name: "Saison 2025", archivedAt: "2026-01-15T10:00:00+00:00" },
+    { id: "k1", name: "Schießbetrieb 2026", timezone: null, eventCount: 12 },
+    { id: "k2", name: "Jugend", timezone: "Europe/Vienna", eventCount: 1 },
+    { id: "k0", name: "Saison 2025", archivedAt: "2026-01-15T10:00:00+00:00", eventCount: 1 },
   ];
   clubError = null;
   clubList = [club];
@@ -49,10 +59,10 @@ beforeEach(() => {
     if (path === "/api/clubs/c1")
       return clubError ? Promise.reject(clubError) : Promise.resolve(club);
     if (path === "/api/clubs/c1/members") return Promise.resolve(members);
+    // Single GET (delete dialog): fresh counters
+    if (path === "/api/clubs/c1/calendars/k2")
+      return Promise.resolve({ ...calendars[1], eventCount: 3 });
     if (path.startsWith("/api/clubs/c1/calendars")) return Promise.resolve(calendars);
-    if (path.endsWith("/events")) return Promise.resolve([{}, {}, {}]);
-    if (path.endsWith("/templates")) return Promise.resolve([{}]);
-    if (path.endsWith("/feeds")) return Promise.resolve([{}, {}]);
     return Promise.resolve([]);
   });
   apiPost.mockResolvedValue({ id: "new", name: "Copy of Schießbetrieb 2026" });
@@ -85,8 +95,10 @@ describe("ClubPage", () => {
       within(rows[2]).getByRole("button", { name: "Mara Sommer entfernen" }),
     ).toBeInTheDocument();
 
-    expect(await screen.findByText("Zeitzone Europe/Berlin")).toBeInTheDocument();
-    expect(screen.getByText("Zeitzone Europe/Vienna")).toBeInTheDocument();
+    // Rows name the number of events (design: Club "n Termine"), not the zone
+    expect(await screen.findByText("12 Termine")).toBeInTheDocument();
+    expect(screen.getByText("1 Termin")).toBeInTheDocument();
+    expect(screen.queryByText("Zeitzone Europe/Vienna")).not.toBeInTheDocument();
     const archived = screen.getByRole("list", { name: "Archivierte Kalender" });
     expect(within(archived).getByText("Saison 2025")).toBeInTheDocument();
     expect(within(archived).getByText("Archiviert", { selector: ".ap-badge" })).toBeInTheDocument();
@@ -222,14 +234,13 @@ describe("ClubPage", () => {
     await user.click(
       await screen.findByRole("button", { name: "Kalender Schießbetrieb 2026 duplizieren" }),
     );
+    // The localized name goes with the POST (no rename afterwards)
     await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith("/api/clubs/c1/calendars/k1/duplicate", {}),
-    );
-    await waitFor(() =>
-      expect(apiPatch).toHaveBeenCalledWith("/api/clubs/c1/calendars/new", {
+      expect(apiPost).toHaveBeenCalledWith("/api/clubs/c1/calendars/k1/duplicate", {
         name: "Kopie von Schießbetrieb 2026",
       }),
     );
+    expect(apiPatch).not.toHaveBeenCalled();
     expect(screen.queryByTestId("location")).not.toBeInTheDocument();
   });
 
@@ -269,6 +280,8 @@ describe("ClubPage", () => {
         "Löscht den Kalender mit allen 3 Terminen und seinen Feeds unwiderruflich. Die Adressen der Feeds funktionieren danach nicht mehr.",
       ),
     );
+    // Counted by the backend: no event list is loaded
+    expect(apiGet.mock.calls.some(([path]) => String(path).endsWith("/events"))).toBe(false);
     expect(apiDelete).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Kalender löschen" }));
     await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/clubs/c1/calendars/k2"));
@@ -292,6 +305,24 @@ describe("ClubPage", () => {
     await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/clubs/c1/calendars/k0"));
   });
 
+  it("names the club scope in general words while the counters are unknown", async () => {
+    clubList = [club];
+    const { eventCount: _events, feedCount: _feeds, ...withoutCounts } = club;
+    apiGet.mockImplementation((path: string) =>
+      path === "/api/clubs/c1"
+        ? Promise.resolve(withoutCounts)
+        : path === "/api/clubs/c1/members"
+          ? Promise.resolve(members)
+          : Promise.resolve(path === "/api/clubs" ? clubList : calendars),
+    );
+    const user = userEvent.setup();
+    renderClub();
+    await user.click(await screen.findByRole("button", { name: "Verein löschen" }));
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent(
+      "Löscht den Verein, alle Kalender, Termine, Feeds und Vorlagen unwiderruflich. Alle Mitglieder verlieren den Zugriff.",
+    );
+  });
+
   it("deletes the club only after typing its name", async () => {
     const user = userEvent.setup();
     renderClub();
@@ -299,6 +330,10 @@ describe("ClubPage", () => {
     const dialog = await screen.findByRole("alertdialog", {
       name: "Verein „Schützenverein Waldblick“ löschen?",
     });
+    // Scope from the club's counters (all calendars incl. archived ones)
+    expect(dialog).toHaveTextContent(
+      "Löscht den Verein mit 3 Kalendern, 14 Terminen und 2 Feeds sowie allen Vorlagen unwiderruflich. Alle Mitglieder verlieren den Zugriff.",
+    );
     const confirm = within(dialog).getByRole("button", { name: "Verein löschen" });
     expect(confirm).toBeDisabled();
     await user.type(
