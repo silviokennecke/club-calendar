@@ -1035,6 +1035,163 @@
     border-color: var(--brand);
     color: var(--brand);
   }
+  /*
+   * Sliding indicator (CSS anchor positioning): one pill (::after) is anchored to the current item
+   * and glides to the hovered / focused one, then back. Items 1-5 get an anchor name; the active
+   * anchor is picked through the custom property --seg-a. Without anchor support the static
+   * styles above stay in place.
+   */
+  @supports (anchor-name: --a) and (position-anchor: --a) {
+    .ap-seg {
+      position: relative;
+      --seg-a: --seg-1;
+      --seg-o: 0;
+      --seg-bg: transparent;
+      --seg-bd: transparent;
+    }
+    .ap-seg > :nth-child(1) {
+      anchor-name: --seg-1;
+    }
+    .ap-seg > :nth-child(2) {
+      anchor-name: --seg-2;
+    }
+    .ap-seg > :nth-child(3) {
+      anchor-name: --seg-3;
+    }
+    .ap-seg > :nth-child(4) {
+      anchor-name: --seg-4;
+    }
+    .ap-seg > :nth-child(5) {
+      anchor-name: --seg-5;
+    }
+    .ap-seg > a,
+    .ap-seg > button {
+      position: relative;
+      z-index: 1;
+      transition: color 0.2s ease;
+    }
+    .ap-seg > a:hover,
+    .ap-seg > button:hover,
+    .ap-seg > [aria-current="page"],
+    .ap-seg > [aria-pressed="true"] {
+      background: transparent;
+      border-color: transparent;
+    }
+    .ap-seg::after {
+      content: "";
+      position: absolute;
+      z-index: 0;
+      pointer-events: none;
+      position-anchor: var(--seg-a);
+      top: anchor(top);
+      right: anchor(right);
+      bottom: anchor(bottom);
+      left: anchor(left);
+      border: 2px solid var(--seg-bd);
+      border-radius: var(--radius-pill);
+      background: var(--seg-bg);
+      opacity: var(--seg-o);
+      transition:
+        top 0.3s cubic-bezier(0.3, 1.2, 0.4, 1),
+        right 0.3s cubic-bezier(0.3, 1.2, 0.4, 1),
+        bottom 0.3s cubic-bezier(0.3, 1.2, 0.4, 1),
+        left 0.3s cubic-bezier(0.3, 1.2, 0.4, 1),
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        opacity 0.2s ease;
+    }
+    .ap-seg:has(> :nth-child(1):is([aria-current="page"], [aria-pressed="true"])) {
+      --seg-a: --seg-1;
+    }
+    .ap-seg:has(> :nth-child(2):is([aria-current="page"], [aria-pressed="true"])) {
+      --seg-a: --seg-2;
+    }
+    .ap-seg:has(> :nth-child(3):is([aria-current="page"], [aria-pressed="true"])) {
+      --seg-a: --seg-3;
+    }
+    .ap-seg:has(> :nth-child(4):is([aria-current="page"], [aria-pressed="true"])) {
+      --seg-a: --seg-4;
+    }
+    .ap-seg:has(> :nth-child(5):is([aria-current="page"], [aria-pressed="true"])) {
+      --seg-a: --seg-5;
+    }
+    .ap-seg:has(> :is([aria-current="page"], [aria-pressed="true"])) {
+      --seg-o: 1;
+      --seg-bg: var(--brand-soft);
+      --seg-bd: var(--brand);
+    }
+    .ap-seg > :is([aria-current="page"], [aria-pressed="true"]) {
+      color: var(--brand);
+    }
+    /* Hover / keyboard focus on an item that is not current: the pill moves there as a neutral highlight. */
+    .ap-seg:has(
+      > :nth-child(1):is(:hover, :focus-visible):not(
+          :disabled,
+          [aria-current="page"],
+          [aria-pressed="true"]
+        )
+    ) {
+      --seg-a: --seg-1;
+      --seg-o: 1;
+      --seg-bg: var(--surface-raised);
+      --seg-bd: transparent;
+    }
+    .ap-seg:has(
+      > :nth-child(2):is(:hover, :focus-visible):not(
+          :disabled,
+          [aria-current="page"],
+          [aria-pressed="true"]
+        )
+    ) {
+      --seg-a: --seg-2;
+      --seg-o: 1;
+      --seg-bg: var(--surface-raised);
+      --seg-bd: transparent;
+    }
+    .ap-seg:has(
+      > :nth-child(3):is(:hover, :focus-visible):not(
+          :disabled,
+          [aria-current="page"],
+          [aria-pressed="true"]
+        )
+    ) {
+      --seg-a: --seg-3;
+      --seg-o: 1;
+      --seg-bg: var(--surface-raised);
+      --seg-bd: transparent;
+    }
+    .ap-seg:has(
+      > :nth-child(4):is(:hover, :focus-visible):not(
+          :disabled,
+          [aria-current="page"],
+          [aria-pressed="true"]
+        )
+    ) {
+      --seg-a: --seg-4;
+      --seg-o: 1;
+      --seg-bg: var(--surface-raised);
+      --seg-bd: transparent;
+    }
+    .ap-seg:has(
+      > :nth-child(5):is(:hover, :focus-visible):not(
+          :disabled,
+          [aria-current="page"],
+          [aria-pressed="true"]
+        )
+    ) {
+      --seg-a: --seg-5;
+      --seg-o: 1;
+      --seg-bg: var(--surface-raised);
+      --seg-bd: transparent;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ap-seg::after,
+      .ap-seg > a,
+      .ap-seg > button {
+        transition: none;
+      }
+    }
+  }
   .ap-tabs {
     display: flex;
     gap: var(--space-1);
