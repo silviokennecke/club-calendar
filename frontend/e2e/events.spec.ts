@@ -267,7 +267,8 @@ test.describe("Termine", () => {
     await expect(rowLink(page, "Jugendtraining")).toBeVisible();
     await expect(rowLink(page, "Jugendtraining")).toBeFocused();
 
-    await page.getByRole("link", { name: "Termine exportieren" }).click();
+    // The list page has no export link anymore; the export page stays reachable by its URL.
+    await page.goto(new URL("events/export", `${page.url().replace(/events.*$/, "")}`).toString());
     await expect(
       page.getByRole("heading", { level: 1, name: "Termine exportieren" }),
     ).toBeVisible();
