@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiDelete, apiGet, apiPatch } from "@/lib/api";
@@ -22,10 +22,10 @@ import {
   ConfirmDialog,
   EmptyState,
   FilterPillGroup,
-  Icon,
   LinkButton,
   SearchInput,
   Skeleton,
+  SplitButton,
   toast,
 } from "@/components/ui/shared";
 import { EventsTable } from "@/components/events/EventsTable";
@@ -49,6 +49,7 @@ export default function EventsListPage() {
   const { t } = useTranslation();
   const locale = useLocale();
   const location = useLocation();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const tab = parseStatusTab(params.get("status"));
   const query = params.get("q") ?? "";
@@ -236,18 +237,35 @@ export default function EventsListPage() {
           )}
         </div>
         <div className="ap-actions">
-          <LinkButton variant="secondary" icon="download" to={page.routes.export}>
-            {t("events.list.export")}
-          </LinkButton>
+          <nav className="ap-seg ap-hide-m" aria-label={t("calendar.viewSwitch")}>
+            <Link to={page.base}>{t("calendar.views.month")}</Link>
+            <Link to={`${page.base}?view=week`}>{t("calendar.views.week")}</Link>
+            <Link to={page.routes.list} aria-current="page">
+              {t("calendar.views.list")}
+            </Link>
+          </nav>
           {canEdit && (
-            <LinkButton
-              icon="plus"
+            <SplitButton
               className="ap-hide-m"
-              to={page.routes.create()}
-              state={modalState}
-            >
-              {t("events.list.create")}
-            </LinkButton>
+              icon="plus"
+              label={t("events.list.create")}
+              onClick={() => navigate(page.routes.create(), { state: modalState })}
+              menuLabel={t("calendar.createMore")}
+              items={[
+                {
+                  key: "template",
+                  icon: "layers" as const,
+                  label: t("calendar.fromTemplate"),
+                  onSelect: () => navigate(page.routes.pickTemplate(), { state: modalState }),
+                },
+                {
+                  key: "import",
+                  icon: "upload" as const,
+                  label: t("calendar.import"),
+                  to: `${page.base}/import`,
+                },
+              ]}
+            />
           )}
         </div>
       </header>
@@ -259,30 +277,15 @@ export default function EventsListPage() {
       )}
 
       <div className="ap-toolbar">
-        <nav className="ap-seg ap-hide-m" aria-label={t("calendar.viewSwitch")}>
-          <Link to={page.base}>
-            <Icon glyph="calendar" size={16} />
-            {t("calendar.views.month")}
-          </Link>
-          <Link to={`${page.base}?view=week`}>
-            <Icon glyph="calendar-days" size={16} />
-            {t("calendar.views.week")}
-          </Link>
-          <Link to={page.routes.list} aria-current="page">
-            <Icon glyph="list" size={16} />
-            {t("calendar.views.list")}
-          </Link>
-        </nav>
-        <SearchInput
-          value={query}
-          onChange={(v) => setParam("q", v)}
-          label={t("events.list.searchLabel")}
-          placeholder={t("events.list.searchPlaceholder")}
-        />
-      </div>
-
-      {groupList.length > 0 && (
-        <div className="ap-toolbar">
+        <div className="ap-toolbar-search">
+          <SearchInput
+            value={query}
+            onChange={(v) => setParam("q", v)}
+            label={t("events.list.searchLabel")}
+            placeholder={t("events.list.searchPlaceholder")}
+          />
+        </div>
+        {groupList.length > 0 && (
           <FilterPillGroup
             label={t("events.list.groupFilter")}
             hideLabel
@@ -294,13 +297,13 @@ export default function EventsListPage() {
               )
             }
           />
-          {groupIds.length > 0 && (
-            <Button variant="ghost" onClick={() => setGroupIds([])}>
-              {t("events.list.resetFilter")}
-            </Button>
-          )}
-        </div>
-      )}
+        )}
+        {groupIds.length > 0 && (
+          <Button variant="ghost" onClick={() => setGroupIds([])}>
+            {t("events.list.resetFilter")}
+          </Button>
+        )}
+      </div>
 
       <div className="ap-tabs" role="group" aria-label={t("events.list.statusFilter")}>
         {STATUS_TABS.map((key) => (

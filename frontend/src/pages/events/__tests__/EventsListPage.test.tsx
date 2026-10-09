@@ -220,16 +220,13 @@ describe("EventsListPage", () => {
     expect(apiPatch).toHaveBeenCalledWith("/api/calendars/k1/events/5", { isDraft: false });
   });
 
-  it("is read-only but exportable in an archived calendar", async () => {
+  it("is read-only in an archived calendar", async () => {
     calendar = { ...calendar, archivedAt: "2026-01-01T00:00:00Z" };
     renderList();
     await screen.findByRole("table");
     expect(await screen.findByText("Archiviert, schreibgeschützt")).toBeVisible();
     expect(screen.queryByRole("checkbox")).toBeNull();
     expect(screen.queryByRole("link", { name: "Termin anlegen" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Termine exportieren" })).toHaveAttribute(
-      "href",
-      `${BASE}/events/export`,
-    );
+    expect(screen.queryByRole("link", { name: "Termine exportieren" })).toBeNull();
   });
 });
