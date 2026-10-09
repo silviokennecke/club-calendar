@@ -181,7 +181,8 @@ does not offer yet and how the frontend works around it).
 - API errors: `lib/api.ts` throws `ApiError` (with `status`) from `apiGet/apiPost/apiPatch/apiDelete`. The react-query
   default `retry` (`lib/queryRetry.ts`) does not retry 4xx (401/403/404 show their error state at once), 5xx and
   network errors get 2 retries. Auth: `lib/auth-context.ts` (context + `useAuth`), `lib/AuthProvider.tsx` (provider);
-  shadcn variants live in `ui/button-variants.ts` / `ui/badge-variants.ts` (lint: `--max-warnings 0`).
+  button styling is `buttonClass()` in `ui/shared/` (the old shadcn component files in `components/ui/` are gone;
+  only the shadcn CSS variables and `tw-animate-css` remain as a base in `index.css`). Lint: `--max-warnings 0`.
 - Club / calendar switch: `lib/lastCalendar.ts` remembers the last calendar per club in localStorage
   (`lastCalendar:<clubId>`, guarded); `pickCalendar(…, rememberedId)` prefers it (only if it exists and is not
   archived), then the account's last pair, then the first active calendar. `AppShell` exposes
