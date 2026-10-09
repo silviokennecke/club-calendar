@@ -1044,6 +1044,7 @@
   @supports (anchor-name: --a) and (position-anchor: --a) {
     .ap-seg {
       position: relative;
+      anchor-scope: all;
       --seg-a: --seg-1;
       --seg-o: 0;
       --seg-bg: transparent;
@@ -1227,17 +1228,192 @@
     color: var(--brand);
     border-bottom-color: var(--brand);
   }
+  /* Sliding underline for the tabs, same anchor technique as the segments (.ap-seg). */
+  @supports (anchor-name: --a) and (position-anchor: --a) {
+    .ap-tabs {
+      position: relative;
+      anchor-scope: all;
+      --tab-a: --tab-1;
+      --tab-o: 0;
+      --tab-c: var(--brand);
+    }
+    .ap-tabs > :nth-child(1) {
+      anchor-name: --tab-1;
+    }
+    .ap-tabs > :nth-child(2) {
+      anchor-name: --tab-2;
+    }
+    .ap-tabs > :nth-child(3) {
+      anchor-name: --tab-3;
+    }
+    .ap-tabs > :nth-child(4) {
+      anchor-name: --tab-4;
+    }
+    .ap-tabs > :nth-child(5) {
+      anchor-name: --tab-5;
+    }
+    .ap-tabs > :nth-child(6) {
+      anchor-name: --tab-6;
+    }
+    .ap-tabs > a,
+    .ap-tabs > button {
+      transition:
+        color 0.2s ease,
+        background-color 0.2s ease;
+    }
+    .ap-tabs > [aria-current="page"],
+    .ap-tabs > [aria-selected="true"] {
+      border-bottom-color: transparent;
+    }
+    .ap-tabs::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+      position-anchor: var(--tab-a);
+      left: anchor(left);
+      right: anchor(right);
+      bottom: anchor(bottom);
+      height: 3px;
+      background: var(--tab-c);
+      opacity: var(--tab-o);
+      transition:
+        left 0.3s cubic-bezier(0.3, 1.2, 0.4, 1),
+        right 0.3s cubic-bezier(0.3, 1.2, 0.4, 1),
+        background-color 0.2s ease,
+        opacity 0.2s ease;
+    }
+    .ap-tabs:has(
+      > :nth-child(1):is([aria-current="page"], [aria-selected="true"], [aria-pressed="true"])
+    ) {
+      --tab-a: --tab-1;
+    }
+    .ap-tabs:has(
+      > :nth-child(2):is([aria-current="page"], [aria-selected="true"], [aria-pressed="true"])
+    ) {
+      --tab-a: --tab-2;
+    }
+    .ap-tabs:has(
+      > :nth-child(3):is([aria-current="page"], [aria-selected="true"], [aria-pressed="true"])
+    ) {
+      --tab-a: --tab-3;
+    }
+    .ap-tabs:has(
+      > :nth-child(4):is([aria-current="page"], [aria-selected="true"], [aria-pressed="true"])
+    ) {
+      --tab-a: --tab-4;
+    }
+    .ap-tabs:has(
+      > :nth-child(5):is([aria-current="page"], [aria-selected="true"], [aria-pressed="true"])
+    ) {
+      --tab-a: --tab-5;
+    }
+    .ap-tabs:has(
+      > :nth-child(6):is([aria-current="page"], [aria-selected="true"], [aria-pressed="true"])
+    ) {
+      --tab-a: --tab-6;
+    }
+    .ap-tabs:has(> :is([aria-current="page"], [aria-selected="true"], [aria-pressed="true"])) {
+      --tab-o: 1;
+      --tab-c: var(--brand);
+    }
+    .ap-tabs:has(
+      > :nth-child(1):is(:hover, :focus-visible):not(
+          :disabled,
+          [aria-current="page"],
+          [aria-selected="true"],
+          [aria-pressed="true"]
+        )
+    ) {
+      --tab-a: --tab-1;
+      --tab-o: 1;
+      --tab-c: var(--border-strong);
+    }
+    .ap-tabs:has(
+      > :nth-child(2):is(:hover, :focus-visible):not(
+          :disabled,
+          [aria-current="page"],
+          [aria-selected="true"],
+          [aria-pressed="true"]
+        )
+    ) {
+      --tab-a: --tab-2;
+      --tab-o: 1;
+      --tab-c: var(--border-strong);
+    }
+    .ap-tabs:has(
+      > :nth-child(3):is(:hover, :focus-visible):not(
+          :disabled,
+          [aria-current="page"],
+          [aria-selected="true"],
+          [aria-pressed="true"]
+        )
+    ) {
+      --tab-a: --tab-3;
+      --tab-o: 1;
+      --tab-c: var(--border-strong);
+    }
+    .ap-tabs:has(
+      > :nth-child(4):is(:hover, :focus-visible):not(
+          :disabled,
+          [aria-current="page"],
+          [aria-selected="true"],
+          [aria-pressed="true"]
+        )
+    ) {
+      --tab-a: --tab-4;
+      --tab-o: 1;
+      --tab-c: var(--border-strong);
+    }
+    .ap-tabs:has(
+      > :nth-child(5):is(:hover, :focus-visible):not(
+          :disabled,
+          [aria-current="page"],
+          [aria-selected="true"],
+          [aria-pressed="true"]
+        )
+    ) {
+      --tab-a: --tab-5;
+      --tab-o: 1;
+      --tab-c: var(--border-strong);
+    }
+    .ap-tabs:has(
+      > :nth-child(6):is(:hover, :focus-visible):not(
+          :disabled,
+          [aria-current="page"],
+          [aria-selected="true"],
+          [aria-pressed="true"]
+        )
+    ) {
+      --tab-a: --tab-6;
+      --tab-o: 1;
+      --tab-c: var(--border-strong);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ap-tabs::after,
+      .ap-tabs > a,
+      .ap-tabs > button {
+        transition: none;
+      }
+    }
+  }
   .ap-count {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex: none;
     min-width: 24px;
     height: 20px;
     padding: 0 6px;
+    font-variant-numeric: tabular-nums;
     border-radius: var(--radius-pill);
     background: var(--surface-sunken);
     color: var(--ink);
     font: 600 12px/16px var(--font-sans);
+  }
+  /* The label's optical center sits above its line box center; lift the badge to match. */
+  .ap-tabs .ap-count {
+    transform: translateY(-1px);
+    padding-top: 2px; /* the digit sits high in its line box; push it down 1px inside the pill */
   }
   [aria-current="page"] > .ap-count,
   [aria-selected="true"] > .ap-count {
@@ -2389,20 +2565,22 @@
     width: 52px;
   }
   .ap-table .ap-col-check input {
-    width: 24px;
-    height: 24px;
+    width: var(--check-size, 18px);
+    height: var(--check-size, 18px);
     margin: 0;
     accent-color: var(--brand);
     vertical-align: middle;
   }
-  /* 44px hit area around the 24px checkbox */
+  /* 44px hit area around the 18px checkbox */
   .ap-checkhit {
+    --check-size: 18px;
     display: inline-flex;
+    vertical-align: middle;
     align-items: center;
     justify-content: center;
     min-width: var(--tap-min);
     min-height: var(--tap-min);
-    margin: calc((var(--tap-min) - 24px) / -2);
+    margin: calc((var(--tap-min) - var(--check-size)) / -2);
     cursor: pointer;
   }
   .ap-table a.ap-rowlink {
@@ -2442,6 +2620,19 @@
   }
   .ap-bulkbar .cc-btn--danger {
     background: var(--danger-soft);
+  }
+  /* The inverse bar would be a light slab on the dark page: stay dark, raised and outlined instead. */
+  [data-theme="dark"] .ap-bulkbar {
+    background: var(--surface-raised);
+    color: var(--ink);
+    border: 1px solid var(--border-strong);
+  }
+  [data-theme="dark"] .ap-bulkbar .cc-btn--secondary {
+    color: var(--ink);
+    border-color: var(--border-strong);
+  }
+  [data-theme="dark"] .ap-bulkbar .cc-btn--secondary:hover {
+    background: var(--surface-sunken);
   }
   .ap-tiles {
     display: grid;
@@ -2797,11 +2988,48 @@
     outline: 3px solid var(--brand);
     outline-offset: 2px;
   }
+  /* Custom box (native checkboxes cannot be rounded): outline, brand fill, check / dash mark. */
   .ap-checkhit input {
-    width: 24px;
-    height: 24px;
+    appearance: none;
+    position: relative;
+    width: var(--check-size);
+    height: var(--check-size);
     margin: 0;
-    accent-color: var(--brand);
+    border: 2px solid var(--border-strong);
+    border-radius: 6px;
+    background: var(--surface-raised);
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease;
+  }
+  .ap-checkhit input::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--on-brand);
+    transform: scale(0);
+    transition: transform 0.15s ease;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E")
+      center / contain no-repeat;
+  }
+  .ap-checkhit input:indeterminate::before {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M4 8h8'/%3E%3C/svg%3E");
+  }
+  .ap-checkhit input:checked,
+  .ap-checkhit input:indeterminate {
+    background: var(--brand);
+    border-color: var(--brand);
+  }
+  .ap-checkhit input:checked::before,
+  .ap-checkhit input:indeterminate::before {
+    transform: scale(1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ap-checkhit input,
+    .ap-checkhit input::before {
+      transition: none;
+    }
   }
   .ap-reviewlist {
     list-style: none;
