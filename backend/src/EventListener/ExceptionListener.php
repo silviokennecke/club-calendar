@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\EventListener;
 
+use App\Exception\ApiProblemException;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -36,6 +37,14 @@ class ExceptionListener
             $violations = $exception->getViolations();
             $detail = $this->formatViolations($violations);
             $event->setResponse($this->problemResponse(422, 'Unprocessable Entity', $detail));
+
+            return;
+        }
+
+        if ($exception instanceof ApiProblemException) {
+            $status = $exception->getStatusCode();
+            $extra = ['code' => $exception->getErrorCode()] + (null !== $exception->getField() ? ['field' => $exception->getField()] : []);
+            $event->setResponse($this->problemResponse($status, $this->statusTitle($status), $exception->getMessage(), $extra));
 
             return;
         }
@@ -80,14 +89,17 @@ class ExceptionListener
         return $message;
     }
 
-    private function problemResponse(int $status, string $title, string $detail): JsonResponse
+    /**
+     * @param array<string, string> $extra stable members such as `code` / `field` (RFC 7807 extensions)
+     */
+    private function problemResponse(int $status, string $title, string $detail, array $extra = []): JsonResponse
     {
         return new JsonResponse([
             'type' => 'https://tools.ietf.org/html/rfc2616#section-10',
             'title' => $title,
             'status' => $status,
             'detail' => $detail,
-        ], $status, ['Content-Type' => 'application/problem+json']);
+        ] + $extra, $status, ['Content-Type' => 'application/problem+json']);
     }
 
     private function formatViolations(ConstraintViolationListInterface $violations): string

@@ -82,16 +82,16 @@ function json(body: unknown, ok = true, status = 200) {
 }
 
 beforeEach(() => {
-  calendar = { id: "k1", clubid: "c1", name: "Schießbetrieb 2026", timezone: "Europe/Berlin" };
-  locations = [haus, heim];
+  calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026", timezone: "Europe/Berlin" };
+  // usage as the list endpoint counts it
+  locations = [
+    { ...haus, usage: { events: 2, templates: 1, templateNames: ["Vereinsabend"] } },
+    { ...heim, usage: { events: 0, templates: 0, templateNames: [] } },
+  ];
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete, apiFetch]) fn.mockReset();
   apiGet.mockImplementation((path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
     if (path.endsWith("/locations")) return Promise.resolve(locations);
-    if (path.endsWith("/events"))
-      return Promise.resolve([{ locationId: "l1" }, { locationId: "l1" }, { locationId: null }]);
-    if (path.endsWith("/templates"))
-      return Promise.resolve([{ locationId: "l1", name: "Vereinsabend" }]);
     return Promise.resolve([]);
   });
   apiPost.mockImplementation((_p: string, body: object) => Promise.resolve({ id: "l9", ...body }));
@@ -346,6 +346,10 @@ describe("LocationsPage", () => {
       expect(dialog).toHaveTextContent(
         "2 Termine mit diesem Ort haben danach keinen Ort mehr. Die Vorlage „Vereinsabend“ verliert ihren Standardort.",
       ),
+    );
+    // Counted by the backend: no event or template list is loaded
+    expect(apiGet.mock.calls.some(([path]) => /\/(events|templates)$/.test(String(path)))).toBe(
+      false,
     );
     expect(apiDelete).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Ort löschen" }));

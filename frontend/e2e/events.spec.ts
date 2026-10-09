@@ -116,7 +116,7 @@ test.describe("Termine", () => {
     const seeded = await seedEvents(request, "Anlegen Validierung");
     await openList(page, seeded);
 
-    await page.getByRole("link", { name: "Termin anlegen" }).first().click();
+    await page.getByRole("button", { name: "Termin anlegen", exact: true }).click();
     const choice = page.getByRole("dialog", { name: "Termin anlegen" });
     await expect(choice).toBeVisible();
     await expect(choice.getByRole("heading", { level: 1 })).toBeFocused();
@@ -214,7 +214,7 @@ test.describe("Termine", () => {
     const seeded = await seedEvents(request, "Vorlage Serie");
     await openList(page, seeded);
 
-    await page.getByRole("link", { name: "Termin anlegen" }).first().click();
+    await page.getByRole("button", { name: "Termin anlegen", exact: true }).click();
     await page.getByRole("link", { name: /Aus Vorlage/ }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Vorlage wählen" })).toBeVisible();
     await expect(page.getByRole("radio", { name: /Training Luftgewehr/ })).toBeChecked();

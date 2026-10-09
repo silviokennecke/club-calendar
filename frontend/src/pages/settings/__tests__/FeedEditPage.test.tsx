@@ -43,6 +43,13 @@ beforeEach(() => {
   apiGet.mockImplementation((path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
     if (path === feedsPath) return Promise.resolve(feeds);
+    // Single GET of the edit page; unknown ids are a 404 like in the backend
+    if (path.startsWith(`${feedsPath}/`)) {
+      const feed = (feeds as { id: string }[]).find((f) => path === `${feedsPath}/${f.id}`);
+      return feed
+        ? Promise.resolve(feed)
+        : Promise.reject(Object.assign(new Error("API error 404"), { status: 404 }));
+    }
     if (path === "/api/calendars/k1/target-groups")
       return Promise.resolve([
         { id: "g1", name: "Jugend" },
@@ -220,6 +227,25 @@ describe("FeedEditPage (edit)", () => {
   it("explains an unknown feed", async () => {
     renderEdit("nope");
     expect(await screen.findByRole("heading", { name: "Feed nicht gefunden" })).toBeInTheDocument();
+  });
+
+  it("loads the feed with the single GET, not the list", async () => {
+    renderEdit("f2");
+    await screen.findByLabelText(/^Name/);
+    const paths = apiGet.mock.calls.map(([path]) => path);
+    expect(paths).toContain(`${feedsPath}/f2`);
+    expect(paths).not.toContain(feedsPath);
+  });
+
+  it("offers a retry when the feed cannot be loaded", async () => {
+    const fallback = apiGet.getMockImplementation()!;
+    apiGet.mockImplementation((path: string) =>
+      path === `${feedsPath}/f2`
+        ? Promise.reject(Object.assign(new Error("API error 500"), { status: 500 }))
+        : fallback(path),
+    );
+    renderEdit("f2");
+    expect(await screen.findByRole("button", { name: "Erneut versuchen" })).toBeInTheDocument();
   });
 
   it("is read-only in an archived calendar", async () => {

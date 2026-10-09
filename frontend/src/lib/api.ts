@@ -8,11 +8,19 @@ export const BACKEND_URL = BASE_URL;
 /** Failed API call; `status` is the HTTP status (react-query uses it to decide about retries). */
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  /** Stable error code of the RFC 7807 body, e.g. "duplicate_name" (only some errors carry one). */
+  code?: string;
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
+}
+
+/** Whether a request failed because the name already exists in the calendar (422 duplicate_name). */
+export function isDuplicateNameError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 422 && error.code === "duplicate_name";
 }
 
 let accessToken: string | null = null;
@@ -108,7 +116,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const res = await apiFetch(path, { method: "POST", body: JSON.stringify(body) });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Unknown error" }));
-    throw new ApiError(err.error ?? err.detail ?? "Request failed", res.status);
+    throw new ApiError(err.error ?? err.detail ?? "Request failed", res.status, err.code);
   }
   return res.json();
 }
@@ -117,7 +125,7 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   const res = await apiFetch(path, { method: "PATCH", body: JSON.stringify(body) });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Unknown error" }));
-    throw new ApiError(err.error ?? err.detail ?? "Request failed", res.status);
+    throw new ApiError(err.error ?? err.detail ?? "Request failed", res.status, err.code);
   }
   return res.json();
 }

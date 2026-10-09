@@ -1,11 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   eventsInRange,
-  feedAudiences,
-  feedTimeZone,
+  fetchPublicEvent,
   fetchPublicFeed,
   filterPublicEvents,
-  findPublicEvent,
   mapLinkFor,
   parseGroupIds,
   publicBackPath,
@@ -51,19 +49,6 @@ describe("public feed helpers", () => {
     }),
   ];
 
-  it("takes the most frequent event zone, null without any", () => {
-    expect(feedTimeZone(events)).toBe("Europe/Berlin");
-    expect(feedTimeZone([ev({ id: "x", name: "x", date: "2026-01-01" })])).toBeNull();
-    expect(feedTimeZone([])).toBeNull();
-  });
-
-  it("lists the audiences in use, sorted by name", () => {
-    expect(feedAudiences(events)).toEqual([
-      { id: "tg-e", name: "Erwachsene" },
-      { id: "tg-j", name: "Jugend" },
-    ]);
-  });
-
   it("filters by audience and by name (case-insensitive)", () => {
     expect(filterPublicEvents(events, [], "").map((e) => e.id)).toEqual(["a", "b", "c"]);
     expect(filterPublicEvents(events, ["tg-j"], "").map((e) => e.id)).toEqual(["b", "c"]);
@@ -81,11 +66,11 @@ describe("public feed helpers", () => {
     expect(eventsInRange(events, "2026-12-01", "2026-12-31")).toEqual([]);
   });
 
-  it("finds an event by id and keeps only known audience ids from the URL", () => {
-    expect(findPublicEvent(events, "b")?.name).toBe("Jugendtraining");
-    expect(findPublicEvent(events, "zzz")).toBeUndefined();
-    expect(findPublicEvent(events, undefined)).toBeUndefined();
-    const known = feedAudiences(events);
+  it("keeps only known audience ids from the URL", () => {
+    const known = [
+      { id: "tg-e", name: "Erwachsene" },
+      { id: "tg-j", name: "Jugend" },
+    ];
     expect(parseGroupIds("tg-j,unknown,tg-j,tg-e", known)).toEqual(["tg-j", "tg-e"]);
     expect(parseGroupIds(null, known)).toEqual([]);
   });
@@ -162,7 +147,16 @@ describe("fetchPublicFeed", () => {
       status: 200,
       json: () =>
         Promise.resolve({
-          feed: { id: "f1", name: "Feed" },
+          feed: { id: "f1", name: "Feed", timezone: "Europe/Berlin" },
+          holidays: [
+            {
+              id: "h1",
+              holidayCalendarId: "hc",
+              name: "Ferien",
+              date: "2026-10-12",
+              dateEnd: null,
+            },
+          ],
           events: [
             ev({ id: "a", name: "Offen", date: "2026-10-08" }),
             ev({ id: "d", name: "Entwurf", date: "2026-10-09", isDraft: true }),
@@ -171,6 +165,8 @@ describe("fetchPublicFeed", () => {
     });
     const data = await fetchPublicFeed("f1", "test-secret-value");
     expect(data.events.map((e) => e.name)).toEqual(["Offen"]);
+    expect(data.holidays.map((h) => h.name)).toEqual(["Ferien"]);
+    expect(data.feed.audiences).toEqual([]);
     const calls = fn.mock.calls as unknown as [string, RequestInit][];
     expect(calls[0][0]).toContain("/api/feed/f1/events?secret=test-secret-value");
     expect(calls[0][1].referrerPolicy).toBe("no-referrer");
@@ -184,6 +180,41 @@ describe("fetchPublicFeed", () => {
   ])("maps HTTP %i to %s", async (status, kind) => {
     stubFetch({ ok: false, status });
     await expect(fetchPublicFeed("f1", undefined)).rejects.toMatchObject({ kind });
+  });
+
+  it("asks for the visible days only", async () => {
+    const fn = stubFetch({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ feed: { id: "f1", name: "Feed" }, events: [] }),
+    });
+    const data = await fetchPublicFeed("f1", undefined, { from: "2026-09-28", to: "2026-11-08" });
+    expect(data.holidays).toEqual([]);
+    const calls = fn.mock.calls as unknown as [string, RequestInit][];
+    expect(calls[0][0]).toContain("/api/feed/f1/events?from=2026-09-28&to=2026-11-08");
+  });
+
+  it("loads one event with the secret and maps a missing event to notFound", async () => {
+    const fn = stubFetch({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          feed: { id: "f1", name: "Feed", audiences: [{ id: "tg-j", name: "Jugend" }] },
+          event: ev({ id: "a b", name: "Herbstfest", date: "2026-10-24" }),
+        }),
+    });
+    const data = await fetchPublicEvent("f1", "a b", "test-secret-value");
+    expect(data.event.name).toBe("Herbstfest");
+    expect(data.feed.audiences).toEqual([{ id: "tg-j", name: "Jugend" }]);
+    const calls = fn.mock.calls as unknown as [string, RequestInit][];
+    expect(calls[0][0]).toContain("/api/feed/f1/events/a%20b?secret=test-secret-value");
+    expect(calls[0][1].referrerPolicy).toBe("no-referrer");
+
+    stubFetch({ ok: false, status: 404 });
+    await expect(fetchPublicEvent("f1", "x", undefined)).rejects.toMatchObject({
+      kind: "notFound",
+    });
   });
 
   it("treats a network failure as error", async () => {

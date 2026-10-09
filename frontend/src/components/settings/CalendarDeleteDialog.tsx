@@ -2,9 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { ConfirmDialog } from "@/components/ui/shared";
 import { apiGet } from "@/lib/api";
-import type { Calendar, CalendarEvent } from "@/lib/types";
+import type { Calendar } from "@/lib/types";
 
 interface CalendarDeleteDialogProps {
+  clubId: string;
   calendar: Calendar;
   onClose: () => void;
   onConfirm: () => void | Promise<void>;
@@ -13,22 +14,29 @@ interface CalendarDeleteDialogProps {
 /**
  * "Kalender löschen?" with the consequences (design: Club.dc.html deleteCalendar / deleteArchived,
  * Dialogs.dc.html "Kalender löschen"). An active calendar names its number of events ("Löscht den
- * Kalender mit allen 6 Terminen und seinen Feeds …"), counted when the dialog opens because the backend
- * offers no counters; an archived calendar uses the fixed "no restore" wording.
+ * Kalender mit allen 6 Terminen und seinen Feeds …") from the calendar's `eventCount`, refreshed by one
+ * single GET when the dialog opens; an archived calendar uses the fixed "no restore" wording.
  */
-export function CalendarDeleteDialog({ calendar, onClose, onConfirm }: CalendarDeleteDialogProps) {
+export function CalendarDeleteDialog({
+  clubId,
+  calendar,
+  onClose,
+  onConfirm,
+}: CalendarDeleteDialogProps) {
   const { t } = useTranslation();
   const archived = !!calendar.archivedAt;
-  const scope = useQuery({
+  const fresh = useQuery({
     queryKey: ["calendarScope", calendar.id],
     enabled: !archived,
     staleTime: 0,
     gcTime: 0,
-    queryFn: async () => {
-      const events = await apiGet<CalendarEvent[]>(`/api/calendars/${calendar.id}/events`);
-      return { events: events.length };
-    },
+    queryFn: () => apiGet<Calendar>(`/api/clubs/${clubId}/calendars/${calendar.id}`),
   });
+  const events = fresh.data?.eventCount ?? calendar.eventCount;
+  const scope = {
+    isError: fresh.isError && events === undefined,
+    data: events === undefined ? undefined : { events },
+  };
 
   let consequence: string;
   if (archived) consequence = t("settings.delete.archived.consequence", { name: calendar.name });

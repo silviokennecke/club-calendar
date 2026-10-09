@@ -9,6 +9,7 @@ use App\Entity\Calendar;
 use App\Entity\Club;
 use App\Security\ClubMemberVoter;
 use App\Service\CalendarService;
+use App\Service\Input;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -111,7 +112,12 @@ class CalendarController extends AbstractApiController
     public function duplicate(
         #[MapEntity(id: 'clubId')] Club $club,
         #[MapEntity(expr: 'repository.findByIdAndClubId(calendarId, clubId)')] Calendar $calendar,
+        Request $request,
     ): JsonResponse {
-        return new JsonResponse($this->calendarService->duplicateCalendar($calendar), Response::HTTP_CREATED);
+        // Optional body {name}: the client sends the localized name of the copy
+        $data = '' === trim($request->getContent()) ? [] : $this->decodeJson($request);
+        $name = array_key_exists('name', $data) && null !== $data['name'] ? Input::string($data, 'name') : null;
+
+        return new JsonResponse($this->calendarService->duplicateCalendar($calendar, $name), Response::HTTP_CREATED);
     }
 }

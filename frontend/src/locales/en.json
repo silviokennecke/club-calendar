@@ -204,6 +204,7 @@
     },
     "footer": "Provided with Club Calendar",
     "event": {
+      "subtitle": "{{club}} · {{calendar}}",
       "date": "Date",
       "time": "Time",
       "timeRange": "{{from}} to {{to}}",
@@ -858,6 +859,7 @@
     "hits_one": "1 of {{total}} templates",
     "hits_other": "{{count}} of {{total}} templates",
     "time": "{{from}} – {{to}}",
+    "allDay": "All day",
     "noPlace": "No default place",
     "audiences": "Audiences",
     "everyone": "Everyone",
@@ -874,6 +876,9 @@
       "title": "Delete template “{{name}}”?",
       "text": "The template is removed permanently.",
       "consequence": "Events already created from this template stay unchanged.",
+      "consequenceNone": "No events have been created from this template yet.",
+      "consequenceCount_one": "The {{count}} event already created from this template stays unchanged.",
+      "consequenceCount_other": "The {{count}} events already created from this template stay unchanged.",
       "confirm": "Delete template",
       "done": "Template deleted.",
       "failed": "Deleting failed. Please try again."
@@ -908,6 +913,7 @@
       "start": "Start time",
       "startHint": "Suggested for new events.",
       "end": "End time",
+      "endHint": "Without start and end time, events from this template are all-day.",
       "place": "Default place",
       "noPlace": "No default place",
       "audiencesHint": "Without a selection, events from this template apply to everyone.",
@@ -918,8 +924,8 @@
       "delete": "Delete template",
       "errors": {
         "nameRequired": "Please enter a name.",
-        "timeBeginRequired": "Please enter a start time.",
-        "timeEndRequired": "Please enter an end time.",
+        "timeBeginRequired": "Please also enter a start time or leave both times empty.",
+        "timeEndRequired": "Please also enter an end time or leave both times empty.",
         "timeEndBeforeStart": "The end time is before the start time."
       }
     }
@@ -1504,6 +1510,8 @@
       "emptyTitle": "No active calendar yet",
       "empty": "Create a calendar to plan events.",
       "zone": "Time zone {{zone}}",
+      "events_one": "{{count}} event",
+      "events_other": "{{count}} events",
       "archivedOn": "Archived on {{date}}",
       "archivedTitle": "Archived calendars",
       "archivedText": "Archived calendars can be viewed but not edited.",
@@ -1527,6 +1535,15 @@
       "confirmTitle": "Delete club “{{name}}”?",
       "confirmText": "The club will be deleted permanently.",
       "consequence": "Permanently deletes the club, all calendars, events, feeds and templates. All members lose access.",
+      "consequenceCounts": "Permanently deletes the club with {{calendars}}, {{events}} and {{feeds}} as well as all templates. All members lose access.",
+      "count": {
+        "calendars_one": "{{count}} calendar",
+        "calendars_other": "{{count}} calendars",
+        "events_one": "{{count}} event",
+        "events_other": "{{count}} events",
+        "feeds_one": "{{count}} feed",
+        "feeds_other": "{{count}} feeds"
+      },
       "confirm": "Delete club",
       "requireLabel": "Type the club name to confirm",
       "done": "The club “{{name}}” was deleted.",

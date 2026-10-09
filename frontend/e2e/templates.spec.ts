@@ -105,6 +105,10 @@ test.describe("Vorlagen", () => {
     await page.getByLabel(/Standardort/).selectOption({ label: "Vereinsheim Mitte" });
     await page.getByRole("button", { name: "Vorlage speichern" }).click();
     await expect(page.getByRole("listitem")).toHaveCount(2);
+    // Without times (optional, design: TemplateEdit) the template creates all-day events
+    await expect(page.getByRole("listitem").filter({ hasText: "Vereinsabend" })).toContainText(
+      "Ganztägig",
+    );
     await page.getByRole("searchbox").fill("abend");
     await expect(page.getByRole("listitem")).toHaveCount(1);
     await expect(page.getByRole("heading", { name: "Vereinsabend" })).toBeVisible();
@@ -140,9 +144,8 @@ test.describe("Vorlagen", () => {
     await page.goto(`${seeded.base}/templates`);
     await page.getByRole("button", { name: "Vorlage Vereinsabend löschen" }).click();
     const dialog = page.getByRole("alertdialog", { name: "Vorlage „Vereinsabend“ löschen?" });
-    await expect(dialog).toContainText(
-      "Bereits aus dieser Vorlage erzeugte Termine bleiben unverändert.",
-    );
+    // eventCount from the API: nothing was created from this template yet
+    await expect(dialog).toContainText("Aus dieser Vorlage wurden noch keine Termine erzeugt.");
     await dialog.getByRole("button", { name: "Vorlage löschen" }).click();
     await expect(page.getByText("Vorlage gelöscht.")).toBeVisible();
     await expect(page.getByRole("listitem")).toHaveCount(1);
@@ -152,6 +155,9 @@ test.describe("Vorlagen", () => {
       .getByRole("link", { name: /Vorlage Training Luftgewehr \(Halle\) bearbeiten/ })
       .click();
     await page.getByRole("button", { name: "Vorlage löschen" }).click();
+    await expect(page.getByRole("alertdialog")).toContainText(
+      "Der 1 bereits aus dieser Vorlage erzeugte Termin bleibt unverändert.",
+    );
     await page.getByRole("alertdialog").getByRole("button", { name: "Vorlage löschen" }).click();
     await expect(page.getByRole("heading", { name: "Noch keine Vorlagen" })).toBeVisible();
     await page.goto(`${seeded.base}/events`);
@@ -258,5 +264,38 @@ test.describe("Vorlagen", () => {
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
     );
     expect(hasOverflow).toBe(false);
+  });
+
+  test("Vorlage ohne Zeiten ergibt einen ganztägigen Termin", async ({ page, request }) => {
+    const seeded = await seed(request, "Vorlage Ganztag");
+    await openTemplates(page, seeded.email, seeded.base);
+    await page.getByRole("link", { name: "Vorlage anlegen" }).first().click();
+    await expect(page.getByLabel("Startzeit")).toHaveValue("");
+    await page.getByLabel(/^Name/).fill("Vereinsfest");
+    // Only one time: both or none
+    await page.getByLabel("Startzeit").fill("15:00");
+    await page.getByRole("button", { name: "Vorlage speichern" }).click();
+    await expect(page.getByRole("alert")).toContainText(
+      "Bitte gib auch eine Endzeit ein oder lass beide Zeiten leer.",
+    );
+    await page.getByLabel("Startzeit").fill("");
+    await page.getByRole("button", { name: "Vorlage speichern" }).click();
+    await expect(page.getByText("Vorlage gespeichert.")).toBeVisible();
+    const card = page.getByRole("listitem").filter({ hasText: "Vereinsfest" });
+    await expect(card).toContainText("Ganztägig");
+
+    await card.getByRole("link", { name: "Termin aus Vorlage" }).click();
+    const dialog = page.getByRole("dialog", { name: "Termin aus Vorlage" });
+    await expect(dialog).toContainText("Ganztägig");
+    await page.getByLabel("Datum (Pflicht)").fill("2026-09-12");
+    await page.getByRole("button", { name: "1 Termin als Entwurf anlegen" }).click();
+    await expect(page.getByText("Termin angelegt.")).toBeVisible();
+    const events = await (
+      await request.get(`${API}/api/calendars/${seeded.calendarId}/events`, {
+        headers: seeded.headers,
+      })
+    ).json();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ name: "Vereinsfest", isAllDay: true });
   });
 });

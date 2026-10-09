@@ -59,7 +59,7 @@ const existing = makeEvent({
 let calendar: Record<string, unknown>;
 
 beforeEach(() => {
-  calendar = { id: "k1", clubid: "c1", name: "Schießbetrieb 2026" };
+  calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026" };
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete]) fn.mockReset();
   apiGet.mockImplementation((path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);

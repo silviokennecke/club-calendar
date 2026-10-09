@@ -20,8 +20,8 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | Features | `/api/calendars/{calendarId}/features` | `FeatureController` | `FeatureService` |
 | Target Groups | `/api/calendars/{calendarId}/target-groups` | `TargetGroupController` | `TargetGroupService` |
 | Locations | `/api/calendars/{calendarId}/locations` | `LocationController` | `LocationService` |
-| Feeds | `/api/calendars/{calendarId}/feeds` | `FeedController` | `FeedService` |
-| Public Feed | `/api/feed` | `PublicFeedController` | `PublicFeedService`, `IcsService` |
+| Feeds | `/api/calendars/{calendarId}/feeds` (incl. single GET `…/{feedId}`) | `FeedController` | `FeedService` |
+| Public Feed | `/api/feed/{id}/events` (`?from&to`, header + holidays), `/api/feed/{id}/events/{eventId}`, `/api/feed/{id}/ics` | `PublicFeedController` | `PublicFeedService`, `IcsService` |
 | Holiday Calendars | `/api/calendars/{calendarId}/holiday-calendars`, `…/holiday-events` | `HolidayCalendarController`, `HolidayEventController` | `HolidayCalendarService` |
 | Mapbox Proxy | `/api/mapbox` | `MapboxController` | `Map\MapboxProxyService` |
 | Map images / geocoding | `/api/map` | `MapController` | `Map\*` (cached, rate-limited providers) |
@@ -43,8 +43,11 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | `src/Service/CalendarReferences.php` | Resolves location/template/property/feature/target-group IDs within one calendar (unknown or foreign → 422) |
 | `src/Service/LinkCollectionSync.php` | Syncs join-table collections by diff (deduplicated IDs, no identity collisions) |
 | `src/Service/Input.php` | Typed input validation helpers (400 with field name) |
+| `src/Service/UsageCounts.php` | Counters for lists and delete dialogs (clubs, calendars, usage of properties/features/target groups/locations, events per template): one grouped query per counter, never one per row |
+| `src/Service/UniqueNames.php` | Names of properties/features/target groups unique per calendar (trim, case-insensitive, compared in PHP; no unique index, old duplicates stay) |
+| `src/Exception/ApiProblemException.php` | HTTP error with a stable `code` (+ optional `field`) in the RFC 7807 body, e.g. 422 `duplicate_name` |
 | `config/packages/security.yaml` | Stateless JWT firewall; public routes allowlist |
-| `migrations/` | Doctrine migrations (initial schema `Version20260625000000`, all tables in snake_case; latest `Version20261004120000` `auth_nonce`, `Version20261004130000` `user.token_version`) |
+| `migrations/` | Doctrine migrations (initial schema `Version20260625000000`, all tables in snake_case; then `Version20261004120000` `auth_nonce`, `Version20261004130000` `user.token_version`, latest `Version20261009120000` nullable template times) |
 
 ## Security Pattern
 
@@ -79,6 +82,10 @@ $this->denyAccessUnlessGranted(ArchivedCalendarVoter::NOT_ARCHIVED, $calendar); 
 Tests are in `tests/Controller/` using `Symfony\Bundle\FrameworkBundle\Test\WebTestCase`.
 `tests/Helper/DatabaseResetter::reset($em)` truncates all tables before each test class.
 `tests/Helper/TestHelper` provides factory helpers: `createUser`, `createClub`, `createCalendar`, `createEvent`, `createTemplate`.
+`tests/Helper/QueryCounter` (DBAL middleware, registered only in `config/services_test.yaml`) counts SQL statements:
+list endpoints are tested to run the same number of queries for more rows (no N+1, see `CountersTest`).
+The KernelBrowser reboots the kernel between requests: re-fetch entities (`$em->find(...)`) before changing them
+after a request.
 
 Run: `cd backend && composer test` (requires MySQL test DB on port 3360)
 
@@ -87,5 +94,7 @@ Run: `cd backend && composer test` (requires MySQL test DB on port 3360)
 - `Calendar::archivedAt` — null = active; set = archived and read-only
 - `POST /api/clubs/{clubId}/calendars/{calendarId}/archive` — sets `archivedAt`
 - `POST /api/clubs/{clubId}/calendars/{calendarId}/unarchive` — clears `archivedAt`
-- `POST /api/clubs/{clubId}/calendars/{calendarId}/duplicate` (201) — deep-copies calendar + properties/features/target-groups/locations/templates/feeds (new UUIDs for feed secrets); events not copied
+- `POST /api/clubs/{clubId}/calendars/{calendarId}/duplicate` (201) — deep-copies calendar + properties/features/target-groups/locations/templates/feeds (new UUIDs for feed secrets); events not copied; optional body `{name}` (default "Copy of …", the frontend sends the localized name)
+- Calendar responses carry `eventCount`, `templateCount`, `feedCount`; club responses `calendarCount`, `archivedCalendarCount`, `memberCount` (single club also `eventCount`, `feedCount`)
+- Event templates: `timezone`, `timeBegin`, `timeEnd` are optional (times only as a pair); without times in the template and in the request, `from-template` creates all-day events (`docs/redesign/BACKEND-GAPS.md`, "Umgesetzt (Paket 1)")
 - Archived calendar public feeds → 404; nested write endpoints → 403 (via `ArchivedCalendarVoter`)

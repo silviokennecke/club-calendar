@@ -204,6 +204,7 @@
     },
     "footer": "Bereitgestellt mit Club Calendar",
     "event": {
+      "subtitle": "{{club}} · {{calendar}}",
       "date": "Datum",
       "time": "Uhrzeit",
       "timeRange": "{{from}} bis {{to}} Uhr",
@@ -858,6 +859,7 @@
     "hits_one": "1 von {{total}} Vorlagen",
     "hits_other": "{{count}} von {{total}} Vorlagen",
     "time": "{{from}} – {{to}}",
+    "allDay": "Ganztägig",
     "noPlace": "Kein Standardort",
     "audiences": "Zielgruppen",
     "everyone": "Alle",
@@ -874,6 +876,9 @@
       "title": "Vorlage „{{name}}“ löschen?",
       "text": "Die Vorlage wird dauerhaft entfernt.",
       "consequence": "Bereits aus dieser Vorlage erzeugte Termine bleiben unverändert.",
+      "consequenceNone": "Aus dieser Vorlage wurden noch keine Termine erzeugt.",
+      "consequenceCount_one": "Der {{count}} bereits aus dieser Vorlage erzeugte Termin bleibt unverändert.",
+      "consequenceCount_other": "Die {{count}} bereits aus dieser Vorlage erzeugten Termine bleiben unverändert.",
       "confirm": "Vorlage löschen",
       "done": "Vorlage gelöscht.",
       "failed": "Löschen fehlgeschlagen. Bitte versuche es erneut."
@@ -908,6 +913,7 @@
       "start": "Startzeit",
       "startHint": "Wird bei neuen Terminen vorgeschlagen.",
       "end": "Endzeit",
+      "endHint": "Ohne Start- und Endzeit werden Termine aus dieser Vorlage ganztägig.",
       "place": "Standardort",
       "noPlace": "Kein Standardort",
       "audiencesHint": "Ohne Auswahl gelten Termine aus dieser Vorlage für alle.",
@@ -918,8 +924,8 @@
       "delete": "Vorlage löschen",
       "errors": {
         "nameRequired": "Bitte gib einen Namen ein.",
-        "timeBeginRequired": "Bitte gib eine Startzeit ein.",
-        "timeEndRequired": "Bitte gib eine Endzeit ein.",
+        "timeBeginRequired": "Bitte gib auch eine Startzeit ein oder lass beide Zeiten leer.",
+        "timeEndRequired": "Bitte gib auch eine Endzeit ein oder lass beide Zeiten leer.",
         "timeEndBeforeStart": "Die Endzeit liegt vor der Startzeit."
       }
     }
@@ -1504,6 +1510,8 @@
       "emptyTitle": "Noch kein aktiver Kalender",
       "empty": "Lege einen Kalender an, um Termine zu planen.",
       "zone": "Zeitzone {{zone}}",
+      "events_one": "{{count}} Termin",
+      "events_other": "{{count}} Termine",
       "archivedOn": "Archiviert am {{date}}",
       "archivedTitle": "Archivierte Kalender",
       "archivedText": "Archivierte Kalender lassen sich ansehen, aber nicht bearbeiten.",
@@ -1527,6 +1535,15 @@
       "confirmTitle": "Verein „{{name}}“ löschen?",
       "confirmText": "Der Verein wird dauerhaft gelöscht.",
       "consequence": "Löscht den Verein, alle Kalender, Termine, Feeds und Vorlagen unwiderruflich. Alle Mitglieder verlieren den Zugriff.",
+      "consequenceCounts": "Löscht den Verein mit {{calendars}}, {{events}} und {{feeds}} sowie allen Vorlagen unwiderruflich. Alle Mitglieder verlieren den Zugriff.",
+      "count": {
+        "calendars_one": "{{count}} Kalender",
+        "calendars_other": "{{count}} Kalendern",
+        "events_one": "{{count}} Termin",
+        "events_other": "{{count}} Terminen",
+        "feeds_one": "{{count}} Feed",
+        "feeds_other": "{{count}} Feeds"
+      },
       "confirm": "Verein löschen",
       "requireLabel": "Vereinsname zur Bestätigung eingeben",
       "done": "Der Verein „{{name}}“ wurde gelöscht.",

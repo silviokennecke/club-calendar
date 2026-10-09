@@ -70,11 +70,15 @@ export function valuesFromEvent(ev: CalendarEvent): EventFormValues {
   };
 }
 
-/** A new event pre-filled from a template: name, times, location and all assignments. */
+/**
+ * A new event pre-filled from a template: name, times, location and all assignments. A template
+ * without times makes the event all-day (same rule as `POST …/events/from-template`).
+ */
 export function valuesFromTemplate(tpl: EventTemplate, date?: string | null): EventFormValues {
   return {
     ...emptyEventValues(date),
     name: tpl.name,
+    isAllDay: !shortTime(tpl.timeBegin) || !shortTime(tpl.timeEnd),
     timeBegin: shortTime(tpl.timeBegin) || DEFAULT_TIME_BEGIN,
     timeEnd: shortTime(tpl.timeEnd) || DEFAULT_TIME_END,
     locationId: tpl.locationId ?? tpl.location?.id ?? "",

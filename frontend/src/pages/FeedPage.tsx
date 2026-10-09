@@ -5,9 +5,12 @@ import {
   compareItems,
   eventToItem,
   formatMonthTitle,
+  holidayToItem,
+  overlapsRange,
   parseAnchor,
   stepAnchor,
   todayIn,
+  visibleRange,
   yearMonthOf,
   type CalItem,
   type IsoDate,
@@ -15,8 +18,6 @@ import {
 import { monthBounds } from "@/lib/events/ics";
 import {
   eventsInRange,
-  feedAudiences,
-  feedTimeZone,
   filterPublicEvents,
   parseGroupIds,
   publicEventPath,
@@ -52,7 +53,18 @@ export default function FeedPage() {
   const { feedId } = useParams<{ feedId: string }>();
   const [params] = useSearchParams();
   const secret = params.get("secret") || undefined;
-  const feed = usePublicFeed(feedId, secret);
+  // "Today" in the calendar's zone from the API (the browser's until the first answer); only the
+  // visible month grid is loaded (the API filters by overlap), the previous month stays while the
+  // next one loads.
+  const [zone, setZone] = useState<string | null>(null);
+  const today = todayIn(zone);
+  const anchor = parseAnchor(params.get("date"), today);
+  const [from, to] = visibleRange("month", anchor, 1);
+  const feed = usePublicFeed(feedId, secret, { from, to });
+  const loadedZone = feed.data?.feed.timezone ?? null;
+  useEffect(() => {
+    if (loadedZone) setZone(loadedZone);
+  }, [loadedZone]);
 
   if (feed.isPending)
     return (
@@ -70,15 +82,25 @@ export default function FeedPage() {
   return (
     <PublicShell
       title={`${feed.data.feed.name} – ${t("feed.brand")}`}
-      noindex={!!secret}
+      noindex={feed.data.feed.visibility !== "PUBLIC"}
       hero={<FeedHero data={feed.data} secret={secret} feedId={feedId!} />}
     >
-      <FeedCalendar data={feed.data} feedId={feedId!} secret={secret} />
+      <FeedCalendar
+        data={feed.data}
+        feedId={feedId!}
+        secret={secret}
+        today={today}
+        anchor={anchor}
+        range={[from, to]}
+      />
     </PublicShell>
   );
 }
 
-/** Name, time zone note and the subscribe actions (the audience selection is part of the address). */
+/**
+ * Club and calendar name (design: Public "Schützenverein Waldblick" + "Schießbetrieb 2026"), the time
+ * zone note and the subscribe actions (the audience selection is part of the address).
+ */
 function FeedHero({
   data,
   feedId,
@@ -90,16 +112,16 @@ function FeedHero({
 }) {
   const { t } = useTranslation();
   const [params] = useSearchParams();
-  const audiences = useMemo(() => feedAudiences(data.events), [data.events]);
-  const groupIds = parseGroupIds(params.get("groups"), audiences);
+  const groupIds = parseGroupIds(params.get("groups"), data.feed.audiences);
   const addresses = publicFeedAddresses(feedId, secret, groupIds);
-  const zone = feedTimeZone(data.events);
+  const zone = data.feed.timezone;
 
   return (
     <>
       <div className="pub-hero">
         <div className="ap-stack ap-stack--sm" style={{ flex: "1 1 420px", minWidth: 0 }}>
-          <h1 className="t-display">{data.feed.name}</h1>
+          <h1 className="t-display">{data.feed.clubName}</h1>
+          <p className="t-h3 t-muted">{data.feed.calendarName}</p>
           {zone && <p className="t-sm t-muted">{t("feed.timeZoneNote", { zone })}</p>}
         </div>
         <div className="ap-actions" style={{ flex: "0 1 auto" }}>
@@ -140,9 +162,14 @@ interface FeedCalendarProps {
   data: PublicFeedData;
   feedId: string;
   secret: string | undefined;
+  /** Today in the calendar's zone. */
+  today: IsoDate;
+  anchor: IsoDate;
+  /** Loaded days (month grid). */
+  range: [IsoDate, IsoDate];
 }
 
-function FeedCalendar({ data, feedId, secret }: FeedCalendarProps) {
+function FeedCalendar({ data, feedId, secret, today, anchor, range }: FeedCalendarProps) {
   const { t } = useTranslation();
   const locale = useLocale();
   const isMobile = useIsMobile();
@@ -153,10 +180,7 @@ function FeedCalendar({ data, feedId, secret }: FeedCalendarProps) {
   const [panelOpen, setPanelOpen] = useState(false);
 
   const events = data.events;
-  const audiences = useMemo(() => feedAudiences(events), [events]);
-  // "Today" in the calendar's time zone (the events' zone), not the visitor's.
-  const today = todayIn(feedTimeZone(events));
-  const anchor = parseAnchor(params.get("date"), today);
+  const audiences = data.feed.audiences;
   const view = params.get("view") === "list" ? "list" : "month";
   const query = params.get("q") ?? "";
   const groupIds = parseGroupIds(params.get("groups"), audiences);
@@ -183,10 +207,17 @@ function FeedCalendar({ data, feedId, secret }: FeedCalendarProps) {
     () => filterPublicEvents(events, groupIds, query),
     [events, groupIds, query],
   );
-  const items = useMemo<CalItem<PublicFeedEvent>[]>(
-    () => filtered.map((ev) => eventToItem(ev)),
-    [filtered],
-  );
+  const [rangeFrom, rangeTo] = range;
+  // Holidays of the calendar like in the internal month view (hidden while filtering)
+  const items = useMemo<CalItem[]>(() => {
+    const evs: CalItem[] = filtered.map((ev) => eventToItem(ev));
+    if (filtering) return evs;
+    const holidays = data.holidays
+      .map((h) => holidayToItem(h))
+      .filter((i) => overlapsRange(i, rangeFrom, rangeTo));
+    return [...holidays, ...evs];
+  }, [filtered, filtering, data.holidays, rangeFrom, rangeTo]);
+  const hasHolidays = items.some((i) => i.kind === "holiday");
 
   const [first, last] = monthBounds(anchor);
   const monthTotal = eventsInRange(events, first, last).length;
@@ -199,6 +230,7 @@ function FeedCalendar({ data, feedId, secret }: FeedCalendarProps) {
 
   /** Event details open as a dialog above this view (the view path is stored without the secret). */
   function openItem(item: CalItem) {
+    if (item.kind !== "event") return;
     navigate(publicEventPath(feedId, item.id, secret), {
       state: {
         background: viewPathWithoutSecret(location.pathname, location.search),
@@ -207,21 +239,24 @@ function FeedCalendar({ data, feedId, secret }: FeedCalendarProps) {
   }
 
   const placeOf = (item: CalItem) => {
+    if (item.kind !== "event") return null;
     const loc = (item.source as PublicFeedEvent).location;
     return loc ? loc.name || formatAddress(loc) : null;
   };
   const tagsOf = (item: CalItem): EventItemTag[] =>
-    (item.source as PublicFeedEvent).targetGroups.map(({ targetGroup }) => ({
-      id: targetGroup.id,
-      label: targetGroup.name,
-      tone: audienceTone(audiences.findIndex((g) => g.id === targetGroup.id)),
-    }));
+    item.kind !== "event"
+      ? []
+      : (item.source as PublicFeedEvent).targetGroups.map(({ targetGroup }) => ({
+          id: targetGroup.id,
+          label: targetGroup.name,
+          tone: audienceTone(audiences.findIndex((g) => g.id === targetGroup.id)),
+        }));
 
   function reset() {
     update({ q: null, groups: null });
   }
 
-  if (events.length === 0) {
+  if (data.feed.eventCount === 0) {
     return (
       <div style={{ padding: "var(--space-8) 0" }}>
         <EmptyState headingLevel="h2" title={t("feed.empty.title")} text={t("feed.empty.text")} />
@@ -229,8 +264,8 @@ function FeedCalendar({ data, feedId, secret }: FeedCalendarProps) {
     );
   }
 
-  const monthList = [...items]
-    .filter((item) => item.start <= last && item.end >= first)
+  const monthList = items
+    .filter((item) => item.kind === "event" && item.start <= last && item.end >= first)
     .sort(compareItems);
 
   let content;
@@ -298,7 +333,7 @@ function FeedCalendar({ data, feedId, secret }: FeedCalendarProps) {
         onOpenItem={openItem}
         placeOf={placeOf}
         tagsOf={tagsOf}
-        showHolidayLegend={false}
+        showHolidayLegend={hasHolidays}
         publicView
       />
     );

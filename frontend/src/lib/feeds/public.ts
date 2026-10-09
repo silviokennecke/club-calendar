@@ -33,9 +33,39 @@ export interface PublicFeedEvent {
   targetGroups: { targetGroup: { id: string; name: string } }[];
 }
 
+/** Holidays of the calendar (same shape as `…/holiday-events`). */
+export interface PublicHoliday {
+  id: string;
+  holidayCalendarId: string;
+  name: string;
+  date: string;
+  dateEnd: string | null;
+}
+
+/** Page header of a feed (`feed` of both public endpoints). */
+export interface PublicFeedHeader {
+  id: string;
+  name: string;
+  clubName: string;
+  calendarName: string;
+  /** Effective zone of the calendar (calendar, else club): "today" and the time note. */
+  timezone: string;
+  visibility: "PUBLIC" | "PRIVATE";
+  /** Published events of the feed over all dates (the page loads one month at a time). */
+  eventCount: number;
+  /** Audiences of those events, sorted by name (filter chips, tag tones). */
+  audiences: AudienceOption[];
+}
+
 export interface PublicFeedData {
-  feed: { id: string; name: string };
+  feed: PublicFeedHeader;
   events: PublicFeedEvent[];
+  holidays: PublicHoliday[];
+}
+
+export interface PublicEventData {
+  feed: PublicFeedHeader;
+  event: PublicFeedEvent;
 }
 
 /** private = 403 (secret missing or wrong), notFound = 404 (unknown, archived calendar), error = rest. */
@@ -47,22 +77,17 @@ export class PublicFeedError extends Error {
   }
 }
 
-/**
- * Loads a feed without any credentials. The secret travels only in the query to our own API;
- * `referrerPolicy: "no-referrer"` keeps the page address (which carries the secret) out of it.
- * Drafts are dropped again here although the API never delivers them.
- */
-export async function fetchPublicFeed(
-  feedId: string,
-  secret: string | undefined,
+/** GET with no credentials; the secret travels only in the query to our own API. */
+async function fetchPublic<T>(
+  path: string,
+  params: Record<string, string | undefined>,
   signal?: AbortSignal,
-): Promise<PublicFeedData> {
-  const url = new URL(
-    `${API_BASE.replace(/\/+$/, "")}/api/feed/${encodeURIComponent(feedId)}/events`,
-  );
-  if (secret) url.searchParams.set("secret", secret);
+): Promise<T> {
+  const url = new URL(`${API_BASE.replace(/\/+$/, "")}${path}`);
+  for (const [key, value] of Object.entries(params)) if (value) url.searchParams.set(key, value);
   let res: Response;
   try {
+    // The page address (which carries the secret) never goes out as Referer.
     res = await fetch(url.toString(), { signal, referrerPolicy: "no-referrer" });
   } catch {
     throw new PublicFeedError("error");
@@ -71,47 +96,53 @@ export async function fetchPublicFeed(
   if (res.status === 404) throw new PublicFeedError("notFound");
   if (!res.ok) throw new PublicFeedError("error");
   try {
-    const data = (await res.json()) as PublicFeedData;
-    return { feed: data.feed, events: (data.events ?? []).filter((ev) => !ev.isDraft) };
+    return (await res.json()) as T;
   } catch {
     throw new PublicFeedError("error");
   }
 }
 
 /**
- * The time zone "today" and the time note refer to. The feed endpoint delivers no calendar
- * zone, so the most frequent zone of the events is used (null: fall back to the browser).
+ * Loads a feed, optionally only the events (and holidays) overlapping `range` (inclusive days).
+ * Drafts are dropped again here although the API never delivers them.
  */
-export function feedTimeZone(events: Pick<PublicFeedEvent, "timezone">[]): string | null {
-  const counts = new Map<string, number>();
-  for (const ev of events) {
-    if (ev.timezone) counts.set(ev.timezone, (counts.get(ev.timezone) ?? 0) + 1);
-  }
-  let best: string | null = null;
-  let max = 0;
-  for (const [zone, n] of counts) {
-    if (n > max) {
-      best = zone;
-      max = n;
-    }
-  }
-  return best;
+export async function fetchPublicFeed(
+  feedId: string,
+  secret: string | undefined,
+  range?: { from: IsoDate; to: IsoDate },
+  signal?: AbortSignal,
+): Promise<PublicFeedData> {
+  const data = await fetchPublic<PublicFeedData>(
+    `/api/feed/${encodeURIComponent(feedId)}/events`,
+    { secret, from: range?.from, to: range?.to },
+    signal,
+  );
+  return {
+    feed: { ...data.feed, audiences: data.feed?.audiences ?? [] },
+    events: (data.events ?? []).filter((ev) => !ev.isDraft),
+    holidays: data.holidays ?? [],
+  };
+}
+
+/** One published event of the feed (404 = unknown / draft / not in the feed, or unknown feed). */
+export async function fetchPublicEvent(
+  feedId: string,
+  eventId: string,
+  secret: string | undefined,
+  signal?: AbortSignal,
+): Promise<PublicEventData> {
+  const data = await fetchPublic<PublicEventData>(
+    `/api/feed/${encodeURIComponent(feedId)}/events/${encodeURIComponent(eventId)}`,
+    { secret },
+    signal,
+  );
+  if (!data.event || data.event.isDraft) throw new PublicFeedError("notFound");
+  return { feed: { ...data.feed, audiences: data.feed?.audiences ?? [] }, event: data.event };
 }
 
 export interface AudienceOption {
   id: string;
   name: string;
-}
-
-/** Target groups used by at least one event, sorted by name. */
-export function feedAudiences(events: Pick<PublicFeedEvent, "targetGroups">[]): AudienceOption[] {
-  const map = new Map<string, string>();
-  for (const ev of events) {
-    for (const { targetGroup } of ev.targetGroups) map.set(targetGroup.id, targetGroup.name);
-  }
-  return [...map.entries()]
-    .map(([id, name]) => ({ id, name }))
-    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** Events of the selected audiences (no selection = all) whose name contains the query. */
@@ -137,13 +168,6 @@ export function eventsInRange<T extends PublicFeedEvent>(
     const end = ev.dateEnd ? ev.dateEnd.slice(0, 10) : start;
     return overlapsRange({ start, end: end < start ? start : end }, from, to);
   });
-}
-
-export function findPublicEvent<T extends PublicFeedEvent>(
-  events: T[],
-  eventId: string | undefined,
-): T | undefined {
-  return eventId ? events.find((ev) => String(ev.id) === eventId) : undefined;
 }
 
 /** Ids from a comma separated URL value; only ids the feed knows survive. */

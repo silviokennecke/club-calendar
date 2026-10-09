@@ -25,7 +25,27 @@ class PublicFeedController extends AbstractController
         $tgParam = $request->query->get('targetGroupIds');
         $tgIds = $tgParam ? array_values(array_filter(array_map('trim', explode(',', $tgParam)))) : null;
 
-        return new JsonResponse($this->feedService->getFeedEvents($feedId, $secret, $tgIds ?: null));
+        return new JsonResponse($this->feedService->getFeedEvents(
+            $feedId,
+            $secret,
+            $tgIds ?: null,
+            $this->queryString($request, 'from'),
+            $this->queryString($request, 'to'),
+        ));
+    }
+
+    #[Route('/{feedId}/events/{eventId}', methods: ['GET'])]
+    public function event(string $feedId, string $eventId, Request $request): JsonResponse
+    {
+        return new JsonResponse($this->feedService->getFeedEvent($feedId, $eventId, $this->queryString($request, 'secret')));
+    }
+
+    /** A scalar query parameter (an array such as ?from[]= is a 400 from InputBag). */
+    private function queryString(Request $request, string $key): ?string
+    {
+        $value = $request->query->get($key);
+
+        return null === $value ? null : (string) $value;
     }
 
     #[Route('/{feedId}/ics', methods: ['GET'])]

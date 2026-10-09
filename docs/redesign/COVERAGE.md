@@ -1,6 +1,6 @@
 # Design-Abdeckung (Phase 9a)
 
-Stand: 2026-10-06. Quelle: Design-Artifact (lokal `…/artifact-files/469a6604-…/project/`, 72 Artboards laut
+Stand: 2026-10-09 (Paket 1 des Backend-Plans: Zähler, öffentlicher Kopf, optionale Vorlagen-Zeiten; vorher 2026-10-06). Quelle: Design-Artifact (lokal `…/artifact-files/469a6604-…/project/`, 72 Artboards laut
 `canvas.json`, Stand inkl. Korrektur "Termine = Modals" vom 2026-10-04). Pfade unten relativ zu `frontend/src/`,
 Routen relativ zu `/clubs/:clubId/calendars/:calendarId` (= `…`).
 
@@ -15,7 +15,7 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 
 ## Ergebnis
 
-- 72 Artboards: **64 vollständig**, **8 abweichend** (bewusst, begründet), **0 offene Lücken in der Zuordnung**.
+- 72 Artboards: **66 vollständig**, **6 abweichend** (bewusst, begründet), **0 offene Lücken in der Zuordnung**.
   Offene Teil-Lücken innerhalb abweichender Artboards: siehe "Offene Lücken".
 - In dieser Prüfung behoben: 9 Design-Punkte (siehe "Behobene Lücken"), davon 5 aus dem abgebrochenen Vorlauf übernommen, plus ein Nebenbefund (Sitzung beim Seitenwechsel).
 
@@ -37,7 +37,7 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 | Onboarding.dc.html | `pages/SetupPage.tsx` Schritt 1, `/setup`; `Stepper` | vollständig |
 | OnboardingCalendar.dc.html | `SetupPage` Schritt 2 (`?clubId=`), Zeitzone "automatisch aus deinem Browser erkannt" | vollständig |
 | OnboardingMobile.dc.html | `SetupPage` < 720px | vollständig |
-| ClubPicker.dc.html | `pages/ClubsPage.tsx`, `components/clubs/ClubCard.tsx`, `/clubs` | vollständig (Zähler "n Kalender · n Mitglieder" über N+1-Requests, BACKEND-GAPS Phase 2) |
+| ClubPicker.dc.html | `pages/ClubsPage.tsx`, `components/clubs/ClubCard.tsx`, `/clubs` | vollständig (Zähler "n Kalender · n Mitglieder" aus `GET /api/clubs`, keine Requests je Verein; die Kalenderliste lädt erst beim Öffnen eines Vereins) |
 | ContextSwitcher.dc.html | `layout/Sidebar.tsx`, `ContextMenu.tsx`, `ContextMenuItems.tsx` (Verein-/Kalendermenü, archivierte Kalender mit Archiv-Icon + "(archiviert)", Tastatur) | vollständig |
 | ContextSwitcherMobile.dc.html | `layout/Topbar.tsx` + `ContextMenu` (mobiles Menü) | vollständig |
 | Sidebar.dc.html | `layout/AppShell.tsx`, `Sidebar.tsx`, `Topbar.tsx`, `Tabbar.tsx`, `navigation.ts` (aria-current, Tab-Zuordnung Import/Vorlagen → "Termine", Export → "Veröffentlichen") | vollständig |
@@ -79,8 +79,8 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 | ImportReview.dc.html | `import/ImportReview.tsx`, `ReviewGroup.tsx`, `ImportEditDialog.tsx` (Sammelpanel mit "Entwurf (voreingestellt)", Gruppen, Hinweise übersprungen / Wiederholung / Duplikate / Kodierung, Leiste "n von m ausgewählt") | vollständig (Prüfung clientseitig, BACKEND-GAPS Phase 5); Text "Mehrere Orte" statt "Mehrere vorhandene Orte" (gemischte Gruppen können auch neue Orte enthalten) |
 | ImportReviewMobile.dc.html | `ImportReview` < 720px: Leiste über der Tabbar, Import-Button vor "Zurück", volle Breite | vollständig |
 | ImportDone.dc.html | `import/ImportDone.tsx` (Zähler, neue Orte mit Namen, Teilerfolg) | vollständig |
-| Templates.dc.html | `pages/TemplatesPage.tsx`, `…/templates` (Karten, Suche, Leerzustand, "Termin aus Vorlage", Lösch-Dialog) | vollständig |
-| TemplateEdit.dc.html | `pages/TemplateEditPage.tsx`, `…/templates/new`, `…/templates/:templateId` (Zeitzone des Vereins / eigene, Pflichtfehler, Lösch-Dialog, schreibgeschützt im Archiv) | abweichend: Zeiten sind Pflicht (Backend verlangt sie, BACKEND-GAPS Phase 5) |
+| Templates.dc.html | `pages/TemplatesPage.tsx`, `…/templates` (Karten, Suche, Leerzustand, "Termin aus Vorlage", Lösch-Dialog mit `eventCount`) | vollständig (Vorlage ohne Zeiten: "Ganztägig" statt der Uhrzeit, nicht im Design) |
+| TemplateEdit.dc.html | `pages/TemplateEditPage.tsx`, `…/templates/new`, `…/templates/:templateId` (Zeitzone des Vereins / eigene, Zeiten optional und leer bei neuen Vorlagen, Pflichtfehler, Lösch-Dialog mit Anzahl erzeugter Termine, schreibgeschützt im Archiv) | vollständig (ohne Zeiten entstehen ganztägige Termine; Hinweis an der Endzeit) |
 
 ## Kalender-Einstellungen
 
@@ -101,8 +101,8 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 | Artboard | Umsetzung | Status |
 | --- | --- | --- |
 | Feeds.dc.html | `pages/settings/FeedsPage.tsx`, `…/settings/feeds` (Sichtbarkeit als Wort + Icon, Zielgruppen, Adressen als `CopyField`, Lösch-Dialog) | abweichend: lange Adressen statt kurzer Slugs `/k/<verein>/<feed>` (BACKEND-GAPS Phase 7) |
-| FeedEdit.dc.html | `pages/settings/FeedEditPage.tsx`, `…/settings/feeds/new`, `…/settings/feeds/:feedId` (Name, öffentlich/privat, Zielgruppen, Geheimnis neu erzeugen, Löschen) | vollständig |
-| Club.dc.html | `pages/ClubPage.tsx`, `components/club/*`, `/clubs/:clubId` (Name, Mitglieder, Kalender anlegen/duplizieren/archivieren/löschen, archivierte Kalender, Verein löschen mit Namenseingabe) | abweichend: Kalenderzeile zeigt die Zeitzone statt "n Termine" (kein Zähler, BACKEND-GAPS Phase 7) |
+| FeedEdit.dc.html | `pages/settings/FeedEditPage.tsx`, `…/settings/feeds/new`, `…/settings/feeds/:feedId` (Name, öffentlich/privat, Zielgruppen, Geheimnis neu erzeugen, Löschen; Feed per Einzel-GET) | vollständig |
+| Club.dc.html | `pages/ClubPage.tsx`, `components/club/*`, `/clubs/:clubId` (Name, Mitglieder, Kalender anlegen/duplizieren/archivieren/löschen, archivierte Kalender, Verein löschen mit Namenseingabe) | vollständig (Kalenderzeile "n Termine" aus `eventCount`; Lösch-Dialoge mit den API-Zählern) |
 | ClubMobile.dc.html | `ClubPage` < 720px (Karten statt Tabelle) | vollständig |
 | Profile.dc.html | `pages/ProfilePage.tsx`, `components/profile/*`, `/profile` (Konto, Passkeys, verknüpfte Anmeldungen, Darstellung inkl. Theme-Schalter, Sprache, Konto löschen) | abweichend: Verknüpfen/Trennen deaktiviert ("Bald verfügbar"), daher entfallen die Toasts "Die Verknüpfung mit … wurde verknüpft" und der Hinweis "Mindestens eine Anmeldemethode muss bleiben" (BACKEND-GAPS Phase 7) |
 | ProfileMobile.dc.html | `ProfilePage` < 720px | vollständig |
@@ -111,9 +111,9 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 
 | Artboard | Umsetzung | Status |
 | --- | --- | --- |
-| Public.dc.html | `pages/FeedPage.tsx`, `/feed/:feedId`; `feed/PublicShell.tsx` (Skip-Link, LangSwitch, ThemeSwitch), Monat/Liste, Filter, Suche, Abo-Adressen, Zeitzonenhinweis | vollständig (Kopf nur mit Feed-Namen, Vereins-/Kalendername fehlen im API, BACKEND-GAPS Phase 8) |
+| Public.dc.html | `pages/FeedPage.tsx`, `/feed/:feedId`; `feed/PublicShell.tsx` (Skip-Link, LangSwitch, ThemeSwitch), Kopf mit Vereins- und Kalendername, Monat/Liste, Filter, Suche, Abo-Adressen, Zeitzonenhinweis und "heute" in der Zone aus der API, Feiertage im Monat, Laden je Monatsraster | vollständig (Feed-Name als Seitentitel; `noindex` bei privaten Feeds) |
 | PublicMobile.dc.html | `FeedPage` < 720px | vollständig |
-| PublicEvent.dc.html | `pages/PublicEventModal.tsx`, `/feed/:feedId/events/:eventId` (Dialog über dem Feed, Karte + Textalternative, ICS-Datei) | vollständig |
+| PublicEvent.dc.html | `pages/PublicEventModal.tsx`, `/feed/:feedId/events/:eventId` (Dialog über dem Feed, Untertitel "Verein · Kalender", Termin per Einzel-Endpoint, Karte + Textalternative, ICS-Datei in der Zone des Termins) | vollständig |
 | PublicEventMobile.dc.html | `PublicEventModal` als Bottom-Sheet | vollständig |
 | PublicStates.dc.html | `feed/PublicStates.tsx` (Laden, privat/Schlüssel fehlt, nicht gefunden, Ladefehler mit "Erneut versuchen") | vollständig; Ladefehler-Text "Deine Auswahl bleibt dabei erhalten" statt "Deine Eingaben gehen dabei nicht verloren" (Gäste haben keine Eingaben, nur Filter) |
 
@@ -149,18 +149,18 @@ Kein eigenes Artboard; Wortlaut und Optik nach PublicStates / CalendarStates (Em
 | --- | --- | --- | --- |
 | 1 | Termin löschen | `EventFormModal` | wie Design |
 | 2 | Mehrere Termine löschen | `EventsListPage` | wie Design (Liste "Name (TT.MM.)", Entwürfe-Variante) |
-| 3 | Vorlage löschen | `TemplatesPage`, `TemplateEditPage` | nach Templates/TemplateEdit.dc.html ("Bereits aus dieser Vorlage erzeugte Termine bleiben unverändert."); Dialogs.dc.html formuliert "Nur die Vorlage wird gelöscht. Bereits erzeugte Termine bleiben unberührt." – Design in sich uneinheitlich |
-| 4–6 | Eigenschaft / Feature / Zielgruppe löschen | `MasterList` | **angeglichen**: "Die Eigenschaft wird aus der Liste entfernt.", "Bei 2 Terminen (A, B) wird die Zuordnung entfernt. Die Termine selbst bleiben bestehen." (Namen bis 3 Termine), Zielgruppe: "… Feeds, die diese Zielgruppe ausgewählt haben, verlieren sie aus ihrer Auswahl." Zusätzlich (nicht im Design): "n Vorlagen verlieren die Zuordnung." |
-| 7 | Ort löschen | `LocationsPage` | **angeglichen**: "Der Ort wird samt Kartenposition entfernt.", "n Termine mit diesem Ort haben danach keinen Ort mehr. Die Vorlage „…“ verliert ihren Standardort." |
+| 3 | Vorlage löschen | `TemplatesPage`, `TemplateEditPage` | nach Templates/TemplateEdit.dc.html ("Bereits aus dieser Vorlage erzeugte Termine bleiben unverändert."), mit `eventCount` als "Die 4 bereits aus dieser Vorlage erzeugten Termine bleiben unverändert." bzw. "Aus dieser Vorlage wurden noch keine Termine erzeugt."; Dialogs.dc.html formuliert "Nur die Vorlage wird gelöscht. Bereits erzeugte Termine bleiben unberührt." – Design in sich uneinheitlich |
+| 4–6 | Eigenschaft / Feature / Zielgruppe löschen | `MasterList` | **angeglichen**: "Die Eigenschaft wird aus der Liste entfernt.", "Bei 2 Terminen (A, B) wird die Zuordnung entfernt. Die Termine selbst bleiben bestehen." (Namen bis 3 Termine, vom Backend in `usage.eventNames`), Zielgruppe: "… Feeds, die diese Zielgruppe ausgewählt haben, verlieren sie aus ihrer Auswahl." (nur wenn `usage.feeds` > 0). Zusätzlich (nicht im Design): "n Vorlagen verlieren die Zuordnung." Zähler aus der Liste (`usage`), keine Termin-/Vorlagenlisten |
+| 7 | Ort löschen | `LocationsPage` | **angeglichen**: "Der Ort wird samt Kartenposition entfernt.", "n Termine mit diesem Ort haben danach keinen Ort mehr. Die Vorlage „…“ verliert ihren Standardort." (Zähler und Vorlagenname aus `usage`) |
 | 8 | Feiertagskalender löschen | `HolidayCalendarsPage` | **angeglichen**: "Die 16 Feiertage verschwinden aus dem Kalender und lassen sich in Serien nicht mehr aussparen. Die Quelle im Internet bleibt unverändert." |
 | 9 | Feed löschen | `FeedsPage`, `FeedEditPage` | wie Design |
 | 10 | Geheimnis neu erzeugen | `FeedEditPage` | **angeglichen**: "Der Feed „…“ bekommt ein neues Geheimnis und damit neue Adressen." |
 | 11 | Kalender archivieren | `CalendarsSection` | **angeglichen**: "Der Kalender wandert in die Liste der archivierten Kalender." + "Der Kalender ist danach gesperrt: …"; bewusst ergänzt: "Seine Feeds liefern bis dahin keine Termine mehr." (archivierte Kalender antworten im Feed mit 404, BACKEND-GAPS Phase 8) |
-| 12 | Kalender löschen | `CalendarDeleteDialog` | **angeglichen**: "Der Kalender wird dauerhaft gelöscht.", "Löscht den Kalender mit allen 6 Terminen und seinen Feeds unwiderruflich. …"; archiviert nach Club.dc.html deleteArchived |
+| 12 | Kalender löschen | `CalendarDeleteDialog` | **angeglichen**: "Der Kalender wird dauerhaft gelöscht.", "Löscht den Kalender mit allen 6 Terminen und seinen Feeds unwiderruflich. …" (`eventCount` per Einzel-GET); archiviert nach Club.dc.html deleteArchived |
 | 13 | Mitglied entfernen | `MembersSection` | wie Design |
 | 14 | Passkey entfernen | `PasskeysSection` | nach Profile.dc.html (mit Gerätename im Text) |
 | 15 | Verein verlassen | `MembersSection` | wie Design (+ Variante "letztes Mitglied") |
-| 16 | Verein löschen | `ClubPage` | wie Design (Namenseingabe) |
+| 16 | Verein löschen | `ClubPage` | wie Design (Namenseingabe), Folgenhinweis mit Umfang aus `GET /api/clubs/:id`: "Löscht den Verein mit 2 Kalendern, 14 Terminen und 2 Feeds sowie allen Vorlagen unwiderruflich. Alle Mitglieder verlieren den Zugriff." (ohne Zähler der Design-Text) |
 
 ## Tokens und Styling
 
@@ -202,5 +202,5 @@ Nebenbefund (kein Design-Thema, nötig für eine stabile E2E-Suite):
 | L2 | Passwort vergessen: Zustand "Prüfe dein Postfach" | ForgotPassword | mittel (+ Backend) | kein Reset-Endpoint |
 | L3 | Terminserien anlegen / Serien-Dialoge | EventSeries | groß (+ Backend) | keine Serien im Backend |
 | L4 | Verknüpfte Anmeldungen verknüpfen/trennen inkl. Toasts und Schutzhinweis | Profile | mittel (+ Backend) | keine Endpoints |
-| L5 | Kalenderzeile "n Termine", Vereins-/Kalendername im öffentlichen Kopf, kurze Feed-Adressen | Club, Public, Feeds | klein (Frontend) + Backend | fehlende Felder/Slugs im API |
+| L5 | Kurze Feed-Adressen (`/k/<verein>/<feed>`) | Feeds | klein (Frontend) + Backend | keine Slugs im API ("n Termine" und der öffentliche Kopf sind seit Paket 1 umgesetzt) |
 | L6 | Passkey-Dialog-Text ohne Namen (Dialogs) vs. mit Namen (Profile), Vorlagen-Dialog zwei Fassungen | Dialogs / Profile / Templates | – | Design uneinheitlich, Umsetzung folgt den Seiten-Artboards; Klärung im Design |

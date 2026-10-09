@@ -13,14 +13,25 @@ export interface Club {
   id: string;
   name: string;
   timezone: string;
+  /** Active calendars (`GET /api/clubs` and `GET /api/clubs/:id`). */
+  calendarCount?: number;
+  archivedCalendarCount?: number;
+  memberCount?: number;
+  /** Events / feeds of all calendars (only `GET /api/clubs/:id`, for the delete dialog). */
+  eventCount?: number;
+  feedCount?: number;
 }
 
 export interface Calendar {
   id: string;
-  clubid: string;
+  clubId: string;
   name: string;
   timezone?: string | null;
-  archivedAt?: string | null; // add this line
+  archivedAt?: string | null;
+  /** Counters of the calendar list and the single GET. */
+  eventCount?: number;
+  templateCount?: number;
+  feedCount?: number;
 }
 
 export interface CalendarFeed {
@@ -32,23 +43,45 @@ export interface CalendarFeed {
   targetGroups: { feedId: string; targetGroupId: string }[];
 }
 
+/**
+ * What deleting a property / feature / audience detaches it from (list endpoints only).
+ * `eventNames`: distinct names of the affected events when at most 3 events are affected, else [].
+ */
+export interface ReferenceUsage {
+  events: number;
+  templates: number;
+  /** Audiences only: feeds that selected the audience. */
+  feeds?: number;
+  eventNames: string[];
+}
+
 export interface Property {
   id: string;
   calendarid: string;
   name: string;
   icon: string | null;
+  usage?: ReferenceUsage;
 }
 
 export interface Feature {
   id: string;
   calendarid: string;
   name: string;
+  usage?: ReferenceUsage;
 }
 
 export interface TargetGroup {
   id: string;
   calendarid: string;
   name: string;
+  usage?: ReferenceUsage;
+}
+
+/** Events and templates at a place; `templateNames` when at most 3 templates use it, else []. */
+export interface LocationUsage {
+  events: number;
+  templates: number;
+  templateNames: string[];
 }
 
 export interface Location {
@@ -61,6 +94,8 @@ export interface Location {
   country?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  /** List endpoint only. */
+  usage?: LocationUsage;
 }
 
 export function formatAddress(loc: Pick<Location, "street" | "zip" | "city" | "country">): string {
@@ -76,14 +111,18 @@ export interface EventTemplate {
   id: string;
   calendarId: string;
   name: string;
-  timezone: string;
-  timeBegin: string;
-  timeEnd: string;
+  /** null: the calendar's (else the club's) zone. */
+  timezone: string | null;
+  /** Both null: events from the template are all-day unless times are given when creating them. */
+  timeBegin: string | null;
+  timeEnd: string | null;
   locationId: string | null;
   location: Location | null;
   properties: { property: Property }[];
   features: { feature: Feature }[];
   targetGroups: { targetGroup: TargetGroup }[];
+  /** Events created from this template (list and single GET). */
+  eventCount?: number;
 }
 
 export interface CalendarEvent {

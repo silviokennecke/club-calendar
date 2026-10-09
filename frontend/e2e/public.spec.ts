@@ -10,6 +10,9 @@ interface PublicSeed {
   draftEventId: string;
   herbstfestId: string;
   feedName: string;
+  /** The page header shows club and calendar (design: Public), the feed name is the page title. */
+  clubName: string;
+  calendarName: string;
 }
 
 async function seedPublic(request: APIRequestContext, name: string): Promise<PublicSeed> {
@@ -95,6 +98,8 @@ async function seedPublic(request: APIRequestContext, name: string): Promise<Pub
     draftEventId: draft.id,
     herbstfestId: herbstfest.id,
     feedName: "Schießbetrieb 2026",
+    clubName: `${name} Verein`,
+    calendarName: `${name} Verein Termine`,
   };
 }
 
@@ -113,8 +118,10 @@ test.describe("Öffentlicher Kalender", () => {
     page,
   }) => {
     await page.goto(`/feed/${seed.publicFeedId}?date=2026-10-08`);
-    await expect(page.getByRole("heading", { level: 1, name: seed.feedName })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: seed.clubName })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Oktober 2026" })).toBeVisible();
+    // Header from the API: club, calendar, zone of the calendar / club
+    await expect(page.getByText(seed.calendarName, { exact: true })).toBeVisible();
     await expect(
       page.getByText("Alle Uhrzeiten gelten in der Zeitzone Europe/Berlin."),
     ).toBeVisible();
@@ -141,12 +148,36 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(page).toHaveTitle(`${seed.feedName} – Öffentlicher Kalender`);
   });
 
+  test("lädt nur den sichtbaren Monat und den geöffneten Termin einzeln", async ({ page }) => {
+    const apiCalls: string[] = [];
+    page.on("request", (req) => {
+      if (req.url().includes("/api/feed/")) apiCalls.push(req.url());
+    });
+    await page.goto(`/feed/${seed.publicFeedId}?date=2026-10-08&view=list`);
+    await expect(page.getByRole("heading", { level: 1, name: seed.clubName })).toBeVisible();
+    expect(apiCalls.some((u) => u.includes("/events?from=2026-09-28&to=2026-11-01"))).toBe(true);
+    await page
+      .getByRole("region", { name: "Termine im Oktober 2026" })
+      .getByRole("button", { name: "Herbstfest" })
+      .click();
+    await expect(page.getByRole("dialog", { name: "Herbstfest" })).toBeVisible();
+    await expect
+      .poll(() => apiCalls.some((u) => u.includes(`/events/${seed.herbstfestId}`)))
+      .toBe(true);
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Nächster Monat" }).click();
+    await expect(page.getByRole("heading", { level: 2, name: "November 2026" })).toBeVisible();
+    await expect
+      .poll(() => apiCalls.some((u) => u.includes("/events?from=2026-10-26&to=2026-12-06")))
+      .toBe(true);
+  });
+
   test("Entwürfe sind nirgends sichtbar (Monat, Liste, Suche, Detailadresse)", async ({
     page,
     request,
   }) => {
     await page.goto(`/feed/${seed.publicFeedId}?date=2026-10-12`);
-    await expect(page.getByRole("heading", { level: 1, name: seed.feedName })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: seed.clubName })).toBeVisible();
     await expect(page.getByText("Zeige 3 von 3 Terminen")).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Geheimer Entwurf");
     await page.getByRole("button", { name: "Liste" }).click();
@@ -224,7 +255,9 @@ test.describe("Öffentlicher Kalender", () => {
     const dialog = page.getByRole("dialog", { name: "Herbstfest" });
     await expect(dialog).toHaveAttribute("aria-modal", "true");
     await expect(dialog.getByRole("heading", { level: 1, name: "Herbstfest" })).toBeFocused();
-    await expect(page.locator("[inert]").getByText(seed.feedName).first()).toBeAttached();
+    await expect(page.locator("[inert]").getByText(seed.clubName).first()).toBeAttached();
+    // Subtitle as in the design: "Verein · Kalender"
+    await expect(dialog.getByText(`${seed.clubName} · ${seed.calendarName}`)).toBeVisible();
     await expect(dialog.getByText("Sa 24.10.2026")).toBeVisible();
     await expect(dialog.getByText("15:00 bis 22:00 Uhr")).toBeVisible();
     const place = dialog.getByRole("region", { name: "Ort" });
@@ -250,7 +283,7 @@ test.describe("Öffentlicher Kalender", () => {
     // Schließen: Monat, Ansicht und Filter bleiben, Fokus zurück auf den Termin in der Liste
     await dialog.getByRole("button", { name: "Schließen" }).last().click();
     await expect(dialog).toHaveCount(0);
-    await expect(page.getByRole("heading", { level: 1, name: seed.feedName })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: seed.clubName })).toBeVisible();
     await expect(
       page
         .getByRole("region", { name: "Termine im Oktober 2026" })
@@ -318,7 +351,7 @@ test.describe("Öffentlicher Kalender", () => {
     ).toBeVisible();
     fail = false;
     await page.getByRole("button", { name: "Erneut versuchen" }).click();
-    await expect(page.getByRole("heading", { level: 1, name: seed.feedName })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: seed.clubName })).toBeVisible();
   });
 
   test("geteilter Link auf einen Termin: Dialog über dem Feed im Monat des Termins", async ({
@@ -345,7 +378,7 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(page).toHaveURL(
       new RegExp(`/feed/${seed.privateFeedId}\\?date=2026-10-24&secret=${seed.secret}$`),
     );
-    await expect(page.getByRole("heading", { level: 1, name: "Vorstand intern" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: seed.clubName })).toBeVisible();
 
     // Unknown (or draft) event: "not found" in the dialog, the feed stays below.
     await page.goto(`/feed/${seed.privateFeedId}/events/unbekannt?secret=${seed.secret}`);
@@ -369,7 +402,7 @@ test.describe("Öffentlicher Kalender", () => {
       if (referer) referers.push(`${req.url()} <- ${referer}`);
     });
     await page.goto(`/feed/${seed.privateFeedId}?secret=${seed.secret}&date=2026-10-08`);
-    await expect(page.getByRole("heading", { level: 1, name: "Vorstand intern" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: seed.clubName })).toBeVisible();
     await expect(page.getByRole("grid")).toBeVisible();
     await expect(page.getByRole("link", { name: "Kalender abonnieren" })).toHaveAttribute(
       "href",
@@ -446,7 +479,7 @@ test.describe("Öffentlicher Kalender", () => {
 
   test("Skip-Link ist der erste Tabstopp und springt zum Inhalt", async ({ page }) => {
     await page.goto(`/feed/${seed.publicFeedId}?date=2026-10-08`);
-    await expect(page.getByRole("heading", { level: 1, name: seed.feedName })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: seed.clubName })).toBeVisible();
     await page.keyboard.press("Tab");
     const skip = page.getByRole("link", { name: "Zum Inhalt springen" });
     await expect(skip).toBeFocused();
@@ -462,7 +495,7 @@ test.describe("Öffentlicher Kalender", () => {
       page,
     }) => {
       await page.goto(`/feed/${seed.publicFeedId}?date=2026-10-08`);
-      await expect(page.getByRole("heading", { level: 1, name: seed.feedName })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: seed.clubName })).toBeVisible();
       const noOverflow = () =>
         page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
       expect(await noOverflow()).toBe(true);
