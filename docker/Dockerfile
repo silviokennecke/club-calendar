@@ -49,7 +49,9 @@ RUN apk add --no-cache bash tini \
     && rm -f /usr/local/bin/install-php-extensions \
     && mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
     # own pool config, runs unprivileged (no user/group directive)
-    && rm -f /usr/local/etc/php-fpm.d/www.conf /usr/local/etc/php-fpm.d/www.conf.default /usr/local/etc/php-fpm.d/zz-docker.conf
+    && rm -f /usr/local/etc/php-fpm.d/www.conf /usr/local/etc/php-fpm.d/www.conf.default /usr/local/etc/php-fpm.d/zz-docker.conf \
+    # no php-fpm access log (Caddy already logs every request); docker.conf of the base image enables it
+    && sed -i '/^access\.log/d' /usr/local/etc/php-fpm.d/docker.conf
 
 COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 COPY docker/php.ini "$PHP_INI_DIR/conf.d/zz-app.ini"
