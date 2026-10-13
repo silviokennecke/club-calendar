@@ -8,11 +8,11 @@
 # Optional:  FRONTEND_URL / BACKEND_URL / WEBAUTHN_RP_ID (derived from APP_URL), MAILER_DSN, MAILER_FROM, MAPBOX_TOKEN,
 #            GOOGLE_*/MICROSOFT_*/APPLE_* OAuth settings, SYMFONY_TRUSTED_PROXIES (behind a TLS proxy, e.g. PRIVATE_SUBNETS),
 #            RUN_MIGRATIONS (default 1), MIGRATION_RETRIES (default 15), PORT (default 8080)
-# JWT keys:  JWT_PRIVATE_KEY / JWT_PUBLIC_KEY (paths) or keys in /var/www/app/config/jwt (mount a volume there,
+# JWT keys:  JWT_PRIVATE_KEY / JWT_PUBLIC_KEY (paths) or keys in /var/www/html/config/jwt (mount a volume there,
 #            otherwise a new keypair is generated on every container start and sessions are lost).
 set -euo pipefail
 
-APP_DIR=/var/www/app
+APP_DIR=/var/www/html
 
 log() { echo "[entrypoint] $*" >&2; }
 
@@ -29,7 +29,7 @@ if [ "${1:-serve}" != "serve" ]; then
 fi
 
 missing=()
-for var in APP_SECRET JWT_REFRESH_SECRET DATABASE_URL APP_URL WEBAUTHN_RP_NAME; do
+for var in APP_SECRET JWT_REFRESH_SECRET DATABASE_URL APP_URL; do
     [ -n "${!var:-}" ] || missing+=("$var")
 done
 if [ ${#missing[@]} -gt 0 ]; then

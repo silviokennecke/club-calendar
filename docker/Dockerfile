@@ -63,7 +63,7 @@ ENV APP_ENV=prod \
     XDG_DATA_HOME=/tmp/caddy-data \
     XDG_CONFIG_HOME=/tmp/caddy-config
 
-WORKDIR /var/www/app
+WORKDIR /var/www/html
 
 COPY --from=backend-vendor --chown=www-data:www-data /app/backend/ ./
 COPY --from=frontend-build --chown=www-data:www-data /build/backend/public/ ./public/
@@ -81,10 +81,10 @@ RUN --mount=type=bind,source=docker/build.env,target=/tmp/build.env \
 
 USER www-data
 EXPOSE 8080
-VOLUME ["/var/www/app/config/jwt"]
+VOLUME ["/var/www/html/config/jwt"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD wget -q -O /dev/null "http://127.0.0.1:${PORT}/api/health" || exit 1
+    CMD curl -sf "http://127.0.0.1:${PORT}/api/health" > /dev/null || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/docker-entrypoint.sh"]
 CMD ["serve"]
