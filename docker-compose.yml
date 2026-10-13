@@ -14,18 +14,22 @@ services:
       timeout: 5s
       retries: 5
 
-  mysql_test:
-    image: mysql:8.0
-    ports:
-      - "3360:3306"
+  club_calendar:
+    image: club_calendar:latest # todo adjust to ghcr.io
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    env_file:
+      - .env.local
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: club_calendar_test
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      DATABASE_URL: mysql://root:root@mysql:3306/club_calendar
+    ports:
+      - 8080:8080
+    volumes:
+      - club_calendar_data:/var/www/html/var/cache
+    depends_on:
+      - mysql
 
 volumes:
   mysql_data:
+  club_calendar_data:
