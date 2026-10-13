@@ -7,6 +7,24 @@
             "button": "E-Mail-Adresse bestätigen",
             "expiry_note": "Falls du kein Konto erstellt hast, kannst du diese E-Mail ignorieren.",
             "ignore_note": "Dieser Link läuft in 24 Stunden ab."
+        },
+        "reset": {
+            "subject": "Neues Passwort für Club Calendar festlegen",
+            "greeting": "Hallo {name},",
+            "body": "Jemand (hoffentlich du) möchte ein neues Passwort für dein Konto festlegen. Klicke auf den Button, um ein neues Passwort zu wählen. Danach wirst du auf allen Geräten abgemeldet.",
+            "button": "Neues Passwort festlegen",
+            "expiry_note": "Dieser Link ist 60 Minuten gültig und funktioniert nur einmal.",
+            "ignore_note": "Falls du das nicht warst, kannst du diese E-Mail ignorieren. Dein Passwort bleibt unverändert.",
+            "link_note": "Falls der Button nicht funktioniert, kopiere diesen Link in deinen Browser:"
+        },
+        "change": {
+            "subject": "Bestätige deine neue E-Mail-Adresse",
+            "greeting": "Hallo {name},",
+            "body": "Du möchtest die E-Mail-Adresse deines Club-Calendar-Kontos auf {email} ändern. Klicke auf den Button, um die neue Adresse zu bestätigen. Danach meldest du dich mit der neuen Adresse an.",
+            "button": "Neue E-Mail-Adresse bestätigen",
+            "expiry_note": "Dieser Link ist 24 Stunden gültig und funktioniert nur einmal.",
+            "ignore_note": "Falls du das nicht warst, kannst du diese E-Mail ignorieren. Die Adresse wird dann nicht geändert.",
+            "link_note": "Falls der Button nicht funktioniert, kopiere diesen Link in deinen Browser:"
         }
     }
 }

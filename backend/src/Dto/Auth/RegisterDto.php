@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dto\Auth;
 
+use App\Validator\PasswordPolicy;
 use Symfony\Component\Validator\Constraints as Assert;
 
 class RegisterDto
@@ -16,8 +17,7 @@ class RegisterDto
     #[Assert\Email]
     public string $email = '';
 
-    #[Assert\NotBlank]
-    #[Assert\Length(min: 8)]
+    #[PasswordPolicy]
     public string $password = '';
 
     public ?string $language = null;

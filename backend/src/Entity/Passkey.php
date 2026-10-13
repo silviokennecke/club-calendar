@@ -34,6 +34,10 @@ class Passkey
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
+    /** Last successful sign-in with this passkey (UTC); null until it was used once. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $lastUsedAt = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -125,6 +129,18 @@ class Passkey
     public function setCreatedAt(\DateTimeImmutable $createdAt): static
     {
         $this->createdAt = $createdAt;
+
+        return $this;
+    }
+
+    public function getLastUsedAt(): ?\DateTimeImmutable
+    {
+        return $this->lastUsedAt;
+    }
+
+    public function setLastUsedAt(?\DateTimeImmutable $lastUsedAt): static
+    {
+        $this->lastUsedAt = $lastUsedAt;
 
         return $this;
     }

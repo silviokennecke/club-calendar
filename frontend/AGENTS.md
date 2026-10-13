@@ -73,7 +73,15 @@ does not offer yet and how the frontend works around it).
 - Auth/setup frame: `components/auth/AuthLayout.tsx` (card, `top` for the Stepper, `headerEnd`, `bare` for the
   club picker, `headingRef` for focus). `/setup` is the onboarding (Stepper Verein/Kalender; always starts at step 1 (new
   club), `?clubId=` continues at step 2 for that club); `/clubs` is the club picker (`?select=1` skips the last-calendar redirect);
-  `GuestRoute` sends signed-in users from /login, /signup, /forgot-password to /clubs.
+  `GuestRoute` sends signed-in users from /login, /signup, /forgot-password, /reset-password to /clubs.
+- Password reset: `/forgot-password` (`ForgotPasswordPage`: form → "Prüfe dein Postfach" with the entered address;
+  the API answers 204 for every address, 429 counts as sent, only network / server errors show a banner) and
+  `/reset-password?token=` (`ResetPasswordPage`: reads the token once and removes it from the address with a
+  `replace` navigation, `useMetaTag("referrer", "no-referrer")`; states form / invalid (unknown, used and expired look
+  the same, "Neuen Link anfordern") / done (banner + "Weiter zur Anmeldung")). API helpers `lib/passwordReset.ts`;
+  the password policy (8–128 characters, counted as code points like the API) is `lib/password.ts`, also used by the
+  signup and the profile. `/auth/verify-email` also shows the result of an e-mail change (`status=email_changed`,
+  `flow=email_change` errors with "Zum Profil").
 - Context switcher menus (`layout/ContextMenu.tsx`): disclosure with Escape, arrow keys, Home/End, Tab-out closes.
 - Calendar (no FullCalendar): pure date logic in `src/lib/calendar/` (`dates.ts` ISO-date arithmetic in UTC,
   month grid, ISO weeks, `todayIn(timeZone)`; `items.ts` events/holidays as inclusive ranges, week lane layout,
@@ -166,11 +174,23 @@ does not offer yet and how the frontend works around it).
     (`eventCount`). Deleting the club asks to type its name (`ConfirmDialog` `requireText`) and names the scope from
     the club's counters (`clubDeleteConsequence`). Pure logic: `src/lib/club/`. The club picker (`ClubsPage` /
     `ClubCard`) shows the counters of `GET /api/clubs` and loads a club's calendars only when it is opened.
-  - Profile: `/profile` (`pages/ProfilePage`, `components/profile/`: `LinkedLoginsSection` (read-only, link / unlink
-    disabled "Bald verfügbar"), `PasskeysSection` (WebAuthn via `@simplewebauthn/browser`, remove with
-    `ConfirmDialog`), `PreferencesSection` (date format, first weekday and language are saved on the account at
-    once, theme only in this browser)). Without a last-used club the page uses the `AuthLayout` frame instead of
-    the app shell. Pure logic: `src/lib/profile/`.
+  - Profile: `/profile` (`pages/ProfilePage`, `components/profile/`: `AccountSection` (name via `updateUser({name})`;
+    new e-mail + current password → `POST /api/auth/change-email`, the waiting address (`pendingEmail` of
+    `/api/auth/me`) as banner with "Änderung verwerfen" (`DELETE …/change-email`); SSO-only accounts get a hint
+    instead), `PasswordSection` (change with the current password: the API returns new tokens, `login()` stores them,
+    other devices are signed out; SSO-only: "Passwort per E-Mail festlegen" = forgot-password for the own address),
+    `LinkedLoginsSection` (link: `POST /api/auth/oauth/{provider}/link-start` → `window.location.assign(url)`; the API
+    comes back with `?link_provider=&link_proof=` and the page completes the link with this session's token
+    (`POST …/link-complete {proof}`; the API refuses a flow started by another user: link-CSRF protection); unlink
+    with `ConfirmDialog`, disabled with the "Mindestens eine Anmeldemethode muss bleiben" note when it is the last
+    method (`isLastSignInMethod`); the page reads `?linked=` / `?link_error=` / `link_proof` once (banner + toast),
+    removes them from the address and maps codes with `linkErrorKind`). After a failed submit the profile forms move
+    focus to the first invalid field (`focusFirstInvalid`, `lib/focus.ts`; field errors are no live regions),
+    `PasskeysSection` (WebAuthn via `@simplewebauthn/browser`, "zuletzt benutzt am …" from `lastUsedAt` in the
+    browser's time zone, remove with `ConfirmDialog`),
+    `PreferencesSection` (date format, first weekday and language are saved on the account at once, theme only in
+    this browser)). Without a last-used club the page uses the `AuthLayout` frame instead of the app shell. Pure
+    logic: `src/lib/profile/`.
   - Dialog guidance: use a controlled `open` state for `ConfirmDialog` when the page re-renders while it is open
     (trigger mode closed the dialog when data arrived in the browser). `FormDialog` (shared) is the small dialog for
     forms, `Modal` the routed / large dialog; both build on `DialogFrame`.
@@ -199,17 +219,21 @@ does not offer yet and how the frontend works around it).
 - All texts via i18n (`src/locales/de.json`, `en.json`); shared component texts under `ui.*`, shell under `shell.*`.
 - Tests: Vitest + Testing Library (jsdom, setup in `src/test/setup.ts`, tests run in German).
 - API errors: `lib/api.ts` throws `ApiError` (with `status` and the stable `code` of the RFC 7807 body) from
-  `apiGet/apiPost/apiPatch/apiDelete`; recognise errors by `code`, never by the English `detail` (e.g. `email_taken`,
-  `email_not_verified`, `unknown_reference`, `duplicate_name`, `too_many_events`; list in
+  `apiGet/apiPost/apiPatch/apiDelete` (all four read the body; 204 responses resolve to `undefined`); recognise
+  errors by `code` (status: `apiErrorStatus`), never by the message (the server's `detail`) (e.g. `email_taken`,
+  `email_not_verified`, `unknown_reference`, `duplicate_name`, `too_many_events`, `invalid_reset_token`, `invalid_credentials`, `no_password`,
+  `last_login_method`, `account_in_use` (SSO `link-complete`); list in
   `docs/redesign/BACKEND-GAPS.md`, Fehlercodes). SSO callback errors (`?error=`) map to their own texts via
   `lib/ssoError.ts` (`auth.login.ssoError.<code>`, unknown codes → `generic`). The react-query
   default `retry` (`lib/queryRetry.ts`) does not retry 4xx (401/403/404 show their error state at once), 5xx and
   network errors get 2 retries. Auth: `lib/auth-context.ts` (context + `useAuth`), `lib/AuthProvider.tsx` (provider);
   button styling is `buttonClass()` in `ui/shared/` (the old shadcn component files in `components/ui/` are gone;
   only the shadcn CSS variables and `tw-animate-css` remain as a base in `index.css`). Lint: `--max-warnings 0`.
-- Club / calendar switch: `lib/lastCalendar.ts` remembers the last calendar per club in localStorage
-  (`lastCalendar:<clubId>`, guarded); `pickCalendar(…, rememberedId)` prefers it (only if it exists and is not
-  archived), then the account's last pair, then the first active calendar. `AppShell` exposes
+- Club / calendar switch: the last calendar per club is stored at the membership on the server (`PATCH
+/api/auth/me {lastClubId, lastCalendarId}` from `AppShell`, read as `lastCalendarId` of `GET /api/clubs`; `AppShell`
+  mirrors it into the cached `["clubs"]` list); `pickCalendar(…, rememberedId)` prefers it (only if it exists and is
+  not archived), then the account's last pair, then the first active calendar. The old localStorage keys
+  (`lastCalendar:*`) are removed at start (`lib/legacyStorage.ts`). `AppShell` exposes
   `ShellData.contextState` (`loading | ready | unavailable`): a club that is not the user's or whose calendars fail to
   load shows "Nicht verfügbar" + link to the club picker in Sidebar / Topbar instead of "Laden…".
 - History focus: `lib/historyFocus.ts` (`useHistoryFocus` in `BackgroundRoutes`) moves focus to the page `h1`
@@ -236,7 +260,7 @@ API / database (`frontend/.env.local` points `VITE_API_URL` at `https://api.club
 docker compose up mysql_test -d
 export DATABASE_URL="mysql://root:root@127.0.0.1:3360/club_calendar_e2e?serverVersion=8.0&charset=utf8mb4"
 (cd backend && php bin/console doctrine:database:create --if-not-exists \
-  && php bin/console doctrine:migrations:migrate -n && php bin/console doctrine:fixtures:load -n)
+  && php bin/console doctrine:migrations:migrate -n && APP_ENV=dev php bin/console doctrine:fixtures:load -n)
 # 2. backend (own terminal in the repo root, same DATABASE_URL)
 FRONTEND_URL=http://localhost:5199 MAILER_DSN=null://null php -S 127.0.0.1:3001 -t backend/public
 # 3. frontend (own terminal in the repo root)
@@ -247,6 +271,10 @@ PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend
 mysql -h127.0.0.1 -P3360 -uroot -proot -e "DROP DATABASE club_calendar_e2e"
 ```
 
+`e2e/helpers.ts` runs backend console commands against the e2e database (`backendConsole`, default
+`DATABASE_URL` of `club_calendar_e2e`, override `E2E_DATABASE_URL`): `app:user:verify` confirms registered users
+(`createVerifiedUser`), `app:user:reset-link` gives reset links (`resetLinkFor`). Clean up afterwards also
+`frontend/test-results` and `backend/var/cache/prod` (rate limiter state). Details: `docs/redesign/E2E.md`.
 `frontend/test-results/` and `playwright-report/` are git-ignored. Key presses that open a file chooser go through
 `pressForFileChooser` (`e2e/helpers.ts`; a plain `Promise.all([waitForEvent, press])` races the interception).
 

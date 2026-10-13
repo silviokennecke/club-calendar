@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\Calendar;
+use App\Entity\ClubUser;
 use App\Entity\EmailVerification;
 use App\Entity\OAuthAccount;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Exception\EmailNotVerifiedException;
 use App\Exception\OAuthAccountConflictException;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -21,6 +24,7 @@ readonly class AuthService
         private UserPasswordHasherInterface $hasher,
         private TokenService $tokens,
         private EmailVerificationMailer $verificationMailer,
+        private AccountService $accounts,
     ) {
     }
 
@@ -110,19 +114,26 @@ readonly class AuthService
             'lastClubId' => $user->getLastClubId(),
             'lastCalendarId' => $user->getLastCalendarId(),
             'language' => $user->getLanguage(),
-            'passkeys' => $user->getPasskeys()->map(fn ($p) => [
+            'hasPassword' => null !== $user->getPassword(),
+            'pendingEmail' => $this->accounts->pendingEmail($user),
+            'passkeys' => array_values($user->getPasskeys()->map(fn ($p) => [
                 'id' => $p->getId(),
                 'deviceName' => $p->getDeviceName(),
                 'createdAt' => $p->getCreatedAt()->format(\DateTimeInterface::ATOM),
-            ])->toArray(),
-            'oauthAccounts' => $user->getOauthAccounts()->map(fn ($a) => [
+                'lastUsedAt' => $p->getLastUsedAt()?->setTimezone(new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
+            ])->toArray()),
+            // Only the provider: neither the provider's account id (sub) nor its e-mail address.
+            'oauthAccounts' => array_values($user->getOauthAccounts()->map(fn ($a) => [
                 'provider' => $a->getProvider(),
-            ])->toArray(),
+            ])->toArray()),
         ];
     }
 
     public function updateMe(User $user, array $data): array
     {
+        if (array_key_exists('name', $data)) {
+            $user->setName($data['name']);
+        }
         if (array_key_exists('dateFormat', $data)) {
             $user->setDateFormat($data['dateFormat']);
         }
@@ -137,6 +148,7 @@ readonly class AuthService
         }
         if (array_key_exists('lastCalendarId', $data)) {
             $user->setLastCalendarId($data['lastCalendarId']);
+            $this->rememberCalendarInMembership($user, $data['lastCalendarId'], $data['lastClubId'] ?? null);
         }
         $this->em->flush();
 
@@ -150,6 +162,24 @@ readonly class AuthService
             'lastClubId' => $user->getLastClubId(),
             'lastCalendarId' => $user->getLastCalendarId(),
         ];
+    }
+
+    /**
+     * Stores the last opened calendar at the user's membership of the calendar's club (per club, across
+     * devices). Ignored, without an error, when the calendar is unknown, belongs to another club than the
+     * given lastClubId, or the user is not a member of its club.
+     */
+    private function rememberCalendarInMembership(User $user, mixed $calendarId, mixed $clubId): void
+    {
+        if (!is_string($calendarId) || '' === $calendarId) {
+            return;
+        }
+        $calendar = $this->em->getRepository(Calendar::class)->find($calendarId);
+        if (null === $calendar || (is_string($clubId) && $calendar->getClub()->getId() !== $clubId)) {
+            return;
+        }
+        $membership = $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $calendar->getClub(), 'user' => $user]);
+        $membership?->setLastCalendarId($calendar->getId());
     }
 
     public function deleteMe(User $user): void
@@ -225,6 +255,38 @@ readonly class AuthService
         $this->em->flush();
 
         return $this->tokens->tokenResponse($user);
+    }
+
+    /**
+     * Links a provider account to the signed-in user (link mode of the SSO callback). Returns null on
+     * success (also when it is already linked to this user) or an error code: account_in_use (the
+     * provider account belongs to another user), already_linked (the user has another account of this
+     * provider). The provider's e-mail claim is not needed: the user is signed in and controls both.
+     */
+    public function linkOAuthAccount(User $user, string $provider, string $providerId, ?string $email): ?string
+    {
+        $repository = $this->em->getRepository(OAuthAccount::class);
+        $existing = $repository->findOneBy(['provider' => $provider, 'providerId' => $providerId]);
+        if (null !== $existing) {
+            return $existing->getUser()->getId() === $user->getId() ? null : 'account_in_use';
+        }
+        if (null !== $repository->findOneBy(['provider' => $provider, 'user' => $user])) {
+            return 'already_linked';
+        }
+        $account = new OAuthAccount();
+        $account->setUser($user);
+        $account->setProvider($provider);
+        $account->setProviderId($providerId);
+        $account->setEmail($email);
+        $this->em->persist($account);
+        try {
+            $this->em->flush();
+        } catch (UniqueConstraintViolationException) {
+            // Linked concurrently by another user.
+            return 'account_in_use';
+        }
+
+        return null;
     }
 
     /**

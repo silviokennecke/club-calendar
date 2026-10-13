@@ -19,6 +19,13 @@ class ClubUser
     #[ORM\JoinColumn(name: 'user_id', onDelete: 'CASCADE')]
     private User $user;
 
+    /**
+     * The calendar this member opened last in this club. A plain ID without foreign key: a deleted (or
+     * moved) calendar is simply ignored when the value is read (see ClubService::listClubs).
+     */
+    #[ORM\Column(length: 36, nullable: true)]
+    private ?string $lastCalendarId = null;
+
     public function getClub(): Club
     {
         return $this->club;
@@ -39,6 +46,18 @@ class ClubUser
     public function setUser(User $user): static
     {
         $this->user = $user;
+
+        return $this;
+    }
+
+    public function getLastCalendarId(): ?string
+    {
+        return $this->lastCalendarId;
+    }
+
+    public function setLastCalendarId(?string $lastCalendarId): static
+    {
+        $this->lastCalendarId = $lastCalendarId;
 
         return $this;
     }

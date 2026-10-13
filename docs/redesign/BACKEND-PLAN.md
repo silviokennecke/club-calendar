@@ -5,7 +5,7 @@ Fehlern ändern" gilt für diese Runde NICHT mehr: der Auftraggeber hat die Umse
 
 ## Ausgenommen (bereits in den Audits dokumentiert, nicht Teil dieser Runde)
 
-`SECURITY_AUDIT_REPORT.md` und `docs/security/AUDIT-2026-10-06.md` (untracked, nicht anfassen): Rollen/Einladungen/
+`../security/SECURITY_AUDIT_REPORT.md` und `docs/security/AUDIT-2026-10-06.md` (untracked, nicht anfassen): Rollen/Einladungen/
 letzter Admin (H1, M8, L1), Pre-Hijacking (H2), Mapbox-Proxy (H3), Microsoft-SSO unverifiziert (H4), Rate-Limiting für
 Login/Register/Token (M1), Host-Header (M2), ICS-Injection (M3), CSP/Header (M4), Tokens im Redirect (M5),
 Refresh-Rotation (M6), Quoten/unbegrenzte Listen (M7), Enumeration, Karten-Bilder, CORS-Regex, Secrets/Deploy.
@@ -24,7 +24,7 @@ Neue Endpoints müssen trotzdem sicher gebaut werden (kein Orakel, Einmal-Token,
    Datum, Fehler je Termin), atomarer Import inkl. neuer Orte mit Zählern, `externalUid`; Export-Endpoint
    `GET …/events.ics`; Bulk-Endpoints (veröffentlichen/Entwurf/löschen); stabile Fehlercodes (`code` im RFC-7807-
    Body) für Registrierung/Login/OAuth/Import; veraltete TZIDs tolerieren. Frontend entsprechend umstellen.
-3. **Auth und Konten** (Opus): Passwort vergessen/zurücksetzen (inkl. Seite zum Setzen des neuen Passworts und
+3. **Auth und Konten** (Opus, umgesetzt 2026-10-13, siehe `BACKEND-GAPS.md` "Umgesetzt (Paket 3)"): Passwort vergessen/zurücksetzen (inkl. Seite zum Setzen des neuen Passworts und
    Zustand "Prüfe dein Postfach"); Profil: Name, Passwort, E-Mail ändern (mit Bestätigung); SSO verknüpfen/trennen mit
    Schutz "mindestens eine Anmeldemethode bleibt"; Passkey "zuletzt benutzt"; letzter Kalender je Mitgliedschaft;
    Console-Command `app:user:verify`; feinere OAuth-Fehlercodes. Frontend: ForgotPassword aktivieren, ResetPassword,

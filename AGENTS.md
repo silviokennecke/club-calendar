@@ -9,9 +9,9 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 
 | Module | URL prefix | Controller | Service |
 |--------|-----------|------------|---------|
-| Auth | `/api/auth` | `AuthController` | `AuthService`, `TokenService` |
+| Auth | `/api/auth` (incl. `forgot-password`, `reset-password`, `change-password`, `change-email`, `verify-new-email`) | `AuthController` | `AuthService`, `TokenService`, `PasswordResetService`, `AccountService`, `AccountMailer` |
 | WebAuthn | `/api/auth/webauthn` | `WebAuthnController` | `WebAuthnService` |
-| OAuth | `/api/auth/oauth` | `OAuthController` | (uses `AuthService`) |
+| OAuth | `/api/auth/oauth` (sign-in; link `/{provider}/link-start` → `/{provider}/link?ticket=` → callback → `/profile?link_proof=` → `/{provider}/link-complete` (JWT); unlink `DELETE /{provider}`) | `OAuthController` | `AuthService`, `AccountService` |
 | Clubs | `/api/clubs` | `ClubController` | `ClubService` |
 | Calendars | `/api/clubs/{clubId}/calendars` | `CalendarController` | `CalendarService` |
 | Events | `/api/calendars/{calendarId}/events` (incl. `…/import/preview`, `…/import`, `…/bulk`, export `/api/calendars/{calendarId}/events.ics`) | `EventController` | `EventService`, `EventImportService`, `EventExportService` |
@@ -39,7 +39,13 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | `src/Controller/AbstractApiController.php` | Base controller with `validateDto()` and `decodeJson()` helpers (no JSON object → 400 `invalid_request`) |
 | `src/Service/TokenService.php` | Creates JWT access tokens (lexik) and HMAC refresh tokens (claims `uid`, `tv` = `user.token_version`) |
 | `src/Security/SessionVersionListener.php` | Rejects JWTs whose `tv`/`uid` no longer match the user (sessions ended after credential resets) |
-| `src/Security/SignedTokenService.php`, `NonceStore.php` | Signed, purpose-bound, single-use tokens (passkey challenges, OAuth `state`; table `auth_nonce`) |
+| `src/Security/SignedTokenService.php`, `NonceStore.php` | Signed, purpose-bound, single-use tokens (passkey challenges, OAuth `state`, SSO link ticket/state/proof; table `auth_nonce`) |
+| `src/Service/PasswordResetService.php` | Forgot / reset password: hashed one-time tokens (table `password_reset`, 60 min), single conditional UPDATE against races, ends all sessions |
+| `src/Service/AccountService.php` | Change password (new tokens), e-mail change with confirmation link (table `email_change`, no oracle), unlink SSO (last sign-in method stays) |
+| `src/Service/DeferredMailer.php`, `AccountMailer.php` | Mails (and `defer()`red work such as the forgot-password lookup and token) after the response (`kernel.terminate`, no timing oracle); links only from `FRONTEND_URL` / `BACKEND_URL` |
+| `src/Validator/PasswordPolicy.php` | The one password policy (8–128 characters) for registration, reset and change |
+| `src/Logging/RedactTokensProcessor.php` | Monolog processor: `token`/`ticket`/`secret`/… query values in log records → `[redacted]` |
+| `src/Command/` | `app:prune-unverified-users`, `app:prune-password-resets` (cron), `app:user:verify <email>`, `app:user:reset-link <email>` (support / dev / E2E) |
 | `src/Service/CalendarReferences.php` | Resolves location/template/property/feature/target-group IDs within one calendar (unknown or foreign → 422) |
 | `src/Service/LinkCollectionSync.php` | Syncs join-table collections by diff (deduplicated IDs, no identity collisions) |
 | `src/Service/Input.php` | Typed input validation helpers (400 `validation_failed` with `field`) |
@@ -50,7 +56,7 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | `src/Exception/ApiProblemException.php` | HTTP error with a stable `code` (+ optional `field`) in the RFC 7807 body, e.g. 422 `duplicate_name`; code list: `docs/redesign/BACKEND-GAPS.md` (Fehlercodes) |
 | `config/services.yaml` | Parameters and env defaults: `APP_URL` drives `FRONTEND_URL`, `BACKEND_URL` and `WEBAUTHN_RP_ID`; optional `MAPBOX_TOKEN`, cache TTLs, `WEBAUTHN_USER_VERIFICATION` |
 | `config/packages/security.yaml` | Stateless JWT firewall; public routes allowlist |
-| `migrations/` | Doctrine migrations (initial schema `Version20260625000000`, all tables in snake_case; then `Version20261004120000` `auth_nonce`, `Version20261004130000` `user.token_version`, `Version20261009120000` nullable template times, latest `Version20261010120000` `event.external_uid`) |
+| `migrations/` | Doctrine migrations (initial schema `Version20260625000000`, all tables in snake_case; then `Version20261004120000` `auth_nonce`, `Version20261004130000` `user.token_version`, `Version20261009120000` nullable template times, `Version20261010120000` `event.external_uid`, latest `Version20261013120000` `password_reset`, `email_change`, `passkey.last_used_at`, `club_user.last_calendar_id`) |
 
 ## Security Pattern
 
@@ -70,6 +76,7 @@ $this->denyAccessUnlessGranted(ArchivedCalendarVoter::NOT_ARCHIVED, $calendar); 
 - **Refresh grant**: `POST /api/auth/token` with `application/x-www-form-urlencoded` body
 - **No auth cookies** — the backend sets no session/auth cookies (only the short-lived OAuth `oauth_state_nonce` cookie that binds the SSO `state` to the browser)
 - **Passkeys** — verified with `web-auth/webauthn-lib` (`WebAuthnService`), see `CLAUDE.md` (Auth) and `docs/redesign/BACKEND-GAPS.md`
+- **Password reset / account changes / SSO linking** — see `CLAUDE.md` (Auth) and `docs/redesign/BACKEND-GAPS.md` ("Umgesetzt (Paket 3)"); `user.token_version` ends all sessions on reset, password change (the caller gets new tokens) and e-mail change
 
 ## Entity Conventions
 
@@ -98,6 +105,6 @@ Run: `cd backend && composer test` (requires MySQL test DB on port 3360). `TEST_
 - `POST /api/clubs/{clubId}/calendars/{calendarId}/archive` — sets `archivedAt`
 - `POST /api/clubs/{clubId}/calendars/{calendarId}/unarchive` — clears `archivedAt`
 - `POST /api/clubs/{clubId}/calendars/{calendarId}/duplicate` (201) — deep-copies calendar + properties/features/target-groups/locations/templates/feeds (new UUIDs for feed secrets); events not copied; optional body `{name}` (default "Copy of …", the frontend sends the localized name)
-- Calendar responses carry `eventCount`, `templateCount`, `feedCount`; club responses `calendarCount`, `archivedCalendarCount`, `memberCount` (single club also `eventCount`, `feedCount`)
+- Calendar responses carry `eventCount`, `templateCount`, `feedCount`; club responses `calendarCount`, `archivedCalendarCount`, `memberCount` (single club also `eventCount`, `feedCount`); `GET /api/clubs` also the caller's `lastCalendarId` per club (`club_user.last_calendar_id`, set by `PATCH /api/auth/me`)
 - Event templates: `timezone`, `timeBegin`, `timeEnd` are optional (times only as a pair); without times in the template and in the request, `from-template` creates all-day events (`docs/redesign/BACKEND-GAPS.md`, "Umgesetzt (Paket 1)")
 - Archived calendar public feeds → 404; nested write endpoints → 403 (via `ArchivedCalendarVoter`)

@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { apiGet } from "@/lib/api";
 import { Icon } from "@/components/ui/shared";
 import { pickCalendar } from "@/lib/pickCalendar";
-import { readLastCalendar } from "@/lib/lastCalendar";
 import type { Calendar, Club } from "@/lib/types";
 
 interface ClubCardProps {
@@ -13,8 +12,6 @@ interface ClubCardProps {
   /** Club and calendar the user worked in last (the card for that club is badged and opens it). */
   lastClubId?: string | null;
   lastCalendarId?: string | null;
-  /** Account the per-club calendar choice of this browser belongs to. */
-  userId?: string;
 }
 
 const calendarsKey = (clubId: string) => ["calendars", clubId, "all"];
@@ -26,15 +23,16 @@ const fetchCalendars = (clubId: string) =>
  * come with `GET /api/clubs`; the calendar list is only loaded for the club that is opened, to pick
  * the calendar (no request per card).
  */
-export function ClubCard({ club, lastClubId, lastCalendarId, userId }: ClubCardProps) {
+export function ClubCard({ club, lastClubId, lastCalendarId }: ClubCardProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const metaId = `club-meta-${useId().replace(/:/g, "")}`;
 
-  // Best guess for the link target (new tab, copied link): the calendar remembered for this club,
-  // else the account's last one, else the club page. A plain click resolves the real target below.
-  const remembered = readLastCalendar(userId, club.id);
+  // Best guess for the link target (new tab, copied link): the calendar last used in this club (stored
+  // at the membership, `GET /api/clubs`), else the account's last one, else the club page. A plain click
+  // resolves the real target below (the remembered one only if it still exists and is not archived).
+  const remembered = club.lastCalendarId ?? null;
   const guessed = remembered ?? (club.id === lastClubId ? lastCalendarId : null);
   const noCalendars = club.calendarCount === 0 && club.archivedCalendarCount === 0;
   const href = noCalendars

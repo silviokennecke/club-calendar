@@ -1,29 +1,98 @@
-import { useState } from "react";
-import { Link, useNavigate, useOutletContext } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Banner, Button, ConfirmDialog, Skeleton, toast } from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { initials } from "@/components/layout/navigation";
 import type { ShellData } from "@/components/layout/shellTypes";
-import { LinkedLoginsSection } from "@/components/profile/LinkedLoginsSection";
+import { AccountSection } from "@/components/profile/AccountSection";
+import { LinkedLoginsSection, type LinkOutcome } from "@/components/profile/LinkedLoginsSection";
+import { PasswordSection } from "@/components/profile/PasswordSection";
 import { PasskeysSection } from "@/components/profile/PasskeysSection";
 import { PreferencesSection } from "@/components/profile/PreferencesSection";
 import type { ProfileData } from "@/components/profile/profileTypes";
-import { apiDelete, apiGet } from "@/lib/api";
+import { ApiError, apiDelete, apiGet, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { linkErrorKind, providerLabel } from "@/lib/profile";
+
+/** URL parameters of the SSO link flow; read once, then removed from the address. */
+const LINK_PARAMS = ["linked", "link_error", "link_provider", "link_proof"];
+
+/** `?linked=<provider>` / `?link_error=<code>` of the SSO link flow. */
+function linkOutcomeOf(params: URLSearchParams): LinkOutcome | null {
+  const linked = params.get("linked");
+  if (linked) return { kind: "linked", provider: linked };
+  if (params.has("link_error"))
+    return { kind: "error", error: linkErrorKind(params.get("link_error")) };
+  return null;
+}
+
+/** `?link_provider=&link_proof=`: the provider confirmed the account, this session completes the link. */
+function linkProofOf(params: URLSearchParams): { provider: string; proof: string } | null {
+  const provider = params.get("link_provider");
+  const proof = params.get("link_proof");
+  return provider && proof ? { provider, proof } : null;
+}
 
 /**
- * Profile (design: Profile, ProfileMobile): account, linked sign-ins, passkeys, personal settings
- * (incl. theme) and account deletion. Name, e-mail and password cannot be changed yet (no backend).
+ * Completes an SSO link with this session's token. The API links only when the signed-in user is the
+ * one who started the flow, so a link flow started by someone else (a link sent to this browser) never
+ * attaches this browser's provider account to another user.
+ */
+async function completeLink(provider: string, proof: string): Promise<LinkOutcome> {
+  try {
+    await apiPost<void>(`/api/auth/oauth/${encodeURIComponent(provider)}/link-complete`, { proof });
+    return { kind: "linked", provider };
+  } catch (err) {
+    return { kind: "error", error: linkErrorKind(err instanceof ApiError ? err.code : undefined) };
+  }
+}
+
+/**
+ * Profile (design: Profile, ProfileMobile): account (name, e-mail with confirmation link), password
+ * (change, or set by e-mail for SSO-only accounts), linked sign-ins (link / unlink), passkeys, personal
+ * settings (incl. theme) and account deletion. Name / e-mail / password editing extends the design
+ * (COVERAGE.md, Profile).
  */
 export default function ProfilePage() {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [deleteOpen, setDeleteOpen] = useState(false);
   // Inside the app shell (a club is known) or on its own page for users without a club.
   const shell = useOutletContext<ShellData | undefined>();
+  const [params, setParams] = useSearchParams();
+  const [linkOutcome, setLinkOutcome] = useState(() => linkOutcomeOf(params));
+  const [linkProof] = useState(() => linkProofOf(params));
+  const completing = useRef(false);
+
+  useEffect(() => {
+    // Once, also when effects run twice (StrictMode): the proof is single-use.
+    if (!linkProof || completing.current) return;
+    completing.current = true;
+    void completeLink(linkProof.provider, linkProof.proof).then((outcome) => {
+      setLinkOutcome(outcome);
+      if (outcome.kind === "linked") void queryClient.invalidateQueries({ queryKey: ["profile"] });
+    });
+  }, [linkProof, queryClient]);
+
+  useEffect(() => {
+    if (linkOutcome?.kind !== "linked") return;
+    // Fixed id: shown once, also when effects run twice (StrictMode).
+    toast.success(t("profile.sso.linkedNow", { name: providerLabel(linkOutcome.provider) }), {
+      id: "sso-linked",
+    });
+  }, [linkOutcome, t]);
+
+  // The result of the link flow is shown once; the address loses the parameters (no repeat on reload).
+  useEffect(() => {
+    if (!LINK_PARAMS.some((p) => params.has(p))) return;
+    const rest = new URLSearchParams(params);
+    for (const p of LINK_PARAMS) rest.delete(p);
+    setParams(rest, { replace: true });
+  }, [params, setParams]);
 
   const profile = useQuery<ProfileData>({
     queryKey: ["profile"],
@@ -68,9 +137,6 @@ export default function ProfilePage() {
             {name && <p className="t-body">{email}</p>}
           </div>
         </div>
-        <p className="t-sm" style={{ marginTop: "var(--space-3)" }}>
-          {t("profile.me.readOnly")}
-        </p>
       </section>
 
       {profile.isPending ? (
@@ -83,7 +149,9 @@ export default function ProfilePage() {
         </div>
       ) : data ? (
         <>
-          <LinkedLoginsSection linked={data.oauthAccounts} />
+          <AccountSection key={data.name} profile={data} />
+          <PasswordSection profile={data} />
+          <LinkedLoginsSection profile={data} outcome={linkOutcome} />
           <PasskeysSection passkeys={data.passkeys} refresh={() => profile.refetch()} />
         </>
       ) : (
