@@ -1,7 +1,8 @@
+import { API_URL } from "./apiUrl";
 import { markSessionEnded } from "./sessionEnd";
 import type { HolidayCalendar, HolidayEvent } from "./types";
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+const BASE_URL = API_URL;
 
 export const BACKEND_URL = BASE_URL;
 
