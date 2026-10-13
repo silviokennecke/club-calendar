@@ -20,6 +20,10 @@ interface ReviewGroupProps {
   group: ImportGroup;
   locations: Location[];
   duplicates: Set<string>;
+  /** Entries the backend would reject (first message by item id). */
+  invalid: Map<string, string>;
+  /** Entries with warnings (e.g. replaced time zone). */
+  warned: Map<string, unknown[]>;
   open: boolean;
   onToggleOpen: () => void;
   onToggleGroup: () => void;
@@ -36,6 +40,8 @@ export function ReviewGroup({
   group,
   locations,
   duplicates,
+  invalid,
+  warned,
   open,
   onToggleOpen,
   onToggleGroup,
@@ -191,6 +197,15 @@ export function ReviewGroup({
                         <StatusBadge status={item.status} />
                         {duplicates.has(item.id) && (
                           <StatusBadge status="danger" label={t("import.review.duplicate")} />
+                        )}
+                        {invalid.has(item.id) && (
+                          <StatusBadge status="danger" label={t("import.review.invalidBadge")} />
+                        )}
+                        {warned.has(item.id) && (
+                          <span className="ap-badge">
+                            <Icon glyph="clock" size={14} />
+                            {t("import.review.timezoneBadge")}
+                          </span>
                         )}
                         {item.recurring && (
                           <span className="ap-badge">

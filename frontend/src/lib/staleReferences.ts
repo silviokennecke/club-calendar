@@ -2,12 +2,12 @@ import type { QueryClient } from "@tanstack/react-query";
 import { ApiError, apiGet } from "@/lib/api";
 
 /**
- * The backend answers 422 "<field>: unknown id …" when a request assigns a property, feature,
- * target group, location or template that does not exist (any more) in the calendar, e.g. because it
- * was deleted in another tab or by another member while the form was open.
+ * The backend answers 422 `code: "unknown_reference"` ("<field>: unknown id …") when a request assigns a
+ * property, feature, target group, location or template that does not exist (any more) in the calendar,
+ * e.g. because it was deleted in another tab or by another member while the form was open.
  */
 export function isUnknownIdError(e: unknown): boolean {
-  return e instanceof ApiError && e.status === 422 && /unknown id/.test(e.message);
+  return e instanceof ApiError && e.status === 422 && e.code === "unknown_reference";
 }
 
 export type ReferenceKind = "properties" | "features" | "targetGroups" | "locations" | "templates";

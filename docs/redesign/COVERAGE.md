@@ -59,7 +59,7 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 
 | Artboard | Umsetzung | Status |
 | --- | --- | --- |
-| Events.dc.html | `pages/events/EventsListPage.tsx`, `…/events` (Tabs mit Zähler, Suche, Ansicht-Umschalter, `EventsTable` mit Caption, Sammelaktionen, Mehrfach-Löschdialog) | vollständig (Sammelaktionen als Einzel-Requests, BACKEND-GAPS Phase 4) |
+| Events.dc.html | `pages/events/EventsListPage.tsx`, `…/events` (Tabs mit Zähler, Suche, Ansicht-Umschalter, `EventsTable` mit Caption, Sammelaktionen über `POST …/events/bulk`, Mehrfach-Löschdialog) | vollständig (Sammelaktionen atomar: scheitert eine, ändert sich nichts und die Auswahl bleibt; BACKEND-GAPS "Umgesetzt (Paket 2)") |
 | EventsMobile.dc.html | `EventsListPage` < 720px: `EventItem`-Karten statt Tabelle, FAB | vollständig |
 | EventsStates.dc.html | `EventsListPage`: Skeleton, Ladefehler, "Noch gar keine Termine", "Keine Treffer für „…“" | vollständig |
 | EventNew.dc.html | `pages/events/EventNewModal.tsx`, `…/events/new` (Dialog / Bottom-Sheet) | vollständig |
@@ -69,16 +69,16 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 | EventForm.dc.html | `EventFormModal`, `…/events/:eventId` (Entwurf/Veröffentlicht, Ort mit Karte + "Position korrigieren", Löschen, ungespeicherte Änderungen, schreibgeschützt im Archiv) | vollständig; Lösch-Dialog nach dem neueren Dialogs.dc.html ("Termin „…“ löschen?", "Der Termin am … wird dauerhaft entfernt.") statt der älteren Variante im Artboard ("Du löschst …") |
 | EventFormMobile.dc.html | `EventFormModal` als Bottom-Sheet (`DialogFrame` < 720px) | vollständig |
 | EventItem.dc.html | `calendar/EventItem.tsx` (Datumskachel, Zeit, Ort, Zielgruppen-Tags, Status als Wort, Eigenschafts-Emojis mit Text) | vollständig |
-| Export.dc.html | `pages/events/EventsExportPage.tsx`, `…/events/export` (Zeitraum, Status, Zielgruppen, Vorschau, deaktivierter Download ohne Treffer) | abweichend: ICS wird im Browser gebaut (kein Export-Endpoint, BACKEND-GAPS Phase 4); Navigation markiert "Veröffentlichen" |
+| Export.dc.html | `pages/events/EventsExportPage.tsx`, `…/events/export` (Zeitraum, Status, Zielgruppen, Vorschau, deaktivierter Download ohne Treffer, Download von `GET …/events.ics` mit JWT, Fehler-Banner) | vollständig (Datei aus dem Backend wie die Feeds: VTIMEZONE, Entwürfe als TENTATIVE; die Anzahl-Vorschau rechnet im Browser mit derselben Regel; Lade-/Fehlerzustand nicht im Design); Navigation markiert "Veröffentlichen" |
 
 ## Import und Vorlagen
 
 | Artboard | Umsetzung | Status |
 | --- | --- | --- |
 | Import.dc.html | `pages/ImportPage.tsx` Schritt "Datei", `components/import/ImportUpload.tsx` (Drop-Zone, "Datei wird gelesen …", falscher Typ / leer / unlesbar), `Stepper` | vollständig |
-| ImportReview.dc.html | `import/ImportReview.tsx`, `ReviewGroup.tsx`, `ImportEditDialog.tsx` (Sammelpanel mit "Entwurf (voreingestellt)", Gruppen, Hinweise übersprungen / Wiederholung / Duplikate / Kodierung, Leiste "n von m ausgewählt") | vollständig (Prüfung clientseitig, BACKEND-GAPS Phase 5); Text "Mehrere Orte" statt "Mehrere vorhandene Orte" (gemischte Gruppen können auch neue Orte enthalten) |
+| ImportReview.dc.html | `import/ImportReview.tsx`, `ReviewGroup.tsx`, `ImportEditDialog.tsx` (Sammelpanel mit "Entwurf (voreingestellt)", Gruppen, Hinweise übersprungen / Wiederholung / Duplikate / Kodierung, Leiste "n von m ausgewählt") | vollständig (Duplikate, fehlerhafte Termine und ersetzte Zeitzonen aus `POST …/events/import/preview`, bei Fehler Name+Datum im Browser; zusätzlich, nicht im Design: Hinweise "Fehlerhaft" (mit "Fehlerhafte abwählen"), "Unbekannte Zeitzone wird ersetzt", Obergrenze 5000 je Import, "Termine werden geprüft …"); Text "Mehrere Orte" statt "Mehrere vorhandene Orte" (gemischte Gruppen können auch neue Orte enthalten) |
 | ImportReviewMobile.dc.html | `ImportReview` < 720px: Leiste über der Tabbar, Import-Button vor "Zurück", volle Breite | vollständig |
-| ImportDone.dc.html | `import/ImportDone.tsx` (Zähler, neue Orte mit Namen, Teilerfolg) | vollständig |
+| ImportDone.dc.html | `import/ImportDone.tsx` (Zähler, neue Orte mit Namen aus `createdLocations`, "Import fehlgeschlagen" = nichts angelegt) | vollständig (atomarer Import: keine Teilerfolg-Ansicht mehr; zusätzlich übersprungene Doppelte und ersetzte Zeitzonen, Obergrenze als eigene Fehlermeldung) |
 | Templates.dc.html | `pages/TemplatesPage.tsx`, `…/templates` (Karten, Suche, Leerzustand, "Termin aus Vorlage", Lösch-Dialog mit `eventCount`) | vollständig (Vorlage ohne Zeiten: "Ganztägig" statt der Uhrzeit, nicht im Design) |
 | TemplateEdit.dc.html | `pages/TemplateEditPage.tsx`, `…/templates/new`, `…/templates/:templateId` (Zeitzone des Vereins / eigene, Zeiten optional und leer bei neuen Vorlagen, Pflichtfehler, Lösch-Dialog mit Anzahl erzeugter Termine, schreibgeschützt im Archiv) | vollständig (ohne Zeiten entstehen ganztägige Termine; Hinweis an der Endzeit) |
 

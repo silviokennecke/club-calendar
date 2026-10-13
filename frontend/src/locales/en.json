@@ -38,7 +38,15 @@
       "passkeyErrorTitle": "Passkey sign-in not possible",
       "passkeyErrorText": "Passkey sign-in was cancelled or did not work. Try again or sign in with your password.",
       "ssoErrorTitle": "Sign-in with Google or Microsoft not possible",
-      "ssoErrorText": "Signing in with the provider did not work. Try again or sign in with email and password.",
+      "ssoError": {
+        "generic": "Signing in with the provider did not work. Try again or sign in with email and password.",
+        "invalid_state": "The sign-in expired or was started in another browser window. Please start it again here.",
+        "provider_denied": "You cancelled the sign-in at the provider. Try again or sign in with email and password.",
+        "provider_error": "The provider did not complete the sign-in. Try again later or sign in with email and password.",
+        "email_missing": "The provider did not send us an email address. Allow access to your email address at the provider or sign in with email and password.",
+        "account_exists": "There already is an account for this email address. Sign in the way you did before.",
+        "email_unverified_at_provider": "Your email address is not confirmed at the provider yet. Confirm it there and try again, or sign in with email and password."
+      },
       "forgot": "Forgot password?",
       "signInWith": "Sign in with {{provider}}",
       "errorTitle": "The sign-in is not complete yet",
@@ -396,7 +404,7 @@
         "published_other": "{{count}} events published.",
         "drafted_one": "1 event marked as draft.",
         "drafted_other": "{{count}} events marked as draft.",
-        "failed": "Not all events could be changed. Please try again."
+        "failed": "The events could not be changed. Nothing was changed. Please try again."
       }
     },
     "delete": {
@@ -419,7 +427,7 @@
       "manyConfirm_other": "Delete {{count}} events",
       "manyDone_one": "1 event deleted.",
       "manyDone_other": "{{count}} events deleted.",
-      "manyFailed": "Not all events could be deleted. Please try again."
+      "manyFailed": "The events could not be deleted. Nothing was deleted. Please try again."
     },
     "new": {
       "title": "Create event",
@@ -650,8 +658,13 @@
         "noneHint": "Change the period or the selection so that events end up in the file."
       },
       "download": "Download ICS file",
+      "downloading": "Creating file …",
       "cancel": "Cancel",
       "done": "File was created.",
+      "failed": {
+        "title": "The file could not be created",
+        "text": "Please check your connection and try again."
+      },
       "ics": {
         "features": "Features",
         "targetGroups": "Audiences"
@@ -711,9 +724,25 @@
       "duplicates": {
         "title_one": "One event may already exist",
         "title_other": "{{count}} events may already exist",
-        "text_one": "1 event has the same name and date as an event in the calendar.",
-        "text_other": "{{count}} events have the same name and date as events in the calendar. They are marked “Possible duplicate”.",
+        "text_one": "1 event already exists in the calendar (same identifier in the file or same name on the same day).",
+        "text_other": "{{count}} events already exist in the calendar (same identifier in the file or same name on the same day). They are marked “Possible duplicate”.",
         "deselect": "Deselect duplicates"
+      },
+      "tooMany": {
+        "title": "Too many events for one import",
+        "text": "At most {{max}} events can be imported at once, {{count}} are selected. Select fewer and import the rest in a second run."
+      },
+      "invalid": {
+        "title_one": "One event cannot be imported like this",
+        "title_other": "{{count}} events cannot be imported like this",
+        "text_one": "1 event has details the calendar does not accept (for example a name that is too long). It is marked “Invalid”. Edit it or deselect it.",
+        "text_other": "{{count}} events have details the calendar does not accept (for example a name that is too long). They are marked “Invalid”. Edit or deselect them.",
+        "deselect": "Deselect invalid events"
+      },
+      "timezone": {
+        "title": "Unknown time zone will be replaced",
+        "text_one": "1 event names a time zone the calendar does not know ({{zones}}). It is created in the time zone {{zone}}. Check the time after the import.",
+        "text_other": "{{count}} events name a time zone the calendar does not know ({{zones}}). They are created in the time zone {{zone}}. Check the times after the import."
       },
       "bulk": {
         "title": "Set for all selected events",
@@ -759,12 +788,15 @@
       "editOneLabel": "Edit event {{name}} on {{date}}",
       "noPlace": "No place",
       "duplicate": "Possible duplicate",
+      "invalidBadge": "Invalid",
+      "timezoneBadge": "Time zone replaced",
       "recurring": "Repeats",
       "selected": "{{selected}} of {{total}} selected",
       "importLabel_one": "Import 1 event",
       "importLabel_other": "Import {{count}} events",
       "importLabelNone": "Import events",
       "importing": "Importing …",
+      "checking": "Checking events …",
       "summaryLabel": "Summary and import",
       "loadError": {
         "title": "Places, properties or audiences could not be loaded",
@@ -812,6 +844,13 @@
       "invalid_one": "1 event of the file not readable",
       "invalid_other": "{{count}} events of the file not readable",
       "invalidText": "They had no valid date or no name.",
+      "duplicatesSkipped_one": "1 duplicate event skipped",
+      "duplicatesSkipped_other": "{{count}} duplicate events skipped",
+      "duplicatesSkippedText": "They already exist in the calendar.",
+      "timezoneBadge": "Time zone",
+      "timezone_one": "The time zone of 1 event was replaced",
+      "timezone_other": "The time zone of {{count}} events was replaced",
+      "timezoneText": "The file named {{zones}}. Created in {{zone}}; check the times.",
       "skippedBadge": "Skipped",
       "toCalendar": "To the calendar",
       "allEvents": "View all events",
@@ -821,17 +860,9 @@
         "heading": "Import failed",
         "title": "Nothing was imported",
         "text": "The import failed. No events were created. Please try again.",
-        "retry": "Try again"
-      },
-      "partial": {
-        "heading": "Import only partly succeeded",
-        "title": "Not all events were imported",
-        "text_one": "1 event was created, the rest was not. Check the event list before trying again, otherwise you get duplicates.",
-        "text_other": "{{count}} events were created, the rest were not. Check the event list before trying again, otherwise you get duplicates.",
-        "listHeading_one": "1 event not imported",
-        "listHeading_other": "{{count}} events not imported",
-        "more_one": "… and 1 more",
-        "more_other": "… and {{count}} more"
+        "retry": "Try again",
+        "tooMany": "At most {{max}} events can be imported at once. No events were created. Select fewer and import the rest in a second run.",
+        "backToReview": "Back to the review"
       }
     }
   },

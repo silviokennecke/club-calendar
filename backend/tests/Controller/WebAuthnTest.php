@@ -410,6 +410,7 @@ class WebAuthnTest extends WebTestCase
 
         $r = $this->register($mallory, new SoftwareAuthenticator(base64_decode($stored->getCredentialId())));
         $this->assertSame(400, $r['status']);
+        $this->assertSame('passkey_already_registered', $r['body']['code'] ?? null);
         self::$em->clear();
         $passkeys = self::$em->getRepository(Passkey::class)->findAll();
         $this->assertCount(1, $passkeys);

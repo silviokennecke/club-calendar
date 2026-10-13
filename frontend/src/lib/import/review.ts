@@ -3,7 +3,12 @@
  * name, location matching, bulk edits, duplicate hints and the request bodies.
  */
 import type { IsoDate } from "@/lib/calendar";
-import { formatAddress, type Location } from "@/lib/types";
+import {
+  formatAddress,
+  type ImportPreviewEntry,
+  type ImportWarning,
+  type Location,
+} from "@/lib/types";
 import { locationName, type EventStatus } from "@/lib/events";
 import type { ParsedIcsEvent } from "./ics";
 
@@ -18,6 +23,8 @@ export interface ImportItem {
   id: string;
   /** Key of the group the event was sorted into when the file was read. */
   groupKey: string;
+  /** UID of the file ("" = none), sent as `externalUid`. */
+  uid: string;
   name: string;
   date: IsoDate;
   dateEnd: IsoDate | "";
@@ -61,6 +68,7 @@ export function buildItems(parsed: ParsedIcsEvent[]): ImportItem[] {
     .map<ImportItem>((ev, i) => ({
       id: `i${i + 1}`,
       groupKey: (counts.get(ev.name) ?? 0) >= 2 ? ev.name : OTHERS_GROUP,
+      uid: ev.uid,
       name: ev.name,
       date: ev.date,
       dateEnd: ev.dateEnd,
@@ -244,7 +252,10 @@ export function withoutLeadingIcons(name: string): string {
   return stripped.trim() ? stripped : name;
 }
 
-/** Items that look like events the calendar already has (same name and day). */
+/**
+ * Items that look like events the calendar already has (same name and day). Only the fallback when
+ * the backend's preview (`POST …/events/import/preview`, which also compares the ICS UID) fails.
+ */
 export function findDuplicates(
   items: ImportItem[],
   existing: { name: string; date: string }[],
@@ -286,25 +297,36 @@ export interface ImportEventPayload {
   timeEnd: string;
   timezone: string | null;
   isDraft: boolean;
+  /** An existing place of the calendar … */
   locationId: string | null;
+  /** … or a new place of the same request (`locations[].tempId`). */
+  locationTempId?: string;
+  /** UID of the ICS file (duplicate check of later imports). */
+  externalUid: string | null;
   propertyIds: string[];
   featureIds: string[];
   targetGroupIds: string[];
 }
 
-/** Request body of one event; `newPlaceIds` maps `norm(name)` of created places to their ids. */
-export function toImportPayload(
-  item: ImportItem,
-  locations: Location[],
-  newPlaceIds: Map<string, string>,
-): ImportEventPayload {
+/** Body of `POST …/events/import` and `…/import/preview`. */
+export interface ImportRequest {
+  events: ImportEventPayload[];
+  /** New places named in the file, created in the same transaction. */
+  locations: { tempId: string; name: string }[];
+  skipDuplicates?: boolean;
+}
+
+/** The backend imports at most this many events per request (413 `too_many_events` above). */
+export const IMPORT_MAX = 5000;
+
+/** tempId of a new place: its normalized name (the same name in the file is one place). */
+function placeTempId(name: string): string {
+  return `new:${norm(name)}`;
+}
+
+/** Request body of one event. */
+export function toImportPayload(item: ImportItem, locations: Location[]): ImportEventPayload {
   const place = resolvePlace(item, locations);
-  const locationId =
-    place.kind === "existing"
-      ? place.id
-      : place.kind === "new"
-        ? (newPlaceIds.get(norm(place.name)) ?? null)
-        : null;
   return {
     name: item.name.trim(),
     date: item.date,
@@ -314,21 +336,72 @@ export function toImportPayload(
     timeEnd: item.timeEnd || (item.isAllDay ? "23:59" : "21:00"),
     timezone: item.timezone,
     isDraft: item.status === "draft",
-    locationId,
+    locationId: place.kind === "existing" ? place.id : null,
+    ...(place.kind === "new" ? { locationTempId: placeTempId(place.name) } : {}),
+    externalUid: item.uid || null,
     propertyIds: item.propertyIds,
     featureIds: item.featureIds,
     targetGroupIds: item.targetGroupIds,
   };
 }
 
-/** The backend accepts at most 500 events per request. */
-export const IMPORT_CHUNK = 500;
-
-export function chunk<T>(list: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
-  return out;
+/**
+ * One request for the given items (in their order) and the new places they need. The preview sends
+ * all items of the file, the import the selected ones.
+ */
+export function toImportRequest(items: ImportItem[], locations: Location[]): ImportRequest {
+  const places = new Map<string, string>();
+  const events = items.map((item) => {
+    const payload = toImportPayload(item, locations);
+    const place = resolvePlace(item, locations);
+    if (payload.locationTempId && place.kind === "new" && !places.has(payload.locationTempId))
+      places.set(payload.locationTempId, place.name.trim());
+    return payload;
+  });
+  return {
+    events,
+    locations: [...places].map(([tempId, name]) => ({ tempId, name })),
+  };
 }
 
-/** Key to look up created places in `newPlaceIds`. */
-export const newPlaceKey = norm;
+/** What the backend's preview says about the items (by item id). */
+export interface ImportCheck {
+  duplicates: Set<string>;
+  /** Items the backend would reject, with the first message. */
+  invalid: Map<string, string>;
+  warnings: ImportWarning[];
+  /** Warnings by item id. */
+  warningsOf: Map<string, ImportWarning[]>;
+}
+
+/** Maps the preview's entries (index = position in `items`) back to the items. */
+export function checkFromPreview(
+  items: Pick<ImportItem, "id">[],
+  entries: ImportPreviewEntry[],
+  warnings: ImportWarning[],
+): ImportCheck {
+  const duplicates = new Set<string>();
+  const invalid = new Map<string, string>();
+  for (const entry of entries) {
+    const item = items[entry.index];
+    if (!item) continue;
+    if (entry.status === "duplicate") duplicates.add(item.id);
+    else if (entry.status === "invalid") invalid.set(item.id, entry.errors[0]?.message ?? "");
+  }
+  const warningsOf = new Map<string, ImportWarning[]>();
+  for (const warning of warnings) {
+    const item = items[warning.index];
+    if (!item) continue;
+    warningsOf.set(item.id, [...(warningsOf.get(item.id) ?? []), warning]);
+  }
+  return { duplicates, invalid, warnings, warningsOf };
+}
+
+/** Distinct replaced time zones of the warnings ("US/Pacific-New" → the calendar's zone). */
+export function replacedZones(warnings: ImportWarning[]): { zones: string[]; replacement: string } {
+  const zones = [
+    ...new Set(warnings.filter((w) => w.code === "timezone_replaced").map((w) => w.value ?? "")),
+  ].filter(Boolean);
+  const replacement = warnings.find((w) => w.code === "timezone_replaced")?.replacement ?? "";
+  return { zones, replacement };
+}

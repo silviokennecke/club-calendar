@@ -1,16 +1,15 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { formatEventDates } from "@/lib/events";
-import { useLocale } from "@/components/calendar/useLocale";
+import { IMPORT_MAX, replacedZones } from "@/lib/import";
+import type { ImportWarning } from "@/lib/types";
 import { Banner, Icon, LinkButton, Button } from "@/components/ui/shared";
-
-/** Most events of the "not imported" list; the rest is summed up. */
-const NOT_IMPORTED_LIMIT = 50;
 
 export type ImportResult =
   | {
       kind: "ok";
       imported: number;
+      /** Duplicates the backend skipped (only with `skipDuplicates`). */
+      skipped: number;
       drafts: number;
       published: number;
       newPlaces: string[];
@@ -18,18 +17,18 @@ export type ImportResult =
       unselected: number;
       /** Events of the file without a valid date or name. */
       invalid: number;
+      /** E.g. unknown time zones of the file replaced by the calendar's zone. */
+      warnings: ImportWarning[];
     }
-  /** `imported` > 0: some chunks were created before the failure; `notImported` are the rest. */
-  | {
-      kind: "error";
-      imported: number;
-      notImported: { name: string; date: string; dateEnd: string }[];
-    };
+  /** The import is atomic: on failure nothing was created. */
+  | { kind: "error"; reason: "failed" | "tooMany" };
 
 interface ImportDoneProps {
   result: ImportResult;
   calendarUrl: string;
   eventsUrl: string;
+  /** The calendar's zone (named when unknown zones of the file were replaced). */
+  timeZone: string | null;
   onRetry: () => void;
   onAnother: () => void;
 }
@@ -47,85 +46,61 @@ function Row({ badge, title, text }: { badge: ReactNode; title: string; text: st
 }
 
 /**
- * Step 3 of the import (design: ImportDone): result with what was created as a draft, new places
- * and skipped events, or the failure with a way back. The heading takes focus so screen readers
- * announce the result.
+ * Step 3 of the import (design: ImportDone): result with what was created, new places, skipped
+ * events and warnings, or the failure (nothing was created) with a way back. The heading takes
+ * focus so screen readers announce the result.
  */
 export function ImportDone({
   result,
   calendarUrl,
   eventsUrl,
+  timeZone,
   onRetry,
   onAnother,
 }: ImportDoneProps) {
-  const { t } = useTranslation();
-  const locale = useLocale();
+  const { t, i18n } = useTranslation();
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
   }, []);
 
   if (result.kind === "error") {
-    const partial = result.imported > 0;
+    const tooMany = result.reason === "tooMany";
     return (
       <section className="ap-stack" aria-labelledby="fail-h">
         <h1 className="t-h1 ap-focus-target" id="fail-h" ref={heading} tabIndex={-1}>
-          {t(partial ? "import.done.partial.heading" : "import.done.failed.heading")}
+          {t("import.done.failed.heading")}
         </h1>
         <Banner
           tone="danger"
-          title={t(partial ? "import.done.partial.title" : "import.done.failed.title")}
+          title={t("import.done.failed.title")}
           action={
-            partial ? undefined : (
-              <Button variant="secondary" icon="refresh" onClick={onRetry}>
-                {t("import.done.failed.retry")}
-              </Button>
-            )
+            <Button variant="secondary" icon={tooMany ? "arrow-left" : "refresh"} onClick={onRetry}>
+              {t(tooMany ? "import.done.failed.backToReview" : "import.done.failed.retry")}
+            </Button>
           }
         >
-          {partial
-            ? t("import.done.partial.text", { count: result.imported })
+          {tooMany
+            ? t("import.done.failed.tooMany", { max: IMPORT_MAX.toLocaleString(i18n.language) })
             : t("import.done.failed.text")}
         </Banner>
-        {partial && result.notImported.length > 0 && (
-          <section className="ap-stack" aria-labelledby="not-imported-h">
-            <h2 className="t-h3" id="not-imported-h">
-              {t("import.done.partial.listHeading", { count: result.notImported.length })}
-            </h2>
-            <ul className="ap-list" style={{ listStyle: "none", margin: 0, padding: 0 }}>
-              {result.notImported.slice(0, NOT_IMPORTED_LIMIT).map((ev, i) => (
-                <li className="ap-listrow" key={i}>
-                  <span className="ap-listrow-main">
-                    <b>{ev.name}</b>
-                    <span>{formatEventDates(ev, locale)}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {result.notImported.length > NOT_IMPORTED_LIMIT && (
-              <p className="t-body t-muted">
-                {t("import.done.partial.more", {
-                  count: result.notImported.length - NOT_IMPORTED_LIMIT,
-                })}
-              </p>
-            )}
-          </section>
-        )}
         <div className="ap-actions">
-          <LinkButton variant="secondary" to={partial ? eventsUrl : calendarUrl}>
-            {t(partial ? "import.done.allEvents" : "import.done.toCalendar")}
+          <LinkButton variant="secondary" to={calendarUrl}>
+            {t("import.done.toCalendar")}
           </LinkButton>
-          {!partial && (
-            <Button variant="ghost" onClick={onAnother}>
-              {t("import.done.otherFile")}
-            </Button>
-          )}
+          <Button variant="ghost" onClick={onAnother}>
+            {t("import.done.otherFile")}
+          </Button>
         </div>
       </section>
     );
   }
 
-  const { drafts, published, newPlaces, unselected, invalid } = result;
+  const { drafts, published, newPlaces, unselected, invalid, skipped } = result;
+  const zones = replacedZones(result.warnings);
+  const zoneWarnings = new Set(
+    result.warnings.filter((w) => w.code === "timezone_replaced").map((w) => w.index),
+  ).size;
   return (
     <section
       className="ap-panel ap-stack"
@@ -180,6 +155,28 @@ export function ImportDone({
             badge={<span className="ap-badge">{t("import.done.skippedBadge")}</span>}
             title={t("import.done.unselected", { count: unselected })}
             text={t("import.done.unselectedText")}
+          />
+        )}
+        {skipped > 0 && (
+          <Row
+            badge={<span className="ap-badge">{t("import.done.skippedBadge")}</span>}
+            title={t("import.done.duplicatesSkipped", { count: skipped })}
+            text={t("import.done.duplicatesSkippedText")}
+          />
+        )}
+        {zones.zones.length > 0 && (
+          <Row
+            badge={
+              <span className="ap-badge">
+                <Icon glyph="clock" size={14} />
+                {t("import.done.timezoneBadge")}
+              </span>
+            }
+            title={t("import.done.timezone", { count: zoneWarnings })}
+            text={t("import.done.timezoneText", {
+              zones: zones.zones.join(", "),
+              zone: zones.replacement || timeZone || "UTC",
+            })}
           />
         )}
         {invalid > 0 && (

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { apiPost, apiFetch, BACKEND_URL } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { ssoErrorKey } from "@/lib/ssoError";
 import type { User } from "@/lib/types";
 import {
   Button,
@@ -49,7 +50,7 @@ export default function LoginPage() {
   // Bumped on every new problem so the banner remounts and takes focus again.
   const [problemKey, setProblemKey] = useState(0);
   // The OAuth callback redirects here with ?error=... when the provider sign-in failed.
-  const [ssoError, setSsoError] = useState(searchParams.has("error"));
+  const [ssoError, setSsoError] = useState<string | null>(searchParams.get("error"));
   const [loading, setLoading] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [providers, setProviders] = useState<SsoProvider[]>([]);
@@ -65,7 +66,7 @@ export default function LoginPage() {
   }, []);
 
   function show(next: LoginProblem) {
-    setSsoError(false);
+    setSsoError(null);
     setProblem(next);
     setProblemKey((k) => k + 1);
   }
@@ -73,7 +74,7 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setProblem(null);
-    setSsoError(false);
+    setSsoError(null);
     resend.reset();
 
     // The browser's own "Please fill out this field" bubble is not translated and cannot be styled,
@@ -98,7 +99,8 @@ export default function LoginPage() {
       login(data.access_token, data.refresh_token, data.user);
       navigate("/clubs");
     } catch (err: unknown) {
-      if (err instanceof Error && (err as { status?: number }).status === 403) {
+      // `code` (the 403 body also keeps the older `error: "email_not_verified"`)
+      if ((err as { code?: string }).code === "email_not_verified") {
         show("unverified");
       } else {
         show("wrong");
@@ -110,7 +112,7 @@ export default function LoginPage() {
 
   async function handlePasskey() {
     setProblem(null);
-    setSsoError(false);
+    setSsoError(null);
     setPasskeyLoading(true);
     try {
       const { startAuthentication } = await import("@simplewebauthn/browser");
@@ -198,9 +200,9 @@ export default function LoginPage() {
           {t("auth.login.passkeyErrorText")}
         </FocusBanner>
       )}
-      {ssoError && (
+      {ssoError !== null && (
         <FocusBanner tone="danger" title={t("auth.login.ssoErrorTitle")}>
-          {t("auth.login.ssoErrorText")}
+          {t(ssoErrorKey(ssoError))}
         </FocusBanner>
       )}
 

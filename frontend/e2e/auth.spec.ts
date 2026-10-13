@@ -58,13 +58,22 @@ test.describe("Login", () => {
     );
   });
 
-  for (const code of ["invalid_state", "account_exists", "email_missing"]) {
-    test(`SSO error code ${code} shows the explanation`, async ({ page }) => {
+  const ssoTexts: Record<string, string> = {
+    invalid_state:
+      "Die Anmeldung ist abgelaufen oder wurde in einem anderen Browserfenster begonnen.",
+    account_exists: "Zu dieser E-Mail-Adresse gibt es schon ein Konto.",
+    email_missing: "Der Anbieter hat uns keine E-Mail-Adresse übermittelt.",
+    provider_denied: "Du hast die Anmeldung beim Anbieter abgebrochen.",
+    provider_error: "Der Anbieter hat die Anmeldung nicht abgeschlossen.",
+    email_unverified_at_provider: "Deine E-Mail-Adresse ist beim Anbieter noch nicht bestätigt.",
+  };
+  for (const [code, text] of Object.entries(ssoTexts)) {
+    test(`SSO error code ${code} shows its own explanation`, async ({ page }) => {
       await page.goto(`/auth/callback?error=${code}`);
       await expect(page).toHaveURL(new RegExp(`/login\\?error=${code}`));
-      await expect(page.getByRole("alert")).toContainText(
-        "Anmeldung mit Google oder Microsoft nicht möglich",
-      );
+      const alert = page.getByRole("alert");
+      await expect(alert).toContainText("Anmeldung mit Google oder Microsoft nicht möglich");
+      await expect(alert).toContainText(text);
     });
   }
 

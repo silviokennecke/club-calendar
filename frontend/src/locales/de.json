@@ -38,7 +38,15 @@
       "passkeyErrorTitle": "Anmeldung mit Passkey nicht möglich",
       "passkeyErrorText": "Die Passkey-Anmeldung wurde abgebrochen oder hat nicht geklappt. Versuche es erneut oder melde dich mit deinem Passwort an.",
       "ssoErrorTitle": "Anmeldung mit Google oder Microsoft nicht möglich",
-      "ssoErrorText": "Die Anmeldung über den Anbieter hat nicht geklappt. Versuche es erneut oder melde dich mit E-Mail und Passwort an.",
+      "ssoError": {
+        "generic": "Die Anmeldung über den Anbieter hat nicht geklappt. Versuche es erneut oder melde dich mit E-Mail und Passwort an.",
+        "invalid_state": "Die Anmeldung ist abgelaufen oder wurde in einem anderen Browserfenster begonnen. Starte sie hier bitte noch einmal.",
+        "provider_denied": "Du hast die Anmeldung beim Anbieter abgebrochen. Versuche es erneut oder melde dich mit E-Mail und Passwort an.",
+        "provider_error": "Der Anbieter hat die Anmeldung nicht abgeschlossen. Versuche es später erneut oder melde dich mit E-Mail und Passwort an.",
+        "email_missing": "Der Anbieter hat uns keine E-Mail-Adresse übermittelt. Erlaube beim Anbieter den Zugriff auf deine E-Mail-Adresse oder melde dich mit E-Mail und Passwort an.",
+        "account_exists": "Zu dieser E-Mail-Adresse gibt es schon ein Konto. Melde dich so an, wie du es bisher getan hast.",
+        "email_unverified_at_provider": "Deine E-Mail-Adresse ist beim Anbieter noch nicht bestätigt. Bestätige sie dort und versuche es erneut, oder melde dich mit E-Mail und Passwort an."
+      },
       "forgot": "Passwort vergessen?",
       "signInWith": "Mit {{provider}} anmelden",
       "errorTitle": "Die Anmeldung ist noch nicht vollständig",
@@ -396,7 +404,7 @@
         "published_other": "{{count}} Termine veröffentlicht.",
         "drafted_one": "1 Termin als Entwurf markiert.",
         "drafted_other": "{{count}} Termine als Entwurf markiert.",
-        "failed": "Nicht alle Termine konnten geändert werden. Bitte versuche es erneut."
+        "failed": "Die Termine konnten nicht geändert werden. Es wurde nichts geändert. Bitte versuche es erneut."
       }
     },
     "delete": {
@@ -419,7 +427,7 @@
       "manyConfirm_other": "{{count}} Termine löschen",
       "manyDone_one": "1 Termin gelöscht.",
       "manyDone_other": "{{count}} Termine gelöscht.",
-      "manyFailed": "Nicht alle Termine konnten gelöscht werden. Bitte versuche es erneut."
+      "manyFailed": "Die Termine konnten nicht gelöscht werden. Es wurde nichts gelöscht. Bitte versuche es erneut."
     },
     "new": {
       "title": "Termin anlegen",
@@ -650,8 +658,13 @@
         "noneHint": "Ändere den Zeitraum oder die Auswahl, damit Termine in der Datei landen."
       },
       "download": "ICS-Datei laden",
+      "downloading": "Datei wird erstellt …",
       "cancel": "Abbrechen",
       "done": "Datei wurde erstellt.",
+      "failed": {
+        "title": "Die Datei konnte nicht erstellt werden",
+        "text": "Bitte prüfe deine Verbindung und versuche es erneut."
+      },
       "ics": {
         "features": "Features",
         "targetGroups": "Zielgruppen"
@@ -711,9 +724,25 @@
       "duplicates": {
         "title_one": "Ein Termin gibt es vielleicht schon",
         "title_other": "{{count}} Termine gibt es vielleicht schon",
-        "text_one": "1 Termin hat denselben Namen und dasselbe Datum wie ein Termin im Kalender.",
-        "text_other": "{{count}} Termine haben denselben Namen und dasselbe Datum wie Termine im Kalender. Sie sind mit „Möglicherweise doppelt“ markiert.",
+        "text_one": "1 Termin gibt es im Kalender schon (gleiche Kennung aus der Datei oder gleicher Name am selben Tag).",
+        "text_other": "{{count}} Termine gibt es im Kalender schon (gleiche Kennung aus der Datei oder gleicher Name am selben Tag). Sie sind mit „Möglicherweise doppelt“ markiert.",
         "deselect": "Doppelte abwählen"
+      },
+      "tooMany": {
+        "title": "Zu viele Termine für einen Import",
+        "text": "Es lassen sich höchstens {{max}} Termine auf einmal importieren, ausgewählt sind {{count}}. Wähle weniger aus und importiere den Rest in einem zweiten Durchgang."
+      },
+      "invalid": {
+        "title_one": "Ein Termin kann so nicht importiert werden",
+        "title_other": "{{count}} Termine können so nicht importiert werden",
+        "text_one": "1 Termin hat Angaben, die der Kalender nicht annimmt (zum Beispiel einen zu langen Namen). Er ist mit „Fehlerhaft“ markiert. Bearbeite ihn oder wähle ihn ab.",
+        "text_other": "{{count}} Termine haben Angaben, die der Kalender nicht annimmt (zum Beispiel einen zu langen Namen). Sie sind mit „Fehlerhaft“ markiert. Bearbeite sie oder wähle sie ab.",
+        "deselect": "Fehlerhafte abwählen"
+      },
+      "timezone": {
+        "title": "Unbekannte Zeitzone wird ersetzt",
+        "text_one": "1 Termin nennt eine Zeitzone, die der Kalender nicht kennt ({{zones}}). Er wird in der Zeitzone {{zone}} angelegt. Prüfe die Uhrzeit nach dem Import.",
+        "text_other": "{{count}} Termine nennen eine Zeitzone, die der Kalender nicht kennt ({{zones}}). Sie werden in der Zeitzone {{zone}} angelegt. Prüfe die Uhrzeiten nach dem Import."
       },
       "bulk": {
         "title": "Für alle ausgewählten Termine setzen",
@@ -759,12 +788,15 @@
       "editOneLabel": "Termin {{name}} am {{date}} bearbeiten",
       "noPlace": "Kein Ort",
       "duplicate": "Möglicherweise doppelt",
+      "invalidBadge": "Fehlerhaft",
+      "timezoneBadge": "Zeitzone ersetzt",
       "recurring": "Wiederholt sich",
       "selected": "{{selected}} von {{total}} ausgewählt",
       "importLabel_one": "1 Termin importieren",
       "importLabel_other": "{{count}} Termine importieren",
       "importLabelNone": "Termine importieren",
       "importing": "Wird importiert …",
+      "checking": "Termine werden geprüft …",
       "summaryLabel": "Zusammenfassung und Import",
       "loadError": {
         "title": "Orte, Eigenschaften oder Zielgruppen konnten nicht geladen werden",
@@ -812,6 +844,13 @@
       "invalid_one": "1 Termin der Datei nicht lesbar",
       "invalid_other": "{{count}} Termine der Datei nicht lesbar",
       "invalidText": "Sie hatten kein gültiges Datum oder keinen Namen.",
+      "duplicatesSkipped_one": "1 doppelter Termin übersprungen",
+      "duplicatesSkipped_other": "{{count}} doppelte Termine übersprungen",
+      "duplicatesSkippedText": "Es gibt sie schon im Kalender.",
+      "timezoneBadge": "Zeitzone",
+      "timezone_one": "Bei 1 Termin wurde die Zeitzone ersetzt",
+      "timezone_other": "Bei {{count}} Terminen wurde die Zeitzone ersetzt",
+      "timezoneText": "Die Datei nannte {{zones}}. Angelegt in {{zone}}; prüfe die Uhrzeiten.",
       "skippedBadge": "Übersprungen",
       "toCalendar": "Zum Kalender",
       "allEvents": "Alle Termine ansehen",
@@ -821,17 +860,9 @@
         "heading": "Import fehlgeschlagen",
         "title": "Es wurde nichts importiert",
         "text": "Der Import ist fehlgeschlagen. Es wurden keine Termine angelegt. Bitte versuche es erneut.",
-        "retry": "Erneut versuchen"
-      },
-      "partial": {
-        "heading": "Import nur teilweise gelungen",
-        "title": "Nicht alle Termine wurden importiert",
-        "text_one": "1 Termin wurde angelegt, die übrigen nicht. Prüfe die Terminliste, bevor du es erneut versuchst, sonst entstehen Doppelte.",
-        "text_other": "{{count}} Termine wurden angelegt, die übrigen nicht. Prüfe die Terminliste, bevor du es erneut versuchst, sonst entstehen Doppelte.",
-        "listHeading_one": "1 Termin nicht importiert",
-        "listHeading_other": "{{count}} Termine nicht importiert",
-        "more_one": "… und 1 weiterer",
-        "more_other": "… und {{count}} weitere"
+        "retry": "Erneut versuchen",
+        "tooMany": "Es lassen sich höchstens {{max}} Termine auf einmal importieren. Es wurden keine Termine angelegt. Wähle weniger aus und importiere den Rest in einem zweiten Durchgang.",
+        "backToReview": "Zurück zur Prüfung"
       }
     }
   },

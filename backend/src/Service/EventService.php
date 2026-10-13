@@ -14,9 +14,9 @@ use App\Entity\Feature;
 use App\Entity\Location;
 use App\Entity\Property;
 use App\Entity\TargetGroup;
+use App\Exception\ApiProblemException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class EventService
@@ -121,24 +121,6 @@ readonly class EventService
         return array_map(fn (Event $e) => $this->serializeEvent($e), $events);
     }
 
-    public function importEvents(Calendar $calendar, array $eventsData): int
-    {
-        foreach (array_values($eventsData) as $i => $data) {
-            try {
-                if (!is_array($data)) {
-                    throw new BadRequestHttpException('event must be an object');
-                }
-                $this->buildEvent($calendar, $data);
-            } catch (HttpException $e) {
-                // Name the failing entry; nothing is stored (no flush)
-                throw new HttpException($e->getStatusCode(), sprintf('events[%d]: %s', $i, $e->getMessage()), $e);
-            }
-        }
-        $this->em->flush();
-
-        return count($eventsData);
-    }
-
     public function getEvent(string $id, Calendar $calendar): array
     {
         return $this->serializeEvent($this->findEvent($id, $calendar));
@@ -160,6 +142,72 @@ readonly class EventService
         $this->em->flush();
     }
 
+    /** Most ids per bulk request (more → 413 `too_many_events`). */
+    public const BULK_MAX = 5000;
+    public const BULK_ACTIONS = ['publish', 'draft', 'delete'];
+
+    /**
+     * Publishes, unpublishes or deletes several events of the calendar in one transaction. All ids must
+     * belong to the calendar (unknown and foreign ids alike → 422 `unknown_reference`, nothing happens);
+     * duplicate ids count once.
+     *
+     * @return array{affected: int}
+     */
+    public function bulk(Calendar $calendar, array $data): array
+    {
+        $action = $data['action'] ?? null;
+        if (!is_string($action) || !in_array($action, self::BULK_ACTIONS, true)) {
+            throw Input::invalid('action', 'action must be one of: '.implode(', ', self::BULK_ACTIONS));
+        }
+        $raw = $data['ids'] ?? null;
+        if (!is_array($raw) || [] === $raw || !array_is_list($raw)) {
+            throw Input::invalid('ids', 'ids must be a non-empty list of event ids');
+        }
+        $ids = [];
+        foreach ($raw as $id) {
+            if (!is_string($id) || '' === $id || strlen($id) > 36) {
+                throw Input::invalid('ids', 'ids must be a non-empty list of event ids');
+            }
+            // The database compares ids case-insensitively; stored ids are lower case.
+            $ids[strtolower($id)] = true;
+        }
+        $ids = array_keys($ids);
+        if (count($ids) > self::BULK_MAX) {
+            throw new ApiProblemException(413, sprintf('Maximum %d events per bulk action', self::BULK_MAX), EventImportService::TOO_MANY_CODE, 'ids');
+        }
+
+        $found = $this->em->createQueryBuilder()
+            ->select('e.id')
+            ->from(Event::class, 'e')
+            ->where('e.calendar = :calendar')
+            ->andWhere('e.id IN (:ids)')
+            ->setParameter('calendar', $calendar)
+            ->setParameter('ids', $ids)
+            ->getQuery()
+            ->getSingleColumnResult();
+        $missing = array_values(array_diff($ids, array_map(fn ($id) => strtolower((string) $id), $found)));
+        if ([] !== $missing) {
+            throw CalendarReferences::unknown('ids', $missing[0]);
+        }
+
+        $qb = $this->em->createQueryBuilder();
+        if ('delete' === $action) {
+            // Assignments go with the event (ON DELETE CASCADE in the database)
+            $qb->delete(Event::class, 'e');
+        } else {
+            $qb->update(Event::class, 'e')->set('e.isDraft', ':draft')->setParameter('draft', 'draft' === $action);
+        }
+        $qb->where('e.calendar = :calendar')
+            ->andWhere('e.id IN (:ids)')
+            ->setParameter('calendar', $calendar)
+            ->setParameter('ids', $ids);
+
+        $this->em->wrapInTransaction(fn () => $qb->getQuery()->execute());
+
+        // `affected` = events of the request (an update to the same value reports no changed row in MySQL)
+        return ['affected' => count($ids)];
+    }
+
     private function findEvent(string $id, Calendar $calendar): Event
     {
         $event = $this->em->getRepository(Event::class)->find($id);
@@ -170,13 +218,19 @@ readonly class EventService
         return $event;
     }
 
-    /** New, persisted (not flushed) event from request data. */
-    private function buildEvent(Calendar $calendar, array $data): Event
+    /**
+     * New, persisted (not flushed) event from request data.
+     *
+     * @param bool $dryRun validate only: the event is neither persisted nor linked (import preview)
+     */
+    public function buildEvent(Calendar $calendar, array $data, bool $dryRun = false): Event
     {
         $event = new Event();
         $event->setCalendar($calendar);
-        $this->applyInput($event, $calendar, $data, false);
-        $this->em->persist($event);
+        $this->applyInput($event, $calendar, $data, false, $dryRun);
+        if (!$dryRun) {
+            $this->em->persist($event);
+        }
 
         return $event;
     }
@@ -186,8 +240,9 @@ readonly class EventService
      * unknown ids and ids of other calendars are rejected alike (422), so nothing about other calendars leaks.
      *
      * @param bool $partial PATCH: only the given keys are applied, nothing is required
+     * @param bool $dryRun  validate the assignments without linking them (nothing is persisted)
      */
-    private function applyInput(Event $event, Calendar $calendar, array $data, bool $partial): void
+    private function applyInput(Event $event, Calendar $calendar, array $data, bool $partial, bool $dryRun = false): void
     {
         $has = fn (string $key) => !$partial || array_key_exists($key, $data);
         // PATCH: a missing or null id list leaves the assignments unchanged
@@ -218,7 +273,7 @@ readonly class EventService
             }
         }
         if (null !== $event->getDateEnd() && $event->getDateEnd() < $event->getDate()) {
-            throw new BadRequestHttpException('dateEnd must not be before date');
+            throw Input::invalid('dateEnd', 'dateEnd must not be before date');
         }
 
         if ($has('locationId')) {
@@ -230,33 +285,39 @@ readonly class EventService
 
         if ($hasList('propertyIds')) {
             $properties = $this->references->findAll(Property::class, $calendar, Input::idList($data, 'propertyIds'), 'propertyIds');
-            LinkCollectionSync::sync(
-                $this->em,
-                $event->getProperties(),
-                array_keys($properties),
-                fn (EventProperty $ep) => $ep->getProperty()->getId(),
-                fn (string $id) => (new EventProperty())->setEvent($event)->setProperty($properties[$id]),
-            );
+            if (!$dryRun) {
+                LinkCollectionSync::sync(
+                    $this->em,
+                    $event->getProperties(),
+                    array_keys($properties),
+                    fn (EventProperty $ep) => $ep->getProperty()->getId(),
+                    fn (string $id) => (new EventProperty())->setEvent($event)->setProperty($properties[$id]),
+                );
+            }
         }
         if ($hasList('featureIds')) {
             $features = $this->references->findAll(Feature::class, $calendar, Input::idList($data, 'featureIds'), 'featureIds');
-            LinkCollectionSync::sync(
-                $this->em,
-                $event->getFeatures(),
-                array_keys($features),
-                fn (EventFeature $ef) => $ef->getFeature()->getId(),
-                fn (string $id) => (new EventFeature())->setEvent($event)->setFeature($features[$id]),
-            );
+            if (!$dryRun) {
+                LinkCollectionSync::sync(
+                    $this->em,
+                    $event->getFeatures(),
+                    array_keys($features),
+                    fn (EventFeature $ef) => $ef->getFeature()->getId(),
+                    fn (string $id) => (new EventFeature())->setEvent($event)->setFeature($features[$id]),
+                );
+            }
         }
         if ($hasList('targetGroupIds')) {
             $groups = $this->references->findAll(TargetGroup::class, $calendar, Input::idList($data, 'targetGroupIds'), 'targetGroupIds');
-            LinkCollectionSync::sync(
-                $this->em,
-                $event->getTargetGroups(),
-                array_keys($groups),
-                fn (EventTargetGroup $etg) => $etg->getTargetGroup()->getId(),
-                fn (string $id) => (new EventTargetGroup())->setEvent($event)->setTargetGroup($groups[$id]),
-            );
+            if (!$dryRun) {
+                LinkCollectionSync::sync(
+                    $this->em,
+                    $event->getTargetGroups(),
+                    array_keys($groups),
+                    fn (EventTargetGroup $etg) => $etg->getTargetGroup()->getId(),
+                    fn (string $id) => (new EventTargetGroup())->setEvent($event)->setTargetGroup($groups[$id]),
+                );
+            }
         }
     }
 
@@ -275,6 +336,7 @@ readonly class EventService
             'timeEnd' => $event->getTimeEnd(),
             'isAllDay' => $event->isAllDay(),
             'isDraft' => $event->isDraft(),
+            'externalUid' => $event->getExternalUid(),
             'location' => $event->getLocation() ? [
                 'id' => $event->getLocation()->getId(),
                 'name' => $event->getLocation()->getName(),

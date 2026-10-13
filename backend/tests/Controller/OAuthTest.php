@@ -211,8 +211,39 @@ class OAuthTest extends WebTestCase
         $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
         TestHelper::createUser($this->em, $hasher, 'alice@example.com');
 
-        $this->assertFailed('account_exists', $this->signIn('google', self::google('alice@example.com', false)));
+        // Google vouches for its claim, and the claim says "not verified": the user can fix it at Google
+        $this->assertFailed('email_unverified_at_provider', $this->signIn('google', self::google('alice@example.com', false)));
         $this->assertCount(0, $this->user('alice@example.com')->getOauthAccounts());
+    }
+
+    public function testUntrustedProviderOrDifferentAddressStillReportsAccountExists(): void
+    {
+        $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
+        TestHelper::createUser($this->em, $hasher, 'alice@example.com');
+
+        // Microsoft's claim is never trusted: no hint to "verify at the provider"
+        $this->assertFailed('account_exists', $this->signIn('microsoft', self::microsoft('alice@example.com') + ['email_verified' => false]));
+        // Verified at Google, but the address only matches by collation (ä = a): not linked, no verification hint
+        $this->assertFailed('account_exists', $this->signIn('google', self::google('älice@example.com', true, 'google-2')));
+        $this->assertCount(0, $this->user('alice@example.com')->getOauthAccounts());
+    }
+
+    public function testProviderErrorsHaveTheirOwnCodes(): void
+    {
+        foreach (['access_denied' => 'provider_denied', 'server_error' => 'provider_error', 'temporarily_unavailable' => 'provider_error'] as $error => $code) {
+            $state = $this->start('google');
+            self::$client->request('GET', self::API.'/api/auth/oauth/google/callback?'.http_build_query(['error' => $error, 'state' => $state]));
+            $location = (string) self::$client->getResponse()->headers->get('Location');
+            parse_str((string) parse_url($location, \PHP_URL_QUERY), $result);
+            $this->assertSame(['error' => $code], $result, $error);
+        }
+        // The profile was never requested
+        $this->assertSame(0, self::$providers['google']->fetchUserCalls);
+        // Without a valid state the state error wins (a forged callback learns nothing else)
+        self::$client->getCookieJar()->clear();
+        self::$client->request('GET', self::API.'/api/auth/oauth/google/callback?error=access_denied&state=forged');
+        parse_str((string) parse_url((string) self::$client->getResponse()->headers->get('Location'), \PHP_URL_QUERY), $result);
+        $this->assertSame(['error' => 'invalid_state'], $result);
     }
 
     public function testMicrosoftNeverLinksExistingUserEvenWithAnEmailVerifiedClaim(): void
@@ -366,9 +397,9 @@ class OAuthTest extends WebTestCase
         $i = 0;
         foreach (['false', 0, 1, '1', 'TRUE', 'yes', [], null] as $claim) {
             $claims = ['sub' => 'g-'.++$i, 'email' => 'alice@example.com', 'email_verified' => $claim];
-            $this->assertFailed('account_exists', $this->signIn('google', $claims), var_export($claim, true));
+            $this->assertFailed('email_unverified_at_provider', $this->signIn('google', $claims), var_export($claim, true));
         }
-        $this->assertFailed('account_exists', $this->signIn('google', ['sub' => 'g-x', 'email' => 'alice@example.com']));
+        $this->assertFailed('email_unverified_at_provider', $this->signIn('google', ['sub' => 'g-x', 'email' => 'alice@example.com']));
         $this->assertCount(0, $this->user('alice@example.com')->getOauthAccounts());
 
         // Apple sends the claim as a string.
