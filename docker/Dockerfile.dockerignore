@@ -1,0 +1,36 @@
+# Build context = repo root; BuildKit picks this file up next to docker/Dockerfile
+.git
+.github
+.idea
+.claude
+.junie
+.superpowers
+.deploy
+.husky
+.security-audit
+**/.DS_Store
+**/node_modules
+docs
+docker-compose.yml
+*.md
+.env
+.env.*
+**/.env
+**/.env.*
+
+backend/vendor
+backend/var
+backend/tests
+backend/.phpunit.cache
+backend/.php-cs-fixer.*
+backend/phpstan*
+backend/phpunit*
+backend/config/jwt/*.pem
+backend/config/jwt/old
+backend/public/*
+!backend/public/index.php
+
+frontend/test-results
+frontend/playwright-report
+frontend/dist
+# note: frontend/e2e stays, unit tests type-check against e2e/safety.ts
