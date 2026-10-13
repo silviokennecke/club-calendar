@@ -1,20 +1,22 @@
 # Backend-Lücken und offene Risiken (Endstand Redesign)
 
-Stand: 2026-10-13, nach Paket 2 des Umsetzungsplans (`BACKEND-PLAN.md`; vorher: 2026-10-09 nach Paket 1, 2026-10-06 nach Phase 9). Hier steht, was das Design braucht und das Backend (noch) nicht bietet, welche
+Stand: 2026-10-13, nach Paket 3 des Umsetzungsplans (`BACKEND-PLAN.md`; vorher: Paket 2 am selben Tag, 2026-10-09 nach Paket 1, 2026-10-06 nach Phase 9). Hier steht, was das Design braucht und das Backend (noch) nicht bietet, welche
 Sicherheitsrisiken offen sind, welche Backend-Fehler während des Redesigns behoben wurden und was im Betrieb zu tun
 ist. Zuordnung zu den Artboards: `COVERAGE.md`; Umsetzungsplan: `PLAN.md`; E2E-Umgebung: `E2E.md`.
 
 ## Kurzfassung und Prioritäten
 
 1. **Vor produktiver Nutzung (Betrieb):** Migrationen `Version20261004120000` (Tabelle `auth_nonce`),
-   `Version20261004130000` (`user.token_version`), `Version20261009120000` (Vorlagen-Zeiten) und `Version20261010120000`
-   (`event.external_uid`) auf Dev und Prod ausführen; `APP_SECRET`, `JWT_REFRESH_SECRET` und
-   `WEBAUTHN_*` in Produktion setzen; SSO nur über HTTPS (State-Cookie). Siehe "Betrieb".
+   `Version20261004130000` (`user.token_version`), `Version20261009120000` (Vorlagen-Zeiten), `Version20261010120000`
+   (`event.external_uid`) und `Version20261013120000` (Paket 3: `password_reset`, `email_change`,
+   `passkey.last_used_at`, `club_user.last_calendar_id`) auf Dev und Prod ausführen; `APP_SECRET`,
+   `JWT_REFRESH_SECRET`, `BACKEND_URL` und `WEBAUTHN_*` in Produktion setzen; SSO nur über HTTPS (State-Cookie); Cron
+   `app:prune-password-resets`. Siehe "Betrieb".
 2. **Sicherheit, mittel:** Vorab-Registrierung mit fremder Adresse (Passwort des Registrierenden gilt nach dem Klick
    des Eigentümers), fehlendes Rate-Limiting, nicht rotierende/widerrufbare Refresh-Tokens. Siehe "Offene
    Sicherheitsrisiken".
-3. **Features mit sichtbarer UI-Lücke ("Bald verfügbar"):** Passwort vergessen/zurücksetzen, Terminserien,
-   SSO verknüpfen/trennen, Profil (Name/E-Mail/Passwort) ändern.
+3. **Features mit sichtbarer UI-Lücke ("Bald verfügbar"):** Terminserien (Paket 4). Passwort vergessen/zurücksetzen,
+   SSO verknüpfen/trennen und Profil (Name/E-Mail/Passwort) sind umgesetzt (Paket 3, siehe "Umgesetzt (Paket 3)").
 4. **Zähler und Einzel-Endpoints:** umgesetzt (Paket 1, siehe "Umgesetzt (Paket 1)"). Offen bleiben kurze
    Feed-Adressen (Slugs) und ein Zustand "Kalender archiviert" im öffentlichen Feed.
 5. **Robustheit:** Import-Vorschau, atomarer Import, Export-Endpoint, Sammelaktionen und stabile Fehlercodes sind
@@ -24,27 +26,15 @@ ist. Zuordnung zu den Artboards: `COVERAGE.md`; Umsetzungsplan: `PLAN.md`; E2E-U
 
 ### Auth und Konten
 
-- **Passwort vergessen / zurücksetzen:** kein Endpoint (Design: ForgotPassword). Die Seite `/forgot-password` ist
-  gebaut, Absenden deaktiviert ("Bald verfügbar"); der Zustand "Prüfe dein Postfach" fehlt (COVERAGE L2). Ein
-  Reset wäre auch die Behebung des Vorab-Registrierungs-Risikos (siehe unten).
-- **Profil:** Name, E-Mail und Passwort lassen sich nicht ändern (`PATCH /api/auth/me` kennt nur Datumsformat,
-  Wochentag, Sprache, zuletzt genutzter Verein/Kalender). Die UI zeigt den Design-Hinweis "Name und E-Mail können
-  hier noch nicht geändert werden."; "Passwort ändern" ist im Design nicht vorgesehen und fehlt daher auch in der UI.
-- **Verknüpfte Anmeldungen:** `GET /api/auth/me` liefert nur `oauthAccounts[].provider`, `GET /api/auth/providers`
-  die konfigurierten Anbieter. Es gibt keinen Endpoint zum Verknüpfen mit dem angemeldeten Konto (der OAuth-Start
-  legt ein Konto an oder meldet an) und keinen zum Trennen; die Profilseite zeigt den Status, die Aktionen sind
-  deaktiviert (COVERAGE L4). Der Schutz "mindestens eine Anmeldemethode muss bleiben" fehlt im Backend. Folge der
-  SSO-Policy: Microsoft-Nutzer mit bestehendem Passwort-/Google-Konto können Microsoft nicht hinzufügen.
-- **Passkeys:** Die Liste kennt nur Gerätename und `createdAt`, kein "zuletzt benutzt". Der Name ist optional;
-  ohne Angabe sendet das Frontend "Dieses Gerät" / "This device" (Backend-Default wäre `null`).
+Umgesetzt in Paket 3 (siehe "Umgesetzt (Paket 3)"). Offen bleibt:
+
 - **Theme** wird nur im Browser (localStorage) gespeichert, nicht am Benutzer (bewusst laut Plan; nur relevant,
   falls geräteübergreifend gewünscht).
-- **E2E-Bestätigung:** Kein verifizierter Weg, in E2E-Tests einen Nutzer ohne Mailversand zu bestätigen
-  (`MAILER_DSN=null`); `e2e/onboarding.spec.ts` setzt `is_email_verified` per PHP-PDO direkt in der E2E-Datenbank.
-  Sauberer wäre eine Console-Command (`app:user:verify <email>`) oder ein Test-Endpoint.
-- **Zuletzt genutzter Kalender:** Am Benutzer stehen nur `lastClubId`/`lastCalendarId` (ein Paar). Den letzten
-  Kalender je Verein merkt sich das Frontend im Browser (`lastCalendar:<clubId>`); geräteübergreifend bräuchte es
-  ein Feld je Mitgliedschaft.
+- **E-Mail-Wechsel für SSO-only-Konten:** nicht möglich (409 `no_password`), bis ein Passwort gesetzt ist ("Passwort
+  per E-Mail festlegen" im Profil). Eine Bestätigung über eine erneute SSO-Anmeldung gibt es nicht.
+- **Hinweis-Mail an die bisherige Adresse** bei Passwort- oder E-Mail-Änderung fehlt (üblich als Warnung bei
+  Kontoübernahme); ebenso keine Mail an eine bereits vergebene neue Adresse (der Wechsel bleibt unsichtbar wartend).
+- **Mehrere Konten desselben Anbieters** (z. B. zwei Google-Konten) lassen sich nicht verknüpfen (`already_linked`).
 
 ### Termine und Serien
 
@@ -120,7 +110,118 @@ ist. Zuordnung zu den Artboards: `COVERAGE.md`; Umsetzungsplan: `PLAN.md`; E2E-U
   `LinkCollectionSync`, `Input`, `SessionVersionListener`, `SignedTokenService`/`NonceStore`) nur knapp; das
   Verhalten ist hier unter "Behobene Bugs" beschrieben. Eine API-Referenz (OpenAPI) gibt es nicht; das Frontend
   leitet Typen von Hand ab (`frontend/src/lib/types.ts`).
-- Kein Test-/Dev-Weg zur Nutzerbestätigung (siehe Auth), kein eigener E2E-Seed außer den Fixtures.
+- Kein eigener E2E-Seed außer den Fixtures (Nutzer bestätigt die E2E-Suite seit Paket 3 mit `app:user:verify`,
+  Reset-Links holt sie mit `app:user:reset-link`).
+
+## Umgesetzt (Paket 3)
+
+Auth und Konten (`BACKEND-PLAN.md` Paket 3). Migration `Version20261013120000`: Tabellen `password_reset` und
+`email_change` (je `user_id` mit `ON DELETE CASCADE`, `token_hash` = SHA-256 des Tokens mit eindeutigem Index,
+`expires_at`, `used_at`, `created_at`, alle Zeiten UTC), `passkey.last_used_at`, `club_user.last_calendar_id` (ohne
+Fremdschlüssel). Neue Felder sind Ergänzungen; bestehende Antwortformen bleiben gleich.
+
+- **Passwort vergessen** `POST /api/auth/forgot-password {email}` → immer 204 (unbekannte, unbestätigte und
+  SSO-only-Adressen gleich; auch über dem Limit). Token: 32 Byte CSPRNG (hex), gespeichert nur als SHA-256-Hash; ein
+  neuer Link löscht die offenen älteren des Nutzers; 60 Minuten gültig. Die Mail geht an die gespeicherte Adresse des
+  Kontos mit `{FRONTEND_URL}/reset-password?token=…` (aus der Konfiguration, nie aus dem Host-Header; der Link steht
+  auch als Text in der Mail, damit der Text-Teil ihn enthält). Suche, Token und Mail laufen erst nach der Antwort
+  (`App\Service\DeferredMailer::defer()`, `kernel.terminate`): weder SMTP noch die Datenbank-Schreibvorgänge für ein
+  vorhandenes Konto verzögern die Antwort (gemessen vorher ~15 ms vs. ~9 ms, nachher gleich).
+  Limiter `password_reset_email` (3/Stunde je normalisierter Adresse, `mb_strtolower(trim())`) und
+  `password_reset_ip` (20/Stunde je Client-IP); über dem Limit 204 ohne Mail. Tests `PasswordResetTest`.
+- **Zurücksetzen** `POST /api/auth/reset-password {token, password}` → 204 oder 400 `invalid_reset_token` (unbekannt,
+  benutzt, abgelaufen: gleiche Antwort). Einmalnutzung über EIN bedingtes `UPDATE … SET used_at WHERE token_hash = ?
+  AND used_at IS NULL AND expires_at > ?` in einer Transaktion (von zwei gleichzeitigen Anfragen ändert genau eine die
+  Zeile), danach Vergleich per `hash_equals`. Setzt das Passwort, `isEmailVerified = true` (Besitz der Adresse ist
+  bewiesen), erhöht `token_version` (alle Sitzungen enden, die Antwort enthält keine Tokens), entwertet die übrigen
+  Links, löscht offene Bestätigungslinks und verwirft einen wartenden E-Mail-Wechsel (er kann von jemandem stammen,
+  der das alte Passwort kannte). War die Adresse noch unbestätigt, werden wie bei der ersten Bestätigung per
+  Link SSO-Verknüpfungen und Passkeys aus der unbestätigten Zeit entfernt. **SSO-only-Konten bekommen so ein Passwort**
+  (Profil: "Passwort per E-Mail festlegen" löst forgot-password für die eigene Adresse aus).
+- **Passwort-Policy** überall gleich (`App\Validator\PasswordPolicy`: 8–128 Zeichen; Registrierung, Reset, Wechsel; im
+  Frontend `lib/password.ts`, Zeichen = Code Points). bcrypt liest nur 72 Bytes; Symfonys `NativePasswordHasher`
+  hasht längere Passwörter vorab (SHA-512, base64), die 128 begrenzt die Eingabe (keine Kilobyte-Passwörter).
+- **Profil:** `PATCH /api/auth/me` nimmt `name` (trim, 1–255, sonst 422 `validation_failed` field `name`).
+  `POST /api/auth/change-password {currentPassword, newPassword}` → 200 mit neuen Tokens (`tokenResponse`): die
+  Version wird erhöht, alle anderen Sitzungen enden, die eigene läuft mit den neuen Tokens weiter (Entscheidung); ein
+  wartender E-Mail-Wechsel wird verworfen (sonst bewegte sein Link das Konto nach der Rettung durch den Eigentümer
+  doch noch auf die Adresse dessen, der das alte Passwort kannte); falsches Passwort 400 `invalid_credentials` (field `currentPassword`; 400 statt 401, damit der Client nicht den
+  Refresh versucht), SSO-only 409 `no_password`.
+- **E-Mail ändern** `POST /api/auth/change-email {email, password}` → 204; Passwort Pflicht (falsch 400
+  `invalid_credentials` field `password`), SSO-only-Konten 409 `no_password` (Entscheidung: ohne Passwort keine
+  erneute Anmeldung; erst Passwort festlegen), gleiche Adresse 422. Der wartende Wechsel (`email_change`, 24 h) wird
+  **immer** angelegt und in `GET /api/auth/me` als `pendingEmail` gezeigt; einen Link (an die NEUE Adresse,
+  `{BACKEND_URL}/api/auth/verify-new-email?token=…`, nach der Antwort verschickt) gibt es nur, wenn die Adresse frei
+  ist. Eine vergebene Adresse (Vergleich per Kollation wie der eindeutige Index von `user.email`; Nicht-ASCII-Adressen
+  lehnt die E-Mail-Validierung ab) bekommt keinen Link, sieht aber gleich aus (kein Orakel, auch nicht über
+  `pendingEmail`). Limiter `email_change_request` (5/Stunde je Konto, darüber 204 ohne Mail; das Passwort wird vorher
+  geprüft). `DELETE /api/auth/change-email` verwirft den wartenden Wechsel.
+  `GET /api/auth/verify-new-email?token=` leitet auf `{FRONTEND_URL}/auth/verify-email?status=email_changed` bzw.
+  `?status=error&reason=invalid|expired|already_used|email_taken&flow=email_change` (Adresse zwischenzeitlich
+  vergeben, auch per Unique-Index-Race). Erfolg: Adresse gesetzt und bestätigt, `token_version` erhöht, offene
+  Bestätigungslinks gelöscht. **Zusammenspiel mit Tokens:** Access-Tokens tragen die alte Adresse (Lookup über die
+  E-Mail) und die alte Version → 401; der Refresh nennt den Nutzer per `sub` (ID), scheitert aber an der Version →
+  401 `invalid_refresh_token`; der Client landet auf `/login` und meldet sich mit der neuen Adresse an (bewusst: der
+  Wechsel beendet alle Sitzungen, also kein "401 → Refresh → neue Tokens"). Ein altes Token öffnet nie ein Konto, das
+  die frei gewordene alte Adresse neu registriert (`uid`-Claim). Tests `AccountTest`.
+- **SSO verknüpfen** `POST /api/auth/oauth/{provider}/link-start` (JWT) → `{url}`: ein Einmal-Ticket auf der API
+  (`/api/auth/oauth/{provider}/link?ticket=…`, signiert, Zweck `oauth.link_ticket`, 60 s, an Nutzer + `token_version`
+  gebunden, einmalig über `auth_nonce`). Abweichung vom Plan ("Autorisierungs-URL"): das State-Cookie lässt sich per
+  CORS-Fetch ohne Credentials nicht setzen, daher setzt erst die Navigation zum Ticket das Cookie und leitet zum
+  Anbieter weiter. Der Link-State ist für einen eigenen Zweck signiert (`oauth.link_state`, Schlüssel je Zweck): er
+  verifiziert nie als Login-State und umgekehrt; ein Link-Callback gibt nie Tokens aus, ein Login-Callback verknüpft
+  nie mit einem angemeldeten Konto. Callback im Link-Modus: Nutzer muss noch existieren und dieselbe `token_version`
+  haben; er verknüpft NOCH NICHT, sondern leitet auf `{FRONTEND_URL}/profile?link_provider=<provider>&link_proof=…`
+  (signiert, Zweck `oauth.link_proof`, 5 Minuten, einmalig, nennt Nutzer, Version und Provider-Account). Das
+  angemeldete Frontend schließt ab: `POST /api/auth/oauth/{provider}/link-complete {proof}` (JWT) → 204; nur wenn der
+  JWT-Nutzer (mit derselben Version) den Vorgang gestartet hat, sonst 400 `invalid_state`. Grund (Link-CSRF, bei der
+  Verifikation gefunden): Ohne diesen Schritt konnte jemand mit SEINER Sitzung `link-start` aufrufen und die
+  Ticket-URL einem Opfer unterschieben; dessen Browser meldete sich (bei früherer Zustimmung ohne Rückfrage) beim
+  Anbieter an, und der Callback hängte das Anbieter-Konto des OPFERS an den Nutzer des Angreifers (eine spätere
+  SSO-Anmeldung des Opfers landete im Konto des Angreifers). Provider-Account (Provider + `sub`) wird unabhängig von
+  `email_verified` angehängt; gehört er schon diesem Nutzer → idempotent, einem anderen → 409 `account_in_use` (nichts
+  über das andere Konto), ein anderes Konto desselben Anbieters → 409 `already_linked`. Fehler des Redirects:
+  `{FRONTEND_URL}/profile?link_error=<code>` (`invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`). Fehler
+  eines Link-States, der sich nicht verifizieren lässt (abgelaufen, fremder Browser), landen wie beim Login auf
+  `/auth/callback?error=invalid_state` (der Modus ist dann nicht bekannt). Microsoft lässt sich so (angemeldet) mit
+  einem bestehenden Konto verknüpfen.
+- **SSO trennen** `DELETE /api/auth/oauth/{provider}` (JWT) → 204; nicht verknüpft 404 `oauth_account_not_found`;
+  ohne Passwort, Passkey oder anderen Anbieter 409 `last_login_method` (die Zeile des Nutzers ist dabei gesperrt
+  (`SELECT … FOR UPDATE`): zwei gleichzeitige Trennvorgänge entfernen nie beide letzten Anbieter). Erhöht die Version
+  nicht (wie Passkey entfernen). `GET /api/auth/me` liefert `hasPassword`, `pendingEmail` und `oauthAccounts[].provider` (ohne `sub` und
+  Anbieter-Adresse). Tests `OAuthLinkTest`.
+- **Passkeys:** `last_used_at` wird bei erfolgreicher Anmeldung gesetzt (UTC), die Liste liefert `lastUsedAt`
+  (ISO-8601, `null` bis zur ersten Nutzung); der Name bleibt optional (Backend-Default `null`, das Frontend zeigt
+  dann "Passkey ohne Namen"). Test `WebAuthnTest::testSignInRecordsLastUsedAtInUtcAndTheListShowsIt`.
+- **Letzter Kalender je Mitgliedschaft:** `PATCH /api/auth/me {lastClubId, lastCalendarId}` speichert den Kalender
+  zusätzlich an der Mitgliedschaft (`club_user.last_calendar_id`), wenn er existiert, zum Verein `lastClubId` gehört
+  und der Nutzer Mitglied ist (sonst still ignoriert, wie bisher). `GET /api/clubs` liefert je Verein
+  `lastCalendarId` (nur wenn der Kalender noch existiert und zum Verein gehört; ein gelöschter Kalender ergibt
+  `null`, ohne Fremdschlüssel). Frontend: `lib/lastCalendar.ts` (localStorage) entfällt; `pickCalendar` nimmt
+  `club.lastCalendarId` (archiviert/gelöscht → wie bisher erster aktiver Kalender), `AppShell` aktualisiert die
+  gecachte Vereinsliste, `ClubCard` verlinkt den gemerkten Kalender; alte `lastCalendar:*`-Schlüssel werden beim Start
+  gelöscht (`lib/legacyStorage.ts`). Tests `AccountTest::testLastCalendar…`, E2E `account.spec.ts`.
+- **Console-Commands:** `app:user:verify <email>` (markiert die Adresse als bestätigt; unbekannt → Exit 1; ohne die
+  Bereinigung des Bestätigungslinks), `app:user:reset-link <email>` (Reset-Token wie oben, gibt NUR die URL aus,
+  keine Mail; Dev/E2E/Support), `app:prune-password-resets` (löscht abgelaufene Reset-Links und abgelaufene
+  E-Mail-Wechsel). Die E2E-Suite nutzt die Commands statt PDO (`e2e/helpers.ts` `backendConsole`, `resetLinkFor`).
+- **Mails:** `templates/email/reset_password.mjml` und `confirm_new_email.mjml` im Stil der Bestätigungsmail, Texte
+  de/en nach Sprache des Nutzers (`email.reset.*`, `email.change.*`), kompiliert nach `*.html.twig` (eingecheckt;
+  `npm run build:mail -w backend` baut alle drei). Links nur auf `FRONTEND_URL` / `BACKEND_URL`; der Link steht zusätzlich
+  als Text unter dem Button (`email.*.link_note`), sonst fehlte er im automatisch erzeugten Text-Teil. Der Name wird
+  escaped. Die Bestätigungsmail der Registrierung hat diesen Text-Link weiterhin nicht.
+- **Logs:** `App\Logging\RedactTokensProcessor` ersetzt `token`/`ticket`/`secret`/`refresh_token`/`code`/`state`/
+  `link_proof` in Query-Strings von Lognachrichten und Kontext durch `[redacted]` (der Router loggt die Request-URI, bei
+  einem Fehler landet sie im Log). Die Debug-SQL-Logs der Test-/Dev-Umgebung zeigen nur den Hash. Grenzen: Exception-
+  Objekte im Kontext (Meldung, Trace) werden nicht bearbeitet; Access-Logs des Webservers (Caddy/Apache) und
+  Referer-Header der ersten Seitenanfragen (`/reset-password?token=…` lädt die eigenen Skripte, bevor die Seite
+  `no-referrer` setzt) enthalten den Token weiterhin (nur bis zur Einmalnutzung/60 Minuten verwertbar). Härter wäre
+  der Token im Fragment (`#token=`), das weder Server noch Referer sehen.
+- **Frontend:** `/forgot-password` aktiv (Zustände Formular, "Prüfe dein Postfach", Fehler; 429 = Erfolg), neue Seite
+  `/reset-password` (GuestRoute; Token wird nach dem Lesen per `replace` aus der Adresse entfernt, `no-referrer`),
+  `/auth/verify-email` kennt `status=email_changed` und die Fehler des Adresswechsels, Profil mit Name/E-Mail/Passwort,
+  Verknüpfen/Trennen und Passkey "zuletzt benutzt" (COVERAGE: ForgotPassword, Profile). `lib/api.ts`: alle Fehler tragen
+  `ApiError.code`, 204-Antworten werden zu `undefined`.
 
 ## Umgesetzt (Paket 1)
 
@@ -248,7 +349,13 @@ RFC-7807-Body `{type, title, status, detail, code, field?}` über `App\Exception
 | `duplicate_name` | 422 | Name im Kalender schon vergeben (Paket 1) |
 | `too_many_events` | 413 | Import > 5000 Termine/Orte, Bulk > 5000 IDs |
 | `email_taken` | 400 | Registrierung, field `email` |
-| `invalid_credentials` | 401 | Login (unbekannte Adresse und falsches Passwort gleich, kein Orakel) |
+| `invalid_credentials` | 401 / 400 | Login 401 (unbekannte Adresse und falsches Passwort gleich, kein Orakel); 400 bei `change-password` (field `currentPassword`) und `change-email` (field `password`) |
+| `invalid_reset_token` | 400 | `reset-password`: Token unbekannt, benutzt oder abgelaufen (gleiche Antwort), field `token` |
+| `no_password` | 409 | `change-password` / `change-email` für SSO-only-Konten |
+| `last_login_method` | 409 | `DELETE /api/auth/oauth/{provider}`: es bliebe keine Anmeldemethode |
+| `oauth_account_not_found` | 404 | `DELETE /api/auth/oauth/{provider}`: Anbieter nicht verknüpft |
+| `unknown_provider` | 404 | `POST /api/auth/oauth/{provider}/link-start` |
+| `invalid_state` / `account_in_use` / `already_linked` | 400 / 409 / 409 | `POST /api/auth/oauth/{provider}/link-complete`: Nachweis gefälscht, abgelaufen, benutzt oder von einem anderen Nutzer / einer beendeten Sitzung; Anbieter-Konto gehört einem anderen Nutzer; anderes Konto dieses Anbieters schon verknüpft |
 | `email_not_verified` | 403 | Login mit unbestätigter Adresse; Body bleibt `{error: "email_not_verified", code: "email_not_verified"}` |
 | `invalid_grant` | 400 | `POST /api/auth/token` ohne `grant_type=refresh_token` / Token |
 | `invalid_refresh_token` | 401 | Refresh-Token ungültig, abgelaufen, Nutzer weg oder Sitzungen beendet |
@@ -261,6 +368,11 @@ expired | already_used`; `resend-verification` antwortet immer 204 (kein Orakel)
 `validation_failed`/`invalid_request`. Andere 4xx (403/404 der Voter, Datumsparameter der Terminliste, Feeds,
 Feiertage) haben noch keinen Code.
 
+**SSO verknüpfen** (`?link_error=` an `{FRONTEND_URL}/profile`): `invalid_state`, `provider_denied`, `provider_error`,
+`oauth_failed`; nach Erfolg beim Anbieter `?link_provider=<provider>&link_proof=…`, abgeschlossen per
+`POST …/link-complete` (Fehlercodes dort: `invalid_state`, `account_in_use`, `already_linked`). Neue-Adresse-Bestätigung: siehe
+"Umgesetzt (Paket 3)".
+
 **OAuth** (`?error=` an `{FRONTEND_URL}/auth/callback`): `invalid_state`, `provider_denied` (Anbieter meldet
 `access_denied`, z. B. Abbruch der Einwilligung), `provider_error` (anderer Fehler des Anbieters, RFC 6749 4.1.2.1),
 `oauth_failed` (Code-Tausch/Profil gescheitert), `email_missing`, `account_exists`, `email_unverified_at_provider`
@@ -272,14 +384,14 @@ Anbieter-Fehler wird erst nach gültigem `state` ausgewertet (sonst `invalid_sta
 
 | Schweregrad | Risiko | Details / mögliche Behebung |
 | --- | --- | --- |
-| mittel | **Pre-Hijacking bei lokaler Vorab-Registrierung** | Registriert jemand mit fremder Adresse und eigenem Passwort und klickt der echte Eigentümer den (unaufgefordert erhaltenen) Bestätigungslink, gilt das Passwort des Registrierenden: Er meldet sich danach an, auch neben einem späteren Google-Login des Eigentümers (Adresse ist dann bestätigt, keine Bereinigung). Die Sitzungs-Invalidierung hilft nicht (vor der Bestätigung gibt es keine Sitzung). Nachgestellt in `SessionInvalidationTest::testPreRegisteredPasswordStillWorksAfterTheOwnerConfirms`. Voraussetzung: Das Opfer klickt einen Link zu einer Registrierung, die es nicht angelegt hat. Behebung braucht ein Feature (Passwort bei der Bestätigung neu setzen bzw. Passwort-Reset); das Passwort beim Bestätigen zu löschen sperrte ohne Reset den Eigentümer aus. |
+| mittel | **Pre-Hijacking bei lokaler Vorab-Registrierung** | Registriert jemand mit fremder Adresse und eigenem Passwort und klickt der echte Eigentümer den (unaufgefordert erhaltenen) Bestätigungslink, gilt das Passwort des Registrierenden: Er meldet sich danach an, auch neben einem späteren Google-Login des Eigentümers (Adresse ist dann bestätigt, keine Bereinigung). Die Sitzungs-Invalidierung hilft nicht (vor der Bestätigung gibt es keine Sitzung). Nachgestellt in `SessionInvalidationTest::testPreRegisteredPasswordStillWorksAfterTheOwnerConfirms`. Voraussetzung: Das Opfer klickt einen Link zu einer Registrierung, die es nicht angelegt hat. Seit Paket 3 kann der Eigentümer das Passwort zurücksetzen (ersetzt das fremde Passwort, beendet alle Sitzungen, entfernt bei unbestätigter Adresse auch SSO-Links und Passkeys); der Klick auf den Bestätigungslink allein behebt es weiterhin nicht (Audit-Thema). |
 | mittel | **Kein Rate-Limiting** | `/api/auth/login`, `/api/auth/token`, Passkey-Verify und OAuth-Callback sind unbegrenzt (Brute Force, Credential Stuffing). Symfony RateLimiter je IP + Konto. |
 | mittel | **Refresh-Tokens ohne Rotation/Widerruf** | Zustandslos, 7 Tage: Wiederverwendung bleibt unbemerkt, Abmelden und Passkey-Entfernen beenden bestehende Sitzungen nicht. Nur `user.token_version` beendet alle Sitzungen eines Nutzers; "überall abmelden" gibt es nicht. Bräuchte eine Token-Tabelle. |
 | niedrig–mittel | **Tokens im Query** | SSO leitet auf `/auth/callback?token=…&refresh_token=…`: Tokens landen in Browser-Verlauf und ggf. Server-Logs des Frontend-Hosts (Referrer nur, falls die Callback-Seite externe Ressourcen lädt). Fragment (`#token=…`) wäre besser (Frontend + Backend). |
 | niedrig–mittel | **Karten-Bilder privater Termine/Orte** | `GET /api/map/image/event/{id}` liefert das Kartenbild auch für veröffentlichte Termine, die nur in privaten Feeds stehen, `GET /api/map/image/location/{id}` für jeden Ort (jeweils nur mit bekannter UUID; Entwürfe antworten 404). Eine Prüfung bräuchte einen Feed-/Geheimnis-Bezug. Der Event-Endpoint wird von Frontend und Mails derzeit nicht genutzt. |
 | niedrig | **ID-Token-Claims ungeprüft** | `OidcProvider` prüft beim ID-Token weder Signatur noch `aud`/`iss`/`exp`. Das Token kommt direkt vom Token-Endpoint über TLS (nach OIDC zulässig), im Code-Flow mit Client-Secret nicht ausnutzbar; `iss` ist bei Microsoft `common` mandantenabhängig, daher kein trivialer Fix. |
 | niedrig | **Microsoft-Konto blockiert Registrierung** | Ein per Microsoft angelegtes unbestätigtes Konto mit fremder Adresse blockiert dauerhaft die lokale Registrierung des Eigentümers (`Email already in use`; `app:prune-unverified-users` löscht SSO-Konten nicht). Erst ein Google-/Apple-Login mit bestätigter Adresse löst das. |
-| niedrig | **Passwort-Hashing** | `App\Entity\User` nutzt explizit `bcrypt` (Kosten 13) statt `auto`; bcrypt kürzt nach 72 Bytes, `RegisterDto` hat keine Maximallänge. Umstellung auf `auto` (argon2id) mit Rehash bei Anmeldung möglich. |
+| niedrig | **Passwort-Hashing** | `App\Entity\User` nutzt explizit `bcrypt` (Kosten 13) statt `auto`. Seit Paket 3 überall 8–128 Zeichen (`PasswordPolicy`); bcrypt liest 72 Bytes, Symfony hasht längere Passwörter vorab (SHA-512). Umstellung auf `auto` (argon2id) mit Rehash bei Anmeldung möglich. |
 | niedrig | **User-Verification optional** | `WEBAUTHN_USER_VERIFICATION=preferred` (Standard) lässt Passkeys ohne PIN/Biometrie (nur Besitz) zu; `required` ist strenger, schließt aber Sicherheitsschlüssel ohne PIN aus. |
 | Betrieb | **Platzhalter-Geheimnisse** | `APP_SECRET` (signiert Challenges und OAuth-State) und `JWT_REFRESH_SECRET` haben in `.env` Platzhalter; in Produktion müssen sie gesetzt sein (siehe "Betrieb"). |
 | Hinweis | **Konto-Enumeration Mitglieder** | `POST …/members` 404 "User not found" verrät, ob ein Konto existiert (vom Design gewollt). |
@@ -363,7 +475,20 @@ Alle mit Tests; Details in den Commits.
 
 - **Migrationen** auf Dev und Prod ausführen (`npm run migrate`; Deploy macht es automatisch):
   `Version20261004120000` (Tabelle `auth_nonce` für einmalige Passkey-Challenges/OAuth-States),
-  `Version20261004130000` (`user.token_version`, Standard 0) und `Version20261009120000` (Vorlagen-Zeiten nullable).
+  `Version20261004130000` (`user.token_version`, Standard 0), `Version20261009120000` (Vorlagen-Zeiten nullable),
+  `Version20261010120000` (`event.external_uid`) und `Version20261013120000` (Paket 3: `password_reset`,
+  `email_change`, `passkey.last_used_at`, `club_user.last_calendar_id`).
+- **Cron:** `php bin/console app:prune-password-resets` (z. B. täglich) löscht abgelaufene Reset-Links und
+  E-Mail-Wechsel; wie bisher `app:prune-unverified-users`.
+- **Mail-Templates:** nach Änderungen an `templates/email/*.mjml` `npm run build:mail -w backend` (die kompilierten
+  `*.html.twig` sind eingecheckt; `npm run build` baut sie ebenfalls).
+- **`BACKEND_URL`** muss die öffentliche API-Adresse sein: Bestätigungslink der neuen E-Mail-Adresse und der
+  SSO-Link-Start (`link-start` → `{BACKEND_URL}/api/auth/oauth/{provider}/link?ticket=…`) bauen darauf auf.
+- **Rate-Limit je IP** (`password_reset_ip`) nutzt `Request::getClientIp()`: hinter einem Reverse Proxy, der die
+  Client-Adresse nicht als `REMOTE_ADDR` weitergibt, `framework.trusted_proxies` setzen, sonst teilen sich alle
+  Nutzer einen Zähler (20 Anfragen je Stunde; darüber weiterhin 204, aber ohne Mail).
+- **Support:** `app:user:verify <email>` bestätigt eine Adresse, `app:user:reset-link <email>` gibt einen Reset-Link
+  aus (nur CLI; die URL ist 60 Minuten gültig und gewährt den Zugang zum Konto, nur an den Eigentümer geben).
 - **Umgebungsvariablen (Produktion):**
   - `APP_SECRET` und `JWT_REFRESH_SECRET` müssen gesetzt sein (in `.env` stehen Platzhalter); `APP_SECRET` signiert
     Passkey-Challenges und OAuth-State, ein Wechsel macht laufende Anmeldevorgänge ungültig.

@@ -10,7 +10,8 @@ const apiPatch = vi.fn();
 const apiDelete = vi.fn();
 const updateUser = vi.fn();
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@/lib/api", async (orig) => ({
+  ...(await orig<typeof import("@/lib/api")>()),
   apiGet: (...a: unknown[]) => apiGet(...a),
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiPatch: (...a: unknown[]) => apiPatch(...a),

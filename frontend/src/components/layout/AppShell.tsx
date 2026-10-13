@@ -1,10 +1,9 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiGet } from "@/lib/api";
 import { pickCalendar } from "@/lib/pickCalendar";
-import { readLastCalendar, rememberLastCalendar } from "@/lib/lastCalendar";
 import { useAuth } from "@/lib/auth-context";
 import type { Calendar, Club } from "@/lib/types";
 import { Sidebar } from "./Sidebar";
@@ -33,6 +32,7 @@ export function AppShell({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, logout, updateUser } = useAuth();
+  const queryClient = useQueryClient();
   const trackedRef = useRef("");
 
   const { data: clubsData, isLoading: clubsLoading } = useQuery<Club[]>({
@@ -74,12 +74,15 @@ export function AppShell({
     void updateUser({ lastClubId: clubId, lastCalendarId: calendarId });
   }, [clubId, calendarId, trackLastUsed]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Remember the calendar per club in this browser (club switches reopen it). Only one that exists in
-  // this club counts, so a stale id in the URL is never stored.
+  // The PATCH above also stores the calendar at the membership (`lastCalendarId` of `GET /api/clubs`,
+  // across devices). Mirror it in the cached club list, so a club switch in this tab reopens it. Only a
+  // calendar of this club counts (the backend ignores others as well).
   useEffect(() => {
     if (!trackLastUsed || !calendarId || !calendars.some((c) => c.id === calendarId)) return;
-    rememberLastCalendar(user?.id, clubId, calendarId);
-  }, [user?.id, clubId, calendarId, calendars, trackLastUsed]);
+    queryClient.setQueryData<Club[]>(["clubs"], (old) =>
+      old?.map((c) => (c.id === clubId ? { ...c, lastCalendarId: calendarId } : c)),
+    );
+  }, [queryClient, clubId, calendarId, calendars, trackLastUsed]);
 
   // A club without calendars goes to setup to create one (not when loading them failed).
   useEffect(() => {
@@ -91,18 +94,18 @@ export function AppShell({
     async (newClubId: string) => {
       if (newClubId === clubId) return;
       const cals = await apiGet<Calendar[]>(`/api/clubs/${newClubId}/calendars`);
-      // The calendar last used in that club, not simply the first one.
+      // The calendar last used in that club (stored at the membership), not simply the first one.
       const target = pickCalendar(
         cals,
         newClubId,
         user?.lastClubId ? String(user.lastClubId) : null,
         user?.lastCalendarId ? String(user.lastCalendarId) : null,
-        readLastCalendar(user?.id, newClubId),
+        clubs.find((c) => c.id === newClubId)?.lastCalendarId ?? null,
       );
       if (target) navigate(`/clubs/${newClubId}/calendars/${target.id}`);
       else navigate(`/setup?clubId=${newClubId}`);
     },
-    [clubId, navigate, user?.id, user?.lastClubId, user?.lastCalendarId],
+    [clubId, clubs, navigate, user?.lastClubId, user?.lastCalendarId],
   );
 
   const data: ShellData = useMemo(

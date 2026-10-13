@@ -2,12 +2,11 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { apiPost } from "@/lib/api";
+import { passwordProblem } from "@/lib/password";
 import i18n from "@/lib/i18n";
 import { Button, Field, LinkButton, PasswordField, TextInput } from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { FocusBanner } from "@/components/auth/FocusBanner";
-
-const MIN_PASSWORD_LENGTH = 8;
 
 interface FieldErrors {
   name?: string;
@@ -16,7 +15,7 @@ interface FieldErrors {
   confirm?: string;
 }
 
-type Problem = "missing" | "short" | "mismatch" | "exists" | "generic";
+type Problem = "missing" | "short" | "long" | "mismatch" | "exists" | "generic";
 
 export default function SignupPage() {
   const { t } = useTranslation();
@@ -44,14 +43,18 @@ export default function SignupPage() {
     const found: FieldErrors = {};
     if (!name.trim()) found.name = t("auth.register.nameMissing");
     if (!email.trim()) found.email = t("auth.register.emailMissing");
-    if (!password) found.password = t("auth.register.passwordMissing");
-    else if (password.length < MIN_PASSWORD_LENGTH)
-      found.password = t("auth.register.passwordShortField");
+    const pwProblem = passwordProblem(password);
+    if (pwProblem === "missing") found.password = t("auth.register.passwordMissing");
+    else if (pwProblem === "short") found.password = t("auth.register.passwordShortField");
+    else if (pwProblem === "long") found.password = t("auth.register.passwordLongField");
     if (password && confirm !== password) found.confirm = t("auth.register.confirmMismatchField");
 
     if (Object.keys(found).length > 0) {
       const empty = !name.trim() || !email.trim() || !password;
-      fail(empty ? "missing" : password.length < MIN_PASSWORD_LENGTH ? "short" : "mismatch", found);
+      fail(
+        empty ? "missing" : pwProblem === "short" || pwProblem === "long" ? pwProblem : "mismatch",
+        found,
+      );
       return;
     }
 

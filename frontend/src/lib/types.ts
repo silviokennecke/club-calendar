@@ -17,6 +17,8 @@ export interface Club {
   calendarCount?: number;
   archivedCalendarCount?: number;
   memberCount?: number;
+  /** The caller's last opened calendar in this club (`GET /api/clubs`; null if none or deleted). */
+  lastCalendarId?: string | null;
   /** Events / feeds of all calendars (only `GET /api/clubs/:id`, for the delete dialog). */
   eventCount?: number;
   feedCount?: number;

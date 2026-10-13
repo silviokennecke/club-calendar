@@ -1,25 +1,83 @@
-import { describe, expect, it } from "vitest";
-import { screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ApiError } from "@/lib/api";
 import ForgotPasswordPage from "../ForgotPasswordPage";
 import { renderAt } from "./authTestUtils";
 
+const apiPost = vi.fn();
+vi.mock("@/lib/api", async (orig) => ({
+  ...(await orig<typeof import("@/lib/api")>()),
+  apiPost: (...a: unknown[]) => apiPost(...a),
+}));
+
+beforeEach(() => {
+  apiPost.mockReset();
+  apiPost.mockResolvedValue(undefined);
+});
+
+async function submit(email: string) {
+  const user = userEvent.setup();
+  renderAt("/forgot-password", "/forgot-password", <ForgotPasswordPage />);
+  if (email) await user.type(screen.getByLabelText(/^E-Mail/), email);
+  await user.click(screen.getByRole("button", { name: "Link zum Zurücksetzen senden" }));
+  return user;
+}
+
 describe("ForgotPasswordPage", () => {
-  it("shows the form with a disabled submit and a 'coming soon' notice", async () => {
-    const user = userEvent.setup();
+  it("shows the form without the old 'coming soon' notice", () => {
     renderAt("/forgot-password", "/forgot-password", <ForgotPasswordPage />);
     expect(
       screen.getByRole("heading", { level: 1, name: "Passwort vergessen?" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("Bald verfügbar");
-    const submit = screen.getByRole("button", { name: "Link zum Zurücksetzen senden" });
-    expect(submit).toBeDisabled();
-    expect(submit).toHaveAccessibleDescription(/noch nicht freigeschaltet/);
-    await user.type(screen.getByLabelText(/^E-Mail/), "alex@beispiel.de");
-    expect(submit).toBeDisabled();
+    expect(screen.queryByText("Bald verfügbar")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Link zum Zurücksetzen senden" })).toBeEnabled();
     expect(screen.getByRole("link", { name: "Zurück zur Anmeldung" })).toHaveAttribute(
       "href",
       "/login",
     );
+  });
+
+  it("asks for the address before sending", async () => {
+    await submit("");
+    expect(screen.getByText("Bitte gib deine E-Mail-Adresse ein.")).toBeInTheDocument();
+    expect(apiPost).not.toHaveBeenCalled();
+  });
+
+  it("shows 'Prüfe dein Postfach' with the entered address and focuses it", async () => {
+    const user = await submit(" alex@beispiel.de ");
+    const heading = await screen.findByRole("heading", { level: 1, name: "Prüfe dein Postfach" });
+    expect(apiPost).toHaveBeenCalledWith("/api/auth/forgot-password", {
+      email: "alex@beispiel.de",
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Wenn zu alex@beispiel.de ein Konto gehört",
+    );
+    await waitFor(() => expect(heading).toHaveFocus());
+    await user.click(screen.getByRole("button", { name: "Andere E-Mail-Adresse eingeben" }));
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Passwort vergessen?" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the same success for rate limits (no account oracle)", async () => {
+    apiPost.mockRejectedValue(new ApiError("Too Many Requests", 429));
+    await submit("alex@beispiel.de");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Prüfe dein Postfach" }),
+    ).toBeInTheDocument();
+  });
+
+  it("explains network errors and invalid addresses", async () => {
+    apiPost.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const user = await submit("alex@beispiel.de");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Der Link konnte nicht angefordert werden",
+    );
+    apiPost.mockRejectedValueOnce(new ApiError("x", 422, "validation_failed"));
+    await user.click(screen.getByRole("button", { name: "Link zum Zurücksetzen senden" }));
+    expect(
+      await screen.findByText("Bitte gib eine gültige E-Mail-Adresse ein."),
+    ).toBeInTheDocument();
   });
 });

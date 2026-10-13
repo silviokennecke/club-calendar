@@ -1,26 +1,18 @@
-import { test, expect, type Page } from "@playwright/test";
-import { spawnSync } from "node:child_process";
-import { createVerifiedUser, login, seedClub } from "./helpers";
+import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
+import { API, PASSWORD, createVerifiedUser, login, resetLinkFor, seedClub } from "./helpers";
 
 // ——— Ended session (backend raised user.token_version): one refresh attempt, then the login page ———
 
-/** Ends all sessions of the user in the e2e database, as an SSO takeover / address confirmation does. */
-function revokeSessions(email: string) {
-  const php = `
-    $p = new PDO(getenv('DSN'), getenv('DB_USER'), getenv('DB_PASSWORD'));
-    $s = $p->prepare('UPDATE user SET token_version = token_version + 1 WHERE email = ?');
-    $s->execute([getenv('EMAIL')]);
-    exit($s->rowCount() === 1 ? 0 : 1);`;
-  const run = spawnSync("php", ["-r", php], {
-    env: {
-      ...process.env,
-      DSN: process.env.E2E_DB_DSN ?? "mysql:host=127.0.0.1;port=3360;dbname=club_calendar_e2e",
-      DB_USER: process.env.E2E_DB_USER ?? "root",
-      DB_PASSWORD: process.env.E2E_DB_PASSWORD ?? "root",
-      EMAIL: email,
-    },
+/**
+ * Ends all sessions of the user the way a password reset does (raises user.token_version): a reset link
+ * from `app:user:reset-link`, used with the same password, so later sign-ins keep working.
+ */
+async function revokeSessions(request: APIRequestContext, email: string) {
+  const token = new URL(resetLinkFor(email)).searchParams.get("token");
+  const res = await request.post(`${API}/api/auth/reset-password`, {
+    data: { token, password: PASSWORD },
   });
-  expect(run.status, run.stderr?.toString()).toBe(0);
+  expect(res.status()).toBe(204);
 }
 
 /** Counts refresh calls and browser dialogs (a "leave page?" prompt would hold the redirect). */
@@ -64,7 +56,7 @@ test.describe("Beendete Sitzung", () => {
     await page.getByLabel(/^Kalendername/).fill("Ungespeicherter Name");
 
     const seen = watch(page);
-    revokeSessions(email);
+    await revokeSessions(request, email);
     await page.getByRole("button", { name: "Einstellungen speichern" }).click();
 
     await expectSettledOnLogin(page, seen);
@@ -86,7 +78,7 @@ test.describe("Beendete Sitzung", () => {
     await page.getByLabel("Startdatum (Pflicht)").fill("2026-10-24");
 
     const seen = watch(page);
-    revokeSessions(email);
+    await revokeSessions(request, email);
     await page.getByRole("button", { name: "Termin speichern" }).click();
 
     await expectSettledOnLogin(page, seen);
@@ -104,7 +96,7 @@ test.describe("Beendete Sitzung", () => {
     await page.waitForURL(/\/clubs/);
 
     const seen = watch(page);
-    revokeSessions(email);
+    await revokeSessions(request, email);
     await page.goto(`/clubs/${clubId}/calendars/${calendarId}/settings`);
     await expectSettledOnLogin(page, seen);
     expect(seen.refreshes).toBeGreaterThanOrEqual(1);

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "@/lib/api";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TemplatesPage from "../TemplatesPage";
@@ -10,7 +11,8 @@ const apiPost = vi.fn();
 const apiPatch = vi.fn();
 const apiDelete = vi.fn();
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@/lib/api", async (orig) => ({
+  ...(await orig<typeof import("@/lib/api")>()),
   apiGet: (...a: unknown[]) => apiGet(...a),
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiPatch: (...a: unknown[]) => apiPatch(...a),
@@ -67,7 +69,7 @@ beforeEach(() => {
     if (path === "/api/calendars/k1/templates") return Promise.resolve(templates);
     if (path === "/api/calendars/k1/templates/t1") return Promise.resolve(templates[0]);
     if (path === "/api/calendars/k1/templates/gone")
-      return Promise.reject(new Error("API error 404"));
+      return Promise.reject(new ApiError("Template not found", 404));
     if (path.endsWith("/target-groups")) return Promise.resolve(groups);
     if (path.endsWith("/locations")) return Promise.resolve([place, place2]);
     if (path.endsWith("/properties")) return Promise.resolve(properties);
@@ -175,7 +177,8 @@ describe("TemplatesPage", () => {
   it("shows an error with retry when loading fails", async () => {
     apiGet.mockImplementation((path: string) => {
       if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
-      if (path === "/api/calendars/k1/templates") return Promise.reject(new Error("API error 500"));
+      if (path === "/api/calendars/k1/templates")
+        return Promise.reject(new ApiError("Internal error", 500));
       return Promise.resolve([]);
     });
     renderRoute(listRoute, listUrl, <TemplatesPage />);

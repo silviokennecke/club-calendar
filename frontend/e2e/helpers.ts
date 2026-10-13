@@ -1,13 +1,40 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 export const API = process.env.E2E_API_URL ?? "http://localhost:3001";
 export const PASSWORD = "Sicheres-Passwort-1";
 
+const BACKEND_DIR = fileURLToPath(new URL("../../backend/", import.meta.url));
+
 /**
- * Registers a user through the API and confirms the e-mail address directly in the database
- * (the e2e backend sends no mails). Needs a PHP CLI with pdo_mysql and the e2e database; set
- * E2E_DB_DSN / E2E_DB_USER / E2E_DB_PASSWORD to override the defaults (test MySQL, port 3360).
+ * Runs a console command of the backend (`php bin/console …` in backend/) against the e2e database
+ * (`E2E_DATABASE_URL`, default: club_calendar_e2e on the test MySQL, port 3360). Xdebug is off unless
+ * XDEBUG_MODE is set (an IDE listening on port 9003 would make PHP wait). Returns stdout.
+ */
+export function backendConsole(...args: string[]): string {
+  const run = spawnSync("php", ["bin/console", ...args, "--no-interaction"], {
+    cwd: BACKEND_DIR,
+    env: {
+      ...process.env,
+      XDEBUG_MODE: process.env.XDEBUG_MODE ?? "off",
+      DATABASE_URL:
+        process.env.E2E_DATABASE_URL ??
+        "mysql://root:root@127.0.0.1:3360/club_calendar_e2e?serverVersion=8.0&charset=utf8mb4",
+    },
+  });
+  expect(run.status, `${args.join(" ")}: ${run.stderr?.toString()}`).toBe(0);
+  return run.stdout.toString();
+}
+
+/** A password reset link like the one of the mail (`app:user:reset-link`, the e2e backend sends no mails). */
+export function resetLinkFor(email: string): string {
+  return backendConsole("app:user:reset-link", email).trim();
+}
+
+/**
+ * Registers a user through the API and confirms the e-mail address with `app:user:verify` (the e2e
+ * backend sends no mails).
  */
 export async function createVerifiedUser(request: APIRequestContext, name: string) {
   const email = `e2e-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
@@ -15,21 +42,7 @@ export async function createVerifiedUser(request: APIRequestContext, name: strin
     data: { name, email, password: PASSWORD, language: "de" },
   });
   expect(res.ok()).toBeTruthy();
-  const php = `
-    $p = new PDO(getenv('DSN'), getenv('DB_USER'), getenv('DB_PASSWORD'));
-    $s = $p->prepare('UPDATE user SET is_email_verified = 1 WHERE email = ?');
-    $s->execute([getenv('EMAIL')]);
-    exit($s->rowCount() === 1 ? 0 : 1);`;
-  const run = spawnSync("php", ["-r", php], {
-    env: {
-      ...process.env,
-      DSN: process.env.E2E_DB_DSN ?? "mysql:host=127.0.0.1;port=3360;dbname=club_calendar_e2e",
-      DB_USER: process.env.E2E_DB_USER ?? "root",
-      DB_PASSWORD: process.env.E2E_DB_PASSWORD ?? "root",
-      EMAIL: email,
-    },
-  });
-  expect(run.status, run.stderr?.toString()).toBe(0);
+  backendConsole("app:user:verify", email);
   return email;
 }
 

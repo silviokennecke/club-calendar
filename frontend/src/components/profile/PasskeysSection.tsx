@@ -14,6 +14,7 @@ import { apiDelete, apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { formatDate } from "@/lib/dateFormat";
 import { focusAfterDialog } from "@/lib/focus";
+import { localDay } from "@/lib/profile";
 import type { PasskeyInfo } from "./profileTypes";
 
 type Result = { kind: "success"; name: string } | { kind: "error" } | { kind: "cancelled" } | null;
@@ -43,6 +44,7 @@ export function PasskeysSection({
   const [removing, setRemoving] = useState<PasskeyInfo | null>(null);
   const supported = passkeysSupported();
   const dateFormat = user?.dateFormat ?? "dd.MM.yyyy";
+  const nameOf = (key: PasskeyInfo) => key.deviceName || t("profile.passkeys.unnamed");
 
   async function register() {
     setRegistering(true);
@@ -83,7 +85,7 @@ export function PasskeysSection({
     }
     setResult(null);
     await qc.invalidateQueries({ queryKey: ["profile"] });
-    toast.success(t("profile.passkeys.removed", { name: key.deviceName }));
+    toast.success(t("profile.passkeys.removed", { name: nameOf(key) }));
     focusAfterDialog("pr-pk");
   }
 
@@ -120,15 +122,21 @@ export function PasskeysSection({
                   <Icon glyph="key" size={22} />
                 </span>
                 <div className="ap-listrow-main">
-                  <b>{k.deviceName}</b>
+                  <b>{nameOf(k)}</b>
                   <span>
                     {t("profile.passkeys.addedOn", { date: formatDate(k.createdAt, dateFormat) })}
+                    {" · "}
+                    {k.lastUsedAt
+                      ? t("profile.passkeys.lastUsed", {
+                          date: formatDate(localDay(k.lastUsedAt), dateFormat),
+                        })
+                      : t("profile.passkeys.neverUsed")}
                   </span>
                 </div>
                 <Button
                   variant="ghost-danger"
                   icon="trash"
-                  aria-label={t("profile.passkeys.removeLabel", { name: k.deviceName })}
+                  aria-label={t("profile.passkeys.removeLabel", { name: nameOf(k) })}
                   onClick={() => setRemoving(k)}
                 >
                   {t("profile.passkeys.remove")}
@@ -182,8 +190,8 @@ export function PasskeysSection({
           open
           onOpenChange={(open) => !open && setRemoving(null)}
           icon="key"
-          title={t("profile.passkeys.removeTitle", { name: removing.deviceName })}
-          description={t("profile.passkeys.removeText", { name: removing.deviceName })}
+          title={t("profile.passkeys.removeTitle", { name: nameOf(removing) })}
+          description={t("profile.passkeys.removeText", { name: nameOf(removing) })}
           consequence={t("profile.passkeys.removeConsequence")}
           confirmLabel={t("profile.passkeys.removeConfirm")}
           onConfirm={() => remove(removing)}

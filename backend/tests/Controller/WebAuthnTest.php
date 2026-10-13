@@ -139,6 +139,27 @@ class WebAuthnTest extends WebTestCase
         $this->assertSame(42, self::$em->getRepository(Passkey::class)->findOneBy([])->getCounter());
     }
 
+    public function testSignInRecordsLastUsedAtInUtcAndTheListShowsIt(): void
+    {
+        [$user, $authenticator] = $this->userWithPasskey();
+        $me = TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], $this->auth($user));
+        $this->assertNull($me['body']['passkeys'][0]['lastUsedAt']);
+
+        // A failed attempt is no use.
+        $opts = $this->options('authenticate');
+        $this->assertRejected($this->login($opts, $authenticator->assertion($opts['challenge'], self::$origin, 'evil.example', $user->getId())));
+        self::$em->clear();
+        $this->assertNull(self::$em->getRepository(Passkey::class)->findOneBy([])->getLastUsedAt());
+
+        self::mockTime('2026-10-13 12:00:00 Europe/Berlin');
+        $opts = $this->options('authenticate');
+        $this->assertSame(200, $this->login($opts, $authenticator->assertion($opts['challenge'], self::$origin, self::RP_ID, $user->getId()))['status']);
+
+        $me = TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], $this->auth($user));
+        $this->assertSame('2026-10-13T10:00:00+00:00', $me['body']['passkeys'][0]['lastUsedAt']);
+        $this->assertSame('Software', $me['body']['passkeys'][0]['deviceName']);
+    }
+
     public function testWrongSignatureIsRejected(): void
     {
         [$user, $authenticator] = $this->userWithPasskey();

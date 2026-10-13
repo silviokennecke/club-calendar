@@ -32,6 +32,27 @@ describe("EmailVerifyPage", () => {
     expect(screen.getByRole("heading", { level: 1, name: title })).toBeInTheDocument();
   });
 
+  it("confirms a changed address and asks to sign in again", () => {
+    renderVerify("?status=email_changed");
+    expect(
+      screen.getByRole("heading", { level: 1, name: "E-Mail-Adresse geändert" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/auf allen Geräten abgemeldet/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Zur Anmeldung" })).toHaveAttribute("href", "/login");
+  });
+
+  it.each([
+    ["email_taken", "Die Adresse ist schon vergeben"],
+    ["expired", "Der Link ist abgelaufen"],
+    ["already_used", "Der Link ist ungültig"],
+    ["invalid", "Der Link ist ungültig"],
+  ])("explains a failed address change (%s) with a way to the profile", (reason, title) => {
+    renderVerify(`?status=error&reason=${reason}&flow=email_change`);
+    expect(screen.getByRole("heading", { level: 1, name: title })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Zum Profil" })).toHaveAttribute("href", "/profile");
+    expect(screen.queryByText("Neue Bestätigungsmail anfordern")).not.toBeInTheDocument();
+  });
+
   it("offers a new mail for expired links", () => {
     renderVerify("?status=error&reason=expired");
     expect(screen.getByRole("link", { name: "Neue Bestätigungsmail anfordern" })).toHaveAttribute(

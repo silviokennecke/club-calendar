@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\Calendar;
 use App\Entity\Club;
 use App\Entity\ClubUser;
 use App\Entity\User;
@@ -23,21 +24,28 @@ readonly class ClubService
      */
     public function listClubs(User $user): array
     {
-        /** @var list<Club> $clubs */
-        $clubs = $this->em->createQueryBuilder()
-            ->select('c')
+        /** @var list<array{0: Club, lastCalendarId: ?string}> $rows */
+        $rows = $this->em->createQueryBuilder()
+            ->select('c', 'cal.id AS lastCalendarId')
             ->from(Club::class, 'c')
             ->join(ClubUser::class, 'cu', 'WITH', 'cu.club = c')
+            // The remembered calendar counts only while it exists and still belongs to this club.
+            ->leftJoin(Calendar::class, 'cal', 'WITH', 'cal.id = cu.lastCalendarId AND cal.club = c')
             ->where('cu.user = :user')
             ->setParameter('user', $user)
             ->getQuery()
             ->getResult();
+        $clubs = array_map(fn (array $row) => $row[0], $rows);
+        $lastCalendars = [];
+        foreach ($rows as $row) {
+            $lastCalendars[$row[0]->getId()] = $row['lastCalendarId'];
+        }
 
         $ids = array_map(fn (Club $c) => $c->getId(), $clubs);
         $calendars = $this->counts->calendarsByClub($ids);
         $members = $this->counts->membersByClub($ids);
 
-        return array_map(function (Club $club) use ($calendars, $members) {
+        return array_map(function (Club $club) use ($calendars, $members, $lastCalendars) {
             $cals = $calendars[$club->getId()] ?? ['active' => 0, 'archived' => 0];
 
             return [
@@ -47,6 +55,7 @@ readonly class ClubService
                 'calendarCount' => $cals['active'],
                 'archivedCalendarCount' => $cals['archived'],
                 'memberCount' => $members[$club->getId()] ?? 0,
+                'lastCalendarId' => $lastCalendars[$club->getId()] ?? null,
                 '_count' => ['calendars' => $cals['active'] + $cals['archived']],
             ];
         }, $clubs);
