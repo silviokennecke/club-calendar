@@ -1,0 +1,90 @@
+#!/bin/bash
+# Entrypoint of the Club Calendar image.
+#   serve (default)  prepare, migrate, then run PHP-FPM + Caddy
+#   anything else    executed as is, e.g. `php bin/console doctrine:fixtures:load`
+#
+# Required:  APP_SECRET, JWT_REFRESH_SECRET, DATABASE_URL, FRONTEND_URL (public URL, e.g. https://cal.example.com),
+#            WEBAUTHN_RP_ID (domain), WEBAUTHN_RP_NAME
+# Optional:  APP_URL / BACKEND_URL (default FRONTEND_URL, same origin), MAILER_DSN, MAILER_FROM, MAPBOX_TOKEN,
+#            GOOGLE_*/MICROSOFT_*/APPLE_* OAuth settings, SYMFONY_TRUSTED_PROXIES (behind a TLS proxy, e.g. PRIVATE_SUBNETS),
+#            RUN_MIGRATIONS (default 1), MIGRATION_RETRIES (default 15), PORT (default 8080)
+# JWT keys:  JWT_PRIVATE_KEY / JWT_PUBLIC_KEY (paths) or keys in /var/www/app/config/jwt (mount a volume there,
+#            otherwise a new keypair is generated on every container start and sessions are lost).
+set -euo pipefail
+
+APP_DIR=/var/www/app
+SPA_PLACEHOLDER=https://app-url.placeholder.invalid
+
+log() { echo "[entrypoint] $*" >&2; }
+
+cd "$APP_DIR"
+
+# Same origin for SPA, API and CORS unless told otherwise
+export BACKEND_URL="${BACKEND_URL:-${FRONTEND_URL:-}}"
+export MAILER_DSN="${MAILER_DSN:-null://null}"
+export MAILER_FROM="${MAILER_FROM:-Club Calendar <noreply@localhost>}"
+export GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-}" GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET:-}"
+export MICROSOFT_CLIENT_ID="${MICROSOFT_CLIENT_ID:-}" MICROSOFT_CLIENT_SECRET="${MICROSOFT_CLIENT_SECRET:-}"
+export APPLE_CLIENT_ID="${APPLE_CLIENT_ID:-}" APPLE_CLIENT_SECRET="${APPLE_CLIENT_SECRET:-}"
+
+if [ "${1:-serve}" != "serve" ]; then
+    exec "$@"
+fi
+
+missing=()
+for var in APP_SECRET JWT_REFRESH_SECRET DATABASE_URL FRONTEND_URL WEBAUTHN_RP_ID WEBAUTHN_RP_NAME; do
+    [ -n "${!var:-}" ] || missing+=("$var")
+done
+if [ ${#missing[@]} -gt 0 ]; then
+    log "missing required environment variables: ${missing[*]}"
+    exit 1
+fi
+
+# JWT keypair
+if [ -z "${JWT_PRIVATE_KEY:-}" ] && [ ! -s config/jwt/private.pem ]; then
+    log "no JWT keypair found, generating one in config/jwt (mount a volume there to keep it across restarts)"
+    php bin/console lexik:jwt:generate-keypair --skip-if-exists --no-interaction
+fi
+
+# SPA: render the pristine build into the docroot with the public URL
+app_url="${APP_URL:-$FRONTEND_URL}"
+app_url="${app_url%/}"
+cp -R spa/. public/
+escaped=$(printf '%s' "$app_url" | sed -e 's/[\\&|]/\\&/g')
+grep -rlF "$SPA_PLACEHOLDER" public | while IFS= read -r file; do
+    sed -i "s|$SPA_PLACEHOLDER|$escaped|g" "$file"
+done
+
+# Database migrations
+if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
+    retries="${MIGRATION_RETRIES:-15}"
+    for ((attempt = 1; ; attempt++)); do
+        if php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration; then
+            break
+        fi
+        if [ "$attempt" -ge "$retries" ]; then
+            log "migrations failed after $attempt attempts"
+            exit 1
+        fi
+        log "migration attempt $attempt failed (database not ready?), retrying in 2s"
+        sleep 2
+    done
+fi
+
+# Run PHP-FPM + Caddy; if one exits, take the other down so the container restarts
+php-fpm -F &
+fpm_pid=$!
+caddy run --config /etc/caddy/Caddyfile --adapter caddyfile &
+caddy_pid=$!
+
+shutdown() {
+    kill -TERM "$fpm_pid" "$caddy_pid" 2>/dev/null || true
+}
+trap shutdown TERM INT
+
+set +e
+wait -n "$fpm_pid" "$caddy_pid"
+status=$?
+shutdown
+wait
+exit "$status"
