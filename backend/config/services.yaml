@@ -1,11 +1,19 @@
 parameters:
+    env(APP_URL): 'http://localhost:8080'
+    env(FRONTEND_URL): '%env(APP_URL)%'
+    env(BACKEND_URL): '%env(APP_URL)%'
+    env(WEBAUTHN_RP_ID): '%env(string:key:host:url:APP_URL)%'
+    env(WEBAUTHN_RP_NAME): 'Club Calendar'
+    env(WEBAUTHN_USER_VERIFICATION): 'preferred'
+
     env(MICROSOFT_TENANT_ID): 'common'
     microsoft_oidc_issuer: 'https://login.microsoftonline.com/%env(MICROSOFT_TENANT_ID)%/v2.0'
-    env(MAPBOX_TOKEN): ''
-    env(WEBAUTHN_USER_VERIFICATION): 'preferred'
+
     env(MAP_IMAGE_CACHE_TTL): '2592000'  # 30 days
     env(GEOCODER_CACHE_TTL): '3600'       # 1 hour
     env(MAPBOX_PROXY_CACHE_TTL): '2592000' # 30 days
+
+    env(MAPBOX_TOKEN): ''
     map.image.zoom: 14
     map.image.width: 800
     map.image.height: 288
