@@ -35,7 +35,6 @@ COPY backend/templates/email backend/templates/email
 RUN npm run build:mail -w backend
 COPY frontend frontend
 # Empty = the SPA talks to the API on its own origin, so the image is domain-independent
-ENV VITE_API_URL=
 RUN npm run build -w frontend
 
 # ── Stage 3: Caddy binary ────────────────────────────────────────────────────
