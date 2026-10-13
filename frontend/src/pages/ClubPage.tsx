@@ -14,7 +14,7 @@ import {
 import { ClubNameSection } from "@/components/club/ClubNameSection";
 import { MembersSection } from "@/components/club/MembersSection";
 import { CalendarsSection } from "@/components/club/CalendarsSection";
-import { apiDelete, apiGet } from "@/lib/api";
+import { apiDelete, apiErrorStatus, apiGet } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { clubDeleteConsequence } from "@/lib/club";
 import type { Club } from "@/lib/types";
@@ -73,7 +73,7 @@ export default function ClubPage() {
     );
   } else if (!club) {
     const notFound =
-      /40[34]/.test((query.error as { message?: string } | null)?.message ?? "") ||
+      [403, 404].includes(apiErrorStatus(query.error) ?? 0) ||
       (!!clubs.data && !clubs.data.some((c) => c.id === clubId));
     body = notFound ? (
       <EmptyState

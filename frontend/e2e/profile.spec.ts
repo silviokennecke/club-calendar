@@ -49,10 +49,9 @@ test.describe("Profil", () => {
     await expect(page).toHaveURL(/\/profile$/);
     await expect(page.getByRole("heading", { level: 1, name: "Profil" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Profil Kopf" })).toBeVisible();
-    await expect(page.getByText(s.email)).toBeVisible();
-    await expect(
-      page.getByText("Name und E-Mail können hier noch nicht geändert werden."),
-    ).toBeVisible();
+    await expect(page.getByText(s.email).first()).toBeVisible();
+    await expect(page.getByRole("region", { name: "Name und E-Mail-Adresse" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Passwort" })).toBeVisible();
     await expect(page.getByText("Du hast noch keinen Passkey eingerichtet.")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Verknüpfte Anmeldungen" })).toBeVisible();
   });

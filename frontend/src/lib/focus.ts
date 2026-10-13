@@ -11,3 +11,12 @@ export function focusAfterDialog(id: string) {
     document.getElementById(id)?.focus({ preventScroll: true });
   }, 120);
 }
+
+/**
+ * Moves focus to the first invalid field of a form (`aria-invalid="true"`) after a failed submit.
+ * Field errors are not live regions: without the focus move a screen reader would not hear an error
+ * the server reported (e.g. a wrong current password), focus would stay on the submit button.
+ */
+export function focusFirstInvalid(form: HTMLFormElement | null) {
+  form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+}

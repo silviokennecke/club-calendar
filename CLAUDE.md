@@ -75,7 +75,7 @@ From the repo root (none require Docker):
 - `npm run build:dev` / `npm run build` — dev / production build (composer install, mail templates, frontend)
 - `npm run dev:frontend`, `npm test`, `npm run test:backend`, `npm run test:frontend`
 - `npm run migrate`, `npm run fixtures` — Doctrine migrations / fixtures
-- `npm run build:mail -w backend` — compile MJML email templates (`backend` is an npm workspace for this)
+- `npm run build:mail -w backend` — compile MJML email templates (verify, password reset, new e-mail; compiled `*.html.twig` are committed; `backend` is an npm workspace for this)
 - `npm run lint -w frontend` — ESLint (`--max-warnings 0`) + Prettier check; `npm run format -w frontend` fixes formatting
 
 ## Tests
@@ -131,7 +131,10 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 - Refresh: `POST /api/auth/token` (form-encoded: `grant_type=refresh_token&refresh_token=<token>`)
 - Keys: RSA keypair in `backend/config/jwt/` (gitignored); `JWT_REFRESH_SECRET` for HMAC refresh tokens
 - OAuth SSO: Google + Microsoft (redirect → callback → `{FRONTEND_URL}/auth/callback?token=X&refresh_token=Y`, errors `?error=<code>`: `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`, `email_unverified_at_provider`); signed, single-use `state`; e-mail linking only with a trusted `email_verified` (Google/Apple, never Microsoft), see `docs/redesign/BACKEND-GAPS.md` (Sicherheit)
-- Passkeys: verified with `web-auth/webauthn-lib`; challenge in a signed, single-use `challengeToken` (`auth_nonce` table); allowed origin = `FRONTEND_URL` (default `APP_URL`), `WEBAUTHN_RP_ID` (default host of `APP_URL`), `WEBAUTHN_USER_VERIFICATION` (default `preferred`)
+- Passkeys: verified with `web-auth/webauthn-lib`; challenge in a signed, single-use `challengeToken` (`auth_nonce` table); allowed origin = `FRONTEND_URL` (default `APP_URL`), `WEBAUTHN_RP_ID` (default host of `APP_URL`), `WEBAUTHN_USER_VERIFICATION` (default `preferred`); `lastUsedAt` per passkey
+- Password reset: `POST /api/auth/forgot-password` (always 204, no account oracle, mail after the response, rate-limited per address and IP) → `{FRONTEND_URL}/reset-password?token=…` (hashed one-time token, 60 min, table `password_reset`) → `POST /api/auth/reset-password` (ends all sessions, confirms the address; SSO-only accounts get a password this way). Password policy 8–128 chars everywhere (`App\Validator\PasswordPolicy`)
+- Account: `PATCH /api/auth/me` (`name`, prefs, last club/calendar, the latter also per membership), `POST /api/auth/change-password` (new tokens, other sessions end; password change and reset discard a waiting e-mail change), `POST|DELETE /api/auth/change-email` + `GET /api/auth/verify-new-email` (link to the new address, table `email_change`, ends all sessions), SSO `POST /api/auth/oauth/{provider}/link-start` → ticket → provider → `/profile?link_proof=` → `POST /api/auth/oauth/{provider}/link-complete` with the JWT (only the user who started it can complete it: link-CSRF protection) / `DELETE /api/auth/oauth/{provider}` (last sign-in method stays, row lock). Details: `docs/redesign/BACKEND-GAPS.md` ("Umgesetzt (Paket 3)")
+- Console: `app:user:verify <email>`, `app:user:reset-link <email>` (prints the URL only), cron `app:prune-password-resets`, `app:prune-unverified-users`
 
 ## API Errors
 

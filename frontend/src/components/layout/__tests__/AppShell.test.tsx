@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { AppShell } from "../AppShell";
-import { rememberLastCalendar } from "@/lib/lastCalendar";
 
 const apiGet = vi.fn();
 const updateUser = vi.fn();
@@ -18,10 +17,13 @@ vi.mock("@/lib/auth-context", () => ({
   }),
 }));
 
-const clubs = [
-  { id: "c1", name: "Schützenverein Waldblick", timezone: "Europe/Berlin" },
-  { id: "c2", name: "Segelclub Möwe", timezone: "Europe/Berlin" },
-];
+let clubs: { id: string; name: string; timezone: string; lastCalendarId?: string | null }[] = [];
+const club2 = (lastCalendarId: string | null) => ({
+  id: "c2",
+  name: "Segelclub Möwe",
+  timezone: "Europe/Berlin",
+  lastCalendarId,
+});
 const calendarsOf: Record<string, unknown[]> = {
   c1: [{ id: "k1", name: "Schießbetrieb" }],
   c2: [
@@ -64,6 +66,10 @@ function renderShell(clubId: string, calendarId: string | null, retryOff = true)
 }
 
 beforeEach(() => {
+  clubs = [
+    { id: "c1", name: "Schützenverein Waldblick", timezone: "Europe/Berlin", lastCalendarId: null },
+    club2(null),
+  ];
   apiGet.mockReset();
   updateUser.mockReset();
   updateUser.mockResolvedValue(true);
@@ -86,8 +92,8 @@ async function switchTo(clubName: RegExp) {
 }
 
 describe("AppShell club switch", () => {
-  it("opens the calendar last used in the target club (remembered in this browser)", async () => {
-    rememberLastCalendar("u1", "c2", "s2");
+  it("opens the calendar last used in the target club (stored at the membership)", async () => {
+    clubs[1] = club2("s2");
     renderShell("c1", "k1");
     await switchTo(/Möwe/);
     await waitFor(() =>
@@ -96,7 +102,7 @@ describe("AppShell club switch", () => {
   });
 
   it("falls back to the first active calendar when nothing (valid) is remembered", async () => {
-    rememberLastCalendar("u1", "c2", "s0"); // archived
+    clubs[1] = club2("s0"); // archived
     renderShell("c1", "k1");
     await switchTo(/Möwe/);
     await waitFor(() =>
@@ -104,8 +110,8 @@ describe("AppShell club switch", () => {
     );
   });
 
-  it("ignores what another account remembered in the same browser", async () => {
-    rememberLastCalendar("u2", "c2", "s2");
+  it("falls back to the first active calendar for a deleted calendar", async () => {
+    clubs[1] = club2("gone");
     renderShell("c1", "k1");
     await switchTo(/Möwe/);
     await waitFor(() =>
@@ -113,10 +119,13 @@ describe("AppShell club switch", () => {
     );
   });
 
-  it("remembers the calendar it shows for the club", async () => {
+  it("saves the calendar it shows on the account (and with it at the membership)", async () => {
     renderShell("c1", "k1");
     await screen.findByText("Inhalt");
-    await waitFor(() => expect(window.localStorage.getItem("lastCalendar:u1:c1")).toBe("k1"));
+    await waitFor(() =>
+      expect(updateUser).toHaveBeenCalledWith({ lastClubId: "c1", lastCalendarId: "k1" }),
+    );
+    expect(window.localStorage.getItem("lastCalendar:u1:c1")).toBeNull();
   });
 });
 

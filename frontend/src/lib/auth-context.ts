@@ -7,6 +7,7 @@ export interface AuthContextValue {
   login: (accessToken: string, refreshToken: string, user: User) => void;
   logout: () => void;
   updateUser: (data: {
+    name?: string;
     lastClubId?: string | null;
     lastCalendarId?: string | null;
     dateFormat?: string;

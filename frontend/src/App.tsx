@@ -35,6 +35,7 @@ import {
   ProfilePage,
   PropertiesPage,
   PublicEventModal,
+  ResetPasswordPage,
   SetupPage,
   SignupPage,
   TargetGroupsPage,
@@ -54,6 +55,7 @@ function AppRoutes() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
           </Route>
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/auth/verify-email" element={<EmailVerifyPage />} />

@@ -1,9 +1,9 @@
 import type { Calendar } from "@/lib/types";
 
 /**
- * Calendar a club opens when you switch to it: the one remembered for that club in this browser (only
- * if it still exists and is not archived), else the account's last calendar for its last club, else the
- * first active one.
+ * Calendar a club opens when you switch to it: the one last used in that club (`rememberedId`, stored
+ * at the membership: `lastCalendarId` of `GET /api/clubs`; only if it still exists and is not
+ * archived), else the account's last calendar for its last club, else the first active one.
  */
 export function pickCalendar(
   calendars: Calendar[],

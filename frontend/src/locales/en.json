@@ -72,8 +72,10 @@
         "short": "Your password is too short. Please choose a password with at least 8 characters.",
         "mismatch": "The two passwords do not match. Please enter the same password in both fields.",
         "exists": "There is already an account with this email address. Sign in or reset your password.",
-        "generic": "The account could not be created. Please check your details and try again."
-      }
+        "generic": "The account could not be created. Please check your details and try again.",
+        "long": "Your password is too long. Please choose a password with at most 128 characters."
+      },
+      "passwordLongField": "The password is too long. Please use at most 128 characters."
     },
     "verify": {
       "toLogin": "Go to sign in",
@@ -106,6 +108,23 @@
         "hintTitle": "Nothing arrived?",
         "hintText": "Also check your spam folder. It can take a few minutes for the email to arrive.",
         "sent": "We sent you a new email."
+      },
+      "toProfile": "Go to profile",
+      "emailChanged": {
+        "title": "Email address changed",
+        "text": "Your new email address is confirmed. For your security you have been signed out on all devices. Sign in with the new address."
+      },
+      "emailTaken": {
+        "title": "The address is already taken",
+        "text": "Another account now uses this email address. Your current address stays."
+      },
+      "changeExpired": {
+        "title": "The link has expired",
+        "text": "This link to confirm your new email address is no longer valid. Change the address in your profile again."
+      },
+      "changeInvalid": {
+        "title": "The link is invalid",
+        "text": "This link was already used, discarded or is incomplete. If needed, change the address in your profile again."
       }
     },
     "forgot": {
@@ -113,11 +132,37 @@
       "intro": "Enter the email address of your account. We will send you a link to set a new password.",
       "formLabel": "Reset",
       "submit": "Send reset link",
-      "soonTitle": "Coming soon",
-      "soonText": "Resetting by email is not available yet. If you cannot sign in, contact your club administration."
+      "emailInvalid": "Please enter a valid email address.",
+      "failedTitle": "The link could not be requested",
+      "failedText": "Please check your internet connection and try again.",
+      "sentTitle": "Check your inbox",
+      "sentText": "If <strong>{{email}}</strong> belongs to an account, we have sent you a link to reset your password. The link is valid for 60 minutes.",
+      "sentHint": "Nothing arrived? Check your spam folder or enter the address again.",
+      "again": "Enter a different email address"
     },
     "callback": {
       "title": "Sign in"
+    },
+    "reset": {
+      "title": "Set a new password",
+      "intro": "Choose a new password for your account. You will then be signed out on all devices and sign in with the new password.",
+      "formLabel": "Set password",
+      "newPassword": "New password",
+      "submit": "Save password",
+      "password": {
+        "missing": "Please enter a new password.",
+        "short": "The password is too short. Please enter at least 8 characters.",
+        "long": "The password is too long. Please use at most 128 characters."
+      },
+      "invalidTitle": "The link is invalid or has expired",
+      "invalidText": "This reset link no longer works. It is valid for 60 minutes and can be used only once. Request a new link.",
+      "requestNew": "Request a new link",
+      "doneTitle": "Password saved",
+      "doneBannerTitle": "Your new password is active now",
+      "doneText": "For your security you have been signed out on all devices. Sign in with your new password.",
+      "toLogin": "Continue to sign in",
+      "failedTitle": "The password could not be saved",
+      "failedText": "Please check your internet connection and try again."
     }
   },
   "setup": {
@@ -1697,9 +1742,6 @@
       "text": "Passkeys and linked sign-ins are not available right now.",
       "retry": "Try again"
     },
-    "me": {
-      "readOnly": "Name and email cannot be changed here yet."
-    },
     "sso": {
       "title": "Linked sign-ins",
       "text": "Use them to sign in without a password.",
@@ -1710,7 +1752,24 @@
       "unlink": "Unlink",
       "linkLabel": "Link {{name}} account",
       "unlinkLabel": "Unlink {{name}}",
-      "soon": "Coming soon: linking and unlinking is not possible here yet."
+      "lastMethod": "At least one sign-in method must remain. Set up a password or a passkey before you unlink the last one.",
+      "unlinkFailed": "{{name}} could not be unlinked. Please try again.",
+      "unlinked": "{{name}} was unlinked.",
+      "linkedNow": "{{name}} was linked.",
+      "linkErrorTitle": "The account was not linked",
+      "linkError": {
+        "account_in_use": "This account is already linked to another Club Calendar account.",
+        "already_linked": "Another account of this provider is already linked. Unlink it first.",
+        "provider_denied": "You cancelled the linking at the provider.",
+        "provider_error": "The provider declined the linking. Please try again later.",
+        "oauth_failed": "The connection to the provider failed. Please try again.",
+        "invalid_state": "The linking expired or was started in another browser. Please start it here again.",
+        "generic": "Linking did not work. Please try again."
+      },
+      "startFailed": "Linking could not be started. Please try again.",
+      "unlinkTitle": "Unlink {{name}}?",
+      "unlinkText": "The link to {{name}} is removed from your account.",
+      "unlinkConsequence": "You can no longer sign in with {{name}}. Your other sign-in methods stay."
     },
     "passkeys": {
       "title": "Passkeys",
@@ -1736,7 +1795,10 @@
       "added": "Passkey “{{name}}” was added.",
       "error": "The passkey could not be set up. Check whether your device supports passkeys and try again.",
       "cancelled": "Setup was cancelled. You can try again at any time.",
-      "unsupported": "This browser does not support passkeys."
+      "unsupported": "This browser does not support passkeys.",
+      "unnamed": "Unnamed passkey",
+      "lastUsed": "last used on {{date}}",
+      "neverUsed": "not used yet"
     },
     "prefs": {
       "title": "Personal settings",
@@ -1760,6 +1822,46 @@
       "confirm": "Delete account",
       "requireLabel": "Type your email address to confirm",
       "failed": "The account could not be deleted. Please try again."
+    },
+    "account": {
+      "title": "Name and email address",
+      "text": "This is how the other members of your clubs see you.",
+      "nameTitle": "Name",
+      "nameLabel": "Name",
+      "nameSave": "Save name",
+      "nameMissing": "Please enter your name.",
+      "nameTooLong": "The name is too long. Please use at most 255 characters.",
+      "nameFailed": "The name could not be saved. Please try again.",
+      "nameSaved": "Name saved",
+      "emailTitle": "Email address",
+      "emailCurrent": "Current address: <strong>{{email}}</strong>",
+      "pendingTitle": "New address waiting for confirmation",
+      "pendingText": "Open the link we sent to <strong>{{email}}</strong> (valid for 24 hours). Only then does your address change. If no email arrives, the address may already belong to an account.",
+      "cancel": "Discard change",
+      "cancelled": "The email address change was discarded.",
+      "cancelFailed": "The change could not be discarded. Please try again.",
+      "emailFailed": "The confirmation link could not be requested. Please try again.",
+      "newEmail": "New email address",
+      "newEmailHint": "We send a confirmation link to the new address.",
+      "currentPassword": "Current password",
+      "passwordMissing": "Please enter your current password.",
+      "wrongPassword": "The password is not correct.",
+      "emailInvalid": "Please enter a valid email address that differs from the current one.",
+      "emailSubmit": "Send confirmation link",
+      "emailNeedsPassword": "You only sign in through a provider. To change the email address, set a password first."
+    },
+    "password": {
+      "title": "Password",
+      "text": "Change your password. You will then be signed out on all other devices.",
+      "noneText": "Your account has no password yet. You sign in through a provider or a passkey.",
+      "changed": "Password changed. You have been signed out on other devices.",
+      "failed": "The password could not be changed. Please try again.",
+      "signOutHint": "You stay signed in on this device.",
+      "submit": "Change password",
+      "linkSentTitle": "Check your inbox",
+      "linkSentText": "We have sent a link to <strong>{{email}}</strong>. Use it to set your password (valid for 60 minutes). Afterwards you sign in again everywhere.",
+      "linkFailed": "The link could not be requested. Please try again.",
+      "setByMail": "Set password by email"
     }
   },
   "errorPage": {

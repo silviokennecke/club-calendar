@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
+import { apiDelete, apiErrorStatus, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { isValidIso } from "@/lib/calendar";
 import {
   emptyEventValues,
@@ -126,9 +126,9 @@ export default function EventFormModal() {
   }
 
   if (!isNew && eventQuery.isError) {
-    const status = (eventQuery.error as { message?: string })?.message ?? "";
+    const status = apiErrorStatus(eventQuery.error);
     // No access to the calendar (403) reads like an unknown event, not like a network error.
-    const notFound = /\b40[34]\b/.test(status);
+    const notFound = status === 403 || status === 404;
     return (
       <Modal
         title={notFound ? t("events.form.notFound.title") : t("events.form.loadError.title")}

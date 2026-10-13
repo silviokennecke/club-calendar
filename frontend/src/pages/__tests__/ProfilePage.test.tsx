@@ -6,23 +6,28 @@ import { MemoryRouter, Outlet, Route, Routes, useLocation } from "react-router-d
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import { Toaster } from "@/components/ui/shared";
 import i18n from "@/lib/i18n";
+import { ApiError } from "@/lib/api";
 import ProfilePage from "../ProfilePage";
 
 const apiGet = vi.fn();
+const apiPost = vi.fn();
 const apiDelete = vi.fn();
 const apiFetch = vi.fn();
 const updateUser = vi.fn();
 const logout = vi.fn();
+const login = vi.fn();
 const startRegistration = vi.fn();
 let authUser: Record<string, unknown>;
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@/lib/api", async (orig) => ({
+  ...(await orig<typeof import("@/lib/api")>()),
   apiGet: (...a: unknown[]) => apiGet(...a),
+  apiPost: (...a: unknown[]) => apiPost(...a),
   apiDelete: (...a: unknown[]) => apiDelete(...a),
   apiFetch: (...a: unknown[]) => apiFetch(...a),
 }));
 vi.mock("@/lib/auth-context", () => ({
-  useAuth: () => ({ user: authUser, updateUser, logout }),
+  useAuth: () => ({ user: authUser, updateUser, logout, login }),
 }));
 vi.mock("@simplewebauthn/browser", () => ({
   startRegistration: (...a: unknown[]) => startRegistration(...a),
@@ -35,18 +40,27 @@ function Probe() {
   const loc = useLocation();
   return <div data-testid="location">{loc.pathname}</div>;
 }
+function SearchProbe() {
+  const loc = useLocation();
+  return <div data-testid="search">{loc.search}</div>;
+}
 function ShellStub() {
   return <Outlet context={{}} />;
 }
 
-function renderProfile(inShell = true) {
+function renderProfile(inShell = true, path = "/profile") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const page = <ProfilePage />;
+  const page = (
+    <>
+      <ProfilePage />
+      <SearchProbe />
+    </>
+  );
   return render(
     <ThemeProvider>
       <Toaster />
       <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={["/profile"]}>
+        <MemoryRouter initialEntries={[path]}>
           <Routes>
             {inShell ? (
               <Route element={<ShellStub />}>
@@ -76,9 +90,21 @@ beforeEach(() => {
     id: "u1",
     name: "Alex Beispiel",
     email: "alex@beispiel.de",
+    hasPassword: true,
+    pendingEmail: null,
     passkeys: [
-      { id: "p1", deviceName: "MacBook Alex", createdAt: "2026-03-12T09:00:00+00:00" },
-      { id: "p2", deviceName: "iPhone Alex", createdAt: "2026-09-08T09:00:00+00:00" },
+      {
+        id: "p1",
+        deviceName: "MacBook Alex",
+        createdAt: "2026-03-12T09:00:00+00:00",
+        lastUsedAt: "2026-10-01T12:00:00+00:00",
+      },
+      {
+        id: "p2",
+        deviceName: "iPhone Alex",
+        createdAt: "2026-09-08T09:00:00+00:00",
+        lastUsedAt: null,
+      },
     ],
     oauthAccounts: [{ provider: "google" }],
   };
@@ -86,8 +112,18 @@ beforeEach(() => {
     { id: "google", name: "Google", icon: "google" },
     { id: "microsoft", name: "Microsoft", icon: "microsoft" },
   ];
-  for (const fn of [apiGet, apiDelete, apiFetch, updateUser, logout, startRegistration])
+  for (const fn of [
+    apiGet,
+    apiPost,
+    apiDelete,
+    apiFetch,
+    updateUser,
+    logout,
+    login,
+    startRegistration,
+  ])
     fn.mockReset();
+  apiPost.mockResolvedValue(undefined);
   updateUser.mockResolvedValue(true);
   apiDelete.mockResolvedValue(undefined);
   apiGet.mockImplementation((path: string) => {
@@ -113,9 +149,7 @@ describe("ProfilePage", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Profil" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Alex Beispiel" })).toBeInTheDocument();
     expect(screen.getByText("alex@beispiel.de")).toBeInTheDocument();
-    expect(
-      screen.getByText("Name und E-Mail können hier noch nicht geändert werden."),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/noch nicht geändert werden/)).not.toBeInTheDocument();
 
     const sso = (await screen.findByRole("heading", { name: "Verknüpfte Anmeldungen" })).closest(
       "section",
@@ -126,17 +160,207 @@ describe("ProfilePage", () => {
     expect(rows[0]).toHaveTextContent("Verbunden");
     expect(rows[1]).toHaveTextContent("Microsoft");
     expect(rows[1]).toHaveTextContent("Nicht verbunden");
-    // Linking and unlinking is not possible yet: disabled and explained.
-    for (const b of within(sso).getAllByRole("button")) {
-      expect(b).toBeDisabled();
-      expect(b).toHaveAccessibleDescription(/Bald verfügbar/);
-    }
+    // A password remains: both actions are available.
+    expect(within(sso).getByRole("button", { name: "Google-Verknüpfung trennen" })).toBeEnabled();
+    expect(within(sso).getByRole("button", { name: "Microsoft-Konto verknüpfen" })).toBeEnabled();
+    expect(within(sso).queryByText(/Mindestens eine Anmeldemethode/)).not.toBeInTheDocument();
 
     const keys = within(screen.getByRole("list", { name: "Deine Passkeys (2)" })).getAllByRole(
       "listitem",
     );
     expect(keys[0]).toHaveTextContent("MacBook Alex");
-    expect(keys[0]).toHaveTextContent("hinzugefügt am 12.03.2026");
+    expect(keys[0]).toHaveTextContent("hinzugefügt am 12.03.2026 · zuletzt benutzt am 01.10.2026");
+    expect(keys[1]).toHaveTextContent("noch nicht benutzt");
+  });
+
+  it("starts linking a provider with a one-time URL from the API", async () => {
+    const assign = vi.fn();
+    const original = window.location;
+    Object.defineProperty(window, "location", {
+      value: { ...original, assign },
+      configurable: true,
+    });
+    apiPost.mockResolvedValue({
+      url: "http://localhost:3001/api/auth/oauth/microsoft/link?ticket=x",
+    });
+    const user = userEvent.setup();
+    try {
+      renderProfile();
+      await user.click(await screen.findByRole("button", { name: "Microsoft-Konto verknüpfen" }));
+      await waitFor(() =>
+        expect(assign).toHaveBeenCalledWith(
+          "http://localhost:3001/api/auth/oauth/microsoft/link?ticket=x",
+        ),
+      );
+      expect(apiPost).toHaveBeenCalledWith("/api/auth/oauth/microsoft/link-start", {});
+    } finally {
+      Object.defineProperty(window, "location", { value: original, configurable: true });
+    }
+  });
+
+  it("unlinks a provider only after confirming and names the consequence", async () => {
+    const user = userEvent.setup();
+    renderProfile();
+    await user.click(await screen.findByRole("button", { name: "Google-Verknüpfung trennen" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Verknüpfung mit Google trennen?",
+    });
+    expect(dialog).toHaveTextContent("Mit Google kannst du dich danach nicht mehr anmelden.");
+    expect(apiDelete).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Verknüpfung trennen" }));
+    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/auth/oauth/google"));
+    expect(
+      await screen.findByText("Die Verknüpfung mit Google wurde getrennt."),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the last sign-in method: unlink disabled with an explanation", async () => {
+    profile = { ...profile, hasPassword: false, passkeys: [] };
+    renderProfile();
+    const unlink = await screen.findByRole("button", { name: "Google-Verknüpfung trennen" });
+    expect(unlink).toBeDisabled();
+    expect(unlink).toHaveAccessibleDescription(/Mindestens eine Anmeldemethode muss bleiben/);
+  });
+
+  it("shows the result of the link flow once and removes it from the address", async () => {
+    renderProfile(true, "/profile?linked=google");
+    const sso = (await screen.findByRole("heading", { name: "Verknüpfte Anmeldungen" })).closest(
+      "section",
+    )!;
+    expect(within(sso).getByRole("status")).toHaveTextContent("Google wurde verknüpft.");
+    await waitFor(() => expect(screen.getByTestId("search")).toHaveTextContent(/^$/));
+  });
+
+  it("completes a link flow with this session and removes the proof from the address", async () => {
+    apiPost.mockResolvedValueOnce(undefined);
+    renderProfile(true, "/profile?link_provider=google&link_proof=proof-value");
+    const sso = (await screen.findByRole("heading", { name: "Verknüpfte Anmeldungen" })).closest(
+      "section",
+    )!;
+    await waitFor(() =>
+      expect(within(sso).getByRole("status")).toHaveTextContent("Google wurde verknüpft."),
+    );
+    expect(apiPost).toHaveBeenCalledTimes(1);
+    expect(apiPost).toHaveBeenCalledWith("/api/auth/oauth/google/link-complete", {
+      proof: "proof-value",
+    });
+    await waitFor(() => expect(screen.getByTestId("search")).toHaveTextContent(/^$/));
+  });
+
+  it("shows a refused link completion (flow started by another account) as an error", async () => {
+    apiPost.mockRejectedValueOnce(new ApiError("x", 400, "invalid_state"));
+    renderProfile(true, "/profile?link_provider=google&link_proof=proof-value");
+    expect(await screen.findByText("Das Konto wurde nicht verknüpft")).toBeInTheDocument();
+    expect(screen.queryByText("Google wurde verknüpft.")).not.toBeInTheDocument();
+  });
+
+  it("explains a failed link by its code", async () => {
+    renderProfile(true, "/profile?link_error=account_in_use");
+    expect(await screen.findByText("Das Konto wurde nicht verknüpft")).toBeInTheDocument();
+    expect(
+      screen.getByText("Dieses Konto ist schon mit einem anderen Club-Calendar-Konto verknüpft."),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("search")).toHaveTextContent(/^$/));
+  });
+
+  it("renames the account", async () => {
+    const user = userEvent.setup();
+    renderProfile();
+    const name = await screen.findByRole("textbox", { name: /^Name/ });
+    await user.clear(name);
+    await user.click(screen.getByRole("button", { name: "Name speichern" }));
+    expect(await screen.findByText("Bitte gib deinen Namen ein.")).toBeInTheDocument();
+    expect(updateUser).not.toHaveBeenCalled();
+    await user.type(name, "  Alex B.  ");
+    await user.click(screen.getByRole("button", { name: "Name speichern" }));
+    await waitFor(() => expect(updateUser).toHaveBeenCalledWith({ name: "Alex B." }));
+    expect(await screen.findByText("Name gespeichert")).toBeInTheDocument();
+  });
+
+  it("changes the password and continues the session with the new tokens", async () => {
+    const tokens = { access_token: "a2", refresh_token: "r2", user: { id: "u1" } };
+    apiPost.mockImplementation((path: string) =>
+      path === "/api/auth/change-password" ? Promise.resolve(tokens) : Promise.resolve(undefined),
+    );
+    const user = userEvent.setup();
+    renderProfile();
+    const panel = (await screen.findByRole("heading", { level: 2, name: "Passwort" })).closest(
+      "section",
+    )!;
+    await user.type(within(panel).getByLabelText(/^Aktuelles Passwort/), "old-password");
+    await user.type(within(panel).getByLabelText(/^Neues Passwort/), "short");
+    await user.click(within(panel).getByRole("button", { name: "Passwort ändern" }));
+    expect(await within(panel).findByText(/Das Passwort ist zu kurz/)).toBeInTheDocument();
+    expect(apiPost).not.toHaveBeenCalled();
+
+    await user.type(within(panel).getByLabelText(/^Neues Passwort/), "-and-longer");
+    await user.type(within(panel).getByLabelText(/^Passwort wiederholen/), "short-and-longer");
+    await user.click(within(panel).getByRole("button", { name: "Passwort ändern" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith("/api/auth/change-password", {
+        currentPassword: "old-password",
+        newPassword: "short-and-longer",
+      }),
+    );
+    expect(login).toHaveBeenCalledWith("a2", "r2", { id: "u1" });
+    expect(await screen.findByText(/Passwort geändert/)).toBeInTheDocument();
+  });
+
+  it("names a wrong current password at its field", async () => {
+    apiPost.mockRejectedValue(new ApiError("x", 400, "invalid_credentials"));
+    const user = userEvent.setup();
+    renderProfile();
+    const panel = (await screen.findByRole("heading", { level: 2, name: "Passwort" })).closest(
+      "section",
+    )!;
+    await user.type(within(panel).getByLabelText(/^Aktuelles Passwort/), "wrong");
+    await user.type(within(panel).getByLabelText(/^Neues Passwort/), "new-password-1");
+    await user.type(within(panel).getByLabelText(/^Passwort wiederholen/), "new-password-1");
+    await user.click(within(panel).getByRole("button", { name: "Passwort ändern" }));
+    expect(await within(panel).findByText("Das Passwort stimmt nicht.")).toBeInTheDocument();
+    // The error is not a live region: focus moves to the field so that it is announced.
+    await waitFor(() => expect(within(panel).getByLabelText(/^Aktuelles Passwort/)).toHaveFocus());
+    expect(login).not.toHaveBeenCalled();
+  });
+
+  it("lets SSO-only accounts set a password by e-mail and explains why the address is fixed", async () => {
+    profile = { ...profile, hasPassword: false };
+    const user = userEvent.setup();
+    renderProfile();
+    expect(await screen.findByText(/lege zuerst ein Passwort fest/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Neue E-Mail-Adresse/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Passwort per E-Mail festlegen" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith("/api/auth/forgot-password", {
+        email: "alex@beispiel.de",
+      }),
+    );
+    expect(await screen.findByText("Prüfe dein Postfach")).toBeInTheDocument();
+  });
+
+  it("requests a new e-mail address with the password and shows the pending change", async () => {
+    const user = userEvent.setup();
+    renderProfile();
+    await user.type(await screen.findByLabelText(/^Neue E-Mail-Adresse/), "neu@beispiel.de");
+    const account = screen
+      .getByRole("heading", { name: "Name und E-Mail-Adresse" })
+      .closest("section")!;
+    await user.type(within(account).getByLabelText(/^Aktuelles Passwort/), "password123");
+    profile = { ...profile, pendingEmail: "neu@beispiel.de" };
+    await user.click(screen.getByRole("button", { name: "Bestätigungslink senden" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith("/api/auth/change-email", {
+        email: "neu@beispiel.de",
+        password: "password123",
+      }),
+    );
+    expect(await screen.findByText("Neue Adresse wartet auf Bestätigung")).toBeInTheDocument();
+    profile = { ...profile, pendingEmail: null };
+    await user.click(screen.getByRole("button", { name: "Änderung verwerfen" }));
+    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/auth/change-email"));
+    await waitFor(() =>
+      expect(screen.queryByText("Neue Adresse wartet auf Bestätigung")).not.toBeInTheDocument(),
+    );
   });
 
   it("works without the app shell (no club yet) with a way back", async () => {

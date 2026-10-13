@@ -7,6 +7,24 @@
             "button": "Verify email address",
             "expiry_note": "If you did not create an account, you can safely ignore this email.",
             "ignore_note": "This link expires in 24 hours."
+        },
+        "reset": {
+            "subject": "Set a new password for Club Calendar",
+            "greeting": "Hello {name},",
+            "body": "Someone (hopefully you) wants to set a new password for your account. Click the button to choose a new password. You will then be signed out on all devices.",
+            "button": "Set new password",
+            "expiry_note": "This link is valid for 60 minutes and works only once.",
+            "ignore_note": "If this was not you, you can safely ignore this email. Your password stays unchanged.",
+            "link_note": "If the button does not work, copy this link into your browser:"
+        },
+        "change": {
+            "subject": "Confirm your new email address",
+            "greeting": "Hello {name},",
+            "body": "You want to change the email address of your Club Calendar account to {email}. Click the button to confirm the new address. You then sign in with the new address.",
+            "button": "Confirm new email address",
+            "expiry_note": "This link is valid for 24 hours and works only once.",
+            "ignore_note": "If this was not you, you can safely ignore this email. The address will not be changed.",
+            "link_note": "If the button does not work, copy this link into your browser:"
         }
     }
 }
