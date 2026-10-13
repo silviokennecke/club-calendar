@@ -117,6 +117,12 @@ export function EventsTable({
                         </span>
                       </>
                     )}
+                    {ev.seriesId && (
+                      <>
+                        {" "}
+                        <Tag tone="brand">{t("events.recurring")}</Tag>
+                      </>
+                    )}
                   </td>
                   <td data-label={t("events.list.col.date")} className="ap-col-nowrap">
                     {dates}

@@ -18,7 +18,7 @@ class DatabaseResetter
         $conn = $em->getConnection();
         $tables = [
             'event_target_group', 'event_feature', 'event_property',
-            'event',
+            'event', 'event_series',
             'event_template_target_group', 'event_template_feature', 'event_template_property',
             'event_template',
             'calendar_feed_target_group', 'calendar_feed',

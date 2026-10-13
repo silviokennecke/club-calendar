@@ -1,81 +1,81 @@
 /**
- * Series rules (design: EventSeries): the dates a rule produces and the holidays among them.
- * Pure and UTC-based (ISO dates), so the browser's time zone never shifts a day.
- * Only a preview: the backend has no recurrence rules yet (docs/redesign/BACKEND-GAPS.md).
+ * Event series (design: EventSeries). The backend computes the dates of a rule (`POST …/events/series/
+ * preview`, the only source of truth); this module only shapes requests and answers and describes a
+ * stored rule for the edit dialog.
  */
-import {
-  addDays,
-  dayOfWeek,
-  daysInMonth,
-  isValidIso,
-  parseIso,
-  type IsoDate,
-} from "@/lib/calendar";
+import type { TFunction } from "i18next";
+import { formatWeekdayDate } from "./format";
+import { isValidIso, weekdayNames, type IsoDate } from "@/lib/calendar";
+import type { EventPayload } from "./form";
 
-export type SeriesRhythm = "weekly" | "biweekly" | "monthly";
+export type SeriesFrequency = "weekly" | "biweekly" | "monthly";
 /** Position of the weekday in the month: 1.–4. or 5 = last. */
 export type SeriesNth = 1 | 2 | 3 | 4 | 5;
 
+/** Rule as the API takes and returns it (`rule` of the series endpoints). */
 export interface SeriesRule {
-  rhythm: SeriesRhythm;
+  frequency: SeriesFrequency;
   /** 0 = Sunday … 6 = Saturday. */
   weekday: number;
   /** Only for the monthly rhythm. */
+  nth: SeriesNth | null;
+  startDate: IsoDate;
+  /** End by date (inclusive) … */
+  until: IsoDate | null;
+  /** … or by number of created events. */
+  count: number | null;
+  skipHolidays: boolean;
+  /** Extra days of each event (0 = one-day events). */
+  durationDays?: number;
+}
+
+/** Series of an event in the single GET (`series`) and `GET …/event-series/{id}`. */
+export interface EventSeriesInfo {
+  id: string;
+  templateId: string | null;
+  rule: SeriesRule;
+  eventCount: number;
+}
+
+export interface SeriesHoliday {
+  date: IsoDate;
+  name: string;
+}
+
+/** `POST …/events/series/preview`. */
+export interface SeriesPreviewResponse {
+  dates: IsoDate[];
+  count: number;
+  /** Dates left out because of `skipHolidays`. */
+  skippedHolidays: SeriesHoliday[];
+  /** All dates of the rule on a holiday (skipped or kept). */
+  holidays: SeriesHoliday[];
+}
+
+/** Most events per series (backend `SeriesRule::MAX_EVENTS`, more → 422 `too_many_events`). */
+export const SERIES_MAX_EVENTS = 366;
+
+export interface SeriesFormRule {
+  rhythm: SeriesFrequency;
+  weekday: number;
   nth: SeriesNth;
   from: string;
   to: string;
+  skipHolidays: boolean;
 }
 
-/** Safety limit for the preview (about ten years of weekly dates). */
-const MAX_SERIES_DATES = 520;
-
-/** Dates of a rule between `from` and `to` (inclusive), in order. */
-export function seriesDates(rule: SeriesRule): IsoDate[] {
-  const { from, to, weekday } = rule;
-  if (!isValidIso(from) || !isValidIso(to) || to < from) return [];
-  const first = addDays(from, (weekday - dayOfWeek(from) + 7) % 7);
-  const dates: IsoDate[] = [];
-  if (rule.rhythm === "monthly") {
-    for (let d = first; d <= to && dates.length < MAX_SERIES_DATES; d = addDays(d, 7)) {
-      if (isNthWeekdayOfMonth(d, rule.nth)) dates.push(d);
-    }
-    return dates;
-  }
-  const step = rule.rhythm === "biweekly" ? 14 : 7;
-  for (let d = first; d <= to && dates.length < MAX_SERIES_DATES; d = addDays(d, step)) {
-    dates.push(d);
-  }
-  return dates;
-}
-
-/** Whether the day is the n-th (or with 5: the last) of its weekday in its month. */
-export function isNthWeekdayOfMonth(date: IsoDate, nth: SeriesNth): boolean {
-  const { year, month, day } = parseIso(date);
-  if (nth === 5) return day + 7 > daysInMonth(year, month);
-  return Math.ceil(day / 7) === nth;
-}
-
-export interface HolidayRange {
-  name: string;
-  date: string;
-  dateEnd?: string | null;
-}
-
-/** The holiday covering the date (ranges inclusive), if any. */
-export function holidayOn<T extends HolidayRange>(date: IsoDate, holidays: T[]): T | undefined {
-  return holidays.find((h) => {
-    const start = h.date.slice(0, 10);
-    const end = (h.dateEnd ?? h.date).slice(0, 10);
-    return date >= start && date <= end;
-  });
-}
-
-/** Removes dates that fall on a holiday (ranges inclusive). */
-export function filterDatesExcludingHolidays<T extends HolidayRange>(
-  dates: IsoDate[],
-  holidays: T[],
-): IsoDate[] {
-  return dates.filter((d) => !holidayOn(d, holidays));
+/** The API rule for the form (design: "Von" / "Bis"), or null while the range is incomplete or reversed. */
+export function toSeriesRule(form: SeriesFormRule): SeriesRule | null {
+  if (!isValidIso(form.from) || !isValidIso(form.to) || form.to < form.from) return null;
+  return {
+    frequency: form.rhythm,
+    weekday: form.weekday,
+    nth: form.rhythm === "monthly" ? form.nth : null,
+    startDate: form.from,
+    until: form.to,
+    count: null,
+    skipHolidays: form.skipHolidays,
+  };
 }
 
 export interface SeriesPreviewRow {
@@ -85,25 +85,63 @@ export interface SeriesPreviewRow {
   skipped: boolean;
 }
 
-export interface SeriesPreview {
-  rows: SeriesPreviewRow[];
-  /** Dates that would be created. */
-  dates: IsoDate[];
-  holidayCount: number;
+/** Preview rows in date order: created dates and skipped holidays, each with its holiday name. */
+export function seriesPreviewRows(preview: SeriesPreviewResponse): SeriesPreviewRow[] {
+  const names = new Map(preview.holidays.map((h) => [h.date, h.name]));
+  const rows: SeriesPreviewRow[] = [
+    ...preview.dates.map((date) => ({ date, holiday: names.get(date) ?? null, skipped: false })),
+    ...preview.skippedHolidays.map((h) => ({ date: h.date, holiday: h.name, skipped: true })),
+  ];
+  return rows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }
 
-export function seriesPreview(
-  dates: IsoDate[],
-  holidays: HolidayRange[],
-  skipHolidays: boolean,
-): SeriesPreview {
-  const rows = dates.map((date) => {
-    const h = holidayOn(date, holidays);
-    return { date, holiday: h?.name ?? null, skipped: !!h && skipHolidays };
-  });
-  return {
-    rows,
-    dates: rows.filter((r) => !r.skipped).map((r) => r.date),
-    holidayCount: rows.filter((r) => r.holiday).length,
-  };
+/** "Wöchentlich am Donnerstag, 08.10.2026 bis 29.10.2026, ohne Feiertage" (edit dialog). */
+export function describeSeriesRule(rule: SeriesRule, t: TFunction, locale: string): string {
+  const weekday = weekdayNames(locale, 0, "long")[rule.weekday] ?? "";
+  const rhythm =
+    rule.frequency === "monthly"
+      ? t("events.seriesInfo.rule.monthly", {
+          nth: t(`events.seriesInfo.nth.${rule.nth ?? 1}`),
+          weekday,
+        })
+      : t(`events.seriesInfo.rule.${rule.frequency}`, { weekday });
+  const start = formatWeekdayDate(rule.startDate, locale);
+  const range = rule.until
+    ? t("events.seriesInfo.until", { from: start, to: formatWeekdayDate(rule.until, locale) })
+    : t("events.seriesInfo.count", { from: start, count: rule.count ?? 0 });
+  const parts = [rhythm, range];
+  if (rule.skipHolidays) parts.push(t("events.seriesInfo.skipsHolidays"));
+  return parts.join(", ");
+}
+
+function sameValue(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) && Array.isArray(b))
+    return a.length === b.length && a.every((x) => b.includes(x));
+  return a === b;
+}
+
+/**
+ * Body of "Alle Termine der Reihe": only the fields the user changed (the backend applies the sent
+ * fields to every event of the series; the date fields only to this event). A changed all-day switch
+ * takes the times along (all-day events are stored as 00:00 – 23:59).
+ */
+export function changedEventFields(
+  initial: EventPayload,
+  current: EventPayload,
+): Partial<EventPayload> {
+  const changed: Partial<EventPayload> = {};
+  for (const key of Object.keys(current) as (keyof EventPayload)[]) {
+    if (!sameValue(initial[key], current[key]))
+      (changed as Record<string, unknown>)[key] = current[key];
+  }
+  if ("isAllDay" in changed) {
+    changed.timeBegin = current.timeBegin;
+    changed.timeEnd = current.timeEnd;
+  }
+  return changed;
+}
+
+/** Whether the changes touch the date of the event (it stays with this event for "all"). */
+export function changesDate(changed: Partial<EventPayload>): boolean {
+  return "date" in changed || "dateEnd" in changed;
 }

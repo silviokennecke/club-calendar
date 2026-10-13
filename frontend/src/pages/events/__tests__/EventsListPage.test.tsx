@@ -22,6 +22,7 @@ const sample = [
     id: "1",
     name: "Training Luftgewehr",
     date: "2026-10-01",
+    seriesId: "ser1",
     targetGroups: [{ targetGroup: groups[1] }],
     location: { id: "l1", calendarid: "k1", name: "Schützenhaus Waldblick" },
   }),
@@ -102,6 +103,10 @@ describe("EventsListPage", () => {
     const draftRow = screen.getByRole("link", { name: "Vorstandssitzung" }).closest("tr")!;
     expect(draftRow.querySelector('[data-status="draft"]')).toHaveTextContent("Entwurf");
     expect(screen.getByText("5 von 5 Terminen")).toBeVisible();
+    // Events of a series carry the tag "Wiederkehrend" (design: Library, Tag tone brand)
+    const seriesRow = screen.getByRole("link", { name: "Training Luftgewehr" }).closest("tr")!;
+    expect(within(seriesRow).getByText("Wiederkehrend")).toHaveClass("cc-tag--brand");
+    expect(screen.getAllByText("Wiederkehrend")).toHaveLength(1);
   });
 
   it("switches status tabs with counters and keeps the tab in the URL", async () => {

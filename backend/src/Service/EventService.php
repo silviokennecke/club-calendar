@@ -8,6 +8,7 @@ use App\Entity\Calendar;
 use App\Entity\Event;
 use App\Entity\EventFeature;
 use App\Entity\EventProperty;
+use App\Entity\EventSeries;
 use App\Entity\EventTargetGroup;
 use App\Entity\EventTemplate;
 use App\Entity\Feature;
@@ -81,6 +82,25 @@ readonly class EventService
             throw new NotFoundHttpException('Template not found');
         }
 
+        $input = $this->templateInput($template, $overrides);
+        $events = [];
+        foreach ($dates as $dateStr) {
+            $input['date'] = $dateStr;
+            $events[] = $this->buildEvent($calendar, $input);
+        }
+        $this->em->flush();
+
+        return array_map(fn (Event $e) => $this->serializeEvent($e), $events);
+    }
+
+    /**
+     * Event input from a template plus overrides of the request (`from-template` and series): name, zone,
+     * times, all-day, draft and the assignments of the template unless the request brings its own.
+     * A template without times creates all-day events unless the request brings its own times
+     * (stored as 00:00 – 23:59 like all-day events from the form and the import).
+     */
+    public function templateInput(EventTemplate $template, array $overrides): array
+    {
         $input = [
             'name' => $template->getName(),
             'timezone' => $template->getTimezone(),
@@ -98,8 +118,6 @@ readonly class EventService
                 $input[$key] = $overrides[$key];
             }
         }
-        // A template without times creates all-day events unless the request brings its own times
-        // (stored as 00:00 – 23:59 like all-day events from the form and the import).
         if (null === $input['timeBegin'] && null === $input['timeEnd']) {
             $input['isAllDay'] ??= true;
             if ($input['isAllDay']) {
@@ -111,35 +129,149 @@ readonly class EventService
             $input['locationId'] = $overrides['locationId'];
         }
 
-        $events = [];
-        foreach ($dates as $dateStr) {
-            $input['date'] = $dateStr;
-            $events[] = $this->buildEvent($calendar, $input);
-        }
-        $this->em->flush();
-
-        return array_map(fn (Event $e) => $this->serializeEvent($e), $events);
+        return $input;
     }
 
     public function getEvent(string $id, Calendar $calendar): array
     {
-        return $this->serializeEvent($this->findEvent($id, $calendar));
+        $event = $this->findEvent($id, $calendar);
+        $series = $event->getSeries();
+
+        return $this->serializeEvent($event) + [
+            'series' => $series ? $this->serializeSeries($series, $this->countSeriesEvents($series)) : null,
+        ];
     }
 
+    /** Scopes of PATCH / DELETE on a series event: only this event (default) or all events of its series. */
+    public const SCOPES = ['this', 'all'];
+
+    /** Fields that `scope: "all"` applies only to the edited event (each event keeps its own day). */
+    private const OWN_FIELDS = ['date', 'dateEnd', 'eventTemplateId', 'externalUid'];
+
+    /**
+     * PATCH. `scope: "all"` applies the sent fields (except the date fields and the template) to every
+     * event of the series in one transaction; fields not sent stay as they are, also on events edited on
+     * their own before. With `this` (default) or without a series only this event changes; it stays in
+     * its series either way.
+     */
     public function updateEvent(string $id, Calendar $calendar, array $data): array
     {
+        $scope = $this->scope($data['scope'] ?? null);
+        unset($data['scope']);
         $event = $this->findEvent($id, $calendar);
         $this->applyInput($event, $calendar, $data, true);
+
+        $series = $event->getSeries();
+        $shared = array_diff_key($data, array_flip(self::OWN_FIELDS));
+        if ('all' === $scope && null !== $series && [] !== $shared) {
+            // Ids as stored (lower case), so the references come from the identity map after the first event
+            foreach (['locationId', 'propertyIds', 'featureIds', 'targetGroupIds'] as $key) {
+                if (is_string($shared[$key] ?? null)) {
+                    $shared[$key] = strtolower($shared[$key]);
+                } elseif (is_array($shared[$key] ?? null)) {
+                    $shared[$key] = array_map(fn ($v) => is_string($v) ? strtolower($v) : $v, $shared[$key]);
+                }
+            }
+            foreach ($this->seriesEventsWithLinks($series, $event) as $other) {
+                $this->applyInput($other, $calendar, $shared, true);
+            }
+        }
         $this->em->flush();
 
         return $this->serializeEvent($event);
     }
 
-    public function deleteEvent(string $id, Calendar $calendar): void
+    /**
+     * DELETE. `scope: "all"` deletes every event of the series and the series; `this` (default) only the
+     * event, and the series once its last event is gone.
+     */
+    public function deleteEvent(string $id, Calendar $calendar, mixed $scope = null): void
     {
+        $scope = $this->scope($scope);
         $event = $this->findEvent($id, $calendar);
-        $this->em->remove($event);
-        $this->em->flush();
+        $series = $event->getSeries();
+
+        $this->em->wrapInTransaction(function () use ($event, $series, $scope, $calendar): void {
+            if ('all' === $scope && null !== $series) {
+                // Assignments go with the events (ON DELETE CASCADE in the database)
+                $this->em->createQuery('DELETE FROM '.Event::class.' e WHERE e.series = :series AND e.calendar = :calendar')
+                    ->setParameter('series', $series->getId())
+                    ->setParameter('calendar', $calendar->getId())
+                    ->execute();
+                $this->em->detach($event);
+            } else {
+                $this->em->remove($event);
+                $this->em->flush();
+            }
+            $this->removeEmptySeries($calendar);
+        });
+    }
+
+    private function scope(mixed $scope): string
+    {
+        $scope ??= 'this';
+        if (!is_string($scope) || !in_array($scope, self::SCOPES, true)) {
+            throw Input::invalid('scope', 'scope must be one of: '.implode(', ', self::SCOPES));
+        }
+
+        return $scope;
+    }
+
+    /**
+     * The other events of the series with their assignments loaded in one query per assignment type
+     * (no query per event when the links are synced).
+     *
+     * @return list<Event>
+     */
+    private function seriesEventsWithLinks(EventSeries $series, Event $except): array
+    {
+        $events = [];
+        foreach (['properties', 'features', 'targetGroups'] as $link) {
+            $events = $this->em->createQueryBuilder()
+                ->select('e', 'l')
+                ->from(Event::class, 'e')
+                ->leftJoin("e.$link", 'l')
+                ->where('e.series = :series')
+                ->andWhere('e.id <> :id')
+                ->setParameter('series', $series->getId())
+                ->setParameter('id', $except->getId())
+                ->getQuery()
+                ->getResult();
+        }
+
+        return $events;
+    }
+
+    /** Removes the calendar's series that have no events any more (after deleting events). */
+    public function removeEmptySeries(Calendar $calendar): void
+    {
+        $this->em->getConnection()->executeStatement(
+            'DELETE FROM event_series WHERE calendar_id = ? AND NOT EXISTS (SELECT 1 FROM event e WHERE e.series_id = event_series.id)',
+            [$calendar->getId()],
+        );
+    }
+
+    public function countSeriesEvents(EventSeries $series): int
+    {
+        return (int) $this->em->createQueryBuilder()
+            ->select('COUNT(e.id)')
+            ->from(Event::class, 'e')
+            ->where('e.series = :series')
+            ->setParameter('series', $series->getId())
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function serializeSeries(EventSeries $series, int $eventCount): array
+    {
+        return [
+            'id' => $series->getId(),
+            'calendarId' => $series->getCalendar()->getId(),
+            'templateId' => $series->getTemplate()?->getId(),
+            'rule' => $series->getRule()->toArray(),
+            'eventCount' => $eventCount,
+            'createdAt' => $series->getCreatedAt()->format('Y-m-d\\TH:i:s\\Z'),
+        ];
     }
 
     /** Most ids per bulk request (more → 413 `too_many_events`). */
@@ -202,7 +334,13 @@ readonly class EventService
             ->setParameter('calendar', $calendar)
             ->setParameter('ids', $ids);
 
-        $this->em->wrapInTransaction(fn () => $qb->getQuery()->execute());
+        $this->em->wrapInTransaction(function () use ($qb, $action, $calendar): void {
+            $qb->getQuery()->execute();
+            if ('delete' === $action) {
+                // A series whose last events were deleted goes too
+                $this->removeEmptySeries($calendar);
+            }
+        });
 
         // `affected` = events of the request (an update to the same value reports no changed row in MySQL)
         return ['affected' => count($ids)];
@@ -327,6 +465,7 @@ readonly class EventService
             'id' => $event->getId(),
             'calendarId' => $event->getCalendar()->getId(),
             'eventTemplateId' => $event->getTemplate()?->getId(),
+            'seriesId' => $event->getSeries()?->getId(),
             'locationId' => $event->getLocation()?->getId(),
             'name' => $event->getName(),
             'timezone' => $event->getTimezone(),

@@ -37,6 +37,25 @@ describe("ConfirmDialog", () => {
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
   });
 
+  it("offers a second way to confirm next to the main action", async () => {
+    const alternative = vi.fn();
+    const { onConfirm } = renderDialog({
+      alternative: { label: "Nur diesen Termin", onConfirm: alternative },
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Kalender löschen" }));
+    const buttons = (await screen.findByRole("alertdialog")).querySelectorAll("button");
+    expect([...buttons].map((b) => b.textContent)).toEqual([
+      "Abbrechen",
+      "Nur diesen Termin",
+      "Endgültig löschen",
+    ]);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Abbrechen" })).toHaveFocus());
+    await userEvent.click(screen.getByRole("button", { name: "Nur diesen Termin" }));
+    expect(alternative).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+  });
+
   it("cancel closes without confirming", async () => {
     const { onConfirm } = renderDialog();
     await userEvent.click(screen.getByRole("button", { name: "Kalender löschen" }));

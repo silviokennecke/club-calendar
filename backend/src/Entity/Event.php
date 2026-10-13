@@ -11,6 +11,7 @@ use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
 #[ORM\Index(name: 'idx_event_calendar_external_uid', columns: ['calendar_id', 'external_uid'])]
+#[ORM\Index(name: 'idx_event_series', columns: ['series_id'])]
 class Event
 {
     #[ORM\Id]
@@ -28,6 +29,11 @@ class Event
     #[ORM\ManyToOne(targetEntity: Location::class, inversedBy: 'events')]
     #[ORM\JoinColumn(name: 'location_id', nullable: true, onDelete: 'SET NULL')]
     private ?Location $location = null;
+
+    /** Series the event was created in (null: single event); stays when the event is edited on its own. */
+    #[ORM\ManyToOne(targetEntity: EventSeries::class)]
+    #[ORM\JoinColumn(name: 'series_id', nullable: true, onDelete: 'SET NULL')]
+    private ?EventSeries $series = null;
 
     #[ORM\Column(length: 255)]
     private string $name;
@@ -111,6 +117,18 @@ class Event
     public function setLocation(?Location $location): static
     {
         $this->location = $location;
+
+        return $this;
+    }
+
+    public function getSeries(): ?EventSeries
+    {
+        return $this->series;
+    }
+
+    public function setSeries(?EventSeries $series): static
+    {
+        $this->series = $series;
 
         return $this;
     }
