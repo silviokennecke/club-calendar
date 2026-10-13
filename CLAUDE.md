@@ -33,8 +33,8 @@ A web app for clubs to manage and publish event calendars.
 ## Dev Setup
 
 ```bash
-# 1. Start databases
-docker compose up mysql mysql_test -d
+# 1. Start the database (tests use a separate/throwaway MySQL on port 3360, see docs/redesign/E2E.md)
+docker compose up mysql -d
 
 # 2. Install PHP dependencies
 cd backend && composer install
@@ -91,7 +91,7 @@ npm test -w frontend
 npm test
 ```
 
-Tests run against a real MySQL instance on port 3360 (`club_calendar_test` database, set via `TEST_DATABASE_URL`; falls back to `DATABASE_URL` if unset). The root `npm test` script runs PHPUnit then Vitest.
+Tests run against a real MySQL instance on port 3360 (`club_calendar_test` database, set via `TEST_DATABASE_URL`; falls back to `DATABASE_URL` if unset). There is no `mysql_test` compose service any more: start a throwaway container (`docker run -d --name cc-verify-mysql -p 3360:3306 -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=club_calendar_test mysql:8.0.36`), export `TEST_DATABASE_URL` in the shell and migrate with `APP_ENV=test php bin/console doctrine:migrations:migrate -n` (details: `docs/redesign/E2E.md`). The root `npm test` script runs PHPUnit then Vitest.
 
 ## Working Rules
 
@@ -115,7 +115,8 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 - **Club** — the top-level entity; has one or more Calendars; managed by its members (Users via `ClubUser`, no roles yet)
 - **Calendar** — belongs to a Club; contains Events, EventTemplates, and reference data; can be archived (read-only) or duplicated
 - **CalendarFeed** — a publishable view of a Calendar (ICS + web); can be public or private (shared-secret protected)
-- **Event** — a single occurrence on a Calendar; may be based on an EventTemplate
+- **Event** — a single occurrence on a Calendar; may be based on an EventTemplate; may belong to an EventSeries
+- **EventSeries** — a recurrence rule (weekly, every two weeks, monthly on the n-th weekday; until a date or a count; skip holidays) with the events created from it; edit/delete "only this event" or "all events of the series" (`scope`)
 - **EventTemplate** — reusable event definition (name, time, location, properties)
 - **Property** — a tag/attribute for events (e.g. "Schützentracht"); can have an emoji icon
 - **Feature** — an optional add-on for events (e.g. "Bonusschießen")
@@ -130,26 +131,30 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 - No auth cookies. Frontend owns both tokens. (Only the OAuth flow sets a short-lived HttpOnly `oauth_state_nonce` cookie on the API host to bind `state` to the browser.)
 - Refresh: `POST /api/auth/token` (form-encoded: `grant_type=refresh_token&refresh_token=<token>`)
 - Keys: RSA keypair in `backend/config/jwt/` (gitignored); `JWT_REFRESH_SECRET` for HMAC refresh tokens
-- OAuth SSO: Google + Microsoft (redirect → callback → `{FRONTEND_URL}/auth/callback?token=X&refresh_token=Y`, errors `?error=<code>`: `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`, `email_unverified_at_provider`); signed, single-use `state`; e-mail linking only with a trusted `email_verified` (Google/Apple, never Microsoft), see `docs/redesign/BACKEND-GAPS.md` (Sicherheit)
+- OAuth SSO: Google + Microsoft (redirect → callback → `{FRONTEND_URL}/auth/callback?token=X&refresh_token=Y`, errors `?error=<code>`: `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`, `email_unverified_at_provider`); signed, single-use `state`; e-mail linking only with a trusted `email_verified` (Google/Apple, never Microsoft), see `docs/redesign/BACKEND-GAPS.md` (Behobene Bugs)
 - Passkeys: verified with `web-auth/webauthn-lib`; challenge in a signed, single-use `challengeToken` (`auth_nonce` table); allowed origin = `FRONTEND_URL` (default `APP_URL`), `WEBAUTHN_RP_ID` (default host of `APP_URL`), `WEBAUTHN_USER_VERIFICATION` (default `preferred`); `lastUsedAt` per passkey
 - Password reset: `POST /api/auth/forgot-password` (always 204, no account oracle, mail after the response, rate-limited per address and IP) → `{FRONTEND_URL}/reset-password?token=…` (hashed one-time token, 60 min, table `password_reset`) → `POST /api/auth/reset-password` (ends all sessions, confirms the address; SSO-only accounts get a password this way). Password policy 8–128 chars everywhere (`App\Validator\PasswordPolicy`)
-- Account: `PATCH /api/auth/me` (`name`, prefs, last club/calendar, the latter also per membership), `POST /api/auth/change-password` (new tokens, other sessions end; password change and reset discard a waiting e-mail change), `POST|DELETE /api/auth/change-email` + `GET /api/auth/verify-new-email` (link to the new address, table `email_change`, ends all sessions), SSO `POST /api/auth/oauth/{provider}/link-start` → ticket → provider → `/profile?link_proof=` → `POST /api/auth/oauth/{provider}/link-complete` with the JWT (only the user who started it can complete it: link-CSRF protection) / `DELETE /api/auth/oauth/{provider}` (last sign-in method stays, row lock). Details: `docs/redesign/BACKEND-GAPS.md` ("Umgesetzt (Paket 3)")
+- Account: `PATCH /api/auth/me` (`name`, prefs, last club/calendar, the latter also per membership), `POST /api/auth/change-password` (new tokens, other sessions end; password change and reset discard a waiting e-mail change), `POST|DELETE /api/auth/change-email` + `GET /api/auth/verify-new-email` (link to the new address, table `email_change`, ends all sessions), SSO `POST /api/auth/oauth/{provider}/link-start` → ticket → provider → `/profile?link_proof=` → `POST /api/auth/oauth/{provider}/link-complete` with the JWT (only the user who started it can complete it: link-CSRF protection) / `DELETE /api/auth/oauth/{provider}` (last sign-in method stays, row lock). Details: `docs/redesign/BACKEND-GAPS.md` ("Umgesetzt (Paket 1–4)", Paket 3)
 - Console: `app:user:verify <email>`, `app:user:reset-link <email>` (prints the URL only), cron `app:prune-password-resets`, `app:prune-unverified-users`
 
 ## API Errors
 
 RFC 7807 bodies carry a stable `code` (and `field` for input errors) via `App\Exception\ApiProblemException`, e.g. `validation_failed`, `invalid_request`, `unknown_reference`, `duplicate_name`, `too_many_events`, `email_taken`, `invalid_credentials`, `email_not_verified` (login 403 keeps `{error: "email_not_verified"}` too), `invalid_refresh_token`, `invalid_passkey`. The frontend matches `ApiError.code`, never `detail`. Full list: `docs/redesign/BACKEND-GAPS.md` (Fehlercodes).
 
-## Event Import, Export, Bulk
+## Event Import, Export, Bulk, Series
 
 ```
 POST /api/calendars/:id/events/import/preview   # {events, locations?} → status per entry (new|duplicate|invalid), writes nothing
 POST /api/calendars/:id/events/import           # {events, locations?: [{tempId, name, …}], skipDuplicates?} → one transaction
 GET  /api/calendars/:id/events.ics?from&to&includeDrafts&targetGroupIds[]   # member ICS download
 POST /api/calendars/:id/events/bulk             # {ids, action: publish|draft|delete} → {affected}, all or nothing
+POST /api/calendars/:id/events/series/preview   # {rule} → {dates, count, skippedHolidays, holidays}, writes nothing
+POST /api/calendars/:id/events/series           # {rule, templateId?, event?, isDraft?} → {series, events}, atomic, max. 366
+GET  /api/calendars/:id/event-series/:seriesId  # rule + eventCount
+PATCH|DELETE /api/calendars/:id/events/:eventId # scope this (default) | all (PATCH body, DELETE ?scope=)
 ```
 
-Duplicates: same `externalUid` (ICS UID, stored on `Event`) or same name + start date. Unknown time zones in the import fall back to the calendar zone with a `warnings` entry. Limits: 5000 events per import/preview and 5000 ids per bulk request (413 `too_many_events`).
+Duplicates: same `externalUid` (ICS UID, stored on `Event`) or same name + start date. Unknown time zones in the import fall back to the calendar zone with a `warnings` entry. Limits: 5000 events per import/preview and 5000 ids per bulk request (413 `too_many_events`), 366 events per series (422 `too_many_events`). Series dates are computed only by the backend (`App\Service\SeriesRule`); `scope: "all"` never changes an event's date; empty series are removed. Details: `docs/redesign/BACKEND-GAPS.md` ("Paket 4").
 
 ## ICS Feed Endpoint
 
@@ -162,7 +167,7 @@ GET /api/feed/:feedId/events/:eventId                          # one published e
 
 Counters for lists and delete dialogs (clubs, calendars, `usage` of reference data, `eventCount` of templates) come
 from the API in one grouped query per counter (`App\Service\UsageCounts`); the frontend never loads whole lists just
-to count. Details: `docs/redesign/BACKEND-GAPS.md` ("Umgesetzt (Paket 1)").
+to count. Details: `docs/redesign/BACKEND-GAPS.md` ("Umgesetzt (Paket 1–4)", Paket 1).
 
 ## E2E Tests
 
@@ -179,4 +184,4 @@ npm run e2e:ui -w frontend                                          # interactiv
 
 Specs in `frontend/e2e/`: `auth`, `onboarding`, `calendar`, `events`, `templates`, `import`, `import-keyboard`,
 `import-large`, `error-page`, `settings`, `feeds`, `club`, `profile`, `public`, `regressions`, `session-revoked`,
-`stale-assignments` (`*.spec.ts`); helpers in `helpers.ts`, guard in `safety.ts` / `global-setup.ts`.
+`stale-assignments`, `account` (`*.spec.ts`); helpers in `helpers.ts`, guard in `safety.ts` / `global-setup.ts`.

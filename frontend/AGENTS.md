@@ -110,15 +110,24 @@ does not offer yet and how the frontend works around it).
 - Events (create / edit are routed dialogs; URL helpers in `components/events/routes.ts`):
   `…/events` list page (`?status=draft&q=`); dialogs (`pages/events/*Modal.tsx`): `…/events/new` choice
   (`?date=`, design EventNew), `…/events/new/form` form (`?date=`, `?templateId=` pre-fills from a template,
-  EventNewForm), `…/events/new/template` picker (EventNewTemplate), `…/events/new/template/:templateId` single event /
-  series preview (series creation disabled, EventSeries), `…/events/:eventId` edit (EventForm, read-only in
-  archived calendars); `…/events/export` stays a page (downloads `GET …/events.ics` with the JWT via `apiFetch` + Blob + `a[download]`,
+  EventNewForm), `…/events/new/template` picker (EventNewTemplate), `…/events/new/template/:templateId` single event
+  (`POST …/events/from-template`) or series (EventSeries: the dates of the rule come from the backend,
+  `components/events/useSeriesPreview.ts` = `POST …/events/series/preview` debounced with loading / error / limit
+  (366, 422 `too_many_events`) / empty states; "n Termine … anlegen" = one atomic `POST …/events/series` with
+  `{rule, templateId, isDraft}`; the browser never computes series dates), `…/events/:eventId` edit (EventForm, read-only in
+  archived calendars; events of a series show "Teil einer Terminreihe (n Termine)" with the rule text from the
+  single GET's `series`, and saving changes / deleting asks "Nur diesen Termin" / "Alle Termine der Reihe" via
+  `ConfirmDialog` `alternative`: "all" PATCHes only the changed fields (`changedEventFields`) with `scope: "all"`
+  (the backend keeps each event's date), deleting all is `DELETE …?scope=all`); `…/events/export` stays a page (downloads `GET …/events.ics` with the JWT via `apiFetch` + Blob + `a[download]`,
   error banner; the count preview uses `selectForExport`/`exportQuery` with the same rule). The list's bulk actions
   (publish / draft / delete) are one atomic `POST …/events/bulk` (fails as a whole, selection stays). Create dialogs of archived calendars show
   the archive notice instead of the form (`CreateGateBody`, `createGateState.ts`). Save / delete invalidate
   `["events", calendarId]`, toast, `unsaved.allow()`, close; save failures are also shown in the dialog (toasts sit
   behind the modal for screen readers). Pure logic in `src/lib/events/` (`form.ts` values/validation/payload,
-  `list.ts` tabs/search/groups, `series.ts` rule dates + holidays, `ics.ts` export query/selection + the one-event ICS writer `buildEventIcs` of the public event, `format.ts`), with Vitest tests.
+  `list.ts` tabs/search/groups, `series.ts` series types, preview rows, rule text (`describeSeriesRule`) and the
+  changed-fields diff for "all", `ics.ts` export query/selection + the one-event ICS writer `buildEventIcs` of the public event, `format.ts`), with Vitest tests.
+  Events of a series (`seriesId` in every event list) carry the tag "Wiederkehrend" (`Tag tone="brand"`) in
+  `EventsTable` and `EventItem` (`CalItem.recurring`), not on the month chips; bulk actions treat them like any event.
   UI in `components/events/` (`EventsTable`, `LocationSection` + lazy `EventLocationMap`, `StatusSeg`,
   `CreateGate`, `useEventResources`, `useEventPage`, `ArchivedCreateGuard` for the import / template / feed pages).
 - Import: `…/import` is one page with a Stepper (Datei, Prüfen, Fertig; state in `pages/ImportPage.tsx`,
@@ -256,19 +265,23 @@ API / database (`frontend/.env.local` points `VITE_API_URL` at `https://api.club
 `VITE_API_URL` the running dev server uses is not on localhost (`e2e/safety.ts`, tested in Vitest).
 
 ```bash
-# 1. own database on the test MySQL (port 3360, root/root)
-docker compose up mysql_test -d
+# 1. throwaway MySQL (there is no mysql_test service; never use the dev database)
+docker run -d --name cc-verify-mysql -p 3360:3306 -e MYSQL_ROOT_PASSWORD=root \
+  -e MYSQL_DATABASE=club_calendar_test mysql:8.0.36
+until mysql -h127.0.0.1 -P3360 -uroot -proot -e 'SELECT 1' >/dev/null 2>&1; do sleep 2; done
 export DATABASE_URL="mysql://root:root@127.0.0.1:3360/club_calendar_e2e?serverVersion=8.0&charset=utf8mb4"
 (cd backend && php bin/console doctrine:database:create --if-not-exists \
   && php bin/console doctrine:migrations:migrate -n && APP_ENV=dev php bin/console doctrine:fixtures:load -n)
-# 2. backend (own terminal in the repo root, same DATABASE_URL)
-FRONTEND_URL=http://localhost:5199 MAILER_DSN=null://null php -S 127.0.0.1:3001 -t backend/public
+# 2. backend (own terminal in the repo root, same DATABASE_URL; FRONTEND_URL / BACKEND_URL are not in .env)
+FRONTEND_URL=http://localhost:5199 BACKEND_URL=http://localhost:3001 MAILER_DSN=null://null \
+  php -S 127.0.0.1:3001 -t backend/public
 # 3. frontend (own terminal in the repo root)
-cd frontend && VITE_API_URL=http://localhost:3001 npx vite --port 5199
+cd frontend && VITE_API_URL=http://localhost:3001 npx vite --port 5199 --strictPort
 # 4. tests (repo root)
 PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend
-# afterwards: stop both servers and drop the database
+# afterwards: stop both servers, drop the database, remove the container
 mysql -h127.0.0.1 -P3360 -uroot -proot -e "DROP DATABASE club_calendar_e2e"
+docker rm -f cc-verify-mysql
 ```
 
 `e2e/helpers.ts` runs backend console commands against the e2e database (`backendConsole`, default
@@ -296,7 +309,7 @@ Before writing raw Tailwind layout divs in a page, check `src/components/ui/shar
 | `Banner`                                        | Persistent info/warning/danger/success notice                                                   |
 | `Toaster` / `toast`                             | Short feedback (sonner, styled)                                                                 |
 | `EmptyState`                                    | Empty lists with explanation and next action                                                    |
-| `ConfirmDialog`                                 | Destructive confirmations incl. consequences                                                    |
+| `ConfirmDialog`                                 | Destructive confirmations incl. consequences; `alternative` = second action (series scope)      |
 | `FormDialog`                                    | Dialog with a form (title, fields, footer; Enter submits, Escape closes)                        |
 | `Modal` / `ModalFrame` / `useModalInitialFocus` | Large dialog with h1, subtitle, x button (`closeLabel`), sizes, form layout; steps in one frame |
 | `DialogFrame`                                   | Base dialog shell (scrim, focus trap, scroll lock, bottom sheet < 720px)                        |

@@ -6,20 +6,21 @@ import EventTemplatePickModal from "../EventTemplatePickModal";
 import EventFromTemplateModal from "../EventFromTemplateModal";
 import EventsExportPage from "../EventsExportPage";
 import { BASE, PATTERN, groups, makeEvent, renderRoute } from "./testUtils";
+import { ApiError } from "@/lib/api";
+import type { SeriesRule } from "@/lib/events";
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
-const getHolidayEvents = vi.fn();
 const download = vi.fn();
 const apiFetch = vi.fn();
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@/lib/api", async (orig) => ({
+  ...(await orig<typeof import("@/lib/api")>()),
   apiFetch: (...a: unknown[]) => apiFetch(...a),
   apiGet: (...a: unknown[]) => apiGet(...a),
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiPatch: vi.fn(),
   apiDelete: vi.fn(),
-  getHolidayEvents: (...a: unknown[]) => getHolidayEvents(...a),
 }));
 vi.mock("@/lib/events/ics", async (orig) => ({
   ...(await orig<typeof import("@/lib/events/ics")>()),
@@ -75,7 +76,7 @@ const events = [
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(2026, 9, 2, 12, 0, 0));
-  for (const fn of [apiGet, apiPost, getHolidayEvents, download, apiFetch]) fn.mockReset();
+  for (const fn of [apiGet, apiPost, download, apiFetch]) fn.mockReset();
   apiGet.mockImplementation((path: string) => {
     if (path === "/api/clubs/c1/calendars/k1")
       return Promise.resolve({
@@ -90,16 +91,36 @@ beforeEach(() => {
     return Promise.resolve([]);
   });
   apiPost.mockResolvedValue([]);
-  getHolidayEvents.mockResolvedValue([
-    {
-      id: "h",
-      holidayCalendarId: "hc",
-      name: "Reformationstag",
-      date: "2026-10-31",
-      dateEnd: null,
-    },
-  ]);
 });
+
+/** Stand-in for `POST …/events/series/preview` (the backend computes the dates). */
+function fakeSeriesPreview(path: string, body: { rule: SeriesRule }) {
+  if (path === "/api/calendars/k1/events/series")
+    return Promise.resolve({ series: { id: "s1" }, events: [{ id: "e1" }] });
+  if (path !== "/api/calendars/k1/events/series/preview") return Promise.resolve([]);
+  const { rule } = body;
+  const reformation = { date: "2026-10-31", name: "Reformationstag" };
+  if (rule.until === "2026-10-06") {
+    return Promise.resolve({ dates: [], count: 0, skippedHolidays: [], holidays: [] });
+  }
+  if (rule.frequency === "monthly") {
+    const dates = rule.skipHolidays ? [] : ["2026-10-31"];
+    return Promise.resolve({
+      dates,
+      count: dates.length,
+      skippedHolidays: rule.skipHolidays ? [reformation] : [],
+      holidays: [reformation],
+    });
+  }
+  const saturdays = ["2026-10-03", "2026-10-10", "2026-10-17", "2026-10-24", "2026-10-31"];
+  const dates = rule.skipHolidays ? saturdays.slice(0, 4) : saturdays;
+  return Promise.resolve({
+    dates,
+    count: dates.length,
+    skippedHolidays: rule.skipHolidays ? [reformation] : [],
+    holidays: [reformation],
+  });
+}
 
 afterEach(() => {
   vi.useRealTimers();
@@ -235,37 +256,67 @@ describe("event from template", () => {
     expect(await screen.findByTestId("location")).toHaveTextContent(BASE);
   });
 
-  it("previews a series with skipped holidays, but cannot create it yet", async () => {
+  it("previews a series from the backend and creates it", async () => {
     const user = userEvent.setup();
+    apiPost.mockImplementation(fakeSeriesPreview);
     renderSeries("?date=2026-10-03");
     await user.click(await screen.findByRole("button", { name: "Terminserie" }));
     await user.selectOptions(screen.getByLabelText("Wochentag"), "6");
     await user.clear(screen.getByLabelText(/^Bis/));
     await user.type(screen.getByLabelText(/^Bis/), "2026-10-31");
     expect(
-      await screen.findByText("4 Termine würden angelegt. 1 Feiertag wird ausgelassen."),
+      await screen.findByText("4 Termine werden angelegt. 1 Feiertag wird ausgelassen."),
     ).toBeVisible();
     expect(screen.getByText("wird ausgelassen")).toBeVisible();
     expect(screen.getByText("1 Tag ausgenommen")).toBeVisible();
-    expect(getHolidayEvents).toHaveBeenCalledWith("k1", "2026-10-03", "2026-10-31");
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenLastCalledWith("/api/calendars/k1/events/series/preview", {
+        rule: {
+          frequency: "weekly",
+          weekday: 6,
+          nth: null,
+          startDate: "2026-10-03",
+          until: "2026-10-31",
+          count: null,
+          skipHolidays: true,
+        },
+      }),
+    );
+    expect(screen.queryByText("Bald verfügbar")).toBeNull();
 
     await user.click(screen.getByRole("checkbox", { name: /Feiertage auslassen/ }));
-    expect(screen.getByText("5 Termine würden angelegt.")).toBeVisible();
+    expect(await screen.findByText("5 Termine werden angelegt.")).toBeVisible();
     expect(screen.getByText("liegt auf Reformationstag")).toBeVisible();
+    expect(screen.getByText("1 Feiertag bleibt in der Serie")).toBeVisible();
 
     await user.click(screen.getByRole("button", { name: "Monatlich am n-ten Wochentag" }));
     await user.click(screen.getByRole("button", { name: "Letzter" }));
-    expect(screen.getByText("1 Termin würde angelegt.")).toBeVisible();
+    expect(await screen.findByText("1 Termin wird angelegt.")).toBeVisible();
 
-    expect(screen.getByText("Bald verfügbar")).toBeVisible();
-    const create = screen.getByRole("button", { name: /Termin als Entwurf anlegen/ });
-    expect(create).toBeDisabled();
-    expect(create).toHaveAccessibleName("1 Termin als Entwurf anlegen (Bald verfügbar)");
-    expect(apiPost).not.toHaveBeenCalled();
+    const create = await screen.findByRole("button", { name: "1 Termin als Entwurf anlegen" });
+    await waitFor(() => expect(create).toBeEnabled());
+    await user.click(create);
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith("/api/calendars/k1/events/series", {
+        rule: {
+          frequency: "monthly",
+          weekday: 6,
+          nth: 5,
+          startDate: "2026-10-03",
+          until: "2026-10-31",
+          count: null,
+          skipHolidays: false,
+        },
+        templateId: "t1",
+        isDraft: true,
+      }),
+    );
+    expect(await screen.findByTestId("location")).toHaveTextContent(BASE);
   });
 
   it("warns when no day matches", async () => {
     const user = userEvent.setup();
+    apiPost.mockImplementation(fakeSeriesPreview);
     renderSeries("?date=2026-10-05");
     await user.click(await screen.findByRole("button", { name: "Terminserie" }));
     await user.clear(screen.getByLabelText(/^Bis/));
@@ -277,6 +328,36 @@ describe("event from template", () => {
       ),
     ).toBeVisible();
     expect(screen.getByText("Es entstehen keine Termine.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Keine Termine zum Anlegen" })).toBeDisabled();
+  });
+
+  it("blocks the series above the limit and when the preview fails", async () => {
+    const user = userEvent.setup();
+    apiPost.mockRejectedValue(new ApiError("too many", 422, "too_many_events"));
+    renderSeries("?date=2026-10-05");
+    await user.click(await screen.findByRole("button", { name: "Terminserie" }));
+    expect(
+      await screen.findByText("Eine Serie hat höchstens 366 Termine. Verkürze den Zeitraum."),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "Keine Termine zum Anlegen" })).toBeDisabled();
+
+    apiPost.mockRejectedValue(new ApiError("boom", 500));
+    await user.click(screen.getByRole("button", { name: "Zweiwöchentlich" }));
+    expect(await screen.findByText("Die Vorschau konnte nicht geladen werden.")).toBeVisible();
+    apiPost.mockImplementation(fakeSeriesPreview);
+    await user.click(screen.getByRole("button", { name: "Erneut versuchen" }));
+    expect(await screen.findByText(/Termine werden angelegt/)).toBeVisible();
+  });
+
+  it("shows when the end is before the start and sends nothing", async () => {
+    const user = userEvent.setup();
+    apiPost.mockImplementation(fakeSeriesPreview);
+    renderSeries("?date=2026-10-05");
+    await user.click(await screen.findByRole("button", { name: "Terminserie" }));
+    await user.clear(screen.getByLabelText(/^Bis/));
+    await user.type(screen.getByLabelText(/^Bis/), "2026-10-01");
+    expect(await screen.findByText("Das Ende liegt vor dem Anfang.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Keine Termine zum Anlegen" })).toBeDisabled();
   });
 });
 

@@ -387,3 +387,140 @@ describe("EventFormModal – edit", () => {
     expect(screen.getByRole("button", { name: "Erneut laden" })).toBeVisible();
   });
 });
+
+describe("EventFormModal – event of a series", () => {
+  const seriesEvent = makeEvent({
+    id: "s2",
+    name: "Training",
+    date: "2026-10-15",
+    seriesId: "ser1",
+    targetGroups: [{ targetGroup: groups[0] }],
+    series: {
+      id: "ser1",
+      templateId: null,
+      eventCount: 4,
+      rule: {
+        frequency: "weekly",
+        weekday: 4,
+        nth: null,
+        startDate: "2026-10-03",
+        until: "2026-10-31",
+        count: null,
+        skipHolidays: true,
+      },
+    },
+  });
+
+  beforeEach(() => {
+    const base = apiGet.getMockImplementation()!;
+    apiGet.mockImplementation((path: string) =>
+      path === "/api/calendars/k1/events/s2" ? Promise.resolve(seriesEvent) : base(path),
+    );
+  });
+
+  it("names the series and its rule", async () => {
+    renderEdit("s2");
+    expect(await screen.findByText("Teil einer Terminreihe (4 Termine)")).toBeVisible();
+    expect(screen.getByText(/^Wöchentlich am Donnerstag, .*03\.10\.2026 bis/)).toBeVisible();
+    expect(screen.getByText("Wiederkehrend")).toBeVisible();
+  });
+
+  it("asks for the scope and sends only the changed fields for all events", async () => {
+    const user = userEvent.setup();
+    renderEdit("s2");
+    const name = await screen.findByLabelText(/^Name/);
+    await user.clear(name);
+    await user.type(name, "Training neu");
+    await user.clear(screen.getByLabelText(/^Startdatum/));
+    await user.type(screen.getByLabelText(/^Startdatum/), "2026-10-16");
+    await user.click(screen.getByRole("button", { name: "Termin speichern" }));
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Änderungen für die Terminreihe speichern?");
+    expect(dialog).toHaveTextContent("gehört zu einer Terminreihe mit 4 Terminen");
+    expect(dialog).toHaveTextContent("Das geänderte Datum gilt nur für diesen Termin.");
+    // Focus starts on "Abbrechen" (like every confirmation)
+    await waitFor(() =>
+      expect(within(dialog).getByRole("button", { name: "Abbrechen" })).toHaveFocus(),
+    );
+    expect(apiPatch).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Alle Termine der Reihe" }));
+    await waitFor(() =>
+      expect(apiPatch).toHaveBeenCalledWith("/api/calendars/k1/events/s2", {
+        name: "Training neu",
+        date: "2026-10-16",
+        scope: "all",
+      }),
+    );
+    expect(await screen.findByTestId("location")).toHaveTextContent(BASE);
+  });
+
+  it("saves only this event with the full form", async () => {
+    const user = userEvent.setup();
+    renderEdit("s2");
+    await user.click(await screen.findByRole("button", { name: "Entwurf" }));
+    await user.click(screen.getByRole("button", { name: "Termin speichern" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).not.toHaveTextContent("Das geänderte Datum");
+    await user.click(within(dialog).getByRole("button", { name: "Nur diesen Termin" }));
+    await waitFor(() =>
+      expect(apiPatch).toHaveBeenCalledWith(
+        "/api/calendars/k1/events/s2",
+        expect.objectContaining({ name: "Training", isDraft: true, targetGroupIds: ["g1"] }),
+      ),
+    );
+    expect(apiPatch.mock.calls[0][1]).not.toHaveProperty("scope");
+  });
+
+  it("saves an unchanged event without asking for the scope", async () => {
+    const user = userEvent.setup();
+    renderEdit("s2");
+    await screen.findByLabelText(/^Name/);
+    await user.click(screen.getByRole("button", { name: "Termin speichern" }));
+    await waitFor(() =>
+      expect(apiPatch).toHaveBeenCalledWith(
+        "/api/calendars/k1/events/s2",
+        expect.objectContaining({ name: "Training" }),
+      ),
+    );
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(apiPatch.mock.calls[0][1]).not.toHaveProperty("scope");
+  });
+
+  it("keeps the form when the scope question is cancelled", async () => {
+    const user = userEvent.setup();
+    renderEdit("s2");
+    await user.click(await screen.findByRole("button", { name: "Entwurf" }));
+    await user.click(screen.getByRole("button", { name: "Termin speichern" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    expect(apiPatch).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Termin bearbeiten" })).toBeVisible();
+  });
+
+  it("deletes this event or the whole series", async () => {
+    const user = userEvent.setup();
+    renderEdit("s2");
+    await user.click(await screen.findByRole("button", { name: "Termin löschen" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Termin „Training“ löschen?");
+    expect(dialog).toHaveTextContent(
+      "Der Termin am Do 15.10.2026 gehört zu einer Terminreihe mit 4 Terminen.",
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Alle Termine der Reihe" }));
+    await waitFor(() =>
+      expect(apiDelete).toHaveBeenCalledWith("/api/calendars/k1/events/s2?scope=all"),
+    );
+  });
+
+  it("deletes only this event on request", async () => {
+    const user = userEvent.setup();
+    renderEdit("s2");
+    await user.click(await screen.findByRole("button", { name: "Termin löschen" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Nur diesen Termin" }));
+    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/calendars/k1/events/s2"));
+  });
+});

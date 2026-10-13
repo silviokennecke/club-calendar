@@ -14,7 +14,8 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | OAuth | `/api/auth/oauth` (sign-in; link `/{provider}/link-start` → `/{provider}/link?ticket=` → callback → `/profile?link_proof=` → `/{provider}/link-complete` (JWT); unlink `DELETE /{provider}`) | `OAuthController` | `AuthService`, `AccountService` |
 | Clubs | `/api/clubs` | `ClubController` | `ClubService` |
 | Calendars | `/api/clubs/{clubId}/calendars` | `CalendarController` | `CalendarService` |
-| Events | `/api/calendars/{calendarId}/events` (incl. `…/import/preview`, `…/import`, `…/bulk`, export `/api/calendars/{calendarId}/events.ics`) | `EventController` | `EventService`, `EventImportService`, `EventExportService` |
+| Events | `/api/calendars/{calendarId}/events` (incl. `…/import/preview`, `…/import`, `…/bulk`, `…/series/preview`, `…/series`, PATCH/DELETE with `scope=this\|all`, export `/api/calendars/{calendarId}/events.ics`) | `EventController` | `EventService`, `EventSeriesService`, `EventImportService`, `EventExportService` |
+| Event Series | `/api/calendars/{calendarId}/event-series/{seriesId}` (rule + `eventCount`) | `EventSeriesController` | `EventSeriesService`, `SeriesRule` |
 | Event Templates | `/api/calendars/{calendarId}/templates` | `EventTemplateController` | `EventTemplateService` |
 | Properties | `/api/calendars/{calendarId}/properties` | `PropertyController` | `PropertyService` |
 | Features | `/api/calendars/{calendarId}/features` | `FeatureController` | `FeatureService` |
@@ -51,12 +52,14 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | `src/Service/Input.php` | Typed input validation helpers (400 `validation_failed` with `field`) |
 | `src/Service/EventImportService.php` | ICS import: preview (`new`/`duplicate`/`invalid` per entry, writes nothing) and atomic import (new places by `tempId`, `skipDuplicates`, unknown time zones → calendar zone + `warnings`, max. 5000 per request → 413 `too_many_events`) |
 | `src/Service/EventExportService.php` | Member ICS download via `IcsService` (`from`/`to` overlap, `includeDrafts` as TENTATIVE, `targetGroupIds[]` of the calendar, safe `Content-Disposition`) |
+| `src/Service/SeriesRule.php` | Series rule (weekly / biweekly / monthly n-th weekday, `until` or `count`, `skipHolidays`, `durationDays`): validation and the ONLY computation of series dates (calendar days in UTC), max. 366 events (422 `too_many_events`) |
+| `src/Service/EventSeriesService.php` | Series preview (dates, skipped holidays of the calendar's holiday calendars) and atomic creation of series + events (template values like `from-template`); scope `this`/`all` of PATCH/DELETE and the clean-up of empty series live in `EventService` |
 | `src/Service/UsageCounts.php` | Counters for lists and delete dialogs (clubs, calendars, usage of properties/features/target groups/locations, events per template): one grouped query per counter, never one per row |
 | `src/Service/UniqueNames.php` | Names of properties/features/target groups unique per calendar (trim, case-insensitive, compared in PHP; no unique index, old duplicates stay) |
 | `src/Exception/ApiProblemException.php` | HTTP error with a stable `code` (+ optional `field`) in the RFC 7807 body, e.g. 422 `duplicate_name`; code list: `docs/redesign/BACKEND-GAPS.md` (Fehlercodes) |
 | `config/services.yaml` | Parameters and env defaults: `APP_URL` drives `FRONTEND_URL`, `BACKEND_URL` and `WEBAUTHN_RP_ID`; optional `MAPBOX_TOKEN`, cache TTLs, `WEBAUTHN_USER_VERIFICATION` |
 | `config/packages/security.yaml` | Stateless JWT firewall; public routes allowlist |
-| `migrations/` | Doctrine migrations (initial schema `Version20260625000000`, all tables in snake_case; then `Version20261004120000` `auth_nonce`, `Version20261004130000` `user.token_version`, `Version20261009120000` nullable template times, `Version20261010120000` `event.external_uid`, latest `Version20261013120000` `password_reset`, `email_change`, `passkey.last_used_at`, `club_user.last_calendar_id`) |
+| `migrations/` | Doctrine migrations (initial schema `Version20260625000000`, all tables in snake_case; then `Version20261004120000` `auth_nonce`, `Version20261004130000` `user.token_version`, `Version20261009120000` nullable template times, `Version20261010120000` `event.external_uid`, `Version20261013120000` `password_reset`, `email_change`, `passkey.last_used_at`, `club_user.last_calendar_id`, latest `Version20261014120000` `event_series` + `event.series_id`) |
 
 ## Security Pattern
 
@@ -76,7 +79,7 @@ $this->denyAccessUnlessGranted(ArchivedCalendarVoter::NOT_ARCHIVED, $calendar); 
 - **Refresh grant**: `POST /api/auth/token` with `application/x-www-form-urlencoded` body
 - **No auth cookies** — the backend sets no session/auth cookies (only the short-lived OAuth `oauth_state_nonce` cookie that binds the SSO `state` to the browser)
 - **Passkeys** — verified with `web-auth/webauthn-lib` (`WebAuthnService`), see `CLAUDE.md` (Auth) and `docs/redesign/BACKEND-GAPS.md`
-- **Password reset / account changes / SSO linking** — see `CLAUDE.md` (Auth) and `docs/redesign/BACKEND-GAPS.md` ("Umgesetzt (Paket 3)"); `user.token_version` ends all sessions on reset, password change (the caller gets new tokens) and e-mail change
+- **Password reset / account changes / SSO linking** — see `CLAUDE.md` (Auth) and `docs/redesign/BACKEND-GAPS.md` ("Umgesetzt (Paket 1–4)", Paket 3); `user.token_version` ends all sessions on reset, password change (the caller gets new tokens) and e-mail change
 
 ## Entity Conventions
 
@@ -97,14 +100,20 @@ list endpoints are tested to run the same number of queries for more rows (no N+
 The KernelBrowser reboots the kernel between requests: re-fetch entities (`$em->find(...)`) before changing them
 after a request.
 
-Run: `cd backend && composer test` (requires MySQL test DB on port 3360). `TEST_DATABASE_URL` falls back to `DATABASE_URL` in the `test` env; the tests wipe all tables, so never leave it unset next to a real database.
+Run: `cd backend && composer test` (requires a MySQL test DB on port 3360). `TEST_DATABASE_URL` falls back to `DATABASE_URL` in the `test` env; the tests wipe all tables, so never leave it unset next to a real database. There is no `mysql_test` compose service: automated runs use a throwaway container (`docker run -d --name cc-verify-mysql -p 3360:3306 …`, see `docs/redesign/E2E.md`) and set `TEST_DATABASE_URL` in the shell.
 
 ## Calendar Archive & Duplicate
 
 - `Calendar::archivedAt` — null = active; set = archived and read-only
 - `POST /api/clubs/{clubId}/calendars/{calendarId}/archive` — sets `archivedAt`
 - `POST /api/clubs/{clubId}/calendars/{calendarId}/unarchive` — clears `archivedAt`
-- `POST /api/clubs/{clubId}/calendars/{calendarId}/duplicate` (201) — deep-copies calendar + properties/features/target-groups/locations/templates/feeds (new UUIDs for feed secrets); events not copied; optional body `{name}` (default "Copy of …", the frontend sends the localized name)
+- `POST /api/clubs/{clubId}/calendars/{calendarId}/duplicate` (201) — deep-copies calendar + properties/features/target-groups/locations/templates/feeds (new UUIDs for feed secrets); events (and therefore event series) not copied; optional body `{name}` (default "Copy of …", the frontend sends the localized name)
 - Calendar responses carry `eventCount`, `templateCount`, `feedCount`; club responses `calendarCount`, `archivedCalendarCount`, `memberCount` (single club also `eventCount`, `feedCount`); `GET /api/clubs` also the caller's `lastCalendarId` per club (`club_user.last_calendar_id`, set by `PATCH /api/auth/me`)
-- Event templates: `timezone`, `timeBegin`, `timeEnd` are optional (times only as a pair); without times in the template and in the request, `from-template` creates all-day events (`docs/redesign/BACKEND-GAPS.md`, "Umgesetzt (Paket 1)")
+- Event templates: `timezone`, `timeBegin`, `timeEnd` are optional (times only as a pair); without times in the template and in the request, `from-template` creates all-day events (`docs/redesign/BACKEND-GAPS.md`, "Umgesetzt (Paket 1–4)", Paket 1)
 - Archived calendar public feeds → 404; nested write endpoints → 403 (via `ArchivedCalendarVoter`)
+
+## Event Series
+
+- `EventSeries` (`event_series`: rule + optional template, FK calendar CASCADE, template SET NULL) and `Event.series` (`series_id`, SET NULL). The events are normal rows; the rule is only displayed later (not re-evaluated).
+- `POST …/events/series/preview {rule}` → `{dates, count, skippedHolidays, holidays}`; `POST …/events/series {rule, templateId?, event?, isDraft?}` → 201 `{series, events}` (one flush); lists carry `seriesId`, the single event GET also `series {id, rule, eventCount, …}`.
+- `PATCH …/events/{id}` `scope: "all"` applies the sent fields to every event of the series except `date`/`dateEnd`/template (each event keeps its day); `this` (default) changes one event, which stays in the series. `DELETE …?scope=all` deletes the series with its events; a series without events is removed (also after bulk delete). Details: `docs/redesign/BACKEND-GAPS.md` ("Paket 4").

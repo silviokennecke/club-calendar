@@ -252,7 +252,7 @@ test.describe("Termine", () => {
     );
   });
 
-  test("Termin aus Vorlage, Serie nur als Vorschau", async ({ page, request }) => {
+  test("Termin aus Vorlage und Terminserie", async ({ page, request }) => {
     const seeded = await seedEvents(request, "Vorlage Serie");
     await openList(page, seeded);
 
@@ -262,22 +262,86 @@ test.describe("Termine", () => {
     await expect(page.getByRole("radio", { name: /Training Luftgewehr/ })).toBeChecked();
     await page.getByRole("button", { name: "Weiter" }).click();
 
+    // Single event
     await expect(page.getByRole("heading", { level: 1, name: "Termin aus Vorlage" })).toBeVisible();
-    await page.getByRole("button", { name: "Terminserie" }).click();
-    await expect(page.getByText("Bald verfügbar", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Termine als Entwurf anlegen/ })).toBeDisabled();
-
-    await page.getByRole("button", { name: "Einzelner Termin" }).click();
     await page.getByLabel("Datum (Pflicht)").fill("2026-10-22");
     await expect(page.getByText("1 Termin wird angelegt.")).toBeVisible();
     await page.getByRole("button", { name: "1 Termin als Entwurf anlegen" }).click();
     await expect(page.getByText("Termin angelegt.")).toBeVisible();
-
     const created = page.getByRole("row").filter({ hasText: "22.10.2026" });
     await expect(created).toContainText("Training Luftgewehr");
     await expect(created).toContainText("19:00 – 21:00");
     await expect(created).toContainText("Schützenhaus Waldblick");
     await expect(created).toContainText("Erwachsene");
+    await expect(created).not.toContainText("Wiederkehrend");
+
+    // Series: the preview comes from the backend
+    await page.getByRole("button", { name: "Termin anlegen", exact: true }).click();
+    await page.getByRole("link", { name: /Aus Vorlage/ }).click();
+    await page.getByRole("button", { name: "Weiter" }).click();
+    await page.getByRole("button", { name: "Terminserie" }).click();
+    await expect(page.getByText("Bald verfügbar", { exact: true })).toHaveCount(0);
+    await page.getByLabel("Wochentag").selectOption({ label: "Donnerstag" });
+    await page.getByLabel("Von (Pflicht)").fill("2026-11-01");
+    await page.getByLabel("Bis (Pflicht)").fill("2026-11-30");
+    await expect(page.getByText("4 Termine werden angelegt.")).toBeVisible();
+    await expect(page.getByText("Do 26.11.2026")).toBeVisible();
+    await page.getByRole("button", { name: "Veröffentlicht" }).click();
+    await page.getByRole("button", { name: "4 Termine anlegen und veröffentlichen" }).click();
+    await expect(page.getByText("4 Termine angelegt.")).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    const seriesRows = page.getByRole("row").filter({ hasText: "Wiederkehrend" });
+    await expect(seriesRows).toHaveCount(4);
+    await expect(page.getByRole("row").filter({ hasText: "12.11.2026" })).toContainText(
+      "Wiederkehrend",
+    );
+
+    // Edit all events of the series: only the changed name goes to all, the date stays per event
+    await page
+      .getByRole("row")
+      .filter({ hasText: "12.11.2026" })
+      .getByRole("link", { name: "Training Luftgewehr" })
+      .click();
+    await expect(page.getByText("Teil einer Terminreihe (4 Termine)")).toBeVisible();
+    await expect(page.getByText(/^Wöchentlich am Donnerstag/)).toBeVisible();
+    await page.getByLabel("Name (Pflicht)").fill("Training Donnerstag");
+    await page.getByRole("button", { name: "Termin speichern" }).click();
+    const scope = page.getByRole("alertdialog");
+    await expect(scope).toContainText("Änderungen für die Terminreihe speichern?");
+    await expect(scope.getByRole("button", { name: "Abbrechen" })).toBeFocused();
+    await scope.getByRole("button", { name: "Alle Termine der Reihe" }).click();
+    await expect(page.getByText("Alle Termine der Reihe gespeichert.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Training Donnerstag", exact: true })).toHaveCount(
+      4,
+    );
+
+    // Only this event
+    await page
+      .getByRole("row")
+      .filter({ hasText: "19.11.2026" })
+      .getByRole("link", { name: "Training Donnerstag" })
+      .click();
+    await page.getByLabel("Name (Pflicht)").fill("Sondertraining");
+    await page.getByRole("button", { name: "Termin speichern" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Nur diesen Termin" }).click();
+    await expect(page.getByText("Termin gespeichert.")).toBeVisible();
+    await expect(rowLink(page, "Sondertraining")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Training Donnerstag", exact: true })).toHaveCount(
+      3,
+    );
+    await expect(page.getByRole("row").filter({ hasText: "Sondertraining" })).toContainText(
+      "Wiederkehrend",
+    );
+
+    // Delete the whole series
+    await rowLink(page, "Sondertraining").click();
+    await page.getByRole("button", { name: "Termin löschen" }).click();
+    const del = page.getByRole("alertdialog");
+    await expect(del).toContainText("gehört zu einer Terminreihe mit 4 Terminen");
+    await del.getByRole("button", { name: "Alle Termine der Reihe" }).click();
+    await expect(page.getByText("Alle Termine der Reihe gelöscht.")).toBeVisible();
+    await expect(page.getByRole("row").filter({ hasText: "Wiederkehrend" })).toHaveCount(0);
+    await expect(created).toBeVisible();
   });
 
   test("Ungespeicherte Änderungen und Export", async ({ page, request }) => {
