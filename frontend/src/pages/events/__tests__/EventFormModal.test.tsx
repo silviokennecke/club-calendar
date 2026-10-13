@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { ApiError } from "@/lib/api";
 import EventFormModal from "../EventFormModal";
 import { BASE, PATTERN, groups, makeEvent, renderRoute } from "./testUtils";
 
@@ -9,7 +10,8 @@ const apiPost = vi.fn();
 const apiPatch = vi.fn();
 const apiDelete = vi.fn();
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@/lib/api", async (orig) => ({
+  ...(await orig<typeof import("@/lib/api")>()),
   apiGet: (...a: unknown[]) => apiGet(...a),
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiPatch: (...a: unknown[]) => apiPatch(...a),
@@ -69,9 +71,10 @@ beforeEach(() => {
     if (path.endsWith("/features")) return Promise.resolve(features);
     if (path.endsWith("/templates")) return Promise.resolve([template]);
     if (path === "/api/calendars/k1/events/e1") return Promise.resolve(existing);
-    if (path === "/api/calendars/k1/events/gone") return Promise.reject(new Error("API error 404"));
+    if (path === "/api/calendars/k1/events/gone")
+      return Promise.reject(new ApiError("Event not found", 404));
     if (path === "/api/calendars/k1/events/foreign")
-      return Promise.reject(new Error("API error 403"));
+      return Promise.reject(new ApiError("Access denied", 403));
     return Promise.resolve([]);
   });
   apiPost.mockResolvedValue({ id: "new" });
@@ -375,7 +378,7 @@ describe("EventFormModal – edit", () => {
     const base = apiGet.getMockImplementation()!;
     apiGet.mockImplementation((path: string) =>
       path === "/api/clubs/c1/calendars/k1"
-        ? Promise.reject(new Error("API error 404"))
+        ? Promise.reject(new ApiError("Event not found", 404))
         : base(path),
     );
     renderRoute(newRoute, `${BASE}/events/new/form`, <EventFormModal />);

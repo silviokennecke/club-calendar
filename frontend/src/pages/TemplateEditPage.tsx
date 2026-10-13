@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
+import { apiDelete, apiErrorStatus, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { keepExisting, saveDroppingDeletedReferences } from "@/lib/staleReferences";
 import { locationName } from "@/lib/events";
 import {
@@ -92,7 +92,7 @@ function TemplateLoader() {
   }
 
   if (!isNew && query.isError) {
-    const notFound = /404/.test((query.error as { message?: string })?.message ?? "");
+    const notFound = apiErrorStatus(query.error) === 404;
     return (
       <div className="ap-wrap--narrow">
         {notFound ? (

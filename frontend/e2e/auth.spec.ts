@@ -160,16 +160,22 @@ test.describe("Registration", () => {
 });
 
 test.describe("Forgot password and email confirmation", () => {
-  test("forgot password page is reachable and its action is disabled", async ({ page }) => {
+  test("forgot password answers the same for unknown addresses ('Prüfe dein Postfach')", async ({
+    page,
+  }) => {
     await page.goto("/login");
     await page.getByRole("link", { name: "Passwort vergessen?" }).click();
     await expect(page).toHaveURL(/\/forgot-password/);
     await expect(
       page.getByRole("heading", { level: 1, name: "Passwort vergessen?" }),
     ).toBeVisible();
-    await expect(page.getByRole("status")).toContainText("Bald verfügbar");
-    await page.getByLabel(/^E-Mail/).fill("alex@beispiel.de");
-    await expect(page.getByRole("button", { name: "Link zum Zurücksetzen senden" })).toBeDisabled();
+    await expect(page.getByText("Bald verfügbar")).toHaveCount(0);
+    await page.getByLabel(/^E-Mail/).fill(`nobody-${Date.now()}@example.com`);
+    await page.getByRole("button", { name: "Link zum Zurücksetzen senden" }).click();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Prüfe dein Postfach" }),
+    ).toBeVisible();
+    await expect(page.getByRole("status")).toContainText("nobody-");
     await page.getByRole("link", { name: "Zurück zur Anmeldung" }).click();
     await expect(page).toHaveURL(/\/login/);
   });

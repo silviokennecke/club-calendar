@@ -13,7 +13,9 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  * Codes used by the API (list for the frontend: docs/redesign/BACKEND-GAPS.md, "Fehlercodes"):
  * validation_failed, unknown_reference, duplicate_name, too_many_events, email_taken, invalid_credentials,
  * email_not_verified, invalid_refresh_token, invalid_grant, invalid_passkey, invalid_passkey_registration,
- * passkey_already_registered, passkey_not_found, invalid_request.
+ * passkey_already_registered, passkey_not_found, invalid_request, invalid_reset_token, no_password,
+ * last_login_method, oauth_account_not_found, unknown_provider, invalid_state / account_in_use /
+ * already_linked (SSO link-complete).
  */
 class ApiProblemException extends HttpException
 {

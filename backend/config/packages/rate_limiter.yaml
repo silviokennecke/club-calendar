@@ -48,3 +48,18 @@ framework:
             policy: sliding_window
             limit: 3
             interval: '1 hour'
+        # Forgot password: per normalized e-mail address and per client IP. Over the limit the endpoint
+        # still answers 204, only no mail is sent (no oracle).
+        password_reset_email:
+            policy: sliding_window
+            limit: 3
+            interval: '1 hour'
+        password_reset_ip:
+            policy: sliding_window
+            limit: 20
+            interval: '1 hour'
+        # Change e-mail: confirmation mails per account.
+        email_change_request:
+            policy: sliding_window
+            limit: 5
+            interval: '1 hour'

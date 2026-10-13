@@ -8,6 +8,10 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 class UpdateMeDto
 {
+    #[Assert\NotBlank(allowNull: true)]
+    #[Assert\Length(min: 1, max: 255)]
+    public ?string $name = null;
+
     #[Assert\Length(min: 1, max: 20)]
     public ?string $dateFormat = null;
 

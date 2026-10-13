@@ -107,33 +107,66 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
   return res;
 }
 
+/** ApiError from a failed response: `detail` (or the legacy `error`) as message, plus the stable `code`. */
+async function errorFrom(res: Response): Promise<ApiError> {
+  const err = (await res.json().catch(() => null)) as {
+    error?: string;
+    detail?: string;
+    code?: string;
+  } | null;
+  return new ApiError(
+    err?.error ?? err?.detail ?? `API error ${res.status}`,
+    res.status,
+    err?.code,
+  );
+}
+
+/** Body of a successful response; 204 No Content resolves to `undefined`. */
+async function bodyOf<T>(res: Response): Promise<T> {
+  if (res.status === 204) return undefined as T;
+  return res.json();
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await apiFetch(path);
-  if (!res.ok) throw new ApiError(`API error ${res.status}`, res.status);
+  if (!res.ok) throw await errorFrom(res);
   return res.json();
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const res = await apiFetch(path, { method: "POST", body: JSON.stringify(body) });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Unknown error" }));
-    throw new ApiError(err.error ?? err.detail ?? "Request failed", res.status, err.code);
-  }
-  return res.json();
+  if (!res.ok) throw await errorFrom(res);
+  return bodyOf<T>(res);
 }
 
 export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   const res = await apiFetch(path, { method: "PATCH", body: JSON.stringify(body) });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Unknown error" }));
-    throw new ApiError(err.error ?? err.detail ?? "Request failed", res.status, err.code);
-  }
-  return res.json();
+  if (!res.ok) throw await errorFrom(res);
+  return bodyOf<T>(res);
 }
 
 export async function apiDelete(path: string): Promise<void> {
   const res = await apiFetch(path, { method: "DELETE" });
-  if (!res.ok) throw new ApiError(`API error ${res.status}`, res.status);
+  if (!res.ok) throw await errorFrom(res);
+}
+
+/**
+ * HTTP status of a failed API call (`ApiError.status`), or undefined (network error). The message of an
+ * ApiError is the server's text, not the status: recognise 403 / 404 by this, never by the message.
+ */
+export function apiErrorStatus(error: unknown): number | undefined {
+  if (
+    error &&
+    typeof error === "object" &&
+    typeof (error as { status?: unknown }).status === "number"
+  )
+    return (error as { status: number }).status;
+  return undefined;
+}
+
+/** The stable error code of a failed API call (`ApiError.code`), or undefined (network error, no code). */
+export function apiErrorCode(error: unknown): string | undefined {
+  return error instanceof ApiError ? error.code : undefined;
 }
 
 export function getHolidayCalendars(calendarId: string): Promise<HolidayCalendar[]> {

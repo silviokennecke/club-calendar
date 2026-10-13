@@ -55,6 +55,7 @@ export function preloadPublicEventModal(): () => void {
 export const LoginPage = lazyPage(() => import("./LoginPage"));
 export const SignupPage = lazyPage(() => import("./SignupPage"));
 export const ForgotPasswordPage = lazyPage(() => import("./ForgotPasswordPage"));
+export const ResetPasswordPage = lazyPage(() => import("./ResetPasswordPage"));
 export const AuthCallbackPage = lazyPage(() => import("./AuthCallbackPage"));
 export const EmailVerifyPage = lazyPage(() => import("./EmailVerifyPage"));
 export const FeedPage = lazyPage(() => import("./FeedPage"));

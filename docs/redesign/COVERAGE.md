@@ -1,6 +1,6 @@
 # Design-Abdeckung (Phase 9a)
 
-Stand: 2026-10-09 (Paket 1 des Backend-Plans: Zähler, öffentlicher Kopf, optionale Vorlagen-Zeiten; vorher 2026-10-06). Quelle: Design-Artifact (lokal `…/artifact-files/469a6604-…/project/`, 72 Artboards laut
+Stand: 2026-10-13 (Paket 3 des Backend-Plans: Auth und Konten; vorher 2026-10-09 Paket 1, 2026-10-06). Quelle: Design-Artifact (lokal `…/artifact-files/469a6604-…/project/`, 72 Artboards laut
 `canvas.json`, Stand inkl. Korrektur "Termine = Modals" vom 2026-10-04). Pfade unten relativ zu `frontend/src/`,
 Routen relativ zu `/clubs/:clubId/calendars/:calendarId` (= `…`).
 
@@ -15,7 +15,8 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 
 ## Ergebnis
 
-- 72 Artboards: **66 vollständig**, **6 abweichend** (bewusst, begründet), **0 offene Lücken in der Zuordnung**.
+- 72 Artboards: **67 vollständig**, **5 abweichend** (bewusst, begründet), **0 offene Lücken in der Zuordnung**
+  (Paket 3: ForgotPassword jetzt vollständig; Profile bleibt "abweichend", weil es über das Design hinausgeht).
   Offene Teil-Lücken innerhalb abweichender Artboards: siehe "Offene Lücken".
 - In dieser Prüfung behoben: 9 Design-Punkte (siehe "Behobene Lücken"), davon 5 aus dem abgebrochenen Vorlauf übernommen, plus ein Nebenbefund (Sitzung beim Seitenwechsel).
 
@@ -27,7 +28,8 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 | LoginMobile.dc.html | wie oben, `AuthLayout` < 720px | vollständig |
 | Register.dc.html | `pages/SignupPage.tsx`, `/signup` | vollständig (Pflichtfelder mit "(Pflicht)" über `Field required`, Fehlersumme, "E-Mail bereits vergeben") |
 | ConfirmEmail.dc.html | `pages/EmailVerifyPage.tsx` (ohne `status`: "Bestätige deine E-Mail-Adresse" + erneut senden), `/auth/verify-email` | vollständig |
-| ForgotPassword.dc.html | `pages/ForgotPasswordPage.tsx`, `/forgot-password` | abweichend: Absenden deaktiviert ("Bald verfügbar"), Zustand "Prüfe dein Postfach" fehlt – kein Reset-Endpoint (BACKEND-GAPS Phase 1) |
+| ForgotPassword.dc.html | `pages/ForgotPasswordPage.tsx`, `/forgot-password` | vollständig (Paket 3): Formular, "Prüfe dein Postfach" mit der eingegebenen Adresse und "Andere E-Mail-Adresse eingeben"; Fehler/Netzwerk als Banner, 429 wie Erfolg (kein Orakel). Text "Der Link ist begrenzt gültig" konkret als "60 Minuten" |
+| (ohne Artboard) Neues Passwort | `pages/ResetPasswordPage.tsx`, `/reset-password?token=` (GuestRoute) | neu, im Stil von AuthLayout/AuthStates: Formular (neues Passwort + Wiederholung, `PasswordField`), "Der Link ist ungültig oder abgelaufen" (fehlend/ungültig/benutzt/abgelaufen, mit "Neuen Link anfordern"), Erfolg (Banner + "Weiter zur Anmeldung"), Fehler-Banner. Token wird nach dem Lesen aus der Adresse entfernt (`replace`), `referrer: no-referrer` |
 | AuthStates.dc.html | Bestätigungslink: `EmailVerifyPage` (erfolgreich / abgelaufen / schon benutzt / ungültig); Anmeldung: `LoginPage` + `FocusBanner` (falsche Zugangsdaten, E-Mail nicht bestätigt mit "erneut senden" + "Bestätigungsmail gesendet", Passkey fehlgeschlagen, SSO fehlgeschlagen) | vollständig |
 
 ## Erst-Einrichtung und Wechsel
@@ -104,7 +106,7 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 | FeedEdit.dc.html | `pages/settings/FeedEditPage.tsx`, `…/settings/feeds/new`, `…/settings/feeds/:feedId` (Name, öffentlich/privat, Zielgruppen, Geheimnis neu erzeugen, Löschen; Feed per Einzel-GET) | vollständig |
 | Club.dc.html | `pages/ClubPage.tsx`, `components/club/*`, `/clubs/:clubId` (Name, Mitglieder, Kalender anlegen/duplizieren/archivieren/löschen, archivierte Kalender, Verein löschen mit Namenseingabe) | vollständig (Kalenderzeile "n Termine" aus `eventCount`; Lösch-Dialoge mit den API-Zählern) |
 | ClubMobile.dc.html | `ClubPage` < 720px (Karten statt Tabelle) | vollständig |
-| Profile.dc.html | `pages/ProfilePage.tsx`, `components/profile/*`, `/profile` (Konto, Passkeys, verknüpfte Anmeldungen, Darstellung inkl. Theme-Schalter, Sprache, Konto löschen) | abweichend: Verknüpfen/Trennen deaktiviert ("Bald verfügbar"), daher entfallen die Toasts "Die Verknüpfung mit … wurde verknüpft" und der Hinweis "Mindestens eine Anmeldemethode muss bleiben" (BACKEND-GAPS Phase 7) |
+| Profile.dc.html | `pages/ProfilePage.tsx`, `components/profile/*`, `/profile` (Konto, Passkeys, verknüpfte Anmeldungen, Darstellung inkl. Theme-Schalter, Sprache, Konto löschen) | abweichend (Erweiterung, Paket 3): Verknüpfen/Trennen aktiv (Banner/Toast "Google wurde verknüpft.", "Die Verknüpfung mit … wurde getrennt.", `ConfirmDialog` mit Folgenhinweis, Trennen deaktiviert mit "Mindestens eine Anmeldemethode muss bleiben …", `?linked=`/`?link_error=` werden ausgewertet und aus der Adresse entfernt; `?link_provider=&link_proof=` schließt die Verknüpfung mit der eigenen Sitzung ab). Statt "Name und E-Mail können hier noch nicht geändert werden." zwei neue Panels im selben Stil (nicht im Design): `AccountSection` "Name und E-Mail-Adresse" (Name speichern; neue Adresse + aktuelles Passwort → Bestätigungslink, wartende Adresse als Banner mit "Änderung verwerfen"; SSO-only: Hinweis statt Formular) und `PasswordSection` "Passwort" (ändern mit aktuellem Passwort, diese Sitzung bleibt; SSO-only: "Passwort per E-Mail festlegen"). Passkeys zusätzlich "zuletzt benutzt am …" / "noch nicht benutzt" |
 | ProfileMobile.dc.html | `ProfilePage` < 720px | vollständig |
 
 ## Öffentlicher Zugriff
@@ -196,11 +198,12 @@ Nebenbefund (kein Design-Thema, nötig für eine stabile E2E-Suite):
 
 ## Offene Lücken
 
+L2 (Passwort vergessen: "Prüfe dein Postfach") und L4 (Verknüpfen/Trennen inkl. Toasts und Schutzhinweis) sind mit
+Paket 3 erledigt (siehe Zugang und Profile oben).
+
 | # | Lücke | Artboard | Aufwand | Grund |
 | --- | --- | --- | --- | --- |
 | L1 | Archivierter Kalender öffnet im eigenen Zeitraum, Knopf "Zurück zu <Monat>" statt "Heute" | CalendarArchived | klein–mittel | Regel für den Startmonat fehlt im Design (letzter Termin? Archivierungsdatum?); Entscheidung nötig |
-| L2 | Passwort vergessen: Zustand "Prüfe dein Postfach" | ForgotPassword | mittel (+ Backend) | kein Reset-Endpoint |
 | L3 | Terminserien anlegen / Serien-Dialoge | EventSeries | groß (+ Backend) | keine Serien im Backend |
-| L4 | Verknüpfte Anmeldungen verknüpfen/trennen inkl. Toasts und Schutzhinweis | Profile | mittel (+ Backend) | keine Endpoints |
 | L5 | Kurze Feed-Adressen (`/k/<verein>/<feed>`) | Feeds | klein (Frontend) + Backend | keine Slugs im API ("n Termine" und der öffentliche Kopf sind seit Paket 1 umgesetzt) |
 | L6 | Passkey-Dialog-Text ohne Namen (Dialogs) vs. mit Namen (Profile), Vorlagen-Dialog zwei Fassungen | Dialogs / Profile / Templates | – | Design uneinheitlich, Umsetzung folgt den Seiten-Artboards; Klärung im Design |

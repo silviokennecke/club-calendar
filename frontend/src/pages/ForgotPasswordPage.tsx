@@ -1,37 +1,110 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { Banner, Button, Field, TextInput } from "@/components/ui/shared";
+import { Trans, useTranslation } from "react-i18next";
+import { Button, Field, TextInput } from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
+import { FocusBanner } from "@/components/auth/FocusBanner";
+import { requestPasswordReset } from "@/lib/passwordReset";
+
+type Phase = "form" | "sent";
 
 /**
- * Password reset. The backend has no reset endpoint yet (docs/redesign/BACKEND-GAPS.md),
- * so the form is shown but submitting is disabled with a "coming soon" notice.
+ * Forgot password (design: ForgotPassword, AuthStates). The API answers the same whether or not the
+ * address has an account (and also over its rate limit), so "Prüfe dein Postfach" never tells
+ * whether an account exists. Only network / server errors show an error.
  */
 export default function ForgotPasswordPage() {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [phase, setPhase] = useState<Phase>("form");
+  const [failed, setFailed] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const changedPhase = useRef(false);
+
+  useEffect(() => {
+    // Moving between the form and "check your inbox" replaces the page content: focus the new h1.
+    if (changedPhase.current) headingRef.current?.focus();
+  }, [phase]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const address = email.trim();
+    if (!address) {
+      setEmailError(t("auth.register.emailMissing"));
+      return;
+    }
+    setEmailError("");
+    setFailed(0);
+    setLoading(true);
+    const result = await requestPasswordReset(address);
+    setLoading(false);
+    if (result === "invalid_email") {
+      setEmailError(t("auth.forgot.emailInvalid"));
+    } else if (result === "failed") {
+      setFailed((n) => n + 1);
+    } else {
+      changedPhase.current = true;
+      setPhase("sent");
+    }
+  }
+
+  function again() {
+    changedPhase.current = true;
+    setPhase("form");
+  }
+
+  const footer = (
+    <Link to="/login" className="ap-link">
+      {t("auth.backToLogin")}
+    </Link>
+  );
+
+  if (phase === "sent") {
+    return (
+      <AuthLayout
+        icon="mail"
+        title={t("auth.forgot.sentTitle")}
+        headingRef={headingRef}
+        intro={
+          <span role="status">
+            <Trans
+              i18nKey="auth.forgot.sentText"
+              values={{ email: email.trim() }}
+              components={{ strong: <strong /> }}
+            />
+          </span>
+        }
+        footer={footer}
+      >
+        <p className="t-sm t-muted">{t("auth.forgot.sentHint")}</p>
+        <Button type="button" variant="secondary" block onClick={again}>
+          {t("auth.forgot.again")}
+        </Button>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout
       title={t("auth.forgot.title")}
       intro={t("auth.forgot.intro")}
-      footer={
-        <Link to="/login" className="ap-link">
-          {t("auth.backToLogin")}
-        </Link>
-      }
+      headingRef={headingRef}
+      footer={footer}
     >
-      <Banner tone="info" title={t("auth.forgot.soonTitle")} icon="clock">
-        <span id="forgot-soon">{t("auth.forgot.soonText")}</span>
-      </Banner>
+      {failed > 0 && (
+        <FocusBanner key={failed} tone="danger" title={t("auth.forgot.failedTitle")}>
+          {t("auth.forgot.failedText")}
+        </FocusBanner>
+      )}
       <form
         className="ap-form"
         aria-label={t("auth.forgot.formLabel")}
-        onSubmit={(e) => e.preventDefault()}
+        onSubmit={handleSubmit}
         noValidate
       >
-        <Field label={t("auth.email")} required>
+        <Field label={t("auth.email")} required error={emailError}>
           <TextInput
             type="email"
             value={email}
@@ -40,7 +113,7 @@ export default function ForgotPasswordPage() {
             inputMode="email"
           />
         </Field>
-        <Button type="submit" block disabled aria-describedby="forgot-soon">
+        <Button type="submit" block loading={loading}>
           {t("auth.forgot.submit")}
         </Button>
       </form>

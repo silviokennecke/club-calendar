@@ -268,6 +268,7 @@ class WebAuthnService
 
         $passkey->setCounter($updated->counter);
         $passkey->setPublicKey($updated->credentialPublicKey);
+        $passkey->setLastUsedAt($this->signedTokens->now()->setTimezone(new \DateTimeZone('UTC')));
         $this->em->flush();
 
         return $this->tokens->tokenResponse($user);

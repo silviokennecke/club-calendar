@@ -136,6 +136,28 @@ describe("ClubsPage", () => {
     expect(await screen.findByTestId("location")).toHaveTextContent("/clubs/c2/calendars/k3");
   });
 
+  it("opens the calendar last used in a club (membership, GET /api/clubs)", async () => {
+    mockApi(
+      [clubs[0], { ...clubs[1] }].map((c) => ({
+        ...c,
+        lastCalendarId: c.id === "c1" ? "k1" : null,
+      })),
+    );
+    authUser = { ...authUser, lastClubId: "c2", lastCalendarId: "k3" };
+    renderClubs("/clubs?select=1");
+    const first = await screen.findByRole("link", { name: "Schützenverein Waldblick" });
+    expect(first).toHaveAttribute("href", "/clubs/c1/calendars/k1");
+    await userEvent.click(first);
+    expect(await screen.findByTestId("location")).toHaveTextContent("/clubs/c1/calendars/k1");
+  });
+
+  it("ignores a remembered calendar that is archived or deleted", async () => {
+    mockApi([{ ...clubs[0], lastCalendarId: "k0" }]);
+    renderClubs("/clubs?select=1");
+    await userEvent.click(await screen.findByRole("link", { name: "Schützenverein Waldblick" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent("/clubs/c1/calendars/k1");
+  });
+
   it("sends a club without calendars to the setup step", async () => {
     calendars.c2 = [];
     renderClubs("/clubs?select=1");

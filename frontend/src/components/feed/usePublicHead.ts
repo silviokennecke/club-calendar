@@ -1,19 +1,11 @@
 import { useEffect } from "react";
+import { useMetaTag } from "@/lib/useMetaTag";
 
 interface PublicHead {
   /** Document title; never put the secret in it. */
   title: string;
   /** Ask search engines to skip the page (private feeds, error pages). */
   noindex: boolean;
-}
-
-/** Sets or removes a `<meta name>` for the lifetime of the page; returns the cleanup. */
-function setMeta(name: string, content: string): () => void {
-  const meta = document.createElement("meta");
-  meta.name = name;
-  meta.content = content;
-  document.head.appendChild(meta);
-  return () => meta.remove();
 }
 
 /**
@@ -31,7 +23,6 @@ export function usePublicHead({ title, noindex }: PublicHead) {
     };
   }, [title]);
 
-  useEffect(() => setMeta("referrer", "no-referrer"), []);
-
-  useEffect(() => (noindex ? setMeta("robots", "noindex, nofollow") : undefined), [noindex]);
+  useMetaTag("referrer", "no-referrer");
+  useMetaTag("robots", noindex ? "noindex, nofollow" : null);
 }
