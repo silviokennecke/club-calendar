@@ -3,9 +3,9 @@
 #   serve (default)  prepare, migrate, then run PHP-FPM + Caddy
 #   anything else    executed as is, e.g. `php bin/console doctrine:fixtures:load`
 #
-# Required:  APP_SECRET, JWT_REFRESH_SECRET, DATABASE_URL, FRONTEND_URL (public URL, e.g. https://cal.example.com),
-#            WEBAUTHN_RP_ID (domain), WEBAUTHN_RP_NAME
-# Optional:  BACKEND_URL (default FRONTEND_URL, same origin), MAILER_DSN, MAILER_FROM, MAPBOX_TOKEN,
+# Required:  APP_SECRET, JWT_REFRESH_SECRET, DATABASE_URL, APP_URL (public URL, e.g. https://cal.example.com),
+#            WEBAUTHN_RP_NAME
+# Optional:  FRONTEND_URL / BACKEND_URL / WEBAUTHN_RP_ID (derived from APP_URL), MAILER_DSN, MAILER_FROM, MAPBOX_TOKEN,
 #            GOOGLE_*/MICROSOFT_*/APPLE_* OAuth settings, SYMFONY_TRUSTED_PROXIES (behind a TLS proxy, e.g. PRIVATE_SUBNETS),
 #            RUN_MIGRATIONS (default 1), MIGRATION_RETRIES (default 15), PORT (default 8080)
 # JWT keys:  JWT_PRIVATE_KEY / JWT_PUBLIC_KEY (paths) or keys in /var/www/app/config/jwt (mount a volume there,
@@ -18,8 +18,6 @@ log() { echo "[entrypoint] $*" >&2; }
 
 cd "$APP_DIR"
 
-# Same origin for SPA, API and CORS unless told otherwise
-export BACKEND_URL="${BACKEND_URL:-${FRONTEND_URL:-}}"
 export MAILER_DSN="${MAILER_DSN:-null://null}"
 export MAILER_FROM="${MAILER_FROM:-Club Calendar <noreply@localhost>}"
 export GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-}" GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET:-}"
@@ -31,7 +29,7 @@ if [ "${1:-serve}" != "serve" ]; then
 fi
 
 missing=()
-for var in APP_SECRET JWT_REFRESH_SECRET DATABASE_URL FRONTEND_URL WEBAUTHN_RP_ID WEBAUTHN_RP_NAME; do
+for var in APP_SECRET JWT_REFRESH_SECRET DATABASE_URL APP_URL WEBAUTHN_RP_NAME; do
     [ -n "${!var:-}" ] || missing+=("$var")
 done
 if [ ${#missing[@]} -gt 0 ]; then
