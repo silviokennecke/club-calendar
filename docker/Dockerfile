@@ -73,15 +73,12 @@ COPY --from=frontend-build --chown=www-data:www-data /build/backend/public/ ./sp
 COPY --from=frontend-build --chown=www-data:www-data /build/backend/templates/email/verify_email.html.twig templates/email/
 
 # Symfony runtime needs a .env; real configuration comes from environment variables.
-# Warm the cache at build time with dummy values (nothing secret ends up in the image).
-RUN printf 'APP_ENV=prod\nAPP_DEBUG=0\n' > .env \
+# The cache is warmed at build time with the dummy values from docker/build.env (not kept in the image).
+RUN --mount=type=bind,source=docker/build.env,target=/tmp/build.env \
+    printf 'APP_ENV=prod\nAPP_DEBUG=0\n' > .env \
     && mkdir -p var config/jwt \
-    && APP_SECRET=build JWT_REFRESH_SECRET=build FRONTEND_URL=http://localhost BACKEND_URL=http://localhost \
-       DATABASE_URL=mysql://user:pass@localhost:3306/db WEBAUTHN_RP_ID=localhost WEBAUTHN_RP_NAME=build \
-       MAILER_DSN=null://null MAILER_FROM=build@localhost \
-       GOOGLE_CLIENT_ID= GOOGLE_CLIENT_SECRET= MICROSOFT_CLIENT_ID= MICROSOFT_CLIENT_SECRET= \
-       APPLE_CLIENT_ID= APPLE_CLIENT_SECRET= \
-       php bin/console cache:warmup --no-interaction \
+    && set -a && . /tmp/build.env && set +a \
+    && php bin/console cache:warmup --no-interaction \
     && chmod +x /usr/local/bin/docker-entrypoint.sh \
     && chown -R www-data:www-data .env var config/jwt public
 
