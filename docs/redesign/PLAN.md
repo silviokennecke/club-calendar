@@ -41,7 +41,8 @@ Frontend-Nacharbeiten `1fe0b7f`, `a46d31a` (Details in `BACKEND-GAPS.md`).
 - Data Router (`createBrowserRouter` mit einer Splat-Route) statt `BrowserRouter`, damit ungespeicherte Änderungen
   auch den Zurück-Button des Browsers abfangen (`useBlocker`).
 - Features ohne Backend sind gebaut, aber deaktiviert ("Bald verfügbar"): Passwort vergessen, Terminserien,
-  SSO verknüpfen/trennen; Export und Import-Prüfung laufen im Browser. Bewusste Abweichungen je Artboard und
+  SSO verknüpfen/trennen; Export und Import-Prüfung liefen anfangs im Browser (seit Backend-Paket 2 über
+  `events.ics` bzw. `events/import/preview`). Bewusste Abweichungen je Artboard und
   offene Punkte L1–L6: `COVERAGE.md`.
 - Backend wurde über echte Bugs hinaus in einer Sicherheits-Runde geändert (Passkeys, OAuth-State,
   Konto-Verknüpfung, Sitzungs-Invalidierung), vom Auftraggeber beauftragt.

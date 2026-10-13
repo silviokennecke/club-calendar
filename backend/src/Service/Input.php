@@ -4,24 +4,32 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
+use App\Exception\ApiProblemException;
 
 /**
  * Checks for values of decoded JSON bodies, so that wrong or missing user input ends in a 4xx
  * response instead of a TypeError/500 further down (entity setters are strictly typed).
+ * Errors carry `code: validation_failed` and the input `field` (RFC 7807 body, see ApiProblemException).
  */
 final class Input
 {
+    public const CODE = 'validation_failed';
+
+    /** 400 (or another 4xx) validation error for one input field. */
+    public static function invalid(string $field, string $message, int $status = 400): ApiProblemException
+    {
+        return new ApiProblemException($status, $message, self::CODE, $field);
+    }
+
     /** Required non-empty string. */
     public static function string(array $data, string $key, int $maxLength = 255): string
     {
         $value = $data[$key] ?? null;
         if (!is_string($value) || '' === trim($value)) {
-            throw new BadRequestHttpException(sprintf('%s is required', $key));
+            throw self::invalid($key, sprintf('%s is required', $key));
         }
         if (mb_strlen($value) > $maxLength) {
-            throw new BadRequestHttpException(sprintf('%s must not be longer than %d characters', $key, $maxLength));
+            throw self::invalid($key, sprintf('%s must not be longer than %d characters', $key, $maxLength));
         }
 
         return $value;
@@ -35,10 +43,10 @@ final class Input
             return null;
         }
         if (!is_string($value)) {
-            throw new BadRequestHttpException(sprintf('%s must be a string', $key));
+            throw self::invalid($key, sprintf('%s must be a string', $key));
         }
         if (mb_strlen($value) > $maxLength) {
-            throw new BadRequestHttpException(sprintf('%s must not be longer than %d characters', $key, $maxLength));
+            throw self::invalid($key, sprintf('%s must not be longer than %d characters', $key, $maxLength));
         }
 
         return $value;
@@ -47,7 +55,7 @@ final class Input
     public static function bool(array $data, string $key): bool
     {
         if (!is_bool($data[$key] ?? null)) {
-            throw new BadRequestHttpException(sprintf('%s must be a boolean', $key));
+            throw self::invalid($key, sprintf('%s must be a boolean', $key));
         }
 
         return $data[$key];
@@ -58,7 +66,7 @@ final class Input
     {
         $value = $data[$key] ?? null;
         if (!is_string($value)) {
-            throw new BadRequestHttpException(sprintf('%s is required (YYYY-MM-DD)', $key));
+            throw self::invalid($key, sprintf('%s is required (YYYY-MM-DD)', $key));
         }
 
         return self::parseDate($value, $key);
@@ -68,7 +76,7 @@ final class Input
     {
         $date = is_string($value) ? \DateTimeImmutable::createFromFormat('!Y-m-d', $value) : false;
         if (false === $date || $date->format('Y-m-d') !== $value) {
-            throw new BadRequestHttpException(sprintf('Invalid %s (expected YYYY-MM-DD)', $key));
+            throw self::invalid($key, sprintf('Invalid %s (expected YYYY-MM-DD)', $key));
         }
 
         return $date;
@@ -79,7 +87,7 @@ final class Input
     {
         $value = $data[$key] ?? null;
         if (!is_string($value) || !preg_match('/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/', $value)) {
-            throw new BadRequestHttpException(sprintf('%s is required (HH:MM)', $key));
+            throw self::invalid($key, sprintf('%s is required (HH:MM)', $key));
         }
 
         return substr($value, 0, 5);
@@ -106,11 +114,11 @@ final class Input
             return [];
         }
         if (!is_array($value)) {
-            throw new BadRequestHttpException(sprintf('%s must be a list of ids', $key));
+            throw self::invalid($key, sprintf('%s must be a list of ids', $key));
         }
         foreach ($value as $id) {
             if (!is_string($id) && !is_int($id)) {
-                throw new BadRequestHttpException(sprintf('%s must be a list of ids', $key));
+                throw self::invalid($key, sprintf('%s must be a list of ids', $key));
             }
         }
 
@@ -125,11 +133,11 @@ final class Input
             if ($nullable) {
                 return null;
             }
-            throw new BadRequestHttpException(sprintf('%s is required', $key));
+            throw self::invalid($key, sprintf('%s is required', $key));
         }
         $canonical = is_string($value) ? self::canonicalTimezone($value) : null;
         if (null === $canonical) {
-            throw new UnprocessableEntityHttpException(sprintf('%s must be a valid IANA time zone (e.g. Europe/Berlin)', $key));
+            throw self::invalid($key, sprintf('%s must be a valid IANA time zone (e.g. Europe/Berlin)', $key), 422);
         }
 
         return $canonical;

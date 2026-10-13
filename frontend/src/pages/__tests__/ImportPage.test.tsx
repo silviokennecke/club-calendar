@@ -7,12 +7,44 @@ import { BASE, PATTERN, groups, renderRoute } from "../events/__tests__/testUtil
 const apiGet = vi.fn();
 const apiPost = vi.fn();
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@/lib/api", async (importOriginal) => ({
+  ApiError: (await importOriginal<typeof import("@/lib/api")>()).ApiError,
   apiGet: (...a: unknown[]) => apiGet(...a),
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiPatch: vi.fn(),
   apiDelete: vi.fn(),
 }));
+
+type Body = { events: Record<string, unknown>[]; locations: { tempId: string; name: string }[] };
+type PreviewEntry = Record<string, unknown> & { index: number };
+
+/** Backend preview: every entry new unless `overrides` says otherwise (by index). */
+function previewOf(
+  body: Body,
+  overrides: Record<number, PreviewEntry> = {},
+  warnings: unknown[] = [],
+) {
+  const events = body.events.map((_, index) => overrides[index] ?? { index, status: "new" });
+  return {
+    events,
+    summary: { total: events.length, new: events.length, duplicate: 0, invalid: 0 },
+    warnings,
+  };
+}
+
+function importOf(body: Body, warnings: unknown[] = []) {
+  return {
+    imported: body.events.length,
+    skipped: 0,
+    createdLocations: body.locations.map((l, i) => ({ tempId: l.tempId, id: `new-${i}` })),
+    ids: body.events.map((_, i) => `e${i}`),
+    warnings,
+  };
+}
+
+const previewCalls = () =>
+  apiPost.mock.calls.filter(([p]) => String(p).endsWith("/events/import/preview"));
+const importCalls = () => apiPost.mock.calls.filter(([p]) => String(p).endsWith("/events/import"));
 
 const route = `${PATTERN}/import`;
 const url = `${BASE}/import`;
@@ -70,10 +102,10 @@ beforeEach(() => {
     if (path === "/api/calendars/k1/events") return Promise.resolve(existing);
     return Promise.resolve([]);
   });
-  apiPost.mockImplementation((path: string) => {
-    if (path.endsWith("/locations")) return Promise.resolve({ id: "l2" });
-    if (path.endsWith("/events/import")) return Promise.resolve({ imported: 3 });
-    return Promise.resolve({});
+  apiPost.mockImplementation((path: string, body: Body) => {
+    if (path.endsWith("/events/import/preview")) return Promise.resolve(previewOf(body));
+    if (path.endsWith("/events/import")) return Promise.resolve(importOf(body));
+    return Promise.reject(new Error(`unexpected POST ${path}`));
   });
 });
 
@@ -250,13 +282,120 @@ describe("ImportPage – review", () => {
     }
   });
 
-  it("marks events that already exist and can deselect them", async () => {
-    existing = [{ id: "e1", name: "herbstfest", date: "2026-10-24T00:00:00+00:00" }];
+  it("marks events the backend's preview finds in the calendar and can deselect them", async () => {
+    apiPost.mockImplementation((path: string, body: Body) => {
+      if (!path.endsWith("/events/import/preview")) return Promise.resolve(importOf(body));
+      const index = body.events.findIndex((e) => e.name === "Herbstfest");
+      return Promise.resolve(
+        previewOf(body, {
+          [index]: {
+            index,
+            status: "duplicate",
+            duplicate: { id: "e1", name: "Herbstfest", date: "2026-10-24", rule: "externalUid" },
+          },
+        }),
+      );
+    });
     const user = userEvent.setup();
     await openReview(user);
     expect(await screen.findByText("Ein Termin gibt es vielleicht schon")).toBeInTheDocument();
+    // The preview gets all events of the file with their UID; the calendar's events are not loaded
+    const sent = (previewCalls()[0][1] as Body).events;
+    expect(sent.map((e) => e.externalUid)).toEqual(["a", "b", "c"]);
+    expect(apiGet).not.toHaveBeenCalledWith("/api/calendars/k1/events");
     await user.click(screen.getByRole("button", { name: "Doppelte abwählen" }));
     expect(screen.getByText("2 von 3 ausgewählt")).toBeInTheDocument();
+    // Selection changes do not run the preview again
+    expect(previewCalls()).toHaveLength(1);
+  });
+
+  it("falls back to comparing name and day in the browser when the preview fails", async () => {
+    existing = [{ id: "e1", name: "herbstfest", date: "2026-10-24T00:00:00+00:00" }];
+    apiPost.mockImplementation((path: string, body: Body) =>
+      path.endsWith("/preview")
+        ? Promise.reject(new Error("API error 500"))
+        : Promise.resolve(importOf(body)),
+    );
+    const user = userEvent.setup();
+    await openReview(user);
+    expect(await screen.findByText("Ein Termin gibt es vielleicht schon")).toBeInTheDocument();
+    expect(apiGet).toHaveBeenCalledWith("/api/calendars/k1/events");
+    await user.click(screen.getByRole("button", { name: "Doppelte abwählen" }));
+    expect(screen.getByText("2 von 3 ausgewählt")).toBeInTheDocument();
+  });
+
+  it("checks again after an edit", async () => {
+    const user = userEvent.setup();
+    await openReview(user);
+    await waitFor(() => expect(previewCalls()).toHaveLength(1));
+    await user.click(screen.getByRole("button", { name: "Weitere Termine: Termine anzeigen" }));
+    await user.click(screen.getByRole("button", { name: /Termin Herbstfest am .* bearbeiten/ }));
+    const dialog = await screen.findByRole("dialog");
+    const name = within(dialog).getByLabelText(/^Name/);
+    await user.clear(name);
+    await user.type(name, "Oktoberfest");
+    await user.click(within(dialog).getByRole("button", { name: "Änderungen übernehmen" }));
+    await waitFor(() => expect(previewCalls()).toHaveLength(2));
+    const sent = (previewCalls()[1][1] as Body).events.map((e) => e.name);
+    expect(sent).toContain("Oktoberfest");
+  });
+
+  it("blocks events the backend would reject until they are deselected", async () => {
+    apiPost.mockImplementation((path: string, body: Body) =>
+      path.endsWith("/preview")
+        ? Promise.resolve(
+            previewOf(body, {
+              1: {
+                index: 1,
+                status: "invalid",
+                errors: [{ field: "events[1].name", code: "validation_failed", message: "x" }],
+              },
+            }),
+          )
+        : Promise.resolve(importOf(body)),
+    );
+    const user = userEvent.setup();
+    await openReview(user);
+    expect(
+      await screen.findByText("Ein Termin kann so nicht importiert werden"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Fehlerhaft")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "3 Termine importieren" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Fehlerhafte abwählen" }));
+    expect(screen.getByRole("button", { name: "2 Termine importieren" })).toBeEnabled();
+  });
+
+  it("names replaced time zones in the review and in the result", async () => {
+    const warning = {
+      index: 0,
+      field: "timezone",
+      code: "timezone_replaced",
+      message: 'Unknown time zone "US/Pacific-New" replaced by Europe/Berlin',
+      value: "US/Pacific-New",
+      replacement: "Europe/Berlin",
+    };
+    apiPost.mockImplementation((path: string, body: Body) =>
+      path.endsWith("/preview")
+        ? Promise.resolve(previewOf(body, {}, [warning]))
+        : Promise.resolve(importOf(body, [warning])),
+    );
+    const user = userEvent.setup();
+    await openReview(user);
+    expect(await screen.findByText("Unbekannte Zeitzone wird ersetzt")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "1 Termin nennt eine Zeitzone, die der Kalender nicht kennt (US/Pacific-New). Er wird in der Zeitzone Europe/Berlin angelegt. Prüfe die Uhrzeit nach dem Import.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Zeitzone ersetzt")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "3 Termine importieren" }));
+    await screen.findByRole("heading", { level: 1, name: "3 Termine importiert" });
+    expect(screen.getByText("Bei 1 Termin wurde die Zeitzone ersetzt")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Die Datei nannte US/Pacific-New. Angelegt in Europe/Berlin; prüfe die Uhrzeiten.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("sets the status for all selected events", async () => {
@@ -375,14 +514,18 @@ describe("ImportPage – import and result", () => {
     await user.click(within(table).getByRole("checkbox", { name: /15\.10\.2026 auswählen/ }));
     await user.click(screen.getByRole("button", { name: "2 Termine importieren" }));
 
-    const heading = await screen.findByRole("heading", { level: 1, name: "3 Termine importiert" });
+    const heading = await screen.findByRole("heading", { level: 1, name: "2 Termine importiert" });
     expect(heading).toHaveFocus();
 
-    expect(apiPost).toHaveBeenCalledWith("/api/calendars/k1/locations", {
-      name: "Gasthof Zur Linde",
-    });
-    const call = apiPost.mock.calls.find(([p]) => String(p).endsWith("/events/import"))!;
-    const sent = (call[1] as { events: Record<string, unknown>[] }).events;
+    // ONE atomic request with the new place; no separate POST …/locations
+    expect(importCalls()).toHaveLength(1);
+    expect(apiPost).not.toHaveBeenCalledWith("/api/calendars/k1/locations", expect.anything());
+    const body = importCalls()[0][1] as Body & { skipDuplicates: boolean };
+    expect(body.skipDuplicates).toBe(false);
+    expect(body.locations).toEqual([
+      { tempId: "new:gasthof zur linde", name: "Gasthof Zur Linde" },
+    ]);
+    const sent = body.events;
     expect(sent).toHaveLength(2);
     expect(sent.map((e) => e.name)).toEqual(["Training Luftgewehr", "Herbstfest"]);
     expect(sent[0]).toMatchObject({
@@ -390,8 +533,15 @@ describe("ImportPage – import and result", () => {
       isDraft: true,
       locationId: "l1",
       isAllDay: false,
+      externalUid: "a",
     });
-    expect(sent[1]).toMatchObject({ date: "2026-10-24", isAllDay: true, locationId: "l2" });
+    expect(sent[1]).toMatchObject({
+      date: "2026-10-24",
+      isAllDay: true,
+      locationId: null,
+      locationTempId: "new:gasthof zur linde",
+      externalUid: "c",
+    });
 
     expect(screen.getByText("2 als Entwurf angelegt")).toBeInTheDocument();
     expect(screen.getByText("1 neuer Ort angelegt: Gasthof Zur Linde")).toBeInTheDocument();
@@ -409,10 +559,10 @@ describe("ImportPage – import and result", () => {
   });
 
   it("shows a failure and goes back to the review with the edits kept", async () => {
-    apiPost.mockImplementation((path: string) =>
+    apiPost.mockImplementation((path: string, body: Body) =>
       path.endsWith("/events/import")
         ? Promise.reject(new Error("API error 500"))
-        : Promise.resolve({ id: "l2" }),
+        : Promise.resolve(previewOf(body)),
     );
     const user = userEvent.setup();
     await openReview(user);
@@ -426,53 +576,55 @@ describe("ImportPage – import and result", () => {
   });
 });
 
-describe("ImportPage – partial failure", () => {
-  it("shows how many events were imported, lists the rest and offers no second import", async () => {
-    const events = Array.from({ length: 502 }, (_, i) => {
-      const day = String(1 + (i % 28)).padStart(2, "0");
-      return [
-        "BEGIN:VEVENT",
-        `UID:e${i}`,
-        `SUMMARY:Termin ${String(i).padStart(3, "0")}`,
-        `DTSTART;VALUE=DATE:${2027 + Math.floor(i / 336)}${String(1 + (Math.floor(i / 28) % 12)).padStart(2, "0")}${day}`,
-        "END:VEVENT",
-      ].join("\r\n");
-    });
-    const big = ["BEGIN:VCALENDAR", "VERSION:2.0", ...events, "END:VCALENDAR"].join("\r\n");
-    const batches: number[] = [];
-    apiPost.mockImplementation((path: string, body: { events: unknown[] }) => {
-      if (!path.endsWith("/events/import")) return Promise.resolve({ id: "l2" });
-      batches.push(body.events.length);
-      return batches.length === 1
-        ? Promise.resolve({ imported: body.events.length })
-        : Promise.reject(new Error("API error 500"));
-    });
-    const user = userEvent.setup();
-    await openReview(user, big);
-    await user.click(screen.getByRole("button", { name: "502 Termine importieren" }));
+describe("ImportPage – limit per import", () => {
+  const many = (n: number) =>
+    [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      ...Array.from({ length: n }, (_, i) =>
+        [
+          "BEGIN:VEVENT",
+          `UID:e${i}`,
+          "SUMMARY:Training",
+          `DTSTART;VALUE=DATE:${2027 + Math.floor(i / 336)}${String(1 + (Math.floor(i / 28) % 12)).padStart(2, "0")}${String(1 + (i % 28)).padStart(2, "0")}`,
+          "END:VEVENT",
+        ].join("\r\n"),
+      ),
+      "END:VCALENDAR",
+    ].join("\r\n");
 
-    expect(
-      await screen.findByRole("heading", { level: 1, name: "Import nur teilweise gelungen" }),
-    ).toBeInTheDocument();
-    expect(batches).toEqual([500, 2]);
-    expect(screen.getByRole("alert")).toHaveTextContent("500 Termine wurden angelegt");
-    expect(
-      screen.getByRole("heading", { level: 2, name: "2 Termine nicht importiert" }),
-    ).toBeInTheDocument();
-    const list = screen.getByRole("heading", { level: 2, name: /nicht importiert/ })
-      .parentElement as HTMLElement;
-    expect(within(list).getAllByRole("listitem")).toHaveLength(2);
-    expect(within(list).getByText("Termin 500")).toBeInTheDocument();
-    expect(within(list).getByText("Termin 501")).toBeInTheDocument();
-    // No way back into the review (a second import would create duplicates).
-    expect(screen.queryByRole("button", { name: "Erneut versuchen" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /importieren/ })).toBeNull();
-    expect(screen.getByRole("link", { name: "Alle Termine ansehen" })).toHaveAttribute(
-      "href",
-      `${BASE}/events`,
+  it("explains the limit and blocks the import above 5000 selected events", async () => {
+    const user = userEvent.setup();
+    await openReview(user, many(5001));
+    expect(await screen.findByText("Zu viele Termine für einen Import")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "5001 Termine importieren" })).toBeDisabled();
+    // Too large for one preview request: the browser check takes over
+    expect(previewCalls()).toHaveLength(0);
+    const table = screen.getByRole("table", { name: "Termine der Gruppe Training" });
+    await user.click(within(table).getAllByRole("checkbox", { name: /auswählen$/ })[0]);
+    expect(screen.queryByText("Zu viele Termine für einen Import")).toBeNull();
+    expect(screen.getByRole("button", { name: "5000 Termine importieren" })).toBeEnabled();
+  }, 60000);
+
+  it("reports the backend's limit as a failure where nothing was created", async () => {
+    const { ApiError } = await import("@/lib/api");
+    apiPost.mockImplementation((path: string, body: Body) =>
+      path.endsWith("/events/import")
+        ? Promise.reject(new ApiError("Maximum 5000 events per import", 413, "too_many_events"))
+        : Promise.resolve(previewOf(body)),
     );
-    expect(batches).toHaveLength(2);
-  }, 30000);
+    const user = userEvent.setup();
+    await openReview(user);
+    await user.click(screen.getByRole("button", { name: "3 Termine importieren" }));
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Import fehlgeschlagen" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Es lassen sich höchstens 5.000 Termine auf einmal importieren. Es wurden keine Termine angelegt.",
+    );
+    await user.click(screen.getByRole("button", { name: "Zurück zur Prüfung" }));
+    expect(await screen.findByRole("button", { name: "3 Termine importieren" })).toBeEnabled();
+  });
 });
 
 describe("ImportPage – archived calendar", () => {

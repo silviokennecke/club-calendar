@@ -98,6 +98,10 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 5. **Use shared UI components** — Before adding structural JSX or Tailwind layout patterns to a frontend page, check `frontend/src/components/ui/shared/` (exports in `index.ts`, table in `frontend/AGENTS.md`), e.g. `Button`/`LinkButton`/`IconButton`, `SplitButton`, `Field` + `TextInput`/`TextArea`/`NativeSelect`, `PasswordField`, `Toggle`, `Tag`, `StatusBadge`, `Banner`, `toast`, `EmptyState`, `ConfirmDialog`, `FormDialog`, `Modal`/`ModalFrame`/`DialogFrame`, `CopyField`, `Chip`/`ChipSelect`, `FilterPillGroup`, `SearchInput`, `EmojiPicker`, `Stepper`, `LangSwitch`, `ThemeSwitch`, `Skeleton`, `FullPageLoader`, `ErrorSummary`, `UnsavedChangesDialog`, `Logo`, `Icon`. Import from `@/components/ui/shared`. For Mapbox maps, use `useMapbox` from `frontend/src/components/locations/useMapbox.ts` instead of duplicating the initialization boilerplate.
 6. **Texts via i18n** — every UI text is a key in `frontend/src/locales/de.json` and `en.json` (identical keys and placeholders, enforced by `src/lib/__tests__/i18n.test.ts`); remove keys that are no longer used.
 
+## Docker
+
+`docker/` holds everything for the container image (`Dockerfile`, `Caddyfile`, `php-fpm.conf`, `php.ini`, `entrypoint.sh`, `Dockerfile.dockerignore`). Build from the repo root: `docker build -f docker/Dockerfile -t club-calendar .`. Multi-stage (composer, Node/Vite, Caddy) into `php:8.4-fpm-alpine`: Caddy serves the SPA and proxies `/api/*` to PHP-FPM on one origin, running as `www-data` on port 8080. The SPA is built with a placeholder API URL that `entrypoint.sh` replaces with `APP_URL` (default `FRONTEND_URL`) at start, so the image is domain-independent. The entrypoint also generates JWT keys if missing (mount a volume at `config/jwt`) and runs migrations (`RUN_MIGRATIONS=0` disables). Required env vars are listed at the top of `entrypoint.sh`. `.github/workflows/docker.yml` pushes `ghcr.io/<owner>/<repo>` (main → `latest`, `v*` tags → semver).
+
 ## Deployment
 
 `npm run deploy` runs Deployer (`deploy.php` = config/hosts from the root `.env`, `deployer_recipe.php` = flow; `deployer/deployer` is a backend dev dependency). It checks out the committed state (`git archive`) into `.deploy/build/`, builds the mail templates and the frontend there (Vite outputs into `backend/public/`, see `frontend/vite.config.ts`), uploads `backend/` as a new release and runs composer install, migrations and cache clear/warmup on the server before switching `current`. `npm run deploy:build` only builds. Settings (`APP_URL`, `DEPLOY_HOST/USER/PATH`, ...) are documented in `.env.example`. The server keeps `.env.local` and `config/jwt/` in `shared/`; the docroot is `<DEPLOY_PATH>/current/public`. `backend/public/.htaccess` routes `/api/*` to Symfony and everything else to the SPA's `index.html`.
@@ -122,8 +126,23 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 - No auth cookies. Frontend owns both tokens. (Only the OAuth flow sets a short-lived HttpOnly `oauth_state_nonce` cookie on the API host to bind `state` to the browser.)
 - Refresh: `POST /api/auth/token` (form-encoded: `grant_type=refresh_token&refresh_token=<token>`)
 - Keys: RSA keypair in `backend/config/jwt/` (gitignored); `JWT_REFRESH_SECRET` for HMAC refresh tokens
-- OAuth SSO: Google + Microsoft (redirect → callback → `{FRONTEND_URL}/auth/callback?token=X&refresh_token=Y`, errors `?error=<code>`); signed, single-use `state`; e-mail linking only with a trusted `email_verified` (Google/Apple, never Microsoft), see `docs/redesign/BACKEND-GAPS.md` (Sicherheit)
+- OAuth SSO: Google + Microsoft (redirect → callback → `{FRONTEND_URL}/auth/callback?token=X&refresh_token=Y`, errors `?error=<code>`: `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`, `email_unverified_at_provider`); signed, single-use `state`; e-mail linking only with a trusted `email_verified` (Google/Apple, never Microsoft), see `docs/redesign/BACKEND-GAPS.md` (Sicherheit)
 - Passkeys: verified with `web-auth/webauthn-lib`; challenge in a signed, single-use `challengeToken` (`auth_nonce` table); allowed origin = `FRONTEND_URL`, `WEBAUTHN_RP_ID`, `WEBAUTHN_USER_VERIFICATION` (default `preferred`)
+
+## API Errors
+
+RFC 7807 bodies carry a stable `code` (and `field` for input errors) via `App\Exception\ApiProblemException`, e.g. `validation_failed`, `invalid_request`, `unknown_reference`, `duplicate_name`, `too_many_events`, `email_taken`, `invalid_credentials`, `email_not_verified` (login 403 keeps `{error: "email_not_verified"}` too), `invalid_refresh_token`, `invalid_passkey`. The frontend matches `ApiError.code`, never `detail`. Full list: `docs/redesign/BACKEND-GAPS.md` (Fehlercodes).
+
+## Event Import, Export, Bulk
+
+```
+POST /api/calendars/:id/events/import/preview   # {events, locations?} → status per entry (new|duplicate|invalid), writes nothing
+POST /api/calendars/:id/events/import           # {events, locations?: [{tempId, name, …}], skipDuplicates?} → one transaction
+GET  /api/calendars/:id/events.ics?from&to&includeDrafts&targetGroupIds[]   # member ICS download
+POST /api/calendars/:id/events/bulk             # {ids, action: publish|draft|delete} → {affected}, all or nothing
+```
+
+Duplicates: same `externalUid` (ICS UID, stored on `Event`) or same name + start date. Unknown time zones in the import fall back to the calendar zone with a `warnings` entry. Limits: 5000 events per import/preview and 5000 ids per bulk request (413 `too_many_events`).
 
 ## ICS Feed Endpoint
 

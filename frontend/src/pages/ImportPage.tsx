@@ -2,17 +2,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { apiPost } from "@/lib/api";
+import { ApiError, apiPost } from "@/lib/api";
 import {
-  IMPORT_CHUNK,
+  IMPORT_MAX,
   buildItems,
-  chunk,
+  findDuplicates,
   groupItems,
-  newPlaceKey,
   summarizeImport,
-  toImportPayload,
+  toImportRequest,
+  type ImportCheck,
   type ImportItem,
 } from "@/lib/import";
+import type { ImportResponse } from "@/lib/types";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import { Banner, Button, Stepper, UnsavedChangesDialog } from "@/components/ui/shared";
 import { ArchivedCreateGuard } from "@/components/events/ArchivedCreateGuard";
@@ -21,13 +22,15 @@ import { useEventResources } from "@/components/events/useEventResources";
 import { ImportDone, type ImportResult } from "@/components/import/ImportDone";
 import { ImportReview } from "@/components/import/ImportReview";
 import { ImportUpload, type ParsedFile } from "@/components/import/ImportUpload";
+import { useImportPreview } from "@/components/import/useImportPreview";
 
 type Step = "upload" | "review" | "done";
 
 /**
- * ICS import in three steps (design: Import, ImportReview, ImportDone) with a Stepper. The backend
- * only offers `POST …/events/import`, no dry run, so the file is parsed and checked in the browser
- * and only the reviewed events are sent (docs/redesign/BACKEND-GAPS.md).
+ * ICS import in three steps (design: Import, ImportReview, ImportDone) with a Stepper. The file is
+ * parsed in the browser; the backend's preview (`POST …/events/import/preview`) reports duplicates,
+ * entries it would reject and replaced time zones, and the reviewed events (with new places) are
+ * imported in ONE atomic request (`POST …/events/import`: all or nothing).
  */
 export default function ImportPage() {
   return (
@@ -42,7 +45,6 @@ function Import() {
   const page = useEventPage();
   const qc = useQueryClient();
   const resources = useEventResources(page.calendarId);
-  const existing = useAllEvents(page.calendarId);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -66,6 +68,26 @@ function Import() {
 
   const unsaved = useUnsavedChanges(step === "review" && !importing, { blockSamePath: true });
   const groups = useMemo(() => groupItems(items), [items]);
+
+  // Duplicates, rejected entries and warnings come from the backend's preview; only if it fails, the
+  // browser compares name + day with the calendar's events (loaded only then).
+  const preview = useImportPreview(
+    page.calendarId,
+    items,
+    resources.locations,
+    step === "review" && !resources.loading && !resources.failed,
+  );
+  const existing = useAllEvents(page.calendarId, { enabled: preview.status === "failed" });
+  const check = useMemo<ImportCheck | null>(() => {
+    if (preview.check) return preview.check;
+    if (preview.status !== "failed" || !existing.data) return null;
+    return {
+      duplicates: findDuplicates(items, existing.data),
+      invalid: new Map(),
+      warnings: [],
+      warningsOf: new Map(),
+    };
+  }, [preview, existing.data, items]);
 
   // The import may still run when the user leaves the page; its end must not navigate back here.
   const mounted = useRef(true);
@@ -125,44 +147,38 @@ function Import() {
   async function runImport() {
     if (!file || importing) return;
     const chosen = items.filter((i) => i.selected);
-    if (chosen.length === 0) return;
+    if (chosen.length === 0 || chosen.length > IMPORT_MAX) return;
     const summary = summarizeImport(items, resources.locations);
+    const request = toImportRequest(chosen, resources.locations);
     setImporting(true);
-    let imported = 0;
     try {
-      const newPlaceIds = new Map<string, string>();
-      for (const name of summary.newPlaces) {
-        const created = await resources.createLocation(name);
-        newPlaceIds.set(newPlaceKey(name), created.id);
-      }
-      const payloads = chosen.map((i) => toImportPayload(i, resources.locations, newPlaceIds));
-      for (const events of chunk(payloads, IMPORT_CHUNK)) {
-        const res = await apiPost<{ imported: number }>(
-          `/api/calendars/${page.calendarId}/events/import`,
-          { events },
-        );
-        imported += res.imported;
-      }
+      // One request, one transaction: new places and events are created together or not at all.
+      const res = await apiPost<ImportResponse>(`/api/calendars/${page.calendarId}/events/import`, {
+        ...request,
+        skipDuplicates: false,
+      });
+      const placeNames = new Map(request.locations.map((l) => [l.tempId, l.name]));
       setResult({
         kind: "ok",
-        imported,
+        imported: res.imported,
+        skipped: res.skipped,
         drafts: summary.drafts,
         published: summary.published,
-        newPlaces: summary.newPlaces,
+        newPlaces: res.createdLocations.map((l) => placeNames.get(l.tempId) ?? l.tempId),
         unselected: summary.unselected,
         invalid: file.skipped.length,
+        warnings: res.warnings,
       });
-    } catch {
+    } catch (e) {
       setResult({
         kind: "error",
-        imported,
-        notImported: items
-          .filter((i) => i.selected)
-          .slice(imported)
-          .map((i) => ({ name: i.name, date: i.date, dateEnd: i.dateEnd })),
+        reason: e instanceof ApiError && e.code === "too_many_events" ? "tooMany" : "failed",
       });
     } finally {
-      await qc.invalidateQueries({ queryKey: ["events", page.calendarId] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["events", page.calendarId] }),
+        qc.invalidateQueries({ queryKey: ["locations", page.calendarId] }),
+      ]);
       setImporting(false);
       // Replaces the review entry: back from the result leads to the file step, never to the review.
       if (mounted.current) goTo("done", true);
@@ -231,7 +247,11 @@ function Import() {
               skippedCount={file.skipped.length}
               locations={resources.locations}
               resources={resources}
-              existing={existing.data ?? []}
+              check={check}
+              checking={
+                preview.status === "loading" || (preview.status === "ready" && preview.stale)
+              }
+              timeZone={page.timeZone}
               importing={importing}
               blocked={resources.loading || resources.failed}
               onBack={back}
@@ -245,6 +265,7 @@ function Import() {
             result={result}
             calendarUrl={page.base}
             eventsUrl={page.routes.list}
+            timeZone={page.timeZone}
             onRetry={() => goTo("review", true)}
             onAnother={reset}
           />

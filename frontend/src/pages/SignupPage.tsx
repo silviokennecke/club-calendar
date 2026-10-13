@@ -65,9 +65,8 @@ export default function SignupPage() {
       });
       navigate(`/auth/verify-email?email=${encodeURIComponent(email)}`);
     } catch (err: unknown) {
-      const status = (err as { status?: number }).status;
-      const message = (err as Error).message;
-      if (status === 400 && message === "Email already in use") {
+      // Stable error code of the API (RFC 7807 body), never the English `detail` text
+      if ((err as { code?: string }).code === "email_taken") {
         fail("exists", { email: t("auth.register.emailExistsField") });
       } else {
         fail("generic");

@@ -190,7 +190,19 @@ test.describe("Termine", () => {
     await page.getByRole("checkbox", { name: "Arbeitsdienst am 17.10.2026 auswählen" }).check();
     const bar = page.getByRole("region", { name: "Sammelaktionen" });
     await expect(bar).toContainText("2 ausgewählt");
-    await bar.getByRole("button", { name: "Veröffentlichen" }).click();
+    // One atomic bulk request, no request per event
+    const single: string[] = [];
+    page.on("request", (r) => {
+      if (/\/events\/[0-9a-f-]{36}$/.test(r.url()) && ["PATCH", "DELETE"].includes(r.method()))
+        single.push(r.url());
+    });
+    const [bulk] = await Promise.all([
+      page.waitForResponse((r) => r.url().endsWith("/events/bulk")),
+      bar.getByRole("button", { name: "Veröffentlichen" }).click(),
+    ]);
+    expect(bulk.status()).toBe(200);
+    expect(bulk.request().postDataJSON()).toMatchObject({ action: "publish" });
+    expect(bulk.request().postDataJSON().ids).toHaveLength(2);
     await expect(page.getByText("2 Termine veröffentlicht.")).toBeVisible();
     await expect(
       page
@@ -208,6 +220,36 @@ test.describe("Termine", () => {
     await expect(confirm).toContainText("Arbeitsdienst (17.10.)");
     await confirm.getByRole("button", { name: "1 Termin löschen" }).click();
     await expect(rowLink(page, "Arbeitsdienst")).toHaveCount(0);
+    expect(single).toEqual([]);
+  });
+
+  test("Sammelaktion scheitert als Ganzes", async ({ page, request }) => {
+    const seeded = await seedEvents(request, "Sammel Fehler");
+    await openList(page, seeded);
+    // The backend rejects the whole request (e.g. an event deleted meanwhile): nothing changes
+    await page.route("**/events/bulk", (route) =>
+      route.fulfill({
+        status: 422,
+        contentType: "application/problem+json",
+        body: JSON.stringify({ status: 422, code: "unknown_reference", field: "ids" }),
+      }),
+    );
+    await page.getByRole("checkbox", { name: "Vorstandssitzung am 07.10.2026 auswählen" }).check();
+    await page
+      .getByRole("region", { name: "Sammelaktionen" })
+      .getByRole("button", { name: "Veröffentlichen" })
+      .click();
+    await expect(
+      page.getByText(
+        "Die Termine konnten nicht geändert werden. Es wurde nichts geändert. Bitte versuche es erneut.",
+      ),
+    ).toBeVisible();
+    await expect(page.getByRole("region", { name: "Sammelaktionen" })).toContainText(
+      "1 ausgewählt",
+    );
+    await expect(page.getByRole("row").filter({ hasText: "Vorstandssitzung" })).toContainText(
+      "Entwurf",
+    );
   });
 
   test("Termin aus Vorlage, Serie nur als Vorschau", async ({ page, request }) => {
@@ -275,15 +317,22 @@ test.describe("Termine", () => {
     await expect(page.getByText("2 Termine werden exportiert")).toBeVisible();
     await page.getByRole("radio", { name: /Auch Entwürfe/ }).check();
     await expect(page.getByText("4 Termine werden exportiert")).toBeVisible();
-    const [download] = await Promise.all([
+    // The backend builds the file (GET …/events.ics with the JWT)
+    const [download, response] = await Promise.all([
       page.waitForEvent("download"),
+      page.waitForResponse((r) => /\/events\.ics(\?|$)/.test(r.url())),
       page.getByRole("button", { name: "ICS-Datei laden" }).click(),
     ]);
+    expect(response.status()).toBe(200);
+    expect(new URL(response.url()).searchParams.get("includeDrafts")).toBe("1");
     expect(download.suggestedFilename()).toBe("export-warnung-verein-termine.ics");
     const ics = readFileSync((await download.path())!, "utf-8");
     expect(ics).toContain("BEGIN:VCALENDAR");
+    expect(ics).toContain("BEGIN:VTIMEZONE");
     expect(ics).toContain("SUMMARY:Jugendtraining");
-    expect(ics).toContain("DTSTART:20261005T160000Z");
+    expect(ics).toContain("DTSTART;TZID=Europe/Berlin:20261005T180000");
+    // Drafts are marked as tentative
+    expect(ics.match(/STATUS:TENTATIVE/g)).toHaveLength(2);
     await expect(page.getByText("Datei wurde erstellt.")).toBeVisible();
   });
 

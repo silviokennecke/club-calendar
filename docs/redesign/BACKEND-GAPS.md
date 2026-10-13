@@ -1,13 +1,14 @@
 # Backend-Lücken und offene Risiken (Endstand Redesign)
 
-Stand: 2026-10-09, nach Paket 1 des Umsetzungsplans (`BACKEND-PLAN.md`; vorher: 2026-10-06, nach Phase 9). Hier steht, was das Design braucht und das Backend (noch) nicht bietet, welche
+Stand: 2026-10-13, nach Paket 2 des Umsetzungsplans (`BACKEND-PLAN.md`; vorher: 2026-10-09 nach Paket 1, 2026-10-06 nach Phase 9). Hier steht, was das Design braucht und das Backend (noch) nicht bietet, welche
 Sicherheitsrisiken offen sind, welche Backend-Fehler während des Redesigns behoben wurden und was im Betrieb zu tun
 ist. Zuordnung zu den Artboards: `COVERAGE.md`; Umsetzungsplan: `PLAN.md`; E2E-Umgebung: `E2E.md`.
 
 ## Kurzfassung und Prioritäten
 
 1. **Vor produktiver Nutzung (Betrieb):** Migrationen `Version20261004120000` (Tabelle `auth_nonce`),
-   `Version20261004130000` (`user.token_version`) und `Version20261009120000` (Vorlagen-Zeiten) auf Dev und Prod ausführen; `APP_SECRET`, `JWT_REFRESH_SECRET` und
+   `Version20261004130000` (`user.token_version`), `Version20261009120000` (Vorlagen-Zeiten) und `Version20261010120000`
+   (`event.external_uid`) auf Dev und Prod ausführen; `APP_SECRET`, `JWT_REFRESH_SECRET` und
    `WEBAUTHN_*` in Produktion setzen; SSO nur über HTTPS (State-Cookie). Siehe "Betrieb".
 2. **Sicherheit, mittel:** Vorab-Registrierung mit fremder Adresse (Passwort des Registrierenden gilt nach dem Klick
    des Eigentümers), fehlendes Rate-Limiting, nicht rotierende/widerrufbare Refresh-Tokens. Siehe "Offene
@@ -16,8 +17,8 @@ ist. Zuordnung zu den Artboards: `COVERAGE.md`; Umsetzungsplan: `PLAN.md`; E2E-U
    SSO verknüpfen/trennen, Profil (Name/E-Mail/Passwort) ändern.
 4. **Zähler und Einzel-Endpoints:** umgesetzt (Paket 1, siehe "Umgesetzt (Paket 1)"). Offen bleiben kurze
    Feed-Adressen (Slugs) und ein Zustand "Kalender archiviert" im öffentlichen Feed.
-5. **Robustheit:** serverseitiger Import mit Dry-Run und Transaktion, Export-Endpoint, Bulk-Endpoints, stabile
-   Fehlercodes.
+5. **Robustheit:** Import-Vorschau, atomarer Import, Export-Endpoint, Sammelaktionen und stabile Fehlercodes sind
+   umgesetzt (Paket 2, siehe "Umgesetzt (Paket 2)"). Offen: RRULE-Auflösung beim Import, Codes für die übrigen 4xx.
 
 ## Offene Backend-Features
 
@@ -36,12 +37,6 @@ ist. Zuordnung zu den Artboards: `COVERAGE.md`; Umsetzungsplan: `PLAN.md`; E2E-U
   SSO-Policy: Microsoft-Nutzer mit bestehendem Passwort-/Google-Konto können Microsoft nicht hinzufügen.
 - **Passkeys:** Die Liste kennt nur Gerätename und `createdAt`, kein "zuletzt benutzt". Der Name ist optional;
   ohne Angabe sendet das Frontend "Dieses Gerät" / "This device" (Backend-Default wäre `null`).
-- **Fehlercodes Registrierung/Login:** Fehler kommen als RFC-7807-JSON (`detail`), nur Login-403 als
-  `{error: "email_not_verified"}`. Das Frontend erkennt "E-Mail bereits vergeben" am Text `Email already in use`
-  (`apiPost` liest `error ?? detail`). Ein stabiler Code (z. B. `code: "email_taken"`) wäre robuster.
-- **OAuth-Fehler:** Seit dem Sicherheits-Fix kommen Codes (`invalid_state`, `oauth_failed`, `email_missing`,
-  `account_exists`) in `?error=`; das Frontend zeigt dafür noch eine generische SSO-Meldung. Feinere Codes (vom
-  Anbieter abgelehnt, E-Mail beim Anbieter unbestätigt, ...) und eigene Texte wären möglich.
 - **Theme** wird nur im Browser (localStorage) gespeichert, nicht am Benutzer (bewusst laut Plan; nur relevant,
   falls geräteübergreifend gewünscht).
 - **E2E-Bestätigung:** Kein verifizierter Weg, in E2E-Tests einen Nutzer ohne Mailversand zu bestätigen
@@ -59,8 +54,6 @@ ist. Zuordnung zu den Artboards: `COVERAGE.md`; Umsetzungsplan: `PLAN.md`; E2E-U
   `POST …/events/from-template` mit einem Datum; der Endpoint nimmt schon mehrere Daten an und legt unverbundene
   Einzeltermine an. Für echte Serien fehlen Serien-ID/Regel am Event und Endpoints für "nur dieser Termin / alle
   Termine der Serie" (Design: Serien-Dialoge).
-- **Sammelaktionen** der Terminliste (veröffentlichen, Entwurf, löschen) laufen als Einzel-Requests
-  (`Promise.allSettled`). Ein Bulk-Endpoint (`PATCH/DELETE …/events` mit `ids`) wäre atomar und schneller.
 - **Zielgruppen** haben keine Farbe/Tonalität; das Frontend vergibt die Tag-Töne reihum nach Position.
 - **Zeitzone der Termine:** `Event.timezone` ist `null` für Termine aus dem Terminformular (es sendet keine Zone);
   `IcsService` und der öffentliche Feed fallen auf Kalender-, dann Vereinszeitzone zurück (seit Paket 1). Die interne
@@ -84,22 +77,25 @@ ist. Zuordnung zu den Artboards: `COVERAGE.md`; Umsetzungsplan: `PLAN.md`; E2E-U
 
 ### Import und Export
 
-- **Import ohne Vorab-Prüfung:** `POST …/events/import` legt direkt an (kein Dry-Run, nur `{imported}`, max. 500
-  pro Request). Die Prüfansicht parst die ICS-Datei im Browser (`src/lib/import/ics.ts`: UTC in Kalenderzone,
-  RRULE wird nicht ausgeschrieben, Windows-Zeitzonennamen auf IANA, windows-1252 wird im Browser gelesen, das
-  Backend bekommt immer UTF-8-JSON). Nötig: `POST …/events/import/preview` mit Duplikat-Erkennung (UID, Name +
-  Datum), Serienauflösung und Fehlern je Termin, dazu ein stabiler Import-Bezug (`externalUid`). Das Duplikat-Banner
-  vergleicht heute clientseitig Name + Datum.
-- **Import nicht atomar:** Neue Orte werden vorab einzeln per `POST …/locations` angelegt, Termine in Blöcken zu 500;
-  scheitert ein späterer Block, bleiben Orte und frühere Blöcke (UI: "nur teilweise gelungen"). Ein Endpoint für
-  Orte + Termine in einer Transaktion mit Zählern (neue Orte, übersprungene Termine) wäre robuster. Restfall: Wurden
-  Zuordnungen während der Prüfansicht gelöscht, bricht der Import mit Fehlermeldung ab.
-- **Veraltete TZIDs** wie `US/Pacific-New` (Browser kennt sie, PHP nicht) lassen einen Import insgesamt mit 422
-  scheitern.
-- **Export:** kein Endpoint. Die Export-Seite baut die ICS-Datei im Browser aus `GET …/events`
-  (`src/lib/events/ics.ts`, gleiche UID/Summary/Description wie `IcsService`, Zeiten in UTC, kein VTIMEZONE, kein
-  `X-APPLE-STRUCTURED-LOCATION`). Besser: `GET /api/calendars/{id}/events.ics?from&to&includeDrafts&targetGroupIds`
-  auf Basis von `IcsService`. CSV-Export ist weder im Design noch gebaut.
+- **Wiederholungen (RRULE):** Der Import legt je VEVENT einen Termin an; Wiederholungsregeln werden weder im Browser
+  noch in der Vorschau ausgeschrieben (Hinweis "Wiederholt sich" in der Prüfansicht). Braucht das Serien-Modell
+  (Paket 4).
+- **Restfall Import:** Wurden Zuordnungen (Eigenschaften, Orte, ...) zwischen Vorschau und Import gelöscht, scheitert
+  der Import als Ganzes (422 `unknown_reference` mit `events[n].feld`, nichts gespeichert); die UI zeigt "Es wurde
+  nichts importiert".
+- **Duplikate innerhalb einer Datei** werden nicht verglichen (Ausnahmen einer ICS-Serie teilen ihre UID). Folge:
+  Ein Termin mit bekannter UID an einem neuen Tag (z. B. ein später ergänzter Serientermin) gilt als Duplikat des
+  ersten Termins mit dieser UID und wird mit `skipDuplicates` übersprungen; in der Prüfansicht ist er nur markiert.
+- **Speicher:** 5000 Termine mit Zuordnungen brauchen im Import rund 130 MB zusätzlich (gemessen, eine
+  Transaktion); `memory_limit` des Servers entsprechend wählen (Container: 256M). Ein Body von 5000 Terminen ist
+  etwa 2–3 MB groß: liegt er über `post_max_size`, liest PHP den JSON-Body trotzdem, gibt aber eine Warnung aus; mit
+  `display_errors=On` (lokale CLI-Standardwerte, `php -S`) geht sie der Antwort voran (Status 200, HTML-Präfix, der
+  Import ist trotzdem gespeichert). `post_max_size` daher großzügig setzen (Container: 16M), `display_errors` aus.
+- **ICS-Zeilenlänge:** `X-APPLE-STRUCTURED-LOCATION` (Ort mit Koordinaten) wird von `eluceo/ical` nicht auf 75 Oktette
+  gefaltet (Feeds und Export gleichermaßen; Parser wie sabre/vobject lesen die Datei trotzdem).
+- **CSV-Export** ist weder im Design noch gebaut.
+- **Vorschau-Last:** Die Vorschau läuft nach jeder Bearbeitung in der Prüfansicht erneut (300 ms entprellt, bis zu
+  5000 Termine je Request).
 
 ### Zähler und Listen
 
@@ -186,6 +182,91 @@ je Zähler EINE gruppierte Abfrage über alle Zeilen einer Liste (`App\Service\U
   startet als ganztägig (gleiche Regel wie im Backend).
 - **Aufgeräumt:** Frontend-Vorlauf `MULTI_DAY_LOOKBACK_DAYS` / `fetchRange` entfernt (Termine und Feiertage werden
   serverseitig nach Überlappung gefiltert).
+
+## Umgesetzt (Paket 2)
+
+Import, Export, Sammelaktionen, Fehlercodes (`BACKEND-PLAN.md` Paket 2). Neue Felder sind Ergänzungen; die alte
+Import-Form (nur `events`) bleibt gültig.
+
+- **Import-Bezug:** `Event.externalUid` (nullable, `VARCHAR(255)`, Index `(calendar_id, external_uid)`, Migration
+  `Version20261010120000`), aus der ICS-UID befüllt (Frontend sendet `externalUid`; ohne UID in der Datei `null`, keine
+  erfundene UID mehr). Die Terminlisten liefern `externalUid`.
+- **Vorschau** `POST /api/calendars/{id}/events/import/preview` (Mitglied, nicht archiviert; gleicher Body und gleiche
+  Grenzen wie der Import, schreibt nichts): `{events: [{index, status: "new" | "duplicate" | "invalid", duplicate?:
+  {id, name, date, rule: "externalUid" | "nameDate"}, errors?: [{field: "events[n].feld", code, message}]}], summary:
+  {total, new, duplicate, invalid}, warnings}`. Duplikat = Termin des Kalenders mit gleicher `externalUid` (auch die
+  UID unseres eigenen Exports `event-<id>@club-calendar`; bei mehreren der am selben Tag), sonst gleicher Name am
+  gleichen Startdatum (trim, Groß/Kleinschreibung egal wie `UniqueNames`, führende Icons wie "🎯 " ignoriert).
+  Validierung = Import (`EventService::buildEvent` im Dry-Run, Referenzen nur aus dem eigenen Kalender über
+  `CalendarReferences`). Eine Abfrage für den Duplikat-Index, Referenzdaten einmal vorgeladen (Nachweis
+  `ImportTest::testPreviewRunsTheSameNumberOfQueriesForMoreEntries`).
+- **Atomarer Import** `POST …/events/import`: `{events, locations?: [{tempId, name, street?, zip?, city?, country?,
+  latitude?, longitude?}], skipDuplicates?: false}`; Termine verweisen mit `locationId` (bestehend) oder
+  `locationTempId` (neu im selben Request; beides zugleich → 400). Antwort 201 `{imported, skipped, createdLocations:
+  [{tempId, id}], ids, warnings}`. Ein Flush in einer Transaktion: scheitert ein Eintrag, wird nichts gespeichert
+  (auch keine Orte); Fehler `events[n]: …` bzw. `locations[n]: …` mit `code` und `field` (`events[3].name`).
+  Neue Orte werden nur angelegt, wenn ein importierter Termin sie nutzt (nicht für übersprungene Duplikate oder
+  unbenutzte Einträge); `tempId` bis 1000 Zeichen (das Frontend bildet sie aus dem Ortsnamen).
+  `skipDuplicates` überspringt Duplikate (nach der Vorschau-Regel), prüft sie aber trotzdem. **Obergrenze 5000
+  Termine (und 5000 Orte) je Request** (`EventImportService::MAX_EVENTS`; darüber 413 `too_many_events`, field
+  `events`); 5000 Termine laufen in einem Request (`ImportTest::testFiveThousandEventsImportInOneRequest`).
+  **Veraltete/unbekannte Zeitzonen** (`US/Pacific-New`, Windows-Namen) scheitern nicht mehr: Kalenderzone (sonst
+  Vereinszone) und `warnings: [{index, field: "timezone", code: "timezone_replaced", message, value, replacement}]`
+  (auch in der Vorschau). Termin-Create/PATCH lehnen ungültige Zonen weiter mit 422 ab.
+- **Export** `GET /api/calendars/{id}/events.ics?from&to&includeDrafts&targetGroupIds[]` (Mitglied, JWT; auch im
+  Archiv lesbar): `IcsService` wie die Feeds (VTIMEZONE, Icons, Apple-Ort), Entwürfe nur mit `includeDrafts=1|true`
+  als `STATUS:TENTATIVE`; `from`/`to` YYYY-MM-DD (ungültig oder `to` < `from` → 400 `validation_failed`),
+  Überlappungsfilter wie die Terminliste; `targetGroupIds[]` (oder kommagetrennt, höchstens 100) nur aus dem eigenen
+  Kalender (sonst 422 `unknown_reference`), Termine mit einer der Gruppen. `Content-Disposition: attachment;
+  filename="<slug-des-kalenders>.ics"` (ASCII-Slug, max. 100 Zeichen, Fallback `termine.ics`), `Cache-Control:
+  no-store`, `nosniff`. Ort und Zuordnungen gebündelt (`ExportBulkTest::testExportRunsTheSameNumberOfQueries…`).
+- **Sammelaktionen** `POST /api/calendars/{id}/events/bulk` `{ids: [...], action: "publish" | "draft" | "delete"}` →
+  200 `{affected}` (Mitglied, nicht archiviert). POST statt PATCH/DELETE auf der Sammlung: eine Route auch für das
+  Löschen, mit JSON-Body (DELETE-Bodies werden nicht überall unterstützt). Atomar (eine Prüfabfrage, ein
+  UPDATE/DELETE in einer Transaktion; Zuordnungen per `ON DELETE CASCADE`); alle IDs müssen zum Kalender gehören
+  (unbekannt/fremd → 422 `unknown_reference`, field `ids`, nichts passiert); Duplikate (auch in anderer Schreibweise)
+  zählen einmal; leere Liste, falsche Aktion oder keine Liste → 400 `validation_failed`; **Obergrenze 5000 IDs**
+  (`EventService::BULK_MAX`, darüber 413 `too_many_events`).
+- **Fehlercodes:** siehe "Fehlercodes" unten. Frontend: Registrierung erkennt `email_taken` (kein Textvergleich mehr),
+  Login `email_not_verified` per `code`, SSO-Banner mit eigenem Text je OAuth-Code, Stale-Referenzen per
+  `unknown_reference`.
+- **Frontend:** Import-Prüfung über die Vorschau (bei Fehler Rückfall auf den Name+Datum-Vergleich im Browser), ein
+  atomarer Request inkl. neuer Orte (keine 500er-Blöcke, keine "nur teilweise gelungen"-Ansicht), Warnungen und
+  Obergrenze in Prüfansicht und Ergebnis; Export lädt `events.ics` (fetch mit JWT, Blob, `a[download]`, Fehler-Banner);
+  Sammelaktionen über den Bulk-Endpoint (scheitert als Ganzes).
+
+### Fehlercodes
+
+RFC-7807-Body `{type, title, status, detail, code, field?}` über `App\Exception\ApiProblemException`
+(`ExceptionListener`); `detail` bleibt menschenlesbar und ist kein Vertrag.
+
+| Code | Status | Wo |
+| --- | --- | --- |
+| `validation_failed` | 400/422 | Eingabefehler mit `field` (`Input`, DTO-Validierung 422, Import `events[n].feld`, Export-Parameter, Bulk) |
+| `invalid_request` | 400 | Body ist kein JSON-Objekt (alle JSON-Routen über `decodeJson`; kaputtes JSON auch bei den DTO-Routen Register/Login/Resend, Verein/Kalender anlegen, Mitglied hinzufügen), Passkey-Body unvollständig |
+| `unknown_reference` | 422 | ID nicht im Kalender (`CalendarReferences`, Bulk-`ids`, Export-`targetGroupIds`, Import-`locationTempId`) |
+| `duplicate_name` | 422 | Name im Kalender schon vergeben (Paket 1) |
+| `too_many_events` | 413 | Import > 5000 Termine/Orte, Bulk > 5000 IDs |
+| `email_taken` | 400 | Registrierung, field `email` |
+| `invalid_credentials` | 401 | Login (unbekannte Adresse und falsches Passwort gleich, kein Orakel) |
+| `email_not_verified` | 403 | Login mit unbestätigter Adresse; Body bleibt `{error: "email_not_verified", code: "email_not_verified"}` |
+| `invalid_grant` | 400 | `POST /api/auth/token` ohne `grant_type=refresh_token` / Token |
+| `invalid_refresh_token` | 401 | Refresh-Token ungültig, abgelaufen, Nutzer weg oder Sitzungen beendet |
+| `invalid_passkey` | 401 | Passkey-Anmeldung gescheitert |
+| `invalid_passkey_registration` / `passkey_already_registered` | 400 | Passkey-Registrierung |
+| `passkey_not_found` | 404 | Passkey löschen (fremd oder unbekannt) |
+
+E-Mail-Bestätigung (`GET /api/auth/verify-email`) leitet weiter wie bisher mit `?status=error&reason=invalid |
+expired | already_used`; `resend-verification` antwortet immer 204 (kein Orakel), nur Eingabefehler tragen
+`validation_failed`/`invalid_request`. Andere 4xx (403/404 der Voter, Datumsparameter der Terminliste, Feeds,
+Feiertage) haben noch keinen Code.
+
+**OAuth** (`?error=` an `{FRONTEND_URL}/auth/callback`): `invalid_state`, `provider_denied` (Anbieter meldet
+`access_denied`, z. B. Abbruch der Einwilligung), `provider_error` (anderer Fehler des Anbieters, RFC 6749 4.1.2.1),
+`oauth_failed` (Code-Tausch/Profil gescheitert), `email_missing`, `account_exists`, `email_unverified_at_provider`
+(Google/Apple sagen, die Adresse sei dort nicht bestätigt; ein bestehendes Konto wird nicht verknüpft). Ein
+Anbieter-Fehler wird erst nach gültigem `state` ausgewertet (sonst `invalid_state`). Microsoft liefert weiter
+`account_exists` (sein Claim wird nie vertraut), ebenso Adressen, die nur per Kollation gleich sind.
 
 ## Offene Sicherheitsrisiken
 

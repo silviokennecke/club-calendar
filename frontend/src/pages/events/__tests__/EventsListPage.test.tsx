@@ -1,16 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Toaster } from "@/components/ui/shared";
 import EventsListPage from "../EventsListPage";
 import { BASE, PATTERN, groups, makeEvent, renderRoute } from "./testUtils";
 
 const apiGet = vi.fn();
+const apiPost = vi.fn();
 const apiPatch = vi.fn();
 const apiDelete = vi.fn();
 
 vi.mock("@/lib/api", () => ({
   apiGet: (...a: unknown[]) => apiGet(...a),
-  apiPost: vi.fn(),
+  apiPost: (...a: unknown[]) => apiPost(...a),
   apiPatch: (...a: unknown[]) => apiPatch(...a),
   apiDelete: (...a: unknown[]) => apiDelete(...a),
 }));
@@ -50,7 +52,7 @@ let events: unknown[] | Error;
 beforeEach(() => {
   calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026" };
   events = sample;
-  for (const fn of [apiGet, apiPatch, apiDelete]) fn.mockReset();
+  for (const fn of [apiGet, apiPost, apiPatch, apiDelete]) fn.mockReset();
   apiGet.mockImplementation((path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
     if (path.endsWith("/target-groups")) return Promise.resolve(groups);
@@ -58,6 +60,7 @@ beforeEach(() => {
       return events instanceof Error ? Promise.reject(events) : Promise.resolve(events);
     return Promise.resolve([]);
   });
+  apiPost.mockResolvedValue({ affected: 2 });
   apiPatch.mockResolvedValue({});
   apiDelete.mockResolvedValue(undefined);
 });
@@ -206,8 +209,13 @@ describe("EventsListPage", () => {
       "Löscht 2 Entwürfe unwiderruflich. Veröffentlichte Termine sind nicht betroffen.",
     );
     await user.click(within(dialog).getByRole("button", { name: "2 Termine löschen" }));
-    await waitFor(() => expect(apiDelete).toHaveBeenCalledTimes(2));
-    expect(apiDelete).toHaveBeenCalledWith("/api/calendars/k1/events/3");
+    // One atomic bulk request instead of one request per event
+    await waitFor(() => expect(apiPost).toHaveBeenCalledTimes(1));
+    expect(apiPost).toHaveBeenCalledWith("/api/calendars/k1/events/bulk", {
+      ids: ["3", "5"],
+      action: "delete",
+    });
+    expect(apiDelete).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("checkbox", { name: "Alle angezeigten Termine auswählen" }));
     await user.click(
@@ -216,8 +224,48 @@ describe("EventsListPage", () => {
       }),
     );
     // Only the drafts change.
-    await waitFor(() => expect(apiPatch).toHaveBeenCalledTimes(2));
-    expect(apiPatch).toHaveBeenCalledWith("/api/calendars/k1/events/5", { isDraft: false });
+    await waitFor(() => expect(apiPost).toHaveBeenCalledTimes(2));
+    expect(apiPost).toHaveBeenLastCalledWith("/api/calendars/k1/events/bulk", {
+      ids: ["3", "5"],
+      action: "publish",
+    });
+    expect(apiPatch).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed bulk action as a whole and keeps the selection", async () => {
+    const user = userEvent.setup();
+    apiPost.mockRejectedValue(new Error("422"));
+    renderRoute(
+      `${PATTERN}/events`,
+      `${BASE}/events`,
+      <>
+        <EventsListPage />
+        <Toaster />
+      </>,
+    );
+    await screen.findByRole("table");
+    await user.click(
+      screen.getByRole("checkbox", { name: "Vorstandssitzung am 07.10.2026 auswählen" }),
+    );
+    const bar = screen.getByRole("region", { name: "Sammelaktionen" });
+    await user.click(within(bar).getByRole("button", { name: "Veröffentlichen" }));
+    expect(
+      await screen.findByText(
+        "Die Termine konnten nicht geändert werden. Es wurde nichts geändert. Bitte versuche es erneut.",
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole("region", { name: "Sammelaktionen" })).toHaveTextContent(
+      "1 ausgewählt",
+    );
+
+    await user.click(within(bar).getByRole("button", { name: "Löschen" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "1 Termin löschen" }));
+    expect(
+      await screen.findByText(
+        "Die Termine konnten nicht gelöscht werden. Es wurde nichts gelöscht. Bitte versuche es erneut.",
+      ),
+    ).toBeVisible();
   });
 
   it("is read-only in an archived calendar", async () => {

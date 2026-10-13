@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Exception\ApiProblemException;
 use App\Security\CurrentUserResolver;
 use App\Service\WebAuthnService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/auth/webauthn')]
@@ -36,7 +36,7 @@ class WebAuthnController extends AbstractController
         $data = $this->ceremonyInput($request);
         $deviceName = $data['deviceName'] ?? null;
         if (null !== $deviceName && (!is_string($deviceName) || mb_strlen($deviceName) > 255)) {
-            throw new BadRequestHttpException('Invalid passkey registration');
+            throw new ApiProblemException(400, 'Invalid passkey registration', 'invalid_passkey_registration');
         }
         $this->webAuthn->verifyRegistration($user, $data['challengeToken'], $data['response'], $deviceName);
 
@@ -66,7 +66,7 @@ class WebAuthnController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
         if (!is_array($data) || !is_string($data['challengeToken'] ?? null) || !is_array($data['response'] ?? null)) {
-            throw new BadRequestHttpException('Invalid request body');
+            throw new ApiProblemException(400, 'Invalid request body', 'invalid_request');
         }
 
         return $data;

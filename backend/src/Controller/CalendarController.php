@@ -14,7 +14,6 @@ use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Serializer\Exception\ExceptionInterface as SerializerException;
@@ -47,7 +46,7 @@ class CalendarController extends AbstractApiController
         try {
             $dto = $this->serializer->deserialize($request->getContent(), CreateCalendarDto::class, 'json');
         } catch (SerializerException $e) {
-            throw new BadRequestHttpException('Invalid JSON body: '.$e->getMessage(), $e);
+            throw self::invalidJson('Invalid JSON body: '.$e->getMessage(), $e);
         }
         $this->validateDto($dto, $this->validator);
 

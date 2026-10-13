@@ -104,19 +104,27 @@ does not offer yet and how the frontend works around it).
   (`?date=`, design EventNew), `…/events/new/form` form (`?date=`, `?templateId=` pre-fills from a template,
   EventNewForm), `…/events/new/template` picker (EventNewTemplate), `…/events/new/template/:templateId` single event /
   series preview (series creation disabled, EventSeries), `…/events/:eventId` edit (EventForm, read-only in
-  archived calendars); `…/events/export` stays a page (client-side ICS). Create dialogs of archived calendars show
+  archived calendars); `…/events/export` stays a page (downloads `GET …/events.ics` with the JWT via `apiFetch` + Blob + `a[download]`,
+  error banner; the count preview uses `selectForExport`/`exportQuery` with the same rule). The list's bulk actions
+  (publish / draft / delete) are one atomic `POST …/events/bulk` (fails as a whole, selection stays). Create dialogs of archived calendars show
   the archive notice instead of the form (`CreateGateBody`, `createGateState.ts`). Save / delete invalidate
   `["events", calendarId]`, toast, `unsaved.allow()`, close; save failures are also shown in the dialog (toasts sit
   behind the modal for screen readers). Pure logic in `src/lib/events/` (`form.ts` values/validation/payload,
-  `list.ts` tabs/search/groups, `series.ts` rule dates + holidays, `ics.ts` export, `format.ts`), with Vitest tests.
+  `list.ts` tabs/search/groups, `series.ts` rule dates + holidays, `ics.ts` export query/selection + the one-event ICS writer `buildEventIcs` of the public event, `format.ts`), with Vitest tests.
   UI in `components/events/` (`EventsTable`, `LocationSection` + lazy `EventLocationMap`, `StatusSeg`,
   `CreateGate`, `useEventResources`, `useEventPage`, `ArchivedCreateGuard` for the import / template / feed pages).
 - Import: `…/import` is one page with a Stepper (Datei, Prüfen, Fertig; state in `pages/ImportPage.tsx`,
   UI in `components/import/`: `ImportUpload` file input + drop zone, `ImportReview` bulk panel / groups / summary bar,
   `ReviewGroup`, `ImportEditDialog`, `ImportDone`). Pure logic in `src/lib/import/` (`ics.ts` parser incl. unfolding,
   TZID/UTC, all-day end, skipped events; `review.ts` items, groups by name, place matching, bulk id diffs, duplicates,
-  payload, chunks of 500) with Vitest tests. No backend dry run: the file is parsed in the browser, only the reviewed
-  events are sent (new places are created first via `POST …/locations`).
+  request body `toImportRequest` with `locationTempId` for new places and `externalUid` from the ICS UID,
+  `checkFromPreview`) with Vitest tests. The file is parsed in the browser; `components/import/useImportPreview.ts`
+  sends all items to `POST …/events/import/preview` (debounced, reruns after edits, not after selection changes):
+  duplicates (UID or name + day), entries the backend would reject ("Fehlerhaft", block the import while selected)
+  and `warnings` (replaced time zones). If the preview fails, the duplicate hint falls back to name + day in the
+  browser. The import is ONE atomic `POST …/events/import` with `locations: [{tempId, name}]` (no chunks, no partial
+  result; at most `IMPORT_MAX` = 5000 selected, above that a banner blocks it, a 413 `too_many_events` shows its own
+  failure text); the result shows imported, skipped, created places (`createdLocations`) and warnings.
 - Templates: own routed pages `…/templates` (`TemplatesPage`: cards, `?q=` search, delete dialog with the
   template's `eventCount`), `…/templates/new` and `…/templates/:templateId` (`TemplateEditPage`, read-only in archived
   calendars); pure logic in `src/lib/templates/` (`form.ts`: values, validation, payload, `templateTimes`,
@@ -190,7 +198,11 @@ does not offer yet and how the frontend works around it).
 - Icons: lucide-react via `<Icon glyph="..." />` (design glyph names, `shared/Icon.tsx`). No emojis as UI icons.
 - All texts via i18n (`src/locales/de.json`, `en.json`); shared component texts under `ui.*`, shell under `shell.*`.
 - Tests: Vitest + Testing Library (jsdom, setup in `src/test/setup.ts`, tests run in German).
-- API errors: `lib/api.ts` throws `ApiError` (with `status`) from `apiGet/apiPost/apiPatch/apiDelete`. The react-query
+- API errors: `lib/api.ts` throws `ApiError` (with `status` and the stable `code` of the RFC 7807 body) from
+  `apiGet/apiPost/apiPatch/apiDelete`; recognise errors by `code`, never by the English `detail` (e.g. `email_taken`,
+  `email_not_verified`, `unknown_reference`, `duplicate_name`, `too_many_events`; list in
+  `docs/redesign/BACKEND-GAPS.md`, Fehlercodes). SSO callback errors (`?error=`) map to their own texts via
+  `lib/ssoError.ts` (`auth.login.ssoError.<code>`, unknown codes → `generic`). The react-query
   default `retry` (`lib/queryRetry.ts`) does not retry 4xx (401/403/404 show their error state at once), 5xx and
   network errors get 2 retries. Auth: `lib/auth-context.ts` (context + `useAuth`), `lib/AuthProvider.tsx` (provider);
   button styling is `buttonClass()` in `ui/shared/` (the old shadcn component files in `components/ui/` are gone;
