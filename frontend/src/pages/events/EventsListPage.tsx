@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { apiDelete, apiGet, apiPatch } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 import {
   countByStatus,
   emptyKind,
@@ -14,7 +14,7 @@ import {
   summarizeSelection,
   type StatusTab,
 } from "@/lib/events";
-import type { TargetGroup } from "@/lib/types";
+import type { BulkAction, TargetGroup } from "@/lib/types";
 import { openModalState, type ModalNavState } from "@/lib/modalRoutes";
 import {
   Banner,
@@ -124,44 +124,45 @@ export default function EventsListPage() {
     await qc.invalidateQueries({ queryKey: ["events", page.calendarId] });
   }
 
+  /** One atomic request for all selected events: it changes all of them or none (no partial result). */
+  function runBulk(ids: string[], action: BulkAction) {
+    return apiPost<{ affected: number }>(`/api/calendars/${page.calendarId}/events/bulk`, {
+      ids,
+      action,
+    });
+  }
+
   async function bulkStatus(isDraft: boolean) {
     const ids = selectedEvents.filter((e) => e.isDraft !== isDraft).map((e) => e.id);
+    if (ids.length === 0) return;
     setBusy(true);
     try {
-      const results = await Promise.allSettled(
-        ids.map((id) => apiPatch(`/api/calendars/${page.calendarId}/events/${id}`, { isDraft })),
+      await runBulk(ids, isDraft ? "draft" : "publish");
+      toast.success(
+        t(isDraft ? "events.list.bulk.drafted" : "events.list.bulk.published", {
+          count: selectedEvents.length,
+        }),
       );
-      await refresh();
-      if (results.some((r) => r.status === "rejected")) toast.error(t("events.list.bulk.failed"));
-      else {
-        toast.success(
-          t(isDraft ? "events.list.bulk.drafted" : "events.list.bulk.published", {
-            count: selectedEvents.length,
-          }),
-        );
-        setSelected(new Set());
-      }
+      setSelected(new Set());
+    } catch {
+      toast.error(t("events.list.bulk.failed"));
     } finally {
+      await refresh();
       setBusy(false);
     }
   }
 
   async function bulkDelete() {
     const ids = selectedEvents.map((e) => e.id);
-    const results = await Promise.allSettled(
-      ids.map((id) => apiDelete(`/api/calendars/${page.calendarId}/events/${id}`)),
-    );
-    await refresh();
-    const failed = results.filter((r) => r.status === "rejected").length;
-    if (failed > 0) toast.error(t("events.delete.manyFailed"));
-    else toast.success(t("events.delete.manyDone", { count: ids.length }));
-    setSelected((prev) => {
-      const next = new Set(prev);
-      ids.forEach((id, i) => {
-        if (results[i].status === "fulfilled") next.delete(id);
-      });
-      return next;
-    });
+    try {
+      await runBulk(ids, "delete");
+      toast.success(t("events.delete.manyDone", { count: ids.length }));
+      setSelected(new Set());
+    } catch {
+      toast.error(t("events.delete.manyFailed"));
+    } finally {
+      await refresh();
+    }
   }
 
   const sel = summarizeSelection(selectedEvents);

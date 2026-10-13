@@ -7,6 +7,8 @@ namespace App\Controller;
 use App\Entity\Calendar;
 use App\Security\ArchivedCalendarVoter;
 use App\Security\CalendarMemberVoter;
+use App\Service\EventExportService;
+use App\Service\EventImportService;
 use App\Service\EventService;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -21,7 +23,34 @@ class EventController extends AbstractApiController
 {
     public function __construct(
         private readonly EventService $eventService,
+        private readonly EventImportService $importService,
+        private readonly EventExportService $exportService,
     ) {
+    }
+
+    /**
+     * ICS download of the calendar's events for members: `?from&to` (YYYY-MM-DD, overlap),
+     * `includeDrafts` (drafts as STATUS:TENTATIVE), `targetGroupIds[]` (ids of this calendar).
+     */
+    #[Route('.ics', methods: ['GET'])]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    public function exportIcs(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): Response
+    {
+        $query = $request->query->all();
+        $content = $this->exportService->export(
+            $calendar,
+            $query['from'] ?? null,
+            $query['to'] ?? null,
+            $query['includeDrafts'] ?? null,
+            $query['targetGroupIds'] ?? null,
+        );
+
+        return new Response($content, 200, [
+            'Content-Type' => 'text/calendar; charset=utf-8',
+            'Content-Disposition' => $this->exportService->contentDisposition($calendar),
+            'Cache-Control' => 'no-cache, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     #[Route('', methods: ['GET'])]
@@ -62,22 +91,42 @@ class EventController extends AbstractApiController
         return new JsonResponse($events, Response::HTTP_CREATED);
     }
 
+    /**
+     * Dry run of the import: status per entry (new / duplicate / invalid), nothing is written.
+     * Same body and limits as the import; blocked in archived calendars like every write route.
+     */
+    #[Route('/import/preview', methods: ['POST'])]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
+    public function importPreview(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
+    {
+        return new JsonResponse($this->importService->preview($calendar, $this->decodeJson($request)));
+    }
+
+    /**
+     * Atomic import: `{events, locations?, skipDuplicates?}` → `{imported, skipped, createdLocations, ids, warnings}`.
+     * At most EventImportService::MAX_EVENTS events per request (413 `too_many_events`).
+     */
     #[Route('/import', methods: ['POST'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function import(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
-        $data = $this->decodeJson($request);
-        if (empty($data['events']) || !is_array($data['events'])) {
-            throw new BadRequestHttpException('events array required');
-        }
-        if (count($data['events']) > 500) {
-            throw new BadRequestHttpException('Maximum 500 events per import');
-        }
+        return new JsonResponse($this->importService->import($calendar, $this->decodeJson($request)), Response::HTTP_CREATED);
+    }
 
-        $imported = $this->eventService->importEvents($calendar, $data['events']);
-
-        return new JsonResponse(['imported' => $imported], Response::HTTP_CREATED);
+    /**
+     * Bulk action on several events of this calendar, all or nothing:
+     * `{ids: [...], action: "publish" | "draft" | "delete"}` → `{affected}`.
+     * POST (not PATCH/DELETE on the collection): one route for an action that may also delete, with a
+     * JSON body (DELETE bodies are not reliably supported by proxies and clients).
+     */
+    #[Route('/bulk', methods: ['POST'])]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
+    public function bulk(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
+    {
+        return new JsonResponse($this->eventService->bulk($calendar, $this->decodeJson($request)));
     }
 
     #[Route('', methods: ['POST'])]

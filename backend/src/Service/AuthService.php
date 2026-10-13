@@ -7,12 +7,11 @@ namespace App\Service;
 use App\Entity\EmailVerification;
 use App\Entity\OAuthAccount;
 use App\Entity\User;
+use App\Exception\ApiProblemException;
 use App\Exception\EmailNotVerifiedException;
 use App\Exception\OAuthAccountConflictException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 readonly class AuthService
@@ -29,7 +28,7 @@ readonly class AuthService
     {
         $existing = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         if ($existing) {
-            throw new BadRequestHttpException('Email already in use');
+            throw new ApiProblemException(400, 'Email already in use', 'email_taken', 'email');
         }
         $user = new User();
         $user->setName($name);
@@ -47,16 +46,26 @@ readonly class AuthService
     {
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         if (!$user || !$user->getPassword()) {
-            throw new UnauthorizedHttpException('Bearer', 'Invalid credentials');
+            throw self::invalidCredentials();
         }
         if (!$this->hasher->isPasswordValid($user, $password)) {
-            throw new UnauthorizedHttpException('Bearer', 'Invalid credentials');
+            throw self::invalidCredentials();
         }
         if (!$user->isEmailVerified()) {
             throw new EmailNotVerifiedException();
         }
 
         return $this->tokens->tokenResponse($user);
+    }
+
+    private static function invalidCredentials(): ApiProblemException
+    {
+        return new ApiProblemException(401, 'Invalid credentials', 'invalid_credentials', null, ['WWW-Authenticate' => 'Bearer']);
+    }
+
+    private static function invalidRefreshToken(string $message): ApiProblemException
+    {
+        return new ApiProblemException(401, $message, 'invalid_refresh_token', null, ['WWW-Authenticate' => 'Bearer']);
     }
 
     public function sendVerificationEmail(User $user): void
@@ -69,15 +78,15 @@ readonly class AuthService
         try {
             $payload = $this->tokens->decodeRefreshToken($refreshToken);
         } catch (\InvalidArgumentException $e) {
-            throw new UnauthorizedHttpException('Bearer', $e->getMessage());
+            throw self::invalidRefreshToken($e->getMessage());
         }
         $user = is_string($payload['sub'] ?? null) ? $this->em->getRepository(User::class)->find($payload['sub']) : null;
         if (!$user) {
-            throw new UnauthorizedHttpException('Bearer', 'User not found');
+            throw self::invalidRefreshToken('User not found');
         }
         // Sessions end when the account's credentials were revoked (e.g. SSO takeover of an unconfirmed account).
         if (!$this->tokens->isCurrentSession($user, $payload)) {
-            throw new UnauthorizedHttpException('Bearer', 'Refresh token revoked');
+            throw self::invalidRefreshToken('Refresh token revoked');
         }
 
         return $this->tokens->tokenResponse($user);
@@ -193,7 +202,8 @@ readonly class AuthService
             // The column collation (utf8mb4_unicode_ci) also equates "ä" with "a", "ß" with "ss" or full-width
             // letters: link only if the addresses are the same apart from ASCII letter case.
             if (!$emailVerified || 0 !== strcasecmp($user->getEmail(), $email)) {
-                throw new OAuthAccountConflictException('An account with this e-mail address already exists');
+                $trustedProvider = in_array($provider, self::PROVIDERS_WITH_VERIFIED_EMAIL_CLAIM, true);
+                throw new OAuthAccountConflictException('An account with this e-mail address already exists', $trustedProvider && !$providerSaysEmailVerified);
             }
             if (!$user->isEmailVerified()) {
                 $this->revokeUnprovenCredentials($user);

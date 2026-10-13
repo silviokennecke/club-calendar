@@ -29,6 +29,16 @@ readonly class LocationService
 
     public function create(Calendar $calendar, array $data): array
     {
+        $location = $this->build($calendar, $data);
+        $this->em->persist($location);
+        $this->em->flush();
+
+        return $this->serialize($location);
+    }
+
+    /** New location from request data (validated, not persisted; also used by the atomic import). */
+    public function build(Calendar $calendar, array $data): Location
+    {
         $location = new Location();
         $location->setCalendar($calendar);
         $location->setName(Input::nullableString($data, 'name'));
@@ -39,10 +49,7 @@ readonly class LocationService
         $location->setLatitude(isset($data['latitude']) ? (float) $data['latitude'] : null);
         $location->setLongitude(isset($data['longitude']) ? (float) $data['longitude'] : null);
 
-        $this->em->persist($location);
-        $this->em->flush();
-
-        return $this->serialize($location);
+        return $location;
     }
 
     public function update(string $id, Calendar $calendar, array $data): array

@@ -1,12 +1,13 @@
 /**
- * ICS parsing for the import (pure, no React). The backend has no dry run for imports, so the
- * file is parsed and checked in the browser; only the reviewed events are sent to
- * `POST …/events/import`.
+ * ICS parsing for the import (pure, no React). The file is parsed in the browser (encodings, Windows
+ * zone names, UTC times); the backend checks the reviewed events (`POST …/events/import/preview`) and
+ * imports them in one request (`POST …/events/import`).
  */
 import { addDays, isValidIso, type IsoDate } from "@/lib/calendar";
 import { windowsZoneToIana } from "./windowsZones";
 
 export interface ParsedIcsEvent {
+  /** UID of the file ("" = none); sent as `externalUid` for the duplicate check of later imports. */
   uid: string;
   name: string;
   date: IsoDate;
@@ -180,7 +181,6 @@ export function parseIcs(text: string, options: IcsParseOptions = {}): IcsParseR
   let current: Map<string, Prop> | null = null;
   /** Depth of nested components (VALARM) inside the current VEVENT. */
   let nested = 0;
-  let counter = 0;
 
   for (const line of unfoldIcs(text)) {
     const upper = line.trim().toUpperCase();
@@ -200,8 +200,7 @@ export function parseIcs(text: string, options: IcsParseOptions = {}): IcsParseR
       continue;
     }
     if (upper === "END:VEVENT") {
-      counter += 1;
-      collect(current, counter);
+      collect(current);
       current = null;
       continue;
     }
@@ -209,7 +208,7 @@ export function parseIcs(text: string, options: IcsParseOptions = {}): IcsParseR
     if (parsed && !current.has(parsed.name)) current.set(parsed.name, parsed.prop);
   }
 
-  function collect(props: Map<string, Prop>, n: number) {
+  function collect(props: Map<string, Prop>) {
     const name = unescapeIcsText(props.get("SUMMARY")?.value ?? "")
       .replace(/\s+/g, " ")
       .trim();
@@ -262,7 +261,7 @@ export function parseIcs(text: string, options: IcsParseOptions = {}): IcsParseR
       .replace(/\s+/g, " ")
       .trim();
     events.push({
-      uid: props.get("UID")?.value.trim() || `imported-${n}`,
+      uid: props.get("UID")?.value.trim() ?? "",
       name,
       date: s.date,
       dateEnd,

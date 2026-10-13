@@ -174,7 +174,27 @@ test.describe("Import", () => {
     await itemDialog.getByRole("button", { name: "Änderungen übernehmen" }).click();
     await expect(itemDialog).toBeHidden();
 
-    await page.getByRole("button", { name: "4 Termine importieren" }).click();
+    // Ein atomarer Request mit dem neuen Ort (kein POST …/locations vorab, keine Blöcke)
+    const posts: string[] = [];
+    page.on("request", (r) => {
+      if (r.method() === "POST") posts.push(new URL(r.url()).pathname);
+    });
+    const [imported] = await Promise.all([
+      page.waitForResponse((r) => r.url().endsWith("/events/import")),
+      page.getByRole("button", { name: "4 Termine importieren" }).click(),
+    ]);
+    expect(imported.status()).toBe(201);
+    const body = imported.request().postDataJSON();
+    expect(body.events).toHaveLength(4);
+    expect(body.locations).toEqual([
+      { tempId: "new:gasthof zur linde", name: "Gasthof Zur Linde" },
+    ]);
+    expect(body.events.map((e: { externalUid: string }) => e.externalUid).sort()).toEqual([
+      "a1@e2e",
+      "a2@e2e",
+      "b1@e2e",
+      "b2@e2e",
+    ]);
 
     // Schritt 3: Fertig
     const done = page.getByRole("heading", { level: 1, name: "4 Termine importiert" });
@@ -203,6 +223,52 @@ test.describe("Import", () => {
       "Veröffentlicht",
     );
     await expect(page.getByRole("row").filter({ hasText: "22.10.2026" })).toHaveCount(0);
+    expect(posts.filter((p) => p.endsWith("/events/import"))).toHaveLength(1);
+    expect(posts.filter((p) => p.endsWith("/locations"))).toHaveLength(0);
+  });
+
+  test("Erneuter Import: der Server erkennt Doppelte an der UID", async ({ page, request }) => {
+    const seeded = await seed(request, "Import Doppelt");
+    // Already in the calendar: two events of the file (by UID, one renamed meanwhile)
+    const res = await request.post(`${API}/api/calendars/${seeded.calendarId}/events/import`, {
+      headers: seeded.headers,
+      data: {
+        events: [
+          {
+            name: "Umbenannt",
+            date: "2026-10-08",
+            timeBegin: "19:00",
+            timeEnd: "21:00",
+            externalUid: "a1@e2e",
+          },
+          {
+            name: "Herbstfest",
+            date: "2026-10-24",
+            timeBegin: "00:00",
+            timeEnd: "23:59",
+            isAllDay: true,
+          },
+        ],
+      },
+    });
+    expect(res.status()).toBe(201);
+
+    await openImport(page, seeded.email, seeded.base);
+    await page.locator("#ics-file").setInputFiles(icsFile());
+    const [preview] = await Promise.all([
+      page.waitForResponse((r) => r.url().endsWith("/events/import/preview")),
+      page.getByRole("button", { name: /Datei prüfen/ }).click(),
+    ]);
+    expect(preview.status()).toBe(200);
+    const banner = page.getByRole("status").filter({ hasText: "gibt es vielleicht schon" });
+    await expect(banner).toContainText("2 Termine gibt es vielleicht schon");
+    await banner.getByRole("button", { name: "Doppelte abwählen" }).click();
+    await expect(page.getByText("3 von 5 ausgewählt")).toBeVisible();
+    await page.getByRole("button", { name: "3 Termine importieren" }).click();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "3 Termine importiert" }),
+    ).toBeVisible();
+    await expect(page.getByText("2 Termine übersprungen", { exact: true })).toBeVisible();
   });
 
   test("falscher Dateityp und Datei ohne Termine", async ({ page, request }) => {

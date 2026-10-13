@@ -140,9 +140,55 @@ export interface CalendarEvent {
   location: Location | null;
   /** Template the event was created from (null for manual events). */
   eventTemplateId?: string | null;
+  /** UID of the ICS event it was imported from (null for events created in the app). */
+  externalUid?: string | null;
   properties: { property: Property }[];
   features: { feature: Feature }[];
   targetGroups: { targetGroup: TargetGroup }[];
+}
+
+/** `POST …/events/bulk` (atomic: all events or none). */
+export type BulkAction = "publish" | "draft" | "delete";
+
+/** Warning of the import (e.g. an unknown time zone of the file replaced by the calendar's zone). */
+export interface ImportWarning {
+  /** Index of the entry in the request's `events`. */
+  index: number;
+  field: string;
+  code: "timezone_replaced" | (string & {});
+  message: string;
+  value?: string;
+  replacement?: string | null;
+}
+
+/** One entry of `POST …/events/import/preview`. */
+export type ImportPreviewEntry =
+  | { index: number; status: "new" }
+  | {
+      index: number;
+      status: "duplicate";
+      /** The event the calendar already has; rule = same ICS UID or same name and day. */
+      duplicate: { id: string; name: string; date: string; rule: "externalUid" | "nameDate" };
+    }
+  | {
+      index: number;
+      status: "invalid";
+      errors: { field: string; code: string; message: string }[];
+    };
+
+export interface ImportPreviewResponse {
+  events: ImportPreviewEntry[];
+  summary: { total: number; new: number; duplicate: number; invalid: number };
+  warnings: ImportWarning[];
+}
+
+/** `POST …/events/import` (one transaction: all or nothing). */
+export interface ImportResponse {
+  imported: number;
+  skipped: number;
+  createdLocations: { tempId: string; id: string }[];
+  ids: string[];
+  warnings: ImportWarning[];
 }
 
 export interface HolidayCalendar {

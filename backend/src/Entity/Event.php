@@ -10,6 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
+#[ORM\Index(name: 'idx_event_calendar_external_uid', columns: ['calendar_id', 'external_uid'])]
 class Event
 {
     #[ORM\Id]
@@ -48,6 +49,10 @@ class Event
 
     #[ORM\Column]
     private bool $isAllDay = false;
+
+    /** UID of the ICS event this event was imported from (duplicate check of later imports). */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $externalUid = null;
 
     #[ORM\Column]
     private bool $isDraft = true;
@@ -190,6 +195,18 @@ class Event
     public function setIsAllDay(bool $isAllDay): static
     {
         $this->isAllDay = $isAllDay;
+
+        return $this;
+    }
+
+    public function getExternalUid(): ?string
+    {
+        return $this->externalUid;
+    }
+
+    public function setExternalUid(?string $externalUid): static
+    {
+        $this->externalUid = $externalUid;
 
         return $this;
     }

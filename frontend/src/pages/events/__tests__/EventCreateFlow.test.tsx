@@ -11,8 +11,10 @@ const apiGet = vi.fn();
 const apiPost = vi.fn();
 const getHolidayEvents = vi.fn();
 const download = vi.fn();
+const apiFetch = vi.fn();
 
 vi.mock("@/lib/api", () => ({
+  apiFetch: (...a: unknown[]) => apiFetch(...a),
   apiGet: (...a: unknown[]) => apiGet(...a),
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiPatch: vi.fn(),
@@ -21,7 +23,7 @@ vi.mock("@/lib/api", () => ({
 }));
 vi.mock("@/lib/events/ics", async (orig) => ({
   ...(await orig<typeof import("@/lib/events/ics")>()),
-  downloadTextFile: (...a: unknown[]) => download(...a),
+  downloadBlob: (...a: unknown[]) => download(...a),
 }));
 
 const templates = [
@@ -73,7 +75,7 @@ const events = [
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(2026, 9, 2, 12, 0, 0));
-  for (const fn of [apiGet, apiPost, getHolidayEvents, download]) fn.mockReset();
+  for (const fn of [apiGet, apiPost, getHolidayEvents, download, apiFetch]) fn.mockReset();
   apiGet.mockImplementation((path: string) => {
     if (path === "/api/clubs/c1/calendars/k1")
       return Promise.resolve({
@@ -303,13 +305,35 @@ describe("export", () => {
     );
     expect(screen.getByText("1 Termin wird exportiert")).toBeVisible();
 
+    apiFetch.mockResolvedValue(new Response("BEGIN:VCALENDAR", { status: 200 }));
     await user.click(screen.getByRole("button", { name: "ICS-Datei laden" }));
-    expect(download).toHaveBeenCalledTimes(1);
-    const [ics, name] = download.mock.calls[0] as [string, string];
+    // The backend builds the file (same filters as the preview), downloaded with the JWT
+    await waitFor(() => expect(download).toHaveBeenCalledTimes(1));
+    const [url] = apiFetch.mock.calls[0] as [string];
+    const [path, query] = url.split("?");
+    expect(path).toBe("/api/calendars/k1/events.ics");
+    const params = new URLSearchParams(query);
+    expect(params.get("from")).toMatch(/^\d{4}-\d{2}-01$/);
+    expect(params.get("to")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(params.get("includeDrafts")).toBe("1");
+    expect(params.getAll("targetGroupIds[]")).toEqual([
+      groups.find((g) => g.name === "Jugend")!.id,
+    ]);
+    const [blob, name] = download.mock.calls[0] as [Blob, string];
     expect(name).toBe("schiessbetrieb-2026.ics");
-    expect(ics).toContain("SUMMARY:Jugend");
-    expect(ics).toContain("DTSTART:20261005T170000Z");
-    expect(ics).not.toContain("SUMMARY:Training");
+    expect(await blob.text()).toBe("BEGIN:VCALENDAR");
+  });
+
+  it("shows an error when the file cannot be created", async () => {
+    const user = userEvent.setup();
+    apiFetch.mockResolvedValue(new Response("{}", { status: 500 }));
+    renderExport();
+    await screen.findByText("3 Termine werden exportiert");
+    await user.click(screen.getByRole("button", { name: "ICS-Datei laden" }));
+    expect(await screen.findByText("Die Datei konnte nicht erstellt werden")).toBeVisible();
+    expect(download).not.toHaveBeenCalled();
+    // The whole calendar without filters: no query
+    expect(apiFetch.mock.calls[0][0]).toBe("/api/calendars/k1/events.ics");
   });
 
   it("disables the download when nothing matches", async () => {

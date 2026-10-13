@@ -357,8 +357,10 @@ class InputIntegrityTest extends WebTestCase
         $bad = 'W. Europe Standard Time';
         $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/events", $this->event(['timezone' => $bad]), $auth);
         $this->assertSame(422, $r['status']);
+        // The import no longer fails on unknown zones of the file: calendar zone + warning (ImportTest)
         $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/events/import", ['events' => [$this->event(['timezone' => $bad])]], $auth);
-        $this->assertSame(422, $r['status']);
+        $this->assertSame(201, $r['status']);
+        $this->assertSame('timezone', $r['body']['warnings'][0]['field']);
         $id = TestHelper::jsonRequest(self::$client, 'POST', "$base/events", $this->event(['timezone' => 'Europe/Vienna']), $auth)['body']['id'];
         $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/events/$id", ['timezone' => $bad], $auth);
         $this->assertSame(422, $r['status']);

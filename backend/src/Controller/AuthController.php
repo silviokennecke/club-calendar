@@ -9,6 +9,7 @@ use App\Dto\Auth\RegisterDto;
 use App\Dto\Auth\ResendVerificationDto;
 use App\Dto\Auth\UpdateMeDto;
 use App\Entity\User;
+use App\Exception\ApiProblemException;
 use App\Exception\EmailNotVerifiedException;
 use App\Security\CurrentUserResolver;
 use App\Service\AuthService;
@@ -20,7 +21,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\Exception\ExceptionInterface as SerializerException;
@@ -53,7 +53,7 @@ class AuthController extends AbstractApiController
         try {
             $dto = $this->serializer->deserialize($request->getContent(), RegisterDto::class, 'json');
         } catch (SerializerException $e) {
-            throw new BadRequestHttpException('Invalid JSON body: '.$e->getMessage(), $e);
+            throw self::invalidJson('Invalid JSON body: '.$e->getMessage(), $e);
         }
         $this->validateDto($dto, $this->validator);
         $this->auth->register($dto->name, $dto->email, $dto->password, $dto->language);
@@ -67,13 +67,14 @@ class AuthController extends AbstractApiController
         try {
             $dto = $this->serializer->deserialize($request->getContent(), LoginDto::class, 'json');
         } catch (SerializerException $e) {
-            throw new BadRequestHttpException('Invalid JSON body: '.$e->getMessage(), $e);
+            throw self::invalidJson('Invalid JSON body: '.$e->getMessage(), $e);
         }
         $this->validateDto($dto, $this->validator);
         try {
             return new JsonResponse($this->auth->login($dto->email, $dto->password));
         } catch (EmailNotVerifiedException) {
-            return new JsonResponse(['error' => 'email_not_verified'], Response::HTTP_FORBIDDEN);
+            // `error` is the original (still supported) form; `code` is the same as in all other API errors.
+            return new JsonResponse(['error' => 'email_not_verified', 'code' => 'email_not_verified'], Response::HTTP_FORBIDDEN);
         }
     }
 
@@ -83,7 +84,7 @@ class AuthController extends AbstractApiController
         try {
             $dto = $this->serializer->deserialize($request->getContent(), ResendVerificationDto::class, 'json');
         } catch (SerializerException $e) {
-            throw new BadRequestHttpException('Invalid JSON body: '.$e->getMessage(), $e);
+            throw self::invalidJson('Invalid JSON body: '.$e->getMessage(), $e);
         }
         $this->validateDto($dto, $this->validator);
 
@@ -125,7 +126,7 @@ class AuthController extends AbstractApiController
         $grantType = $request->request->get('grant_type');
         $refreshToken = $request->request->get('refresh_token');
         if ('refresh_token' !== $grantType || empty($refreshToken)) {
-            throw new BadRequestHttpException('Invalid grant type or missing refresh_token');
+            throw new ApiProblemException(400, 'Invalid grant type or missing refresh_token', 'invalid_grant');
         }
 
         return new JsonResponse($this->auth->refresh($refreshToken));

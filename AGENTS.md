@@ -14,7 +14,7 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | OAuth | `/api/auth/oauth` | `OAuthController` | (uses `AuthService`) |
 | Clubs | `/api/clubs` | `ClubController` | `ClubService` |
 | Calendars | `/api/clubs/{clubId}/calendars` | `CalendarController` | `CalendarService` |
-| Events | `/api/calendars/{calendarId}/events` | `EventController` | `EventService` |
+| Events | `/api/calendars/{calendarId}/events` (incl. `…/import/preview`, `…/import`, `…/bulk`, export `/api/calendars/{calendarId}/events.ics`) | `EventController` | `EventService`, `EventImportService`, `EventExportService` |
 | Event Templates | `/api/calendars/{calendarId}/templates` | `EventTemplateController` | `EventTemplateService` |
 | Properties | `/api/calendars/{calendarId}/properties` | `PropertyController` | `PropertyService` |
 | Features | `/api/calendars/{calendarId}/features` | `FeatureController` | `FeatureService` |
@@ -36,18 +36,20 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | `src/Security/ClubMemberVoter.php` | Checks user is a club member (`CLUB_MEMBER`) |
 | `src/Security/ArchivedCalendarVoter.php` | Blocks writes to archived calendars (`NOT_ARCHIVED`) |
 | `src/EventListener/ExceptionListener.php` | Converts all exceptions to RFC 7807 `application/problem+json` |
-| `src/Controller/AbstractApiController.php` | Base controller with `validateDto()` and `decodeJson()` helpers |
+| `src/Controller/AbstractApiController.php` | Base controller with `validateDto()` and `decodeJson()` helpers (no JSON object → 400 `invalid_request`) |
 | `src/Service/TokenService.php` | Creates JWT access tokens (lexik) and HMAC refresh tokens (claims `uid`, `tv` = `user.token_version`) |
 | `src/Security/SessionVersionListener.php` | Rejects JWTs whose `tv`/`uid` no longer match the user (sessions ended after credential resets) |
 | `src/Security/SignedTokenService.php`, `NonceStore.php` | Signed, purpose-bound, single-use tokens (passkey challenges, OAuth `state`; table `auth_nonce`) |
 | `src/Service/CalendarReferences.php` | Resolves location/template/property/feature/target-group IDs within one calendar (unknown or foreign → 422) |
 | `src/Service/LinkCollectionSync.php` | Syncs join-table collections by diff (deduplicated IDs, no identity collisions) |
-| `src/Service/Input.php` | Typed input validation helpers (400 with field name) |
+| `src/Service/Input.php` | Typed input validation helpers (400 `validation_failed` with `field`) |
+| `src/Service/EventImportService.php` | ICS import: preview (`new`/`duplicate`/`invalid` per entry, writes nothing) and atomic import (new places by `tempId`, `skipDuplicates`, unknown time zones → calendar zone + `warnings`, max. 5000 per request → 413 `too_many_events`) |
+| `src/Service/EventExportService.php` | Member ICS download via `IcsService` (`from`/`to` overlap, `includeDrafts` as TENTATIVE, `targetGroupIds[]` of the calendar, safe `Content-Disposition`) |
 | `src/Service/UsageCounts.php` | Counters for lists and delete dialogs (clubs, calendars, usage of properties/features/target groups/locations, events per template): one grouped query per counter, never one per row |
 | `src/Service/UniqueNames.php` | Names of properties/features/target groups unique per calendar (trim, case-insensitive, compared in PHP; no unique index, old duplicates stay) |
-| `src/Exception/ApiProblemException.php` | HTTP error with a stable `code` (+ optional `field`) in the RFC 7807 body, e.g. 422 `duplicate_name` |
+| `src/Exception/ApiProblemException.php` | HTTP error with a stable `code` (+ optional `field`) in the RFC 7807 body, e.g. 422 `duplicate_name`; code list: `docs/redesign/BACKEND-GAPS.md` (Fehlercodes) |
 | `config/packages/security.yaml` | Stateless JWT firewall; public routes allowlist |
-| `migrations/` | Doctrine migrations (initial schema `Version20260625000000`, all tables in snake_case; then `Version20261004120000` `auth_nonce`, `Version20261004130000` `user.token_version`, latest `Version20261009120000` nullable template times) |
+| `migrations/` | Doctrine migrations (initial schema `Version20260625000000`, all tables in snake_case; then `Version20261004120000` `auth_nonce`, `Version20261004130000` `user.token_version`, `Version20261009120000` nullable template times, latest `Version20261010120000` `event.external_uid`) |
 
 ## Security Pattern
 

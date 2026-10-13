@@ -62,13 +62,24 @@ describe("SignupPage", () => {
   });
 
   it("points existing accounts to the login", async () => {
-    apiPost.mockRejectedValue(Object.assign(new Error("Email already in use"), { status: 400 }));
+    // Recognised by the stable code, whatever the text says
+    apiPost.mockRejectedValue(
+      Object.assign(new Error("Diese Adresse ist vergeben"), { status: 400, code: "email_taken" }),
+    );
     renderSignup();
     await fill("sicheres-passwort", "sicheres-passwort");
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("schon ein Konto");
     expect(screen.getByRole("link", { name: "Zur Anmeldung" })).toHaveAttribute("href", "/login");
     expect(screen.getByLabelText(/^E-Mail/)).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("does not treat other 400 errors as an existing account", async () => {
+    apiPost.mockRejectedValue(Object.assign(new Error("Email already in use"), { status: 400 }));
+    renderSignup();
+    await fill("sicheres-passwort", "sicheres-passwort");
+    const alert = await screen.findByRole("alert");
+    expect(alert).not.toHaveTextContent("schon ein Konto");
   });
 
   it("registers and continues to the confirmation page", async () => {

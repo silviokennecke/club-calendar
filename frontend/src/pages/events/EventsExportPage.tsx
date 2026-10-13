@@ -2,11 +2,11 @@ import { useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { apiGet } from "@/lib/api";
+import { apiFetch, apiGet } from "@/lib/api";
 import { formatMonthTitle, yearMonthOf } from "@/lib/calendar";
 import {
-  buildIcs,
-  downloadTextFile,
+  downloadBlob,
+  exportQuery,
   icsFileName,
   monthBounds,
   selectForExport,
@@ -27,8 +27,9 @@ import { useAllEvents, useEventPage } from "@/components/events/useEventPage";
 import { useLocale } from "@/components/calendar/useLocale";
 
 /**
- * Export (design: Export, route …/events/export). The backend has no export endpoint, so the ICS
- * file is built in the browser from the calendar's events (lib/events/ics.ts).
+ * Export (design: Export, route …/events/export). The ICS file comes from the backend
+ * (`GET …/events.ics`, same output as the feeds, drafts as TENTATIVE), downloaded with the JWT
+ * (fetch + Blob + `a[download]`). The count preview uses the loaded event list with the same rule.
  */
 export default function EventsExportPage() {
   const page = useEventPage();
@@ -46,6 +47,8 @@ export default function EventsExportPage() {
   const [to, setTo] = useState(last);
   const [includeDrafts, setIncludeDrafts] = useState(false);
   const [groupIds, setGroupIds] = useState<string[]>([]);
+  const [downloading, setDownloading] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const selected = useMemo(
     () =>
@@ -63,19 +66,24 @@ export default function EventsExportPage() {
   const n = customInvalid ? 0 : selected.length;
   const calendarName = page.calendar?.name ?? "";
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (n === 0) return;
-    const ics = buildIcs(selected, {
-      calendarName,
-      timeZone: page.timeZone,
-      labels: {
-        features: t("events.export.ics.features"),
-        targetGroups: t("events.export.ics.targetGroups"),
-      },
-    });
-    downloadTextFile(ics, icsFileName(calendarName));
-    toast.success(t("events.export.done"));
+    if (n === 0 || downloading) return;
+    setDownloading(true);
+    setFailed(false);
+    try {
+      const query = exportQuery({ range, today: page.today, from, to, includeDrafts, groupIds });
+      const res = await apiFetch(`/api/calendars/${page.calendarId}/events.ics${query}`, {
+        headers: { Accept: "text/calendar" },
+      });
+      if (!res.ok) throw new Error(`API error ${res.status}`);
+      downloadBlob(await res.blob(), icsFileName(calendarName));
+      toast.success(t("events.export.done"));
+    } catch {
+      setFailed(true);
+    } finally {
+      setDownloading(false);
+    }
   }
 
   const ranges: { key: ExportRange; label: string; hint: string }[] = [
@@ -249,8 +257,20 @@ export default function EventsExportPage() {
           )}
         </section>
 
+        {failed && (
+          <Banner tone="danger" title={t("events.export.failed.title")}>
+            {t("events.export.failed.text")}
+          </Banner>
+        )}
+
         <div className="ap-actions">
-          <Button type="submit" icon="download" disabled={n === 0 || events.isLoading}>
+          <Button
+            type="submit"
+            icon="download"
+            disabled={n === 0 || events.isLoading}
+            loading={downloading}
+            loadingLabel={t("events.export.downloading")}
+          >
             {t("events.export.download")}
           </Button>
           <LinkButton variant="secondary" to={page.routes.list}>

@@ -144,7 +144,9 @@ describe("LoginPage", () => {
   });
 
   it("offers to resend the confirmation mail when the email is unverified", async () => {
-    apiPost.mockRejectedValue(Object.assign(new Error("email_not_verified"), { status: 403 }));
+    apiPost.mockRejectedValue(
+      Object.assign(new Error("email_not_verified"), { status: 403, code: "email_not_verified" }),
+    );
     apiFetch.mockResolvedValue({ ok: true });
     renderLogin();
     const user = await fillAndSubmit();
@@ -187,8 +189,22 @@ describe("LoginPage", () => {
 
   it("shows the SSO error banner when redirected back with ?error", () => {
     renderLogin("/login?error=oauth_failed");
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Anmeldung mit Google oder Microsoft nicht möglich");
+    expect(alert).toHaveTextContent("Die Anmeldung über den Anbieter hat nicht geklappt.");
+  });
+
+  it("explains the finer SSO error codes in their own words", () => {
+    renderLogin("/login?error=provider_denied");
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Anmeldung mit Google oder Microsoft nicht möglich",
+      "Du hast die Anmeldung beim Anbieter abgebrochen.",
+    );
+  });
+
+  it("asks to confirm the address at the provider", () => {
+    renderLogin("/login?error=email_unverified_at_provider");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Deine E-Mail-Adresse ist beim Anbieter noch nicht bestätigt.",
     );
   });
 });

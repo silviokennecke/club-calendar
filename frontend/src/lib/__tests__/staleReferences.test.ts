@@ -4,14 +4,20 @@ import { ApiError } from "../api";
 import { isUnknownIdError, keepExisting, saveDroppingDeletedReferences } from "../staleReferences";
 
 describe("staleReferences", () => {
-  it("recognises the backend's unknown-id answer only", () => {
+  it("recognises the backend's unknown-id answer by its code only", () => {
     expect(
-      isUnknownIdError(new ApiError('propertyIds: unknown id "x" in this calendar', 422)),
+      isUnknownIdError(
+        new ApiError('propertyIds: unknown id "x" in this calendar', 422, "unknown_reference"),
+      ),
     ).toBe(true);
-    expect(isUnknownIdError(new ApiError("timezone must be a valid IANA time zone", 422))).toBe(
-      false,
-    );
-    expect(isUnknownIdError(new ApiError('unknown id "x"', 400))).toBe(false);
+    expect(
+      isUnknownIdError(
+        new ApiError("timezone must be a valid IANA time zone", 422, "validation_failed"),
+      ),
+    ).toBe(false);
+    // The text alone no longer counts (stable code instead of a text comparison)
+    expect(isUnknownIdError(new ApiError('propertyIds: unknown id "x"', 422))).toBe(false);
+    expect(isUnknownIdError(new ApiError('unknown id "x"', 400, "unknown_reference"))).toBe(false);
     expect(isUnknownIdError(new Error("unknown id"))).toBe(false);
   });
 
@@ -24,7 +30,9 @@ describe("staleReferences", () => {
     qc.fetchQuery = vi.fn().mockResolvedValue([{ id: "keep" }]) as typeof qc.fetchQuery;
     const send = vi
       .fn()
-      .mockRejectedValueOnce(new ApiError('propertyIds: unknown id "gone" in this calendar', 422))
+      .mockRejectedValueOnce(
+        new ApiError('propertyIds: unknown id "gone" in this calendar', 422, "unknown_reference"),
+      )
       .mockResolvedValueOnce({ id: "saved" });
     const result = await saveDroppingDeletedReferences(
       qc,

@@ -1,8 +1,9 @@
 /**
- * Client-side export (design: Export): selection of events and an iCalendar (RFC 5545) file.
- * The backend has no export endpoint; the file is built from the loaded events, mirroring the
- * feed output of backend/src/Service/IcsService.php (UID, summary with icons, description).
- * Timed events are written in UTC (converted from the event's zone), so no VTIMEZONE is needed.
+ * Export helpers (design: Export): the selection rule of the export (for the count preview and the
+ * query of `GET …/events.ics`, which builds the file in the backend) and a client-side iCalendar
+ * (RFC 5545) writer that is only used for the single public event ("In Kalender übernehmen",
+ * `buildEventIcs`). It mirrors backend/src/Service/IcsService.php (UID, summary with icons,
+ * description); timed events are written in UTC (converted from the event's zone).
  */
 import { addDays, daysInMonth, isValidIso, parseIso, type IsoDate } from "@/lib/calendar";
 import type { CalendarEvent, Location } from "@/lib/types";
@@ -29,15 +30,36 @@ export function monthBounds(day: IsoDate): [IsoDate, IsoDate] {
   return [first, `${day.slice(0, 7)}-${String(daysInMonth(year, month)).padStart(2, "0")}`];
 }
 
+/** The date range of the export options (each side optional), as the backend filters it. */
+export function exportRange(opts: ExportOptions): { from?: IsoDate; to?: IsoDate } {
+  if (opts.range === "month") {
+    const [from, to] = monthBounds(opts.today);
+    return { from, to };
+  }
+  if (opts.range === "custom") {
+    return {
+      from: isValidIso(opts.from) ? opts.from : undefined,
+      to: isValidIso(opts.to) ? opts.to : undefined,
+    };
+  }
+  return {};
+}
+
+/** Query string of `GET /api/calendars/{id}/events.ics` for the export options. */
+export function exportQuery(opts: ExportOptions): string {
+  const { from, to } = exportRange(opts);
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  if (opts.includeDrafts) params.set("includeDrafts", "1");
+  for (const id of opts.groupIds) params.append("targetGroupIds[]", id);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
 /** Events that land in the export file (an event counts when it overlaps the range). */
 export function selectForExport<T extends CalendarEvent>(events: T[], opts: ExportOptions): T[] {
-  let from: string | undefined;
-  let to: string | undefined;
-  if (opts.range === "month") [from, to] = monthBounds(opts.today);
-  if (opts.range === "custom") {
-    from = isValidIso(opts.from) ? opts.from : undefined;
-    to = isValidIso(opts.to) ? opts.to : undefined;
-  }
+  const { from, to } = exportRange(opts);
   return events.filter((ev) => {
     const start = ev.date.slice(0, 10);
     const end = ev.dateEnd ? ev.dateEnd.slice(0, 10) : start;
@@ -262,7 +284,11 @@ export function icsFileName(calendarName: string): string {
 
 /** Triggers a browser download of a text file. */
 export function downloadTextFile(content: string, fileName: string, type = "text/calendar") {
-  const blob = new Blob([content], { type: `${type};charset=utf-8` });
+  downloadBlob(new Blob([content], { type: `${type};charset=utf-8` }), fileName);
+}
+
+/** Triggers a browser download of a blob (`a[download]` with an object URL). */
+export function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
