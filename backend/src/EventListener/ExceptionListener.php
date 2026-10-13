@@ -36,7 +36,9 @@ class ExceptionListener
         if ($exception instanceof ValidationFailedException) {
             $violations = $exception->getViolations();
             $detail = $this->formatViolations($violations);
-            $event->setResponse($this->problemResponse(422, 'Unprocessable Entity', $detail));
+            $first = $violations->count() > 0 ? $violations->get(0)->getPropertyPath() : '';
+            $extra = ['code' => 'validation_failed'] + ('' !== $first ? ['field' => $first] : []);
+            $event->setResponse($this->problemResponse(422, 'Unprocessable Entity', $detail, $extra));
 
             return;
         }
@@ -44,7 +46,7 @@ class ExceptionListener
         if ($exception instanceof ApiProblemException) {
             $status = $exception->getStatusCode();
             $extra = ['code' => $exception->getErrorCode()] + (null !== $exception->getField() ? ['field' => $exception->getField()] : []);
-            $event->setResponse($this->problemResponse($status, $this->statusTitle($status), $exception->getMessage(), $extra));
+            $event->setResponse($this->problemResponse($status, $this->statusTitle($status), $exception->getMessage(), $extra, $exception->getHeaders()));
 
             return;
         }
@@ -90,16 +92,17 @@ class ExceptionListener
     }
 
     /**
-     * @param array<string, string> $extra stable members such as `code` / `field` (RFC 7807 extensions)
+     * @param array<string, string> $extra   stable members such as `code` / `field` (RFC 7807 extensions)
+     * @param array<string, string> $headers e.g. WWW-Authenticate of a 401
      */
-    private function problemResponse(int $status, string $title, string $detail, array $extra = []): JsonResponse
+    private function problemResponse(int $status, string $title, string $detail, array $extra = [], array $headers = []): JsonResponse
     {
         return new JsonResponse([
             'type' => 'https://tools.ietf.org/html/rfc2616#section-10',
             'title' => $title,
             'status' => $status,
             'detail' => $detail,
-        ] + $extra, $status, ['Content-Type' => 'application/problem+json']);
+        ] + $extra, $status, ['Content-Type' => 'application/problem+json'] + $headers);
     }
 
     private function formatViolations(ConstraintViolationListInterface $violations): string
@@ -121,6 +124,7 @@ class ExceptionListener
             404 => 'Not Found',
             405 => 'Method Not Allowed',
             409 => 'Conflict',
+            413 => 'Content Too Large',
             422 => 'Unprocessable Entity',
             500 => 'Internal Server Error',
             503 => 'Service Unavailable',

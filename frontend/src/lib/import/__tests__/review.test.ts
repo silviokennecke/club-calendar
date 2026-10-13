@@ -5,21 +5,22 @@ import {
   OTHERS_GROUP,
   applyIds,
   buildItems,
-  chunk,
+  checkFromPreview,
   commonIds,
   commonStatus,
   findDuplicates,
   groupItems,
   groupPlace,
   matchLocation,
-  newPlaceKey,
   patchItems,
   placeFromValue,
   placeToValue,
   resolvePlace,
   selectionState,
   summarizeImport,
+  replacedZones,
   toImportPayload,
+  toImportRequest,
   withoutLeadingIcons,
 } from "../review";
 
@@ -230,11 +231,10 @@ describe("duplicates and summary", () => {
 });
 
 describe("payload", () => {
-  it("builds the request body with resolved location ids", () => {
+  it("builds the request body with existing ids, tempIds for new places and the UID", () => {
     const items = buildItems(parsed);
-    const ids = new Map([[newPlaceKey("Gasthof Zur Linde"), "l9"]]);
     const fest = items.find((i) => i.name === "Herbstfest")!;
-    expect(toImportPayload(fest, locations, ids)).toEqual({
+    expect(toImportPayload(fest, locations)).toEqual({
       name: "Herbstfest",
       date: "2026-10-24",
       dateEnd: null,
@@ -243,20 +243,74 @@ describe("payload", () => {
       timeEnd: "21:00",
       timezone: null,
       isDraft: true,
-      locationId: "l9",
+      locationId: null,
+      locationTempId: "new:gasthof zur linde",
+      externalUid: "Herbstfest-2026-10-24",
       propertyIds: [],
       featureIds: [],
       targetGroupIds: [],
     });
     const training = items[0];
-    expect(toImportPayload(training, locations, ids).locationId).toBe("l1");
-    expect(
-      toImportPayload({ ...training, dateEnd: "2026-10-01" }, locations, ids).dateEnd,
-    ).toBeNull();
+    expect(toImportPayload(training, locations).locationId).toBe("l1");
+    expect(toImportPayload(training, locations)).not.toHaveProperty("locationTempId");
+    expect(toImportPayload({ ...training, dateEnd: "2026-10-01" }, locations).dateEnd).toBeNull();
+    expect(toImportPayload({ ...training, uid: "" }, locations).externalUid).toBeNull();
   });
 
-  it("chunks lists", () => {
-    expect(chunk([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
-    expect(chunk([], 2)).toEqual([]);
+  it("creates each new place once in the same request", () => {
+    const items = buildItems([
+      ...parsed,
+      ev("Grillfest", "2026-08-01", { locationText: "gasthof  zur linde" }),
+      ev("Ball", "2026-11-01", { locationText: "Festzelt" }),
+    ]);
+    const request = toImportRequest(items, locations);
+    expect(request.events).toHaveLength(items.length);
+    expect(request.locations).toEqual([
+      { tempId: "new:gasthof zur linde", name: "gasthof  zur linde" },
+      { tempId: "new:festzelt", name: "Festzelt" },
+    ]);
+    const tempIds = request.events.map((e) => e.locationTempId).filter(Boolean);
+    expect(new Set(tempIds)).toEqual(new Set(["new:gasthof zur linde", "new:festzelt"]));
+    // Without new places there is nothing to create
+    const training = items.filter((i) => i.name === "Training");
+    expect(toImportRequest(training, locations).locations).toEqual([]);
+  });
+
+  it("maps the backend preview back to the items", () => {
+    const items = buildItems(parsed);
+    const check = checkFromPreview(
+      items,
+      [
+        { index: 0, status: "new" },
+        {
+          index: 1,
+          status: "duplicate",
+          duplicate: { id: "e1", name: "Training", date: "2026-10-08", rule: "externalUid" },
+        },
+        {
+          index: 2,
+          status: "invalid",
+          errors: [{ field: "events[2].name", code: "validation_failed", message: "events[2]: x" }],
+        },
+        { index: 9, status: "new" },
+      ],
+      [
+        {
+          index: 3,
+          field: "timezone",
+          code: "timezone_replaced",
+          message: "m",
+          value: "US/Pacific-New",
+          replacement: "Europe/Berlin",
+        },
+      ],
+    );
+    expect([...check.duplicates]).toEqual([items[1].id]);
+    expect(check.invalid.get(items[2].id)).toBe("events[2]: x");
+    expect(check.warningsOf.get(items[3].id)).toHaveLength(1);
+    expect(replacedZones(check.warnings)).toEqual({
+      zones: ["US/Pacific-New"],
+      replacement: "Europe/Berlin",
+    });
   });
 });

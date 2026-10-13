@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\Passkey;
 use App\Entity\User;
+use App\Exception\ApiProblemException;
 use App\Security\NonceStore;
 use App\Security\SignedTokenService;
 use Cose\Algorithm\Manager;
@@ -13,9 +14,6 @@ use Cose\Algorithm\Signature\ECDSA\ES256;
 use Cose\Algorithm\Signature\RSA\RS256;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -131,10 +129,10 @@ class WebAuthnService
     {
         $claims = $this->signedTokens->verify(self::PURPOSE_CREATE, $challengeToken);
         if (null === $claims || ($claims['sub'] ?? null) !== $user->getId() || !is_string($claims['ch'] ?? null)) {
-            throw new BadRequestHttpException('Invalid passkey registration');
+            throw new ApiProblemException(400, 'Invalid passkey registration', 'invalid_passkey_registration');
         }
         if (!$this->nonces->consume(self::PURPOSE_CREATE, $claims['ch'], $claims['exp'])) {
-            throw new BadRequestHttpException('Invalid passkey registration');
+            throw new ApiProblemException(400, 'Invalid passkey registration', 'invalid_passkey_registration');
         }
 
         try {
@@ -165,20 +163,20 @@ class WebAuthnService
                 ->check($response, $options, $this->rpId);
         } catch (\Throwable $e) {
             $this->logger->info('Passkey registration rejected', ['exception' => $e]);
-            throw new BadRequestHttpException('Invalid passkey registration');
+            throw new ApiProblemException(400, 'Invalid passkey registration', 'invalid_passkey_registration');
         }
 
         if (!hash_equals($record->publicKeyCredentialId, $credential->rawId)) {
-            throw new BadRequestHttpException('Invalid passkey registration');
+            throw new ApiProblemException(400, 'Invalid passkey registration', 'invalid_passkey_registration');
         }
 
         $credentialIdStored = base64_encode($record->publicKeyCredentialId);
         if (strlen($credentialIdStored) > 700) { // passkey.credential_id column length
-            throw new BadRequestHttpException('Invalid passkey registration');
+            throw new ApiProblemException(400, 'Invalid passkey registration', 'invalid_passkey_registration');
         }
         $existing = $this->em->getRepository(Passkey::class)->findOneBy(['credentialId' => $credentialIdStored]);
         if ($existing) {
-            throw new BadRequestHttpException('Credential already registered');
+            throw new ApiProblemException(400, 'Credential already registered', 'passkey_already_registered');
         }
 
         $passkey = new Passkey();
@@ -279,15 +277,15 @@ class WebAuthnService
     {
         $passkey = $this->em->getRepository(Passkey::class)->find($id);
         if (!$passkey || $passkey->getUser()->getId() !== $user->getId()) {
-            throw new NotFoundHttpException('Passkey not found');
+            throw new ApiProblemException(404, 'Passkey not found', 'passkey_not_found');
         }
         $this->em->remove($passkey);
         $this->em->flush();
     }
 
-    private function authenticationFailed(): UnauthorizedHttpException
+    private function authenticationFailed(): ApiProblemException
     {
-        return new UnauthorizedHttpException('Bearer', 'Invalid passkey');
+        return new ApiProblemException(401, 'Invalid passkey', 'invalid_passkey', null, ['WWW-Authenticate' => 'Bearer']);
     }
 
     private function parseCredential(array $responseData): PublicKeyCredential

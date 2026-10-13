@@ -46,9 +46,10 @@ export function useEventPage() {
 }
 
 /** All events of the calendar (list, export); invalidated with ["events", calendarId]. */
-export function useAllEvents(calendarId: string) {
+export function useAllEvents(calendarId: string, { enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<CalendarEvent[]>({
     queryKey: ["events", calendarId, "list"],
     queryFn: () => apiGet<CalendarEvent[]>(`/api/calendars/${calendarId}/events`),
+    enabled,
   });
 }

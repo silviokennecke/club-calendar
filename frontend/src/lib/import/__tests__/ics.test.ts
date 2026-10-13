@@ -127,12 +127,12 @@ describe("parseIcs", () => {
     ]);
   });
 
-  it("flags recurring events and generates uids", () => {
+  it("flags recurring events and invents no uid when the file has none", () => {
     const { events } = parseIcs(
       wrap(vevent("SUMMARY:Wöchentlich", "DTSTART:20261010T180000", "RRULE:FREQ=WEEKLY")),
     );
     expect(events[0].recurring).toBe(true);
-    expect(events[0].uid).toBe("imported-1");
+    expect(events[0].uid).toBe("");
   });
 
   it("returns nothing for text without events", () => {

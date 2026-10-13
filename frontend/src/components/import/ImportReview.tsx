@@ -1,14 +1,16 @@
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  IMPORT_MAX,
   applyIds,
   commonIds,
   commonStatus,
-  findDuplicates,
   groupItems,
   patchItems,
+  replacedZones,
   selectionState,
   type IdField,
+  type ImportCheck,
   type ImportItem,
 } from "@/lib/import";
 import type { Location } from "@/lib/types";
@@ -20,6 +22,10 @@ import type { useEventResources } from "@/components/events/useEventResources";
 import { ImportEditDialog, type EditTarget } from "./ImportEditDialog";
 import { ReviewGroup } from "./ReviewGroup";
 
+const NONE = new Set<string>();
+const NO_ERRORS = new Map<string, string>();
+const NO_WARNINGS = new Map<string, unknown[]>();
+
 interface ImportReviewProps {
   items: ImportItem[];
   onItemsChange: Dispatch<SetStateAction<ImportItem[]>>;
@@ -27,8 +33,12 @@ interface ImportReviewProps {
   skippedCount: number;
   locations: Location[];
   resources: ReturnType<typeof useEventResources>;
-  /** Events the calendar already has (for the duplicate hint). */
-  existing: { name: string; date: string }[];
+  /** The backend's preview (or the browser's fallback check); null while it is pending. */
+  check: ImportCheck | null;
+  /** A (new) preview is running. */
+  checking: boolean;
+  /** The calendar's zone (named when unknown zones of the file are replaced). */
+  timeZone: string | null;
   importing: boolean;
   /** The import cannot start yet (reference data still loading or failed). */
   blocked: boolean;
@@ -38,9 +48,9 @@ interface ImportReviewProps {
 
 /**
  * Step 2 of the import (design: ImportReview, ImportReviewMobile): check what the file contains
- * before anything is created. Hints for skipped, repeating and possibly duplicate events, bulk
- * settings for the selection, the events in groups with tables, edit dialogs and the summary
- * bar with the import button.
+ * before anything is created. Hints for skipped, repeating, possibly duplicate and rejected events
+ * and replaced time zones (from the backend's preview), the limit per import, bulk settings for the
+ * selection, the events in groups with tables, edit dialogs and the summary bar with the import button.
  */
 export function ImportReview({
   items,
@@ -48,13 +58,15 @@ export function ImportReview({
   skippedCount,
   locations,
   resources,
-  existing,
+  check,
+  checking,
+  timeZone,
   importing,
   blocked,
   onBack,
   onImport,
 }: ImportReviewProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isMobile = useIsMobile();
   const groups = useMemo(() => groupItems(items), [items]);
   const [open, setOpen] = useState<Set<string>>(
@@ -63,8 +75,13 @@ export function ImportReview({
   const [editing, setEditing] = useState<EditTarget | null>(null);
 
   const selected = useMemo(() => items.filter((i) => i.selected), [items]);
-  const duplicates = useMemo(() => findDuplicates(items, existing), [items, existing]);
+  const duplicates = check?.duplicates ?? NONE;
+  const invalid = check?.invalid ?? NO_ERRORS;
+  const warned = check?.warningsOf ?? NO_WARNINGS;
   const selectedDuplicates = items.filter((i) => i.selected && duplicates.has(i.id)).length;
+  const selectedInvalid = items.filter((i) => i.selected && invalid.has(i.id)).length;
+  const zones = replacedZones(check?.warnings ?? []);
+  const tooMany = selected.length > IMPORT_MAX;
   const recurring = items.filter((i) => i.recurring).length;
 
   function toggleOpen(key: string) {
@@ -99,15 +116,18 @@ export function ImportReview({
 
   const bar = (
     <>
-      <p className="t-label" role="status">
-        {t("import.review.selected", { selected: selected.length, total: items.length })}
-      </p>
+      <div>
+        <p className="t-label" role="status">
+          {t("import.review.selected", { selected: selected.length, total: items.length })}
+        </p>
+        {checking && <p className="t-sm t-muted">{t("import.review.checking")}</p>}
+      </div>
       {/* Design: desktop "Zurück" before the import button, phones the import button on top
           (DOM order follows the visual order, so the focus order matches). */}
       <div className="ap-actions">
         {!isMobile && backButton}
         <Button
-          disabled={selected.length === 0 || blocked}
+          disabled={selected.length === 0 || blocked || tooMany || selectedInvalid > 0}
           loading={importing}
           loadingLabel={t("import.review.importing")}
           onClick={onImport}
@@ -129,6 +149,45 @@ export function ImportReview({
       {recurring > 0 && (
         <Banner tone="info" icon="repeat" title={t("import.review.recurringTitle")}>
           {t("import.review.recurringText", { count: recurring })}
+        </Banner>
+      )}
+      {tooMany && (
+        <Banner tone="danger" title={t("import.review.tooMany.title")}>
+          {t("import.review.tooMany.text", {
+            max: IMPORT_MAX.toLocaleString(i18n.language),
+            count: selected.length,
+          })}
+        </Banner>
+      )}
+      {invalid.size > 0 && (
+        <Banner
+          tone="danger"
+          title={t("import.review.invalid.title", { count: invalid.size })}
+          action={
+            selectedInvalid > 0 ? (
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  onItemsChange((all) =>
+                    patchItems(all, (i) => invalid.has(i.id), { selected: false }),
+                  )
+                }
+              >
+                {t("import.review.invalid.deselect")}
+              </Button>
+            ) : undefined
+          }
+        >
+          {t("import.review.invalid.text", { count: invalid.size })}
+        </Banner>
+      )}
+      {zones.zones.length > 0 && (
+        <Banner tone="warning" title={t("import.review.timezone.title")}>
+          {t("import.review.timezone.text", {
+            count: warned.size,
+            zones: zones.zones.join(", "),
+            zone: zones.replacement || timeZone || "UTC",
+          })}
         </Banner>
       )}
       {duplicates.size > 0 && (
@@ -228,6 +287,8 @@ export function ImportReview({
               group={group}
               locations={locations}
               duplicates={duplicates}
+              invalid={invalid}
+              warned={warned}
               open={open.has(group.key)}
               onToggleOpen={() => toggleOpen(group.key)}
               onToggleGroup={() => {

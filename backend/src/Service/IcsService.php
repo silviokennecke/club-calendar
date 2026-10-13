@@ -10,6 +10,7 @@ use App\Entity\Event;
 use Eluceo\iCal\Domain\Entity\Calendar;
 use Eluceo\iCal\Domain\Entity\Event as ICalEvent;
 use Eluceo\iCal\Domain\Entity\TimeZone as ICalTimeZone;
+use Eluceo\iCal\Domain\Enum\EventStatus;
 use Eluceo\iCal\Domain\ValueObject\Date as ICalDate;
 use Eluceo\iCal\Domain\ValueObject\DateTime as ICalDateTime;
 use Eluceo\iCal\Domain\ValueObject\GeographicPosition;
@@ -22,7 +23,28 @@ use Eluceo\iCal\Presentation\Factory\CalendarFactory;
 
 class IcsService
 {
+    /**
+     * @param Event[] $events published events of the feed
+     */
     public function buildIcs(CalendarFeed $feed, Club $club, array $events): string
+    {
+        return $this->render($club, $events, false);
+    }
+
+    /**
+     * ICS file of a calendar's events (member export). Drafts are marked STATUS:TENTATIVE.
+     *
+     * @param Event[] $events
+     */
+    public function buildCalendarIcs(Club $club, array $events): string
+    {
+        return $this->render($club, $events, true);
+    }
+
+    /**
+     * @param Event[] $events
+     */
+    private function render(Club $club, array $events, bool $markDrafts): string
     {
         $calendar = new Calendar();
 
@@ -30,6 +52,9 @@ class IcsService
         $zoneRanges = [];
         foreach ($events as $event) {
             $icalEvent = $this->buildEvent($event, $this->fallbackTimezone($event, $club), $zoneRanges);
+            if ($markDrafts && $event->isDraft()) {
+                $icalEvent->setStatus(EventStatus::TENTATIVE());
+            }
             $calendar->addEvent($icalEvent);
         }
 

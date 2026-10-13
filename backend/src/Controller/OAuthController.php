@@ -27,6 +27,11 @@ use Symfony\Component\Routing\Attribute\Route;
  * the cookie of the browser that started the flow, and was not used before. A callback URL produced in an
  * attacker's own flow therefore fails in the victim's browser. The cookie is no session and carries no
  * credentials. Tokens are only ever sent to FRONTEND_URL.
+ *
+ * Errors go to FRONTEND_URL/auth/callback?error=<code>: invalid_state, provider_denied (user cancelled at
+ * the provider), provider_error (other error from the provider), oauth_failed (code exchange / profile
+ * failed), email_missing, account_exists, email_unverified_at_provider (Google/Apple say the address is
+ * not verified there, so an existing account is not linked).
  */
 #[Route('/api/auth/oauth')]
 class OAuthController extends AbstractController
@@ -69,6 +74,15 @@ class OAuthController extends AbstractController
             return $this->fail('invalid_state');
         }
 
+        // The provider sends the user back with ?error=… instead of a code (RFC 6749 4.1.2.1), e.g. when
+        // the user cancelled the consent screen (access_denied).
+        $providerError = $request->query->get('error') ?? $request->request->get('error');
+        if (is_string($providerError) && '' !== $providerError) {
+            $this->logger->info('OAuth provider returned an error', ['provider' => $provider, 'error' => $providerError]);
+
+            return $this->fail('access_denied' === $providerError ? 'provider_denied' : 'provider_error');
+        }
+
         try {
             $client = $this->clientRegistry->getClient($provider);
             $resourceOwner = $client->fetchUser();
@@ -95,8 +109,8 @@ class OAuthController extends AbstractController
                 $resourceOwner->getName() ?? $email,
                 $resourceOwner->isEmailVerified(),
             );
-        } catch (OAuthAccountConflictException) {
-            return $this->fail('account_exists');
+        } catch (OAuthAccountConflictException $e) {
+            return $this->fail($e->unverifiedAtProvider ? 'email_unverified_at_provider' : 'account_exists');
         } catch (\Throwable $e) {
             $this->logger->error('OAuth sign-in failed', ['provider' => $provider, 'exception' => $e]);
 

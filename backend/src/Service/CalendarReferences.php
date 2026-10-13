@@ -5,17 +5,19 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Calendar;
+use App\Exception\ApiProblemException;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
  * Resolves ids from request bodies (location, properties, features, target groups, templates) to
  * records of ONE calendar. Unknown ids and ids of other calendars are rejected alike (422), so that
  * nothing about other calendars leaks and no foreign data can be linked.
+ * Errors: 422 `code: unknown_reference` with the input `field`.
  */
 readonly class CalendarReferences
 {
+    public const CODE = 'unknown_reference';
+
     public function __construct(private EntityManagerInterface $em)
     {
     }
@@ -33,7 +35,7 @@ readonly class CalendarReferences
             return null;
         }
         if (!is_string($id) && !is_int($id)) {
-            throw new BadRequestHttpException(sprintf('%s must be an id', $field));
+            throw Input::invalid($field, sprintf('%s must be an id', $field));
         }
 
         $found = $this->findAll($class, $calendar, [(string) $id], $field);
@@ -56,11 +58,16 @@ readonly class CalendarReferences
         foreach ($ids as $id) {
             $entity = $this->em->getRepository($class)->find($id);
             if (null === $entity || $entity->getCalendar()->getId() !== $calendar->getId()) {
-                throw new UnprocessableEntityHttpException(sprintf('%s: unknown id "%s" in this calendar', $field, $id));
+                throw self::unknown($field, $id);
             }
             $found[$entity->getId()] = $entity;
         }
 
         return $found;
+    }
+
+    public static function unknown(string $field, string $id): ApiProblemException
+    {
+        return new ApiProblemException(422, sprintf('%s: unknown id "%s" in this calendar', $field, $id), self::CODE, $field);
     }
 }
