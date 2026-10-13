@@ -48,6 +48,7 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | `src/Service/UsageCounts.php` | Counters for lists and delete dialogs (clubs, calendars, usage of properties/features/target groups/locations, events per template): one grouped query per counter, never one per row |
 | `src/Service/UniqueNames.php` | Names of properties/features/target groups unique per calendar (trim, case-insensitive, compared in PHP; no unique index, old duplicates stay) |
 | `src/Exception/ApiProblemException.php` | HTTP error with a stable `code` (+ optional `field`) in the RFC 7807 body, e.g. 422 `duplicate_name`; code list: `docs/redesign/BACKEND-GAPS.md` (Fehlercodes) |
+| `config/services.yaml` | Parameters and env defaults: `APP_URL` drives `FRONTEND_URL`, `BACKEND_URL` and `WEBAUTHN_RP_ID`; optional `MAPBOX_TOKEN`, cache TTLs, `WEBAUTHN_USER_VERIFICATION` |
 | `config/packages/security.yaml` | Stateless JWT firewall; public routes allowlist |
 | `migrations/` | Doctrine migrations (initial schema `Version20260625000000`, all tables in snake_case; then `Version20261004120000` `auth_nonce`, `Version20261004130000` `user.token_version`, `Version20261009120000` nullable template times, latest `Version20261010120000` `event.external_uid`) |
 
@@ -89,7 +90,7 @@ list endpoints are tested to run the same number of queries for more rows (no N+
 The KernelBrowser reboots the kernel between requests: re-fetch entities (`$em->find(...)`) before changing them
 after a request.
 
-Run: `cd backend && composer test` (requires MySQL test DB on port 3360)
+Run: `cd backend && composer test` (requires MySQL test DB on port 3360). `TEST_DATABASE_URL` falls back to `DATABASE_URL` in the `test` env; the tests wipe all tables, so never leave it unset next to a real database.
 
 ## Calendar Archive & Duplicate
 

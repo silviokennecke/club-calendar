@@ -54,6 +54,10 @@ cp frontend/.env.local.example frontend/.env.local
 
 JWT keys: `cd backend && php bin/console lexik:jwt:generate-keypair` (see README.md).
 
+## Configuration
+
+Backend settings are environment variables (`backend/.env.example`, local overrides in `backend/.env.local`, gitignored). `APP_URL` is the public address of the app (SPA and API share one origin); `FRONTEND_URL`, `BACKEND_URL` and `WEBAUTHN_RP_ID` (host of `APP_URL`) default to it and only need to be set for split setups. Defaults live in `backend/config/services.yaml` (`env(...)` parameters). Optional: `MAPBOX_TOKEN`, `GOOGLE_*`, `MICROSOFT_*`, `APPLE_*` (SSO), `WEBAUTHN_USER_VERIFICATION`. In the `test` environment `TEST_DATABASE_URL` falls back to `DATABASE_URL` (`config/packages/doctrine.yaml`): the tests truncate all tables, so always point it at a separate test database.
+
 ## Running
 
 ```bash
@@ -87,7 +91,7 @@ npm test -w frontend
 npm test
 ```
 
-Tests run against a real MySQL instance on port 3360 (`club_calendar_test` database). The root `npm test` script runs PHPUnit then Vitest.
+Tests run against a real MySQL instance on port 3360 (`club_calendar_test` database, set via `TEST_DATABASE_URL`; falls back to `DATABASE_URL` if unset). The root `npm test` script runs PHPUnit then Vitest.
 
 ## Working Rules
 
@@ -127,7 +131,7 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 - Refresh: `POST /api/auth/token` (form-encoded: `grant_type=refresh_token&refresh_token=<token>`)
 - Keys: RSA keypair in `backend/config/jwt/` (gitignored); `JWT_REFRESH_SECRET` for HMAC refresh tokens
 - OAuth SSO: Google + Microsoft (redirect → callback → `{FRONTEND_URL}/auth/callback?token=X&refresh_token=Y`, errors `?error=<code>`: `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`, `email_unverified_at_provider`); signed, single-use `state`; e-mail linking only with a trusted `email_verified` (Google/Apple, never Microsoft), see `docs/redesign/BACKEND-GAPS.md` (Sicherheit)
-- Passkeys: verified with `web-auth/webauthn-lib`; challenge in a signed, single-use `challengeToken` (`auth_nonce` table); allowed origin = `FRONTEND_URL`, `WEBAUTHN_RP_ID`, `WEBAUTHN_USER_VERIFICATION` (default `preferred`)
+- Passkeys: verified with `web-auth/webauthn-lib`; challenge in a signed, single-use `challengeToken` (`auth_nonce` table); allowed origin = `FRONTEND_URL` (default `APP_URL`), `WEBAUTHN_RP_ID` (default host of `APP_URL`), `WEBAUTHN_USER_VERIFICATION` (default `preferred`)
 
 ## API Errors
 
