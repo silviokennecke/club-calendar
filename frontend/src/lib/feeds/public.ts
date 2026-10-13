@@ -1,8 +1,9 @@
 // Public feed (no sign-in): loading, error kinds, derived values and addresses (pure + fetch).
+import { API_URL } from "@/lib/apiUrl";
 import { overlapsRange, type IsoDate } from "@/lib/calendar";
 import { matchesGroups } from "@/lib/events/list";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+const API_BASE = API_URL;
 
 export interface PublicFeedLocation {
   id: string;
