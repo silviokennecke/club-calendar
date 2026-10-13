@@ -40,9 +40,10 @@ Frontend-Nacharbeiten `1fe0b7f`, `a46d31a` (Details in `BACKEND-GAPS.md`).
 - Termine sind Modals statt Seiten (Korrektur unten), der öffentliche Termin ebenso.
 - Data Router (`createBrowserRouter` mit einer Splat-Route) statt `BrowserRouter`, damit ungespeicherte Änderungen
   auch den Zurück-Button des Browsers abfangen (`useBlocker`).
-- Features ohne Backend sind gebaut, aber deaktiviert ("Bald verfügbar"): Passwort vergessen, Terminserien,
-  SSO verknüpfen/trennen; Export und Import-Prüfung liefen anfangs im Browser (seit Backend-Paket 2 über
-  `events.ics` bzw. `events/import/preview`). Bewusste Abweichungen je Artboard und
+- Features ohne Backend waren gebaut, aber deaktiviert ("Bald verfügbar"): Passwort vergessen, Terminserien,
+  SSO verknüpfen/trennen; Export und Import-Prüfung liefen anfangs im Browser. Mit dem Backend-Plan
+  (`BACKEND-PLAN.md`, Pakete 1–4, abgeschlossen 2026-10-13) sind alle aktiv; die Serienvorschau rechnet seit Paket 4
+  der Server. Bewusste Abweichungen je Artboard und
   offene Punkte L1–L6: `COVERAGE.md`.
 - Backend wurde über echte Bugs hinaus in einer Sicherheits-Runde geändert (Passkeys, OAuth-State,
   Konto-Verknüpfung, Sitzungs-Invalidierung), vom Auftraggeber beauftragt.

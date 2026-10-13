@@ -23,6 +23,8 @@ export interface CalItem<T = unknown> {
   icons: string;
   /** Names of the properties that carry an emoji, as accessible text for `icons`. */
   iconLabel: string;
+  /** Event of a series (tag "Wiederkehrend"). */
+  recurring?: boolean;
   /** The original record (event or holiday). */
   source: T;
 }
@@ -37,6 +39,7 @@ export interface EventLike {
   timeEnd: string;
   isAllDay?: boolean;
   isDraft?: boolean;
+  seriesId?: string | null;
   properties?: { property: { name: string; icon: string | null } }[];
 }
 
@@ -75,6 +78,7 @@ export function eventToItem<T extends EventLike>(ev: T): CalItem<T> {
     isDraft: !!ev.isDraft,
     icons: withIcons.map((p) => p.property.icon).join(""),
     iconLabel: withIcons.map((p) => p.property.name).join(", "),
+    recurring: !!ev.seriesId,
     source: ev,
   };
 }

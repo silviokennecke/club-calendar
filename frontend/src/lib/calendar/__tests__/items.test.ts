@@ -53,8 +53,14 @@ describe("eventToItem", () => {
       isDraft: true,
       icons: "🌳📝",
       iconLabel: "Draußen, Anmeldung nötig",
+      recurring: false,
     });
     expect(isMultiDay(item)).toBe(false);
+  });
+
+  it("marks events of a series as recurring", () => {
+    expect(eventToItem(ev({ id: "3", date: "2026-10-08", seriesId: "s1" })).recurring).toBe(true);
+    expect(eventToItem(ev({ id: "4", date: "2026-10-08", seriesId: null })).recurring).toBe(false);
   });
 
   it("keeps the inclusive end of multi-day and all-day events", () => {

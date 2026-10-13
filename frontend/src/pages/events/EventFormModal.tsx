@@ -5,6 +5,9 @@ import { useTranslation } from "react-i18next";
 import { apiDelete, apiErrorStatus, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { isValidIso } from "@/lib/calendar";
 import {
+  changedEventFields,
+  changesDate,
+  describeSeriesRule,
   emptyEventValues,
   formatWeekdayDate,
   isFormDirty,
@@ -28,6 +31,7 @@ import {
   LinkButton,
   Modal,
   StatusBadge,
+  Tag,
   TextInput,
   UnsavedChangesDialog,
   toast,
@@ -53,11 +57,17 @@ const FIELD_IDS: Record<EventField, string> = {
   timeEnd: "ev-et",
 };
 
+/** Scope of saving / deleting an event of a series (`scope` of the API). */
+type SeriesScope = "this" | "all";
+type PatchBody = Partial<EventPayload> & { scope?: SeriesScope };
+
 /**
  * New event (design: EventNewForm, route …/events/new/form?date=&templateId=) and edit / view
  * (design: EventForm, EventFormMobile, route …/events/:eventId) as a dialog above the calendar or
  * the list. Loads the data, then hands the initial values to the editor. Creating is impossible in
  * archived calendars (notice instead of the form); existing events open read-only there.
+ * Events of a series show the rule; saving changes and deleting ask "Nur diesen Termin" / "Alle
+ * Termine der Reihe" (all: only the changed fields go to every event, the date stays per event).
  */
 export default function EventFormModal() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -200,10 +210,14 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   const [submits, setSubmits] = useState(0);
   const [saving, setSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [scopeOpen, setScopeOpen] = useState(false);
   // Also shown in the dialog: toasts sit behind the modal for screen readers.
   const [saveFailed, setSaveFailed] = useState(false);
 
   const dirty = !readOnly && isFormDirty(initial, values);
+  // The scope question only makes sense with other events in the series.
+  const series = event?.series && event.series.eventCount > 1 ? event.series : null;
+  const changed = changedEventFields(toEventPayload(initial), toEventPayload(values));
   const unsaved = useUnsavedChanges(dirty);
   // Start in the first field (the heading when read-only).
   useModalInitialFocus(FIELD_IDS.name, !readOnly);
@@ -236,35 +250,51 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
     if (readOnly) return;
     setSubmits((n) => n + 1);
     if (errors.length > 0) return;
+    if (series && dirty) {
+      setScopeOpen(true);
+      return;
+    }
+    await save("this");
+  }
+
+  async function save(scope: SeriesScope) {
     setSaving(true);
     setSaveFailed(false);
     try {
-      const send = (body: EventPayload) =>
+      const send = (body: PatchBody) =>
         event
           ? apiPatch<{ id?: string }>(`/api/calendars/${page.calendarId}/events/${event.id}`, body)
           : apiPost<{ id?: string }>(`/api/calendars/${page.calendarId}/events`, body);
+      // "all": only what the user changed is applied to the other events of the series
+      const body: PatchBody =
+        scope === "all" ? { ...changed, scope: "all" } : toEventPayload(values);
       const saved = await saveDroppingDeletedReferences(
         qc,
         page.calendarId,
         ["properties", "features", "targetGroups", "locations", "templates"],
-        toEventPayload(values),
+        body,
         send,
-        (body, existing) => ({
-          ...body,
-          propertyIds: keepExisting(body.propertyIds, existing.properties),
-          featureIds: keepExisting(body.featureIds, existing.features),
-          targetGroupIds: keepExisting(body.targetGroupIds, existing.targetGroups),
-          locationId:
-            body.locationId && existing.locations.has(body.locationId) ? body.locationId : null,
-          eventTemplateId:
-            body.eventTemplateId && existing.templates.has(body.eventTemplateId)
-              ? body.eventTemplateId
-              : undefined,
+        (b, existing) => ({
+          ...b,
+          ...(b.propertyIds && { propertyIds: keepExisting(b.propertyIds, existing.properties) }),
+          ...(b.featureIds && { featureIds: keepExisting(b.featureIds, existing.features) }),
+          ...(b.targetGroupIds && {
+            targetGroupIds: keepExisting(b.targetGroupIds, existing.targetGroups),
+          }),
+          ...("locationId" in b && {
+            locationId: b.locationId && existing.locations.has(b.locationId) ? b.locationId : null,
+          }),
+          ...("eventTemplateId" in b && {
+            eventTemplateId:
+              b.eventTemplateId && existing.templates.has(b.eventTemplateId)
+                ? b.eventTemplateId
+                : undefined,
+          }),
         }),
       );
       const savedId = event?.id ?? saved?.id;
       await qc.invalidateQueries({ queryKey: ["events", page.calendarId] });
-      toast.success(t("events.form.saved"));
+      toast.success(scope === "all" ? t("events.seriesScope.savedAll") : t("events.form.saved"));
       // Back on the page, focus the saved event (if it is shown there).
       focusAfterModalClose(savedId ? eventSelector(savedId) : null);
       unsaved.allow();
@@ -277,13 +307,14 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
     }
   }
 
-  async function onDelete() {
+  async function onDelete(scope: SeriesScope = "this") {
     if (!event) return;
     try {
-      await apiDelete(`/api/calendars/${page.calendarId}/events/${event.id}`);
+      const query = scope === "all" ? "?scope=all" : "";
+      await apiDelete(`/api/calendars/${page.calendarId}/events/${event.id}${query}`);
       qc.removeQueries({ queryKey: ["events", page.calendarId, "one", event.id] });
       await qc.invalidateQueries({ queryKey: ["events", page.calendarId] });
-      toast.success(t("events.delete.done"));
+      toast.success(scope === "all" ? t("events.seriesScope.deletedAll") : t("events.delete.done"));
       setDeleteOpen(false);
       unsaved.allow();
       nav.close();
@@ -310,7 +341,12 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
       title={title}
       subtitle={isNew ? t("events.form.newSubtitle") : page.calendar?.name}
       headExtra={
-        event && <StatusBadge status={values.status === "draft" ? "draft" : "published"} />
+        event && (
+          <span className="ap-row">
+            <StatusBadge status={values.status === "draft" ? "draft" : "published"} />
+            {event.seriesId && <Tag tone="brand">{t("events.recurring")}</Tag>}
+          </span>
+        )
       }
       closeLabel={
         readOnly
@@ -333,6 +369,16 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
       )}
       {template && (
         <Banner tone="info">{t("events.form.templateTaken", { name: template.name })}</Banner>
+      )}
+      {event?.series && (
+        <Banner
+          tone="info"
+          icon="repeat"
+          title={t("events.seriesInfo.title", { count: event.series.eventCount })}
+        >
+          {`${describeSeriesRule(event.series.rule, t, locale)}.`}
+          {series && !readOnly && ` ${t("events.seriesInfo.hint")}`}
+        </Banner>
       )}
       {!isNew && !readOnly && values.status === "published" && (
         <Banner tone="info">{t("events.form.publishedNotice")}</Banner>
@@ -519,7 +565,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
         </div>
       </form>
 
-      {event && (
+      {event && !series && (
         <ConfirmDialog
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
@@ -530,8 +576,46 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
           })}
           consequence={t("events.delete.consequence")}
           confirmLabel={t("events.delete.confirm")}
-          onConfirm={onDelete}
+          onConfirm={() => onDelete("this")}
         />
+      )}
+      {event && series && (
+        <>
+          <ConfirmDialog
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            icon="trash"
+            title={t("events.delete.title", { name: event.name })}
+            description={t("events.seriesScope.deleteText", {
+              date: formatWeekdayDate(event.date.slice(0, 10), locale),
+              count: series.eventCount,
+            })}
+            consequence={t("events.seriesScope.deleteConsequence")}
+            confirmLabel={t("events.seriesScope.all")}
+            alternative={{ label: t("events.seriesScope.this"), onConfirm: () => onDelete("this") }}
+            onConfirm={() => onDelete("all")}
+          />
+          <ConfirmDialog
+            open={scopeOpen}
+            onOpenChange={setScopeOpen}
+            tone="primary"
+            icon="repeat"
+            title={t("events.seriesScope.saveTitle")}
+            description={t("events.seriesScope.saveText", {
+              name: values.name.trim() || event.name,
+              count: series.eventCount,
+            })}
+            consequence={[
+              t("events.seriesScope.saveConsequence"),
+              changesDate(changed) ? t("events.seriesScope.saveDateNote") : null,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            confirmLabel={t("events.seriesScope.all")}
+            alternative={{ label: t("events.seriesScope.this"), onConfirm: () => save("this") }}
+            onConfirm={() => save("all")}
+          />
+        </>
       )}
       <UnsavedChangesDialog {...unsaved.dialog} />
     </Modal>

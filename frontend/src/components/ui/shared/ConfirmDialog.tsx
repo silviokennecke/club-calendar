@@ -26,6 +26,14 @@ interface ConfirmDialogProps {
   requireLabel?: ReactNode;
   /** May return a promise; the dialog shows a busy state and closes when it resolves. */
   onConfirm: () => void | Promise<void>;
+  /**
+   * Second way to confirm next to the main action (e.g. "Nur diesen Termin" vs. "Alle Termine der
+   * Reihe"); shown between cancel and confirm, same busy handling.
+   */
+  alternative?: {
+    label: ReactNode;
+    onConfirm: () => void | Promise<void>;
+  };
 }
 
 /** Confirmation for destructive actions; always states the consequences. */
@@ -43,11 +51,12 @@ export function ConfirmDialog({
   requireText,
   requireLabel,
   onConfirm,
+  alternative,
 }: ConfirmDialogProps) {
   const { t } = useTranslation();
   const [internalOpen, setInternalOpen] = useState(false);
   const [typed, setTyped] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<false | "confirm" | "alternative">(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const uid = useId().replace(/:/g, "");
   const open = openProp ?? internalOpen;
@@ -60,16 +69,19 @@ export function ConfirmDialog({
 
   const blocked = !!requireText && typed.trim() !== requireText;
 
-  async function handleConfirm() {
+  async function run(which: "confirm" | "alternative", action: () => void | Promise<void>) {
     if (blocked || busy) return;
-    setBusy(true);
+    setBusy(which);
     try {
-      await onConfirm();
+      await action();
       setOpen(false);
     } finally {
       setBusy(false);
     }
   }
+  const spinner = (
+    <Icon glyph="loader" size={18} className="animate-spin motion-reduce:animate-none" />
+  );
 
   return (
     <AlertDialogPrimitive.Root open={open} onOpenChange={(next) => setOpen(next)}>
@@ -108,24 +120,30 @@ export function ConfirmDialog({
             <AlertDialogPrimitive.Close
               ref={cancelRef}
               className={buttonClass("secondary")}
-              disabled={busy}
+              disabled={!!busy}
             >
               {cancelLabel ?? t("common.cancel")}
             </AlertDialogPrimitive.Close>
+            {alternative && (
+              <button
+                type="button"
+                className={buttonClass(tone === "primary" ? "secondary" : "danger")}
+                disabled={blocked || !!busy}
+                aria-busy={busy === "alternative" || undefined}
+                onClick={() => run("alternative", alternative.onConfirm)}
+              >
+                {busy === "alternative" && spinner}
+                {alternative.label}
+              </button>
+            )}
             <button
               type="button"
               className={buttonClass(tone === "primary" ? "primary" : "danger-solid")}
-              disabled={blocked || busy}
-              aria-busy={busy || undefined}
-              onClick={handleConfirm}
+              disabled={blocked || !!busy}
+              aria-busy={busy === "confirm" || undefined}
+              onClick={() => run("confirm", onConfirm)}
             >
-              {busy && (
-                <Icon
-                  glyph="loader"
-                  size={18}
-                  className="animate-spin motion-reduce:animate-none"
-                />
-              )}
+              {busy === "confirm" && spinner}
               {confirmLabel}
             </button>
           </div>

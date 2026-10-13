@@ -370,6 +370,7 @@
   },
   "events": {
     "and": "und",
+    "recurring": "Wiederkehrend",
     "list": {
       "title": "Alle Termine",
       "subtitle_one": "{{calendar}} · 1 Termin",
@@ -638,8 +639,6 @@
       "preview": "Vorschau",
       "count_one": "1 Termin wird angelegt.",
       "count_other": "{{count}} Termine werden angelegt.",
-      "countPreview_one": "1 Termin würde angelegt.",
-      "countPreview_other": "{{count}} Termine würden angelegt.",
       "countNone": "Es entstehen keine Termine.",
       "holidaysSkipped_one": "1 Feiertag wird ausgelassen.",
       "holidaysSkipped_other": "{{count}} Feiertage werden ausgelassen.",
@@ -656,13 +655,19 @@
       "createPublished_one": "1 Termin anlegen und veröffentlichen",
       "createPublished_other": "{{count}} Termine anlegen und veröffentlichen",
       "nothing": "Keine Termine zum Anlegen",
-      "soon": "Bald verfügbar",
-      "soonText": "Terminserien lassen sich noch nicht anlegen. Die Vorschau zeigt schon, welche Termine entstehen würden. Lege bis dahin einzelne Termine an.",
       "customize": "Vorher anpassen",
       "created": "Termin angelegt.",
       "failed": "Der Termin konnte nicht angelegt werden. Bitte versuche es erneut.",
       "dateRequired": "Bitte wähle ein Datum.",
-      "notFound": "Die Vorlage gibt es nicht mehr. Wähle eine andere."
+      "notFound": "Die Vorlage gibt es nicht mehr. Wähle eine andere.",
+      "createdSeries_one": "1 Termin angelegt.",
+      "createdSeries_other": "{{count}} Termine angelegt.",
+      "seriesFailed": "Die Terminserie konnte nicht angelegt werden. Es wurde nichts angelegt. Bitte versuche es erneut.",
+      "previewLoading": "Vorschau wird berechnet …",
+      "previewFailed": "Die Vorschau konnte nicht geladen werden.",
+      "previewRetry": "Erneut versuchen",
+      "tooMany": "Eine Serie hat höchstens {{max}} Termine. Verkürze den Zeitraum.",
+      "rangeInvalid": "Das Ende liegt vor dem Anfang."
     },
     "export": {
       "title": "Termine exportieren",
@@ -714,6 +719,39 @@
         "features": "Features",
         "targetGroups": "Zielgruppen"
       }
+    },
+    "seriesInfo": {
+      "title_one": "Teil einer Terminreihe ({{count}} Termin)",
+      "title_other": "Teil einer Terminreihe ({{count}} Termine)",
+      "rule": {
+        "weekly": "Wöchentlich am {{weekday}}",
+        "biweekly": "Alle zwei Wochen am {{weekday}}",
+        "monthly": "Monatlich am {{nth}} {{weekday}}"
+      },
+      "nth": {
+        "1": "ersten",
+        "2": "zweiten",
+        "3": "dritten",
+        "4": "vierten",
+        "5": "letzten"
+      },
+      "until": "{{from}} bis {{to}}",
+      "count_one": "{{count}} Termin ab {{from}}",
+      "count_other": "{{count}} Termine ab {{from}}",
+      "skipsHolidays": "ohne Feiertage",
+      "hint": "Beim Speichern und Löschen wählst du, ob es nur diesen Termin oder alle Termine der Reihe betrifft."
+    },
+    "seriesScope": {
+      "saveTitle": "Änderungen für die Terminreihe speichern?",
+      "saveText": "„{{name}}“ gehört zu einer Terminreihe mit {{count}} Terminen. Für welche Termine sollen die Änderungen gelten?",
+      "saveConsequence": "Bei „Alle Termine der Reihe“ übernehmen alle Termine die geänderten Angaben. Was du nicht geändert hast, bleibt bei jedem Termin, wie es ist.",
+      "saveDateNote": "Das geänderte Datum gilt nur für diesen Termin. Die anderen Termine behalten ihr Datum.",
+      "deleteText": "Der Termin am {{date}} gehört zu einer Terminreihe mit {{count}} Terminen.",
+      "deleteConsequence": "Gelöschte Termine verschwinden aus dem Kalender und aus allen Feeds. Das lässt sich nicht rückgängig machen.",
+      "this": "Nur diesen Termin",
+      "all": "Alle Termine der Reihe",
+      "savedAll": "Alle Termine der Reihe gespeichert.",
+      "deletedAll": "Alle Termine der Reihe gelöscht."
     }
   },
   "import": {

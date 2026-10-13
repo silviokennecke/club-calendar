@@ -84,8 +84,9 @@ export function EventItem({
           {showStatus && <StatusBadge status={status} />}
         </div>
         <p className="cc-meta">{meta}</p>
-        {tags.length > 0 && (
+        {(tags.length > 0 || item.recurring) && (
           <div className="cc-tags">
+            {item.recurring && <Tag tone="brand">{t("events.recurring")}</Tag>}
             {tags.map((tag) => (
               <Tag key={tag.id} tone={tag.tone}>
                 {tag.label}

@@ -1,3 +1,5 @@
+import type { EventSeriesInfo } from "@/lib/events/series";
+
 export interface User {
   id: string;
   name: string;
@@ -144,6 +146,10 @@ export interface CalendarEvent {
   eventTemplateId?: string | null;
   /** UID of the ICS event it was imported from (null for events created in the app). */
   externalUid?: string | null;
+  /** Series the event belongs to (null for single events); lists and the single GET. */
+  seriesId?: string | null;
+  /** Rule and size of the series; only in the single GET (`…/events/:id`). */
+  series?: EventSeriesInfo | null;
   properties: { property: Property }[];
   features: { feature: Feature }[];
   targetGroups: { targetGroup: TargetGroup }[];

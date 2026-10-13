@@ -1,6 +1,6 @@
 # Design-Abdeckung (Phase 9a)
 
-Stand: 2026-10-13 (Paket 3 des Backend-Plans: Auth und Konten; vorher 2026-10-09 Paket 1, 2026-10-06). Quelle: Design-Artifact (lokal `…/artifact-files/469a6604-…/project/`, 72 Artboards laut
+Stand: 2026-10-13 (Paket 4 des Backend-Plans: Terminserien; vorher am selben Tag Paket 3, 2026-10-09 Paket 1, 2026-10-06). Quelle: Design-Artifact (lokal `…/artifact-files/469a6604-…/project/`, 72 Artboards laut
 `canvas.json`, Stand inkl. Korrektur "Termine = Modals" vom 2026-10-04). Pfade unten relativ zu `frontend/src/`,
 Routen relativ zu `/clubs/:clubId/calendars/:calendarId` (= `…`).
 
@@ -15,8 +15,9 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 
 ## Ergebnis
 
-- 72 Artboards: **67 vollständig**, **5 abweichend** (bewusst, begründet), **0 offene Lücken in der Zuordnung**
-  (Paket 3: ForgotPassword jetzt vollständig; Profile bleibt "abweichend", weil es über das Design hinausgeht).
+- 72 Artboards: alle **vollständig** bis auf **3 abweichende** (bewusst, begründet: CalendarArchived, Feeds,
+  Profile), **0 offene Lücken in der Zuordnung** (Paket 4: EventSeries jetzt vollständig, kein "Bald verfügbar" mehr
+  in der App; Paket 3: ForgotPassword; Profile bleibt "abweichend", weil es über das Design hinausgeht).
   Offene Teil-Lücken innerhalb abweichender Artboards: siehe "Offene Lücken".
 - In dieser Prüfung behoben: 9 Design-Punkte (siehe "Behobene Lücken"), davon 5 aus dem abgebrochenen Vorlauf übernommen, plus ein Nebenbefund (Sitzung beim Seitenwechsel).
 
@@ -61,16 +62,16 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 
 | Artboard | Umsetzung | Status |
 | --- | --- | --- |
-| Events.dc.html | `pages/events/EventsListPage.tsx`, `…/events` (Tabs mit Zähler, Suche, Ansicht-Umschalter, `EventsTable` mit Caption, Sammelaktionen über `POST …/events/bulk`, Mehrfach-Löschdialog) | vollständig (Sammelaktionen atomar: scheitert eine, ändert sich nichts und die Auswahl bleibt; BACKEND-GAPS "Umgesetzt (Paket 2)") |
+| Events.dc.html | `pages/events/EventsListPage.tsx`, `…/events` (Tabs mit Zähler, Suche, Ansicht-Umschalter, `EventsTable` mit Caption, Sammelaktionen über `POST …/events/bulk`, Mehrfach-Löschdialog) | vollständig (Sammelaktionen atomar: scheitert eine, ändert sich nichts und die Auswahl bleibt; BACKEND-GAPS "Umgesetzt (Paket 1–4)", Paket 2) |
 | EventsMobile.dc.html | `EventsListPage` < 720px: `EventItem`-Karten statt Tabelle, FAB | vollständig |
 | EventsStates.dc.html | `EventsListPage`: Skeleton, Ladefehler, "Noch gar keine Termine", "Keine Treffer für „…“" | vollständig |
 | EventNew.dc.html | `pages/events/EventNewModal.tsx`, `…/events/new` (Dialog / Bottom-Sheet) | vollständig |
 | EventNewForm.dc.html | `pages/events/EventFormModal.tsx`, `…/events/new/form` ("Datum aus dem Kalender übernommen", Fehlersumme, Ort mit Karte) | vollständig |
 | EventNewTemplate.dc.html | `pages/events/EventTemplatePickModal.tsx`, `…/events/new/template` (inkl. Leerzustand) | vollständig |
-| EventSeries.dc.html | `pages/events/EventFromTemplateModal.tsx`, `…/events/new/template/:templateId` (Einzeltermin, Serienregel, Feiertage aussparen, Vorschau) | abweichend: "Serie anlegen" deaktiviert ("Bald verfügbar"), Serien fehlen im Backend (BACKEND-GAPS Phase 4) |
-| EventForm.dc.html | `EventFormModal`, `…/events/:eventId` (Entwurf/Veröffentlicht, Ort mit Karte + "Position korrigieren", Löschen, ungespeicherte Änderungen, schreibgeschützt im Archiv) | vollständig; Lösch-Dialog nach dem neueren Dialogs.dc.html ("Termin „…“ löschen?", "Der Termin am … wird dauerhaft entfernt.") statt der älteren Variante im Artboard ("Du löschst …") |
+| EventSeries.dc.html | `pages/events/EventFromTemplateModal.tsx`, `…/events/new/template/:templateId` (Einzeltermin, Serienregel, Feiertage aussparen, Vorschau, Status, "n Termine als Entwurf anlegen") | vollständig (Paket 4): Vorschau vom Server (`POST …/events/series/preview`, entprellt; nicht im Design: Lade-, Fehler- mit "Erneut versuchen" und Obergrenzen-Zustand "höchstens 366 Termine", "Das Ende liegt vor dem Anfang."), "Serie anlegen" legt Serie und Termine atomar an (`POST …/events/series`), Toast "n Termine angelegt." |
+| EventForm.dc.html | `EventFormModal`, `…/events/:eventId` (Entwurf/Veröffentlicht, Ort mit Karte + "Position korrigieren", Löschen, ungespeicherte Änderungen, schreibgeschützt im Archiv) | vollständig; Lösch-Dialog nach dem neueren Dialogs.dc.html ("Termin „…“ löschen?", "Der Termin am … wird dauerhaft entfernt.") statt der älteren Variante im Artboard ("Du löschst …"). Serientermine (Paket 4, nicht im Artboard): Tag "Wiederkehrend" im Kopf, Hinweis "Teil einer Terminreihe (n Termine)" mit Regeltext, Speichern/Löschen mit Serien-Dialog (siehe Dialogs) |
 | EventFormMobile.dc.html | `EventFormModal` als Bottom-Sheet (`DialogFrame` < 720px) | vollständig |
-| EventItem.dc.html | `calendar/EventItem.tsx` (Datumskachel, Zeit, Ort, Zielgruppen-Tags, Status als Wort, Eigenschafts-Emojis mit Text) | vollständig |
+| EventItem.dc.html | `calendar/EventItem.tsx` (Datumskachel, Zeit, Ort, Zielgruppen-Tags, Status als Wort, Eigenschafts-Emojis mit Text) | vollständig; Serientermine mit Tag "Wiederkehrend" (`Tag tone="brand"` aus Library.dc.html) vor den Zielgruppen, ebenso in der Terminliste (`EventsTable`, Spalte Name). Die Chips im Monatsraster tragen ihn nicht (MonthView.dc.html zeigt dort keinen) |
 | Export.dc.html | `pages/events/EventsExportPage.tsx`, `…/events/export` (Zeitraum, Status, Zielgruppen, Vorschau, deaktivierter Download ohne Treffer, Download von `GET …/events.ics` mit JWT, Fehler-Banner) | vollständig (Datei aus dem Backend wie die Feeds: VTIMEZONE, Entwürfe als TENTATIVE; die Anzahl-Vorschau rechnet im Browser mit derselben Regel; Lade-/Fehlerzustand nicht im Design); Navigation markiert "Veröffentlichen" |
 
 ## Import und Vorlagen
@@ -131,12 +132,12 @@ Kein eigenes Artboard; Wortlaut und Optik nach PublicStates / CalendarStates (Em
 
 | Artboard | Umsetzung (`components/ui/shared/`) | Status |
 | --- | --- | --- |
-| Library.dc.html | Buttons (`Button`/`IconButton`: primary, secondary, ghost, danger, danger-solid, ghost-danger, Icon outline/danger), `Field` (Hilfe, Fehler, "(Pflicht)"/"(optional)"), `Toggle`, Filter-Chips (`FilterPillGroup`/`Chip`, aria-pressed), Tabs mit Zähler (`ap-tabs`/`ap-count`), `StatusBadge` (alle 8 Varianten), `Tag` (Töne youth/adult/senior), `EventItem`, `Banner`, `Toast`, `Skeleton`, `EmptyState`, `ConfirmDialog`, `CopyField`, `ChipSelect`, `EmojiPicker`, `Stepper`, `LangSwitch`, `Logo` (Vollform + Zeichen), MonthGrid (`calendar/MonthGrid`), MapView, Dateieingabe (`ImportUpload`), Suche (`SearchInput`/`ap-search`) | vollständig |
+| Library.dc.html | Buttons (`Button`/`IconButton`: primary, secondary, ghost, danger, danger-solid, ghost-danger, Icon outline/danger), `Field` (Hilfe, Fehler, "(Pflicht)"/"(optional)"), `Toggle`, Filter-Chips (`FilterPillGroup`/`Chip`, aria-pressed), Tabs mit Zähler (`ap-tabs`/`ap-count`), `StatusBadge` (alle 8 Varianten), `Tag` (Töne youth/adult/senior, brand für "Wiederkehrend"), `EventItem`, `Banner`, `Toast`, `Skeleton`, `EmptyState`, `ConfirmDialog`, `CopyField`, `ChipSelect`, `EmojiPicker`, `Stepper`, `LangSwitch`, `Logo` (Vollform + Zeichen), MonthGrid (`calendar/MonthGrid`), MapView, Dateieingabe (`ImportUpload`), Suche (`SearchInput`/`ap-search`) | vollständig |
 | Banner.dc.html | `Banner.tsx` (info, warning, danger, success) | vollständig |
 | ChipSelect.dc.html | `ChipSelect.tsx` (Auswahl + Anlegen) | vollständig |
 | ConfirmDialog.dc.html | `ConfirmDialog.tsx` (Icon, Text, Folgenhinweis, `requireText`, Ton primary/danger) | vollständig |
 | CopyField.dc.html | `CopyField.tsx` (Kopieren-Feedback, Live-Region) | vollständig |
-| Dialogs.dc.html | alle 16 Bestätigungsdialoge, siehe Tabelle unten | vollständig (3 Texte bewusst nach den Seiten-Artboards) |
+| Dialogs.dc.html | alle 16 Bestätigungsdialoge, siehe Tabelle unten, plus zwei Serien-Dialoge | vollständig (3 Texte bewusst nach den Seiten-Artboards; Serien-Dialoge nicht im Design, Wortlaut eigen) |
 | EmojiPicker.dc.html | `EmojiPicker.tsx` (Vorgaben, eigenes, emoji-mart lazy) | vollständig |
 | EmptyState.dc.html | `EmptyState.tsx` | vollständig |
 | Icon.dc.html / IconSheet.dc.html | `Icon.tsx`: alle 57 Glyphen des Designs auf lucide gemappt; keine Emojis als UI-Icons (Emojis nur als Eigenschafts-Symbole und im `EmojiPicker`) | vollständig |
@@ -162,6 +163,8 @@ Kein eigenes Artboard; Wortlaut und Optik nach PublicStates / CalendarStates (Em
 | 13 | Mitglied entfernen | `MembersSection` | wie Design |
 | 14 | Passkey entfernen | `PasskeysSection` | nach Profile.dc.html (mit Gerätename im Text) |
 | 15 | Verein verlassen | `MembersSection` | wie Design (+ Variante "letztes Mitglied") |
+| 1a | Serientermin löschen (nicht im Design) | `EventFormModal` | eigen, im Stil von 1: "Termin „…“ löschen?", "Der Termin am … gehört zu einer Terminreihe mit n Terminen.", Folgen wie 1; Aktionen "Abbrechen" (Fokus) / "Nur diesen Termin" / "Alle Termine der Reihe" (`ConfirmDialog` `alternative`) |
+| 1b | Serientermin speichern (nicht im Design) | `EventFormModal` | eigen: "Änderungen für die Terminreihe speichern?", "„…“ gehört zu einer Terminreihe mit n Terminen. Für welche Termine sollen die Änderungen gelten?", Folgenhinweis "Bei „Alle Termine der Reihe“ übernehmen alle Termine die geänderten Angaben. Was du nicht geändert hast, bleibt …" und bei Datumsänderung "Das geänderte Datum gilt nur für diesen Termin. …"; nur wenn etwas geändert wurde |
 | 16 | Verein löschen | `ClubPage` | wie Design (Namenseingabe), Folgenhinweis mit Umfang aus `GET /api/clubs/:id`: "Löscht den Verein mit 2 Kalendern, 14 Terminen und 2 Feeds sowie allen Vorlagen unwiderruflich. Alle Mitglieder verlieren den Zugriff." (ohne Zähler der Design-Text) |
 
 ## Tokens und Styling
@@ -199,11 +202,10 @@ Nebenbefund (kein Design-Thema, nötig für eine stabile E2E-Suite):
 ## Offene Lücken
 
 L2 (Passwort vergessen: "Prüfe dein Postfach") und L4 (Verknüpfen/Trennen inkl. Toasts und Schutzhinweis) sind mit
-Paket 3 erledigt (siehe Zugang und Profile oben).
+Paket 3 erledigt, L3 (Terminserien anlegen, Serien-Dialoge) mit Paket 4 (siehe EventSeries, EventForm, Dialogs oben).
 
 | # | Lücke | Artboard | Aufwand | Grund |
 | --- | --- | --- | --- | --- |
 | L1 | Archivierter Kalender öffnet im eigenen Zeitraum, Knopf "Zurück zu <Monat>" statt "Heute" | CalendarArchived | klein–mittel | Regel für den Startmonat fehlt im Design (letzter Termin? Archivierungsdatum?); Entscheidung nötig |
-| L3 | Terminserien anlegen / Serien-Dialoge | EventSeries | groß (+ Backend) | keine Serien im Backend |
 | L5 | Kurze Feed-Adressen (`/k/<verein>/<feed>`) | Feeds | klein (Frontend) + Backend | keine Slugs im API ("n Termine" und der öffentliche Kopf sind seit Paket 1 umgesetzt) |
 | L6 | Passkey-Dialog-Text ohne Namen (Dialogs) vs. mit Namen (Profile), Vorlagen-Dialog zwei Fassungen | Dialogs / Profile / Templates | – | Design uneinheitlich, Umsetzung folgt den Seiten-Artboards; Klärung im Design |
