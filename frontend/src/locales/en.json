@@ -370,6 +370,7 @@
   },
   "events": {
     "and": "and",
+    "recurring": "Recurring",
     "list": {
       "title": "All events",
       "subtitle_one": "{{calendar}} · 1 event",
@@ -638,8 +639,6 @@
       "preview": "Preview",
       "count_one": "1 event will be created.",
       "count_other": "{{count}} events will be created.",
-      "countPreview_one": "1 event would be created.",
-      "countPreview_other": "{{count}} events would be created.",
       "countNone": "No events result from this.",
       "holidaysSkipped_one": "1 holiday is skipped.",
       "holidaysSkipped_other": "{{count}} holidays are skipped.",
@@ -656,13 +655,19 @@
       "createPublished_one": "Create and publish 1 event",
       "createPublished_other": "Create and publish {{count}} events",
       "nothing": "No events to create",
-      "soon": "Coming soon",
-      "soonText": "Event series cannot be created yet. The preview already shows which events would result. Until then, create single events.",
       "customize": "Adjust first",
       "created": "Event created.",
       "failed": "The event could not be created. Please try again.",
       "dateRequired": "Please choose a date.",
-      "notFound": "This template no longer exists. Choose another one."
+      "notFound": "This template no longer exists. Choose another one.",
+      "createdSeries_one": "1 event created.",
+      "createdSeries_other": "{{count}} events created.",
+      "seriesFailed": "The event series could not be created. Nothing was created. Please try again.",
+      "previewLoading": "Calculating preview …",
+      "previewFailed": "The preview could not be loaded.",
+      "previewRetry": "Try again",
+      "tooMany": "A series has at most {{max}} events. Shorten the period.",
+      "rangeInvalid": "The end is before the start."
     },
     "export": {
       "title": "Export events",
@@ -714,6 +719,39 @@
         "features": "Features",
         "targetGroups": "Audiences"
       }
+    },
+    "seriesInfo": {
+      "title_one": "Part of an event series ({{count}} event)",
+      "title_other": "Part of an event series ({{count}} events)",
+      "rule": {
+        "weekly": "Weekly on {{weekday}}",
+        "biweekly": "Every two weeks on {{weekday}}",
+        "monthly": "Monthly on the {{nth}} {{weekday}}"
+      },
+      "nth": {
+        "1": "first",
+        "2": "second",
+        "3": "third",
+        "4": "fourth",
+        "5": "last"
+      },
+      "until": "{{from}} to {{to}}",
+      "count_one": "{{count}} event from {{from}}",
+      "count_other": "{{count}} events from {{from}}",
+      "skipsHolidays": "skipping holidays",
+      "hint": "When saving or deleting, you choose whether it affects only this event or all events of the series."
+    },
+    "seriesScope": {
+      "saveTitle": "Save changes for the event series?",
+      "saveText": "“{{name}}” belongs to an event series with {{count}} events. Which events should the changes apply to?",
+      "saveConsequence": "With “All events of the series”, all events take over the changed details. Whatever you did not change stays as it is for each event.",
+      "saveDateNote": "The changed date applies to this event only. The other events keep their dates.",
+      "deleteText": "The event on {{date}} belongs to an event series with {{count}} events.",
+      "deleteConsequence": "Deleted events disappear from the calendar and from all feeds. This cannot be undone.",
+      "this": "Only this event",
+      "all": "All events of the series",
+      "savedAll": "All events of the series saved.",
+      "deletedAll": "All events of the series deleted."
     }
   },
   "import": {

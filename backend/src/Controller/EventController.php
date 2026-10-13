@@ -9,6 +9,7 @@ use App\Security\ArchivedCalendarVoter;
 use App\Security\CalendarMemberVoter;
 use App\Service\EventExportService;
 use App\Service\EventImportService;
+use App\Service\EventSeriesService;
 use App\Service\EventService;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -25,6 +26,7 @@ class EventController extends AbstractApiController
         private readonly EventService $eventService,
         private readonly EventImportService $importService,
         private readonly EventExportService $exportService,
+        private readonly EventSeriesService $seriesService,
     ) {
     }
 
@@ -92,6 +94,30 @@ class EventController extends AbstractApiController
     }
 
     /**
+     * Dates of a series rule without writing anything: `{rule, event?: {durationDays}}` →
+     * `{dates, count, skippedHolidays, holidays}` (same validation as creating the series).
+     */
+    #[Route('/series/preview', methods: ['POST'])]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
+    public function seriesPreview(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
+    {
+        return new JsonResponse($this->seriesService->preview($calendar, $this->decodeJson($request)));
+    }
+
+    /**
+     * Creates a series and all its events atomically: `{rule, templateId?, event?, isDraft?}` → 201 `{series, events}`.
+     * At most SeriesRule::MAX_EVENTS events (422 `too_many_events`).
+     */
+    #[Route('/series', methods: ['POST'])]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
+    public function createSeries(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
+    {
+        return new JsonResponse($this->seriesService->create($calendar, $this->decodeJson($request)), Response::HTTP_CREATED);
+    }
+
+    /**
      * Dry run of the import: status per entry (new / duplicate / invalid), nothing is written.
      * Same body and limits as the import; blocked in archived calendars like every write route.
      */
@@ -146,6 +172,7 @@ class EventController extends AbstractApiController
         return new JsonResponse($this->eventService->getEvent($id, $calendar));
     }
 
+    /** Body may carry `scope: "this" | "all"` (series events, default `this`, see EventService::updateEvent). */
     #[Route('/{id}', methods: ['PATCH'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
@@ -156,12 +183,13 @@ class EventController extends AbstractApiController
         return new JsonResponse($this->eventService->updateEvent($id, $calendar, $data));
     }
 
+    /** `?scope=this|all` (series events, default `this`, see EventService::deleteEvent). */
     #[Route('/{id}', methods: ['DELETE'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id): JsonResponse
+    public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id, Request $request): JsonResponse
     {
-        $this->eventService->deleteEvent($id, $calendar);
+        $this->eventService->deleteEvent($id, $calendar, $request->query->all()['scope'] ?? null);
 
         return new JsonResponse(['ok' => true]);
     }

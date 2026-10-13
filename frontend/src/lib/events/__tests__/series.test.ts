@@ -1,93 +1,134 @@
 import { describe, expect, it } from "vitest";
+import i18n from "@/lib/i18n";
 import {
-  filterDatesExcludingHolidays,
-  holidayOn,
-  isNthWeekdayOfMonth,
-  seriesDates,
-  seriesPreview,
+  changedEventFields,
+  changesDate,
+  describeSeriesRule,
+  seriesPreviewRows,
+  toSeriesRule,
+  type SeriesFormRule,
   type SeriesRule,
 } from "../series";
+import type { EventPayload } from "../form";
 
-const rule = (partial: Partial<SeriesRule>): SeriesRule => ({
+// The dates of a rule are computed by the backend only (POST …/events/series/preview); the former
+// client-side vectors (weekly, biweekly, n-th / last weekday, DST, leap day, holidays) are PHPUnit
+// cases in backend/tests/Controller/EventSeriesTest.php.
+
+const form = (partial: Partial<SeriesFormRule> = {}): SeriesFormRule => ({
   rhythm: "weekly",
   weekday: 4,
   nth: 1,
   from: "2026-10-03",
   to: "2026-10-31",
+  skipHolidays: true,
   ...partial,
 });
 
-describe("seriesDates", () => {
-  it("lists every Thursday in the range", () => {
-    expect(seriesDates(rule({}))).toEqual(["2026-10-08", "2026-10-15", "2026-10-22", "2026-10-29"]);
-  });
-
-  it("includes the start day when it matches the weekday", () => {
-    expect(seriesDates(rule({ weekday: 6, to: "2026-10-10" }))).toEqual([
-      "2026-10-03",
-      "2026-10-10",
-    ]);
-  });
-
-  it("takes every second week for the biweekly rhythm", () => {
-    expect(seriesDates(rule({ rhythm: "biweekly" }))).toEqual(["2026-10-08", "2026-10-22"]);
-  });
-
-  it("finds the n-th and the last weekday of each month", () => {
-    const monthly = rule({ rhythm: "monthly", weekday: 1, from: "2026-09-01", to: "2026-11-30" });
-    expect(seriesDates({ ...monthly, nth: 1 })).toEqual(["2026-09-07", "2026-10-05", "2026-11-02"]);
-    expect(seriesDates({ ...monthly, nth: 5 })).toEqual(["2026-09-28", "2026-10-26", "2026-11-30"]);
-  });
-
-  it("returns nothing for missing or reversed ranges", () => {
-    expect(seriesDates(rule({ from: "" }))).toEqual([]);
-    expect(seriesDates(rule({ from: "2026-11-01", to: "2026-10-01" }))).toEqual([]);
-  });
-
-  it("works across the daylight saving time change", () => {
-    expect(seriesDates(rule({ weekday: 0, from: "2026-10-20", to: "2026-11-02" }))).toEqual([
-      "2026-10-25",
-      "2026-11-01",
-    ]);
-  });
-});
-
-describe("isNthWeekdayOfMonth", () => {
-  it("knows the 4th and the last", () => {
-    expect(isNthWeekdayOfMonth("2026-10-22", 4)).toBe(true);
-    expect(isNthWeekdayOfMonth("2026-10-29", 5)).toBe(true);
-    expect(isNthWeekdayOfMonth("2026-10-22", 5)).toBe(false);
-  });
-});
-
-describe("holidays", () => {
-  const holidays = [
-    { name: "Tag der Deutschen Einheit", date: "2026-10-03", dateEnd: null },
-    { name: "Weihnachten", date: "2026-12-25", dateEnd: "2026-12-26" },
-  ];
-
-  it("finds holidays including multi-day ranges", () => {
-    expect(holidayOn("2026-12-26", holidays)?.name).toBe("Weihnachten");
-    expect(holidayOn("2026-12-27", holidays)).toBeUndefined();
-  });
-
-  it("removes dates on holidays", () => {
-    expect(
-      filterDatesExcludingHolidays(["2026-10-03", "2026-12-25", "2026-12-27"], holidays),
-    ).toEqual(["2026-12-27"]);
-    expect(filterDatesExcludingHolidays(["2026-10-03"], [])).toEqual(["2026-10-03"]);
-  });
-
-  it("previews skipped holidays or keeps them", () => {
-    const dates = ["2026-10-03", "2026-10-10"];
-    const skip = seriesPreview(dates, holidays, true);
-    expect(skip.dates).toEqual(["2026-10-10"]);
-    expect(skip.holidayCount).toBe(1);
-    expect(skip.rows[0]).toEqual({
-      date: "2026-10-03",
-      holiday: "Tag der Deutschen Einheit",
-      skipped: true,
+describe("toSeriesRule", () => {
+  it("builds the API rule from the form (design: Von / Bis)", () => {
+    expect(toSeriesRule(form())).toEqual({
+      frequency: "weekly",
+      weekday: 4,
+      nth: null,
+      startDate: "2026-10-03",
+      until: "2026-10-31",
+      count: null,
+      skipHolidays: true,
     });
-    expect(seriesPreview(dates, holidays, false).dates).toEqual(dates);
+    expect(toSeriesRule(form({ rhythm: "monthly", nth: 5 }))?.nth).toBe(5);
+  });
+
+  it("returns null for missing or reversed ranges (no request)", () => {
+    expect(toSeriesRule(form({ from: "" }))).toBeNull();
+    expect(toSeriesRule(form({ from: "2026-11-01", to: "2026-10-01" }))).toBeNull();
+  });
+});
+
+describe("seriesPreviewRows", () => {
+  it("merges created dates and skipped holidays in date order", () => {
+    const rows = seriesPreviewRows({
+      dates: ["2026-10-10", "2026-10-17"],
+      count: 2,
+      skippedHolidays: [{ date: "2026-10-03", name: "Tag der Deutschen Einheit" }],
+      holidays: [
+        { date: "2026-10-03", name: "Tag der Deutschen Einheit" },
+        { date: "2026-10-17", name: "Herbstfest" },
+      ],
+    });
+    expect(rows).toEqual([
+      { date: "2026-10-03", holiday: "Tag der Deutschen Einheit", skipped: true },
+      { date: "2026-10-10", holiday: null, skipped: false },
+      { date: "2026-10-17", holiday: "Herbstfest", skipped: false },
+    ]);
+  });
+});
+
+describe("describeSeriesRule", () => {
+  const rule: SeriesRule = {
+    frequency: "weekly",
+    weekday: 4,
+    nth: null,
+    startDate: "2026-10-08",
+    until: "2026-10-29",
+    count: null,
+    skipHolidays: true,
+  };
+  const t = i18n.getFixedT("de");
+
+  it("names rhythm, weekday, range and holidays", () => {
+    const text = describeSeriesRule(rule, t, "de");
+    expect(text).toMatch(/^Wöchentlich am Donnerstag, /);
+    expect(text).toMatch(/08\.10\.2026 bis .*29\.10\.2026, ohne Feiertage$/);
+  });
+
+  it("describes the monthly rhythm and an end by count", () => {
+    const text = describeSeriesRule(
+      { ...rule, frequency: "monthly", nth: 5, until: null, count: 6, skipHolidays: false },
+      t,
+      "de",
+    );
+    expect(text).toMatch(/^Monatlich am letzten Donnerstag, 6 Termine ab /);
+  });
+});
+
+describe("changedEventFields", () => {
+  const base: EventPayload = {
+    name: "Training",
+    date: "2026-10-08",
+    dateEnd: null,
+    isAllDay: false,
+    timeBegin: "19:00",
+    timeEnd: "21:00",
+    isDraft: true,
+    locationId: null,
+    propertyIds: ["a", "b"],
+    featureIds: [],
+    targetGroupIds: [],
+  };
+
+  it("keeps only what the user changed (lists as sets)", () => {
+    expect(changedEventFields(base, { ...base, propertyIds: ["b", "a"] })).toEqual({});
+    expect(
+      changedEventFields(base, { ...base, name: "Neu", targetGroupIds: ["g"], isDraft: false }),
+    ).toEqual({ name: "Neu", targetGroupIds: ["g"], isDraft: false });
+  });
+
+  it("takes the times along when the all-day switch changes", () => {
+    expect(
+      changedEventFields(base, { ...base, isAllDay: true, timeBegin: "00:00", timeEnd: "23:59" }),
+    ).toEqual({ isAllDay: true, timeBegin: "00:00", timeEnd: "23:59" });
+    // Also when the times look unchanged here (other events of the series may have their own)
+    const fullDay = { ...base, timeBegin: "00:00", timeEnd: "23:59" };
+    expect(changedEventFields(fullDay, { ...fullDay, isAllDay: true })).toEqual({
+      isAllDay: true,
+      timeBegin: "00:00",
+      timeEnd: "23:59",
+    });
+  });
+
+  it("knows date changes (they stay with this event)", () => {
+    expect(changesDate(changedEventFields(base, { ...base, date: "2026-10-09" }))).toBe(true);
+    expect(changesDate(changedEventFields(base, { ...base, name: "X" }))).toBe(false);
   });
 });

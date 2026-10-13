@@ -28,10 +28,12 @@ A **Club** has one or more **Calendars** containing events, event templates, loc
 
 ### 1. Provide the databases
 
-Use any MySQL 8 server and set `DATABASE_URL` / `TEST_DATABASE_URL` in `backend/.env.local` (defaults: dev on port `3306`, tests on `3360`). With Docker, you can start both with:
+Use any MySQL 8 server and set `DATABASE_URL` / `TEST_DATABASE_URL` in `backend/.env.local` (defaults: dev on port `3306`, tests on `3360`). With Docker, start the dev database with the first command; the tests use a throwaway container (the tests wipe all tables, see `docs/redesign/E2E.md`):
 
 ```bash
-docker compose up mysql mysql_test -d
+docker compose up mysql -d
+docker run -d --name cc-verify-mysql -p 3360:3306 -e MYSQL_ROOT_PASSWORD=root \
+  -e MYSQL_DATABASE=club_calendar_test mysql:8.0.36
 ```
 
 ### 2. Backend
