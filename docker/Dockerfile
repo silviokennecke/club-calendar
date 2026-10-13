@@ -5,8 +5,8 @@
 #
 #   docker build -f docker/Dockerfile -t club-calendar .
 #
-# Configuration happens at runtime (see docker/entrypoint.sh); the public URL is injected into the
-# SPA at container start, so one image works for any domain.
+# Configuration happens at runtime (see docker/entrypoint.sh); the SPA uses its own origin for API
+# calls, so one image works for any domain.
 
 ARG PHP_VERSION=8.4
 ARG NODE_VERSION=22
@@ -34,9 +34,8 @@ RUN npm ci --ignore-scripts
 COPY backend/templates/email backend/templates/email
 RUN npm run build:mail -w backend
 COPY frontend frontend
-# Placeholder instead of a real URL: docker/entrypoint.sh swaps it for APP_URL when the container starts
-ARG VITE_API_URL=https://app-url.placeholder.invalid
-ENV VITE_API_URL=${VITE_API_URL}
+# Empty = the SPA talks to the API on its own origin, so the image is domain-independent
+ENV VITE_API_URL=
 RUN npm run build -w frontend
 
 # ── Stage 3: Caddy binary ────────────────────────────────────────────────────
@@ -68,8 +67,7 @@ ENV APP_ENV=prod \
 WORKDIR /var/www/app
 
 COPY --from=backend-vendor --chown=www-data:www-data /app/backend/ ./
-# SPA stays pristine in spa/; the entrypoint renders it into public/ (next to index.php)
-COPY --from=frontend-build --chown=www-data:www-data /build/backend/public/ ./spa/
+COPY --from=frontend-build --chown=www-data:www-data /build/backend/public/ ./public/
 COPY --from=frontend-build --chown=www-data:www-data /build/backend/templates/email/verify_email.html.twig templates/email/
 
 # Symfony runtime needs a .env; real configuration comes from environment variables.

@@ -5,7 +5,7 @@
 #
 # Required:  APP_SECRET, JWT_REFRESH_SECRET, DATABASE_URL, FRONTEND_URL (public URL, e.g. https://cal.example.com),
 #            WEBAUTHN_RP_ID (domain), WEBAUTHN_RP_NAME
-# Optional:  APP_URL / BACKEND_URL (default FRONTEND_URL, same origin), MAILER_DSN, MAILER_FROM, MAPBOX_TOKEN,
+# Optional:  BACKEND_URL (default FRONTEND_URL, same origin), MAILER_DSN, MAILER_FROM, MAPBOX_TOKEN,
 #            GOOGLE_*/MICROSOFT_*/APPLE_* OAuth settings, SYMFONY_TRUSTED_PROXIES (behind a TLS proxy, e.g. PRIVATE_SUBNETS),
 #            RUN_MIGRATIONS (default 1), MIGRATION_RETRIES (default 15), PORT (default 8080)
 # JWT keys:  JWT_PRIVATE_KEY / JWT_PUBLIC_KEY (paths) or keys in /var/www/app/config/jwt (mount a volume there,
@@ -13,7 +13,6 @@
 set -euo pipefail
 
 APP_DIR=/var/www/app
-SPA_PLACEHOLDER=https://app-url.placeholder.invalid
 
 log() { echo "[entrypoint] $*" >&2; }
 
@@ -45,15 +44,6 @@ if [ -z "${JWT_PRIVATE_KEY:-}" ] && [ ! -s config/jwt/private.pem ]; then
     log "no JWT keypair found, generating one in config/jwt (mount a volume there to keep it across restarts)"
     php bin/console lexik:jwt:generate-keypair --skip-if-exists --no-interaction
 fi
-
-# SPA: render the pristine build into the docroot with the public URL
-app_url="${APP_URL:-$FRONTEND_URL}"
-app_url="${app_url%/}"
-cp -R spa/. public/
-escaped=$(printf '%s' "$app_url" | sed -e 's/[\\&|]/\\&/g')
-grep -rlF "$SPA_PLACEHOLDER" public | while IFS= read -r file; do
-    sed -i "s|$SPA_PLACEHOLDER|$escaped|g" "$file"
-done
 
 # Database migrations
 if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
