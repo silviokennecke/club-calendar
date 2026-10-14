@@ -18,6 +18,7 @@ import {
   EmailVerifyPage,
   EventFormModal,
   EventFromTemplateModal,
+  EventSeriesEditModal,
   EventNewModal,
   EventsExportPage,
   EventsListPage,
@@ -141,6 +142,7 @@ function AppRoutes() {
                 element={<EventFromTemplateModal />}
               />
               <Route path={`${CAL}/events/:eventId`} element={<EventFormModal />} />
+              <Route path={`${CAL}/events/:eventId/series`} element={<EventSeriesEditModal />} />
             </Route>
           </Route>
           <Route element={<ModalFrame />}>

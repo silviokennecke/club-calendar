@@ -251,14 +251,19 @@ class AccountTest extends WebTestCase
 
     // --- change e-mail ---
 
-    public function testChangeEmailSendsAConfirmationLinkToTheNewAddressOnly(): void
+    public function testChangeEmailSendsTheConfirmationLinkToTheNewAddressOnly(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
         $r = $this->changeEmail($user, 'alice.new@example.com', 'password123', ['HTTP_HOST' => 'evil.example']);
         $this->assertSame(204, $r['status'], $r['content']);
 
-        $this->assertEmailCount(1);
+        // The link to the new address; the current address only gets a notice without link (NoticeMailTest)
+        $this->assertEmailCount(2);
         $this->assertEmailAddressContains($this->getMailerMessage(), 'to', 'alice.new@example.com');
+        $this->assertEmailAddressContains($this->getMailerMessage(1), 'to', 'alice@example.com');
+        $notice = $this->getMailerMessage(1);
+        $this->assertInstanceOf(Email::class, $notice);
+        $this->assertStringNotContainsString('verify-new-email', (string) $notice->getHtmlBody());
         $this->assertStringNotContainsString('evil.example', $this->lastMailHtml());
         $token = $this->confirmTokenFromMail();
 
@@ -291,7 +296,7 @@ class AccountTest extends WebTestCase
         }
         $this->assertSame(204, $r['status'], $r['content']);
         $this->assertSame(0, $sentBeforeTerminate);
-        $this->assertEmailCount(1);
+        $this->assertEmailCount(2);
     }
 
     public function testChangeEmailToATakenAddressAnswersTheSameWithoutMail(): void
@@ -300,11 +305,14 @@ class AccountTest extends WebTestCase
         TestHelper::createUser(self::$em, self::$hasher, 'bob@example.com');
 
         $free = $this->changeEmail($user, 'free@example.com');
-        $this->assertEmailCount(1);
+        $this->assertEmailCount(2);
+        // A taken address gets nothing; the current address gets its notice as for a free one
         $taken = $this->changeEmail($user, 'bob@example.com');
-        $this->assertEmailCount(0);
+        $this->assertEmailCount(1);
+        $this->assertEmailAddressContains($this->getMailerMessage(), 'to', 'alice@example.com');
         $takenOtherCase = $this->changeEmail($user, 'BOB@example.com');
-        $this->assertEmailCount(0);
+        $this->assertEmailCount(1);
+        $this->assertEmailAddressContains($this->getMailerMessage(), 'to', 'alice@example.com');
 
         $this->assertSame(204, $taken['status']);
         $this->assertSame($free['status'], $taken['status']);
@@ -489,7 +497,7 @@ class AccountTest extends WebTestCase
         $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
         for ($i = 0; $i < 5; ++$i) {
             $this->assertSame(204, $this->changeEmail($user, "new$i@example.com")['status']);
-            $this->assertEmailCount(1);
+            $this->assertEmailCount(2);
         }
         $r = $this->changeEmail($user, 'new5@example.com');
         $this->assertSame(204, $r['status']);

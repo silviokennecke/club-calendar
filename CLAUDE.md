@@ -116,7 +116,7 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 - **Calendar** — belongs to a Club; contains Events, EventTemplates, and reference data; can be archived (read-only) or duplicated
 - **CalendarFeed** — a publishable view of a Calendar (ICS + web); can be public or private (shared-secret protected)
 - **Event** — a single occurrence on a Calendar; may be based on an EventTemplate; may belong to an EventSeries
-- **EventSeries** — a recurrence rule (weekly, every two weeks, monthly on the n-th weekday; until a date or a count; skip holidays) with the events created from it; edit/delete "only this event" or "all events of the series" (`scope`)
+- **EventSeries** — a recurrence rule (weekly, every two weeks, monthly on the n-th weekday; until a date or a count; skip holidays) with the events created from it; edit/delete "only this event" or "all events of the series" (`scope`); the rule can be changed later ("Reihe ändern", `PATCH …/event-series/{id}`: only future events change, past ones stay). ICS imports with RRULE create single events, not series
 - **EventTemplate** — reusable event definition (name, time, location, properties)
 - **Property** — a tag/attribute for events (e.g. "Schützentracht"); can have an emoji icon
 - **Feature** — an optional add-on for events (e.g. "Bonusschießen")
@@ -132,6 +132,9 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 - Refresh: `POST /api/auth/token` (form-encoded: `grant_type=refresh_token&refresh_token=<token>`)
 - Keys: RSA keypair in `backend/config/jwt/` (gitignored); `JWT_REFRESH_SECRET` for HMAC refresh tokens
 - OAuth SSO: Google + Microsoft (redirect → callback → `{FRONTEND_URL}/auth/callback?token=X&refresh_token=Y`, errors `?error=<code>`: `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`, `email_unverified_at_provider`); signed, single-use `state`; e-mail linking only with a trusted `email_verified` (Google/Apple, never Microsoft), see `docs/redesign/BACKEND-GAPS.md` (Behobene Bugs)
+- Notices: password changed (change / reset), e-mail change requested (to the current address) and done (to the
+  former address) go out after the response (`AccountMailer`, `DeferredMailer`), without tokens or links except
+  `/forgot-password`, the new address masked; none for forgot-password or to a taken new address
 - Passkeys: verified with `web-auth/webauthn-lib`; challenge in a signed, single-use `challengeToken` (`auth_nonce` table); allowed origin = `FRONTEND_URL` (default `APP_URL`), `WEBAUTHN_RP_ID` (default host of `APP_URL`), `WEBAUTHN_USER_VERIFICATION` (default `preferred`); `lastUsedAt` per passkey
 - Password reset: `POST /api/auth/forgot-password` (always 204, no account oracle, mail after the response, rate-limited per address and IP) → `{FRONTEND_URL}/reset-password?token=…` (hashed one-time token, 60 min, table `password_reset`) → `POST /api/auth/reset-password` (ends all sessions, confirms the address; SSO-only accounts get a password this way). Password policy 8–128 chars everywhere (`App\Validator\PasswordPolicy`)
 - Account: `PATCH /api/auth/me` (`name`, prefs, last club/calendar, the latter also per membership), `POST /api/auth/change-password` (new tokens, other sessions end; password change and reset discard a waiting e-mail change), `POST|DELETE /api/auth/change-email` + `GET /api/auth/verify-new-email` (link to the new address, table `email_change`, ends all sessions), SSO `POST /api/auth/oauth/{provider}/link-start` → ticket → provider → `/profile?link_proof=` → `POST /api/auth/oauth/{provider}/link-complete` with the JWT (only the user who started it can complete it: link-CSRF protection) / `DELETE /api/auth/oauth/{provider}` (last sign-in method stays, row lock). Details: `docs/redesign/BACKEND-GAPS.md` ("Umgesetzt (Paket 1–4)", Paket 3)
@@ -182,6 +185,6 @@ PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend   # after the 
 npm run e2e:ui -w frontend                                          # interactive UI mode
 ```
 
-Specs in `frontend/e2e/`: `auth`, `onboarding`, `calendar`, `events`, `templates`, `import`, `import-keyboard`,
-`import-large`, `error-page`, `settings`, `feeds`, `club`, `profile`, `public`, `regressions`, `session-revoked`,
-`stale-assignments`, `account` (`*.spec.ts`); helpers in `helpers.ts`, guard in `safety.ts` / `global-setup.ts`.
+Specs in `frontend/e2e/`: `auth`, `onboarding`, `calendar`, `events`, `series-change`, `templates`, `import`,
+`import-rrule`, `import-keyboard`, `import-large`, `error-page`, `dialog-stack`, `settings`, `feeds`, `club`, `profile`,
+`public`, `regressions`, `session-revoked`, `stale-assignments`, `account` (`*.spec.ts`); helpers in `helpers.ts`, guard in `safety.ts` / `global-setup.ts`.

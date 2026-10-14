@@ -752,6 +752,60 @@
       "all": "Alle Termine der Reihe",
       "savedAll": "Alle Termine der Reihe gespeichert.",
       "deletedAll": "Alle Termine der Reihe gelöscht."
+    },
+    "seriesEdit": {
+      "action": "Reihe ändern",
+      "title": "Terminreihe ändern",
+      "subtitle": "Neue Regel für die künftigen Termine von „{{name}}“.",
+      "close": "Schließen, nichts ändern",
+      "noSeries": "Dieser Termin gehört zu keiner Terminreihe.",
+      "current": "Bisherige Regel",
+      "futureOnly": "Eine neue Regel ändert nur künftige Termine ab heute. Vergangene Termine bleiben, wie sie sind.",
+      "ruleTitle": "Neue Regel",
+      "countEnded_one": "Die Reihe endete bisher nach {{count}} Termin. Wähle ein Enddatum.",
+      "countEnded_other": "Die Reihe endete bisher nach {{count}} Terminen. Wähle ein Enddatum.",
+      "holidaysKept": "Termine an Feiertagen bleiben in der Reihe",
+      "preview": "Auswirkungen",
+      "incomplete": "Wähle Anfang und Ende, um die Auswirkungen zu sehen.",
+      "unchanged": "Die Regel ist unverändert. Ändere Rhythmus, Wochentag, Zeitraum oder Feiertage.",
+      "summary": {
+        "created_one": "1 Termin kommt neu dazu.",
+        "created_other": "{{count}} Termine kommen neu dazu.",
+        "deleted_one": "1 künftiger Termin wird gelöscht.",
+        "deleted_other": "{{count}} künftige Termine werden gelöscht.",
+        "kept_one": "1 künftiger Termin bleibt unverändert.",
+        "kept_other": "{{count}} künftige Termine bleiben unverändert.",
+        "past_one": "1 vergangener Termin bleibt, wie er ist.",
+        "past_other": "{{count}} vergangene Termine bleiben, wie sie sind."
+      },
+      "deleteList_one": "Dieser Termin wird gelöscht",
+      "deleteList_other": "Diese {{count}} Termine werden gelöscht",
+      "createList_one": "Dieser Termin kommt neu dazu",
+      "createList_other": "Diese {{count}} Termine kommen neu dazu",
+      "newNote": "neu, mit den Angaben des nächsten Termins der Reihe",
+      "sameDates": "Die künftigen Termine bleiben gleich; nur die gespeicherte Regel ändert sich.",
+      "submit": "Reihe ändern",
+      "confirm": {
+        "title": "Terminreihe ändern?",
+        "description": "Die Regel von „{{name}}“ wird für alle künftigen Termine geändert.",
+        "text": "{{deletes}}, {{creates}}. Vergangene Termine bleiben.",
+        "deletes_zero": "Löscht keine Termine",
+        "deletes_one": "Löscht 1 künftigen Termin",
+        "deletes_other": "Löscht {{count}} künftige Termine",
+        "creates_zero": "legt keine neuen an",
+        "creates_one": "legt 1 neuen an",
+        "creates_other": "legt {{count}} neue an",
+        "irreversible": "Gelöschte Termine verschwinden aus dem Kalender und aus allen Feeds. Das lässt sich nicht rückgängig machen."
+      },
+      "done": "Terminreihe geändert: {{created}} angelegt, {{deleted}} gelöscht.",
+      "errors": {
+        "failed": "Die Reihe konnte nicht geändert werden. Es wurde nichts geändert. Bitte versuche es erneut.",
+        "conflict": "Die Reihe wurde inzwischen geändert. Es wurde nichts geändert; prüfe die aktualisierte Vorschau und versuche es erneut.",
+        "empty": "Die Reihe hat keine Termine mehr, die als Vorlage für neue Termine dienen können.",
+        "noEvents": "Mit dieser Regel bliebe kein Termin in der Reihe. Wähle einen anderen Zeitraum.",
+        "forbidden": "Du darfst diese Reihe nicht ändern (der Kalender ist archiviert oder du bist kein Mitglied mehr). Es wurde nichts geändert.",
+        "gone": "Die Reihe gibt es nicht mehr."
+      }
     }
   },
   "import": {
@@ -765,7 +819,7 @@
       "intro": "Wähle eine .ics-Datei aus einer anderen Kalender-App. Im nächsten Schritt prüfst du die Termine, bevor etwas angelegt wird.",
       "series": {
         "title": "Serien werden einzeln übernommen",
-        "text": "Serienregeln werden nicht übernommen. Jeder Termin einer Serie kommt einzeln in die Liste."
+        "text": "Wiederholungen der Datei werden in einzelne Termine aufgelöst (höchstens 366 je Wiederholung, ohne Ende die ersten zwei Jahre). Jeder Termin kommt einzeln in die Liste und wird als Einzeltermin übernommen."
       },
       "wrong": {
         "title": "Falscher Dateityp",
@@ -801,9 +855,26 @@
         "text_one": "1 Termin hat kein gültiges Datum oder keinen Namen und wird übersprungen.",
         "text_other": "{{count}} Termine haben kein gültiges Datum oder keinen Namen und werden übersprungen."
       },
-      "recurringTitle": "Wiederholungen werden nicht ausgeschrieben",
-      "recurringText_one": "1 Termin hat in der Datei eine Wiederholungsregel. Es wird nur der erste Termin übernommen.",
-      "recurringText_other": "{{count}} Termine haben in der Datei eine Wiederholungsregel. Es wird jeweils nur der erste Termin übernommen.",
+      "recurrence": {
+        "title": "Wiederholungen ausgeschrieben",
+        "text_one": "{{rules}} ergeben 1 einzelnen Termin (Hinweis „aus Wiederholung“). Die Termine werden als Einzeltermine importiert, nicht als Terminreihe.",
+        "text_other": "{{rules}} ergeben {{count}} einzelne Termine (Hinweis „aus Wiederholung“). Die Termine werden als Einzeltermine importiert, nicht als Terminreihe.",
+        "rules_one": "1 Wiederholung",
+        "rules_other": "{{count}} Wiederholungen",
+        "group_one": "Wiederholung (1 Termin)",
+        "group_other": "Wiederholung ({{count}} Termine)",
+        "unsupported": "Wiederholung wird nicht unterstützt: nur der erste Termin wird importiert.",
+        "unsupportedText_one": "Das betrifft 1 Termin. Seine Wiederholungsregel kann nicht ausgeschrieben werden.",
+        "unsupportedText_other": "Das betrifft {{count}} Termine. Ihre Wiederholungsregeln können nicht ausgeschrieben werden.",
+        "unsupportedBadge": "Wiederholung nicht unterstützt",
+        "limitTitle": "Nicht alle Wiederholungen wurden ausgeschrieben",
+        "unbounded_one": "1 Wiederholung hat kein Ende: übernommen werden die Termine der ersten zwei Jahre, höchstens {{max}}.",
+        "unbounded_other": "{{count}} Wiederholungen haben kein Ende: übernommen werden jeweils die Termine der ersten zwei Jahre, höchstens {{max}}.",
+        "capped_one": "1 Wiederholung ergibt mehr als {{max}} Termine: übernommen werden die ersten {{max}}.",
+        "capped_other": "{{count}} Wiederholungen ergeben mehr als {{max}} Termine: übernommen werden jeweils die ersten {{max}}.",
+        "dropped_one": "Die Datei ergibt mehr als {{max}} Termine: 1 späterer Wiederholungstermin wurde weggelassen.",
+        "dropped_other": "Die Datei ergibt mehr als {{max}} Termine: {{count}} spätere Wiederholungstermine wurden weggelassen."
+      },
       "duplicates": {
         "title_one": "Ein Termin gibt es vielleicht schon",
         "title_other": "{{count}} Termine gibt es vielleicht schon",
@@ -873,7 +944,7 @@
       "duplicate": "Möglicherweise doppelt",
       "invalidBadge": "Fehlerhaft",
       "timezoneBadge": "Zeitzone ersetzt",
-      "recurring": "Wiederholt sich",
+      "recurring": "aus Wiederholung",
       "selected": "{{selected}} von {{total}} ausgewählt",
       "importLabel_one": "1 Termin importieren",
       "importLabel_other": "{{count}} Termine importieren",

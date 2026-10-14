@@ -78,6 +78,53 @@ export function toSeriesRule(form: SeriesFormRule): SeriesRule | null {
   };
 }
 
+/** `POST …/event-series/{id}/preview-update`: what a rule change would do now (only future events change). */
+export interface SeriesUpdatePreview {
+  toCreate: { date: IsoDate }[];
+  toDelete: { id: string; date: IsoDate; name: string; isDraft: boolean }[];
+  /** Future events whose date stays in the rule (unchanged, also ones edited on their own). */
+  kept: number;
+  /** Past events (before today in the calendar's zone): never touched. */
+  past: number;
+  skippedHolidays: SeriesHoliday[];
+}
+
+/** `PATCH …/event-series/{id}`. */
+export interface SeriesUpdateResult {
+  series: EventSeriesInfo;
+  created: number;
+  deleted: number;
+  kept: number;
+}
+
+/**
+ * Form values of a stored rule ("Reihe ändern"). The form knows only "Bis": a rule that ended by
+ * count gets `fallbackTo` (e.g. the last date of the series) or an empty end the user has to fill.
+ */
+export function formFromRule(rule: SeriesRule, fallbackTo = ""): SeriesFormRule {
+  return {
+    rhythm: rule.frequency,
+    weekday: rule.weekday,
+    nth: rule.nth ?? 1,
+    from: rule.startDate,
+    to: rule.until ?? fallbackTo,
+    skipHolidays: rule.skipHolidays,
+  };
+}
+
+/** Whether the form describes the stored rule (nothing to change). */
+export function sameSeriesRule(stored: SeriesRule, next: SeriesRule): boolean {
+  return (
+    stored.frequency === next.frequency &&
+    stored.weekday === next.weekday &&
+    (stored.frequency === "monthly" ? stored.nth === next.nth : true) &&
+    stored.startDate === next.startDate &&
+    stored.until === next.until &&
+    stored.count === next.count &&
+    stored.skipHolidays === next.skipHolidays
+  );
+}
+
 export interface SeriesPreviewRow {
   date: IsoDate;
   holiday: string | null;

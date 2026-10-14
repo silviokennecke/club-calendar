@@ -1,6 +1,6 @@
 # Backend-Lücken und offene Risiken (Endstand)
 
-Stand: 2026-10-13, nach Paket 4. Der Umsetzungsplan (`BACKEND-PLAN.md`, Pakete 1–4) ist abgeschlossen. Hier steht,
+Stand: 2026-10-14, nach Paket 5 (Serienregel ändern, RRULE-Import, Hinweis-Mails). Der Umsetzungsplan (`BACKEND-PLAN.md`, Pakete 1–4) ist abgeschlossen. Hier steht,
 was nach dem Redesign im Backend noch fehlt (jeder Punkt am 2026-10-13 gegen den Code geprüft), welche
 Sicherheitsrisiken offen sind, was umgesetzt und behoben wurde und was im Betrieb zu tun ist. Zuordnung zu den
 Artboards: `COVERAGE.md`; Redesign-Plan: `PLAN.md`; E2E-Umgebung: `E2E.md`.
@@ -9,14 +9,15 @@ Artboards: `COVERAGE.md`; Redesign-Plan: `PLAN.md`; E2E-Umgebung: `E2E.md`.
 
 1. **Alle Design-Features haben ein Backend.** Keine Aktion ist mehr "Bald verfügbar": Zähler und Einzel-Endpoints
    (Paket 1), Import-Vorschau, atomarer Import, Export, Sammelaktionen, Fehlercodes (Paket 2), Passwort vergessen,
-   Profil, SSO verknüpfen/trennen (Paket 3), Terminserien mit "nur dieser Termin / alle Termine der Reihe" (Paket 4).
+   Profil, SSO verknüpfen/trennen (Paket 3), Terminserien mit "nur dieser Termin / alle Termine der Reihe" (Paket 4),
+   Serienregel nachträglich ändern, RRULE-Auflösung beim Import und Hinweis-Mails bei Konto-Änderungen (Paket 5).
 2. **Vor produktiver Nutzung (Betrieb):** alle Migrationen ausführen (zuletzt `Version20261014120000`, Serien),
    `APP_SECRET`, `JWT_REFRESH_SECRET`, `APP_URL` (bzw. `FRONTEND_URL`/`BACKEND_URL`) und `WEBAUTHN_*` setzen, Crons
    einrichten, SSO nur über HTTPS. Siehe "Betrieb".
 3. **Sicherheit:** die bekannten Risiken (Rollen, Rate-Limiting, Refresh-Rotation, Tokens im Redirect, Enumeration,
    ...) stehen im Security-Audit des Auftraggebers; hier nur der Verweis und drei kleine Restpunkte.
 4. **Offen (klein, kein Design-Bedarf):** kurze Feed-Adressen (Slugs), Zustand "Kalender archiviert" im öffentlichen
-   Feed, RRULE-Auflösung beim Import, Rollen/Rechte, Serienregel nachträglich ändern. Liste unten.
+   Feed, Rollen/Rechte. Liste unten.
 
 ## Offene Backend-Features
 
@@ -25,14 +26,16 @@ Artboards: `COVERAGE.md`; Redesign-Plan: `PLAN.md`; E2E-Umgebung: `E2E.md`.
 - **Theme** wird nur im Browser gespeichert (localStorage), nicht am Benutzer (bewusst laut `PLAN.md`).
 - **E-Mail-Wechsel für SSO-only-Konten** ist nicht möglich (409 `no_password`), bis ein Passwort gesetzt ist
   ("Passwort per E-Mail festlegen" im Profil); eine Bestätigung über eine erneute SSO-Anmeldung gibt es nicht.
-- **Keine Hinweis-Mail an die bisherige Adresse** bei Passwort- oder E-Mail-Änderung; keine Mail an eine bereits
-  vergebene neue Adresse (der Wechsel bleibt unsichtbar wartend, gewollt: kein Orakel).
+- **Keine Mail an eine bereits vergebene neue Adresse** (bewusst, Paket 5): weder Bestätigungslink noch Hinweis; der
+  Wechsel bleibt unsichtbar wartend (kein Orakel, und sonst könnte jeder beliebigen Kontoinhabern Mails schicken).
+  Die bisherige Adresse bekommt den Hinweis trotzdem. Keine Hinweis-Mail bei "Passwort vergessen" (Spam-Vektor).
 - **Mehrere Konten desselben Anbieters** (z. B. zwei Google-Konten) lassen sich nicht verknüpfen (`already_linked`).
 
 ### Termine und Serien
 
-- **Serienregel nachträglich ändern** (Zeitraum verlängern, Wochentag wechseln, Termine neu berechnen) gibt es nicht;
-  die Regel wird nur angezeigt. "Alle Termine der Reihe" ändert Felder der vorhandenen Termine, nie ihre Daten.
+- **Serienregel ändern** betrifft nur künftige Termine; vergangene Termine einer Reihe lassen sich nicht über die Regel
+  ändern (nur einzeln). Neue Termine übernehmen die Werte EINES Prototyps (frühester künftiger Termin), nicht etwa
+  Mehrheitswerte der Reihe.
 - **Regelumfang:** ein Wochentag je Regel, Rhythmen wöchentlich / zweiwöchentlich / monatlich am n-ten Wochentag
   (Design). Die API kann das Ende auch per Anzahl (`count`); das Design und die UI nutzen nur "Bis".
 - **Zielgruppen** haben keine Farbe/Tonalität; das Frontend vergibt die Tag-Töne reihum nach Position.
@@ -51,16 +54,18 @@ Artboards: `COVERAGE.md`; Redesign-Plan: `PLAN.md`; E2E-Umgebung: `E2E.md`.
 
 ### Import und Export
 
-- **Wiederholungen (RRULE)** werden beim Import nicht ausgeschrieben: ein Termin je VEVENT (Hinweis "Serien werden
-  einzeln übernommen" im Design). Das Serienmodell aus Paket 4 könnte die drei Design-Rhythmen abbilden; beliebige
-  RRULEs nicht.
-- **Duplikate innerhalb einer Datei** werden nicht verglichen (Ausnahmen einer ICS-Serie teilen ihre UID): ein später
-  ergänzter Serientermin mit bekannter UID gilt als Duplikat und wird mit `skipDuplicates` übersprungen.
+- **Wiederholungen (RRULE)** werden im Browser nur in der Teilmenge aus Paket 5 ausgeschrieben (BYSETPOS, BYHOUR,
+  BYWEEKNO, BYYEARDAY, stündlich u. ä.: nur der erste Termin, mit Warnung). Importierte Instanzen sind
+  **Einzeltermine** (keine Serie der App, bewusst: beliebige RRULEs passen nicht in das Serienmodell).
+- **Duplikate innerhalb einer Datei** werden nicht verglichen (zwei VEVENTs mit gleicher UID ohne RECURRENCE-ID kommen
+  beide in die Liste). Instanzen einer Wiederholung haben je eine eigene UID (`UID#YYYYMMDD`).
 - **Veraltete Zuordnungen zwischen Vorschau und Import** lassen den Import als Ganzes scheitern (422
   `unknown_reference`, nichts gespeichert, UI: "Es wurde nichts importiert").
 - **ICS-Zeilenlänge:** `X-APPLE-STRUCTURED-LOCATION` wird von `eluceo/ical` nicht auf 75 Oktette gefaltet (Parser wie
   sabre/vobject lesen die Datei trotzdem). Serientermine erscheinen in Feeds und Export als einzelne VEVENTs ohne
-  RRULE/Serienkennung (bewusst: Abos sehen so auch einzeln geänderte oder gelöschte Termine richtig).
+  RRULE/Serienkennung (bewusst: Abos sehen so auch einzeln geänderte oder gelöschte Termine richtig). **Kein
+  `X-CC-SERIES-ID`** (bewusste Entscheidung, Paket 5): eine Serienkennung im ICS würde Serien-Interna im öffentlichen
+  Feed preisgeben; ein Wiederimport erkennt Termine über die UID des Exports.
 - **CSV-Export** ist weder im Design noch gebaut.
 
 ### Listen und Mitglieder
@@ -97,10 +102,95 @@ Nicht im Audit, gering:
 | niedrig | **Passwort-Hashing** | `App\Entity\User` nutzt explizit `bcrypt` (Kosten 13) statt `auto`; 8–128 Zeichen (`PasswordPolicy`), Symfony hasht Passwörter über 72 Bytes vorab. Umstellung auf `auto` (argon2id) mit Rehash bei Anmeldung möglich. |
 | niedrig | **User-Verification optional** | `WEBAUTHN_USER_VERIFICATION=preferred` (Standard) lässt Passkeys ohne PIN/Biometrie zu; `required` ist strenger, schließt aber Sicherheitsschlüssel ohne PIN aus. |
 
-## Umgesetzt (Paket 1–4)
+## Umgesetzt (Paket 1–5)
 
 Neue Felder sind jeweils Ergänzungen; bestehende Antwortformen blieben gleich. Tests je Feature in
 `backend/tests/Controller` (rot ohne Umsetzung geprüft), Frontend mit Vitest und Playwright.
+
+### Paket 5: Serienregel ändern, RRULE-Import, Hinweis-Mails (2026-10-14)
+
+Keine Migration. Tests `EventSeriesRuleChangeTest` (17 Fälle), `NoticeMailTest` (11), angepasst `AccountTest`;
+Vitest `lib/import/__tests__/rrule.test.ts`, `EventSeriesEditModal.test.tsx`, `ImportPage.test.tsx`; E2E
+`series-change.spec.ts`, `import-rrule.spec.ts`.
+
+**Serienregel nachträglich ändern** (`EventSeriesService::previewUpdate` / `update`, `SeriesRule` bleibt die einzige
+Datumsberechnung):
+
+- `POST /api/calendars/{id}/event-series/{seriesId}/preview-update {rule}` → `{toCreate: [{date}], toDelete: [{id,
+  date, name, isDraft}], kept, past, skippedHolidays: [{date, name}]}`; schreibt nichts.
+- `PATCH /api/calendars/{id}/event-series/{seriesId} {rule}` → `{series, created, deleted, kept}` (Zahlen; `series`
+  wie `GET …/event-series/{id}` mit der neuen Regel und `eventCount`).
+- **Semantik (Entscheidungen des Auftraggebers):** nur KÜNFTIGE Termine (Datum ≥ heute in der Kalenderzone, sonst
+  Vereinszone; Uhr `ClockInterface`) werden angefasst, vergangene bleiben unverändert in der Serie. Die neue Regel
+  ergibt ihre vollständige Datumsmenge ab `startDate` (`count`/`until` zählen über die ganze Serie, Daten vor heute
+  werden ignoriert). Künftige Termine auf einem Datum der Menge bleiben unverändert (auch einzeln bearbeitete),
+  fehlende Daten werden neu angelegt mit den Werten des **Prototyps** (frühester künftiger Termin der Serie, sonst der
+  späteste vorhandene: Name, Zeiten, Zeitzone, Ganztägig, Status, Ort, Vorlage, Eigenschaften, Features,
+  Zielgruppen, Dauer `dateEnd − date`), künftige Termine auf anderen Daten werden gelöscht (die Vorschau listet sie
+  einzeln). `durationDays` der Regel bleibt der der Serie (Feiertags-Überlappung).
+- **Grenzen/Fehler:** Mitglied (403), nicht archiviert (403), Serie eines anderen Kalenders/unbekannt 404, Validierung
+  wie beim Anlegen (400 `validation_failed` `rule.*`), kaputtes JSON 400 `invalid_request`, mehr als 366 Termine je
+  Serie NACH der Änderung (vergangene + bleibende + neue) oder eine Regel mit mehr als 366 Daten 422
+  `too_many_events`, eine Serie ohne Termine danach 422 `validation_failed` field `rule`, eine Serie ohne Termine
+  (Prototyp fehlt) 409 `series_empty`, Prototyp oder eine seiner Referenzen gleichzeitig gelöscht / Deadlock 409
+  `series_changed`.
+- **Atomar:** eine Transaktion mit `SELECT … FOR UPDATE` auf der Serienzeile (zwei Änderungen derselben Serie laufen
+  nacheinander, die zweite rechnet mit dem Ergebnis der ersten); Löschen per DQL `id IN (…) AND series = …` (parallel
+  gelöschte Termine sind kein Fehler), neue Termine ohne Lesezugriffe aus dem Prototyp kopiert. Nachweise:
+  erzwungener DB-Fehler (Trigger) ändert nichts, Abfragezahl 4 vs. 13 neue Termine unterscheidet sich nur um die
+  INSERTs.
+- **Frontend:** Aktion "Reihe ändern" am Hinweis "Teil einer Terminreihe" (nicht im Archiv) → Schritt
+  `…/events/:eventId/series` (`EventSeriesEditModal`, Regel-Formular `SeriesRuleFields`, Vorschau
+  `useSeriesUpdatePreview` entprellt, Bestätigung per `ConfirmDialog`), Wortlaut eigen (COVERAGE.md).
+
+**RRULE beim ICS-Import** (Browser, `frontend/src/lib/import/rrule.ts` + `ics.ts`; die Backend-API bleibt, sie
+bekommt einzelne Termine):
+
+- **Teilmenge:** FREQ=DAILY|WEEKLY|MONTHLY|YEARLY mit INTERVAL, COUNT, UNTIL (Datum oder Datum-Zeit, UTC oder
+  floating), BYDAY (wöchentlich mehrere Tage; monatlich und jährlich mit BYMONTH n-ter/letzter Wochentag wie `2MO`,
+  `-1FR` oder jeder solche Wochentag), BYMONTHDAY (auch negativ), BYMONTH, WKST (Wochenbeginn für WEEKLY mit
+  INTERVAL > 1, Standard Montag; wird beachtet), EXDATE (mehrere Zeilen/Werte, DATE, TZID, UTC), RDATE (auch PERIOD:
+  Beginn), RECURRENCE-ID (ersetzt die Instanz am Datum statt sie doppelt zu importieren; ohne Hauptereignis ein
+  Einzeltermin). DTSTART ist immer die erste Instanz und zählt für COUNT (wie ical.js). UNTIL ist inklusiv, auch
+  minutengenau (eine Instanz genau zur UNTIL-Zeit gehört dazu); ein UNTIL als Datum bei einer DTSTART mit Uhrzeit
+  (nach RFC eigentlich unzulässig) schließt den ganzen Tag ein. Ungültige Daten (31., 29.02.) entfallen nach RFC 5545
+  (ical.js verschiebt den 29.02. bei YEARLY auf den 01.03.; hier bewusst RFC). Abgleich (Fuzz, 3000 Regeln) mit
+  ical.js 2, rrule.js und einer unabhängigen Tagesreferenz: Abweichungen nur dort, wo ical.js von RFC 5545 abweicht
+  (negatives BYMONTHDAY, MONTHLY mit BYMONTH und INTERVAL, YEARLY mit BYMONTHDAY ohne BYMONTH, doppelt gezählte
+  Instanzen, ausgelassene DTSTART/EXDATE, verschobene ungültige Daten).
+- **Nicht unterstützt** (BYSETPOS, BYHOUR, BYMINUTE, BYSECOND, BYWEEKNO, BYYEARDAY, SECONDLY/MINUTELY/HOURLY, n-ter
+  Wochentag im Jahr ohne BYMONTH, RSCALE, SKIP) und kaputte Regeln: nur der erste Termin, Warnung "Wiederholung wird
+  nicht unterstützt: nur der erste Termin wird importiert." (kein stilles Verwerfen, kein Absturz).
+- **Grenzen:** je Regel höchstens 366 Instanzen (`MAX_INSTANCES_PER_RULE`, nach EXDATE), Regeln ohne Ende: zwei Jahre
+  ab dem ersten Termin oder 366, je Datei höchstens 5000 Termine (`IMPORT_MAX` = Backend `EventImportService::MAX_EVENTS`;
+  spätere Instanzen weichen, erste Instanzen und Einzeltermine bleiben); jede Kappung als Warnung mit Zahlen.
+- **Zeiten:** Datumsarithmetik in Kalendertagen; Wanduhrzeit einer TZID- oder floating-DTSTART bleibt über
+  Sommer-/Winterzeit gleich; UTC-DTSTART wird nach RFC 5545 in UTC iteriert und je Instanz in die Kalenderzone
+  umgerechnet (die Wanduhrzeit verschiebt sich mit der Sommerzeit, Test). Ganztägig/mehrtägig: Dauer bleibt. EXDATE/
+  RECURRENCE-ID/UNTIL werden in die Darstellung der DTSTART umgerechnet. Am Umstellungstag bleibt eine nicht
+  existierende Wanduhrzeit (02:30 Ende März) als 02:30 mit Zone gespeichert (Kalender-Apps zeigen sie nach RFC 5545
+  als 03:30), eine doppelte (Ende Oktober) als die Uhrzeit, wie sie in der Datei steht.
+- **Duplikate:** `externalUid` je Instanz = `${UID}#${YYYYMMDD}` (Datum der Instanz, wie sie angelegt wird: UTC-Zeiten
+  in der Kalenderzone, TZID-Zeiten in ihrer Zone; eine UID über 246 Zeichen wird auf 237 Zeichen + `~` + Hash der ganzen UID
+  gekürzt, damit 255 reichen und zwei lange UIDs mit gleichem Anfang verschieden bleiben). Vorschau und
+  Backend erkennen so jede Instanz; ein Wiederimport mit `skipDuplicates` legt nichts neu an (E2E).
+- **Prüfansicht:** Hinweis "Wiederholungen ausgeschrieben" (als Einzeltermine, nicht als Terminreihe), Gruppen bleiben
+  nach Name; Gruppenkopf "Wiederholung (n Termine)", je Eintrag "aus Wiederholung".
+
+**Hinweis-Mails** (`AccountMailer::sendPasswordChanged` / `sendEmailChangeRequested` / `sendEmailChanged`, Vorlagen
+`password_changed.mjml`, `email_change_requested.mjml`, `email_changed.mjml`, de/en nach `user.language`):
+
+- `POST …/change-password` und Abschluss von `POST …/reset-password` → "Dein Passwort wurde geändert" an die Adresse
+  des Kontos; `POST …/change-email` → "Es wurde eine Änderung deiner E-Mail-Adresse angefordert" an die BISHERIGE
+  Adresse (neue Adresse maskiert `m***@beispiel.de`, auch wenn die neue Adresse vergeben ist; über dem Rate-Limit
+  keine Mail); Bestätigungslink `GET …/verify-new-email` erfolgreich → "Deine E-Mail-Adresse wurde geändert" an die
+  ALTE Adresse (neue maskiert).
+- Inhalt: was passiert ist, wann (UTC und, falls bekannt, Zone des letzten Kalenders/Vereins des Nutzers), was zu tun
+  ist, wenn man es nicht war ("Passwort vergessen" + Support). Keine Tokens, kein Link außer `{FRONTEND_URL}/forgot-password`;
+  Name per Twig escaped.
+- Versand über `DeferredMailer` nach der Antwort; Transportfehler werden geloggt, der Ablauf und die Antwort bleiben
+  gleich (kein Orakel). Keine Mail bei Fehlschlägen/Validierungsfehlern, bei `forgot-password` (Spam-Vektor) und an
+  vergebene neue Adressen (Spam-Vektor, siehe "Konten").
 
 ### Paket 4: Terminserien (2026-10-13)
 
@@ -239,11 +329,13 @@ RFC-7807-Body `{type, title, status, detail, code, field?}` über `App\Exception
 
 | Code | Status | Wo |
 | --- | --- | --- |
-| `validation_failed` | 400/422 | Eingabefehler mit `field` (`Input`, DTO-Validierung 422, Import `events[n].feld`, Export-Parameter, Bulk, Serienregel `rule.*` 400, Serie ohne Termine 422 field `rule`, `scope`) |
+| `validation_failed` | 400/422 | Eingabefehler mit `field` (`Input`, DTO-Validierung 422, Import `events[n].feld`, Export-Parameter, Bulk, Serienregel `rule.*` 400, Serie ohne Termine 422 field `rule` (auch nach einer Regeländerung), `scope`) |
 | `invalid_request` | 400 | Body ist kein JSON-Objekt, Passkey-Body unvollständig |
 | `unknown_reference` | 422 | ID nicht im Kalender (`CalendarReferences`, Bulk-`ids`, Export-`targetGroupIds`, Import-`locationTempId`, Serien-`templateId`) |
 | `duplicate_name` | 422 | Name im Kalender schon vergeben |
-| `too_many_events` | 413 / 422 | 413: Import > 5000 Termine/Orte, Bulk > 5000 IDs; 422: Serie > 366 Termine (Vorschau und Anlegen) |
+| `too_many_events` | 413 / 422 | 413: Import > 5000 Termine/Orte, Bulk > 5000 IDs; 422: Serie > 366 Termine (Vorschau, Anlegen, Regel ändern) |
+| `series_empty` | 409 | `…/event-series/{id}` `preview-update` / `PATCH`: die Serie hat keine Termine (kein Prototyp) |
+| `series_changed` | 409 | `PATCH …/event-series/{id}`: Prototyp/Referenz gleichzeitig gelöscht oder Deadlock; nichts geändert, erneut versuchen |
 | `email_taken` | 400 | Registrierung, field `email` |
 | `invalid_credentials` | 401 / 400 | Login 401 (kein Orakel); 400 bei `change-password` (field `currentPassword`) und `change-email` (field `password`) |
 | `invalid_reset_token` | 400 | `reset-password`: unbekannt, benutzt oder abgelaufen (gleiche Antwort), field `token` |
@@ -306,7 +398,8 @@ Alle mit Tests; Details in den Commits.
 - **Cron:** `php bin/console app:prune-unverified-users` und `php bin/console app:prune-password-resets` (z. B.
   täglich; abgelaufene Reset-Links und E-Mail-Wechsel).
 - **Mail-Templates:** nach Änderungen an `templates/email/*.mjml` `npm run build:mail -w backend` (die kompilierten
-  `*.html.twig` sind eingecheckt; `npm run build` baut sie ebenfalls).
+  `*.html.twig` sind eingecheckt; `npm run build` baut sie ebenfalls). Seit Paket 5 auch `password_changed`,
+  `email_change_requested`, `email_changed` (Hinweis-Mails ohne Links außer `/forgot-password`).
 - **Reverse Proxy:** der IP-Limiter von "Passwort vergessen" nutzt `Request::getClientIp()`; hinter einem Proxy, der
   die Client-Adresse nicht als `REMOTE_ADDR` weitergibt, `framework.trusted_proxies` setzen (sonst teilen sich alle
   Nutzer einen Zähler).

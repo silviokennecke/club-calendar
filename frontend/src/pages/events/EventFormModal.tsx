@@ -375,6 +375,17 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
           tone="info"
           icon="repeat"
           title={t("events.seriesInfo.title", { count: event.series.eventCount })}
+          action={
+            !readOnly && (
+              <LinkButton
+                variant="secondary"
+                icon="repeat"
+                {...nav.stepLink(page.routes.editSeries(event.id))}
+              >
+                {t("events.seriesEdit.action")}
+              </LinkButton>
+            )
+          }
         >
           {`${describeSeriesRule(event.series.rule, t, locale)}.`}
           {series && !readOnly && ` ${t("events.seriesInfo.hint")}`}

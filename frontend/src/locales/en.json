@@ -752,6 +752,60 @@
       "all": "All events of the series",
       "savedAll": "All events of the series saved.",
       "deletedAll": "All events of the series deleted."
+    },
+    "seriesEdit": {
+      "action": "Change series",
+      "title": "Change event series",
+      "subtitle": "New rule for the upcoming events of “{{name}}”.",
+      "close": "Close, change nothing",
+      "noSeries": "This event is not part of a series.",
+      "current": "Current rule",
+      "futureOnly": "A new rule only changes upcoming events from today. Past events stay as they are.",
+      "ruleTitle": "New rule",
+      "countEnded_one": "So far the series ended after {{count}} event. Choose an end date.",
+      "countEnded_other": "So far the series ended after {{count}} events. Choose an end date.",
+      "holidaysKept": "Events on holidays stay in the series",
+      "preview": "What changes",
+      "incomplete": "Choose a start and an end to see what changes.",
+      "unchanged": "The rule is unchanged. Change the rhythm, weekday, period or holidays.",
+      "summary": {
+        "created_one": "1 event will be added.",
+        "created_other": "{{count}} events will be added.",
+        "deleted_one": "1 upcoming event will be deleted.",
+        "deleted_other": "{{count}} upcoming events will be deleted.",
+        "kept_one": "1 upcoming event stays unchanged.",
+        "kept_other": "{{count}} upcoming events stay unchanged.",
+        "past_one": "1 past event stays as it is.",
+        "past_other": "{{count}} past events stay as they are."
+      },
+      "deleteList_one": "This event will be deleted",
+      "deleteList_other": "These {{count}} events will be deleted",
+      "createList_one": "This event will be added",
+      "createList_other": "These {{count}} events will be added",
+      "newNote": "new, with the details of the next event of the series",
+      "sameDates": "The upcoming events stay the same; only the stored rule changes.",
+      "submit": "Change series",
+      "confirm": {
+        "title": "Change event series?",
+        "description": "The rule of “{{name}}” changes for all upcoming events.",
+        "text": "{{deletes}}, {{creates}}. Past events stay.",
+        "deletes_zero": "Deletes no events",
+        "deletes_one": "Deletes 1 upcoming event",
+        "deletes_other": "Deletes {{count}} upcoming events",
+        "creates_zero": "creates no new ones",
+        "creates_one": "creates 1 new one",
+        "creates_other": "creates {{count}} new ones",
+        "irreversible": "Deleted events disappear from the calendar and from all feeds. This cannot be undone."
+      },
+      "done": "Event series changed: {{created}} created, {{deleted}} deleted.",
+      "errors": {
+        "failed": "The series could not be changed. Nothing was changed. Please try again.",
+        "conflict": "The series was changed in the meantime. Nothing was changed; check the updated preview and try again.",
+        "empty": "The series has no events left that could serve as the model for new events.",
+        "noEvents": "With this rule no event would be left in the series. Choose a different period.",
+        "forbidden": "You may not change this series (the calendar is archived or you are no longer a member). Nothing was changed.",
+        "gone": "The series no longer exists."
+      }
     }
   },
   "import": {
@@ -765,7 +819,7 @@
       "intro": "Choose an .ics file from another calendar app. In the next step you review the events before anything is created.",
       "series": {
         "title": "Series are imported one by one",
-        "text": "Recurrence rules are not imported. Each event of a series appears individually in the list."
+        "text": "Recurrences of the file are expanded into single events (at most 366 per recurrence, the first two years when there is no end). Each event appears individually in the list and is imported as a single event."
       },
       "wrong": {
         "title": "Wrong file type",
@@ -801,9 +855,26 @@
         "text_one": "1 event has no valid date or no name and is skipped.",
         "text_other": "{{count}} events have no valid date or no name and are skipped."
       },
-      "recurringTitle": "Repeats are not expanded",
-      "recurringText_one": "1 event has a recurrence rule in the file. Only its first event is imported.",
-      "recurringText_other": "{{count}} events have a recurrence rule in the file. Only the first event of each is imported.",
+      "recurrence": {
+        "title": "Recurrences expanded",
+        "text_one": "{{rules}} make 1 single event (note “from recurrence”). The events are imported as single events, not as an event series.",
+        "text_other": "{{rules}} make {{count}} single events (note “from recurrence”). The events are imported as single events, not as an event series.",
+        "rules_one": "1 recurrence",
+        "rules_other": "{{count}} recurrences",
+        "group_one": "Recurrence (1 event)",
+        "group_other": "Recurrence ({{count}} events)",
+        "unsupported": "Recurrence not supported: only the first event is imported.",
+        "unsupportedText_one": "This concerns 1 event. Its recurrence rule cannot be expanded.",
+        "unsupportedText_other": "This concerns {{count}} events. Their recurrence rules cannot be expanded.",
+        "unsupportedBadge": "Recurrence not supported",
+        "limitTitle": "Not all recurrences were expanded",
+        "unbounded_one": "1 recurrence has no end: the events of the first two years are taken, at most {{max}}.",
+        "unbounded_other": "{{count}} recurrences have no end: the events of the first two years are taken for each, at most {{max}}.",
+        "capped_one": "1 recurrence makes more than {{max}} events: the first {{max}} are taken.",
+        "capped_other": "{{count}} recurrences make more than {{max}} events: the first {{max}} of each are taken.",
+        "dropped_one": "The file makes more than {{max}} events: 1 later recurrence event was left out.",
+        "dropped_other": "The file makes more than {{max}} events: {{count}} later recurrence events were left out."
+      },
       "duplicates": {
         "title_one": "One event may already exist",
         "title_other": "{{count}} events may already exist",
@@ -873,7 +944,7 @@
       "duplicate": "Possible duplicate",
       "invalidBadge": "Invalid",
       "timezoneBadge": "Time zone replaced",
-      "recurring": "Repeats",
+      "recurring": "from recurrence",
       "selected": "{{selected}} of {{total}} selected",
       "importLabel_one": "Import 1 event",
       "importLabel_other": "Import {{count}} events",

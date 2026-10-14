@@ -652,3 +652,65 @@ describe("ImportPage – archived calendar", () => {
     expect(fileInput()).toBeNull();
   });
 });
+
+describe("ImportPage – recurrences", () => {
+  const recurringIcs = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "BEGIN:VEVENT",
+    "UID:tr@verein",
+    "SUMMARY:Training",
+    "DTSTART;TZID=Europe/Berlin:20261005T190000",
+    "DTEND;TZID=Europe/Berlin:20261005T210000",
+    "RRULE:FREQ=WEEKLY;COUNT=3",
+    "END:VEVENT",
+    "BEGIN:VEVENT",
+    "UID:x@verein",
+    "SUMMARY:Sitzung",
+    "DTSTART:20261007T190000",
+    "RRULE:FREQ=MONTHLY;BYDAY=MO,TU;BYSETPOS=-1",
+    "END:VEVENT",
+    "BEGIN:VEVENT",
+    "UID:e@verein",
+    "SUMMARY:Stammtisch",
+    "DTSTART;VALUE=DATE:20261001",
+    "RRULE:FREQ=WEEKLY",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+
+  it("expands rules into single events with hints, warnings and one UID per instance", async () => {
+    const user = userEvent.setup();
+    await openReview(user, recurringIcs);
+
+    // 3 Training + 1 Sitzung + 105 Stammtisch (two years)
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("109 Termine erkannt");
+    expect(screen.getByText("Wiederholungen ausgeschrieben")).toBeVisible();
+    expect(screen.getByText(/2 Wiederholungen ergeben 108 einzelne Termine/)).toHaveTextContent(
+      "nicht als Terminreihe",
+    );
+    expect(
+      screen.getByText(
+        "Wiederholung wird nicht unterstützt: nur der erste Termin wird importiert.",
+      ),
+    ).toBeVisible();
+    expect(screen.getByText(/1 Wiederholung hat kein Ende/)).toHaveTextContent(
+      "ersten zwei Jahre, höchstens 366",
+    );
+    expect(screen.getByText(/3 Termine · Wiederholung \(3 Termine\)/)).toBeVisible();
+
+    await waitFor(() => expect(previewCalls().length).toBeGreaterThan(0));
+    const body = previewCalls().at(-1)![1] as Body;
+    const uids = body.events.map((e) => e.externalUid);
+    expect(uids).toEqual(
+      expect.arrayContaining([
+        "tr@verein#20261005",
+        "tr@verein#20261012",
+        "tr@verein#20261019",
+        "x@verein",
+        "e@verein#20261001",
+      ]),
+    );
+    expect(new Set(uids).size).toBe(uids.length);
+  });
+});
