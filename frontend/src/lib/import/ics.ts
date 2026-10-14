@@ -5,6 +5,11 @@
  */
 import { addDays, isValidIso, type IsoDate } from "@/lib/calendar";
 import { windowsZoneToIana } from "./windowsZones";
+import { expandRule, fromDay, parseRRule, toDay, twoYearsAfter } from "./rrule";
+import { IMPORT_MAX } from "./review";
+
+/** Most instances one recurrence (RRULE + RDATE) is expanded to (a year of daily events). */
+export const MAX_INSTANCES_PER_RULE = 366;
 
 export interface ParsedIcsEvent {
   /** UID of the file ("" = none); sent as `externalUid` for the duplicate check of later imports. */
@@ -20,8 +25,31 @@ export interface ParsedIcsEvent {
   timezone: string | null;
   /** Free text of the LOCATION property ("" = none). */
   locationText: string;
-  /** The event carries an RRULE; only its first occurrence is in the file's list. */
+  /**
+   * Instance of a recurrence of the file (RRULE / RDATE / RECURRENCE-ID), imported as a single event;
+   * `uid` is then `${UID}#${YYYYMMDD}` (date of the instance as imported), one per instance.
+   */
   recurring: boolean;
+  /** Same key for all instances of one recurrence (the UID), null for other events. */
+  recurrenceKey: string | null;
+  /** The RRULE is not supported or broken: only this first event is imported. */
+  recurrenceUnsupported: boolean;
+}
+
+/** What expanding the recurrences of a file did (hints of the review). */
+export interface RecurrenceStats {
+  /** Recurrences expanded (events with a supported RRULE or RDATE). */
+  rules: number;
+  /** Events created from them (all instances, overrides included). */
+  instances: number;
+  /** Events with an unsupported or broken RRULE (only the first event is imported). */
+  unsupported: number;
+  /** Recurrences cut at MAX_INSTANCES_PER_RULE. */
+  capped: number;
+  /** Recurrences without an end (no COUNT / UNTIL): limited to two years or MAX_INSTANCES_PER_RULE. */
+  unbounded: number;
+  /** Instances left out because the file would exceed IMPORT_MAX events. */
+  dropped: number;
 }
 
 export type SkipReason = "noName" | "noDate" | "invalidDate";
@@ -35,6 +63,7 @@ export interface SkippedIcsEvent {
 export interface IcsParseResult {
   events: ParsedIcsEvent[];
   skipped: SkippedIcsEvent[];
+  recurrence: RecurrenceStats;
 }
 
 export interface IcsParseOptions {
@@ -140,14 +169,13 @@ export function parseDuration(value: string): { days: number; minutes: number } 
   };
 }
 
-/** Converts a UTC date and time to the wall clock of `timeZone` (unknown zones stay UTC). */
-export function utcToZone(
-  date: IsoDate,
-  time: string,
-  timeZone: string,
-): { date: IsoDate; time: string } {
-  try {
-    const parts = new Intl.DateTimeFormat("en-CA", {
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
+/** Cached formatter of a zone (creating one per instance would make large imports slow). */
+function zoneFormatter(timeZone: string): Intl.DateTimeFormat {
+  let f = formatters.get(timeZone);
+  if (!f) {
+    f = new Intl.DateTimeFormat("en-CA", {
       timeZone,
       hourCycle: "h23",
       year: "numeric",
@@ -155,12 +183,63 @@ export function utcToZone(
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
-    }).formatToParts(new Date(`${date}T${time}:00Z`));
-    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
-    return {
-      date: `${get("year")}-${get("month")}-${get("day")}`,
-      time: `${get("hour")}:${get("minute")}`,
+      second: "2-digit",
+    });
+    formatters.set(timeZone, f);
+  }
+  return f;
+}
+
+function wallClock(epochMs: number, timeZone: string): { date: IsoDate; time: string } {
+  const parts = zoneFormatter(timeZone).formatToParts(new Date(epochMs));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    time: `${get("hour")}:${get("minute")}`,
+  };
+}
+
+/** Milliseconds of a date and time read as UTC ("naive", no zone). */
+function naiveMs(date: IsoDate, time: string): number {
+  const [y, m, d] = date.split("-").map(Number);
+  const [h, mi] = time.split(":").map(Number);
+  return Date.UTC(y, m - 1, d, h, mi);
+}
+
+function fromNaiveMs(ms: number): { date: IsoDate; time: string } {
+  const iso = new Date(ms).toISOString();
+  return { date: iso.slice(0, 10), time: iso.slice(11, 16) };
+}
+
+/** Converts a UTC date and time to the wall clock of `timeZone` (unknown zones stay UTC). */
+export function utcToZone(
+  date: IsoDate,
+  time: string,
+  timeZone: string,
+): { date: IsoDate; time: string } {
+  try {
+    return wallClock(naiveMs(date, time), timeZone);
+  } catch {
+    return { date, time };
+  }
+}
+
+/** Converts a wall-clock date and time of `timeZone` to UTC (unknown zones stay as they are). */
+export function zonedToUtc(
+  date: IsoDate,
+  time: string,
+  timeZone: string,
+): { date: IsoDate; time: string } {
+  try {
+    const naive = naiveMs(date, time);
+    const offset = (ms: number) => {
+      const w = wallClock(ms, timeZone);
+      return naiveMs(w.date, w.time) - Math.floor(ms / 60_000) * 60_000;
     };
+    let epoch = naive - offset(naive);
+    const second = offset(epoch);
+    if (naive - second !== epoch) epoch = naive - second;
+    return fromNaiveMs(epoch);
   } catch {
     return { date, time };
   }
@@ -174,11 +253,106 @@ function localize(
   return { date: when.date, time: when.time };
 }
 
+type Props = Map<string, Prop[]>;
+
+const first = (props: Props, name: string): Prop | undefined => props.get(name)?.[0];
+
+/** All values of a multi-valued property (EXDATE, RDATE: several lines and comma lists). */
+function whensOf(props: Props, name: string): When[] {
+  const out: When[] = [];
+  for (const prop of props.get(name) ?? []) {
+    for (const raw of prop.value.split(",")) {
+      // RDATE;VALUE=PERIOD: "start/end" or "start/duration" → the start
+      const value = raw.split("/")[0].trim();
+      const when = parseWhen({ params: prop.params, value });
+      if (when && when !== "invalid") out.push(when);
+    }
+  }
+  return out;
+}
+
+/** Instances are compared in the representation of DTSTART: all-day, UTC, a zone or floating. */
+type Space =
+  | { kind: "date" }
+  | { kind: "utc" }
+  | { kind: "zone"; zone: string }
+  | { kind: "floating"; zone: string | null };
+
+function spaceOf(start: When, calendarZone: string | null | undefined): Space {
+  if (start.time === null) return { kind: "date" };
+  if (start.utc) return { kind: "utc" };
+  if (start.tzid) return { kind: "zone", zone: start.tzid };
+  return { kind: "floating", zone: calendarZone ?? null };
+}
+
+/** A value of EXDATE / RDATE / RECURRENCE-ID / UNTIL in the representation of the instances. */
+function inSpace(
+  when: { date: IsoDate; time: string | null; utc: boolean; tzid: string | null },
+  space: Space,
+  calendarZone: string | null | undefined,
+): { date: IsoDate; time: string | null } {
+  const time = when.time;
+  if (time === null) return { date: when.date, time: null };
+  // To UTC first (a zoned value), then to the target
+  let utc: { date: IsoDate; time: string } | null = null;
+  if (when.utc) utc = { date: when.date, time };
+  else if (when.tzid && !(space.kind === "zone" && space.zone === when.tzid))
+    utc = zonedToUtc(when.date, time, when.tzid);
+  const target =
+    space.kind === "zone" ? space.zone : space.kind === "utc" ? null : (calendarZone ?? null);
+  if (space.kind === "date") {
+    const local = utc && calendarZone ? utcToZone(utc.date, utc.time, calendarZone) : null;
+    return { date: local?.date ?? when.date, time: null };
+  }
+  if (!utc) {
+    if (space.kind === "utc" && calendarZone) return zonedToUtc(when.date, time, calendarZone);
+    return { date: when.date, time };
+  }
+  return target ? utcToZone(utc.date, utc.time, target) : utc;
+}
+
+/** "2026-10-08" → "20261008" (suffix of the per-instance UID). */
+function compact(date: IsoDate): string {
+  return date.replace(/-/g, "");
+}
+
+/** FNV-1a (32 bit) as 8 hex digits: keeps two shortened UIDs with the same beginning apart. */
+function shortHash(value: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < value.length; i += 1) {
+    h ^= value.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
+/**
+ * UID of one instance: `${uid}#YYYYMMDD`. A UID longer than 246 characters is shortened to 237
+ * characters + "~" + a hash of the whole UID, so the result fits 255 characters (the column) and two
+ * long UIDs with the same beginning stay different (counted in code points: no split surrogate pairs).
+ */
+export function instanceUid(uid: string, date: IsoDate): string {
+  if (!uid) return "";
+  const chars = Array.from(uid);
+  const base = chars.length <= 246 ? uid : `${chars.slice(0, 237).join("")}~${shortHash(uid)}`;
+  return `${base}#${compact(date)}`;
+}
+
 /** Parses all VEVENTs; events that cannot be imported are reported in `skipped`. */
 export function parseIcs(text: string, options: IcsParseOptions = {}): IcsParseResult {
   const events: ParsedIcsEvent[] = [];
   const skipped: SkippedIcsEvent[] = [];
-  let current: Map<string, Prop> | null = null;
+  const stats: RecurrenceStats = {
+    rules: 0,
+    instances: 0,
+    unsupported: 0,
+    capped: 0,
+    unbounded: 0,
+    dropped: 0,
+  };
+  const tz = options.timeZone;
+  const vevents: Props[] = [];
+  let current: Props | null = null;
   /** Depth of nested components (VALARM) inside the current VEVENT. */
   let nested = 0;
 
@@ -200,68 +374,279 @@ export function parseIcs(text: string, options: IcsParseOptions = {}): IcsParseR
       continue;
     }
     if (upper === "END:VEVENT") {
-      collect(current);
+      vevents.push(current);
       current = null;
       continue;
     }
     const parsed = parseLine(line);
-    if (parsed && !current.has(parsed.name)) current.set(parsed.name, parsed.prop);
+    if (parsed) {
+      const list = current.get(parsed.name);
+      if (list) list.push(parsed.prop);
+      else current.set(parsed.name, [parsed.prop]);
+    }
   }
 
-  function collect(props: Map<string, Prop>) {
-    const name = unescapeIcsText(props.get("SUMMARY")?.value ?? "")
-      .replace(/\s+/g, " ")
-      .trim();
-    const start = parseWhen(props.get("DTSTART"));
-    if (start === "invalid") return void skipped.push({ reason: "invalidDate", name });
-    if (!start) return void skipped.push({ reason: "noDate", name });
-    if (!name) return void skipped.push({ reason: "noName", name });
+  // RECURRENCE-ID entries replace one instance of the event with the same UID.
+  const overrides = new Map<string, Props[]>();
+  for (const props of vevents) {
+    const uid = first(props, "UID")?.value.trim() ?? "";
+    if (uid && first(props, "RECURRENCE-ID")) {
+      overrides.set(uid, [...(overrides.get(uid) ?? []), props]);
+    }
+  }
+  const expandedUids = new Set<string>();
+  /** First instance of each recurrence (never dropped by the total limit). */
+  const firstInstances = new Set<ParsedIcsEvent>();
 
-    const end = parseWhen(props.get("DTEND"));
-    const tz = options.timeZone;
-    const s = localize(start, tz);
-    const allDay = s.time === null;
-    let dateEnd: IsoDate | "" = "";
-    let timeBegin = "00:00";
-    let timeEnd = "23:59";
+  // Masters first (they decide which overrides apply), the overrides of unknown masters after.
+  vevents.forEach((props, index) => {
+    if (first(props, "RECURRENCE-ID")) return;
+    const uid = first(props, "UID")?.value.trim() ?? "";
+    const master = buildEvent(props, tz);
+    if ("reason" in master) return void skipped.push(master);
+    if (!first(props, "RRULE") && !first(props, "RDATE")) return void events.push(master.event);
 
-    // DURATION replaces DTEND (RFC 5545 3.6.1): the end is the start plus the duration.
-    const duration = end ? null : parseDuration(props.get("DURATION")?.value ?? "");
-
-    if (allDay) {
-      let last: IsoDate | null = null;
-      if (end && end !== "invalid") {
-        // All-day DTEND is exclusive.
-        last = addDays(end.date, -1);
-      } else if (duration) {
-        const days = duration.days + Math.trunc(duration.minutes / 1440);
-        last = addDays(s.date, days - 1);
-      }
-      if (last && last > s.date) dateEnd = last;
-    } else {
-      timeBegin = s.time!;
-      timeEnd = timeBegin;
-      if (end && end !== "invalid" && end.time) {
-        const e = localize(end, tz);
-        if (e.date > s.date) dateEnd = e.date;
-        timeEnd = e.time ?? timeBegin;
-      } else if (duration) {
-        const [y, mo, d] = s.date.split("-").map(Number);
-        const [h, mi] = timeBegin.split(":").map(Number);
-        const at = new Date(
-          Date.UTC(y, mo - 1, d, h, mi + duration.days * 1440 + duration.minutes),
-        );
-        const iso = at.toISOString();
-        if (iso.slice(0, 10) > s.date) dateEnd = iso.slice(0, 10);
-        timeEnd = iso.slice(11, 16);
-      }
+    const parsedRule = first(props, "RRULE") ? parseRRule(first(props, "RRULE")!.value) : null;
+    if (parsedRule && !parsedRule.ok) {
+      stats.unsupported += 1;
+      return void events.push({ ...master.event, recurrenceUnsupported: true });
     }
 
-    const locationText = unescapeIcsText(props.get("LOCATION")?.value ?? "")
-      .replace(/\s+/g, " ")
-      .trim();
-    events.push({
-      uid: props.get("UID")?.value.trim() ?? "",
+    const key = uid || `#${index}`;
+    const start = master.start;
+    const space = spaceOf(start, tz);
+    const sameTime = (t: string | null) => t === null || start.time === null || t === start.time;
+    const excluded = whensOf(props, "EXDATE").map((w) => inSpace(w, space, tz));
+    const excludedDates = new Set(excluded.filter((e) => sameTime(e.time)).map((e) => e.date));
+    const isExcluded = (date: IsoDate, time: string | null = start.time) =>
+      excluded.some(
+        (e) => e.date === date && (e.time === null || time === null || e.time === time),
+      );
+
+    let dates: { date: IsoDate; time: string | null }[] = [{ date: start.date, time: start.time }];
+    let capped = false;
+    let unbounded = false;
+    if (parsedRule?.ok) {
+      const rule = parsedRule.rule;
+      const until = rule.until
+        ? inSpace(
+            { ...rule.until, time: rule.until.time?.slice(0, 5) ?? null, tzid: null },
+            space,
+            tz,
+          )
+        : null;
+      const expanded = expandRule(rule, start.date, {
+        time: start.time,
+        until,
+        isExcluded: (date) => excludedDates.has(date),
+        max: MAX_INSTANCES_PER_RULE,
+        horizon: twoYearsAfter(start.date),
+      });
+      dates = expanded.dates.map((date) => ({ date, time: start.time }));
+      capped = expanded.capped;
+      unbounded = expanded.unbounded;
+    } else if (isExcluded(start.date)) {
+      dates = [];
+    }
+    // RDATE adds instances (also beyond COUNT), EXDATE removes them
+    const seen = new Set(dates.map((d) => `${d.date} ${d.time ?? ""}`));
+    for (const extra of whensOf(props, "RDATE").map((w) => inSpace(w, space, tz))) {
+      const time = start.time === null ? null : (extra.time ?? start.time);
+      const id = `${extra.date} ${time ?? ""}`;
+      if (seen.has(id) || isExcluded(extra.date, time) || extra.date < start.date) continue;
+      if (dates.length >= MAX_INSTANCES_PER_RULE) {
+        capped = true;
+        break;
+      }
+      seen.add(id);
+      dates.push({ date: extra.date, time });
+    }
+    dates.sort((a, b) => (a.date + (a.time ?? "")).localeCompare(b.date + (b.time ?? "")));
+
+    // Instances replaced by a RECURRENCE-ID entry of the file
+    const replaced = uid ? (overrides.get(uid) ?? []) : [];
+    const replacedAt = replaced.map((o) => {
+      const rid = parseWhen(first(o, "RECURRENCE-ID"));
+      return rid && rid !== "invalid" ? inSpace(rid, space, tz) : null;
+    });
+    stats.rules += 1;
+    if (capped) stats.capped += 1;
+    if (unbounded) stats.unbounded += 1;
+    if (uid) expandedUids.add(uid);
+
+    const instances: ParsedIcsEvent[] = [];
+    for (const at of dates) {
+      if (
+        replacedAt.some(
+          (r) =>
+            r && r.date === at.date && (r.time === null || at.time === null || r.time === at.time),
+        )
+      )
+        continue;
+      const event = instanceEvent(master, at);
+      instances.push({
+        ...event,
+        uid: instanceUid(uid, event.date),
+        recurring: true,
+        recurrenceKey: key,
+      });
+    }
+    replaced.forEach((o, i) => {
+      const built = buildEvent(o, tz);
+      if ("reason" in built) return void skipped.push(built);
+      const at = replacedAt[i];
+      const idDate = at ? localDate(at, space, tz) : built.event.date;
+      instances.push({
+        ...built.event,
+        uid: instanceUid(uid, idDate),
+        recurring: true,
+        recurrenceKey: key,
+      });
+    });
+    instances.sort(
+      (a, b) => a.date.localeCompare(b.date) || a.timeBegin.localeCompare(b.timeBegin),
+    );
+    if (instances[0]) firstInstances.add(instances[0]);
+    stats.instances += instances.length;
+    events.push(...instances);
+  });
+
+  // RECURRENCE-ID entries without a master in the file: single events (one per instance UID)
+  vevents.forEach((props) => {
+    const rid = first(props, "RECURRENCE-ID");
+    if (!rid) return;
+    const uid = first(props, "UID")?.value.trim() ?? "";
+    if (uid && expandedUids.has(uid)) return;
+    const built = buildEvent(props, tz);
+    if ("reason" in built) return void skipped.push(built);
+    const when = parseWhen(rid);
+    const space = spaceOf(built.start, tz);
+    const idDate =
+      when && when !== "invalid"
+        ? localDate(inSpace(when, space, tz), space, tz)
+        : built.event.date;
+    events.push({ ...built.event, uid: instanceUid(uid, idDate) });
+  });
+
+  // At most IMPORT_MAX events per file: later instances of recurrences give way
+  if (events.length > IMPORT_MAX) {
+    let budget = IMPORT_MAX - events.filter((e) => !e.recurring || firstInstances.has(e)).length;
+    const kept = events.filter((e) => {
+      if (!e.recurring || firstInstances.has(e)) return true;
+      budget -= 1;
+      return budget >= 0;
+    });
+    stats.dropped = events.length - kept.length;
+    stats.instances -= stats.dropped;
+    events.length = 0;
+    events.push(...kept);
+  }
+
+  return { events, skipped, recurrence: stats };
+
+  /** Date of an instance as it is imported (UTC times in the calendar's zone). */
+  function localDate(
+    at: { date: IsoDate; time: string | null },
+    space: Space,
+    zone: string | null | undefined,
+  ): IsoDate {
+    if (space.kind === "utc" && at.time && zone) return utcToZone(at.date, at.time, zone).date;
+    return at.date;
+  }
+
+  /** The master's values moved to another instance (same duration; UTC times converted per instance). */
+  function instanceEvent(
+    master: Built,
+    at: { date: IsoDate; time: string | null },
+  ): ParsedIcsEvent {
+    const ev = master.event;
+    if (at.date === master.start.date && at.time === master.start.time) return ev;
+    if (ev.isAllDay) {
+      const span = ev.dateEnd ? toDay(ev.dateEnd) - toDay(ev.date) : 0;
+      return { ...ev, date: at.date, dateEnd: span > 0 ? fromDay(toDay(at.date) + span) : "" };
+    }
+    // Duration of the master in minutes (wall clock of the imported values)
+    const span = naiveMs(ev.dateEnd || ev.date, ev.timeEnd) - naiveMs(ev.date, ev.timeBegin);
+    const startTime = at.time ?? master.start.time ?? ev.timeBegin;
+    let s: { date: IsoDate; time: string };
+    let e: { date: IsoDate; time: string };
+    if (master.start.utc && tz) {
+      const startMs = naiveMs(at.date, startTime);
+      const end = fromNaiveMs(startMs + span);
+      s = utcToZone(at.date, startTime, tz);
+      e = utcToZone(end.date, end.time, tz);
+    } else {
+      s = { date: at.date, time: startTime };
+      e = fromNaiveMs(naiveMs(at.date, startTime) + span);
+    }
+    return {
+      ...ev,
+      date: s.date,
+      dateEnd: e.date > s.date ? e.date : "",
+      timeBegin: s.time,
+      timeEnd: e.time,
+    };
+  }
+}
+
+interface Built {
+  event: ParsedIcsEvent;
+  start: When;
+}
+
+/** One event from a VEVENT's DTSTART / DTEND / DURATION (the first instance of a recurrence). */
+function buildEvent(props: Props, tz: string | null | undefined): Built | SkippedIcsEvent {
+  const name = unescapeIcsText(first(props, "SUMMARY")?.value ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const start = parseWhen(first(props, "DTSTART"));
+  if (start === "invalid") return { reason: "invalidDate", name };
+  if (!start) return { reason: "noDate", name };
+  if (!name) return { reason: "noName", name };
+
+  const end = parseWhen(first(props, "DTEND"));
+  const s = localize(start, tz);
+  const allDay = s.time === null;
+  let dateEnd: IsoDate | "" = "";
+  let timeBegin = "00:00";
+  let timeEnd = "23:59";
+
+  // DURATION replaces DTEND (RFC 5545 3.6.1): the end is the start plus the duration.
+  const duration = end ? null : parseDuration(first(props, "DURATION")?.value ?? "");
+
+  if (allDay) {
+    let last: IsoDate | null = null;
+    if (end && end !== "invalid") {
+      // All-day DTEND is exclusive.
+      last = addDays(end.date, -1);
+    } else if (duration) {
+      const days = duration.days + Math.trunc(duration.minutes / 1440);
+      last = addDays(s.date, days - 1);
+    }
+    if (last && last > s.date) dateEnd = last;
+  } else {
+    timeBegin = s.time!;
+    timeEnd = timeBegin;
+    if (end && end !== "invalid" && end.time) {
+      const e = localize(end, tz);
+      if (e.date > s.date) dateEnd = e.date;
+      timeEnd = e.time ?? timeBegin;
+    } else if (duration) {
+      const at = fromNaiveMs(
+        naiveMs(s.date, timeBegin) + (duration.days * 1440 + duration.minutes) * 60_000,
+      );
+      if (at.date > s.date) dateEnd = at.date;
+      timeEnd = at.time;
+    }
+  }
+
+  const locationText = unescapeIcsText(first(props, "LOCATION")?.value ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return {
+    start,
+    event: {
+      uid: first(props, "UID")?.value.trim() ?? "",
       name,
       date: s.date,
       dateEnd,
@@ -270,11 +655,11 @@ export function parseIcs(text: string, options: IcsParseOptions = {}): IcsParseR
       timeEnd,
       timezone: start.tzid,
       locationText,
-      recurring: props.has("RRULE"),
-    });
-  }
-
-  return { events, skipped };
+      recurring: false,
+      recurrenceKey: null,
+      recurrenceUnsupported: false,
+    },
+  };
 }
 
 /** Whether a file looks like an ICS file (by name or MIME type). */

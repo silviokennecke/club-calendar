@@ -45,6 +45,8 @@ describe("parseIcs", () => {
         timezone: "Europe/Berlin",
         locationText: "Schützenhaus Waldblick, Waldstraße 12",
         recurring: false,
+        recurrenceKey: null,
+        recurrenceUnsupported: false,
       },
     ]);
   });
@@ -136,7 +138,11 @@ describe("parseIcs", () => {
   });
 
   it("returns nothing for text without events", () => {
-    expect(parseIcs("hello")).toEqual({ events: [], skipped: [] });
+    expect(parseIcs("hello")).toEqual({
+      events: [],
+      skipped: [],
+      recurrence: { rules: 0, instances: 0, unsupported: 0, capped: 0, unbounded: 0, dropped: 0 },
+    });
   });
 });
 

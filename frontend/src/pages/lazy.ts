@@ -17,6 +17,7 @@ const modalImports = {
   EventFormModal: () => import("./events/EventFormModal"),
   EventTemplatePickModal: () => import("./events/EventTemplatePickModal"),
   EventFromTemplateModal: () => import("./events/EventFromTemplateModal"),
+  EventSeriesEditModal: () => import("./events/EventSeriesEditModal"),
   PublicEventModal: () => import("./PublicEventModal"),
 };
 
@@ -70,6 +71,7 @@ export const EventNewModal = lazyPage(modalImports.EventNewModal);
 export const EventFormModal = lazyPage(modalImports.EventFormModal);
 export const EventTemplatePickModal = lazyPage(modalImports.EventTemplatePickModal);
 export const EventFromTemplateModal = lazyPage(modalImports.EventFromTemplateModal);
+export const EventSeriesEditModal = lazyPage(modalImports.EventSeriesEditModal);
 export const EventsExportPage = lazyPage(() => import("./events/EventsExportPage"));
 export const ImportPage = lazyPage(() => import("./ImportPage"));
 export const TemplatesPage = lazyPage(() => import("./TemplatesPage"));

@@ -28,6 +28,7 @@ const EVENT_PATTERNS = [
   `${CAL}/events/new/template`,
   `${CAL}/events/new/template/:templateId`,
   `${CAL}/events/:eventId`,
+  `${CAL}/events/:eventId/series`,
 ];
 /** Pages below …/events/ that are not an event id. */
 const NOT_EVENT_IDS = new Set(["new", "export"]);
@@ -38,7 +39,7 @@ export function matchModal(pathname: string): ModalMatch | null {
     const m = matchPath(pattern, pathname);
     if (!m) continue;
     const { clubId = "", calendarId = "", eventId } = m.params;
-    if (pattern.endsWith(":eventId") && NOT_EVENT_IDS.has(eventId ?? "")) continue;
+    if (pattern.includes(":eventId") && NOT_EVENT_IDS.has(eventId ?? "")) continue;
     return { kind: "event", clubId, calendarId, base: `/clubs/${clubId}/calendars/${calendarId}` };
   }
   const pub = matchPath("/feed/:feedId/events/:eventId", pathname);
