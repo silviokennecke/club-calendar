@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Icon, type Glyph } from "./Icon";
 import { buttonClass } from "./buttonClass";
 import { Field, TextInput } from "./Field";
+import { useDialogLayer } from "./dialogStack";
 
 interface ConfirmDialogProps {
   /** Controlled open state (omit together with onOpenChange and pass `trigger` instead). */
@@ -60,6 +61,7 @@ export function ConfirmDialog({
   const cancelRef = useRef<HTMLButtonElement>(null);
   const uid = useId().replace(/:/g, "");
   const open = openProp ?? internalOpen;
+  const layerRef = useDialogLayer(open);
 
   function setOpen(next: boolean) {
     if (openProp === undefined) setInternalOpen(next);
@@ -93,6 +95,7 @@ export function ConfirmDialog({
           className="data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 bg-scrim fixed inset-0 isolate z-50 duration-100"
         />
         <AlertDialogPrimitive.Popup
+          ref={layerRef}
           initialFocus={cancelRef}
           className="ap-dialog fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2 outline-none max-[720px]:top-auto max-[720px]:bottom-0 max-[720px]:translate-y-0 max-[720px]:rounded-b-none"
         >
@@ -103,7 +106,11 @@ export function ConfirmDialog({
           <AlertDialogPrimitive.Description className="t-body">
             {description}
           </AlertDialogPrimitive.Description>
-          {consequence && <p className="ap-consequence">{consequence}</p>}
+          {consequence && (
+            <p className={cn("ap-consequence", tone === "primary" && "ap-consequence--info")}>
+              {consequence}
+            </p>
+          )}
           {requireText && (
             <Field
               id={`confirm-${uid}`}

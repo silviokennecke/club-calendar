@@ -74,4 +74,32 @@ describe("ConfirmDialog", () => {
     await userEvent.click(confirm);
     expect(onConfirm).toHaveBeenCalled();
   });
+
+  it("styles the consequence as a danger note only for destructive confirmations", async () => {
+    const { unmount } = render(
+      <ConfirmDialog
+        open
+        title="Termin löschen?"
+        description="Weg."
+        consequence="Löscht 1 Termin."
+        confirmLabel="Löschen"
+        onConfirm={() => {}}
+      />,
+    );
+    expect(await screen.findByText("Löscht 1 Termin.")).not.toHaveClass("ap-consequence--info");
+    unmount();
+    render(
+      <ConfirmDialog
+        open
+        tone="primary"
+        title="Änderungen speichern?"
+        description="Für welche Termine?"
+        consequence="Alle Termine übernehmen die Änderungen."
+        confirmLabel="Alle Termine"
+        onConfirm={() => {}}
+      />,
+    );
+    const note = await screen.findByText("Alle Termine übernehmen die Änderungen.");
+    expect(note).toHaveClass("ap-consequence", "ap-consequence--info");
+  });
 });

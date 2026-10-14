@@ -856,7 +856,7 @@
       "placeNew": "New place: {{name}}",
       "placeExisting": "Existing place: {{name}}",
       "editGroup": "Edit group",
-      "editGroupLabel": "Edit group {{name}}",
+      "editGroupLabel": "Edit group: {{name}}",
       "caption": "Events of the group {{name}}",
       "col": {
         "select": "Selection",

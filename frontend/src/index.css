@@ -1631,6 +1631,10 @@
     color: var(--ink);
     font: 600 14px/20px var(--font-sans);
   }
+  /* Consequence of a confirmation that loses nothing (series scope when saving): neutral, no alarm. */
+  .ap-consequence--info {
+    background: var(--brand-soft);
+  }
 
   /* Empty, loading */
   .ap-empty {

@@ -1,6 +1,6 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import { API, createVerifiedUser, login, seedClub } from "./helpers";
+import { API, authHeaders, createVerifiedUser, login, seedClub } from "./helpers";
 
 // ——— Events (phase 4): list, create, edit, publish, delete, template, export, mobile ———
 
@@ -342,6 +342,31 @@ test.describe("Termine", () => {
     await expect(page.getByText("Alle Termine der Reihe gelöscht.")).toBeVisible();
     await expect(page.getByRole("row").filter({ hasText: "Wiederkehrend" })).toHaveCount(0);
     await expect(created).toBeVisible();
+  });
+
+  test("Serie über einen Deep-Link: Fokus auf den Monatstitel, wenn der erste Termin nicht sichtbar ist", async ({
+    page,
+    request,
+  }) => {
+    const seeded = await seedEvents(request, "Serie Deeplink");
+    const headers = await authHeaders(request, seeded.email);
+    const templates = (await (
+      await request.get(`${API}/api/calendars/${seeded.calendarId}/templates`, { headers })
+    ).json()) as { id: string }[];
+    await login(page, seeded.email);
+    await page.waitForURL(/\/clubs/);
+    // Deep link: no opener; the calendar below shows October, the series starts in November.
+    await page.goto(`${seeded.base}/events/new/template/${templates[0].id}?date=2026-10-05`);
+    await page.getByRole("button", { name: "Terminserie" }).click();
+    await page.getByLabel("Wochentag").selectOption({ label: "Donnerstag" });
+    await page.getByLabel("Von (Pflicht)").fill("2026-11-01");
+    await page.getByLabel("Bis (Pflicht)").fill("2026-11-30");
+    await expect(page.getByText("4 Termine werden angelegt.")).toBeVisible();
+    await page.getByRole("button", { name: "Veröffentlicht" }).click();
+    await page.getByRole("button", { name: "4 Termine anlegen und veröffentlichen" }).click();
+    await expect(page.getByText("4 Termine angelegt.")).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 1, name: /Oktober 2026/ })).toBeFocused();
   });
 
   test("Ungespeicherte Änderungen und Export", async ({ page, request }) => {
