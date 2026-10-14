@@ -25,6 +25,33 @@
             "expiry_note": "Dieser Link ist 24 Stunden gültig und funktioniert nur einmal.",
             "ignore_note": "Falls du das nicht warst, kannst du diese E-Mail ignorieren. Die Adresse wird dann nicht geändert.",
             "link_note": "Falls der Button nicht funktioniert, kopiere diesen Link in deinen Browser:"
+        },
+        "notice": {
+            "when_utc": "{date} um {time} Uhr UTC",
+            "when_local": "({time} Uhr in der Zeitzone {zone})",
+            "not_you_title": "Warst du das nicht?",
+            "automatic": "Diese E-Mail informiert dich nur über eine Änderung an deinem Konto; sie wurde automatisch verschickt. Du musst nichts tun, wenn du die Änderung selbst vorgenommen hast."
+        },
+        "password_changed": {
+            "subject": "Dein Passwort wurde geändert",
+            "greeting": "Hallo {name},",
+            "body": "das Passwort deines Club-Calendar-Kontos wurde am {when} geändert.",
+            "info": "Alle anderen Sitzungen wurden dabei abgemeldet.",
+            "not_you": "Dann kennt jemand anderes dein Passwort oder hatte Zugriff auf dein Postfach. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet) und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+        },
+        "email_change_requested": {
+            "subject": "Es wurde eine Änderung deiner E-Mail-Adresse angefordert",
+            "greeting": "Hallo {name},",
+            "body": "am {when} wurde angefordert, die E-Mail-Adresse deines Club-Calendar-Kontos auf {email} zu ändern.",
+            "info": "Die Adresse ändert sich erst, wenn der Bestätigungslink geöffnet wird, der an die neue Adresse geschickt wurde. Bis dahin bleibt diese Adresse die Anmeldeadresse deines Kontos.",
+            "not_you": "Dann kennt jemand anderes dein Passwort. Setze sofort über „Passwort vergessen“ ein neues Passwort; dadurch wird auch die angeforderte Änderung verworfen. Wende dich außerdem an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+        },
+        "email_changed": {
+            "subject": "Deine E-Mail-Adresse wurde geändert",
+            "greeting": "Hallo {name},",
+            "body": "die E-Mail-Adresse deines Club-Calendar-Kontos wurde am {when} auf {email} geändert.",
+            "info": "An diese Adresse schicken wir keine weiteren Nachrichten zu deinem Konto. Alle Sitzungen wurden abgemeldet; angemeldet wird ab jetzt mit der neuen Adresse.",
+            "not_you": "Dann wende dich sofort an den Support von Club Calendar, damit dein Konto wiederhergestellt werden kann. Solange du noch angemeldet bist oder Zugriff auf die neue Adresse hast, setze außerdem über „Passwort vergessen“ ein neues Passwort. Die Seite findest du hier:"
         }
     }
 }

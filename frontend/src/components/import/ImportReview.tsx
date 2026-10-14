@@ -2,6 +2,7 @@ import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import {
   IMPORT_MAX,
+  MAX_INSTANCES_PER_RULE,
   applyIds,
   commonIds,
   commonStatus,
@@ -12,6 +13,7 @@ import {
   type IdField,
   type ImportCheck,
   type ImportItem,
+  type RecurrenceStats,
 } from "@/lib/import";
 import type { Location } from "@/lib/types";
 import { useIsMobile } from "@/lib/useMediaQuery";
@@ -31,6 +33,8 @@ interface ImportReviewProps {
   onItemsChange: Dispatch<SetStateAction<ImportItem[]>>;
   /** Events of the file that could not be read (no date or name). */
   skippedCount: number;
+  /** What expanding the file's recurrences did (instances, unsupported rules, limits). */
+  recurrence: RecurrenceStats;
   locations: Location[];
   resources: ReturnType<typeof useEventResources>;
   /** The backend's preview (or the browser's fallback check); null while it is pending. */
@@ -56,6 +60,7 @@ export function ImportReview({
   items,
   onItemsChange,
   skippedCount,
+  recurrence,
   locations,
   resources,
   check,
@@ -83,6 +88,8 @@ export function ImportReview({
   const zones = replacedZones(check?.warnings ?? []);
   const tooMany = selected.length > IMPORT_MAX;
   const recurring = items.filter((i) => i.recurring).length;
+  const unsupported = items.filter((i) => i.recurrenceUnsupported).length;
+  const fmt = (n: number) => n.toLocaleString(i18n.language);
 
   function toggleOpen(key: string) {
     setOpen((prev) => {
@@ -147,8 +154,46 @@ export function ImportReview({
         </Banner>
       )}
       {recurring > 0 && (
-        <Banner tone="info" icon="repeat" title={t("import.review.recurringTitle")}>
-          {t("import.review.recurringText", { count: recurring })}
+        <Banner tone="info" icon="repeat" title={t("import.review.recurrence.title")}>
+          {t("import.review.recurrence.text", {
+            count: recurring,
+            rules: t("import.review.recurrence.rules", { count: recurrence.rules }),
+          })}
+        </Banner>
+      )}
+      {unsupported > 0 && (
+        <Banner tone="warning" icon="repeat" title={t("import.review.recurrence.unsupported")}>
+          {t("import.review.recurrence.unsupportedText", { count: unsupported })}
+        </Banner>
+      )}
+      {(recurrence.capped > 0 || recurrence.unbounded > 0 || recurrence.dropped > 0) && (
+        <Banner tone="warning" title={t("import.review.recurrence.limitTitle")}>
+          <ul className="ap-stack" style={{ margin: 0, paddingLeft: "1.2em" }}>
+            {recurrence.unbounded > 0 && (
+              <li>
+                {t("import.review.recurrence.unbounded", {
+                  count: recurrence.unbounded,
+                  max: fmt(MAX_INSTANCES_PER_RULE),
+                })}
+              </li>
+            )}
+            {recurrence.capped > 0 && (
+              <li>
+                {t("import.review.recurrence.capped", {
+                  count: recurrence.capped,
+                  max: fmt(MAX_INSTANCES_PER_RULE),
+                })}
+              </li>
+            )}
+            {recurrence.dropped > 0 && (
+              <li>
+                {t("import.review.recurrence.dropped", {
+                  count: recurrence.dropped,
+                  max: fmt(IMPORT_MAX),
+                })}
+              </li>
+            )}
+          </ul>
         </Banner>
       )}
       {tooMany && (

@@ -44,15 +44,17 @@ readonly class AccountService
         $user->invalidateTokens();
         $this->deleteOpenEmailChanges($user);
         $this->em->flush();
+        // Notice to the account's address (after the response; no link but "forgot password")
+        $this->mailer->sendPasswordChanged($user);
 
         return $this->tokens->tokenResponse($user);
     }
 
     /**
      * Starts an e-mail change: the new address gets a confirmation link (24 h), the account keeps its
-     * address until then. If the new address already belongs to an account, no mail is sent, but the
-     * request looks the same (answer and pending address; no oracle). `$send = false` (rate limit) sends
-     * no mail either. The caller checks the password first ({@see assertPassword()}); SSO-only accounts cannot change
+     * address until then. If the new address already belongs to an account, no mail goes there, but the
+     * request looks the same (answer and pending address; no oracle). The current address gets a notice
+     * in both cases. `$send = false` (rate limit) sends no mail at all. The caller checks the password first ({@see assertPassword()}); SSO-only accounts cannot change
      * the address (409 no_password): without a password there is no re-authentication.
      */
     public function requestEmailChange(User $user, string $newEmail, bool $send = true): void
@@ -68,9 +70,15 @@ readonly class AccountService
         $token = bin2hex(random_bytes(32));
         $this->em->persist(new EmailChange($user, $newEmail, PasswordResetService::hash($token), $this->now()));
         $this->em->flush();
-        if ($send && null === $this->em->getRepository(User::class)->findOneBy(['email' => $newEmail])) {
+        if (!$send) {
+            return;
+        }
+        if (null === $this->em->getRepository(User::class)->findOneBy(['email' => $newEmail])) {
             $this->mailer->sendNewEmailConfirmation($user, $newEmail, $token);
         }
+        // The current address learns about the request in every case (the new one shown masked). A taken
+        // new address never gets a mail (that would let anyone send mails to any account holder).
+        $this->mailer->sendEmailChangeRequested($user, $newEmail);
     }
 
     public function cancelEmailChange(User $user): void
@@ -137,6 +145,7 @@ readonly class AccountService
                 return 'already_used';
             }
             $user = $change->getUser();
+            $oldEmail = $user->getEmail();
             $newEmail = $change->getNewEmail();
             $taken = $this->em->getRepository(User::class)->findOneBy(['email' => $newEmail]);
             if (null !== $taken && $taken->getId() !== $user->getId()) {
@@ -163,6 +172,8 @@ readonly class AccountService
             $connection->rollBack();
             throw $e;
         }
+        // Notice to the FORMER address: whoever lost the account learns about it
+        $this->mailer->sendEmailChanged($user, $oldEmail, $newEmail);
 
         return 'success';
     }

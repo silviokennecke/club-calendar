@@ -4,6 +4,8 @@ import {
   changedEventFields,
   changesDate,
   describeSeriesRule,
+  formFromRule,
+  sameSeriesRule,
   seriesPreviewRows,
   toSeriesRule,
   type SeriesFormRule,
@@ -130,5 +132,45 @@ describe("changedEventFields", () => {
   it("knows date changes (they stay with this event)", () => {
     expect(changesDate(changedEventFields(base, { ...base, date: "2026-10-09" }))).toBe(true);
     expect(changesDate(changedEventFields(base, { ...base, name: "X" }))).toBe(false);
+  });
+});
+
+describe("rule change (Reihe ändern)", () => {
+  const stored: SeriesRule = {
+    frequency: "monthly",
+    weekday: 2,
+    nth: 5,
+    startDate: "2026-10-01",
+    until: "2026-12-31",
+    count: null,
+    skipHolidays: true,
+    durationDays: 0,
+  };
+
+  it("fills the form from the stored rule and back", () => {
+    const f = formFromRule(stored);
+    expect(f).toEqual({
+      rhythm: "monthly",
+      weekday: 2,
+      nth: 5,
+      from: "2026-10-01",
+      to: "2026-12-31",
+      skipHolidays: true,
+    });
+    expect(sameSeriesRule(stored, toSeriesRule(f)!)).toBe(true);
+    expect(sameSeriesRule(stored, toSeriesRule({ ...f, to: "2027-01-31" })!)).toBe(false);
+    expect(sameSeriesRule(stored, toSeriesRule({ ...f, nth: 1 })!)).toBe(false);
+    expect(sameSeriesRule(stored, toSeriesRule({ ...f, skipHolidays: false })!)).toBe(false);
+  });
+
+  it("asks for an end date when the series ended by count", () => {
+    const byCount = { ...stored, frequency: "weekly" as const, nth: null, until: null, count: 5 };
+    const f = formFromRule(byCount);
+    expect(f.to).toBe("");
+    expect(f.nth).toBe(1);
+    expect(toSeriesRule(f)).toBeNull();
+    expect(formFromRule(byCount, "2026-11-05").to).toBe("2026-11-05");
+    // An end date instead of the count is a change
+    expect(sameSeriesRule(byCount, toSeriesRule({ ...f, to: "2026-11-05" })!)).toBe(false);
   });
 });

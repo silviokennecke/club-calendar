@@ -140,6 +140,8 @@ readonly class PasswordResetService
             $connection->rollBack();
             throw $e;
         }
+        // Notice to the account's address (after the response; no link but "forgot password")
+        $this->mailer->sendPasswordChanged($user);
     }
 
     /** Deletes expired links; returns the number of deleted rows. */

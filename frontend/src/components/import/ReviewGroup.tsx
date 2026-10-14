@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import {
   groupPlace,
   placeLabel,
+  recurrenceCounts,
   resolvePlace,
   selectionState,
   type ImportGroup,
@@ -66,6 +67,7 @@ export function ReviewGroup({
     ? t("import.review.singleCount", { count: items.length })
     : t("import.review.groupCount", { count: items.length });
   const isNewPlace = place !== "mixed" && place.kind === "new";
+  const recurrences = recurrenceCounts(items);
 
   // After "show more" focus moves to the first new row (the button may disappear).
   useEffect(() => {
@@ -115,7 +117,12 @@ export function ReviewGroup({
         </label>
         <div className="ap-grow" style={{ minWidth: 200 }}>
           <h3 className="t-h3">{name}</h3>
-          <p className="t-sm t-muted">{countText}</p>
+          <p className="t-sm t-muted">
+            {[
+              countText,
+              ...recurrences.map((count) => t("import.review.recurrence.group", { count })),
+            ].join(" · ")}
+          </p>
         </div>
         {state === "some" && (
           <span className="ap-count" style={{ minWidth: "auto", padding: "0 var(--space-2)" }}>
@@ -211,6 +218,12 @@ export function ReviewGroup({
                           <span className="ap-badge">
                             <Icon glyph="repeat" size={14} />
                             {t("import.review.recurring")}
+                          </span>
+                        )}
+                        {item.recurrenceUnsupported && (
+                          <span className="ap-badge">
+                            <Icon glyph="alert" size={14} />
+                            {t("import.review.recurrence.unsupportedBadge")}
                           </span>
                         )}
                       </div>
