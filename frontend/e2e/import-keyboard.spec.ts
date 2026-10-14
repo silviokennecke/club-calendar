@@ -127,7 +127,10 @@ test.describe("Import und Vorlagen per Tastatur", () => {
     );
 
     // Bündel-Dialog der Gruppe: Fokusfalle, Escape, Fokus zurück
-    const edit = page.getByRole("button", { name: "Gruppe Training Luftgewehr bearbeiten" });
+    const edit = page.getByRole("button", {
+      name: "Gruppe bearbeiten: Training Luftgewehr",
+      exact: true,
+    });
     await edit.focus();
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "Gruppe bearbeiten: Training Luftgewehr" });

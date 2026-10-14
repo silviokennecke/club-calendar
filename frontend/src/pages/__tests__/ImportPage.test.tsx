@@ -408,10 +408,25 @@ describe("ImportPage – review", () => {
     expect(within(table).getAllByText("Veröffentlicht")).toHaveLength(2);
   });
 
+  it("keeps the visible text in the accessible name of the group's edit button", async () => {
+    const user = userEvent.setup();
+    await openReview(user);
+    const buttons = screen.getAllByRole("button", { name: /^Gruppe bearbeiten/ });
+    expect(buttons.length).toBeGreaterThan(0);
+    for (const edit of buttons) {
+      expect(edit.getAttribute("aria-label")).toContain(edit.textContent);
+    }
+    expect(
+      screen.getByRole("button", { name: "Gruppe bearbeiten: Training Luftgewehr" }),
+    ).toBeInTheDocument();
+  });
+
   it("edits a group in the dialog and validates", async () => {
     const user = userEvent.setup();
     await openReview(user);
-    await user.click(screen.getByRole("button", { name: "Gruppe Training Luftgewehr bearbeiten" }));
+    await user.click(
+      screen.getByRole("button", { name: "Gruppe bearbeiten: Training Luftgewehr" }),
+    );
     const dialog = await screen.findByRole("dialog", {
       name: "Gruppe bearbeiten: Training Luftgewehr",
     });
@@ -430,7 +445,9 @@ describe("ImportPage – review", () => {
   it("closes the edit dialog with Escape and returns focus to its button (shared FormDialog)", async () => {
     const user = userEvent.setup();
     await openReview(user);
-    const opener = screen.getByRole("button", { name: "Gruppe Training Luftgewehr bearbeiten" });
+    const opener = screen.getByRole("button", {
+      name: "Gruppe bearbeiten: Training Luftgewehr",
+    });
     await user.click(opener);
     const dialog = await screen.findByRole("dialog", {
       name: "Gruppe bearbeiten: Training Luftgewehr",

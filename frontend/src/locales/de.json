@@ -856,7 +856,7 @@
       "placeNew": "Neuer Ort: {{name}}",
       "placeExisting": "Vorhandener Ort: {{name}}",
       "editGroup": "Gruppe bearbeiten",
-      "editGroupLabel": "Gruppe {{name}} bearbeiten",
+      "editGroupLabel": "Gruppe bearbeiten: {{name}}",
       "caption": "Termine der Gruppe {{name}}",
       "col": {
         "select": "Auswahl",

@@ -36,10 +36,10 @@ export function Topbar({ data }: { data: ShellData }) {
         <div className="ap-menu-title">{t("shell.calendar")}</div>
         <CalendarMenuItems data={data} onNavigate={close} />
       </ContextMenu>
-      <Link className="ap-iconbtn" to="/profile" aria-label={t("shell.profile")}>
-        <span className="ap-avatar" aria-hidden="true">
-          {initials(data.userName)}
-        </span>
+      {/* The initials are the link's visible text, so the name starts with them (WCAG 2.5.3 label in name). */}
+      <Link className="ap-iconbtn" to="/profile">
+        <span className="ap-avatar">{initials(data.userName)}</span>
+        <span className="ap-sr">, {t("shell.profile")}</span>
       </Link>
     </header>
   );
