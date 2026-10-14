@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { templateTimes } from "@/lib/templates";
 import { ApiError, apiGet, apiPost } from "@/lib/api";
-import { addDays, dayOfWeek, isValidIso, weekdayNames } from "@/lib/calendar";
+import { addDays, dayOfWeek, isValidIso } from "@/lib/calendar";
 import {
   SERIES_MAX_EVENTS,
   formatWeekdayDate,
@@ -13,8 +13,7 @@ import {
   toSeriesRule,
   type EventSeriesInfo,
   type EventStatus,
-  type SeriesFrequency,
-  type SeriesNth,
+  type SeriesFormRule,
   type SeriesPreviewRow,
 } from "@/lib/events";
 import type { CalendarEvent, EventTemplate } from "@/lib/types";
@@ -25,7 +24,6 @@ import {
   Field,
   LinkButton,
   Modal,
-  NativeSelect,
   StatusBadge,
   TextInput,
   toast,
@@ -36,13 +34,9 @@ import { useLocale } from "@/components/calendar/useLocale";
 import { CreateGateBody, ModalSkeleton } from "@/components/events/CreateGate";
 import { createGate } from "@/components/events/createGateState";
 import { useSeriesPreview } from "@/components/events/useSeriesPreview";
+import { SeriesRuleFields } from "@/components/events/SeriesRuleFields";
 import { useModalNav } from "@/lib/useModalNav";
 import { eventSelector, focusAfterModalClose } from "@/lib/modalFocus";
-
-const RHYTHMS: SeriesFrequency[] = ["weekly", "biweekly", "monthly"];
-const NTHS: SeriesNth[] = [1, 2, 3, 4, 5];
-/** Monday first, Sunday last (design order). */
-const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 /**
  * Event from a template (design: EventSeries; step of the create dialog,
@@ -139,12 +133,15 @@ function SeriesForm({
   const start = presetDate ?? page.today;
   const [mode, setMode] = useState<"single" | "series">("single");
   const [date, setDate] = useState<string>(start);
-  const [rhythm, setRhythm] = useState<SeriesFrequency>("weekly");
-  const [nth, setNth] = useState<SeriesNth>(1);
-  const [weekday, setWeekday] = useState<number>(dayOfWeek(start));
-  const [from, setFrom] = useState<string>(start);
-  const [to, setTo] = useState<string>(addDays(start, 8 * 7));
-  const [skip, setSkip] = useState(true);
+  const [ruleForm, setRuleForm] = useState<SeriesFormRule>({
+    rhythm: "weekly",
+    nth: 1,
+    weekday: dayOfWeek(start),
+    from: start,
+    to: addDays(start, 8 * 7),
+    skipHolidays: true,
+  });
+  const skip = ruleForm.skipHolidays;
   const [status, setStatus] = useState<EventStatus>("draft");
   const [saving, setSaving] = useState(false);
   // Also shown in the dialog: toasts sit behind the modal for screen readers.
@@ -152,8 +149,7 @@ function SeriesForm({
   const [dateError, setDateError] = useState(false);
 
   const series = mode === "series";
-  const rule = toSeriesRule({ rhythm, weekday, nth, from, to, skipHolidays: skip });
-  const rangeError = series && isValidIso(from) && isValidIso(to) && to < from;
+  const rule = toSeriesRule(ruleForm);
   const preview = useSeriesPreview(page.calendarId, rule, series);
   const tooMany = preview.error instanceof ApiError && preview.error.code === "too_many_events";
 
@@ -169,7 +165,6 @@ function SeriesForm({
   const skippedCount = preview.data?.skippedHolidays.length ?? 0;
   const holidayCount = preview.data?.holidays.length ?? 0;
   const ready = !series || (!!rule && !!preview.data && !preview.pending && !preview.error);
-  const names = weekdayNames(locale, 0, "long");
   // A template without times creates all-day events (backend rule, see BACKEND-GAPS.md)
   const times = templateTimes(template);
   const time = times ? t("events.series.timeRange", times) : t("events.series.allDay");
@@ -336,91 +331,12 @@ function SeriesForm({
             />
           </Field>
         ) : (
-          <>
-            <fieldset className="ap-fieldset">
-              <legend>{t("events.series.rhythm")}</legend>
-              <div
-                className="ap-seg"
-                role="group"
-                aria-label={t("events.series.rhythm")}
-                style={{ alignSelf: "flex-start", flexWrap: "wrap" }}
-              >
-                {RHYTHMS.map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    aria-pressed={rhythm === r}
-                    onClick={() => setRhythm(r)}
-                  >
-                    {t(`events.series.rhythms.${r}`)}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-            {rhythm === "monthly" && (
-              <fieldset className="ap-fieldset">
-                <legend>{t("events.series.nthLegend")}</legend>
-                <div
-                  className="ap-seg"
-                  role="group"
-                  aria-label={t("events.series.nthLegend")}
-                  style={{ alignSelf: "flex-start", flexWrap: "wrap" }}
-                >
-                  {NTHS.map((x) => (
-                    <button
-                      key={x}
-                      type="button"
-                      aria-pressed={nth === x}
-                      onClick={() => setNth(x)}
-                    >
-                      {t(`events.series.nth.${x}`)}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-            )}
-            <Field id="ser-wd" label={t("events.series.weekday")}>
-              <NativeSelect value={weekday} onChange={(e) => setWeekday(Number(e.target.value))}>
-                {WEEKDAY_ORDER.map((d) => (
-                  <option key={d} value={d}>
-                    {names[d]}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
-            <div className="ap-inputrow">
-              <Field id="ser-from" label={t("events.series.from")} required>
-                <TextInput type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-              </Field>
-              <Field
-                id="ser-to"
-                label={t("events.series.to")}
-                required
-                error={rangeError ? t("events.series.rangeInvalid") : undefined}
-              >
-                <TextInput
-                  type="date"
-                  value={to}
-                  min={from || undefined}
-                  onChange={(e) => setTo(e.target.value)}
-                />
-              </Field>
-            </div>
-            <div>
-              <label className="ap-check">
-                <input
-                  type="checkbox"
-                  checked={skip}
-                  aria-describedby="ser-skip-hint"
-                  onChange={(e) => setSkip(e.target.checked)}
-                />
-                <span>
-                  {t("events.series.skipHolidays")}
-                  <small id="ser-skip-hint">{skipCounter}</small>
-                </span>
-              </label>
-            </div>
-          </>
+          <SeriesRuleFields
+            value={ruleForm}
+            onChange={setRuleForm}
+            idPrefix="ser"
+            skipHint={skipCounter}
+          />
         )}
       </section>
 

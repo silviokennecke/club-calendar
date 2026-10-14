@@ -19,6 +19,8 @@ export function eventRoutes(base: string) {
     fromTemplate: (templateId: string, date?: string | null) =>
       withDate(`${base}/events/new/template/${templateId}`, date),
     edit: (eventId: string) => `${base}/events/${eventId}`,
+    /** "Reihe ändern": new rule for the series of an event (step of the edit dialog). */
+    editSeries: (eventId: string) => `${base}/events/${eventId}/series`,
     export: `${base}/events/export`,
     import: `${base}/import`,
     templates: `${base}/templates`,

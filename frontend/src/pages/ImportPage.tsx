@@ -245,6 +245,7 @@ function Import() {
               items={items}
               onItemsChange={setItems}
               skippedCount={file.skipped.length}
+              recurrence={file.recurrence}
               locations={resources.locations}
               resources={resources}
               check={check}

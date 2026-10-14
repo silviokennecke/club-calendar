@@ -11,6 +11,7 @@ describe("matchModal", () => {
       `${BASE}/events/new/template`,
       `${BASE}/events/new/template/t1`,
       `${BASE}/events/e1`,
+      `${BASE}/events/e1/series`,
     ]) {
       expect(matchModal(path)).toEqual({
         kind: "event",
@@ -31,6 +32,7 @@ describe("matchModal", () => {
       BASE,
       `${BASE}/events`,
       `${BASE}/events/export`,
+      `${BASE}/events/export/series`,
       `${BASE}/import`,
       `${BASE}/templates/t1`,
       "/feed/f1",

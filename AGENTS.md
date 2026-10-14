@@ -15,7 +15,7 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | Clubs | `/api/clubs` | `ClubController` | `ClubService` |
 | Calendars | `/api/clubs/{clubId}/calendars` | `CalendarController` | `CalendarService` |
 | Events | `/api/calendars/{calendarId}/events` (incl. `…/import/preview`, `…/import`, `…/bulk`, `…/series/preview`, `…/series`, PATCH/DELETE with `scope=this\|all`, export `/api/calendars/{calendarId}/events.ics`) | `EventController` | `EventService`, `EventSeriesService`, `EventImportService`, `EventExportService` |
-| Event Series | `/api/calendars/{calendarId}/event-series/{seriesId}` (rule + `eventCount`) | `EventSeriesController` | `EventSeriesService`, `SeriesRule` |
+| Event Series | `/api/calendars/{calendarId}/event-series/{seriesId}` (GET rule + `eventCount`; `POST …/preview-update {rule}`, `PATCH {rule}` change the rule for future events) | `EventSeriesController` | `EventSeriesService`, `SeriesRule` |
 | Event Templates | `/api/calendars/{calendarId}/templates` | `EventTemplateController` | `EventTemplateService` |
 | Properties | `/api/calendars/{calendarId}/properties` | `PropertyController` | `PropertyService` |
 | Features | `/api/calendars/{calendarId}/features` | `FeatureController` | `FeatureService` |
@@ -43,7 +43,7 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | `src/Security/SignedTokenService.php`, `NonceStore.php` | Signed, purpose-bound, single-use tokens (passkey challenges, OAuth `state`, SSO link ticket/state/proof; table `auth_nonce`) |
 | `src/Service/PasswordResetService.php` | Forgot / reset password: hashed one-time tokens (table `password_reset`, 60 min), single conditional UPDATE against races, ends all sessions |
 | `src/Service/AccountService.php` | Change password (new tokens), e-mail change with confirmation link (table `email_change`, no oracle), unlink SSO (last sign-in method stays) |
-| `src/Service/DeferredMailer.php`, `AccountMailer.php` | Mails (and `defer()`red work such as the forgot-password lookup and token) after the response (`kernel.terminate`, no timing oracle); links only from `FRONTEND_URL` / `BACKEND_URL` |
+| `src/Service/DeferredMailer.php`, `AccountMailer.php` | Mails (and `defer()`red work such as the forgot-password lookup and token) after the response (`kernel.terminate`, no timing oracle; transport errors are logged, never raised); links only from `FRONTEND_URL` / `BACKEND_URL`; notices (password changed, e-mail change requested / done) carry no token and no link but `/forgot-password`, the new address masked (`maskEmail`) |
 | `src/Validator/PasswordPolicy.php` | The one password policy (8–128 characters) for registration, reset and change |
 | `src/Logging/RedactTokensProcessor.php` | Monolog processor: `token`/`ticket`/`secret`/… query values in log records → `[redacted]` |
 | `src/Command/` | `app:prune-unverified-users`, `app:prune-password-resets` (cron), `app:user:verify <email>`, `app:user:reset-link <email>` (support / dev / E2E) |
@@ -53,7 +53,7 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | `src/Service/EventImportService.php` | ICS import: preview (`new`/`duplicate`/`invalid` per entry, writes nothing) and atomic import (new places by `tempId`, `skipDuplicates`, unknown time zones → calendar zone + `warnings`, max. 5000 per request → 413 `too_many_events`) |
 | `src/Service/EventExportService.php` | Member ICS download via `IcsService` (`from`/`to` overlap, `includeDrafts` as TENTATIVE, `targetGroupIds[]` of the calendar, safe `Content-Disposition`) |
 | `src/Service/SeriesRule.php` | Series rule (weekly / biweekly / monthly n-th weekday, `until` or `count`, `skipHolidays`, `durationDays`): validation and the ONLY computation of series dates (calendar days in UTC), max. 366 events (422 `too_many_events`) |
-| `src/Service/EventSeriesService.php` | Series preview (dates, skipped holidays of the calendar's holiday calendars) and atomic creation of series + events (template values like `from-template`); scope `this`/`all` of PATCH/DELETE and the clean-up of empty series live in `EventService` |
+| `src/Service/EventSeriesService.php` | Series preview (dates, skipped holidays of the calendar's holiday calendars) and atomic creation of series + events (template values like `from-template`); rule change (`previewUpdate` / `update`: future events only, today in the calendar's zone via `ClockInterface`, prototype = earliest future event, series row locked, max. 366 events afterwards, 409 `series_empty` / `series_changed`); scope `this`/`all` of PATCH/DELETE and the clean-up of empty series live in `EventService` |
 | `src/Service/UsageCounts.php` | Counters for lists and delete dialogs (clubs, calendars, usage of properties/features/target groups/locations, events per template): one grouped query per counter, never one per row |
 | `src/Service/UniqueNames.php` | Names of properties/features/target groups unique per calendar (trim, case-insensitive, compared in PHP; no unique index, old duplicates stay) |
 | `src/Exception/ApiProblemException.php` | HTTP error with a stable `code` (+ optional `field`) in the RFC 7807 body, e.g. 422 `duplicate_name`; code list: `docs/redesign/BACKEND-GAPS.md` (Fehlercodes) |
@@ -114,6 +114,7 @@ Run: `cd backend && composer test` (requires a MySQL test DB on port 3360). `TES
 
 ## Event Series
 
-- `EventSeries` (`event_series`: rule + optional template, FK calendar CASCADE, template SET NULL) and `Event.series` (`series_id`, SET NULL). The events are normal rows; the rule is only displayed later (not re-evaluated).
+- `EventSeries` (`event_series`: rule + optional template, FK calendar CASCADE, template SET NULL) and `Event.series` (`series_id`, SET NULL). The events are normal rows; the rule is re-evaluated only when it is changed.
+- `POST …/event-series/{id}/preview-update {rule}` → `{toCreate, toDelete, kept, past, skippedHolidays}`; `PATCH …/event-series/{id} {rule}` → `{series, created, deleted, kept}`: future events (date ≥ today in the calendar's zone) on dates of the new rule stay, missing dates are created from the prototype (earliest future event), other future events are deleted; past events never change (`EventSeriesRuleChangeTest`).
 - `POST …/events/series/preview {rule}` → `{dates, count, skippedHolidays, holidays}`; `POST …/events/series {rule, templateId?, event?, isDraft?}` → 201 `{series, events}` (one flush); lists carry `seriesId`, the single event GET also `series {id, rule, eventCount, …}`.
 - `PATCH …/events/{id}` `scope: "all"` applies the sent fields to every event of the series except `date`/`dateEnd`/template (each event keeps its day); `this` (default) changes one event, which stays in the series. `DELETE …?scope=all` deletes the series with its events; a series without events is removed (also after bulk delete). Details: `docs/redesign/BACKEND-GAPS.md` ("Paket 4").

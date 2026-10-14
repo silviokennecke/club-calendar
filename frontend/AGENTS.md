@@ -119,7 +119,11 @@ does not offer yet and how the frontend works around it).
   archived calendars; events of a series show "Teil einer Terminreihe (n Termine)" with the rule text from the
   single GET's `series`, and saving changes / deleting asks "Nur diesen Termin" / "Alle Termine der Reihe" via
   `ConfirmDialog` `alternative`: "all" PATCHes only the changed fields (`changedEventFields`) with `scope: "all"`
-  (the backend keeps each event's date), deleting all is `DELETE …?scope=all`); `…/events/export` stays a page (downloads `GET …/events.ics` with the JWT via `apiFetch` + Blob + `a[download]`,
+  (the backend keeps each event's date), deleting all is `DELETE …?scope=all`; the series notice links "Reihe ändern"),
+  `…/events/:eventId/series` "Reihe ändern" (`EventSeriesEditModal`, own addition: rule form `SeriesRuleFields` shared
+  with "Termin aus Vorlage", `useSeriesUpdatePreview` = `POST …/event-series/{id}/preview-update` debounced; lists
+  new / deleted / unchanged / past events in a live region, `ConfirmDialog` "Löscht n künftige Termine, legt m neue
+  an. Vergangene Termine bleiben.", then `PATCH …/event-series/{id}`; 409 / 422 / 403 / network as banners); `…/events/export` stays a page (downloads `GET …/events.ics` with the JWT via `apiFetch` + Blob + `a[download]`,
   error banner; the count preview uses `selectForExport`/`exportQuery` with the same rule). The list's bulk actions
   (publish / draft / delete) are one atomic `POST …/events/bulk` (fails as a whole, selection stays). Create dialogs of archived calendars show
   the archive notice instead of the form (`CreateGateBody`, `createGateState.ts`). Save / delete invalidate
@@ -134,7 +138,10 @@ does not offer yet and how the frontend works around it).
 - Import: `…/import` is one page with a Stepper (Datei, Prüfen, Fertig; state in `pages/ImportPage.tsx`,
   UI in `components/import/`: `ImportUpload` file input + drop zone, `ImportReview` bulk panel / groups / summary bar,
   `ReviewGroup`, `ImportEditDialog`, `ImportDone`). Pure logic in `src/lib/import/` (`ics.ts` parser incl. unfolding,
-  TZID/UTC, all-day end, skipped events; `review.ts` items, groups by name, place matching, bulk id diffs, duplicates,
+  TZID/UTC, all-day end, skipped events, recurrences: `rrule.ts` expands RRULE (DAILY/WEEKLY/MONTHLY/YEARLY, INTERVAL,
+  COUNT, UNTIL, BYDAY incl. `2MO`/`-1FR`, BYMONTHDAY, BYMONTH, WKST) with EXDATE / RDATE / RECURRENCE-ID into SINGLE
+  events (`externalUid` = `UID#YYYYMMDD`, max. 366 per rule, rules without end two years, max. `IMPORT_MAX` per file;
+  unsupported parts like BYSETPOS keep the first event with a warning; stats in `IcsParseResult.recurrence`); `review.ts` items, groups by name, place matching, bulk id diffs, duplicates,
   request body `toImportRequest` with `locationTempId` for new places and `externalUid` from the ICS UID,
   `checkFromPreview`) with Vitest tests. The file is parsed in the browser; `components/import/useImportPreview.ts`
   sends all items to `POST …/events/import/preview` (debounced, reruns after edits, not after selection changes):

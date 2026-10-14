@@ -36,7 +36,12 @@ export interface ImportItem {
   locationText: string;
   /** Set when the user picked a place; otherwise the place follows from `locationText`. */
   placeOverride: PlaceRef | null;
+  /** Instance of an expanded recurrence of the file (imported as a single event). */
   recurring: boolean;
+  /** Same key for all instances of one recurrence (UID), null otherwise. */
+  recurrenceKey: string | null;
+  /** The file's RRULE is not supported: only this first event is imported. */
+  recurrenceUnsupported: boolean;
   status: EventStatus;
   propertyIds: string[];
   featureIds: string[];
@@ -79,6 +84,8 @@ export function buildItems(parsed: ParsedIcsEvent[]): ImportItem[] {
       locationText: ev.locationText,
       placeOverride: null,
       recurring: ev.recurring,
+      recurrenceKey: ev.recurrenceKey,
+      recurrenceUnsupported: ev.recurrenceUnsupported,
       status: "draft",
       propertyIds: [],
       featureIds: [],
@@ -107,6 +114,16 @@ export function groupItems(items: ImportItem[]): ImportGroup[] {
     };
   });
   return groups.sort((a, b) => Number(a.key === OTHERS_GROUP) - Number(b.key === OTHERS_GROUP));
+}
+
+/** Instances per recurrence of the given items ("Wiederholung (n Termine)"), in order of appearance. */
+export function recurrenceCounts(items: Pick<ImportItem, "recurrenceKey">[]): number[] {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    if (item.recurrenceKey !== null)
+      counts.set(item.recurrenceKey, (counts.get(item.recurrenceKey) ?? 0) + 1);
+  }
+  return [...counts.values()];
 }
 
 export type SelectionState = "all" | "some" | "none";

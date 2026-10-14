@@ -10,8 +10,9 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * A series of events created from one rule (design: EventSeries). The events are ordinary rows of
- * `event` with `series_id`; the rule is kept for display ("Teil einer Terminreihe") and is not
- * re-evaluated later. A series without events is removed (EventService).
+ * `event` with `series_id`; the rule is kept for display ("Teil einer Terminreihe") and only
+ * re-evaluated when it is changed (`PATCH …/event-series/{id}`: future events only, see
+ * EventSeriesService::update). A series without events is removed (EventService).
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'event_series')]
@@ -105,6 +106,21 @@ class EventSeries
             $this->skipHolidays,
             $this->durationDays,
         );
+    }
+
+    /** New rule of the series (`PATCH …/event-series/{id}`, EventSeriesService::update). */
+    public function changeRule(SeriesRule $rule): static
+    {
+        $this->frequency = $rule->frequency;
+        $this->weekday = $rule->weekday;
+        $this->nth = $rule->nth;
+        $this->startDate = $rule->startDate;
+        $this->untilDate = $rule->until;
+        $this->occurrences = $rule->count;
+        $this->skipHolidays = $rule->skipHolidays;
+        $this->durationDays = $rule->durationDays;
+
+        return $this;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

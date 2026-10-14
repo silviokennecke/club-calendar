@@ -25,6 +25,33 @@
             "expiry_note": "This link is valid for 24 hours and works only once.",
             "ignore_note": "If this was not you, you can safely ignore this email. The address will not be changed.",
             "link_note": "If the button does not work, copy this link into your browser:"
+        },
+        "notice": {
+            "when_utc": "{date} at {time} UTC",
+            "when_local": "({time} in the time zone {zone})",
+            "not_you_title": "This wasn't you?",
+            "automatic": "This e-mail only informs you about a change to your account; it was sent automatically. If you made the change yourself, there is nothing to do."
+        },
+        "password_changed": {
+            "subject": "Your password was changed",
+            "greeting": "Hello {name},",
+            "body": "the password of your Club Calendar account was changed on {when}.",
+            "info": "All other sessions were signed out.",
+            "not_you": "Then someone else knows your password or had access to your mailbox. Set a new password via “Forgot password” right away (this ends all sessions) and contact Club Calendar support. You find the “Forgot password” page here:"
+        },
+        "email_change_requested": {
+            "subject": "A change of your e-mail address was requested",
+            "greeting": "Hello {name},",
+            "body": "on {when} someone requested to change the e-mail address of your Club Calendar account to {email}.",
+            "info": "The address only changes once the confirmation link sent to the new address is opened. Until then this address stays the sign-in address of your account.",
+            "not_you": "Then someone else knows your password. Set a new password via “Forgot password” right away; this also discards the requested change. Please contact Club Calendar support as well. You find the “Forgot password” page here:"
+        },
+        "email_changed": {
+            "subject": "Your e-mail address was changed",
+            "greeting": "Hello {name},",
+            "body": "the e-mail address of your Club Calendar account was changed to {email} on {when}.",
+            "info": "We will not send further messages about your account to this address. All sessions were signed out; from now on you sign in with the new address.",
+            "not_you": "Then contact Club Calendar support right away so your account can be restored. As long as you are still signed in or have access to the new address, also set a new password via “Forgot password”. You find the page here:"
         }
     }
 }

@@ -36,6 +36,8 @@ function ev(name: string, date: string, extra: Partial<ParsedIcsEvent> = {}): Pa
     timezone: null,
     locationText: "",
     recurring: false,
+    recurrenceKey: null,
+    recurrenceUnsupported: false,
     ...extra,
   };
 }
