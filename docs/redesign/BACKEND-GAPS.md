@@ -166,7 +166,7 @@ Stelle, die Daten einer Regel berechnet; das Frontend zeigt die Vorschau des Ser
   kommt entprellt (300 ms) vom Server (`components/events/useSeriesPreview.ts`; Lade-, Fehler- mit "Erneut
   versuchen", Obergrenzen- und Leerzustand, "Keine Termine zum Anlegen"); der Regelrechner im Browser ist entfallen
   (`lib/events/series.ts` enthält nur noch Typen, Vorschauzeilen, Regeltext und den Änderungs-Diff). Erfolg: Toast "n
-  Termine angelegt.", zurück, Fokus auf den ersten Termin. Tag "Wiederkehrend" (`Tag tone="brand"`, Design Library)
+  Termine angelegt.", zurück; Fokus auf den ersten Termin, wenn er im sichtbaren Zeitraum liegt, sonst zum Auslöser, bei einem Deep-Link zur Seitenüberschrift (Monatstitel). Tag "Wiederkehrend" (`Tag tone="brand"`, Design Library)
   in der Terminliste, an `EventItem` (Tagespanel, mobile Tagesliste) und im Kopf des Bearbeiten-Dialogs; nicht an
   den Chips im Monatsraster (Design MonthView zeigt dort keinen). Bearbeiten-Dialog: Hinweis "Teil einer Terminreihe
   (n Termine)" mit Regeltext; Speichern (mit Änderungen) und Löschen eines Serientermins fragen per `ConfirmDialog`

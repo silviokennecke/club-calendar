@@ -16,6 +16,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { cn } from "@/lib/utils";
 import { IconButton } from "./Button";
 import { FullPageLoader } from "./PageLoader";
+import { useDialogLayer } from "./dialogStack";
 
 type FocusTarget =
   boolean | RefObject<HTMLElement | null> | (() => HTMLElement | boolean | null | void);
@@ -37,7 +38,7 @@ interface DialogFrameProps {
 /**
  * Dialog shell of all app dialogs (design: `.ap-scrim` > `.ap-dialog`): Base UI modal dialog with
  * focus trap, scroll lock, Escape, outside press, everything else hidden from assistive technology,
- * focus return. Centered on wide screens, bottom sheet below 720px (CSS). Title / description go
+ * focus return; a dialog above another one makes the lower ones inert (`dialogStack.ts`). Centered on wide screens, bottom sheet below 720px (CSS). Title / description go
  * in as `Dialog.Title` / `Dialog.Description` (they label the dialog).
  */
 export function DialogFrame({
@@ -49,10 +50,11 @@ export function DialogFrame({
   onSelfFocus,
   children,
 }: DialogFrameProps) {
+  const layerRef = useDialogLayer(open);
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(next) => onOpenChange(next)}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Viewport className="ap-scrim">
+        <DialogPrimitive.Viewport ref={layerRef} className="ap-scrim">
           <DialogPrimitive.Popup
             initialFocus={initialFocus}
             finalFocus={finalFocus}

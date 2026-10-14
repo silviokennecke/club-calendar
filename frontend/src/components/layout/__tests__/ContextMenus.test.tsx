@@ -106,6 +106,14 @@ describe("calendar menu", () => {
 });
 
 describe("mobile top bar menu (design: ContextSwitcherMobile)", () => {
+  it("names the profile link after its visible initials (label in name)", () => {
+    renderShell(<Topbar data={data()} />);
+    const link = screen.getByRole("link", { name: /Mein Profil/ });
+    expect(link).toHaveTextContent("AB");
+    expect(link).toHaveAccessibleName(/^AB\s*, Mein Profil$/);
+    expect(link).not.toHaveAttribute("aria-label");
+  });
+
   it("combines clubs and calendars in one panel", async () => {
     renderShell(<Topbar data={data()} />);
     const trigger = screen.getByRole("button", { name: /Schützenverein Waldblick.*Schießbetrieb/ });
@@ -118,7 +126,7 @@ describe("mobile top bar menu (design: ContextSwitcherMobile)", () => {
     );
     expect(within(panel).getByRole("link", { name: /Saison 2025 \(archiviert\)/ })).toBeVisible();
     expect(within(panel).getByRole("link", { name: "Kalender verwalten" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "Mein Profil" })).toHaveAttribute("href", "/profile");
+    expect(screen.getByRole("link", { name: /Mein Profil/ })).toHaveAttribute("href", "/profile");
   });
 
   it("switches the club and closes the menu", async () => {

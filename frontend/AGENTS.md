@@ -99,8 +99,9 @@ does not offer yet and how the frontend works around it).
   again) or, for deep links, the calendar (`?date=` of the dialog) / the public feed. `BackgroundRoutes` renders the
   pages at the background location inside a `display: contents` wrapper with `inert` (the page stays mounted and
   visible, its state survives), the modal routes on top, and returns focus (`lib/modalFocus.ts`:
-  `focusAfterModalClose(eventSelector(id))` focuses the saved event via `data-event-id`, else the opener, else
-  `#main`). Openers pass `state={openModalState(location)}` (calendar: create, split button, day panel
+  `focusAfterModalClose(eventSelector(id))` focuses the saved event via `data-event-id`, else the opener, else the
+  page heading (`h1`, e.g. the month title: deep links have no opener and a new series may start outside the visible
+  month), else `#main`). Openers pass `state={openModalState(location)}` (calendar: create, split button, day panel
   "Termin am … anlegen", FAB, chips / items; list: rows, create, FAB, empty states; templates: "Termin aus
   Vorlage"). Inside a modal `useModalNav()` (`lib/useModalNav.ts`): `step(to)` / `stepLink(to)` replace the
   history entry (one entry per dialog, so the browser's back button closes it), `close()` = history back (or
@@ -113,7 +114,7 @@ does not offer yet and how the frontend works around it).
   EventNewForm), `…/events/new/template` picker (EventNewTemplate), `…/events/new/template/:templateId` single event
   (`POST …/events/from-template`) or series (EventSeries: the dates of the rule come from the backend,
   `components/events/useSeriesPreview.ts` = `POST …/events/series/preview` debounced with loading / error / limit
-  (366, 422 `too_many_events`) / empty states; "n Termine … anlegen" = one atomic `POST …/events/series` with
+  (366, 422 `too_many_events`) / empty states; no query retries, an error shows at once and "Erneut versuchen" refetches; "n Termine … anlegen" = one atomic `POST …/events/series` with
   `{rule, templateId, isDraft}`; the browser never computes series dates), `…/events/:eventId` edit (EventForm, read-only in
   archived calendars; events of a series show "Teil einer Terminreihe (n Termine)" with the rule text from the
   single GET's `series`, and saving changes / deleting asks "Nur diesen Termin" / "Alle Termine der Reihe" via
@@ -203,6 +204,16 @@ does not offer yet and how the frontend works around it).
   - Dialog guidance: use a controlled `open` state for `ConfirmDialog` when the page re-renders while it is open
     (trigger mode closed the dialog when data arrived in the browser). `FormDialog` (shared) is the small dialog for
     forms, `Modal` the routed / large dialog; both build on `DialogFrame`.
+  - Dialog stack (`ui/shared/dialogStack.ts`): Base UI nests a dialog rendered inside another one (delete / series
+    scope / unsaved above the event dialog) into the outer portal and only sets `aria-hidden` on the dialog below,
+    which stays tabbable (Tab after the last button ended up in the event dialog). `DialogFrame` (scrim) and
+    `ConfirmDialog` (popup) therefore register as layers (`useDialogLayer`): every layer below the top one is
+    `inert` until the ones above close (`open` false); Escape closes only the top dialog (Base UI), focus returns
+    to the opener inside the dialog below. Build new dialogs on `DialogFrame` / `ConfirmDialog`, not on raw Base UI.
+    E2E: `e2e/dialog-stack.spec.ts`.
+  - Accessible names contain the visible text (WCAG 2.5.3, axe `label-content-name-mismatch`): an `aria-label` that
+    differs from the visible text must start with it ("Gruppe bearbeiten: Name"); the mobile top bar's profile link
+    shows the initials and names itself "AB, Mein Profil" (no `aria-label`).
 - Public access (no app shell, no sign-in): `pages/FeedPage` (`/feed/:feedId`) and the dialog
   `pages/PublicEventModal` (`/feed/:feedId/events/:eventId`, above the feed; a shared link shows the feed at the
   event's month below; unknown events, drafts and feed errors are states of the dialog) share `components/feed/` (`PublicShell` = skip link, brand row with `LangSwitch` +
@@ -296,35 +307,35 @@ docker rm -f cc-verify-mysql
 Before writing raw Tailwind layout divs in a page, check `src/components/ui/shared/` first
 (import from `@/components/ui/shared`):
 
-| Component                                       | Use for                                                                                         |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `Button` / `LinkButton` / `IconButton`          | Buttons (primary, secondary, ghost, danger, danger-solid, ghost-danger)                         |
-| `SplitButton`                                   | Primary action + menu of alternatives (e.g. "Termin anlegen")                                   |
-| `buttonClass()`                                 | Button styling for other elements (e.g. dialog triggers)                                        |
-| `Field` + `TextInput`/`TextArea`/`NativeSelect` | Label, hint, error, aria wiring (`group` mode for composite controls)                           |
-| `PasswordField`                                 | Password input with show / hide toggle                                                          |
-| `Toggle`                                        | On/off switch (`role="switch"`)                                                                 |
-| `Tag`                                           | Audience/property/feature labels (tones, optional emoji)                                        |
-| `StatusBadge`                                   | Status as icon + word (published, draft, holiday, archived, ...)                                |
-| `Banner`                                        | Persistent info/warning/danger/success notice                                                   |
-| `Toaster` / `toast`                             | Short feedback (sonner, styled)                                                                 |
-| `EmptyState`                                    | Empty lists with explanation and next action                                                    |
-| `ConfirmDialog`                                 | Destructive confirmations incl. consequences; `alternative` = second action (series scope)      |
-| `FormDialog`                                    | Dialog with a form (title, fields, footer; Enter submits, Escape closes)                        |
-| `Modal` / `ModalFrame` / `useModalInitialFocus` | Large dialog with h1, subtitle, x button (`closeLabel`), sizes, form layout; steps in one frame |
-| `DialogFrame`                                   | Base dialog shell (scrim, focus trap, scroll lock, bottom sheet < 720px)                        |
-| `CopyField`                                     | URLs/secrets with copy feedback                                                                 |
-| `Chip` / `ChipSelect` / `FilterPillGroup`       | Toggle chips, multi-select with create, filters                                                 |
-| `EmojiPicker`                                   | Club-chosen symbols (presets, custom, emoji-mart lazy)                                          |
-| `Stepper`                                       | Setup progress                                                                                  |
-| `LangSwitch`                                    | Language (bound to i18next)                                                                     |
-| `ThemeSwitch`                                   | Hell / Dunkel / Wie System (profile, public pages)                                              |
-| `Skeleton`                                      | Loading placeholders (`aria-busy` on the region)                                                |
-| `ErrorSummary`                                  | Form error list with links to the fields, focus after a failed submit                           |
-| `UnsavedChangesDialog`                          | "Änderungen verwerfen?" (with `useUnsavedChanges`)                                              |
-| `Logo`, `Icon`                                  | Brand mark, design glyphs                                                                       |
-| `SearchInput`                                   | Search field (`ap-search`) for lists and the calendar                                           |
-| `FullPageLoader`                                | Page loading state (`role="status"`, `aria-busy`); also the lazy-route Suspense fallback        |
+| Component                                       | Use for                                                                                                                     |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `Button` / `LinkButton` / `IconButton`          | Buttons (primary, secondary, ghost, danger, danger-solid, ghost-danger)                                                     |
+| `SplitButton`                                   | Primary action + menu of alternatives (e.g. "Termin anlegen")                                                               |
+| `buttonClass()`                                 | Button styling for other elements (e.g. dialog triggers)                                                                    |
+| `Field` + `TextInput`/`TextArea`/`NativeSelect` | Label, hint, error, aria wiring (`group` mode for composite controls)                                                       |
+| `PasswordField`                                 | Password input with show / hide toggle                                                                                      |
+| `Toggle`                                        | On/off switch (`role="switch"`)                                                                                             |
+| `Tag`                                           | Audience/property/feature labels (tones, optional emoji)                                                                    |
+| `StatusBadge`                                   | Status as icon + word (published, draft, holiday, archived, ...)                                                            |
+| `Banner`                                        | Persistent info/warning/danger/success notice                                                                               |
+| `Toaster` / `toast`                             | Short feedback (sonner, styled)                                                                                             |
+| `EmptyState`                                    | Empty lists with explanation and next action                                                                                |
+| `ConfirmDialog`                                 | Destructive confirmations incl. consequences (`tone="primary"`: neutral note); `alternative` = second action (series scope) |
+| `FormDialog`                                    | Dialog with a form (title, fields, footer; Enter submits, Escape closes)                                                    |
+| `Modal` / `ModalFrame` / `useModalInitialFocus` | Large dialog with h1, subtitle, x button (`closeLabel`), sizes, form layout; steps in one frame                             |
+| `DialogFrame`                                   | Base dialog shell (scrim, focus trap, scroll lock, bottom sheet < 720px)                                                    |
+| `CopyField`                                     | URLs/secrets with copy feedback                                                                                             |
+| `Chip` / `ChipSelect` / `FilterPillGroup`       | Toggle chips, multi-select with create, filters                                                                             |
+| `EmojiPicker`                                   | Club-chosen symbols (presets, custom, emoji-mart lazy)                                                                      |
+| `Stepper`                                       | Setup progress                                                                                                              |
+| `LangSwitch`                                    | Language (bound to i18next)                                                                                                 |
+| `ThemeSwitch`                                   | Hell / Dunkel / Wie System (profile, public pages)                                                                          |
+| `Skeleton`                                      | Loading placeholders (`aria-busy` on the region)                                                                            |
+| `ErrorSummary`                                  | Form error list with links to the fields, focus after a failed submit                                                       |
+| `UnsavedChangesDialog`                          | "Änderungen verwerfen?" (with `useUnsavedChanges`)                                                                          |
+| `Logo`, `Icon`                                  | Brand mark, design glyphs                                                                                                   |
+| `SearchInput`                                   | Search field (`ap-search`) for lists and the calendar                                                                       |
+| `FullPageLoader`                                | Page loading state (`role="status"`, `aria-busy`); also the lazy-route Suspense fallback                                    |
 
 For Mapbox maps: use `useMapbox` from `src/components/locations/useMapbox.ts`.
 

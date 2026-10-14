@@ -28,6 +28,8 @@ export function useSeriesPreview(calendarId: string, rule: SeriesRule | null, en
     enabled: enabled && debounced !== null,
     placeholderData: keepPreviousData,
     staleTime: 30_000,
+    // An error (e.g. 422 too_many_events, server down) shows at once; "Erneut versuchen" is the retry.
+    retry: false,
   });
 
   const settled = key === debounced && !query.isFetching;
