@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { focusPageStart } from "./historyFocus";
 
 let requested: string | null = null;
 
@@ -29,7 +30,9 @@ const MAX_FRAMES = 30;
 
 /**
  * Focus return of the routed modals (they close by a route change, not by a trigger): the
- * requested element, else the element that was focused when the modal opened, else `#main`.
+ * requested element, else the element that was focused when the modal opened, else the page heading
+ * (`h1`, e.g. the month title; deep links have no opener and the saved event may lie outside the
+ * visible month), else `#main`.
  */
 export function useModalFocusReturn(open: boolean) {
   const trigger = useRef<HTMLElement | null>(null);
@@ -67,7 +70,7 @@ export function useModalFocusReturn(open: boolean) {
       const active = document.activeElement;
       if (active && active !== document.body && active.isConnected) return;
       if (before?.isConnected && before !== document.body) before.focus();
-      else document.getElementById("main")?.focus();
+      else focusPageStart();
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
