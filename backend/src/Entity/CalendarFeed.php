@@ -24,8 +24,13 @@ class CalendarFeed
     #[ORM\Column(length: 255)]
     private string $name;
 
-    #[ORM\Column(enumType: FeedVisibility::class)]
-    private FeedVisibility $visibility = FeedVisibility::PRIVATE;
+    /** New feeds are CLUB ("Vereinsintern"): reachable by link, not indexed. */
+    #[ORM\Column(enumType: FeedVisibility::class, options: ['default' => 'CLUB'])]
+    private FeedVisibility $visibility = FeedVisibility::CLUB;
+
+    /** Opt-in for search engines; only meaningful (and only allowed) for PUBLIC feeds. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $searchable = false;
 
     #[ORM\Column(length: 255, unique: true)]
     private string $sharedSecret;
@@ -78,6 +83,24 @@ class CalendarFeed
         $this->visibility = $visibility;
 
         return $this;
+    }
+
+    public function isSearchable(): bool
+    {
+        return $this->searchable;
+    }
+
+    public function setSearchable(bool $searchable): static
+    {
+        $this->searchable = $searchable;
+
+        return $this;
+    }
+
+    /** Search engines may index the feed only if it is PUBLIC and opted in; everything else is noindex. */
+    public function isIndexable(): bool
+    {
+        return FeedVisibility::PUBLIC === $this->visibility && $this->searchable;
     }
 
     public function getSharedSecret(): string

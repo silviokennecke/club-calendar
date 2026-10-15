@@ -1473,6 +1473,8 @@
       "new": "New",
       "private": "Private",
       "public": "Public",
+      "club": "Club internal",
+      "searchable": "Findable",
       "danger": "Error"
     },
     "toast": {
@@ -1819,11 +1821,15 @@
       "vis": {
         "public": {
           "label": "Public",
-          "text": "Anyone with the link can see the calendar."
+          "text": "Anyone with the link can view the calendar. Search engines can find it too, if you like."
+        },
+        "club": {
+          "label": "Club internal",
+          "text": "No access protection: anyone with the link can view the calendar, including non-members. Search engines are asked not to list it."
         },
         "private": {
-          "label": "Private",
-          "text": "Only with the secret in the address."
+          "label": "Private (protected)",
+          "text": "Only with the secret in the link."
         }
       },
       "audiences": "Audiences",
@@ -1837,7 +1843,18 @@
       "delete": "Delete feed",
       "created": "Feed “{{name}}” created.",
       "saved": "Feed “{{name}}” saved.",
-      "saveFailed": "The feed could not be saved. Please try again."
+      "saveFailed": "The feed could not be saved. Please try again.",
+      "searchable": {
+        "label": "Findable through search engines",
+        "hint": "Search engines such as Google may include the web view in their results. This can take a few days; once switched off, the calendar disappears from the results over time."
+      }
+    },
+    "unprotect": {
+      "title": "Stop requiring the secret?",
+      "textClub": "“{{name}}” becomes club internal. The calendar can then be reached through the link without the secret.",
+      "textPublic": "“{{name}}” becomes public. The calendar can then be reached through the link without the secret.",
+      "consequence": "Afterwards, anyone with the link can see the calendar, including people who don’t know the previous link with the secret.",
+      "confirm": "Save without secret"
     }
   },
   "profile": {

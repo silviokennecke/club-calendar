@@ -10,7 +10,6 @@ use App\Entity\CalendarFeedTargetGroup;
 use App\Entity\TargetGroup;
 use App\Enum\FeedVisibility;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class FeedService
@@ -39,7 +38,12 @@ readonly class FeedService
         $feed = new CalendarFeed();
         $feed->setCalendar($calendar);
         $feed->setName(Input::string($data, 'name'));
-        $feed->setVisibility($this->visibility($data));
+        // Optional: new feeds are CLUB ("Vereinsintern") unless told otherwise
+        if (array_key_exists('visibility', $data)) {
+            $feed->setVisibility($this->visibility($data));
+        }
+        $this->applySearchable($feed, $data);
+        // Every feed gets a secret (only PRIVATE feeds require it; switching to PRIVATE later needs one)
         $feed->setSharedSecret(bin2hex(random_bytes(16)));
         $this->em->persist($feed);
         $this->syncTargetGroups($feed, $calendar, $data);
@@ -56,8 +60,15 @@ readonly class FeedService
             $feed->setName(Input::string($data, 'name'));
         }
         if (array_key_exists('visibility', $data)) {
+            $wasProtected = $feed->getVisibility()->requiresSecret();
             $feed->setVisibility($this->visibility($data));
+            // Becoming PRIVATE again: always a new secret. The old one may have spread while the feed was
+            // open (shared links, logs, browser history) and must not grant access again.
+            if (!$wasProtected && $feed->getVisibility()->requiresSecret()) {
+                $feed->setSharedSecret(bin2hex(random_bytes(16)));
+            }
         }
+        $this->applySearchable($feed, $data);
         if (array_key_exists('targetGroupIds', $data)) {
             $this->syncTargetGroups($feed, $calendar, $data);
         }
@@ -71,14 +82,33 @@ readonly class FeedService
     {
         $value = $data['visibility'] ?? null;
         if (null === $value || '' === $value) {
-            throw new BadRequestHttpException('visibility is required');
+            throw Input::invalid('visibility', 'visibility is required');
         }
         $visibility = is_string($value) ? FeedVisibility::tryFrom($value) : null;
         if (null === $visibility) {
-            throw new BadRequestHttpException('visibility must be PUBLIC or PRIVATE');
+            throw Input::invalid('visibility', 'visibility must be PUBLIC, CLUB or PRIVATE');
         }
 
         return $visibility;
+    }
+
+    /**
+     * The search engine opt-in exists only for PUBLIC feeds: `searchable: true` for another (resulting)
+     * visibility is 422; a feed that is no longer PUBLIC loses the option automatically (also when only
+     * the visibility is changed), so the stored and returned value is always the effective one.
+     */
+    private function applySearchable(CalendarFeed $feed, array $data): void
+    {
+        if (array_key_exists('searchable', $data)) {
+            $searchable = Input::bool($data, 'searchable');
+            if ($searchable && FeedVisibility::PUBLIC !== $feed->getVisibility()) {
+                throw Input::invalid('searchable', 'searchable is only allowed for PUBLIC feeds', 422);
+            }
+            $feed->setSearchable($searchable);
+        }
+        if (FeedVisibility::PUBLIC !== $feed->getVisibility()) {
+            $feed->setSearchable(false);
+        }
     }
 
     public function delete(string $id, Calendar $calendar): void
@@ -126,6 +156,8 @@ readonly class FeedService
             'calendarId' => $feed->getCalendar()->getId(),
             'name' => $feed->getName(),
             'visibility' => $feed->getVisibility()->value,
+            'searchable' => $feed->isSearchable(),
+            'indexable' => $feed->isIndexable(),
             'sharedSecret' => $feed->getSharedSecret(),
             'targetGroups' => $feed->getTargetGroups()->map(fn (CalendarFeedTargetGroup $ftg) => [
                 'feedId' => $ftg->getFeed()->getId(),

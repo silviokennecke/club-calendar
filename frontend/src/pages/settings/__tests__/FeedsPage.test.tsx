@@ -26,6 +26,8 @@ const publicFeed = {
   calendarId: "k1",
   name: "Öffentlicher Kalender",
   visibility: "PUBLIC",
+  searchable: false,
+  indexable: false,
   sharedSecret: "s-public",
   targetGroups: [],
 };
@@ -34,6 +36,8 @@ const privateFeed = {
   calendarId: "k1",
   name: "Vorstand intern",
   visibility: "PRIVATE",
+  searchable: false,
+  indexable: false,
   sharedSecret: "test-secret-value",
   targetGroups: [{ feedId: "f2", targetGroupId: "g1" }],
 };
@@ -73,6 +77,41 @@ describe("FeedsPage", () => {
     ).toHaveTextContent("Jugend");
     // No emoji icons for the visibility.
     expect(pub.textContent).not.toMatch(/[\u{1F310}\u{1F512}]/u);
+  });
+
+  it("shows each of the three states as word and icon and marks findable public feeds", async () => {
+    const user = userEvent.setup();
+    feeds = [
+      { ...publicFeed, id: "f3", name: "Auffindbar", searchable: true, indexable: true },
+      { ...publicFeed, id: "f4", name: "Vereinskalender", visibility: "CLUB", sharedSecret: "s-c" },
+      publicFeed,
+      privateFeed,
+    ];
+    renderRoute(route, url, <FeedsPage />);
+    const badges = (name: string) =>
+      Array.from(
+        screen.getByRole("region", { name }).querySelectorAll<HTMLElement>(".ap-badge"),
+      ).map((b) => [b.dataset.status, b.textContent, !!b.querySelector("svg")]);
+
+    await screen.findByRole("region", { name: "Vereinskalender" });
+    expect(badges("Auffindbar")).toEqual([
+      ["public", "Öffentlich", true],
+      ["searchable", "Auffindbar", true],
+    ]);
+    expect(badges("Vereinskalender")).toEqual([["club", "Vereinsintern", true]]);
+    expect(badges("Öffentlicher Kalender")).toEqual([["public", "Öffentlich", true]]);
+    expect(badges("Vorstand intern")).toEqual([["private", "Privat", true]]);
+
+    // Club internal: addresses without the secret, no secret field
+    const club = screen.getByRole("region", { name: "Vereinskalender" });
+    await user.click(within(club).getByRole("button", { name: "Zugänge anzeigen" }));
+    expect(within(club).getByLabelText("ICS-Adresse")).toHaveValue(
+      "https://api.example.org/api/feed/f4/ics",
+    );
+    expect(within(club).getByLabelText("Adresse der Webansicht")).toHaveValue(
+      `${window.location.origin}/feed/f4`,
+    );
+    expect(within(club).queryByLabelText("Geheimnis")).not.toBeInTheDocument();
   });
 
   it("opens the first feed's addresses by default and toggles the others", async () => {

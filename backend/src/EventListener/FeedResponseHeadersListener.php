@@ -6,20 +6,25 @@ namespace App\EventListener;
 
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
  * The one place for the crawler/referrer headers of the public feed API (`/api/feed/*`, error responses
- * included): `Referrer-Policy: no-referrer` and `X-Robots-Tag: noindex`. The web server sets only the
- * Referrer-Policy for the SPA pages under `/feed/*`; their noindex comes from a `<meta>` tag.
+ * included): `Referrer-Policy: no-referrer` always, `X-Robots-Tag: noindex` unless the feed may be
+ * indexed. The web server sets only the Referrer-Policy for the SPA pages under `/feed/*`; their noindex
+ * comes from a `<meta>` tag (from `feed.indexable` of the API).
  *
- * The robots value is decided in robotsTag(): later it can depend on the feed (e.g. its status or an
- * indexing option) instead of being fixed.
+ * Whether a feed may be indexed (PUBLIC and `searchable`) is decided by PublicFeedService after the
+ * access checks; it stores the result in the request attribute INDEXABLE_ATTRIBUTE, so the feed is not
+ * loaded twice. Without the attribute (unknown feed, 403/404, any error) the response is noindex.
  */
 #[AsEventListener(event: KernelEvents::RESPONSE)]
 class FeedResponseHeadersListener
 {
+    public const INDEXABLE_ATTRIBUTE = 'feed_indexable';
+
     public function __invoke(ResponseEvent $event): void
     {
         $request = $event->getRequest();
@@ -27,17 +32,26 @@ class FeedResponseHeadersListener
             return;
         }
 
-        $headers = $event->getResponse()->headers;
+        $response = $event->getResponse();
+        $headers = $response->headers;
         $headers->set('Referrer-Policy', 'no-referrer');
-        $robots = $this->robotsTag($request);
-        if (null !== $robots) {
+        $robots = $this->robotsTag($request, $response);
+        if (null === $robots) {
+            $headers->remove('X-Robots-Tag');
+        } else {
             $headers->set('X-Robots-Tag', $robots);
         }
     }
 
-    /** Value of `X-Robots-Tag` for a feed API request; null sends none. */
-    private function robotsTag(Request $request): ?string
+    /**
+     * Value of `X-Robots-Tag` for a feed API response; null sends none (indexable feed). Only a
+     * successful response for a feed marked indexable goes without: errors (also a 400 after the feed
+     * was loaded) and everything without the attribute are noindex.
+     */
+    private function robotsTag(Request $request, Response $response): ?string
     {
-        return 'noindex';
+        $indexable = true === $request->attributes->get(self::INDEXABLE_ATTRIBUTE) && $response->isSuccessful();
+
+        return $indexable ? null : 'noindex';
     }
 }

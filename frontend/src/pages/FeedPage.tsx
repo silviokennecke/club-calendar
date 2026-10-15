@@ -68,13 +68,13 @@ export default function FeedPage() {
 
   if (feed.isPending)
     return (
-      <PublicShell noindex>
+      <PublicShell>
         <PublicLoading />
       </PublicShell>
     );
   if (!feed.data)
     return (
-      <PublicShell noindex>
+      <PublicShell>
         <PublicError kind={feed.errorKind ?? "error"} onRetry={() => void feed.refetch()} />
       </PublicShell>
     );
@@ -82,7 +82,7 @@ export default function FeedPage() {
   return (
     <PublicShell
       title={`${feed.data.feed.name} – ${t("feed.brand")}`}
-      noindex={feed.data.feed.visibility !== "PUBLIC"}
+      indexable={feed.data.feed.indexable}
       hero={<FeedHero data={feed.data} secret={secret} feedId={feedId!} />}
     >
       <FeedCalendar

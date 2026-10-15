@@ -4,7 +4,10 @@ import { API, createVerifiedUser, seedClub } from "./helpers";
 // ——— Öffentlicher Zugriff (phase 8): Feed ohne Anmeldung, privater Feed mit Geheimnis, Termin-Detail ———
 
 interface PublicSeed {
+  /** PUBLIC with the search engine option: the only indexable kind. */
   publicFeedId: string;
+  /** CLUB ("Vereinsintern"): open by link, noindex. */
+  clubFeedId: string;
   privateFeedId: string;
   secret: string;
   draftEventId: string;
@@ -78,7 +81,13 @@ async function seedPublic(request: APIRequestContext, name: string): Promise<Pub
   const publicFeed = (await (
     await request.post(`${API}/api/calendars/${calendarId}/feeds`, {
       headers,
-      data: { name: "Schießbetrieb 2026", visibility: "PUBLIC" },
+      data: { name: "Schießbetrieb 2026", visibility: "PUBLIC", searchable: true },
+    })
+  ).json()) as { id: string };
+  const clubFeed = (await (
+    await request.post(`${API}/api/calendars/${calendarId}/feeds`, {
+      headers,
+      data: { name: "Mitglieder", visibility: "CLUB" },
     })
   ).json()) as { id: string };
   const privateFeed = (await (
@@ -93,6 +102,7 @@ async function seedPublic(request: APIRequestContext, name: string): Promise<Pub
   const secret = feeds.find((f) => f.id === privateFeed.id)!.sharedSecret;
   return {
     publicFeedId: publicFeed.id,
+    clubFeedId: clubFeed.id,
     privateFeedId: privateFeed.id,
     secret,
     draftEventId: draft.id,
@@ -142,10 +152,54 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(page.getByLabel("Adresse zum Abonnieren (ICS)")).toHaveValue(
       /\/api\/feed\/.*\/ics$/,
     );
-    // Indexierbar, aber nie mit Referrer
+    // Öffentlich und auffindbar: indexierbar, aber nie mit Referrer
     await expect(page.locator('meta[name="referrer"]')).toHaveAttribute("content", "no-referrer");
     await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
     await expect(page).toHaveTitle(`${seed.feedName} – Öffentlicher Kalender`);
+  });
+
+  test("Suchmaschinen: nur öffentlich + auffindbar ist indexierbar (Meta und X-Robots-Tag)", async ({
+    page,
+    request,
+  }) => {
+    // Vereinsintern: ohne Geheimnis erreichbar, aber noindex
+    await page.goto(`/feed/${seed.clubFeedId}?date=2026-10-08`);
+    await expect(page.getByRole("heading", { level: 1, name: seed.clubName })).toBeVisible();
+    await expect(page.getByText("Zeige 3 von 3 Terminen")).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    await expect(page.getByRole("link", { name: "Kalender abonnieren" })).toHaveAttribute(
+      "href",
+      /\/api\/feed\/.*\/ics$/,
+    );
+    // Termin eines vereinsinternen Feeds: ebenfalls noindex
+    await page.goto(`/feed/${seed.clubFeedId}/events/${seed.herbstfestId}`);
+    await expect(page.getByRole("heading", { level: 1, name: "Herbstfest" })).toBeVisible();
+    await expect(page.locator('meta[name="robots"]').last()).toHaveAttribute("content", /noindex/);
+    // Termin eines indexierbaren Feeds: kein noindex
+    await page.goto(`/feed/${seed.publicFeedId}/events/${seed.herbstfestId}`);
+    await expect(page.getByRole("heading", { level: 1, name: "Herbstfest" })).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
+
+    // Die Feed-API entscheidet gleich (X-Robots-Tag), Referrer-Policy immer
+    const header = async (path: string) => {
+      const res = await request.get(`${API}/api/feed/${path}`);
+      return [res.status(), res.headers()["x-robots-tag"], res.headers()["referrer-policy"]];
+    };
+    for (const path of ["events", "ics", `events/${seed.herbstfestId}`]) {
+      expect(await header(`${seed.publicFeedId}/${path}`)).toEqual([200, undefined, "no-referrer"]);
+      expect(await header(`${seed.clubFeedId}/${path}`)).toEqual([200, "noindex", "no-referrer"]);
+      expect(await header(`${seed.privateFeedId}/${path}`)).toEqual([
+        403,
+        "noindex",
+        "no-referrer",
+      ]);
+      expect(await header(`${seed.privateFeedId}/${path}?secret=${seed.secret}`)).toEqual([
+        200,
+        "noindex",
+        "no-referrer",
+      ]);
+    }
+    expect(await header("unbekannt/events")).toEqual([404, "noindex", "no-referrer"]);
   });
 
   test("lädt nur den sichtbaren Monat und den geöffneten Termin einzeln", async ({ page }) => {

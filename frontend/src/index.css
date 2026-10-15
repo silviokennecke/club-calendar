@@ -1504,6 +1504,15 @@
     background: var(--brand-soft);
     color: var(--brand);
   }
+  .ap-badge--club {
+    background: var(--surface-sunken);
+    color: var(--ink);
+  }
+  .ap-badge--searchable {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--border-strong);
+  }
   .ap-badge--danger {
     background: var(--danger-soft);
     color: var(--danger);
