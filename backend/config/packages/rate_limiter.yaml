@@ -63,3 +63,30 @@ framework:
             policy: sliding_window
             limit: 5
             interval: '1 hour'
+        # Auth endpoints (AuthRateLimiter). Login: every attempt per client IP, only failed ones per
+        # normalized e-mail address (a successful sign-in clears them).
+        auth_login_ip:
+            policy: sliding_window
+            limit: 10
+            interval: '15 minutes'
+        auth_login_email:
+            policy: sliding_window
+            limit: 5
+            interval: '15 minutes'
+        auth_register_ip:
+            policy: sliding_window
+            limit: 5
+            interval: '1 hour'
+        auth_register_email:
+            policy: sliding_window
+            limit: 3
+            interval: '1 hour'
+        auth_refresh_ip:
+            policy: sliding_window
+            limit: 60
+            interval: '1 minute'
+        # E-mail confirmation link, passkey ceremonies, SSO start/callback.
+        auth_other_ip:
+            policy: sliding_window
+            limit: 60
+            interval: '1 minute'

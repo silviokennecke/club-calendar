@@ -20,14 +20,6 @@ Static, read-only code review: full reads of every in-scope file plus targeted r
 
 2026-10-05
 
-### AUTH-01 — No rate limiting on login, register, and token refresh
-**Severity:** Medium
-**Attack scope:** Unauthenticated external attacker (any IP)
-**Description:** `POST /api/auth/login`, `POST /api/auth/register`, and `POST /api/auth/token` have no rate limiting; the only configured limiter is `email_verification_resend`. This enables online brute force / credential stuffing against login and mass account creation via register.
-**Affected parts:** `AuthController.php:51` (register), `:65` (login), `:123` (token); `config/packages/rate_limiter.yaml:47` (only limiter defined)
-**Fix recommendation:** Add per-IP rate limits (plus per-identifier where useful), e.g. login 5/15min, register 3/hour, token 10/min, returning 429 with `Retry-After`.
-**Notes:** Compounds AUTH-09 (timing-based user enumeration); no offline hash-dumping vector found.
-
 ### AUTH-02 — OAuth access and refresh tokens passed in the redirect URL
 **Severity:** Medium
 **Attack scope:** Authenticated user performing OAuth login/link; anyone able to read their `Referer` headers, browser history, or frontend logs
@@ -90,7 +82,7 @@ Static, read-only code review: full reads of every in-scope file plus targeted r
 **Description:** Login looks the user up by email (collation-normalized) and runs password verification only for existing users; the not-found path is measurably faster, enabling timing-based enumeration.
 **Affected parts:** `AuthService.php:48-54`
 **Fix recommendation:** Always run a dummy credential check on the not-found path (constant-time-ish behavior) and/or store a per-user dummy hash.
-**Notes:** Exploitability is low (network jitter) but it compounds AUTH-01.
+**Notes:** Exploitability is low (network jitter).
 
 ### AUTH-10 — updateMe accepts unvalidated lastClubId / lastCalendarId
 
