@@ -7,10 +7,10 @@ namespace App\Controller;
 use App\Entity\Calendar;
 use App\Repository\HolidayEventRepository;
 use App\Security\CalendarMemberVoter;
+use App\Service\Input;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -28,24 +28,11 @@ class HolidayEventController extends AbstractApiController
         #[MapEntity(id: 'calendarId')] Calendar $calendar,
         Request $request,
     ): JsonResponse {
-        $from = $request->query->get('from');
-        $to = $request->query->get('to');
-        if (!$from || !$to) {
-            throw new BadRequestHttpException('from and to query params are required');
-        }
-        if (false === strtotime($from)) {
-            throw new BadRequestHttpException('Invalid from date');
-        }
-        if (false === strtotime($to)) {
-            throw new BadRequestHttpException('Invalid to date');
-        }
-
-        try {
-            $fromDate = new \DateTimeImmutable($from);
-            $toDate = new \DateTimeImmutable($to);
-        } catch (\DateMalformedStringException) {
-            throw new BadRequestHttpException('Invalid date format');
-        }
+        // Both required, strictly YYYY-MM-DD (400 validation_failed with the field)
+        $query = $request->query->all();
+        $fromDate = Input::date($query, 'from');
+        $toDate = Input::date($query, 'to');
+        Input::assertDateRange($fromDate, $toDate);
 
         $events = $this->holidayEventRepo->findByCalendarAndDateRange(
             $calendar->getId(),

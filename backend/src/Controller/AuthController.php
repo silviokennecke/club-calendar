@@ -19,6 +19,7 @@ use App\Security\CurrentUserResolver;
 use App\Service\AccountService;
 use App\Service\AuthService;
 use App\Service\EmailVerificationService;
+use App\Service\Input;
 use App\Service\PasswordResetService;
 use Doctrine\ORM\EntityManagerInterface;
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
@@ -269,24 +270,47 @@ class AuthController extends AbstractApiController
             $data['name'] = trim($data['name']);
             $dto->name = $data['name'];
         }
+        // Wrong JSON types end in 400 validation_failed (the DTO properties and entity setters are typed).
         if (array_key_exists('dateFormat', $data)) {
-            $dto->dateFormat = $data['dateFormat'];
+            $dto->dateFormat = self::stringField($data, 'dateFormat');
         }
         if (array_key_exists('firstDayOfWeek', $data)) {
-            $dto->firstDayOfWeek = $data['firstDayOfWeek'];
+            $dto->firstDayOfWeek = self::intField($data, 'firstDayOfWeek');
         }
         if (array_key_exists('language', $data)) {
-            $dto->language = $data['language'];
+            $dto->language = self::stringField($data, 'language');
         }
         if (array_key_exists('lastClubId', $data)) {
-            $dto->lastClubId = $data['lastClubId'];
+            $dto->lastClubId = self::stringField($data, 'lastClubId', nullable: true);
         }
         if (array_key_exists('lastCalendarId', $data)) {
-            $dto->lastCalendarId = $data['lastCalendarId'];
+            $dto->lastCalendarId = self::stringField($data, 'lastCalendarId', nullable: true);
         }
         $this->validateDto($dto, $this->validator);
 
         return new JsonResponse($this->auth->updateMe($user, $data));
+    }
+
+    /** A profile field that must be a JSON string (null only if nullable), else 400 validation_failed. */
+    private static function stringField(array $data, string $field, bool $nullable = false): ?string
+    {
+        $value = $data[$field];
+        if (is_string($value) || (null === $value && $nullable)) {
+            return $value;
+        }
+
+        throw Input::invalid($field, sprintf('%s must be a string%s', $field, $nullable ? ' or null' : ''));
+    }
+
+    /** A profile field that must be a JSON integer, else 400 validation_failed ("1", 1.5, true are not). */
+    private static function intField(array $data, string $field): int
+    {
+        $value = $data[$field];
+        if (!is_int($value)) {
+            throw Input::invalid($field, sprintf('%s must be an integer', $field));
+        }
+
+        return $value;
     }
 
     #[Route('/me', methods: ['DELETE'])]

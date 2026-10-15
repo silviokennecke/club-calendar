@@ -506,7 +506,10 @@ paths:
       summary: Update name and preferences
       description: >-
         `lastCalendarId` is also remembered at the membership of the calendar's club (ignored without error when the
-        calendar is unknown, belongs to another club than `lastClubId` or the user is no member).
+        calendar is unknown, belongs to another club than `lastClubId` or the user is no member). A field of the wrong
+        JSON type (`dateFormat: 5`, `firstDayOfWeek: "1"` / `1.5` / `true`, `language: null`, `lastClubId: 5`,
+        `lastCalendarId: ["x"]`, …) is a 400 `validation_failed` with the `field`; `null` is accepted only for
+        `lastClubId` / `lastCalendarId` (clears them). `name` of the wrong type stays a 422.
       operationId: updateMe
       requestBody:
         required: true
@@ -516,18 +519,18 @@ paths:
               type: object
               properties:
                 name: { type: string, minLength: 1, maxLength: 255 }
-                dateFormat: { type: [string, 'null'], minLength: 1, maxLength: 20, examples: [dd.MM.yyyy] }
-                firstDayOfWeek: { type: [integer, 'null'], minimum: 0, maximum: 6, description: 0 = Sunday. }
-                language: { type: [string, 'null'], enum: [en, de, null] }
-                lastClubId: { type: [string, 'null'] }
-                lastCalendarId: { type: [string, 'null'] }
+                dateFormat: { type: string, minLength: 1, maxLength: 20, examples: [dd.MM.yyyy] }
+                firstDayOfWeek: { type: integer, minimum: 0, maximum: 6, description: 0 = Sunday. }
+                language: { type: string, enum: [en, de] }
+                lastClubId: { type: [string, 'null'], maxLength: 36 }
+                lastCalendarId: { type: [string, 'null'], maxLength: 36 }
       responses:
         '200':
           description: The updated user.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/UserSummary' }
-        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
     delete:
@@ -1151,7 +1154,10 @@ paths:
     get:
       tags: [Events]
       summary: Events of a calendar (drafts included)
-      description: Ordered by date and start time. `from`/`to` select by overlap (multi-day events reaching into the range are included).
+      description: >-
+        Ordered by date and start time. `from`/`to` select by overlap (multi-day events reaching into the range are
+        included); both strictly `YYYY-MM-DD` (a real day; `now`, `2026-02-31` or an array are a 400
+        `validation_failed` with field `from`/`to`), `to` before `from` is a 400 on `to`.
       operationId: listEvents
       parameters:
         - { name: from, in: query, schema: { type: string, format: date } }
@@ -1165,7 +1171,7 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Event' }
-        '400': { $ref: '#/components/responses/BadRequest' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -1972,6 +1978,11 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/ForbiddenWrite' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: '`validation_failed` field `latitude`/`longitude` (not a number, out of range, or only one of both).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
 
   /api/calendars/{calendarId}/locations/{id}:
     parameters:
@@ -1996,6 +2007,11 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/ForbiddenWrite' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: '`validation_failed` field `latitude`/`longitude` (not a number, out of range, or only one of both).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
     delete:
       tags: [Locations]
       summary: Delete a location (events and templates lose it)
@@ -2315,6 +2331,9 @@ paths:
     get:
       tags: [Holidays]
       summary: Holidays of a calendar in a range
+      description: >-
+        `from` and `to` are required, strictly `YYYY-MM-DD`; missing, invalid or `to` before `from` is a 400
+        `validation_failed` with field `from`/`to`.
       operationId: listHolidayEvents
       parameters:
         - { name: from, in: query, required: true, schema: { type: string, format: date } }
@@ -2327,7 +2346,7 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/HolidayEvent' }
-        '400': { $ref: '#/components/responses/BadRequest' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -2411,6 +2430,7 @@ paths:
         '200': { $ref: '#/components/responses/MapImage' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/MapImageUnavailable' }
 
   /api/map/image/event/{id}:
     parameters:
@@ -2425,6 +2445,7 @@ paths:
         '200': { $ref: '#/components/responses/MapImage' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/MapImageUnavailable' }
 
   /api/mapbox/{domain}/{path}:
     parameters:
@@ -2458,7 +2479,7 @@ paths:
         '403': { $ref: '#/components/responses/MapboxError' }
         '429': { $ref: '#/components/responses/MapboxError' }
         '502': { $ref: '#/components/responses/MapboxError' }
-        '503': { $ref: '#/components/responses/MapboxError' }
+        '503': { $ref: '#/components/responses/MapUnavailable' }
         default:
           description: Any other upstream status (e.g. 401, 404 from Mapbox) is passed through with the upstream body.
           content:
@@ -2473,7 +2494,7 @@ paths:
       responses:
         '400': { $ref: '#/components/responses/MapboxError' }
         '403': { $ref: '#/components/responses/MapboxError' }
-        '503': { $ref: '#/components/responses/MapboxError' }
+        '503': { $ref: '#/components/responses/MapUnavailable' }
     put:
       tags: [Maps]
       summary: Mapbox proxy (PUT, always denied)
@@ -2482,7 +2503,7 @@ paths:
       responses:
         '400': { $ref: '#/components/responses/MapboxError' }
         '403': { $ref: '#/components/responses/MapboxError' }
-        '503': { $ref: '#/components/responses/MapboxError' }
+        '503': { $ref: '#/components/responses/MapUnavailable' }
     patch:
       tags: [Maps]
       summary: Mapbox proxy (PATCH, always denied)
@@ -2491,7 +2512,7 @@ paths:
       responses:
         '400': { $ref: '#/components/responses/MapboxError' }
         '403': { $ref: '#/components/responses/MapboxError' }
-        '503': { $ref: '#/components/responses/MapboxError' }
+        '503': { $ref: '#/components/responses/MapUnavailable' }
 
 components:
   securitySchemes:
@@ -2658,8 +2679,9 @@ components:
           schema: { $ref: '#/components/schemas/Problem' }
     FeedBadRequest:
       description: >-
-        `validation_failed` field `from`/`to` (not `YYYY-MM-DD`), or 400 without code when `to` is before `from` or a
-        query parameter is sent as an array (`?secret[]=`, `?targetGroupIds[]=`).
+        `validation_failed` field `from`/`to` (not a real day as `YYYY-MM-DD`, sent as an array, or `to` before
+        `from`), or 400 without code when another query parameter is sent as an array (`?secret[]=`,
+        `?targetGroupIds[]=`).
       headers:
         Referrer-Policy: { $ref: '#/components/headers/ReferrerPolicy' }
         X-Robots-Tag: { $ref: '#/components/headers/XRobotsTag' }
@@ -2699,7 +2721,9 @@ components:
     RateLimited:
       description: Rate limit of the map provider reached (empty body).
     ServiceUnavailable:
-      description: Geocoding provider failed.
+      description: >-
+        `map_unavailable`: no map service configured (`MAPBOX_TOKEN` empty; checked after authentication), or the
+        geocoding provider failed (no `code`).
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
@@ -2708,10 +2732,25 @@ components:
       content:
         image/jpeg:
           schema: { type: string, contentMediaType: image/jpeg }
+    MapImageUnavailable:
+      description: >-
+        No map service configured (`MAPBOX_TOKEN` empty): a static placeholder (a blurred map without text,
+        `backend/assets/map-unavailable.png`, 400×144) as the body, so an `<img>` still shows a map
+        (`Cache-Control: no-store`). Only after the checks of the route (unknown / draft / no position → 404).
+      headers:
+        Cache-Control: { schema: { type: string, const: no-store } }
+      content:
+        image/png:
+          schema: { type: string, contentMediaType: image/png }
+    MapUnavailable:
+      description: '`map_unavailable`: no Mapbox token configured (RFC 7807 body).'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
     MapboxError:
       description: >-
-        400 domain not allowed, 403 path/method not allowed, 429 rate limit, 502 upstream unreachable, 503 no
-        Mapbox token configured (body `{message}`).
+        400 domain not allowed, 403 path/method not allowed, 429 rate limit, 502 upstream unreachable (body
+        `{message}`).
       content:
         application/json:
           schema:
@@ -2749,7 +2788,7 @@ components:
 
         | Code | Status | Where |
         | --- | --- | --- |
-        | `validation_failed` | 400 / 422 | Input errors with `field`: typed input checks 400, DTO constraints 422, import `events[n].<field>`, export parameters, bulk, series rule `rule.*` 400, series without events 422 field `rule`, `scope` 400, feeds `visibility` 400, `searchable` 400 (no boolean) / 422 (not `PUBLIC`), invalid time zone 422, e-mail change to the current address 422 |
+        | `validation_failed` | 400 / 422 | Input errors with `field`: typed input checks 400 (also wrong JSON types of `PATCH /api/auth/me`), DTO constraints 422, location coordinates 422, date parameters `from`/`to` 400 (events, holidays, public feed, export), import `events[n].<field>`, export parameters, bulk, series rule `rule.*` 400, series without events 422 field `rule`, `scope` 400, feeds `visibility` 400, `searchable` 400 (no boolean) / 422 (not `PUBLIC`), invalid time zone 422, e-mail change to the current address 422 |
         | `invalid_request` | 400 | Body is no JSON object; passkey body incomplete |
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
         | `duplicate_name` | 422 | Name of a property/feature/target group already used in the calendar |
@@ -2773,6 +2812,7 @@ components:
         | `invalid_passkey_registration` | 400 | Passkey registration failed |
         | `passkey_already_registered` | 400 | Passkey registration: credential exists |
         | `passkey_not_found` | 404 | Delete passkey (unknown or another user's) |
+        | `map_unavailable` | 503 | No map service configured (`MAPBOX_TOKEN` empty): geocoding (`/api/map/geocode/*`) and the Mapbox proxy; the map image routes answer 503 with a placeholder image instead |
 
         Not error codes: import warnings use `timezone_replaced`; redirects use `?error=` / `?link_error=` /
         `?reason=` values (see the API description).
@@ -2801,6 +2841,7 @@ components:
         - invalid_passkey_registration
         - passkey_already_registered
         - passkey_not_found
+        - map_unavailable
     JwtError:
       type: object
       description: 401 body of the JWT bundle (not RFC 7807).
@@ -2989,8 +3030,8 @@ components:
         zip: { type: [string, 'null'], maxLength: 20 }
         city: { type: [string, 'null'], maxLength: 255 }
         country: { type: [string, 'null'], maxLength: 100 }
-        latitude: { type: [number, 'null'], description: 'Degrees. Not range-checked by the API; a non-numeric value is stored as 0.' }
-        longitude: { type: [number, 'null'], description: 'Degrees. Not range-checked by the API; a non-numeric value is stored as 0.' }
+        latitude: { type: [number, 'null'], minimum: -90, maximum: 90, description: 'Degrees (JSON number). Only together with `longitude` (both or none); otherwise, out of range or not a number: 422 `validation_failed` with the field. On update the pair is checked after merging with the stored value, and only when a coordinate is sent.' }
+        longitude: { type: [number, 'null'], minimum: -180, maximum: 180, description: Degrees (JSON number); see `latitude`. }
     LocationUsage:
       type: object
       required: [events, templates, templateNames]
@@ -3480,7 +3521,7 @@ components:
         name: { type: string }
         url: { type: string, format: uri }
         lastFetchedAt: { type: [string, 'null'], format: date-time }
-        eventCount: { type: integer, description: 'Stored holidays. The response of `POST` (create) still shows 0 although the holidays were stored; `GET` and refresh show the real count.' }
+        eventCount: { type: integer, description: Stored holidays (also in the response of create and refresh). }
     HolidayCalendarInput:
       type: object
       required: [name, url]

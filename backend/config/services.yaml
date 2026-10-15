@@ -50,10 +50,6 @@ services:
         arguments:
             $httpClient: '@holiday_calendar.http_client'
 
-    App\Controller\MapboxController:
-        arguments:
-            $mapboxToken: '%env(MAPBOX_TOKEN)%'
-
     geocoder.mapbox_de:
         class: Geocoder\StatefulGeocoder
         arguments:

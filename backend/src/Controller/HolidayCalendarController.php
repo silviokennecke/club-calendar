@@ -56,16 +56,19 @@ class HolidayCalendarController extends AbstractApiController
 
         $hc = new HolidayCalendar($calendar, $dto->name, $dto->url);
         try {
-            $this->em->wrapInTransaction(function () use ($hc): void {
+            // The stored holidays are not in $hc->getEvents() (new entity, collection not reloaded):
+            // the response carries the number fetchAndStore() stored.
+            $eventCount = $this->em->wrapInTransaction(function () use ($hc): int {
                 $this->em->persist($hc);
                 $this->em->flush();
-                $this->holidayCalendarService->fetchAndStore($hc);
+
+                return $this->holidayCalendarService->fetchAndStore($hc);
             });
         } catch (\Throwable) {
             return new JsonResponse(['error' => 'Failed to fetch ICS feed. Please check the URL and try again.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        return new JsonResponse($this->serialize($hc), Response::HTTP_CREATED);
+        return new JsonResponse($this->serialize($hc, $eventCount), Response::HTTP_CREATED);
     }
 
     #[Route('/{hcId}', methods: ['PATCH'])]
@@ -126,22 +129,22 @@ class HolidayCalendarController extends AbstractApiController
         }
 
         try {
-            $this->holidayCalendarService->fetchAndStore($hc);
+            $eventCount = $this->holidayCalendarService->fetchAndStore($hc);
         } catch (\Throwable) {
             return new JsonResponse(['error' => 'Failed to fetch ICS feed. Please check the URL and try again.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        return new JsonResponse($this->serialize($hc));
+        return new JsonResponse($this->serialize($hc, $eventCount));
     }
 
-    private function serialize(HolidayCalendar $hc): array
+    private function serialize(HolidayCalendar $hc, ?int $eventCount = null): array
     {
         return [
             'id' => $hc->getId(),
             'name' => $hc->getName(),
             'url' => $hc->getUrl(),
             'lastFetchedAt' => $hc->getLastFetchedAt()?->format(\DateTimeInterface::ATOM),
-            'eventCount' => $hc->getEvents()->count(),
+            'eventCount' => $eventCount ?? $hc->getEvents()->count(),
         ];
     }
 }
