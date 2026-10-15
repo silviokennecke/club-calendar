@@ -16,9 +16,13 @@
 
 	encode zstd gzip
 
+	# Feed pages (SPA) and feed API: never send a Referer
+	@feed path /feed/* /api/feed/*
+	header @feed Referrer-Policy no-referrer
+
 	header {
 		X-Content-Type-Options nosniff
-		Referrer-Policy strict-origin-when-cross-origin
+		?Referrer-Policy strict-origin-when-cross-origin
 		-Server
 	}
 

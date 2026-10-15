@@ -623,6 +623,31 @@ describe("ImportPage – limit per import", () => {
     expect(screen.getByRole("button", { name: "5000 Termine importieren" })).toBeEnabled();
   }, 60000);
 
+  it("lists the recurrence limits as a bullet list inside the banner", async () => {
+    const user = userEvent.setup();
+    const endless = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "BEGIN:VEVENT",
+      "UID:e",
+      "SUMMARY:Training",
+      "DTSTART:20261015T190000",
+      "DTEND:20261015T210000",
+      "RRULE:FREQ=DAILY",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    await openReview(user, endless);
+    const banner = (
+      await screen.findByText("Nicht alle Wiederholungen wurden ausgeschrieben")
+    ).closest(".ap-banner")!;
+    const list = within(banner as HTMLElement).getByRole("list");
+    // The class carries `list-style: disc` (src/index.css); the base reset would hide the bullets
+    expect(list).toHaveClass("ap-banner-list");
+    expect(within(list).getAllByRole("listitem").length).toBeGreaterThan(0);
+    expect(list.getAttribute("style")).toBeNull();
+  });
+
   it("reports the backend's limit as a failure where nothing was created", async () => {
     const { ApiError } = await import("@/lib/api");
     apiPost.mockImplementation((path: string, body: Body) =>
