@@ -6,5 +6,8 @@ parameters:
     paths:
         - src
         - tests
+    # Migrations are loaded by doctrine/migrations, not by Composer (FeedStatusMigrationTest uses one)
+    scanDirectories:
+        - migrations
     excludePaths:
         - src/Kernel.php

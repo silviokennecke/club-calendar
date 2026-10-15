@@ -26,6 +26,8 @@ const privateFeed = {
   calendarId: "k1",
   name: "Vorstand intern",
   visibility: "PRIVATE",
+  searchable: false,
+  indexable: false,
   sharedSecret: "test-secret-value",
   targetGroups: [{ feedId: "f2", targetGroupId: "g1" }],
 };
@@ -63,12 +65,15 @@ beforeEach(() => {
 });
 
 describe("FeedEditPage (new)", () => {
-  it("starts public and explains where the addresses appear", async () => {
+  it("starts club internal and explains where the addresses appear", async () => {
     renderEdit();
     expect(
       await screen.findByRole("heading", { level: 1, name: "Feed anlegen" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /Öffentlich/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /^Vereinsintern/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /^Öffentlich/ })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: /^Privat \(geschützt\)/ })).not.toBeChecked();
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     expect(
       screen.getByText(/erscheinen hier, sobald du den Feed gespeichert hast/),
     ).toBeInTheDocument();
@@ -94,6 +99,71 @@ describe("FeedEditPage (new)", () => {
     expect(apiPost).not.toHaveBeenCalled();
   });
 
+  it("offers three states in one radio group, each with an explanation", async () => {
+    renderEdit();
+    const group = await screen.findByRole("group", { name: "Sichtbarkeit" });
+    const radios = within(group).getAllByRole("radio");
+    expect(radios.map((r) => (r as HTMLInputElement).value)).toEqual(["PUBLIC", "CLUB", "PRIVATE"]);
+    expect(new Set(radios.map((r) => (r as HTMLInputElement).name)).size).toBe(1);
+    expect(within(group).getByRole("radio", { name: /^Vereinsintern/ })).toHaveAccessibleName(
+      /Suchmaschinen sollen ihn nicht auflisten/,
+    );
+    // "Vereinsintern" is no access restriction: the text must say that anyone with the link sees it
+    expect(within(group).getByRole("radio", { name: /^Vereinsintern/ })).toHaveAccessibleName(
+      /Kein Zugriffsschutz: Jeder mit dem Link .* auch Nicht-Mitglieder/,
+    );
+    expect(within(group).getByRole("radio", { name: /^Öffentlich/ })).toHaveAccessibleName(
+      /Jeder mit dem Link kann den Kalender ansehen/,
+    );
+    expect(within(group).getByRole("radio", { name: /^Privat/ })).toHaveAccessibleName(
+      /Nur mit dem Geheimnis im Link/,
+    );
+  });
+
+  it("shows the search engine switch only for public feeds (off by default)", async () => {
+    const user = userEvent.setup();
+    renderEdit();
+    await user.type(await screen.findByLabelText(/^Name/), "Termine");
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /^Öffentlich/ }));
+    const toggle = screen.getByRole("switch", { name: "Für Suchmaschinen auffindbar" });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(toggle).toHaveAccessibleDescription(/Suchmaschinen wie Google/);
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+    // Hidden again for the other states and switched off (explicit opt-in): back to public it is off
+    await user.click(screen.getByRole("radio", { name: /^Privat/ }));
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /^Öffentlich/ }));
+    const again = screen.getByRole("switch", { name: "Für Suchmaschinen auffindbar" });
+    expect(again).toHaveAttribute("aria-checked", "false");
+    await user.click(again);
+    await user.click(screen.getByRole("button", { name: "Feed speichern" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith(feedsPath, {
+        name: "Termine",
+        visibility: "PUBLIC",
+        searchable: true,
+        targetGroupIds: [],
+      }),
+    );
+  });
+
+  it("creates a club internal feed by default", async () => {
+    const user = userEvent.setup();
+    renderEdit();
+    await user.type(await screen.findByLabelText(/^Name/), "Mitglieder");
+    await user.click(screen.getByRole("button", { name: "Feed speichern" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith(feedsPath, {
+        name: "Mitglieder",
+        visibility: "CLUB",
+        searchable: false,
+        targetGroupIds: [],
+      }),
+    );
+  });
+
   it("creates a private feed limited to audiences and opens its addresses in the list", async () => {
     const user = userEvent.setup();
     renderEdit();
@@ -105,6 +175,7 @@ describe("FeedEditPage (new)", () => {
       expect(apiPost).toHaveBeenCalledWith(feedsPath, {
         name: "Jugend-Abo",
         visibility: "PRIVATE",
+        searchable: false,
         targetGroupIds: ["g1"],
       }),
     );
@@ -142,7 +213,7 @@ describe("FeedEditPage (edit)", () => {
       await screen.findByRole("heading", { level: 1, name: "Feed bearbeiten" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/^Name/)).toHaveValue("Vorstand intern");
-    expect(screen.getByRole("radio", { name: /Privat/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /^Privat/ })).toBeChecked();
     expect(screen.getByRole("button", { name: "Jugend" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Erwachsene" })).toHaveAttribute(
       "aria-pressed",
@@ -167,15 +238,78 @@ describe("FeedEditPage (edit)", () => {
     await user.type(name, "Vorstand");
     await user.click(screen.getByRole("button", { name: "Jugend" }));
     await user.click(screen.getByRole("button", { name: "Erwachsene" }));
-    await user.click(screen.getByRole("radio", { name: /Öffentlich/ }));
     await user.click(screen.getByRole("button", { name: "Feed speichern" }));
     await waitFor(() =>
       expect(apiPatch).toHaveBeenCalledWith(`${feedsPath}/f2`, {
         name: "Vorstand",
-        visibility: "PUBLIC",
+        visibility: "PRIVATE",
+        searchable: false,
         targetGroupIds: ["g2"],
       }),
     );
+  });
+
+  it("asks before a private feed becomes reachable without the secret", async () => {
+    const user = userEvent.setup();
+    renderEdit("f2");
+    await user.click(await screen.findByRole("radio", { name: /^Vereinsintern/ }));
+    // The secret panel describes the saved feed until it is saved
+    expect(screen.getByRole("heading", { name: "Geheimnis" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Feed speichern" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Geheimnis nicht mehr verlangen?",
+    });
+    expect(dialog).toHaveTextContent("„Vorstand intern“ wird vereinsintern.");
+    expect(dialog).toHaveTextContent(
+      "Danach kann jeder mit dem Link den Kalender sehen, auch wer den bisherigen Link mit Geheimnis nicht kennt.",
+    );
+    await waitFor(() =>
+      expect(within(dialog).getByRole("button", { name: "Abbrechen" })).toHaveFocus(),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Abbrechen" }));
+    expect(apiPatch).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("location")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("radio", { name: /^Öffentlich/ }));
+    await user.click(screen.getByRole("button", { name: "Feed speichern" }));
+    const again = await screen.findByRole("alertdialog");
+    expect(again).toHaveTextContent("„Vorstand intern“ wird öffentlich.");
+    await user.click(within(again).getByRole("button", { name: "Ohne Geheimnis speichern" }));
+    await waitFor(() =>
+      expect(apiPatch).toHaveBeenCalledWith(`${feedsPath}/f2`, {
+        name: "Vorstand intern",
+        visibility: "PUBLIC",
+        searchable: false,
+        targetGroupIds: ["g1"],
+      }),
+    );
+    expect(await screen.findByTestId("location")).toHaveTextContent(`${BASE}/settings/feeds`);
+  });
+
+  it("does not ask when a feed without secret changes its status", async () => {
+    feeds = [{ ...privateFeed, visibility: "CLUB", targetGroups: [] }];
+    const user = userEvent.setup();
+    renderEdit("f2");
+    await user.click(await screen.findByRole("radio", { name: /^Öffentlich/ }));
+    await user.click(screen.getByRole("switch", { name: "Für Suchmaschinen auffindbar" }));
+    await user.click(screen.getByRole("button", { name: "Feed speichern" }));
+    await waitFor(() =>
+      expect(apiPatch).toHaveBeenCalledWith(`${feedsPath}/f2`, {
+        name: "Vorstand intern",
+        visibility: "PUBLIC",
+        searchable: true,
+        targetGroupIds: [],
+      }),
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("shows the saved search engine option of a public feed", async () => {
+    feeds = [{ ...privateFeed, visibility: "PUBLIC", searchable: true, indexable: true }];
+    renderEdit("f2");
+    expect(
+      await screen.findByRole("switch", { name: "Für Suchmaschinen auffindbar" }),
+    ).toHaveAttribute("aria-checked", "true");
   });
 
   it("regenerates the secret only after confirming the consequence", async () => {
@@ -214,11 +348,14 @@ describe("FeedEditPage (edit)", () => {
     expect(await screen.findByTestId("location")).toHaveTextContent(`${BASE}/settings/feeds`);
   });
 
-  it("has no secret panel for a public feed", async () => {
-    feeds = [{ ...privateFeed, visibility: "PUBLIC", targetGroups: [] }];
+  it.each(["PUBLIC", "CLUB"])("has no secret panel for a %s feed", async (visibility) => {
+    feeds = [{ ...privateFeed, visibility, targetGroups: [] }];
     renderEdit("f2");
     await screen.findByLabelText(/^Name/);
     expect(screen.queryByRole("heading", { name: "Geheimnis" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Geheimnis neu erzeugen" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByLabelText("ICS-Adresse")).toHaveValue(
       "https://api.example.org/api/feed/f2/ics",
     );

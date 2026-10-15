@@ -114,7 +114,9 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 
 - **Club** — the top-level entity; has one or more Calendars; managed by its members (Users via `ClubUser`, no roles yet)
 - **Calendar** — belongs to a Club; contains Events, EventTemplates, and reference data; can be archived (read-only) or duplicated
-- **CalendarFeed** — a publishable view of a Calendar (ICS + web); can be public or private (shared-secret protected)
+- **CalendarFeed** — a publishable view of a Calendar (ICS + web) with one of three states: `PUBLIC` (by link, search
+  engines may index it only with the opt-in `searchable`), `CLUB` ("Vereinsintern", default: by link, never indexed)
+  or `PRIVATE` (shared-secret protected); see `docs/redesign/BACKEND-GAPS.md` ("Feed-Status")
 - **Event** — a single occurrence on a Calendar; may be based on an EventTemplate; may belong to an EventSeries
 - **EventSeries** — a recurrence rule (weekly, every two weeks, monthly on the n-th weekday; until a date or a count; skip holidays) with the events created from it; edit/delete "only this event" or "all events of the series" (`scope`); the rule can be changed later ("Reihe ändern", `PATCH …/event-series/{id}`: only future events change, past ones stay). ICS imports with RRULE create single events, not series
 - **EventTemplate** — reusable event definition (name, time, location, properties)

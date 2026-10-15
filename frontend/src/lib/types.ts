@@ -38,11 +38,21 @@ export interface Calendar {
   feedCount?: number;
 }
 
+export type FeedVisibility = "PUBLIC" | "CLUB" | "PRIVATE";
+
 export interface CalendarFeed {
   id: string;
   calendarid: string;
   name: string;
-  visibility: "PUBLIC" | "PRIVATE";
+  /**
+   * PUBLIC and CLUB ("Vereinsintern"): reachable by link without the secret; they differ only in
+   * the search engine instruction. PRIVATE: only with the secret.
+   */
+  visibility: FeedVisibility;
+  /** Search engine opt-in; only ever true for PUBLIC feeds (the API resets it otherwise). */
+  searchable: boolean;
+  /** Search engines may index the feed (PUBLIC and searchable). */
+  indexable: boolean;
   sharedSecret: string;
   targetGroups: { feedId: string; targetGroupId: string }[];
 }
