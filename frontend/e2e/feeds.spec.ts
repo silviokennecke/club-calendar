@@ -26,6 +26,7 @@ async function listFeeds(request: APIRequestContext, s: Awaited<ReturnType<typeo
       id: string;
       name: string;
       visibility: string;
+      searchable: boolean;
       sharedSecret: string;
       targetGroups: unknown[];
     }[]
@@ -204,6 +205,131 @@ test.describe("Veröffentlichen", () => {
     // Jetzt hat der Feed ein Geheimnis-Panel
     await page.getByRole("link", { name: "Feed „Neu“ bearbeiten" }).click();
     await expect(page.getByRole("heading", { name: "Geheimnis" })).toBeVisible();
+  });
+
+  test("Feed je Status anlegen: Standard vereinsintern, Suchoption nur bei öffentlich, Liste und Webansicht", async ({
+    page,
+    request,
+  }) => {
+    const s = await seed(request, "Feeds Status");
+    await openFeeds(page, s.email, `${s.base}/settings/feeds/new`);
+    const group = page.getByRole("group", { name: "Sichtbarkeit" });
+    const searchable = page.getByRole("switch", { name: "Für Suchmaschinen auffindbar" });
+
+    // Standard: vereinsintern, keine Suchoption
+    await expect(group.getByRole("radio", { name: /^Vereinsintern/ })).toBeChecked();
+    await expect(searchable).toHaveCount(0);
+    await page.getByLabel(/^Name/).fill("Mitglieder");
+    await page.getByRole("button", { name: "Feed speichern" }).click();
+    await expect(page.getByText("Feed „Mitglieder“ angelegt.")).toBeVisible();
+
+    // Öffentlich und auffindbar
+    await page.getByRole("main").getByRole("link", { name: "Feed anlegen" }).first().click();
+    await page.getByLabel(/^Name/).fill("Für alle");
+    await group.getByRole("radio", { name: /^Öffentlich/ }).check();
+    await expect(searchable).toHaveAttribute("aria-checked", "false");
+    await searchable.click();
+    await expect(searchable).toHaveAttribute("aria-checked", "true");
+    await page.getByRole("button", { name: "Feed speichern" }).click();
+    await expect(page.getByText("Feed „Für alle“ angelegt.")).toBeVisible();
+
+    // Privat: Schalter verschwindet
+    await page.getByRole("main").getByRole("link", { name: "Feed anlegen" }).first().click();
+    await page.getByLabel(/^Name/).fill("Vorstand");
+    await group.getByRole("radio", { name: /^Öffentlich/ }).check();
+    await expect(searchable).toBeVisible();
+    await group.getByRole("radio", { name: /^Privat \(geschützt\)/ }).check();
+    await expect(searchable).toHaveCount(0);
+    await page.getByRole("button", { name: "Feed speichern" }).click();
+    await expect(page.getByText("Feed „Vorstand“ angelegt.")).toBeVisible();
+
+    const byName = Object.fromEntries((await listFeeds(request, s)).map((f) => [f.name, f]));
+    expect(byName["Mitglieder"]).toMatchObject({ visibility: "CLUB", searchable: false });
+    expect(byName["Für alle"]).toMatchObject({ visibility: "PUBLIC", searchable: true });
+    expect(byName["Vorstand"]).toMatchObject({ visibility: "PRIVATE", searchable: false });
+
+    // Liste: Wort + Icon je Status, "Auffindbar" nur beim öffentlichen Feed mit Suchoption
+    const badges = (name: string) => page.getByRole("region", { name }).locator(".ap-badge");
+    await expect(badges("Mitglieder")).toHaveText(["Vereinsintern"]);
+    await expect(badges("Für alle")).toHaveText(["Öffentlich", "Auffindbar"]);
+    await expect(badges("Vorstand")).toHaveText(["Privat"]);
+    for (const name of ["Mitglieder", "Für alle", "Vorstand"])
+      await expect(badges(name).locator("svg")).toHaveCount(name === "Für alle" ? 2 : 1);
+
+    // Adressen: vereinsintern ohne, privat mit Geheimnis
+    const club = page.getByRole("region", { name: "Mitglieder" });
+    if ((await club.getByLabel("ICS-Adresse").count()) === 0)
+      await club.getByRole("button", { name: "Zugänge anzeigen" }).click();
+    const clubWeb = await club.getByLabel("Adresse der Webansicht").inputValue();
+    expect(clubWeb).not.toContain("secret=");
+    expect((await request.get(await club.getByLabel("ICS-Adresse").inputValue())).status()).toBe(
+      200,
+    );
+    const priv = page.getByRole("region", { name: "Vorstand" });
+    if ((await priv.getByLabel("ICS-Adresse").count()) === 0)
+      await priv.getByRole("button", { name: "Zugänge anzeigen" }).click();
+    await expect(priv.getByLabel("ICS-Adresse")).toHaveValue(/secret=[0-9a-f]{32}$/);
+
+    // Webansicht: vereinsintern noindex, öffentlich + auffindbar ohne
+    await page.goto(new URL(clubWeb).pathname);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    await page.goto(`/feed/${byName["Für alle"].id}`);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
+    // Privat ohne Geheimnis: geschützt
+    await page.goto(`/feed/${byName["Vorstand"].id}`);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Dieser Kalender ist privat" }),
+    ).toBeVisible();
+  });
+
+  test("Wechsel privat → vereinsintern verlangt eine Bestätigung, danach ohne Geheimnis erreichbar", async ({
+    page,
+    request,
+  }) => {
+    const s = await seed(request, "Feeds Wechsel");
+    const created = await (
+      await request.post(`${API}/api/calendars/${s.calendarId}/feeds`, {
+        headers: s.headers,
+        data: { name: "Vorstand", visibility: "PRIVATE" },
+      })
+    ).json();
+    const openIcs = `${API}/api/feed/${created.id}/ics`;
+    expect((await request.get(openIcs)).status()).toBe(403);
+
+    await openFeeds(page, s.email, `${s.base}/settings/feeds/${created.id}`);
+    await expect(page.getByRole("heading", { name: "Geheimnis" })).toBeVisible();
+    await page.getByRole("radio", { name: /^Vereinsintern/ }).check();
+    await page.getByRole("button", { name: "Feed speichern" }).click();
+    const dialog = page.getByRole("alertdialog", { name: "Geheimnis nicht mehr verlangen?" });
+    await expect(dialog).toContainText("„Vorstand“ wird vereinsintern.");
+    await expect(dialog).toContainText(
+      "Danach kann jeder mit dem Link den Kalender sehen, auch wer den bisherigen Link mit Geheimnis nicht kennt.",
+    );
+    await expect(dialog.getByRole("button", { name: "Abbrechen" })).toBeFocused();
+    await dialog.getByRole("button", { name: "Abbrechen" }).click();
+    await expect(dialog).toHaveCount(0);
+    expect((await listFeeds(request, s))[0].visibility).toBe("PRIVATE");
+
+    await page.getByRole("button", { name: "Feed speichern" }).click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Ohne Geheimnis speichern" })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`${s.base}/settings/feeds$`));
+    await expect(page.getByRole("region", { name: "Vorstand" }).locator(".ap-badge")).toHaveText(
+      "Vereinsintern",
+    );
+    expect((await listFeeds(request, s))[0]).toMatchObject({
+      visibility: "CLUB",
+      searchable: false,
+    });
+    expect((await request.get(openIcs)).status()).toBe(200);
+    // Kein Geheimnis-Panel mehr
+    await page.getByRole("link", { name: "Feed „Vorstand“ bearbeiten" }).click();
+    await expect(page.getByLabel(/^Name/)).toHaveValue("Vorstand");
+    await expect(page.getByRole("heading", { name: "Geheimnis" })).toHaveCount(0);
   });
 
   test("Geheimnis neu erzeugen: Bestätigung nennt die Folgen, alte Adresse funktioniert nicht mehr", async ({

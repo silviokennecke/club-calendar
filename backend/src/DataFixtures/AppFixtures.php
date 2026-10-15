@@ -46,6 +46,13 @@ class AppFixtures extends Fixture
         $publicFeed->setSharedSecret('00000000-0000-0000-0000-000000000001');
         $manager->persist($publicFeed);
 
+        $clubFeed = new CalendarFeed();
+        $clubFeed->setCalendar($calendar);
+        $clubFeed->setName('Vereinskalender');
+        $clubFeed->setVisibility(FeedVisibility::CLUB);
+        $clubFeed->setSharedSecret('00000000-0000-0000-0000-000000000003');
+        $manager->persist($clubFeed);
+
         $privateFeed = new CalendarFeed();
         $privateFeed->setCalendar($calendar);
         $privateFeed->setName('Privater Kalender');

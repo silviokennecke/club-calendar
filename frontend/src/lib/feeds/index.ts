@@ -1,7 +1,17 @@
 // Pure feed logic (no React): addresses, visibility, form values and payload.
-import type { CalendarFeed } from "@/lib/types";
+import type { CalendarFeed, FeedVisibility } from "@/lib/types";
 
-export type FeedVisibility = CalendarFeed["visibility"];
+export type { FeedVisibility };
+
+/** Badge of a feed status (word + icon): PUBLIC "public", CLUB "club", PRIVATE "private". */
+export function feedStatus(visibility: FeedVisibility): "public" | "club" | "private" {
+  return visibility === "PRIVATE" ? "private" : visibility === "CLUB" ? "club" : "public";
+}
+
+/** Only PRIVATE feeds need the secret; PUBLIC and CLUB are reachable by link. */
+export function requiresSecret(visibility: FeedVisibility): boolean {
+  return visibility === "PRIVATE";
+}
 
 export interface FeedAddresses {
   /** Subscribe address for calendar apps (ICS). */
@@ -14,15 +24,16 @@ export interface FeedAddresses {
 
 /**
  * The three addresses of a feed. Private feeds carry their secret in every address
- * (`?secret=`), public feeds never do.
+ * (`?secret=`), public and club feeds never do.
  */
 export function feedAddresses(
   feed: Pick<CalendarFeed, "id" | "visibility" | "sharedSecret">,
   apiUrl: string,
   origin: string,
 ): FeedAddresses {
-  const query =
-    feed.visibility === "PRIVATE" ? `?secret=${encodeURIComponent(feed.sharedSecret)}` : "";
+  const query = requiresSecret(feed.visibility)
+    ? `?secret=${encodeURIComponent(feed.sharedSecret)}`
+    : "";
   const ics = `${apiUrl.replace(/\/+$/, "")}/api/feed/${feed.id}/ics${query}`;
   return {
     ics,
@@ -39,19 +50,39 @@ export function feedAudienceIds(feed: Pick<CalendarFeed, "targetGroups">): strin
 export interface FeedFormValues {
   name: string;
   visibility: FeedVisibility;
+  /** Search engine opt-in; only effective (and only sent as true) for PUBLIC. */
+  searchable: boolean;
   targetGroupIds: string[];
 }
 
+/** New feeds are CLUB ("Vereinsintern"), not searchable. */
 export function emptyFeedValues(): FeedFormValues {
-  return { name: "", visibility: "PUBLIC", targetGroupIds: [] };
+  return { name: "", visibility: "CLUB", searchable: false, targetGroupIds: [] };
 }
 
 export function feedValuesFromRecord(feed: CalendarFeed): FeedFormValues {
   return {
     name: feed.name,
     visibility: feed.visibility,
+    searchable: feed.visibility === "PUBLIC" && feed.searchable === true,
     targetGroupIds: feedAudienceIds(feed),
   };
+}
+
+/** The search engine option as it will be saved: only PUBLIC feeds keep it. */
+export function effectiveSearchable(values: Pick<FeedFormValues, "visibility" | "searchable">) {
+  return values.visibility === "PUBLIC" && values.searchable;
+}
+
+/**
+ * Saving drops the secret requirement: a saved PRIVATE feed becomes PUBLIC or CLUB (then anyone
+ * with the link can see it). Asks for confirmation first.
+ */
+export function dropsSecret(
+  saved: Pick<CalendarFeed, "visibility"> | undefined,
+  values: Pick<FeedFormValues, "visibility">,
+): boolean {
+  return !!saved && requiresSecret(saved.visibility) && !requiresSecret(values.visibility);
 }
 
 export function isFeedDirty(initial: FeedFormValues, values: FeedFormValues): boolean {
@@ -60,6 +91,7 @@ export function isFeedDirty(initial: FeedFormValues, values: FeedFormValues): bo
   return (
     initial.name.trim() !== values.name.trim() ||
     initial.visibility !== values.visibility ||
+    effectiveSearchable(initial) !== effectiveSearchable(values) ||
     !same(initial.targetGroupIds, values.targetGroupIds)
   );
 }
@@ -74,6 +106,7 @@ export function toFeedPayload(values: FeedFormValues) {
   return {
     name: values.name.trim(),
     visibility: values.visibility,
+    searchable: effectiveSearchable(values),
     targetGroupIds: values.targetGroupIds,
   };
 }

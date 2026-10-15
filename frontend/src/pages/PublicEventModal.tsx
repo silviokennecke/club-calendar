@@ -60,8 +60,9 @@ export default function PublicEventModal() {
     : header
       ? t("feed.event.notFound.title")
       : t("feed.brand");
-  // Private feeds and states without an event are not indexed.
-  usePublicHead({ title, noindex: !event || header?.visibility !== "PUBLIC" });
+  // Only an event of an indexable feed (PUBLIC + search engine option) may be indexed; club
+  // internal and private feeds and states without an event are noindex.
+  usePublicHead({ title, indexable: !!event && header?.indexable === true });
 
   const close = t("feed.event.close");
 

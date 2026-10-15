@@ -5,6 +5,9 @@ framework:
     php_errors:
         log: true
     session: false
+    # Symfony would add `X-Robots-Tag: noindex` to every response in debug mode (dev/test) only; the
+    # feed API decides per feed (FeedResponseHeadersListener), so all environments behave like prod.
+    disallow_search_engine_index: false
 
 when@test:
     framework:

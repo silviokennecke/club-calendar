@@ -1,6 +1,6 @@
 # Backend-Lücken und offene Risiken (Endstand)
 
-Stand: 2026-10-14, nach Paket 5 (Serienregel ändern, RRULE-Import, Hinweis-Mails). Der Umsetzungsplan (`BACKEND-PLAN.md`, Pakete 1–4) ist abgeschlossen. Hier steht,
+Stand: 2026-10-15, nach Paket 5 (Serienregel ändern, RRULE-Import, Hinweis-Mails) und den drei Feed-Status. Der Umsetzungsplan (`BACKEND-PLAN.md`, Pakete 1–4) ist abgeschlossen. Hier steht,
 was nach dem Redesign im Backend noch fehlt (jeder Punkt am 2026-10-13 gegen den Code geprüft), welche
 Sicherheitsrisiken offen sind, was umgesetzt und behoben wurde und was im Betrieb zu tun ist. Zuordnung zu den
 Artboards: `COVERAGE.md`; Redesign-Plan: `PLAN.md`; E2E-Umgebung: `E2E.md`.
@@ -11,7 +11,8 @@ Artboards: `COVERAGE.md`; Redesign-Plan: `PLAN.md`; E2E-Umgebung: `E2E.md`.
    (Paket 1), Import-Vorschau, atomarer Import, Export, Sammelaktionen, Fehlercodes (Paket 2), Passwort vergessen,
    Profil, SSO verknüpfen/trennen (Paket 3), Terminserien mit "nur dieser Termin / alle Termine der Reihe" (Paket 4),
    Serienregel nachträglich ändern, RRULE-Auflösung beim Import und Hinweis-Mails bei Konto-Änderungen (Paket 5).
-2. **Vor produktiver Nutzung (Betrieb):** alle Migrationen ausführen (zuletzt `Version20261014120000`, Serien),
+2. **Vor produktiver Nutzung (Betrieb):** alle Migrationen ausführen (zuletzt `Version20261015120000`, Feed-Status:
+   bestehende öffentliche Feeds werden vereinsintern, private bleiben privat),
    `APP_SECRET`, `JWT_REFRESH_SECRET`, `APP_URL` (bzw. `FRONTEND_URL`/`BACKEND_URL`) und `WEBAUTHN_*` setzen, Crons
    einrichten, SSO nur über HTTPS. Siehe "Betrieb".
 3. **Sicherheit:** die bekannten Risiken (Rollen, Rate-Limiting, Refresh-Rotation, Tokens im Redirect, Enumeration,
@@ -46,12 +47,17 @@ Artboards: `COVERAGE.md`; Redesign-Plan: `PLAN.md`; E2E-Umgebung: `E2E.md`.
 
 - **Kurze Adressen** (`/k/<verein>/<feed>`, `?key=` im Design) bräuchten Slugs je Verein und Feed (COVERAGE L5).
   Heute: Webansicht `…/feed/{id}?secret=…`, ICS `{API}/api/feed/{id}/ics?secret=…`.
-- **Geheimnis** wird auch für öffentliche Feeds erzeugt und ausgeliefert (nur bei privaten relevant).
+- **Geheimnis** wird für jeden Feed erzeugt und ausgeliefert, auch für öffentliche und vereinsinterne (nur bei
+  privaten relevant). Beim Wechsel von Privat zu Öffentlich/Vereinsintern bleibt es unverändert; beim Wechsel von
+  Öffentlich/Vereinsintern zurück zu Privat erzeugt `FeedService::update()` immer ein **neues** Geheimnis (das alte
+  kann in der offenen Phase in geteilten Links, Logs oder dem Browserverlauf gelandet sein und darf nicht wieder
+  Zugriff geben); die Feedliste zeigt danach die neuen Adressen.
 - **Archiviert vs. unbekannt:** beide 404 ohne Code; ein Zustand "Kalender archiviert" bräuchte einen eigenen
   Status/Code. Falsches und fehlendes Geheimnis sind nicht unterscheidbar (für Gäste gewollt).
-- **Indexierung:** `X-Robots-Tag` der Feed-API ist heute fest `noindex` (`FeedResponseHeadersListener::robotsTag()`);
-  je Feed-Status/Option steuern (öffentliche Feeds auffindbar) ist offen. Die SPA-Seiten `/feed/*` setzen noindex
-  per `<meta>` aus den API-Daten.
+- **Indexierung:** gesteuert je Feed (Status `PUBLIC` + Option `searchable`, siehe "Feed-Status"). Die SPA-Seiten
+  `/feed/*` bekommen ihr noindex nur per `<meta>` (aus `feed.indexable`); der Webserver sendet für sie kein
+  `X-Robots-Tag` (bewusst nur Backend). Ein Abschalten der Option entfernt bereits indexierte Seiten erst beim
+  nächsten Besuch der Suchmaschine.
 
 ### Import und Export
 
@@ -108,9 +114,67 @@ Nicht im Audit, gering:
 Neue Felder sind jeweils Ergänzungen; bestehende Antwortformen blieben gleich. Tests je Feature in
 `backend/tests/Controller` (rot ohne Umsetzung geprüft), Frontend mit Vitest und Playwright.
 
+### Feed-Status: öffentlich, vereinsintern, privat (2026-10-15)
+
+Migration `Version20261015120000`. **Entscheidungen des Auftraggebers:**
+
+- **Drei Status** (`App\Enum\FeedVisibility`): `PUBLIC` ("Öffentlich"), `CLUB` ("Vereinsintern", **Standard für neue
+  Feeds**, auch in der API: `POST …/feeds` ohne `visibility` legt `CLUB` an) und `PRIVATE` ("Privat (geschützt)").
+  `PUBLIC` und `CLUB` sind technisch gleich (Webansicht, ICS, Einzeltermin, Feiertage ohne Geheimnis per Link, wie
+  bisher "öffentlich"; ein mitgeschicktes Geheimnis wird ignoriert); der **einzige Unterschied ist die
+  Suchmaschinen-Anweisung**. `PRIVATE` verlangt weiter das Geheimnis (403 ohne/mit falschem, Geheimnisprüfung vor
+  allem anderen, kein Orakel; archivierter Kalender 404, bei Privat erst mit Geheimnis: unverändert).
+- **Suchmaschinen-Option** `searchable` (bool, Spalte `calendar_feed.searchable`, Standard `false` = Opt-in), nur bei
+  `PUBLIC`. **Indexierbar genau dann, wenn `visibility = PUBLIC` und `searchable = true`**
+  (`CalendarFeed::isIndexable()`); sonst immer noindex (CLUB, PRIVATE, PUBLIC ohne Option, alle Fehlerantworten).
+  API: `searchable: true` bei einem anderen (resultierenden) Status → 422 `validation_failed` field `searchable`
+  (nichts gespeichert); kein Boolean → 400 field `searchable`. Ein `PATCH` weg von `PUBLIC` setzt `searchable`
+  automatisch auf `false` (auch zurück zu `PUBLIC` bleibt es aus, bis es wieder gesetzt wird). Antworten von
+  `GET/POST/PATCH …/feeds` liefern immer den wirksamen Wert `searchable` und zusätzlich `indexable`. Ungültige
+  `visibility` → 400 `validation_failed` field `visibility` (vorher 400 ohne Code).
+- **Öffentliche API:** `GET /api/feed/{id}/events` und `…/events/{eventId}` liefern in `feed` `visibility`
+  (`PUBLIC|CLUB|PRIVATE`, vorher `PUBLIC|PRIVATE`) und neu `indexable` (bool). Frontend-Typ `FeedVisibility`
+  (`lib/types.ts`) angepasst.
+- **Robots-Header nur im Backend** (der Webserver setzt kein `X-Robots-Tag`): `FeedResponseHeadersListener::robotsTag()`
+  sendet `noindex`, außer die Antwort ist erfolgreich (2xx) UND das Request-Attribut `feed_indexable` ist `true`.
+  Das Attribut setzt `PublicFeedService::loadFeed()` nach den Zugriffsprüfungen (der Listener lädt den Feed nicht noch
+  einmal); fehlt es (unbekannter Feed, 403, 404, archiviert) oder folgt ein Fehler (400 bei ungültigem `from`, 404
+  für einen unbekannten Termin) → `noindex`. Antworten indexierbarer Feeds haben keinen `X-Robots-Tag`.
+  `Referrer-Policy: no-referrer` bleibt unverändert für alle `/api/feed/*`. Symfonys eigenes noindex im Debug-Modus
+  (`framework.disallow_search_engine_index`) ist abgeschaltet, damit Dev/Test sich wie Prod verhalten.
+- **Migration und Bestandsdaten:** `calendar_feed.visibility` ist ein `VARCHAR(255)` (Doctrine-`enumType`, kein
+  DB-ENUM), daher keine Typänderung. `up`: Spalte `searchable TINYINT(1) NOT NULL DEFAULT 0`, Spalten-Default von
+  `visibility` `'PRIVATE'` → `'CLUB'`, **bestehende `PUBLIC`-Feeds → `CLUB`** (weiter per Link erreichbar, jetzt
+  nicht indexiert). **Bestehende `PRIVATE`-Feeds BLEIBEN `PRIVATE`**: die Vorgabe "bestehende werden vereinsintern"
+  bezieht sich nur auf die bisher öffentlichen Feeds, ein privater Feed verliert sein Geheimnis nie durch die
+  Migration. `down`: `CLUB` → `PUBLIC`, Default zurück auf `'PRIVATE'`, `searchable` entfernt (die Option geht
+  verloren). Geheimnisse bleiben unverändert. `CLUB` → `PUBLIC` öffnet beim Zurückrollen nichts: beide sind ohne
+  Geheimnis erreichbar, und der alte Code sendet für jeden Feed `noindex`; ein Mapping `CLUB` → `PRIVATE` würde
+  dagegen Abonnenten aussperren, die nie ein Geheimnis bekommen haben.
+- **Kalender duplizieren** kopiert Feeds weiterhin mit gleichem Status und neuen Geheimnissen; `searchable` ist in der
+  Kopie immer `false` (keine zweite indexierte Kopie derselben Termine).
+- **Fixtures:** "Öffentlicher Kalender" (`PUBLIC`), neu "Vereinskalender" (`CLUB`), "Privater Kalender" (`PRIVATE`).
+- **Frontend:** `FeedEditPage` Radiogruppe mit drei Status (Standard Vereinsintern; der Erklärtext sagt "Kein
+  Zugriffsschutz: Jeder mit dem Link …, auch Nicht-Mitglieder", denn "vereinsintern" ist nur eine Bitte an
+  Suchmaschinen, keine Zugriffsbeschränkung), Schalter "Für Suchmaschinen auffindbar" nur bei Öffentlich (wird beim
+  Verlassen von Öffentlich im Formular ausgeschaltet: ausdrückliches Opt-in), Bestätigung (`ConfirmDialog`) beim Speichern eines privaten Feeds als
+  öffentlich/vereinsintern; `FeedsPage` Badges `public`/`club`/`private` + `searchable` ("Auffindbar");
+  `usePublicHead({indexable})` setzt `<meta name="robots" content="noindex, nofollow">`, außer `feed.indexable ===
+  true` (Abweichungen vom Design: `COVERAGE.md`, "Feed-Status").
+- **Tests:** `FeedStatusTest` (Zugriffsmatrix PUBLIC / PUBLIC+searchable / CLUB / PRIVATE × ohne / richtiges /
+  falsches Geheimnis × Terminliste, Einzeltermin, ICS, Feiertage mit from/to; Archiv 404 und Geheimnis zuerst;
+  Robots-Matrix an echten Antworten inkl. 400/403/404; Defaults und Validierung von `searchable`; Mandanten- und
+  Archivregeln der Feed-Routen; Duplizieren; Wechsel wirkt sofort, zurück zu Privat mit neuem Geheimnis; ungültige
+  `visibility`-/`searchable`-Werte), `FeedStatusMigrationTest` (up/down mit Bestandsdaten: vormals
+  öffentlicher Feed ohne Geheimnis erreichbar, vormals privater verlangt es weiter), `Unit/FeedResponseHeadersListenerTest`
+  (Matrix Attribut × Status); Vitest `lib/feeds`, `FeedEditPage`, `FeedsPage`, `FeedPage` (Robots-Meta je Status),
+  `components/feed/__tests__/usePublicHead.test.tsx`; E2E `feeds.spec.ts` (Anlegen je Status, Suchoption, Badges,
+  Wechsel Privat → Vereinsintern mit Bestätigung), `public.spec.ts` (Meta und `X-Robots-Tag` je Status). Jede
+  Regel per Mutation gegengeprüft (ohne Umsetzung rot).
+
 ### Header der Feed-Adressen (2026-10-15)
 
-Keine Migration. `Referrer-Policy: no-referrer` für `/feed/*` (SPA) und `/api/feed/*`: Apache
+Keine Migration. (Robots-Steuerung je Feed seit "Feed-Status", oben.) `Referrer-Policy: no-referrer` für `/feed/*` (SPA) und `/api/feed/*`: Apache
 (`backend/public/.htaccess`, `<If>` auf `THE_REQUEST`, wirkt auch auf die per Rewrite ausgelieferte `index.html`),
 Caddy (`docker/Caddyfile`, `@feed`; die allgemeine Policy dort ist ein Default `?Referrer-Policy`) und im Backend
 für `/api/feed/*` (`FeedResponseHeadersListener`, auch Fehlerantworten). `X-Robots-Tag: noindex` setzt NUR das
@@ -340,7 +404,7 @@ RFC-7807-Body `{type, title, status, detail, code, field?}` über `App\Exception
 
 | Code | Status | Wo |
 | --- | --- | --- |
-| `validation_failed` | 400/422 | Eingabefehler mit `field` (`Input`, DTO-Validierung 422, Import `events[n].feld`, Export-Parameter, Bulk, Serienregel `rule.*` 400, Serie ohne Termine 422 field `rule` (auch nach einer Regeländerung), `scope`) |
+| `validation_failed` | 400/422 | Eingabefehler mit `field` (`Input`, DTO-Validierung 422, Import `events[n].feld`, Export-Parameter, Bulk, Serienregel `rule.*` 400, Serie ohne Termine 422 field `rule` (auch nach einer Regeländerung), `scope`, Feeds: `visibility` 400, `searchable` 400 / 422 bei nicht-öffentlichem Feed) |
 | `invalid_request` | 400 | Body ist kein JSON-Objekt, Passkey-Body unvollständig |
 | `unknown_reference` | 422 | ID nicht im Kalender (`CalendarReferences`, Bulk-`ids`, Export-`targetGroupIds`, Import-`locationTempId`, Serien-`templateId`) |
 | `duplicate_name` | 422 | Name im Kalender schon vergeben |
@@ -398,7 +462,10 @@ Alle mit Tests; Details in den Commits.
   automatisch): `Version20261004120000` (`auth_nonce`), `Version20261004130000` (`user.token_version`),
   `Version20261009120000` (Vorlagen-Zeiten nullable), `Version20261010120000` (`event.external_uid`),
   `Version20261013120000` (`password_reset`, `email_change`, `passkey.last_used_at`, `club_user.last_calendar_id`),
-  `Version20261014120000` (`event_series`, `event.series_id`).
+  `Version20261014120000` (`event_series`, `event.series_id`), `Version20261015120000` (Feed-Status: `PUBLIC` →
+  `CLUB`, `PRIVATE` bleibt, `calendar_feed.searchable`). Nach dieser Migration sind bisher öffentliche Feeds
+  vereinsintern (nicht indexiert); wer einen Feed in Suchmaschinen haben will, stellt ihn auf "Öffentlich" und
+  schaltet "Für Suchmaschinen auffindbar" ein.
 - **Umgebungsvariablen (Produktion):** `APP_SECRET` (signiert Passkey-Challenges, OAuth-State und SSO-Tickets; ein
   Wechsel macht laufende Anmeldevorgänge ungültig) und `JWT_REFRESH_SECRET` müssen gesetzt sein (Platzhalter in
   `.env`). `APP_URL` = öffentliche Adresse; `FRONTEND_URL`, `BACKEND_URL` und `WEBAUTHN_RP_ID` leiten sich daraus ab
@@ -430,6 +497,6 @@ Alle mit Tests; Details in den Commits.
       # verschachtelten Blöcken nicht geerbt: die allgemeinen Header dort wiederholen)
   }
   ```
-  `X-Robots-Tag` setzt das Backend (nur Feed-API), nicht der Webserver.
+  `X-Robots-Tag` setzt das Backend (nur Feed-API, je Feed: noindex außer öffentlich + auffindbar), nicht der Webserver.
 - **Nach einem Deploy** fehlen die Chunks des vorigen Releases; das Frontend lädt bei einem fehlgeschlagenen
   Chunk-Import einmal neu (`vite:preloadError` in `frontend/src/main.tsx`).

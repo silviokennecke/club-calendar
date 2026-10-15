@@ -176,15 +176,19 @@ does not offer yet and how the frontend works around it).
     `stay` keeps the club page in place; duplicating sends the localized name in the POST. `CalendarDeleteDialog` =
     delete confirmation with the calendar's `eventCount` (single GET when it opens).
 - Publish, club, profile:
-  - Feeds: list `…/settings/feeds` (`pages/settings/FeedsPage`: visibility as `StatusBadge` word + icon, audience
+  - Feeds: list `…/settings/feeds` (`pages/settings/FeedsPage`: status as `StatusBadge` word + icon (`public` /
+    `club` "Vereinsintern" / `private`, plus `searchable` "Auffindbar" for indexable public feeds), audience
     tags, addresses behind a disclosure, first feed open, a freshly saved one opens via router state `{ open }`),
-    `…/settings/feeds/new` and `…/settings/feeds/:feedId` (`FeedEditPage`: name, visibility radios, audience chips,
-    secret panel with "Geheimnis neu erzeugen" behind a `ConfirmDialog`, addresses of the saved feed; archived
+    `…/settings/feeds/new` and `…/settings/feeds/:feedId` (`FeedEditPage`: name, visibility radio group with three
+    states `PUBLIC` / `CLUB` / `PRIVATE` (default `CLUB`), the `Toggle` "Für Suchmaschinen auffindbar" only for
+    `PUBLIC` (switched off when the form leaves `PUBLIC`), saving a saved private feed as `PUBLIC`/`CLUB` asks first (`ConfirmDialog`, `dropsSecret`), audience chips,
+    secret panel (only `PRIVATE`) with "Geheimnis neu erzeugen" behind a `ConfirmDialog`, addresses of the saved feed; archived
     calendars are read-only). The page loads its feed with the single GET (`useFeed`, key below
     `["feeds", calendarId]`, so list invalidations refresh it). UI in
     `components/feeds/` (`FeedAccess` = CopyFields for secret / ICS / webcal / web, `AudienceTags`, `useFeeds`);
-    pure logic in `src/lib/feeds/` (`feedAddresses`: private feeds carry `?secret=` in every address, form values,
-    payload). Visibility is always icon + word (no emoji icons).
+    pure logic in `src/lib/feeds/` (`feedAddresses`: private feeds carry `?secret=` in every address, public and club
+    feeds never; `feedStatus`, `requiresSecret`, `effectiveSearchable` (only `PUBLIC` sends `searchable: true`),
+    form values, payload). Visibility is always icon + word (no emoji icons). Type `FeedVisibility` in `lib/types.ts`.
   - Club: `/clubs/:clubId` (`pages/ClubPage`, in `components/club/`: `ClubNameSection`, `MembersSection` (table,
     remove / leave with `ConfirmDialog`, add by e-mail with 404 -> "no account"), `CalendarsSection` (create form,
     one `CalendarRow` per calendar with open / duplicate / archive / delete, archived list with restore). Rows show "n Termine"
@@ -225,7 +229,8 @@ does not offer yet and how the frontend works around it).
   `pages/PublicEventModal` (`/feed/:feedId/events/:eventId`, above the feed; a shared link shows the feed at the
   event's month below; unknown events, drafts and feed errors are states of the dialog) share `components/feed/` (`PublicShell` = skip link, brand row with `LangSwitch` +
   `ThemeSwitch`, header, `<main id="main">`, footer; `usePublicHead` sets `<meta name="referrer" content="no-referrer">` (the web server also sends `Referrer-Policy: no-referrer` for `/feed/*`; `X-Robots-Tag` only comes from the backend for `/api/feed/*`),
-  `noindex` for private feeds (`feed.visibility`) and error states, and a title without the secret; `usePublicFeed` =
+  `noindex, nofollow` unless `indexable === true` (from `feed.indexable` of the API: only `PUBLIC` feeds with the
+  search engine option; club internal, private, loading and error states are noindex), and a title without the secret; `usePublicFeed` =
   react-query over `fetchPublicFeed` for the visible month grid (`from`/`to`, the previous month stays while loading)
   with `referrerPolicy: "no-referrer"`, no auth headers, no retries; `usePublicEvent` = the single-event endpoint for
   the dialog (placeholder from the feed cache; on 404 a one-day feed request tells "event not found" from "feed not

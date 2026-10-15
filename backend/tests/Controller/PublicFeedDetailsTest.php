@@ -127,6 +127,7 @@ class PublicFeedDetailsTest extends WebTestCase
             'calendarName' => 'Schießbetrieb 2026',
             'timezone' => 'Europe/Vienna',
             'visibility' => 'PUBLIC',
+            'indexable' => false,
             'eventCount' => 0,
             'audiences' => [],
         ], $r['body']['feed']);

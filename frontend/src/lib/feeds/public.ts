@@ -2,6 +2,7 @@
 import { API_URL } from "@/lib/apiUrl";
 import { overlapsRange, type IsoDate } from "@/lib/calendar";
 import { matchesGroups } from "@/lib/events/list";
+import type { FeedVisibility } from "@/lib/types";
 
 const API_BASE = API_URL;
 
@@ -51,7 +52,9 @@ export interface PublicFeedHeader {
   calendarName: string;
   /** Effective zone of the calendar (calendar, else club): "today" and the time note. */
   timezone: string;
-  visibility: "PUBLIC" | "PRIVATE";
+  visibility: FeedVisibility;
+  /** Search engines may index the page (PUBLIC feed with the search engine option); else noindex. */
+  indexable: boolean;
   /** Published events of the feed over all dates (the page loads one month at a time). */
   eventCount: number;
   /** Audiences of those events, sorted by name (filter chips, tag tones). */
