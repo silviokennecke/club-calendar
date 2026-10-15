@@ -11,6 +11,7 @@ use App\Service\EventExportService;
 use App\Service\EventImportService;
 use App\Service\EventSeriesService;
 use App\Service\EventService;
+use App\Service\Input;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -59,18 +60,15 @@ class EventController extends AbstractApiController
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     public function list(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
-        $from = $request->query->get('from');
-        $to = $request->query->get('to');
-        if ($from && false === strtotime($from)) {
-            throw new BadRequestHttpException('Invalid from date');
-        }
-        if ($to && false === strtotime($to)) {
-            throw new BadRequestHttpException('Invalid to date');
-        }
+        // Strictly YYYY-MM-DD (400 validation_failed with the field), like the export and the public feed
+        $query = $request->query->all();
+        $from = Input::optionalDate($query['from'] ?? null, 'from');
+        $to = Input::optionalDate($query['to'] ?? null, 'to');
+        Input::assertDateRange($from, $to);
         $tgParam = $request->query->get('targetGroupIds');
         $tgIds = $tgParam ? array_values(array_filter(array_map('trim', explode(',', $tgParam)))) : null;
 
-        return new JsonResponse($this->eventService->listEvents($calendar, $from ?: null, $to ?: null, $tgIds ?: null));
+        return new JsonResponse($this->eventService->listEvents($calendar, $from, $to, $tgIds ?: null));
     }
 
     #[Route('/from-template', methods: ['POST'])]

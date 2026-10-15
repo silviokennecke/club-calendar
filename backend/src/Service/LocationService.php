@@ -46,10 +46,45 @@ readonly class LocationService
         $location->setZip(Input::nullableString($data, 'zip', 20));
         $location->setCity(Input::nullableString($data, 'city'));
         $location->setCountry(Input::nullableString($data, 'country', 100));
-        $location->setLatitude(isset($data['latitude']) ? (float) $data['latitude'] : null);
-        $location->setLongitude(isset($data['longitude']) ? (float) $data['longitude'] : null);
+        [$latitude, $longitude] = self::position(self::coordinate($data, 'latitude', 90), self::coordinate($data, 'longitude', 180));
+        $location->setLatitude($latitude);
+        $location->setLongitude($longitude);
 
         return $location;
+    }
+
+    /** A coordinate: absent/null or a JSON number within ±$limit, else 422 validation_failed on the field. */
+    private static function coordinate(array $data, string $key, int $limit): ?float
+    {
+        $value = $data[$key] ?? null;
+        if (null === $value) {
+            return null;
+        }
+        if (!is_int($value) && !is_float($value)) {
+            throw Input::invalid($key, sprintf('%s must be a number', $key), 422);
+        }
+        if ($value < -$limit || $value > $limit) {
+            throw Input::invalid($key, sprintf('%s must be between -%d and %d', $key, $limit, $limit), 422);
+        }
+
+        return (float) $value;
+    }
+
+    /**
+     * A position needs both coordinates (or none).
+     *
+     * @return array{0: ?float, 1: ?float}
+     */
+    private static function position(?float $latitude, ?float $longitude): array
+    {
+        if (null === $latitude && null !== $longitude) {
+            throw Input::invalid('latitude', 'latitude and longitude must be given together', 422);
+        }
+        if (null !== $latitude && null === $longitude) {
+            throw Input::invalid('longitude', 'latitude and longitude must be given together', 422);
+        }
+
+        return [$latitude, $longitude];
     }
 
     public function update(string $id, Calendar $calendar, array $data): array
@@ -71,11 +106,14 @@ readonly class LocationService
         if (array_key_exists('country', $data)) {
             $location->setCountry(Input::nullableString($data, 'country', 100));
         }
-        if (array_key_exists('latitude', $data)) {
-            $location->setLatitude(null !== $data['latitude'] ? (float) $data['latitude'] : null);
-        }
-        if (array_key_exists('longitude', $data)) {
-            $location->setLongitude(null !== $data['longitude'] ? (float) $data['longitude'] : null);
+        // Only checked when a coordinate is sent: stored half positions (older data) stay editable
+        if (array_key_exists('latitude', $data) || array_key_exists('longitude', $data)) {
+            [$latitude, $longitude] = self::position(
+                array_key_exists('latitude', $data) ? self::coordinate($data, 'latitude', 90) : $location->getLatitude(),
+                array_key_exists('longitude', $data) ? self::coordinate($data, 'longitude', 180) : $location->getLongitude(),
+            );
+            $location->setLatitude($latitude);
+            $location->setLongitude($longitude);
         }
 
         $this->em->flush();

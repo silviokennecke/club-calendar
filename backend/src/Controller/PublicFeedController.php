@@ -29,8 +29,9 @@ class PublicFeedController extends AbstractController
             $feedId,
             $secret,
             $tgIds ?: null,
-            $this->queryString($request, 'from'),
-            $this->queryString($request, 'to'),
+            // raw values (also arrays): checked strictly as YYYY-MM-DD after the access check
+            $request->query->all()['from'] ?? null,
+            $request->query->all()['to'] ?? null,
         ));
     }
 
