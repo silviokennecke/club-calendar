@@ -17,7 +17,6 @@ use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class PublicFeedService
@@ -35,14 +34,12 @@ class PublicFeedService
      * multi-day event reaching into the range is included), plus the holidays of the calendar in the
      * same range. Access is checked before the range is looked at.
      */
-    public function getFeedEvents(string $feedId, ?string $secret, ?array $targetGroupIds, ?string $from = null, ?string $to = null): array
+    public function getFeedEvents(string $feedId, ?string $secret, ?array $targetGroupIds, mixed $from = null, mixed $to = null): array
     {
         $feed = $this->loadFeed($feedId, $secret);
-        $fromDate = null === $from || '' === $from ? null : Input::parseDate($from, 'from');
-        $toDate = null === $to || '' === $to ? null : Input::parseDate($to, 'to');
-        if (null !== $fromDate && null !== $toDate && $toDate < $fromDate) {
-            throw new BadRequestHttpException('to must not be before from');
-        }
+        $fromDate = Input::optionalDate($from, 'from');
+        $toDate = Input::optionalDate($to, 'to');
+        Input::assertDateRange($fromDate, $toDate);
 
         $events = $this->fetchEvents($this->eventQuery($feed, $targetGroupIds, $fromDate, $toDate));
         $holidays = $this->holidays->findByCalendar($feed->getCalendar()->getId(), $fromDate, $toDate);

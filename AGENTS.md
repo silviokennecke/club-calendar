@@ -27,7 +27,7 @@ the router, so a new or changed route needs a matching operation there).
 | Public Feed | `/api/feed/{id}/events` (`?from&to`, header + holidays), `/api/feed/{id}/events/{eventId}`, `/api/feed/{id}/ics` | `PublicFeedController` | `PublicFeedService`, `IcsService` |
 | Holiday Calendars | `/api/calendars/{calendarId}/holiday-calendars`, `…/holiday-events` | `HolidayCalendarController`, `HolidayEventController` | `HolidayCalendarService` |
 | Mapbox Proxy | `/api/mapbox` | `MapboxController` | `Map\MapboxProxyService` |
-| Map images / geocoding | `/api/map` | `MapController` | `Map\*` (cached, rate-limited providers) |
+| Map images / geocoding | `/api/map` | `MapController` | `Map\*` (cached, rate-limited providers); without `MAPBOX_TOKEN` (`Map\MapAvailability`) images answer 503 with `backend/assets/map-unavailable.png` (after the 404 checks), geocoding and the Mapbox proxy 503 `map_unavailable` |
 | Health | `/api/health` | `HealthController` | — |
 
 ## Common Infrastructure
@@ -52,7 +52,7 @@ the router, so a new or changed route needs a matching operation there).
 | `src/Command/` | `app:prune-unverified-users`, `app:prune-password-resets` (cron), `app:user:verify <email>`, `app:user:reset-link <email>` (support / dev / E2E) |
 | `src/Service/CalendarReferences.php` | Resolves location/template/property/feature/target-group IDs within one calendar (unknown or foreign → 422) |
 | `src/Service/LinkCollectionSync.php` | Syncs join-table collections by diff (deduplicated IDs, no identity collisions) |
-| `src/Service/Input.php` | Typed input validation helpers (400 `validation_failed` with `field`) |
+| `src/Service/Input.php` | Typed input validation helpers (400 `validation_failed` with `field`); `optionalDate` / `assertDateRange` for `from`/`to` query parameters (strict `YYYY-MM-DD`, never `strtotime`) |
 | `src/Service/EventImportService.php` | ICS import: preview (`new`/`duplicate`/`invalid` per entry, writes nothing) and atomic import (new places by `tempId`, `skipDuplicates`, unknown time zones → calendar zone + `warnings`, max. 5000 per request → 413 `too_many_events`) |
 | `src/Service/EventExportService.php` | Member ICS download via `IcsService` (`from`/`to` overlap, `includeDrafts` as TENTATIVE, `targetGroupIds[]` of the calendar, safe `Content-Disposition`) |
 | `src/Service/SeriesRule.php` | Series rule (weekly / biweekly / monthly n-th weekday, `until` or `count`, `skipHolidays`, `durationDays`): validation and the ONLY computation of series dates (calendar days in UTC), max. 366 events (422 `too_many_events`) |

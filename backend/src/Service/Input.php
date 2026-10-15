@@ -72,6 +72,27 @@ final class Input
         return self::parseDate($value, $key);
     }
 
+    /**
+     * Optional calendar date of a query parameter (absent or "" = none). Strictly YYYY-MM-DD and a real
+     * day ("2026-02-31", "now", "tomorrow", arrays → 400 with the field), never strtotime().
+     */
+    public static function optionalDate(mixed $value, string $key): ?\DateTimeImmutable
+    {
+        if (null === $value || '' === $value) {
+            return null;
+        }
+
+        return self::parseDate($value, $key);
+    }
+
+    /** A day range: `to` before `from` is a 400 on `to`. */
+    public static function assertDateRange(?\DateTimeImmutable $from, ?\DateTimeImmutable $to): void
+    {
+        if (null !== $from && null !== $to && $to < $from) {
+            throw self::invalid('to', 'to must not be before from');
+        }
+    }
+
     public static function parseDate(mixed $value, string $key): \DateTimeImmutable
     {
         $date = is_string($value) ? \DateTimeImmutable::createFromFormat('!Y-m-d', $value) : false;

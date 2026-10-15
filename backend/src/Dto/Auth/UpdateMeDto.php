@@ -21,7 +21,9 @@ class UpdateMeDto
     #[Assert\Choice(choices: ['en', 'de'])]
     public ?string $language = null;
 
+    #[Assert\Length(max: 36)]
     public ?string $lastClubId = null;
 
+    #[Assert\Length(max: 36)]
     public ?string $lastCalendarId = null;
 }

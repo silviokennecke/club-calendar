@@ -91,11 +91,6 @@ E2E-Umgebung: `E2E.md`.
   fortlaufenden Schlüsseln Objekte statt Listen liefern; bisher nie aufgetreten).
 - Ohne Wirkung trotzdem Erfolg: `POST …/members` für ein vorhandenes Mitglied 201, `DELETE …/members/{userId}` für
   eine unbekannte Person 200.
-- **Fehler (nicht behoben):** `PATCH /api/auth/me` mit falsch typisiertem Feld (`dateFormat: 5`, `firstDayOfWeek: "1"`,
-  `language: 5`, `lastClubId: 5`, …) endet in 500 (`updateMe` weist Rohwerte typisierten DTO-Eigenschaften zu);
-  `POST …/holiday-calendars` meldet `eventCount: 0`, obwohl die Feiertage gespeichert sind (GET/Refresh zeigen die
-  Zahl); `GET /api/map/image/{location|event}/{id}` ist 500 ohne `MAPBOX_TOKEN`; `GET …/events?from=x` ist 200
-  (`strtotime('x')` gilt als Zeitzone); Orte nehmen `latitude`/`longitude` ohne Bereichsprüfung an (nicht numerisch → 0).
 
 ## Offene Sicherheitsrisiken
 
