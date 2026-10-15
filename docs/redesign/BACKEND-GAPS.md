@@ -49,8 +49,9 @@ Artboards: `COVERAGE.md`; Redesign-Plan: `PLAN.md`; E2E-Umgebung: `E2E.md`.
 - **Geheimnis** wird auch für öffentliche Feeds erzeugt und ausgeliefert (nur bei privaten relevant).
 - **Archiviert vs. unbekannt:** beide 404 ohne Code; ein Zustand "Kalender archiviert" bräuchte einen eigenen
   Status/Code. Falsches und fehlendes Geheimnis sind nicht unterscheidbar (für Gäste gewollt).
-- **Header:** `Referrer-Policy` / `X-Robots-Tag` setzt die SPA nur per `<meta>`; stärker wäre ein HTTP-Header am
-  Webserver für `/feed/*` (siehe "Betrieb").
+- **Indexierung:** `X-Robots-Tag` der Feed-API ist heute fest `noindex` (`FeedResponseHeadersListener::robotsTag()`);
+  je Feed-Status/Option steuern (öffentliche Feeds auffindbar) ist offen. Die SPA-Seiten `/feed/*` setzen noindex
+  per `<meta>` aus den API-Daten.
 
 ### Import und Export
 
@@ -107,9 +108,19 @@ Nicht im Audit, gering:
 Neue Felder sind jeweils Ergänzungen; bestehende Antwortformen blieben gleich. Tests je Feature in
 `backend/tests/Controller` (rot ohne Umsetzung geprüft), Frontend mit Vitest und Playwright.
 
+### Header der Feed-Adressen (2026-10-15)
+
+Keine Migration. `Referrer-Policy: no-referrer` für `/feed/*` (SPA) und `/api/feed/*`: Apache
+(`backend/public/.htaccess`, `<If>` auf `THE_REQUEST`, wirkt auch auf die per Rewrite ausgelieferte `index.html`),
+Caddy (`docker/Caddyfile`, `@feed`; die allgemeine Policy dort ist ein Default `?Referrer-Policy`) und im Backend
+für `/api/feed/*` (`FeedResponseHeadersListener`, auch Fehlerantworten). `X-Robots-Tag: noindex` setzt NUR das
+Backend für die Feed-API (selber Listener, `robotsTag()` ist die zentrale Stelle für eine spätere Steuerung nach
+Feed-Status); der Webserver setzt ihn nicht. Tests `PublicTest::testFeedApiResponsesSendNoReferrerAndNoindex`,
+`Unit/FeedResponseHeadersListenerTest`; Header gegen Apache 2.4 und Caddy 2 mit curl geprüft.
+
 ### Paket 5: Serienregel ändern, RRULE-Import, Hinweis-Mails (2026-10-14)
 
-Keine Migration. Tests `EventSeriesRuleChangeTest` (17 Fälle), `NoticeMailTest` (11), angepasst `AccountTest`;
+Keine Migration. Tests `EventSeriesRuleChangeTest` (18 Fälle, darunter der Sperr-Test mit zweiter DB-Verbindung: hält eine andere Verbindung die Serienzeile, endet das PATCH nach dem Lock-Timeout mit 409 `series_changed` und ändert nichts; ohne `FOR UPDATE` rot), `NoticeMailTest` (11), angepasst `AccountTest`;
 Vitest `lib/import/__tests__/rrule.test.ts`, `EventSeriesEditModal.test.tsx`, `ImportPage.test.tsx`; E2E
 `series-change.spec.ts`, `import-rrule.spec.ts`.
 
@@ -409,6 +420,16 @@ Alle mit Tests; Details in den Commits.
   zuverlässig).
 - **PHP-Limits:** Import von 5000 Terminen braucht rund 130 MB zusätzlich (`memory_limit`, Container 256M) und
   2–3 MB Body (`post_max_size` großzügig, Container 16M); `display_errors` aus.
-- **Webserver:** optional `Referrer-Policy: no-referrer` und `X-Robots-Tag: noindex` für `/feed/*`.
+- **Webserver:** nichts mehr manuell nötig: `Referrer-Policy: no-referrer` für `/feed/*` und `/api/feed/*` steht in
+  `backend/public/.htaccess` (Apache, braucht `mod_headers`) und `docker/Caddyfile`. Wer nginx nutzt, ergänzt im
+  `server`-Block (`always` gilt auch für Fehlerantworten):
+  ```nginx
+  location ~ ^/(api/)?feed/ {
+      add_header Referrer-Policy "no-referrer" always;
+      # ... gleiche try_files/fastcgi-Regeln wie der allgemeine location-Block (add_header wird in
+      # verschachtelten Blöcken nicht geerbt: die allgemeinen Header dort wiederholen)
+  }
+  ```
+  `X-Robots-Tag` setzt das Backend (nur Feed-API), nicht der Webserver.
 - **Nach einem Deploy** fehlen die Chunks des vorigen Releases; das Frontend lädt bei einem fehlgeschlagenen
   Chunk-Import einmal neu (`vite:preloadError` in `frontend/src/main.tsx`).

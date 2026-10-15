@@ -37,6 +37,7 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | `src/Security/ClubMemberVoter.php` | Checks user is a club member (`CLUB_MEMBER`) |
 | `src/Security/ArchivedCalendarVoter.php` | Blocks writes to archived calendars (`NOT_ARCHIVED`) |
 | `src/EventListener/ExceptionListener.php` | Converts all exceptions to RFC 7807 `application/problem+json` |
+| `src/EventListener/FeedResponseHeadersListener.php` | `Referrer-Policy: no-referrer` + `X-Robots-Tag` (`robotsTag()`, currently `noindex`) on `/api/feed/*` |
 | `src/Controller/AbstractApiController.php` | Base controller with `validateDto()` and `decodeJson()` helpers (no JSON object → 400 `invalid_request`) |
 | `src/Service/TokenService.php` | Creates JWT access tokens (lexik) and HMAC refresh tokens (claims `uid`, `tv` = `user.token_version`) |
 | `src/Security/SessionVersionListener.php` | Rejects JWTs whose `tv`/`uid` no longer match the user (sessions ended after credential resets) |

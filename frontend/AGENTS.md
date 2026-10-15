@@ -224,7 +224,7 @@ does not offer yet and how the frontend works around it).
 - Public access (no app shell, no sign-in): `pages/FeedPage` (`/feed/:feedId`) and the dialog
   `pages/PublicEventModal` (`/feed/:feedId/events/:eventId`, above the feed; a shared link shows the feed at the
   event's month below; unknown events, drafts and feed errors are states of the dialog) share `components/feed/` (`PublicShell` = skip link, brand row with `LangSwitch` +
-  `ThemeSwitch`, header, `<main id="main">`, footer; `usePublicHead` sets `<meta name="referrer" content="no-referrer">`,
+  `ThemeSwitch`, header, `<main id="main">`, footer; `usePublicHead` sets `<meta name="referrer" content="no-referrer">` (the web server also sends `Referrer-Policy: no-referrer` for `/feed/*`; `X-Robots-Tag` only comes from the backend for `/api/feed/*`),
   `noindex` for private feeds (`feed.visibility`) and error states, and a title without the secret; `usePublicFeed` =
   react-query over `fetchPublicFeed` for the visible month grid (`from`/`to`, the previous month stays while loading)
   with `referrerPolicy: "no-referrer"`, no auth headers, no retries; `usePublicEvent` = the single-event endpoint for
