@@ -114,7 +114,12 @@ PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend
 npm run e2e:ui -w frontend   # interactive mode
 ```
 
-## ICS Feed
+## API
+
+Reference of all `/api` routes (OpenAPI 3.1): [`docs/api/openapi.yaml`](docs/api/openapi.yaml). Open it in any
+OpenAPI viewer; the app does not serve it.
+
+ICS feed:
 
 ```
 GET /api/feed/:feedId/ics

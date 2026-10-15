@@ -14,7 +14,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
  * Stable `code` (and `field`) in the RFC 7807 body of the 4xx errors the frontend reacts to, so that it
- * never compares `detail` texts (docs/redesign/BACKEND-GAPS.md, "Fehlercodes").
+ * never compares `detail` texts (docs/api/openapi.yaml, schema ErrorCode).
  */
 class ErrorCodesTest extends WebTestCase
 {
