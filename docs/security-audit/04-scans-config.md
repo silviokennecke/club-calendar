@@ -50,22 +50,6 @@ Secrets and credentials in the working tree and git history, third-party depende
 **Fix recommendation:** `git rm --cached backend/.env` (keep the local file); the existing `.gitignore` rules then cover it. Placeholders remain in the tracked `backend/.env.example`. Note in AGENTS.md/README that real values belong only in the local, untracked `.env`.
 **Notes:** No live secrets found in the tracked file at audit time.
 
-### SCAN-05 — `ip-address@10.2.0` — SSRF + DoS CVEs (via express-rate-limit)
-**Severity:** MEDIUM
-**Attack scope:** Backend API request path — `express-rate-limit` uses `ip-address` to parse client IPs (including `X-Forwarded-For`); vulnerable parsing is reachable from untrusted request input.
-**Description:** Resolved `ip-address` 10.2.0 (root `package-lock.json`; chain: `express-rate-limit` ^10.2.0 → `ip-address`) carries multiple advisories, including `CVE-2026-69192` (SSRF, Trivy HIGH) plus `CVE-2026-101910`, `CVE-2026-101911`, `CVE-2026-101912`, `CVE-2026-101913`, `CVE-2026-54272`, `CVE-2026-69198`.
-**Affected parts:** `package-lock.json` (resolved `ip-address` 10.2.0)
-**Fix recommendation:** `npm audit fix` / bump the `express-rate-limit` chain to a patched `ip-address`; re-run Trivy to confirm.
-**Notes:** MEDIUM per the approved set: the CVE list includes a high-severity SSRF, but exploitation requires the specific input path through the rate limiter.
-
-### SCAN-06 — `js-yaml@4.2.0` — YAML parsing CVEs (toolchain)
-**Severity:** MEDIUM
-**Attack scope:** Dev/CI toolchain — `js-yaml` is pulled in by `@eslint/eslintrc` (^4.1.1) and `cosmiconfig` (^4.1.0), i.e. lint/config loading in the shared root lockfile, not the shipped app bundle.
-**Description:** Resolved `js-yaml` 4.2.0 carries `CVE-2026-59869` (Trivy HIGH), `CVE-2026-84375`, and `GHSA-5p4m-2wfm-xmqj`. Reachable when eslint/cosmiconfig parses attacker-influenced YAML/JSON5 configuration.
-**Affected parts:** `package-lock.json` (resolved `js-yaml` 4.2.0)
-**Fix recommendation:** Bump the eslint/cosmiconfig chain to a patched `js-yaml`; confirm with `npm audit`.
-**Notes:** MEDIUM per the approved set (runtime-reachable via the shared lockfile) with dev-toolchain reach.
-
 ### SCAN-07 — `qs@6.15.2` — DoS CVEs (via express / body-parser)
 **Severity:** LOW
 **Attack scope:** Backend API request path — `qs` parses query strings and form/JSON bodies (express, body-parser); both CVEs are availability issues (crafted input), not data exposure.
@@ -73,14 +57,6 @@ Secrets and credentials in the working tree and git history, third-party depende
 **Affected parts:** `package-lock.json` (resolved `qs` 6.15.2)
 **Fix recommendation:** Bump the express/body-parser chain to a patched `qs`.
 **Notes:** LOW — DoS only; fix by update.
-
-### SCAN-08 — `hono@4.12.25` — data disclosure, XSS, low CVEs (via @modelcontextprotocol/sdk)
-**Severity:** MEDIUM
-**Attack scope:** MCP tooling path — `hono` is a dependency of `@modelcontextprotocol/sdk` (^4.11.4); it is not the main API server (Symfony), so impact is confined to MCP integrations.
-**Description:** Resolved `hono` 4.12.25 carries `CVE-2026-71850` (cross-user SSR data disclosure), `CVE-2026-93981` (XSS), and `CVE-2026-71849` (LOW).
-**Affected parts:** `package-lock.json` (resolved `hono` 4.12.25)
-**Fix recommendation:** Bump the `@modelcontextprotocol/sdk` chain to a patched `hono`; re-verify with Trivy.
-**Notes:** Effective risk is lower if MCP is not exercised in production; kept MEDIUM per the approved set.
 
 ### SCAN-09 — `react-router@7.18.0` — GHSA-qwww-vcr4-c8h2 RSC-mode CSRF (not applicable)
 **Severity:** Informational (N/A)
