@@ -98,7 +98,7 @@ describe("FeedsPage", () => {
       ["public", "Öffentlich", true],
       ["searchable", "Auffindbar", true],
     ]);
-    expect(badges("Vereinskalender")).toEqual([["club", "Vereinsintern", true]]);
+    expect(badges("Vereinskalender")).toEqual([["club", "Nur per Link", true]]);
     expect(badges("Öffentlicher Kalender")).toEqual([["public", "Öffentlich", true]]);
     expect(badges("Vorstand intern")).toEqual([["private", "Privat", true]]);
 
