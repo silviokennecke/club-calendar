@@ -207,7 +207,7 @@ test.describe("Veröffentlichen", () => {
     await expect(page.getByRole("heading", { name: "Geheimnis" })).toBeVisible();
   });
 
-  test("Feed je Status anlegen: Standard vereinsintern, Suchoption nur bei öffentlich, Liste und Webansicht", async ({
+  test("Feed je Status anlegen: Standard nur per Link, Suchoption nur bei öffentlich, Liste und Webansicht", async ({
     page,
     request,
   }) => {
@@ -216,8 +216,8 @@ test.describe("Veröffentlichen", () => {
     const group = page.getByRole("group", { name: "Sichtbarkeit" });
     const searchable = page.getByRole("switch", { name: "Für Suchmaschinen auffindbar" });
 
-    // Standard: vereinsintern, keine Suchoption
-    await expect(group.getByRole("radio", { name: /^Vereinsintern/ })).toBeChecked();
+    // Standard: nur per Link, keine Suchoption
+    await expect(group.getByRole("radio", { name: /^Nur per Link/ })).toBeChecked();
     await expect(searchable).toHaveCount(0);
     await page.getByLabel(/^Name/).fill("Mitglieder");
     await page.getByRole("button", { name: "Feed speichern" }).click();
@@ -250,13 +250,13 @@ test.describe("Veröffentlichen", () => {
 
     // Liste: Wort + Icon je Status, "Auffindbar" nur beim öffentlichen Feed mit Suchoption
     const badges = (name: string) => page.getByRole("region", { name }).locator(".ap-badge");
-    await expect(badges("Mitglieder")).toHaveText(["Vereinsintern"]);
+    await expect(badges("Mitglieder")).toHaveText(["Nur per Link"]);
     await expect(badges("Für alle")).toHaveText(["Öffentlich", "Auffindbar"]);
     await expect(badges("Vorstand")).toHaveText(["Privat"]);
     for (const name of ["Mitglieder", "Für alle", "Vorstand"])
       await expect(badges(name).locator("svg")).toHaveCount(name === "Für alle" ? 2 : 1);
 
-    // Adressen: vereinsintern ohne, privat mit Geheimnis
+    // Adressen: nur per Link ohne, privat mit Geheimnis
     const club = page.getByRole("region", { name: "Mitglieder" });
     if ((await club.getByLabel("ICS-Adresse").count()) === 0)
       await club.getByRole("button", { name: "Zugänge anzeigen" }).click();
@@ -270,7 +270,7 @@ test.describe("Veröffentlichen", () => {
       await priv.getByRole("button", { name: "Zugänge anzeigen" }).click();
     await expect(priv.getByLabel("ICS-Adresse")).toHaveValue(/secret=[0-9a-f]{32}$/);
 
-    // Webansicht: vereinsintern noindex, öffentlich + auffindbar ohne
+    // Webansicht: nur per Link noindex, öffentlich + auffindbar ohne
     await page.goto(new URL(clubWeb).pathname);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
@@ -284,7 +284,7 @@ test.describe("Veröffentlichen", () => {
     ).toBeVisible();
   });
 
-  test("Wechsel privat → vereinsintern verlangt eine Bestätigung, danach ohne Geheimnis erreichbar", async ({
+  test("Wechsel privat → nur per Link verlangt eine Bestätigung, danach ohne Geheimnis erreichbar", async ({
     page,
     request,
   }) => {
@@ -300,10 +300,10 @@ test.describe("Veröffentlichen", () => {
 
     await openFeeds(page, s.email, `${s.base}/settings/feeds/${created.id}`);
     await expect(page.getByRole("heading", { name: "Geheimnis" })).toBeVisible();
-    await page.getByRole("radio", { name: /^Vereinsintern/ }).check();
+    await page.getByRole("radio", { name: /^Nur per Link/ }).check();
     await page.getByRole("button", { name: "Feed speichern" }).click();
     const dialog = page.getByRole("alertdialog", { name: "Geheimnis nicht mehr verlangen?" });
-    await expect(dialog).toContainText("„Vorstand“ wird vereinsintern.");
+    await expect(dialog).toContainText("„Vorstand“ wird auf „Nur per Link“ gestellt.");
     await expect(dialog).toContainText(
       "Danach kann jeder mit dem Link den Kalender sehen, auch wer den bisherigen Link mit Geheimnis nicht kennt.",
     );
@@ -319,7 +319,7 @@ test.describe("Veröffentlichen", () => {
       .click();
     await expect(page).toHaveURL(new RegExp(`${s.base}/settings/feeds$`));
     await expect(page.getByRole("region", { name: "Vorstand" }).locator(".ap-badge")).toHaveText(
-      "Vereinsintern",
+      "Nur per Link",
     );
     expect((await listFeeds(request, s))[0]).toMatchObject({
       visibility: "CLUB",

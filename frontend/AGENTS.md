@@ -51,8 +51,8 @@ unsaved changes, i18n, API errors, history focus, contrast) · [E2E](#e2e-playwr
 
 ## Design system and areas
 
-Background: `docs/redesign/PLAN.md` (plan, all phases done), `docs/redesign/BACKEND-GAPS.md` (what the backend
-does not offer yet and how the frontend works around it).
+Background: `docs/redesign/PLAN.md` (plan, all phases done), `docs/redesign/BACKEND-GAPS.md` (open backend gaps and
+operations), `docs/api/openapi.yaml` (API reference).
 
 - Artboard-by-artboard mapping, deliberate deviations and open gaps: `docs/redesign/COVERAGE.md`. Confirmation
   dialogs follow the wording of the design's `Dialogs.dc.html` (see the table there).
@@ -177,7 +177,7 @@ does not offer yet and how the frontend works around it).
     delete confirmation with the calendar's `eventCount` (single GET when it opens).
 - Publish, club, profile:
   - Feeds: list `…/settings/feeds` (`pages/settings/FeedsPage`: status as `StatusBadge` word + icon (`public` /
-    `club` "Vereinsintern" / `private`, plus `searchable` "Auffindbar" for indexable public feeds), audience
+    `club` "Nur per Link" / `private`, plus `searchable` "Auffindbar" for indexable public feeds), audience
     tags, addresses behind a disclosure, first feed open, a freshly saved one opens via router state `{ open }`),
     `…/settings/feeds/new` and `…/settings/feeds/:feedId` (`FeedEditPage`: name, visibility radio group with three
     states `PUBLIC` / `CLUB` / `PRIVATE` (default `CLUB`), the `Toggle` "Für Suchmaschinen auffindbar" only for
@@ -255,7 +255,7 @@ does not offer yet and how the frontend works around it).
   errors by `code` (status: `apiErrorStatus`), never by the message (the server's `detail`) (e.g. `email_taken`,
   `email_not_verified`, `unknown_reference`, `duplicate_name`, `too_many_events`, `invalid_reset_token`, `invalid_credentials`, `no_password`,
   `last_login_method`, `account_in_use` (SSO `link-complete`); list in
-  `docs/redesign/BACKEND-GAPS.md`, Fehlercodes). SSO callback errors (`?error=`) map to their own texts via
+  `docs/api/openapi.yaml`, `ErrorCode`). SSO callback errors (`?error=`) map to their own texts via
   `lib/ssoError.ts` (`auth.login.ssoError.<code>`, unknown codes → `generic`). The react-query
   default `retry` (`lib/queryRetry.ts`) does not retry 4xx (401/403/404 show their error state at once), 5xx and
   network errors get 2 retries. Auth: `lib/auth-context.ts` (context + `useAuth`), `lib/AuthProvider.tsx` (provider);

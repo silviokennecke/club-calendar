@@ -1473,7 +1473,7 @@
       "new": "Neu",
       "private": "Privat",
       "public": "Öffentlich",
-      "club": "Vereinsintern",
+      "club": "Nur per Link",
       "searchable": "Auffindbar",
       "danger": "Fehler"
     },
@@ -1824,7 +1824,7 @@
           "text": "Jeder mit dem Link kann den Kalender ansehen. Auf Wunsch finden ihn auch Suchmaschinen."
         },
         "club": {
-          "label": "Vereinsintern",
+          "label": "Nur per Link",
           "text": "Kein Zugriffsschutz: Jeder mit dem Link kann den Kalender ansehen, auch Nicht-Mitglieder. Suchmaschinen sollen ihn nicht auflisten."
         },
         "private": {
@@ -1851,7 +1851,7 @@
     },
     "unprotect": {
       "title": "Geheimnis nicht mehr verlangen?",
-      "textClub": "„{{name}}“ wird vereinsintern. Der Kalender ist dann ohne Geheimnis über den Link erreichbar.",
+      "textClub": "„{{name}}“ wird auf „Nur per Link“ gestellt. Der Kalender ist dann ohne Geheimnis über den Link erreichbar.",
       "textPublic": "„{{name}}“ wird öffentlich. Der Kalender ist dann ohne Geheimnis über den Link erreichbar.",
       "consequence": "Danach kann jeder mit dem Link den Kalender sehen, auch wer den bisherigen Link mit Geheimnis nicht kennt.",
       "confirm": "Ohne Geheimnis speichern"
