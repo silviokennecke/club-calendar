@@ -178,6 +178,84 @@ class AccountTest extends WebTestCase
         $this->assertSame(200, $r['status']);
     }
 
+    /**
+     * Wrong JSON types in the profile fields end in 400 validation_failed with the field, never in a 500
+     * (the values were assigned to typed DTO properties / entity setters as they came).
+     */
+    public function testWronglyTypedProfileFieldsAreRejectedWith400(): void
+    {
+        $user = TestHelper::createUser(self::$em, self::$hasher);
+        $auth = $this->auth($user);
+        $before = $this->me($auth)['body'];
+        $object = ['a' => 1];
+        $cases = [
+            'dateFormat' => [5, 1.5, true, false, null, [], ['dd.MM.yyyy'], $object],
+            'firstDayOfWeek' => ['1', '', 1.5, true, false, null, [], [1], $object],
+            'language' => [5, 1.5, true, null, [], ['de'], $object],
+            'lastClubId' => [5, 1.5, true, false, [], ['x'], $object],
+            'lastCalendarId' => [5, 1.5, true, false, [], ['x'], $object],
+        ];
+        foreach ($cases as $field => $values) {
+            foreach ($values as $value) {
+                $label = $field.'='.json_encode($value);
+                $r = TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', [$field => $value], $auth);
+                $this->assertSame(400, $r['status'], $label.' '.$r['content']);
+                $this->assertSame('validation_failed', $r['body']['code'] ?? null, $label);
+                $this->assertSame($field, $r['body']['field'] ?? null, $label);
+            }
+        }
+        // Also next to valid fields: nothing is stored when one field is wrong.
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', ['language' => 'de', 'firstDayOfWeek' => '0'], $auth);
+        $this->assertSame(400, $r['status']);
+        $this->assertSame('firstDayOfWeek', $r['body']['field']);
+
+        $this->assertSame($before, $this->me($auth)['body']);
+    }
+
+    public function testOverlongLastIdsAreRejected(): void
+    {
+        $user = TestHelper::createUser(self::$em, self::$hasher);
+        $auth = $this->auth($user);
+        foreach (['lastClubId', 'lastCalendarId'] as $field) {
+            $r = TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', [$field => str_repeat('a', 37)], $auth);
+            $this->assertSame(422, $r['status'], $field.' '.$r['content']);
+            $this->assertSame('validation_failed', $r['body']['code']);
+            $this->assertSame($field, $r['body']['field']);
+        }
+    }
+
+    public function testCorrectlyTypedProfileFieldsAreStillAccepted(): void
+    {
+        $user = TestHelper::createUser(self::$em, self::$hasher);
+        $auth = $this->auth($user);
+        $club = TestHelper::createClub(self::$em, $user, 'Mine');
+        $calendar = TestHelper::createCalendar(self::$em, $club, 'Mine');
+
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', [
+            'dateFormat' => 'yyyy-MM-dd', 'firstDayOfWeek' => 0, 'language' => 'de',
+            'lastClubId' => $club->getId(), 'lastCalendarId' => $calendar->getId(),
+        ], $auth);
+        $this->assertSame(200, $r['status'], $r['content']);
+        $this->assertSame('yyyy-MM-dd', $r['body']['dateFormat']);
+        $this->assertSame(0, $r['body']['firstDayOfWeek']);
+        $this->assertSame('de', $r['body']['language']);
+        $this->assertSame($club->getId(), $r['body']['lastClubId']);
+        $this->assertSame($calendar->getId(), $r['body']['lastCalendarId']);
+
+        // null clears the last club / calendar
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', ['lastClubId' => null, 'lastCalendarId' => null], $auth);
+        $this->assertSame(200, $r['status'], $r['content']);
+        $this->assertNull($r['body']['lastClubId']);
+        $this->assertNull($r['body']['lastCalendarId']);
+
+        // Out-of-range values stay 422 (constraint violations, unchanged)
+        foreach ([['firstDayOfWeek' => 7], ['language' => 'xx'], ['dateFormat' => '']] as $body) {
+            $r = TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', $body, $auth);
+            $this->assertSame(422, $r['status'], json_encode($body));
+            $this->assertSame((string) array_key_first($body), $r['body']['field']);
+        }
+    }
+
     // --- change password ---
 
     public function testChangePasswordReturnsNewTokensAndEndsOtherSessions(): void

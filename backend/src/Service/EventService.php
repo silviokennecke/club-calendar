@@ -16,8 +16,8 @@ use App\Entity\Location;
 use App\Entity\Property;
 use App\Entity\TargetGroup;
 use App\Exception\ApiProblemException;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class EventService
@@ -28,7 +28,8 @@ readonly class EventService
     ) {
     }
 
-    public function listEvents(Calendar $calendar, ?string $from, ?string $to, ?array $targetGroupIds): array
+    /** $from / $to: days of the overlap filter, already validated (Input::optionalDate). */
+    public function listEvents(Calendar $calendar, ?\DateTimeImmutable $from, ?\DateTimeImmutable $to, ?array $targetGroupIds): array
     {
         $qb = $this->em->createQueryBuilder()
             ->select('e')
@@ -38,26 +39,12 @@ readonly class EventService
             ->orderBy('e.date', 'ASC')
             ->addOrderBy('e.timeBegin', 'ASC');
 
-        if ($from) {
-            if (false === strtotime($from)) {
-                throw new BadRequestHttpException('Invalid from date');
-            }
-            try {
-                // Overlap: multi-day events that started before the range but reach into it are included
-                $qb->andWhere('COALESCE(e.dateEnd, e.date) >= :from')->setParameter('from', new \DateTimeImmutable($from));
-            } catch (\DateMalformedStringException) {
-                throw new BadRequestHttpException('Invalid from date');
-            }
+        if (null !== $from) {
+            // Overlap: multi-day events that started before the range but reach into it are included
+            $qb->andWhere('COALESCE(e.dateEnd, e.date) >= :from')->setParameter('from', $from, Types::DATE_IMMUTABLE);
         }
-        if ($to) {
-            if (false === strtotime($to)) {
-                throw new BadRequestHttpException('Invalid to date');
-            }
-            try {
-                $qb->andWhere('e.date <= :to')->setParameter('to', new \DateTimeImmutable($to));
-            } catch (\DateMalformedStringException) {
-                throw new BadRequestHttpException('Invalid to date');
-            }
+        if (null !== $to) {
+            $qb->andWhere('e.date <= :to')->setParameter('to', $to, Types::DATE_IMMUTABLE);
         }
         if ($targetGroupIds) {
             $qb->andWhere('EXISTS (SELECT etg FROM App\Entity\EventTargetGroup etg WHERE etg.event = e AND etg.targetGroup IN (:tgIds))')

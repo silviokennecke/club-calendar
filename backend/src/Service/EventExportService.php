@@ -37,11 +37,9 @@ readonly class EventExportService
      */
     public function export(Calendar $calendar, mixed $from, mixed $to, mixed $includeDrafts, mixed $targetGroupIds): string
     {
-        $fromDate = $this->date($from, 'from');
-        $toDate = $this->date($to, 'to');
-        if (null !== $fromDate && null !== $toDate && $toDate < $fromDate) {
-            throw Input::invalid('to', 'to must not be before from');
-        }
+        $fromDate = Input::optionalDate($from, 'from');
+        $toDate = Input::optionalDate($to, 'to');
+        Input::assertDateRange($fromDate, $toDate);
         $drafts = match ($includeDrafts) {
             null, '', '0', 'false' => false,
             '1', 'true' => true,
@@ -90,15 +88,6 @@ readonly class EventExportService
         $slug = trim((string) preg_replace('/[^a-z0-9]+/', '-', $slug), '-');
 
         return HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, ('' !== $slug ? substr($slug, 0, 100) : 'termine').'.ics');
-    }
-
-    private function date(mixed $value, string $field): ?\DateTimeImmutable
-    {
-        if (null === $value || '' === $value) {
-            return null;
-        }
-
-        return Input::parseDate($value, $field);
     }
 
     /**

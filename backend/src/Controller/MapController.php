@@ -8,6 +8,7 @@ use App\Entity\Event;
 use App\Entity\Location;
 use App\Exception\RateLimitExceededException;
 use App\Service\Map\GeocoderInterface;
+use App\Service\Map\MapAvailability;
 use App\Service\Map\MapImageProviderInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -27,6 +28,7 @@ class MapController extends AbstractController
         private readonly MapImageProviderInterface $mapImageProvider,
         private readonly EntityManagerInterface $em,
         private readonly LoggerInterface $logger,
+        private readonly MapAvailability $mapAvailability,
         private readonly int $imageZoom,
         private readonly int $imageWidth,
         private readonly int $imageHeight,
@@ -37,6 +39,7 @@ class MapController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function suggest(Request $request): Response
     {
+        $this->assertMapAvailable();
         $query = trim((string) $request->query->get('q', ''));
         if ('' === $query) {
             return $this->json(['suggestions' => []]);
@@ -72,6 +75,7 @@ class MapController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function reverse(Request $request): Response
     {
+        $this->assertMapAvailable();
         $lat = (float) $request->query->get('lat', 0);
         $lng = (float) $request->query->get('lng', 0);
 
@@ -121,8 +125,20 @@ class MapController extends AbstractController
         return $this->buildImageResponse($location->getLongitude(), $location->getLatitude());
     }
 
+    /**
+     * Only called after the access checks of the route (unknown / draft / without position → 404), so the
+     * placeholder reveals nothing about places or events.
+     */
     private function buildImageResponse(float $lng, float $lat): Response
     {
+        if (!$this->mapAvailability->isConfigured()) {
+            // 503 with an image body: an <img> still shows a (blurred, text-free) map.
+            return new Response((string) file_get_contents(MapAvailability::PLACEHOLDER_IMAGE), 503, [
+                'Content-Type' => 'image/png',
+                'Cache-Control' => 'no-store',
+            ]);
+        }
+
         try {
             $bytes = $this->mapImageProvider->getImage($lng, $lat, $this->imageZoom, $this->imageWidth, $this->imageHeight);
         } catch (RateLimitExceededException) {
@@ -133,5 +149,13 @@ class MapController extends AbstractController
             'Content-Type' => 'image/jpeg',
             'Cache-Control' => 'public, max-age=3600',
         ]);
+    }
+
+    /** JSON routes without a configured map service: 503 `code: map_unavailable`. */
+    private function assertMapAvailable(): void
+    {
+        if (!$this->mapAvailability->isConfigured()) {
+            throw MapAvailability::unavailable();
+        }
     }
 }

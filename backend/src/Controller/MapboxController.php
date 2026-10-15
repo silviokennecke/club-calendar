@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Exception\ProxyDeniedException;
 use App\Exception\RateLimitExceededException;
+use App\Service\Map\MapAvailability;
 use App\Service\Map\MapboxProxyService;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -21,7 +22,7 @@ class MapboxController extends AbstractController
 
     public function __construct(
         private readonly MapboxProxyService $proxyService,
-        private readonly string $mapboxToken,
+        private readonly MapAvailability $mapAvailability,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -29,8 +30,8 @@ class MapboxController extends AbstractController
     #[Route('/{domain}/{path}', name: 'mapbox_proxy', requirements: ['path' => '.+'], methods: ['GET', 'POST', 'PUT', 'PATCH'])]
     public function proxy(string $domain, string $path, Request $request): Response
     {
-        if ('' === $this->mapboxToken) {
-            return $this->errorResponse('Map service not configured', 503);
+        if (!$this->mapAvailability->isConfigured()) {
+            throw MapAvailability::unavailable();
         }
 
         if (!in_array($domain, self::ALLOWED_DOMAINS, true)) {

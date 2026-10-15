@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Controller;
 
 use App\Exception\RateLimitExceededException;
+use App\Service\Map\MapAvailability;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
@@ -30,6 +31,8 @@ class MapControllerTest extends WebTestCase
         $this->hasher = $container->get(UserPasswordHasherInterface::class);
         $this->tokens = $container->get(TokenService::class);
         DatabaseResetter::reset($this->em);
+        // Map service configured (fake providers below); the tests without a token replace this.
+        $container->set(MapAvailability::class, new MapAvailability('pk.test'));
     }
 
     public function testSuggestReturnsNormalizedResults(): void
@@ -280,5 +283,120 @@ class MapControllerTest extends WebTestCase
 
         $this->client->request('GET', "/api/map/image/location/$locationId");
         $this->assertSame(429, $this->client->getResponse()->getStatusCode());
+    }
+
+    // --- no MAPBOX_TOKEN: 503 (image placeholder / problem body), access checks first ---
+
+    private function withoutMapService(): void
+    {
+        // Fresh kernel (the data stays in the database): setUp() already set a configured MapAvailability.
+        self::ensureKernelShutdown();
+        $this->client = static::createClient();
+        $this->client->disableReboot();
+        $this->em = static::getContainer()->get(EntityManagerInterface::class);
+        static::getContainer()->set(MapAvailability::class, new MapAvailability(''));
+        $failing = new class implements \App\Service\Map\MapImageProviderInterface, \App\Service\Map\GeocoderInterface {
+            public function getImage(float $lng, float $lat, int $zoom, int $width, int $height): string
+            {
+                throw new \LogicException('map provider must not be called without a token');
+            }
+
+            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
+            {
+                throw new \LogicException('geocoder must not be called without a token');
+            }
+
+            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress
+            {
+                throw new \LogicException('geocoder must not be called without a token');
+            }
+        };
+        static::getContainer()->set(\App\Service\Map\MapImageProviderInterface::class, $failing);
+        static::getContainer()->set(\App\Service\Map\GeocoderInterface::class, $failing);
+    }
+
+    private function assertPlaceholderImage(): void
+    {
+        $response = $this->client->getResponse();
+        $this->assertSame(503, $response->getStatusCode());
+        $this->assertSame('image/png', $response->headers->get('Content-Type'));
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+        $body = (string) $response->getContent();
+        $this->assertStringStartsWith("\x89PNG\r\n\x1a\n", $body);
+        $this->assertLessThan(30 * 1024, strlen($body));
+        $this->assertSame(file_get_contents(dirname(__DIR__, 2).'/assets/map-unavailable.png'), $body);
+    }
+
+    public function testLocationImageWithoutTokenReturns503WithPlaceholderImage(): void
+    {
+        ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $auth = TestHelper::authHeader($user, $this->tokens);
+        $located = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
+            'name' => 'Venue', 'latitude' => 48.137, 'longitude' => 11.575,
+        ], $auth)['body']['id'];
+        $plain = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
+            'name' => 'No Coords',
+        ], $auth)['body']['id'];
+        $this->withoutMapService();
+
+        $this->client->request('GET', "/api/map/image/location/$located");
+        $this->assertPlaceholderImage();
+
+        // Unknown places and places without a position stay 404: the 503 does not reveal them
+        $this->client->request('GET', "/api/map/image/location/$plain");
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+        $this->client->request('GET', '/api/map/image/location/00000000-0000-0000-0000-000000000000');
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testEventImageWithoutTokenChecksDraftVisibilityBefore503(): void
+    {
+        ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $auth = TestHelper::authHeader($user, $this->tokens);
+        $locationId = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
+            'name' => 'Venue', 'latitude' => 48.137, 'longitude' => 11.575,
+        ], $auth)['body']['id'];
+        $eventId = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/events", [
+            'name' => 'Test Event', 'date' => '2026-08-01',
+            'timeBegin' => '10:00', 'timeEnd' => '11:00', 'locationId' => $locationId,
+        ], $auth)['body']['id'];
+        $this->withoutMapService();
+
+        // Draft: not published, so not even the 503 placeholder
+        $this->client->request('GET', "/api/map/image/event/$eventId");
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+        $this->client->request('GET', '/api/map/image/event/00000000-0000-0000-0000-000000000000');
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
+
+        TestHelper::jsonRequest($this->client, 'PATCH', "/api/calendars/{$cal->getId()}/events/$eventId", ['isDraft' => false], $auth);
+        $this->client->request('GET', "/api/map/image/event/$eventId");
+        $this->assertPlaceholderImage();
+    }
+
+    public function testGeocodingWithoutTokenReturns503Problem(): void
+    {
+        ['user' => $user] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $auth = TestHelper::authHeader($user, $this->tokens);
+        $this->withoutMapService();
+
+        foreach (['/api/map/geocode/suggest?q=München', '/api/map/geocode/reverse?lat=48.137&lng=11.575'] as $url) {
+            $r = TestHelper::jsonRequest($this->client, 'GET', $url, [], $auth);
+            $this->assertSame(503, $r['status'], $url.' '.$r['content']);
+            $this->assertSame('map_unavailable', $r['body']['code'], $url);
+            $this->assertSame(503, $r['body']['status'], $url);
+            $this->assertStringStartsWith('application/problem+json', (string) $this->client->getResponse()->headers->get('Content-Type'));
+
+            // Authentication comes first
+            $r = TestHelper::jsonRequest($this->client, 'GET', $url);
+            $this->assertSame(403, $r['status'], $url);
+        }
+    }
+
+    public function testMapboxProxyWithoutTokenReturns503Problem(): void
+    {
+        $this->withoutMapService();
+        $r = TestHelper::jsonRequest($this->client, 'GET', '/api/mapbox/api.mapbox.com/styles/v1/mapbox/streets-v12');
+        $this->assertSame(503, $r['status'], $r['content']);
+        $this->assertSame('map_unavailable', $r['body']['code']);
     }
 }
