@@ -21,6 +21,16 @@ final class QueryCounter implements Middleware
 {
     public static int $count = 0;
 
+    /** @var list<string>|null SQL text of the statements while a test records them (`[]` starts, `null` stops) */
+    public static ?array $log = null;
+
+    public static function record(string $sql): void
+    {
+        if (null !== self::$log) {
+            self::$log[] = $sql;
+        }
+    }
+
     public function wrap(Driver $driver): Driver
     {
         return new class($driver) extends AbstractDriverMiddleware {
@@ -29,6 +39,8 @@ final class QueryCounter implements Middleware
                 return new class(parent::connect($params)) extends AbstractConnectionMiddleware {
                     public function prepare(string $sql): Statement
                     {
+                        QueryCounter::record($sql);
+
                         return new class(parent::prepare($sql)) extends AbstractStatementMiddleware {
                             public function execute(): Result
                             {
@@ -41,6 +53,7 @@ final class QueryCounter implements Middleware
 
                     public function query(string $sql): Result
                     {
+                        QueryCounter::record($sql);
                         ++QueryCounter::$count;
 
                         return parent::query($sql);
@@ -48,6 +61,7 @@ final class QueryCounter implements Middleware
 
                     public function exec(string $sql): int|string
                     {
+                        QueryCounter::record($sql);
                         ++QueryCounter::$count;
 
                         return parent::exec($sql);

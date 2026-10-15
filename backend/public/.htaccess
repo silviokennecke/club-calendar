@@ -39,6 +39,14 @@ DirectoryIndex index.html index.php
     </If>
 </IfModule>
 
+# Feed pages (SPA) and feed API: never send a Referer.
+# THE_REQUEST is the original request line, so this also matches after the rewrite to index.html.
+<IfModule mod_headers.c>
+    <If "%{THE_REQUEST} =~ m#^[A-Z]+ /(api/)?feed/#">
+        Header always set Referrer-Policy "no-referrer"
+    </If>
+</IfModule>
+
 # Keep dotfiles private
 <FilesMatch "^\.">
     Require all denied

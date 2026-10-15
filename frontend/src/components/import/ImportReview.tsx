@@ -168,7 +168,7 @@ export function ImportReview({
       )}
       {(recurrence.capped > 0 || recurrence.unbounded > 0 || recurrence.dropped > 0) && (
         <Banner tone="warning" title={t("import.review.recurrence.limitTitle")}>
-          <ul className="ap-stack" style={{ margin: 0, paddingLeft: "1.2em" }}>
+          <ul className="ap-banner-list ap-stack ap-stack--sm">
             {recurrence.unbounded > 0 && (
               <li>
                 {t("import.review.recurrence.unbounded", {
