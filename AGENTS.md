@@ -37,7 +37,7 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | `src/Security/ClubMemberVoter.php` | Checks user is a club member (`CLUB_MEMBER`) |
 | `src/Security/ArchivedCalendarVoter.php` | Blocks writes to archived calendars (`NOT_ARCHIVED`) |
 | `src/EventListener/ExceptionListener.php` | Converts all exceptions to RFC 7807 `application/problem+json` |
-| `src/EventListener/FeedResponseHeadersListener.php` | `Referrer-Policy: no-referrer` + `X-Robots-Tag` (`robotsTag()`, currently `noindex`) on `/api/feed/*` |
+| `src/EventListener/FeedResponseHeadersListener.php` | `Referrer-Policy: no-referrer` + `X-Robots-Tag: noindex` on `/api/feed/*`, except successful responses of an indexable feed (`robotsTag()` reads the request attribute `feed_indexable` set by `PublicFeedService` after the access checks; missing → noindex) |
 | `src/Controller/AbstractApiController.php` | Base controller with `validateDto()` and `decodeJson()` helpers (no JSON object → 400 `invalid_request`) |
 | `src/Service/TokenService.php` | Creates JWT access tokens (lexik) and HMAC refresh tokens (claims `uid`, `tv` = `user.token_version`) |
 | `src/Security/SessionVersionListener.php` | Rejects JWTs whose `tv`/`uid` no longer match the user (sessions ended after credential resets) |
@@ -87,7 +87,7 @@ $this->denyAccessUnlessGranted(ArchivedCalendarVoter::NOT_ARCHIVED, $calendar); 
 - PHP camelCase properties → snake_case DB columns (UnderscoreNamingStrategy)
 - All relations use cascade delete (carried over from the original Prisma schema)
 - Join table entities (e.g. `EventProperty`, `ClubUser`) use composite `#[ORM\Id]`
-- `FeedVisibility` is a PHP 8.1 backed enum mapped via `enumType`
+- `FeedVisibility` is a PHP 8.1 backed enum mapped via `enumType` (VARCHAR column): `PUBLIC`, `CLUB` (default for new feeds), `PRIVATE`. `PUBLIC` and `CLUB` are reachable without the secret and differ only in indexing; `PRIVATE` requires the secret (`requiresSecret()`); switching from `PUBLIC`/`CLUB` to `PRIVATE` always generates a new secret (`FeedService::update()`). `CalendarFeed.searchable` (search engine opt-in) is only allowed for `PUBLIC` (`searchable: true` otherwise → 422 `validation_failed` field `searchable`; switching away from `PUBLIC` resets it); `isIndexable()` = `PUBLIC && searchable`. Feed responses carry `searchable` and `indexable`, the public feed header `visibility` and `indexable`
 - **Entity IDs are always UUIDs** — use `#[ORM\Column(length: 36)]` with `Uuid::v7()->toRfc4122()` assigned in the constructor. Never use `#[ORM\GeneratedValue]` or `int` IDs. `getId()` returns `string`.
 - **Frontend types for entity IDs are always `string`** — never `number`
 
@@ -108,7 +108,7 @@ Run: `cd backend && composer test` (requires a MySQL test DB on port 3360). `TES
 - `Calendar::archivedAt` — null = active; set = archived and read-only
 - `POST /api/clubs/{clubId}/calendars/{calendarId}/archive` — sets `archivedAt`
 - `POST /api/clubs/{clubId}/calendars/{calendarId}/unarchive` — clears `archivedAt`
-- `POST /api/clubs/{clubId}/calendars/{calendarId}/duplicate` (201) — deep-copies calendar + properties/features/target-groups/locations/templates/feeds (new UUIDs for feed secrets); events (and therefore event series) not copied; optional body `{name}` (default "Copy of …", the frontend sends the localized name)
+- `POST /api/clubs/{clubId}/calendars/{calendarId}/duplicate` (201) — deep-copies calendar + properties/features/target-groups/locations/templates/feeds (new feed secrets, same visibility, `searchable` reset to false); events (and therefore event series) not copied; optional body `{name}` (default "Copy of …", the frontend sends the localized name)
 - Calendar responses carry `eventCount`, `templateCount`, `feedCount`; club responses `calendarCount`, `archivedCalendarCount`, `memberCount` (single club also `eventCount`, `feedCount`); `GET /api/clubs` also the caller's `lastCalendarId` per club (`club_user.last_calendar_id`, set by `PATCH /api/auth/me`)
 - Event templates: `timezone`, `timeBegin`, `timeEnd` are optional (times only as a pair); without times in the template and in the request, `from-template` creates all-day events (`docs/redesign/BACKEND-GAPS.md`, "Umgesetzt (Paket 1–4)", Paket 1)
 - Archived calendar public feeds → 404; nested write endpoints → 403 (via `ArchivedCalendarVoter`)

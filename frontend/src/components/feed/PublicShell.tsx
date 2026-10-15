@@ -6,7 +6,8 @@ import { usePublicHead } from "./usePublicHead";
 interface PublicShellProps {
   /** Document title (without the secret). */
   title?: string;
-  noindex: boolean;
+  /** `feed.indexable`; missing (loading, errors) means noindex. */
+  indexable?: boolean;
   /** Content of the page header below the brand row (title, actions). */
   hero?: ReactNode;
   children: ReactNode;
@@ -16,9 +17,9 @@ interface PublicShellProps {
  * Frame of the public pages (design: Public.dc.html): skip link, brand row with language and
  * theme switch (no account needed), page header, `<main>` and footer. No app navigation.
  */
-export function PublicShell({ title, noindex, hero, children }: PublicShellProps) {
+export function PublicShell({ title, indexable, hero, children }: PublicShellProps) {
   const { t } = useTranslation();
-  usePublicHead({ title: title ?? t("feed.brand"), noindex });
+  usePublicHead({ title: title ?? t("feed.brand"), indexable });
 
   return (
     <div className="ap pub">

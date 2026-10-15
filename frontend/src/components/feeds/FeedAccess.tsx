@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Banner, CopyField } from "@/components/ui/shared";
-import type { FeedAddresses } from "@/lib/feeds";
+import { requiresSecret, type FeedAddresses } from "@/lib/feeds";
 import type { CalendarFeed } from "@/lib/types";
 
 interface FeedAccessProps {
@@ -20,7 +20,7 @@ export function FeedAccess({ feed, addresses, withSecret }: FeedAccessProps) {
   const id = `feed-${feed.id}`;
   return (
     <div className="ap-stack">
-      {withSecret && feed.visibility === "PRIVATE" && (
+      {withSecret && requiresSecret(feed.visibility) && (
         <>
           <CopyField
             id={`${id}-secret`}

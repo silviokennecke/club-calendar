@@ -21,11 +21,13 @@ import { useFeeds } from "@/components/feeds/useFeeds";
 import { useEventPage } from "@/components/events/useEventPage";
 import { useCalendarActions } from "@/components/settings/useCalendarActions";
 import { apiDelete } from "@/lib/api";
+import { feedStatus } from "@/lib/feeds";
 import { focusAfterDialog } from "@/lib/focus";
 import type { CalendarFeed } from "@/lib/types";
 
 /**
- * Publish (design: Feeds): the feeds of a calendar with visibility (word + icon), audiences and the
+ * Publish (design: Feeds): the feeds of a calendar with their status (word + icon: public, club
+ * internal, private; "findable" for public feeds with the search engine option), audiences and the
  * addresses (ICS, webcal, web; secret for private feeds) behind a disclosure. Creating and editing
  * happen on their own pages (…/settings/feeds/new, …/settings/feeds/:feedId).
  */
@@ -121,7 +123,8 @@ export default function FeedsPage() {
                       <h2 className="t-h3" id={titleId}>
                         {feed.name}
                       </h2>
-                      <StatusBadge status={feed.visibility === "PRIVATE" ? "private" : "public"} />
+                      <StatusBadge status={feedStatus(feed.visibility)} />
+                      {feed.indexable && <StatusBadge status="searchable" />}
                     </div>
                     <AudienceTags feed={feed} data={data} />
                   </div>

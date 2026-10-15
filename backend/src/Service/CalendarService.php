@@ -205,7 +205,9 @@ class CalendarService
             $n = new CalendarFeed();
             $n->setCalendar($newCal);
             $n->setName($feed->getName());
+            // Same status, but never indexable (no second indexed copy of the same events) and a new secret
             $n->setVisibility($feed->getVisibility());
+            $n->setSearchable(false);
             $n->setSharedSecret(bin2hex(random_bytes(16)));
             $this->em->persist($n);
 

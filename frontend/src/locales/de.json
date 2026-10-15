@@ -1473,6 +1473,8 @@
       "new": "Neu",
       "private": "Privat",
       "public": "Öffentlich",
+      "club": "Vereinsintern",
+      "searchable": "Auffindbar",
       "danger": "Fehler"
     },
     "toast": {
@@ -1819,11 +1821,15 @@
       "vis": {
         "public": {
           "label": "Öffentlich",
-          "text": "Jeder mit dem Link kann den Kalender sehen."
+          "text": "Jeder mit dem Link kann den Kalender ansehen. Auf Wunsch finden ihn auch Suchmaschinen."
+        },
+        "club": {
+          "label": "Vereinsintern",
+          "text": "Kein Zugriffsschutz: Jeder mit dem Link kann den Kalender ansehen, auch Nicht-Mitglieder. Suchmaschinen sollen ihn nicht auflisten."
         },
         "private": {
-          "label": "Privat",
-          "text": "Nur mit Geheimnis in der Adresse."
+          "label": "Privat (geschützt)",
+          "text": "Nur mit dem Geheimnis im Link."
         }
       },
       "audiences": "Zielgruppen",
@@ -1837,7 +1843,18 @@
       "delete": "Feed löschen",
       "created": "Feed „{{name}}“ angelegt.",
       "saved": "Feed „{{name}}“ gespeichert.",
-      "saveFailed": "Der Feed konnte nicht gespeichert werden. Bitte versuche es erneut."
+      "saveFailed": "Der Feed konnte nicht gespeichert werden. Bitte versuche es erneut.",
+      "searchable": {
+        "label": "Für Suchmaschinen auffindbar",
+        "hint": "Suchmaschinen wie Google dürfen die Webansicht in ihre Ergebnisse aufnehmen. Das kann einige Tage dauern; ausgeschaltet verschwindet der Kalender mit der Zeit wieder aus den Ergebnissen."
+      }
+    },
+    "unprotect": {
+      "title": "Geheimnis nicht mehr verlangen?",
+      "textClub": "„{{name}}“ wird vereinsintern. Der Kalender ist dann ohne Geheimnis über den Link erreichbar.",
+      "textPublic": "„{{name}}“ wird öffentlich. Der Kalender ist dann ohne Geheimnis über den Link erreichbar.",
+      "consequence": "Danach kann jeder mit dem Link den Kalender sehen, auch wer den bisherigen Link mit Geheimnis nicht kennt.",
+      "confirm": "Ohne Geheimnis speichern"
     }
   },
   "profile": {

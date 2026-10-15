@@ -9,12 +9,13 @@ use App\Entity\CalendarFeed;
 use App\Entity\Event;
 use App\Entity\EventTargetGroup;
 use App\Entity\HolidayEvent;
-use App\Enum\FeedVisibility;
+use App\EventListener\FeedResponseHeadersListener;
 use App\Repository\HolidayEventRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\QueryBuilder;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -25,6 +26,7 @@ class PublicFeedService
         private readonly EntityManagerInterface $em,
         private readonly IcsService $icsService,
         private readonly HolidayEventRepository $holidays,
+        private readonly RequestStack $requestStack,
     ) {
     }
 
@@ -80,8 +82,9 @@ class PublicFeedService
 
     /**
      * Header of the public page: club and calendar name, the effective time zone of the calendar
-     * (calendar, else club), the visibility (same values as the feed API), the number of published
-     * events and the audiences used by them.
+     * (calendar, else club), the visibility (same values as the feed API: PUBLIC, CLUB, PRIVATE),
+     * whether search engines may index the feed, the number of published events and the audiences
+     * used by them.
      */
     private function serializeFeed(CalendarFeed $feed): array
     {
@@ -106,6 +109,7 @@ class PublicFeedService
             'calendarName' => $calendar->getName(),
             'timezone' => $this->calendarTimezone($calendar),
             'visibility' => $feed->getVisibility()->value,
+            'indexable' => $feed->isIndexable(),
             'eventCount' => (int) $count->getQuery()->getSingleScalarResult(),
             'audiences' => array_map(
                 fn (array $row) => ['id' => (string) $row['id'], 'name' => (string) $row['name']],
@@ -138,8 +142,8 @@ class PublicFeedService
         }
 
         // Private feed: check the secret first, so that nothing about the feed (e.g. that its calendar
-        // is archived) is revealed without access.
-        if (FeedVisibility::PRIVATE === $feed->getVisibility()) {
+        // is archived) is revealed without access. PUBLIC and CLUB need no secret.
+        if ($feed->getVisibility()->requiresSecret()) {
             if (!$secret || !hash_equals($feed->getSharedSecret(), $secret)) {
                 throw new AccessDeniedHttpException('Invalid or missing secret');
             }
@@ -149,6 +153,10 @@ class PublicFeedService
         if (null !== $feed->getCalendar()->getArchivedAt()) {
             throw new NotFoundHttpException('Feed not found');
         }
+
+        // Access granted: tell FeedResponseHeadersListener whether the response may be indexed (the
+        // listener does not load the feed again; without this attribute it sends noindex).
+        $this->requestStack->getMainRequest()?->attributes->set(FeedResponseHeadersListener::INDEXABLE_ATTRIBUTE, $feed->isIndexable());
 
         return $feed;
     }

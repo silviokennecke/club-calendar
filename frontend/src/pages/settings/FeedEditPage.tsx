@@ -14,6 +14,7 @@ import {
   LinkButton,
   Skeleton,
   TextInput,
+  Toggle,
   UnsavedChangesDialog,
   CopyField,
   toast,
@@ -26,6 +27,7 @@ import { useFeed, useFeeds } from "@/components/feeds/useFeeds";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
 import { keepExisting, saveDroppingDeletedReferences } from "@/lib/staleReferences";
 import {
+  dropsSecret,
   emptyFeedValues,
   feedValuesFromRecord,
   isFeedDirty,
@@ -38,14 +40,18 @@ import {
 import type { CalendarFeed } from "@/lib/types";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 
-const VISIBILITIES: { value: FeedVisibility; key: "public" | "private"; icon: Glyph }[] = [
+/** From open to protected; CLUB ("Vereinsintern") is the default for new feeds. */
+const VISIBILITIES: { value: FeedVisibility; key: "public" | "club" | "private"; icon: Glyph }[] = [
   { value: "PUBLIC", key: "public", icon: "globe" },
+  { value: "CLUB", key: "club", icon: "users" },
   { value: "PRIVATE", key: "private", icon: "lock" },
 ];
 
 /**
  * New feed (…/settings/feeds/new) and edit (…/settings/feeds/:feedId), design: FeedEdit. Name,
- * visibility, audience filter, the secret (private feeds, regenerating asks first) and the addresses.
+ * status (public / club internal / private; the search engine option only for public), audience
+ * filter, the secret (private feeds, regenerating asks first) and the addresses. Saving a private
+ * feed as public or club internal asks first (the secret is no longer required).
  */
 export default function FeedEditPage() {
   const { feedId } = useParams<{ feedId: string }>();
@@ -137,6 +143,7 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
   const [saveFailed, setSaveFailed] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [unprotectOpen, setUnprotectOpen] = useState(false);
 
   const dirty = !readOnly && isFeedDirty(initial, values);
   const unsaved = useUnsavedChanges(dirty);
@@ -156,11 +163,29 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
     setSaveFailed(false);
   }
 
-  async function onSubmit(e: FormEvent) {
+  /** The search engine option is an explicit opt-in: leaving PUBLIC switches it off. */
+  function setVisibility(visibility: FeedVisibility) {
+    setValues((v) => ({
+      ...v,
+      visibility,
+      searchable: visibility === "PUBLIC" ? v.searchable : false,
+    }));
+    setSaveFailed(false);
+  }
+
+  function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (readOnly) return;
     setSubmits((n) => n + 1);
     if (problems.length > 0) return;
+    if (dropsSecret(feed, values)) {
+      setUnprotectOpen(true);
+      return;
+    }
+    void save();
+  }
+
+  async function save() {
     setSaving(true);
     setSaveFailed(false);
     try {
@@ -238,7 +263,7 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
           <p className="t-body">{page.calendar?.name}</p>
         </div>
       </header>
-      <form className="ap-form" noValidate onSubmit={(e) => void onSubmit(e)}>
+      <form className="ap-form" noValidate onSubmit={onSubmit}>
         {readOnly ? (
           <Banner tone="warning" icon="lock" title={t("shell.archivedReadOnly")}>
             {t("feeds.form.readOnly")}
@@ -272,7 +297,7 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
 
             <fieldset className="ap-fieldset">
               <legend>{t("feeds.form.visibility")}</legend>
-              <div className="ap-cols-2">
+              <div className="ap-stack ap-stack--sm">
                 {VISIBILITIES.map((v) => (
                   <label
                     key={v.value}
@@ -284,7 +309,7 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
                       name="fe-vis"
                       value={v.value}
                       checked={values.visibility === v.value}
-                      onChange={() => set("visibility", v.value)}
+                      onChange={() => setVisibility(v.value)}
                     />
                     <span className="ap-stack ap-stack--sm">
                       <span className="ap-row" style={{ gap: 8 }}>
@@ -296,6 +321,16 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
                   </label>
                 ))}
               </div>
+              {values.visibility === "PUBLIC" && (
+                <Toggle
+                  id="fe-searchable"
+                  label={t("feeds.form.searchable.label")}
+                  hint={t("feeds.form.searchable.hint")}
+                  checked={values.searchable}
+                  onChange={(on) => set("searchable", on)}
+                  disabled={readOnly}
+                />
+              )}
             </fieldset>
 
             <fieldset className="ap-fieldset">
@@ -386,6 +421,21 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
             consequence={t("feeds.regen.consequence")}
             confirmLabel={t("feeds.regen.confirm")}
             onConfirm={regenerate}
+          />
+          <ConfirmDialog
+            open={unprotectOpen}
+            onOpenChange={setUnprotectOpen}
+            icon="lock"
+            title={t("feeds.unprotect.title")}
+            description={t(
+              values.visibility === "PUBLIC"
+                ? "feeds.unprotect.textPublic"
+                : "feeds.unprotect.textClub",
+              { name: values.name.trim() || feed.name },
+            )}
+            consequence={t("feeds.unprotect.consequence")}
+            confirmLabel={t("feeds.unprotect.confirm")}
+            onConfirm={save}
           />
           <ConfirmDialog
             open={deleteOpen}

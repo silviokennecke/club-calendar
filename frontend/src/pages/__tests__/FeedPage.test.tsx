@@ -105,6 +105,7 @@ function feedApi({
       calendarName: CALENDAR,
       timezone: "Europe/Berlin",
       visibility: "PUBLIC",
+      indexable: false,
       eventCount: events.length,
       audiences: [...audiences]
         .map(([id, name]) => ({ id, name }))
@@ -252,10 +253,22 @@ describe("FeedPage", () => {
     ).toContain(`secret=${SECRET}`);
   });
 
-  it("is indexable when the feed is public (even with a secret in the address)", async () => {
+  it.each([
+    ["PUBLIC with the search engine option", { visibility: "PUBLIC", indexable: true }, null],
+    ["PUBLIC without the option", { visibility: "PUBLIC", indexable: false }, "noindex, nofollow"],
+    ["CLUB", { visibility: "CLUB", indexable: false }, "noindex, nofollow"],
+    ["PRIVATE", { visibility: "PRIVATE", indexable: false }, "noindex, nofollow"],
+    [
+      "a header without the flag",
+      { visibility: "PUBLIC", indexable: undefined },
+      "noindex, nofollow",
+    ],
+  ])("robots meta for %s", async (_label, header, expected) => {
+    respond = feedApi({ header });
     renderAt(`/feed/f1?secret=${SECRET}`);
     await screen.findByRole("heading", { level: 1, name: CLUB });
-    expect(document.head.querySelector("meta[name=robots]")).toBeNull();
+    const metas = document.head.querySelectorAll<HTMLMetaElement>("meta[name=robots]");
+    expect(Array.from(metas).map((m) => m.content)).toEqual(expected ? [expected] : []);
     expect(document.head.querySelector("meta[name=referrer]")).toHaveAttribute(
       "content",
       "no-referrer",
@@ -527,6 +540,27 @@ describe("PublicEventModal", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(screen.getByTestId("location")).toHaveTextContent(`/feed/f1?secret=${SECRET}`);
     expect(document.querySelector('meta[name="robots"]')).not.toBeNull();
+  });
+
+  it.each([
+    ["an event of an indexable feed", { indexable: true }, "e3", null],
+    ["an event of a club internal feed", { visibility: "CLUB" }, "e3", "noindex, nofollow"],
+    ["an unknown event of an indexable feed", { indexable: true }, "nope", "noindex, nofollow"],
+  ])("robots meta for %s", async (_label, header, id, expected) => {
+    respond = feedApi({ header });
+    renderAt(`/feed/f1/events/${id}`);
+    await screen.findByRole("heading", {
+      level: 1,
+      name: id === "e3" ? "Herbstfest" : "Termin nicht gefunden",
+    });
+    // The feed below the dialog and the dialog each set their own tag; any noindex counts
+    await waitFor(() => {
+      const contents = Array.from(
+        document.head.querySelectorAll<HTMLMetaElement>("meta[name=robots]"),
+      ).map((m) => m.content);
+      if (expected) expect(contents).toContain(expected);
+      else expect(contents).toEqual([]);
+    });
   });
 
   it("tells an unknown feed apart from an unknown event", async () => {
