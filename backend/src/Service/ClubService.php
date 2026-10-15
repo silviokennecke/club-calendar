@@ -8,11 +8,14 @@ use App\Entity\Calendar;
 use App\Entity\Club;
 use App\Entity\ClubUser;
 use App\Entity\User;
+use App\Exception\ApiProblemException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class ClubService
 {
+    public const string MEMBER_NOT_FOUND_CODE = 'member_not_found';
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly UsageCounts $counts,
@@ -125,15 +128,23 @@ readonly class ClubService
         ], $members);
     }
 
+    /**
+     * Adds the user with this address to the club. `created` is false when the user already was a member
+     * (nothing changes; the caller answers 200 instead of 201 with the same body). Unknown addresses stay a
+     * plain 404 (see the security audit: account enumeration).
+     *
+     * @return array{member: array{id: string, name: string, email: string}, created: bool}
+     */
     public function addMember(Club $club, string $email): array
     {
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         if (!$user) {
             throw new NotFoundHttpException('User not found');
         }
+        $member = ['id' => $user->getId(), 'name' => $user->getName(), 'email' => $user->getEmail()];
         $existing = $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $club, 'user' => $user]);
         if ($existing) {
-            return ['id' => $user->getId(), 'name' => $user->getName(), 'email' => $user->getEmail()];
+            return ['member' => $member, 'created' => false];
         }
         $cu = new ClubUser();
         $cu->setClub($club);
@@ -141,20 +152,21 @@ readonly class ClubService
         $this->em->persist($cu);
         $this->em->flush();
 
-        return ['id' => $user->getId(), 'name' => $user->getName(), 'email' => $user->getEmail()];
+        return ['member' => $member, 'created' => true];
     }
 
+    /**
+     * Removes a member. A user id that is no member of the club, unknown or not a user id at all, is the same
+     * 404 `member_not_found`: the answer never tells whether an account exists.
+     */
     public function removeMember(Club $club, string $memberId): void
     {
-        $member = $this->em->getRepository(User::class)->find($memberId);
-        if (!$member) {
-            return;
+        $cu = $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $club, 'user' => $memberId]);
+        if (!$cu) {
+            throw new ApiProblemException(404, 'Member not found', self::MEMBER_NOT_FOUND_CODE);
         }
-        $cu = $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $club, 'user' => $member]);
-        if ($cu) {
-            $this->em->remove($cu);
-            $this->em->flush();
-        }
+        $this->em->remove($cu);
+        $this->em->flush();
     }
 
     private function serializeClub(Club $club): array

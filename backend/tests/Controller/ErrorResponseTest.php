@@ -47,7 +47,8 @@ class ErrorResponseTest extends WebTestCase
     {
         yield 'unknown calendar (MapEntity)' => ['GET', '/api/calendars/unknown-id/events/x', 404, true];
         yield 'unknown club (MapEntity)' => ['GET', '/api/clubs/unknown-id', 404, true];
-        yield 'unknown club without token' => ['GET', '/api/clubs/unknown-id', 404, false];
+        // Without a token every club/calendar route is 401 before the id is looked up (no probing of ids)
+        yield 'unknown club without token' => ['GET', '/api/clubs/unknown-id', 401, false];
         yield 'unknown route' => ['GET', '/api/does-not-exist', 404, true];
         yield 'method not allowed' => ['PUT', '/api/clubs', 405, true];
         yield 'foreign calendar' => ['GET', '/api/calendars/{foreign}/events', 403, true];

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Exception\ApiProblemException;
 use App\Exception\ProxyDeniedException;
 use App\Exception\RateLimitExceededException;
 use App\Service\Map\MapAvailability;
@@ -12,6 +13,8 @@ use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/mapbox')]
@@ -27,7 +30,7 @@ class MapboxController extends AbstractController
     ) {
     }
 
-    #[Route('/{domain}/{path}', name: 'mapbox_proxy', requirements: ['path' => '.+'], methods: ['GET', 'POST', 'PUT', 'PATCH'])]
+    #[Route('/{domain}/{path}', name: 'mapbox_proxy', requirements: ['path' => '.+'], methods: ['GET'])]
     public function proxy(string $domain, string $path, Request $request): Response
     {
         if (!$this->mapAvailability->isConfigured()) {
@@ -35,36 +38,24 @@ class MapboxController extends AbstractController
         }
 
         if (!in_array($domain, self::ALLOWED_DOMAINS, true)) {
-            return $this->errorResponse('Domain not allowed', 400);
+            throw new ApiProblemException(400, 'Domain not allowed', 'invalid_request', 'domain');
         }
 
         $queryParams = $request->query->all();
         unset($queryParams['access_token']);
 
-        $body = $request->getContent() ?: null;
-        $contentType = $request->headers->get('Content-Type', 'application/json');
-
         try {
-            $result = $this->proxyService->proxy($path, $request->getMethod(), $queryParams, $body, $contentType);
+            $result = $this->proxyService->proxy($path, 'GET', $queryParams, null, 'application/json');
         } catch (ProxyDeniedException) {
-            return $this->errorResponse('Forbidden', 403);
+            throw new AccessDeniedHttpException('Path not allowed');
         } catch (RateLimitExceededException) {
-            return $this->errorResponse('Too many requests', 429);
+            throw MapController::rateLimited();
         } catch (\Throwable $e) {
             $this->logger->error('Mapbox proxy failed', ['exception' => $e, 'path' => $path]);
 
-            return $this->errorResponse('Failed to reach map service', 502);
+            throw new HttpException(502, 'Failed to reach map service', $e);
         }
 
         return new Response($result->body, $result->status, $result->headers);
-    }
-
-    private function errorResponse(string $message, int $status): Response
-    {
-        return new Response(
-            json_encode(['message' => $message]),
-            $status,
-            ['Content-Type' => 'application/json'],
-        );
     }
 }

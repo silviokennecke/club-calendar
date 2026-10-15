@@ -11,11 +11,14 @@ export class ApiError extends Error {
   status: number;
   /** Stable error code of the RFC 7807 body, e.g. "duplicate_name" (only some errors carry one). */
   code?: string;
-  constructor(message: string, status: number, code?: string) {
+  /** Input the error refers to (`field` of the RFC 7807 body, e.g. "url"), if any. */
+  field?: string;
+  constructor(message: string, status: number, code?: string, field?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.field = field;
   }
 }
 
@@ -107,18 +110,14 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
   return res;
 }
 
-/** ApiError from a failed response: `detail` (or the legacy `error`) as message, plus the stable `code`. */
+/** ApiError from a failed response (RFC 7807 body): `detail` as message, plus the stable `code`. */
 async function errorFrom(res: Response): Promise<ApiError> {
   const err = (await res.json().catch(() => null)) as {
-    error?: string;
     detail?: string;
     code?: string;
+    field?: string;
   } | null;
-  return new ApiError(
-    err?.error ?? err?.detail ?? `API error ${res.status}`,
-    res.status,
-    err?.code,
-  );
+  return new ApiError(err?.detail ?? `API error ${res.status}`, res.status, err?.code, err?.field);
 }
 
 /** Body of a successful response; 204 No Content resolves to `undefined`. */

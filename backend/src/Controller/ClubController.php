@@ -96,7 +96,10 @@ class ClubController extends AbstractApiController
         }
         $this->validateDto($dto, $this->validator);
 
-        return new JsonResponse($this->clubService->addMember($club, $dto->email), Response::HTTP_CREATED);
+        // 201 for a new member, 200 (same body) when the user already belongs to the club
+        $result = $this->clubService->addMember($club, $dto->email);
+
+        return new JsonResponse($result['member'], $result['created'] ? Response::HTTP_CREATED : Response::HTTP_OK);
     }
 
     #[Route('/{clubId}/members/{userId}', methods: ['DELETE'])]

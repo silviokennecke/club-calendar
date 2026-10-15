@@ -99,7 +99,7 @@ export default function LoginPage() {
       login(data.access_token, data.refresh_token, data.user);
       navigate("/clubs");
     } catch (err: unknown) {
-      // `code` (the 403 body also keeps the older `error: "email_not_verified"`)
+      // 403 `code: email_not_verified` (RFC 7807 problem like every API error)
       if ((err as { code?: string }).code === "email_not_verified") {
         show("unverified");
       } else {

@@ -14,7 +14,6 @@ use App\Entity\Location;
 use App\Entity\Property;
 use App\Entity\TargetGroup;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class EventTemplateService
@@ -102,7 +101,8 @@ readonly class EventTemplateService
             $template->setTimeEnd(Input::nullableTime($data, 'timeEnd'));
         }
         if ((null === $template->getTimeBegin()) !== (null === $template->getTimeEnd())) {
-            throw new BadRequestHttpException('timeBegin and timeEnd must both be given or both be empty');
+            // The field is the missing half of the pair
+            throw Input::invalid(null === $template->getTimeBegin() ? 'timeBegin' : 'timeEnd', 'timeBegin and timeEnd must both be given or both be empty');
         }
         if ($has('locationId')) {
             $template->setLocation($this->references->find(Location::class, $calendar, $data['locationId'] ?? null, 'locationId'));

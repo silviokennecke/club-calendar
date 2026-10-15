@@ -74,24 +74,6 @@ E2E-Umgebung: `E2E.md`.
 - Kein eigener E2E-Seed außer den Fixtures (die Suite bestätigt Nutzer mit `app:user:verify` und holt Reset-Links mit
   `app:user:reset-link`).
 
-### API-Unstimmigkeiten (beim Schreiben der OpenAPI-Referenz gefunden, nicht behoben)
-
-- Ohne Token antworten Routen mit Mitgliedschaftsprüfung (`/api/clubs/{id}…`, `/api/calendars/{id}…`,
-  `/api/map/geocode/*`) mit 403 statt 401 (`ExceptionListener` wandelt `AccessDeniedException` vor dem Entry Point um);
-  ein ungültiges JWT liefert den Body des JWT-Bundles `{code, message}`, kein RFC 7807.
-- Alte Fehlerformen ohne RFC 7807: Login 403 `{error, code}`, Feiertagskalender `{error}` (404, 422), Mapbox-Proxy
-  `{message}`, unbekannter OAuth-Anbieter am `GET` als Text 400 (`link-start`: 404 `unknown_provider`).
-- Viele 400 ohne `code` (`from`/`to` der Terminliste und der Feiertage, `to` vor `from` am öffentlichen Feed, halbe
-  Zeitpaare in Vorlagen, `from-template` ohne `templateId`/`dates`); ungültige Zeitzonen sind 422, andere
-  Eingabefehler 400.
-- Feiertagskalender: `PATCH` ist nicht partiell (`name` und `url` Pflicht); `DELETE` antwortet 204, andere Löschungen
-  `200 {ok: true}`.
-- Mapbox-Proxy: Route erlaubt POST/PUT/PATCH, die Allow-List nur GET (die anderen Methoden enden immer in 403).
-- Öffentlicher Feed: `properties`/`features`/`targetGroups` nutzen `->toArray()` statt `getValues()` (könnte bei nicht
-  fortlaufenden Schlüsseln Objekte statt Listen liefern; bisher nie aufgetreten).
-- Ohne Wirkung trotzdem Erfolg: `POST …/members` für ein vorhandenes Mitglied 201, `DELETE …/members/{userId}` für
-  eine unbekannte Person 200.
-
 ## Offene Sicherheitsrisiken
 
 **Siehe Security-Audit** (Bericht des Auftraggebers, nicht im Repository): Rollen/Einladungen/letzter Admin,

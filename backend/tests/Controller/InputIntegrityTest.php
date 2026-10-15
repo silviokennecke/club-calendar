@@ -356,14 +356,14 @@ class InputIntegrityTest extends WebTestCase
         ['user' => $user, 'calendar' => $cal, 'auth' => $auth, 'base' => $base] = $this->setupCalendar();
         $bad = 'W. Europe Standard Time';
         $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/events", $this->event(['timezone' => $bad]), $auth);
-        $this->assertSame(422, $r['status']);
+        $this->assertSame(400, $r['status']);
         // The import no longer fails on unknown zones of the file: calendar zone + warning (ImportTest)
         $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/events/import", ['events' => [$this->event(['timezone' => $bad])]], $auth);
         $this->assertSame(201, $r['status']);
         $this->assertSame('timezone', $r['body']['warnings'][0]['field']);
         $id = TestHelper::jsonRequest(self::$client, 'POST', "$base/events", $this->event(['timezone' => 'Europe/Vienna']), $auth)['body']['id'];
         $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/events/$id", ['timezone' => $bad], $auth);
-        $this->assertSame(422, $r['status']);
+        $this->assertSame(400, $r['status']);
         $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/events/$id", ['timezone' => null], $auth);
         $this->assertSame(200, $r['status']);
         // PHP (and ICS files in the wild) treat zone names case-insensitively: accepted, stored canonical
@@ -375,15 +375,16 @@ class InputIntegrityTest extends WebTestCase
         $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/templates", [
             'name' => 'T', 'timezone' => $bad, 'timeBegin' => '18:00', 'timeEnd' => '20:00',
         ], $auth);
-        $this->assertSame(422, $r['status']);
+        $this->assertSame(400, $r['status']);
 
         $clubId = $cal->getClub()->getId();
+        // Typed input checks (PATCH): 400 like every malformed input; DTO constraints (POST): 422
         $r = TestHelper::jsonRequest(self::$client, 'PATCH', "/api/clubs/$clubId/calendars/{$cal->getId()}", ['timezone' => $bad], $auth);
-        $this->assertSame(422, $r['status']);
+        $this->assertSame(400, $r['status']);
         $r = TestHelper::jsonRequest(self::$client, 'POST', "/api/clubs/$clubId/calendars", ['name' => 'K', 'timezone' => $bad], $auth);
         $this->assertSame(422, $r['status']);
         $r = TestHelper::jsonRequest(self::$client, 'PATCH', "/api/clubs/$clubId", ['timezone' => $bad], $auth);
-        $this->assertSame(422, $r['status']);
+        $this->assertSame(400, $r['status']);
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/clubs', ['name' => 'V', 'timezone' => $bad], $auth);
         $this->assertSame(422, $r['status']);
     }

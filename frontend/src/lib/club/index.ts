@@ -23,6 +23,14 @@ export function memberAddFailure(error: unknown): "notFound" | "failed" {
   return status === 404 ? "notFound" : "failed";
 }
 
+/**
+ * Removing a member failed because the user is no member (any more): 404 `member_not_found`, e.g. someone
+ * else removed them meanwhile. Matched by the stable code, never the message.
+ */
+export function isMemberGone(error: unknown): boolean {
+  return (error as { code?: unknown } | null)?.code === "member_not_found";
+}
+
 /** Name check of the club name and the "Kalender anlegen" forms. */
 export function isBlank(value: string): boolean {
   return value.trim().length === 0;

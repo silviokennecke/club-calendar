@@ -96,9 +96,9 @@ readonly class EventService
             'isDraft' => true,
             'locationId' => $template->getLocation()?->getId(),
             'eventTemplateId' => $template->getId(),
-            'propertyIds' => array_map(fn ($p) => $p->getProperty()->getId(), $template->getProperties()->toArray()),
-            'featureIds' => array_map(fn ($f) => $f->getFeature()->getId(), $template->getFeatures()->toArray()),
-            'targetGroupIds' => array_map(fn ($t) => $t->getTargetGroup()->getId(), $template->getTargetGroups()->toArray()),
+            'propertyIds' => array_map(fn ($p) => $p->getProperty()->getId(), $template->getProperties()->getValues()),
+            'featureIds' => array_map(fn ($f) => $f->getFeature()->getId(), $template->getFeatures()->getValues()),
+            'targetGroupIds' => array_map(fn ($t) => $t->getTargetGroup()->getId(), $template->getTargetGroups()->getValues()),
         ];
         foreach (['name', 'timezone', 'timeBegin', 'timeEnd', 'isAllDay', 'isDraft', 'propertyIds', 'featureIds', 'targetGroupIds'] as $key) {
             if (isset($overrides[$key])) {

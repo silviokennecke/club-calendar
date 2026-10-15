@@ -10,6 +10,11 @@ use App\Exception\ApiProblemException;
  * Checks for values of decoded JSON bodies, so that wrong or missing user input ends in a 4xx
  * response instead of a TypeError/500 further down (entity setters are strictly typed).
  * Errors carry `code: validation_failed` and the input `field` (RFC 7807 body, see ApiProblemException).
+ *
+ * Status convention: a malformed input value (missing, wrong type, format, range, time zone, half a pair)
+ * is 400 on every route checked here. 422 `validation_failed` comes from DTO constraints (routes that map
+ * the body onto a DTO) and from values that are well-formed but conflict with stored state (e.g.
+ * `searchable` on a feed that is not PUBLIC, a series without events).
  */
 final class Input
 {
@@ -158,7 +163,7 @@ final class Input
         }
         $canonical = is_string($value) ? self::canonicalTimezone($value) : null;
         if (null === $canonical) {
-            throw self::invalid($key, sprintf('%s must be a valid IANA time zone (e.g. Europe/Berlin)', $key), 422);
+            throw self::invalid($key, sprintf('%s must be a valid IANA time zone (e.g. Europe/Berlin)', $key));
         }
 
         return $canonical;

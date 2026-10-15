@@ -110,7 +110,7 @@ class IcsService
         // Build summary: icons + name
         $icons = array_filter(array_map(
             fn ($ep) => $ep->getProperty()->getIcon(),
-            $event->getProperties()->toArray(),
+            $event->getProperties()->getValues(),
         ));
         $iconStr = implode(' ', $icons);
         $summary = $iconStr ? "$iconStr {$event->getName()}" : $event->getName();
@@ -118,11 +118,11 @@ class IcsService
         // Build description
         $parts = [];
         if ($event->getFeatures()->count() > 0) {
-            $names = array_map(fn ($ef) => $ef->getFeature()->getName(), $event->getFeatures()->toArray());
+            $names = array_map(fn ($ef) => $ef->getFeature()->getName(), $event->getFeatures()->getValues());
             $parts[] = 'Features: '.implode(', ', $names);
         }
         if ($event->getTargetGroups()->count() > 0) {
-            $names = array_map(fn ($etg) => $etg->getTargetGroup()->getName(), $event->getTargetGroups()->toArray());
+            $names = array_map(fn ($etg) => $etg->getTargetGroup()->getName(), $event->getTargetGroups()->getValues());
             $parts[] = 'Zielgruppen: '.implode(', ', $names);
         }
         $description = implode("\n", $parts);

@@ -15,7 +15,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
  * Location coordinates: JSON numbers, latitude -90..90, longitude -180..180, only as a pair (or both
- * null/absent); otherwise 422 validation_failed with the field. Create, update and new places of the
+ * null/absent); otherwise 400 validation_failed (an input error like all others) with the field. Create, update and new places of the
  * event import.
  */
 class LocationCoordinatesTest extends WebTestCase
@@ -86,7 +86,7 @@ class LocationCoordinatesTest extends WebTestCase
         ['base' => $base, 'auth' => $auth, 'calendarId' => $calendarId] = $this->setupCalendar();
         foreach (self::invalidBodies() as $label => [$body, $field]) {
             $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/locations", ['name' => 'Halle'] + $body, $auth);
-            $this->assertSame(422, $r['status'], $label.' '.$r['content']);
+            $this->assertSame(400, $r['status'], $label.' '.$r['content']);
             $this->assertSame('validation_failed', $r['body']['code'] ?? null, $label);
             $this->assertSame($field, $r['body']['field'] ?? null, $label);
         }
@@ -121,13 +121,13 @@ class LocationCoordinatesTest extends WebTestCase
                 continue; // one coordinate alone is fine on update while the other one stays
             }
             $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/locations/$id", $body, $auth);
-            $this->assertSame(422, $r['status'], $label.' '.$r['content']);
+            $this->assertSame(400, $r['status'], $label.' '.$r['content']);
             $this->assertSame('validation_failed', $r['body']['code'] ?? null, $label);
             $this->assertSame($field, $r['body']['field'] ?? null, $label);
         }
         foreach ([[['latitude' => null], 'latitude'], [['longitude' => null], 'longitude'], [['latitude' => 'x'], 'latitude'], [['longitude' => 200], 'longitude']] as [$body, $field]) {
             $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/locations/$id", $body, $auth);
-            $this->assertSame(422, $r['status'], json_encode($body).' '.$r['content']);
+            $this->assertSame(400, $r['status'], json_encode($body).' '.$r['content']);
             $this->assertSame($field, $r['body']['field'] ?? null, json_encode($body));
         }
         self::$em->clear();
@@ -166,7 +166,7 @@ class LocationCoordinatesTest extends WebTestCase
                 'locations' => [['tempId' => 'p', 'name' => 'Linde'] + $coords],
                 'events' => [$event],
             ], $auth);
-            $this->assertSame(422, $r['status'], json_encode($coords).' '.$r['content']);
+            $this->assertSame(400, $r['status'], json_encode($coords).' '.$r['content']);
             $this->assertSame('validation_failed', $r['body']['code']);
             $this->assertSame("locations[0].$field", $r['body']['field']);
         }

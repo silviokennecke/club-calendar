@@ -16,7 +16,6 @@ use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -77,8 +76,11 @@ class EventController extends AbstractApiController
     public function createFromTemplate(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
         $data = $this->decodeJson($request);
-        if (empty($data['templateId']) || empty($data['dates'])) {
-            throw new BadRequestHttpException('templateId and dates are required');
+        if (empty($data['templateId'])) {
+            throw Input::invalid('templateId', 'templateId is required');
+        }
+        if (empty($data['dates'])) {
+            throw Input::invalid('dates', 'dates is required (list of YYYY-MM-DD)');
         }
 
         $events = $this->eventService->createSeriesFromTemplate(

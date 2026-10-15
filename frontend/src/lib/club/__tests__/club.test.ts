@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isBlank, memberAddFailure, validateMemberEmail } from "..";
+import { isBlank, isMemberGone, memberAddFailure, validateMemberEmail } from "..";
 
 const members = [{ email: "Alex@Beispiel.de" }, { email: "mara@beispiel.de" }];
 
@@ -36,5 +36,14 @@ describe("isBlank", () => {
   it("treats whitespace as blank", () => {
     expect(isBlank("  \t")).toBe(true);
     expect(isBlank(" a ")).toBe(false);
+  });
+});
+
+describe("isMemberGone", () => {
+  it("recognises 404 member_not_found by its code only", () => {
+    expect(isMemberGone({ status: 404, code: "member_not_found" })).toBe(true);
+    expect(isMemberGone({ status: 404 })).toBe(false);
+    expect(isMemberGone(new Error("member_not_found"))).toBe(false);
+    expect(isMemberGone(null)).toBe(false);
   });
 });
