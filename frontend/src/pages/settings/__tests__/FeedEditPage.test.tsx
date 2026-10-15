@@ -18,6 +18,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 const feedsPath = "/api/calendars/k1/feeds";
+const q = "?includeSecret=1";
 let calendar: Record<string, unknown>;
 let feeds: unknown[];
 
@@ -44,10 +45,10 @@ beforeEach(() => {
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete]) fn.mockReset();
   apiGet.mockImplementation((path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
-    if (path === feedsPath) return Promise.resolve(feeds);
+    if (path === `${feedsPath}${q}`) return Promise.resolve(feeds);
     // Single GET of the edit page; unknown ids are a 404 like in the backend
     if (path.startsWith(`${feedsPath}/`)) {
-      const feed = (feeds as { id: string }[]).find((f) => path === `${feedsPath}/${f.id}`);
+      const feed = (feeds as { id: string }[]).find((f) => path === `${feedsPath}/${f.id}${q}`);
       return feed
         ? Promise.resolve(feed)
         : Promise.reject(Object.assign(new Error("API error 404"), { status: 404 }));
@@ -140,7 +141,7 @@ describe("FeedEditPage (new)", () => {
     await user.click(again);
     await user.click(screen.getByRole("button", { name: "Feed speichern" }));
     await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith(feedsPath, {
+      expect(apiPost).toHaveBeenCalledWith(`${feedsPath}${q}`, {
         name: "Termine",
         visibility: "PUBLIC",
         searchable: true,
@@ -155,7 +156,7 @@ describe("FeedEditPage (new)", () => {
     await user.type(await screen.findByLabelText(/^Name/), "Mitglieder");
     await user.click(screen.getByRole("button", { name: "Feed speichern" }));
     await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith(feedsPath, {
+      expect(apiPost).toHaveBeenCalledWith(`${feedsPath}${q}`, {
         name: "Mitglieder",
         visibility: "CLUB",
         searchable: false,
@@ -172,7 +173,7 @@ describe("FeedEditPage (new)", () => {
     await user.click(await screen.findByRole("button", { name: "Jugend" }));
     await user.click(screen.getByRole("button", { name: "Feed speichern" }));
     await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith(feedsPath, {
+      expect(apiPost).toHaveBeenCalledWith(`${feedsPath}${q}`, {
         name: "Jugend-Abo",
         visibility: "PRIVATE",
         searchable: false,
@@ -240,7 +241,7 @@ describe("FeedEditPage (edit)", () => {
     await user.click(screen.getByRole("button", { name: "Erwachsene" }));
     await user.click(screen.getByRole("button", { name: "Feed speichern" }));
     await waitFor(() =>
-      expect(apiPatch).toHaveBeenCalledWith(`${feedsPath}/f2`, {
+      expect(apiPatch).toHaveBeenCalledWith(`${feedsPath}/f2${q}`, {
         name: "Vorstand",
         visibility: "PRIVATE",
         searchable: false,
@@ -276,7 +277,7 @@ describe("FeedEditPage (edit)", () => {
     expect(again).toHaveTextContent("„Vorstand intern“ wird öffentlich.");
     await user.click(within(again).getByRole("button", { name: "Ohne Geheimnis speichern" }));
     await waitFor(() =>
-      expect(apiPatch).toHaveBeenCalledWith(`${feedsPath}/f2`, {
+      expect(apiPatch).toHaveBeenCalledWith(`${feedsPath}/f2${q}`, {
         name: "Vorstand intern",
         visibility: "PUBLIC",
         searchable: false,
@@ -294,7 +295,7 @@ describe("FeedEditPage (edit)", () => {
     await user.click(screen.getByRole("switch", { name: "Für Suchmaschinen auffindbar" }));
     await user.click(screen.getByRole("button", { name: "Feed speichern" }));
     await waitFor(() =>
-      expect(apiPatch).toHaveBeenCalledWith(`${feedsPath}/f2`, {
+      expect(apiPatch).toHaveBeenCalledWith(`${feedsPath}/f2${q}`, {
         name: "Vorstand intern",
         visibility: "PUBLIC",
         searchable: true,
@@ -332,7 +333,7 @@ describe("FeedEditPage (edit)", () => {
       }),
     );
     await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith(`${feedsPath}/f2/regenerate-secret`, {}),
+      expect(apiPost).toHaveBeenCalledWith(`${feedsPath}/f2/regenerate-secret${q}`, {}),
     );
   });
 
@@ -370,14 +371,14 @@ describe("FeedEditPage (edit)", () => {
     renderEdit("f2");
     await screen.findByLabelText(/^Name/);
     const paths = apiGet.mock.calls.map(([path]) => path);
-    expect(paths).toContain(`${feedsPath}/f2`);
-    expect(paths).not.toContain(feedsPath);
+    expect(paths).toContain(`${feedsPath}/f2${q}`);
+    expect(paths).not.toContain(`${feedsPath}${q}`);
   });
 
   it("offers a retry when the feed cannot be loaded", async () => {
     const fallback = apiGet.getMockImplementation()!;
     apiGet.mockImplementation((path: string) =>
-      path === `${feedsPath}/f2`
+      path === `${feedsPath}/f2${q}`
         ? Promise.reject(Object.assign(new Error("API error 500"), { status: 500 }))
         : fallback(path),
     );

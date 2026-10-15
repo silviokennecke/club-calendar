@@ -173,6 +173,8 @@ GET /api/feed/:feedId/events[?from=YYYY-MM-DD&to=YYYY-MM-DD]   # web view: heade
 GET /api/feed/:feedId/events/:eventId                          # one published event (secret checked first)
 ```
 
+Feed management responses (`/api/calendars/:id/feeds…`) omit `sharedSecret` unless `?includeSecret=1|true` is sent (the frontend sends it where it shows or copies the feed address).
+
 Counters for lists and delete dialogs (clubs, calendars, `usage` of reference data, `eventCount` of templates) come
 from the API in one grouped query per counter (`App\Service\UsageCounts`); the frontend never loads whole lists just
 to count. Details: `docs/api/openapi.yaml`.

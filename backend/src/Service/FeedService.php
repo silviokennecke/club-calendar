@@ -20,20 +20,20 @@ readonly class FeedService
     ) {
     }
 
-    public function list(Calendar $calendar): array
+    public function list(Calendar $calendar, bool $includeSecret = false): array
     {
         $items = $this->em->getRepository(CalendarFeed::class)->findBy(['calendar' => $calendar]);
 
-        return array_map(fn (CalendarFeed $f) => $this->serialize($f), $items);
+        return array_map(fn (CalendarFeed $f) => $this->serialize($f, $includeSecret), $items);
     }
 
     /** One feed of the calendar (a feed of another calendar is 404, like an unknown id). */
-    public function get(string $id, Calendar $calendar): array
+    public function get(string $id, Calendar $calendar, bool $includeSecret = false): array
     {
-        return $this->serialize($this->find($id, $calendar));
+        return $this->serialize($this->find($id, $calendar), $includeSecret);
     }
 
-    public function create(Calendar $calendar, array $data): array
+    public function create(Calendar $calendar, array $data, bool $includeSecret = false): array
     {
         $feed = new CalendarFeed();
         $feed->setCalendar($calendar);
@@ -49,10 +49,10 @@ readonly class FeedService
         $this->syncTargetGroups($feed, $calendar, $data);
         $this->em->flush();
 
-        return $this->serialize($feed);
+        return $this->serialize($feed, $includeSecret);
     }
 
-    public function update(string $id, Calendar $calendar, array $data): array
+    public function update(string $id, Calendar $calendar, array $data, bool $includeSecret = false): array
     {
         $feed = $this->find($id, $calendar);
 
@@ -75,7 +75,7 @@ readonly class FeedService
 
         $this->em->flush();
 
-        return $this->serialize($feed);
+        return $this->serialize($feed, $includeSecret);
     }
 
     private function visibility(array $data): FeedVisibility
@@ -118,13 +118,13 @@ readonly class FeedService
         $this->em->flush();
     }
 
-    public function regenerateSecret(string $id, Calendar $calendar): array
+    public function regenerateSecret(string $id, Calendar $calendar, bool $includeSecret = false): array
     {
         $feed = $this->find($id, $calendar);
         $feed->setSharedSecret(bin2hex(random_bytes(16)));
         $this->em->flush();
 
-        return $this->serialize($feed);
+        return $this->serialize($feed, $includeSecret);
     }
 
     private function find(string $id, Calendar $calendar): CalendarFeed
@@ -149,20 +149,25 @@ readonly class FeedService
         );
     }
 
-    public function serialize(CalendarFeed $feed): array
+    /** The secret leaves the API only on request (`includeSecret`), never by default. */
+    public function serialize(CalendarFeed $feed, bool $includeSecret = false): array
     {
-        return [
+        $data = [
             'id' => $feed->getId(),
             'calendarId' => $feed->getCalendar()->getId(),
             'name' => $feed->getName(),
             'visibility' => $feed->getVisibility()->value,
             'searchable' => $feed->isSearchable(),
             'indexable' => $feed->isIndexable(),
-            'sharedSecret' => $feed->getSharedSecret(),
             'targetGroups' => $feed->getTargetGroups()->map(fn (CalendarFeedTargetGroup $ftg) => [
                 'feedId' => $ftg->getFeed()->getId(),
                 'targetGroupId' => $ftg->getTargetGroup()->getId(),
             ])->getValues(),
         ];
+        if ($includeSecret) {
+            $data['sharedSecret'] = $feed->getSharedSecret();
+        }
+
+        return $data;
     }
 }

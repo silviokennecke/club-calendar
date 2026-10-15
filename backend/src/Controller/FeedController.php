@@ -8,6 +8,7 @@ use App\Entity\Calendar;
 use App\Security\ArchivedCalendarVoter;
 use App\Security\CalendarMemberVoter;
 use App\Service\FeedService;
+use App\Service\Input;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -25,9 +26,9 @@ class FeedController extends AbstractApiController
 
     #[Route('', methods: ['GET'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
-    public function list(#[MapEntity(id: 'calendarId')] Calendar $calendar): JsonResponse
+    public function list(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
-        return new JsonResponse($this->feedService->list($calendar));
+        return new JsonResponse($this->feedService->list($calendar, $this->includeSecret($request)));
     }
 
     #[Route('', methods: ['POST'])]
@@ -37,14 +38,14 @@ class FeedController extends AbstractApiController
     {
         $data = $this->decodeJson($request);
 
-        return new JsonResponse($this->feedService->create($calendar, $data), Response::HTTP_CREATED);
+        return new JsonResponse($this->feedService->create($calendar, $data, $this->includeSecret($request)), Response::HTTP_CREATED);
     }
 
     #[Route('/{feedId}', methods: ['GET'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
-    public function getOne(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId): JsonResponse
+    public function getOne(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId, Request $request): JsonResponse
     {
-        return new JsonResponse($this->feedService->get($feedId, $calendar));
+        return new JsonResponse($this->feedService->get($feedId, $calendar, $this->includeSecret($request)));
     }
 
     #[Route('/{feedId}', methods: ['PATCH'])]
@@ -54,7 +55,7 @@ class FeedController extends AbstractApiController
     {
         $data = $this->decodeJson($request);
 
-        return new JsonResponse($this->feedService->update($feedId, $calendar, $data));
+        return new JsonResponse($this->feedService->update($feedId, $calendar, $data, $this->includeSecret($request)));
     }
 
     #[Route('/{feedId}', methods: ['DELETE'])]
@@ -70,8 +71,18 @@ class FeedController extends AbstractApiController
     #[Route('/{feedId}/regenerate-secret', methods: ['POST'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function regenerateSecret(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId): JsonResponse
+    public function regenerateSecret(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId, Request $request): JsonResponse
     {
-        return new JsonResponse($this->feedService->regenerateSecret($feedId, $calendar));
+        return new JsonResponse($this->feedService->regenerateSecret($feedId, $calendar, $this->includeSecret($request)));
+    }
+
+    /** `?includeSecret=1|true` returns the shared secret; absent, `0` or `false` omits it, anything else is 400. */
+    private function includeSecret(Request $request): bool
+    {
+        return match ($request->query->all()['includeSecret'] ?? null) {
+            null, '', '0', 'false' => false,
+            '1', 'true' => true,
+            default => throw Input::invalid('includeSecret', 'includeSecret must be true or false'),
+        };
     }
 }

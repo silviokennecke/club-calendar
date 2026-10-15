@@ -20,7 +20,9 @@ async function openFeeds(page: Page, email: string, path: string) {
 
 async function listFeeds(request: APIRequestContext, s: Awaited<ReturnType<typeof seed>>) {
   return (
-    await request.get(`${API}/api/calendars/${s.calendarId}/feeds`, { headers: s.headers })
+    await request.get(`${API}/api/calendars/${s.calendarId}/feeds?includeSecret=1`, {
+      headers: s.headers,
+    })
   ).json() as Promise<
     {
       id: string;
@@ -338,7 +340,7 @@ test.describe("Veröffentlichen", () => {
   }) => {
     const s = await seed(request, "Feeds Geheimnis");
     const created = await (
-      await request.post(`${API}/api/calendars/${s.calendarId}/feeds`, {
+      await request.post(`${API}/api/calendars/${s.calendarId}/feeds?includeSecret=1`, {
         headers: s.headers,
         data: { name: "Intern", visibility: "PRIVATE" },
       })
