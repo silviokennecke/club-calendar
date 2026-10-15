@@ -28,9 +28,9 @@
 ## Executive Summary
 
 - **No Critical findings** in the completed areas.
-- Counts so far (4 of 5 areas complete): **2 High, 5 Medium, 9 Low, 9 Informational** — 25 findings after consolidating one cross-area duplicate (AUTH-02 + FE-02).
+- Counts so far (4 of 5 areas complete): **2 High, 4 Medium, 9 Low, 9 Informational** — 24 findings after consolidating one cross-area duplicate (AUTH-02 + FE-02); API-02 removed after implementation.
 - **Immediate action (no code change required):** rotate the Mapbox token that leaked into git history (FE-01) — it remains valid and is recoverable from any clone of the repository.
-- **Top design gaps:** club membership equals full admin with no role model (API-01); OAuth login returns the 7-day refresh token in the redirect URL (AUTH-02/FE-02); no rate limiting on login/register/refresh (AUTH-01); archived calendars are not read-only at the calendar level (API-02); Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
+- **Top design gaps:** club membership equals full admin with no role model (API-01); OAuth login returns the 7-day refresh token in the redirect URL (AUTH-02/FE-02); no rate limiting on login/register/refresh (AUTH-01); Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
 - **Positives:** no IDOR/cross-tenant gaps in the API surface; no live Mapbox token in the frontend (fully proxied through the backend); WebAuthn ceremonies, OAuth state handling, and exception → RFC 7807 response masking are sound; feed-secret checks are constant-time and the Mapbox proxy is SSRF-safe (fixed upstream host, strict path allowlist, caller token stripped).
 
 ## Findings
@@ -77,15 +77,6 @@
 **Fix recommendation:** Redirect with a short-lived, single-use **code** instead of tokens and have the SPA exchange it via `POST` (same-origin, tokens in the response body) — mirroring the existing form-encoded refresh-grant pattern. Minimum: drop the access `token` from the redirect and pass the code only.
 **Notes:** Found independently by both the backend-auth and frontend audits; consolidated here. Mitigations already in place (verified): all post-store navigations use `{ replace: true }` (token URL does not accumulate in browser history); the SPA makes exactly one same-origin call before navigating away; no third-party resources are loaded; the default referrer policy sends only the origin (no query) to the API host. Residual risk: access logs, the address-bar window, and a JS exception before the `replace` navigation. A leaked refresh token extends the AUTH-04 window (up to 7 days of reuse).
 **Source:** `01-backend-auth.md` (AUTH-02) + `03-frontend.md` (FE-02).
-
-#### API-02 — Archived calendars can still be updated, deleted, and duplicated
-**Severity:** Medium
-**Attack scope:** Any authenticated member of the calendar's club.
-**Description:** `ArchivedCalendarVoter::NOT_ARCHIVED` is applied to all *nested* write endpoints (events, templates, properties, features, target groups, locations, feeds), but the *calendar-level* write routes — `PATCH`, `DELETE`, `duplicate` — carry no such attribute, and `CalendarService` has no `archivedAt` guard in `updateCalendar`, `deleteCalendar`, or `duplicateCalendar`. Archiving a calendar therefore does not make it read-only with respect to its own metadata, identity, or existence, contradicting the documented contract ("archived = read-only").
-**Affected parts:** `CalendarController.php` (PATCH / DELETE / duplicate routes lack `#[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED)]`); `CalendarService.php:67` (updateCalendar), `:80` (deleteCalendar), `:102` (duplicateCalendar).
-**Fix recommendation:** Add `#[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]` to the calendar PATCH, DELETE, and duplicate routes and/or enforce `archivedAt === null` inside the three `CalendarService` methods (defense in depth).
-**Notes:** The unarchive route intentionally has no such guard. Duplicating an archived calendar creates a new active calendar — possibly a feature, but inconsistent with the read-only contract; at minimum the behavior should be a deliberate, documented choice. `archiveCalendar` is idempotent (re-archiving is a no-op).
-**Source:** `02-backend-api.md` (API-02).
 
 #### API-52 — Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation
 **Severity:** Medium
@@ -270,7 +261,7 @@
 
 **Backend API (02)**
 - No IDOR or cross-tenant gaps found: every CRUD endpoint resolves entities by UUID and enforces `CALENDAR_MEMBER` / `CLUB_MEMBER` voter checks; nested resources (templates, properties, locations, target groups, features) are scoped to the parent calendar's membership for both reads and writes.
-- Nested write endpoints enforce `NOT_ARCHIVED` (the archive-bypass gap is limited to the endpoints documented in API-02).
+- Nested and calendar-level write endpoints enforce `NOT_ARCHIVED`, and calendar DELETE and duplicate routes enforce it too (archive is now read-only across all write paths).
 - Consistent DTO validation via `validateDto()` on all write endpoints; no unvalidated mass assignment observed.
 
 **Backend services (02b)**
@@ -302,7 +293,6 @@
 | API-01 | Club membership grants full administrative control (no roles, no last-admin guard) | High |
 | AUTH-01 | No rate limiting on login, register, and token refresh | Medium |
 | AUTH-02 / FE-02 | OAuth login passes access + refresh tokens in the redirect URL | Medium |
-| API-02 | Archived calendars can still be updated, deleted, and duplicated | Medium |
 | API-52 | Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation | Medium |
 | AUTH-03 | Account deletion without confirmation, cascading memberships | Low |
 | AUTH-04 | Refresh tokens have no rotation or replay detection | Low |
@@ -329,7 +319,7 @@
 | Area | Report | Findings | Status |
 |---|---|---|---|
 | Backend auth | `01-backend-auth.md` | AUTH-01 … AUTH-12 (12) | Complete |
-| Backend API (authorization & CRUD) | `02-backend-api.md` | API-01 … API-03 (3) | Complete |
+| Backend API (authorization & CRUD) | `02-backend-api.md` | API-01, API-03 (2) | Complete |
 | Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-54 (3) | Complete |
 | Frontend | `03-frontend.md` | FE-01 … FE-07 (7) | Complete |
 | Scans & config | `04-scans-config.md` | `SCAN-xx` | Pending |
