@@ -38,7 +38,7 @@ readonly class FeedService
         $feed = new CalendarFeed();
         $feed->setCalendar($calendar);
         $feed->setName(Input::string($data, 'name'));
-        // Optional: new feeds are CLUB ("Vereinsintern") unless told otherwise
+        // Optional: new feeds are CLUB ("Nur per Link") unless told otherwise
         if (array_key_exists('visibility', $data)) {
             $feed->setVisibility($this->visibility($data));
         }

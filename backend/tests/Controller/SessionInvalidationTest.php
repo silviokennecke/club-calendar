@@ -308,7 +308,7 @@ class SessionInvalidationTest extends WebTestCase
     }
 
     /**
-     * Known residual risk (BACKEND-GAPS, "Lokale Vorab-Registrierung"): someone registers locally with the
+     * Known residual risk (security audit, pre-hijacking): someone registers locally with the
      * owner's address and an own password; the owner clicks the confirmation link. The confirmation ends
      * sessions, but the registrant never had one (password login needs a confirmed address) and still knows
      * the password afterwards; a later Google login of the owner does not remove it (address is confirmed).
