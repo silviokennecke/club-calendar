@@ -11,8 +11,8 @@ interface PublicHead {
 /**
  * Head settings of the public pages. The address of a private feed contains its secret, so the
  * pages never send a Referer to other hosts (`referrer: no-referrer`); private feeds and error
- * pages are marked noindex. (A server-side `X-Robots-Tag` / `Referrer-Policy` header at the web
- * server is the stricter variant; the SPA can only set the meta tags.)
+ * pages are marked noindex. (The web server additionally sends `Referrer-Policy: no-referrer` for
+ * `/feed/*`; `X-Robots-Tag` is only sent by the backend for the feed API.)
  */
 export function usePublicHead({ title, noindex }: PublicHead) {
   useEffect(() => {

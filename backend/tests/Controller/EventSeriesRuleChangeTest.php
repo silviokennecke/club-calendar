@@ -11,6 +11,7 @@ use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\QueryCounter;
 use App\Tests\Helper\TestHelper;
+use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -463,6 +464,70 @@ class EventSeriesRuleChangeTest extends WebTestCase
         $this->assertSame(array_column($before, 'id'), array_column($after, 'id'));
         $rule = $this->req('GET', "$base/event-series/{$series['id']}", $auth)['body']['rule'];
         $this->assertSame([4, '2026-11-26'], [$rule['weekday'], $rule['until']]);
+    }
+
+    public function testRuleChangeWaitsForTheSeriesLockAndEndsWith409WhenItIsHeld(): void
+    {
+        [$auth, $base] = $this->setupCalendar();
+        $series = $this->createSeries($base, $auth);
+        $before = $this->eventsByDate($base, $auth);
+        $rule = $this->rule(['until' => '2026-12-17']);
+
+        // The PATCH must run on the connection that gets the short timeout: no reboot between the two
+        self::$client->disableReboot();
+        self::$client->request('GET', "$base/events", [], [], ['HTTP_AUTHORIZATION' => $auth]);
+        // The client's own kernel (static::getContainer() can belong to another one, e.g. after mockTime())
+        $app = self::$client->getContainer()->get(EntityManagerInterface::class)->getConnection();
+        $originalTimeout = (int) $app->fetchOne('SELECT @@SESSION.innodb_lock_wait_timeout');
+        // Connection B (a parallel request) holds the series row
+        $other = DriverManager::getConnection($app->getParams());
+        try {
+            $other->beginTransaction();
+            $this->assertSame($series['id'], $other->fetchOne('SELECT id FROM event_series WHERE id = ? FOR UPDATE', [$series['id']]));
+            $app->executeStatement('SET SESSION innodb_lock_wait_timeout = 1');
+            self::$client->request('GET', "$base/events", [], [], ['HTTP_AUTHORIZATION' => $auth]);
+            // A request in between must neither reboot the kernel nor reset the session setting
+            self::$client->request('GET', "$base/events", [], [], ['HTTP_AUTHORIZATION' => $auth]);
+            $this->assertSame($app, self::$client->getContainer()->get(EntityManagerInterface::class)->getConnection());
+            $this->assertSame(1, (int) $app->fetchOne('SELECT @@SESSION.innodb_lock_wait_timeout'));
+
+            QueryCounter::$log = [];
+            $started = microtime(true);
+            try {
+                $r = $this->req('PATCH', "$base/event-series/{$series['id']}", $auth, ['rule' => $rule]);
+                $statements = QueryCounter::$log;
+            } finally {
+                QueryCounter::$log = null;
+            }
+            $waited = microtime(true) - $started;
+            // It stopped at the lock itself, before reading or writing anything of the series
+            $this->assertMatchesRegularExpression('/FROM event_series WHERE id = \? AND calendar_id = \? FOR UPDATE$/', (string) end($statements));
+            $this->assertSame(409, $r['status'], $r['content']);
+            $this->assertSame('series_changed', $r['body']['code']);
+            $this->assertGreaterThanOrEqual(0.9, $waited, 'the change waited for the lock');
+            $this->assertLessThan(10, $waited, 'the session timeout of 1 s applied to the app connection');
+        } finally {
+            if ($other->isTransactionActive()) {
+                $other->rollBack();
+            }
+            $other->close();
+            try {
+                $app->executeStatement('SET SESSION innodb_lock_wait_timeout = '.$originalTimeout);
+            } catch (\Throwable) {
+                // Connection already gone: nothing to reset
+            }
+            self::$client->enableReboot();
+        }
+
+        // Nothing changed: same events, same rule
+        $after = $this->eventsByDate($base, $auth);
+        $this->assertSame(array_column($before, 'id'), array_column($after, 'id'));
+        $this->assertSame('2026-11-26', $this->req('GET', "$base/event-series/{$series['id']}", $auth)['body']['rule']['until']);
+
+        // Lock released: the same PATCH goes through
+        $r = $this->change($base, $auth, $series['id'], $rule);
+        $this->assertSame([3, 0, 6], [$r['created'], $r['deleted'], $r['kept']]);
+        $this->assertSame('2026-12-17', $r['series']['rule']['until']);
     }
 
     public function testEventsDeletedMeanwhileAreNoError(): void

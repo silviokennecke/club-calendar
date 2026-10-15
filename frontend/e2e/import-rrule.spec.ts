@@ -142,4 +142,44 @@ test.describe("Import mit Wiederholungen", () => {
     ).json();
     expect(after).toHaveLength(7);
   });
+  test("Hinweis zu den Grenzen: Aufzählungspunkte in der Liste des Banners", async ({
+    page,
+    request,
+  }) => {
+    const endless = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//e2e//DE",
+      "BEGIN:VEVENT",
+      "UID:endlos@e2e",
+      "SUMMARY:Endlos",
+      "DTSTART;TZID=Europe/Berlin:20261005T190000",
+      "DTEND;TZID=Europe/Berlin:20261005T210000",
+      "RRULE:FREQ=WEEKLY",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    const email = await createVerifiedUser(request, "Import Grenzen");
+    const { clubId, calendarId } = await seedClub(request, email, "Grenzen Verein");
+    await openImport(page, email, `/clubs/${clubId}/calendars/${calendarId}`);
+    await page.locator("#ics-file").setInputFiles({
+      name: "Endlos.ics",
+      mimeType: "text/calendar",
+      buffer: Buffer.from(endless),
+    });
+    await page.getByRole("button", { name: /Datei prüfen/ }).click();
+
+    const banner = page.getByRole("status").filter({
+      hasText: "Nicht alle Wiederholungen wurden ausgeschrieben",
+    });
+    const items = banner.getByRole("listitem");
+    await expect(items.first()).toBeVisible();
+    for (const li of await items.all()) {
+      expect(await li.evaluate((el) => getComputedStyle(el).listStyleType)).toBe("disc");
+    }
+    const list = banner.getByRole("list");
+    expect(
+      await list.evaluate((el) => parseFloat(getComputedStyle(el).paddingLeft)),
+    ).toBeGreaterThan(0);
+  });
 });
