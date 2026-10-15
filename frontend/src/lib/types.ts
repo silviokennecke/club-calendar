@@ -45,7 +45,7 @@ export interface CalendarFeed {
   calendarid: string;
   name: string;
   /**
-   * PUBLIC and CLUB ("Vereinsintern"): reachable by link without the secret; they differ only in
+   * PUBLIC and CLUB ("Nur per Link"): reachable by link without the secret; they differ only in
    * the search engine instruction. PRIVATE: only with the secret.
    */
   visibility: FeedVisibility;

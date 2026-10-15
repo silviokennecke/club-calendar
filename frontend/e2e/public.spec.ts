@@ -6,7 +6,7 @@ import { API, createVerifiedUser, seedClub } from "./helpers";
 interface PublicSeed {
   /** PUBLIC with the search engine option: the only indexable kind. */
   publicFeedId: string;
-  /** CLUB ("Vereinsintern"): open by link, noindex. */
+  /** CLUB ("Nur per Link"): open by link, noindex. */
   clubFeedId: string;
   privateFeedId: string;
   secret: string;
@@ -162,7 +162,7 @@ test.describe("Öffentlicher Kalender", () => {
     page,
     request,
   }) => {
-    // Vereinsintern: ohne Geheimnis erreichbar, aber noindex
+    // Nur per Link: ohne Geheimnis erreichbar, aber noindex
     await page.goto(`/feed/${seed.clubFeedId}?date=2026-10-08`);
     await expect(page.getByRole("heading", { level: 1, name: seed.clubName })).toBeVisible();
     await expect(page.getByText("Zeige 3 von 3 Terminen")).toBeVisible();
@@ -171,7 +171,7 @@ test.describe("Öffentlicher Kalender", () => {
       "href",
       /\/api\/feed\/.*\/ics$/,
     );
-    // Termin eines vereinsinternen Feeds: ebenfalls noindex
+    // Termin eines nur per Link erreichbaren Feeds: ebenfalls noindex
     await page.goto(`/feed/${seed.clubFeedId}/events/${seed.herbstfestId}`);
     await expect(page.getByRole("heading", { level: 1, name: "Herbstfest" })).toBeVisible();
     await expect(page.locator('meta[name="robots"]').last()).toHaveAttribute("content", /noindex/);

@@ -28,7 +28,10 @@ A web app for clubs to manage and publish event calendars.
 - `frontend/` — Vite/React single-page app (dev server port 5173, `npm run dev:frontend`); conventions in
   `frontend/AGENTS.md`
 - `docs/redesign/` — redesign plan and final state: `PLAN.md`, `COVERAGE.md` (design coverage per artboard),
-  `BACKEND-GAPS.md` (missing backend features, open security risks, fixed backend bugs, operations), `E2E.md`
+  `BACKEND-GAPS.md` (open backend gaps, open security risks, operations), `E2E.md`
+- `docs/api/openapi.yaml` — hand-written OpenAPI 3.1 reference of every `/api` route (schemas, error codes, auth,
+  feed/robots rules, limits); not served by the app. `backend/tests/Unit/OpenApiSpecTest.php` fails when a route
+  and the document drift apart: update it with every route change
 
 ## Dev Setup
 
@@ -115,8 +118,8 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 - **Club** — the top-level entity; has one or more Calendars; managed by its members (Users via `ClubUser`, no roles yet)
 - **Calendar** — belongs to a Club; contains Events, EventTemplates, and reference data; can be archived (read-only) or duplicated
 - **CalendarFeed** — a publishable view of a Calendar (ICS + web) with one of three states: `PUBLIC` (by link, search
-  engines may index it only with the opt-in `searchable`), `CLUB` ("Vereinsintern", default: by link, never indexed)
-  or `PRIVATE` (shared-secret protected); see `docs/redesign/BACKEND-GAPS.md` ("Feed-Status")
+  engines may index it only with the opt-in `searchable`), `CLUB` ("Nur per Link", default: by link, never indexed)
+  or `PRIVATE` (shared-secret protected); see `docs/api/openapi.yaml`
 - **Event** — a single occurrence on a Calendar; may be based on an EventTemplate; may belong to an EventSeries
 - **EventSeries** — a recurrence rule (weekly, every two weeks, monthly on the n-th weekday; until a date or a count; skip holidays) with the events created from it; edit/delete "only this event" or "all events of the series" (`scope`); the rule can be changed later ("Reihe ändern", `PATCH …/event-series/{id}`: only future events change, past ones stay). ICS imports with RRULE create single events, not series
 - **EventTemplate** — reusable event definition (name, time, location, properties)
@@ -133,18 +136,18 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 - No auth cookies. Frontend owns both tokens. (Only the OAuth flow sets a short-lived HttpOnly `oauth_state_nonce` cookie on the API host to bind `state` to the browser.)
 - Refresh: `POST /api/auth/token` (form-encoded: `grant_type=refresh_token&refresh_token=<token>`)
 - Keys: RSA keypair in `backend/config/jwt/` (gitignored); `JWT_REFRESH_SECRET` for HMAC refresh tokens
-- OAuth SSO: Google + Microsoft (redirect → callback → `{FRONTEND_URL}/auth/callback?token=X&refresh_token=Y`, errors `?error=<code>`: `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`, `email_unverified_at_provider`); signed, single-use `state`; e-mail linking only with a trusted `email_verified` (Google/Apple, never Microsoft), see `docs/redesign/BACKEND-GAPS.md` (Behobene Bugs)
+- OAuth SSO: Google + Microsoft (redirect → callback → `{FRONTEND_URL}/auth/callback?token=X&refresh_token=Y`, errors `?error=<code>`: `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`, `email_unverified_at_provider`); signed, single-use `state`; e-mail linking only with a trusted `email_verified` (Google/Apple, never Microsoft) (a former bug, see the OAuth tests)
 - Notices: password changed (change / reset), e-mail change requested (to the current address) and done (to the
   former address) go out after the response (`AccountMailer`, `DeferredMailer`), without tokens or links except
   `/forgot-password`, the new address masked; none for forgot-password or to a taken new address
 - Passkeys: verified with `web-auth/webauthn-lib`; challenge in a signed, single-use `challengeToken` (`auth_nonce` table); allowed origin = `FRONTEND_URL` (default `APP_URL`), `WEBAUTHN_RP_ID` (default host of `APP_URL`), `WEBAUTHN_USER_VERIFICATION` (default `preferred`); `lastUsedAt` per passkey
 - Password reset: `POST /api/auth/forgot-password` (always 204, no account oracle, mail after the response, rate-limited per address and IP) → `{FRONTEND_URL}/reset-password?token=…` (hashed one-time token, 60 min, table `password_reset`) → `POST /api/auth/reset-password` (ends all sessions, confirms the address; SSO-only accounts get a password this way). Password policy 8–128 chars everywhere (`App\Validator\PasswordPolicy`)
-- Account: `PATCH /api/auth/me` (`name`, prefs, last club/calendar, the latter also per membership), `POST /api/auth/change-password` (new tokens, other sessions end; password change and reset discard a waiting e-mail change), `POST|DELETE /api/auth/change-email` + `GET /api/auth/verify-new-email` (link to the new address, table `email_change`, ends all sessions), SSO `POST /api/auth/oauth/{provider}/link-start` → ticket → provider → `/profile?link_proof=` → `POST /api/auth/oauth/{provider}/link-complete` with the JWT (only the user who started it can complete it: link-CSRF protection) / `DELETE /api/auth/oauth/{provider}` (last sign-in method stays, row lock). Details: `docs/redesign/BACKEND-GAPS.md` ("Umgesetzt (Paket 1–4)", Paket 3)
+- Account: `PATCH /api/auth/me` (`name`, prefs, last club/calendar, the latter also per membership), `POST /api/auth/change-password` (new tokens, other sessions end; password change and reset discard a waiting e-mail change), `POST|DELETE /api/auth/change-email` + `GET /api/auth/verify-new-email` (link to the new address, table `email_change`, ends all sessions), SSO `POST /api/auth/oauth/{provider}/link-start` → ticket → provider → `/profile?link_proof=` → `POST /api/auth/oauth/{provider}/link-complete` with the JWT (only the user who started it can complete it: link-CSRF protection) / `DELETE /api/auth/oauth/{provider}` (last sign-in method stays, row lock). Details: `docs/api/openapi.yaml`
 - Console: `app:user:verify <email>`, `app:user:reset-link <email>` (prints the URL only), cron `app:prune-password-resets`, `app:prune-unverified-users`
 
 ## API Errors
 
-RFC 7807 bodies carry a stable `code` (and `field` for input errors) via `App\Exception\ApiProblemException`, e.g. `validation_failed`, `invalid_request`, `unknown_reference`, `duplicate_name`, `too_many_events`, `email_taken`, `invalid_credentials`, `email_not_verified` (login 403 keeps `{error: "email_not_verified"}` too), `invalid_refresh_token`, `invalid_passkey`. The frontend matches `ApiError.code`, never `detail`. Full list: `docs/redesign/BACKEND-GAPS.md` (Fehlercodes).
+RFC 7807 bodies carry a stable `code` (and `field` for input errors) via `App\Exception\ApiProblemException`, e.g. `validation_failed`, `invalid_request`, `unknown_reference`, `duplicate_name`, `too_many_events`, `email_taken`, `invalid_credentials`, `email_not_verified` (login 403 keeps `{error: "email_not_verified"}` too), `invalid_refresh_token`, `invalid_passkey`. The frontend matches `ApiError.code`, never `detail`. Full list: `ErrorCode` in `docs/api/openapi.yaml`.
 
 ## Event Import, Export, Bulk, Series
 
@@ -159,7 +162,7 @@ GET  /api/calendars/:id/event-series/:seriesId  # rule + eventCount
 PATCH|DELETE /api/calendars/:id/events/:eventId # scope this (default) | all (PATCH body, DELETE ?scope=)
 ```
 
-Duplicates: same `externalUid` (ICS UID, stored on `Event`) or same name + start date. Unknown time zones in the import fall back to the calendar zone with a `warnings` entry. Limits: 5000 events per import/preview and 5000 ids per bulk request (413 `too_many_events`), 366 events per series (422 `too_many_events`). Series dates are computed only by the backend (`App\Service\SeriesRule`); `scope: "all"` never changes an event's date; empty series are removed. Details: `docs/redesign/BACKEND-GAPS.md` ("Paket 4").
+Duplicates: same `externalUid` (ICS UID, stored on `Event`) or same name + start date. Unknown time zones in the import fall back to the calendar zone with a `warnings` entry. Limits: 5000 events per import/preview and 5000 ids per bulk request (413 `too_many_events`), 366 events per series (422 `too_many_events`). Series dates are computed only by the backend (`App\Service\SeriesRule`); `scope: "all"` never changes an event's date; empty series are removed. Details: `docs/api/openapi.yaml`.
 
 ## ICS Feed Endpoint
 
@@ -172,7 +175,7 @@ GET /api/feed/:feedId/events/:eventId                          # one published e
 
 Counters for lists and delete dialogs (clubs, calendars, `usage` of reference data, `eventCount` of templates) come
 from the API in one grouped query per counter (`App\Service\UsageCounts`); the frontend never loads whole lists just
-to count. Details: `docs/redesign/BACKEND-GAPS.md` ("Umgesetzt (Paket 1–4)", Paket 1).
+to count. Details: `docs/api/openapi.yaml`.
 
 ## E2E Tests
 

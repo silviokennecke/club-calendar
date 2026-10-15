@@ -165,7 +165,7 @@ function SeriesForm({
   const skippedCount = preview.data?.skippedHolidays.length ?? 0;
   const holidayCount = preview.data?.holidays.length ?? 0;
   const ready = !series || (!!rule && !!preview.data && !preview.pending && !preview.error);
-  // A template without times creates all-day events (backend rule, see BACKEND-GAPS.md)
+  // A template without times creates all-day events (backend rule, see docs/api/openapi.yaml)
   const times = templateTimes(template);
   const time = times ? t("events.series.timeRange", times) : t("events.series.allDay");
   const place = template.location ? locationName(template.location) : null;

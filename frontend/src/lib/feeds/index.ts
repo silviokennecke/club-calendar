@@ -55,7 +55,7 @@ export interface FeedFormValues {
   targetGroupIds: string[];
 }
 
-/** New feeds are CLUB ("Vereinsintern"), not searchable. */
+/** New feeds are CLUB ("Nur per Link"), not searchable. */
 export function emptyFeedValues(): FeedFormValues {
   return { name: "", visibility: "CLUB", searchable: false, targetGroupIds: [] };
 }
