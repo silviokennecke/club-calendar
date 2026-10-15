@@ -1,0 +1,3498 @@
+openapi: 3.1.0
+info:
+  title: Club Calendar API
+  version: '1.0'
+  summary: HTTP API of the Club Calendar backend (Symfony, `backend/`).
+  description: |
+    Hand-written reference of every route under `/api`. It is checked against the Symfony router by
+    `backend/tests/Unit/OpenApiSpecTest.php` (every route documented with the same method and path, every
+    documented operation exists). It is not served by the application.
+
+    ## Conventions
+
+    - **IDs** are UUID v7 strings (RFC 4122 form, lower case). The database compares IDs case-insensitively.
+    - **Dates** are calendar dates `YYYY-MM-DD`, **times** are wall-clock times `HH:MM` (seconds in the input are
+      accepted and dropped), **time zones** are IANA names (`Europe/Berlin`), matched case-insensitively and
+      returned in their canonical spelling. Timestamps are ISO 8601 (`2026-10-15T12:00:00+00:00`) unless noted.
+    - Request bodies are JSON objects (`Content-Type: application/json`), except `POST /api/auth/token`
+      (form-encoded). A body that is not valid JSON (or empty) is `400 invalid_request`; a valid JSON value that is not an
+      object (`5`, `null`, `"x"`) is `400 invalid_request` on routes that read the body as a map and `422 validation_failed`
+      (first required field) on routes that map it onto a DTO; `[]` counts as an empty object.
+    - `PATCH` is partial: only the keys present in the body are changed.
+    - Several delete/logout routes answer `200 {"ok": true}` (historic); newer routes answer `204 No Content`.
+
+    ## Authentication
+
+    - **Access token**: a JWT (RS256, 15 minutes, claim `email`, plus `uid` and `tv` = session version), sent as
+      `Authorization: Bearer <token>`. Obtained from login, passkey sign-in, SSO, password change or refresh.
+    - **Refresh token**: HMAC-signed, 7 days, exchanged at `POST /api/auth/token` with a **form-encoded** body
+      `grant_type=refresh_token&refresh_token=<token>` (OAuth 2.0 style). There is no rotation; a refresh
+      answers with a new access token AND a new refresh token.
+    - Both tokens die when the account's session version changes (password reset/change, e-mail change, SSO
+      takeover of an unconfirmed account): `401` on the next request / refresh.
+    - Every `/api/*` route except `/api/feed/*` passes the JWT firewall. A route marked "no authentication"
+      still rejects an *invalid* `Authorization` header with 401 (send none instead).
+    - Authorization: club routes require club membership (403 otherwise; there are no roles), calendar routes
+      membership in the calendar's club. Writes to an **archived** calendar are 403 (reads stay possible).
+    - **401 bodies** come in two shapes: `application/problem+json` from the application (`detail`
+      "Not authenticated") or the JWT bundle's `{"code": 401, "message": "JWT Token not found" | "Invalid JWT
+      Token" | "Expired JWT Token"}` (schema `JwtError`). Clients should only rely on the status.
+    - Routes guarded by a membership or role check (`/api/clubs/{clubId}…`, `/api/calendars/{calendarId}…`,
+      `/api/map/geocode/*`) answer a request **without** `Authorization` header with **403** (or 404 for an
+      unknown id), not 401: the access check runs before authentication is demanded. An invalid or expired
+      token is 401 everywhere.
+
+    ### SSO (Google, Microsoft, Apple) - brief
+
+    1. Sign-in: the browser navigates to `GET /api/auth/oauth/{provider}`. The API sets a short-lived HttpOnly
+       cookie `oauth_state_nonce` (path `/api/auth/oauth`, `Secure; SameSite=None`) and redirects to the
+       provider with a signed, single-use `state`.
+    2. The provider calls back `GET|POST /api/auth/oauth/{provider}/callback`; the API redirects to
+       `{FRONTEND_URL}/auth/callback?token=<access>&refresh_token=<refresh>` or `?error=<code>` with one of
+       `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`,
+       `email_unverified_at_provider`. An existing account is linked by e-mail only when the provider vouches
+       for the address (`email_verified`, trusted for Google and Apple, never Microsoft).
+    3. Linking while signed in: `POST …/{provider}/link-start` (JWT) → `{url}` (one-time ticket, 60 s) → the
+       browser opens it (`GET …/{provider}/link?ticket=`) → provider → callback → redirect to
+       `{FRONTEND_URL}/profile?link_provider=<p>&link_proof=<proof>` (or `?link_error=<code>`: `invalid_state`,
+       `provider_denied`, `provider_error`, `oauth_failed`) → the signed-in frontend calls
+       `POST …/{provider}/link-complete {proof}` (JWT). Only the user who started the flow can complete it.
+
+    ### Passkeys (WebAuthn) - brief
+
+    `GET …/webauthn/register/options` (JWT) or `GET …/webauthn/authenticate/options` returns
+    `{options, challengeToken}`; the browser runs `navigator.credentials.create/get` with `options`; the result
+    goes to `POST …/register/verify` or `POST …/authenticate/verify` together with the signed, single-use
+    `challengeToken`. Allowed origin is `FRONTEND_URL`, RP ID `WEBAUTHN_RP_ID`.
+
+    ## Errors
+
+    Errors are RFC 7807 `application/problem+json` bodies `{type, title, status, detail, code?, field?}`
+    (schema `Problem`). `detail` is human-readable and **not** a contract; clients match the stable `code`
+    (schema `ErrorCode`) and use `field` (path of the input, e.g. `name`, `rule.weekday`, `events[3].date`)
+    to place the message. Errors without a `code` are plain HTTP errors (403/404 of access checks, some 400s).
+    A query parameter sent as an array (`?name[]=x`) where a scalar is expected is `400` without `code` on every
+    route that reads it. A few legacy routes answer other shapes (noted per operation): login 403
+    `{error: "email_not_verified", code: "email_not_verified"}`, holiday calendars `{error: "..."}`, the Mapbox
+    proxy `{message: "..."}`, the JWT bundle's 401 (see above).
+
+    ## Feeds, visibility and robots rules
+
+    A calendar feed (`CalendarFeed`) is published under `/api/feed/{feedId}/…` (web view JSON + ICS) with one
+    of three states (`visibility`):
+
+    | State | Access | Search engines |
+    | --- | --- | --- |
+    | `PUBLIC` | by link, no secret (a sent secret is ignored) | indexable only with `searchable: true` (opt-in) |
+    | `CLUB` ("club-internal", **default** for new feeds) | by link, no secret | never indexed |
+    | `PRIVATE` | only with `?secret=<sharedSecret>` (403 without or with a wrong one, checked first) | never indexed |
+
+    - `indexable` = `visibility == PUBLIC && searchable`. `searchable: true` with another (resulting) state is
+      `422 validation_failed` field `searchable`; leaving `PUBLIC` resets `searchable` to `false`.
+    - Every response of `/api/feed/*` (errors included) carries `Referrer-Policy: no-referrer` and
+      `X-Robots-Tag: noindex`, **except** successful responses of an indexable feed, which carry no
+      `X-Robots-Tag`. The header is set by the backend only (web server configs add nothing).
+    - A feed of an archived calendar is 404 (for `PRIVATE` only after a valid secret). Unknown feed: 404.
+    - Switching a feed from `PUBLIC`/`CLUB` back to `PRIVATE` always generates a new secret.
+    - Feeds only show published events (`isDraft: false`) and, if the feed has target groups, only events
+      with one of them (the `targetGroupIds` query can narrow, never widen, that selection).
+
+    ## Event series
+
+    A series (`EventSeries`) is created with `POST /api/calendars/{id}/events/series` from a rule (`SeriesRule`):
+    `weekly` / `biweekly` on one weekday, or `monthly` on the n-th (1-4, 5 = last) weekday; it ends `until` a
+    date (inclusive) or after `count` events; `skipHolidays` leaves out dates touching a holiday of the
+    calendar's holiday calendars. Dates are computed only by the backend. At most **366 events** per series
+    (`422 too_many_events`).
+
+    - `PATCH …/events/{id}` with `scope: "this"` (default) changes only that event (it stays in the series);
+      `scope: "all"` applies the sent fields to every event of the series, except `date`, `dateEnd`,
+      `eventTemplateId` and `externalUid` (each event keeps its own day).
+    - `DELETE …/events/{id}?scope=this|all`: one event, or the whole series with its events. A series without
+      events is removed automatically (also after bulk deletes).
+    - Changing the rule later (`PATCH …/event-series/{seriesId}`) only touches **future** events (date ≥ today
+      in the calendar's zone); past events stay. Preview it with `POST …/preview-update`.
+    - ICS imports with `RRULE` create single events, never a series.
+
+    ## Import and export limits
+
+    - Import (`…/events/import/preview`, `…/events/import`): at most **5000 events** and 5000 new locations per
+      request (`413 too_many_events`). The import is atomic (one transaction): one invalid entry saves nothing.
+    - Bulk (`…/events/bulk`): at most **5000 ids** per request (`413 too_many_events`), all or nothing.
+    - **Duplicates**: an entry is a duplicate of an existing event of the calendar with the same `externalUid`
+      (ICS UID; the UID of our own export `event-<id>@club-calendar` matches that event), else with the same
+      name (trimmed, case-insensitive, leading emoji icons ignored) and the same start date. Entries of the same
+      request are not compared with each other.
+    - Unknown time zones in an import fall back to the calendar's (else the club's) zone and are reported in
+      `warnings` (`code: timezone_replaced`).
+    - Member ICS export: `GET /api/calendars/{calendarId}/events.ics`, at most 100 `targetGroupIds`.
+  contact:
+    name: Club Calendar
+servers:
+  - url: http://localhost:3001
+    description: Local backend (`symfony serve --port=3001`)
+  - url: '{appUrl}'
+    description: Deployed app (SPA and API share one origin)
+    variables:
+      appUrl:
+        default: https://example.org
+tags:
+  - name: Health
+    description: Liveness check.
+  - name: Auth
+    description: Registration, sign-in, tokens, account.
+  - name: Passkeys
+    description: WebAuthn registration and sign-in.
+  - name: SSO
+    description: OAuth 2.0 / OpenID Connect sign-in and account linking (browser redirects).
+  - name: Clubs
+    description: Clubs and their members.
+  - name: Calendars
+    description: 'Calendars of a club (create, archive, duplicate).'
+  - name: Events
+    description: Events of a calendar, bulk actions.
+  - name: Event series
+    description: Recurring events (rule, preview, change).
+  - name: Import & export
+    description: Event import (JSON) and ICS export.
+  - name: Event templates
+    description: Reusable event definitions.
+  - name: Properties
+    description: Event tags with an emoji icon.
+  - name: Features
+    description: Optional add-ons of events.
+  - name: Target groups
+    description: Audience filters of events and feeds.
+  - name: Locations
+    description: Venues with address and map position.
+  - name: Feeds
+    description: Feed management (members).
+  - name: Public feed
+    description: Published feeds (no authentication; `?secret=` for private feeds).
+  - name: Holidays
+    description: External holiday calendars (ICS) and their holidays.
+  - name: Maps
+    description: Geocoding, static map images and the Mapbox proxy.
+security:
+  - bearerAuth: []
+
+paths:
+  # ------------------------------------------------------------------ Health
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Liveness check
+      operationId: health
+      security: []
+      responses:
+        '200':
+          description: The application is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: ok }
+
+  # ------------------------------------------------------------------ Auth
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register with e-mail and password
+      description: Creates an unconfirmed account and sends a confirmation link (double opt-in). Sign-in is possible after confirming.
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 255 }
+                email: { type: string, format: email }
+                password: { $ref: '#/components/schemas/Password' }
+                language: { type: [string, 'null'], examples: [de] }
+      responses:
+        '202':
+          description: Account created, confirmation mail sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: { type: string, const: check_your_email }
+        '400':
+          description: '`email_taken` (field `email`) or `invalid_request` (no JSON object).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Sign in with e-mail and password
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Tokens' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401':
+          description: '`invalid_credentials` (unknown address, wrong password or SSO-only account alike).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: The address is not confirmed yet (legacy body, not RFC 7807).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error, code]
+                properties:
+                  error: { type: string, const: email_not_verified }
+                  code: { type: string, const: email_not_verified }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/auth/resend-verification:
+    post:
+      tags: [Auth]
+      summary: Send the confirmation link again
+      description: Always 204 (also for unknown or already confirmed addresses and over the rate limit), so the response reveals no account.
+      operationId: resendVerification
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '204': { description: Accepted. }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/auth/verify-email:
+    get:
+      tags: [Auth]
+      summary: Confirm the e-mail address (link from the mail)
+      operationId: verifyEmail
+      security: []
+      parameters:
+        - { name: id, in: query, required: true, schema: { type: string }, description: Verification id. }
+        - { name: token, in: query, required: true, schema: { type: string }, description: Verification token. }
+      responses:
+        '302':
+          description: >-
+            Redirect to `{FRONTEND_URL}/auth/verify-email?status=success` or
+            `?status=error&reason=invalid|expired|already_used`.
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+
+  /api/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request a password reset link
+      description: >-
+        Always 204, whether or not the address has an account, and also over the rate limit (per address and per
+        IP). The mail with `{FRONTEND_URL}/reset-password?token=…` (valid 60 minutes) is sent after the response.
+      operationId: forgotPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, maxLength: 255 }
+      responses:
+        '204': { description: Accepted. }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Set a new password with a reset token
+      description: Ends all sessions and confirms the address; SSO-only accounts get a password this way. A waiting e-mail change is discarded.
+      operationId: resetPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string, maxLength: 255 }
+                password: { $ref: '#/components/schemas/Password' }
+      responses:
+        '204': { description: Password set; the user signs in again. }
+        '400':
+          description: '`invalid_reset_token` (field `token`; unknown, used or expired alike) or `invalid_request`.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Change the password
+      description: Returns new tokens for the calling session; all other sessions end. A notice mail goes to the account.
+      operationId: changePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string, maxLength: 4096 }
+                newPassword: { $ref: '#/components/schemas/Password' }
+      responses:
+        '200': { $ref: '#/components/responses/Tokens' }
+        '400':
+          description: '`invalid_credentials` (field `currentPassword`) or `invalid_request`.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: '`no_password`: SSO-only account (set a password via forgot-password first).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/auth/change-email:
+    post:
+      tags: [Auth]
+      summary: Request an e-mail address change
+      description: >-
+        204 whether or not the new address is free (no oracle). A confirmation link goes to the new address only if
+        it is free and the rate limit allows; a notice goes to the current address. The change completes with
+        `GET /api/auth/verify-new-email`.
+      operationId: requestEmailChange
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, maxLength: 255 }
+                password: { type: [string, 'null'], maxLength: 4096, description: Current password. }
+      responses:
+        '204': { description: Accepted. }
+        '400':
+          description: '`invalid_credentials` (field `password`) or `invalid_request`.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: '`no_password`: SSO-only account.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422':
+          description: '`validation_failed` (field `email`, also when it is already the current address).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+    delete:
+      tags: [Auth]
+      summary: Cancel a waiting e-mail change
+      operationId: cancelEmailChange
+      responses:
+        '204': { description: Cancelled (also when nothing was waiting). }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/auth/verify-new-email:
+    get:
+      tags: [Auth]
+      summary: Confirm a new e-mail address (link from the mail)
+      description: Ends all sessions on success.
+      operationId: verifyNewEmail
+      security: []
+      parameters:
+        - { name: token, in: query, required: true, schema: { type: string } }
+      responses:
+        '302':
+          description: >-
+            Redirect to `{FRONTEND_URL}/auth/verify-email?status=email_changed` or
+            `?status=error&reason=invalid|expired|already_used|email_taken&flow=email_change`.
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+
+  /api/auth/token:
+    post:
+      tags: [Auth]
+      summary: Refresh the tokens
+      description: OAuth 2.0 style refresh with a **form-encoded** body. Returns a new access AND refresh token.
+      operationId: refreshToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [grant_type, refresh_token]
+              properties:
+                grant_type: { type: string, const: refresh_token }
+                refresh_token: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Tokens' }
+        '400':
+          description: '`invalid_grant`: `grant_type` is not `refresh_token` or the token is missing.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: '`invalid_refresh_token`: invalid, expired, user gone or sessions ended.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Sign out
+      description: Stateless no-op (tokens live in the client, which discards them). No authentication required.
+      operationId: logout
+      security: [{}, { bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: The signed-in user
+      operationId: getMe
+      responses:
+        '200':
+          description: Profile, sign-in methods and preferences.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [Auth]
+      summary: Update name and preferences
+      description: >-
+        `lastCalendarId` is also remembered at the membership of the calendar's club (ignored without error when the
+        calendar is unknown, belongs to another club than `lastClubId` or the user is no member).
+      operationId: updateMe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, minLength: 1, maxLength: 255 }
+                dateFormat: { type: [string, 'null'], minLength: 1, maxLength: 20, examples: [dd.MM.yyyy] }
+                firstDayOfWeek: { type: [integer, 'null'], minimum: 0, maximum: 6, description: 0 = Sunday. }
+                language: { type: [string, 'null'], enum: [en, de, null] }
+                lastClubId: { type: [string, 'null'] }
+                lastCalendarId: { type: [string, 'null'] }
+      responses:
+        '200':
+          description: The updated user.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserSummary' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+    delete:
+      tags: [Auth]
+      summary: Delete the account
+      operationId: deleteMe
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/auth/providers:
+    get:
+      tags: [SSO]
+      summary: Configured SSO providers
+      description: Only providers with client id and secret configured are listed.
+      operationId: listProviders
+      security: []
+      responses:
+        '200':
+          description: Providers for the sign-in buttons.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, name, icon]
+                  properties:
+                    id: { type: string, examples: [google] }
+                    name: { type: string, examples: [Google] }
+                    icon: { type: string, examples: [google] }
+
+  # ------------------------------------------------------------------ Passkeys
+  /api/auth/webauthn/register/options:
+    get:
+      tags: [Passkeys]
+      summary: Options to register a passkey
+      operationId: passkeyRegistrationOptions
+      responses:
+        '200':
+          description: '`PublicKeyCredentialCreationOptions` (JSON, base64url) and the signed challenge token.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebAuthnOptions' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/auth/webauthn/register/verify:
+    post:
+      tags: [Passkeys]
+      summary: Register a passkey
+      operationId: passkeyRegistrationVerify
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challengeToken, response]
+              properties:
+                challengeToken: { type: string }
+                response: { type: object, description: The `PublicKeyCredential` (attestation) as JSON. }
+                deviceName: { type: [string, 'null'], maxLength: 255 }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400':
+          description: '`invalid_request` (body incomplete), `invalid_passkey_registration`, `passkey_already_registered`.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/auth/webauthn/authenticate/options:
+    get:
+      tags: [Passkeys]
+      summary: Options to sign in with a passkey
+      operationId: passkeyAuthenticationOptions
+      security: []
+      responses:
+        '200':
+          description: '`PublicKeyCredentialRequestOptions` (discoverable credentials, empty `allowCredentials`) and the challenge token.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebAuthnOptions' }
+
+  /api/auth/webauthn/authenticate/verify:
+    post:
+      tags: [Passkeys]
+      summary: Sign in with a passkey
+      operationId: passkeyAuthenticationVerify
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challengeToken, response]
+              properties:
+                challengeToken: { type: string }
+                response: { type: object, description: The `PublicKeyCredential` (assertion) as JSON. }
+      responses:
+        '200': { $ref: '#/components/responses/Tokens' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401':
+          description: '`invalid_passkey`.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /api/auth/webauthn/{id}:
+    delete:
+      tags: [Passkeys]
+      summary: Delete one of the user's passkeys
+      operationId: deletePasskey
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: '`passkey_not_found` (unknown or another user''s).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  # ------------------------------------------------------------------ SSO
+  /api/auth/oauth/{provider}:
+    get:
+      tags: [SSO]
+      summary: Start SSO sign-in (browser navigation)
+      operationId: oauthStart
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/Provider' }
+      responses:
+        '302':
+          description: Redirect to the provider; sets the `oauth_state_nonce` cookie.
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+            Set-Cookie: { $ref: '#/components/headers/StateCookie' }
+        '400':
+          description: Unknown or unconfigured provider (HTML body `Unknown provider`).
+          content:
+            text/html:
+              schema: { type: string }
+    delete:
+      tags: [SSO]
+      summary: Unlink an SSO provider
+      operationId: oauthUnlink
+      parameters:
+        - { $ref: '#/components/parameters/Provider' }
+      responses:
+        '204': { description: Unlinked. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: '`oauth_account_not_found`: the provider is not linked.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '409':
+          description: '`last_login_method`: no sign-in method would remain.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /api/auth/oauth/{provider}/callback:
+    get:
+      tags: [SSO]
+      summary: SSO callback (from the provider)
+      description: >-
+        Sign-in mode: redirect to `{FRONTEND_URL}/auth/callback?token=…&refresh_token=…` or `?error=<code>`. Link
+        mode: redirect to `{FRONTEND_URL}/profile?link_provider=…&link_proof=…` or `?link_error=<code>`. Codes: see
+        the API description (SSO). The state cookie is cleared.
+      operationId: oauthCallback
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/Provider' }
+        - { name: state, in: query, schema: { type: string } }
+        - { name: code, in: query, schema: { type: string } }
+        - { name: error, in: query, schema: { type: string }, description: Provider error (e.g. `access_denied`). }
+      responses:
+        '302':
+          description: Redirect to the frontend.
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+    post:
+      tags: [SSO]
+      summary: SSO callback (form POST, Apple)
+      description: Same as the GET callback; Apple returns with a cross-site form POST (`state`, `code`, `error` in the body).
+      operationId: oauthCallbackPost
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/Provider' }
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                state: { type: string }
+                code: { type: string }
+                error: { type: string }
+      responses:
+        '302':
+          description: Redirect to the frontend.
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+
+  /api/auth/oauth/{provider}/link-start:
+    post:
+      tags: [SSO]
+      summary: Start linking an SSO provider
+      description: Returns a one-time ticket URL on this API (60 s, bound to user and session) that the browser opens.
+      operationId: oauthLinkStart
+      parameters:
+        - { $ref: '#/components/parameters/Provider' }
+      responses:
+        '200':
+          description: Ticket URL.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url]
+                properties:
+                  url: { type: string, format: uri, examples: ['https://example.org/api/auth/oauth/google/link?ticket=eyJuIjoi.c2ln'] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: '`unknown_provider`.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /api/auth/oauth/{provider}/link:
+    get:
+      tags: [SSO]
+      summary: Open a link ticket (browser navigation)
+      operationId: oauthLinkRedirect
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/Provider' }
+        - { name: ticket, in: query, required: true, schema: { type: string } }
+      responses:
+        '302':
+          description: >-
+            Redirect to the provider (sets the state cookie), or to `{FRONTEND_URL}/profile?link_error=invalid_state`
+            for an invalid, used or expired ticket.
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+            Set-Cookie: { $ref: '#/components/headers/StateCookie' }
+        '400':
+          description: Unknown or unconfigured provider (HTML body `Unknown provider`).
+          content:
+            text/html:
+              schema: { type: string }
+
+  /api/auth/oauth/{provider}/link-complete:
+    post:
+      tags: [SSO]
+      summary: Complete linking an SSO provider
+      operationId: oauthLinkComplete
+      parameters:
+        - { $ref: '#/components/parameters/Provider' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [proof]
+              properties:
+                proof: { type: string, description: '`link_proof` from the redirect (5 minutes, single use).' }
+      responses:
+        '204': { description: Linked (also when it already was linked to this user). }
+        '400':
+          description: '`invalid_state`: proof forged, expired, used, or for another user / session.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: '`account_in_use` (provider account belongs to another user) or `already_linked` (another account of this provider is linked).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  # ------------------------------------------------------------------ Clubs
+  /api/clubs:
+    get:
+      tags: [Clubs]
+      summary: The user's clubs
+      operationId: listClubs
+      responses:
+        '200':
+          description: Clubs with counters.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ClubListItem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Clubs]
+      summary: Create a club
+      description: The creator becomes a member.
+      operationId: createClub
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 255 }
+                timezone: { type: string, default: Europe/Berlin }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Club' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/clubs/{clubId}:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+    get:
+      tags: [Clubs]
+      summary: One club with counters
+      description: '`eventCount` and `feedCount` include archived calendars (what deleting the club removes).'
+      operationId: getClub
+      responses:
+        '200':
+          description: The club.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClubDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Clubs]
+      summary: Update a club
+      operationId: updateClub
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, minLength: 1, maxLength: 255 }
+                timezone: { type: string }
+      responses:
+        '200':
+          description: The updated club.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Club' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: '`validation_failed` field `timezone` (no IANA zone).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+    delete:
+      tags: [Clubs]
+      summary: Delete a club with all calendars
+      description: Any member may delete (no roles yet).
+      operationId: deleteClub
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/clubs/{clubId}/members:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+    get:
+      tags: [Clubs]
+      summary: Members of a club
+      operationId: listMembers
+      responses:
+        '200':
+          description: Members.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Member' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Clubs]
+      summary: Add a registered user as member
+      description: An existing member is answered with 201 as well (nothing is created).
+      operationId: addMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '201':
+          description: The member.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Member' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Club unknown, or no user with this address (no `code`).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/clubs/{clubId}/members/{userId}:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+      - { name: userId, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [Clubs]
+      summary: Remove a member
+      description: Unknown users or non-members are ignored (still 200).
+      operationId: removeMember
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ------------------------------------------------------------------ Calendars
+  /api/clubs/{clubId}/calendars:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+    get:
+      tags: [Calendars]
+      summary: Calendars of a club
+      description: Active calendars first, then by name.
+      operationId: listCalendars
+      parameters:
+        - { name: includeArchived, in: query, schema: { type: string, enum: ['true', 'false'], default: 'false' } }
+      responses:
+        '200':
+          description: Calendars with counters.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Calendar' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Calendars]
+      summary: Create a calendar
+      operationId: createCalendar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 255 }
+                timezone: { type: [string, 'null'], maxLength: 100, description: Null = the club's zone. }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Calendar' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/clubs/{clubId}/calendars/{calendarId}:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+      - { $ref: '#/components/parameters/CalendarId' }
+    get:
+      tags: [Calendars]
+      summary: One calendar
+      operationId: getCalendar
+      responses:
+        '200':
+          description: The calendar.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Calendar' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Calendars]
+      summary: Rename a calendar or change its zone
+      description: Also allowed for archived calendars.
+      operationId: updateCalendar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, minLength: 1, maxLength: 255 }
+                timezone: { type: [string, 'null'] }
+      responses:
+        '200':
+          description: The updated calendar.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Calendar' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: '`validation_failed` field `timezone`.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+    delete:
+      tags: [Calendars]
+      summary: Delete a calendar with all its data
+      operationId: deleteCalendar
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/clubs/{clubId}/calendars/{calendarId}/archive:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+      - { $ref: '#/components/parameters/CalendarId' }
+    post:
+      tags: [Calendars]
+      summary: Archive a calendar (read-only, feeds 404)
+      operationId: archiveCalendar
+      responses:
+        '200':
+          description: The archived calendar.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Calendar' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/clubs/{clubId}/calendars/{calendarId}/unarchive:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+      - { $ref: '#/components/parameters/CalendarId' }
+    post:
+      tags: [Calendars]
+      summary: Restore an archived calendar
+      operationId: unarchiveCalendar
+      responses:
+        '200':
+          description: The calendar.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Calendar' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/clubs/{clubId}/calendars/{calendarId}/duplicate:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+      - { $ref: '#/components/parameters/CalendarId' }
+    post:
+      tags: [Calendars]
+      summary: Duplicate a calendar
+      description: >-
+        Copies reference data (properties, features, target groups, locations), templates and feeds (same state, new
+        secrets, `searchable` always false), but no events. The body is optional.
+      operationId: duplicateCalendar
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: [string, 'null'], maxLength: 255, description: 'Name of the copy (localized by the client); default "Copy of …".' }
+      responses:
+        '201':
+          description: The copy.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Calendar' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ------------------------------------------------------------------ Events
+  /api/calendars/{calendarId}/events:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    get:
+      tags: [Events]
+      summary: Events of a calendar (drafts included)
+      description: Ordered by date and start time. `from`/`to` select by overlap (multi-day events reaching into the range are included).
+      operationId: listEvents
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: targetGroupIds, in: query, description: Comma-separated target group ids (events with at least one)., schema: { type: string } }
+      responses:
+        '200':
+          description: Events.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Event' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Events]
+      summary: Create an event
+      operationId: createEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EventInput' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Event' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnknownReference' }
+
+  /api/calendars/{calendarId}/events/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/Id' }
+    get:
+      tags: [Events]
+      summary: One event with its series
+      operationId: getEvent
+      responses:
+        '200':
+          description: The event; `series` is the series (rule + `eventCount`) or null.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EventWithSeries' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Events]
+      summary: Update an event (or all events of its series)
+      description: >-
+        Partial. `scope: "this"` (default) changes only this event; `scope: "all"` applies the sent fields to every
+        event of the series in one transaction, except `date`, `dateEnd`, `eventTemplateId`, `externalUid` (each
+        event keeps its day). A missing or null id list leaves the assignments unchanged. The response is the edited
+        event.
+      operationId: updateEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EventPatch' }
+      responses:
+        '200':
+          description: The updated event.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Event' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnknownReference' }
+    delete:
+      tags: [Events]
+      summary: Delete an event (or its whole series)
+      operationId: deleteEvent
+      parameters:
+        - name: scope
+          in: query
+          description: '`this` (default) deletes the event (its series goes once empty); `all` deletes the series with all its events.'
+          schema: { $ref: '#/components/schemas/Scope' }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/calendars/{calendarId}/events/from-template:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    post:
+      tags: [Events]
+      summary: Create events from a template on given dates
+      description: >-
+        One event per date with the template's values (name, zone, times, assignments, location), as drafts unless
+        `overrides.isDraft` says otherwise. A template without times creates all-day events (00:00-23:59) unless the
+        overrides bring times. Not linked as a series.
+      operationId: createEventsFromTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [templateId, dates]
+              properties:
+                templateId: { type: string }
+                dates: { type: array, minItems: 1, items: { type: string, format: date } }
+                overrides:
+                  type: object
+                  description: Values replacing the template's.
+                  properties:
+                    name: { type: string }
+                    timezone: { type: [string, 'null'] }
+                    timeBegin: { $ref: '#/components/schemas/Time' }
+                    timeEnd: { $ref: '#/components/schemas/Time' }
+                    isAllDay: { type: boolean }
+                    isDraft: { type: boolean }
+                    locationId: { type: [string, 'null'] }
+                    propertyIds: { $ref: '#/components/schemas/IdList' }
+                    featureIds: { $ref: '#/components/schemas/IdList' }
+                    targetGroupIds: { $ref: '#/components/schemas/IdList' }
+      responses:
+        '201':
+          description: The created events.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Event' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404':
+          description: Calendar or template unknown (no `code`).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/UnknownReference' }
+
+  /api/calendars/{calendarId}/events/bulk:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    post:
+      tags: [Events]
+      summary: Publish, unpublish or delete several events
+      description: >-
+        All or nothing in one transaction. Every id must belong to the calendar (unknown and foreign ids alike → 422
+        `unknown_reference` field `ids`, nothing happens); duplicate ids count once. At most 5000 ids (413
+        `too_many_events`). Series left without events are removed.
+      operationId: bulkEvents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids, action]
+              properties:
+                ids: { type: array, minItems: 1, maxItems: 5000, items: { type: string, maxLength: 36 } }
+                action: { type: string, enum: [publish, draft, delete] }
+      responses:
+        '200':
+          description: Number of events of the request (also when a value did not change).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [affected]
+                properties:
+                  affected: { type: integer }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413': { $ref: '#/components/responses/TooManyEvents' }
+        '422': { $ref: '#/components/responses/UnknownReference' }
+
+  # ------------------------------------------------------------------ Event series
+  /api/calendars/{calendarId}/events/series/preview:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    post:
+      tags: [Event series]
+      summary: Preview the dates of a series rule
+      description: Same validation as creating; writes nothing. A rule without dates is no error here (`count` 0).
+      operationId: previewSeries
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rule]
+              properties:
+                rule: { $ref: '#/components/schemas/SeriesRuleInput' }
+                event:
+                  type: object
+                  properties:
+                    durationDays: { $ref: '#/components/schemas/DurationDays' }
+      responses:
+        '200':
+          description: Dates and holidays.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SeriesPreview' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/SeriesTooMany' }
+
+  /api/calendars/{calendarId}/events/series:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    post:
+      tags: [Event series]
+      summary: Create a series with all its events
+      description: >-
+        Atomic: an invalid field or a reference of another calendar saves nothing. Template values are taken like
+        `from-template` (template without times → all-day); `event` fields override them. Events are drafts unless
+        `isDraft` / `event.isDraft` is false. `event.date`/`event.dateEnd` are not allowed (set by the rule and
+        `event.durationDays`). Errors of event fields carry `field: event.<name>`.
+      operationId: createSeries
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SeriesCreateInput' }
+      responses:
+        '201':
+          description: The series and its events.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [series, events]
+                properties:
+                  series: { $ref: '#/components/schemas/Series' }
+                  events: { type: array, items: { $ref: '#/components/schemas/Event' } }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: >-
+            `too_many_events` (more than 366), `validation_failed` field `rule` (the rule creates no events) or
+            `unknown_reference` (e.g. `templateId`, `event.locationId`).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /api/calendars/{calendarId}/event-series/{seriesId}:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/SeriesId' }
+    get:
+      tags: [Event series]
+      summary: Rule and event count of a series
+      description: Also readable in archived calendars. A series of another calendar is 404.
+      operationId: getSeries
+      responses:
+        '200':
+          description: The series.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Series' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Event series]
+      summary: Change the rule of a series (future events only)
+      description: >-
+        Applies the new rule to the future events (date ≥ today in the calendar's zone); past events stay. The new
+        rule yields its full set of dates from its start (`count`/`until` count over the whole series). Future
+        events on a date of the set stay unchanged (also individually edited ones), missing dates get new events
+        with the values of the prototype (earliest future event, else the latest one), future events on other dates
+        are deleted. `durationDays` keeps the series' value. One transaction with the series row locked.
+      operationId: updateSeries
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rule]
+              properties:
+                rule: { $ref: '#/components/schemas/SeriesRuleInput' }
+      responses:
+        '200':
+          description: The series and counts of the change.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [series, created, deleted, kept]
+                properties:
+                  series: { $ref: '#/components/schemas/Series' }
+                  created: { type: integer }
+                  deleted: { type: integer }
+                  kept: { type: integer }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/SeriesConflict' }
+        '422': { $ref: '#/components/responses/SeriesTooMany' }
+
+  /api/calendars/{calendarId}/event-series/{seriesId}/preview-update:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/SeriesId' }
+    post:
+      tags: [Event series]
+      summary: Preview a rule change
+      description: What `PATCH` with the same rule would do now; writes nothing.
+      operationId: previewSeriesUpdate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rule]
+              properties:
+                rule: { $ref: '#/components/schemas/SeriesRuleInput' }
+      responses:
+        '200':
+          description: Planned changes.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SeriesUpdatePreview' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/SeriesConflict' }
+        '422': { $ref: '#/components/responses/SeriesTooMany' }
+
+  # ------------------------------------------------------------------ Import & export
+  /api/calendars/{calendarId}/events/import/preview:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    post:
+      tags: [Import & export]
+      summary: Dry run of an import
+      description: >-
+        Status per entry (`new`, `duplicate`, `invalid`) with the same validation as the import; writes nothing.
+        The ICS file is parsed in the browser; the API gets the reviewed events as JSON.
+      operationId: previewImport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImportInput' }
+      responses:
+        '200':
+          description: Result per entry.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportPreview' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413': { $ref: '#/components/responses/TooManyEvents' }
+        '422': { $ref: '#/components/responses/UnknownReference' }
+
+  /api/calendars/{calendarId}/events/import:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    post:
+      tags: [Import & export]
+      summary: Import events (atomic)
+      description: >-
+        All or nothing in one transaction. New places in `locations` are referenced by `locationTempId` and only
+        created when an imported event uses them. With `skipDuplicates` duplicates are skipped (still validated).
+        The first invalid entry fails the request with `field: events[n].<field>`.
+      operationId: importEvents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImportInput' }
+      responses:
+        '201':
+          description: Imported.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportResult' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413': { $ref: '#/components/responses/TooManyEvents' }
+        '422': { $ref: '#/components/responses/UnknownReference' }
+
+  /api/calendars/{calendarId}/events.ics:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    get:
+      tags: [Import & export]
+      summary: ICS download of a calendar's events (members)
+      description: >-
+        Built like the feeds (VTIMEZONE, property icons, Apple location); series events are single VEVENTs. Drafts
+        only with `includeDrafts` (as `STATUS:TENTATIVE`). Allowed for archived calendars.
+      operationId: exportIcs
+      parameters:
+        - { name: from, in: query, description: Events ending on or after this day., schema: { type: string, format: date } }
+        - { name: to, in: query, description: Events starting on or before this day (not before `from`)., schema: { type: string, format: date } }
+        - { name: includeDrafts, in: query, schema: { type: string, enum: ['true', 'false', '1', '0'], default: 'false' } }
+        - name: 'targetGroupIds[]'
+          in: query
+          description: Ids of target groups of this calendar (at most 100); a comma-separated `targetGroupIds` is accepted too.
+          schema: { type: array, items: { type: string } }
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: 'iCalendar file (`Content-Disposition: attachment; filename="<calendar-slug>.ics"`).'
+          headers:
+            Content-Disposition: { schema: { type: string } }
+          content:
+            text/calendar:
+              schema: { type: string }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnknownReference' }
+
+  # ------------------------------------------------------------------ Templates
+  /api/calendars/{calendarId}/templates:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    get:
+      tags: [Event templates]
+      summary: Templates of a calendar
+      operationId: listTemplates
+      responses:
+        '200':
+          description: Templates with `eventCount` (events created from each).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TemplateWithCount' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Event templates]
+      summary: Create a template
+      operationId: createTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - { $ref: '#/components/schemas/TemplateInput' }
+                - { required: [name] }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Template' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnknownReference' }
+
+  /api/calendars/{calendarId}/templates/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/Id' }
+    get:
+      tags: [Event templates]
+      summary: One template
+      operationId: getTemplate
+      responses:
+        '200':
+          description: The template with `eventCount`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TemplateWithCount' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Event templates]
+      summary: Update a template
+      operationId: updateTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TemplateInput' }
+      responses:
+        '200':
+          description: The updated template.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Template' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnknownReference' }
+    delete:
+      tags: [Event templates]
+      summary: Delete a template
+      description: Events created from it keep their values (`eventTemplateId` becomes null).
+      operationId: deleteTemplate
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ------------------------------------------------------------------ Properties
+  /api/calendars/{calendarId}/properties:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    get:
+      tags: [Properties]
+      summary: Properties of a calendar
+      operationId: listProperties
+      responses:
+        '200':
+          description: Properties with `usage`.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - { $ref: '#/components/schemas/Property' }
+                    - type: object
+                      required: [usage]
+                      properties:
+                        usage: { $ref: '#/components/schemas/LinkUsage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Properties]
+      summary: Create a property
+      operationId: createProperty
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - { $ref: '#/components/schemas/PropertyInput' }
+                - { required: [name] }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Property' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/DuplicateName' }
+
+  /api/calendars/{calendarId}/properties/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/Id' }
+    patch:
+      tags: [Properties]
+      summary: Update a property
+      operationId: updateProperty
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PropertyInput' }
+      responses:
+        '200':
+          description: The updated property.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Property' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/DuplicateName' }
+    delete:
+      tags: [Properties]
+      summary: Delete a property (detached from events and templates)
+      operationId: deleteProperty
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ------------------------------------------------------------------ Features
+  /api/calendars/{calendarId}/features:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    get:
+      tags: [Features]
+      summary: Features of a calendar
+      operationId: listFeatures
+      responses:
+        '200':
+          description: Features with `usage`.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - { $ref: '#/components/schemas/Feature' }
+                    - type: object
+                      required: [usage]
+                      properties:
+                        usage: { $ref: '#/components/schemas/LinkUsage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Features]
+      summary: Create a feature
+      operationId: createFeature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NameInput' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Feature' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/DuplicateName' }
+
+  /api/calendars/{calendarId}/features/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/Id' }
+    patch:
+      tags: [Features]
+      summary: Rename a feature
+      operationId: updateFeature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NamePatch' }
+      responses:
+        '200':
+          description: The updated feature.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Feature' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/DuplicateName' }
+    delete:
+      tags: [Features]
+      summary: Delete a feature (detached from events and templates)
+      operationId: deleteFeature
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ------------------------------------------------------------------ Target groups
+  /api/calendars/{calendarId}/target-groups:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    get:
+      tags: [Target groups]
+      summary: Target groups of a calendar
+      operationId: listTargetGroups
+      responses:
+        '200':
+          description: Target groups with `usage` (incl. feeds that selected them).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - { $ref: '#/components/schemas/TargetGroup' }
+                    - type: object
+                      required: [usage]
+                      properties:
+                        usage: { $ref: '#/components/schemas/TargetGroupUsage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Target groups]
+      summary: Create a target group
+      operationId: createTargetGroup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NameInput' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TargetGroup' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/DuplicateName' }
+
+  /api/calendars/{calendarId}/target-groups/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/Id' }
+    patch:
+      tags: [Target groups]
+      summary: Rename a target group
+      operationId: updateTargetGroup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NamePatch' }
+      responses:
+        '200':
+          description: The updated target group.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TargetGroup' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/DuplicateName' }
+    delete:
+      tags: [Target groups]
+      summary: Delete a target group (detached from events, templates and feeds)
+      operationId: deleteTargetGroup
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ------------------------------------------------------------------ Locations
+  /api/calendars/{calendarId}/locations:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    get:
+      tags: [Locations]
+      summary: Locations of a calendar
+      operationId: listLocations
+      responses:
+        '200':
+          description: Locations with `usage`.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - { $ref: '#/components/schemas/Location' }
+                    - type: object
+                      required: [usage]
+                      properties:
+                        usage: { $ref: '#/components/schemas/LocationUsage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Locations]
+      summary: Create a location
+      description: All fields are optional (a place may have only coordinates or only a name).
+      operationId: createLocation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LocationInput' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Location' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/calendars/{calendarId}/locations/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/Id' }
+    patch:
+      tags: [Locations]
+      summary: Update a location
+      operationId: updateLocation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LocationInput' }
+      responses:
+        '200':
+          description: The updated location.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Location' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Locations]
+      summary: Delete a location (events and templates lose it)
+      operationId: deleteLocation
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ------------------------------------------------------------------ Feeds (management)
+  /api/calendars/{calendarId}/feeds:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    get:
+      tags: [Feeds]
+      summary: Feeds of a calendar
+      operationId: listFeeds
+      responses:
+        '200':
+          description: Feeds (incl. their secrets).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Feed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Feeds]
+      summary: Create a feed
+      description: '`visibility` defaults to `CLUB`; every feed gets a secret (only `PRIVATE` requires it).'
+      operationId: createFeed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - { $ref: '#/components/schemas/FeedInput' }
+                - { required: [name] }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Feed' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/FeedInputRejected' }
+
+  /api/calendars/{calendarId}/feeds/{feedId}:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/FeedId' }
+    get:
+      tags: [Feeds]
+      summary: One feed
+      description: A feed of another calendar is 404 like an unknown id.
+      operationId: getFeed
+      responses:
+        '200':
+          description: The feed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Feed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Feeds]
+      summary: Update a feed
+      description: >-
+        Leaving `PUBLIC` resets `searchable` to false (also when going back to `PUBLIC` later). Switching from
+        `PUBLIC`/`CLUB` to `PRIVATE` generates a new secret. `targetGroupIds` replaces the selection when present.
+      operationId: updateFeed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FeedInput' }
+      responses:
+        '200':
+          description: The updated feed (effective `searchable` and `indexable`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Feed' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/FeedInputRejected' }
+    delete:
+      tags: [Feeds]
+      summary: Delete a feed
+      operationId: deleteFeed
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/calendars/{calendarId}/feeds/{feedId}/regenerate-secret:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/FeedId' }
+    post:
+      tags: [Feeds]
+      summary: Generate a new secret (old links stop working for private feeds)
+      operationId: regenerateFeedSecret
+      responses:
+        '200':
+          description: The feed with its new secret.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Feed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ------------------------------------------------------------------ Public feed
+  /api/feed/{feedId}/events:
+    parameters:
+      - { $ref: '#/components/parameters/FeedId' }
+    get:
+      tags: [Public feed]
+      summary: Web view of a feed (header, events, holidays)
+      description: >-
+        Published events of the feed (optionally limited to `from`/`to` by overlap) and the holidays of the
+        calendar in the same range. Access (secret) is checked before the range. See "Feeds, visibility and robots
+        rules" for the headers.
+      operationId: publicFeedEvents
+      security: [{}, { feedSecret: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/FeedSecret' }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { $ref: '#/components/parameters/FeedTargetGroupIds' }
+      responses:
+        '200':
+          description: Feed header, events and holidays.
+          headers:
+            Referrer-Policy: { $ref: '#/components/headers/ReferrerPolicy' }
+            X-Robots-Tag: { $ref: '#/components/headers/XRobotsTag' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [feed, events, holidays]
+                properties:
+                  feed: { $ref: '#/components/schemas/PublicFeedHeader' }
+                  events: { type: array, items: { $ref: '#/components/schemas/PublicEvent' } }
+                  holidays: { type: array, items: { $ref: '#/components/schemas/HolidayEvent' } }
+        '400': { $ref: '#/components/responses/FeedBadRequest' }
+        '403': { $ref: '#/components/responses/FeedForbidden' }
+        '404': { $ref: '#/components/responses/FeedNotFound' }
+
+  /api/feed/{feedId}/events/{eventId}:
+    parameters:
+      - { $ref: '#/components/parameters/FeedId' }
+      - { name: eventId, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Public feed]
+      summary: One published event of a feed
+      description: Drafts, events of other calendars or outside the feed's target groups and unknown ids are all 404. The secret is checked first.
+      operationId: publicFeedEvent
+      security: [{}, { feedSecret: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/FeedSecret' }
+      responses:
+        '200':
+          description: Feed header and the event.
+          headers:
+            Referrer-Policy: { $ref: '#/components/headers/ReferrerPolicy' }
+            X-Robots-Tag: { $ref: '#/components/headers/XRobotsTag' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [feed, event]
+                properties:
+                  feed: { $ref: '#/components/schemas/PublicFeedHeader' }
+                  event: { $ref: '#/components/schemas/PublicEvent' }
+        '400': { $ref: '#/components/responses/FeedBadRequest' }
+        '403': { $ref: '#/components/responses/FeedForbidden' }
+        '404': { $ref: '#/components/responses/FeedNotFound' }
+
+  /api/feed/{feedId}/ics:
+    parameters:
+      - { $ref: '#/components/parameters/FeedId' }
+    get:
+      tags: [Public feed]
+      summary: ICS subscription of a feed
+      operationId: publicFeedIcs
+      security: [{}, { feedSecret: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/FeedSecret' }
+        - { $ref: '#/components/parameters/FeedTargetGroupIds' }
+      responses:
+        '200':
+          description: 'iCalendar (`Content-Disposition: attachment; filename="feed-<feedId>.ics"`, `Cache-Control: no-cache, no-store, private`).'
+          headers:
+            Referrer-Policy: { $ref: '#/components/headers/ReferrerPolicy' }
+            X-Robots-Tag: { $ref: '#/components/headers/XRobotsTag' }
+          content:
+            text/calendar:
+              schema: { type: string }
+        '400': { $ref: '#/components/responses/FeedBadRequest' }
+        '403': { $ref: '#/components/responses/FeedForbidden' }
+        '404': { $ref: '#/components/responses/FeedNotFound' }
+
+  # ------------------------------------------------------------------ Holidays
+  /api/calendars/{calendarId}/holiday-calendars:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    get:
+      tags: [Holidays]
+      summary: Holiday calendars (external ICS sources) of a calendar
+      operationId: listHolidayCalendars
+      responses:
+        '200':
+          description: Holiday calendars.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/HolidayCalendar' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Holidays]
+      summary: Add a holiday calendar and fetch it
+      description: The ICS URL is fetched immediately (no private networks); a failing fetch stores nothing.
+      operationId: createHolidayCalendar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HolidayCalendarInput' }
+      responses:
+        '201':
+          description: Created and fetched.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HolidayCalendar' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/HolidayFetchFailed' }
+
+  /api/calendars/{calendarId}/holiday-calendars/{hcId}:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/HolidayCalendarId' }
+    patch:
+      tags: [Holidays]
+      summary: Change name and URL of a holiday calendar
+      description: Not partial (legacy) - `name` and `url` are both required. Does not refetch.
+      operationId: updateHolidayCalendar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HolidayCalendarInput' }
+      responses:
+        '200':
+          description: The updated holiday calendar.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HolidayCalendar' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/LegacyNotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+    delete:
+      tags: [Holidays]
+      summary: Remove a holiday calendar with its holidays
+      operationId: deleteHolidayCalendar
+      responses:
+        '204': { description: Deleted. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/LegacyNotFound' }
+
+  /api/calendars/{calendarId}/holiday-calendars/{hcId}/refresh:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/HolidayCalendarId' }
+    post:
+      tags: [Holidays]
+      summary: Fetch a holiday calendar again
+      operationId: refreshHolidayCalendar
+      responses:
+        '200':
+          description: The refreshed holiday calendar.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HolidayCalendar' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/LegacyNotFound' }
+        '422':
+          description: The ICS feed could not be fetched (legacy body `{error}`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LegacyError' }
+
+  /api/calendars/{calendarId}/holiday-events:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    get:
+      tags: [Holidays]
+      summary: Holidays of a calendar in a range
+      operationId: listHolidayEvents
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Holidays overlapping the range.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/HolidayEvent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ------------------------------------------------------------------ Maps
+  /api/map/geocode/suggest:
+    get:
+      tags: [Maps]
+      summary: Address suggestions (geocoding)
+      operationId: geocodeSuggest
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: Search text; empty → no suggestions. }
+        - { name: lat, in: query, schema: { type: number }, description: Proximity bias. }
+        - { name: lng, in: query, schema: { type: number } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 10, default: 6 } }
+      responses:
+        '200':
+          description: Suggestions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [suggestions]
+                properties:
+                  suggestions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        label: { type: string }
+                        lat: { type: number }
+                        lng: { type: number }
+                        street: { type: [string, 'null'] }
+                        zip: { type: [string, 'null'] }
+                        city: { type: [string, 'null'] }
+                        country: { type: [string, 'null'] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/map/geocode/reverse:
+    get:
+      tags: [Maps]
+      summary: Address of coordinates (reverse geocoding)
+      operationId: geocodeReverse
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number } }
+        - { name: lng, in: query, required: true, schema: { type: number } }
+      responses:
+        '200':
+          description: The address.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  label: { type: string }
+                  street: { type: [string, 'null'] }
+                  zip: { type: [string, 'null'] }
+                  city: { type: [string, 'null'] }
+                  country: { type: [string, 'null'] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/map/image/location/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    get:
+      tags: [Maps]
+      summary: Static map image of a location
+      description: Public (used by feed pages and mails), cached; 404 when the location has no coordinates.
+      operationId: locationMapImage
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/MapImage' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /api/map/image/event/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    get:
+      tags: [Maps]
+      summary: Static map image of an event's location
+      description: Public; drafts and events without a located place are 404.
+      operationId: eventMapImage
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/MapImage' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /api/mapbox/{domain}/{path}:
+    parameters:
+      - name: domain
+        in: path
+        required: true
+        description: Upstream host; only `api.mapbox.com` is allowed.
+        schema: { type: string, enum: [api.mapbox.com] }
+      - name: path
+        in: path
+        required: true
+        description: >-
+          Upstream path, may contain slashes (route requirement `.+`). Allowed (GET only): `v4/<tileset>/<z>/<x>/<y>…`
+          (rate-limited), `styles/…`, `fonts/…`. Dot segments are rejected.
+        schema: { type: string }
+    get:
+      tags: [Maps]
+      summary: Mapbox proxy (adds the server token)
+      description: >-
+        Forwards to Mapbox with the server's token (an `access_token` in the query is dropped); GET responses are
+        cached. No authentication. Upstream status, body and headers are passed through.
+      operationId: mapboxProxyGet
+      security: []
+      responses:
+        '200':
+          description: Upstream response (tiles, styles, glyphs).
+          content:
+            '*/*':
+              schema: {}
+        '400': { $ref: '#/components/responses/MapboxError' }
+        '403': { $ref: '#/components/responses/MapboxError' }
+        '429': { $ref: '#/components/responses/MapboxError' }
+        '502': { $ref: '#/components/responses/MapboxError' }
+        '503': { $ref: '#/components/responses/MapboxError' }
+        default:
+          description: Any other upstream status (e.g. 401, 404 from Mapbox) is passed through with the upstream body.
+          content:
+            '*/*':
+              schema: {}
+    post:
+      tags: [Maps]
+      summary: Mapbox proxy (POST, always denied)
+      description: The route accepts POST, but no allowed path permits it (403).
+      operationId: mapboxProxyPost
+      security: []
+      responses:
+        '400': { $ref: '#/components/responses/MapboxError' }
+        '403': { $ref: '#/components/responses/MapboxError' }
+        '503': { $ref: '#/components/responses/MapboxError' }
+    put:
+      tags: [Maps]
+      summary: Mapbox proxy (PUT, always denied)
+      operationId: mapboxProxyPut
+      security: []
+      responses:
+        '400': { $ref: '#/components/responses/MapboxError' }
+        '403': { $ref: '#/components/responses/MapboxError' }
+        '503': { $ref: '#/components/responses/MapboxError' }
+    patch:
+      tags: [Maps]
+      summary: Mapbox proxy (PATCH, always denied)
+      operationId: mapboxProxyPatch
+      security: []
+      responses:
+        '400': { $ref: '#/components/responses/MapboxError' }
+        '403': { $ref: '#/components/responses/MapboxError' }
+        '503': { $ref: '#/components/responses/MapboxError' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token (15 minutes) from login, passkey, SSO, password change or `POST /api/auth/token`.
+    feedSecret:
+      type: apiKey
+      in: query
+      name: secret
+      description: Shared secret of a `PRIVATE` feed (`sharedSecret` of the feed). Ignored for `PUBLIC`/`CLUB` feeds.
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    ClubId:
+      name: clubId
+      in: path
+      required: true
+      schema: { type: string }
+    CalendarId:
+      name: calendarId
+      in: path
+      required: true
+      schema: { type: string }
+    SeriesId:
+      name: seriesId
+      in: path
+      required: true
+      schema: { type: string }
+    FeedId:
+      name: feedId
+      in: path
+      required: true
+      schema: { type: string }
+    HolidayCalendarId:
+      name: hcId
+      in: path
+      required: true
+      schema: { type: string }
+    Provider:
+      name: provider
+      in: path
+      required: true
+      schema: { type: string, examples: [google, microsoft, apple] }
+    FeedSecret:
+      name: secret
+      in: query
+      description: Required for `PRIVATE` feeds, ignored otherwise.
+      schema: { type: string }
+    FeedTargetGroupIds:
+      name: targetGroupIds
+      in: query
+      description: Comma-separated target group ids; narrows the feed's own selection (intersection), never widens it.
+      schema: { type: string }
+
+  headers:
+    Location:
+      description: Redirect target.
+      schema: { type: string, format: uri }
+    StateCookie:
+      description: '`oauth_state_nonce=<nonce>; Path=/api/auth/oauth; Secure; HttpOnly; SameSite=None` (10 minutes).'
+      schema: { type: string }
+    ReferrerPolicy:
+      description: Always `no-referrer` on `/api/feed/*` (errors included).
+      schema: { type: string, const: no-referrer }
+    XRobotsTag:
+      description: '`noindex` unless the response is successful and the feed is indexable (`PUBLIC` + `searchable`); then absent.'
+      schema: { type: string, const: noindex }
+
+  responses:
+    Ok:
+      description: Done.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [ok]
+            properties:
+              ok: { type: boolean, const: true }
+    Tokens:
+      description: Access and refresh token with the user.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/TokenResponse' }
+    Unauthorized:
+      description: Missing, invalid or expired access token, or the session ended (no `code`).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+        application/json:
+          schema: { $ref: '#/components/schemas/JwtError' }
+    Forbidden:
+      description: Not a member of the club / the calendar's club, or no access token at all (no `code`).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    ForbiddenWrite:
+      description: Not a member, no access token at all, or the calendar is archived (read-only); no `code`.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: Unknown id, or an id of another calendar/club (no `code`).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    BadRequest:
+      description: Invalid query parameter (no `code`).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    InvalidRequest:
+      description: '`invalid_request`: the body is no JSON object (or not of the expected shape).'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    InvalidInput:
+      description: >-
+        `invalid_request` (body is no JSON object) or `validation_failed` with the input `field` (wrong type, missing
+        required value, invalid date/time, `scope`, ...). A few legacy checks answer 400 without a `code`.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    ValidationFailed:
+      description: '`validation_failed` (constraint violation of the request DTO) with the first violating `field`.'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    UnknownReference:
+      description: '`unknown_reference`: an id of the body is unknown or belongs to another calendar (`field` names it); `validation_failed` for an invalid time zone (field `timezone`).'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    DuplicateName:
+      description: '`duplicate_name` (field `name`): the name exists in this calendar (trimmed, case-insensitive).'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    TooManyEvents:
+      description: '`too_many_events`: more than 5000 events/locations (import, field `events`/`locations`) or ids (bulk, field `ids`).'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    SeriesTooMany:
+      description: '`too_many_events` (more than 366 events, field `rule` or `rule.count`) or `validation_failed` field `rule` (the series would have no events).'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    SeriesConflict:
+      description: '`series_empty` (the series has no events to serve as prototype) or `series_changed` (changed concurrently; nothing changed, try again).'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    FeedInputRejected:
+      description: '`validation_failed` field `searchable` (only `PUBLIC` feeds may be searchable) or `unknown_reference` field `targetGroupIds`.'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    FeedBadRequest:
+      description: >-
+        `validation_failed` field `from`/`to` (not `YYYY-MM-DD`), or 400 without code when `to` is before `from` or a
+        query parameter is sent as an array (`?secret[]=`, `?targetGroupIds[]=`).
+      headers:
+        Referrer-Policy: { $ref: '#/components/headers/ReferrerPolicy' }
+        X-Robots-Tag: { $ref: '#/components/headers/XRobotsTag' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    FeedForbidden:
+      description: Private feed without or with a wrong secret (no `code`; indistinguishable on purpose).
+      headers:
+        Referrer-Policy: { $ref: '#/components/headers/ReferrerPolicy' }
+        X-Robots-Tag: { $ref: '#/components/headers/XRobotsTag' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    FeedNotFound:
+      description: Unknown feed, archived calendar or (single event) unknown/unpublished event; no `code`.
+      headers:
+        Referrer-Policy: { $ref: '#/components/headers/ReferrerPolicy' }
+        X-Robots-Tag: { $ref: '#/components/headers/XRobotsTag' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    LegacyNotFound:
+      description: 'Holiday calendar unknown (legacy body `{"error": "Not found"}`); an unknown calendar is an RFC 7807 404.'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/LegacyError' }
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    HolidayFetchFailed:
+      description: '`validation_failed` (name/url constraints, RFC 7807) or the ICS feed could not be fetched (legacy body `{error}`).'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+        application/json:
+          schema: { $ref: '#/components/schemas/LegacyError' }
+    RateLimited:
+      description: Rate limit of the map provider reached (empty body).
+    ServiceUnavailable:
+      description: Geocoding provider failed.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    MapImage:
+      description: 'JPEG (`Cache-Control: public, max-age=3600`).'
+      content:
+        image/jpeg:
+          schema: { type: string, contentMediaType: image/jpeg }
+    MapboxError:
+      description: >-
+        400 domain not allowed, 403 path/method not allowed, 429 rate limit, 502 upstream unreachable, 503 no
+        Mapbox token configured (body `{message}`).
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [message]
+            properties:
+              message: { type: string }
+
+  schemas:
+    # ---------------------------------------------------------------- errors
+    Problem:
+      type: object
+      description: 'RFC 7807 problem details (`Content-Type: application/problem+json`).'
+      required: [type, title, status, detail]
+      properties:
+        type: { type: string, const: 'https://tools.ietf.org/html/rfc2616#section-10' }
+        title: { type: string, examples: [Unprocessable Entity] }
+        status: { type: integer, examples: [422] }
+        detail: { type: string, description: Human-readable; not a contract. }
+        code: { $ref: '#/components/schemas/ErrorCode' }
+        field:
+          type: string
+          description: Path of the offending input, e.g. `name`, `rule.weekday`, `event.locationId`, `events[3].date`, `locations[0].tempId`, `ids`.
+      examples:
+        - type: 'https://tools.ietf.org/html/rfc2616#section-10'
+          title: Unprocessable Entity
+          status: 422
+          detail: 'name: "Jugend" already exists in this calendar'
+          code: duplicate_name
+          field: name
+    ErrorCode:
+      type: string
+      description: |
+        Stable, machine-readable error code (`App\Exception\ApiProblemException`). Clients match this, never `detail`.
+
+        | Code | Status | Where |
+        | --- | --- | --- |
+        | `validation_failed` | 400 / 422 | Input errors with `field`: typed input checks 400, DTO constraints 422, import `events[n].<field>`, export parameters, bulk, series rule `rule.*` 400, series without events 422 field `rule`, `scope` 400, feeds `visibility` 400, `searchable` 400 (no boolean) / 422 (not `PUBLIC`), invalid time zone 422, e-mail change to the current address 422 |
+        | `invalid_request` | 400 | Body is no JSON object; passkey body incomplete |
+        | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
+        | `duplicate_name` | 422 | Name of a property/feature/target group already used in the calendar |
+        | `too_many_events` | 413 / 422 | 413: import > 5000 events/locations, bulk > 5000 ids; 422: series > 366 events (preview, create, rule change) |
+        | `series_empty` | 409 | Rule change preview/PATCH: the series has no events |
+        | `series_changed` | 409 | Rule change PATCH: prototype/reference deleted concurrently or deadlock; nothing changed |
+        | `email_taken` | 400 | Registration, field `email` |
+        | `invalid_credentials` | 401 / 400 | Login 401; 400 for `change-password` (field `currentPassword`) and `change-email` (field `password`) |
+        | `invalid_reset_token` | 400 | `reset-password`: unknown, used or expired (same answer), field `token` |
+        | `no_password` | 409 | `change-password` / `change-email` of SSO-only accounts |
+        | `last_login_method` | 409 | `DELETE /api/auth/oauth/{provider}`: no sign-in method would remain |
+        | `oauth_account_not_found` | 404 | `DELETE /api/auth/oauth/{provider}`: provider not linked |
+        | `unknown_provider` | 404 | `POST /api/auth/oauth/{provider}/link-start` |
+        | `invalid_state` | 400 | `POST …/oauth/{provider}/link-complete`: proof invalid |
+        | `account_in_use` | 409 | `link-complete`: provider account belongs to another user |
+        | `already_linked` | 409 | `link-complete`: another account of this provider is linked |
+        | `email_not_verified` | 403 | Login with an unconfirmed address (legacy body `{error, code}`) |
+        | `invalid_grant` | 400 | `POST /api/auth/token` without `grant_type=refresh_token` or token |
+        | `invalid_refresh_token` | 401 | Refresh token invalid, expired, user gone or sessions ended |
+        | `invalid_passkey` | 401 | Passkey sign-in failed |
+        | `invalid_passkey_registration` | 400 | Passkey registration failed |
+        | `passkey_already_registered` | 400 | Passkey registration: credential exists |
+        | `passkey_not_found` | 404 | Delete passkey (unknown or another user's) |
+
+        Not error codes: import warnings use `timezone_replaced`; redirects use `?error=` / `?link_error=` /
+        `?reason=` values (see the API description).
+      enum:
+        - validation_failed
+        - invalid_request
+        - unknown_reference
+        - duplicate_name
+        - too_many_events
+        - series_empty
+        - series_changed
+        - email_taken
+        - invalid_credentials
+        - invalid_reset_token
+        - no_password
+        - last_login_method
+        - oauth_account_not_found
+        - unknown_provider
+        - invalid_state
+        - account_in_use
+        - already_linked
+        - email_not_verified
+        - invalid_grant
+        - invalid_refresh_token
+        - invalid_passkey
+        - invalid_passkey_registration
+        - passkey_already_registered
+        - passkey_not_found
+    JwtError:
+      type: object
+      description: 401 body of the JWT bundle (not RFC 7807).
+      required: [code, message]
+      properties:
+        code: { type: integer, const: 401 }
+        message: { type: string, examples: [JWT Token not found, Invalid JWT Token, Expired JWT Token] }
+    LegacyError:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
+    # ---------------------------------------------------------------- primitives
+    Date:
+      type: string
+      format: date
+      examples: ['2026-10-15']
+    Time:
+      type: string
+      pattern: '^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$'
+      description: '`HH:MM` (seconds accepted on input and dropped).'
+      examples: ['19:30']
+    IdList:
+      type: [array, 'null']
+      description: Ids of the same calendar (duplicates are ignored).
+      items: { type: string }
+    Password:
+      type: string
+      minLength: 8
+      maxLength: 128
+      description: Password policy (8-128 characters).
+    Scope:
+      type: string
+      enum: [this, all]
+      default: this
+    DurationDays:
+      type: integer
+      minimum: 0
+      maximum: 31
+      default: 0
+      description: Extra days of each event (0 = single-day).
+
+    # ---------------------------------------------------------------- auth
+    UserSummary:
+      type: object
+      required: [id, name, email, dateFormat, firstDayOfWeek, lastClubId, lastCalendarId, language]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        dateFormat: { type: string, examples: [dd.MM.yyyy] }
+        firstDayOfWeek: { type: integer, minimum: 0, maximum: 6 }
+        lastClubId: { type: [string, 'null'] }
+        lastCalendarId: { type: [string, 'null'] }
+        language: { type: string, examples: [de] }
+    TokenResponse:
+      type: object
+      required: [access_token, token_type, expires_in, refresh_token, user]
+      properties:
+        access_token: { type: string, description: 'JWT, 15 minutes.' }
+        token_type: { type: string, const: Bearer }
+        expires_in: { type: integer, const: 900 }
+        refresh_token: { type: string, description: 7 days; exchange at `POST /api/auth/token`. }
+        user: { $ref: '#/components/schemas/UserSummary' }
+    Me:
+      allOf:
+        - { $ref: '#/components/schemas/UserSummary' }
+        - type: object
+          required: [hasPassword, pendingEmail, passkeys, oauthAccounts]
+          properties:
+            hasPassword: { type: boolean }
+            pendingEmail: { type: [string, 'null'], description: New address of a waiting e-mail change. }
+            passkeys:
+              type: array
+              items:
+                type: object
+                required: [id, deviceName, createdAt, lastUsedAt]
+                properties:
+                  id: { type: string }
+                  deviceName: { type: [string, 'null'] }
+                  createdAt: { type: string, format: date-time }
+                  lastUsedAt: { type: [string, 'null'], format: date-time }
+            oauthAccounts:
+              type: array
+              description: Linked providers (neither the provider's account id nor its address).
+              items:
+                type: object
+                required: [provider]
+                properties:
+                  provider: { type: string, examples: [google] }
+    WebAuthnOptions:
+      type: object
+      required: [options, challengeToken]
+      properties:
+        options:
+          type: object
+          description: >-
+            WebAuthn options for `navigator.credentials.create()` (registration: `challenge`, `rp`, `user`,
+            `pubKeyCredParams` ES256/RS256, `authenticatorSelection`, `timeout`, `excludeCredentials`,
+            `attestation: none`) or `.get()` (`challenge`, `rpId`, `timeout`, `userVerification`,
+            `allowCredentials: []`). Binary values are base64url.
+        challengeToken: { type: string, description: 'Signed, single-use token carrying the challenge; send it back with the response.' }
+
+    # ---------------------------------------------------------------- clubs and calendars
+    Club:
+      type: object
+      required: [id, name, timezone]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        timezone: { type: string, examples: [Europe/Berlin] }
+    ClubListItem:
+      allOf:
+        - { $ref: '#/components/schemas/Club' }
+        - type: object
+          required: [calendarCount, archivedCalendarCount, memberCount, lastCalendarId, _count]
+          properties:
+            calendarCount: { type: integer, description: Active calendars. }
+            archivedCalendarCount: { type: integer }
+            memberCount: { type: integer }
+            lastCalendarId: { type: [string, 'null'], description: Last calendar the user opened in this club (only while it exists in this club). }
+            _count:
+              type: object
+              description: Legacy counter (all calendars).
+              required: [calendars]
+              properties:
+                calendars: { type: integer }
+    ClubDetail:
+      allOf:
+        - { $ref: '#/components/schemas/Club' }
+        - type: object
+          required: [calendarCount, archivedCalendarCount, memberCount, eventCount, feedCount]
+          properties:
+            calendarCount: { type: integer }
+            archivedCalendarCount: { type: integer }
+            memberCount: { type: integer }
+            eventCount: { type: integer, description: All calendars incl. archived. }
+            feedCount: { type: integer }
+    Member:
+      type: object
+      required: [id, name, email]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+    Calendar:
+      type: object
+      required: [id, clubId, name, timezone, archivedAt, eventCount, templateCount, feedCount]
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        name: { type: string }
+        timezone: { type: [string, 'null'], description: Null = the club's zone. }
+        archivedAt: { type: [string, 'null'], format: date-time }
+        eventCount: { type: integer }
+        templateCount: { type: integer }
+        feedCount: { type: integer }
+
+    # ---------------------------------------------------------------- reference data
+    LocationRef:
+      type: object
+      required: [id, name, street, zip, city, country, latitude, longitude]
+      properties:
+        id: { type: string }
+        name: { type: [string, 'null'] }
+        street: { type: [string, 'null'] }
+        zip: { type: [string, 'null'] }
+        city: { type: [string, 'null'] }
+        country: { type: [string, 'null'] }
+        latitude: { type: [number, 'null'] }
+        longitude: { type: [number, 'null'] }
+    Location:
+      allOf:
+        - { $ref: '#/components/schemas/LocationRef' }
+        - type: object
+          required: [calendarId, updatedAt]
+          properties:
+            calendarId: { type: string }
+            updatedAt: { type: integer, description: Unix timestamp (cache key of map images). }
+    LocationInput:
+      type: object
+      properties:
+        name: { type: [string, 'null'], maxLength: 255 }
+        street: { type: [string, 'null'], maxLength: 255 }
+        zip: { type: [string, 'null'], maxLength: 20 }
+        city: { type: [string, 'null'], maxLength: 255 }
+        country: { type: [string, 'null'], maxLength: 100 }
+        latitude: { type: [number, 'null'], description: 'Degrees. Not range-checked by the API; a non-numeric value is stored as 0.' }
+        longitude: { type: [number, 'null'], description: 'Degrees. Not range-checked by the API; a non-numeric value is stored as 0.' }
+    LocationUsage:
+      type: object
+      required: [events, templates, templateNames]
+      properties:
+        events: { type: integer }
+        templates: { type: integer }
+        templateNames: { type: array, items: { type: string }, description: Only when at most 3 templates use it. }
+    LinkUsage:
+      type: object
+      description: What deleting the item detaches it from.
+      required: [events, templates, eventNames]
+      properties:
+        events: { type: integer }
+        templates: { type: integer }
+        eventNames: { type: array, items: { type: string }, description: Only when at most 3 events use it. }
+    TargetGroupUsage:
+      allOf:
+        - { $ref: '#/components/schemas/LinkUsage' }
+        - type: object
+          required: [feeds]
+          properties:
+            feeds: { type: integer }
+    Property:
+      type: object
+      required: [id, calendarId, name, icon]
+      properties:
+        id: { type: string }
+        calendarId: { type: string }
+        name: { type: string }
+        icon: { type: [string, 'null'], description: Emoji. }
+    PropertyInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        icon: { type: [string, 'null'], maxLength: 32 }
+    Feature:
+      type: object
+      required: [id, calendarId, name]
+      properties:
+        id: { type: string }
+        calendarId: { type: string }
+        name: { type: string }
+    TargetGroup:
+      type: object
+      required: [id, calendarId, name]
+      properties:
+        id: { type: string }
+        calendarId: { type: string }
+        name: { type: string }
+    NameInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+    NamePatch:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+    PropertyLink:
+      type: object
+      required: [propertyId, property]
+      properties:
+        propertyId: { type: string }
+        property:
+          type: object
+          required: [id, name, icon]
+          properties:
+            id: { type: string }
+            name: { type: string }
+            icon: { type: [string, 'null'] }
+    FeatureLink:
+      type: object
+      required: [featureId, feature]
+      properties:
+        featureId: { type: string }
+        feature:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string }
+            name: { type: string }
+    TargetGroupLink:
+      type: object
+      required: [targetGroupId, targetGroup]
+      properties:
+        targetGroupId: { type: string }
+        targetGroup:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string }
+            name: { type: string }
+
+    # ---------------------------------------------------------------- templates
+    TemplateInput:
+      type: object
+      description: '`timeBegin`/`timeEnd` only as a pair (400 otherwise); without times events from the template are all-day.'
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        timezone: { type: [string, 'null'] }
+        timeBegin: { type: [string, 'null'], pattern: '^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$' }
+        timeEnd: { type: [string, 'null'], pattern: '^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$' }
+        locationId: { type: [string, 'null'] }
+        propertyIds: { $ref: '#/components/schemas/IdList' }
+        featureIds: { $ref: '#/components/schemas/IdList' }
+        targetGroupIds: { $ref: '#/components/schemas/IdList' }
+    Template:
+      type: object
+      required: [id, calendarId, locationId, name, timezone, timeBegin, timeEnd, location, properties, features, targetGroups]
+      properties:
+        id: { type: string }
+        calendarId: { type: string }
+        locationId: { type: [string, 'null'] }
+        name: { type: string }
+        timezone: { type: [string, 'null'] }
+        timeBegin: { type: [string, 'null'], examples: ['19:00'] }
+        timeEnd: { type: [string, 'null'] }
+        location:
+          oneOf:
+            - { $ref: '#/components/schemas/LocationRef' }
+            - { type: 'null' }
+        properties: { type: array, items: { $ref: '#/components/schemas/PropertyLink' } }
+        features: { type: array, items: { $ref: '#/components/schemas/FeatureLink' } }
+        targetGroups: { type: array, items: { $ref: '#/components/schemas/TargetGroupLink' } }
+    TemplateWithCount:
+      allOf:
+        - { $ref: '#/components/schemas/Template' }
+        - type: object
+          required: [eventCount]
+          properties:
+            eventCount: { type: integer }
+
+    # ---------------------------------------------------------------- events
+    EventFields:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        timezone: { type: [string, 'null'], description: IANA zone; null = calendar zone. }
+        date: { $ref: '#/components/schemas/Date' }
+        dateEnd: { type: [string, 'null'], format: date, description: Last day of a multi-day event (not before `date`). }
+        timeBegin: { $ref: '#/components/schemas/Time' }
+        timeEnd: { $ref: '#/components/schemas/Time' }
+        isAllDay: { type: [boolean, 'null'] }
+        isDraft: { type: [boolean, 'null'] }
+        locationId: { type: [string, 'null'] }
+        eventTemplateId: { type: [string, 'null'] }
+        propertyIds: { $ref: '#/components/schemas/IdList' }
+        featureIds: { $ref: '#/components/schemas/IdList' }
+        targetGroupIds: { $ref: '#/components/schemas/IdList' }
+    EventInput:
+      allOf:
+        - { $ref: '#/components/schemas/EventFields' }
+        - type: object
+          required: [name, date, timeBegin, timeEnd]
+          description: All-day events are sent with `isAllDay` and times `00:00`-`23:59`.
+    EventPatch:
+      allOf:
+        - { $ref: '#/components/schemas/EventFields' }
+        - type: object
+          properties:
+            scope: { $ref: '#/components/schemas/Scope' }
+    Event:
+      type: object
+      required: [id, calendarId, eventTemplateId, seriesId, locationId, name, timezone, date, dateEnd, timeBegin, timeEnd, isAllDay, isDraft, externalUid, location, template, properties, features, targetGroups]
+      properties:
+        id: { type: string }
+        calendarId: { type: string }
+        eventTemplateId: { type: [string, 'null'] }
+        seriesId: { type: [string, 'null'] }
+        locationId: { type: [string, 'null'] }
+        name: { type: string }
+        timezone: { type: [string, 'null'], description: 'Stored zone (null = calendar, then club zone).' }
+        date: { $ref: '#/components/schemas/Date' }
+        dateEnd: { type: [string, 'null'], format: date }
+        timeBegin: { type: string, examples: ['19:30'] }
+        timeEnd: { type: string }
+        isAllDay: { type: boolean }
+        isDraft: { type: boolean }
+        externalUid: { type: [string, 'null'], description: ICS UID of imported events. }
+        location:
+          oneOf:
+            - { $ref: '#/components/schemas/LocationRef' }
+            - { type: 'null' }
+        template:
+          oneOf:
+            - type: object
+              required: [id, name]
+              properties:
+                id: { type: string }
+                name: { type: string }
+            - { type: 'null' }
+        properties: { type: array, items: { $ref: '#/components/schemas/PropertyLink' } }
+        features: { type: array, items: { $ref: '#/components/schemas/FeatureLink' } }
+        targetGroups: { type: array, items: { $ref: '#/components/schemas/TargetGroupLink' } }
+    EventWithSeries:
+      allOf:
+        - { $ref: '#/components/schemas/Event' }
+        - type: object
+          required: [series]
+          properties:
+            series:
+              oneOf:
+                - { $ref: '#/components/schemas/Series' }
+                - { type: 'null' }
+
+    # ---------------------------------------------------------------- series
+    SeriesRuleInput:
+      type: object
+      description: >-
+        Exactly one of `until` and `count` (else 400 field `rule`). Errors: 400 `validation_failed` field `rule.<name>`;
+        `count` > 366 → 422 `too_many_events` field `rule.count`.
+      required: [frequency, weekday, startDate]
+      properties:
+        frequency: { type: string, enum: [weekly, biweekly, monthly] }
+        weekday: { type: integer, minimum: 0, maximum: 6, description: 0 = Sunday … 6 = Saturday. }
+        nth: { type: [integer, 'null'], minimum: 1, maximum: 5, description: Required for `monthly`; 5 = last. }
+        startDate: { $ref: '#/components/schemas/Date' }
+        until: { type: [string, 'null'], format: date, description: Inclusive; not before `startDate`. }
+        count: { type: [integer, 'null'], minimum: 1, maximum: 366, description: Number of created events (skipped holidays do not count). }
+        skipHolidays: { type: boolean, default: false }
+    SeriesRule:
+      type: object
+      required: [frequency, weekday, nth, startDate, until, count, skipHolidays, durationDays]
+      properties:
+        frequency: { type: string, enum: [weekly, biweekly, monthly] }
+        weekday: { type: integer, minimum: 0, maximum: 6 }
+        nth: { type: [integer, 'null'] }
+        startDate: { $ref: '#/components/schemas/Date' }
+        until: { type: [string, 'null'], format: date }
+        count: { type: [integer, 'null'] }
+        skipHolidays: { type: boolean }
+        durationDays: { $ref: '#/components/schemas/DurationDays' }
+    Series:
+      type: object
+      required: [id, calendarId, templateId, rule, eventCount, createdAt]
+      properties:
+        id: { type: string }
+        calendarId: { type: string }
+        templateId: { type: [string, 'null'] }
+        rule: { $ref: '#/components/schemas/SeriesRule' }
+        eventCount: { type: integer }
+        createdAt: { type: string, format: date-time, examples: ['2026-10-13T12:00:00Z'] }
+    DatedName:
+      type: object
+      required: [date, name]
+      properties:
+        date: { $ref: '#/components/schemas/Date' }
+        name: { type: string }
+    SeriesPreview:
+      type: object
+      required: [dates, count, skippedHolidays, holidays]
+      properties:
+        dates: { type: array, items: { $ref: '#/components/schemas/Date' } }
+        count: { type: integer }
+        skippedHolidays: { type: array, items: { $ref: '#/components/schemas/DatedName' }, description: Dates left out because of `skipHolidays`. }
+        holidays: { type: array, items: { $ref: '#/components/schemas/DatedName' }, description: All dates of the rule touching a holiday (skipped or kept). }
+    SeriesCreateInput:
+      type: object
+      required: [rule]
+      properties:
+        rule: { $ref: '#/components/schemas/SeriesRuleInput' }
+        templateId: { type: [string, 'null'] }
+        isDraft: { type: boolean, default: true }
+        event:
+          type: object
+          description: Event values (override the template's); `date`/`dateEnd` are not allowed.
+          properties:
+            name: { type: string }
+            timeBegin: { $ref: '#/components/schemas/Time' }
+            timeEnd: { $ref: '#/components/schemas/Time' }
+            isAllDay: { type: boolean }
+            timezone: { type: [string, 'null'] }
+            locationId: { type: [string, 'null'] }
+            propertyIds: { $ref: '#/components/schemas/IdList' }
+            featureIds: { $ref: '#/components/schemas/IdList' }
+            targetGroupIds: { $ref: '#/components/schemas/IdList' }
+            isDraft: { type: boolean }
+            durationDays: { $ref: '#/components/schemas/DurationDays' }
+    SeriesUpdatePreview:
+      type: object
+      required: [toCreate, toDelete, kept, past, skippedHolidays]
+      properties:
+        toCreate:
+          type: array
+          items:
+            type: object
+            required: [date]
+            properties:
+              date: { $ref: '#/components/schemas/Date' }
+        toDelete:
+          type: array
+          items:
+            type: object
+            required: [id, date, name, isDraft]
+            properties:
+              id: { type: string }
+              date: { $ref: '#/components/schemas/Date' }
+              name: { type: string }
+              isDraft: { type: boolean }
+        kept: { type: integer, description: Future events that stay. }
+        past: { type: integer, description: Past events (never changed). }
+        skippedHolidays: { type: array, items: { $ref: '#/components/schemas/DatedName' } }
+
+    # ---------------------------------------------------------------- import
+    ImportInput:
+      type: object
+      required: [events]
+      properties:
+        events:
+          type: array
+          minItems: 1
+          maxItems: 5000
+          items: { $ref: '#/components/schemas/ImportEvent' }
+        locations:
+          type: array
+          maxItems: 5000
+          description: New places, referenced by `locationTempId`; created only if an imported event uses them.
+          items:
+            allOf:
+              - { $ref: '#/components/schemas/LocationInput' }
+              - type: object
+                required: [tempId]
+                properties:
+                  tempId: { type: string, minLength: 1, maxLength: 1000 }
+        skipDuplicates: { type: boolean, default: false }
+    ImportEvent:
+      allOf:
+        - { $ref: '#/components/schemas/EventInput' }
+        - type: object
+          properties:
+            externalUid: { type: [string, 'null'], maxLength: 255, description: ICS UID (duplicate detection). }
+            locationTempId: { type: [string, 'null'], description: '`tempId` of an entry of `locations` (not together with `locationId`).' }
+    ImportWarning:
+      type: object
+      required: [index, field, code, message, value, replacement]
+      properties:
+        index: { type: integer }
+        field: { type: string, const: timezone }
+        code: { type: string, const: timezone_replaced }
+        message: { type: string }
+        value: { type: string, description: The unknown zone (max. 100 characters). }
+        replacement: { type: [string, 'null'], description: 'Calendar zone, else club zone.' }
+    ImportPreview:
+      type: object
+      required: [events, summary, warnings]
+      properties:
+        events:
+          type: array
+          items:
+            type: object
+            required: [index, status]
+            properties:
+              index: { type: integer }
+              status: { type: string, enum: [new, duplicate, invalid] }
+              errors:
+                type: array
+                description: Only for `invalid`.
+                items:
+                  type: object
+                  required: [field, code, message]
+                  properties:
+                    field: { type: [string, 'null'], examples: ['events[2].date'] }
+                    code: { $ref: '#/components/schemas/ErrorCode' }
+                    message: { type: string }
+              duplicate:
+                type: object
+                description: Only for `duplicate`; the existing event and the matching rule.
+                required: [id, name, date, rule]
+                properties:
+                  id: { type: string }
+                  name: { type: string }
+                  date: { $ref: '#/components/schemas/Date' }
+                  rule: { type: string, enum: [externalUid, nameDate] }
+        summary:
+          type: object
+          required: [total, new, duplicate, invalid]
+          properties:
+            total: { type: integer }
+            new: { type: integer }
+            duplicate: { type: integer }
+            invalid: { type: integer }
+        warnings: { type: array, items: { $ref: '#/components/schemas/ImportWarning' } }
+    ImportResult:
+      type: object
+      required: [imported, skipped, createdLocations, ids, warnings]
+      properties:
+        imported: { type: integer }
+        skipped: { type: integer, description: Duplicates skipped with `skipDuplicates`. }
+        createdLocations:
+          type: array
+          items:
+            type: object
+            required: [tempId, id]
+            properties:
+              tempId: { type: string }
+              id: { type: string }
+        ids: { type: array, items: { type: string }, description: Ids of the created events in input order. }
+        warnings: { type: array, items: { $ref: '#/components/schemas/ImportWarning' } }
+
+    # ---------------------------------------------------------------- feeds
+    FeedVisibility:
+      type: string
+      enum: [PUBLIC, CLUB, PRIVATE]
+      description: '`PUBLIC` and `CLUB` are reachable by link without the secret and differ only for search engines; `PRIVATE` requires the secret.'
+    Feed:
+      type: object
+      required: [id, calendarId, name, visibility, searchable, indexable, sharedSecret, targetGroups]
+      properties:
+        id: { type: string }
+        calendarId: { type: string }
+        name: { type: string }
+        visibility: { $ref: '#/components/schemas/FeedVisibility' }
+        searchable: { type: boolean, description: Effective search engine opt-in (always false unless `PUBLIC`). }
+        indexable: { type: boolean, description: '`visibility == PUBLIC && searchable`.' }
+        sharedSecret: { type: string, description: 32 hex characters; only `PRIVATE` feeds require it. }
+        targetGroups:
+          type: array
+          description: Selected target groups (empty = all events).
+          items:
+            type: object
+            required: [feedId, targetGroupId]
+            properties:
+              feedId: { type: string }
+              targetGroupId: { type: string }
+    FeedInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        visibility:
+          allOf: [{ $ref: '#/components/schemas/FeedVisibility' }]
+          description: 'Default `CLUB` on create. Invalid or empty → 400 `validation_failed` field `visibility`.'
+        searchable: { type: boolean, description: 'Only with (resulting) `PUBLIC`; else 422 field `searchable`. No boolean → 400.' }
+        targetGroupIds: { $ref: '#/components/schemas/IdList' }
+    PublicFeedHeader:
+      type: object
+      required: [id, name, clubName, calendarName, timezone, visibility, indexable, eventCount, audiences]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        clubName: { type: string }
+        calendarName: { type: string }
+        timezone: { type: string, description: 'Effective calendar zone (calendar, else club, else UTC).' }
+        visibility: { $ref: '#/components/schemas/FeedVisibility' }
+        indexable: { type: boolean, description: Drives the `<meta name="robots">` of the SPA page. }
+        eventCount: { type: integer, description: All published events of the feed (not only the range). }
+        audiences:
+          type: array
+          description: Target groups used by the feed's published events.
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string }
+              name: { type: string }
+    PublicEvent:
+      type: object
+      required: [id, calendarId, name, date, dateEnd, timeBegin, timeEnd, isAllDay, timezone, location, properties, features, targetGroups]
+      properties:
+        id: { type: string }
+        calendarId: { type: string }
+        name: { type: string }
+        date: { $ref: '#/components/schemas/Date' }
+        dateEnd: { type: [string, 'null'], format: date }
+        timeBegin: { type: string }
+        timeEnd: { type: string }
+        isAllDay: { type: boolean }
+        timezone: { type: string, description: 'Effective zone (event, else calendar, else club).' }
+        location:
+          oneOf:
+            - allOf:
+                - { $ref: '#/components/schemas/LocationRef' }
+                - type: object
+                  required: [updatedAt]
+                  properties:
+                    updatedAt: { type: integer }
+            - { type: 'null' }
+        properties: { type: array, items: { $ref: '#/components/schemas/PropertyLink' } }
+        features: { type: array, items: { $ref: '#/components/schemas/FeatureLink' } }
+        targetGroups: { type: array, items: { $ref: '#/components/schemas/TargetGroupLink' } }
+
+    # ---------------------------------------------------------------- holidays
+    HolidayCalendar:
+      type: object
+      required: [id, name, url, lastFetchedAt, eventCount]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        url: { type: string, format: uri }
+        lastFetchedAt: { type: [string, 'null'], format: date-time }
+        eventCount: { type: integer, description: 'Stored holidays. The response of `POST` (create) still shows 0 although the holidays were stored; `GET` and refresh show the real count.' }
+    HolidayCalendarInput:
+      type: object
+      required: [name, url]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        url: { type: string, format: uri, maxLength: 2048 }
+    HolidayEvent:
+      type: object
+      required: [id, holidayCalendarId, name, date, dateEnd]
+      properties:
+        id: { type: string }
+        holidayCalendarId: { type: string }
+        name: { type: string }
+        date: { $ref: '#/components/schemas/Date' }
+        dateEnd: { type: [string, 'null'], format: date }
