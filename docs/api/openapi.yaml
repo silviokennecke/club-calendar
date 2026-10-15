@@ -1054,7 +1054,9 @@ paths:
     patch:
       tags: [Calendars]
       summary: Rename a calendar or change its zone
-      description: Also allowed for archived calendars.
+      description: >-
+        Denied (403) for archived calendars, which are read-only. Deleting and duplicating an archived
+        calendar stays allowed on purpose, as do archive and unarchive.
       operationId: updateCalendar
       requestBody:
         required: true
@@ -1073,11 +1075,12 @@ paths:
               schema: { $ref: '#/components/schemas/Calendar' }
         '400': { $ref: '#/components/responses/InvalidInput' }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
         '404': { $ref: '#/components/responses/NotFound' }
     delete:
       tags: [Calendars]
       summary: Delete a calendar with all its data
+      description: Also allowed for archived calendars (deliberate).
       operationId: deleteCalendar
       responses:
         '200': { $ref: '#/components/responses/Ok' }
@@ -1130,7 +1133,7 @@ paths:
       summary: Duplicate a calendar
       description: >-
         Copies reference data (properties, features, target groups, locations), templates and feeds (same state, new
-        secrets, `searchable` always false), but no events. The body is optional.
+        secrets, `searchable` always false), but no events. The body is optional. Also allowed for archived calendars (deliberate).
       operationId: duplicateCalendar
       requestBody:
         required: false

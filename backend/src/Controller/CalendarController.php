@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Dto\Calendar\CreateCalendarDto;
 use App\Entity\Calendar;
 use App\Entity\Club;
+use App\Security\ArchivedCalendarVoter;
 use App\Security\ClubMemberVoter;
 use App\Service\CalendarService;
 use App\Service\Input;
@@ -65,8 +66,11 @@ class CalendarController extends AbstractApiController
         return new JsonResponse($this->calendarService->serializeCalendar($calendar));
     }
 
+    // Archived calendars are read-only: renaming / changing the zone is denied (403). Deliberately NOT guarded:
+    // DELETE, duplicate, archive and unarchive (an archived calendar may be deleted, copied and restored).
     #[Route('/{calendarId}', methods: ['PATCH'])]
     #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
+    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function update(
         #[MapEntity(id: 'clubId')] Club $club,
         #[MapEntity(expr: 'repository.findByIdAndClubId(calendarId, clubId)')] Calendar $calendar,

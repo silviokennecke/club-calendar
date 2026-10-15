@@ -17,6 +17,7 @@ use App\Entity\Location;
 use App\Entity\Property;
 use App\Entity\TargetGroup;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 class CalendarService
 {
@@ -70,6 +71,11 @@ class CalendarService
 
     public function updateCalendar(Calendar $calendar, array $data): array
     {
+        // Defense in depth: the route already denies archived calendars (NOT_ARCHIVED); archive/unarchive
+        // use their own methods and are not affected.
+        if (null !== $calendar->getArchivedAt()) {
+            throw new AccessDeniedException('Calendar is archived');
+        }
         if (array_key_exists('name', $data)) {
             $calendar->setName(Input::string($data, 'name'));
         }
