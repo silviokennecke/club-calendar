@@ -361,7 +361,7 @@ class ImportTest extends WebTestCase
         $this->assertSame(['Pacific' => 'Europe/Vienna', 'Windows' => 'Europe/Vienna', 'Alias' => 'US/Pacific', 'Ohne' => null], $zones);
         // Not a string: still a validation error
         $r = $this->post("$base/events/import", ['events' => [$this->event(['timezone' => 42])]], $auth);
-        $this->assertSame(422, $r['status']);
+        $this->assertSame(400, $r['status']);
         $this->assertSame('events[0].timezone', $r['body']['field']);
     }
 

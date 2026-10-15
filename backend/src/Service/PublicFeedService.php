@@ -201,7 +201,7 @@ class PublicFeedService
     {
         $feedTargetGroupIds = $feed->getTargetGroups()
             ->map(fn ($ftg) => $ftg->getTargetGroup()->getId())
-            ->toArray();
+            ->getValues();
 
         $qb->andWhere('e.calendar = :calendar')
             ->andWhere('e.isDraft = false')
@@ -254,21 +254,21 @@ class PublicFeedService
                     'name' => $ep->getProperty()->getName(),
                     'icon' => $ep->getProperty()->getIcon(),
                 ],
-            ])->toArray(),
+            ])->getValues(),
             'features' => $e->getFeatures()->map(fn ($ef) => [
                 'featureId' => $ef->getFeature()->getId(),
                 'feature' => [
                     'id' => $ef->getFeature()->getId(),
                     'name' => $ef->getFeature()->getName(),
                 ],
-            ])->toArray(),
+            ])->getValues(),
             'targetGroups' => $e->getTargetGroups()->map(fn ($etg) => [
                 'targetGroupId' => $etg->getTargetGroup()->getId(),
                 'targetGroup' => [
                     'id' => $etg->getTargetGroup()->getId(),
                     'name' => $etg->getTargetGroup()->getName(),
                 ],
-            ])->toArray(),
+            ])->getValues(),
         ];
     }
 }

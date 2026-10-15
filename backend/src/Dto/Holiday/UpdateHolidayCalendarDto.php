@@ -6,14 +6,15 @@ namespace App\Dto\Holiday;
 
 use Symfony\Component\Validator\Constraints as Assert;
 
+/** Partial update: null = not sent (unchanged); a sent value has the rules of CreateHolidayCalendarDto. */
 class UpdateHolidayCalendarDto
 {
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(allowNull: true)]
     #[Assert\Length(min: 1, max: 255)]
-    public string $name = '';
+    public ?string $name = null;
 
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(allowNull: true)]
     #[Assert\Url]
     #[Assert\Length(max: 2048)]
-    public string $url = '';
+    public ?string $url = null;
 }

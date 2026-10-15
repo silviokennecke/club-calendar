@@ -26,7 +26,7 @@ the router, so a new or changed route needs a matching operation there).
 | Feeds | `/api/calendars/{calendarId}/feeds` (incl. single GET `…/{feedId}`) | `FeedController` | `FeedService` |
 | Public Feed | `/api/feed/{id}/events` (`?from&to`, header + holidays), `/api/feed/{id}/events/{eventId}`, `/api/feed/{id}/ics` | `PublicFeedController` | `PublicFeedService`, `IcsService` |
 | Holiday Calendars | `/api/calendars/{calendarId}/holiday-calendars`, `…/holiday-events` | `HolidayCalendarController`, `HolidayEventController` | `HolidayCalendarService` |
-| Mapbox Proxy | `/api/mapbox` | `MapboxController` | `Map\MapboxProxyService` |
+| Mapbox Proxy | `/api/mapbox` (GET only) | `MapboxController` | `Map\MapboxProxyService` |
 | Map images / geocoding | `/api/map` | `MapController` | `Map\*` (cached, rate-limited providers); without `MAPBOX_TOKEN` (`Map\MapAvailability`) images answer 503 with `backend/assets/map-unavailable.png` (after the 404 checks), geocoding and the Mapbox proxy 503 `map_unavailable` |
 | Health | `/api/health` | `HealthController` | — |
 
@@ -38,7 +38,8 @@ the router, so a new or changed route needs a matching operation there).
 | `src/Security/CalendarMemberVoter.php` | Checks user is a member of the calendar's club (`CALENDAR_MEMBER`) |
 | `src/Security/ClubMemberVoter.php` | Checks user is a club member (`CLUB_MEMBER`) |
 | `src/Security/ArchivedCalendarVoter.php` | Blocks writes to archived calendars (`NOT_ARCHIVED`) |
-| `src/EventListener/ExceptionListener.php` | Converts all exceptions to RFC 7807 `application/problem+json` |
+| `src/EventListener/ExceptionListener.php` | Converts all exceptions to RFC 7807 `application/problem+json` (`src/Http/ProblemResponse.php`); access denied without a signed-in user → 401 `missing_token`; every 400 gets a code (framework 400s `invalid_request`, array query parameters `validation_failed` + `field`) |
+| `src/Security/JwtProblemListener.php` | 401 problems of the JWT bundle: `missing_token`, `invalid_token`, `token_expired` (`WWW-Authenticate: Bearer`) |
 | `src/EventListener/FeedResponseHeadersListener.php` | `Referrer-Policy: no-referrer` + `X-Robots-Tag: noindex` on `/api/feed/*`, except successful responses of an indexable feed (`robotsTag()` reads the request attribute `feed_indexable` set by `PublicFeedService` after the access checks; missing → noindex) |
 | `src/Controller/AbstractApiController.php` | Base controller with `validateDto()` and `decodeJson()` helpers (no JSON object → 400 `invalid_request`) |
 | `src/Service/TokenService.php` | Creates JWT access tokens (lexik) and HMAC refresh tokens (claims `uid`, `tv` = `user.token_version`) |
@@ -52,7 +53,7 @@ the router, so a new or changed route needs a matching operation there).
 | `src/Command/` | `app:prune-unverified-users`, `app:prune-password-resets` (cron), `app:user:verify <email>`, `app:user:reset-link <email>` (support / dev / E2E) |
 | `src/Service/CalendarReferences.php` | Resolves location/template/property/feature/target-group IDs within one calendar (unknown or foreign → 422) |
 | `src/Service/LinkCollectionSync.php` | Syncs join-table collections by diff (deduplicated IDs, no identity collisions) |
-| `src/Service/Input.php` | Typed input validation helpers (400 `validation_failed` with `field`); `optionalDate` / `assertDateRange` for `from`/`to` query parameters (strict `YYYY-MM-DD`, never `strtotime`) |
+| `src/Service/Input.php` | Typed input validation helpers (400 `validation_failed` with `field`, also invalid time zones; 422 is reserved for DTO constraints and state conflicts); `optionalDate` / `assertDateRange` for `from`/`to` query parameters (strict `YYYY-MM-DD`, never `strtotime`) |
 | `src/Service/EventImportService.php` | ICS import: preview (`new`/`duplicate`/`invalid` per entry, writes nothing) and atomic import (new places by `tempId`, `skipDuplicates`, unknown time zones → calendar zone + `warnings`, max. 5000 per request → 413 `too_many_events`) |
 | `src/Service/EventExportService.php` | Member ICS download via `IcsService` (`from`/`to` overlap, `includeDrafts` as TENTATIVE, `targetGroupIds[]` of the calendar, safe `Content-Disposition`) |
 | `src/Service/SeriesRule.php` | Series rule (weekly / biweekly / monthly n-th weekday, `until` or `count`, `skipHolidays`, `durationDays`): validation and the ONLY computation of series dates (calendar days in UTC), max. 366 events (422 `too_many_events`) |
@@ -61,7 +62,7 @@ the router, so a new or changed route needs a matching operation there).
 | `src/Service/UniqueNames.php` | Names of properties/features/target groups unique per calendar (trim, case-insensitive, compared in PHP; no unique index, old duplicates stay) |
 | `src/Exception/ApiProblemException.php` | HTTP error with a stable `code` (+ optional `field`) in the RFC 7807 body, e.g. 422 `duplicate_name`; code list: `ErrorCode` in `docs/api/openapi.yaml` |
 | `config/services.yaml` | Parameters and env defaults: `APP_URL` drives `FRONTEND_URL`, `BACKEND_URL` and `WEBAUTHN_RP_ID`; optional `MAPBOX_TOKEN`, cache TTLs, `WEBAUTHN_USER_VERIFICATION` |
-| `config/packages/security.yaml` | Stateless JWT firewall; public routes allowlist |
+| `config/packages/security.yaml` | Stateless JWT firewall; `access_control` requires authentication for `/api/clubs*`, `/api/calendars*`, `/api/map/geocode/*` (401 before the entity lookup) |
 | `migrations/` | Doctrine migrations (initial schema `Version20260625000000`, all tables in snake_case; then `Version20261004120000` `auth_nonce`, `Version20261004130000` `user.token_version`, `Version20261009120000` nullable template times, `Version20261010120000` `event.external_uid`, `Version20261013120000` `password_reset`, `email_change`, `passkey.last_used_at`, `club_user.last_calendar_id`, latest `Version20261014120000` `event_series` + `event.series_id`) |
 
 ## Security Pattern

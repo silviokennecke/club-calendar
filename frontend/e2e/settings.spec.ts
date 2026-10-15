@@ -329,6 +329,17 @@ test.describe("Einstellungen", () => {
       "Die Adresse konnte nicht abgerufen werden.",
     );
     await expect(page.getByLabel(/^Name/)).toHaveValue("Feiertage Test");
+    // An address the server accepts but cannot fetch (422 ics_fetch_failed), not only one it rejects
+    await page.getByLabel(/^ICS-Adresse/).fill("https://nicht-erreichbar.invalid/feiertage.ics");
+    const failed = page.waitForResponse(
+      (r) => r.url().endsWith("/holiday-calendars") && r.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: "Hinzufügen und abrufen" }).click();
+    expect(await (await failed).json()).toMatchObject({ status: 422, code: "ics_fetch_failed" });
+    await expect(page.getByRole("alert")).toContainText(
+      "Die Adresse konnte nicht abgerufen werden.",
+    );
+    await expect(page.getByRole("heading", { name: "Noch keine Feiertagskalender" })).toBeVisible();
   });
 
   test("Allgemein verweist für Kalender-Verwaltung auf die Vereinsseite", async ({

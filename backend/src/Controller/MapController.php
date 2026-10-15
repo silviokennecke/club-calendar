@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Entity\Event;
 use App\Entity\Location;
+use App\Exception\ApiProblemException;
 use App\Exception\RateLimitExceededException;
 use App\Service\Map\GeocoderInterface;
 use App\Service\Map\MapAvailability;
@@ -52,7 +53,7 @@ class MapController extends AbstractController
         try {
             $results = $this->geocoder->suggest($query, $lat, $lng, $limit);
         } catch (RateLimitExceededException) {
-            return new Response(null, 429);
+            throw self::rateLimited();
         } catch (\Throwable $e) {
             $this->logger->error('Geocoding suggest failed', ['exception' => $e]);
             throw new ServiceUnavailableHttpException(null, 'Geocoding service unavailable', $e);
@@ -82,7 +83,7 @@ class MapController extends AbstractController
         try {
             $address = $this->geocoder->reverse($lng, $lat);
         } catch (RateLimitExceededException) {
-            return new Response(null, 429);
+            throw self::rateLimited();
         } catch (\Throwable $e) {
             $this->logger->error('Geocoding reverse failed', ['exception' => $e]);
             throw new ServiceUnavailableHttpException(null, 'Geocoding service unavailable', $e);
@@ -123,6 +124,12 @@ class MapController extends AbstractController
         }
 
         return $this->buildImageResponse($location->getLongitude(), $location->getLatitude());
+    }
+
+    /** 429 `rate_limited` (RFC 7807) of the JSON routes (geocoding, Mapbox proxy); map images answer an empty 429. */
+    public static function rateLimited(): ApiProblemException
+    {
+        return new ApiProblemException(429, 'Too many requests', 'rate_limited');
     }
 
     /**

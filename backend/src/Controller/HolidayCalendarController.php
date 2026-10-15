@@ -8,15 +8,18 @@ use App\Dto\Holiday\CreateHolidayCalendarDto;
 use App\Dto\Holiday\UpdateHolidayCalendarDto;
 use App\Entity\Calendar;
 use App\Entity\HolidayCalendar;
+use App\Exception\ApiProblemException;
 use App\Repository\HolidayCalendarRepository;
 use App\Security\ArchivedCalendarVoter;
 use App\Security\CalendarMemberVoter;
 use App\Service\HolidayCalendarService;
+use App\Service\Input;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -50,8 +53,8 @@ class HolidayCalendarController extends AbstractApiController
     ): JsonResponse {
         $data = $this->decodeJson($request);
         $dto = new CreateHolidayCalendarDto();
-        $dto->name = (string) ($data['name'] ?? '');
-        $dto->url = (string) ($data['url'] ?? '');
+        $dto->name = self::stringValue($data, 'name') ?? '';
+        $dto->url = self::stringValue($data, 'url') ?? '';
         $this->validateDto($dto, $validator);
 
         $hc = new HolidayCalendar($calendar, $dto->name, $dto->url);
@@ -65,7 +68,7 @@ class HolidayCalendarController extends AbstractApiController
                 return $this->holidayCalendarService->fetchAndStore($hc);
             });
         } catch (\Throwable) {
-            return new JsonResponse(['error' => 'Failed to fetch ICS feed. Please check the URL and try again.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            throw self::fetchFailed();
         }
 
         return new JsonResponse($this->serialize($hc, $eventCount), Response::HTTP_CREATED);
@@ -80,19 +83,24 @@ class HolidayCalendarController extends AbstractApiController
         Request $request,
         ValidatorInterface $validator,
     ): JsonResponse {
-        $hc = $this->holidayCalendarRepo->find($hcId);
-        if (!$hc || $hc->getCalendar()->getId() !== $calendar->getId()) {
-            return new JsonResponse(['error' => 'Not found'], Response::HTTP_NOT_FOUND);
-        }
+        $hc = $this->find($calendar, $hcId);
 
+        // Partial: only the sent keys change; at least one of them. Values are checked like on create (422).
         $data = $this->decodeJson($request);
+        if (!array_key_exists('name', $data) && !array_key_exists('url', $data)) {
+            throw new ApiProblemException(Response::HTTP_UNPROCESSABLE_ENTITY, 'name or url is required', Input::CODE, 'name');
+        }
         $dto = new UpdateHolidayCalendarDto();
-        $dto->name = (string) ($data['name'] ?? '');
-        $dto->url = (string) ($data['url'] ?? '');
+        $dto->name = self::stringValue($data, 'name');
+        $dto->url = self::stringValue($data, 'url');
         $this->validateDto($dto, $validator);
 
-        $hc->setName($dto->name);
-        $hc->setUrl($dto->url);
+        if (null !== $dto->name) {
+            $hc->setName($dto->name);
+        }
+        if (null !== $dto->url) {
+            $hc->setUrl($dto->url);
+        }
         $this->em->flush();
 
         return new JsonResponse($this->serialize($hc));
@@ -105,15 +113,12 @@ class HolidayCalendarController extends AbstractApiController
         #[MapEntity(id: 'calendarId')] Calendar $calendar,
         string $hcId,
     ): JsonResponse {
-        $hc = $this->holidayCalendarRepo->find($hcId);
-        if (!$hc || $hc->getCalendar()->getId() !== $calendar->getId()) {
-            return new JsonResponse(['error' => 'Not found'], Response::HTTP_NOT_FOUND);
-        }
+        $hc = $this->find($calendar, $hcId);
 
         $this->em->remove($hc);
         $this->em->flush();
 
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        return new JsonResponse(['ok' => true]);
     }
 
     #[Route('/{hcId}/refresh', methods: ['POST'])]
@@ -123,18 +128,48 @@ class HolidayCalendarController extends AbstractApiController
         #[MapEntity(id: 'calendarId')] Calendar $calendar,
         string $hcId,
     ): JsonResponse {
-        $hc = $this->holidayCalendarRepo->find($hcId);
-        if (!$hc || $hc->getCalendar()->getId() !== $calendar->getId()) {
-            return new JsonResponse(['error' => 'Not found'], Response::HTTP_NOT_FOUND);
-        }
+        $hc = $this->find($calendar, $hcId);
 
         try {
             $eventCount = $this->holidayCalendarService->fetchAndStore($hc);
         } catch (\Throwable) {
-            return new JsonResponse(['error' => 'Failed to fetch ICS feed. Please check the URL and try again.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            throw self::fetchFailed();
         }
 
         return new JsonResponse($this->serialize($hc, $eventCount));
+    }
+
+    /**
+     * A sent `name` / `url`: null when the key is absent, else it must be a string (422 `validation_failed` on
+     * the field, like the DTO constraints; never cast, so `5` or a list do not become a name).
+     */
+    private static function stringValue(array $data, string $key): ?string
+    {
+        if (!array_key_exists($key, $data)) {
+            return null;
+        }
+        if (!is_string($data[$key])) {
+            throw new ApiProblemException(Response::HTTP_UNPROCESSABLE_ENTITY, sprintf('%s must be a string', $key), Input::CODE, $key);
+        }
+
+        return $data[$key];
+    }
+
+    /** The holiday calendar of this calendar; 404 (RFC 7807) for unknown ids and those of other calendars. */
+    private function find(Calendar $calendar, string $hcId): HolidayCalendar
+    {
+        $hc = $this->holidayCalendarRepo->find($hcId);
+        if (!$hc || $hc->getCalendar()->getId() !== $calendar->getId()) {
+            throw new NotFoundHttpException('Holiday calendar not found');
+        }
+
+        return $hc;
+    }
+
+    /** 422 `ics_fetch_failed` on `url`: the feed could not be fetched or parsed (nothing was stored). */
+    private static function fetchFailed(): ApiProblemException
+    {
+        return new ApiProblemException(Response::HTTP_UNPROCESSABLE_ENTITY, 'Failed to fetch ICS feed. Please check the URL and try again.', 'ics_fetch_failed', 'url');
     }
 
     private function serialize(HolidayCalendar $hc, ?int $eventCount = null): array

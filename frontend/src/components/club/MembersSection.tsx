@@ -16,7 +16,12 @@ import {
 import { apiDelete, apiGet, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { focusAfterDialog } from "@/lib/focus";
-import { memberAddFailure, validateMemberEmail, type MemberProblem } from "@/lib/club";
+import {
+  isMemberGone,
+  memberAddFailure,
+  validateMemberEmail,
+  type MemberProblem,
+} from "@/lib/club";
 import type { Club, User } from "@/lib/types";
 
 /**
@@ -71,9 +76,12 @@ export function MembersSection({ club }: { club: Club }) {
     const self = member.id === user?.id;
     try {
       await apiDelete(`/api/clubs/${club.id}/members/${member.id}`);
-    } catch {
-      toast.error(t(self ? "club.members.leaveFailed" : "club.members.removeFailed"));
-      return;
+    } catch (error) {
+      // 404 member_not_found: someone else removed the member meanwhile; the goal is reached
+      if (!isMemberGone(error)) {
+        toast.error(t(self ? "club.members.leaveFailed" : "club.members.removeFailed"));
+        return;
+      }
     }
     if (self) {
       // The user no longer belongs to the club: forget it as "last used" and leave the page.

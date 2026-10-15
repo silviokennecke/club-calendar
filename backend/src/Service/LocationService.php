@@ -53,7 +53,7 @@ readonly class LocationService
         return $location;
     }
 
-    /** A coordinate: absent/null or a JSON number within ±$limit, else 422 validation_failed on the field. */
+    /** A coordinate: absent/null or a JSON number within ±$limit, else 400 validation_failed on the field. */
     private static function coordinate(array $data, string $key, int $limit): ?float
     {
         $value = $data[$key] ?? null;
@@ -61,10 +61,10 @@ readonly class LocationService
             return null;
         }
         if (!is_int($value) && !is_float($value)) {
-            throw Input::invalid($key, sprintf('%s must be a number', $key), 422);
+            throw Input::invalid($key, sprintf('%s must be a number', $key));
         }
         if ($value < -$limit || $value > $limit) {
-            throw Input::invalid($key, sprintf('%s must be between -%d and %d', $key, $limit, $limit), 422);
+            throw Input::invalid($key, sprintf('%s must be between -%d and %d', $key, $limit, $limit));
         }
 
         return (float) $value;
@@ -78,10 +78,10 @@ readonly class LocationService
     private static function position(?float $latitude, ?float $longitude): array
     {
         if (null === $latitude && null !== $longitude) {
-            throw Input::invalid('latitude', 'latitude and longitude must be given together', 422);
+            throw Input::invalid('latitude', 'latitude and longitude must be given together');
         }
         if (null !== $latitude && null === $longitude) {
-            throw Input::invalid('longitude', 'latitude and longitude must be given together', 422);
+            throw Input::invalid('longitude', 'latitude and longitude must be given together');
         }
 
         return [$latitude, $longitude];

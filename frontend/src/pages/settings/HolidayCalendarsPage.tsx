@@ -29,6 +29,15 @@ import type { HolidayCalendar } from "@/lib/types";
  * Settings "Feiertage" (design: SettingsHolidays): holiday calendars from an ICS address — add,
  * refresh, delete, with status (count, last fetch), per-calendar holiday list and errors.
  */
+/**
+ * The address is the problem: it could not be fetched (422 `ics_fetch_failed`) or the server rejects it
+ * (`validation_failed` on `url`, e.g. no top-level domain). Matched by code and field, never the message.
+ */
+function isAddressProblem(error: unknown): boolean {
+  const { code, field } = (error ?? {}) as { code?: string; field?: string };
+  return code === "ics_fetch_failed" || (code === "validation_failed" && field === "url");
+}
+
 export default function HolidayCalendarsPage() {
   const { t } = useTranslation();
   const locale = useLocale();
@@ -86,7 +95,7 @@ export default function HolidayCalendarsPage() {
       setUrl("");
       toast.success(t("settings.holidays.added", { count: created.eventCount }));
     } catch (error) {
-      setAddError((error as { status?: number }).status === 422 ? "fetch" : "other");
+      setAddError(isAddressProblem(error) ? "fetch" : "other");
     } finally {
       setAdding(false);
     }

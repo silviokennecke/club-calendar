@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ClubPage from "../ClubPage";
+import { ApiError } from "@/lib/api";
+import { toast } from "sonner";
 import { renderRoute } from "../events/__tests__/testUtils";
 
 const apiGet = vi.fn();
@@ -69,6 +71,10 @@ beforeEach(() => {
   apiPost.mockResolvedValue({ id: "new", name: "Copy of Schießbetrieb 2026" });
   apiPatch.mockResolvedValue({});
   apiDelete.mockResolvedValue(undefined);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("ClubPage", () => {
@@ -189,6 +195,48 @@ describe("ClubPage", () => {
       }),
     );
     await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/clubs/c1/members/u2"));
+  });
+
+  it("treats a member someone else removed meanwhile (404 member_not_found) as removed", async () => {
+    apiDelete.mockRejectedValue(new ApiError("Member not found", 404, "member_not_found"));
+    const success = vi.spyOn(toast, "success");
+    const error = vi.spyOn(toast, "error");
+    const user = userEvent.setup();
+    renderClub();
+    await user.click(await screen.findByRole("button", { name: "Mara Sommer entfernen" }));
+    members = [members[0]];
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Mitglied entfernen",
+      }),
+    );
+    await waitFor(() =>
+      expect(success).toHaveBeenCalledWith("Mara Sommer wurde aus dem Verein entfernt."),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Mara Sommer entfernen" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  it("reports other failures of removing a member", async () => {
+    apiDelete.mockRejectedValue(new ApiError("Forbidden", 403));
+    const error = vi.spyOn(toast, "error");
+    const user = userEvent.setup();
+    renderClub();
+    await user.click(await screen.findByRole("button", { name: "Mara Sommer entfernen" }));
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Mitglied entfernen",
+      }),
+    );
+    await waitFor(() =>
+      expect(error).toHaveBeenCalledWith(
+        "Das Mitglied konnte nicht entfernt werden. Bitte versuche es erneut.",
+      ),
+    );
   });
 
   it("leaving the club removes yourself and goes to the club picker", async () => {

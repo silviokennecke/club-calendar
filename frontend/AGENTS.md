@@ -254,7 +254,10 @@ operations), `docs/api/openapi.yaml` (API reference).
   `apiGet/apiPost/apiPatch/apiDelete` (all four read the body; 204 responses resolve to `undefined`); recognise
   errors by `code` (status: `apiErrorStatus`), never by the message (the server's `detail`) (e.g. `email_taken`,
   `email_not_verified`, `unknown_reference`, `duplicate_name`, `too_many_events`, `invalid_reset_token`, `invalid_credentials`, `no_password`,
-  `last_login_method`, `account_in_use` (SSO `link-complete`); list in
+  `last_login_method`, `account_in_use` (SSO `link-complete`), `ics_fetch_failed` (holiday calendar address; `ApiError.field` names the input, e.g. `validation_failed` on `url`),
+  `member_not_found` (removing a member someone else removed: treated as done); every error body is RFC 7807,
+  a 401 (`invalid_token` / `token_expired` / `missing_token`) of a request with a token triggers the refresh in
+  `apiFetch` (by status, not code); list in
   `docs/api/openapi.yaml`, `ErrorCode`). SSO callback errors (`?error=`) map to their own texts via
   `lib/ssoError.ts` (`auth.login.ssoError.<code>`, unknown codes → `generic`). The react-query
   default `retry` (`lib/queryRetry.ts`) does not retry 4xx (401/403/404 show their error state at once), 5xx and

@@ -133,7 +133,9 @@ describe("HolidayCalendarsPage", () => {
   });
 
   it("explains an address that cannot be fetched", async () => {
-    createHolidayCalendar.mockRejectedValue(Object.assign(new Error("Failed"), { status: 422 }));
+    createHolidayCalendar.mockRejectedValue(
+      Object.assign(new Error("Failed"), { status: 422, code: "ics_fetch_failed" }),
+    );
     const user = userEvent.setup();
     renderRoute(route, url, <HolidayCalendarsPage />);
     await screen.findByRole("list");
@@ -144,6 +146,44 @@ describe("HolidayCalendarsPage", () => {
       "Die Adresse konnte nicht abgerufen werden. Prüfe die URL und versuche es erneut.",
     );
     expect(screen.getByLabelText(/^Name/)).toHaveValue("Feiertage AT");
+  });
+
+  it("explains an address the server rejects (validation_failed on url) like a failed fetch", async () => {
+    createHolidayCalendar.mockRejectedValue(
+      Object.assign(new Error("url: no TLD"), {
+        status: 422,
+        code: "validation_failed",
+        field: "url",
+      }),
+    );
+    const user = userEvent.setup();
+    renderRoute(route, url, <HolidayCalendarsPage />);
+    await screen.findByRole("list");
+    await user.type(screen.getByLabelText(/^Name/), "Feiertage AT");
+    await user.type(screen.getByLabelText(/^ICS-Adresse/), "https://127.0.0.1/at.ics");
+    await user.click(screen.getByRole("button", { name: "Hinzufügen und abrufen" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Die Adresse konnte nicht abgerufen werden. Prüfe die URL und versuche es erneut.",
+    );
+  });
+
+  it("tells other rejections apart from a failed fetch by the code, not the status", async () => {
+    createHolidayCalendar.mockRejectedValue(
+      Object.assign(new Error("name: too long"), {
+        status: 422,
+        code: "validation_failed",
+        field: "name",
+      }),
+    );
+    const user = userEvent.setup();
+    renderRoute(route, url, <HolidayCalendarsPage />);
+    await screen.findByRole("list");
+    await user.type(screen.getByLabelText(/^Name/), "Feiertage AT");
+    await user.type(screen.getByLabelText(/^ICS-Adresse/), "https://feiertage.example/at.ics");
+    await user.click(screen.getByRole("button", { name: "Hinzufügen und abrufen" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Der Feiertagskalender konnte nicht hinzugefügt werden. Bitte versuche es erneut.",
+    );
   });
 
   it("refreshes a calendar, with a busy state", async () => {

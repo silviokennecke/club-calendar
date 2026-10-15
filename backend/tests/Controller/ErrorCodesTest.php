@@ -65,10 +65,10 @@ class ErrorCodesTest extends WebTestCase
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', ['email' => 'nobody@example.com', 'password' => 'password123']);
         $this->assertProblem(401, ['code' => 'invalid_credentials'], $r);
 
-        // Unconfirmed address: the original body stays, `code` is added
+        // Unconfirmed address: an RFC 7807 problem like every other error (no legacy `error` member)
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', ['email' => 'new@example.com', 'password' => 'password123']);
-        $this->assertSame(403, $r['status']);
-        $this->assertSame(['error' => 'email_not_verified', 'code' => 'email_not_verified'], $r['body']);
+        $this->assertProblem(403, ['code' => 'email_not_verified'], $r);
+        $this->assertArrayNotHasKey('error', $r['body']);
     }
 
     public function testRefreshTokens(): void
@@ -124,7 +124,7 @@ class ErrorCodesTest extends WebTestCase
         $r = TestHelper::jsonRequest(self::$client, 'POST', $base, ['locationId' => '00000000-0000-0000-0000-000000000000'] + $valid, $auth);
         $this->assertProblem(422, ['code' => 'unknown_reference', 'field' => 'locationId'], $r);
         $r = TestHelper::jsonRequest(self::$client, 'POST', $base, ['timezone' => 'Mars/Olympus'] + $valid, $auth);
-        $this->assertProblem(422, ['code' => 'validation_failed', 'field' => 'timezone'], $r);
+        $this->assertProblem(400, ['code' => 'validation_failed', 'field' => 'timezone'], $r);
     }
 
     public function testBodiesThatAreNoJsonObjectAreInvalidRequests(): void

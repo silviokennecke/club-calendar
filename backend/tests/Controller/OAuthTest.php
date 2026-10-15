@@ -373,7 +373,8 @@ class OAuthTest extends WebTestCase
     public function testUnknownProviderIsRejectedWithoutRedirect(): void
     {
         self::$client->request('GET', self::API.'/api/auth/oauth/evil');
-        $this->assertSame(400, self::$client->getResponse()->getStatusCode());
+        $this->assertSame(404, self::$client->getResponse()->getStatusCode());
+        $this->assertSame('unknown_provider', json_decode((string) self::$client->getResponse()->getContent(), true)['code'] ?? null);
         $this->assertNull(self::$client->getResponse()->headers->get('Location'));
 
         self::$client->request('GET', self::API.'/api/auth/oauth/evil/callback?state=x&code=y');

@@ -15,6 +15,7 @@ use App\Service\AccountService;
 use App\Service\AuthService;
 use Doctrine\ORM\EntityManagerInterface;
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
+use KnpU\OAuth2ClientBundle\Client\OAuth2ClientInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -107,11 +108,7 @@ class OAuthController extends AbstractController
     #[Route('/{provider}/link', name: 'oauth_link_redirect', methods: ['GET'])]
     public function linkRedirect(string $provider, Request $request): Response
     {
-        try {
-            $client = $this->clientRegistry->getClient($provider);
-        } catch (\InvalidArgumentException) {
-            return new Response('Unknown provider', 400);
-        }
+        $client = $this->knownClient($provider);
         $ticket = $request->query->get('ticket');
         $claims = is_string($ticket) ? $this->signedTokens->verify(self::LINK_TICKET_PURPOSE, $ticket) : null;
         if (null === $claims || ($claims['prov'] ?? null) !== $provider || !is_string($claims['n'] ?? null)
@@ -174,11 +171,7 @@ class OAuthController extends AbstractController
     #[Route('/{provider}', name: 'oauth_redirect', methods: ['GET'])]
     public function start(string $provider): Response
     {
-        try {
-            $client = $this->clientRegistry->getClient($provider);
-        } catch (\InvalidArgumentException) {
-            return new Response('Unknown provider', 400);
-        }
+        $client = $this->knownClient($provider);
 
         $nonce = SignedTokenService::b64(random_bytes(32));
         $state = $this->signedTokens->issue(self::STATE_PURPOSE, ['n' => $nonce, 'prov' => $provider], self::STATE_TTL);
@@ -306,8 +299,18 @@ class OAuthController extends AbstractController
 
     private function assertKnownProvider(string $provider): void
     {
+        $this->knownClient($provider);
+    }
+
+    /**
+     * The OAuth client of a configured provider; 404 `unknown_provider` (RFC 7807) otherwise, also on the
+     * browser routes (sign-in start, link ticket): the frontend only links to the providers it got from
+     * `GET /api/auth/providers`, so an unknown name is a broken link, not a sign-in error to show.
+     */
+    private function knownClient(string $provider): OAuth2ClientInterface
+    {
         try {
-            $this->clientRegistry->getClient($provider);
+            return $this->clientRegistry->getClient($provider);
         } catch (\InvalidArgumentException) {
             throw new ApiProblemException(404, 'Unknown provider', 'unknown_provider');
         }

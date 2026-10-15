@@ -88,8 +88,7 @@ class AuthController extends AbstractApiController
         try {
             return new JsonResponse($this->auth->login($dto->email, $dto->password));
         } catch (EmailNotVerifiedException) {
-            // `error` is the original (still supported) form; `code` is the same as in all other API errors.
-            return new JsonResponse(['error' => 'email_not_verified', 'code' => 'email_not_verified'], Response::HTTP_FORBIDDEN);
+            throw new ApiProblemException(Response::HTTP_FORBIDDEN, 'Email address not verified', 'email_not_verified');
         }
     }
 

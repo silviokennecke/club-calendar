@@ -5,13 +5,18 @@ declare(strict_types=1);
 namespace App\EventListener;
 
 use App\Exception\ApiProblemException;
+use App\Http\ProblemResponse;
+use App\Security\JwtProblemListener;
+use App\Service\Input;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+use Symfony\Component\HttpFoundation\Exception\RequestExceptionInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\EventListener\ErrorListener;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Validator\ConstraintViolationListInterface;
@@ -22,6 +27,7 @@ class ExceptionListener
 {
     public function __construct(
         private readonly ErrorListener $httpErrorListener,
+        private readonly ?TokenStorageInterface $tokenStorage = null,
         #[Autowire(param: 'kernel.project_dir')]
         private readonly string $projectDir = '',
     ) {
@@ -38,7 +44,7 @@ class ExceptionListener
             $detail = $this->formatViolations($violations);
             $first = $violations->count() > 0 ? $violations->get(0)->getPropertyPath() : '';
             $extra = ['code' => 'validation_failed'] + ('' !== $first ? ['field' => $first] : []);
-            $event->setResponse($this->problemResponse(422, 'Unprocessable Entity', $detail, $extra));
+            $event->setResponse($this->problemResponse(422, $detail, $extra));
 
             return;
         }
@@ -46,33 +52,65 @@ class ExceptionListener
         if ($exception instanceof ApiProblemException) {
             $status = $exception->getStatusCode();
             $extra = ['code' => $exception->getErrorCode()] + (null !== $exception->getField() ? ['field' => $exception->getField()] : []);
-            $event->setResponse($this->problemResponse($status, $this->statusTitle($status), $exception->getMessage(), $extra, $exception->getHeaders()));
+            $event->setResponse($this->problemResponse($status, $exception->getMessage(), $extra, $exception->getHeaders()));
+
+            return;
+        }
+
+        // A denied access check without a signed-in user (no Authorization header) is a missing authentication
+        // (401), not a refusal (403): access_control of /api/clubs, /api/calendars and /api/map/geocode and the
+        // member checks. The firewall may already have wrapped it into an AccessDeniedHttpException.
+        if ($this->isAccessDenied($exception) && null === $this->tokenStorage?->getToken()?->getUser()) {
+            $event->setResponse(JwtProblemListener::unauthorized(JwtProblemListener::MISSING_TOKEN_CODE, 'Not authenticated'));
 
             return;
         }
 
         if ($exception instanceof HttpExceptionInterface) {
             $status = $exception->getStatusCode();
-            $event->setResponse($this->problemResponse($status, $this->statusTitle($status), $this->publicDetail($exception, $status)));
+            $extra = [];
+            $detail = $this->publicDetail($exception, $status);
+            $previous = $exception->getPrevious();
+            if ($previous instanceof RequestExceptionInterface
+                && preg_match('/^Input value "([^"]+)" contains a non-scalar value\.$/', $previous->getMessage(), $m)) {
+                // `?from[]=x` where one value is expected (InputBag::get): an input error like all others
+                $detail = sprintf('%s must be a single value', $m[1]);
+                $extra = ['code' => Input::CODE, 'field' => $m[1]];
+            } elseif (400 === $status) {
+                // Every 400 carries a code: requests the framework rejects (malformed input) are invalid_request
+                $extra = ['code' => 'invalid_request'];
+            }
+            $event->setResponse($this->problemResponse($status, $detail, $extra, $exception->getHeaders()));
 
             return;
         }
 
         // Symfony security exceptions not wrapped in HttpException
         if ($exception instanceof AccessDeniedException) {
-            $event->setResponse($this->problemResponse(403, 'Forbidden', $this->publicDetail($exception, 403)));
+            $event->setResponse($this->problemResponse(403, $this->publicDetail($exception, 403)));
 
             return;
         }
 
         if ($exception instanceof AuthenticationException) {
-            $event->setResponse($this->problemResponse(401, 'Unauthorized', $this->publicDetail($exception, 401)));
+            $event->setResponse(JwtProblemListener::unauthorized(JwtProblemListener::INVALID_TOKEN_CODE, $this->publicDetail($exception, 401)));
 
             return;
         }
 
         // Unknown exception: 500
-        $event->setResponse($this->problemResponse(500, 'Internal Server Error', 'An unexpected error occurred.'));
+        $event->setResponse($this->problemResponse(500, 'An unexpected error occurred.'));
+    }
+
+    private function isAccessDenied(\Throwable $exception): bool
+    {
+        for ($e = $exception; null !== $e; $e = $e->getPrevious()) {
+            if ($e instanceof AccessDeniedException) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -85,7 +123,7 @@ class ExceptionListener
         $message = $exception->getMessage();
         $thrownByApp = '' !== $this->projectDir && str_starts_with($exception->getFile(), $this->projectDir.'/src/');
         if (!$thrownByApp || '' === $message || preg_match('/\w\\\\\w/', $message)) {
-            return $this->statusTitle($status);
+            return ProblemResponse::title($status);
         }
 
         return $message;
@@ -95,14 +133,9 @@ class ExceptionListener
      * @param array<string, string> $extra   stable members such as `code` / `field` (RFC 7807 extensions)
      * @param array<string, string> $headers e.g. WWW-Authenticate of a 401
      */
-    private function problemResponse(int $status, string $title, string $detail, array $extra = [], array $headers = []): JsonResponse
+    private function problemResponse(int $status, string $detail, array $extra = [], array $headers = []): JsonResponse
     {
-        return new JsonResponse([
-            'type' => 'https://tools.ietf.org/html/rfc2616#section-10',
-            'title' => $title,
-            'status' => $status,
-            'detail' => $detail,
-        ] + $extra, $status, ['Content-Type' => 'application/problem+json'] + $headers);
+        return ProblemResponse::create($status, $detail, $extra, $headers);
     }
 
     private function formatViolations(ConstraintViolationListInterface $violations): string
@@ -113,22 +146,5 @@ class ExceptionListener
         }
 
         return implode('; ', $parts);
-    }
-
-    private function statusTitle(int $status): string
-    {
-        return match ($status) {
-            400 => 'Bad Request',
-            401 => 'Unauthorized',
-            403 => 'Forbidden',
-            404 => 'Not Found',
-            405 => 'Method Not Allowed',
-            409 => 'Conflict',
-            413 => 'Content Too Large',
-            422 => 'Unprocessable Entity',
-            500 => 'Internal Server Error',
-            503 => 'Service Unavailable',
-            default => 'HTTP Error',
-        };
     }
 }

@@ -98,7 +98,7 @@ class AuthTest extends WebTestCase
             'email' => 'unverified@example.com', 'password' => 'password123',
         ]);
         $this->assertSame(403, $r['status']);
-        $this->assertSame('email_not_verified', $r['body']['error']);
+        $this->assertSame('email_not_verified', $r['body']['code']);
     }
 
     public function testLoginReturnsTokensForVerifiedUser(): void

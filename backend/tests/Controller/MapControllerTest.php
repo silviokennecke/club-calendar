@@ -65,7 +65,8 @@ class MapControllerTest extends WebTestCase
     public function testSuggestRequiresAuth(): void
     {
         $r = TestHelper::jsonRequest($this->client, 'GET', '/api/map/geocode/suggest?q=test');
-        $this->assertSame(403, $r['status']);
+        $this->assertSame(401, $r['status']);
+        $this->assertSame('missing_token', $r['body']['code']);
     }
 
     public function testSuggestReturnsEmptyArrayWhenQueryBlank(): void
@@ -388,7 +389,7 @@ class MapControllerTest extends WebTestCase
 
             // Authentication comes first
             $r = TestHelper::jsonRequest($this->client, 'GET', $url);
-            $this->assertSame(403, $r['status'], $url);
+            $this->assertSame(401, $r['status'], $url);
         }
     }
 

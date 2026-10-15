@@ -85,7 +85,7 @@ class TemplateTimesTest extends WebTestCase
         $this->assertSame(400, $this->req('POST', "$base/templates", $auth, ['name' => 'Halb', 'timeBegin' => '19:00'])['status']);
         $this->assertSame(400, $this->req('POST', "$base/templates", $auth, ['name' => 'Halb', 'timeEnd' => '21:00'])['status']);
         $this->assertSame(400, $this->req('POST', "$base/templates", $auth, ['name' => 'Kaputt', 'timeBegin' => '25:00', 'timeEnd' => '21:00'])['status']);
-        $this->assertSame(422, $this->req('POST', "$base/templates", $auth, ['name' => 'Zone', 'timezone' => 'Mars/Base'])['status']);
+        $this->assertSame(400, $this->req('POST', "$base/templates", $auth, ['name' => 'Zone', 'timezone' => 'Mars/Base'])['status']);
 
         $id = $this->req('POST', "$base/templates", $auth, ['name' => 'Ganz', 'timeBegin' => '19:00', 'timeEnd' => '21:00'])['body']['id'];
         $this->assertSame(400, $this->req('PATCH', "$base/templates/$id", $auth, ['timeEnd' => null])['status']);

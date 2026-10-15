@@ -19,7 +19,8 @@ info:
       object (`5`, `null`, `"x"`) is `400 invalid_request` on routes that read the body as a map and `422 validation_failed`
       (first required field) on routes that map it onto a DTO; `[]` counts as an empty object.
     - `PATCH` is partial: only the keys present in the body are changed.
-    - Several delete/logout routes answer `200 {"ok": true}` (historic); newer routes answer `204 No Content`.
+    - Deletes answer `200 {"ok": true}` (also logout and holiday calendars); only `DELETE /api/auth/change-email` and
+      `DELETE /api/auth/oauth/{provider}` answer `204 No Content`.
 
     ## Authentication
 
@@ -34,13 +35,14 @@ info:
       still rejects an *invalid* `Authorization` header with 401 (send none instead).
     - Authorization: club routes require club membership (403 otherwise; there are no roles), calendar routes
       membership in the calendar's club. Writes to an **archived** calendar are 403 (reads stay possible).
-    - **401 bodies** come in two shapes: `application/problem+json` from the application (`detail`
-      "Not authenticated") or the JWT bundle's `{"code": 401, "message": "JWT Token not found" | "Invalid JWT
-      Token" | "Expired JWT Token"}` (schema `JwtError`). Clients should only rely on the status.
-    - Routes guarded by a membership or role check (`/api/clubs/{clubId}…`, `/api/calendars/{calendarId}…`,
-      `/api/map/geocode/*`) answer a request **without** `Authorization` header with **403** (or 404 for an
-      unknown id), not 401: the access check runs before authentication is demanded. An invalid or expired
-      token is 401 everywhere.
+    - **401** is always an RFC 7807 problem with `WWW-Authenticate: Bearer`. For the access token the code is
+      `missing_token` (no `Authorization` header on a route that needs a user), `invalid_token` (malformed,
+      wrong signature, ended session, user gone) or `token_expired`; the sign-in routes themselves answer
+      `invalid_credentials` (login), `invalid_refresh_token` (`POST /api/auth/token`) or `invalid_passkey`.
+      Clients may refresh on any 401 of a request that carried an access token.
+    - Every route under `/api/clubs`, `/api/calendars` and `/api/map/geocode/` needs a signed-in user before the
+      id in the path is looked up: without a token it is `401 missing_token` (never 403 or 404, so ids cannot be
+      probed). 403 means signed in but not allowed (no member, archived calendar).
 
     ### SSO (Google, Microsoft, Apple) - brief
 
@@ -70,11 +72,23 @@ info:
     Errors are RFC 7807 `application/problem+json` bodies `{type, title, status, detail, code?, field?}`
     (schema `Problem`). `detail` is human-readable and **not** a contract; clients match the stable `code`
     (schema `ErrorCode`) and use `field` (path of the input, e.g. `name`, `rule.weekday`, `events[3].date`)
-    to place the message. Errors without a `code` are plain HTTP errors (403/404 of access checks, some 400s).
-    A query parameter sent as an array (`?name[]=x`) where a scalar is expected is `400` without `code` on every
-    route that reads it. A few legacy routes answer other shapes (noted per operation): login 403
-    `{error: "email_not_verified", code: "email_not_verified"}`, holiday calendars `{error: "..."}`, the Mapbox
-    proxy `{message: "..."}`, the JWT bundle's 401 (see above).
+    to place the message. Every error of the API has this shape (also 401 of the JWT check, login 403, holiday
+    calendars, the Mapbox proxy). Errors without a `code` are plain HTTP errors (403/404 of access checks,
+    405, 502); **every 400 carries a code**: requests the framework rejects are `invalid_request`, and a query
+    parameter sent as an array (`?name[]=x`) where a single value is expected is `400 validation_failed` with
+    `field` = the parameter name, on every route.
+
+    **Status of input errors** (`validation_failed`):
+
+    - **400**: a malformed input value - missing, wrong JSON type, wrong format (date, time, id list), out of range,
+      unknown IANA time zone, location coordinates (type, range, only one of both), times as half a pair. These
+      are the typed input checks of all routes that read the body as a map and of all query parameters.
+    - **422**: constraint violations of a request DTO (routes that map the body onto a DTO: register, login,
+      resend-verification, forgot/reset password, change-password, change-email, create club, add member, create
+      calendar, holiday calendar create/update), and well-formed values that conflict with stored state
+      (`searchable` on a feed that is not `PUBLIC`, a series rule without events, an e-mail change to the current
+      address). Other 422 codes (`unknown_reference`, `duplicate_name`, `too_many_events`, `ics_fetch_failed`)
+      are semantic as well.
 
     ## Feeds, visibility and robots rules
 
@@ -257,15 +271,10 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '403':
-          description: The address is not confirmed yet (legacy body, not RFC 7807).
+          description: '`email_not_verified`: the address is not confirmed yet.'
           content:
-            application/json:
-              schema:
-                type: object
-                required: [error, code]
-                properties:
-                  error: { type: string, const: email_not_verified }
-                  code: { type: string, const: email_not_verified }
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
 
   /api/auth/resend-verification:
@@ -671,11 +680,7 @@ paths:
           headers:
             Location: { $ref: '#/components/headers/Location' }
             Set-Cookie: { $ref: '#/components/headers/StateCookie' }
-        '400':
-          description: Unknown or unconfigured provider (HTML body `Unknown provider`).
-          content:
-            text/html:
-              schema: { type: string }
+        '404': { $ref: '#/components/responses/UnknownProvider' }
     delete:
       tags: [SSO]
       summary: Unlink an SSO provider
@@ -781,11 +786,7 @@ paths:
           headers:
             Location: { $ref: '#/components/headers/Location' }
             Set-Cookie: { $ref: '#/components/headers/StateCookie' }
-        '400':
-          description: Unknown or unconfigured provider (HTML body `Unknown provider`).
-          content:
-            text/html:
-              schema: { type: string }
+        '404': { $ref: '#/components/responses/UnknownProvider' }
 
   /api/auth/oauth/{provider}/link-complete:
     post:
@@ -897,11 +898,6 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
-        '422':
-          description: '`validation_failed` field `timezone` (no IANA zone).'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
     delete:
       tags: [Clubs]
       summary: Delete a club with all calendars
@@ -934,7 +930,9 @@ paths:
     post:
       tags: [Clubs]
       summary: Add a registered user as member
-      description: An existing member is answered with 201 as well (nothing is created).
+      description: >-
+        201 when the user becomes a member, 200 with the same body when the user already is one (nothing changes).
+        An unknown address is a 404 without more detail.
       operationId: addMember
       requestBody:
         required: true
@@ -946,8 +944,13 @@ paths:
               properties:
                 email: { type: string, format: email }
       responses:
+        '200':
+          description: The user already is a member (unchanged).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Member' }
         '201':
-          description: The member.
+          description: The new member.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Member' }
@@ -968,13 +971,19 @@ paths:
     delete:
       tags: [Clubs]
       summary: Remove a member
-      description: Unknown users or non-members are ignored (still 200).
+      description: >-
+        Removes the membership (also leaving the club oneself). An id that is no member of the club is
+        `404 member_not_found`, the same answer for unknown ids and for users outside the club.
       operationId: removeMember
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        '404':
+          description: Club unknown (no `code`), or `member_not_found`.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
 
   # ------------------------------------------------------------------ Calendars
   /api/clubs/{clubId}/calendars:
@@ -1066,11 +1075,6 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
-        '422':
-          description: '`validation_failed` field `timezone`.'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
     delete:
       tags: [Calendars]
       summary: Delete a calendar with all its data
@@ -1263,7 +1267,8 @@ paths:
       description: >-
         One event per date with the template's values (name, zone, times, assignments, location), as drafts unless
         `overrides.isDraft` says otherwise. A template without times creates all-day events (00:00-23:59) unless the
-        overrides bring times. Not linked as a series.
+        overrides bring times. Not linked as a series. Without `templateId` / with missing or empty `dates`:
+        `400 validation_failed` field `templateId` / `dates`.
       operationId: createEventsFromTemplate
       requestBody:
         required: true
@@ -1978,11 +1983,6 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/ForbiddenWrite' }
         '404': { $ref: '#/components/responses/NotFound' }
-        '422':
-          description: '`validation_failed` field `latitude`/`longitude` (not a number, out of range, or only one of both).'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
 
   /api/calendars/{calendarId}/locations/{id}:
     parameters:
@@ -2007,11 +2007,6 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/ForbiddenWrite' }
         '404': { $ref: '#/components/responses/NotFound' }
-        '422':
-          description: '`validation_failed` field `latitude`/`longitude` (not a number, out of range, or only one of both).'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
     delete:
       tags: [Locations]
       summary: Delete a location (events and templates lose it)
@@ -2273,14 +2268,16 @@ paths:
       - { $ref: '#/components/parameters/HolidayCalendarId' }
     patch:
       tags: [Holidays]
-      summary: Change name and URL of a holiday calendar
-      description: Not partial (legacy) - `name` and `url` are both required. Does not refetch.
+      summary: Change name and/or URL of a holiday calendar
+      description: >-
+        Partial: `name` and/or `url`, at least one (else `422 validation_failed` field `name`); a sent value has
+        the rules of create (422 `validation_failed` with the field, also for a non-string). Does not refetch.
       operationId: updateHolidayCalendar
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/HolidayCalendarInput' }
+            schema: { $ref: '#/components/schemas/HolidayCalendarPatch' }
       responses:
         '200':
           description: The updated holiday calendar.
@@ -2290,17 +2287,17 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/ForbiddenWrite' }
-        '404': { $ref: '#/components/responses/LegacyNotFound' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
     delete:
       tags: [Holidays]
       summary: Remove a holiday calendar with its holidays
       operationId: deleteHolidayCalendar
       responses:
-        '204': { description: Deleted. }
+        '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/ForbiddenWrite' }
-        '404': { $ref: '#/components/responses/LegacyNotFound' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/calendars/{calendarId}/holiday-calendars/{hcId}/refresh:
     parameters:
@@ -2318,12 +2315,8 @@ paths:
               schema: { $ref: '#/components/schemas/HolidayCalendar' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/ForbiddenWrite' }
-        '404': { $ref: '#/components/responses/LegacyNotFound' }
-        '422':
-          description: The ICS feed could not be fetched (legacy body `{error}`).
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/LegacyError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/HolidayFetchFailed' }
 
   /api/calendars/{calendarId}/holiday-events:
     parameters:
@@ -2386,7 +2379,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
-        '429': { $ref: '#/components/responses/RateLimited' }
+        '429': { $ref: '#/components/responses/RateLimitedProblem' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
 
   /api/map/geocode/reverse:
@@ -2414,7 +2407,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
-        '429': { $ref: '#/components/responses/RateLimited' }
+        '429': { $ref: '#/components/responses/RateLimitedProblem' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
 
   /api/map/image/location/{id}:
@@ -2458,7 +2451,7 @@ paths:
         in: path
         required: true
         description: >-
-          Upstream path, may contain slashes (route requirement `.+`). Allowed (GET only): `v4/<tileset>/<z>/<x>/<y>…`
+          Upstream path, may contain slashes (route requirement `.+`). Allowed: `v4/<tileset>/<z>/<x>/<y>…`
           (rate-limited), `styles/…`, `fonts/…`. Dot segments are rejected.
         schema: { type: string }
     get:
@@ -2466,7 +2459,8 @@ paths:
       summary: Mapbox proxy (adds the server token)
       description: >-
         Forwards to Mapbox with the server's token (an `access_token` in the query is dropped); GET responses are
-        cached. No authentication. Upstream status, body and headers are passed through.
+        cached. No authentication. Upstream status, body and headers are passed through. GET only: other methods
+        are `405` (`Allow: GET`).
       operationId: mapboxProxyGet
       security: []
       responses:
@@ -2475,44 +2469,28 @@ paths:
           content:
             '*/*':
               schema: {}
-        '400': { $ref: '#/components/responses/MapboxError' }
-        '403': { $ref: '#/components/responses/MapboxError' }
-        '429': { $ref: '#/components/responses/MapboxError' }
-        '502': { $ref: '#/components/responses/MapboxError' }
+        '400':
+          description: '`invalid_request` field `domain`: the upstream host is not allowed.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '403':
+          description: Path not allowed (no `code`).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429': { $ref: '#/components/responses/RateLimitedProblem' }
+        '502':
+          description: Mapbox could not be reached (no `code`).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '503': { $ref: '#/components/responses/MapUnavailable' }
         default:
           description: Any other upstream status (e.g. 401, 404 from Mapbox) is passed through with the upstream body.
           content:
             '*/*':
               schema: {}
-    post:
-      tags: [Maps]
-      summary: Mapbox proxy (POST, always denied)
-      description: The route accepts POST, but no allowed path permits it (403).
-      operationId: mapboxProxyPost
-      security: []
-      responses:
-        '400': { $ref: '#/components/responses/MapboxError' }
-        '403': { $ref: '#/components/responses/MapboxError' }
-        '503': { $ref: '#/components/responses/MapUnavailable' }
-    put:
-      tags: [Maps]
-      summary: Mapbox proxy (PUT, always denied)
-      operationId: mapboxProxyPut
-      security: []
-      responses:
-        '400': { $ref: '#/components/responses/MapboxError' }
-        '403': { $ref: '#/components/responses/MapboxError' }
-        '503': { $ref: '#/components/responses/MapUnavailable' }
-    patch:
-      tags: [Maps]
-      summary: Mapbox proxy (PATCH, always denied)
-      operationId: mapboxProxyPatch
-      security: []
-      responses:
-        '400': { $ref: '#/components/responses/MapboxError' }
-        '403': { $ref: '#/components/responses/MapboxError' }
-        '503': { $ref: '#/components/responses/MapUnavailable' }
 
 components:
   securitySchemes:
@@ -2604,19 +2582,19 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/TokenResponse' }
     Unauthorized:
-      description: Missing, invalid or expired access token, or the session ended (no `code`).
+      description: '`missing_token` (no access token), `invalid_token` (malformed, wrong signature, session ended, user gone) or `token_expired`.'
+      headers:
+        WWW-Authenticate: { schema: { type: string, const: Bearer } }
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
-        application/json:
-          schema: { $ref: '#/components/schemas/JwtError' }
     Forbidden:
-      description: Not a member of the club / the calendar's club, or no access token at all (no `code`).
+      description: Signed in, but not a member of the club / the calendar's club (no `code`).
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     ForbiddenWrite:
-      description: Not a member, no access token at all, or the calendar is archived (read-only); no `code`.
+      description: Signed in, but not a member, or the calendar is archived (read-only); no `code`.
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
@@ -2626,7 +2604,7 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     BadRequest:
-      description: Invalid query parameter (no `code`).
+      description: '`validation_failed` with the `field` of the query parameter (invalid value, or sent as an array).'
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
@@ -2638,7 +2616,8 @@ components:
     InvalidInput:
       description: >-
         `invalid_request` (body is no JSON object) or `validation_failed` with the input `field` (wrong type, missing
-        required value, invalid date/time, `scope`, ...). A few legacy checks answer 400 without a `code`.
+        required value, invalid date/time/time zone, coordinates, times as half a pair, `scope`, a query parameter
+        sent as an array, ...).
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
@@ -2648,7 +2627,7 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     UnknownReference:
-      description: '`unknown_reference`: an id of the body is unknown or belongs to another calendar (`field` names it); `validation_failed` for an invalid time zone (field `timezone`).'
+      description: '`unknown_reference`: an id of the body is unknown or belongs to another calendar (`field` names it).'
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
@@ -2679,8 +2658,8 @@ components:
           schema: { $ref: '#/components/schemas/Problem' }
     FeedBadRequest:
       description: >-
-        `validation_failed` field `from`/`to` (not a real day as `YYYY-MM-DD`, sent as an array, or `to` before
-        `from`), or 400 without code when another query parameter is sent as an array (`?secret[]=`,
+        `validation_failed` field `from`/`to` (not a real day as `YYYY-MM-DD`, or `to` before `from`), or
+        `validation_failed` with the parameter as `field` when a query parameter is sent as an array (`?secret[]=`,
         `?targetGroupIds[]=`).
       headers:
         Referrer-Policy: { $ref: '#/components/headers/ReferrerPolicy' }
@@ -2704,22 +2683,23 @@ components:
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
-    LegacyNotFound:
-      description: 'Holiday calendar unknown (legacy body `{"error": "Not found"}`); an unknown calendar is an RFC 7807 404.'
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/LegacyError' }
-        application/problem+json:
-          schema: { $ref: '#/components/schemas/Problem' }
     HolidayFetchFailed:
-      description: '`validation_failed` (name/url constraints, RFC 7807) or the ICS feed could not be fetched (legacy body `{error}`).'
+      description: '`validation_failed` (name/url constraints) or `ics_fetch_failed` field `url` (the ICS feed could not be fetched or parsed; nothing was stored).'
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
-        application/json:
-          schema: { $ref: '#/components/schemas/LegacyError' }
+    UnknownProvider:
+      description: '`unknown_provider`: the SSO provider is unknown or not configured (no redirect).'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
     RateLimited:
-      description: Rate limit of the map provider reached (empty body).
+      description: Rate limit of the map provider reached (empty body; map images).
+    RateLimitedProblem:
+      description: '`rate_limited`: rate limit of the map provider reached.'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
     ServiceUnavailable:
       description: >-
         `map_unavailable`: no map service configured (`MAPBOX_TOKEN` empty; checked after authentication), or the
@@ -2747,17 +2727,6 @@ components:
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
-    MapboxError:
-      description: >-
-        400 domain not allowed, 403 path/method not allowed, 429 rate limit, 502 upstream unreachable (body
-        `{message}`).
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [message]
-            properties:
-              message: { type: string }
 
   schemas:
     # ---------------------------------------------------------------- errors
@@ -2788,8 +2757,14 @@ components:
 
         | Code | Status | Where |
         | --- | --- | --- |
-        | `validation_failed` | 400 / 422 | Input errors with `field`: typed input checks 400 (also wrong JSON types of `PATCH /api/auth/me`), DTO constraints 422, location coordinates 422, date parameters `from`/`to` 400 (events, holidays, public feed, export), import `events[n].<field>`, export parameters, bulk, series rule `rule.*` 400, series without events 422 field `rule`, `scope` 400, feeds `visibility` 400, `searchable` 400 (no boolean) / 422 (not `PUBLIC`), invalid time zone 422, e-mail change to the current address 422 |
-        | `invalid_request` | 400 | Body is no JSON object; passkey body incomplete |
+        | `validation_failed` | 400 / 422 | Input errors with `field`. **400** = malformed input (typed input checks): wrong JSON types (also `PATCH /api/auth/me`), date parameters `from`/`to` (events, holidays, public feed, export), any query parameter sent as an array, import `events[n].<field>`, export parameters, bulk, series rule `rule.*`, `scope`, feeds `visibility`, `searchable` no boolean, invalid time zone, location coordinates, template times as half a pair, `from-template` without `templateId`/`dates`. **422** = DTO constraints (register, login, password/e-mail routes, create club/calendar, add member, holiday calendars) and conflicts with stored state: series without events (field `rule`), `searchable` on a non-`PUBLIC` feed, e-mail change to the current address |
+        | `invalid_request` | 400 | Body is no JSON object; passkey body incomplete; any other 400 the framework rejects; Mapbox proxy with a host other than `api.mapbox.com` (field `domain`) |
+        | `missing_token` | 401 | No access token on a route that needs a user (all of `/api/clubs`, `/api/calendars`, `/api/map/geocode/` before the id is looked up) |
+        | `invalid_token` | 401 | Access token malformed, wrongly signed, of an ended session or of a deleted user |
+        | `token_expired` | 401 | Access token expired (refresh it) |
+        | `member_not_found` | 404 | `DELETE /api/clubs/{clubId}/members/{userId}`: no member of the club (unknown ids alike) |
+        | `ics_fetch_failed` | 422 | Holiday calendar create/refresh: the ICS URL could not be fetched or parsed (field `url`) |
+        | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429) |
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
         | `duplicate_name` | 422 | Name of a property/feature/target group already used in the calendar |
         | `too_many_events` | 413 / 422 | 413: import > 5000 events/locations, bulk > 5000 ids; 422: series > 366 events (preview, create, rule change) |
@@ -2801,11 +2776,11 @@ components:
         | `no_password` | 409 | `change-password` / `change-email` of SSO-only accounts |
         | `last_login_method` | 409 | `DELETE /api/auth/oauth/{provider}`: no sign-in method would remain |
         | `oauth_account_not_found` | 404 | `DELETE /api/auth/oauth/{provider}`: provider not linked |
-        | `unknown_provider` | 404 | `POST /api/auth/oauth/{provider}/link-start` |
+        | `unknown_provider` | 404 | `POST /api/auth/oauth/{provider}/link-start` and the browser routes `GET /api/auth/oauth/{provider}`, `GET …/{provider}/link` |
         | `invalid_state` | 400 | `POST …/oauth/{provider}/link-complete`: proof invalid |
         | `account_in_use` | 409 | `link-complete`: provider account belongs to another user |
         | `already_linked` | 409 | `link-complete`: another account of this provider is linked |
-        | `email_not_verified` | 403 | Login with an unconfirmed address (legacy body `{error, code}`) |
+        | `email_not_verified` | 403 | Login with an unconfirmed address |
         | `invalid_grant` | 400 | `POST /api/auth/token` without `grant_type=refresh_token` or token |
         | `invalid_refresh_token` | 401 | Refresh token invalid, expired, user gone or sessions ended |
         | `invalid_passkey` | 401 | Passkey sign-in failed |
@@ -2842,18 +2817,12 @@ components:
         - passkey_already_registered
         - passkey_not_found
         - map_unavailable
-    JwtError:
-      type: object
-      description: 401 body of the JWT bundle (not RFC 7807).
-      required: [code, message]
-      properties:
-        code: { type: integer, const: 401 }
-        message: { type: string, examples: [JWT Token not found, Invalid JWT Token, Expired JWT Token] }
-    LegacyError:
-      type: object
-      required: [error]
-      properties:
-        error: { type: string }
+        - missing_token
+        - invalid_token
+        - token_expired
+        - member_not_found
+        - ics_fetch_failed
+        - rate_limited
 
     # ---------------------------------------------------------------- primitives
     Date:
@@ -3030,7 +2999,7 @@ components:
         zip: { type: [string, 'null'], maxLength: 20 }
         city: { type: [string, 'null'], maxLength: 255 }
         country: { type: [string, 'null'], maxLength: 100 }
-        latitude: { type: [number, 'null'], minimum: -90, maximum: 90, description: 'Degrees (JSON number). Only together with `longitude` (both or none); otherwise, out of range or not a number: 422 `validation_failed` with the field. On update the pair is checked after merging with the stored value, and only when a coordinate is sent.' }
+        latitude: { type: [number, 'null'], minimum: -90, maximum: 90, description: 'Degrees (JSON number). Only together with `longitude` (both or none); otherwise, out of range or not a number: 400 `validation_failed` with the field. On update the pair is checked after merging with the stored value, and only when a coordinate is sent.' }
         longitude: { type: [number, 'null'], minimum: -180, maximum: 180, description: Degrees (JSON number); see `latitude`. }
     LocationUsage:
       type: object
@@ -3128,7 +3097,7 @@ components:
     # ---------------------------------------------------------------- templates
     TemplateInput:
       type: object
-      description: '`timeBegin`/`timeEnd` only as a pair (400 otherwise); without times events from the template are all-day.'
+      description: '`timeBegin`/`timeEnd` only as a pair (otherwise 400 `validation_failed`, field = the missing half); without times events from the template are all-day.'
       properties:
         name: { type: string, minLength: 1, maxLength: 255 }
         timezone: { type: [string, 'null'] }
@@ -3525,6 +3494,13 @@ components:
     HolidayCalendarInput:
       type: object
       required: [name, url]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        url: { type: string, format: uri, maxLength: 2048 }
+    HolidayCalendarPatch:
+      type: object
+      minProperties: 1
+      description: At least one of `name` and `url`.
       properties:
         name: { type: string, minLength: 1, maxLength: 255 }
         url: { type: string, format: uri, maxLength: 2048 }
