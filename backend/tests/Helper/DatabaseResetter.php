@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Helper;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Filesystem\Filesystem;
 
 class DatabaseResetter
 {
@@ -33,6 +34,12 @@ class DatabaseResetter
             $conn->executeStatement("TRUNCATE TABLE `$table`");
         }
         $conn->executeStatement('SET FOREIGN_KEY_CHECKS=1');
+
+        // Auth rate limiter state (config/packages/test/rate_limiter.yaml): every test starts with empty buckets.
+        $dir = dirname(__DIR__, 2).'/var/test-auth-limiter';
+        if (is_dir($dir)) {
+            (new Filesystem())->remove($dir);
+        }
 
         // Clear the entity manager identity map to avoid stale references
         $em->clear();

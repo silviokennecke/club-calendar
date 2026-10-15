@@ -15,6 +15,7 @@ use App\Dto\Auth\UpdateMeDto;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Exception\EmailNotVerifiedException;
+use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
 use App\Service\AccountService;
 use App\Service\AuthService;
@@ -39,6 +40,7 @@ class AuthController extends AbstractApiController
 {
     public function __construct(
         private readonly AuthService $auth,
+        private readonly AuthRateLimiter $rateLimiter,
         private readonly CurrentUserResolver $userResolver,
         private readonly ValidatorInterface $validator,
         private readonly SerializerInterface $serializer,
@@ -65,12 +67,14 @@ class AuthController extends AbstractApiController
     #[Route('/register', methods: ['POST'])]
     public function register(Request $request): JsonResponse
     {
+        $this->rateLimiter->assertRegisterAllowed($request);
         try {
             $dto = $this->serializer->deserialize($request->getContent(), RegisterDto::class, 'json');
         } catch (SerializerException $e) {
             throw self::invalidJson('Invalid JSON body: '.$e->getMessage(), $e);
         }
         $this->validateDto($dto, $this->validator);
+        $this->rateLimiter->assertRegisterEmailAllowed($dto->email);
         $this->auth->register($dto->name, $dto->email, $dto->password, $dto->language);
 
         return new JsonResponse(['message' => 'check_your_email'], Response::HTTP_ACCEPTED);
@@ -85,11 +89,15 @@ class AuthController extends AbstractApiController
             throw self::invalidJson('Invalid JSON body: '.$e->getMessage(), $e);
         }
         $this->validateDto($dto, $this->validator);
+        $this->rateLimiter->assertLoginAllowed($request, $dto->email);
         try {
-            return new JsonResponse($this->auth->login($dto->email, $dto->password));
+            $tokens = $this->auth->login($dto->email, $dto->password);
         } catch (EmailNotVerifiedException) {
             throw new ApiProblemException(Response::HTTP_FORBIDDEN, 'Email address not verified', 'email_not_verified');
         }
+        $this->rateLimiter->recordLoginSuccess($dto->email);
+
+        return new JsonResponse($tokens);
     }
 
     #[Route('/resend-verification', methods: ['POST'])]
@@ -121,6 +129,7 @@ class AuthController extends AbstractApiController
     #[Route('/verify-email', name: 'api_auth_verify_email', methods: ['GET'])]
     public function verifyEmail(Request $request): RedirectResponse
     {
+        $this->rateLimiter->assertOtherAllowed($request);
         $id = (string) $request->query->get('id', '');
         $token = (string) $request->query->get('token', '');
         $result = $this->verificationService->verify($id, $token);
@@ -233,6 +242,7 @@ class AuthController extends AbstractApiController
     #[Route('/token', methods: ['POST'])]
     public function token(Request $request): JsonResponse
     {
+        $this->rateLimiter->assertRefreshAllowed($request);
         $grantType = $request->request->get('grant_type');
         $refreshToken = $request->request->get('refresh_token');
         if ('refresh_token' !== $grantType || empty($refreshToken)) {

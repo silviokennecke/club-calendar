@@ -226,7 +226,7 @@ paths:
               required: [name, email, password]
               properties:
                 name: { type: string, minLength: 1, maxLength: 255 }
-                email: { type: string, format: email }
+                email: { type: string, format: email, maxLength: 254 }
                 password: { $ref: '#/components/schemas/Password' }
                 language: { type: [string, 'null'], examples: [de] }
       responses:
@@ -245,6 +245,7 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/auth/login:
     post:
@@ -260,8 +261,8 @@ paths:
               type: object
               required: [email, password]
               properties:
-                email: { type: string, format: email }
-                password: { type: string }
+                email: { type: string, format: email, maxLength: 254 }
+                password: { type: string, maxLength: 128 }
       responses:
         '200': { $ref: '#/components/responses/Tokens' }
         '400': { $ref: '#/components/responses/InvalidRequest' }
@@ -276,6 +277,7 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/auth/resend-verification:
     post:
@@ -292,7 +294,7 @@ paths:
               type: object
               required: [email]
               properties:
-                email: { type: string, format: email }
+                email: { type: string, format: email, maxLength: 254 }
       responses:
         '204': { description: Accepted. }
         '400': { $ref: '#/components/responses/InvalidRequest' }
@@ -314,6 +316,7 @@ paths:
             `?status=error&reason=invalid|expired|already_used`.
           headers:
             Location: { $ref: '#/components/headers/Location' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/auth/forgot-password:
     post:
@@ -486,6 +489,7 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/auth/logout:
     post:
@@ -585,6 +589,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/WebAuthnOptions' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/auth/webauthn/register/verify:
     post:
@@ -610,6 +615,7 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/auth/webauthn/authenticate/options:
     get:
@@ -623,6 +629,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/WebAuthnOptions' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/auth/webauthn/authenticate/verify:
     post:
@@ -648,6 +655,7 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/auth/webauthn/{id}:
     delete:
@@ -681,6 +689,7 @@ paths:
             Location: { $ref: '#/components/headers/Location' }
             Set-Cookie: { $ref: '#/components/headers/StateCookie' }
         '404': { $ref: '#/components/responses/UnknownProvider' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
     delete:
       tags: [SSO]
       summary: Unlink an SSO provider
@@ -721,6 +730,7 @@ paths:
           description: Redirect to the frontend.
           headers:
             Location: { $ref: '#/components/headers/Location' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
     post:
       tags: [SSO]
       summary: SSO callback (form POST, Apple)
@@ -743,6 +753,7 @@ paths:
           description: Redirect to the frontend.
           headers:
             Location: { $ref: '#/components/headers/Location' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/auth/oauth/{provider}/link-start:
     post:
@@ -2718,6 +2729,16 @@ components:
           schema: { $ref: '#/components/schemas/Problem' }
     RateLimited:
       description: Rate limit of the map provider reached (empty body; map images).
+    AuthRateLimited:
+      description: >-
+        `rate_limited`: too many requests from this client IP (all routes of this kind) or, for login and
+        registration, for this e-mail address (login: 5 per 15 minutes, registration: 3 per hour; checked
+        identically for known and unknown addresses). `Retry-After` gives the seconds to wait.
+      headers:
+        Retry-After: { schema: { type: integer, minimum: 1 }, description: Seconds until a new request is accepted. }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
     RateLimitedProblem:
       description: '`rate_limited`: rate limit of the map provider reached.'
       content:
@@ -2787,7 +2808,7 @@ components:
         | `token_expired` | 401 | Access token expired (refresh it) |
         | `member_not_found` | 404 | `DELETE /api/clubs/{clubId}/members/{userId}`: no member of the club (unknown ids alike) |
         | `ics_fetch_failed` | 422 | Holiday calendar create/refresh: the ICS URL could not be fetched or parsed (field `url`) |
-        | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429) |
+        | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After` |
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
         | `duplicate_name` | 422 | Name of a property/feature/target group already used in the calendar |
         | `too_many_events` | 413 / 422 | 413: import > 5000 events/locations, bulk > 5000 ids; 422: series > 366 events (preview, create, rule change) |

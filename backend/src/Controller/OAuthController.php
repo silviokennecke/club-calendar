@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Exception\OAuthAccountConflictException;
 use App\OAuth\OidcResourceOwner;
+use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
 use App\Security\NonceStore;
 use App\Security\SignedTokenService;
@@ -81,6 +82,7 @@ class OAuthController extends AbstractController
         private readonly LoggerInterface $logger,
         private readonly CurrentUserResolver $userResolver,
         private readonly AccountService $accounts,
+        private readonly AuthRateLimiter $rateLimiter,
         private readonly EntityManagerInterface $em,
         private readonly string $frontendUrl,
         #[Autowire(env: 'BACKEND_URL')]
@@ -169,8 +171,9 @@ class OAuthController extends AbstractController
     }
 
     #[Route('/{provider}', name: 'oauth_redirect', methods: ['GET'])]
-    public function start(string $provider): Response
+    public function start(string $provider, Request $request): Response
     {
+        $this->rateLimiter->assertOtherAllowed($request);
         $client = $this->knownClient($provider);
 
         $nonce = SignedTokenService::b64(random_bytes(32));
@@ -184,6 +187,7 @@ class OAuthController extends AbstractController
     #[Route('/{provider}/callback', name: 'oauth_callback', methods: ['GET', 'POST'])]
     public function callback(string $provider, Request $request): Response
     {
+        $this->rateLimiter->assertOtherAllowed($request);
         if (null === $this->validState(self::STATE_PURPOSE, $provider, $request)) {
             $linkClaims = $this->validState(self::LINK_STATE_PURPOSE, $provider, $request);
 

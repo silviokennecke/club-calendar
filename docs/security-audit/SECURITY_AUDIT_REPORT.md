@@ -28,9 +28,9 @@
 ## Executive Summary
 
 - **No Critical findings** in the completed areas.
-- Counts so far (4 of 5 areas complete): **2 High, 4 Medium, 9 Low, 9 Informational** — 24 findings after consolidating one cross-area duplicate (AUTH-02 + FE-02); API-02 removed after implementation.
+- Counts so far (4 of 5 areas complete): **2 High, 3 Medium, 9 Low, 9 Informational** — 23 findings after consolidating one cross-area duplicate (AUTH-02 + FE-02); API-02 removed after implementation.
 - **Immediate action (no code change required):** rotate the Mapbox token that leaked into git history (FE-01) — it remains valid and is recoverable from any clone of the repository.
-- **Top design gaps:** club membership equals full admin with no role model (API-01); OAuth login returns the 7-day refresh token in the redirect URL (AUTH-02/FE-02); no rate limiting on login/register/refresh (AUTH-01); Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
+- **Top design gaps:** club membership equals full admin with no role model (API-01); OAuth login returns the 7-day refresh token in the redirect URL (AUTH-02/FE-02); Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
 - **Positives:** no IDOR/cross-tenant gaps in the API surface; no live Mapbox token in the frontend (fully proxied through the backend); WebAuthn ceremonies, OAuth state handling, and exception → RFC 7807 response masking are sound; feed-secret checks are constant-time and the Mapbox proxy is SSRF-safe (fixed upstream host, strict path allowlist, caller token stripped).
 
 ## Findings
@@ -59,15 +59,6 @@
 **Source:** `02-backend-api.md` (API-01).
 
 ### Medium
-
-#### AUTH-01 — No rate limiting on login, register, and token refresh
-**Severity:** Medium
-**Attack scope:** Unauthenticated external attacker (any IP).
-**Description:** `POST /api/auth/login`, `POST /api/auth/register`, and `POST /api/auth/token` have no rate limiting; the only configured limiter is `email_verification_resend`. This enables online brute force / credential stuffing against login and mass account creation via register.
-**Affected parts:** `AuthController.php:51` (register), `:65` (login), `:123` (token); `config/packages/rate_limiter.yaml:47` (only limiter defined).
-**Fix recommendation:** Add per-IP rate limits (plus per-identifier where useful), e.g. login 5/15 min, register 3/hour, token 10/min, returning 429 with `Retry-After`.
-**Notes:** Compounds AUTH-09 (timing-based user enumeration); no offline hash-dumping vector found.
-**Source:** `01-backend-auth.md` (AUTH-01).
 
 #### AUTH-02 / FE-02 — OAuth login passes access + refresh tokens in the redirect URL
 **Severity:** Medium
@@ -203,7 +194,7 @@
 **Description:** Login looks up the user by email and only runs password verification for existing users; the not-found path is measurably faster, enabling timing-based enumeration.
 **Affected parts:** `AuthService.php:48-54`.
 **Fix recommendation:** Always run a dummy credential check on the not-found path (near-constant-time behavior) and/or store a dummy hash per user.
-**Notes:** Exploitability is low (network jitter), but it compounds AUTH-01.
+**Notes:** Exploitability is low (network jitter).
 **Source:** `01-backend-auth.md` (AUTH-09).
 
 #### AUTH-10 — updateMe accepts unvalidated lastClubId / lastCalendarId
@@ -291,7 +282,6 @@
 |---|---|---|
 | FE-01 | Mapbox public token leaked in git history | High |
 | API-01 | Club membership grants full administrative control (no roles, no last-admin guard) | High |
-| AUTH-01 | No rate limiting on login, register, and token refresh | Medium |
 | AUTH-02 / FE-02 | OAuth login passes access + refresh tokens in the redirect URL | Medium |
 | API-52 | Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation | Medium |
 | AUTH-03 | Account deletion without confirmation, cascading memberships | Low |
@@ -318,7 +308,7 @@
 
 | Area | Report | Findings | Status |
 |---|---|---|---|
-| Backend auth | `01-backend-auth.md` | AUTH-01 … AUTH-12 (12) | Complete |
+| Backend auth | `01-backend-auth.md` | AUTH-02 … AUTH-12 (11) | Complete |
 | Backend API (authorization & CRUD) | `02-backend-api.md` | API-01, API-03 (2) | Complete |
 | Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-54 (3) | Complete |
 | Frontend | `03-frontend.md` | FE-01 … FE-07 (7) | Complete |
