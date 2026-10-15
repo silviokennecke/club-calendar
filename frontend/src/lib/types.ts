@@ -53,6 +53,7 @@ export interface CalendarFeed {
   searchable: boolean;
   /** Search engines may index the feed (PUBLIC and searchable). */
   indexable: boolean;
+  /** Only present when requested with `?includeSecret=1`; the feed screens always request it. */
   sharedSecret: string;
   targetGroups: { feedId: string; targetGroupId: string }[];
 }

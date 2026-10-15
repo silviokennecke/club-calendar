@@ -16,29 +16,6 @@ Documentation-only audit. Source was inspected via targeted `grep` and narrow li
 
 Date: 2026-10-05
 
-### API-51 — Feed shared secret returned by every feed management endpoint
-
-**Severity:** Medium
-
-**Attack scope:** Any authenticated club member who belongs to the feed's calendar (or any admin of that calendar). No cross-club access; the feed's club is required via `CALENDAR_MEMBER`.
-
-**Description:**
-`CalendarFeed::sharedSecret` is a 255-char plaintext column stored in the database, and `FeedService::serialize()` includes it in the feed payload (`'sharedSecret' => $feed->getSharedSecret()`). `serialize()` is called by every feed management endpoint: `list()`, `create()`, `update()`, and `regenerateSecret()`. As a result, the secret that gates the public feed URL is returned to any calendar member on every call, even though `sharedSecret` is written server-side only — `FeedService::update()` never accepts it as an input field, so no client legitimately needs it.
-
-This widens the exposure surface for the only credential protecting the feed: any client, script, extension, or XSS-adjacent vector that can read an `Authorization`-gated feed-list response now silently learns every feed secret of calendars the caller belongs to, and secrets persist in browser devtools, local network logs, and any frontend state that stores feed objects. The secret check itself is sound (constant-time `hash_equals` in `PublicFeedService`), but the check is only as strong as the confidentiality of the compared value.
-
-**Affected parts:**
-- `backend/src/Service/FeedService.php:123` — `serialize()` includes `sharedSecret` in the response
-- `backend/src/Service/FeedService.php:41,49,143,184` — `list()`, `create()`, `update()`, `regenerateSecret()` all return the serialized feed
-- `backend/src/Entity/CalendarFeed.php:30-31` — `sharedSecret` stored in cleartext, unique column
-- `backend/src/Controller/FeedController.php:26-68` — all four feed endpoints
-
-**Fix recommendation:**
-Remove `sharedSecret` from `serialize()` and add a dedicated, explicitly named method (e.g. `serializeWithSecret()`) used only by `create()` and `regenerateSecret()` — the two moments when the client must learn the fresh secret. Return it exactly once, documented as "shown once". Store the value hashed (e.g. SHA-256) and compare hashes in `PublicFeedService` so a DB leak does not leak usable feed URLs.
-
-**Notes:**
-`update()` never rotates the secret (only `regenerateSecret()` does), which is correct. `CalendarService::duplicate()` copies feeds with fresh random secrets, so the duplication path does not create duplicate live URLs. The secret is never logged and never sent to Mapbox/other third parties.
-
 ### API-52 — Mapbox budget exhausted by a single user; static map images and styles/fonts have no per-user isolation
 
 **Severity:** Medium

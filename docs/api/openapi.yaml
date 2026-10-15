@@ -2024,23 +2024,29 @@ paths:
     get:
       tags: [Feeds]
       summary: Feeds of a calendar
+      description: Without `includeSecret` the feeds carry no `sharedSecret`.
       operationId: listFeeds
+      parameters:
+        - { $ref: '#/components/parameters/IncludeSecret' }
       responses:
         '200':
-          description: Feeds (incl. their secrets).
+          description: Feeds (with `sharedSecret` only when `includeSecret` is set).
           content:
             application/json:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Feed' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
     post:
       tags: [Feeds]
       summary: Create a feed
-      description: '`visibility` defaults to `CLUB`; every feed gets a secret (only `PRIVATE` requires it).'
+      description: '`visibility` defaults to `CLUB`; every feed gets a secret (only `PRIVATE` requires it), returned only with `includeSecret`.'
       operationId: createFeed
+      parameters:
+        - { $ref: '#/components/parameters/IncludeSecret' }
       requestBody:
         required: true
         content:
@@ -2070,12 +2076,15 @@ paths:
       summary: One feed
       description: A feed of another calendar is 404 like an unknown id.
       operationId: getFeed
+      parameters:
+        - { $ref: '#/components/parameters/IncludeSecret' }
       responses:
         '200':
           description: The feed.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Feed' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -2086,6 +2095,8 @@ paths:
         Leaving `PUBLIC` resets `searchable` to false (also when going back to `PUBLIC` later). Switching from
         `PUBLIC`/`CLUB` to `PRIVATE` generates a new secret. `targetGroupIds` replaces the selection when present.
       operationId: updateFeed
+      parameters:
+        - { $ref: '#/components/parameters/IncludeSecret' }
       requestBody:
         required: true
         content:
@@ -2119,13 +2130,17 @@ paths:
     post:
       tags: [Feeds]
       summary: Generate a new secret (old links stop working for private feeds)
+      description: The new secret is returned only with `includeSecret`.
       operationId: regenerateFeedSecret
+      parameters:
+        - { $ref: '#/components/parameters/IncludeSecret' }
       responses:
         '200':
-          description: The feed with its new secret.
+          description: The feed (with its new `sharedSecret` when `includeSecret` is set).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Feed' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/ForbiddenWrite' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -2506,6 +2521,11 @@ components:
       description: Shared secret of a `PRIVATE` feed (`sharedSecret` of the feed). Ignored for `PUBLIC`/`CLUB` feeds.
 
   parameters:
+    IncludeSecret:
+      name: includeSecret
+      in: query
+      description: 'Return `sharedSecret` in the feed(s). Default `false` (omitted). Anything else than `true`/`false`/`1`/`0` is `400 validation_failed` (field `includeSecret`).'
+      schema: { type: string, enum: ['true', 'false', '1', '0'], default: 'false' }
     Id:
       name: id
       in: path
@@ -3407,7 +3427,7 @@ components:
       description: '`PUBLIC` and `CLUB` are reachable by link without the secret and differ only for search engines; `PRIVATE` requires the secret.'
     Feed:
       type: object
-      required: [id, calendarId, name, visibility, searchable, indexable, sharedSecret, targetGroups]
+      required: [id, calendarId, name, visibility, searchable, indexable, targetGroups]
       properties:
         id: { type: string }
         calendarId: { type: string }
@@ -3415,7 +3435,7 @@ components:
         visibility: { $ref: '#/components/schemas/FeedVisibility' }
         searchable: { type: boolean, description: Effective search engine opt-in (always false unless `PUBLIC`). }
         indexable: { type: boolean, description: '`visibility == PUBLIC && searchable`.' }
-        sharedSecret: { type: string, description: 32 hex characters; only `PRIVATE` feeds require it. }
+        sharedSecret: { type: string, description: '32 hex characters; only `PRIVATE` feeds require it. Present only when the request sets `includeSecret` (omitted by default).' }
         targetGroups:
           type: array
           description: Selected target groups (empty = all events).

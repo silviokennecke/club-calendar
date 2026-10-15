@@ -11,7 +11,7 @@ import type { CalendarFeed, TargetGroup } from "@/lib/types";
 export function useFeeds(calendarId: string, { withList = true }: { withList?: boolean } = {}) {
   const feeds = useQuery<CalendarFeed[]>({
     queryKey: ["feeds", calendarId],
-    queryFn: () => apiGet<CalendarFeed[]>(`/api/calendars/${calendarId}/feeds`),
+    queryFn: () => apiGet<CalendarFeed[]>(`/api/calendars/${calendarId}/feeds?includeSecret=1`),
     enabled: withList,
   });
   const groups = useQuery<TargetGroup[]>({
@@ -34,7 +34,8 @@ export function useFeeds(calendarId: string, { withList = true }: { withList?: b
 export function useFeed(calendarId: string, feedId: string | undefined) {
   return useQuery<CalendarFeed>({
     queryKey: ["feeds", calendarId, "one", feedId],
-    queryFn: () => apiGet<CalendarFeed>(`/api/calendars/${calendarId}/feeds/${feedId}`),
+    queryFn: () =>
+      apiGet<CalendarFeed>(`/api/calendars/${calendarId}/feeds/${feedId}?includeSecret=1`),
     enabled: !!feedId,
   });
 }

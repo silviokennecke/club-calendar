@@ -97,7 +97,7 @@ async function seedPublic(request: APIRequestContext, name: string): Promise<Pub
     })
   ).json()) as { id: string };
   const feeds = (await (
-    await request.get(`${API}/api/calendars/${calendarId}/feeds`, { headers })
+    await request.get(`${API}/api/calendars/${calendarId}/feeds?includeSecret=1`, { headers })
   ).json()) as { id: string; sharedSecret: string }[];
   const secret = feeds.find((f) => f.id === privateFeed.id)!.sharedSecret;
   return {

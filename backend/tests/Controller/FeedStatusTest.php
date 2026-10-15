@@ -212,7 +212,7 @@ class FeedStatusTest extends WebTestCase
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $base = "/api/calendars/{$cal->getId()}/feeds";
 
-        $r = $this->req('POST', $base, $this->auth($user), ['name' => 'Ohne Angabe']);
+        $r = $this->req('POST', $base.'?includeSecret=1', $this->auth($user), ['name' => 'Ohne Angabe']);
         $this->assertSame(201, $r['status']);
         $this->assertSame('CLUB', $r['body']['visibility']);
         $this->assertFalse($r['body']['searchable']);
@@ -315,6 +315,53 @@ class FeedStatusTest extends WebTestCase
         $this->assertFalse(self::$em->find(CalendarFeed::class, $feed->getId())->isSearchable());
     }
 
+    // --- The shared secret is only returned on request ---
+
+    public function testSecretIsOmittedUnlessRequested(): void
+    {
+        ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
+        ['user' => $stranger] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
+        $auth = $this->auth($user);
+        $feed = $this->feed($cal, FeedVisibility::PRIVATE);
+        $base = "/api/calendars/{$cal->getId()}/feeds";
+        $one = "$base/{$feed->getId()}";
+
+        // Default: no `sharedSecret` in list, get, create, update and regenerate
+        $list = $this->req('GET', $base, $auth);
+        $this->assertSame(200, $list['status']);
+        $this->assertCount(1, $list['body']);
+        $this->assertArrayNotHasKey('sharedSecret', $list['body'][0]);
+        $this->assertStringNotContainsString(self::SECRET, $list['content']);
+        $this->assertArrayNotHasKey('sharedSecret', $this->req('GET', $one, $auth)['body']);
+        $this->assertArrayNotHasKey('sharedSecret', $this->req('GET', $one.'?includeSecret=0', $auth)['body']);
+        $this->assertArrayNotHasKey('sharedSecret', $this->req('GET', $one.'?includeSecret=false', $auth)['body']);
+        $this->assertArrayNotHasKey('sharedSecret', $this->req('POST', $base, $auth, ['name' => 'Neu'])['body']);
+        $this->assertArrayNotHasKey('sharedSecret', $this->req('PATCH', $one, $auth, ['name' => 'X'])['body']);
+
+        // Requested: included everywhere
+        $this->assertSame(self::SECRET, $this->req('GET', $base.'?includeSecret=1', $auth)['body'][0]['sharedSecret']);
+        $this->assertSame(self::SECRET, $this->req('GET', $one.'?includeSecret=true', $auth)['body']['sharedSecret']);
+        $this->assertSame(self::SECRET, $this->req('PATCH', $one.'?includeSecret=1', $auth, ['name' => 'Y'])['body']['sharedSecret']);
+        $this->assertArrayNotHasKey('sharedSecret', $this->req('POST', "$one/regenerate-secret", $auth)['body']);
+        $new = $this->req('POST', "$one/regenerate-secret?includeSecret=1", $auth)['body']['sharedSecret'];
+        $this->assertMatchesRegularExpression('/^[0-9a-f]{32}$/', $new);
+        $this->assertSame($new, $this->req('GET', $one.'?includeSecret=1', $auth)['body']['sharedSecret']);
+
+        // Strict parsing
+        foreach (['yes', '2', 'TRUE'] as $bad) {
+            $r = $this->req('GET', $one.'?includeSecret='.$bad, $auth);
+            $this->assertSame(400, $r['status']);
+            $this->assertSame('validation_failed', $r['body']['code']);
+            $this->assertSame('includeSecret', $r['body']['field']);
+        }
+        $this->assertSame(400, $this->req('GET', $base.'?includeSecret[]=1', $auth)['status']);
+
+        // Access rules stay: no token 401, non-member 403 (also with the parameter)
+        $this->assertSame(401, $this->req('GET', $base.'?includeSecret=1')['status']);
+        $this->assertSame(403, $this->req('GET', $base.'?includeSecret=1', $this->auth($stranger))['status']);
+        $this->assertSame(403, $this->req('GET', $one.'?includeSecret=1', $this->auth($stranger))['status']);
+    }
+
     // --- Switching the status ---
 
     public function testSwitchingStatusTakesEffectAtOnceAndBecomingPrivateAgainNeedsANewSecret(): void
@@ -327,16 +374,16 @@ class FeedStatusTest extends WebTestCase
         $this->assertSame(403, $this->req('GET', $public)['status']);
 
         // PRIVATE → CLUB: reachable without the secret right away; the secret stays the same while open
-        $r = $this->req('PATCH', $uri, $auth, ['visibility' => 'CLUB']);
+        $r = $this->req('PATCH', $uri.'?includeSecret=true', $auth, ['visibility' => 'CLUB']);
         $this->assertSame(self::SECRET, $r['body']['sharedSecret']);
         $this->assertSame(200, $this->req('GET', $public)['status']);
 
         // Changes that keep the feed open do not touch the secret
-        $r = $this->req('PATCH', $uri, $auth, ['visibility' => 'PUBLIC', 'searchable' => true]);
+        $r = $this->req('PATCH', $uri.'?includeSecret=true', $auth, ['visibility' => 'PUBLIC', 'searchable' => true]);
         $this->assertSame(self::SECRET, $r['body']['sharedSecret']);
 
         // Back to PRIVATE: the old secret (it may have spread while the feed was open) no longer works
-        $r = $this->req('PATCH', $uri, $auth, ['visibility' => 'PRIVATE']);
+        $r = $this->req('PATCH', $uri.'?includeSecret=true', $auth, ['visibility' => 'PRIVATE']);
         $this->assertSame(200, $r['status']);
         $newSecret = $r['body']['sharedSecret'];
         $this->assertNotSame(self::SECRET, $newSecret);
@@ -345,7 +392,7 @@ class FeedStatusTest extends WebTestCase
         $this->assertSame(200, $this->req('GET', self::withSecret($public, $newSecret))['status']);
 
         // PRIVATE → PRIVATE (e.g. only a rename with the status sent along) keeps the secret
-        $r = $this->req('PATCH', $uri, $auth, ['name' => 'Umbenannt', 'visibility' => 'PRIVATE']);
+        $r = $this->req('PATCH', $uri.'?includeSecret=true', $auth, ['name' => 'Umbenannt', 'visibility' => 'PRIVATE']);
         $this->assertSame($newSecret, $r['body']['sharedSecret']);
     }
 
@@ -381,7 +428,7 @@ class FeedStatusTest extends WebTestCase
 
         $copy = $this->req('POST', "/api/clubs/{$club->getId()}/calendars/{$cal->getId()}/duplicate", $auth, ['name' => 'Kopie']);
         $this->assertSame(201, $copy['status']);
-        $feeds = $this->req('GET', "/api/calendars/{$copy['body']['id']}/feeds", $auth)['body'];
+        $feeds = $this->req('GET', "/api/calendars/{$copy['body']['id']}/feeds?includeSecret=1", $auth)['body'];
         usort($feeds, fn (array $a, array $b) => $a['name'] <=> $b['name']);
 
         $this->assertSame(['Feed CLUB', 'Feed PRIVATE', 'Feed PUBLIC'], array_column($feeds, 'name'));

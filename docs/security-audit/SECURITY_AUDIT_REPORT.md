@@ -30,7 +30,7 @@
 - **No Critical findings** in the completed areas.
 - Counts so far (4 of 5 areas complete): **2 High, 5 Medium, 9 Low, 9 Informational** — 25 findings after consolidating one cross-area duplicate (AUTH-02 + FE-02).
 - **Immediate action (no code change required):** rotate the Mapbox token that leaked into git history (FE-01) — it remains valid and is recoverable from any clone of the repository.
-- **Top design gaps:** club membership equals full admin with no role model (API-01); OAuth login returns the 7-day refresh token in the redirect URL (AUTH-02/FE-02); no rate limiting on login/register/refresh (AUTH-01); archived calendars are not read-only at the calendar level (API-02); the feed's public secret is returned on every feed-management endpoint (API-51); Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
+- **Top design gaps:** club membership equals full admin with no role model (API-01); OAuth login returns the 7-day refresh token in the redirect URL (AUTH-02/FE-02); no rate limiting on login/register/refresh (AUTH-01); archived calendars are not read-only at the calendar level (API-02); Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
 - **Positives:** no IDOR/cross-tenant gaps in the API surface; no live Mapbox token in the frontend (fully proxied through the backend); WebAuthn ceremonies, OAuth state handling, and exception → RFC 7807 response masking are sound; feed-secret checks are constant-time and the Mapbox proxy is SSRF-safe (fixed upstream host, strict path allowlist, caller token stripped).
 
 ## Findings
@@ -86,15 +86,6 @@
 **Fix recommendation:** Add `#[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]` to the calendar PATCH, DELETE, and duplicate routes and/or enforce `archivedAt === null` inside the three `CalendarService` methods (defense in depth).
 **Notes:** The unarchive route intentionally has no such guard. Duplicating an archived calendar creates a new active calendar — possibly a feature, but inconsistent with the read-only contract; at minimum the behavior should be a deliberate, documented choice. `archiveCalendar` is idempotent (re-archiving is a no-op).
 **Source:** `02-backend-api.md` (API-02).
-
-#### API-51 — Feed shared secret returned by every feed management endpoint
-**Severity:** Medium
-**Attack scope:** Any authenticated club member belonging to the feed's calendar (or admin of that calendar). No cross-club access; the feed's club is required via `CALENDAR_MEMBER`.
-**Description:** `CalendarFeed::sharedSecret` is a 255-char plaintext column, and `FeedService::serialize()` includes it in the feed payload. `serialize()` is called by every feed management endpoint — `list()`, `create()`, `update()`, `regenerateSecret()` — so the secret that gates the public feed URL is returned to any calendar member on every call, even though `update()` never accepts `sharedSecret` as input and no client legitimately needs it outside create/rotation. This widens the exposure surface of the only credential protecting the feed: secrets persist in browser devtools, network logs, and any frontend state that stores feed objects. The check itself is sound (constant-time `hash_equals`), but a check is only as strong as the confidentiality of the compared value.
-**Affected parts:** `backend/src/Service/FeedService.php:123` (serialize includes the secret), `:41, :49, :143, :184` (list/create/update/regenerateSecret all return the serialized feed); `backend/src/Entity/CalendarFeed.php:30-31` (cleartext unique column); `backend/src/Controller/FeedController.php:26-68`.
-**Fix recommendation:** Remove `sharedSecret` from `serialize()` and add a dedicated `serializeWithSecret()` used only by `create()` and `regenerateSecret()` — returned exactly once, documented as "shown once". Store the value hashed (e.g. SHA-256) and compare hashes in `PublicFeedService`, so a DB leak does not leak usable feed URLs.
-**Notes:** `update()` never rotates the secret (only `regenerateSecret()` does) — correct. `CalendarService::duplicate()` copies feeds with fresh random secrets, so duplication does not create duplicate live URLs. The secret is never logged and never sent to third parties.
-**Source:** `02b-backend-services.md` (API-51).
 
 #### API-52 — Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation
 **Severity:** Medium
@@ -312,7 +303,6 @@
 | AUTH-01 | No rate limiting on login, register, and token refresh | Medium |
 | AUTH-02 / FE-02 | OAuth login passes access + refresh tokens in the redirect URL | Medium |
 | API-02 | Archived calendars can still be updated, deleted, and duplicated | Medium |
-| API-51 | Feed shared secret returned by every feed management endpoint | Medium |
 | API-52 | Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation | Medium |
 | AUTH-03 | Account deletion without confirmation, cascading memberships | Low |
 | AUTH-04 | Refresh tokens have no rotation or replay detection | Low |
@@ -340,7 +330,7 @@
 |---|---|---|---|
 | Backend auth | `01-backend-auth.md` | AUTH-01 … AUTH-12 (12) | Complete |
 | Backend API (authorization & CRUD) | `02-backend-api.md` | API-01 … API-03 (3) | Complete |
-| Backend feeds / ICS / map services | `02b-backend-services.md` | API-51 … API-54 (4) | Complete |
+| Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-54 (3) | Complete |
 | Frontend | `03-frontend.md` | FE-01 … FE-07 (7) | Complete |
 | Scans & config | `04-scans-config.md` | `SCAN-xx` | Pending |
 | Secrets scan evidence | `gitleaks.json` (not committed: contains the leaked token) | 1 genuine hit (FE-01); redacted in place | Complete |

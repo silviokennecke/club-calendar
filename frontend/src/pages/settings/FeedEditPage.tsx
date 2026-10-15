@@ -197,8 +197,11 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
         body,
         (b) =>
           feed
-            ? apiPatch<CalendarFeed>(`/api/calendars/${page.calendarId}/feeds/${feed.id}`, b)
-            : apiPost<CalendarFeed>(`/api/calendars/${page.calendarId}/feeds`, b),
+            ? apiPatch<CalendarFeed>(
+                `/api/calendars/${page.calendarId}/feeds/${feed.id}?includeSecret=1`,
+                b,
+              )
+            : apiPost<CalendarFeed>(`/api/calendars/${page.calendarId}/feeds?includeSecret=1`, b),
         (b, existing) => ({
           ...b,
           targetGroupIds: keepExisting(b.targetGroupIds, existing.targetGroups),
@@ -219,7 +222,10 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
   async function regenerate() {
     if (!feed) return;
     try {
-      await apiPost(`/api/calendars/${page.calendarId}/feeds/${feed.id}/regenerate-secret`, {});
+      await apiPost(
+        `/api/calendars/${page.calendarId}/feeds/${feed.id}/regenerate-secret?includeSecret=1`,
+        {},
+      );
       await qc.invalidateQueries({ queryKey: ["feeds", page.calendarId] });
       toast.success(t("feeds.regen.done"));
     } catch {

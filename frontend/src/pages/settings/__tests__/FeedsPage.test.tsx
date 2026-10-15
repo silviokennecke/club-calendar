@@ -48,7 +48,7 @@ beforeEach(() => {
   for (const fn of [apiGet, apiPost, apiDelete]) fn.mockReset();
   apiGet.mockImplementation((path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
-    if (path === "/api/calendars/k1/feeds") return Promise.resolve(feeds);
+    if (path === "/api/calendars/k1/feeds?includeSecret=1") return Promise.resolve(feeds);
     if (path === "/api/calendars/k1/target-groups")
       return Promise.resolve([
         { id: "g1", name: "Jugend" },
