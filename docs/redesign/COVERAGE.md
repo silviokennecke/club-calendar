@@ -62,7 +62,7 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 
 | Artboard | Umsetzung | Status |
 | --- | --- | --- |
-| Events.dc.html | `pages/events/EventsListPage.tsx`, `…/events` (Tabs mit Zähler, Suche, Ansicht-Umschalter, `EventsTable` mit Caption, Sammelaktionen über `POST …/events/bulk`, Mehrfach-Löschdialog) | vollständig (Sammelaktionen atomar: scheitert eine, ändert sich nichts und die Auswahl bleibt; BACKEND-GAPS "Umgesetzt (Paket 1–4)", Paket 2) |
+| Events.dc.html | `pages/events/EventsListPage.tsx`, `…/events` (Tabs mit Zähler, Suche, Ansicht-Umschalter, `EventsTable` mit Caption, Sammelaktionen über `POST …/events/bulk`, Mehrfach-Löschdialog) | vollständig (Sammelaktionen atomar: scheitert eine, ändert sich nichts und die Auswahl bleibt; OpenAPI `bulkEvents`) |
 | EventsMobile.dc.html | `EventsListPage` < 720px: `EventItem`-Karten statt Tabelle, FAB | vollständig |
 | EventsStates.dc.html | `EventsListPage`: Skeleton, Ladefehler, "Noch gar keine Termine", "Keine Treffer für „…“" | vollständig |
 | EventNew.dc.html | `pages/events/EventNewModal.tsx`, `…/events/new` (Dialog / Bottom-Sheet) | vollständig |
@@ -104,8 +104,8 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 
 | Artboard | Umsetzung | Status |
 | --- | --- | --- |
-| Feeds.dc.html | `pages/settings/FeedsPage.tsx`, `…/settings/feeds` (Status als Wort + Icon, Zielgruppen, Adressen als `CopyField`, Lösch-Dialog) | abweichend: lange Adressen statt kurzer Slugs `/k/<verein>/<feed>` (BACKEND-GAPS Phase 7); **drei Status statt zwei** (Entscheidung des Auftraggebers 2026-10-15, siehe unten "Feed-Status"): Badge "Öffentlich" (globe), "Vereinsintern" (users, eigene Variante `club`), "Privat" (lock), dazu "Auffindbar" (search, Variante `searchable`) bei öffentlichen Feeds mit Suchmaschinen-Option; Adressen nur bei Privat mit `?secret=` |
-| FeedEdit.dc.html | `pages/settings/FeedEditPage.tsx`, `…/settings/feeds/new`, `…/settings/feeds/:feedId` (Name, Sichtbarkeit, Zielgruppen, Geheimnis neu erzeugen, Löschen; Feed per Einzel-GET) | abweichend (Entscheidung des Auftraggebers): Radiogruppe "Sichtbarkeit" mit drei Optionen statt zwei (Öffentlich / Vereinsintern / Privat (geschützt), je mit Erklärtext; Standard für neue Feeds Vereinsintern statt Öffentlich), darunter nur bei "Öffentlich" der Schalter "Für Suchmaschinen auffindbar" (`Toggle`, Standard aus, Hilfetext); Speichern eines privaten Feeds als öffentlich/vereinsintern fragt per `ConfirmDialog` ("Geheimnis nicht mehr verlangen?", Folgenhinweis). Wortlaut eigen (nicht im Design) |
+| Feeds.dc.html | `pages/settings/FeedsPage.tsx`, `…/settings/feeds` (Status als Wort + Icon, Zielgruppen, Adressen als `CopyField`, Lösch-Dialog) | abweichend: lange Adressen statt kurzer Slugs `/k/<verein>/<feed>` (`BACKEND-GAPS.md`, Feeds); **drei Status statt zwei** (Entscheidung des Auftraggebers 2026-10-15, siehe unten "Feed-Status"): Badge "Öffentlich" (globe), "Nur per Link" (users, eigene Variante `club`), "Privat" (lock), dazu "Auffindbar" (search, Variante `searchable`) bei öffentlichen Feeds mit Suchmaschinen-Option; Adressen nur bei Privat mit `?secret=` |
+| FeedEdit.dc.html | `pages/settings/FeedEditPage.tsx`, `…/settings/feeds/new`, `…/settings/feeds/:feedId` (Name, Sichtbarkeit, Zielgruppen, Geheimnis neu erzeugen, Löschen; Feed per Einzel-GET) | abweichend (Entscheidung des Auftraggebers): Radiogruppe "Sichtbarkeit" mit drei Optionen statt zwei (Öffentlich / Nur per Link / Privat (geschützt), je mit Erklärtext; Standard für neue Feeds Nur per Link statt Öffentlich), darunter nur bei "Öffentlich" der Schalter "Für Suchmaschinen auffindbar" (`Toggle`, Standard aus, Hilfetext); Speichern eines privaten Feeds als öffentlich/nur per Link fragt per `ConfirmDialog` ("Geheimnis nicht mehr verlangen?", Folgenhinweis). Wortlaut eigen (nicht im Design) |
 | Club.dc.html | `pages/ClubPage.tsx`, `components/club/*`, `/clubs/:clubId` (Name, Mitglieder, Kalender anlegen/duplizieren/archivieren/löschen, archivierte Kalender, Verein löschen mit Namenseingabe) | vollständig (Kalenderzeile "n Termine" aus `eventCount`; Lösch-Dialoge mit den API-Zählern) |
 | ClubMobile.dc.html | `ClubPage` < 720px (Karten statt Tabelle) | vollständig |
 | Profile.dc.html | `pages/ProfilePage.tsx`, `components/profile/*`, `/profile` (Konto, Passkeys, verknüpfte Anmeldungen, Darstellung inkl. Theme-Schalter, Sprache, Konto löschen) | abweichend (Erweiterung, Paket 3): Verknüpfen/Trennen aktiv (Banner/Toast "Google wurde verknüpft.", "Die Verknüpfung mit … wurde getrennt.", `ConfirmDialog` mit Folgenhinweis, Trennen deaktiviert mit "Mindestens eine Anmeldemethode muss bleiben …", `?linked=`/`?link_error=` werden ausgewertet und aus der Adresse entfernt; `?link_provider=&link_proof=` schließt die Verknüpfung mit der eigenen Sitzung ab). Statt "Name und E-Mail können hier noch nicht geändert werden." zwei neue Panels im selben Stil (nicht im Design): `AccountSection` "Name und E-Mail-Adresse" (Name speichern; neue Adresse + aktuelles Passwort → Bestätigungslink, wartende Adresse als Banner mit "Änderung verwerfen"; SSO-only: Hinweis statt Formular) und `PasswordSection` "Passwort" (ändern mit aktuellem Passwort, diese Sitzung bleibt; SSO-only: "Passwort per E-Mail festlegen"). Passkeys zusätzlich "zuletzt benutzt am …" / "noch nicht benutzt" |
@@ -115,7 +115,7 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 
 | Artboard | Umsetzung | Status |
 | --- | --- | --- |
-| Public.dc.html | `pages/FeedPage.tsx`, `/feed/:feedId`; `feed/PublicShell.tsx` (Skip-Link, LangSwitch, ThemeSwitch), Kopf mit Vereins- und Kalendername, Monat/Liste, Filter, Suche, Abo-Adressen, Zeitzonenhinweis und "heute" in der Zone aus der API, Feiertage im Monat, Laden je Monatsraster | vollständig (Feed-Name als Seitentitel; `noindex` per `<meta>` außer bei indexierbaren Feeds = öffentlich + "auffindbar", `feed.indexable`; auch vereinsintern, privat und alle Fehlerzustände noindex) |
+| Public.dc.html | `pages/FeedPage.tsx`, `/feed/:feedId`; `feed/PublicShell.tsx` (Skip-Link, LangSwitch, ThemeSwitch), Kopf mit Vereins- und Kalendername, Monat/Liste, Filter, Suche, Abo-Adressen, Zeitzonenhinweis und "heute" in der Zone aus der API, Feiertage im Monat, Laden je Monatsraster | vollständig (Feed-Name als Seitentitel; `noindex` per `<meta>` außer bei indexierbaren Feeds = öffentlich + "auffindbar", `feed.indexable`; auch nur per Link, privat und alle Fehlerzustände noindex) |
 | PublicMobile.dc.html | `FeedPage` < 720px | vollständig |
 | PublicEvent.dc.html | `pages/PublicEventModal.tsx`, `/feed/:feedId/events/:eventId` (Dialog über dem Feed, Untertitel "Verein · Kalender", Termin per Einzel-Endpoint, Karte + Textalternative, ICS-Datei in der Zone des Termins) | vollständig |
 | PublicEventMobile.dc.html | `PublicEventModal` als Bottom-Sheet | vollständig |
@@ -159,7 +159,7 @@ Kein eigenes Artboard; Wortlaut und Optik nach PublicStates / CalendarStates (Em
 | 8 | Feiertagskalender löschen | `HolidayCalendarsPage` | **angeglichen**: "Die 16 Feiertage verschwinden aus dem Kalender und lassen sich in Serien nicht mehr aussparen. Die Quelle im Internet bleibt unverändert." |
 | 9 | Feed löschen | `FeedsPage`, `FeedEditPage` | wie Design |
 | 10 | Geheimnis neu erzeugen | `FeedEditPage` | **angeglichen**: "Der Feed „…“ bekommt ein neues Geheimnis und damit neue Adressen." |
-| 11 | Kalender archivieren | `CalendarsSection` | **angeglichen**: "Der Kalender wandert in die Liste der archivierten Kalender." + "Der Kalender ist danach gesperrt: …"; bewusst ergänzt: "Seine Feeds liefern bis dahin keine Termine mehr." (archivierte Kalender antworten im Feed mit 404, BACKEND-GAPS Phase 8) |
+| 11 | Kalender archivieren | `CalendarsSection` | **angeglichen**: "Der Kalender wandert in die Liste der archivierten Kalender." + "Der Kalender ist danach gesperrt: …"; bewusst ergänzt: "Seine Feeds liefern bis dahin keine Termine mehr." (archivierte Kalender antworten im Feed mit 404, OpenAPI, öffentlicher Feed) |
 | 12 | Kalender löschen | `CalendarDeleteDialog` | **angeglichen**: "Der Kalender wird dauerhaft gelöscht.", "Löscht den Kalender mit allen 6 Terminen und seinen Feeds unwiderruflich. …" (`eventCount` per Einzel-GET); archiviert nach Club.dc.html deleteArchived |
 | 13 | Mitglied entfernen | `MembersSection` | wie Design |
 | 14 | Passkey entfernen | `PasskeysSection` | nach Profile.dc.html (mit Gerätename im Text) |
@@ -215,9 +215,9 @@ Paket 3 erledigt, L3 (Terminserien anlegen, Serien-Dialoge) mit Paket 4 (siehe E
 ## Feed-Status (2026-10-15, Abweichung vom Design)
 
 Das Design kennt zwei Sichtbarkeiten (öffentlich / privat). Auf Entscheidung des Auftraggebers gibt es drei Status:
-**Öffentlich** (`PUBLIC`), **Vereinsintern** (`CLUB`, Standard für neue Feeds) und **Privat (geschützt)**
-(`PRIVATE`). Öffentlich und Vereinsintern sind ohne Geheimnis per Link erreichbar und unterscheiden sich nur in der
+**Öffentlich** (`PUBLIC`), **Nur per Link** (`CLUB`, Standard für neue Feeds) und **Privat (geschützt)**
+(`PRIVATE`). Öffentlich und Nur per Link sind ohne Geheimnis per Link erreichbar und unterscheiden sich nur in der
 Suchmaschinen-Anweisung; nur öffentliche Feeds haben die Option "Für Suchmaschinen auffindbar" (Opt-in). Umsetzung:
 `FeedEditPage` (Radiogruppe, Schalter, Bestätigung beim Wechsel von Privat), `FeedsPage` (`StatusBadge` `public` /
 `club` / `private` + `searchable`), `usePublicHead` (`indexable`). Backend, Migration und Robots-Logik:
-`BACKEND-GAPS.md` ("Feed-Status").
+`docs/api/openapi.yaml` (Feeds).

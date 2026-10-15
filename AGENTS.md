@@ -6,6 +6,8 @@ routed modals, E2E): `frontend/AGENTS.md`. Redesign final state and open backend
 ## Backend Module Structure
 
 The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers are thin; business logic lives in Services.
+API reference: `docs/api/openapi.yaml` (OpenAPI 3.1, hand-written; `tests/Unit/OpenApiSpecTest.php` checks it against
+the router, so a new or changed route needs a matching operation there).
 
 | Module | URL prefix | Controller | Service |
 |--------|-----------|------------|---------|
@@ -57,7 +59,7 @@ The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers ar
 | `src/Service/EventSeriesService.php` | Series preview (dates, skipped holidays of the calendar's holiday calendars) and atomic creation of series + events (template values like `from-template`); rule change (`previewUpdate` / `update`: future events only, today in the calendar's zone via `ClockInterface`, prototype = earliest future event, series row locked, max. 366 events afterwards, 409 `series_empty` / `series_changed`); scope `this`/`all` of PATCH/DELETE and the clean-up of empty series live in `EventService` |
 | `src/Service/UsageCounts.php` | Counters for lists and delete dialogs (clubs, calendars, usage of properties/features/target groups/locations, events per template): one grouped query per counter, never one per row |
 | `src/Service/UniqueNames.php` | Names of properties/features/target groups unique per calendar (trim, case-insensitive, compared in PHP; no unique index, old duplicates stay) |
-| `src/Exception/ApiProblemException.php` | HTTP error with a stable `code` (+ optional `field`) in the RFC 7807 body, e.g. 422 `duplicate_name`; code list: `docs/redesign/BACKEND-GAPS.md` (Fehlercodes) |
+| `src/Exception/ApiProblemException.php` | HTTP error with a stable `code` (+ optional `field`) in the RFC 7807 body, e.g. 422 `duplicate_name`; code list: `ErrorCode` in `docs/api/openapi.yaml` |
 | `config/services.yaml` | Parameters and env defaults: `APP_URL` drives `FRONTEND_URL`, `BACKEND_URL` and `WEBAUTHN_RP_ID`; optional `MAPBOX_TOKEN`, cache TTLs, `WEBAUTHN_USER_VERIFICATION` |
 | `config/packages/security.yaml` | Stateless JWT firewall; public routes allowlist |
 | `migrations/` | Doctrine migrations (initial schema `Version20260625000000`, all tables in snake_case; then `Version20261004120000` `auth_nonce`, `Version20261004130000` `user.token_version`, `Version20261009120000` nullable template times, `Version20261010120000` `event.external_uid`, `Version20261013120000` `password_reset`, `email_change`, `passkey.last_used_at`, `club_user.last_calendar_id`, latest `Version20261014120000` `event_series` + `event.series_id`) |
@@ -79,8 +81,8 @@ $this->denyAccessUnlessGranted(ArchivedCalendarVoter::NOT_ARCHIVED, $calendar); 
 - **Refresh token**: HMAC-SHA256 signed JWT (7 days), client-managed in `sessionStorage`
 - **Refresh grant**: `POST /api/auth/token` with `application/x-www-form-urlencoded` body
 - **No auth cookies** — the backend sets no session/auth cookies (only the short-lived OAuth `oauth_state_nonce` cookie that binds the SSO `state` to the browser)
-- **Passkeys** — verified with `web-auth/webauthn-lib` (`WebAuthnService`), see `CLAUDE.md` (Auth) and `docs/redesign/BACKEND-GAPS.md`
-- **Password reset / account changes / SSO linking** — see `CLAUDE.md` (Auth) and `docs/redesign/BACKEND-GAPS.md` ("Umgesetzt (Paket 1–4)", Paket 3); `user.token_version` ends all sessions on reset, password change (the caller gets new tokens) and e-mail change
+- **Passkeys** — verified with `web-auth/webauthn-lib` (`WebAuthnService`), see `CLAUDE.md` (Auth) and `docs/api/openapi.yaml`
+- **Password reset / account changes / SSO linking** — see `CLAUDE.md` (Auth) and `docs/api/openapi.yaml`; `user.token_version` ends all sessions on reset, password change (the caller gets new tokens) and e-mail change
 
 ## Entity Conventions
 
@@ -110,7 +112,7 @@ Run: `cd backend && composer test` (requires a MySQL test DB on port 3360). `TES
 - `POST /api/clubs/{clubId}/calendars/{calendarId}/unarchive` — clears `archivedAt`
 - `POST /api/clubs/{clubId}/calendars/{calendarId}/duplicate` (201) — deep-copies calendar + properties/features/target-groups/locations/templates/feeds (new feed secrets, same visibility, `searchable` reset to false); events (and therefore event series) not copied; optional body `{name}` (default "Copy of …", the frontend sends the localized name)
 - Calendar responses carry `eventCount`, `templateCount`, `feedCount`; club responses `calendarCount`, `archivedCalendarCount`, `memberCount` (single club also `eventCount`, `feedCount`); `GET /api/clubs` also the caller's `lastCalendarId` per club (`club_user.last_calendar_id`, set by `PATCH /api/auth/me`)
-- Event templates: `timezone`, `timeBegin`, `timeEnd` are optional (times only as a pair); without times in the template and in the request, `from-template` creates all-day events (`docs/redesign/BACKEND-GAPS.md`, "Umgesetzt (Paket 1–4)", Paket 1)
+- Event templates: `timezone`, `timeBegin`, `timeEnd` are optional (times only as a pair); without times in the template and in the request, `from-template` creates all-day events (`docs/api/openapi.yaml`)
 - Archived calendar public feeds → 404; nested write endpoints → 403 (via `ArchivedCalendarVoter`)
 
 ## Event Series
@@ -118,4 +120,4 @@ Run: `cd backend && composer test` (requires a MySQL test DB on port 3360). `TES
 - `EventSeries` (`event_series`: rule + optional template, FK calendar CASCADE, template SET NULL) and `Event.series` (`series_id`, SET NULL). The events are normal rows; the rule is re-evaluated only when it is changed.
 - `POST …/event-series/{id}/preview-update {rule}` → `{toCreate, toDelete, kept, past, skippedHolidays}`; `PATCH …/event-series/{id} {rule}` → `{series, created, deleted, kept}`: future events (date ≥ today in the calendar's zone) on dates of the new rule stay, missing dates are created from the prototype (earliest future event), other future events are deleted; past events never change (`EventSeriesRuleChangeTest`).
 - `POST …/events/series/preview {rule}` → `{dates, count, skippedHolidays, holidays}`; `POST …/events/series {rule, templateId?, event?, isDraft?}` → 201 `{series, events}` (one flush); lists carry `seriesId`, the single event GET also `series {id, rule, eventCount, …}`.
-- `PATCH …/events/{id}` `scope: "all"` applies the sent fields to every event of the series except `date`/`dateEnd`/template (each event keeps its day); `this` (default) changes one event, which stays in the series. `DELETE …?scope=all` deletes the series with its events; a series without events is removed (also after bulk delete). Details: `docs/redesign/BACKEND-GAPS.md` ("Paket 4").
+- `PATCH …/events/{id}` `scope: "all"` applies the sent fields to every event of the series except `date`/`dateEnd`/template (each event keeps its day); `this` (default) changes one event, which stays in the series. `DELETE …?scope=all` deletes the series with its events; a series without events is removed (also after bulk delete). Details: `docs/api/openapi.yaml`.

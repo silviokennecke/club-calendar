@@ -1,7 +1,7 @@
 # Backend-Lücken: Umsetzungsplan
 
-**Status: abgeschlossen (2026-10-13).** Alle vier Pakete sind umgesetzt; Endstand, Restpunkte und Betrieb:
-`BACKEND-GAPS.md` ("Kurzfassung", "Umgesetzt (Paket 1–4)").
+**Status: abgeschlossen (2026-10-13).** Alle vier Pakete sind umgesetzt; Endstand: `docs/api/openapi.yaml` und die Tests; Restpunkte und Betrieb:
+`BACKEND-GAPS.md`.
 
 Stand der Planung: 2026-10-09. Grundlage: `BACKEND-GAPS.md` (Abschnitt "Offene Backend-Features"). Die Regel "Backend nur bei
 Fehlern ändern" gilt für diese Runde NICHT mehr: der Auftraggeber hat die Umsetzung der Lücken beauftragt.
@@ -33,7 +33,7 @@ Neue Endpoints müssen trotzdem sicher gebaut werden (kein Orakel, Einmal-Token,
    Console-Command `app:user:verify`; feinere OAuth-Fehlercodes. Frontend: ForgotPassword aktivieren, ResetPassword,
    Profil-Bearbeitung, Verknüpfen/Trennen.
 4. [x] **Terminserien** (Opus, umgesetzt 2026-10-13; Regel, Obergrenze 366, Semantik von `scope`:
-   `BACKEND-GAPS.md` "Paket 4"): Serien-Modell (Regel + `series_id` an Terminen), Anlegen aus Vorlage/Regel (Feiertage
+   `docs/api/openapi.yaml`): Serien-Modell (Regel + `series_id` an Terminen), Anlegen aus Vorlage/Regel (Feiertage
    auslassen), Bearbeiten/Löschen mit Geltungsbereich "nur dieser Termin / alle Termine der Serie" (laut Design:
    EventSeries, EventForm, Dialogs), Kennzeichnung "Wiederkehrend". Frontend: "Serie anlegen" aktivieren, Serien-
    Dialoge, Tag.
@@ -44,5 +44,5 @@ Neue Endpoints müssen trotzdem sicher gebaut werden (kein Orakel, Einmal-Token,
   Frontend-Anpassung mit Vitest- und Playwright-Tests (isolierte E2E-Umgebung, `E2E.md`).
 - Frontend- und Backend-Änderungen eines Pakets gehören in denselben Arbeitsgang (kein totes API).
 - i18n de/en identisch, Barrierefreiheit wie bisher, keine Emojis als UI-Icons.
-- `CLAUDE.md`, `AGENTS.md`, `frontend/AGENTS.md`, `BACKEND-GAPS.md` (erledigte Punkte nach "Behobene/Umgesetzt"
-  verschieben), `COVERAGE.md` (Abweichungen "Bald verfügbar" aufheben) aktuell halten.
+- `CLAUDE.md`, `AGENTS.md`, `frontend/AGENTS.md`, `BACKEND-GAPS.md` (erledigte Punkte entfernen),
+  `COVERAGE.md` (Abweichungen "Bald verfügbar" aufheben) aktuell halten.
