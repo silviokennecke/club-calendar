@@ -80,8 +80,13 @@ operations), `docs/api/openapi.yaml` (API reference).
   `replace` navigation, `useMetaTag("referrer", "no-referrer")`; states form / invalid (unknown, used and expired look
   the same, "Neuen Link anfordern") / done (banner + "Weiter zur Anmeldung")). API helpers `lib/passwordReset.ts`;
   the password policy (8–128 characters, counted as code points like the API) is `lib/password.ts`, also used by the
-  signup and the profile. `/auth/verify-email` also shows the result of an e-mail change (`status=email_changed`,
-  `flow=email_change` errors with "Zum Profil").
+  signup and the profile. E-mail confirmation by a 6-digit code: `/verify-email?email=` (`VerifyCodePage`, guest
+  route; `CodeInput`; auto-submit → `POST /api/auth/verify-email` → `exchangeOneTimeToken` (`one_time_token` grant in
+  `lib/api.ts`) → `login()` → `/clubs`; wrong code = field error `invalid_verification_code`, `invalid_grant` → login;
+  "Send again" shows the `retryAt` time of `verification_resend_too_early`, `ApiError.retryAt` / `.email` carry the
+  extra problem members). Signup, login (403 `email_not_verified`) and the SSO callback
+  (`?error=email_verification_required&email=`) lead there. `/auth/verify-email` only shows the result of an e-mail
+  change (`status=email_changed`, `flow=email_change` errors with "Zum Profil"); anything else goes to `/verify-email`.
 - Context switcher menus (`layout/ContextMenu.tsx`): disclosure with Escape, arrow keys, Home/End, Tab-out closes.
 - Calendar (no FullCalendar): pure date logic in `src/lib/calendar/` (`dates.ts` ISO-date arithmetic in UTC,
   month grid, ISO weeks, `todayIn(timeZone)`; `items.ts` events/holidays as inclusive ranges, week lane layout,
@@ -346,6 +351,7 @@ Before writing raw Tailwind layout divs in a page, check `src/components/ui/shar
 | `LangSwitch`                                    | Language (bound to i18next)                                                                                                 |
 | `ThemeSwitch`                                   | Hell / Dunkel / Wie System (profile, public pages)                                                                          |
 | `Skeleton`                                      | Loading placeholders (`aria-busy` on the region)                                                                            |
+| `CodeInput`                                     | One-time code entry (six digit fields `[ ][ ][ ] - [ ][ ][ ]`, paste, auto-advance, `onComplete`; e-mail confirmation)      |
 | `ErrorSummary`                                  | Form error list with links to the fields, focus after a failed submit                                                       |
 | `UnsavedChangesDialog`                          | "Änderungen verwerfen?" (with `useUnsavedChanges`)                                                                          |
 | `Logo`, `Icon`                                  | Brand mark, design glyphs                                                                                                   |

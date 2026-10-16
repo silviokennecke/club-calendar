@@ -10,7 +10,6 @@ use App\Entity\ClubUser;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 readonly class ClubService
 {
@@ -130,16 +129,18 @@ readonly class ClubService
 
     /**
      * Adds the user with this address to the club. `created` is false when the user already was a member
-     * (nothing changes; the caller answers 200 instead of 201 with the same body). Unknown addresses stay a
-     * plain 404 (see the security audit: account enumeration).
+     * (nothing changes; the caller answers 200 instead of 201 with the same body). Unknown and unverified addresses are the same
+     * 404 `member_not_found` (see the security audit: account enumeration).
      *
      * @return array{member: array{id: string, name: string, email: string}, created: bool}
      */
     public function addMember(Club $club, string $email): array
     {
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
-        if (!$user) {
-            throw new NotFoundHttpException('User not found');
+        // Unverified users (e.g. created by an SSO login that did not prove the address) are as unknown as
+        // missing ones: whoever claimed the address must not get access by it.
+        if (!$user || !$user->isEmailVerified()) {
+            throw new ApiProblemException(404, 'Member not found', self::MEMBER_NOT_FOUND_CODE);
         }
         $member = ['id' => $user->getId(), 'name' => $user->getName(), 'email' => $user->getEmail()];
         $existing = $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $club, 'user' => $user]);

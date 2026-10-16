@@ -120,6 +120,11 @@ class OAuthTest extends WebTestCase
 
     private function assertFailed(string $code, array $result, string $message = ''): void
     {
+        if ('email_verification_required' === $code) {
+            // The redirect names the address to confirm.
+            $this->assertArrayHasKey('email', $result, $message);
+            unset($result['email']);
+        }
         $this->assertSame(['error' => $code], $result, $message);
     }
 
@@ -256,15 +261,55 @@ class OAuthTest extends WebTestCase
         $this->assertCount(0, $this->user('alice@example.com')->getOauthAccounts());
     }
 
-    public function testNewMicrosoftUserIsNotMarkedEmailVerified(): void
+    public function testNewMicrosoftUserGetsNoSessionUntilTheCodeIsEntered(): void
     {
-        $this->assertSignedIn($this->signIn('microsoft', self::microsoft('ms@example.com')));
+        $result = $this->signIn('microsoft', self::microsoft('ms@example.com'));
+        $this->assertFailed('email_verification_required', $result);
+        $this->assertSame('ms@example.com', $result['email']);
+        $this->assertEmailCount(1);
+        $mail = $this->getMailerMessage();
+        $this->assertEmailAddressContains($mail, 'To', 'ms@example.com');
+        $this->assertSame(1, preg_match('/>\s*(\d{6})\s*</', (string) $mail->getHtmlBody(), $m));
         $user = $this->user('ms@example.com');
         $this->assertFalse($user->isEmailVerified());
         $this->assertCount(1, $user->getOauthAccounts());
 
-        // The provider account keeps working.
+        // Still no session on the next attempt; the code is still valid, so no second mail.
+        $this->assertFailed('email_verification_required', $this->signIn('microsoft', self::microsoft('ms@example.com')));
+        $this->assertEmailCount(0);
+
+        // The mailbox owner enters the code: the login token signs in, and so does the provider account.
+        $verified = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/verify-email', ['email' => 'ms@example.com', 'code' => $m[1]]);
+        $this->assertSame(200, $verified['status'], $verified['content']);
+        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'one_time_token', 'token' => $verified['body']['loginToken']]);
+        $this->assertSame(200, self::$client->getResponse()->getStatusCode());
+        $user = $this->user('ms@example.com');
+        $this->assertTrue($user->isEmailVerified());
+        $this->assertCount(1, $user->getOauthAccounts());
         $this->assertSignedIn($this->signIn('microsoft', self::microsoft('ms@example.com')));
+    }
+
+    public function testCodeConfirmationDoesNotLetAnotherProviderAccountInWithTheSameAddress(): void
+    {
+        $this->assertFailed('email_verification_required', $this->signIn('microsoft', self::microsoft('ms@example.com', 'ms-1')));
+        $this->verifyAddress('ms@example.com');
+
+        // Someone else with another Microsoft account claiming the same address is no match.
+        $this->assertFailed('account_exists', $this->signIn('microsoft', self::microsoft('ms@example.com', 'ms-2')));
+        $this->assertSignedIn($this->signIn('microsoft', self::microsoft('ms@example.com', 'ms-1')));
+    }
+
+    public function testVerifiedGoogleLoginIsUnaffected(): void
+    {
+        $this->assertSignedIn($this->signIn('google', self::google('g@example.com')));
+        $this->assertEmailCount(0);
+    }
+
+    private function verifyAddress(string $email): void
+    {
+        $service = static::getContainer()->get(\App\Service\EmailVerificationService::class);
+        $code = $service->issueCode($this->user($email));
+        $service->verify($email, $code);
     }
 
     public function testNewGoogleUserIsMarkedVerifiedOnlyWithTheClaim(): void
@@ -272,7 +317,7 @@ class OAuthTest extends WebTestCase
         $this->assertSignedIn($this->signIn('google', self::google('verified@example.com')));
         $this->assertTrue($this->user('verified@example.com')->isEmailVerified());
 
-        $this->assertSignedIn($this->signIn('google', self::google('unverified@example.com', false, 'google-2')));
+        $this->assertFailed('email_verification_required', $this->signIn('google', self::google('unverified@example.com', false, 'google-2')));
         $this->assertFalse($this->user('unverified@example.com')->isEmailVerified());
     }
 
@@ -296,7 +341,7 @@ class OAuthTest extends WebTestCase
     public function testUnverifiedSsoAccountCannotKeepAccessAfterTheVerifiedOwnerSignsIn(): void
     {
         // An attacker signs up via Microsoft with the owner's address (not verified) and adds a passkey.
-        $this->assertSignedIn($this->signIn('microsoft', self::microsoft('owner@example.com', 'ms-attacker')));
+        $this->assertFailed('email_verification_required', $this->signIn('microsoft', self::microsoft('owner@example.com', 'ms-attacker')));
         $user = $this->user('owner@example.com');
         $passkey = (new Passkey())->setId('attacker-key')->setUser($user)->setCredentialId('Y3JlZA==')->setPublicKey('x');
         $this->em->persist($passkey);
@@ -320,9 +365,47 @@ class OAuthTest extends WebTestCase
         $this->assertSame(1, $this->em->getRepository(User::class)->count([]));
     }
 
-    public function testPruneKeepsUnverifiedSsoUsers(): void
+    public function testRepeatedSsoLoginsCannotForceMoreThan10CodesPerDay(): void
     {
-        $this->assertSignedIn($this->signIn('microsoft', self::microsoft('ms@example.com')));
+        self::mockTime('2026-10-16 10:00:00 UTC');
+        $this->assertFailed('email_verification_required', $this->signIn('microsoft', self::microsoft('ms@example.com')));
+        for ($i = 0; $i < 9; ++$i) {
+            self::mockTime('+16 minutes'); // the code expired, the cooldown is over
+            $this->assertFailed('email_verification_required', $this->signIn('microsoft', self::microsoft('ms@example.com')));
+            $this->assertEmailCount(1);
+        }
+        $this->em->clear();
+        $this->assertSame(10, $this->em->getRepository(\App\Entity\EmailVerification::class)->count([]));
+
+        self::mockTime('+16 minutes');
+        $this->assertFailed('email_verification_required', $this->signIn('microsoft', self::microsoft('ms@example.com')));
+        $this->assertEmailCount(0);
+        $this->em->clear();
+        $this->assertSame(10, $this->em->getRepository(\App\Entity\EmailVerification::class)->count([]));
+
+        // A day after the first code the window has moved on.
+        self::mockTime('+22 hours');
+        $this->assertFailed('email_verification_required', $this->signIn('microsoft', self::microsoft('ms@example.com')));
+        $this->assertEmailCount(1);
+    }
+
+    public function testPruneKeepsUnverifiedUsersThatAreClubMembers(): void
+    {
+        $this->assertFailed('email_verification_required', $this->signIn('microsoft', self::microsoft('member@example.com')));
+        $this->assertFailed('email_verification_required', $this->signIn('microsoft', self::microsoft('lurker@example.com', 'ms-2')));
+        TestHelper::createClub($this->em, $this->user('member@example.com'));
+        $this->em->getConnection()->executeStatement("UPDATE `user` SET created_at = '2020-01-01 00:00:00'");
+
+        $tester = new CommandTester((new Application(self::$client->getKernel()))->find('app:prune-unverified-users'));
+        $tester->execute([]);
+
+        $this->assertNotNull($this->user('member@example.com'));
+        $this->assertNull($this->user('lurker@example.com'));
+    }
+
+    public function testPrunesStaleUnverifiedSsoUsersToo(): void
+    {
+        $this->assertFailed('email_verification_required', $this->signIn('microsoft', self::microsoft('ms@example.com')));
         $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
         TestHelper::createUser($this->em, $hasher, 'stale@example.com', 'password123', false);
         $this->em->getConnection()->executeStatement("UPDATE `user` SET created_at = '2020-01-01 00:00:00'");
@@ -330,7 +413,7 @@ class OAuthTest extends WebTestCase
         $tester = new CommandTester((new Application(self::$client->getKernel()))->find('app:prune-unverified-users'));
         $tester->execute([]);
 
-        $this->assertNotNull($this->user('ms@example.com'));
+        $this->assertNull($this->user('ms@example.com'));
         $this->assertNull($this->user('stale@example.com'));
     }
 
@@ -459,7 +542,7 @@ class OAuthTest extends WebTestCase
         $passkey = (new Passkey())->setId('alice-key')->setUser($user)->setCredentialId('YWxpY2U=')->setPublicKey('x');
         $this->em->persist($passkey);
         $this->em->flush();
-        $this->assertSignedIn($this->signIn('microsoft', self::microsoft('other@example.com')));
+        $this->assertFailed('email_verification_required', $this->signIn('microsoft', self::microsoft('other@example.com')));
 
         $this->assertSignedIn($this->signIn('google', self::google('alice@example.com')));
         $alice = $this->user('alice@example.com');

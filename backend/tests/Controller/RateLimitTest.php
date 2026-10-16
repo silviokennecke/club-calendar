@@ -122,20 +122,20 @@ class RateLimitTest extends WebTestCase
         for ($i = 0; $i < 4; ++$i) {
             $statuses[] = $this->post('/api/auth/register', $body);
         }
-        $this->assertSame(202, $statuses[0]['status']);
+        $this->assertSame(201, $statuses[0]['status']);
         // the address exists now (email_taken), which counts against the bucket as well
         $this->assertSame(400, $statuses[1]['status']);
         $this->assertSame(400, $statuses[2]['status']);
         $this->assertRateLimited($statuses[3]);
         // Other addresses are unaffected.
-        $this->assertSame(202, $this->post('/api/auth/register', ['email' => self::email()] + $body)['status']);
+        $this->assertSame(201, $this->post('/api/auth/register', ['email' => self::email()] + $body)['status']);
     }
 
     public function testRegisterIsThrottledPerIp(): void
     {
         $ip = '192.0.2.20';
         for ($i = 0; $i < 100; ++$i) {
-            $this->assertSame(202, $this->post('/api/auth/register', ['name' => 'R', 'email' => self::email(), 'password' => 'password123'], $ip)['status']);
+            $this->assertSame(201, $this->post('/api/auth/register', ['name' => 'R', 'email' => self::email(), 'password' => 'password123'], $ip)['status']);
         }
         $this->assertRateLimited($this->post('/api/auth/register', ['name' => 'R', 'email' => self::email(), 'password' => 'password123'], $ip));
     }

@@ -34,6 +34,8 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $refreshIp,
         #[Autowire(service: 'limiter.auth_other_ip')]
         private readonly RateLimiterFactory $otherIp,
+        #[Autowire(service: 'limiter.verification_resend_ip')]
+        private readonly RateLimiterFactory $verificationResendIp,
     ) {
     }
 
@@ -74,6 +76,12 @@ class AuthRateLimiter
     public function assertOtherAllowed(Request $request): void
     {
         self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
+    }
+
+    /** Resend of the e-mail confirmation code: 25 per client IP and day. */
+    public function assertResendVerificationAllowed(Request $request): void
+    {
+        self::assertAccepted($this->verificationResendIp->create(self::ip($request))->consume());
     }
 
     public static function normalize(string $email): string

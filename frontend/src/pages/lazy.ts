@@ -58,6 +58,7 @@ export const SignupPage = lazyPage(() => import("./SignupPage"));
 export const ForgotPasswordPage = lazyPage(() => import("./ForgotPasswordPage"));
 export const ResetPasswordPage = lazyPage(() => import("./ResetPasswordPage"));
 export const AuthCallbackPage = lazyPage(() => import("./AuthCallbackPage"));
+export const VerifyCodePage = lazyPage(() => import("./VerifyCodePage"));
 export const EmailVerifyPage = lazyPage(() => import("./EmailVerifyPage"));
 export const FeedPage = lazyPage(() => import("./FeedPage"));
 export const PublicEventModal = lazyPage(modalImports.PublicEventModal);

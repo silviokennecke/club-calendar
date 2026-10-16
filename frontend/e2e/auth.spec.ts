@@ -117,20 +117,33 @@ test.describe("Registration", () => {
     await page.getByLabel(/^Passwort wiederholen/).fill(PASSWORD);
     await page.getByRole("button", { name: "Konto erstellen", exact: true }).click();
 
+    // No mail is sent in e2e (the code cannot be read): check the page and the failure paths
+    await expect(page).toHaveURL(/\/verify-email\?email=/);
     await expect(
-      page.getByRole("heading", { level: 1, name: "Bitte bestätige deine E-Mail-Adresse" }),
+      page.getByRole("heading", { level: 1, name: "E-Mail-Adresse bestätigen" }),
     ).toBeVisible();
     await expect(page.getByText(email)).toBeVisible();
-    await page.getByRole("button", { name: "Bestätigungsmail erneut senden" }).click();
-    await expect(page.getByText("Wir haben dir eine neue E-Mail geschickt.")).toBeVisible();
+    await expect(page.getByRole("group", { name: "Bestätigungscode" })).toBeVisible();
 
-    await page.getByRole("link", { name: "Zur Anmeldung" }).click();
+    await page.getByLabel("Ziffer 1 von 6").click();
+    await page.keyboard.type("000000");
+    await expect(page.getByRole("alert")).toContainText("falsch, abgelaufen oder aufgebraucht");
+    await expect(page.getByLabel("Ziffer 1 von 6")).toHaveAttribute("aria-invalid", "true");
+
+    // right after the registration a new code is either refused ("too early") or sent
+    await page.getByRole("button", { name: "Erneut senden" }).click();
+    await expect(
+      page.getByText(
+        /Du kannst um .* Uhr einen neuen Code anfordern|Ein neuer Code wurde gesendet/,
+      ),
+    ).toBeVisible();
+
+    await page.getByRole("link", { name: "Zurück zur Anmeldung" }).click();
     await page.getByLabel("E-Mail").fill(email);
     await page.getByLabel("Passwort", { exact: true }).fill(PASSWORD);
     await page.getByRole("button", { name: "Anmelden", exact: true }).click();
-    await expect(page.getByRole("status")).toContainText("E-Mail-Adresse noch nicht bestätigt");
-    await page.getByRole("button", { name: "Bestätigungsmail erneut senden" }).click();
-    await expect(page.getByText("Bestätigungsmail gesendet")).toBeVisible();
+    await expect(page).toHaveURL(/\/verify-email\?email=/);
+    await expect(page.getByText(email)).toBeVisible();
   });
 
   test("mismatching passwords are reported", async ({ page }) => {
@@ -180,20 +193,21 @@ test.describe("Forgot password and email confirmation", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("verification link outcomes are explained", async ({ page }) => {
-    await page.goto("/auth/verify-email?status=success");
+  test("the code page without an address leads to the login", async ({ page }) => {
+    await page.goto("/verify-email");
+    await expect(page).toHaveURL(/\/login/);
+  });
+
+  test("the outcomes of the e-mail change link are explained", async ({ page }) => {
+    await page.goto("/auth/verify-email?status=email_changed");
     await expect(
-      page.getByRole("heading", { level: 1, name: "E-Mail-Adresse bestätigt" }),
+      page.getByRole("heading", { level: 1, name: "E-Mail-Adresse geändert" }),
     ).toBeVisible();
-    await page.goto("/auth/verify-email?status=error&reason=expired");
+    await page.goto("/auth/verify-email?status=error&reason=expired&flow=email_change");
     await expect(
       page.getByRole("heading", { level: 1, name: "Der Link ist abgelaufen" }),
     ).toBeVisible();
-    await page.goto("/auth/verify-email?status=error&reason=already_used");
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Der Link wurde schon benutzt" }),
-    ).toBeVisible();
-    await page.goto("/auth/verify-email?status=error&reason=invalid");
+    await page.goto("/auth/verify-email?status=error&reason=invalid&flow=email_change");
     await expect(
       page.getByRole("heading", { level: 1, name: "Der Link ist ungültig" }),
     ).toBeVisible();

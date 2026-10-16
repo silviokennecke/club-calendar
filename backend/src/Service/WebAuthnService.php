@@ -266,6 +266,10 @@ class WebAuthnService
             throw $this->authenticationFailed();
         }
 
+        if (!$user->isEmailVerified()) {
+            throw $this->authenticationFailed();
+        }
+
         $passkey->setCounter($updated->counter);
         $passkey->setPublicKey($updated->credentialPublicKey);
         $passkey->setLastUsedAt($this->signedTokens->now()->setTimezone(new \DateTimeZone('UTC')));

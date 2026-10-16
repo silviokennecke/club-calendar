@@ -30,11 +30,6 @@
       "wrongTitle": "Email or password is incorrect",
       "wrongText": "Please check your details and try again. If you forgot your password, reset it.",
       "resetPassword": "Reset password",
-      "unverifiedTitle": "Email address not confirmed yet",
-      "unverifiedText": "Please open the link in the email we sent you. Then you can sign in. No email? We will send you a new one.",
-      "resend": "Resend confirmation email",
-      "sentTitle": "Confirmation email sent",
-      "sentText": "We sent you a new email. Please also check your spam folder.",
       "passkeyErrorTitle": "Passkey sign-in not possible",
       "passkeyErrorText": "Passkey sign-in was cancelled or did not work. Try again or sign in with your password.",
       "ssoErrorTitle": "Sign-in with Google or Microsoft not possible",
@@ -45,7 +40,8 @@
         "provider_error": "The provider did not complete the sign-in. Try again later or sign in with email and password.",
         "email_missing": "The provider did not send us an email address. Allow access to your email address at the provider or sign in with email and password.",
         "account_exists": "There already is an account for this email address. Sign in the way you did before.",
-        "email_unverified_at_provider": "Your email address is not confirmed at the provider yet. Confirm it there and try again, or sign in with email and password."
+        "email_unverified_at_provider": "Your email address is not confirmed at the provider yet. Confirm it there and try again, or sign in with email and password.",
+        "email_verification_required": "We need to confirm your email address first. Sign in with your email address and password, or register again."
       },
       "forgot": "Forgot password?",
       "signInWith": "Sign in with {{provider}}",
@@ -79,36 +75,6 @@
     },
     "verify": {
       "toLogin": "Go to sign in",
-      "requestNew": "Request a new confirmation email",
-      "resend": "Resend confirmation email",
-      "alreadyConfirmed": "Already confirmed?",
-      "success": {
-        "title": "Email address confirmed",
-        "text": "Thanks, your email address is confirmed. You can sign in now."
-      },
-      "expired": {
-        "title": "The link has expired",
-        "text": "This confirmation link is no longer valid. Request a new confirmation email."
-      },
-      "used": {
-        "title": "The link has already been used",
-        "text": "Your email address is already confirmed. You can sign in right away."
-      },
-      "invalid": {
-        "title": "The link is invalid",
-        "text": "Something is wrong with this link. Copy it completely from the email or request a new confirmation email."
-      },
-      "pending": {
-        "title": "Please confirm your email address",
-        "textWithEmail": "We sent an email to <strong>{{email}}</strong>. You can only sign in after confirming.",
-        "textNoEmail": "We will send you an email with a confirmation link. You can only sign in after confirming.",
-        "step1": "Open the email from Club Calendar.",
-        "step2": "Click the confirmation link in the email.",
-        "step3": "Then sign in with your email address and password.",
-        "hintTitle": "Nothing arrived?",
-        "hintText": "Also check your spam folder. It can take a few minutes for the email to arrive.",
-        "sent": "We sent you a new email."
-      },
       "toProfile": "Go to profile",
       "emailChanged": {
         "title": "Email address changed",
@@ -125,7 +91,23 @@
       "changeInvalid": {
         "title": "The link is invalid",
         "text": "This link was already used, discarded or is incomplete. If needed, change the address in your profile again."
-      }
+      },
+      "title": "Confirm your email address",
+      "intro": "We sent a 6-digit code to <strong>{{email}}</strong>. Enter it below to finish signing up.",
+      "codeLabel": "Confirmation code",
+      "hint": "Nothing arrived? Also check your spam folder.",
+      "errorTitle": "The code was not accepted",
+      "invalidCode": "This code is wrong, expired or used up. Request a new code and try again.",
+      "checking": "Checking the code…",
+      "resend": "Send again",
+      "resendSent": "A new code has been sent",
+      "resendTooEarly": "You can request a new code at {{time}}.",
+      "resendTooEarlyNoTime": "You requested a code a moment ago. Please wait a few minutes before asking for a new one.",
+      "tooManyRequests": "Too many requests. Please try again later.",
+      "resendFailed": "The code could not be sent. Please try again later.",
+      "genericError": "The code could not be checked. Please try again.",
+      "sessionError": "Signing in after the confirmation did not work. Please sign in with your email address and password.",
+      "backToLogin": "Back to sign in"
     },
     "forgot": {
       "title": "Forgot your password?",
@@ -1554,6 +1536,9 @@
     },
     "errorSummary": {
       "intro": "Please check these entries:"
+    },
+    "codeInput": {
+      "digit": "Digit {{index}} of {{total}}"
     }
   },
   "shell": {

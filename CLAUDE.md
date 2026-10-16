@@ -78,7 +78,7 @@ From the repo root (none require Docker):
 - `npm run build:dev` / `npm run build` — dev / production build (composer install, mail templates, frontend)
 - `npm run dev:frontend`, `npm test`, `npm run test:backend`, `npm run test:frontend`
 - `npm run migrate`, `npm run fixtures` — Doctrine migrations / fixtures
-- `npm run build:mail -w backend` — compile MJML email templates (verify, password reset, new e-mail; compiled `*.html.twig` are committed; `backend` is an npm workspace for this)
+- `npm run build:mail -w backend` — compile MJML email templates (confirmation code, password reset, new e-mail; compiled `*.html.twig` are committed; `backend` is an npm workspace for this)
 - `npm run lint -w frontend` — ESLint (`--max-warnings 0`) + Prettier check; `npm run format -w frontend` fixes formatting
 
 ## Tests
@@ -128,7 +128,7 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 - **TargetGroup** — audience filter for events (e.g. "Schüler", "Jugend", "Erwachsene")
 - **Location** — a venue with an address and optional map position; scoped to a Calendar
 - **HolidayCalendar** — an external ICS source of holidays/school breaks for a Calendar (`HolidayEvent`s); shown in the calendar views and skipped in series previews
-- **User** — signs in with password, Google/Microsoft SSO (`OAuthAccount`) or passkeys (`Passkey`); e-mail double opt-in (`EmailVerification`)
+- **User** — signs in with password, Google/Microsoft SSO (`OAuthAccount`) or passkeys (`Passkey`); e-mail confirmation by 6-digit code (`EmailVerification`)
 
 ## Auth
 
@@ -136,7 +136,8 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 - No auth cookies. Frontend owns both tokens. (Only the OAuth flow sets a short-lived HttpOnly `oauth_state_nonce` cookie on the API host to bind `state` to the browser.)
 - Refresh: `POST /api/auth/token` (form-encoded: `grant_type=refresh_token&refresh_token=<token>`)
 - Keys: RSA keypair in `backend/config/jwt/` (gitignored); `JWT_REFRESH_SECRET` for HMAC refresh tokens
-- OAuth SSO: Google + Microsoft (redirect → callback → `{FRONTEND_URL}/auth/callback?token=X&refresh_token=Y`, errors `?error=<code>`: `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`, `email_unverified_at_provider`); signed, single-use `state`; e-mail linking only with a trusted `email_verified` (Google/Apple, never Microsoft) (a former bug, see the OAuth tests)
+- OAuth SSO: Google + Microsoft (redirect → callback → `{FRONTEND_URL}/auth/callback?token=X&refresh_token=Y`, errors `?error=<code>`: `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`, `email_unverified_at_provider`, `email_verification_required`); a provider that does not prove the address (Microsoft) gets no tokens until the e-mail code was entered (user + OAuthAccount created unverified, code mailed, redirect `…?error=email_verification_required&email=<address>`; after the code the login token signs in, a passwordless SSO user keeps the provider link); trusted verified Google/Apple logins skip the code and also confirm an existing unverified account (its unproven password/passkeys/SSO links are removed first); unverified users are invisible to `addMember` (404 `member_not_found`); signed, single-use `state`; e-mail linking only with a trusted `email_verified` (Google/Apple, never Microsoft) (a former bug, see the OAuth tests)
+- E-mail confirmation (all registrations, last step): a 6-digit code by mail only (CSPRNG, stored as a bcrypt hash of the `verification_code` hasher, peppered with APP_SECRET, 15 min, single use, a new code kills the old, 5 attempts then dead; per account and 24 h at most 10 codes and 20 guesses in total (`lockedUntil`: no new mail on any path incl. login/SSO, verify answers as usual, resend `429 rate_limited` + `Retry-After`); `EmailVerificationService`). `POST /api/auth/register` → 201 `{verificationRequired, email}` (no tokens); `POST /api/auth/verify-email` `{email, code}` → `{loginToken, expiresIn: 30}` (`EMAIL_VERIFICATION_LOGIN_TOKEN_TTL`), every failure `422 invalid_verification_code` (no oracle); `POST /api/auth/token` `grant_type=one_time_token&token=` redeems it once (`OneTimeTokenService`: purpose-bound, user + session version bound, `NonceStore`; reusable for the SSO code exchange) and returns the usual token pair. Resend `POST /api/auth/resend-verification`: per account at most one code mail per 5 min (`429 verification_resend_too_early` + `retryAt` + `Retry-After`), per IP 25/day (`rate_limited`); unknown/verified addresses 204. Trade-off: the too-early answer shows that an unconfirmed account exists. Login with the right password of an unverified user → 403 `email_not_verified` (+ `email`) and a fresh code is mailed if none is waiting and the cooldown passed. Refresh and passkey sign-in refuse unverified users; `app:prune-unverified-users` deletes them after 30 days (SSO-created ones too, but never club members). No link, no `GET /verify-email`.
 - Notices: password changed (change / reset), e-mail change requested (to the current address) and done (to the
   former address) go out after the response (`AccountMailer`, `DeferredMailer`), without tokens or links except
   `/forgot-password`, the new address masked; none for forgot-password or to a taken new address

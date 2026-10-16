@@ -19,18 +19,11 @@
         <mj-text padding-bottom="24px">
           {{ 'email.verify.body'|trans }}
         </mj-text>
-        <mj-button
-          href="{{ verificationUrl }}"
-          background-color="#2563eb"
-          color="#ffffff"
-          border-radius="6px"
-          font-size="16px"
-          padding="12px 24px"
-        >
-          {{ 'email.verify.button'|trans }}
-        </mj-button>
+        <mj-text align="center" font-size="36px" font-weight="bold" letter-spacing="10px" color="#111111" container-background-color="#f4f4f4" padding="16px 24px">
+          {{ code }}
+        </mj-text>
         <mj-text font-size="13px" color="#888888" padding-top="24px">
-          {{ 'email.verify.expiry_note'|trans }}
+          {{ 'email.verify.expiry_note'|trans({minutes: validMinutes}) }}
         </mj-text>
         <mj-text font-size="13px" color="#888888">
           {{ 'email.verify.ignore_note'|trans }}

@@ -60,13 +60,14 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      await apiPost("/api/auth/register", {
+      const res = await apiPost<{ email?: string } | undefined>("/api/auth/register", {
         name,
         email,
         password,
         language: i18n.resolvedLanguage ?? "en",
       });
-      navigate(`/auth/verify-email?email=${encodeURIComponent(email)}`);
+      // no tokens yet: the address is confirmed with the code from the e-mail
+      navigate(`/verify-email?email=${encodeURIComponent(res?.email ?? email)}`);
     } catch (err: unknown) {
       // Stable error code of the API (RFC 7807 body), never the English `detail` text
       if ((err as { code?: string }).code === "email_taken") {

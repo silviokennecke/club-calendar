@@ -4,6 +4,10 @@ security:
             algorithm: bcrypt
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
             algorithm: auto
+        # E-mail confirmation codes (EmailVerificationService); the input is peppered with APP_SECRET there.
+        verification_code:
+            algorithm: bcrypt
+            cost: 12
 
     providers:
         jwt_user_provider:
@@ -37,3 +41,7 @@ when@test:
         password_hashers:
             App\Entity\User:
                 algorithm: plaintext
+            # Lowest bcrypt cost keeps the suite fast.
+            verification_code:
+                algorithm: bcrypt
+                cost: 4

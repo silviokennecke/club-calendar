@@ -30,7 +30,11 @@ info:
       `grant_type=refresh_token&refresh_token=<token>` (OAuth 2.0 style). There is no rotation; a refresh
       answers with a new access token AND a new refresh token.
     - Both tokens die when the account's session version changes (password reset/change, e-mail change, SSO
-      takeover of an unconfirmed account): `401` on the next request / refresh.
+      takeover of an unconfirmed account): `401` on the next request / refresh. Refresh and passkey sign-in
+      refuse accounts whose e-mail address is not confirmed.
+    - **One-time login token**: `POST /api/auth/token` with `grant_type=one_time_token&token=<token>` returns the
+      usual token pair. The token comes from `POST /api/auth/verify-email` (TTL 30 s), is opaque, single use and
+      bound to the user and the session version.
     - Every `/api/*` route except `/api/feed/*` passes the JWT firewall. A route marked "no authentication"
       still rejects an *invalid* `Authorization` header with 401 (send none instead).
     - Authorization: club routes require club membership (403 otherwise; there are no roles), calendar routes
@@ -52,7 +56,11 @@ info:
     2. The provider calls back `GET|POST /api/auth/oauth/{provider}/callback`; the API redirects to
        `{FRONTEND_URL}/auth/callback?token=<access>&refresh_token=<refresh>` or `?error=<code>` with one of
        `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`,
-       `email_unverified_at_provider`. An existing account is linked by e-mail only when the provider vouches
+       `email_unverified_at_provider`, `email_verification_required` (the provider does not prove the address, Microsoft:
+       no tokens are issued, the account is created unverified, the 6-digit code is mailed and the redirect is
+       `…/auth/callback?error=email_verification_required&email=<address>`; the frontend asks for the code at
+       `POST /api/auth/verify-email` and signs in with the returned login token at `POST /api/auth/token`, or
+       signs in with the provider again afterwards). An existing account is linked by e-mail only when the provider vouches
        for the address (`email_verified`, trusted for Google and Apple, never Microsoft).
     3. Linking while signed in: `POST …/{provider}/link-start` (JWT) → `{url}` (one-time ticket, 60 s) → the
        browser opens it (`GET …/{provider}/link?ticket=`) → provider → callback → redirect to
@@ -214,7 +222,9 @@ paths:
     post:
       tags: [Auth]
       summary: Register with e-mail and password
-      description: Creates an unconfirmed account and sends a confirmation link (double opt-in). Sign-in is possible after confirming.
+      description: >-
+        Creates an unconfirmed account and mails a 6-digit confirmation code (no link, valid 15 minutes). No tokens:
+        the client sends the code to `POST /api/auth/verify-email` and signs in with the returned login token.
       operationId: register
       security: []
       requestBody:
@@ -230,15 +240,16 @@ paths:
                 password: { $ref: '#/components/schemas/Password' }
                 language: { type: [string, 'null'], examples: [de] }
       responses:
-        '202':
-          description: Account created, confirmation mail sent.
+        '201':
+          description: Account created, confirmation code mailed.
           content:
             application/json:
               schema:
                 type: object
-                required: [message]
+                required: [verificationRequired, email]
                 properties:
-                  message: { type: string, const: check_your_email }
+                  verificationRequired: { type: boolean, const: true }
+                  email: { type: string, format: email }
         '400':
           description: '`email_taken` (field `email`) or `invalid_request` (no JSON object).'
           content:
@@ -272,7 +283,10 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '403':
-          description: '`email_not_verified`: the address is not confirmed yet.'
+          description: >-
+            `email_not_verified` (extra member `email`): right password, but the address is not confirmed. If no
+            valid code is waiting and the resend cooldown allows, a fresh code was mailed. A wrong password stays
+            `401 invalid_credentials`.
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -282,8 +296,13 @@ paths:
   /api/auth/resend-verification:
     post:
       tags: [Auth]
-      summary: Send the confirmation link again
-      description: Always 204 (also for unknown or already confirmed addresses and over the rate limit), so the response reveals no account.
+      summary: Send a new confirmation code
+      description: >-
+        Mails a new code (the earlier ones die). Allowed when the last code mail of the ACCOUNT is at least 5
+        minutes old, else `429 verification_resend_too_early` with `retryAt` (ISO-8601 UTC) and `Retry-After`.
+        Also limited to 25 requests per client IP and day (`429 rate_limited`), and per account to 10 codes and 20 wrong guesses per rolling 24 hours (`429 rate_limited` with `Retry-After`, no mail on any path, verify keeps answering `invalid_verification_code`). Unknown and already confirmed
+        addresses answer 204 like success. Accepted trade-off: the too-early answer reveals that an unconfirmed
+        account exists.
       operationId: resendVerification
       security: []
       requestBody:
@@ -296,26 +315,64 @@ paths:
               properties:
                 email: { type: string, format: email, maxLength: 254 }
       responses:
-        '204': { description: Accepted. }
+        '204': { description: 'Accepted: a code was mailed, or nothing to do for this address.' }
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429':
+          description: >-
+            `verification_resend_too_early` (body member `retryAt`, header `Retry-After` in seconds) or
+            `rate_limited` (per IP and day).
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Problem' }
+                  - type: object
+                    properties:
+                      retryAt: { type: string, format: date-time, examples: ['2026-10-16T10:05:00Z'] }
 
   /api/auth/verify-email:
-    get:
+    post:
       tags: [Auth]
-      summary: Confirm the e-mail address (link from the mail)
+      summary: Confirm the e-mail address with the 6-digit code
+      description: >-
+        Marks the address confirmed and returns a one-time login token (valid `expiresIn` seconds, default 30,
+        env `EMAIL_VERIFICATION_LOGIN_TOKEN_TTL`) that is redeemed once at `POST /api/auth/token` with
+        `grant_type=one_time_token`. The code is valid 15 minutes, works once, a newer code invalidates it, and
+        after 5 wrong attempts it is dead (request a new one). Every failure is the same
+        `422 invalid_verification_code` (wrong, expired, used up, unknown or already confirmed address): no
+        account oracle. Whitespace in the code is ignored. Rate limited per client IP.
       operationId: verifyEmail
       security: []
-      parameters:
-        - { name: id, in: query, required: true, schema: { type: string }, description: Verification id. }
-        - { name: token, in: query, required: true, schema: { type: string }, description: Verification token. }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                code: { type: string, examples: ['048213'] }
       responses:
-        '302':
-          description: >-
-            Redirect to `{FRONTEND_URL}/auth/verify-email?status=success` or
-            `?status=error&reason=invalid|expired|already_used`.
-          headers:
-            Location: { $ref: '#/components/headers/Location' }
+        '200':
+          description: Confirmed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [loginToken, expiresIn]
+                properties:
+                  loginToken: { type: string, description: 'Opaque; single use, bound to the user and the session version.' }
+                  expiresIn: { type: integer, examples: [30] }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '422':
+          description: '`invalid_verification_code` (field `code`), or `validation_failed` for a malformed body.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/auth/forgot-password:
@@ -472,20 +529,31 @@ paths:
         content:
           application/x-www-form-urlencoded:
             schema:
-              type: object
-              required: [grant_type, refresh_token]
-              properties:
-                grant_type: { type: string, const: refresh_token }
-                refresh_token: { type: string }
+              oneOf:
+                - type: object
+                  required: [grant_type, refresh_token]
+                  properties:
+                    grant_type: { type: string, const: refresh_token }
+                    refresh_token: { type: string }
+                - type: object
+                  description: >-
+                    One-time login token (from `POST /api/auth/verify-email`): single use, expires after its own
+                    TTL, bound to the user's session version; answers like a login.
+                  required: [grant_type, token]
+                  properties:
+                    grant_type: { type: string, const: one_time_token }
+                    token: { type: string }
       responses:
         '200': { $ref: '#/components/responses/Tokens' }
         '400':
-          description: '`invalid_grant`: `grant_type` is not `refresh_token` or the token is missing.'
+          description: >-
+            `invalid_grant`: unknown `grant_type`, token missing, or (`one_time_token`) the token is invalid,
+            expired, used before or for a user whose sessions ended or whose address is not confirmed.
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '401':
-          description: '`invalid_refresh_token`: invalid, expired, user gone or sessions ended.'
+          description: '`invalid_refresh_token`: invalid, expired, user gone, sessions ended or the address is not confirmed.'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -943,7 +1011,8 @@ paths:
       summary: Add a registered user as member
       description: >-
         201 when the user becomes a member, 200 with the same body when the user already is one (nothing changes).
-        An unknown address is a 404 without more detail.
+        An unknown address and an address of a user who never confirmed it (e.g. created by a Microsoft SSO login)
+        are the same 404 `member_not_found`.
       operationId: addMember
       requestBody:
         required: true
@@ -969,7 +1038,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404':
-          description: Club unknown, or no user with this address (no `code`).
+          description: Club unknown (no `code`), or no usable user with this address (`member_not_found`).
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -2784,6 +2853,8 @@ components:
         status: { type: integer, examples: [422] }
         detail: { type: string, description: Human-readable; not a contract. }
         code: { $ref: '#/components/schemas/ErrorCode' }
+        retryAt: { type: string, format: date-time, description: 'Only `verification_resend_too_early`.' }
+        email: { type: string, description: 'Only `email_not_verified`.' }
         field:
           type: string
           description: Path of the offending input, e.g. `name`, `rule.weekday`, `event.locationId`, `events[3].date`, `locations[0].tempId`, `ids`.
@@ -2806,7 +2877,7 @@ components:
         | `missing_token` | 401 | No access token on a route that needs a user (all of `/api/clubs`, `/api/calendars`, `/api/map/geocode/` before the id is looked up) |
         | `invalid_token` | 401 | Access token malformed, wrongly signed, of an ended session or of a deleted user |
         | `token_expired` | 401 | Access token expired (refresh it) |
-        | `member_not_found` | 404 | `DELETE /api/clubs/{clubId}/members/{userId}`: no member of the club (unknown ids alike) |
+        | `member_not_found` | 404 | `DELETE /api/clubs/{clubId}/members/{userId}`: no member of the club (unknown ids alike); `POST /api/clubs/{clubId}/members`: unknown or unverified address |
         | `ics_fetch_failed` | 422 | Holiday calendar create/refresh: the ICS URL could not be fetched or parsed (field `url`) |
         | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After` |
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
@@ -2824,8 +2895,10 @@ components:
         | `invalid_state` | 400 | `POST …/oauth/{provider}/link-complete`: proof invalid |
         | `account_in_use` | 409 | `link-complete`: provider account belongs to another user |
         | `already_linked` | 409 | `link-complete`: another account of this provider is linked |
-        | `email_not_verified` | 403 | Login with an unconfirmed address |
-        | `invalid_grant` | 400 | `POST /api/auth/token` without `grant_type=refresh_token` or token |
+        | `email_not_verified` | 403 | Login with an unconfirmed address (extra member `email`) |
+        | `invalid_verification_code` | 422 | `POST /api/auth/verify-email`: wrong, expired, used up or unknown (same answer), field `code` |
+        | `verification_resend_too_early` | 429 | `POST /api/auth/resend-verification` less than 5 minutes after the last code mail of the account; extra member `retryAt` (ISO-8601 UTC), header `Retry-After` |
+        | `invalid_grant` | 400 | `POST /api/auth/token` with an unknown `grant_type`, a missing token or an unusable one-time token |
         | `invalid_refresh_token` | 401 | Refresh token invalid, expired, user gone or sessions ended |
         | `invalid_passkey` | 401 | Passkey sign-in failed |
         | `invalid_passkey_registration` | 400 | Passkey registration failed |
@@ -2854,6 +2927,8 @@ components:
         - account_in_use
         - already_linked
         - email_not_verified
+        - invalid_verification_code
+        - verification_resend_too_early
         - invalid_grant
         - invalid_refresh_token
         - invalid_passkey

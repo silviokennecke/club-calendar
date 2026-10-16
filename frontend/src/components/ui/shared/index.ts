@@ -37,6 +37,7 @@ export { Skeleton } from "./Skeleton";
 export { FilterPillGroup } from "./FilterPillGroup";
 export { SearchInput } from "./SearchInput";
 export { FullPageLoader } from "./PageLoader";
+export { CodeInput } from "./CodeInput";
 export { ErrorSummary } from "./ErrorSummary";
 export type { ErrorSummaryItem } from "./ErrorSummary";
 export { UnsavedChangesDialog } from "./UnsavedChangesDialog";

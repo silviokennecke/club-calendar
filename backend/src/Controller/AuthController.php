@@ -12,17 +12,15 @@ use App\Dto\Auth\RegisterDto;
 use App\Dto\Auth\ResendVerificationDto;
 use App\Dto\Auth\ResetPasswordDto;
 use App\Dto\Auth\UpdateMeDto;
-use App\Entity\User;
+use App\Dto\Auth\VerifyEmailDto;
 use App\Exception\ApiProblemException;
 use App\Exception\EmailNotVerifiedException;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
 use App\Service\AccountService;
 use App\Service\AuthService;
-use App\Service\EmailVerificationService;
 use App\Service\Input;
 use App\Service\PasswordResetService;
-use Doctrine\ORM\EntityManagerInterface;
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -45,10 +43,6 @@ class AuthController extends AbstractApiController
         private readonly ValidatorInterface $validator,
         private readonly SerializerInterface $serializer,
         private readonly ClientRegistry $clientRegistry,
-        private readonly EmailVerificationService $verificationService,
-        private readonly EntityManagerInterface $em,
-        #[Autowire(service: 'limiter.email_verification_resend')]
-        private readonly RateLimiterFactory $emailVerificationResendLimiter,
         private readonly PasswordResetService $passwordResets,
         private readonly AccountService $accounts,
         #[Autowire(service: 'limiter.password_reset_email')]
@@ -77,7 +71,8 @@ class AuthController extends AbstractApiController
         $this->rateLimiter->assertRegisterEmailAllowed($dto->email);
         $this->auth->register($dto->name, $dto->email, $dto->password, $dto->language);
 
-        return new JsonResponse(['message' => 'check_your_email'], Response::HTTP_ACCEPTED);
+        // No tokens: the address is confirmed with the code from the mail first (POST /api/auth/verify-email).
+        return new JsonResponse(['verificationRequired' => true, 'email' => $dto->email], Response::HTTP_CREATED);
     }
 
     #[Route('/login', methods: ['POST'])]
@@ -93,54 +88,43 @@ class AuthController extends AbstractApiController
         try {
             $tokens = $this->auth->login($dto->email, $dto->password);
         } catch (EmailNotVerifiedException) {
-            throw new ApiProblemException(Response::HTTP_FORBIDDEN, 'Email address not verified', 'email_not_verified');
+            throw new ApiProblemException(Response::HTTP_FORBIDDEN, 'Email address not verified', 'email_not_verified', null, [], null, ['email' => $dto->email]);
         }
         $this->rateLimiter->recordLoginSuccess($dto->email);
 
         return new JsonResponse($tokens);
     }
 
+    /**
+     * Mails a new confirmation code. 204 for every address that is unknown or already verified and when a code
+     * went out; 429 `verification_resend_too_early` (+ `retryAt`) when the account got a code mail less than 5
+     * minutes ago; 429 `rate_limited` over 25 requests per client IP and day. The too-early answer shows that an
+     * unconfirmed account exists (accepted: the user must learn when to retry).
+     */
     #[Route('/resend-verification', methods: ['POST'])]
     public function resendVerification(Request $request): JsonResponse
     {
-        try {
-            $dto = $this->serializer->deserialize($request->getContent(), ResendVerificationDto::class, 'json');
-        } catch (SerializerException $e) {
-            throw self::invalidJson('Invalid JSON body: '.$e->getMessage(), $e);
-        }
+        $dto = $this->deserializeDto($request, ResendVerificationDto::class);
         $this->validateDto($dto, $this->validator);
-
-        $limiter = $this->emailVerificationResendLimiter->create($dto->email);
-        $limit = $limiter->consume();
-        if (!$limit->isAccepted()) {
-            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
-        }
-
-        $user = $this->em->getRepository(User::class)->findOneBy(['email' => $dto->email]);
-        if (!$user || $user->isEmailVerified()) {
-            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
-        }
-
-        $this->auth->sendVerificationEmail($user);
+        $this->rateLimiter->assertResendVerificationAllowed($request);
+        $this->auth->resendVerificationCode($dto->email);
 
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 
-    #[Route('/verify-email', name: 'api_auth_verify_email', methods: ['GET'])]
-    public function verifyEmail(Request $request): RedirectResponse
+    /**
+     * Confirms the address with the 6-digit code. 200 `{loginToken, expiresIn}` (one-time token, redeemed at
+     * `POST /api/auth/token` with `grant_type=one_time_token`); 422 `invalid_verification_code` for every
+     * failure (also unknown address).
+     */
+    #[Route('/verify-email', methods: ['POST'])]
+    public function verifyEmail(Request $request): JsonResponse
     {
         $this->rateLimiter->assertOtherAllowed($request);
-        $id = (string) $request->query->get('id', '');
-        $token = (string) $request->query->get('token', '');
-        $result = $this->verificationService->verify($id, $token);
+        $dto = $this->deserializeDto($request, VerifyEmailDto::class);
+        $this->validateDto($dto, $this->validator);
 
-        if ('success' === $result) {
-            return new RedirectResponse($this->frontendUrl.'/auth/verify-email?status=success');
-        }
-
-        return new RedirectResponse(
-            $this->frontendUrl.'/auth/verify-email?status=error&reason='.$result,
-        );
+        return new JsonResponse($this->auth->verifyEmailCode($dto->email, $dto->code));
     }
 
     /**
@@ -244,9 +228,17 @@ class AuthController extends AbstractApiController
     {
         $this->rateLimiter->assertRefreshAllowed($request);
         $grantType = $request->request->get('grant_type');
+        if ('one_time_token' === $grantType) {
+            $token = $request->request->get('token');
+            if (!is_string($token) || '' === $token) {
+                throw new ApiProblemException(400, 'Missing token', 'invalid_grant');
+            }
+
+            return new JsonResponse($this->auth->redeemOneTimeToken($token));
+        }
         $refreshToken = $request->request->get('refresh_token');
         if ('refresh_token' !== $grantType || empty($refreshToken)) {
-            throw new ApiProblemException(400, 'Invalid grant type or missing refresh_token', 'invalid_grant');
+            throw new ApiProblemException(400, 'Invalid grant type or missing refresh_token/token', 'invalid_grant');
         }
 
         return new JsonResponse($this->auth->refresh($refreshToken));

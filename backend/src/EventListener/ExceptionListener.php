@@ -51,7 +51,7 @@ class ExceptionListener
 
         if ($exception instanceof ApiProblemException) {
             $status = $exception->getStatusCode();
-            $extra = ['code' => $exception->getErrorCode()] + (null !== $exception->getField() ? ['field' => $exception->getField()] : []);
+            $extra = ['code' => $exception->getErrorCode()] + (null !== $exception->getField() ? ['field' => $exception->getField()] : []) + $exception->getExtra();
             $event->setResponse($this->problemResponse($status, $exception->getMessage(), $extra, $exception->getHeaders()));
 
             return;

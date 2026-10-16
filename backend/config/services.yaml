@@ -9,6 +9,9 @@ parameters:
     env(MICROSOFT_TENANT_ID): 'common'
     microsoft_oidc_issuer: 'https://login.microsoftonline.com/%env(MICROSOFT_TENANT_ID)%/v2.0'
 
+    # Seconds the login token of POST /api/auth/verify-email stays valid
+    env(EMAIL_VERIFICATION_LOGIN_TOKEN_TTL): '30'
+
     env(MAP_IMAGE_CACHE_TTL): '2592000'  # 30 days
     env(GEOCODER_CACHE_TTL): '3600'       # 1 hour
     env(MAPBOX_PROXY_CACHE_TTL): '2592000' # 30 days
