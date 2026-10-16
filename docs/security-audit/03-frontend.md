@@ -42,45 +42,6 @@ install/audit/build was run. Secret values found in this audit are redacted (`pk
 
 ---
 
-### FE-02 · OAuth login passes access token and 7-day refresh token in the URL query string
-
-- **Severity:** Medium
-- **Attack scope:** Web-server access logs, browser/OS history, and anything that can read the
-  address bar during the callback round-trip; any party with log access to the frontend host.
-- **Description:** The backend's OAuth callback redirects the browser back to the SPA with
-  both tokens as query parameters:
-  `redirectUrl . '/auth/callback?' . http_build_query(['token' => $accessToken, 'refresh_token' => $refreshToken])`
-  (`backend/src/Controller/OAuthController.php:106-109`). The SPA reads them straight from the
-  query string (`searchParams.get("token")`, `searchParams.get("refresh_token")` —
-  `frontend/src/pages/AuthCallbackPage.tsx:21-22`) and stores them via `storeTokens` (line 33).
-  Unlike the normal login/refresh flow (form-encoded `POST /api/auth/token`,
-  `backend/src/Controller/AuthController.php:126-128`), the OAuth *login* flow puts the
-  7-day refresh token in a URL.
-- **Affected parts:**
-  - `backend/src/Controller/OAuthController.php:106-109` — redirect with `token`/`refresh_token`
-  - `frontend/src/pages/AuthCallbackPage.tsx:21-22` (read), `:33` (store)
-- **Mitigations already in place (verified):**
-  - All post-store navigations use `{ replace: true }` (`AuthCallbackPage.tsx:26, 30, 37, 39`),
-    so the token-bearing URL does not accumulate in browser history.
-  - The SPA makes exactly one same-origin call (`apiGet("/api/auth/me")`, line 34) before
-    navigating away; no third-party resources are loaded, and the default
-    `strict-origin-when-cross-origin` referrer policy sends only the origin (no query) to the
-    API host.
-- **Residual risk:** The full URL (with both tokens) is still (a) written to the web server's
-  access log, and (b) visible in the address bar for the duration of the `/api/auth/me`
-  round-trip (lines 34-39); a JS exception before the `replace` navigation would leave the
-  tokens in the URL.
-- **Fix recommendation:** Do not ship long-lived credentials in the URL. Preferred: the
-  backend redirects to a short-lived, single-use **code** (or reuses its own form-encoded
-  refresh-grant pattern server-side) that the SPA exchanges via `POST` for the real tokens,
-  mirroring the passwordless flow. Minimum: drop the `token` from the redirect and fetch it
-  with the code only.
-- **Notes:** The state-cookie binding (`oauth_state_nonce`, deleted at
-  `OAuthController.php:110`, validated via `hash_equals` at `:126`) is sound — this finding
-  is only about the credential transport.
-
----
-
 ### FE-03 · Access/refresh tokens in `sessionStorage` and no deduplication of concurrent refreshes
 
 - **Severity:** Low

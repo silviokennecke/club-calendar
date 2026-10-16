@@ -28,9 +28,9 @@
 ## Executive Summary
 
 - **No Critical findings** in the completed areas.
-- Counts so far (4 of 5 areas complete): **2 High, 3 Medium, 9 Low, 9 Informational** — 23 findings after consolidating one cross-area duplicate (AUTH-02 + FE-02); API-02 removed after implementation.
+- Counts so far (4 of 5 areas complete): **2 High, 1 Medium, 10 Low, 9 Informational** — 22 findings; API-02 and the OAuth token-in-URL finding removed after implementation (AUTH-13 added for the residual risk of the fix).
 - **Immediate action (no code change required):** rotate the Mapbox token that leaked into git history (FE-01) — it remains valid and is recoverable from any clone of the repository.
-- **Top design gaps:** club membership equals full admin with no role model (API-01); OAuth login returns the 7-day refresh token in the redirect URL (AUTH-02/FE-02); Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
+- **Top design gaps:** club membership equals full admin with no role model (API-01); Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
 - **Positives:** no IDOR/cross-tenant gaps in the API surface; no live Mapbox token in the frontend (fully proxied through the backend); WebAuthn ceremonies, OAuth state handling, and exception → RFC 7807 response masking are sound; feed-secret checks are constant-time and the Mapbox proxy is SSRF-safe (fixed upstream host, strict path allowlist, caller token stripped).
 
 ## Findings
@@ -60,15 +60,6 @@
 
 ### Medium
 
-#### AUTH-02 / FE-02 — OAuth login passes access + refresh tokens in the redirect URL
-**Severity:** Medium
-**Attack scope:** Anyone able to read the web server access log, browser history, or `Referer` headers during the callback round-trip.
-**Description:** After a successful OAuth login, the backend redirects the browser to the SPA with both tokens as query parameters — including the 7-day refresh token. The SPA reads them straight from the query string and stores them. The full URL (with both tokens) is written to the web server's access log and is visible in the address bar for the duration of the callback round-trip.
-**Affected parts:** `backend/src/Controller/OAuthController.php:106-109` (redirect with `http_build_query(['token' => …, 'refresh_token' => …])`); `frontend/src/pages/AuthCallbackPage.tsx:21-22` (read from `searchParams`), `:33` (store).
-**Fix recommendation:** Redirect with a short-lived, single-use **code** instead of tokens and have the SPA exchange it via `POST` (same-origin, tokens in the response body) — mirroring the existing form-encoded refresh-grant pattern. Minimum: drop the access `token` from the redirect and pass the code only.
-**Notes:** Found independently by both the backend-auth and frontend audits; consolidated here. Mitigations already in place (verified): all post-store navigations use `{ replace: true }` (token URL does not accumulate in browser history); the SPA makes exactly one same-origin call before navigating away; no third-party resources are loaded; the default referrer policy sends only the origin (no query) to the API host. Residual risk: access logs, the address-bar window, and a JS exception before the `replace` navigation. A leaked refresh token extends the AUTH-04 window (up to 7 days of reuse).
-**Source:** `01-backend-auth.md` (AUTH-02) + `03-frontend.md` (FE-02).
-
 #### API-52 — Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation
 **Severity:** Medium
 **Attack scope:** Any authenticated user with a valid JWT (all map endpoints sit behind the `api` firewall). One user's traffic can degrade service for all users.
@@ -91,7 +82,7 @@
 
 #### AUTH-04 — Refresh tokens have no rotation or replay detection
 **Severity:** Low
-**Attack scope:** Attacker who has stolen a refresh token (e.g. via AUTH-02/FE-02).
+**Attack scope:** Attacker who has stolen a refresh token.
 **Description:** Refresh tokens are 7-day HMAC JWTs with no rotation and no server-side revocation; a stolen token stays usable until expiry, and logout does not invalidate it.
 **Affected parts:** `TokenService.php:25-37` (HMAC signing at `:34`); `AuthController.php:134-138` (logout no-op).
 **Fix recommendation:** Rotate the refresh token on use (optionally with a short overlap window), or maintain a short-lived revocation store / token families.
@@ -160,6 +151,14 @@
 **Fix recommendation:** Escape parameter values per RFC 5545 §3.1 (double `"` and replace CRLF with the literal `\n` sequence) for both `$title` and `$addr`, using a small `escapeIcsParamValue` helper. Alternatively, drop `X-TITLE` (Apple falls back to SUMMARY) and keep only the machine-safe `VALUE=URI` GEO portion.
 **Notes:** Exploitation requires calendar write access — the attacker is a club member. Impact is calendar corruption/property injection on *other* club members' calendar clients, not data exfiltration. `geo:lat,lon` is sourced from a numeric DB column and is not attacker-controllable text.
 **Source:** `02b-backend-services.md` (API-54).
+
+#### AUTH-13 — SSO login code is not bound to the browser that started the flow (login CSRF)
+**Severity:** Low
+**Attack scope:** Attacker who can make a victim open a crafted link within the code lifetime (default 180 s, env `OAUTH_LOGIN_CODE_TTL`).
+**Description:** The one-time code at `/auth/callback?code=…` is minted after the provider callback (the OAuth `state` is bound to the browser by the `oauth_state_nonce` cookie), but the code itself is not bound to that browser: an attacker completes their own SSO flow, stops at the callback URL and sends the link to the victim, whose SPA then signs in as the attacker. This is the same exposure as the former token URLs, not a regression.
+**Affected parts:** `backend/src/Controller/OAuthController.php` (callback redirect); `backend/src/Security/OneTimeTokenService.php`; `frontend/src/pages/AuthCallbackPage.tsx`.
+**Fix recommendation:** Include a hash of the state nonce in the code's claims and require a matching short-lived HttpOnly cookie at `POST /api/auth/token`. The cookie path must cover `/api/auth/token`; the current nonce cookie path is `/api/auth/oauth` and the callback deletes it.
+**Notes:** Residual risk found while verifying the one-time-code hand-over that replaced the token redirect.
 
 ### Informational
 
@@ -263,7 +262,7 @@
 
 **Frontend (03)**
 - No live Mapbox token in the SPA working tree (git-history issue only, FE-01).
-- OAuth callback clears URL fragments/parameters with `{ replace: true }` before rendering (mitigation for AUTH-02/FE-02); no auth cookies on the frontend.
+- OAuth callback clears URL fragments/parameters with `{ replace: true }` before rendering; no auth cookies on the frontend.
 
 **Secrets scan (gitleaks)**
 - Exactly one genuine hit (FE-01); `gitleaks.json` (not committed: contains the leaked token) evidence fully redacted (0 occurrences of the full token).
@@ -282,7 +281,6 @@
 |---|---|---|
 | FE-01 | Mapbox public token leaked in git history | High |
 | API-01 | Club membership grants full administrative control (no roles, no last-admin guard) | High |
-| AUTH-02 / FE-02 | OAuth login passes access + refresh tokens in the redirect URL | Medium |
 | API-52 | Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation | Medium |
 | AUTH-03 | Account deletion without confirmation, cascading memberships | Low |
 | AUTH-04 | Refresh tokens have no rotation or replay detection | Low |
@@ -293,6 +291,7 @@
 | FE-05 | Type-only `@types/mapbox-gl` listed as a runtime dependency | Low |
 | API-53 | Static map image endpoints expose coordinates of calendars the user does not belong to | Low |
 | API-54 | ICS `X-APPLE-STRUCTURED-LOCATION` `X-TITLE` built from unescaped input enables ICS property-line injection | Low |
+| AUTH-13 | SSO login code is not bound to the browser that started the flow (login CSRF) | Low |
 | AUTH-06 | Register: check-then-insert race on the email | Informational |
 | AUTH-07 | Email verification error redirect leaks the failure reason | Informational |
 | AUTH-08 | `WEBAUTHN_USER_VERIFICATION` missing from `backend/.env.example` | Informational |
@@ -308,10 +307,10 @@
 
 | Area | Report | Findings | Status |
 |---|---|---|---|
-| Backend auth | `01-backend-auth.md` | AUTH-02 … AUTH-12 (11) | Complete |
+| Backend auth | `01-backend-auth.md` | AUTH-03 … AUTH-13 (11) | Complete |
 | Backend API (authorization & CRUD) | `02-backend-api.md` | API-01, API-03 (2) | Complete |
 | Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-54 (3) | Complete |
-| Frontend | `03-frontend.md` | FE-01 … FE-07 (7) | Complete |
+| Frontend | `03-frontend.md` | FE-01, FE-03 … FE-07 (6) | Complete |
 | Scans & config | `04-scans-config.md` | `SCAN-xx` | Pending |
 | Secrets scan evidence | `gitleaks.json` (not committed: contains the leaked token) | 1 genuine hit (FE-01); redacted in place | Complete |
 

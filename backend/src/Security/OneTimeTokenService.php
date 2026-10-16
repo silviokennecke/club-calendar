@@ -21,6 +21,9 @@ final readonly class OneTimeTokenService
     /** Purpose of the token issued when an e-mail code was confirmed. */
     public const string PURPOSE_EMAIL_VERIFIED = 'login.email_verified';
 
+    /** Purpose of the code the SSO callback hands to the frontend (instead of the tokens themselves). */
+    public const string PURPOSE_OAUTH_LOGIN = 'login.oauth';
+
     public function __construct(
         private SignedTokenService $signedTokens,
         private NonceStore $nonces,

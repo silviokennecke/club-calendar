@@ -33,8 +33,9 @@ info:
       takeover of an unconfirmed account): `401` on the next request / refresh. Refresh and passkey sign-in
       refuse accounts whose e-mail address is not confirmed.
     - **One-time login token**: `POST /api/auth/token` with `grant_type=one_time_token&token=<token>` returns the
-      usual token pair. The token comes from `POST /api/auth/verify-email` (TTL 30 s), is opaque, single use and
-      bound to the user and the session version.
+      usual token pair. The token comes from `POST /api/auth/verify-email` (TTL 30 s) or is the `code` of the SSO
+      redirect (TTL env `OAUTH_LOGIN_CODE_TTL`, default 180 s); it is opaque, single use and bound to the user
+      and the session version. The purposes are not interchangeable with any other signed token.
     - Every `/api/*` route except `/api/feed/*` passes the JWT firewall. A route marked "no authentication"
       still rejects an *invalid* `Authorization` header with 401 (send none instead).
     - Authorization: club routes require club membership (403 otherwise; there are no roles), calendar routes
@@ -54,7 +55,7 @@ info:
        cookie `oauth_state_nonce` (path `/api/auth/oauth`, `Secure; SameSite=None`) and redirects to the
        provider with a signed, single-use `state`.
     2. The provider calls back `GET|POST /api/auth/oauth/{provider}/callback`; the API redirects to
-       `{FRONTEND_URL}/auth/callback?token=<access>&refresh_token=<refresh>` or `?error=<code>` with one of
+       `{FRONTEND_URL}/auth/callback?code=<one-time code>` (redeemed at `POST /api/auth/token`, `grant_type=one_time_token`; no token in the URL) or `?error=<code>` with one of
        `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`,
        `email_unverified_at_provider`, `email_verification_required` (the provider does not prove the address, Microsoft:
        no tokens are issued, the account is created unverified, the 6-digit code is mailed and the redirect is
@@ -537,7 +538,7 @@ paths:
                     refresh_token: { type: string }
                 - type: object
                   description: >-
-                    One-time login token (from `POST /api/auth/verify-email`): single use, expires after its own
+                    One-time login token (from `POST /api/auth/verify-email`, or the `code` of the SSO redirect): single use, expires after its own
                     TTL, bound to the user's session version; answers like a login.
                   required: [grant_type, token]
                   properties:
@@ -783,7 +784,7 @@ paths:
       tags: [SSO]
       summary: SSO callback (from the provider)
       description: >-
-        Sign-in mode: redirect to `{FRONTEND_URL}/auth/callback?token=…&refresh_token=…` or `?error=<code>`. Link
+        Sign-in mode: redirect to `{FRONTEND_URL}/auth/callback?code=<one-time code>` (no access or refresh token in the URL) or `?error=<code>`. Link
         mode: redirect to `{FRONTEND_URL}/profile?link_provider=…&link_proof=…` or `?link_error=<code>`. Codes: see
         the API description (SSO). The state cookie is cleared.
       operationId: oauthCallback

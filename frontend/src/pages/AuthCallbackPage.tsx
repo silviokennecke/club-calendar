@@ -1,29 +1,31 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { storeTokens, apiGet } from "@/lib/api";
+import { storeTokens, apiGet, exchangeOneTimeToken, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { Icon } from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import type { User } from "@/lib/types";
 
 /**
- * SSO return point: stores the tokens, loads the user and continues to /clubs.
- * Any failure goes back to /login?error=..., where the login page explains it.
+ * SSO return point: the redirect carries a single-use one-time code (never the tokens). The code leaves the
+ * address bar first, is then exchanged for the token pair (`POST /api/auth/token`), the user is loaded and
+ * the app continues at /clubs. Any failure goes back to /login?error=..., where the login page explains it.
  */
 export default function AuthCallbackPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login } = useAuth();
+  // The code works once: a second effect run (StrictMode) must not redeem it again.
+  const started = useRef(false);
 
   useEffect(() => {
-    const token = searchParams.get("token");
-    const refreshToken = searchParams.get("refresh_token");
+    const code = searchParams.get("code");
     const error = searchParams.get("error");
 
     if (error === "email_verification_required" && searchParams.get("email")) {
-      // untrusted provider: no tokens, the address is confirmed with a code first
+      // untrusted provider: no session, the address is confirmed with a code first
       navigate(`/verify-email?email=${encodeURIComponent(searchParams.get("email") ?? "")}`, {
         replace: true,
       });
@@ -33,17 +35,29 @@ export default function AuthCallbackPage() {
       navigate(`/login?error=${encodeURIComponent(error)}`, { replace: true });
       return;
     }
-    if (!token) {
+    if (!code) {
       navigate("/login?error=oauth_failed", { replace: true });
       return;
     }
-    storeTokens(token, refreshToken ?? "");
-    apiGet<User>("/api/auth/me")
-      .then((user) => {
-        login(token, refreshToken ?? "", user);
+    if (started.current) return;
+    started.current = true;
+    // Out of the address bar and the history before anything else happens.
+    window.history.replaceState(window.history.state, "", window.location.pathname);
+
+    void (async () => {
+      try {
+        const tokens = await exchangeOneTimeToken(code);
+        storeTokens(tokens.access_token, tokens.refresh_token);
+        const user = await apiGet<User>("/api/auth/me");
+        login(tokens.access_token, tokens.refresh_token, user);
         navigate("/clubs", { replace: true });
-      })
-      .catch(() => navigate("/login?error=oauth_failed", { replace: true }));
+      } catch (e) {
+        const invalid = e instanceof ApiError && e.code === "invalid_grant";
+        navigate(`/login?error=${invalid ? "invalid_login_code" : "oauth_failed"}`, {
+          replace: true,
+        });
+      }
+    })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

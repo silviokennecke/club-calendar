@@ -41,6 +41,7 @@
         "email_missing": "The provider did not send us an email address. Allow access to your email address at the provider or sign in with email and password.",
         "account_exists": "There already is an account for this email address. Sign in the way you did before.",
         "email_unverified_at_provider": "Your email address is not confirmed at the provider yet. Confirm it there and try again, or sign in with email and password.",
+        "invalid_login_code": "Your sign-in has expired or was already used. Please sign in again.",
         "email_verification_required": "We need to confirm your email address first. Sign in with your email address and password, or register again."
       },
       "forgot": "Forgot password?",

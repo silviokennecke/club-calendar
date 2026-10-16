@@ -114,8 +114,17 @@ class OAuthTest extends WebTestCase
     private function assertSignedIn(array $result): void
     {
         $this->assertArrayNotHasKey('error', $result);
-        $this->assertNotEmpty($result['token'] ?? null);
-        $this->assertNotEmpty($result['refresh_token'] ?? null);
+        $this->assertNotEmpty($result['code'] ?? null);
+        $this->assertSame(['code'], array_keys($result), 'no access or refresh token in the URL');
+    }
+
+    /** @return array{int, array} status and body of the token endpoint */
+    private function redeem(string $code): array
+    {
+        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'one_time_token', 'token' => $code]);
+        $response = self::$client->getResponse();
+
+        return [$response->getStatusCode(), json_decode((string) $response->getContent(), true)];
     }
 
     private function assertFailed(string $code, array $result, string $message = ''): void
@@ -144,7 +153,66 @@ class OAuthTest extends WebTestCase
     {
         $result = $this->signIn('google', self::google('new@example.com'));
         $this->assertSignedIn($result);
-        $this->assertSame(['token', 'refresh_token'], array_keys($result));
+        $this->assertSame(['code'], array_keys($result));
+    }
+
+    public function testCodeIsExchangedOnceForTheTokenPair(): void
+    {
+        $result = $this->signIn('google', self::google('new@example.com'));
+        [$status, $body] = $this->redeem($result['code']);
+        $this->assertSame(200, $status);
+        $this->assertNotEmpty($body['access_token']);
+        $this->assertNotEmpty($body['refresh_token']);
+        $this->assertSame('new@example.com', $body['user']['email']);
+
+        [$status, $body] = $this->redeem($result['code']);
+        $this->assertSame(400, $status);
+        $this->assertSame('invalid_grant', $body['code']);
+    }
+
+    public function testCodeExpiresAfterItsTtl(): void
+    {
+        self::mockTime();
+        $code = $this->signIn('google', self::google('new@example.com'))['code'];
+        self::mockTime('+181 seconds');
+        $this->assertSame('invalid_grant', $this->redeem($code)[1]['code']);
+
+        $code = $this->signIn('google', self::google('new@example.com'))['code'];
+        self::mockTime('+170 seconds');
+        $this->assertSame(200, $this->redeem($code)[0]);
+    }
+
+    public function testCodeDiesWhenTheSessionsEnd(): void
+    {
+        $code = $this->signIn('google', self::google('new@example.com'))['code'];
+        $user = $this->user('new@example.com');
+        $user->invalidateTokens();
+        $this->em->flush();
+        $this->assertSame('invalid_grant', $this->redeem($code)[1]['code']);
+    }
+
+    public function testOtherSignedTokensAreNoLoginCode(): void
+    {
+        $this->signIn('google', self::google('new@example.com'));
+        $user = $this->user('new@example.com');
+        $signed = static::getContainer()->get(\App\Security\SignedTokenService::class);
+        foreach (['oauth.state', 'oauth.link_ticket', 'oauth.link_proof', 'login.other'] as $purpose) {
+            $token = $signed->issue($purpose, [
+                'n' => \App\Security\SignedTokenService::b64(random_bytes(32)),
+                'uid' => $user->getId(),
+                'tv' => $user->getTokenVersion(),
+            ], 180);
+            $this->assertSame('invalid_grant', $this->redeem($token)[1]['code'], $purpose);
+        }
+    }
+
+    public function testEmailLoginTokenStillWorksAtTheSameGrant(): void
+    {
+        $this->signIn('google', self::google('new@example.com'));
+        $user = $this->user('new@example.com');
+        $token = static::getContainer()->get(\App\Security\OneTimeTokenService::class)
+            ->issue($user, \App\Security\OneTimeTokenService::PURPOSE_EMAIL_VERIFIED, 30);
+        $this->assertSame(200, $this->redeem($token)[0]);
     }
 
     public function testMissingStateIsRejected(): void
@@ -499,7 +567,7 @@ class OAuthTest extends WebTestCase
         $i = 0;
         foreach (['alice@gmäil.com', "\u{FF41}lice@gmail.com", 'alice@gmail.com '] as $email) {
             $result = $this->signIn('google', self::google($email, true, 'g-'.++$i));
-            $this->assertArrayNotHasKey('token', $result, $email);
+            $this->assertArrayNotHasKey('code', $result, $email);
         }
         // Not collation-equal: becomes a separate account.
         $this->assertSignedIn($this->signIn('google', self::google('alıce@gmail.com', true, 'g-dotless')));

@@ -41,6 +41,7 @@
         "email_missing": "Der Anbieter hat uns keine E-Mail-Adresse übermittelt. Erlaube beim Anbieter den Zugriff auf deine E-Mail-Adresse oder melde dich mit E-Mail und Passwort an.",
         "account_exists": "Zu dieser E-Mail-Adresse gibt es schon ein Konto. Melde dich so an, wie du es bisher getan hast.",
         "email_unverified_at_provider": "Deine E-Mail-Adresse ist beim Anbieter noch nicht bestätigt. Bestätige sie dort und versuche es erneut, oder melde dich mit E-Mail und Passwort an.",
+        "invalid_login_code": "Die Anmeldung ist abgelaufen oder wurde bereits verwendet. Bitte melde dich erneut an.",
         "email_verification_required": "Wir müssen zuerst deine E-Mail-Adresse bestätigen. Melde dich mit E-Mail-Adresse und Passwort an oder registriere dich erneut."
       },
       "forgot": "Passwort vergessen?",
