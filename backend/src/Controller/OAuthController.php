@@ -36,7 +36,9 @@ use Symfony\Component\Routing\Attribute\Route;
  * path on the API host. The callback accepts only a state that verifies, names the same provider, matches
  * the cookie of the browser that started the flow, and was not used before. A callback URL produced in an
  * attacker's own flow therefore fails in the victim's browser. The cookie is no session and carries no
- * credentials. Tokens are only ever sent to FRONTEND_URL.
+ * credentials. A successful sign-in redirects to FRONTEND_URL/auth/callback?code=<one-time code> (OAUTH_LOGIN_CODE_TTL,
+ * single use, bound to user and session version); the frontend redeems it with POST /api/auth/token
+ * (grant_type=one_time_token). No access or refresh token ever appears in a URL.
  *
  * Errors go to FRONTEND_URL/auth/callback?error=<code>: invalid_state, provider_denied (user cancelled at
  * the provider), provider_error (other error from the provider), oauth_failed (code exchange / profile
@@ -226,7 +228,7 @@ class OAuthController extends AbstractController
         }
 
         try {
-            $tokens = $this->authService->findOrCreateOAuthUser(
+            $user = $this->authService->findOrCreateOAuthUser(
                 $provider,
                 $providerId,
                 $email,
@@ -244,8 +246,7 @@ class OAuthController extends AbstractController
         }
 
         $response = new RedirectResponse($this->frontendUrl.'/auth/callback?'.http_build_query([
-            'token' => $tokens['access_token'],
-            'refresh_token' => $tokens['refresh_token'],
+            'code' => $this->authService->issueOAuthLoginCode($user),
         ]));
         $response->headers->setCookie($this->stateCookie('', -1));
 

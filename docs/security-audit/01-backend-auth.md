@@ -20,14 +20,6 @@ Static, read-only code review: full reads of every in-scope file plus targeted r
 
 2026-10-05
 
-### AUTH-02 — OAuth access and refresh tokens passed in the redirect URL
-**Severity:** Medium
-**Attack scope:** Authenticated user performing OAuth login/link; anyone able to read their `Referer` headers, browser history, or frontend logs
-**Description:** After a successful OAuth login, the access token and refresh token are appended as query parameters on the frontend redirect URL, so they persist in browser history, leak via `Referer` to third parties, and can be captured by any frontend logging layer.
-**Affected parts:** `OAuthController.php:106-109`
-**Fix recommendation:** Return an opaque one-time code in the redirect and have the frontend exchange it same-origin for tokens in a response body (authorization-code style).
-**Notes:** A leaked refresh token extends the AUTH-04 window (up to 7 days of reuse).
-
 ### AUTH-03 — Account deletion without confirmation, cascades memberships
 **Severity:** Low
 **Attack scope:** Authenticated user (e.g. via a hijacked session)
@@ -38,7 +30,7 @@ Static, read-only code review: full reads of every in-scope file plus targeted r
 
 ### AUTH-04 — Refresh tokens have no rotation or replay detection
 **Severity:** Low
-**Attack scope:** Attacker who steals a refresh token (e.g. via AUTH-02)
+**Attack scope:** Attacker who steals a refresh token
 **Description:** Refresh tokens are 7-day HMAC JWTs with no rotation and no server-side revocation; a stolen token stays usable until expiry, and logout does not invalidate it.
 **Affected parts:** `TokenService.php:25-37` (HMAC signing at :34); `AuthController.php:134-138` (logout no-op)
 **Fix recommendation:** Rotate refresh tokens on use (optionally with a short overlap window), or keep a short-lived revocation store / token families.

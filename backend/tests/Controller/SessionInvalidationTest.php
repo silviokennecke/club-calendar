@@ -72,8 +72,14 @@ class SessionInvalidationTest extends WebTestCase
             return $result;
         }
         $this->assertArrayNotHasKey('error', $result, $location);
+        $this->assertArrayNotHasKey('token', $result, 'no token in the redirect URL');
+        $this->assertNotEmpty($result['code'] ?? null, $location);
+        // The frontend redeems the one-time code for the session.
+        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'one_time_token', 'token' => $result['code']]);
+        $this->assertSame(200, self::$client->getResponse()->getStatusCode(), (string) self::$client->getResponse()->getContent());
+        $tokens = json_decode((string) self::$client->getResponse()->getContent(), true);
 
-        return $result;
+        return ['token' => $tokens['access_token'], 'refresh_token' => $tokens['refresh_token']];
     }
 
     /**
@@ -200,10 +206,10 @@ class SessionInvalidationTest extends WebTestCase
             $before = $this->tokens()->createAccessToken($user);
             $beforeRefresh = $this->tokens()->createRefreshToken($user);
             // The verified owner takes over the account; the takeover issues the owner's tokens.
-            $response = static::getContainer()->get(AuthService::class)
+            $owner = static::getContainer()->get(AuthService::class)
                 ->findOrCreateOAuthUser('google', 'google-owner', 'owner@example.com', 'Owner', true);
-            $after = $response['access_token'];
-            $afterRefresh = $response['refresh_token'];
+            $after = $this->tokens()->createAccessToken($owner);
+            $afterRefresh = $this->tokens()->createRefreshToken($owner);
             if (self::iat($before) === self::iat($after)) {
                 break;
             }

@@ -36,6 +36,9 @@ readonly class AuthService
         /** Lifetime in seconds of the login token that confirming the e-mail code returns. */
         #[Autowire(env: 'int:EMAIL_VERIFICATION_LOGIN_TOKEN_TTL')]
         private int $verificationLoginTokenTtl,
+        /** Lifetime in seconds of the one-time code the SSO callback puts into the redirect URL. */
+        #[Autowire(env: 'int:OAUTH_LOGIN_CODE_TTL')]
+        private int $oauthLoginCodeTtl,
     ) {
     }
 
@@ -144,10 +147,23 @@ readonly class AuthService
         ];
     }
 
-    /** Token endpoint, grant `one_time_token`: the same token response as login. */
+    /** One-time code for the SSO redirect; redeemed at the token endpoint like the e-mail login token. */
+    public function issueOAuthLoginCode(User $user): string
+    {
+        return $this->oneTimeTokens->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, $this->oauthLoginCodeTtl);
+    }
+
+    /**
+     * Token endpoint, grant `one_time_token`: the same token response as login. Both purposes (confirmed
+     * e-mail code, finished SSO sign-in) stand for "this verified user may get a session now"; no other
+     * signed token (state, link ticket, challenge ...) is accepted.
+     */
     public function redeemOneTimeToken(string $token): array
     {
-        $user = $this->oneTimeTokens->redeem($token, [OneTimeTokenService::PURPOSE_EMAIL_VERIFIED]);
+        $user = $this->oneTimeTokens->redeem($token, [
+            OneTimeTokenService::PURPOSE_EMAIL_VERIFIED,
+            OneTimeTokenService::PURPOSE_OAUTH_LOGIN,
+        ]);
         if (null === $user) {
             throw new ApiProblemException(400, 'The token is invalid, expired or was used before', 'invalid_grant');
         }
@@ -288,7 +304,7 @@ readonly class AuthService
      * @throws OAuthAccountConflictException
      * @throws OAuthEmailVerificationRequiredException
      */
-    public function findOrCreateOAuthUser(string $provider, string $providerId, string $email, string $name, bool $providerSaysEmailVerified = false): array
+    public function findOrCreateOAuthUser(string $provider, string $providerId, string $email, string $name, bool $providerSaysEmailVerified = false): User
     {
         $existing = $this->em->getRepository(OAuthAccount::class)->findOneBy([
             'provider' => $provider,
@@ -308,7 +324,7 @@ readonly class AuthService
                     throw new OAuthEmailVerificationRequiredException($oauthUser->getEmail());
                 }
 
-                return $this->tokens->tokenResponse($oauthUser);
+                return $oauthUser;
             }
         }
         $emailVerified = $providerSaysEmailVerified
@@ -346,7 +362,7 @@ readonly class AuthService
             throw new OAuthEmailVerificationRequiredException($user->getEmail());
         }
 
-        return $this->tokens->tokenResponse($user);
+        return $user;
     }
 
     /**

@@ -58,6 +58,13 @@ test.describe("Login", () => {
     );
   });
 
+  test("an invalid SSO login code is explained and never stays in the URL", async ({ page }) => {
+    await page.goto("/auth/callback?code=invalid");
+    await expect(page).toHaveURL(/\/login\?error=invalid_login_code/);
+    expect(page.url()).not.toContain("code=invalid");
+    await expect(page.getByRole("alert")).toContainText("Der Anmeldelink ist abgelaufen");
+  });
+
   const ssoTexts: Record<string, string> = {
     invalid_state:
       "Die Anmeldung ist abgelaufen oder wurde in einem anderen Browserfenster begonnen.",
