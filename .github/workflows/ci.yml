@@ -426,6 +426,8 @@ jobs:
         working-directory: frontend
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
+          E2E_API_URL: http://localhost:3001
+          E2E_DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar?serverVersion=8.0&charset=utf8mb4
         run: npx playwright test
 
       - name: Upload Playwright report
