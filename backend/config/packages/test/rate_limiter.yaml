@@ -1,9 +1,10 @@
 framework:
     rate_limiter:
-        email_verification_resend:
-            policy: sliding_window
-            limit: 1000
-            interval: '1 hour'
+        verification_resend_ip:
+            policy: fixed_window
+            limit: 25
+            interval: '24 hours'
+            cache_pool: app.auth_limiter_pool
         # The suite signs in and registers from one client IP, so the per-IP auth limits are high here;
         # the throttling tests (RateLimitTest) work against these values. State lives in the process
         # (directory var/test-auth-limiter, emptied by DatabaseResetter::reset), the per-address limits keep their production values.

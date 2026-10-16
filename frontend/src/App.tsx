@@ -16,6 +16,7 @@ import {
   ClubPage,
   ClubsPage,
   EmailVerifyPage,
+  VerifyCodePage,
   EventFormModal,
   EventFromTemplateModal,
   EventSeriesEditModal,
@@ -55,6 +56,7 @@ function AppRoutes() {
           <Route element={<GuestRoute />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/verify-email" element={<VerifyCodePage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
           </Route>

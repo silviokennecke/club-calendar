@@ -1,6 +1,6 @@
 import { API_URL } from "./apiUrl";
 import { markSessionEnded } from "./sessionEnd";
-import type { HolidayCalendar, HolidayEvent } from "./types";
+import type { HolidayCalendar, HolidayEvent, User } from "./types";
 
 const BASE_URL = API_URL;
 
@@ -13,12 +13,24 @@ export class ApiError extends Error {
   code?: string;
   /** Input the error refers to (`field` of the RFC 7807 body, e.g. "url"), if any. */
   field?: string;
-  constructor(message: string, status: number, code?: string, field?: string) {
+  /** Extra member `retryAt` (ISO-8601 UTC) of `verification_resend_too_early`. */
+  retryAt?: string;
+  /** Extra member `email` of `email_not_verified` (login 403). */
+  email?: string;
+  constructor(
+    message: string,
+    status: number,
+    code?: string,
+    field?: string,
+    extras: { retryAt?: string; email?: string } = {},
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
     this.field = field;
+    this.retryAt = extras.retryAt;
+    this.email = extras.email;
   }
 }
 
@@ -116,13 +128,39 @@ async function errorFrom(res: Response): Promise<ApiError> {
     detail?: string;
     code?: string;
     field?: string;
+    retryAt?: unknown;
+    email?: unknown;
   } | null;
-  return new ApiError(err?.detail ?? `API error ${res.status}`, res.status, err?.code, err?.field);
+  return new ApiError(err?.detail ?? `API error ${res.status}`, res.status, err?.code, err?.field, {
+    retryAt: typeof err?.retryAt === "string" ? err.retryAt : undefined,
+    email: typeof err?.email === "string" ? err.email : undefined,
+  });
 }
 
 /** Body of a successful response; 204 No Content resolves to `undefined`. */
 async function bodyOf<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T;
+  return res.json();
+}
+
+/** Token response of login and of the `/api/auth/token` grants. */
+export interface TokenResponse {
+  access_token: string;
+  refresh_token: string;
+  user: User;
+}
+
+/**
+ * Exchanges the one-time `loginToken` (from `POST /api/auth/verify-email`, valid for seconds) for the
+ * normal token pair (`grant_type=one_time_token`, form-encoded like the refresh grant). Failure: 400 `invalid_grant`.
+ */
+export async function exchangeOneTimeToken(token: string): Promise<TokenResponse> {
+  const res = await fetch(BASE_URL + "/api/auth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "one_time_token", token }).toString(),
+  });
+  if (!res.ok) throw await errorFrom(res);
   return res.json();
 }
 

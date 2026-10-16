@@ -14,7 +14,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'app:prune-unverified-users',
-    description: 'Delete unverified user accounts older than 30 days',
+    description: 'Delete unverified user accounts older than 30 days (members of a club are kept)',
 )]
 class PruneUnverifiedUsersCommand extends Command
 {
@@ -33,8 +33,8 @@ class PruneUnverifiedUsersCommand extends Command
             ->delete(User::class, 'u')
             ->where('u.isEmailVerified = :verified')
             ->andWhere('u.createdAt < :cutoff')
-            // SSO users whose provider does not confirm the address (Microsoft) stay unverified but are active.
-            ->andWhere('NOT EXISTS (SELECT a.id FROM App\Entity\OAuthAccount a WHERE a.user = u)')
+            // Legacy SSO users that were never confirmed may already be club members: they stay.
+            ->andWhere('NOT EXISTS (SELECT 1 FROM App\Entity\ClubUser cu WHERE cu.user = u)')
             ->setParameter('verified', false)
             ->setParameter('cutoff', $cutoff)
             ->getQuery()

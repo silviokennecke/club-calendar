@@ -30,11 +30,6 @@
       "wrongTitle": "E-Mail oder Passwort stimmt nicht",
       "wrongText": "Bitte prüfe deine Eingaben und versuche es noch einmal. Wenn du dein Passwort vergessen hast, setze es zurück.",
       "resetPassword": "Passwort zurücksetzen",
-      "unverifiedTitle": "E-Mail-Adresse noch nicht bestätigt",
-      "unverifiedText": "Bitte öffne den Link in der Mail, die wir dir geschickt haben. Dann kannst du dich anmelden. Keine Mail bekommen? Wir senden dir eine neue.",
-      "resend": "Bestätigungsmail erneut senden",
-      "sentTitle": "Bestätigungsmail gesendet",
-      "sentText": "Wir haben dir eine neue E-Mail geschickt. Schau auch im Spamordner nach.",
       "passkeyErrorTitle": "Anmeldung mit Passkey nicht möglich",
       "passkeyErrorText": "Die Passkey-Anmeldung wurde abgebrochen oder hat nicht geklappt. Versuche es erneut oder melde dich mit deinem Passwort an.",
       "ssoErrorTitle": "Anmeldung mit Google oder Microsoft nicht möglich",
@@ -45,7 +40,8 @@
         "provider_error": "Der Anbieter hat die Anmeldung nicht abgeschlossen. Versuche es später erneut oder melde dich mit E-Mail und Passwort an.",
         "email_missing": "Der Anbieter hat uns keine E-Mail-Adresse übermittelt. Erlaube beim Anbieter den Zugriff auf deine E-Mail-Adresse oder melde dich mit E-Mail und Passwort an.",
         "account_exists": "Zu dieser E-Mail-Adresse gibt es schon ein Konto. Melde dich so an, wie du es bisher getan hast.",
-        "email_unverified_at_provider": "Deine E-Mail-Adresse ist beim Anbieter noch nicht bestätigt. Bestätige sie dort und versuche es erneut, oder melde dich mit E-Mail und Passwort an."
+        "email_unverified_at_provider": "Deine E-Mail-Adresse ist beim Anbieter noch nicht bestätigt. Bestätige sie dort und versuche es erneut, oder melde dich mit E-Mail und Passwort an.",
+        "email_verification_required": "Wir müssen zuerst deine E-Mail-Adresse bestätigen. Melde dich mit E-Mail-Adresse und Passwort an oder registriere dich erneut."
       },
       "forgot": "Passwort vergessen?",
       "signInWith": "Mit {{provider}} anmelden",
@@ -79,36 +75,6 @@
     },
     "verify": {
       "toLogin": "Zur Anmeldung",
-      "requestNew": "Neue Bestätigungsmail anfordern",
-      "resend": "Bestätigungsmail erneut senden",
-      "alreadyConfirmed": "Schon bestätigt?",
-      "success": {
-        "title": "E-Mail-Adresse bestätigt",
-        "text": "Danke, deine E-Mail-Adresse ist bestätigt. Du kannst dich jetzt anmelden."
-      },
-      "expired": {
-        "title": "Der Link ist abgelaufen",
-        "text": "Dieser Bestätigungslink ist nicht mehr gültig. Fordere eine neue Bestätigungsmail an."
-      },
-      "used": {
-        "title": "Der Link wurde schon benutzt",
-        "text": "Deine E-Mail-Adresse ist bereits bestätigt. Du kannst dich direkt anmelden."
-      },
-      "invalid": {
-        "title": "Der Link ist ungültig",
-        "text": "Mit diesem Link stimmt etwas nicht. Kopiere ihn vollständig aus der Mail oder fordere eine neue Bestätigungsmail an."
-      },
-      "pending": {
-        "title": "Bitte bestätige deine E-Mail-Adresse",
-        "textWithEmail": "Wir haben eine E-Mail an <strong>{{email}}</strong> geschickt. Erst nach der Bestätigung kannst du dich anmelden.",
-        "textNoEmail": "Wir schicken dir eine E-Mail mit einem Bestätigungslink. Erst nach der Bestätigung kannst du dich anmelden.",
-        "step1": "Öffne die E-Mail von Club Calendar.",
-        "step2": "Klicke in der Mail auf den Bestätigungslink.",
-        "step3": "Melde dich danach mit deiner E-Mail-Adresse und deinem Passwort an.",
-        "hintTitle": "Nichts angekommen?",
-        "hintText": "Schau auch im Spamordner nach. Es kann ein paar Minuten dauern, bis die Mail da ist.",
-        "sent": "Wir haben dir eine neue E-Mail geschickt."
-      },
       "toProfile": "Zum Profil",
       "emailChanged": {
         "title": "E-Mail-Adresse geändert",
@@ -125,7 +91,23 @@
       "changeInvalid": {
         "title": "Der Link ist ungültig",
         "text": "Dieser Link wurde schon benutzt, verworfen oder ist unvollständig. Ändere die Adresse bei Bedarf im Profil noch einmal."
-      }
+      },
+      "title": "E-Mail-Adresse bestätigen",
+      "intro": "Wir haben einen 6-stelligen Code an <strong>{{email}}</strong> geschickt. Gib ihn unten ein, um die Registrierung abzuschließen.",
+      "codeLabel": "Bestätigungscode",
+      "hint": "Nichts angekommen? Sieh auch im Spam-Ordner nach.",
+      "errorTitle": "Der Code wurde nicht akzeptiert",
+      "invalidCode": "Der Code ist falsch, abgelaufen oder aufgebraucht. Fordere einen neuen Code an und versuche es erneut.",
+      "checking": "Code wird geprüft …",
+      "resend": "Erneut senden",
+      "resendSent": "Ein neuer Code wurde gesendet",
+      "resendTooEarly": "Du kannst um {{time}} Uhr einen neuen Code anfordern.",
+      "resendTooEarlyNoTime": "Du hast gerade erst einen Code angefordert. Warte bitte einige Minuten, bevor du einen neuen anforderst.",
+      "tooManyRequests": "Zu viele Anfragen. Bitte versuche es später erneut.",
+      "resendFailed": "Der Code konnte nicht gesendet werden. Bitte versuche es später erneut.",
+      "genericError": "Der Code konnte nicht geprüft werden. Bitte versuche es erneut.",
+      "sessionError": "Die Anmeldung nach der Bestätigung hat nicht geklappt. Bitte melde dich mit E-Mail-Adresse und Passwort an.",
+      "backToLogin": "Zurück zur Anmeldung"
     },
     "forgot": {
       "title": "Passwort vergessen?",
@@ -1554,6 +1536,9 @@
     },
     "errorSummary": {
       "intro": "Bitte prüfe diese Angaben:"
+    },
+    "codeInput": {
+      "digit": "Ziffer {{index}} von {{total}}"
     }
   },
   "shell": {

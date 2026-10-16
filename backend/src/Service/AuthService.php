@@ -12,9 +12,14 @@ use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Exception\EmailNotVerifiedException;
 use App\Exception\OAuthAccountConflictException;
+use App\Exception\OAuthEmailVerificationRequiredException;
+use App\Security\OneTimeTokenService;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 readonly class AuthService
@@ -25,6 +30,12 @@ readonly class AuthService
         private TokenService $tokens,
         private EmailVerificationMailer $verificationMailer,
         private AccountService $accounts,
+        private EmailVerificationService $verificationService,
+        private OneTimeTokenService $oneTimeTokens,
+        private ClockInterface $clock,
+        /** Lifetime in seconds of the login token that confirming the e-mail code returns. */
+        #[Autowire(env: 'int:EMAIL_VERIFICATION_LOGIN_TOKEN_TTL')]
+        private int $verificationLoginTokenTtl,
     ) {
     }
 
@@ -56,6 +67,8 @@ readonly class AuthService
             throw self::invalidCredentials();
         }
         if (!$user->isEmailVerified()) {
+            // Right password, no confirmed address: make sure the user has a code to enter.
+            $this->sendCodeIfDue($user);
             throw new EmailNotVerifiedException();
         }
 
@@ -72,9 +85,74 @@ readonly class AuthService
         return new ApiProblemException(401, $message, 'invalid_refresh_token', null, ['WWW-Authenticate' => 'Bearer']);
     }
 
-    public function sendVerificationEmail(User $user): void
+    /**
+     * Mails a fresh code unless one is still waiting to be entered or the last one went out less than
+     * EmailVerificationService::RESEND_COOLDOWN ago. A mail that cannot be sent is not an error here: the
+     * user can request a code again.
+     */
+    public function sendCodeIfDue(User $user): void
     {
+        if ($this->verificationService->hasActiveCode($user)
+            || null !== $this->verificationService->nextSendAt($user)
+            || null !== $this->verificationService->lockedUntil($user)) {
+            return;
+        }
+        try {
+            $this->verificationMailer->send($user);
+        } catch (TransportExceptionInterface) {
+        }
+    }
+
+    /**
+     * Resend action: nothing for unknown or verified addresses (the caller answers 204 like on success);
+     * 429 `verification_resend_too_early` with `retryAt` within the cooldown of the account.
+     */
+    public function resendVerificationCode(string $email): void
+    {
+        $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
+        if (!$user || $user->isEmailVerified()) {
+            return;
+        }
+        $locked = $this->verificationService->lockedUntil($user);
+        if (null !== $locked) {
+            $wait = max(1, $locked->getTimestamp() - $this->clock->now()->getTimestamp());
+
+            throw new ApiProblemException(429, 'Too many codes or attempts for this account', 'rate_limited', null, ['Retry-After' => (string) $wait]);
+        }
+        $next = $this->verificationService->nextSendAt($user);
+        if (null !== $next) {
+            $retryAt = $next->setTimezone(new \DateTimeZone('UTC'));
+            $wait = max(1, $retryAt->getTimestamp() - $this->clock->now()->getTimestamp());
+
+            throw new ApiProblemException(429, 'A code was sent a moment ago', 'verification_resend_too_early', null, ['Retry-After' => (string) $wait], null, ['retryAt' => $retryAt->format('Y-m-d\TH:i:s\Z')]);
+        }
         $this->verificationMailer->send($user);
+    }
+
+    /**
+     * Confirms the address with the code and returns a one-time login token for the token endpoint.
+     *
+     * @return array{loginToken: string, expiresIn: int}
+     */
+    public function verifyEmailCode(string $email, string $code): array
+    {
+        $user = $this->verificationService->verify($email, $code);
+
+        return [
+            'loginToken' => $this->oneTimeTokens->issue($user, OneTimeTokenService::PURPOSE_EMAIL_VERIFIED, $this->verificationLoginTokenTtl),
+            'expiresIn' => $this->verificationLoginTokenTtl,
+        ];
+    }
+
+    /** Token endpoint, grant `one_time_token`: the same token response as login. */
+    public function redeemOneTimeToken(string $token): array
+    {
+        $user = $this->oneTimeTokens->redeem($token, [OneTimeTokenService::PURPOSE_EMAIL_VERIFIED]);
+        if (null === $user) {
+            throw new ApiProblemException(400, 'The token is invalid, expired or was used before', 'invalid_grant');
+        }
+
+        return $this->tokens->tokenResponse($user);
     }
 
     public function refresh(string $refreshToken): array
@@ -85,7 +163,7 @@ readonly class AuthService
             throw self::invalidRefreshToken($e->getMessage());
         }
         $user = is_string($payload['sub'] ?? null) ? $this->em->getRepository(User::class)->find($payload['sub']) : null;
-        if (!$user) {
+        if (!$user || !$user->isEmailVerified()) {
             throw self::invalidRefreshToken('User not found');
         }
         // Sessions end when the account's credentials were revoked (e.g. SSO takeover of an unconfirmed account).
@@ -203,9 +281,12 @@ readonly class AuthService
      *   someone else, or created by an SSO login without verified e-mail), the credentials that did not
      *   prove ownership (password, passkeys, other SSO links, pending confirmations) are removed first.
      * - Without a verified address an existing user is never linked ({@see OAuthAccountConflictException}).
-     * - A new user is marked e-mail-verified only if the provider confirms the address.
+     * - A new user is marked e-mail-verified only if the provider confirms the address. Otherwise (Microsoft)
+     *   the user is created unverified, the confirmation code is mailed and no tokens are issued; the sign-in
+     *   works after the code was entered (login token of the code endpoint, or this login again) ({@see OAuthEmailVerificationRequiredException}).
      *
      * @throws OAuthAccountConflictException
+     * @throws OAuthEmailVerificationRequiredException
      */
     public function findOrCreateOAuthUser(string $provider, string $providerId, string $email, string $name, bool $providerSaysEmailVerified = false): array
     {
@@ -220,7 +301,13 @@ readonly class AuthService
                 $this->em->remove($existing);
                 $this->em->flush();
             } else {
-                // Valid OAuth account found, return tokens for the associated user
+                if (!$oauthUser->isEmailVerified()) {
+                    // Created by a provider that does not prove the address: no session before the mailbox
+                    // owner entered the code (the login token of the code endpoint then signs them in).
+                    $this->sendCodeIfDue($oauthUser);
+                    throw new OAuthEmailVerificationRequiredException($oauthUser->getEmail());
+                }
+
                 return $this->tokens->tokenResponse($oauthUser);
             }
         }
@@ -253,6 +340,11 @@ readonly class AuthService
         $account->setEmail($email);
         $this->em->persist($account);
         $this->em->flush();
+
+        if (!$user->isEmailVerified()) {
+            $this->sendCodeIfDue($user);
+            throw new OAuthEmailVerificationRequiredException($user->getEmail());
+        }
 
         return $this->tokens->tokenResponse($user);
     }

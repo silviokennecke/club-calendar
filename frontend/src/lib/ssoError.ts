@@ -10,6 +10,7 @@ export const SSO_ERROR_CODES = [
   "email_missing",
   "account_exists",
   "email_unverified_at_provider",
+  "email_verification_required",
 ] as const;
 
 export type SsoErrorCode = (typeof SSO_ERROR_CODES)[number];

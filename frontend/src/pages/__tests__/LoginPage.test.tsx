@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import LoginPage from "../LoginPage";
+import { ApiError } from "@/lib/api";
 import { renderAt } from "./authTestUtils";
 
 const apiPost = vi.fn();
@@ -9,7 +10,8 @@ const apiFetch = vi.fn();
 const login = vi.fn();
 const startAuthentication = vi.fn();
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@/lib/api", async () => ({
+  ...(await vi.importActual<typeof import("@/lib/api")>("@/lib/api")),
   BACKEND_URL: "http://api.test",
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiFetch: (...a: unknown[]) => apiFetch(...a),
@@ -143,23 +145,25 @@ describe("LoginPage", () => {
     expect(login).not.toHaveBeenCalled();
   });
 
-  it("offers to resend the confirmation mail when the email is unverified", async () => {
+  it("goes to the code page with the email of the 403 email_not_verified body", async () => {
     apiPost.mockRejectedValue(
-      Object.assign(new Error("email_not_verified"), { status: 403, code: "email_not_verified" }),
+      new ApiError("x", 403, "email_not_verified", undefined, { email: "alex@beispiel.de" }),
     );
-    apiFetch.mockResolvedValue({ ok: true });
     renderLogin();
-    const user = await fillAndSubmit();
-    const status = await screen.findByRole("status");
-    expect(status).toHaveTextContent("E-Mail-Adresse noch nicht bestätigt");
+    await fillAndSubmit();
+    expect(await screen.findByTestId("location")).toHaveTextContent(
+      "/verify-email?email=alex%40beispiel.de",
+    );
+    expect(login).not.toHaveBeenCalled();
+  });
 
-    await user.click(screen.getByRole("button", { name: "Bestätigungsmail erneut senden" }));
-    expect(apiFetch).toHaveBeenCalledWith("/api/auth/resend-verification", {
-      method: "POST",
-      body: JSON.stringify({ email: "alex@beispiel.de" }),
-    });
-    expect(await screen.findByText("Bestätigungsmail gesendet")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Bestätigungsmail erneut senden" })).toBeNull();
+  it("falls back to the typed email when the 403 body has none", async () => {
+    apiPost.mockRejectedValue(new ApiError("x", 403, "email_not_verified"));
+    renderLogin();
+    await fillAndSubmit();
+    expect(await screen.findByTestId("location")).toHaveTextContent(
+      "/verify-email?email=alex%40beispiel.de",
+    );
   });
 
   it("shows the passkey error banner when passkey sign-in fails", async () => {
@@ -198,6 +202,13 @@ describe("LoginPage", () => {
     renderLogin("/login?error=provider_denied");
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Du hast die Anmeldung beim Anbieter abgebrochen.",
+    );
+  });
+
+  it("explains an untrusted provider without an address in the callback", () => {
+    renderLogin("/login?error=email_verification_required");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Wir müssen zuerst deine E-Mail-Adresse bestätigen",
     );
   });
 

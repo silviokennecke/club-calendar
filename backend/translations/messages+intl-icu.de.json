@@ -1,12 +1,11 @@
 {
     "email": {
         "verify": {
-            "subject": "Bitte bestätige deine E-Mail-Adresse",
+            "subject": "Dein Bestätigungscode für Club Calendar",
             "greeting": "Hallo {name},",
-            "body": "Danke für deine Registrierung. Klicke bitte auf den Button unten, um deine E-Mail-Adresse zu bestätigen. Dieser Link ist 24 Stunden gültig.",
-            "button": "E-Mail-Adresse bestätigen",
-            "expiry_note": "Falls du kein Konto erstellt hast, kannst du diese E-Mail ignorieren.",
-            "ignore_note": "Dieser Link läuft in 24 Stunden ab."
+            "body": "Danke für deine Registrierung. Gib diesen Code in der App ein, um deine E-Mail-Adresse zu bestätigen.",
+            "expiry_note": "Der Code ist {minutes} Minuten gültig und funktioniert nur einmal. Gib ihn niemals an andere weiter.",
+            "ignore_note": "Falls du kein Konto erstellt hast, kannst du diese E-Mail ignorieren."
         },
         "reset": {
             "subject": "Neues Passwort für Club Calendar festlegen",

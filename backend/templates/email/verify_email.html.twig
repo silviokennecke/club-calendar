@@ -101,23 +101,13 @@
                       </td>
                     </tr>
                     <tr>
-                      <td align="center" style="font-size:0px;padding:12px 24px;word-break:break-word;">
-                        <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:separate;line-height:100%;">
-                          <tbody>
-                            <tr>
-                              <td align="center" bgcolor="#2563eb" role="presentation" style="border:none;border-radius:6px;cursor:auto;mso-padding-alt:10px 25px;background:#2563eb;" valign="middle">
-                                <a href="{{ verificationUrl }}" style="display:inline-block;background:#2563eb;color:#ffffff;font-family:Arial, sans-serif;font-size:16px;font-weight:normal;line-height:120%;margin:0;text-decoration:none;text-transform:none;padding:10px 25px;mso-padding-alt:0px;border-radius:6px;" target="_blank">
-                                  {{ 'email.verify.button'|trans }}
-                                </a>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
+                      <td align="center" style="background:#f4f4f4;font-size:0px;padding:16px 24px;word-break:break-word;">
+                        <div style="font-family:Arial, sans-serif;font-size:36px;font-weight:bold;letter-spacing:10px;line-height:1.6;text-align:center;color:#111111;">{{ code }}</div>
                       </td>
                     </tr>
                     <tr>
                       <td align="left" style="font-size:0px;padding:10px 25px;padding-top:24px;word-break:break-word;">
-                        <div style="font-family:Arial, sans-serif;font-size:13px;line-height:1.6;text-align:left;color:#888888;">{{ 'email.verify.expiry_note'|trans }}</div>
+                        <div style="font-family:Arial, sans-serif;font-size:13px;line-height:1.6;text-align:left;color:#888888;">{{ 'email.verify.expiry_note'|trans({minutes: validMinutes}) }}</div>
                       </td>
                     </tr>
                     <tr>

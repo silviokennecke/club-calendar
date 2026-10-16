@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller;
 
-use App\Entity\OAuthAccount;
 use App\Entity\Passkey;
 use App\Entity\User;
 use App\Service\AuthService;
@@ -57,7 +56,7 @@ class SessionInvalidationTest extends WebTestCase
     // --- helpers ---
 
     /** @return array{token: string, refresh_token: string} */
-    private function signIn(string $provider, array $claims): array
+    private function signIn(string $provider, array $claims, bool $expectVerificationRequired = false): array
     {
         self::$client->request('GET', self::API."/api/auth/oauth/$provider");
         parse_str((string) parse_url((string) self::$client->getResponse()->headers->get('Location'), \PHP_URL_QUERY), $start);
@@ -67,9 +66,28 @@ class SessionInvalidationTest extends WebTestCase
         ]));
         $location = (string) self::$client->getResponse()->headers->get('Location');
         parse_str((string) parse_url($location, \PHP_URL_QUERY), $result);
+        if ($expectVerificationRequired) {
+            $this->assertSame('email_verification_required', $result['error'] ?? null, $location);
+
+            return $result;
+        }
         $this->assertArrayNotHasKey('error', $result, $location);
 
         return $result;
+    }
+
+    /**
+     * An unverified account created by a Microsoft login (no session is issued by the login itself, so the
+     * tokens that someone could have held, e.g. from before this rule, are issued directly).
+     *
+     * @return array{token: string, refresh_token: string}
+     */
+    private function unverifiedMicrosoftSession(string $email): array
+    {
+        $this->signIn('microsoft', self::microsoft($email), true);
+        $tokens = $this->tokens()->tokenResponse($this->user($email));
+
+        return ['token' => $tokens['access_token'], 'refresh_token' => $tokens['refresh_token']];
     }
 
     private static function google(string $email, string $sub = 'google-owner'): array
@@ -99,6 +117,13 @@ class SessionInvalidationTest extends WebTestCase
         return [$response->getStatusCode(), json_decode((string) $response->getContent(), true)];
     }
 
+    /** The owner enters a code for the address (issued directly: the mail is covered elsewhere). */
+    private function confirm(string $email): void
+    {
+        $service = static::getContainer()->get(EmailVerificationService::class);
+        $service->verify($email, $service->issueCode($this->user($email)));
+    }
+
     private function user(string $email): User
     {
         $this->em->clear();
@@ -124,18 +149,15 @@ class SessionInvalidationTest extends WebTestCase
 
     public function testAttackerSessionEndsWhenTheVerifiedOwnerTakesOverTheAccount(): void
     {
-        $attacker = $this->signIn('microsoft', self::microsoft('owner@example.com'));
+        $attacker = $this->unverifiedMicrosoftSession('owner@example.com');
         $this->assertSame(200, $this->me($attacker['token']));
-        // Every refresh of the attacker before the takeover hands out new tokens: they must die as well.
-        [$status, $refreshed] = $this->refresh($attacker['refresh_token']);
-        $this->assertSame(200, $status);
+        // Tokens of an unconfirmed account (data from before the rule) cannot be refreshed any more.
+        $this->assertSame(401, $this->refresh($attacker['refresh_token'])[0]);
 
         $owner = $this->signIn('google', self::google('owner@example.com'));
 
         $this->assertSame(401, $this->refresh($attacker['refresh_token'])[0], 'attacker refresh token');
-        $this->assertSame(401, $this->refresh($refreshed['refresh_token'])[0], 'refreshed attacker refresh token');
         $this->assertSame(401, $this->me($attacker['token']), 'attacker access token');
-        $this->assertSame(401, $this->me($refreshed['access_token']), 'refreshed attacker access token');
 
         // The owner's tokens, issued by the takeover itself, are valid and keep working after a refresh.
         $this->assertSame(200, $this->me($owner['token']));
@@ -205,7 +227,7 @@ class SessionInvalidationTest extends WebTestCase
         $this->assertSame(200, $login['status']);
         $carol = $this->signIn('google', self::google('carol@example.com', 'google-carol'));
 
-        $this->signIn('microsoft', self::microsoft('owner@example.com'));
+        $this->unverifiedMicrosoftSession('owner@example.com');
         $this->signIn('google', self::google('owner@example.com'));
 
         $this->assertSame(200, $this->me($login['body']['access_token']));
@@ -227,7 +249,8 @@ class SessionInvalidationTest extends WebTestCase
         $refresh = "$header.$body.".base64_encode(hash_hmac('sha256', "$header.$body", (string) $_ENV['JWT_REFRESH_SECRET'], true));
 
         $this->assertSame(200, $this->me($access));
-        $this->assertSame(200, $this->refresh($refresh)[0]);
+        // Refreshing is refused while the address is unconfirmed.
+        $this->assertSame(401, $this->refresh($refresh)[0]);
 
         $this->signIn('google', self::google('legacy@example.com'));
         $this->assertSame(401, $this->me($access));
@@ -241,7 +264,7 @@ class SessionInvalidationTest extends WebTestCase
             foreach (['Pacific/Kiritimati', 'Pacific/Pago_Pago'] as $zone) {
                 DatabaseResetter::reset($this->em);
                 date_default_timezone_set($zone);
-                $attacker = $this->signIn('microsoft', self::microsoft('owner@example.com'));
+                $attacker = $this->unverifiedMicrosoftSession('owner@example.com');
                 $owner = $this->signIn('google', self::google('owner@example.com'));
 
                 $this->assertSame(401, $this->me($attacker['token']), $zone);
@@ -254,39 +277,30 @@ class SessionInvalidationTest extends WebTestCase
         }
     }
 
-    // --- problem B: the owner confirms the address with the link ---
+    // --- problem B: the owner confirms the address with the code ---
 
     public function testConfirmingTheAddressEndsTheUnverifiedSsoLinksAndSessions(): void
     {
         // The attacker signs up via Microsoft with the owner's address and adds a passkey.
-        $attacker = $this->signIn('microsoft', self::microsoft('owner@example.com'));
+        $attacker = $this->unverifiedMicrosoftSession('owner@example.com');
         $user = $this->user('owner@example.com');
         $this->em->persist((new Passkey())->setId('attacker-key')->setUser($user)->setCredentialId('YXR0YWNrZXI=')->setPublicKey('x'));
         $this->em->flush();
 
-        // The owner asks for a confirmation link (resend-verification) and clicks it.
-        [$verification, $verifier] = static::getContainer()->get(EmailVerificationService::class)->createVerification($user);
-        self::$client->request('GET', '/api/auth/verify-email?'.http_build_query(['id' => $verification->getId(), 'token' => $verifier]));
-        $this->assertStringContainsString('status=success', (string) self::$client->getResponse()->headers->get('Location'));
+        // The owner enters the code from the mail.
+        $this->confirm('owner@example.com');
 
         $user = $this->user('owner@example.com');
         $this->assertTrue($user->isEmailVerified());
-        $this->assertCount(0, $user->getOauthAccounts());
+        // The passkey was added in a session of someone who did not prove the address: gone, sessions end.
         $this->assertCount(0, $user->getPasskeys());
         $this->assertSame(401, $this->me($attacker['token']));
         $this->assertSame(401, $this->refresh($attacker['refresh_token'])[0]);
 
-        // The attacker's Microsoft login no longer reaches the account ...
-        self::$client->request('GET', self::API.'/api/auth/oauth/microsoft');
-        parse_str((string) parse_url((string) self::$client->getResponse()->headers->get('Location'), \PHP_URL_QUERY), $start);
-        self::$providers['microsoft']->claims = self::microsoft('owner@example.com');
-        self::$client->request('GET', self::API.'/api/auth/oauth/microsoft/callback?'.http_build_query(['code' => 'c', 'state' => $start['state']]));
-        $this->assertStringEndsWith('?error=account_exists', (string) self::$client->getResponse()->headers->get('Location'));
-
-        // ... and the owner's later Google login links to an account without foreign credentials.
-        $owner = $this->signIn('google', self::google('owner@example.com'));
-        $this->assertSame(200, $this->me($owner['token']));
-        $this->assertSame(['google'], $this->user('owner@example.com')->getOauthAccounts()->map(fn (OAuthAccount $a) => $a->getProvider())->getValues());
+        // A passwordless account created by the SSO login keeps its provider link: the mailbox owner's
+        // confirmation is what lets that provider account in (see AuthService::findOrCreateOAuthUser).
+        $this->assertCount(1, $user->getOauthAccounts());
+        $this->assertSame(200, $this->me($this->signIn('microsoft', self::microsoft('owner@example.com'))['token']));
     }
 
     public function testConfirmingALocalRegistrationKeepsThePassword(): void
@@ -294,10 +308,8 @@ class SessionInvalidationTest extends WebTestCase
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
             'name' => 'Dana', 'email' => 'dana@example.com', 'password' => 'password123',
         ]);
-        $this->assertSame(202, $r['status'], $r['content']);
-        $user = $this->user('dana@example.com');
-        [$verification, $verifier] = static::getContainer()->get(EmailVerificationService::class)->createVerification($user);
-        self::$client->request('GET', '/api/auth/verify-email?'.http_build_query(['id' => $verification->getId(), 'token' => $verifier]));
+        $this->assertSame(201, $r['status'], $r['content']);
+        $this->confirm('dana@example.com');
 
         $login = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', [
             'email' => 'dana@example.com', 'password' => 'password123',
@@ -319,15 +331,13 @@ class SessionInvalidationTest extends WebTestCase
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
             'name' => 'Squatter', 'email' => 'owner@example.com', 'password' => 'squatter-pass',
         ]);
-        $this->assertSame(202, $r['status'], $r['content']);
+        $this->assertSame(201, $r['status'], $r['content']);
         $before = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', [
             'email' => 'owner@example.com', 'password' => 'squatter-pass',
         ]);
         $this->assertSame(403, $before['status'], 'no session before the confirmation');
 
-        [$verification, $verifier] = static::getContainer()->get(EmailVerificationService::class)
-            ->createVerification($this->user('owner@example.com'));
-        self::$client->request('GET', '/api/auth/verify-email?'.http_build_query(['id' => $verification->getId(), 'token' => $verifier]));
+        $this->confirm('owner@example.com');
         $owner = $this->signIn('google', self::google('owner@example.com'));
         $this->assertSame(200, $this->me($owner['token']));
 

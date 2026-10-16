@@ -95,7 +95,7 @@ describe("SignupPage", () => {
       }),
     );
     expect(await screen.findByTestId("location")).toHaveTextContent(
-      "/auth/verify-email?email=alex%40beispiel.de",
+      "/verify-email?email=alex%40beispiel.de",
     );
   });
 });

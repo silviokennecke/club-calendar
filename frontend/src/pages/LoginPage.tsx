@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { apiPost, apiFetch, BACKEND_URL } from "@/lib/api";
+import { ApiError, apiPost, apiFetch, BACKEND_URL } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { ssoErrorKey } from "@/lib/ssoError";
 import type { User } from "@/lib/types";
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { FocusBanner } from "@/components/auth/FocusBanner";
-import { useResendVerification } from "@/components/auth/useResendVerification";
 
 interface SsoProvider {
   id: string;
@@ -28,7 +27,7 @@ interface SsoProvider {
 
 const PROVIDER_GLYPH: Record<string, Glyph> = { microsoft: "building" };
 
-type LoginProblem = "wrong" | "unverified" | "passkey" | null;
+type LoginProblem = "wrong" | "passkey" | null;
 
 interface FieldErrors {
   email?: string;
@@ -54,7 +53,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [providers, setProviders] = useState<SsoProvider[]>([]);
-  const resend = useResendVerification();
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -75,7 +73,6 @@ export default function LoginPage() {
     e.preventDefault();
     setProblem(null);
     setSsoError(null);
-    resend.reset();
 
     // The browser's own "Please fill out this field" bubble is not translated and cannot be styled,
     // so the form has noValidate and checks the fields itself (focus goes to the first invalid one).
@@ -100,8 +97,9 @@ export default function LoginPage() {
       navigate("/clubs");
     } catch (err: unknown) {
       // 403 `code: email_not_verified` (RFC 7807 problem like every API error)
-      if ((err as { code?: string }).code === "email_not_verified") {
-        show("unverified");
+      if (err instanceof ApiError && err.code === "email_not_verified") {
+        // the backend has sent a fresh code if needed: confirm the address with it
+        navigate(`/verify-email?email=${encodeURIComponent(err.email ?? email.trim())}`);
       } else {
         show("wrong");
       }
@@ -170,29 +168,6 @@ export default function LoginPage() {
           }
         >
           {t("auth.login.wrongText")}
-        </FocusBanner>
-      )}
-      {problem === "unverified" && !resend.done && (
-        <FocusBanner
-          key={problemKey}
-          tone="warning"
-          title={t("auth.login.unverifiedTitle")}
-          action={
-            <Button
-              variant="secondary"
-              loading={resend.loading}
-              onClick={() => resend.resend(email)}
-            >
-              {t("auth.login.resend")}
-            </Button>
-          }
-        >
-          {t("auth.login.unverifiedText")}
-        </FocusBanner>
-      )}
-      {problem === "unverified" && resend.done && (
-        <FocusBanner tone="success" title={t("auth.login.sentTitle")}>
-          {t("auth.login.sentText")}
         </FocusBanner>
       )}
       {problem === "passkey" && (

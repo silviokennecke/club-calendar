@@ -233,6 +233,24 @@ class ApiConsistencyTest extends WebTestCase
         $this->assertSame(['ok' => true], $r['body']);
     }
 
+    public function testAddMemberTreatsUnverifiedUsersLikeUnknownAddresses(): void
+    {
+        ['user' => $user, 'club' => $club] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $unverified = TestHelper::createUser($this->em, $this->hasher, 'claimed@example.com', 'password123', false);
+        $verified = TestHelper::createUser($this->em, $this->hasher, 'real@example.com');
+        $auth = TestHelper::authHeader($user, $this->tokens);
+        $url = "/api/clubs/{$club->getId()}/members";
+
+        $unverifiedAnswer = $this->req('POST', $url, $auth, ['email' => $unverified->getEmail()]);
+        $this->assertProblem(404, ['code' => 'member_not_found'], $unverifiedAnswer);
+        $unknownAnswer = $this->req('POST', $url, $auth, ['email' => 'nobody@example.com']);
+        $this->assertSame($unknownAnswer['body'], $unverifiedAnswer['body']);
+        $this->em->clear();
+        $this->assertSame(1, $this->em->getRepository(ClubUser::class)->count([]));
+
+        $this->assertSame(201, $this->req('POST', $url, $auth, ['email' => $verified->getEmail()])['status']);
+    }
+
     public function testHolidayCalendarCreateRejectsNonStringValuesLikePatch(): void
     {
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);

@@ -30,10 +30,30 @@ class EmailVerification
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $invalidatedAt = null;
 
-    public function __construct()
+    /** Wrong guesses so far; the code dies at EmailVerificationService::MAX_ATTEMPTS. */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $attempts = 0;
+
+    #[ORM\Column]
+    private \DateTimeImmutable $createdAt;
+
+    /** A 6-digit code, valid {@see EmailVerificationService::CODE_TTL} seconds from $now. */
+    public function __construct(?\DateTimeImmutable $now = null)
     {
+        $now ??= new \DateTimeImmutable();
         $this->id = Uuid::v7()->toRfc4122();
-        $this->expiresAt = new \DateTimeImmutable('+24 hours');
+        $this->createdAt = $now;
+        $this->expiresAt = $now->modify('+'.\App\Service\EmailVerificationService::CODE_TTL.' seconds');
+    }
+
+    public function getAttempts(): int
+    {
+        return $this->attempts;
+    }
+
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
     }
 
     public function getId(): string

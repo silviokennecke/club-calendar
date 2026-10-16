@@ -28,10 +28,10 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 | Main.dc.html (Anmeldung) | `pages/LoginPage.tsx`, `/login`; `components/auth/AuthLayout.tsx` (Logo, LangSwitch, Skip-Link) | vollständig (E-Mail/Passwort, Passkey, SSO-Buttons je konfiguriertem Anbieter "Mit {{provider}} anmelden", SSO-Fehlerbanner) |
 | LoginMobile.dc.html | wie oben, `AuthLayout` < 720px | vollständig |
 | Register.dc.html | `pages/SignupPage.tsx`, `/signup` | vollständig (Pflichtfelder mit "(Pflicht)" über `Field required`, Fehlersumme, "E-Mail bereits vergeben") |
-| ConfirmEmail.dc.html | `pages/EmailVerifyPage.tsx` (ohne `status`: "Bestätige deine E-Mail-Adresse" + erneut senden), `/auth/verify-email` | vollständig |
+| ConfirmEmail.dc.html | `pages/VerifyCodePage.tsx` (6-stelliger Code, `CodeInput`, "Erneut senden"), `/verify-email`; `pages/EmailVerifyPage.tsx` nur noch Ergebnis des Adresswechsel-Links | vollständig |
 | ForgotPassword.dc.html | `pages/ForgotPasswordPage.tsx`, `/forgot-password` | vollständig (Paket 3): Formular, "Prüfe dein Postfach" mit der eingegebenen Adresse und "Andere E-Mail-Adresse eingeben"; Fehler/Netzwerk als Banner, 429 wie Erfolg (kein Orakel). Text "Der Link ist begrenzt gültig" konkret als "60 Minuten" |
 | (ohne Artboard) Neues Passwort | `pages/ResetPasswordPage.tsx`, `/reset-password?token=` (GuestRoute) | neu, im Stil von AuthLayout/AuthStates: Formular (neues Passwort + Wiederholung, `PasswordField`), "Der Link ist ungültig oder abgelaufen" (fehlend/ungültig/benutzt/abgelaufen, mit "Neuen Link anfordern"), Erfolg (Banner + "Weiter zur Anmeldung"), Fehler-Banner. Token wird nach dem Lesen aus der Adresse entfernt (`replace`), `referrer: no-referrer` |
-| AuthStates.dc.html | Bestätigungslink: `EmailVerifyPage` (erfolgreich / abgelaufen / schon benutzt / ungültig); Anmeldung: `LoginPage` + `FocusBanner` (falsche Zugangsdaten, E-Mail nicht bestätigt mit "erneut senden" + "Bestätigungsmail gesendet", Passkey fehlgeschlagen, SSO fehlgeschlagen) | vollständig |
+| AuthStates.dc.html | Bestätigungscode: `VerifyCodePage` (falscher Code, erneut senden, zu früh); Anmeldung: `LoginPage` + `FocusBanner` (falsche Zugangsdaten, E-Mail nicht bestätigt → Codeseite, Passkey fehlgeschlagen, SSO fehlgeschlagen) | vollständig |
 
 ## Erst-Einrichtung und Wechsel
 

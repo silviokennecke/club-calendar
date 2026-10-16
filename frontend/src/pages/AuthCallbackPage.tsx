@@ -22,6 +22,13 @@ export default function AuthCallbackPage() {
     const refreshToken = searchParams.get("refresh_token");
     const error = searchParams.get("error");
 
+    if (error === "email_verification_required" && searchParams.get("email")) {
+      // untrusted provider: no tokens, the address is confirmed with a code first
+      navigate(`/verify-email?email=${encodeURIComponent(searchParams.get("email") ?? "")}`, {
+        replace: true,
+      });
+      return;
+    }
     if (error) {
       navigate(`/login?error=${encodeURIComponent(error)}`, { replace: true });
       return;

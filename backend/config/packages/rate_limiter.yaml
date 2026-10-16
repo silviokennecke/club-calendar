@@ -44,10 +44,11 @@ framework:
         mapbox_proxy_system:
             policy: compound
             limiters: [mapbox_proxy_daily, mapbox_proxy_weekly, mapbox_proxy_monthly]
-        email_verification_resend:
-            policy: sliding_window
-            limit: 3
-            interval: '1 hour'
+        # Resend of the e-mail confirmation code: per client IP (the per-account cooldown is in AuthService).
+        verification_resend_ip:
+            policy: fixed_window
+            limit: 25
+            interval: '24 hours'
         # Forgot password: per normalized e-mail address and per client IP. Over the limit the endpoint
         # still answers 204, only no mail is sent (no oracle).
         password_reset_email:
@@ -85,7 +86,7 @@ framework:
             policy: sliding_window
             limit: 60
             interval: '1 minute'
-        # E-mail confirmation link, passkey ceremonies, SSO start/callback.
+        # E-mail confirmation code, passkey ceremonies, SSO start/callback.
         auth_other_ip:
             policy: sliding_window
             limit: 60
