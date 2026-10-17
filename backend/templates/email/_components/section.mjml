@@ -1,0 +1,22 @@
+<!-- Content section wrapper component
+     Usage: Wrap content between opening and closing section tags:
+
+     <mj-section background-color="#ffffff" padding="40px 30px">
+       <mj-column>
+         <mj-include path="./_components/header.mjml" />
+         <!-- Your content here -->
+       </mj-column>
+     </mj-section>
+
+     Theme colors and spacing:
+     - background-color: #ffffff (white content section)
+     - Body background: #f4f4f4 (light gray)
+     - padding: 40px 30px (standard spacing)
+     - text color: #333333 (dark text)
+     - muted color: #888888 (light gray text)
+     - primary color (buttons/links): #2563eb (blue)
+
+     Note: This component is typically not included directly, but rather
+     used as a pattern in template structure. The mj-section, mj-column,
+     and body/head setup should be defined in each template's root.
+-->
