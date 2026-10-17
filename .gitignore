@@ -18,3 +18,11 @@ compose.override.yml
 # Playwright output
 frontend/test-results/
 frontend/playwright-report/
+
+# Build artifacts
+/backend/build/.cache
+backend/build/node_modules
+
+# Compiled email templates (built from MJML sources)
+backend/templates/email/*.html.twig
+# Keep MJML source files tracked (negation handled by explicit .mjml rules in source control)
