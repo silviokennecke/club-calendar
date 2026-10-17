@@ -1,11 +1,6 @@
 parameters:
     env(CACHE_DIR): '%kernel.cache_dir%/pools'
 
-    env(CACHE_PROVIDER): ''
-    env(CACHE_PROVIDER_MAP): '%env(CACHE_PROVIDER)%'
-    env(CACHE_PROVIDER_GEOCODER): '%env(CACHE_PROVIDER)%'
-    env(CACHE_PROVIDER_MAPBOX_PROXY): '%env(CACHE_PROVIDER)%'
-
     default_cache_adapter: cache.adapter.filesystem
     cache_adapter_map: '%default_cache_adapter%'
     cache_adapter_geocoder: '%default_cache_adapter%'
@@ -18,13 +13,10 @@ framework:
         pools:
             map_images:
                 adapter: '%cache_adapter_map%'
-                provider: '%env(CACHE_PROVIDER_MAP)%'
                 default_lifetime: '%env(int:MAP_IMAGE_CACHE_TTL)%'
             geocoder_responses:
                 adapter: '%cache_adapter_geocoder%'
-                provider: '%env(CACHE_PROVIDER_GEOCODER)%'
                 default_lifetime: '%env(int:GEOCODER_CACHE_TTL)%'
             mapbox_proxy:
                 adapter: '%cache_adapter_mapbox_proxy%'
-                provider: '%env(CACHE_PROVIDER_MAPBOX_PROXY)%'
                 default_lifetime: '%env(int:MAPBOX_PROXY_CACHE_TTL)%'
