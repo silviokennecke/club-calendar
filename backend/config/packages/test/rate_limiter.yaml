@@ -1,5 +1,36 @@
 framework:
     rate_limiter:
+        # Geocoding service rate limiters (high limits for testing)
+        geocoder_daily:
+            policy: fixed_window
+            limit: 100000
+            interval: '24 hours'
+        geocoder_system:
+            policy: compound
+            limiters: [geocoder_daily]
+        geocoder_hourly:
+            policy: fixed_window
+            limit: 10000
+            interval: '1 hour'
+        geocoder_user:
+            policy: compound
+            limiters: [geocoder_hourly]
+        # Mapbox image service rate limiters (high limits for testing)
+        mapbox_image_daily:
+            policy: fixed_window
+            limit: 100000
+            interval: '24 hours'
+        mapbox_image_weekly:
+            policy: fixed_window
+            limit: 500000
+            interval: '7 days'
+        mapbox_image_monthly:
+            policy: fixed_window
+            limit: 1000000
+            interval: '30 days'
+        mapbox_image_system:
+            policy: compound
+            limiters: [mapbox_image_daily, mapbox_image_weekly, mapbox_image_monthly]
         verification_resend_ip:
             policy: fixed_window
             limit: 25
