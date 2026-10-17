@@ -1,6 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ApiError, apiGet, apiPatch, clearTokens, storeTokens, getAccessToken } from "./api";
+import {
+  ApiError,
+  apiGet,
+  apiPatch,
+  clearTokens,
+  revokeRefreshToken,
+  storeTokens,
+  getAccessToken,
+} from "./api";
 import { AuthContext, type AuthContextValue } from "./auth-context";
 import i18n from "./i18n";
 import type { User } from "./types";
@@ -45,6 +53,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    // The server ends the session too (revokes the refresh token's family); the local sign-out does not wait for it.
+    revokeRefreshToken();
     clearTokens();
     // Cached clubs/events of this account must not show up for the next one in the same tab.
     queryClient.clear();

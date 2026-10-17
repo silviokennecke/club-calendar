@@ -81,7 +81,7 @@ Vorab-Registrierung mit fremder Adresse (Pre-Hijacking, nachgestellt in
 `SessionInvalidationTest::testPreRegisteredPasswordStillWorksAfterTheOwnerConfirms`), Mapbox-Proxy,
 Microsoft-SSO ohne vertrauenswürdiges `email_verified` (inkl. "unbestätigtes Microsoft-Konto blockiert die
 Registrierung"), Rate-Limiting für Login/Token/Passkey/OAuth-Callback, Host-Header, ICS-Injection, CSP/Header, Tokens
-im SSO-Redirect, Refresh-Tokens ohne Rotation/Widerruf, Quoten und unbegrenzte ID-Listen, Konto-Enumeration
+im SSO-Redirect, Quoten und unbegrenzte ID-Listen, Konto-Enumeration
 (`POST …/members` 404), Kartenbilder privater Termine/Orte, CORS-Regex, Geheimnisse/Deploy.
 
 Nicht im Audit, gering:
@@ -110,7 +110,8 @@ Nicht im Audit, gering:
   `WEBAUTHN_RP_NAME`, optional `WEBAUTHN_USER_VERIFICATION` (`preferred`/`required`); erlaubte Passkey-Origin ist
   `FRONTEND_URL` (exakt).
 - **Cron:** `php bin/console app:prune-unverified-users` und `php bin/console app:prune-password-resets` (z. B.
-  täglich; abgelaufene Reset-Links und E-Mail-Wechsel).
+  täglich; abgelaufene Reset-Links und E-Mail-Wechsel) sowie `php bin/console app:prune-refresh-tokens` (beendete
+  Refresh-Token-Sitzungen; Lebensdauer `REFRESH_TOKEN_ABSOLUTE_LIFETIME`, Wiederholungsfenster `REFRESH_TOKEN_REUSE_GRACE`).
 - **Mail-Templates:** nach Änderungen an `templates/email/*.mjml` `npm run build:mail -w backend` (die kompilierten
   `*.html.twig` sind eingecheckt; `npm run build` baut sie ebenfalls). Seit Paket 5 auch `password_changed`,
   `email_change_requested`, `email_changed` (Hinweis-Mails ohne Links außer `/forgot-password`).

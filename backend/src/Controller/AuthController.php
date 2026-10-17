@@ -244,10 +244,30 @@ class AuthController extends AbstractApiController
         return new JsonResponse($this->auth->refresh($refreshToken));
     }
 
+    /**
+     * Ends the session of the refresh token in the JSON body (`{refresh_token}`): all its tokens are
+     * revoked. Always `200 {"ok": true}`, whatever the body holds (unknown, expired, revoked, malformed or no
+     * token): idempotent and no oracle. Clients leave out the (possibly expired) access token.
+     */
     #[Route('/logout', methods: ['POST'])]
-    public function logout(): JsonResponse
+    public function logout(Request $request): JsonResponse
     {
+        $data = json_decode($request->getContent(), true);
+        $token = is_array($data) ? ($data['refresh_token'] ?? null) : null;
+        if (is_string($token) && '' !== $token) {
+            $this->auth->logout($token);
+        }
+
         return new JsonResponse(['ok' => true]);
+    }
+
+    /** Signs out everywhere: access tokens (token version) and all refresh token families end. 204; the caller signs in again. */
+    #[Route('/logout-all', methods: ['POST'])]
+    public function logoutAll(): JsonResponse
+    {
+        $this->auth->logoutAll($this->userResolver->resolve());
+
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 
     #[Route('/me', methods: ['GET'])]

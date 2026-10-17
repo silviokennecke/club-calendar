@@ -10,7 +10,7 @@ import {
   TextInput,
   toast,
 } from "@/components/ui/shared";
-import { apiDelete, apiFetch } from "@/lib/api";
+import { apiDelete, apiFetch, type TokenResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { formatDate } from "@/lib/dateFormat";
 import { focusAfterDialog } from "@/lib/focus";
@@ -37,7 +37,7 @@ export function PasskeysSection({
 }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const [deviceName, setDeviceName] = useState("");
   const [registering, setRegistering] = useState(false);
   const [result, setResult] = useState<Result>(null);
@@ -78,7 +78,12 @@ export function PasskeysSection({
 
   async function remove(key: PasskeyInfo) {
     try {
-      await apiDelete(`/api/auth/webauthn/${key.id}`);
+      // Removing a passkey ends all sessions on the server; this one continues with the fresh tokens.
+      const tokens = await apiDelete<Partial<TokenResponse> | undefined>(
+        `/api/auth/webauthn/${key.id}`,
+      );
+      if (tokens?.access_token && tokens.refresh_token && tokens.user)
+        login(tokens.access_token, tokens.refresh_token, tokens.user);
     } catch {
       toast.error(t("profile.passkeys.removeFailed"));
       return;

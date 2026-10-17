@@ -15,6 +15,12 @@ parameters:
     # Seconds the one-time code in the SSO redirect (`/auth/callback?code=`) stays valid
     env(OAUTH_LOGIN_CODE_TTL): '180'
 
+    # Refresh tokens: seconds a session lasts at most (however often refreshed; each token slides 7 days) and
+    # seconds in which an already rotated token may be presented again (retry / parallel tabs) without
+    # revoking the session
+    env(REFRESH_TOKEN_ABSOLUTE_LIFETIME): '2592000' # 30 days
+    env(REFRESH_TOKEN_REUSE_GRACE): '10'
+
     env(MAP_IMAGE_CACHE_TTL): '2592000'  # 30 days
     env(GEOCODER_CACHE_TTL): '3600'       # 1 hour
     env(MAPBOX_PROXY_CACHE_TTL): '2592000' # 30 days

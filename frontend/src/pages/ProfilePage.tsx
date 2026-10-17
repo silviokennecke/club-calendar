@@ -11,6 +11,7 @@ import { LinkedLoginsSection, type LinkOutcome } from "@/components/profile/Link
 import { PasswordSection } from "@/components/profile/PasswordSection";
 import { PasskeysSection } from "@/components/profile/PasskeysSection";
 import { PreferencesSection } from "@/components/profile/PreferencesSection";
+import { SessionsSection } from "@/components/profile/SessionsSection";
 import type { ProfileData } from "@/components/profile/profileTypes";
 import { ApiError, apiDelete, apiGet, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -169,6 +170,8 @@ export default function ProfilePage() {
       )}
 
       <PreferencesSection />
+
+      <SessionsSection />
 
       <section className="ap-panel ap-panel--danger" aria-labelledby="pr-danger">
         <div className="ap-panel-head">

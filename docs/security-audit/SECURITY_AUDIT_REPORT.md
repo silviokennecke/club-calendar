@@ -28,7 +28,7 @@
 ## Executive Summary
 
 - **No Critical findings** in the completed areas.
-- Counts so far (4 of 5 areas complete): **2 High, 1 Medium, 10 Low, 9 Informational** — 22 findings; API-02 and the OAuth token-in-URL finding removed after implementation (AUTH-13 added for the residual risk of the fix).
+- Counts so far (4 of 5 areas complete): **2 High, 1 Medium, 8 Low, 9 Informational** — 20 findings; API-02 and the OAuth token-in-URL finding removed after implementation (AUTH-13 added for the residual risk of the fix).
 - **Immediate action (no code change required):** rotate the Mapbox token that leaked into git history (FE-01) — it remains valid and is recoverable from any clone of the repository.
 - **Top design gaps:** club membership equals full admin with no role model (API-01); Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
 - **Positives:** no IDOR/cross-tenant gaps in the API surface; no live Mapbox token in the frontend (fully proxied through the backend); WebAuthn ceremonies, OAuth state handling, and exception → RFC 7807 response masking are sound; feed-secret checks are constant-time and the Mapbox proxy is SSRF-safe (fixed upstream host, strict path allowlist, caller token stripped).
@@ -80,15 +80,6 @@
 **Notes:** Verified no usable tokens remain after deletion, so the blast radius is the cascade itself, not residual access.
 **Source:** `01-backend-auth.md` (AUTH-03).
 
-#### AUTH-04 — Refresh tokens have no rotation or replay detection
-**Severity:** Low
-**Attack scope:** Attacker who has stolen a refresh token.
-**Description:** Refresh tokens are 7-day HMAC JWTs with no rotation and no server-side revocation; a stolen token stays usable until expiry, and logout does not invalidate it.
-**Affected parts:** `TokenService.php:25-37` (HMAC signing at `:34`); `AuthController.php:134-138` (logout no-op).
-**Fix recommendation:** Rotate the refresh token on use (optionally with a short overlap window), or maintain a short-lived revocation store / token families.
-**Notes:** Mitigated today by the `tv` session-version kill switch, `uid` binding, and 15-minute access tokens. Related: FE-03 (client-side refresh dedup).
-**Source:** `01-backend-auth.md` (AUTH-04).
-
 #### AUTH-05 — Raw exception objects logged with full stack traces
 **Severity:** Low
 **Attack scope:** Anyone with access to logs / log aggregation; internal structure disclosure.
@@ -108,15 +99,6 @@
 **Fix recommendation:** Add server-side caps: offset/limit (or cursor) pagination for `listEvents`, and a maximum batch size for `$dates` / `$eventsData` (reject or truncate with a clear 400/422).
 **Notes:** All endpoints require `CALENDAR_MEMBER` (plus `NOT_ARCHIVED` on mutators) — resource exhaustion by a legitimate member, not unauthenticated DoS; no data leakage.
 **Source:** `02-backend-api.md` (API-03).
-
-#### FE-03 — Access/refresh tokens in `sessionStorage`; no dedup of concurrent refreshes
-**Severity:** Low
-**Attack scope:** XSS on any page of the SPA; and the API refresh endpoint under a burst of parallel 401s.
-**Description:** Tokens are kept in `sessionStorage` (readable by any script running in the tab), so an XSS bug anywhere in the app yields both the access token and the 7-day refresh token (the backend deliberately sets no auth cookies — no httpOnly fallback). In addition, the 401 handler performs an unguarded refresh: every 401 fires its own `POST /api/auth/token`, so several concurrently-expired requests issue parallel refreshes for the same refresh token, racing on the backend.
-**Affected parts:** `frontend/src/lib/api.ts:20-26` (storage), `:85-108` (refresh loop).
-**Fix recommendation:** The storage choice is an accepted trade-off of the documented stateless-JWT design — keep it, but add a single in-flight refresh promise (dedupe concurrent 401s onto one refresh POST, others await it).
-**Notes:** Framed as a trade-off, not a violation. Related: AUTH-04 (server-side rotation would bound the damage of a stolen refresh token).
-**Source:** `03-frontend.md` (FE-03).
 
 #### FE-04 — CLI-only `shadcn` package listed as a runtime dependency
 **Severity:** Low
@@ -243,7 +225,7 @@
 ## Areas Reviewed — no additional findings
 
 **Backend authentication (01)**
-- Token flow: 15-min JWT access tokens with a `tv` token-version kill switch; HMAC-signed refresh tokens bound to `uid`, 7-day TTL — sound design (documented gaps: AUTH-04, AUTH-05).
+- Token flow: 15-min JWT access tokens with a `tv` token-version kill switch; HMAC-signed refresh tokens bound to `uid`, 7-day TTL — sound design (documented gap: AUTH-05).
 - OAuth SSO: `state` bound to the browser via short-lived one-time `oauth_state_nonce` cookie + PKCE (`code_verifier`/`code_challenge`); the provider response is never sent back to the browser as JSON.
 - WebAuthn registration/authentication ceremony follows the spec (challenge binding, `authenticatorAttachment` handling, user verification per `WEBAUTHN_USER_VERIFICATION`).
 - `ExceptionListener` masks all exceptions as RFC 7807 `application/problem+json` — no stack traces or entity details reach the client.
@@ -283,10 +265,8 @@
 | API-01 | Club membership grants full administrative control (no roles, no last-admin guard) | High |
 | API-52 | Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation | Medium |
 | AUTH-03 | Account deletion without confirmation, cascading memberships | Low |
-| AUTH-04 | Refresh tokens have no rotation or replay detection | Low |
 | AUTH-05 | Raw exception objects logged with full stack traces | Low |
 | API-03 | Unbounded list and bulk-operation endpoints | Low |
-| FE-03 | Access/refresh tokens in `sessionStorage`; no dedup of concurrent refreshes | Low |
 | FE-04 | CLI-only `shadcn` package listed as a runtime dependency | Low |
 | FE-05 | Type-only `@types/mapbox-gl` listed as a runtime dependency | Low |
 | API-53 | Static map image endpoints expose coordinates of calendars the user does not belong to | Low |
@@ -307,10 +287,10 @@
 
 | Area | Report | Findings | Status |
 |---|---|---|---|
-| Backend auth | `01-backend-auth.md` | AUTH-03 … AUTH-13 (11) | Complete |
+| Backend auth | `01-backend-auth.md` | AUTH-03, AUTH-05 … AUTH-13 (10) | Complete |
 | Backend API (authorization & CRUD) | `02-backend-api.md` | API-01, API-03 (2) | Complete |
 | Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-54 (3) | Complete |
-| Frontend | `03-frontend.md` | FE-01, FE-03 … FE-07 (6) | Complete |
+| Frontend | `03-frontend.md` | FE-01, FE-04 … FE-07 (5) | Complete |
 | Scans & config | `04-scans-config.md` | `SCAN-xx` | Pending |
 | Secrets scan evidence | `gitleaks.json` (not committed: contains the leaked token) | 1 genuine hit (FE-01); redacted in place | Complete |
 

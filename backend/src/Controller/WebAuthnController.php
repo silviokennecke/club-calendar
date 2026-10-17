@@ -83,8 +83,8 @@ class WebAuthnController extends AbstractController
     public function deletePasskey(string $id): JsonResponse
     {
         $user = $this->userResolver->resolve();
-        $this->webAuthn->deletePasskey($id, $user);
 
-        return new JsonResponse(['ok' => true]);
+        // `ok` like every delete, plus the fresh token pair: the deletion ended all sessions.
+        return new JsonResponse(['ok' => true] + $this->webAuthn->deletePasskey($id, $user));
     }
 }

@@ -1924,6 +1924,16 @@
       "saved": "Gespeichert",
       "saveFailed": "Die Einstellung konnte nicht gespeichert werden. Bitte versuche es erneut."
     },
+    "sessions": {
+      "title": "Anmeldungen",
+      "text": "Meldet dich auf allen Geräten und in allen Browsern ab, auch hier. Danach musst du dich überall neu anmelden.",
+      "action": "Überall abmelden",
+      "confirmTitle": "Auf allen Geräten abmelden?",
+      "confirmText": "Alle aktiven Anmeldungen deines Kontos werden beendet.",
+      "consequence": "Du wirst hier ebenfalls abgemeldet und musst dich überall neu anmelden.",
+      "confirm": "Überall abmelden",
+      "failed": "Das Abmelden auf allen Geräten hat nicht geklappt. Bitte versuche es erneut."
+    },
     "danger": {
       "title": "Gefahrenbereich",
       "text": "Löscht dein Konto mit allen Passkeys und verknüpften Anmeldungen unwiderruflich.",
