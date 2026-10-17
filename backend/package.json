@@ -4,7 +4,7 @@
   "scripts": {
     "build": "composer install --no-dev --optimize-autoloader --no-interaction && npm run build:mail",
     "build:dev": "composer install --no-interaction && npm run build:mail",
-    "build:mail": "mjml templates/email/verify_email.mjml -o templates/email/verify_email.html.twig && mjml templates/email/reset_password.mjml -o templates/email/reset_password.html.twig && mjml templates/email/confirm_new_email.mjml -o templates/email/confirm_new_email.html.twig && mjml templates/email/password_changed.mjml -o templates/email/password_changed.html.twig && mjml templates/email/email_change_requested.mjml -o templates/email/email_change_requested.html.twig && mjml templates/email/email_changed.mjml -o templates/email/email_changed.html.twig",
+    "build:mail": "node build/mail-builder.js",
     "test": "composer test",
     "migrate": "composer migrate",
     "fixtures": "composer fixtures"
