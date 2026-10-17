@@ -2,7 +2,6 @@ doctrine:
     dbal:
         url: '%env(resolve:DATABASE_URL)%'
         driver: 'pdo_mysql'
-        server_version: '8.0'
         charset: utf8mb4
     orm:
         naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware

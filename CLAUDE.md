@@ -20,7 +20,7 @@ A web app for clubs to manage and publish event calendars.
   i18next (de/en), light/dark/system theme; own month/week calendar views (no FullCalendar); Mapbox GL and emoji-mart
   loaded lazily; route-level code splitting (`src/pages/lazy.ts`)
 - **Frontend tests:** Vitest + Testing Library, Playwright (E2E)
-- **Database:** MySQL 8
+- **Database:** MySQL 8 or MariaDB (no `server_version` in `doctrine.yaml`: DBAL detects the platform; a fixed `8.0` broke MariaDB introspection)
 
 ## Monorepo Structure
 
