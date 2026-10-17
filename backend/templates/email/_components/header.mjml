@@ -1,0 +1,9 @@
+<!-- Brand header component for email templates
+     Usage: <mj-include path="./_components/header.mjml" />
+
+     This component renders the consistent "📅 Club Calendar" header
+     seen across all email templates. It uses theme brand styling.
+-->
+<mj-text font-size="14px" color="#888888" padding-bottom="16px">
+  📅 Club Calendar
+</mj-text>

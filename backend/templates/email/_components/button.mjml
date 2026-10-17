@@ -1,0 +1,48 @@
+<!-- CTA Button component with fallback link
+     Usage: Include this snippet and pass context variables:
+
+     <mj-include path="./_components/button.mjml" />
+
+     Required Twig variables in the including template:
+     - buttonUrl: The URL the button links to
+     - buttonText: The button label text (e.g., 'email.reset.button'|trans)
+
+     Optional:
+     - buttonColor: Override default primary color (defaults to #2563eb)
+
+     Example in a template:
+
+     {% set buttonUrl = resetUrl %}
+     {% set buttonText = 'email.reset.button'|trans %}
+     <mj-include path="./_components/button.mjml" />
+
+     Theme styling:
+     - Primary color (background): #2563eb
+     - Text color: #ffffff (white)
+     - Border radius: 6px
+     - Font size: 16px
+     - Padding: 12px 24px
+     - Fallback link color: #2563eb
+     - Link word-break: break-all (for long URLs)
+
+     The component includes a fallback text link below the button
+     for email clients that don't render buttons properly.
+-->
+
+<!-- Primary CTA Button -->
+<mj-button
+  href="{{ buttonUrl }}"
+  background-color="#2563eb"
+  color="#ffffff"
+  border-radius="6px"
+  font-size="16px"
+  padding="12px 24px"
+>
+  {{ buttonText }}
+</mj-button>
+
+<!-- Fallback link text for button-unsupported clients -->
+<mj-text font-size="13px" color="#888888" padding-top="12px">
+  Or copy this link:<br />
+  <a href="{{ buttonUrl }}" style="color:#2563eb;word-break:break-all;">{{ buttonUrl }}</a>
+</mj-text>

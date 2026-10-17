@@ -1,0 +1,24 @@
+<!-- Footer component (optional, for future expansion)
+     Usage: <mj-include path="./_components/footer.mjml" />
+
+     This component is a placeholder for future footer content
+     such as unsubscribe links, company info, legal links, etc.
+
+     Currently minimal - can be expanded with:
+     - Social media links
+     - Unsubscribe/preference management links
+     - Company contact information
+     - Legal/privacy links
+     - Copyright notice
+
+     Theme styling to use when adding content:
+     - Muted text color: #888888
+     - Font size: 12px (smaller than body)
+     - Link color: #2563eb
+     - Padding: 24px 30px
+-->
+
+<!-- Footer content placeholder -->
+<mj-text font-size="12px" color="#888888" padding-top="24px">
+  <!-- Future footer content -->
+</mj-text>

@@ -4,15 +4,14 @@
     <mj-preview>{{ 'email.email_change_requested.subject'|trans }}</mj-preview>
     <mj-attributes>
       <mj-all font-family="Arial, sans-serif" />
-      <mj-text font-size="16px" color="#333333" line-height="1.6" />
+      <mj-text font-size="16px" color="{{ THEME.colors.text }}" line-height="1.6" />
     </mj-attributes>
   </mj-head>
-  <mj-body background-color="#f4f4f4">
-    <mj-section background-color="#ffffff" padding="40px 30px">
+  <mj-body background-color="{{ THEME.colors.background }}">
+    <mj-section background-color="{{ THEME.colors.surface }}" padding="40px 30px">
       <mj-column>
-        <mj-text font-size="14px" color="#888888" padding-bottom="16px">
-          📅 Club Calendar
-        </mj-text>
+        <mj-include path="./_components/header.mjml" />
+
         <mj-text font-size="18px" font-weight="bold" padding-bottom="8px">
           {{ 'email.email_change_requested.greeting'|trans({name: userName}) }}
         </mj-text>
@@ -22,14 +21,14 @@
         <mj-text padding-bottom="16px">
           {{ 'email.email_change_requested.info'|trans }}
         </mj-text>
-        <mj-text font-size="14px" color="#333333" padding-bottom="8px" font-weight="bold">
+        <mj-text font-size="14px" color="{{ THEME.colors.text }}" padding-bottom="8px" font-weight="bold">
           {{ 'email.notice.not_you_title'|trans }}
         </mj-text>
-        <mj-text font-size="14px" color="#333333">
+        <mj-text font-size="14px" color="{{ THEME.colors.text }}">
           {{ 'email.email_change_requested.not_you'|trans }}<br />
-          <a href="{{ forgotUrl }}" style="color:#2563eb;word-break:break-all;">{{ forgotUrl }}</a>
+          <a href="{{ forgotUrl }}" style="color:{{ THEME.colors.primary }};word-break:break-all;">{{ forgotUrl }}</a>
         </mj-text>
-        <mj-text font-size="13px" color="#888888" padding-top="24px">
+        <mj-text font-size="13px" color="{{ THEME.colors.textMuted }}" padding-top="24px">
           {{ 'email.notice.automatic'|trans }}
         </mj-text>
       </mj-column>

@@ -4,28 +4,31 @@
     <mj-preview>{{ 'email.verify.subject'|trans }}</mj-preview>
     <mj-attributes>
       <mj-all font-family="Arial, sans-serif" />
-      <mj-text font-size="16px" color="#333333" line-height="1.6" />
+      <mj-text font-size="16px" color="{{ THEME.colors.text }}" line-height="1.6" />
     </mj-attributes>
   </mj-head>
-  <mj-body background-color="#f4f4f4">
-    <mj-section background-color="#ffffff" padding="40px 30px">
+  <mj-body background-color="{{ THEME.colors.background }}">
+    <mj-section background-color="{{ THEME.colors.surface }}" padding="40px 30px">
       <mj-column>
-        <mj-text font-size="14px" color="#888888" padding-bottom="16px">
-          📅 Club Calendar
-        </mj-text>
+        <mj-include path="./_components/header.mjml" />
+
         <mj-text font-size="18px" font-weight="bold" padding-bottom="8px">
           {{ 'email.verify.greeting'|trans({name: userName}) }}
         </mj-text>
         <mj-text padding-bottom="24px">
           {{ 'email.verify.body'|trans }}
         </mj-text>
-        <mj-text align="center" font-size="36px" font-weight="bold" letter-spacing="10px" color="#111111" container-background-color="#f4f4f4" padding="16px 24px">
+
+        <!-- Code display (unique to verification emails) -->
+        <!-- Monospace, bold, with padding for visual emphasis -->
+        <mj-text align="center" font-size="36px" font-weight="bold" letter-spacing="10px" color="{{ THEME.colors.text }}" container-background-color="{{ THEME.colors.background }}" padding="16px 24px">
           {{ code }}
         </mj-text>
-        <mj-text font-size="13px" color="#888888" padding-top="24px">
+
+        <mj-text font-size="13px" color="{{ THEME.colors.textMuted }}" padding-top="24px">
           {{ 'email.verify.expiry_note'|trans({minutes: validMinutes}) }}
         </mj-text>
-        <mj-text font-size="13px" color="#888888">
+        <mj-text font-size="13px" color="{{ THEME.colors.textMuted }}">
           {{ 'email.verify.ignore_note'|trans }}
         </mj-text>
       </mj-column>
