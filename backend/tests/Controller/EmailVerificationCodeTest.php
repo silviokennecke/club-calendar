@@ -114,7 +114,9 @@ class EmailVerificationCodeTest extends WebTestCase
         $this->assertSame(201, $r['status']);
         $this->assertSame(['verificationRequired' => true, 'email' => 'new@example.com'], $r['body']);
         $this->assertEmailCount(1);
-        $html = (string) $this->getMailerMessage()->getHtmlBody();
+        $mail = $this->getMailerMessage();
+        $this->assertInstanceOf(Email::class, $mail);
+        $html = (string) $mail->getHtmlBody();
         $this->assertStringNotContainsString('verify-email', $html);
         $this->assertDoesNotMatchRegularExpression('#<a [^>]*href="https?://#', $html);
         $this->assertFalse($this->user('new@example.com')->isEmailVerified());

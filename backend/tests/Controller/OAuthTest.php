@@ -16,6 +16,7 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
@@ -336,6 +337,7 @@ class OAuthTest extends WebTestCase
         $this->assertSame('ms@example.com', $result['email']);
         $this->assertEmailCount(1);
         $mail = $this->getMailerMessage();
+        $this->assertInstanceOf(Email::class, $mail);
         $this->assertEmailAddressContains($mail, 'To', 'ms@example.com');
         $this->assertSame(1, preg_match('/>\s*(\d{6})\s*</', (string) $mail->getHtmlBody(), $m));
         $user = $this->user('ms@example.com');
