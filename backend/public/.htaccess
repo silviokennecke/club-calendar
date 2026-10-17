@@ -47,6 +47,26 @@ DirectoryIndex index.html index.php
     </If>
 </IfModule>
 
+# Security headers (audit M4). KEEP IN SYNC with docker/Caddyfile (tests/Unit/SecurityHeadersConfigTest.php).
+# CSP rules: no inline scripts, no eval; every new third-party host goes into the policy in BOTH files.
+# The app proxies Mapbox through /api/mapbox, so there are no third-party hosts.
+<IfModule mod_headers.c>
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), midi=(), accelerometer=(), gyroscope=(), magnetometer=(), interest-cohort=()"
+    Header always set Cross-Origin-Opener-Policy "same-origin"
+    # Default only: the feed rule above keeps no-referrer
+    Header always setifempty Referrer-Policy "strict-origin-when-cross-origin"
+    # HSTS only over HTTPS (directly or behind a TLS terminator that sets X-Forwarded-Proto)
+    Header always set Strict-Transport-Security "max-age=31536000" "expr=%{HTTPS} == 'on' || %{HTTP:X-Forwarded-Proto} == 'https'"
+</IfModule>
+
+# Never serve secrets or logs
+<FilesMatch "\.(env|pem|log)$">
+    Require all denied
+</FilesMatch>
+
 # Keep dotfiles private
 <FilesMatch "^\.">
     Require all denied
