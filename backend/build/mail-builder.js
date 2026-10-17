@@ -93,6 +93,45 @@ function replaceThemeVariables(content) {
 }
 
 /**
+ * Inline MJML component includes by replacing <mj-include path="..." /> with component content
+ * Handles relative paths and logs results
+ */
+function inlineComponents(content, templateDir) {
+  const includePattern = /<mj-include\s+path="([^"]+)"\s*\/>/g;
+  const inlinedComponents = [];
+  const skippedIncludes = [];
+
+  let processed = content.replace(includePattern, (match, includePath) => {
+    // Resolve relative path (relative to template directory)
+    const resolvedPath = path.join(templateDir, includePath);
+
+    try {
+      if (!fs.existsSync(resolvedPath)) {
+        skippedIncludes.push(includePath);
+        console.warn(`  ⚠ Component file not found: ${includePath}`);
+        return match; // Keep original include if file not found
+      }
+
+      // Read component file
+      const componentContent = fs.readFileSync(resolvedPath, 'utf8');
+      inlinedComponents.push(includePath);
+      return componentContent;
+    } catch (error) {
+      skippedIncludes.push(includePath);
+      console.warn(`  ⚠ Failed to read component ${includePath}: ${error.message}`);
+      return match; // Keep original include on error
+    }
+  });
+
+  // Log inlined components
+  if (inlinedComponents.length > 0) {
+    console.log(`    → inlined ${inlinedComponents.length} component(s): ${inlinedComponents.join(', ')}`);
+  }
+
+  return processed;
+}
+
+/**
  * Validate template for hardcoded colors and return warnings
  */
 function validateTemplate(filename, content) {
@@ -179,6 +218,9 @@ function compileTemplate(filename) {
 
     // Replace theme variables
     content = replaceThemeVariables(content);
+
+    // Inline MJML components (must happen after theme replacement, before MJML compilation)
+    content = inlineComponents(content, TEMPLATE_DIR);
 
     // Validate for hardcoded colors
     const colorWarnings = validateTemplate(filename, content);
@@ -317,5 +359,6 @@ module.exports = {
   compileTemplate,
   compileAll,
   replaceThemeVariables,
+  inlineComponents,
   validateTemplate,
 };
