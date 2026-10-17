@@ -61,6 +61,9 @@ COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 ENV APP_ENV=prod \
     APP_DEBUG=0 \
+    CACHE_DIR=/data/cache \
+    JWT_PRIVATE_KEY=/data/config/private.pem \
+    JWT_PUBLIC_KEY=/data/config/public.pem \
     PORT=8080 \
     XDG_DATA_HOME=/tmp/caddy-data \
     XDG_CONFIG_HOME=/tmp/caddy-config
@@ -71,6 +74,11 @@ COPY --from=backend-vendor --chown=www-data:www-data /app/backend/ ./
 COPY --from=frontend-build --chown=www-data:www-data /build/backend/public/ ./public/
 COPY --from=frontend-build --chown=www-data:www-data /build/backend/templates/email/verify_email.html.twig templates/email/
 
+# Create data directory
+RUN mkdir -p /data/config /data/cache && \
+    chown -R www-data:www-data /data
+VOLUME ["/data"]
+
 # Symfony runtime needs a .env; real configuration comes from environment variables.
 # The cache is warmed at build time with the dummy values from docker/build.env (not kept in the image).
 RUN --mount=type=bind,source=docker/build.env,target=/tmp/build.env \
@@ -79,11 +87,10 @@ RUN --mount=type=bind,source=docker/build.env,target=/tmp/build.env \
     && set -a && . /tmp/build.env && set +a \
     && php bin/console cache:warmup --no-interaction \
     && chmod +x /usr/local/bin/docker-entrypoint.sh \
-    && chown -R www-data:www-data .env var config/jwt public
+    && chown -R www-data:www-data .env var public
 
 USER www-data
 EXPOSE 8080
-VOLUME ["/var/www/html/config/jwt"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD curl -sf "http://127.0.0.1:${PORT}/api/health" > /dev/null || exit 1
