@@ -20,17 +20,25 @@ info:
       (first required field) on routes that map it onto a DTO; `[]` counts as an empty object.
     - `PATCH` is partial: only the keys present in the body are changed.
     - Deletes answer `200 {"ok": true}` (also logout and holiday calendars); only `DELETE /api/auth/change-email` and
-      `DELETE /api/auth/oauth/{provider}` answer `204 No Content`.
+      `DELETE /api/auth/oauth/{provider}` answer `204 No Content`. `DELETE /api/auth/webauthn/{id}` adds a fresh token pair
+      to its `ok` body (it ends all sessions).
 
     ## Authentication
 
     - **Access token**: a JWT (RS256, 15 minutes, claim `email`, plus `uid` and `tv` = session version), sent as
       `Authorization: Bearer <token>`. Obtained from login, passkey sign-in, SSO, password change or refresh.
-    - **Refresh token**: HMAC-signed, 7 days, exchanged at `POST /api/auth/token` with a **form-encoded** body
-      `grant_type=refresh_token&refresh_token=<token>` (OAuth 2.0 style). There is no rotation; a refresh
-      answers with a new access token AND a new refresh token.
-    - Both tokens die when the account's session version changes (password reset/change, e-mail change, SSO
-      takeover of an unconfirmed account): `401` on the next request / refresh. Refresh and passkey sign-in
+    - **Refresh token**: HMAC-signed JWT with `jti` and `fam` (session), stored server-side (table `refresh_token`),
+      exchanged at `POST /api/auth/token` with a **form-encoded** body `grant_type=refresh_token&refresh_token=<token>`
+      (OAuth 2.0 style). Every token is single-use and **rotated**: a refresh answers with a new access token AND a
+      new refresh token of the same session. A token slides 7 days, but a session ends at the latest
+      `REFRESH_TOKEN_ABSOLUTE_LIFETIME` (default 30 days) after login, however often it is refreshed. Presenting a token
+      that was already rotated revokes the whole session (`401 invalid_refresh_token`), except within
+      `REFRESH_TOKEN_REUSE_GRACE` seconds (default 10) after the rotation: such a retry (lost response, parallel
+      tabs) gets a further token of the same session. Legacy tokens without `jti` (issued before rotation) are accepted
+      exactly once (a replay is `401`) and replaced by a token of a new session; they are not tracked, so logout does not revoke them. `POST /api/auth/logout` revokes the session of one refresh token,
+      `POST /api/auth/logout-all` all sessions of the user.
+    - Both tokens die when the account's session version changes (password reset/change, e-mail change, passkey
+      deletion, sign out everywhere, SSO takeover of an unconfirmed account): `401` on the next request / refresh. Refresh and passkey sign-in
       refuse accounts whose e-mail address is not confirmed.
     - **One-time login token**: `POST /api/auth/token` with `grant_type=one_time_token&token=<token>` returns the
       usual token pair. The token comes from `POST /api/auth/verify-email` (TTL 30 s) or is the `code` of the SSO
@@ -522,7 +530,10 @@ paths:
     post:
       tags: [Auth]
       summary: Refresh the tokens
-      description: OAuth 2.0 style refresh with a **form-encoded** body. Returns a new access AND refresh token.
+      description: >-
+        OAuth 2.0 style refresh with a **form-encoded** body. Returns a new access AND refresh token (rotation: the
+        presented refresh token is used up; see Authentication for reuse detection, the grace window and the absolute
+        session lifetime).
       operationId: refreshToken
       security: []
       requestBody:
@@ -554,7 +565,7 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '401':
-          description: '`invalid_refresh_token`: invalid, expired, user gone, sessions ended or the address is not confirmed.'
+          description: '`invalid_refresh_token`: invalid, expired, unknown, revoked (logout, reuse), session lifetime over, user gone, sessions ended or the address is not confirmed.'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -563,12 +574,36 @@ paths:
   /api/auth/logout:
     post:
       tags: [Auth]
-      summary: Sign out
-      description: Stateless no-op (tokens live in the client, which discards them). No authentication required.
+      summary: Sign out (end the session of a refresh token)
+      description: >-
+        Revokes the session (all tokens of the family) of the refresh token in the body. Idempotent and uniform: always
+        `200 {"ok": true}`, also for an unknown, expired, already revoked or malformed token, a missing token or a
+        body that is not JSON (no oracle). Other sessions stay; access tokens stay valid until they expire. No
+        authentication needed; clients leave out the access token (an expired one would be answered with 401).
       operationId: logout
       security: [{}, { bearerAuth: [] }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token: { type: string }
       responses:
         '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/auth/logout-all:
+    post:
+      tags: [Auth]
+      summary: Sign out everywhere
+      description: >-
+        Ends all sessions of the user: the session version is raised (every access token, including the caller's,
+        stops working) and all refresh tokens are revoked. The caller signs in again.
+      operationId: logoutAll
+      responses:
+        '204': { description: All sessions ended. }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
   /api/auth/me:
@@ -730,11 +765,24 @@ paths:
     delete:
       tags: [Passkeys]
       summary: Delete one of the user's passkeys
+      description: >-
+        Ends all sessions (session version, refresh tokens) and answers with `{"ok": true}` plus a fresh token pair
+        (`access_token`, `refresh_token`, ... like login), so the calling session continues.
       operationId: deletePasskey
       parameters:
         - { $ref: '#/components/parameters/Id' }
       responses:
-        '200': { $ref: '#/components/responses/Ok' }
+        '200':
+          description: Done, with a fresh token pair.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/TokenResponse'
+                  - type: object
+                    required: [ok]
+                    properties:
+                      ok: { type: boolean, const: true }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404':
           description: '`passkey_not_found` (unknown or another user''s).'
@@ -2900,7 +2948,7 @@ components:
         | `invalid_verification_code` | 422 | `POST /api/auth/verify-email`: wrong, expired, used up or unknown (same answer), field `code` |
         | `verification_resend_too_early` | 429 | `POST /api/auth/resend-verification` less than 5 minutes after the last code mail of the account; extra member `retryAt` (ISO-8601 UTC), header `Retry-After` |
         | `invalid_grant` | 400 | `POST /api/auth/token` with an unknown `grant_type`, a missing token or an unusable one-time token |
-        | `invalid_refresh_token` | 401 | Refresh token invalid, expired, user gone or sessions ended |
+        | `invalid_refresh_token` | 401 | Refresh token invalid, expired, unknown, revoked, reused after rotation (revokes the session), session lifetime over, user gone or sessions ended |
         | `invalid_passkey` | 401 | Passkey sign-in failed |
         | `invalid_passkey_registration` | 400 | Passkey registration failed |
         | `passkey_already_registered` | 400 | Passkey registration: credential exists |
@@ -2994,7 +3042,7 @@ components:
         access_token: { type: string, description: 'JWT, 15 minutes.' }
         token_type: { type: string, const: Bearer }
         expires_in: { type: integer, const: 900 }
-        refresh_token: { type: string, description: 7 days; exchange at `POST /api/auth/token`. }
+        refresh_token: { type: string, description: 'Single-use, 7 days (never past the session''s absolute end); exchange at `POST /api/auth/token`, which rotates it.' }
         user: { $ref: '#/components/schemas/UserSummary' }
     Me:
       allOf:

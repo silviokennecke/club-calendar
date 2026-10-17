@@ -13,6 +13,7 @@ const apiGet = vi.fn();
 const apiPost = vi.fn();
 const apiDelete = vi.fn();
 const apiFetch = vi.fn();
+const logoutEverywhere = vi.fn();
 const updateUser = vi.fn();
 const logout = vi.fn();
 const login = vi.fn();
@@ -25,6 +26,7 @@ vi.mock("@/lib/api", async (orig) => ({
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiDelete: (...a: unknown[]) => apiDelete(...a),
   apiFetch: (...a: unknown[]) => apiFetch(...a),
+  logoutEverywhere: (...a: unknown[]) => logoutEverywhere(...a),
 }));
 vi.mock("@/lib/auth-context", () => ({
   useAuth: () => ({ user: authUser, updateUser, logout, login }),
@@ -117,6 +119,7 @@ beforeEach(() => {
     apiPost,
     apiDelete,
     apiFetch,
+    logoutEverywhere,
     updateUser,
     logout,
     login,
@@ -441,6 +444,51 @@ describe("ProfilePage", () => {
     expect(apiDelete).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Passkey entfernen" }));
     await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/auth/webauthn/p2"));
+  });
+
+  it("signs out everywhere only after confirming, then signs out locally", async () => {
+    const user = userEvent.setup();
+    logoutEverywhere.mockResolvedValue(undefined);
+    renderProfile();
+    await user.click(await screen.findByRole("button", { name: "Überall abmelden" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Auf allen Geräten abmelden?",
+    });
+    expect(logoutEverywhere).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Überall abmelden" }));
+    await waitFor(() => expect(logoutEverywhere).toHaveBeenCalledOnce());
+    await waitFor(() => expect(logout).toHaveBeenCalledOnce());
+    expect(await screen.findByTestId("location")).toHaveTextContent("/login");
+  });
+
+  it("stays signed in and shows an error when signing out everywhere fails", async () => {
+    const user = userEvent.setup();
+    logoutEverywhere.mockRejectedValue(new ApiError("boom", 500));
+    renderProfile();
+    await user.click(await screen.findByRole("button", { name: "Überall abmelden" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Auf allen Geräten abmelden?",
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Überall abmelden" }));
+    expect(await screen.findByText(/Abmelden auf allen Geräten hat nicht geklappt/)).toBeVisible();
+    expect(logout).not.toHaveBeenCalled();
+  });
+
+  it("continues with the fresh tokens after a passkey was removed", async () => {
+    const user = userEvent.setup();
+    apiDelete.mockResolvedValue({
+      ok: true,
+      access_token: "a2",
+      refresh_token: "r2",
+      user: authUser,
+    });
+    renderProfile();
+    await user.click(
+      await screen.findByRole("button", { name: "Passkey „iPhone Alex“ entfernen" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Passkey entfernen" }));
+    await waitFor(() => expect(login).toHaveBeenCalledWith("a2", "r2", authUser));
   });
 
   it("sets up a passkey with the device name and refreshes the list", async () => {

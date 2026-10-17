@@ -1924,6 +1924,16 @@
       "saved": "Saved",
       "saveFailed": "The setting could not be saved. Please try again."
     },
+    "sessions": {
+      "title": "Sign-ins",
+      "text": "Signs you out on all devices and in all browsers, including this one. You will have to sign in again everywhere.",
+      "action": "Sign out everywhere",
+      "confirmTitle": "Sign out on all devices?",
+      "confirmText": "All active sign-ins of your account will end.",
+      "consequence": "You will be signed out here as well and have to sign in again everywhere.",
+      "confirm": "Sign out everywhere",
+      "failed": "Signing out on all devices did not work. Please try again."
+    },
     "danger": {
       "title": "Danger zone",
       "text": "Permanently deletes your account with all passkeys and linked sign-ins.",

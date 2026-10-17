@@ -28,14 +28,6 @@ Static, read-only code review: full reads of every in-scope file plus targeted r
 **Fix recommendation:** Require re-authentication (password or passkey) or a short-lived confirmation token; consider a soft-delete grace period.
 **Notes:** Verified that no usable tokens remain after deletion (see Reviewed & OK), so the blast radius is the cascade itself, not lingering access.
 
-### AUTH-04 — Refresh tokens have no rotation or replay detection
-**Severity:** Low
-**Attack scope:** Attacker who steals a refresh token
-**Description:** Refresh tokens are 7-day HMAC JWTs with no rotation and no server-side revocation; a stolen token stays usable until expiry, and logout does not invalidate it.
-**Affected parts:** `TokenService.php:25-37` (HMAC signing at :34); `AuthController.php:134-138` (logout no-op)
-**Fix recommendation:** Rotate refresh tokens on use (optionally with a short overlap window), or keep a short-lived revocation store / token families.
-**Notes:** Mitigated today by the `tv` session-version kill switch, `uid` binding, and 15-minute access tokens.
-
 ### AUTH-05 — Raw exception objects logged with full stack traces
 **Severity:** Low
 **Attack scope:** Anyone with access to logs / log aggregation; internal structure disclosure
@@ -105,7 +97,7 @@ Static, read-only code review: full reads of every in-scope file plus targeted r
 ## Reviewed & OK
 
 - **Email verification:** register sends the initial verification email (`AuthService.php:43`); login blocks unverified users (`AuthService.php:55-57`, `EmailNotVerifiedException`); the public resend endpoint is rate-limited (`email_verification_resend`) and answers with a uniform 204 regardless of email existence (no enumeration) (`AuthController.php:90-103`); the stored token is bcrypt-hashed, link tokens are single-use.
-- **Logout:** no-op stub returning `{"ok":true}` (`AuthController.php:134-138`) — consistent with the stateless JWT design; there is no server-side session invalidation to begin with (see AUTH-04 for refresh-token lifetime).
+- **Logout:** now revokes the refresh token family server-side (`POST /api/auth/logout`, idempotent and uniform); `POST /api/auth/logout-all` additionally bumps the token version and revokes all families.
 - **Exception handling:** `ExceptionListener` converts every exception to RFC 7807 `application/problem+json`; no stack traces or internal paths in responses; sensitive fields masked (`ExceptionListener.php:72-81`).
 - **OAuth login CSRF:** state is HMAC-signed and bound to purpose + provider (TTL 600 s); the `oauth_state_nonce` cookie is HttpOnly/Secure, compared via `hash_equals`, single-use via `NonceStore`; `SameSite=None` handled (required for Apple); `use_state: false` on the client is intentional given the custom state handling (`OAuthController.php:141-151`).
 - **OAuth account linking:** verified emails only are accepted (`OidcResourceOwner.php:29-34`); email match via `strcasecmp` (`AuthService.php:195`); unproven local credentials are revoked on link (`AuthService.php:224-244`).

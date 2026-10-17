@@ -42,30 +42,6 @@ install/audit/build was run. Secret values found in this audit are redacted (`pk
 
 ---
 
-### FE-03 · Access/refresh tokens in `sessionStorage` and no deduplication of concurrent refreshes
-
-- **Severity:** Low
-- **Attack scope:** XSS in any page of the SPA; and the API rate/refresh endpoint under a burst
-  of parallel 401s.
-- **Description:** Tokens are kept in `sessionStorage` (`storeTokens`/`getAccessToken`/
-  `endSession` — `frontend/src/lib/api.ts:20-26, 39, 57, 67-73`). Two traits are worth noting:
-  1. `sessionStorage` is readable by any script running in the tab, so an XSS bug anywhere in
-     the app yields both the access token and the 7-day refresh token (no `httpOnly` cookie
-     fallback exists — the backend deliberately sets no auth cookies).
-  2. The 401 handler performs an unguarded refresh: every 401 fires its own
-     `POST /api/auth/token` (`api.ts:85-108`). If several requests fail concurrently (common
-     after expiry), the SPA issues several parallel refreshes for the same refresh token, which
-     can race on the backend and needlessly amplify token churn.
-- **Affected parts:** `frontend/src/lib/api.ts:20-26` (storage), `:85-108` (refresh loop)
-- **Fix recommendation:** Per documented backend design ("client-managed in `sessionStorage`",
-  15-min JWT + 7-day HMAC refresh), the storage choice is an accepted trade-off — keep it, but
-  add a single in-flight refresh promise (dedupe concurrent 401s onto one refresh POST and let
-  the others await it). This also removes the duplicate-refresh race.
-- **Notes:** Framed as a trade-off, not a violation: the stateless-JWT architecture is the one
-  chosen in `AGENTS.md`; the concrete improvement is the dedup.
-
----
-
 ### FE-04 · CLI-only `shadcn` package listed as a runtime dependency
 
 - **Severity:** Low

@@ -84,6 +84,74 @@ function endSession() {
   }
 }
 
+/** Refresh request in flight: concurrent 401s share it (the refresh token is single-use, see `refreshSession`). */
+let refreshInFlight: Promise<string | null> | null = null;
+
+/**
+ * Exchanges the refresh token for a new pair (`grant_type=refresh_token`). The backend rotates the token:
+ * each one works once, so two parallel refreshes would use the same token twice (and a replay outside the
+ * short grace window ends the whole session). Hence ONE request at a time: every caller waits for it and
+ * continues with the new tokens. Resolves to the new access token; null when the session cannot continue
+ * (the server rejected it: the session ends, or the answer was no verdict such as 429 / 5xx: nothing changes).
+ * A network error rejects (no verdict about the session either).
+ */
+function refreshSession(): Promise<string | null> {
+  refreshInFlight ??= doRefresh().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+async function doRefresh(): Promise<string | null> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    endSession();
+    return null;
+  }
+  const res = await fetch(BASE_URL + "/api/auth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    }).toString(),
+  });
+  if (res.ok) {
+    const data = (await res.json()) as { access_token: string; refresh_token: string };
+    storeTokens(data.access_token, data.refresh_token);
+    return data.access_token;
+  }
+  // Only the server's verdict on the token ends the session; rate limits and outages do not.
+  if (res.status === 400 || res.status === 401 || res.status === 403) endSession();
+  return null;
+}
+
+/**
+ * Ends the server side of this browser's session (`POST /api/auth/logout` revokes the refresh token's
+ * family). Fire and forget: the local sign-out never waits for, or fails because of, the network. Call it
+ * before `clearTokens()`. Sent without the access token (an expired one would be answered with 401).
+ */
+export function revokeRefreshToken(): void {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken || typeof fetch === "undefined") return;
+  try {
+    void fetch(BASE_URL + "/api/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      keepalive: true,
+    }).catch(() => undefined);
+  } catch {
+    // never block the local sign-out
+  }
+}
+
+/** Ends all sessions of the account (`POST /api/auth/logout-all`); the caller then signs out locally. */
+export async function logoutEverywhere(): Promise<void> {
+  const res = await apiFetch("/api/auth/logout-all", { method: "POST", body: "{}" });
+  if (!res.ok) throw await errorFrom(res);
+}
+
 export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const token = getAccessToken();
   const headers: Record<string, string> = {
@@ -95,27 +163,12 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
   let res = await fetch(BASE_URL + path, { ...options, headers });
 
   if (res.status === 401 && token) {
-    // Try token refresh via OAuth2 form-encoded grant
-    const refreshToken = getRefreshToken();
-    if (refreshToken) {
-      const refreshRes = await fetch(BASE_URL + "/api/auth/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          grant_type: "refresh_token",
-          refresh_token: refreshToken,
-        }).toString(),
-      });
-      if (refreshRes.ok) {
-        const data = (await refreshRes.json()) as { access_token: string; refresh_token: string };
-        storeTokens(data.access_token, data.refresh_token);
-        headers["Authorization"] = `Bearer ${data.access_token}`;
-        res = await fetch(BASE_URL + path, { ...options, headers });
-      } else {
-        endSession();
-      }
-    } else {
-      endSession();
+    // Another request may have refreshed while this one was in flight: then just retry with the current token.
+    const current = getAccessToken();
+    const fresh = current && current !== token ? current : await refreshSession();
+    if (fresh) {
+      headers["Authorization"] = `Bearer ${fresh}`;
+      res = await fetch(BASE_URL + path, { ...options, headers });
     }
   }
 
@@ -182,9 +235,11 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   return bodyOf<T>(res);
 }
 
-export async function apiDelete(path: string): Promise<void> {
+/** The body of the answer is only of interest to deletes that return something (a passkey: new tokens). */
+export async function apiDelete<T = void>(path: string): Promise<T> {
   const res = await apiFetch(path, { method: "DELETE" });
   if (!res.ok) throw await errorFrom(res);
+  return bodyOf<T>(res);
 }
 
 /**

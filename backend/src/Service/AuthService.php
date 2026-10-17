@@ -13,6 +13,8 @@ use App\Exception\ApiProblemException;
 use App\Exception\EmailNotVerifiedException;
 use App\Exception\OAuthAccountConflictException;
 use App\Exception\OAuthEmailVerificationRequiredException;
+use App\Repository\RefreshTokenRepository;
+use App\Security\NonceStore;
 use App\Security\OneTimeTokenService;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
@@ -33,6 +35,11 @@ readonly class AuthService
         private EmailVerificationService $verificationService,
         private OneTimeTokenService $oneTimeTokens,
         private ClockInterface $clock,
+        private RefreshTokenRepository $refreshTokens,
+        private NonceStore $nonces,
+        /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
+        #[Autowire(env: 'int:REFRESH_TOKEN_REUSE_GRACE')]
+        private int $refreshReuseGrace,
         /** Lifetime in seconds of the login token that confirming the e-mail code returns. */
         #[Autowire(env: 'int:EMAIL_VERIFICATION_LOGIN_TOKEN_TTL')]
         private int $verificationLoginTokenTtl,
@@ -171,6 +178,15 @@ readonly class AuthService
         return $this->tokens->tokenResponse($user);
     }
 
+    /**
+     * Token endpoint, grant `refresh_token`: rotates the token. Each token is single-use: the conditional
+     * UPDATE (`rotated_at IS NULL`) lets exactly one of several parallel requests win. Presenting a token
+     * that was already rotated revokes the whole session (family) and fails, except within
+     * `REFRESH_TOKEN_REUSE_GRACE` seconds after the rotation: a retry in that window (lost response, parallel
+     * tabs) gets a further token of the same family without revoking anything.
+     * Legacy tokens without `jti` (issued before rotation existed) are accepted exactly once (nonce store) and
+     * replaced by a token of a new session; they are not tracked by family and end at their own expiry (7 days at most).
+     */
     public function refresh(string $refreshToken): array
     {
         try {
@@ -186,8 +202,65 @@ readonly class AuthService
         if (!$this->tokens->isCurrentSession($user, $payload)) {
             throw self::invalidRefreshToken('Refresh token revoked');
         }
+        $jti = $payload['jti'] ?? null;
+        $family = $payload['fam'] ?? null;
+        if (null === $jti && null === $family) {
+            // Legacy token: single use, remembered until its own expiry (the nonce store keeps it a bit longer).
+            $exp = $payload['exp'] ?? 0;
+            if (!is_int($exp) || !$this->nonces->consume('legacy_refresh', $refreshToken, $exp)) {
+                throw self::invalidRefreshToken('Refresh token already used');
+            }
 
-        return $this->tokens->tokenResponse($user);
+            return $this->tokens->tokenResponse($user);
+        }
+        if (!is_string($jti) || !is_string($family)) {
+            throw self::invalidRefreshToken('Invalid refresh token');
+        }
+
+        $now = $this->tokens->now();
+        $state = $this->refreshTokens->findState($jti);
+        if (null === $state || $state['user_id'] !== $user->getId() || $state['family_id'] !== $family
+            || null !== $state['revoked_at'] || $state['expires_at'] <= $now || $state['family_expires_at'] <= $now) {
+            throw self::invalidRefreshToken('Refresh token revoked');
+        }
+        if (!$this->refreshTokens->markRotated($jti, $now)) {
+            // Lost the race or a replay: look at the committed state.
+            $state = $this->refreshTokens->findState($jti);
+            $rotatedAt = $state['rotated_at'] ?? null;
+            if (null === $state || null !== $state['revoked_at'] || null === $rotatedAt) {
+                throw self::invalidRefreshToken('Refresh token revoked');
+            }
+            if ($now->getTimestamp() - $rotatedAt->getTimestamp() > $this->refreshReuseGrace) {
+                $this->refreshTokens->revokeFamily($family, $now);
+                throw self::invalidRefreshToken('Refresh token reused');
+            }
+        }
+
+        return $this->tokens->tokenResponse($user, $family, $state['family_expires_at']);
+    }
+
+    /**
+     * Ends the session of a refresh token (all its tokens). Idempotent and silent: unknown, expired,
+     * revoked or malformed tokens do nothing and give no hint.
+     */
+    public function logout(string $refreshToken): void
+    {
+        try {
+            $payload = $this->tokens->decodeRefreshToken($refreshToken, true);
+        } catch (\InvalidArgumentException) {
+            return;
+        }
+        if (is_string($payload['fam'] ?? null)) {
+            $this->refreshTokens->revokeFamily($payload['fam'], $this->tokens->now());
+        }
+    }
+
+    /** Ends all sessions of the user: access tokens (token version) and every refresh token family. */
+    public function logoutAll(User $user): void
+    {
+        $user->invalidateTokens();
+        $this->em->flush();
+        $this->tokens->revokeAllRefreshTokens($user);
     }
 
     public function getMe(User $user): array
