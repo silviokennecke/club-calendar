@@ -31,6 +31,8 @@ COPY package.json package-lock.json ./
 COPY backend/package.json backend/
 COPY frontend/package.json frontend/
 RUN npm ci --ignore-scripts
+COPY backend/build backend/build
+COPY backend/config/mail-theme.js backend/config/mail-theme.js
 COPY backend/templates/email backend/templates/email
 RUN npm run build:mail -w backend
 COPY frontend frontend
@@ -72,7 +74,7 @@ WORKDIR /var/www/html
 
 COPY --from=backend-vendor --chown=www-data:www-data /app/backend/ ./
 COPY --from=frontend-build --chown=www-data:www-data /build/backend/public/ ./public/
-COPY --from=frontend-build --chown=www-data:www-data /build/backend/templates/email/verify_email.html.twig templates/email/
+COPY --from=frontend-build --chown=www-data:www-data /build/backend/templates/email/*.html.twig templates/email/
 
 # Create data directory
 RUN mkdir -p /data/config /data/cache && \
