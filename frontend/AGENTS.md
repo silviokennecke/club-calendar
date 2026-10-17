@@ -9,6 +9,8 @@ unsaved changes, i18n, API errors, history focus, contrast) · [E2E](#e2e-playwr
 
 ## Key conventions
 
+- **CSP:** the app is served with `script-src 'self'`: no inline `<script>`, no `eval`/`new Function`, no third-party script/connect hosts (new hosts go into the CSP in `backend/public/.htaccess` AND `docker/Caddyfile`, see CLAUDE.md "Deployment"). Early boot code belongs in `public/*.js`.
+
 - Routing: React Router v7 (`react-router-dom`), data router (`createBrowserRouter` with one splat route; needed
   for `useBlocker`); the routes stay declarative `<Route>`s in `AppRoutes`
 - All routes defined in `src/App.tsx`, rendered through `components/layout/BackgroundRoutes` (routed modals, below)

@@ -135,5 +135,24 @@ Nicht im Audit, gering:
   }
   ```
   `X-Robots-Tag` setzt das Backend (nur Feed-API, je Feed: noindex außer öffentlich + auffindbar), nicht der Webserver.
+- **Security-Header (Audit M4):** `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`,
+  `Permissions-Policy`, `Cross-Origin-Opener-Policy` und das Standard-`Referrer-Policy` (`strict-origin-when-cross-origin`)
+  stehen in `backend/public/.htaccess` und `docker/Caddyfile` (identisch, geprüft von `SecurityHeadersConfigTest`).
+  `Strict-Transport-Security` setzt `.htaccess` nur bei HTTPS (auch `X-Forwarded-Proto: https`); der Caddy-Container
+  läuft hinter einem TLS-Terminator und setzt es nicht: **dort `Strict-Transport-Security: max-age=31536000` ergänzen**
+  (erst `includeSubDomains`/`preload`, wenn alle Subdomains HTTPS können). Getrennte Hosts (`VITE_API_URL` auf anderer
+  Origin): API-Origin in `connect-src` der CSP aufnehmen. nginx, im `server`-Block (nicht vergessen: `add_header` wird in
+  verschachtelten `location`-Blöcken nicht geerbt, also auch im Feed-Block wiederholen, dort mit `no-referrer`):
+  ```nginx
+  add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header X-Frame-Options "DENY" always;
+  add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), midi=(), accelerometer=(), gyroscope=(), magnetometer=(), interest-cohort=()" always;
+  add_header Cross-Origin-Opener-Policy "same-origin" always;
+  add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+  add_header Strict-Transport-Security "max-age=31536000" always;
+  location ~ /\.(?!well-known)|\.(env|pem|log)$ { deny all; }
+  ```
+  Offen: `style-src 'unsafe-inline'` bleibt (React-`style=`-Attribute, emoji-mart und mapbox-gl injizieren Styles).
 - **Nach einem Deploy** fehlen die Chunks des vorigen Releases; das Frontend lädt bei einem fehlgeschlagenen
   Chunk-Import einmal neu (`vite:preloadError` in `frontend/src/main.tsx`).

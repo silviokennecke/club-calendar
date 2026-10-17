@@ -21,8 +21,14 @@
 	header @feed Referrer-Policy no-referrer
 
 	header {
-		X-Content-Type-Options nosniff
-		?Referrer-Policy strict-origin-when-cross-origin
+		# KEEP IN SYNC with backend/public/.htaccess (tests/Unit/SecurityHeadersConfigTest.php)
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), midi=(), accelerometer=(), gyroscope=(), magnetometer=(), interest-cohort=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		?Referrer-Policy "strict-origin-when-cross-origin"
+		# No HSTS here: TLS ends at the proxy in front, which must send Strict-Transport-Security
 		-Server
 	}
 
@@ -40,7 +46,7 @@
 	handle {
 		# explicit order: block first, then the fallback and file server
 		route {
-			@private path /index.php /.htaccess
+			@private path /index.php /.htaccess *.env *.pem *.log
 			respond @private 404
 
 			@assets path /assets/*
