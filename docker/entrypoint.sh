@@ -38,7 +38,7 @@ if [ ${#missing[@]} -gt 0 ]; then
 fi
 
 # JWT keypair
-if [ -z "${JWT_PRIVATE_KEY:-}" ] && [ ! -s config/jwt/private.pem ]; then
+if [ ! -s "$JWT_PRIVATE_KEY" ]; then
     log "no JWT keypair found, generating one in config/jwt (mount a volume there to keep it across restarts)"
     php bin/console lexik:jwt:generate-keypair --skip-if-exists --no-interaction
 fi
