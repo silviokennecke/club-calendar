@@ -1967,9 +1967,6 @@
     align-items: center;
     gap: var(--space-2);
   }
-  .ap-monthnav h1 {
-    min-width: 11ch;
-  }
   .ap-ico {
     display: inline-flex;
     align-items: center;
