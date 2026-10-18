@@ -1,4 +1,5 @@
 import { API_URL as BACKEND_URL } from "@/lib/apiUrl";
+import { getAccessToken } from "@/lib/api";
 
 const mapboxApiUrlPlaceholder = "https://dummy";
 
@@ -7,7 +8,13 @@ export function mapboxTransformRequest(url: string) {
     const u = new URL(url);
     u.searchParams.delete("access_token");
     const pathname = u.pathname.replace(/^\/*([^/].*)$/, "$1");
-    return { url: `${BACKEND_URL}/api/mapbox/${pathname}?${u.searchParams}` };
+    // The proxy is for signed-in users only: every request carries the access token (an expired one is
+    // renewed by `useMapbox` after the first 401, see `refreshSession`).
+    const token = getAccessToken();
+    return {
+      url: `${BACKEND_URL}/api/mapbox/${pathname}?${u.searchParams}`,
+      ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+    };
   }
   return { url };
 }

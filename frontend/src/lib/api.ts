@@ -100,7 +100,7 @@ let refreshInFlight: Promise<string | null> | null = null;
  * (the server rejected it: the session ends, or the answer was no verdict such as 429 / 5xx: nothing changes).
  * A network error rejects (no verdict about the session either).
  */
-function refreshSession(): Promise<string | null> {
+export function refreshSession(): Promise<string | null> {
   refreshInFlight ??= doRefresh().finally(() => {
     refreshInFlight = null;
   });

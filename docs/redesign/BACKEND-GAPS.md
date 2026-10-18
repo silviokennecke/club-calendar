@@ -78,7 +78,7 @@ E2E-Umgebung: `E2E.md`.
 
 **Siehe Security-Audit** (Bericht des Auftraggebers, nicht im Repository): Rollen/letzter Admin (Einladungen: umgesetzt, M8),
 Vorab-Registrierung mit fremder Adresse (Pre-Hijacking, nachgestellt in
-`SessionInvalidationTest::testPreRegisteredPasswordStillWorksAfterTheOwnerConfirms`), Mapbox-Proxy,
+`SessionInvalidationTest::testPreRegisteredPasswordStillWorksAfterTheOwnerConfirms`), Mapbox-Proxy (jetzt nur für angemeldete Nutzer, `access_control` `^/api/mapbox/`; anonym bleiben nur die statischen Kartenbilder `/api/map/image/*`),
 Microsoft-SSO ohne vertrauenswürdiges `email_verified` (inkl. "unbestätigtes Microsoft-Konto blockiert die
 Registrierung"), Rate-Limiting für Login/Token/Passkey/OAuth-Callback, Host-Header, ICS-Injection, CSP/Header, Tokens
 im SSO-Redirect, Quoten und unbegrenzte ID-Listen, Konto-Enumeration

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { refreshSession } from "@/lib/api";
 import { initMapboxProxy, mapboxTransformRequest } from "./mapboxProxy";
 
 type MapboxGLModule = typeof import("mapbox-gl").default;
@@ -51,7 +52,20 @@ export function useMapbox({
         map.addControl(new mapboxgl.NavigationControl(), "top-right");
         if (describedBy) map.getCanvas().setAttribute("aria-describedby", describedBy);
         // Tiles may fail one by one; a missing style means the base map is gone.
-        map.on("error", () => {
+        let refreshed = false;
+        map.on("error", (e) => {
+          // The proxy needs a signed-in user: an expired access token is answered with 401. Renew it once
+          // (shared single-flight refresh of the API client) and load the style again with the new token.
+          if ((e as { error?: { status?: number } }).error?.status === 401 && !refreshed) {
+            refreshed = true;
+            refreshSession()
+              .then((token) => {
+                if (token && !cancelled) map?.setStyle("mapbox://styles/mapbox/streets-v12");
+                else if (!token && map && !map.isStyleLoaded()) setFailed(true);
+              })
+              .catch(() => setFailed(true));
+            return;
+          }
           if (map && !map.isStyleLoaded()) setFailed(true);
         });
         map.on("style.load", () => setFailed(false));

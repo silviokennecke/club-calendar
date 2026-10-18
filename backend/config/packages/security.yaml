@@ -35,6 +35,8 @@ security:
     access_control:
         - { path: ^/api/(clubs|calendars|invitations)(/|$), roles: IS_AUTHENTICATED }
         - { path: ^/api/map/geocode/, roles: IS_AUTHENTICATED }
+        # Tile/style/font proxy: signed-in users only (the public feed uses the static images /api/map/image/*).
+        - { path: ^/api/mapbox/, roles: IS_AUTHENTICATED }
 
 when@test:
     security:
