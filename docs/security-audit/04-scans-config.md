@@ -15,17 +15,6 @@ Secrets and credentials in the working tree and git history, third-party depende
 ## Date
 2026-10-05
 
-### SCAN-01 — JWT private key in working tree, untracked, not gitignored
-**Severity:** HIGH
-**Attack scope:** Authentication core — a leaked `private.pem` allows forging valid JWTs for any user, including administrators (full account takeover without any anomaly in the logs).
-**Description:** `backend/config/jwt/private.pem` sits in the local working tree and is wired in via `backend/config/packages/lexik_jwt_authentication.yaml:3-4` (`JWT_PRIVATE_KEY`/`JWT_PUBLIC_KEY`), consumed at lines 7 and 9 (`secret_key`, `pass_phrase`). The PEM is passphrase-protected, which mitigates casual exposure. The file is untracked and absent from the entire git history (verified with the gitleaks full-history scan and `git ls-files`), but there is no `.gitignore` entry covering `backend/config/jwt/`, so a single `git add -A` would commit the signing key.
-**Affected parts:** `backend/config/jwt/private.pem` (untracked), `backend/config/packages/lexik_jwt_authentication.yaml:3-4,7,9`, `.gitignore` (no matching entry)
-**Fix recommendation:**
-1. Add `backend/config/jwt/` to `.gitignore` and verify with `git check-ignore backend/config/jwt/private.pem`.
-2. Generate a fresh key pair and rotate (accept both public keys during the 15-min token-TTL overlap); distribute keys via deployment secrets instead of the checkout.
-3. Keep the passphrase strong and separate from the key file (currently derived from `APP_SECRET`, see yaml line 2 — fine locally, use an independent secret in production).
-**Notes:** Severity stays HIGH on impact (any-user token forgery) plus the missing accidental-commit guard; encryption lowers likelihood but not impact.
-
 ### SCAN-04 — `backend/.env` is tracked in git
 **Severity:** LOW
 **Attack scope:** Backend runtime config — placeholders only at present, so no direct secret exposure; the risk is that future edits (real `APP_SECRET`, DB credentials, `JWT_REFRESH_SECRET`) get committed.
@@ -77,9 +66,9 @@ Secrets and credentials in the working tree and git history, third-party depende
 ## Reviewed & OK
 - `composer audit` — no vulnerabilities in the backend PHP dependencies.
 - Gitleaks full history (284 commits, `.gitleaks.toml` allowlist) — no genuine secrets in current findings; the allowlist itself is narrowly scoped.
-- Trivy `fs` (vuln + secret, vendor/node_modules/dist/.git excluded) — all findings covered by SCAN-01…SCAN-09.
+- Trivy `fs` (vuln + secret, vendor/node_modules/dist/.git excluded) — all findings covered by SCAN-04…SCAN-09.
 - Pattern greps across the repo (AWS `AKIA…`, OpenAI `sk-…`, GitHub `ghp_…`, Slack `xox…`, PEM private-key blocks, `DEPLOY_PASSWORD`/`DEPLOY_KEY`) — no matches beyond the documented Mapbox tokens and the local deploy password.
 - `backend/.env.example` and other example env files — placeholders only, no live values.
-- JWT key wiring (`lexik_jwt_authentication.yaml`) — env-driven paths, no key material or passphrase hardcoded in the repo (passphrase derives from `APP_SECRET`, line 2 — see SCAN-01 note 3).
+- JWT key wiring (`lexik_jwt_authentication.yaml`) — env-driven paths, no key material or passphrase hardcoded in the repo (passphrase derives from `APP_SECRET`, line 2; use an independent secret in production).
 - Auth configuration (`security.yaml`, `TokenService`) — stateless JWT + HMAC refresh tokens, no auth cookies; the OAuth state nonce cookie is short-lived by design.
 - `.gitignore` — `.env` (line 6), `.env.*` (line 7), `!.env.example` (line 8), `.deploy/` (line 16) all present; the tracked exceptions are covered by SCAN-04.
