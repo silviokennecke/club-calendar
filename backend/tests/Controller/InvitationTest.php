@@ -451,6 +451,40 @@ class InvitationTest extends WebTestCase
         $this->assertCode(404, 'invitation_not_found', $this->req('POST', '/api/invitations/accept', $this->auth($user), ['token' => $token]));
     }
 
+    public function testAddressesThatDifferOnlyByAccentsAreNotTheSameInSql(): void
+    {
+        // The validators may reject non-ASCII addresses; the rows are created directly to test the matching
+        // (user.email and club_invitation.email are looser collations than the strict PHP comparison would be).
+        $c = $this->club();
+        [$id] = $this->invite($c, 'jose@example.com');
+        $jose = $this->user('josé@example.com');
+        $this->assertSame([], $this->req('GET', '/api/invitations', $this->auth($jose))['body']);
+        $this->assertCode(404, 'invitation_not_found', $this->req('POST', "/api/invitations/$id/accept", $this->auth($jose)));
+
+        // A member josé does not count as the already-member address jose
+        $this->addMember($c, $jose);
+        $r = $this->req('POST', $c['url'], $c['auth'], ['email' => 'jose@example.com']);
+        $this->assertSame(204, $r['status'], $r['content']);
+        $this->assertSame(1, $this->rows(['email' => 'jose@example.com']));
+        self::$em->getConnection()->executeStatement("DELETE FROM club_invitation WHERE email = 'jose@example.com'");
+        $r = $this->req('POST', $c['url'], $c['auth'], ['email' => 'jose@example.com']);
+        $this->assertSame(204, $r['status'], $r['content']);
+        $this->assertSame(1, $this->rows(['email' => 'jose@example.com']), 'jose is not a member just because josé is');
+
+        // the column compares binary, also for stored values
+        $this->assertSame(0, $this->rows(['email' => 'josé@example.com']));
+    }
+
+    public function testRevokeAndAnswerRaceAnswersNotFoundInsteadOfFailing(): void
+    {
+        $c = $this->club();
+        [$id] = $this->invite($c, 'ina@example.com');
+        $ina = $this->user('ina@example.com');
+        $this->assertSame(200, $this->req('DELETE', "{$c['url']}/$id", $c['auth'])['status']);
+        $this->assertCode(404, 'invitation_not_found', $this->req('POST', "/api/invitations/$id/accept", $this->auth($ina)));
+        $this->assertCode(404, 'invitation_not_found', $this->req('POST', "/api/invitations/$id/decline", $this->auth($ina)));
+    }
+
     public function testATokenCannotBeUsedByAnotherUser(): void
     {
         $c = $this->club();

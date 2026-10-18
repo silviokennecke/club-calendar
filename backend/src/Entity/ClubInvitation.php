@@ -40,7 +40,8 @@ class ClubInvitation
     #[ORM\JoinColumn(name: 'invited_by_id', nullable: true, onDelete: 'SET NULL')]
     private ?User $invitedBy;
 
-    #[ORM\Column(length: 254)]
+    /** Binary collation: SQL matches are as strict as the PHP comparison (no "é" = "e"). */
+    #[ORM\Column(length: 254, options: ['collation' => 'utf8mb4_bin'])]
     private string $email;
 
     #[ORM\Column(length: 64)]

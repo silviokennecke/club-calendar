@@ -157,6 +157,26 @@ class QuotaTest extends WebTestCase
         $this->assertQuota($r, Quota::MEMBERS_PER_CLUB, $limit);
     }
 
+    public function testClubsPerUserAlsoWhenAcceptingAnInvitation(): void
+    {
+        ['club' => $club, 'user' => $owner] = $this->setup1();
+        $user = TestHelper::createUser(self::$em, self::$hasher, 'collector@example.com');
+        $limit = Quota::LIMITS[Quota::CLUBS_PER_USER];
+        for ($i = 0; $i < $limit; ++$i) {
+            $c = new Club();
+            $c->setName("Club $i");
+            $c->setTimezone('Europe/Berlin');
+            self::$em->persist($c);
+            self::$em->persist((new ClubUser())->setClub($c)->setUser($user));
+        }
+        $invitation = new ClubInvitation($club, $owner, 'collector@example.com', str_repeat('b', 64), new \DateTimeImmutable());
+        self::$em->persist($invitation);
+        self::$em->flush();
+
+        $r = $this->req('POST', "/api/invitations/{$invitation->getId()}/accept", TestHelper::authHeader($user, self::$tokens));
+        $this->assertQuota($r, Quota::CLUBS_PER_USER, $limit);
+    }
+
     public function testPendingInvitationsPerClub(): void
     {
         ['auth' => $auth, 'club' => $club, 'user' => $user] = $this->setup1();
