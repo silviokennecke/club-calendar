@@ -166,7 +166,7 @@ test.describe("Vorlagen", () => {
     );
   });
 
-  test("Vorlage mit Ort, Eigenschaft, Feature und Zielgruppen ergibt einen passenden Termin", async ({
+  test("Vorlage mit Ort, Besonderheit, Feature und Zielgruppen ergibt einen passenden Termin", async ({
     page,
     request,
   }) => {

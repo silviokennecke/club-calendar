@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { API, createVerifiedUser, login, seedClub } from "./helpers";
 
-// ——— Einstellungen (phase 6): Allgemein, Eigenschaften/Features/Zielgruppen, Orte, Archiv ———
+// ——— Einstellungen (phase 6): Allgemein, Besonderheiten/Features/Zielgruppen, Orte, Archiv ———
 
 async function seed(request: Parameters<typeof createVerifiedUser>[0], name: string) {
   const email = await createVerifiedUser(request, name);
@@ -28,7 +28,7 @@ test.describe("Einstellungen", () => {
     const tabs = page.getByRole("navigation", { name: "Einstellungen des Kalenders" });
     await expect(tabs.getByRole("link")).toHaveText([
       "Allgemein",
-      "Eigenschaften",
+      "Besonderheiten",
       "Features",
       "Zielgruppen",
       "Orte",
@@ -93,15 +93,15 @@ test.describe("Einstellungen", () => {
 
   const kinds = [
     {
-      tab: "Eigenschaften",
+      tab: "Besonderheiten",
       path: "properties",
-      list: "Vorhandene Eigenschaften",
-      create: "Eigenschaft anlegen",
-      created: "Eigenschaft „Rollstuhlgerecht“ angelegt",
-      deleteTitle: "Eigenschaft „Barrierefrei“ löschen?",
-      deleteConfirm: "Eigenschaft löschen",
-      editTitle: "Eigenschaft bearbeiten",
-      empty: "Noch keine Eigenschaften",
+      list: "Vorhandene Besonderheiten",
+      create: "Besonderheit anlegen",
+      created: "Besonderheit „Rollstuhlgerecht“ angelegt",
+      deleteTitle: "Besonderheit „Barrierefrei“ löschen?",
+      deleteConfirm: "Besonderheit löschen",
+      editTitle: "Besonderheit bearbeiten",
+      empty: "Noch keine Besonderheiten",
     },
     {
       tab: "Features",
@@ -144,7 +144,7 @@ test.describe("Einstellungen", () => {
       await page.locator("form").getByRole("button", { name: k.create }).click();
       await expect(page.getByRole("alert")).toContainText("Bitte einen Namen eingeben.");
 
-      // Anlegen (Eigenschaften mit Symbol)
+      // Anlegen (Besonderheiten mit Symbol)
       await page.getByLabel(/^Name/).fill("Rollstuhlgerecht");
       if (k.path === "properties") await page.getByRole("button", { name: "Barrierefrei" }).click();
       await page.locator("form").getByRole("button", { name: k.create }).click();
@@ -379,7 +379,7 @@ test.describe("Einstellungen", () => {
     await expect(page.getByLabel(/^Kalendername/)).not.toBeEditable();
 
     const cases = [
-      { link: "Eigenschaften", text: "Wettkampf", addForm: "Neue Eigenschaft hinzufügen" },
+      { link: "Besonderheiten", text: "Wettkampf", addForm: "Neue Besonderheit hinzufügen" },
       { link: "Features", text: "Bonusschießen", addForm: "Neues Feature hinzufügen" },
       { link: "Zielgruppen", text: "Jugend", addForm: "Neue Zielgruppe hinzufügen" },
       { link: "Orte", text: "Vereinsheim Mitte", addForm: "Neuen Ort anlegen" },

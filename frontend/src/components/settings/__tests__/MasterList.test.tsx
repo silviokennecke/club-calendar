@@ -65,7 +65,7 @@ beforeEach(() => {
 describe("MasterList", () => {
   it("lists the items as a semantic list with counts and symbols", async () => {
     renderList("properties");
-    const list = await screen.findByRole("list", { name: /Vorhandene Eigenschaften \(2\)/ });
+    const list = await screen.findByRole("list", { name: /Vorhandene Besonderheiten \(2\)/ });
     const rows = within(list).getAllByRole("listitem");
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("Wettkampf");
@@ -96,7 +96,7 @@ describe("MasterList", () => {
     await screen.findByRole("list");
     await user.type(screen.getByLabelText(/^Name/), "Rollstuhlgerecht");
     await user.click(screen.getByRole("button", { name: "Barrierefrei" }));
-    await user.click(screen.getByRole("button", { name: "Eigenschaft anlegen" }));
+    await user.click(screen.getByRole("button", { name: "Besonderheit anlegen" }));
     await waitFor(() =>
       expect(apiPost).toHaveBeenCalledWith("/api/calendars/k1/properties", {
         name: "Rollstuhlgerecht",
@@ -109,14 +109,14 @@ describe("MasterList", () => {
     const user = userEvent.setup();
     renderList("properties");
     await screen.findByRole("list");
-    await user.click(screen.getByRole("button", { name: "Eigenschaft anlegen" }));
+    await user.click(screen.getByRole("button", { name: "Besonderheit anlegen" }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Bitte einen Namen eingeben.");
     expect(screen.getByLabelText(/^Name/)).toHaveAccessibleDescription(
       "Bitte einen Namen eingeben.",
     );
     await user.type(screen.getByLabelText(/^Name/), "wettkampf");
-    await user.click(screen.getByRole("button", { name: "Eigenschaft anlegen" }));
+    await user.click(screen.getByRole("button", { name: "Besonderheit anlegen" }));
     expect(
       await screen.findByText("Diesen Namen gibt es schon. Bitte einen anderen wählen.", {
         selector: "li a",
@@ -224,7 +224,7 @@ describe("MasterList", () => {
     renderList("properties");
     await screen.findByRole("list");
     await user.click(screen.getByRole("button", { name: "Draußen bearbeiten" }));
-    const dialog = await screen.findByRole("dialog", { name: "Eigenschaft bearbeiten" });
+    const dialog = await screen.findByRole("dialog", { name: "Besonderheit bearbeiten" });
     await user.click(within(dialog).getByRole("button", { name: "Draußen" }));
     await user.click(within(dialog).getByRole("button", { name: "Änderung speichern" }));
     await waitFor(() =>
@@ -240,7 +240,7 @@ describe("MasterList", () => {
     renderList("properties");
     await user.click(await screen.findByRole("button", { name: "Wettkampf löschen" }));
     const dialog = await screen.findByRole("alertdialog", {
-      name: "Eigenschaft „Wettkampf“ löschen?",
+      name: "Besonderheit „Wettkampf“ löschen?",
     });
     await waitFor(() =>
       expect(dialog).toHaveTextContent(
@@ -251,7 +251,7 @@ describe("MasterList", () => {
     expect(apiGet.mock.calls.every(([path]) => path === "/api/calendars/k1/properties")).toBe(true);
     expect(apiGet.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(apiDelete).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole("button", { name: "Eigenschaft löschen" }));
+    await user.click(within(dialog).getByRole("button", { name: "Besonderheit löschen" }));
     await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/calendars/k1/properties/p1"));
   });
 
