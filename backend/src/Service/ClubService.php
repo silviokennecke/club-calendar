@@ -35,7 +35,7 @@ readonly class ClubService
      */
     public function listClubs(User $user): array
     {
-        /** @var list<array{0: Club, lastCalendarId: ?string}> $rows */
+        /** @var list<array{0: Club, lastCalendarId: ?string, role: ClubRole}> $rows */
         $rows = $this->em->createQueryBuilder()
             ->select('c', 'cal.id AS lastCalendarId', 'cu.role AS role')
             ->from(Club::class, 'c')
