@@ -54,7 +54,14 @@ beforeEach(() => {
   calendars = [
     { id: "k1", name: "Schießbetrieb 2026", timezone: null, eventCount: 12 },
     { id: "k2", name: "Jugend", timezone: "Europe/Vienna", eventCount: 1 },
-    { id: "k0", name: "Saison 2025", archivedAt: "2026-01-15T10:00:00+00:00", eventCount: 1 },
+    {
+      id: "k0",
+      name: "Saison 2025",
+      archivedAt: "2026-01-15T10:00:00+00:00",
+      eventCount: 1,
+      feedCount: 1,
+      exclusiveFeedCount: 0,
+    },
   ];
   invitations = [];
   clubRole = "admin";
@@ -70,7 +77,12 @@ beforeEach(() => {
     if (path === "/api/clubs/c1/invitations") return Promise.resolve(invitations);
     // Single GET (delete dialog): fresh counters
     if (path === "/api/clubs/c1/calendars/k2")
-      return Promise.resolve({ ...calendars[1], eventCount: 3 });
+      return Promise.resolve({
+        ...calendars[1],
+        eventCount: 3,
+        feedCount: 3,
+        exclusiveFeedCount: 1,
+      });
     if (path.startsWith("/api/clubs/c1/calendars")) return Promise.resolve(calendars);
     return Promise.resolve([]);
   });
@@ -455,7 +467,7 @@ describe("ClubPage", () => {
     expect(dialog).toHaveTextContent("Der Kalender wird dauerhaft gelöscht.");
     await waitFor(() =>
       expect(dialog).toHaveTextContent(
-        "Löscht den Kalender mit allen 3 Terminen und seinen Feeds unwiderruflich. Die Adressen der Feeds funktionieren danach nicht mehr.",
+        "Löscht den Kalender mit allen 3 Terminen unwiderruflich. 1 Feed, der nur diesen Kalender enthält, wird mit gelöscht; seine Adressen funktionieren danach nicht mehr. 2 weitere Feeds verlieren diesen Kalender, bleiben aber bestehen.",
       ),
     );
     // Counted by the backend: no event list is loaded
@@ -476,7 +488,7 @@ describe("ClubPage", () => {
     expect(dialog).toHaveTextContent("Der archivierte Kalender wird dauerhaft gelöscht.");
     await waitFor(() =>
       expect(dialog).toHaveTextContent(
-        "Löscht Saison 2025 mit allen Terminen und Feeds unwiderruflich. Eine Wiederherstellung ist danach nicht mehr möglich.",
+        "Löscht Saison 2025 mit allen Terminen unwiderruflich. Eine Wiederherstellung ist danach nicht mehr möglich. 1 weiterer Feed verliert diesen Kalender, bleibt aber bestehen.",
       ),
     );
     await user.click(within(dialog).getByRole("button", { name: "Kalender löschen" }));

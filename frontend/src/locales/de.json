@@ -197,7 +197,7 @@
   "feed": {
     "brand": "Öffentlicher Kalender",
     "loading": "Kalender wird geladen.",
-    "timeZoneNote": "Alle Uhrzeiten gelten in der Zeitzone {{zone}}.",
+    "timeZoneNote": "Alle Uhrzeiten gelten in der Zeitzone des Vereins ({{zone}}).",
     "subscribe": "Kalender abonnieren",
     "downloadIcs": "Als ICS-Datei laden",
     "view": {
@@ -239,7 +239,7 @@
     },
     "footer": "Bereitgestellt mit Club Calendar",
     "event": {
-      "subtitle": "{{club}} · {{calendar}}",
+      "subtitle": "{{club}} · {{feed}}",
       "date": "Datum",
       "time": "Uhrzeit",
       "timeRange": "{{from}} bis {{to}} Uhr",
@@ -1124,9 +1124,9 @@
     },
     "duplicate": {
       "copyName": "Kopie von {{name}}",
-      "done": "Kalender dupliziert. Du bist jetzt in der Kopie.",
+      "done": "Kalender dupliziert. Du bist jetzt in der Kopie. Orte und Gruppen gehören zum Verein und werden nicht kopiert; Besonderheiten, Zusatzangebote und Vorlagen schon.",
       "failed": "Der Kalender konnte nicht dupliziert werden. Bitte versuche es erneut.",
-      "doneStay": "Kalender „{{name}}“ wurde angelegt."
+      "doneStay": "Kalender „{{name}}“ wurde angelegt. Orte und Gruppen gehören zum Verein und werden nicht kopiert; Besonderheiten, Zusatzangebote und Vorlagen schon."
     },
     "delete": {
       "confirmTitle": "Kalender „{{name}}“ löschen?",
@@ -1136,16 +1136,20 @@
       "failed": "Der Kalender konnte nicht gelöscht werden. Bitte versuche es erneut.",
       "consequence": {
         "loading": "Der Umfang wird ermittelt …",
-        "unknown": "Löscht den Kalender mit allen Terminen und seinen Feeds unwiderruflich. Die Adressen der Feeds funktionieren danach nicht mehr.",
-        "noEvents": "Löscht den Kalender und seine Feeds unwiderruflich. Die Adressen der Feeds funktionieren danach nicht mehr.",
-        "events_one": "Löscht den Kalender mit seinem 1 Termin und seinen Feeds unwiderruflich. Die Adressen der Feeds funktionieren danach nicht mehr.",
-        "events_other": "Löscht den Kalender mit allen {{count}} Terminen und seinen Feeds unwiderruflich. Die Adressen der Feeds funktionieren danach nicht mehr."
+        "unknown": "Löscht den Kalender mit allen Terminen unwiderruflich.",
+        "noEvents": "Löscht den Kalender unwiderruflich.",
+        "events_one": "Löscht den Kalender mit seinem 1 Termin unwiderruflich.",
+        "events_other": "Löscht den Kalender mit allen {{count}} Terminen unwiderruflich."
       },
       "archived": {
         "title": "Archivierten Kalender „{{name}}“ löschen?",
         "text": "Der archivierte Kalender wird dauerhaft gelöscht.",
-        "consequence": "Löscht {{name}} mit allen Terminen und Feeds unwiderruflich. Eine Wiederherstellung ist danach nicht mehr möglich."
-      }
+        "consequence": "Löscht {{name}} mit allen Terminen unwiderruflich. Eine Wiederherstellung ist danach nicht mehr möglich."
+      },
+      "feedsDeleted_one": "{{count}} Feed, der nur diesen Kalender enthält, wird mit gelöscht; seine Adressen funktionieren danach nicht mehr.",
+      "feedsDeleted_other": "{{count}} Feeds, die nur diesen Kalender enthalten, werden mit gelöscht; ihre Adressen funktionieren danach nicht mehr.",
+      "feedsLost_one": "{{count}} weiterer Feed verliert diesen Kalender, bleibt aber bestehen.",
+      "feedsLost_other": "{{count}} weitere Feeds verlieren diesen Kalender, bleiben aber bestehen."
     },
     "general": {
       "calendar": "Kalender",
@@ -1850,6 +1854,12 @@
       "nameHint": "So heißt der Feed in deiner Übersicht.",
       "namePlaceholder": "z. B. Öffentlicher Kalender",
       "nameError": "Bitte gib einen Namen für den Feed ein.",
+      "calendars": "Kalender",
+      "calendarsHint": "Wähle mindestens einen Kalender. Der Feed enthält deren veröffentlichte Termine und Feiertage.",
+      "calendarsArchivedHint": "Archivierte Kalender liefern keine Termine, solange sie archiviert sind.",
+      "calendarsError": "Bitte wähle mindestens einen Kalender für den Feed.",
+      "calendarsRejected": "Die Auswahl der Kalender wurde abgelehnt. Vielleicht existiert ein Kalender nicht mehr. Bitte prüfe die Auswahl.",
+      "calendarArchived": "{{name}} (archiviert)",
       "visibility": "Sichtbarkeit",
       "vis": {
         "public": {
@@ -1894,7 +1904,8 @@
       "text": "Nur Bearbeiter und Admins sehen die Feeds dieses Vereins.",
       "back": "Zurück zum Verein"
     },
-    "readOnlyRole": "Nur Vereins-Admins können Feeds anlegen oder ändern. Du kannst sie ansehen."
+    "readOnlyRole": "Nur Vereins-Admins können Feeds anlegen oder ändern. Du kannst sie ansehen.",
+    "calendarsOf": "Kalender von {{name}}"
   },
   "profile": {
     "title": "Profil",

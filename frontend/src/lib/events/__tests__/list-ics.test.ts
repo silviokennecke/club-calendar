@@ -209,7 +209,7 @@ describe("ICS", () => {
         }),
       ],
       {
-        calendarName: "Schießbetrieb 2026",
+        name: "Schießbetrieb 2026",
         timeZone: "Europe/Berlin",
         labels: { features: "Zusatzangebote", targetGroups: "Gruppen" },
         now: new Date("2026-10-02T08:00:00Z"),
