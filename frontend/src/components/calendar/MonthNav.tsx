@@ -30,10 +30,6 @@ export function MonthNav({
   const week = unit === "week";
   return (
     <div className="ap-monthnav">
-      <Heading id={titleId} className={Heading === "h1" ? "t-h1" : "t-h2"} aria-live="polite">
-        {title}
-      </Heading>
-      {badge}
       <IconButton
         variant="outline"
         icon="chevron-left"
@@ -49,6 +45,10 @@ export function MonthNav({
         label={week ? t("calendar.nextWeek") : t("calendar.nextMonth")}
         onClick={onNext}
       />
+      <Heading id={titleId} className={Heading === "h1" ? "t-h1" : "t-h2"} aria-live="polite">
+        {title}
+      </Heading>
+      {badge}
     </div>
   );
 }
