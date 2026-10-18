@@ -51,6 +51,13 @@
             "body": "die E-Mail-Adresse deines Club-Calendar-Kontos wurde am {when} auf {email} geändert.",
             "info": "An diese Adresse schicken wir keine weiteren Nachrichten zu deinem Konto. Alle Sitzungen wurden abgemeldet; angemeldet wird ab jetzt mit der neuen Adresse.",
             "not_you": "Dann wende dich sofort an den Support von Club Calendar, damit dein Konto wiederhergestellt werden kann. Solange du noch angemeldet bist oder Zugriff auf die neue Adresse hast, setze außerdem über „Passwort vergessen“ ein neues Passwort. Die Seite findest du hier:"
+        },
+        "delete_code": {
+            "subject": "Löschung deines Kontos bestätigen",
+            "greeting": "Hallo {name},",
+            "body": "Du möchtest dein Club-Calendar-Konto löschen. Gib diesen Code in der App ein, um das zu bestätigen. Das Konto und seine Daten werden danach endgültig entfernt.",
+            "expiry_note": "Der Code ist mindestens {minutes} Minuten gültig und funktioniert nur für dieses Konto.",
+            "ignore_note": "Warst du das nicht, gib den Code nicht ein und ignoriere diese E-Mail. Dein Konto bleibt unverändert."
         }
     }
 }

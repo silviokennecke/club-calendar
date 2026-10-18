@@ -127,7 +127,7 @@ class ClubTest extends WebTestCase
         $user = TestHelper::createUser(self::$em, self::$hasher, 'solo@example.com');
         $club = TestHelper::createClub(self::$em, $user);
         $auth = TestHelper::authHeader($user, self::$tokens);
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', [], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', ['password' => 'password123'], $auth);
         $this->assertSame(422, $r['status'], $r['content']);
         $this->assertSame('last_member_of_club', $r['body']['code']);
         $this->assertStringNotContainsString($club->getName(), $r['content']);
@@ -136,7 +136,7 @@ class ClubTest extends WebTestCase
 
         // Deleting the club first makes the account deletion possible
         $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'DELETE', "/api/clubs/{$club->getId()}", [], $auth)['status']);
-        $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', [], $auth)['status']);
+        $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', ['password' => 'password123'], $auth)['status']);
         self::$em->clear();
         $this->assertNull(self::$em->getRepository(User::class)->findOneBy(['email' => 'solo@example.com']));
     }
@@ -148,7 +148,7 @@ class ClubTest extends WebTestCase
         $club = TestHelper::createClub(self::$em, $a);
         self::$em->persist((new ClubUser())->setClub($club)->setUser($b));
         self::$em->flush();
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', [], TestHelper::authHeader($a, self::$tokens));
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', ['password' => 'password123'], TestHelper::authHeader($a, self::$tokens));
         $this->assertSame(200, $r['status'], $r['content']);
         self::$em->clear();
         $this->assertSame(1, self::$em->getRepository(ClubUser::class)->count([]));

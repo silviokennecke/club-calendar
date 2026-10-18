@@ -91,3 +91,12 @@ framework:
             policy: sliding_window
             limit: 60
             interval: '1 minute'
+        # Account deletion (AUTH-03): failed/any confirmation attempts and code mails per user.
+        account_delete_attempt:
+            policy: sliding_window
+            limit: 5
+            interval: '15 minutes'
+        account_delete_code:
+            policy: sliding_window
+            limit: 5
+            interval: '1 hour'

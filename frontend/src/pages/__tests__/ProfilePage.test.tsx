@@ -550,33 +550,90 @@ describe("ProfilePage", () => {
     ).toBeDisabled();
   });
 
-  it("deletes the account only after typing the e-mail address, then signs out", async () => {
+  async function openDeleteDialog(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole("button", { name: "Konto löschen" }));
+    return screen.findByRole("dialog", { name: "Konto löschen?" });
+  }
+
+  it("deletes the account only with the password, then signs out", async () => {
     const user = userEvent.setup();
     renderProfile();
-    await user.click(await screen.findByRole("button", { name: "Konto löschen" }));
-    const dialog = await screen.findByRole("alertdialog", { name: "Konto löschen?" });
-    const confirm = within(dialog).getByRole("button", { name: "Konto löschen" });
-    expect(confirm).toBeDisabled();
-    await user.type(
-      within(dialog).getByLabelText("Zur Bestätigung deine E-Mail-Adresse eingeben"),
-      "alex@beispiel.de",
+    const dialog = await openDeleteDialog(user);
+    // Without a password nothing is sent
+    await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
+    expect(apiDelete).not.toHaveBeenCalled();
+    expect(within(dialog).getByText("Bitte gib dein aktuelles Passwort ein.")).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText(/Zur Bestätigung dein Passwort/), "geheim123");
+    await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
+    await waitFor(() =>
+      expect(apiDelete).toHaveBeenCalledWith("/api/auth/me", { password: "geheim123" }),
     );
-    await user.click(confirm);
-    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/auth/me"));
     expect(logout).toHaveBeenCalled();
     expect(await screen.findByTestId("location")).toHaveTextContent("/login");
+  });
+
+  it("shows a wrong password at the field and keeps the account", async () => {
+    apiDelete.mockRejectedValue(new ApiError("x", 400, "invalid_credentials"));
+    const user = userEvent.setup();
+    renderProfile();
+    const dialog = await openDeleteDialog(user);
+    await user.type(within(dialog).getByLabelText(/Zur Bestätigung dein Passwort/), "falsch");
+    await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
+    expect(await within(dialog).findByText("Das Passwort stimmt nicht.")).toBeInTheDocument();
+    expect(logout).not.toHaveBeenCalled();
+  });
+
+  it("tells about the rate limit", async () => {
+    apiDelete.mockRejectedValue(new ApiError("x", 429, "rate_limited"));
+    const user = userEvent.setup();
+    renderProfile();
+    const dialog = await openDeleteDialog(user);
+    await user.type(within(dialog).getByLabelText(/Zur Bestätigung dein Passwort/), "x");
+    await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
+    expect(await within(dialog).findByText(/Zu viele Versuche/)).toBeInTheDocument();
+  });
+
+  it("confirms an account without a password with the mailed code", async () => {
+    profile = { ...profile, hasPassword: false };
+    const user = userEvent.setup();
+    renderProfile();
+    const dialog = await openDeleteDialog(user);
+    await user.click(within(dialog).getByRole("button", { name: "Code senden" }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith("/api/auth/delete-account/code", {}));
+    expect(
+      await within(dialog).findByText(/Der Code wurde an alex@beispiel.de/),
+    ).toBeInTheDocument();
+    // An incomplete code is not sent
+    await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
+    expect(apiDelete).not.toHaveBeenCalled();
+    await user.click(within(dialog).getAllByRole("textbox")[0]);
+    await user.paste("123456");
+    await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
+    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/auth/me", { code: "123456" }));
+    expect(logout).toHaveBeenCalled();
+  });
+
+  it("shows a wrong code at the field", async () => {
+    profile = { ...profile, hasPassword: false };
+    apiDelete.mockRejectedValue(new ApiError("x", 400, "invalid_confirmation_code"));
+    const user = userEvent.setup();
+    renderProfile();
+    const dialog = await openDeleteDialog(user);
+    await user.click(within(dialog).getAllByRole("textbox")[0]);
+    await user.paste("123456");
+    await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
+    expect(
+      await within(dialog).findByText("Der Code stimmt nicht oder ist abgelaufen."),
+    ).toBeInTheDocument();
+    expect(logout).not.toHaveBeenCalled();
   });
 
   it("explains that the account stays while the user is the only member of a club", async () => {
     apiDelete.mockRejectedValue(new ApiError("x", 422, "last_member_of_club"));
     const user = userEvent.setup();
     renderProfile();
-    await user.click(await screen.findByRole("button", { name: "Konto löschen" }));
-    const dialog = await screen.findByRole("alertdialog", { name: "Konto löschen?" });
-    await user.type(
-      within(dialog).getByLabelText("Zur Bestätigung deine E-Mail-Adresse eingeben"),
-      "alex@beispiel.de",
-    );
+    const dialog = await openDeleteDialog(user);
+    await user.type(within(dialog).getByLabelText(/Zur Bestätigung dein Passwort/), "geheim123");
     await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
     expect(await screen.findByText(/einzige Mitglied eines Vereins/)).toBeInTheDocument();
     expect(logout).not.toHaveBeenCalled();
@@ -626,10 +683,10 @@ describe("ProfilePage (dialog while loading)", () => {
     const user = userEvent.setup();
     renderProfile();
     await user.click(await screen.findByRole("button", { name: "Konto löschen" }));
-    await screen.findByRole("alertdialog", { name: "Konto löschen?" });
+    await screen.findByRole("dialog", { name: "Konto löschen?" });
     resolveMe(profile);
     // The page behind the modal dialog is inert, hence `hidden`.
     await screen.findByRole("heading", { name: "Passkeys", hidden: true });
-    expect(screen.getByRole("alertdialog", { name: "Konto löschen?" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Konto löschen?" })).toBeInTheDocument();
   });
 });

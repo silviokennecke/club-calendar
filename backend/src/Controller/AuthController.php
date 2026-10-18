@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Dto\Auth\ChangeEmailDto;
 use App\Dto\Auth\ChangePasswordDto;
+use App\Dto\Auth\DeleteAccountDto;
 use App\Dto\Auth\ForgotPasswordDto;
 use App\Dto\Auth\LoginDto;
 use App\Dto\Auth\RegisterDto;
@@ -17,6 +18,7 @@ use App\Exception\ApiProblemException;
 use App\Exception\EmailNotVerifiedException;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
+use App\Service\AccountDeletionService;
 use App\Service\AccountService;
 use App\Service\AuthService;
 use App\Service\Input;
@@ -45,6 +47,7 @@ class AuthController extends AbstractApiController
         private readonly ClientRegistry $clientRegistry,
         private readonly PasswordResetService $passwordResets,
         private readonly AccountService $accounts,
+        private readonly AccountDeletionService $accountDeletion,
         #[Autowire(service: 'limiter.password_reset_email')]
         private readonly RateLimiterFactory $passwordResetEmailLimiter,
         #[Autowire(service: 'limiter.password_reset_ip')]
@@ -334,13 +337,35 @@ class AuthController extends AbstractApiController
         return $value;
     }
 
+    /**
+     * Deletes the account after re-authentication: `{password}` for an account with a password, `{code}`
+     * (mailed by `POST /delete-account/code`) for one without. 400 `invalid_credentials` /
+     * `invalid_confirmation_code`, 429 `rate_limited`; nothing is deleted before the proof is valid.
+     */
     #[Route('/me', methods: ['DELETE'])]
-    public function deleteMe(): JsonResponse
+    public function deleteMe(Request $request): JsonResponse
     {
         $user = $this->userResolver->resolve();
+        $this->rateLimiter->assertAccountDeleteAllowed($request, $user->getId());
+        $dto = '' === trim($request->getContent())
+            ? new DeleteAccountDto()
+            : $this->deserializeDto($request, DeleteAccountDto::class);
+        $this->validateDto($dto, $this->validator);
+        $this->accountDeletion->assertConfirmed($user, $dto->password, $dto->code);
         $this->auth->deleteMe($user);
 
         return new JsonResponse(['ok' => true]);
+    }
+
+    /** 204: a 6-digit code went to the account's address (accounts without password only; 409 `has_password` otherwise). */
+    #[Route('/delete-account/code', methods: ['POST'])]
+    public function sendDeleteAccountCode(Request $request): JsonResponse
+    {
+        $user = $this->userResolver->resolve();
+        $this->rateLimiter->assertAccountDeleteCodeAllowed($request, $user->getId());
+        $this->accountDeletion->sendCode($user);
+
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 
     #[Route('/providers', methods: ['GET'])]

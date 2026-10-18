@@ -266,15 +266,18 @@ test.describe("Profil", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("Konto löschen verlangt die E-Mail-Adresse", async ({ page, request }) => {
+  test("Konto löschen verlangt das Passwort", async ({ page, request }) => {
     const s = await seed(request, "Profil Löschen");
     await openProfile(page, s, request);
     await page.getByRole("button", { name: "Konto löschen" }).click();
-    const dialog = page.getByRole("alertdialog", { name: "Konto löschen?" });
+    const dialog = page.getByRole("dialog", { name: "Konto löschen?" });
     await expect(dialog).toContainText("Du wirst abgemeldet.");
     const confirm = dialog.getByRole("button", { name: "Konto löschen" });
-    await expect(confirm).toBeDisabled();
-    await dialog.getByLabel("Zur Bestätigung deine E-Mail-Adresse eingeben").fill(s.email);
+    // Wrong password: the account stays
+    await dialog.getByLabel(/Zur Bestätigung dein Passwort/).fill("falsches-Passwort-1");
+    await confirm.click();
+    await expect(dialog.getByText("Das Passwort stimmt nicht.")).toBeVisible();
+    await dialog.getByLabel(/Zur Bestätigung dein Passwort/).fill(PASSWORD);
     // Activate by keyboard: the page unmounts as soon as the account is gone, which makes a mouse
     // click's "element detached" bookkeeping flaky.
     await confirm.focus();
