@@ -3226,8 +3226,8 @@
     flex-wrap: wrap;
     align-items: flex-start;
     justify-content: space-between;
-    gap: var(--space-4) var(--space-6);
-    padding: var(--space-4) 0 var(--space-5);
+    gap: var(--space-6);
+    padding: var(--space-8) 0 var(--space-6);
   }
   .pub-brandrow {
     display: flex;
