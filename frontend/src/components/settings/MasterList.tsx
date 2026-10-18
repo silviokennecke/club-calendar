@@ -37,7 +37,8 @@ const GLYPHS: Record<MasterKind, Glyph> = {
 interface MasterListProps {
   kind: MasterKind;
   clubId: string;
-  calendarId: string;
+  /** Owner of properties / features; audiences belong to the club and need none. */
+  calendarId?: string;
   /** Archived calendars: list only, no add / rename / delete. */
   readOnly?: boolean;
 }
@@ -54,11 +55,11 @@ export function MasterList({ kind, clubId, calendarId, readOnly }: MasterListPro
   const tk = (key: string, opts?: Record<string, unknown>) =>
     t(`settings.master.${kind}.${key}`, opts);
   // Audiences belong to the club (shared by all its calendars), properties / features to the calendar.
-  const ownerId = cfg.owner === "clubs" ? clubId : calendarId;
+  const ownerId = cfg.owner === "clubs" ? clubId : (calendarId ?? "");
   const base = `/api/${cfg.owner}/${ownerId}/${cfg.path}`;
   const queryKey = [cfg.queryKey, ownerId];
   // Renaming / deleting a club-wide item changes the events and templates of every calendar.
-  const usageScope = cfg.owner === "clubs" ? [] : [calendarId];
+  const usageScope = cfg.owner === "clubs" || !calendarId ? [] : [calendarId];
 
   const list = useQuery<MasterItem[]>({ queryKey, queryFn: () => apiGet<MasterItem[]>(base) });
   const items = list.data ?? [];

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -21,8 +21,7 @@ import {
   type Glyph,
 } from "@/components/ui/shared";
 import { FeedsForbidden } from "@/components/feeds/FeedsForbidden";
-import { ArchivedCreateGuard } from "@/components/events/ArchivedCreateGuard";
-import { useEventPage } from "@/components/events/useEventPage";
+import { useClubSettingsPage } from "@/components/settings/useClubSettingsPage";
 import { FeedAccess } from "@/components/feeds/FeedAccess";
 import { useFeed, useFeeds } from "@/components/feeds/useFeeds";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
@@ -49,34 +48,66 @@ const VISIBILITIES: { value: FeedVisibility; key: "public" | "club" | "private";
 ];
 
 /**
- * New feed (…/settings/feeds/new) and edit (…/settings/feeds/:feedId), design: FeedEdit. Name,
+ * New feed (/clubs/:clubId/settings/feeds/new) and edit (…/feeds/:feedId), design: FeedEdit. Name,
  * status (public / club internal / private; the search engine option only for public), audience
  * filter, the secret (private feeds, regenerating asks first) and the addresses. Saving a private
  * feed as public or club internal asks first (the secret is no longer required).
+ *
+ * The page lives in the club settings and has no calendar in the URL. A new feed therefore starts with
+ * ALL active (non-archived) calendars of the club selected (`activeCalendars`); the form has no calendar
+ * picker yet, so an existing feed keeps its `calendarIds` unchanged.
  */
 export default function FeedEditPage() {
   const { feedId } = useParams<{ feedId: string }>();
-  // Archived calendars are read-only: a feed can be viewed there, but not created.
+  // Only admins create feeds; others can view existing ones (editors) or see nothing (viewers).
   return feedId ? (
     <FeedLoader />
   ) : (
-    <ArchivedCreateGuard require="admin">
+    <NewFeedGuard>
       <FeedLoader />
-    </ArchivedCreateGuard>
+    </NewFeedGuard>
+  );
+}
+
+function NewFeedGuard({ children }: { children: ReactNode }) {
+  const page = useClubSettingsPage();
+  const { t } = useTranslation();
+  if (page.roleLoading) {
+    return (
+      <div className="ap-pagedialog" aria-busy="true">
+        <Skeleton style={{ display: "block", height: 40, width: "50%" }} />
+      </div>
+    );
+  }
+  if (page.isAdmin) return <>{children}</>;
+  return (
+    <div className="ap-pagedialog">
+      <EmptyState
+        icon="lock"
+        headingLevel="h1"
+        title={t("events.new.forbidden.title")}
+        text={t("shell.roleReadOnly")}
+        actions={
+          <LinkButton variant="secondary" icon="arrow-left" to={page.routes.feeds}>
+            {t("feeds.form.back")}
+          </LinkButton>
+        }
+      />
+    </div>
   );
 }
 
 function FeedLoader() {
   const { feedId } = useParams<{ feedId: string }>();
-  const page = useEventPage();
+  const page = useClubSettingsPage();
   const { t } = useTranslation();
-  const one = useFeed(page.clubId, page.roleCanEdit ? feedId : undefined);
+  const one = useFeed(page.clubId, page.canEdit ? feedId : undefined);
   const isNew = !feedId;
   const feed = one.data;
   const notFound = (one.error as { status?: number } | null)?.status === 404;
 
-  if (!page.roleLoading && !page.roleCanEdit) return <FeedsForbidden calendarHref={page.base} />;
-  if (page.calendarLoading || page.roleLoading || (!isNew && one.isPending && !one.isError)) {
+  if (!page.roleLoading && !page.canEdit) return <FeedsForbidden backHref={page.routes.club} />;
+  if (page.calendarsLoading || page.roleLoading || (!isNew && one.isPending && !one.isError)) {
     return (
       <div className="ap-wrap--narrow" aria-busy="true">
         <p className="ap-sr" role="status">
@@ -127,16 +158,16 @@ function FeedLoader() {
 }
 
 function FeedEditor({ feed }: { feed?: CalendarFeed }) {
-  const page = useEventPage();
+  const page = useClubSettingsPage();
   const data = useFeeds(page.clubId, { withList: false });
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { t } = useTranslation();
   const isNew = !feed;
-  const readOnly = page.isArchived || !page.isAdmin;
+  const readOnly = !page.isAdmin;
 
   const [initial] = useState<FeedFormValues>(() =>
-    feed ? feedValuesFromRecord(feed) : emptyFeedValues([page.calendarId]),
+    feed ? feedValuesFromRecord(feed) : emptyFeedValues(page.activeCalendars.map((c) => c.id)),
   );
   const [values, setValues] = useState<FeedFormValues>(initial);
   const [submits, setSubmits] = useState(0);
@@ -194,7 +225,7 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
       const body = toFeedPayload(values);
       const saved = await saveDroppingDeletedReferences(
         qc,
-        page,
+        { clubId: page.clubId, calendarId: page.calendarId ?? "" },
         ["targetGroups"],
         body,
         (b) =>
@@ -268,13 +299,13 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
           <h1 className="t-h1 ap-focus-target" ref={heading} tabIndex={-1}>
             {heading1}
           </h1>
-          <p className="t-body">{page.calendar?.name}</p>
+          <p className="t-body">{page.club?.name}</p>
         </div>
       </header>
       <form className="ap-form" noValidate onSubmit={onSubmit}>
         {readOnly ? (
-          <Banner tone="warning" icon="lock" title={t("shell.archivedReadOnly")}>
-            {page.isArchived ? t("feeds.form.readOnly") : t("feeds.readOnlyRole")}
+          <Banner tone="info" icon="lock">
+            {t("feeds.readOnlyRole")}
           </Banner>
         ) : (
           <Banner tone="info">{t("feeds.form.intro")}</Banner>

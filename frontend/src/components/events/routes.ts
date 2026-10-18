@@ -1,5 +1,9 @@
-/** URLs of the event pages below a calendar (all routes are defined in src/App.tsx). */
+/**
+ * URLs of the event pages below a calendar (all routes are defined in src/App.tsx). The feed pages are
+ * club settings (`/clubs/:clubId/settings/feeds…`), derived from the calendar `base`.
+ */
 export function eventRoutes(base: string) {
+  const clubFeeds = `${base.replace(/\/calendars\/[^/]*$/, "")}/settings/feeds`;
   const withDate = (path: string, date?: string | null, extra?: Record<string, string>) => {
     const q = new URLSearchParams(extra);
     if (date) q.set("date", date);
@@ -28,11 +32,11 @@ export function eventRoutes(base: string) {
     templateNew: `${base}/templates/new`,
     /** Edit a template (design: TemplateEdit). */
     template: (templateId: string) => `${base}/templates/${templateId}`,
-    feeds: `${base}/settings/feeds`,
+    feeds: clubFeeds,
     /** New feed (design: FeedEdit, mode new). */
-    feedNew: `${base}/settings/feeds/new`,
+    feedNew: `${clubFeeds}/new`,
     /** Edit a feed (design: FeedEdit). */
-    feed: (feedId: string) => `${base}/settings/feeds/${feedId}`,
+    feed: (feedId: string) => `${clubFeeds}/${feedId}`,
   };
 }
 

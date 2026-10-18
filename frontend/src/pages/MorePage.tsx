@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth-context";
 import { Icon, LangSwitch, type Glyph } from "@/components/ui/shared";
 import { calendarBase } from "@/components/layout/navigation";
+import { clubSettingsRoutes } from "@/components/settings/clubSettingsRoutes";
 import { roleAtLeast } from "@/lib/club/permissions";
 import type { ShellData } from "@/components/layout/shellTypes";
 
@@ -34,6 +35,11 @@ export default function MorePage() {
         ]
       : []),
     { labelKey: "shell.nav.club", href: `/clubs/${data.clubId}`, icon: "building" },
+    {
+      labelKey: "shell.nav.clubSettings",
+      href: clubSettingsRoutes(data.clubId).locations,
+      icon: "map-pin",
+    },
     { labelKey: "shell.more.allClubs", href: "/clubs?select=1", icon: "list" },
     { labelKey: "shell.profile", href: "/profile", icon: "user" },
   ];

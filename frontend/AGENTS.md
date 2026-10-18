@@ -174,10 +174,18 @@ operations), `docs/api/openapi.yaml` (API reference).
 - Settings: all pages below `…/settings` use `components/settings/SettingsLayout` (heading with club and
   calendar, `SettingsTabs`, the read-only banner of archived calendars with "Archivierung aufheben", skeleton /
   error states; `wide` for the places page). `useSettingsPage()` = `useEventPage()` + club + `readOnly`.
+  Locations, target groups and feeds are CLUB data: their pages live at `/clubs/:clubId/settings/{locations,
+target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `…/calendars/:calendarId/settings/…`
+  addresses redirect via `LegacyClubSettingsRedirect`) and use `components/settings/ClubSettingsLayout` (+
+  `ClubSettingsTabs`, feeds tab only for editors+) and `useClubSettingsPage()` (club, role, `canEdit` / `isAdmin`,
+  `readOnly` = role only, no archived state, `activeCalendars`, `routes` = `clubSettingsRoutes(clubId)`). A new feed
+  starts with all active calendars of the club selected. `ProtectedRoute` treats `/clubs/:id/settings/*` as club
+  context (shell calendar = last used). Properties, features, holiday calendars and general settings stay below
+  the calendar.
   Pure logic in `src/lib/settings/` (`masterList.ts` name check + delete consequences from the API's `usage`, `location.ts`, `holidays.ts`,
   `timezones.ts`) with Vitest tests. Pages: `CalendarSettingsPage` (name, time zone; archiving / duplicating /
   deleting are NOT here, a text link leads to the club page), `PropertiesPage` / `FeaturesPage` /
-  `TargetGroupsPage` (thin wrappers of `<MasterList kind=…>`), `LocationsPage`, `HolidayCalendarsPage`.
+  `TargetGroupsPage` (club level; `MasterList kind=…`), `LocationsPage`, `HolidayCalendarsPage`.
   - `MasterList` (properties, features, audiences): add form, list, rename in a `FormDialog` (label, error summary,
     Enter saves, Escape cancels, focus returns to the edit button), delete with the usage counts of the list
     endpoint (`usage: {events, templates, feeds?, eventNames}`; the list is refetched when the dialog opens, no event
@@ -191,7 +199,7 @@ operations), `docs/api/openapi.yaml` (API reference).
     `stay` keeps the club page in place; duplicating sends the localized name in the POST. `CalendarDeleteDialog` =
     delete confirmation with the calendar's `eventCount` (single GET when it opens).
 - Publish, club, profile:
-  - Feeds: list `…/settings/feeds` (`pages/settings/FeedsPage`: status as `StatusBadge` word + icon (`public` /
+  - Feeds: list `/clubs/:clubId/settings/feeds` (`pages/settings/FeedsPage`: status as `StatusBadge` word + icon (`public` /
     `club` "Nur per Link" / `private`, plus `searchable` "Auffindbar" for indexable public feeds), audience
     tags, addresses behind a disclosure, first feed open, a freshly saved one opens via router state `{ open }`),
     `…/settings/feeds/new` and `…/settings/feeds/:feedId` (`FeedEditPage`: name, visibility radio group with three
