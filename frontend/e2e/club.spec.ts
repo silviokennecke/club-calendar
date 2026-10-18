@@ -250,9 +250,7 @@ test.describe("Verein verwalten", () => {
     await page.getByRole("button", { name: `Kalender ${copy} löschen` }).click();
     const del = page.getByRole("alertdialog", { name: `Kalender „${copy}“ löschen?` });
     await expect(del).toContainText("Der Kalender wird dauerhaft gelöscht.");
-    await expect(del).toContainText(
-      "Löscht den Kalender unwiderruflich.",
-    );
+    await expect(del).toContainText("Löscht den Kalender unwiderruflich.");
     await del.getByRole("button", { name: "Abbrechen" }).click();
     expect(await calendars(request, s)).toHaveLength(3);
     await page.getByRole("button", { name: `Kalender ${copy} löschen` }).click();
