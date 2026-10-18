@@ -1,5 +1,8 @@
 import type { EventSeriesInfo } from "@/lib/events/series";
 
+/** Club role, ascending rights: viewer < editor < admin. */
+export type ClubRole = "viewer" | "editor" | "admin";
+
 export interface User {
   id: string;
   name: string;
@@ -19,11 +22,18 @@ export interface Club {
   calendarCount?: number;
   archivedCalendarCount?: number;
   memberCount?: number;
+  /** The signed-in user's role in this club (`GET /api/clubs`, `GET /api/clubs/:id`). */
+  role?: ClubRole;
   /** The caller's last opened calendar in this club (`GET /api/clubs`; null if none or deleted). */
   lastCalendarId?: string | null;
   /** Events / feeds of all calendars (only `GET /api/clubs/:id`, for the delete dialog). */
   eventCount?: number;
   feedCount?: number;
+}
+
+/** Member of a club (`GET /api/clubs/:id/members`). */
+export interface ClubMember extends User {
+  role: ClubRole;
 }
 
 export interface Calendar {

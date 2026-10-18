@@ -1,10 +1,13 @@
 // Club invitations (M8): types, the token stash across sign-in and error mapping (no React).
 
+import type { ClubRole } from "@/lib/types";
+
 /** Open invitation of a club (`GET /api/clubs/:id/invitations`, club members only). */
 export interface ClubInvitation {
   id: string;
   email: string;
   status: "pending" | "expired";
+  role: ClubRole;
   invitedByName: string | null;
   createdAt: string;
   expiresAt: string;
@@ -14,6 +17,7 @@ export interface ClubInvitation {
 export interface MyInvitation {
   id: string;
   clubName: string;
+  role: ClubRole;
   invitedByName: string | null;
   expiresAt: string;
 }

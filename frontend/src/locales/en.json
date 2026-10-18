@@ -1624,7 +1624,7 @@
     },
     "members": {
       "title": "Members",
-      "text": "All members have the same rights and can make changes.",
+      "text": "Viewers can read, editors can also make changes, admins also manage members and invitations.",
       "loading": "Loading members …",
       "loadError": "The members could not be loaded.",
       "emptyTitle": "No members",
@@ -1651,7 +1651,13 @@
       "left": "You left the club {{club}}.",
       "leaveFailed": "You could not leave the club. Please try again.",
       "lastMemberHint": "You are the only member. A club needs at least one member: invite someone first or delete the club.",
-      "lastMember": "You are the last member of the club. Invite someone first or delete the club."
+      "lastMember": "You are the last member of the club. Invite someone first or delete the club.",
+      "colRole": "Role",
+      "roleLabel": "Role of {{name}}",
+      "roleChanged": "{{name}} is now {{role}}.",
+      "roleFailed": "The role could not be changed. Please try again.",
+      "invalidRole": "This role does not exist.",
+      "lastAdmin": "You are the only admin of the club. Make another member an admin first."
     },
     "calendars": {
       "title": "Calendars",
@@ -1745,7 +1751,14 @@
       "revokeConsequence": "The link in the email stops working. You can invite the person again at any time.",
       "revokeConfirm": "Revoke invitation",
       "revoked": "The invitation to {{email}} was revoked.",
-      "revokeFailed": "The invitation could not be revoked. Please try again."
+      "revokeFailed": "The invitation could not be revoked. Please try again.",
+      "roleLabel": "Role",
+      "roleHint": "Viewers can only read, editors can edit, admins also manage members."
+    },
+    "roles": {
+      "viewer": "Viewer",
+      "editor": "Editor",
+      "admin": "Admin"
     }
   },
   "feeds": {
@@ -1978,7 +1991,8 @@
       "codeMissing": "Please enter the 6-digit code from the email.",
       "wrongCode": "The code is not correct or has expired.",
       "codeFailed": "The code could not be sent. Please try again.",
-      "rateLimited": "Too many attempts. Please wait a while and try again."
+      "rateLimited": "Too many attempts. Please wait a while and try again.",
+      "lastAdminOfClub": "Your account cannot be deleted while you are the only admin of a club that has other members. Make another member an admin first or delete the club."
     },
     "account": {
       "title": "Name and email address",
@@ -2064,6 +2078,7 @@
       "toClubs": "Go to my clubs",
       "declinedTitle": "Invitation declined",
       "declinedText": "You declined the invitation. Nothing changed in your account."
-    }
+    },
+    "role": "Role: {{role}}"
   }
 }

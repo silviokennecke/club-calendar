@@ -59,6 +59,8 @@ export function InvitationsSection({ invitations }: { invitations: MyInvitation[
                   ? t("invitations.invitedBy", { name: inv.invitedByName })
                   : t("invitations.invited")}
                 {" · "}
+                {t("invitations.role", { role: t(`club.roles.${inv.role}`) })}
+                {" · "}
                 {t("invitations.validUntil", { date: formatDate(inv.expiresAt, dateFormat) })}
               </p>
             </div>

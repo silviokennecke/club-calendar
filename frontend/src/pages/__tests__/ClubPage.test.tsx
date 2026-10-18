@@ -33,9 +33,11 @@ const club = {
   memberCount: 2,
   eventCount: 14,
   feedCount: 2,
+  role: "admin",
 };
 let invitations: unknown[];
-let members: { id: string; name: string; email: string }[];
+let members: { id: string; name: string; email: string; role: string }[];
+let clubRole: string;
 let calendars: Record<string, unknown>[];
 let clubError: Error | null;
 let clubList: unknown[];
@@ -46,8 +48,8 @@ function renderClub() {
 
 beforeEach(() => {
   members = [
-    { id: "u1", name: "Alex Beispiel", email: "alex@beispiel.de" },
-    { id: "u2", name: "Mara Sommer", email: "mara@beispiel.de" },
+    { id: "u1", name: "Alex Beispiel", email: "alex@beispiel.de", role: "admin" },
+    { id: "u2", name: "Mara Sommer", email: "mara@beispiel.de", role: "editor" },
   ];
   calendars = [
     { id: "k1", name: "Schießbetrieb 2026", timezone: null, eventCount: 12 },
@@ -55,6 +57,7 @@ beforeEach(() => {
     { id: "k0", name: "Saison 2025", archivedAt: "2026-01-15T10:00:00+00:00", eventCount: 1 },
   ];
   invitations = [];
+  clubRole = "admin";
   clubError = null;
   clubList = [club];
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete, updateUser]) fn.mockReset();
@@ -62,7 +65,7 @@ beforeEach(() => {
   apiGet.mockImplementation((path: string) => {
     if (path === "/api/clubs") return Promise.resolve(clubList);
     if (path === "/api/clubs/c1")
-      return clubError ? Promise.reject(clubError) : Promise.resolve(club);
+      return clubError ? Promise.reject(clubError) : Promise.resolve({ ...club, role: clubRole });
     if (path === "/api/clubs/c1/members") return Promise.resolve(members);
     if (path === "/api/clubs/c1/invitations") return Promise.resolve(invitations);
     // Single GET (delete dialog): fresh counters
@@ -143,6 +146,7 @@ describe("ClubPage", () => {
     await waitFor(() =>
       expect(apiPost).toHaveBeenCalledWith("/api/clubs/c1/invitations", {
         email: "jonas@beispiel.de",
+        role: "editor",
       }),
     );
     await waitFor(() => expect(screen.getByLabelText(/^E-Mail-Adresse/)).toHaveValue(""));
@@ -565,5 +569,51 @@ describe("ClubPage", () => {
       await screen.findByText("Die offenen Einladungen konnten nicht geladen werden."),
     ).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Erneut versuchen" })).toHaveLength(3);
+  });
+
+  it("admin sees roles as selects, changes one and invites with a role", async () => {
+    const user = userEvent.setup();
+    renderClub();
+    const select = await screen.findByLabelText("Rolle von Mara Sommer");
+    expect(select).toHaveValue("editor");
+    await user.selectOptions(select, "viewer");
+    await waitFor(() =>
+      expect(apiPatch).toHaveBeenCalledWith("/api/clubs/c1/members/u2", { role: "viewer" }),
+    );
+
+    await user.type(await screen.findByLabelText(/^E-Mail-Adresse/), "neu@beispiel.de");
+    await user.selectOptions(screen.getByLabelText("Rolle", { selector: "select" }), "admin");
+    await user.click(screen.getByRole("button", { name: "Einladung senden" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith("/api/clubs/c1/invitations", {
+        email: "neu@beispiel.de",
+        role: "admin",
+      }),
+    );
+  });
+
+  it("explains last_admin when changing a role is refused", async () => {
+    const error = vi.spyOn(toast, "error");
+    apiPatch.mockRejectedValue(new ApiError("x", 422, "last_admin"));
+    const user = userEvent.setup();
+    renderClub();
+    await user.selectOptions(await screen.findByLabelText("Rolle von Alex Beispiel"), "viewer");
+    await waitFor(() =>
+      expect(error).toHaveBeenCalledWith(expect.stringContaining("einzige Admin")),
+    );
+  });
+
+  it("non-admins see roles read-only, no invite form and cannot remove others", async () => {
+    clubRole = "editor";
+    renderClub();
+    const table = await screen.findByRole("table", { name: "Mitglieder des Vereins (2)" });
+    expect(within(table).getByText("Bearbeiter")).toBeInTheDocument();
+    expect(within(table).getByText("Admin")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Rolle von Mara Sommer")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mara Sommer entfernen" })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Verein Schützenverein Waldblick verlassen" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Einladung senden" })).not.toBeInTheDocument();
   });
 });
