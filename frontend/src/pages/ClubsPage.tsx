@@ -15,7 +15,7 @@ import {
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { ClubCard } from "@/components/clubs/ClubCard";
 import { InvitationsSection } from "@/components/clubs/InvitationsSection";
-import { readInvitationToken, type MyInvitation } from "@/lib/invitations";
+import { readInvitationToken, takeInvitationRedirect, type MyInvitation } from "@/lib/invitations";
 import { initials } from "@/components/layout/navigation";
 import type { Club } from "@/lib/types";
 
@@ -50,7 +50,7 @@ export default function ClubsPage() {
   useEffect(() => {
     if (redirected) return;
     // Back from the sign-in with the link of an invitation e-mail: continue there.
-    if (readInvitationToken()) {
+    if (readInvitationToken() && takeInvitationRedirect()) {
       setRedirected(true);
       navigate("/invitations", { replace: true });
       return;

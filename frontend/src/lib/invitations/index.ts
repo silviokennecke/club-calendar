@@ -19,6 +19,7 @@ export interface MyInvitation {
 }
 
 const TOKEN_KEY = "cc.invitationToken";
+const REDIRECTED_KEY = "cc.invitationRedirected";
 
 /**
  * The mail link carries a token (`/invitations?token=…`). It is kept in `sessionStorage` while the visitor
@@ -28,6 +29,7 @@ const TOKEN_KEY = "cc.invitationToken";
 export function stashInvitationToken(token: string): void {
   try {
     sessionStorage.setItem(TOKEN_KEY, token);
+    sessionStorage.removeItem(REDIRECTED_KEY);
   } catch {
     // storage blocked: the link still works for a visitor who is signed in already
   }
@@ -41,9 +43,25 @@ export function readInvitationToken(): string | null {
   }
 }
 
+/**
+ * The clubs page sends a visitor with a stored token to /invitations only once per token: when that page
+ * could not finish (network error) the token stays, but later visits of the clubs page do not bounce again.
+ * Returns true if the redirect is due (and records it), false if it already happened.
+ */
+export function takeInvitationRedirect(): boolean {
+  try {
+    if (sessionStorage.getItem(REDIRECTED_KEY)) return false;
+    sessionStorage.setItem(REDIRECTED_KEY, "1");
+  } catch {
+    // storage blocked: no token could have been stashed either
+  }
+  return true;
+}
+
 export function clearInvitationToken(): void {
   try {
     sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(REDIRECTED_KEY);
   } catch {
     // nothing stored
   }
