@@ -385,7 +385,7 @@ class SessionInvalidationTest extends WebTestCase
         $old = TestHelper::createUser($this->em, $hasher, 'eve@example.com');
         $access = $this->tokens()->createAccessToken($old);
         $refresh = $this->tokens()->createRefreshToken($old);
-        $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', [], 'Bearer '.$access)['status']);
+        $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', ['password' => 'password123'], 'Bearer '.$access)['status']);
 
         $this->assertSame(401, $this->me($access));
         $this->assertSame(401, $this->refresh($refresh)[0]);

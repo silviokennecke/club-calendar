@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Banner, Button, ConfirmDialog, Skeleton, toast } from "@/components/ui/shared";
+import { Banner, Button, Skeleton, toast } from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { initials } from "@/components/layout/navigation";
 import type { ShellData } from "@/components/layout/shellTypes";
+import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
 import { AccountSection } from "@/components/profile/AccountSection";
 import { LinkedLoginsSection, type LinkOutcome } from "@/components/profile/LinkedLoginsSection";
 import { PasswordSection } from "@/components/profile/PasswordSection";
@@ -13,7 +14,7 @@ import { PasskeysSection } from "@/components/profile/PasskeysSection";
 import { PreferencesSection } from "@/components/profile/PreferencesSection";
 import { SessionsSection } from "@/components/profile/SessionsSection";
 import type { ProfileData } from "@/components/profile/profileTypes";
-import { ApiError, apiDelete, apiGet, apiPost } from "@/lib/api";
+import { ApiError, apiGet, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { linkErrorKind, providerLabel } from "@/lib/profile";
 
@@ -103,15 +104,7 @@ export default function ProfilePage() {
   const name = data?.name ?? user?.name ?? "";
   const email = data?.email ?? user?.email ?? "";
 
-  async function deleteAccount() {
-    try {
-      await apiDelete("/api/auth/me");
-    } catch (error) {
-      // 422 last_member_of_club: the user is the only member of a club and has to delete it first
-      const lastMember = (error as { code?: unknown } | null)?.code === "last_member_of_club";
-      toast.error(t(lastMember ? "profile.danger.lastMemberOfClub" : "profile.danger.failed"));
-      return;
-    }
+  function accountDeleted() {
     logout();
     navigate("/login", { replace: true });
   }
@@ -186,17 +179,12 @@ export default function ProfilePage() {
           <Button variant="danger" icon="trash" onClick={() => setDeleteOpen(true)}>
             {t("profile.danger.action")}
           </Button>
-          <ConfirmDialog
+          <DeleteAccountDialog
             open={deleteOpen}
             onOpenChange={setDeleteOpen}
-            icon="trash"
-            title={t("profile.danger.confirmTitle")}
-            description={t("profile.danger.confirmText")}
-            consequence={t("profile.danger.consequence")}
-            confirmLabel={t("profile.danger.confirm")}
-            requireText={email || undefined}
-            requireLabel={t("profile.danger.requireLabel")}
-            onConfirm={deleteAccount}
+            hasPassword={data?.hasPassword}
+            email={email}
+            onDeleted={accountDeleted}
           />
         </div>
       </section>

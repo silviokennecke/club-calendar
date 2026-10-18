@@ -20,14 +20,6 @@ Static, read-only code review: full reads of every in-scope file plus targeted r
 
 2026-10-05
 
-### AUTH-03 — Account deletion without confirmation, cascades memberships
-**Severity:** Low
-**Attack scope:** Authenticated user (e.g. via a hijacked session)
-**Description:** `DELETE /api/auth/me` requires no re-authentication or confirmation and immediately cascades to club memberships (`ClubUser`), passkeys, and linked OAuth accounts.
-**Affected parts:** `AuthController.php:175`; `AuthService.php` `deleteMe()`
-**Fix recommendation:** Require re-authentication (password or passkey) or a short-lived confirmation token; consider a soft-delete grace period.
-**Notes:** Verified that no usable tokens remain after deletion (see Reviewed & OK), so the blast radius is the cascade itself, not lingering access.
-
 ### AUTH-05 — Raw exception objects logged with full stack traces
 **Severity:** Low
 **Attack scope:** Anyone with access to logs / log aggregation; internal structure disclosure

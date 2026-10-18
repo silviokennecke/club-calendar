@@ -89,6 +89,18 @@ readonly class AccountMailer
         ));
     }
 
+    /** The 6-digit code that confirms the deletion of an account without password (mail has the code, no link). */
+    public function sendAccountDeletionCode(User $user, string $code, int $validMinutes): void
+    {
+        $this->mailer->queue($this->email(
+            $user,
+            $user->getEmail(),
+            'email.delete_code.subject',
+            'email/delete_code.html.twig',
+            ['code' => $code, 'validMinutes' => (string) $validMinutes],
+        ));
+    }
+
     /** @return array<string, string> when (UTC and, if known, the user's calendar zone) and the forgot-password page */
     private function noticeContext(User $user): array
     {

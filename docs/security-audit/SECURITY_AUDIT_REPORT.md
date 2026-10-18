@@ -28,7 +28,7 @@
 ## Executive Summary
 
 - **No Critical findings** in the completed areas.
-- Counts so far (4 of 5 areas complete): **1 High, 0 Medium, 6 Low, 9 Informational** — 16 findings; API-02, API-03, API-54 and the OAuth token-in-URL finding removed after implementation (AUTH-13 added for the residual risk of the fix).
+- Counts so far (4 of 5 areas complete): **1 High, 0 Medium, 5 Low, 9 Informational** — 15 findings; AUTH-03 (account deletion without re-authentication) removed after implementation; API-02, API-03, API-54 and the OAuth token-in-URL finding removed after implementation (AUTH-13 added for the residual risk of the fix).
 - **Top design gaps:** club membership equals full admin with no role model (API-01); Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
 - **Positives:** no IDOR/cross-tenant gaps in the API surface; no live Mapbox token in the frontend (fully proxied through the backend); WebAuthn ceremonies, OAuth state handling, and exception → RFC 7807 response masking are sound; feed-secret checks are constant-time and the Mapbox proxy is SSRF-safe (fixed upstream host, strict path allowlist, caller token stripped).
 
@@ -57,15 +57,6 @@
 **Source:** `02b-backend-services.md` (API-52).
 
 ### Low
-
-#### AUTH-03 — Account deletion without confirmation, cascading memberships
-**Severity:** Low
-**Attack scope:** Authenticated user (e.g. via a hijacked session).
-**Description:** `DELETE /api/auth/me` requires no re-authentication or confirmation and immediately cascades club memberships (`ClubUser`), passkeys, and linked OAuth accounts.
-**Affected parts:** `AuthController.php:175`; `AuthService::deleteMe()`.
-**Fix recommendation:** Require re-authentication (password or passkey) or a short-lived confirmation token; consider a soft-delete grace period.
-**Notes:** Verified no usable tokens remain after deletion, so the blast radius is the cascade itself, not residual access.
-**Source:** `01-backend-auth.md` (AUTH-03).
 
 #### AUTH-05 — Raw exception objects logged with full stack traces
 **Severity:** Low
@@ -230,7 +221,6 @@
 |---|---|---|
 | API-01 | Club membership grants full administrative control (no roles, no last-admin guard) | High |
 | API-52 | Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation | Medium |
-| AUTH-03 | Account deletion without confirmation, cascading memberships | Low |
 | AUTH-05 | Raw exception objects logged with full stack traces | Low |
 | FE-04 | CLI-only `shadcn` package listed as a runtime dependency | Low |
 | FE-05 | Type-only `@types/mapbox-gl` listed as a runtime dependency | Low |
@@ -250,7 +240,7 @@
 
 | Area | Report | Findings | Status |
 |---|---|---|---|
-| Backend auth | `01-backend-auth.md` | AUTH-03, AUTH-05 … AUTH-13 (10) | Complete |
+| Backend auth | `01-backend-auth.md` | AUTH-05 … AUTH-13 (9) | Complete |
 | Backend API (authorization & CRUD) | `02-backend-api.md` | API-01 (1) | Complete |
 | Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-53 (2) | Complete |
 | Frontend | `03-frontend.md` | FE-04 … FE-07 (4) | Complete |

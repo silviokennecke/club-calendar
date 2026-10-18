@@ -1941,9 +1941,18 @@
       "confirmText": "This deletes your account permanently. This cannot be undone.",
       "consequence": "Deletes your account, your passkeys and linked sign-ins. You will be signed out.",
       "confirm": "Delete account",
-      "requireLabel": "Type your email address to confirm",
       "failed": "The account could not be deleted. Please try again.",
-      "lastMemberOfClub": "Your account cannot be deleted while you are the only member of a club. Delete the club first or add another member."
+      "lastMemberOfClub": "Your account cannot be deleted while you are the only member of a club. Delete the club first or add another member.",
+      "passwordLabel": "Your password to confirm",
+      "codeText": "Your account has no password. We send a 6-digit code to {{email}} to confirm the deletion.",
+      "codeSend": "Send code",
+      "codeResend": "Send code again",
+      "codeSent": "The code was sent to {{email}}. It is valid for at least 10 minutes.",
+      "codeLabel": "Confirmation code",
+      "codeMissing": "Please enter the 6-digit code from the email.",
+      "wrongCode": "The code is not correct or has expired.",
+      "codeFailed": "The code could not be sent. Please try again.",
+      "rateLimited": "Too many attempts. Please wait a while and try again."
     },
     "account": {
       "title": "Name and email address",

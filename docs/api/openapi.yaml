@@ -678,14 +678,63 @@ paths:
       tags: [Auth]
       summary: Delete the account
       description: >-
-        Refused with `422 last_member_of_club` while the user is the only member of a club (no club is named):
-        delete that club first (`DELETE /api/clubs/{clubId}`) or add another member.
+        Needs re-authentication (AUTH-03): an account with a password sends `password`; an account without one
+        (SSO-only, passkey-only) sends the 6-digit `code` that `POST /api/auth/delete-account/code` mailed to its
+        address. Every attempt counts against 5 per 15 minutes per user (and the per-IP limit): `429 rate_limited`.
+        Nothing is deleted before the proof is valid. Then refused with `422 last_member_of_club` while the user is
+        the only member of a club (no club is named): delete that club first (`DELETE /api/clubs/{clubId}`) or add
+        another member.
       operationId: deleteMe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password: { type: [string, 'null'], maxLength: 4096, description: Current password (accounts with a password). }
+                code: { type: [string, 'null'], maxLength: 32, description: Mailed 6-digit code (accounts without a password). }
       responses:
         '200': { $ref: '#/components/responses/Ok' }
+        '400':
+          description: >-
+            `invalid_credentials` (field `password`: missing or wrong) for an account with a password;
+            `invalid_confirmation_code` (field `code`: missing, wrong, expired or of another account) for one without.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '422':
           description: "`last_member_of_club`."
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429':
+          description: '`rate_limited` (header `Retry-After`).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /api/auth/delete-account/code:
+    post:
+      tags: [Auth]
+      summary: Mail the confirmation code for the account deletion
+      description: >-
+        Only for accounts without a password. The code is derived from the user, the session version, the address
+        and a 10-minute window (nothing is stored): it is valid for 10 to 20 minutes, repeated requests mail the same
+        code within a window, and it ends with a password set, a sign-out of all sessions or an address change.
+        At most 5 mails per user and hour.
+      operationId: sendDeleteAccountCode
+      responses:
+        '204': { description: The code went to the account's address. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: '`has_password`: the account has a password, confirm with it.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429':
+          description: '`rate_limited` (header `Retry-After`).'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -2987,7 +3036,7 @@ components:
         | `last_member` | 422 | `DELETE /api/clubs/{clubId}/members/{userId}`: the user is the only member of the club (also when leaving it); a club never has zero members |
         | `last_member_of_club` | 422 | `DELETE /api/auth/me`: the user is the only member of at least one club; delete the club first |
         | `ics_fetch_failed` | 422 | Holiday calendar create/refresh: the ICS URL could not be fetched or parsed (field `url`) |
-        | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After` |
+        | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After`; account deletion (`DELETE /api/auth/me`, `POST /api/auth/delete-account/code`): per user and per IP |
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
         | `duplicate_name` | 422 | Name of a property/feature/target group already used in the calendar |
         | `too_many_events` | 413 / 422 | 413: import > 5000 events/locations, bulk > 5000 ids; 422: series > 366 events (preview, create, rule change) |
@@ -2995,9 +3044,11 @@ components:
         | `series_empty` | 409 | Rule change preview/PATCH: the series has no events |
         | `series_changed` | 409 | Rule change PATCH: prototype/reference deleted concurrently or deadlock; nothing changed |
         | `email_taken` | 400 | Registration, field `email` |
-        | `invalid_credentials` | 401 / 400 | Login 401; 400 for `change-password` (field `currentPassword`) and `change-email` (field `password`) |
+        | `invalid_credentials` | 401 / 400 | Login 401; 400 for `change-password` (field `currentPassword`), `change-email` and `DELETE /api/auth/me` (field `password`) |
         | `invalid_reset_token` | 400 | `reset-password`: unknown, used or expired (same answer), field `token` |
         | `no_password` | 409 | `change-password` / `change-email` of SSO-only accounts |
+        | `invalid_confirmation_code` | 400 | `DELETE /api/auth/me` of an account without password: code missing, wrong, expired or of another account, field `code` |
+        | `has_password` | 409 | `POST /api/auth/delete-account/code` for an account with a password |
         | `last_login_method` | 409 | `DELETE /api/auth/oauth/{provider}`: no sign-in method would remain |
         | `oauth_account_not_found` | 404 | `DELETE /api/auth/oauth/{provider}`: provider not linked |
         | `unknown_provider` | 404 | `POST /api/auth/oauth/{provider}/link-start` and the browser routes `GET /api/auth/oauth/{provider}`, `GET …/{provider}/link` |
@@ -3030,6 +3081,8 @@ components:
         - invalid_credentials
         - invalid_reset_token
         - no_password
+        - invalid_confirmation_code
+        - has_password
         - last_login_method
         - oauth_account_not_found
         - unknown_provider

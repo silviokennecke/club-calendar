@@ -69,6 +69,16 @@ framework:
             limit: 1000
             interval: '1 minute'
             cache_pool: app.auth_limiter_pool
+        account_delete_attempt:
+            policy: sliding_window
+            limit: 5
+            interval: '15 minutes'
+            cache_pool: app.auth_limiter_pool
+        account_delete_code:
+            policy: sliding_window
+            limit: 5
+            interval: '1 hour'
+            cache_pool: app.auth_limiter_pool
 
 services:
     app.auth_limiter_pool:

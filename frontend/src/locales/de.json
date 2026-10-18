@@ -1941,9 +1941,18 @@
       "confirmText": "Dies löscht dein Konto dauerhaft. Dieser Vorgang kann nicht rückgängig gemacht werden.",
       "consequence": "Löscht dein Konto, deine Passkeys und verknüpften Anmeldungen. Du wirst abgemeldet.",
       "confirm": "Konto löschen",
-      "requireLabel": "Zur Bestätigung deine E-Mail-Adresse eingeben",
       "failed": "Das Konto konnte nicht gelöscht werden. Bitte versuche es erneut.",
-      "lastMemberOfClub": "Das Konto kann nicht gelöscht werden, solange du das einzige Mitglied eines Vereins bist. Lösche zuerst den Verein oder füge ein weiteres Mitglied hinzu."
+      "lastMemberOfClub": "Das Konto kann nicht gelöscht werden, solange du das einzige Mitglied eines Vereins bist. Lösche zuerst den Verein oder füge ein weiteres Mitglied hinzu.",
+      "passwordLabel": "Zur Bestätigung dein Passwort",
+      "codeText": "Dein Konto hat kein Passwort. Zur Bestätigung der Löschung schicken wir einen 6-stelligen Code an {{email}}.",
+      "codeSend": "Code senden",
+      "codeResend": "Code erneut senden",
+      "codeSent": "Der Code wurde an {{email}} geschickt. Er ist mindestens 10 Minuten gültig.",
+      "codeLabel": "Bestätigungscode",
+      "codeMissing": "Bitte gib den 6-stelligen Code aus der E-Mail ein.",
+      "wrongCode": "Der Code stimmt nicht oder ist abgelaufen.",
+      "codeFailed": "Der Code konnte nicht gesendet werden. Bitte versuche es erneut.",
+      "rateLimited": "Zu viele Versuche. Bitte warte eine Weile und versuche es erneut."
     },
     "account": {
       "title": "Name und E-Mail-Adresse",

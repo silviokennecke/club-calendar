@@ -36,6 +36,10 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $otherIp,
         #[Autowire(service: 'limiter.verification_resend_ip')]
         private readonly RateLimiterFactory $verificationResendIp,
+        #[Autowire(service: 'limiter.account_delete_attempt')]
+        private readonly RateLimiterFactory $accountDeleteAttempt,
+        #[Autowire(service: 'limiter.account_delete_code')]
+        private readonly RateLimiterFactory $accountDeleteCode,
     ) {
     }
 
@@ -82,6 +86,23 @@ class AuthRateLimiter
     public function assertResendVerificationAllowed(Request $request): void
     {
         self::assertAccepted($this->verificationResendIp->create(self::ip($request))->consume());
+    }
+
+    /**
+     * Confirmation attempts of the account deletion (password or mailed code): per client IP and per user, so
+     * a stolen access token cannot be used to guess the password or the code. Every attempt counts.
+     */
+    public function assertAccountDeleteAllowed(Request $request, string $userId): void
+    {
+        self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
+        self::assertAccepted($this->accountDeleteAttempt->create($userId)->consume());
+    }
+
+    /** Mails of the deletion code: 5 per user and hour. */
+    public function assertAccountDeleteCodeAllowed(Request $request, string $userId): void
+    {
+        self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
+        self::assertAccepted($this->accountDeleteCode->create($userId)->consume());
     }
 
     public static function normalize(string $email): string

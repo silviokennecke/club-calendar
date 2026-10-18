@@ -240,8 +240,17 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
 }
 
 /** The body of the answer is only of interest to deletes that return something (a passkey: new tokens). */
-export async function apiDelete<T = void>(path: string): Promise<T> {
-  const res = await apiFetch(path, { method: "DELETE" });
+export async function apiDelete<T = void>(path: string, body?: unknown): Promise<T> {
+  const res = await apiFetch(
+    path,
+    body === undefined
+      ? { method: "DELETE" }
+      : {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+  );
   if (!res.ok) throw await errorFrom(res);
   return bodyOf<T>(res);
 }
