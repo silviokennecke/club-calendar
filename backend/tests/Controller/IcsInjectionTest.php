@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Controller;
 
 use App\Entity\Calendar;
-use App\Entity\CalendarFeed;
 use App\Entity\Location;
 use App\Enum\FeedVisibility;
 use App\Service\TokenService;
@@ -58,7 +57,7 @@ class IcsInjectionTest extends WebTestCase
         $calendar->setName("Cal\r\nBEGIN:VEVENT");
         foreach (self::PAYLOADS as $i => $payload) {
             $loc = new Location();
-            $loc->setCalendar($calendar);
+            $loc->setClub($calendar->getClub());
             $loc->setName($payload);
             $loc->setStreet($payload);
             $loc->setZip("1\r\nX-Z:\"");
@@ -70,13 +69,7 @@ class IcsInjectionTest extends WebTestCase
             $event = TestHelper::createEvent(self::$em, $calendar, ['name' => $payload, 'date' => '2026-10-0'.($i + 1), 'isDraft' => false]);
             $event->setLocation($loc);
         }
-        $feed = new CalendarFeed();
-        $feed->setCalendar($calendar);
-        $feed->setName("Feed\r\nBEGIN:VEVENT");
-        $feed->setVisibility(FeedVisibility::PUBLIC);
-        $feed->setSharedSecret('s');
-        self::$em->persist($feed);
-        self::$em->flush();
+        $feed = TestHelper::createFeed(self::$em, $calendar->getClub(), [$calendar], FeedVisibility::PUBLIC, "Feed\r\nBEGIN:VEVENT", 's');
         $feedId = $feed->getId();
         $auth = TestHelper::authHeader($user, self::$tokens);
 
@@ -156,16 +149,10 @@ class IcsInjectionTest extends WebTestCase
         ['calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $calendar = self::$em->find(Calendar::class, $cal->getId());
         $loc = new Location();
-        $loc->setCalendar($calendar)->setName('Nowhere')->setLatitude(123.0)->setLongitude(11.0);
+        $loc->setClub($calendar->getClub())->setName('Nowhere')->setLatitude(123.0)->setLongitude(11.0);
         self::$em->persist($loc);
         TestHelper::createEvent(self::$em, $calendar, ['name' => 'E', 'isDraft' => false])->setLocation($loc);
-        $feed = new CalendarFeed();
-        $feed->setCalendar($calendar);
-        $feed->setName('F');
-        $feed->setVisibility(FeedVisibility::PUBLIC);
-        $feed->setSharedSecret('s');
-        self::$em->persist($feed);
-        self::$em->flush();
+        $feed = TestHelper::createFeed(self::$em, $calendar->getClub(), [$calendar], FeedVisibility::PUBLIC, 'F', 's');
 
         self::$client->request('GET', "/api/feed/{$feed->getId()}/ics");
         $content = (string) self::$client->getResponse()->getContent();

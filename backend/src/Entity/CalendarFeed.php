@@ -17,9 +17,9 @@ class CalendarFeed
     #[ORM\Column(length: 36)]
     private string $id;
 
-    #[ORM\ManyToOne(targetEntity: Calendar::class, inversedBy: 'feeds')]
-    #[ORM\JoinColumn(name: 'calendar_id', nullable: false, onDelete: 'CASCADE')]
-    private Calendar $calendar;
+    #[ORM\ManyToOne(targetEntity: Club::class)]
+    #[ORM\JoinColumn(name: 'club_id', nullable: false, onDelete: 'CASCADE')]
+    private Club $club;
 
     #[ORM\Column(length: 255)]
     private string $name;
@@ -38,8 +38,12 @@ class CalendarFeed
     #[ORM\OneToMany(targetEntity: CalendarFeedTargetGroup::class, mappedBy: 'feed', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $targetGroups;
 
+    #[ORM\OneToMany(targetEntity: CalendarFeedCalendar::class, mappedBy: 'feed', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $calendars;
+
     public function __construct()
     {
+        $this->calendars = new ArrayCollection();
         $this->id = Uuid::v7()->toRfc4122();
         $this->targetGroups = new ArrayCollection();
     }
@@ -49,14 +53,14 @@ class CalendarFeed
         return $this->id;
     }
 
-    public function getCalendar(): Calendar
+    public function getClub(): Club
     {
-        return $this->calendar;
+        return $this->club;
     }
 
-    public function setCalendar(Calendar $calendar): static
+    public function setClub(Club $club): static
     {
-        $this->calendar = $calendar;
+        $this->club = $club;
 
         return $this;
     }
@@ -121,5 +125,13 @@ class CalendarFeed
     public function getTargetGroups(): Collection
     {
         return $this->targetGroups;
+    }
+
+    /**
+     * @return Collection<int, CalendarFeedCalendar>
+     */
+    public function getCalendars(): Collection
+    {
+        return $this->calendars;
     }
 }

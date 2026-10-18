@@ -50,13 +50,16 @@ info:
       (403 otherwise). Members have one of three **roles** (`viewer` < `editor` < `admin`, each includes the
       lower ones): *viewer* reads (club, calendars, events, reference data, members, `events.ics`); *editor* also
       creates, changes and deletes events, series, templates, locations, properties, features, target groups and
-      holiday calendars (import, bulk and series included) and reads the feeds of a calendar (their addresses
+      holiday calendars (import, bulk and series included) and reads the feeds of the club (their addresses
       and secrets); *admin* also changes and deletes the club, creates/changes/archives/duplicates/deletes
       calendars, manages feeds, invitations, members and roles. A role too low is 403 (`Forbidden`). Anyone may
       leave a club (`DELETE …/members/{ownId}`). A club never has zero members or zero admins: the last admin can
       neither be demoted, removed nor leave (`422 last_admin`) and cannot delete the account
       (`422 last_admin_of_club`) while other members remain. Writes to an **archived** calendar are 403 (reads
-      stay possible).
+      stay possible). Locations and target groups belong to the club
+      (`/api/clubs/{clubId}/…`, shared by all its calendars): reads need membership, writes the editor role, and
+      archiving a calendar does not block them. Their names are unique per club. Properties and features stay
+      per calendar (`/api/calendars/{calendarId}/…`, names unique per calendar; writes to an archived calendar are 403).
     - **401** is always an RFC 7807 problem with `WWW-Authenticate: Bearer`. For the access token the code is
       `missing_token` (no `Authorization` header on a route that needs a user), `invalid_token` (malformed,
       wrong signature, ended session, user gone) or `token_expired`; the sign-in routes themselves answer
@@ -132,7 +135,9 @@ info:
     - Every response of `/api/feed/*` (errors included) carries `Referrer-Policy: no-referrer` and
       `X-Robots-Tag: noindex`, **except** successful responses of an indexable feed, which carry no
       `X-Robots-Tag`. The header is set by the backend only (web server configs add nothing).
-    - A feed of an archived calendar is 404 (for `PRIVATE` only after a valid secret). Unknown feed: 404.
+    - A feed shows the events of **all its selected calendars that are not archived**. An archived calendar
+      drops out; when none is left (all archived) the feed is 404 (for `PRIVATE` only after a valid secret).
+      Unknown feed: 404.
     - Switching a feed from `PUBLIC`/`CLUB` back to `PRIVATE` always generates a new secret.
     - Feeds only show published events (`isDraft: false`) and, if the feed has target groups, only events
       with one of them (the `targetGroupIds` query can narrow, never widen, that selection).
@@ -181,9 +186,10 @@ info:
     | `membersPerClub` | 500 members per club (also checked when an invitation is accepted) |
     | `pendingInvitationsPerClub` | 200 open (pending or expired, not yet answered) invitations per club |
     | `eventsPerCalendar` | 20000 events per calendar (create, from-template, series create/rule change, import) |
-    | `locationsPerCalendar` | 2000 locations (also those an import creates) |
-    | `templatesPerCalendar` / `propertiesPerCalendar` / `featuresPerCalendar` / `targetGroupsPerCalendar` | 500 each |
-    | `feedsPerCalendar` | 50 feeds |
+    | `locationsPerClub` | 2000 locations per club (also those an import creates) |
+    | `templatesPerCalendar` / `propertiesPerCalendar` / `featuresPerCalendar` | 500 each per calendar |
+    | `targetGroupsPerClub` | 500 target groups per club |
+    | `feedsPerClub` | 50 feeds per club |
     | `holidayCalendarsPerCalendar` | 20 holiday calendars |
 
     Further limits: an id list field (`propertyIds`, `featureIds`, `targetGroupIds`, also the `targetGroupIds`
@@ -1090,7 +1096,7 @@ paths:
     get:
       tags: [Clubs]
       summary: One club with counters
-      description: '`eventCount` and `feedCount` include archived calendars (what deleting the club removes).'
+      description: '`eventCount` includes archived calendars; `feedCount` counts the feeds of the club (what deleting the club removes).'
       operationId: getClub
       responses:
         '200':
@@ -1525,7 +1531,9 @@ paths:
     delete:
       tags: [Calendars]
       summary: Delete a calendar with all its data
-      description: Also allowed for archived calendars (deliberate).
+      description: >-
+        Also allowed for archived calendars (deliberate). Feeds whose only calendar this is are deleted too
+        (`exclusiveFeedCount`); feeds that select further calendars just lose this one.
       operationId: deleteCalendar
       responses:
         '200': { $ref: '#/components/responses/Ok' }
@@ -1577,8 +1585,8 @@ paths:
       tags: [Calendars]
       summary: Duplicate a calendar
       description: >-
-        Copies reference data (properties, features, target groups, locations), templates and feeds (same state, new
-        secrets, `searchable` always false), but no events. The body is optional. Also allowed for archived calendars (deliberate).
+        Copies the properties, features and templates (the copied templates reference the copy's own properties and
+        features, but keep the same club-level locations and target groups), but no events, series or feeds. The body is optional. Also allowed for archived calendars (deliberate).
       operationId: duplicateCalendar
       requestBody:
         required: false
@@ -2317,12 +2325,12 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
 
   # ------------------------------------------------------------------ Target groups
-  /api/calendars/{calendarId}/target-groups:
+  /api/clubs/{clubId}/target-groups:
     parameters:
-      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/ClubId' }
     get:
       tags: [Target groups]
-      summary: Target groups of a calendar
+      summary: Target groups of a club
       operationId: listTargetGroups
       responses:
         '200':
@@ -2362,9 +2370,9 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/DuplicateName' }
 
-  /api/calendars/{calendarId}/target-groups/{id}:
+  /api/clubs/{clubId}/target-groups/{id}:
     parameters:
-      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/ClubId' }
       - { $ref: '#/components/parameters/Id' }
     patch:
       tags: [Target groups]
@@ -2397,12 +2405,12 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
 
   # ------------------------------------------------------------------ Locations
-  /api/calendars/{calendarId}/locations:
+  /api/clubs/{clubId}/locations:
     parameters:
-      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/ClubId' }
     get:
       tags: [Locations]
-      summary: Locations of a calendar
+      summary: Locations of a club
       operationId: listLocations
       responses:
         '200':
@@ -2443,9 +2451,9 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/QuotaExceeded' }
 
-  /api/calendars/{calendarId}/locations/{id}:
+  /api/clubs/{clubId}/locations/{id}:
     parameters:
-      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/ClubId' }
       - { $ref: '#/components/parameters/Id' }
     patch:
       tags: [Locations]
@@ -2477,13 +2485,15 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
 
   # ------------------------------------------------------------------ Feeds (management)
-  /api/calendars/{calendarId}/feeds:
+  /api/clubs/{clubId}/feeds:
     parameters:
-      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/ClubId' }
     get:
       tags: [Feeds]
-      summary: Feeds of a calendar
-      description: Without `includeSecret` the feeds carry no `sharedSecret`.
+      summary: Feeds of a club
+      description: >-
+        Editors and admins only (a viewer is 403: the addresses and secrets). Without `includeSecret` the feeds
+        carry no `sharedSecret`.
       operationId: listFeeds
       parameters:
         - { $ref: '#/components/parameters/IncludeSecret' }
@@ -2502,7 +2512,10 @@ paths:
     post:
       tags: [Feeds]
       summary: Create a feed
-      description: '`visibility` defaults to `CLUB`; every feed gets a secret (only `PRIVATE` requires it), returned only with `includeSecret`.'
+      description: >-
+        Admin only. `calendarIds` (required, at least one calendar of the club, archived ones allowed) selects what the
+        feed publishes. `visibility` defaults to `CLUB`; every feed gets a secret (only `PRIVATE` requires it),
+        returned only with `includeSecret`. Quota `feedsPerClub`.
       operationId: createFeed
       parameters:
         - { $ref: '#/components/parameters/IncludeSecret' }
@@ -2513,7 +2526,7 @@ paths:
             schema:
               allOf:
                 - { $ref: '#/components/schemas/FeedInput' }
-                - { required: [name] }
+                - { required: [name, calendarIds] }
       responses:
         '201':
           description: Created.
@@ -2526,14 +2539,14 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/FeedInputRejected' }
 
-  /api/calendars/{calendarId}/feeds/{feedId}:
+  /api/clubs/{clubId}/feeds/{feedId}:
     parameters:
-      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/ClubId' }
       - { $ref: '#/components/parameters/FeedId' }
     get:
       tags: [Feeds]
       summary: One feed
-      description: A feed of another calendar is 404 like an unknown id.
+      description: Editors and admins. A feed of another club is 404 like an unknown id.
       operationId: getFeed
       parameters:
         - { $ref: '#/components/parameters/IncludeSecret' }
@@ -2552,7 +2565,7 @@ paths:
       summary: Update a feed
       description: >-
         Leaving `PUBLIC` resets `searchable` to false (also when going back to `PUBLIC` later). Switching from
-        `PUBLIC`/`CLUB` to `PRIVATE` generates a new secret. `targetGroupIds` replaces the selection when present.
+        `PUBLIC`/`CLUB` to `PRIVATE` generates a new secret. `targetGroupIds` and `calendarIds` replace the selection when present (`calendarIds` must then be non-empty).
       operationId: updateFeed
       parameters:
         - { $ref: '#/components/parameters/IncludeSecret' }
@@ -2582,9 +2595,9 @@ paths:
         '403': { $ref: '#/components/responses/ForbiddenWrite' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  /api/calendars/{calendarId}/feeds/{feedId}/regenerate-secret:
+  /api/clubs/{clubId}/feeds/{feedId}/regenerate-secret:
     parameters:
-      - { $ref: '#/components/parameters/CalendarId' }
+      - { $ref: '#/components/parameters/ClubId' }
       - { $ref: '#/components/parameters/FeedId' }
     post:
       tags: [Feeds]
@@ -2612,8 +2625,10 @@ paths:
       tags: [Public feed]
       summary: Web view of a feed (header, events, holidays)
       description: >-
-        Published events of the feed (optionally limited to `from`/`to` by overlap) and the holidays of the
-        calendar in the same range. Access (secret) is checked before the range. See "Feeds, visibility and robots
+        Published events of all non-archived calendars of the feed, merged and sorted by date and start time
+        (optionally limited to `from`/`to` by overlap), and the holidays of those calendars in the same range.
+        Holidays are de-duplicated by their `uid` (the same non-empty uid is listed once, the first in
+        date-then-id order wins; holidays without uid are never collapsed). Access (secret) is checked before the range. See "Feeds, visibility and robots
         rules" for the headers.
       operationId: publicFeedEvents
       security: [{}, { feedSecret: [] }]
@@ -2648,7 +2663,7 @@ paths:
     get:
       tags: [Public feed]
       summary: One published event of a feed
-      description: Drafts, events of other calendars or outside the feed's target groups and unknown ids are all 404. The secret is checked first.
+      description: Drafts, events of calendars that are not (or no longer, archived) part of the feed or outside the feed's target groups and unknown ids are all 404. The secret is checked first.
       operationId: publicFeedEvent
       security: [{}, { feedSecret: [] }]
       parameters:
@@ -2677,6 +2692,7 @@ paths:
     get:
       tags: [Public feed]
       summary: ICS subscription of a feed
+      description: Published events of all non-archived calendars of the feed. Holidays are never part of the ICS.
       operationId: publicFeedIcs
       security: [{}, { feedSecret: [] }]
       parameters:
@@ -3164,7 +3180,7 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     FeedInputRejected:
-      description: '`validation_failed` field `searchable` (only `PUBLIC` feeds may be searchable) or `unknown_reference` field `targetGroupIds`.'
+      description: '`validation_failed` field `searchable` (only `PUBLIC` feeds may be searchable) or `calendarIds` (empty), `unknown_reference` field `targetGroupIds` or `calendarIds` (not a calendar / target group of this club), `quota_exceeded` (`feedsPerClub`).'
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
@@ -3188,7 +3204,7 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     FeedNotFound:
-      description: Unknown feed, archived calendar or (single event) unknown/unpublished event; no `code`.
+      description: Unknown feed, no non-archived calendar left or (single event) unknown/unpublished event; no `code`.
       headers:
         Referrer-Policy: { $ref: '#/components/headers/ReferrerPolicy' }
         X-Robots-Tag: { $ref: '#/components/headers/XRobotsTag' }
@@ -3308,9 +3324,9 @@ components:
         | `ics_fetch_failed` | 422 | Holiday calendar create/refresh: the ICS URL could not be fetched or parsed (field `url`) |
         | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After`; club invitations (create, re-send): 20 per user and 50 per club and day; account deletion (`DELETE /api/auth/me`, `POST /api/auth/delete-account/code`): per user and per IP |
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
-        | `duplicate_name` | 422 | Name of a property/feature/target group already used in the calendar |
+        | `duplicate_name` | 422 | Name of a property/feature already used in the calendar, or of a target group in the club |
         | `too_many_events` | 413 / 422 | 413: import > 5000 events/locations, bulk > 5000 ids; 422: series > 366 events (preview, create, rule change) |
-        | `quota_exceeded` | 422 | A create/import would exceed a quota (clubs per user, calendars/members/open invitations per club, events/locations/templates/properties/features/target groups/feeds/holiday calendars per calendar); extra members `resource`, `limit`. List: "Quotas and input limits" |
+        | `quota_exceeded` | 422 | A create/import would exceed a quota (clubs per user, calendars/members/open invitations per club, events/templates/properties/features/holiday calendars per calendar, locations/target groups/feeds per club); extra members `resource`, `limit`. List: "Quotas and input limits" |
         | `series_empty` | 409 | Rule change preview/PATCH: the series has no events |
         | `series_changed` | 409 | Rule change PATCH: prototype/reference deleted concurrently or deadlock; nothing changed |
         | `email_taken` | 400 | Registration, field `email` |
@@ -3552,7 +3568,7 @@ components:
         role: { $ref: '#/components/schemas/ClubRole' }
     Calendar:
       type: object
-      required: [id, clubId, name, timezone, archivedAt, eventCount, templateCount, feedCount]
+      required: [id, clubId, name, timezone, archivedAt, eventCount, templateCount, feedCount, exclusiveFeedCount]
       properties:
         id: { type: string }
         clubId: { type: string }
@@ -3561,7 +3577,8 @@ components:
         archivedAt: { type: [string, 'null'], format: date-time }
         eventCount: { type: integer }
         templateCount: { type: integer }
-        feedCount: { type: integer }
+        feedCount: { type: integer, description: Number of feeds of the club that select this calendar. }
+        exclusiveFeedCount: { type: integer, description: 'Feeds whose only calendar is this one; deleting the calendar deletes them (shared feeds just lose the calendar).' }
 
     # ---------------------------------------------------------------- reference data
     LocationRef:
@@ -3580,9 +3597,9 @@ components:
       allOf:
         - { $ref: '#/components/schemas/LocationRef' }
         - type: object
-          required: [calendarId, updatedAt]
+          required: [clubId, updatedAt]
           properties:
-            calendarId: { type: string }
+            clubId: { type: string }
             updatedAt: { type: integer, description: Unix timestamp (cache key of map images). }
     LocationInput:
       type: object
@@ -3638,10 +3655,10 @@ components:
         name: { type: string }
     TargetGroup:
       type: object
-      required: [id, calendarId, name]
+      required: [id, clubId, name]
       properties:
         id: { type: string }
-        calendarId: { type: string }
+        clubId: { type: string }
         name: { type: string }
     NameInput:
       type: object
@@ -4000,10 +4017,11 @@ components:
       description: '`PUBLIC` and `CLUB` are reachable by link without the secret and differ only for search engines; `PRIVATE` requires the secret.'
     Feed:
       type: object
-      required: [id, calendarId, name, visibility, searchable, indexable, targetGroups]
+      required: [id, clubId, calendarIds, name, visibility, searchable, indexable, targetGroups]
       properties:
         id: { type: string }
-        calendarId: { type: string }
+        clubId: { type: string }
+        calendarIds: { type: array, items: { type: string }, description: 'Calendars of the club the feed publishes (at least one; archived ones contribute nothing while archived).' }
         name: { type: string }
         visibility: { $ref: '#/components/schemas/FeedVisibility' }
         searchable: { type: boolean, description: Effective search engine opt-in (always false unless `PUBLIC`). }
@@ -4027,15 +4045,15 @@ components:
           description: 'Default `CLUB` on create. Invalid or empty → 400 `validation_failed` field `visibility`.'
         searchable: { type: boolean, description: 'Only with (resulting) `PUBLIC`; else 422 field `searchable`. No boolean → 400.' }
         targetGroupIds: { $ref: '#/components/schemas/IdList' }
+        calendarIds: { allOf: [{ $ref: '#/components/schemas/IdList' }], description: 'Required on create; optional on update but non-empty when sent. Every id must be a calendar of the club (422 `unknown_reference`; empty: 422 `validation_failed`).' }
     PublicFeedHeader:
       type: object
-      required: [id, name, clubName, calendarName, timezone, visibility, indexable, eventCount, audiences]
+      required: [id, name, clubName, timezone, visibility, indexable, eventCount, audiences]
       properties:
         id: { type: string }
-        name: { type: string }
+        name: { type: string, description: The feed name (replaces the former calendar name in the page title). }
         clubName: { type: string }
-        calendarName: { type: string }
-        timezone: { type: string, description: 'Effective calendar zone (calendar, else club, else UTC).' }
+        timezone: { type: string, description: 'Time zone of the club (else UTC). An event without its own zone falls back to its calendar zone, then the club zone.' }
         visibility: { $ref: '#/components/schemas/FeedVisibility' }
         indexable: { type: boolean, description: Drives the `<meta name="robots">` of the SPA page. }
         eventCount: { type: integer, description: All published events of the feed (not only the range). }

@@ -60,10 +60,10 @@ class InputIntegrityTest extends WebTestCase
     private function createReferenceData(string $base, string $auth): array
     {
         return [
-            'tg' => TestHelper::jsonRequest(self::$client, 'POST', "$base/target-groups", ['name' => 'Jugend'], $auth)['body']['id'],
-            'prop' => TestHelper::jsonRequest(self::$client, 'POST', "$base/properties", ['name' => 'Tracht'], $auth)['body']['id'],
-            'feat' => TestHelper::jsonRequest(self::$client, 'POST', "$base/features", ['name' => 'Bonus'], $auth)['body']['id'],
-            'loc' => TestHelper::jsonRequest(self::$client, 'POST', "$base/locations", ['name' => 'Halle'], $auth)['body']['id'],
+            'tg' => TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/target-groups', ['name' => 'Jugend'], $auth)['body']['id'],
+            'prop' => TestHelper::jsonRequest(self::$client, 'POST', $base.'/properties', ['name' => 'Tracht'], $auth)['body']['id'],
+            'feat' => TestHelper::jsonRequest(self::$client, 'POST', $base.'/features', ['name' => 'Bonus'], $auth)['body']['id'],
+            'loc' => TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/locations', ['name' => 'Halle'], $auth)['body']['id'],
         ];
     }
 
@@ -138,23 +138,25 @@ class InputIntegrityTest extends WebTestCase
 
     public function testFeedWithDuplicateTargetGroupIds(): void
     {
-        ['auth' => $auth, 'base' => $base, 'tg' => $tg] = $this->setupCalendar();
-        $tg2 = TestHelper::jsonRequest(self::$client, 'POST', "$base/target-groups", ['name' => 'Senioren'], $auth)['body']['id'];
-        $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/feeds", [
-            'name' => 'Feed', 'visibility' => 'PUBLIC', 'targetGroupIds' => [$tg, $tg],
+        ['auth' => $auth, 'base' => $base, 'tg' => $tg, 'calendar' => $cal] = $this->setupCalendar();
+        $clubBase = TestHelper::clubBase(self::$em, $base);
+        $tg2 = TestHelper::jsonRequest(self::$client, 'POST', $clubBase.'/target-groups', ['name' => 'Senioren'], $auth)['body']['id'];
+        $r = TestHelper::jsonRequest(self::$client, 'POST', "$clubBase/feeds", [
+            'name' => 'Feed', 'visibility' => 'PUBLIC', 'targetGroupIds' => [$tg, $tg], 'calendarIds' => [$cal->getId(), $cal->getId()],
         ], $auth);
         $this->assertSame(201, $r['status']);
         $this->assertCount(1, $r['body']['targetGroups']);
+        $this->assertSame([$cal->getId()], $r['body']['calendarIds'], 'duplicate calendar ids are linked once');
         $id = $r['body']['id'];
         self::$em->clear();
 
-        $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/feeds/$id", ['targetGroupIds' => [$tg, $tg2, $tg2]], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$clubBase/feeds/$id", ['targetGroupIds' => [$tg, $tg2, $tg2]], $auth);
         $this->assertSame(200, $r['status']);
         $this->assertCount(2, $r['body']['targetGroups']);
         self::$em->clear();
 
         // Removing the first link must still serialize the links as a JSON list
-        $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/feeds/$id", ['targetGroupIds' => [$tg2]], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$clubBase/feeds/$id", ['targetGroupIds' => [$tg2]], $auth);
         $this->assertSame(200, $r['status']);
         $this->assertTrue(array_is_list($r['body']['targetGroups']));
         $this->assertSame([$tg2], array_column($r['body']['targetGroups'], 'targetGroupId'));
@@ -164,7 +166,7 @@ class InputIntegrityTest extends WebTestCase
 
     public function testEventCannotLinkDataOfAnotherCalendar(): void
     {
-        ['user' => $user, 'auth' => $auth, 'base' => $base] = $this->setupCalendar();
+        ['user' => $user, 'auth' => $auth, 'base' => $base, 'calendar' => $cal] = $this->setupCalendar();
         $foreign = $this->otherCalendarData($user, $auth);
         $cases = [
             ['locationId' => $foreign['loc']],
@@ -195,7 +197,7 @@ class InputIntegrityTest extends WebTestCase
 
     public function testFromTemplateOverridesCannotLinkDataOfAnotherCalendar(): void
     {
-        ['user' => $user, 'auth' => $auth, 'base' => $base] = $this->setupCalendar();
+        ['user' => $user, 'auth' => $auth, 'base' => $base, 'calendar' => $cal] = $this->setupCalendar();
         $foreign = $this->otherCalendarData($user, $auth);
         $tmpl = TestHelper::jsonRequest(self::$client, 'POST', "$base/templates", [
             'name' => 'T', 'timezone' => 'Europe/Berlin', 'timeBegin' => '18:00', 'timeEnd' => '20:00',
@@ -210,15 +212,15 @@ class InputIntegrityTest extends WebTestCase
 
     public function testTemplateAndFeedRejectDataOfAnotherCalendar(): void
     {
-        ['user' => $user, 'auth' => $auth, 'base' => $base] = $this->setupCalendar();
+        ['user' => $user, 'auth' => $auth, 'base' => $base, 'calendar' => $cal] = $this->setupCalendar();
         $foreign = $this->otherCalendarData($user, $auth);
         $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/templates", [
             'name' => 'T', 'timezone' => 'Europe/Berlin', 'timeBegin' => '18:00', 'timeEnd' => '20:00',
             'targetGroupIds' => [$foreign['tg']],
         ], $auth);
         $this->assertSame(422, $r['status']);
-        $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/feeds", [
-            'name' => 'Feed', 'visibility' => 'PUBLIC', 'targetGroupIds' => [$foreign['tg']],
+        $r = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/feeds', [
+            'name' => 'Feed', 'visibility' => 'PUBLIC', 'targetGroupIds' => [$foreign['tg']], 'calendarIds' => [$cal->getId()],
         ], $auth);
         $this->assertSame(422, $r['status']);
     }
@@ -226,13 +228,13 @@ class InputIntegrityTest extends WebTestCase
     public function testForeignAndMalformedIdsAreRejectedAlikeWithoutOracle(): void
     {
         ['user' => $user, 'calendar' => $cal, 'auth' => $auth, 'base' => $base, 'tg' => $tg, 'prop' => $prop] = $this->setupCalendar();
-        // Same club, other calendar
-        $siblingId = TestHelper::jsonRequest(self::$client, 'POST', "/api/clubs/{$cal->getClub()->getId()}/calendars", ['name' => 'Geschwister'], $auth)['body']['id'];
-        $siblingTg = TestHelper::jsonRequest(self::$client, 'POST', "/api/calendars/$siblingId/target-groups", ['name' => 'Fremd'], $auth)['body']['id'];
+        // Another club of the same user (club-level data is shared by all calendars of ONE club only)
+        $siblingClub = TestHelper::createClub(self::$em, self::$em->find(User::class, $user->getId()), 'Zweiter Verein');
+        $siblingTg = TestHelper::jsonRequest(self::$client, 'POST', "/api/clubs/{$siblingClub->getId()}/target-groups", ['name' => 'Fremd'], $auth)['body']['id'];
         // Other user, other club (not a member)
         ['user' => $stranger, 'calendar' => $strangerCal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $strangerAuth = TestHelper::authHeader($stranger, self::$tokens);
-        $strangerTg = TestHelper::jsonRequest(self::$client, 'POST', "/api/calendars/{$strangerCal->getId()}/target-groups", ['name' => 'Fremd'], $strangerAuth)['body']['id'];
+        $strangerTg = TestHelper::jsonRequest(self::$client, 'POST', "/api/clubs/{$strangerCal->getClub()->getId()}/target-groups", ['name' => 'Fremd'], $strangerAuth)['body']['id'];
         $unknown = '0190a4c2-0000-7000-8000-000000000000';
 
         $id = TestHelper::jsonRequest(self::$client, 'POST', "$base/events", $this->event(['targetGroupIds' => [$tg]]), $auth)['body']['id'];
@@ -330,7 +332,8 @@ class InputIntegrityTest extends WebTestCase
     {
         ['auth' => $auth, 'base' => $base] = $this->setupCalendar();
         foreach (['properties', 'features', 'target-groups'] as $res) {
-            $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/$res", ['icon' => 'x'], $auth);
+            $scope = 'target-groups' === $res ? TestHelper::clubBase(self::$em, $base) : $base;
+            $r = TestHelper::jsonRequest(self::$client, 'POST', "$scope/$res", ['icon' => 'x'], $auth);
             $this->assertSame(400, $r['status'], $res);
         }
         // Times are optional since templates may create all-day events (TemplateTimesTest); the name is not
@@ -342,9 +345,9 @@ class InputIntegrityTest extends WebTestCase
     {
         ['auth' => $auth, 'base' => $base, 'loc' => $loc] = $this->setupCalendar();
         foreach (['country' => 101, 'zip' => 21, 'name' => 256] as $field => $length) {
-            $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/locations", [$field => str_repeat('x', $length)], $auth);
+            $r = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/locations', [$field => str_repeat('x', $length)], $auth);
             $this->assertSame(400, $r['status'], "create $field");
-            $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/locations/$loc", [$field => str_repeat('x', $length)], $auth);
+            $r = TestHelper::jsonRequest(self::$client, 'PATCH', TestHelper::clubBase(self::$em, $base)."/locations/$loc", [$field => str_repeat('x', $length)], $auth);
             $this->assertSame(400, $r['status'], "update $field");
         }
     }

@@ -40,16 +40,9 @@ class PublicTest extends WebTestCase
 
     private function createFeed(string $calendarId, FeedVisibility $visibility = FeedVisibility::PUBLIC, string $secret = 'test-secret'): CalendarFeed
     {
-        $feed = new CalendarFeed();
         $calendar = self::$em->getRepository(Calendar::class)->find($calendarId);
-        $feed->setCalendar($calendar);
-        $feed->setName('Test Feed');
-        $feed->setVisibility($visibility);
-        $feed->setSharedSecret($secret);
-        self::$em->persist($feed);
-        self::$em->flush();
 
-        return $feed;
+        return TestHelper::createFeed(self::$em, $calendar->getClub(), [$calendar], $visibility, 'Test Feed', $secret);
     }
 
     public function testFeedApiResponsesSendNoReferrerAndNoindex(): void
@@ -177,10 +170,10 @@ class PublicTest extends WebTestCase
     {
         ['calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $youth = new TargetGroup();
-        $youth->setCalendar($cal);
+        $youth->setClub($cal->getClub());
         $youth->setName('Jugend');
         $adults = new TargetGroup();
-        $adults->setCalendar($cal);
+        $adults->setClub($cal->getClub());
         $adults->setName('Erwachsene');
         self::$em->persist($youth);
         self::$em->persist($adults);

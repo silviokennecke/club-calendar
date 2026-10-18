@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Entity\Calendar;
-use App\Security\ArchivedCalendarVoter;
-use App\Security\CalendarMemberVoter;
+use App\Entity\Club;
+use App\Security\ClubMemberVoter;
 use App\Service\LocationService;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -15,7 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/api/calendars/{calendarId}/locations')]
+#[Route('/api/clubs/{clubId}/locations')]
 class LocationController extends AbstractApiController
 {
     public function __construct(
@@ -24,38 +23,35 @@ class LocationController extends AbstractApiController
     }
 
     #[Route('', methods: ['GET'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
-    public function list(#[MapEntity(id: 'calendarId')] Calendar $calendar): JsonResponse
+    #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
+    public function list(#[MapEntity(id: 'clubId')] Club $club): JsonResponse
     {
-        return new JsonResponse($this->locationService->list($calendar));
+        return new JsonResponse($this->locationService->list($club));
     }
 
     #[Route('', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
-    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function create(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
+    #[IsGranted(ClubMemberVoter::CLUB_EDITOR, subject: 'club')]
+    public function create(#[MapEntity(id: 'clubId')] Club $club, Request $request): JsonResponse
     {
         $data = $this->decodeJson($request);
 
-        return new JsonResponse($this->locationService->create($calendar, $data), Response::HTTP_CREATED);
+        return new JsonResponse($this->locationService->create($club, $data), Response::HTTP_CREATED);
     }
 
     #[Route('/{id}', methods: ['PATCH'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
-    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function update(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id, Request $request): JsonResponse
+    #[IsGranted(ClubMemberVoter::CLUB_EDITOR, subject: 'club')]
+    public function update(#[MapEntity(id: 'clubId')] Club $club, string $id, Request $request): JsonResponse
     {
         $data = $this->decodeJson($request);
 
-        return new JsonResponse($this->locationService->update($id, $calendar, $data));
+        return new JsonResponse($this->locationService->update($id, $club, $data));
     }
 
     #[Route('/{id}', methods: ['DELETE'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
-    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id): JsonResponse
+    #[IsGranted(ClubMemberVoter::CLUB_EDITOR, subject: 'club')]
+    public function delete(#[MapEntity(id: 'clubId')] Club $club, string $id): JsonResponse
     {
-        $this->locationService->delete($id, $calendar);
+        $this->locationService->delete($id, $club);
 
         return new JsonResponse(['ok' => true]);
     }

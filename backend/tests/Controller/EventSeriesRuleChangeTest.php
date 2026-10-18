@@ -231,11 +231,12 @@ class EventSeriesRuleChangeTest extends WebTestCase
 
     public function testEventsEditedOnTheirOwnStayAndNewEventsCopyThePrototype(): void
     {
-        [$auth, $base] = $this->setupCalendar();
-        $loc = $this->req('POST', "$base/locations", $auth, ['name' => 'Schützenhaus'])['body']['id'];
+        [$auth, $base, , $clubId] = $this->setupCalendar();
+        $clubBase = "/api/clubs/$clubId";
+        $loc = $this->req('POST', "$clubBase/locations", $auth, ['name' => 'Schützenhaus'])['body']['id'];
         $prop = $this->req('POST', "$base/properties", $auth, ['name' => 'Tracht'])['body']['id'];
         $feat = $this->req('POST', "$base/features", $auth, ['name' => 'Bonusschießen'])['body']['id'];
-        $group = $this->req('POST', "$base/target-groups", $auth, ['name' => 'Jugend'])['body']['id'];
+        $group = $this->req('POST', "$clubBase/target-groups", $auth, ['name' => 'Jugend'])['body']['id'];
         $series = $this->createSeries($base, $auth);
         $ids = array_column($series['events'], 'id', 'date');
 
@@ -554,7 +555,8 @@ class EventSeriesRuleChangeTest extends WebTestCase
 
     public function testQueriesStayConstantForMoreEvents(): void
     {
-        [$auth, $base] = $this->setupCalendar();
+        [$auth, $base, , $clubId] = $this->setupCalendar();
+        $clubBase = "/api/clubs/$clubId";
         $prop = $this->req('POST', "$base/properties", $auth, ['name' => 'Tracht'])['body']['id'];
         $event = ['propertyIds' => [$prop]];
         $short = $this->createSeries($base, $auth, [], $event);

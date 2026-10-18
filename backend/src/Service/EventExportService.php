@@ -110,6 +110,6 @@ readonly class EventExportService
         }
 
         // Only target groups of this calendar (unknown and foreign ids alike → 422)
-        return array_keys($this->references->findAll(TargetGroup::class, $calendar, $ids, 'targetGroupIds'));
+        return array_keys($this->references->findAll(TargetGroup::class, $calendar->getClub(), $ids, 'targetGroupIds'));
     }
 }

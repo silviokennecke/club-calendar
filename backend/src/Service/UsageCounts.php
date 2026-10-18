@@ -6,7 +6,9 @@ namespace App\Service;
 
 use App\Entity\Calendar;
 use App\Entity\CalendarFeed;
+use App\Entity\CalendarFeedCalendar;
 use App\Entity\CalendarFeedTargetGroup;
+use App\Entity\Club;
 use App\Entity\ClubUser;
 use App\Entity\Event;
 use App\Entity\EventFeature;
@@ -93,20 +95,30 @@ readonly class UsageCounts
      */
     public function feedsByClub(array $clubIds): array
     {
-        return $this->grouped(CalendarFeed::class, 'c.club', 'x.id', 'c.club IN (:ids)', ['x.calendar' => 'c'], ['ids' => $clubIds]);
+        return $this->grouped(CalendarFeed::class, 'x.club', 'x.id', 'x.club IN (:ids)', [], ['ids' => $clubIds]);
     }
 
     /**
      * @param list<string> $calendarIds
      *
-     * @return array{events: array<string, int>, templates: array<string, int>, feeds: array<string, int>}
+     * @return array{events: array<string, int>, templates: array<string, int>, feeds: array<string, int>, exclusiveFeeds: array<string, int>}
      */
     public function byCalendar(array $calendarIds): array
     {
         return [
             'events' => $this->grouped(Event::class, 'x.calendar', 'x.id', 'x.calendar IN (:ids)', [], ['ids' => $calendarIds]),
             'templates' => $this->grouped(EventTemplate::class, 'x.calendar', 'x.id', 'x.calendar IN (:ids)', [], ['ids' => $calendarIds]),
-            'feeds' => $this->grouped(CalendarFeed::class, 'x.calendar', 'x.id', 'x.calendar IN (:ids)', [], ['ids' => $calendarIds]),
+            // feeds that include the calendar
+            'feeds' => $this->grouped(CalendarFeedCalendar::class, 'x.calendar', 'x.feed', 'x.calendar IN (:ids)', [], ['ids' => $calendarIds]),
+            // feeds whose only calendar is this one (deleted together with it)
+            'exclusiveFeeds' => $this->grouped(
+                CalendarFeedCalendar::class,
+                'x.calendar',
+                'x.feed',
+                'x.calendar IN (:ids) AND NOT EXISTS (SELECT 1 FROM '.CalendarFeedCalendar::class.' y WHERE y.feed = x.feed AND y.calendar <> x.calendar)',
+                [],
+                ['ids' => $calendarIds],
+            ),
         ];
     }
 
@@ -132,10 +144,10 @@ readonly class UsageCounts
      *
      * @return array<string, array{events: int, templates: int, feeds: int, eventNames: list<string>}>
      */
-    public function targetGroupUsage(Calendar $calendar): array
+    public function targetGroupUsage(Club $club): array
     {
-        $usage = $this->linkUsage($calendar, TargetGroup::class, EventTargetGroup::class, 'targetGroup', EventTemplateTargetGroup::class);
-        $feeds = $this->grouped(CalendarFeedTargetGroup::class, 'x.targetGroup', 'f.id', 'o.calendar = :cal', ['x.targetGroup' => 'o', 'x.feed' => 'f'], ['cal' => $calendar]);
+        $usage = $this->linkUsage($club, TargetGroup::class, EventTargetGroup::class, 'targetGroup', EventTemplateTargetGroup::class);
+        $feeds = $this->grouped(CalendarFeedTargetGroup::class, 'x.targetGroup', 'f.id', 'o.club = :club', ['x.targetGroup' => 'o', 'x.feed' => 'f'], ['club' => $club]);
         $result = [];
         foreach ($usage as $id => $u) {
             $result[$id] = ['events' => $u['events'], 'templates' => $u['templates'], 'feeds' => $feeds[$id] ?? 0, 'eventNames' => $u['eventNames']];
@@ -145,20 +157,20 @@ readonly class UsageCounts
     }
 
     /**
-     * Events and templates at the locations of a calendar, with the names of the templates that use a
+     * Events and templates at the locations of a club (all its calendars), with the names of the templates that use a
      * location as their default place when at most MAX_NAMED do.
      *
      * @return array<string, array{events: int, templates: int, templateNames: list<string>}>
      */
-    public function locationUsage(Calendar $calendar): array
+    public function locationUsage(Club $club): array
     {
-        $events = $this->grouped(Event::class, 'x.location', 'x.id', 'x.calendar = :cal AND x.location IS NOT NULL', [], ['cal' => $calendar]);
-        $templates = $this->grouped(EventTemplate::class, 'x.location', 'x.id', 'x.calendar = :cal AND x.location IS NOT NULL', [], ['cal' => $calendar]);
+        $events = $this->grouped(Event::class, 'x.location', 'x.id', 'o.club = :club', ['x.location' => 'o'], ['club' => $club]);
+        $templates = $this->grouped(EventTemplate::class, 'x.location', 'x.id', 'o.club = :club', ['x.location' => 'o'], ['club' => $club]);
         $names = $this->namesOf(EventTemplate::class, 'location', $this->fewUses($templates), 'x.name');
 
         $ids = $this->em->createQueryBuilder()
             ->select('l.id')->from(Location::class, 'l')
-            ->where('l.calendar = :cal')->setParameter('cal', $calendar)
+            ->where('l.club = :club')->setParameter('club', $club)
             ->getQuery()->getSingleColumnResult();
 
         $result = [];
@@ -186,10 +198,11 @@ readonly class UsageCounts
      *
      * @return array<string, array{events: int, templates: int, eventNames: list<string>}>
      */
-    private function linkUsage(Calendar $calendar, string $ownerClass, string $eventLink, string $field, string $templateLink): array
+    private function linkUsage(Club|Calendar $scope, string $ownerClass, string $eventLink, string $field, string $templateLink): array
     {
-        $events = $this->grouped($eventLink, "x.$field", 'e.id', 'o.calendar = :cal', ["x.$field" => 'o', 'x.event' => 'e'], ['cal' => $calendar]);
-        $templates = $this->grouped($templateLink, "x.$field", 't.id', 'o.calendar = :cal', ["x.$field" => 'o', 'x.template' => 't'], ['cal' => $calendar]);
+        $col = $scope instanceof Club ? 'club' : 'calendar';
+        $events = $this->grouped($eventLink, "x.$field", 'e.id', "o.$col = :scope", ["x.$field" => 'o', 'x.event' => 'e'], ['scope' => $scope]);
+        $templates = $this->grouped($templateLink, "x.$field", 't.id', "o.$col = :scope", ["x.$field" => 'o', 'x.template' => 't'], ['scope' => $scope]);
 
         $few = $this->fewUses($events);
         $names = [];
@@ -208,7 +221,7 @@ readonly class UsageCounts
 
         $ids = $this->em->createQueryBuilder()
             ->select('o.id')->from($ownerClass, 'o')
-            ->where('o.calendar = :cal')->setParameter('cal', $calendar)
+            ->where("o.$col = :scope")->setParameter('scope', $scope)
             ->getQuery()->getSingleColumnResult();
 
         $result = [];

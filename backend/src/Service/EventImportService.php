@@ -133,7 +133,7 @@ readonly class EventImportService
 
         $newPlaces = count(array_filter($places, fn (Location $l) => isset($used[spl_object_id($l)])));
         $this->quota->assertRoom(Quota::EVENTS_PER_CALENDAR, $calendar, count($ids));
-        $this->quota->assertRoom(Quota::LOCATIONS_PER_CALENDAR, $calendar, $newPlaces);
+        $this->quota->assertRoom(Quota::LOCATIONS_PER_CLUB, $calendar->getClub(), $newPlaces);
 
         // New places are only created for imported events (not for unused or only skipped ones)
         $created = [];
@@ -196,7 +196,7 @@ readonly class EventImportService
                 if (isset($places[$tempId])) {
                     throw Input::invalid('tempId', sprintf('tempId "%s" is used twice', $tempId));
                 }
-                $places[$tempId] = $this->locations->build($calendar, $data);
+                $places[$tempId] = $this->locations->build($calendar->getClub(), $data);
             } catch (HttpException $e) {
                 throw $this->prefixed($e, sprintf('locations[%d]', $n));
             }
@@ -280,7 +280,10 @@ readonly class EventImportService
      */
     private function preloadReferences(Calendar $calendar): void
     {
-        foreach ([Location::class, Property::class, Feature::class, TargetGroup::class, EventTemplate::class] as $class) {
+        foreach ([Location::class, TargetGroup::class] as $class) {
+            $this->em->getRepository($class)->findBy(['club' => $calendar->getClub()]);
+        }
+        foreach ([Property::class, Feature::class, EventTemplate::class] as $class) {
             $this->em->getRepository($class)->findBy(['calendar' => $calendar]);
         }
     }

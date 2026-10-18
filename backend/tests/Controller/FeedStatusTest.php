@@ -62,13 +62,8 @@ class FeedStatusTest extends WebTestCase
     /** A feed stored directly (secrets are unique, so each feed gets its own; PRIVATE ones the known one). */
     private function feed(Calendar $cal, FeedVisibility $visibility, bool $searchable = false): CalendarFeed
     {
-        $feed = new CalendarFeed();
-        $feed->setCalendar($cal);
-        $feed->setName('Feed '.$visibility->value);
-        $feed->setVisibility($visibility);
+        $feed = TestHelper::createFeed(self::$em, $cal->getClub(), [$cal], $visibility, 'Feed '.$visibility->value, FeedVisibility::PRIVATE === $visibility ? self::SECRET : self::SECRET.'-'.++self::$feedNo);
         $feed->setSearchable($searchable);
-        $feed->setSharedSecret(FeedVisibility::PRIVATE === $visibility ? self::SECRET : self::SECRET.'-'.++self::$feedNo);
-        self::$em->persist($feed);
         self::$em->flush();
 
         return $feed;
@@ -210,16 +205,16 @@ class FeedStatusTest extends WebTestCase
     public function testNewFeedsAreClubAndNotSearchableByDefault(): void
     {
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
-        $base = "/api/calendars/{$cal->getId()}/feeds";
+        $base = "/api/clubs/{$cal->getClub()->getId()}/feeds";
 
-        $r = $this->req('POST', $base.'?includeSecret=1', $this->auth($user), ['name' => 'Ohne Angabe']);
+        $r = $this->req('POST', $base.'?includeSecret=1', $this->auth($user), ['calendarIds' => [$cal->getId()], 'name' => 'Ohne Angabe']);
         $this->assertSame(201, $r['status']);
         $this->assertSame('CLUB', $r['body']['visibility']);
         $this->assertFalse($r['body']['searchable']);
         $this->assertFalse($r['body']['indexable']);
         $this->assertNotSame('', $r['body']['sharedSecret']);
 
-        $public = $this->req('POST', $base, $this->auth($user), ['name' => 'Öffentlich', 'visibility' => 'PUBLIC']);
+        $public = $this->req('POST', $base, $this->auth($user), ['calendarIds' => [$cal->getId()], 'name' => 'Öffentlich', 'visibility' => 'PUBLIC']);
         $this->assertSame(201, $public['status']);
         $this->assertFalse($public['body']['searchable'], 'opt-in: PUBLIC is not searchable by default');
 
@@ -231,10 +226,10 @@ class FeedStatusTest extends WebTestCase
     {
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $auth = $this->auth($user);
-        $base = "/api/calendars/{$cal->getId()}/feeds";
+        $base = "/api/clubs/{$cal->getClub()->getId()}/feeds";
 
         foreach (['CLUB', 'PRIVATE', null] as $visibility) {
-            $data = ['name' => 'X', 'searchable' => true] + (null === $visibility ? [] : ['visibility' => $visibility]);
+            $data = ['calendarIds' => [$cal->getId()], 'name' => 'X', 'searchable' => true] + (null === $visibility ? [] : ['visibility' => $visibility]);
             $r = $this->req('POST', $base, $auth, $data);
             $this->assertSame(422, $r['status'], (string) $visibility);
             $this->assertSame('validation_failed', $r['body']['code']);
@@ -243,18 +238,18 @@ class FeedStatusTest extends WebTestCase
         $this->assertSame(0, self::$em->getRepository(CalendarFeed::class)->count([]), 'nothing created');
 
         // false is fine for every status
-        $club = $this->req('POST', $base, $auth, ['name' => 'Verein', 'visibility' => 'CLUB', 'searchable' => false]);
+        $club = $this->req('POST', $base, $auth, ['calendarIds' => [$cal->getId()], 'name' => 'Verein', 'visibility' => 'CLUB', 'searchable' => false]);
         $this->assertSame(201, $club['status']);
         $this->assertFalse($club['body']['searchable']);
 
-        $bad = $this->req('POST', $base, $auth, ['name' => 'X', 'visibility' => 'PUBLIC', 'searchable' => 'yes']);
+        $bad = $this->req('POST', $base, $auth, ['calendarIds' => [$cal->getId()], 'name' => 'X', 'visibility' => 'PUBLIC', 'searchable' => 'yes']);
         $this->assertSame(400, $bad['status']);
         $this->assertSame('searchable', $bad['body']['field']);
-        $badVisibility = $this->req('POST', $base, $auth, ['name' => 'X', 'visibility' => 'INTERNAL']);
+        $badVisibility = $this->req('POST', $base, $auth, ['calendarIds' => [$cal->getId()], 'name' => 'X', 'visibility' => 'INTERNAL']);
         $this->assertSame(400, $badVisibility['status']);
         $this->assertSame(['validation_failed', 'visibility'], [$badVisibility['body']['code'], $badVisibility['body']['field']]);
 
-        $public = $this->req('POST', $base, $auth, ['name' => 'Öffentlich', 'visibility' => 'PUBLIC', 'searchable' => true]);
+        $public = $this->req('POST', $base, $auth, ['calendarIds' => [$cal->getId()], 'name' => 'Öffentlich', 'visibility' => 'PUBLIC', 'searchable' => true]);
         $this->assertSame(201, $public['status']);
         $this->assertTrue($public['body']['searchable']);
         $this->assertTrue($public['body']['indexable']);
@@ -297,22 +292,21 @@ class FeedStatusTest extends WebTestCase
         $this->assertSame([false, false], array_column($list, 'searchable'));
     }
 
-    public function testFeedRoutesKeepTenantAndArchiveRules(): void
+    public function testFeedRoutesKeepTenantRulesAndIgnoreArchiving(): void
     {
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         ['user' => $stranger, 'calendar' => $otherCal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $feed = $this->feed($cal, FeedVisibility::PUBLIC);
-        $uri = "/api/calendars/{$cal->getId()}/feeds/{$feed->getId()}";
+        $uri = "/api/clubs/{$cal->getClub()->getId()}/feeds/{$feed->getId()}";
 
         $this->assertSame(403, $this->req('PATCH', $uri, $this->auth($stranger), ['searchable' => true])['status']);
         // A feed of another calendar through a calendar the user is a member of
-        $this->assertSame(404, $this->req('PATCH', "/api/calendars/{$otherCal->getId()}/feeds/{$feed->getId()}", $this->auth($stranger), ['searchable' => true])['status']);
+        $this->assertSame(404, $this->req('PATCH', "/api/clubs/{$otherCal->getClub()->getId()}/feeds/{$feed->getId()}", $this->auth($stranger), ['searchable' => true])['status']);
 
+        // Archived calendars do not block feed management (feeds belong to the club)
         $cal->setArchivedAt(new \DateTimeImmutable());
         self::$em->flush();
-        $this->assertSame(403, $this->req('PATCH', $uri, $this->auth($user), ['searchable' => true])['status']);
-        self::$em->clear();
-        $this->assertFalse(self::$em->find(CalendarFeed::class, $feed->getId())->isSearchable());
+        $this->assertSame(200, $this->req('PATCH', $uri, $this->auth($user), ['searchable' => true])['status']);
     }
 
     // --- The shared secret is only returned on request ---
@@ -323,7 +317,7 @@ class FeedStatusTest extends WebTestCase
         ['user' => $stranger] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $auth = $this->auth($user);
         $feed = $this->feed($cal, FeedVisibility::PRIVATE);
-        $base = "/api/calendars/{$cal->getId()}/feeds";
+        $base = "/api/clubs/{$cal->getClub()->getId()}/feeds";
         $one = "$base/{$feed->getId()}";
 
         // Default: no `sharedSecret` in list, get, create, update and regenerate
@@ -335,7 +329,7 @@ class FeedStatusTest extends WebTestCase
         $this->assertArrayNotHasKey('sharedSecret', $this->req('GET', $one, $auth)['body']);
         $this->assertArrayNotHasKey('sharedSecret', $this->req('GET', $one.'?includeSecret=0', $auth)['body']);
         $this->assertArrayNotHasKey('sharedSecret', $this->req('GET', $one.'?includeSecret=false', $auth)['body']);
-        $this->assertArrayNotHasKey('sharedSecret', $this->req('POST', $base, $auth, ['name' => 'Neu'])['body']);
+        $this->assertArrayNotHasKey('sharedSecret', $this->req('POST', $base, $auth, ['calendarIds' => [$cal->getId()], 'name' => 'Neu'])['body']);
         $this->assertArrayNotHasKey('sharedSecret', $this->req('PATCH', $one, $auth, ['name' => 'X'])['body']);
 
         // Requested: included everywhere
@@ -369,7 +363,7 @@ class FeedStatusTest extends WebTestCase
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $auth = $this->auth($user);
         $feed = $this->feed($cal, FeedVisibility::PRIVATE);
-        $uri = "/api/calendars/{$cal->getId()}/feeds/{$feed->getId()}";
+        $uri = "/api/clubs/{$cal->getClub()->getId()}/feeds/{$feed->getId()}";
         $public = "/api/feed/{$feed->getId()}/events";
         $this->assertSame(403, $this->req('GET', $public)['status']);
 
@@ -400,14 +394,14 @@ class FeedStatusTest extends WebTestCase
     {
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $auth = $this->auth($user);
-        $base = "/api/calendars/{$cal->getId()}/feeds";
+        $base = "/api/clubs/{$cal->getClub()->getId()}/feeds";
         foreach (['public', 'club', 'private', 1, ['PUBLIC'], null, ''] as $value) {
-            $r = $this->req('POST', $base, $auth, ['name' => 'X', 'visibility' => $value]);
+            $r = $this->req('POST', $base, $auth, ['calendarIds' => [$cal->getId()], 'name' => 'X', 'visibility' => $value]);
             $this->assertSame(400, $r['status'], json_encode($value));
             $this->assertSame(['validation_failed', 'visibility'], [$r['body']['code'], $r['body']['field']], json_encode($value));
         }
         foreach (['true', 1, null] as $value) {
-            $r = $this->req('POST', $base, $auth, ['name' => 'X', 'visibility' => 'PUBLIC', 'searchable' => $value]);
+            $r = $this->req('POST', $base, $auth, ['calendarIds' => [$cal->getId()], 'name' => 'X', 'visibility' => 'PUBLIC', 'searchable' => $value]);
             $this->assertSame(400, $r['status'], json_encode($value));
             $this->assertSame('searchable', $r['body']['field']);
         }
@@ -416,29 +410,21 @@ class FeedStatusTest extends WebTestCase
 
     // --- Duplicate a calendar ---
 
-    public function testDuplicatingACalendarKeepsTheStatusButNotTheSearchEngineOption(): void
+    public function testDuplicatingACalendarDoesNotCopyFeeds(): void
     {
         ['user' => $user, 'club' => $club, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
-        $sources = [
-            $this->feed($cal, FeedVisibility::PUBLIC, true),
-            $this->feed($cal, FeedVisibility::CLUB),
-            $this->feed($cal, FeedVisibility::PRIVATE),
-        ];
+        $this->feed($cal, FeedVisibility::PUBLIC, true);
+        $this->feed($cal, FeedVisibility::PRIVATE);
         $auth = $this->auth($user);
 
         $copy = $this->req('POST', "/api/clubs/{$club->getId()}/calendars/{$cal->getId()}/duplicate", $auth, ['name' => 'Kopie']);
         $this->assertSame(201, $copy['status']);
-        $feeds = $this->req('GET', "/api/calendars/{$copy['body']['id']}/feeds?includeSecret=1", $auth)['body'];
-        usort($feeds, fn (array $a, array $b) => $a['name'] <=> $b['name']);
-
-        $this->assertSame(['Feed CLUB', 'Feed PRIVATE', 'Feed PUBLIC'], array_column($feeds, 'name'));
-        $this->assertSame(['CLUB', 'PRIVATE', 'PUBLIC'], array_column($feeds, 'visibility'));
-        $this->assertSame([false, false, false], array_column($feeds, 'searchable'));
-        $this->assertSame([false, false, false], array_column($feeds, 'indexable'));
-        $sourceSecrets = array_map(fn (CalendarFeed $f) => $f->getSharedSecret(), $sources);
-        $this->assertSame([], array_intersect($sourceSecrets, array_column($feeds, 'sharedSecret')), 'new secrets');
-        // The source keeps its option
-        self::$em->clear();
-        $this->assertTrue(self::$em->find(CalendarFeed::class, $sources[0]->getId())->isSearchable());
+        $this->assertSame([0, 0], [$copy['body']['feedCount'], $copy['body']['exclusiveFeedCount']]);
+        $this->assertSame(2, self::$em->getRepository(CalendarFeed::class)->count([]));
+        $feeds = $this->req('GET', "/api/clubs/{$club->getId()}/feeds", $auth)['body'];
+        $this->assertCount(2, $feeds);
+        foreach ($feeds as $feed) {
+            $this->assertSame([$cal->getId()], $feed['calendarIds']);
+        }
     }
 }

@@ -445,7 +445,7 @@ readonly class EventService
         }
 
         if ($has('locationId')) {
-            $event->setLocation($this->references->find(Location::class, $calendar, $data['locationId'] ?? null, 'locationId'));
+            $event->setLocation($this->references->find(Location::class, $calendar->getClub(), $data['locationId'] ?? null, 'locationId'));
         }
         if ($has('eventTemplateId')) {
             $event->setTemplate($this->references->find(EventTemplate::class, $calendar, $data['eventTemplateId'] ?? null, 'eventTemplateId'));
@@ -476,7 +476,7 @@ readonly class EventService
             }
         }
         if ($hasList('targetGroupIds')) {
-            $groups = $this->references->findAll(TargetGroup::class, $calendar, Input::idList($data, 'targetGroupIds'), 'targetGroupIds');
+            $groups = $this->references->findAll(TargetGroup::class, $calendar->getClub(), Input::idList($data, 'targetGroupIds'), 'targetGroupIds');
             if (!$dryRun) {
                 LinkCollectionSync::sync(
                     $this->em,

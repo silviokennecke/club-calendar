@@ -107,7 +107,7 @@ readonly class EventTemplateService
             throw Input::invalid(null === $template->getTimeBegin() ? 'timeBegin' : 'timeEnd', 'timeBegin and timeEnd must both be given or both be empty');
         }
         if ($has('locationId')) {
-            $template->setLocation($this->references->find(Location::class, $calendar, $data['locationId'] ?? null, 'locationId'));
+            $template->setLocation($this->references->find(Location::class, $calendar->getClub(), $data['locationId'] ?? null, 'locationId'));
         }
 
         if ($has('propertyIds')) {
@@ -131,7 +131,7 @@ readonly class EventTemplateService
             );
         }
         if ($has('targetGroupIds')) {
-            $groups = $this->references->findAll(TargetGroup::class, $calendar, Input::idList($data, 'targetGroupIds'), 'targetGroupIds');
+            $groups = $this->references->findAll(TargetGroup::class, $calendar->getClub(), Input::idList($data, 'targetGroupIds'), 'targetGroupIds');
             LinkCollectionSync::sync(
                 $this->em,
                 $template->getTargetGroups(),

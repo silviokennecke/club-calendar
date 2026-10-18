@@ -317,9 +317,9 @@ class EventSeriesTest extends WebTestCase
     public function testCreateFromTemplateCreatesTheSeriesAndAllEvents(): void
     {
         [$auth, $base, $cal] = $this->setupCalendar();
-        $loc = $this->req('POST', "$base/locations", $auth, ['name' => 'Schützenhaus'])['body']['id'];
-        $prop = $this->req('POST', "$base/properties", $auth, ['name' => 'Draußen', 'icon' => '🌳'])['body']['id'];
-        $group = $this->req('POST', "$base/target-groups", $auth, ['name' => 'Jugend'])['body']['id'];
+        $loc = $this->req('POST', TestHelper::clubBase(self::$em, $base).'/locations', $auth, ['name' => 'Schützenhaus'])['body']['id'];
+        $prop = $this->req('POST', $base.'/properties', $auth, ['name' => 'Draußen', 'icon' => '🌳'])['body']['id'];
+        $group = $this->req('POST', TestHelper::clubBase(self::$em, $base).'/target-groups', $auth, ['name' => 'Jugend'])['body']['id'];
         $tpl = $this->req('POST', "$base/templates", $auth, [
             'name' => 'Training Luftgewehr', 'timeBegin' => '19:00', 'timeEnd' => '21:00', 'timezone' => 'Europe/Berlin',
             'locationId' => $loc, 'propertyIds' => [$prop], 'targetGroupIds' => [$group],
@@ -469,8 +469,8 @@ class EventSeriesTest extends WebTestCase
         [$auth, $base, $cal] = $this->setupCalendar();
         [$otherAuth, $otherBase] = $this->setupCalendar();
         $foreignTpl = $this->req('POST', "$otherBase/templates", $otherAuth, ['name' => 'Fremd'])['body']['id'];
-        $foreignGroup = $this->req('POST', "$otherBase/target-groups", $otherAuth, ['name' => 'Fremd'])['body']['id'];
-        $prop = $this->req('POST', "$base/properties", $auth, ['name' => 'Eigen'])['body']['id'];
+        $foreignGroup = $this->req('POST', TestHelper::clubBase(self::$em, $otherBase).'/target-groups', $otherAuth, ['name' => 'Fremd'])['body']['id'];
+        $prop = $this->req('POST', $base.'/properties', $auth, ['name' => 'Eigen'])['body']['id'];
 
         $r = $this->req('POST', "$base/events/series", $auth, ['rule' => $this->rule(), 'templateId' => $foreignTpl]);
         $this->assertSame(422, $r['status']);
@@ -524,9 +524,9 @@ class EventSeriesTest extends WebTestCase
     public function testEditingAllEventsAppliesTheSentFieldsButNotTheDate(): void
     {
         [$auth, $base, $cal] = $this->setupCalendar();
-        $loc = $this->req('POST', "$base/locations", $auth, ['name' => 'Halle'])['body']['id'];
-        $group = $this->req('POST', "$base/target-groups", $auth, ['name' => 'Jugend'])['body']['id'];
-        $feature = $this->req('POST', "$base/features", $auth, ['name' => 'Bonusschießen'])['body']['id'];
+        $loc = $this->req('POST', TestHelper::clubBase(self::$em, $base).'/locations', $auth, ['name' => 'Halle'])['body']['id'];
+        $group = $this->req('POST', TestHelper::clubBase(self::$em, $base).'/target-groups', $auth, ['name' => 'Jugend'])['body']['id'];
+        $feature = $this->req('POST', $base.'/features', $auth, ['name' => 'Bonusschießen'])['body']['id'];
         $series = $this->createSeries($base, $auth);
         $ids = array_column($series['events'], 'id');
         $single = TestHelper::createEvent(self::$em, $cal, ['name' => 'Einzeln', 'date' => '2026-10-15']);
@@ -570,7 +570,7 @@ class EventSeriesTest extends WebTestCase
     {
         [$auth, $base] = $this->setupCalendar();
         [$otherAuth, $otherBase] = $this->setupCalendar();
-        $foreign = $this->req('POST', "$otherBase/target-groups", $otherAuth, ['name' => 'Fremd'])['body']['id'];
+        $foreign = $this->req('POST', TestHelper::clubBase(self::$em, $otherBase).'/target-groups', $otherAuth, ['name' => 'Fremd'])['body']['id'];
         $series = $this->createSeries($base, $auth);
         $ids = array_column($series['events'], 'id');
 
@@ -604,8 +604,8 @@ class EventSeriesTest extends WebTestCase
     public function testEditingAllRunsTheSameNumberOfQueriesForLongerSeries(): void
     {
         [$auth, $base] = $this->setupCalendar();
-        $group = $this->req('POST', "$base/target-groups", $auth, ['name' => 'Jugend'])['body']['id'];
-        $prop = $this->req('POST', "$base/properties", $auth, ['name' => 'Draußen'])['body']['id'];
+        $group = $this->req('POST', TestHelper::clubBase(self::$em, $base).'/target-groups', $auth, ['name' => 'Jugend'])['body']['id'];
+        $prop = $this->req('POST', $base.'/properties', $auth, ['name' => 'Draußen'])['body']['id'];
         $short = $this->createSeries($base, $auth, ['event' => ['name' => 'Kurz', 'isAllDay' => true, 'propertyIds' => [$prop]]]);
         $long = $this->createSeries($base, $auth, ['rule' => $this->rule(['until' => '2026-12-31']), 'event' => ['name' => 'Lang', 'isAllDay' => true, 'propertyIds' => [$prop]]]);
         $this->assertCount(13, $long['events']);

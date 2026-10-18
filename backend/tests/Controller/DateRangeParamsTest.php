@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller;
 
-use App\Entity\CalendarFeed;
 use App\Enum\FeedVisibility;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
@@ -70,13 +69,7 @@ class DateRangeParamsTest extends WebTestCase
     private function setupCalendar(): array
     {
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
-        $feed = new CalendarFeed();
-        $feed->setCalendar($cal);
-        $feed->setName('Alle');
-        $feed->setVisibility(FeedVisibility::PUBLIC);
-        $feed->setSharedSecret('public-'.$cal->getId());
-        self::$em->persist($feed);
-        self::$em->flush();
+        $feed = TestHelper::createFeed(self::$em, $cal->getClub(), [$cal], FeedVisibility::PUBLIC, 'Alle', 'public-'.$cal->getId());
 
         return [
             'base' => "/api/calendars/{$cal->getId()}",

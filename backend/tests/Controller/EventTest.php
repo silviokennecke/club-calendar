@@ -128,8 +128,9 @@ class EventTest extends WebTestCase
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $auth = TestHelper::authHeader($user, self::$tokens);
         $base = "/api/calendars/{$cal->getId()}";
-        $youth = TestHelper::jsonRequest(self::$client, 'POST', "$base/target-groups", ['name' => 'Jugend'], $auth)['body']['id'];
-        $adults = TestHelper::jsonRequest(self::$client, 'POST', "$base/target-groups", ['name' => 'Erwachsene'], $auth)['body']['id'];
+        $clubBase = "/api/clubs/{$cal->getClub()->getId()}";
+        $youth = TestHelper::jsonRequest(self::$client, 'POST', "$clubBase/target-groups", ['name' => 'Jugend'], $auth)['body']['id'];
+        $adults = TestHelper::jsonRequest(self::$client, 'POST', "$clubBase/target-groups", ['name' => 'Erwachsene'], $auth)['body']['id'];
         $created = TestHelper::jsonRequest(self::$client, 'POST', "$base/events", [
             'name' => 'Training', 'date' => '2026-10-01', 'timeBegin' => '19:00', 'timeEnd' => '21:00',
             'targetGroupIds' => [$youth], 'propertyIds' => [], 'featureIds' => [],

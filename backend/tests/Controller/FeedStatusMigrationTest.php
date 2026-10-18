@@ -90,11 +90,18 @@ class FeedStatusMigrationTest extends WebTestCase
         return $this->conn()->fetchAllKeyValue('SELECT id, visibility FROM calendar_feed ORDER BY id');
     }
 
-    private function insertFeed(string $id, string $calendarId, string $visibility, string $secret): void
+    /** A feed of the calendar: owned by the calendar's club and linked through `calendar_feed_calendar`. */
+    private function insertFeed(string $id, string $calendarId, string $visibility, string $secret, ?string $name = null): void
     {
         $this->conn()->insert('calendar_feed', [
-            'id' => $id, 'calendar_id' => $calendarId, 'name' => "Feed $visibility", 'visibility' => $visibility, 'shared_secret' => $secret,
+            'id' => $id, 'club_id' => $this->clubOf($calendarId), 'name' => $name ?? "Feed $visibility", 'visibility' => $visibility, 'shared_secret' => $secret,
         ]);
+        $this->conn()->insert('calendar_feed_calendar', ['feed_id' => $id, 'calendar_id' => $calendarId]);
+    }
+
+    private function clubOf(string $calendarId): string
+    {
+        return (string) $this->conn()->fetchOne('SELECT club_id FROM calendar WHERE id = ?', [$calendarId]);
     }
 
     public function testExistingPublicFeedsBecomeClubAndPrivateFeedsKeepTheirSecret(): void
@@ -124,7 +131,7 @@ class FeedStatusMigrationTest extends WebTestCase
             'secrets unchanged',
         );
         // A row inserted without values gets the new defaults
-        $this->conn()->executeStatement("INSERT INTO calendar_feed (id, calendar_id, name, shared_secret) VALUES ('00000000-0000-7000-8000-000000000003', ?, 'Neu', 'test-secret-value-new')", [$calId]);
+        $this->conn()->executeStatement("INSERT INTO calendar_feed (id, club_id, name, shared_secret) VALUES ('00000000-0000-7000-8000-000000000003', ?, 'Neu', 'test-secret-value-new')", [$this->clubOf($calId)]);
         $this->assertSame(['CLUB', '0'], array_map('strval', array_values($this->conn()->fetchAssociative("SELECT visibility, searchable FROM calendar_feed WHERE name = 'Neu'"))));
 
         self::$em->clear();

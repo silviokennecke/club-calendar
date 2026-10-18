@@ -132,7 +132,7 @@ class MapControllerTest extends WebTestCase
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
         $auth = TestHelper::authHeader($user, $this->tokens);
 
-        $create = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
+        $create = TestHelper::jsonRequest($this->client, 'POST', "/api/clubs/{$cal->getClub()->getId()}/locations", [
             'name' => 'Test Venue', 'latitude' => 48.137, 'longitude' => 11.575,
         ], $auth);
         $this->assertSame(201, $create['status']);
@@ -156,7 +156,7 @@ class MapControllerTest extends WebTestCase
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
         $auth = TestHelper::authHeader($user, $this->tokens);
 
-        $create = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
+        $create = TestHelper::jsonRequest($this->client, 'POST', "/api/clubs/{$cal->getClub()->getId()}/locations", [
             'name' => 'Venue', 'latitude' => 48.137, 'longitude' => 11.575,
         ], $auth);
         $locationId = $create['body']['id'];
@@ -179,7 +179,7 @@ class MapControllerTest extends WebTestCase
     {
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
         $auth = TestHelper::authHeader($user, $this->tokens);
-        $create = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
+        $create = TestHelper::jsonRequest($this->client, 'POST', "/api/clubs/{$cal->getClub()->getId()}/locations", [
             'name' => 'Venue', 'latitude' => 48.137, 'longitude' => 11.575,
         ], $auth);
         $locationId = $create['body']['id'];
@@ -214,7 +214,7 @@ class MapControllerTest extends WebTestCase
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
         $auth = TestHelper::authHeader($user, $this->tokens);
 
-        $create = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
+        $create = TestHelper::jsonRequest($this->client, 'POST', "/api/clubs/{$cal->getClub()->getId()}/locations", [
             'name' => 'No Coords',
         ], $auth);
         $locationId = $create['body']['id'];
@@ -234,7 +234,7 @@ class MapControllerTest extends WebTestCase
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
         $auth = TestHelper::authHeader($user, $this->tokens);
 
-        $loc = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
+        $loc = TestHelper::jsonRequest($this->client, 'POST', "/api/clubs/{$cal->getClub()->getId()}/locations", [
             'name' => 'Venue', 'latitude' => 48.137, 'longitude' => 11.575,
         ], $auth);
         $locationId = $loc['body']['id'];
@@ -307,7 +307,7 @@ class MapControllerTest extends WebTestCase
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
         $auth = TestHelper::authHeader($user, $this->tokens);
 
-        $create = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
+        $create = TestHelper::jsonRequest($this->client, 'POST', "/api/clubs/{$cal->getClub()->getId()}/locations", [
             'name' => 'Venue', 'latitude' => 48.137, 'longitude' => 11.575,
         ], $auth);
         $locationId = $create['body']['id'];
@@ -369,10 +369,10 @@ class MapControllerTest extends WebTestCase
     {
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
         $auth = TestHelper::authHeader($user, $this->tokens);
-        $located = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
+        $located = TestHelper::jsonRequest($this->client, 'POST', "/api/clubs/{$cal->getClub()->getId()}/locations", [
             'name' => 'Venue', 'latitude' => 48.137, 'longitude' => 11.575,
         ], $auth)['body']['id'];
-        $plain = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
+        $plain = TestHelper::jsonRequest($this->client, 'POST', "/api/clubs/{$cal->getClub()->getId()}/locations", [
             'name' => 'No Coords',
         ], $auth)['body']['id'];
         $this->withoutMapService();
@@ -391,7 +391,7 @@ class MapControllerTest extends WebTestCase
     {
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
         $auth = TestHelper::authHeader($user, $this->tokens);
-        $locationId = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
+        $locationId = TestHelper::jsonRequest($this->client, 'POST', "/api/clubs/{$cal->getClub()->getId()}/locations", [
             'name' => 'Venue', 'latitude' => 48.137, 'longitude' => 11.575,
         ], $auth)['body']['id'];
         $eventId = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/events", [

@@ -78,14 +78,14 @@ class LocationCoordinatesTest extends WebTestCase
 
     private function locationCount(string $calendarId): int
     {
-        return (int) self::$em->getConnection()->fetchOne('SELECT COUNT(*) FROM location WHERE calendar_id = ?', [$calendarId]);
+        return (int) self::$em->getConnection()->fetchOne('SELECT COUNT(*) FROM location WHERE club_id = (SELECT club_id FROM calendar WHERE id = ?)', [$calendarId]);
     }
 
     public function testCreateRejectsInvalidCoordinates(): void
     {
         ['base' => $base, 'auth' => $auth, 'calendarId' => $calendarId] = $this->setupCalendar();
         foreach (self::invalidBodies() as $label => [$body, $field]) {
-            $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/locations", ['name' => 'Halle'] + $body, $auth);
+            $r = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/locations', ['name' => 'Halle'] + $body, $auth);
             $this->assertSame(400, $r['status'], $label.' '.$r['content']);
             $this->assertSame('validation_failed', $r['body']['code'] ?? null, $label);
             $this->assertSame($field, $r['body']['field'] ?? null, $label);
@@ -104,7 +104,7 @@ class LocationCoordinatesTest extends WebTestCase
             [['latitude' => null, 'longitude' => null], [null, null]],
             [[], [null, null]],
         ] as [$body, [$lat, $lng]]) {
-            $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/locations", ['name' => 'Halle'] + $body, $auth);
+            $r = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/locations', ['name' => 'Halle'] + $body, $auth);
             $this->assertSame(201, $r['status'], json_encode($body).' '.$r['content']);
             $this->assertEquals($lat, $r['body']['latitude'], json_encode($body));
             $this->assertEquals($lng, $r['body']['longitude'], json_encode($body));
@@ -114,19 +114,19 @@ class LocationCoordinatesTest extends WebTestCase
     public function testUpdateValidatesTheResultingPair(): void
     {
         ['base' => $base, 'auth' => $auth] = $this->setupCalendar();
-        $id = TestHelper::jsonRequest(self::$client, 'POST', "$base/locations", ['name' => 'Halle', 'latitude' => 51.0, 'longitude' => 7.0], $auth)['body']['id'];
+        $id = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/locations', ['name' => 'Halle', 'latitude' => 51.0, 'longitude' => 7.0], $auth)['body']['id'];
 
         foreach (self::invalidBodies() as $label => [$body, $field]) {
             if (1 === count($body)) {
                 continue; // one coordinate alone is fine on update while the other one stays
             }
-            $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/locations/$id", $body, $auth);
+            $r = TestHelper::jsonRequest(self::$client, 'PATCH', TestHelper::clubBase(self::$em, $base)."/locations/$id", $body, $auth);
             $this->assertSame(400, $r['status'], $label.' '.$r['content']);
             $this->assertSame('validation_failed', $r['body']['code'] ?? null, $label);
             $this->assertSame($field, $r['body']['field'] ?? null, $label);
         }
         foreach ([[['latitude' => null], 'latitude'], [['longitude' => null], 'longitude'], [['latitude' => 'x'], 'latitude'], [['longitude' => 200], 'longitude']] as [$body, $field]) {
-            $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/locations/$id", $body, $auth);
+            $r = TestHelper::jsonRequest(self::$client, 'PATCH', TestHelper::clubBase(self::$em, $base)."/locations/$id", $body, $auth);
             $this->assertSame(400, $r['status'], json_encode($body).' '.$r['content']);
             $this->assertSame($field, $r['body']['field'] ?? null, json_encode($body));
         }
@@ -135,10 +135,10 @@ class LocationCoordinatesTest extends WebTestCase
         $this->assertSame([51.0, 7.0], [$stored?->getLatitude(), $stored?->getLongitude()]);
 
         // One coordinate moves while the other stays; both null removes the position
-        $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/locations/$id", ['latitude' => 52.5], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', TestHelper::clubBase(self::$em, $base)."/locations/$id", ['latitude' => 52.5], $auth);
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertEquals([52.5, 7.0], [$r['body']['latitude'], $r['body']['longitude']]);
-        $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/locations/$id", ['latitude' => null, 'longitude' => null], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', TestHelper::clubBase(self::$em, $base)."/locations/$id", ['latitude' => null, 'longitude' => null], $auth);
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertSame([null, null], [$r['body']['latitude'], $r['body']['longitude']]);
     }
@@ -146,11 +146,11 @@ class LocationCoordinatesTest extends WebTestCase
     public function testStoredHalfPairsStayEditableWithoutTouchingTheCoordinates(): void
     {
         ['base' => $base, 'auth' => $auth, 'calendarId' => $calendarId] = $this->setupCalendar();
-        $id = TestHelper::jsonRequest(self::$client, 'POST', "$base/locations", ['name' => 'Alt'], $auth)['body']['id'];
+        $id = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/locations', ['name' => 'Alt'], $auth)['body']['id'];
         // Written before the check existed
         self::$em->getConnection()->executeStatement('UPDATE location SET latitude = 51.0 WHERE id = ?', [$id]);
 
-        $r = TestHelper::jsonRequest(self::$client, 'PATCH', "$base/locations/$id", ['name' => 'Neu'], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', TestHelper::clubBase(self::$em, $base)."/locations/$id", ['name' => 'Neu'], $auth);
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertSame('Neu', $r['body']['name']);
         $this->assertEquals(51.0, $r['body']['latitude']);

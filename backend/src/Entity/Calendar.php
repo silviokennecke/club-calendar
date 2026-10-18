@@ -30,20 +30,11 @@ class Calendar
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $archivedAt = null;
 
-    #[ORM\OneToMany(targetEntity: CalendarFeed::class, mappedBy: 'calendar', cascade: ['persist', 'remove'])]
-    private Collection $feeds;
-
     #[ORM\OneToMany(targetEntity: Property::class, mappedBy: 'calendar', cascade: ['persist', 'remove'])]
     private Collection $properties;
 
     #[ORM\OneToMany(targetEntity: Feature::class, mappedBy: 'calendar', cascade: ['persist', 'remove'])]
     private Collection $features;
-
-    #[ORM\OneToMany(targetEntity: TargetGroup::class, mappedBy: 'calendar', cascade: ['persist', 'remove'])]
-    private Collection $targetGroups;
-
-    #[ORM\OneToMany(targetEntity: Location::class, mappedBy: 'calendar', cascade: ['persist', 'remove'])]
-    private Collection $locations;
 
     #[ORM\OneToMany(targetEntity: EventTemplate::class, mappedBy: 'calendar', cascade: ['persist', 'remove'])]
     private Collection $templates;
@@ -54,11 +45,8 @@ class Calendar
     public function __construct()
     {
         $this->id = Uuid::v7()->toRfc4122();
-        $this->feeds = new ArrayCollection();
         $this->properties = new ArrayCollection();
         $this->features = new ArrayCollection();
-        $this->targetGroups = new ArrayCollection();
-        $this->locations = new ArrayCollection();
         $this->templates = new ArrayCollection();
         $this->events = new ArrayCollection();
     }
@@ -117,14 +105,6 @@ class Calendar
     }
 
     /**
-     * @return Collection<int, CalendarFeed>
-     */
-    public function getFeeds(): Collection
-    {
-        return $this->feeds;
-    }
-
-    /**
      * @return Collection<int, Property>
      */
     public function getProperties(): Collection
@@ -138,22 +118,6 @@ class Calendar
     public function getFeatures(): Collection
     {
         return $this->features;
-    }
-
-    /**
-     * @return Collection<int, TargetGroup>
-     */
-    public function getTargetGroups(): Collection
-    {
-        return $this->targetGroups;
-    }
-
-    /**
-     * @return Collection<int, Location>
-     */
-    public function getLocations(): Collection
-    {
-        return $this->locations;
     }
 
     /**

@@ -66,10 +66,10 @@ class QuotaTest extends WebTestCase
     /**
      * Adds `$n` copies of the one existing row of the calendar (new id, unique name/secret) in one statement.
      */
-    private function fill(string $table, string $calendarId, int $n): void
+    private function fill(string $table, string $ownerId, int $n, string $ownerColumn = 'calendar_id'): void
     {
         $conn = self::$em->getConnection();
-        $seed = $conn->fetchAssociative("SELECT * FROM `$table` WHERE calendar_id = ? LIMIT 1", [$calendarId]);
+        $seed = $conn->fetchAssociative("SELECT * FROM `$table` WHERE `$ownerColumn` = ? LIMIT 1", [$ownerId]);
         $this->assertNotFalse($seed, "no seed row in $table");
         $columns = [];
         $values = [];
@@ -227,12 +227,39 @@ class QuotaTest extends WebTestCase
     /** @return iterable<string, array{string, string, string, array<string, mixed>}> */
     public static function calendarResources(): iterable
     {
-        yield 'locations' => ['location', 'locations', Quota::LOCATIONS_PER_CALENDAR, ['name' => 'Ort']];
         yield 'templates' => ['event_template', 'templates', Quota::TEMPLATES_PER_CALENDAR, ['name' => 'Vorlage', 'timeBegin' => '18:00', 'timeEnd' => '20:00']];
         yield 'properties' => ['property', 'properties', Quota::PROPERTIES_PER_CALENDAR, ['name' => 'Merkmal']];
         yield 'features' => ['feature', 'features', Quota::FEATURES_PER_CALENDAR, ['name' => 'Zusatz']];
-        yield 'target groups' => ['target_group', 'target-groups', Quota::TARGET_GROUPS_PER_CALENDAR, ['name' => 'Gruppe']];
-        yield 'feeds' => ['calendar_feed', 'feeds', Quota::FEEDS_PER_CALENDAR, ['name' => 'Feed']];
+    }
+
+    /** @return iterable<string, array{string, string, string, array<string, mixed>}> */
+    public static function clubResources(): iterable
+    {
+        yield 'feeds' => ['calendar_feed', 'feeds', Quota::FEEDS_PER_CLUB, ['name' => 'Feed']];
+        yield 'locations' => ['location', 'locations', Quota::LOCATIONS_PER_CLUB, ['name' => 'Ort']];
+        yield 'target groups' => ['target_group', 'target-groups', Quota::TARGET_GROUPS_PER_CLUB, ['name' => 'Gruppe']];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('clubResources')]
+    public function testPerClubResourceQuota(string $table, string $path, string $resource, array $body): void
+    {
+        ['auth' => $auth, 'club' => $club, 'user' => $user, 'calendar' => $cal] = $this->setup1();
+        $base = "/api/clubs/{$club->getId()}";
+        $limit = Quota::LIMITS[$resource];
+        // A feed selects calendars; the club of the isolation check below needs one of its own
+        $bodyFor = static fn (string $calendarId): array => 'feeds' === $path ? $body + ['calendarIds' => [$calendarId]] : $body;
+        $body = $bodyFor($cal->getId());
+
+        $seed = $this->req('POST', "$base/$path", $auth, ['name' => 'Start'] + $body);
+        $this->assertSame(201, $seed['status'], $seed['content']);
+        $this->fill($table, $club->getId(), $limit - 2, 'club_id');
+        $this->assertSame(201, $this->req('POST', "$base/$path", $auth, ['name' => 'Letzter'] + $body)['status']);
+        $this->assertQuota($this->req('POST', "$base/$path", $auth, ['name' => 'Zu viel'] + $body), $resource, $limit);
+
+        // Quotas count per club: a second club of the same user is not affected
+        $other = TestHelper::createClub(self::$em, $user, 'Other');
+        $otherCal = TestHelper::createCalendar(self::$em, $other);
+        $this->assertSame(201, $this->req('POST', "/api/clubs/{$other->getId()}/$path", $auth, ['name' => 'Eins'] + $bodyFor($otherCal->getId()))['status']);
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('calendarResources')]
@@ -251,9 +278,9 @@ class QuotaTest extends WebTestCase
     public function testLocationsOfAnImportCountAgainstTheQuota(): void
     {
         ['auth' => $auth, 'calendar' => $cal, 'base' => $base] = $this->setup1();
-        $limit = Quota::LIMITS[Quota::LOCATIONS_PER_CALENDAR];
-        $this->assertSame(201, $this->req('POST', "$base/locations", $auth, ['name' => 'Start'])['status']);
-        $this->fill('location', $cal->getId(), $limit - 2);
+        $limit = Quota::LIMITS[Quota::LOCATIONS_PER_CLUB];
+        $this->assertSame(201, $this->req('POST', TestHelper::clubBase(self::$em, $base).'/locations', $auth, ['name' => 'Start'])['status']);
+        $this->fill('location', $cal->getClub()->getId(), $limit - 2, 'club_id');
 
         $r = $this->req('POST', "$base/events/import", $auth, [
             'locations' => [['tempId' => 'a', 'name' => 'Neu A'], ['tempId' => 'b', 'name' => 'Neu B']],
@@ -262,7 +289,7 @@ class QuotaTest extends WebTestCase
                 ['name' => 'B', 'date' => '2027-01-02', 'timeBegin' => '10:00', 'timeEnd' => '11:00', 'locationTempId' => 'b'],
             ],
         ]);
-        $this->assertQuota($r, Quota::LOCATIONS_PER_CALENDAR, $limit);
+        $this->assertQuota($r, Quota::LOCATIONS_PER_CLUB, $limit);
     }
 
     public function testHolidayCalendarsPerCalendar(): void
