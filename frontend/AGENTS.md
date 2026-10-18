@@ -249,7 +249,7 @@ operations), `docs/api/openapi.yaml` (API reference).
   with `referrerPolicy: "no-referrer"`, no auth headers, no retries; `usePublicEvent` = the single-event endpoint for
   the dialog (placeholder from the feed cache; on 404 a one-day feed request tells "event not found" from "feed not
   found"); `PublicStates`
-  = loading / private (403) / not found (404) / load error with retry; lazy `PublicEventMap` with `useMapbox`, text
+  = loading / private (403) / not found (404) / load error with retry; static map image (`<img>` of `/api/map/image/location/{id}?v=updatedAt`, no mapbox-gl on public routes), text
   alternative = address + "In Karten-App öffnen"). Pure logic in `src/lib/feeds/public.ts` (error kinds, the header (club and calendar name, zone,
   `eventCount`, `audiences`) comes from the API; "today" and the zone note use `feed.timezone`, the month view shows
   the calendar's holidays; filter, month counts, subscribe addresses, in-app

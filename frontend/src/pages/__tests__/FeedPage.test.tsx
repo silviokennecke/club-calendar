@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, useLocation } from "react-router-dom";
 import FeedPage from "../FeedPage";
@@ -8,10 +8,6 @@ import PublicEventModal from "../PublicEventModal";
 import { BackgroundRoutes } from "@/components/layout/BackgroundRoutes";
 import { ModalFrame } from "@/components/ui/shared";
 import { ThemeProvider } from "@/lib/ThemeProvider";
-
-vi.mock("@/components/feed/PublicEventMap", () => ({
-  default: ({ label }: { label: string }) => <div data-testid="map" aria-label={label} />,
-}));
 
 const SECRET = "test-secret-value";
 
@@ -58,6 +54,7 @@ const feedEvents = [
       city: "Musterstadt",
       latitude: 50.5,
       longitude: 8.25,
+      updatedAt: 1760000000,
     },
     properties: [{ property: { id: "p1", name: "Draußen", icon: "🌳" } }],
     features: [{ feature: { id: "f1", name: "Getränkeverkauf" } }],
@@ -488,9 +485,19 @@ describe("PublicEventModal", () => {
     const place = screen.getByRole("region", { name: "Ort" });
     expect(within(place).getByText("Vereinsheim Mitte")).toBeInTheDocument();
     expect(within(place).getByText(/Marktplatz 5, 12345 Musterstadt/)).toBeInTheDocument();
-    expect(await within(place).findByTestId("map")).toHaveAccessibleName(
-      "Karte mit Markierung für Vereinsheim Mitte",
-    );
+    const mapImg = within(place).getByRole("img", {
+      name: "Karte mit Markierung für Vereinsheim Mitte",
+    });
+    const src = mapImg.getAttribute("src") ?? "";
+    expect(src).toContain("/api/map/image/location/l1");
+    expect(src).toMatch(/\?v=\d+$/);
+    expect(mapImg).toHaveAttribute("width", "800");
+    expect(mapImg).toHaveAttribute("height", "288");
+    expect(mapImg).toHaveAttribute("loading", "lazy");
+    // A failing image falls back to the text note; the address and maps link stay.
+    fireEvent.error(mapImg);
+    expect(within(place).queryByRole("img")).not.toBeInTheDocument();
+    expect(within(place).getByText(/Karte ist gerade nicht verfügbar/)).toBeInTheDocument();
     const maps = within(place).getByRole("link", { name: "In Karten-App öffnen" });
     expect(maps).toHaveAttribute("rel", expect.stringContaining("noreferrer"));
     expect(maps.getAttribute("href")).toContain("openstreetmap.org");
@@ -596,6 +603,6 @@ describe("PublicEventModal", () => {
     expect(screen.getByText("Sa 10.10.2026 bis So 11.10.2026")).toBeInTheDocument();
     expect(screen.getByText("Ganztägig")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Ort" })).not.toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByTestId("map")).not.toBeInTheDocument());
+    expect(screen.queryByRole("img", { name: /Karte mit Markierung/ })).not.toBeInTheDocument();
   });
 });
