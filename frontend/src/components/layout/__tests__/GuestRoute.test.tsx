@@ -3,7 +3,10 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import GuestRoute from "../GuestRoute";
 
-let auth: { user: unknown; loading: boolean } = { user: null, loading: false };
+let auth: { user: unknown; loading: boolean; sessionError?: boolean } = {
+  user: null,
+  loading: false,
+};
 vi.mock("@/lib/auth-context", () => ({ useAuth: () => auth }));
 
 function renderAt(path: string) {
@@ -43,6 +46,13 @@ describe("GuestRoute", () => {
 
   it("waits for the session check before deciding", () => {
     auth = { user: null, loading: true };
+    renderAt("/login");
+    expect(screen.queryByText("login form")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeInTheDocument();
+  });
+
+  it("never shows the form while a stored session could not be checked", () => {
+    auth = { user: null, loading: false, sessionError: true };
     renderAt("/login");
     expect(screen.queryByText("login form")).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toBeInTheDocument();

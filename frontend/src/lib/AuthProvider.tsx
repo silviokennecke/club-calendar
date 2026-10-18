@@ -1,7 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  ApiError,
+  apiErrorStatus,
   apiGet,
   apiPatch,
   clearTokens,
@@ -12,6 +12,9 @@ import {
 import { AuthContext, type AuthContextValue } from "./auth-context";
 import i18n from "./i18n";
 import type { User } from "./types";
+
+/** Pauses before the retries of /me after a failure that is no verdict on the session. */
+const RETRY_DELAYS_MS = [500, 1500];
 
 const SUPPORTED_LANGS = ["en", "de"];
 
@@ -24,41 +27,93 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  // A token exists but /me could not be answered (network, 429, 5xx): the visitor is not a guest.
+  const [sessionError, setSessionError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  // Bumped by login()/logout(): a /me check that started before is outdated and must not touch the state.
+  const decision = useRef(0);
 
   useEffect(() => {
-    const token = getAccessToken();
-    if (!token) {
+    if (!getAccessToken()) {
       setLoading(false);
       return;
     }
-    apiGet<User>("/api/auth/me")
-      .then((user) => {
-        applyUserLanguage(user);
-        setUser(user);
-      })
-      .catch((err: unknown) => {
-        // Only a server answer invalidates the session. A network error is no verdict: when the page is left
-        // while /me is in flight (reload, address bar), the browser aborts the request, and clearing the tokens
-        // then would sign the user out of the page they are going to.
-        if (err instanceof ApiError) clearTokens();
-        setUser(null);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+    // Ignore a late /me answer once the effect is gone or login()/logout() decided in the meantime.
+    const started = decision.current;
+    let cancelled = false;
+    const stale = () => cancelled || decision.current !== started;
+    (async () => {
+      for (let i = 0; ; i++) {
+        try {
+          const me = await apiGet<User>("/api/auth/me");
+          if (stale()) return;
+          applyUserLanguage(me);
+          setUser(me);
+          setSessionError(false);
+          break;
+        } catch (err: unknown) {
+          if (stale()) return;
+          // Only a rejection of the session invalidates it. Network errors (also the abort when the page is
+          // left while /me is in flight), 429 and 5xx are no verdict: keep the tokens, retry, and never let
+          // the visitor look like a guest (`sessionError`).
+          const status = apiErrorStatus(err);
+          if (status === 401 || status === 403) {
+            clearTokens();
+            setUser(null);
+            setSessionError(false);
+            break;
+          }
+          if (i >= RETRY_DELAYS_MS.length) {
+            setSessionError(true);
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[i]));
+          if (stale()) return;
+        }
+      }
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [attempt]);
+
+  // Retry later when the connection or the tab comes back.
+  useEffect(() => {
+    if (!sessionError) return;
+    const retry = () => {
+      if (document.visibilityState === "hidden") return;
+      setSessionError(false);
+      setLoading(true);
+      setAttempt((n) => n + 1);
+    };
+    window.addEventListener("online", retry);
+    document.addEventListener("visibilitychange", retry);
+    return () => {
+      window.removeEventListener("online", retry);
+      document.removeEventListener("visibilitychange", retry);
+    };
+  }, [sessionError]);
 
   const login = (accessToken: string, refreshToken: string, user: User) => {
+    decision.current++;
     storeTokens(accessToken, refreshToken);
     applyUserLanguage(user);
     setUser(user);
+    setSessionError(false);
+    setLoading(false);
   };
 
   const logout = () => {
     // The server ends the session too (revokes the refresh token's family); the local sign-out does not wait for it.
+    decision.current++;
     revokeRefreshToken();
     clearTokens();
     // Cached clubs/events of this account must not show up for the next one in the same tab.
     queryClient.clear();
     setUser(null);
+    setSessionError(false);
+    setLoading(false);
   };
 
   /** Saves profile settings on the account; resolves to false when the request failed. */
@@ -73,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, sessionError, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
