@@ -25,8 +25,11 @@ Migrationen gehören nicht ungeprüft auf die Dev-DB).
    `DATABASE_URL=mysql://root:root@127.0.0.1:3360/club_calendar_e2e?serverVersion=8.0&charset=utf8mb4`
    in `backend/`: `php bin/console doctrine:database:create --if-not-exists`, `doctrine:migrations:migrate -n`,
    `APP_ENV=dev php bin/console doctrine:fixtures:load -n` (das Fixtures-Bundle gibt es nur in dev/test).
-3. Backend (Repo-Wurzel, gleiche `DATABASE_URL`):
-   `FRONTEND_URL=http://localhost:5199 BACKEND_URL=http://localhost:3001 MAILER_DSN=null://null php -S 127.0.0.1:3001 -t backend/public`.
+3. Backend (Repo-Wurzel, gleiche `DATABASE_URL`), mit hohen IP-Limits: in `dev`/`prod` gelten 5 Registrierungen/h, 10 Logins/15 min
+   und 60 Token-Erneuerungen/min je IP, die Suite läuft sonst nach wenigen Tests in 429 `rate_limited`
+   (`AUTH_LOGIN_IP_LIMIT`, `AUTH_REGISTER_IP_LIMIT`, `AUTH_REFRESH_IP_LIMIT`). Die Umgebung `test` taugt nicht: dort
+   speichert der Hasher Passwörter im Klartext, die Fixture-Anmeldung `admin@example.com` schlüge fehl:
+   `AUTH_LOGIN_IP_LIMIT=100000 AUTH_REGISTER_IP_LIMIT=100000 AUTH_REFRESH_IP_LIMIT=100000 FRONTEND_URL=http://localhost:5199 BACKEND_URL=http://localhost:3001 MAILER_DSN=null://null php -S 127.0.0.1:3001 -t backend/public`.
    `FRONTEND_URL`/`BACKEND_URL` stehen nicht mehr in `.env` (sie folgen `APP_URL`, siehe `config/services.yaml`) und
    müssen hier gesetzt werden: Passkey-Origin, Links der neuen E-Mail-Adresse und der SSO-Verknüpfung bauen darauf
    auf (für PHPUnit setzt sie `phpunit.dist.xml`).

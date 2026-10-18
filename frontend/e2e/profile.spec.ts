@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
-import { API, PASSWORD, createVerifiedUser, login, seedClub } from "./helpers";
+import { API, PASSWORD, authHeaders, createVerifiedUser, login, seedClub } from "./helpers";
 
 // ——— Profil (phase 7): Sprache, Darstellung, Datumsformat, Passkeys, Konto ———
 
@@ -214,7 +214,8 @@ test.describe("Profil", () => {
     await page.getByRole("button", { name: "Passkey „Test-Laptop“ entfernen" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Passkey entfernen" }).click();
     await expect(page.getByText("Du hast noch keinen Passkey eingerichtet.")).toBeVisible();
-    expect((await me(request, s.headers)).passkeys).toHaveLength(0);
+    // deleting a passkey ends all sessions (token version), so the old access token is dead: sign in again
+    expect((await me(request, await authHeaders(request, s.email))).passkeys).toHaveLength(0);
   });
 
   test("Anmelden mit Passkey (virtueller Authenticator), Wiederverwendung scheitert", async ({
@@ -239,7 +240,7 @@ test.describe("Profil", () => {
     await page.getByRole("button", { name: "Passkey auf diesem Gerät einrichten" }).click();
     await expect(page.getByText("Passkey „Login-Laptop“ wurde hinzugefügt.")).toBeVisible();
 
-    await page.getByRole("main").getByRole("button", { name: "Abmelden" }).click();
+    await page.getByRole("main").getByRole("button", { name: "Abmelden", exact: true }).click();
     await expect(page).toHaveURL(/\/login/);
 
     // Capture what the browser sends, to replay it afterwards.
@@ -262,7 +263,7 @@ test.describe("Profil", () => {
   test("Abmelden führt zur Anmeldung", async ({ page, request }) => {
     const s = await seed(request, "Profil Abmelden");
     await openProfile(page, s, request);
-    await page.getByRole("main").getByRole("button", { name: "Abmelden" }).click();
+    await page.getByRole("main").getByRole("button", { name: "Abmelden", exact: true }).click();
     await expect(page).toHaveURL(/\/login/);
   });
 
@@ -277,6 +278,11 @@ test.describe("Profil", () => {
     await dialog.getByLabel(/Zur Bestätigung dein Passwort/).fill("falsches-Passwort-1");
     await confirm.click();
     await expect(dialog.getByText("Das Passwort stimmt nicht.")).toBeVisible();
+    // The only member of a club cannot delete the account (422 last_member_of_club): delete the club first
+    const clubDeleted = await request.delete(`${API}/api/clubs/${s.clubId}`, {
+      headers: s.headers,
+    });
+    expect(clubDeleted.ok()).toBeTruthy();
     await dialog.getByLabel(/Zur Bestätigung dein Passwort/).fill(PASSWORD);
     // Activate by keyboard: the page unmounts as soon as the account is gone, which makes a mouse
     // click's "element detached" bookkeeping flaky.

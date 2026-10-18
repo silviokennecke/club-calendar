@@ -205,7 +205,7 @@ jobs:
       - name: Generate JWT keypair
         working-directory: backend
         env:
-          APP_ENV: test
+          APP_ENV: dev
           APP_SECRET: ci-app-secret-for-testing-only
           DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
           TEST_DATABASE_URL: mysql://root:root@127.0.0.1:3360/club_calendar_test
@@ -226,7 +226,7 @@ jobs:
       - name: Run migrations (test DB)
         working-directory: backend
         env:
-          APP_ENV: test
+          APP_ENV: dev
           APP_SECRET: ci-app-secret-for-testing-only
           DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
           TEST_DATABASE_URL: mysql://root:root@127.0.0.1:3360/club_calendar_test
@@ -237,7 +237,7 @@ jobs:
       - name: Run PHPUnit
         working-directory: backend
         env:
-          APP_ENV: test
+          APP_ENV: dev
           APP_SECRET: ci-app-secret-for-testing-only
           DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
           TEST_DATABASE_URL: mysql://root:root@127.0.0.1:3360/club_calendar_test
@@ -355,7 +355,9 @@ jobs:
           # Write .env.local so the background PHP server reliably reads CI values.
           # Process env vars may not propagate to orphaned background processes on
           # GitHub Actions runners; .env.local is loaded by Symfony at runtime.
-          printf 'APP_ENV=dev\nAPP_SECRET=ci-app-secret-for-testing-only\nDATABASE_URL=mysql://root:root@127.0.0.1:3306/club_calendar\nJWT_REFRESH_SECRET=ci-refresh-secret-at-least-32-chars-for-testing\nFRONTEND_URL=http://localhost:3000\nDEFAULT_URI=http://localhost:3001\nWEBAUTHN_RP_ID=localhost\nWEBAUTHN_RP_NAME="Club Calendar CI"\n' > .env.local
+          # MAILER_DSN=null://null: .env.example points at smtp://localhost:1025 (nothing listens in CI),
+          # which turned every registration / mail-sending request into a 500.
+          printf 'APP_ENV=dev\nAPP_SECRET=ci-app-secret-for-testing-only\nDATABASE_URL=mysql://root:root@127.0.0.1:3306/club_calendar\nJWT_REFRESH_SECRET=ci-refresh-secret-at-least-32-chars-for-testing\nFRONTEND_URL=http://localhost:3000\nDEFAULT_URI=http://localhost:3001\nWEBAUTHN_RP_ID=localhost\nWEBAUTHN_RP_NAME="Club Calendar CI"\nMAILER_DSN=null://null\n' > .env.local
 
       - name: Generate JWT keypair
         working-directory: backend
@@ -396,6 +398,12 @@ jobs:
         working-directory: backend
         env:
           APP_ENV: dev
+          # Per-IP auth limits are 5 registrations/h and 10 logins/15 min in production; the suite
+          # registers and signs in far more often than that from one IP (config/packages/rate_limiter.yaml)
+          AUTH_LOGIN_IP_LIMIT: "100000"
+          AUTH_REGISTER_IP_LIMIT: "100000"
+          AUTH_REFRESH_IP_LIMIT: "100000"
+          MAILER_DSN: null://null
           APP_SECRET: ci-app-secret-for-testing-only
           DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
           JWT_REFRESH_SECRET: ci-refresh-secret-at-least-32-chars-for-testing
@@ -441,6 +449,8 @@ jobs:
         working-directory: frontend
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
+          # backendConsole() (app:user:verify, reset links) must use the CI database, not the local default
+          E2E_DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar?serverVersion=8.0&charset=utf8mb4
         run: npx playwright test
 
       - name: Upload Playwright report
