@@ -156,6 +156,7 @@ describe("MorePage (design: Menu)", () => {
       "Vorlagen",
       "Einstellungen",
       "Verein verwalten",
+      "Orte und Gruppen",
       "Alle Vereine",
       "Mein Profil",
     ]);

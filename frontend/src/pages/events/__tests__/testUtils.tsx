@@ -8,6 +8,11 @@ import type { CalendarEvent } from "@/lib/types";
 export const BASE = "/clubs/c1/calendars/k1";
 /** Route pattern of BASE (as in App.tsx). */
 export const PATTERN = "/clubs/:clubId/calendars/:calendarId";
+/** Club level (club settings: locations, target groups, feeds) and its route pattern. */
+export const CLUB_BASE = "/clubs/c1";
+export const CLUB_PATTERN = "/clubs/:clubId";
+/** The club's calendars as the shell loads them (club settings pages default to / link to these). */
+export const CLUB_CALENDARS_PATH = "/api/clubs/c1/calendars?includeArchived=true";
 
 export const groups = [
   { id: "g1", clubId: "k1", name: "Jugend" },

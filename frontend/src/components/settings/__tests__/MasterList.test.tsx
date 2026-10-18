@@ -269,7 +269,7 @@ describe("MasterList", () => {
       name: "Gruppe „Senioren“ löschen?",
     });
     expect(dialog).toHaveAccessibleDescription(
-      expect.stringContaining("Die Gruppe wird aus der Liste entfernt."),
+      expect.stringContaining("Die Gruppe wird aus allen Kalendern des Vereins entfernt."),
     );
     await waitFor(() =>
       expect(dialog).toHaveTextContent(

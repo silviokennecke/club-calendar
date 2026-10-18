@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FeedsPage from "../FeedsPage";
-import { BASE, PATTERN, renderRoute } from "../../events/__tests__/testUtils";
+import {
+  CLUB_BASE,
+  CLUB_CALENDARS_PATH,
+  CLUB_PATTERN,
+  renderRoute,
+} from "../../events/__tests__/testUtils";
 import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
@@ -17,9 +22,18 @@ vi.mock("@/lib/api", () => ({
   apiDelete: (...a: unknown[]) => apiDelete(...a),
 }));
 
-const route = `${PATTERN}/settings/feeds`;
-const url = `${BASE}/settings/feeds`;
-let calendar: Record<string, unknown>;
+const route = `${CLUB_PATTERN}/settings/feeds`;
+const url = `${CLUB_BASE}/settings/feeds`;
+const calendars = [
+  { id: "k1", clubId: "c1", name: "Schießbetrieb 2026", timezone: null },
+  {
+    id: "k2",
+    clubId: "c1",
+    name: "Saison 2025",
+    timezone: null,
+    archivedAt: "2026-01-01T00:00:00+00:00",
+  },
+];
 let feeds: unknown[];
 
 const publicFeed = {
@@ -44,11 +58,10 @@ const privateFeed = {
 };
 
 beforeEach(() => {
-  calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026", timezone: null };
   feeds = [publicFeed, privateFeed];
   for (const fn of [apiGet, apiPost, apiDelete]) fn.mockReset();
   mockApiGet(apiGet, (path: string) => {
-    if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
+    if (path === CLUB_CALENDARS_PATH) return Promise.resolve(calendars);
     if (path === "/api/clubs/c1/feeds?includeSecret=1") return Promise.resolve(feeds);
     if (path === "/api/clubs/c1/target-groups")
       return Promise.resolve([
@@ -67,7 +80,7 @@ describe("FeedsPage", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Veröffentlichen" }),
     ).toBeInTheDocument();
-    expect(await screen.findByText("Schießbetrieb 2026 · 2 Feeds")).toBeInTheDocument();
+    expect(await screen.findByText("Schützenverein · 2 Feeds")).toBeInTheDocument();
     const pub = screen.getByRole("region", { name: "Öffentlicher Kalender" });
     expect(within(pub).getByText("Öffentlich")).toBeInTheDocument();
     expect(within(pub).getByText("Alle Gruppen")).toBeInTheDocument();
@@ -166,14 +179,14 @@ describe("FeedsPage", () => {
     renderRoute(route, url, <FeedsPage />);
     await screen.findByRole("link", { name: "Feed „Vorstand intern“ bearbeiten" });
     const links = screen.getAllByRole("link", { name: "Feed anlegen" });
-    for (const l of links) expect(l).toHaveAttribute("href", `${BASE}/settings/feeds/new`);
+    for (const l of links) expect(l).toHaveAttribute("href", `${CLUB_BASE}/settings/feeds/new`);
     expect(screen.getByRole("link", { name: "Feed „Vorstand intern“ bearbeiten" })).toHaveAttribute(
       "href",
-      `${BASE}/settings/feeds/f2`,
+      `${CLUB_BASE}/settings/feeds/f2`,
     );
     expect(screen.getByRole("link", { name: "Kalender exportieren" })).toHaveAttribute(
       "href",
-      `${BASE}/events/export`,
+      "/clubs/c1/calendars/k1/events/export",
     );
   });
 
@@ -209,33 +222,59 @@ describe("FeedsPage", () => {
 
   it("shows an error with retry when the feeds cannot be loaded", async () => {
     const user = userEvent.setup();
-    mockApiGet(apiGet, (path: string) =>
-      path === "/api/clubs/c1/calendars/k1"
-        ? Promise.resolve(calendar)
-        : Promise.reject(new Error("API error 500")),
-    );
+    mockApiGet(apiGet, () => Promise.reject(new Error("API error 500")));
     renderRoute(route, url, <FeedsPage />);
     expect(await screen.findByText("Die Feeds konnten nicht geladen werden.")).toBeInTheDocument();
-    mockApiGet(apiGet, (path: string) =>
-      path === "/api/clubs/c1/calendars/k1" ? Promise.resolve(calendar) : Promise.resolve([]),
-    );
+    mockApiGet(apiGet, () => Promise.resolve([]));
     await user.click(screen.getByRole("button", { name: "Erneut versuchen" }));
     expect(await screen.findByRole("heading", { name: "Noch kein Feed" })).toBeInTheDocument();
   });
 
-  it("is read-only in an archived calendar and offers to restore it", async () => {
-    calendar = { ...calendar, archivedAt: "2026-01-01T00:00:00+00:00" };
-    const user = userEvent.setup();
+  it("has the club settings tabs and no archived state", async () => {
     renderRoute(route, url, <FeedsPage />);
-    expect(await screen.findByText("Archiviert, schreibgeschützt")).toBeInTheDocument();
+    await screen.findByRole("heading", { level: 1, name: "Veröffentlichen" });
+    const tabs = screen.getByRole("navigation", { name: "Einstellungen des Vereins" });
+    await within(tabs).findByRole("link", { name: "Feeds" });
+    expect(
+      within(tabs)
+        .getAllByRole("link")
+        .map((l) => l.textContent),
+    ).toEqual(["Orte", "Gruppen", "Feeds"]);
+    expect(within(tabs).getByRole("link", { name: "Feeds" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByText("Schützenverein", { exact: false })).toBeInTheDocument();
+    expect(screen.queryByText("Archiviert, schreibgeschützt")).not.toBeInTheDocument();
+  });
+
+  it("is read-only for editors: addresses visible, no create, edit or delete", async () => {
+    mockApiGet(
+      apiGet,
+      (path: string) =>
+        path === "/api/clubs/c1/feeds?includeSecret=1"
+          ? Promise.resolve(feeds)
+          : Promise.resolve([]),
+      "editor",
+    );
+    renderRoute(route, url, <FeedsPage />);
+    expect(await screen.findByText(/Nur Vereins-Admins können Feeds/)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Feed anlegen" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /bearbeiten/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /löschen/ })).not.toBeInTheDocument();
-    // The addresses can still be looked up.
     expect((await screen.findAllByRole("button", { name: /Zugänge/ })).length).toBe(2);
-    await user.click(screen.getByRole("button", { name: "Archivierung aufheben" }));
-    await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith("/api/clubs/c1/calendars/k1/unarchive", {}),
+  });
+
+  it("shows the forbidden state to viewers and loads no feeds", async () => {
+    mockApiGet(apiGet, () => Promise.resolve([]), "viewer");
+    renderRoute(route, url, <FeedsPage />);
+    expect(
+      await screen.findByRole("heading", { name: "Feeds sind für deine Rolle nicht verfügbar" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Zurück zum Verein" })).toHaveAttribute(
+      "href",
+      "/clubs/c1",
     );
+    expect(apiGet).not.toHaveBeenCalledWith("/api/clubs/c1/feeds?includeSecret=1");
   });
 });

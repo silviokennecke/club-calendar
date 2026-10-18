@@ -51,7 +51,10 @@ describe("Sidebar navigation", () => {
     [`${base}/templates`, "Vorlagen"],
     [`${base}/settings`, "Einstellungen"],
     [`${base}/settings/properties`, "Einstellungen"],
-    [`${base}/settings/feeds`, "Veröffentlichen"],
+    ["/clubs/c1/settings/feeds", "Veröffentlichen"],
+    ["/clubs/c1/settings/feeds/new", "Veröffentlichen"],
+    ["/clubs/c1/settings/locations", "Orte und Gruppen"],
+    ["/clubs/c1/settings/target-groups", "Orte und Gruppen"],
     [`${base}/events/export`, "Veröffentlichen"],
     ["/clubs/c1", "Verein verwalten"],
   ])("marks exactly one link as current on %s", (path, label) => {
@@ -63,7 +66,11 @@ describe("Sidebar navigation", () => {
     renderAt(base);
     expect(screen.getByRole("link", { name: "Veröffentlichen" })).toHaveAttribute(
       "href",
-      `${base}/settings/feeds`,
+      "/clubs/c1/settings/feeds",
+    );
+    expect(screen.getByRole("link", { name: "Orte und Gruppen" })).toHaveAttribute(
+      "href",
+      "/clubs/c1/settings/locations",
     );
     expect(screen.getByRole("link", { name: "Verein verwalten" })).toHaveAttribute(
       "href",
@@ -122,7 +129,9 @@ describe("Tabbar", () => {
   it.each([
     [base, "Kalender"],
     [`${base}/templates`, "Termine"],
-    [`${base}/settings/feeds`, "Veröffentlichen"],
+    ["/clubs/c1/settings/feeds", "Veröffentlichen"],
+    ["/clubs/c1/settings/feeds/f1", "Veröffentlichen"],
+    ["/clubs/c1/settings/locations", "Mehr"],
     [`${base}/settings`, "Mehr"],
     [`${base}/more`, "Mehr"],
     [`${base}/events/export`, "Veröffentlichen"],

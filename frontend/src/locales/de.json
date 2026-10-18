@@ -684,7 +684,7 @@
         "title": "Gruppen",
         "label": "Gruppen filtern",
         "hint": "Ohne Auswahl werden alle Gruppen exportiert.",
-        "none": "Dieser Kalender hat noch keine Gruppen."
+        "none": "Dieser Verein hat noch keine Gruppen."
       },
       "preview": {
         "title": "Vorschau",
@@ -1251,13 +1251,13 @@
         "editText": "Namen von „{{name}}“ ändern."
       },
       "audiences": {
-        "description": "Gruppen sagen, für wen ein Termin gedacht ist, z. B. Jugend. Besucher können den Kalender danach filtern, und Abos lassen sich auf Gruppen beschränken.",
+        "description": "Gruppen sagen, für wen ein Termin gedacht ist, z. B. Jugend. Sie gelten für alle Kalender des Vereins. Besucher können den Kalender danach filtern, und Abos lassen sich auf Gruppen beschränken.",
         "addTitle": "Neue Gruppe hinzufügen",
         "create": "Gruppe anlegen",
         "placeholder": "z. B. Jugend",
         "emptyTitle": "Noch keine Gruppen",
         "emptyText": "Lege die erste Gruppe an, zum Beispiel „Jugend“. Damit lassen sich Termine und Abos nach Gruppe filtern.",
-        "emptyReadOnly": "In diesem Kalender gibt es keine Gruppen.",
+        "emptyReadOnly": "In diesem Verein gibt es keine Gruppen.",
         "listTitle": "Vorhandene Gruppen ({{count}})",
         "created": "Gruppe „{{name}}“ angelegt",
         "deleted": "„{{name}}“ gelöscht",
@@ -1268,7 +1268,7 @@
         "deleteLabel": "{{name}} löschen",
         "editTitle": "Gruppe bearbeiten",
         "deleteTitle": "Gruppe „{{name}}“ löschen?",
-        "deleteText": "Die Gruppe wird aus der Liste entfernt.",
+        "deleteText": "Die Gruppe wird aus allen Kalendern des Vereins entfernt.",
         "deleteConfirm": "Gruppe löschen",
         "consequence": {
           "loading": "Betroffene Termine werden ermittelt …",
@@ -1282,11 +1282,11 @@
           "eventsNamed_other": "Bei {{count}} Terminen ({{names}}) wird die Zuordnung entfernt.",
           "feeds": "Feeds, die diese Gruppe ausgewählt haben, verlieren sie aus ihrer Auswahl."
         },
-        "editText": "Namen von „{{name}}“ ändern."
+        "editText": "Namen von „{{name}}“ ändern. Die Änderung gilt für alle Kalender des Vereins."
       }
     },
     "places": {
-      "description": "Orte sind Treffpunkte deines Vereins. Du wählst sie beim Anlegen eines Termins aus. Auf der Karte siehst du alle Orte auf einen Blick.",
+      "description": "Orte sind Treffpunkte deines Vereins und gelten für alle seine Kalender. Du wählst sie beim Anlegen eines Termins aus. Auf der Karte siehst du alle Orte auf einen Blick.",
       "create": "Ort anlegen",
       "loading": "Orte werden geladen …",
       "loadError": {
@@ -1297,7 +1297,7 @@
       "empty": {
         "title": "Noch keine Orte",
         "text": "Lege den ersten Ort an, zum Beispiel dein Vereinsheim. Danach kannst du ihn bei jedem Termin auswählen.",
-        "readOnly": "In diesem Kalender gibt es keine Orte."
+        "readOnly": "In diesem Verein gibt es keine Orte."
       },
       "overview_one": "Übersichtskarte mit {{count}} Ort",
       "overview_other": "Übersichtskarte mit {{count}} Orten",
@@ -1347,7 +1347,7 @@
       "delete": {
         "action": "Ort löschen",
         "title": "Ort „{{name}}“ löschen?",
-        "text": "Der Ort wird samt Kartenposition entfernt.",
+        "text": "Der Ort wird samt Kartenposition aus allen Kalendern des Vereins entfernt.",
         "confirm": "Ort löschen",
         "consequence": {
           "loading": "Betroffene Termine werden ermittelt …",
@@ -1441,6 +1441,9 @@
       "previewLoading": "Feiertage werden geladen …",
       "previewError": "Die Feiertage konnten nicht geladen werden.",
       "previewEmpty": "In den nächsten 12 Monaten gibt es keine Einträge."
+    },
+    "club": {
+      "title": "Vereinseinstellungen"
     }
   },
   "brand": {
@@ -1571,7 +1574,8 @@
       "templates": "Vorlagen",
       "settings": "Einstellungen",
       "feeds": "Veröffentlichen",
-      "club": "Verein verwalten"
+      "club": "Verein verwalten",
+      "clubSettings": "Orte und Gruppen"
     },
     "profile": "Mein Profil",
     "signOut": "Abmelden",
@@ -1597,7 +1601,9 @@
       "features": "Zusatzangebote",
       "targetGroups": "Gruppen",
       "locations": "Orte",
-      "holidays": "Feiertage"
+      "holidays": "Feiertage",
+      "clubLabel": "Einstellungen des Vereins",
+      "feeds": "Feeds"
     },
     "unavailable": "Nicht verfügbar",
     "toClubPicker": "Zur Vereinsauswahl",
@@ -1772,8 +1778,7 @@
     "count_other": "{{count}} Feeds",
     "export": "Kalender exportieren",
     "create": "Feed anlegen",
-    "intro": "Mit Feeds machst du deinen Kalender für Mitglieder und Gäste sichtbar – als Webseite und als Abo für Kalender-Apps. In Feeds erscheinen nur veröffentlichte Termine; Entwürfe bleiben intern.",
-    "archived": "Dieser Kalender ist archiviert. Feeds lassen sich ansehen, aber nicht ändern. Öffentliche Feeds liefern nichts, bis du die Archivierung aufhebst.",
+    "intro": "Mit Feeds machst du die Kalender deines Vereins für Mitglieder und Gäste sichtbar – als Webseite und als Abo für Kalender-Apps. Ein Feed gehört zum Verein und kann einen oder mehrere Kalender enthalten. In Feeds erscheinen nur veröffentlichte Termine; Entwürfe bleiben intern.",
     "loading": "Feeds werden geladen …",
     "loadError": {
       "title": "Die Feeds konnten nicht geladen werden.",
@@ -1784,7 +1789,7 @@
       "label": "Keine Feeds",
       "title": "Noch kein Feed",
       "text": "Lege einen Feed an, damit Mitglieder und Gäste deinen Kalender sehen oder abonnieren können.",
-      "readOnly": "Dieser archivierte Kalender hat keine Feeds."
+      "readOnly": "Dieser Verein hat keine Feeds."
     },
     "audiencesOf": "Gruppen von {{name}}",
     "allAudiences": "Alle Gruppen",
@@ -1839,7 +1844,6 @@
         "text": "Diesen Feed gibt es nicht mehr. Vielleicht wurde er gelöscht."
       },
       "intro": "Ein Feed enthält nur veröffentlichte Termine. Entwürfe bleiben intern.",
-      "readOnly": "Dieser Kalender ist archiviert. Der Feed lässt sich nur ansehen.",
       "errorTitle": "Der Feed ist noch nicht vollständig.",
       "basics": "Grunddaten",
       "name": "Name",
@@ -1863,7 +1867,7 @@
       },
       "audiences": "Gruppen",
       "audiencesHint": "Ohne Auswahl enthält der Feed alle Gruppen.",
-      "audiencesNone": "In diesem Kalender gibt es noch keine Gruppen. Der Feed enthält alle Termine.",
+      "audiencesNone": "In diesem Verein gibt es noch keine Gruppen. Der Feed enthält alle Termine.",
       "audiencesError": "Die Gruppen konnten nicht geladen werden.",
       "access": "Zugänge",
       "accessNew": "Die drei Adressen (ICS, Abo und Webansicht) erscheinen hier, sobald du den Feed gespeichert hast.",
@@ -1887,8 +1891,8 @@
     },
     "forbidden": {
       "title": "Feeds sind für deine Rolle nicht verfügbar",
-      "text": "Nur Bearbeiter und Admins sehen die Feeds dieses Kalenders.",
-      "back": "Zurück zum Kalender"
+      "text": "Nur Bearbeiter und Admins sehen die Feeds dieses Vereins.",
+      "back": "Zurück zum Verein"
     },
     "readOnlyRole": "Nur Vereins-Admins können Feeds anlegen oder ändern. Du kannst sie ansehen."
   },

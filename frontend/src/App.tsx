@@ -7,6 +7,7 @@ import { ModalFrame, Toaster } from "./components/ui/shared";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import GuestRoute from "./components/layout/GuestRoute";
 import { BackgroundRoutes } from "./components/layout/BackgroundRoutes";
+import { LegacyClubSettingsRedirect } from "./components/layout/LegacyClubSettingsRedirect";
 import { NotFoundPage, RouteErrorPage } from "./components/error/ErrorPage";
 
 import {
@@ -100,18 +101,6 @@ function AppRoutes() {
               element={<CalendarSettingsPage />}
             />
             <Route
-              path="/clubs/:clubId/calendars/:calendarId/settings/feeds"
-              element={<FeedsPage />}
-            />
-            <Route
-              path="/clubs/:clubId/calendars/:calendarId/settings/feeds/new"
-              element={<FeedEditPage />}
-            />
-            <Route
-              path="/clubs/:clubId/calendars/:calendarId/settings/feeds/:feedId"
-              element={<FeedEditPage />}
-            />
-            <Route
               path="/clubs/:clubId/calendars/:calendarId/settings/properties"
               element={<PropertiesPage />}
             />
@@ -119,13 +108,24 @@ function AppRoutes() {
               path="/clubs/:clubId/calendars/:calendarId/settings/features"
               element={<FeaturesPage />}
             />
+            {/* Locations, target groups and feeds belong to the club: club settings without a calendar. */}
+            <Route path="/clubs/:clubId/settings" element={<Navigate to="locations" replace />} />
+            <Route path="/clubs/:clubId/settings/locations" element={<LocationsPage />} />
+            <Route path="/clubs/:clubId/settings/target-groups" element={<TargetGroupsPage />} />
+            <Route path="/clubs/:clubId/settings/feeds" element={<FeedsPage />} />
+            <Route path="/clubs/:clubId/settings/feeds/new" element={<FeedEditPage />} />
+            <Route path="/clubs/:clubId/settings/feeds/:feedId" element={<FeedEditPage />} />
+            {/* Old calendar-level addresses keep working. */}
+            <Route path={`${CAL}/settings/locations`} element={<LegacyClubSettingsRedirect />} />
             <Route
-              path="/clubs/:clubId/calendars/:calendarId/settings/locations"
-              element={<LocationsPage />}
+              path={`${CAL}/settings/target-groups`}
+              element={<LegacyClubSettingsRedirect />}
             />
+            <Route path={`${CAL}/settings/feeds`} element={<LegacyClubSettingsRedirect />} />
+            <Route path={`${CAL}/settings/feeds/new`} element={<LegacyClubSettingsRedirect />} />
             <Route
-              path="/clubs/:clubId/calendars/:calendarId/settings/target-groups"
-              element={<TargetGroupsPage />}
+              path={`${CAL}/settings/feeds/:feedId`}
+              element={<LegacyClubSettingsRedirect />}
             />
             <Route
               path="/clubs/:clubId/calendars/:calendarId/settings/holiday-calendars"

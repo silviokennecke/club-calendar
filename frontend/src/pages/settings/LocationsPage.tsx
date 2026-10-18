@@ -16,8 +16,8 @@ import {
 import { LocationPanel } from "@/components/locations/LocationPanel";
 import { MapBoundary } from "@/components/locations/MapBoundary";
 import type { AddressSuggestion } from "@/components/locations/AddressSearch";
-import { SettingsLayout } from "@/components/settings/SettingsLayout";
-import { useSettingsPage } from "@/components/settings/useSettingsPage";
+import { ClubSettingsLayout } from "@/components/settings/ClubSettingsLayout";
+import { useClubSettingsPage } from "@/components/settings/useClubSettingsPage";
 import { apiDelete, apiFetch, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { formatAddress, type Location } from "@/lib/types";
 import {
@@ -40,14 +40,14 @@ import { cn } from "@/lib/utils";
 const LocationsOverviewMap = lazy(() => import("@/components/locations/LocationsOverviewMap"));
 
 /**
- * Settings "Orte" (design: SettingsPlaces, SettingsPlacesMobile): overview map and list on the
+ * Club settings "Orte" (locations belong to the club and are shared by all its calendars; design: SettingsPlaces, SettingsPlacesMobile): overview map and list on the
  * left, form panel on the right (stacked on phones). The list and the form are the full way to
  * manage places; the maps are an addition (text alternative, coordinate fields).
  */
 export default function LocationsPage() {
   const { t } = useTranslation();
   const qc = useQueryClient();
-  const page = useSettingsPage();
+  const page = useClubSettingsPage();
   const { clubId, readOnly } = page;
   const queryKey = ["locations", clubId];
 
@@ -379,7 +379,7 @@ export default function LocationsPage() {
   }
 
   return (
-    <SettingsLayout
+    <ClubSettingsLayout
       wide
       actions={
         !readOnly && (
@@ -439,6 +439,6 @@ export default function LocationsPage() {
         />
       )}
       <UnsavedChangesDialog {...guard.dialog} />
-    </SettingsLayout>
+    </ClubSettingsLayout>
   );
 }

@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FeedEditPage from "../FeedEditPage";
-import { BASE, PATTERN, renderRoute } from "../../events/__tests__/testUtils";
+import {
+  CLUB_BASE,
+  CLUB_CALENDARS_PATH,
+  CLUB_PATTERN,
+  renderRoute,
+} from "../../events/__tests__/testUtils";
 import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
@@ -20,7 +25,16 @@ vi.mock("@/lib/api", () => ({
 
 const feedsPath = "/api/clubs/c1/feeds";
 const q = "?includeSecret=1";
-let calendar: Record<string, unknown>;
+const calendars = [
+  { id: "k1", clubId: "c1", name: "Schießbetrieb 2026", timezone: null },
+  {
+    id: "k2",
+    clubId: "c1",
+    name: "Saison 2025",
+    timezone: null,
+    archivedAt: "2026-01-01T00:00:00+00:00",
+  },
+];
 let feeds: unknown[];
 
 const privateFeed = {
@@ -36,17 +50,18 @@ const privateFeed = {
 };
 
 function renderEdit(feedId?: string) {
-  const path = feedId ? `${PATTERN}/settings/feeds/:feedId` : `${PATTERN}/settings/feeds/new`;
-  const url = `${BASE}/settings/feeds/${feedId ?? "new"}`;
+  const path = feedId
+    ? `${CLUB_PATTERN}/settings/feeds/:feedId`
+    : `${CLUB_PATTERN}/settings/feeds/new`;
+  const url = `${CLUB_BASE}/settings/feeds/${feedId ?? "new"}`;
   return renderRoute(path, url, <FeedEditPage />);
 }
 
 beforeEach(() => {
-  calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026", timezone: null };
   feeds = [privateFeed];
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete]) fn.mockReset();
   mockApiGet(apiGet, (path: string) => {
-    if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
+    if (path === CLUB_CALENDARS_PATH) return Promise.resolve(calendars);
     if (path === `${feedsPath}${q}`) return Promise.resolve(feeds);
     // Single GET of the edit page; unknown ids are a 404 like in the backend
     if (path.startsWith(`${feedsPath}/`)) {
@@ -84,7 +99,7 @@ describe("FeedEditPage (new)", () => {
     expect(screen.queryByRole("button", { name: "Feed löschen" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Zurück zu Veröffentlichen" })).toHaveAttribute(
       "href",
-      `${BASE}/settings/feeds`,
+      `${CLUB_BASE}/settings/feeds`,
     );
   });
 
@@ -185,7 +200,7 @@ describe("FeedEditPage (new)", () => {
         targetGroupIds: ["g1"],
       }),
     );
-    expect(await screen.findByTestId("location")).toHaveTextContent(`${BASE}/settings/feeds`);
+    expect(await screen.findByTestId("location")).toHaveTextContent(`${CLUB_BASE}/settings/feeds`);
   });
 
   it("shows an error and keeps the input when saving fails", async () => {
@@ -294,7 +309,7 @@ describe("FeedEditPage (edit)", () => {
         targetGroupIds: ["g1"],
       }),
     );
-    expect(await screen.findByTestId("location")).toHaveTextContent(`${BASE}/settings/feeds`);
+    expect(await screen.findByTestId("location")).toHaveTextContent(`${CLUB_BASE}/settings/feeds`);
   });
 
   it("does not ask when a feed without secret changes its status", async () => {
@@ -357,7 +372,7 @@ describe("FeedEditPage (edit)", () => {
     });
     await user.click(within(dialog).getByRole("button", { name: "Feed löschen" }));
     await waitFor(() => expect(apiDelete).toHaveBeenCalledWith(`${feedsPath}/f2`));
-    expect(await screen.findByTestId("location")).toHaveTextContent(`${BASE}/settings/feeds`);
+    expect(await screen.findByTestId("location")).toHaveTextContent(`${CLUB_BASE}/settings/feeds`);
   });
 
   it.each(["PUBLIC", "CLUB"])("has no secret panel for a %s feed", async (visibility) => {
@@ -397,15 +412,41 @@ describe("FeedEditPage (edit)", () => {
     expect(await screen.findByRole("button", { name: "Erneut versuchen" })).toBeInTheDocument();
   });
 
-  it("is read-only in an archived calendar", async () => {
-    calendar = { ...calendar, archivedAt: "2026-01-01T00:00:00+00:00" };
+  it("is read-only for editors (no archived state at club level)", async () => {
+    mockApiGet(
+      apiGet,
+      (path: string) =>
+        path === `${feedsPath}/f2${q}` ? Promise.resolve(privateFeed) : Promise.resolve([]),
+      "editor",
+    );
     renderEdit("f2");
-    expect(await screen.findByText("Archiviert, schreibgeschützt")).toBeInTheDocument();
+    expect(await screen.findByText(/Nur Vereins-Admins können Feeds/)).toBeInTheDocument();
+    expect(screen.queryByText("Archiviert, schreibgeschützt")).not.toBeInTheDocument();
     expect(screen.getByLabelText(/^Name/)).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Feed speichern" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Feed löschen" })).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Geheimnis neu erzeugen" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the forbidden state to viewers", async () => {
+    mockApiGet(apiGet, () => Promise.resolve([]), "viewer");
+    renderEdit("f2");
+    expect(
+      await screen.findByRole("heading", { name: "Feeds sind für deine Rolle nicht verfügbar" }),
+    ).toBeInTheDocument();
+    expect(apiGet).not.toHaveBeenCalledWith(`${feedsPath}/f2${q}`);
+  });
+});
+
+describe("FeedEditPage (new, roles)", () => {
+  it("keeps editors out of the create page", async () => {
+    mockApiGet(apiGet, () => Promise.resolve([]), "editor");
+    renderEdit();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Keine Berechtigung" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Feed speichern" })).not.toBeInTheDocument();
   });
 });

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import LocationsPage from "../LocationsPage";
-import { BASE, PATTERN, renderRoute } from "../../events/__tests__/testUtils";
+import { CLUB_BASE, CLUB_PATTERN, renderRoute } from "../../events/__tests__/testUtils";
 import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
@@ -72,18 +72,16 @@ const haus = {
 };
 const heim = { id: "l2", clubId: "k1", name: "Vereinsheim Mitte", street: "Marktplatz 5" };
 
-let calendar: Record<string, unknown>;
 let locations: unknown[];
 
-const route = `${PATTERN}/settings/locations`;
-const url = `${BASE}/settings/locations`;
+const route = `${CLUB_PATTERN}/settings/locations`;
+const url = `${CLUB_BASE}/settings/locations`;
 
 function json(body: unknown, ok = true, status = 200) {
   return Promise.resolve({ ok, status, json: () => Promise.resolve(body) });
 }
 
 beforeEach(() => {
-  calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026", timezone: "Europe/Berlin" };
   // usage as the list endpoint counts it
   locations = [
     { ...haus, usage: { events: 2, templates: 1, templateNames: ["Vereinsabend"] } },
@@ -91,7 +89,6 @@ beforeEach(() => {
   ];
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete, apiFetch]) fn.mockReset();
   mockApiGet(apiGet, (path: string) => {
-    if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
     if (path.endsWith("/locations")) return Promise.resolve(locations);
     return Promise.resolve([]);
   });
@@ -419,22 +416,22 @@ describe("LocationsPage", () => {
   });
 
   it("shows an error with retry when loading fails", async () => {
-    mockApiGet(apiGet, (path: string) =>
-      path === "/api/clubs/c1/calendars/k1"
-        ? Promise.resolve(calendar)
-        : Promise.reject(new Error("API error 500")),
-    );
+    mockApiGet(apiGet, () => Promise.reject(new Error("API error 500")));
     renderRoute(route, url, <LocationsPage />);
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Die Orte konnten nicht geladen werden.",
     );
   });
 
-  it("is read-only in an archived calendar", async () => {
-    calendar = { ...calendar, archivedAt: "2026-01-01T00:00:00+00:00" };
+  it("is read-only for viewers (no archived state at club level)", async () => {
+    mockApiGet(
+      apiGet,
+      (path: string) => Promise.resolve(path.endsWith("/locations") ? locations : []),
+      "viewer",
+    );
     renderRoute(route, url, <LocationsPage />);
     await screen.findByRole("heading", { name: "Alle Orte (2)" });
-    expect(screen.getByRole("button", { name: "Archivierung aufheben" })).toBeInTheDocument();
+    expect(screen.getByText(/erlaubt nur das Ansehen/)).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Ort anlegen|bearbeiten/ }),
     ).not.toBeInTheDocument();
