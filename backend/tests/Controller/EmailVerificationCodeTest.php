@@ -128,6 +128,16 @@ class EmailVerificationCodeTest extends WebTestCase
         $this->assertStringStartsWith('$2y$04$', $stored);
     }
 
+    public function testMailEmbedsTheLogoInline(): void
+    {
+        $this->post('/api/auth/register', ['name' => 'New', 'email' => 'new@example.com', 'password' => 'password123']);
+        $mail = $this->getMailerMessage();
+        $this->assertInstanceOf(Email::class, $mail);
+        $this->assertMatchesRegularExpression('#<img src="cid:[^"]+"#', (string) $mail->getHtmlBody());
+        $this->assertCount(1, $mail->getAttachments());
+        $this->assertSame('image/png', $mail->getAttachments()[0]->getMediaType().'/'.$mail->getAttachments()[0]->getMediaSubtype());
+    }
+
     // --- code lifecycle ---
 
     public function testValidCodeVerifiesAndReturnsALoginTokenThatSignsIn(): void

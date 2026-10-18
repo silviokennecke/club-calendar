@@ -78,7 +78,7 @@ From the repo root (none require Docker):
 - `npm run build:dev` / `npm run build` — dev / production build (composer install, mail templates, frontend)
 - `npm run dev:frontend`, `npm test`, `npm run test:backend`, `npm run test:frontend`
 - `npm run migrate`, `npm run fixtures` — Doctrine migrations / fixtures
-- `npm run build:mail -w backend` — compile MJML email templates (confirmation code, password reset, new e-mail; compiled `*.html.twig` are committed; `backend` is an npm workspace for this)
+- `npm run build:mail -w backend` — compile MJML email templates (confirmation code, password reset, new e-mail; compiled `*.html.twig` are committed; `backend` is an npm workspace for this); the header logo is the PNG `backend/assets/mail/logo.png` (email clients do not render SVG), embedded inline as a CID attachment via `email.image('@mail_assets/logo.png')` (Twig path `mail_assets` in `config/packages/twig.yaml`), so there are no external image hosts
 - `npm run lint -w frontend` — ESLint (`--max-warnings 0`) + Prettier check; `npm run format -w frontend` fixes formatting
 
 ## Tests
