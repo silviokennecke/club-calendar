@@ -9,7 +9,8 @@
     "back": "Zurück",
     "search": "Suchen…",
     "all": "Alle",
-    "name": "Name"
+    "name": "Name",
+    "quotaExceeded": "Limit erreicht: Dieser Verein oder Kalender kann nicht mehr davon aufnehmen. Lösche zuerst nicht mehr benötigte Einträge."
   },
   "auth": {
     "signIn": "Anmelden",

@@ -98,6 +98,27 @@ final class Input
         }
     }
 
+    /** A day range of at most `$maxDays` days (both ends given): a longer one is a 400 on `to`. */
+    public static function assertMaxRange(?\DateTimeImmutable $from, ?\DateTimeImmutable $to, int $maxDays): void
+    {
+        if (null !== $from && null !== $to && $from->diff($to)->days > $maxDays) {
+            throw self::invalid('to', sprintf('The range from..to must not be longer than %d days', $maxDays));
+        }
+    }
+
+    /** Optional integer query parameter within `[$min, $max]` (absent or "" = null), else 400 with the field. */
+    public static function optionalInt(mixed $value, string $key, int $min, int $max): ?int
+    {
+        if (null === $value || '' === $value) {
+            return null;
+        }
+        if (!is_string($value) || !preg_match('/^\d{1,10}$/', $value) || (int) $value < $min || (int) $value > $max) {
+            throw self::invalid($key, sprintf('%s must be an integer between %d and %d', $key, $min, $max));
+        }
+
+        return (int) $value;
+    }
+
     public static function parseDate(mixed $value, string $key): \DateTimeImmutable
     {
         $date = is_string($value) ? \DateTimeImmutable::createFromFormat('!Y-m-d', $value) : false;
@@ -130,6 +151,9 @@ final class Input
         return self::time($data, $key);
     }
 
+    /** Most ids in one list field (properties, features, target groups of an event, template or feed). */
+    public const MAX_IDS = 500;
+
     /**
      * @return list<string>
      */
@@ -148,7 +172,12 @@ final class Input
             }
         }
 
-        return array_values(array_unique(array_map('strval', $value)));
+        $ids = array_values(array_unique(array_map('strval', $value)));
+        if (count($ids) > self::MAX_IDS) {
+            throw self::invalid($key, sprintf('%s must not have more than %d distinct ids', $key, self::MAX_IDS));
+        }
+
+        return $ids;
     }
 
     /** Optional IANA time zone (null allowed); anything else would break the ICS feed later. */

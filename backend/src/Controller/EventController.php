@@ -55,6 +55,11 @@ class EventController extends AbstractApiController
         ]);
     }
 
+    /**
+     * Events of the calendar, sorted. `from`/`to` (YYYY-MM-DD, overlap, at most EventService::LIST_MAX_RANGE_DAYS
+     * apart), `targetGroupIds` (comma-separated), `limit` (1..LIST_MAX_LIMIT, default LIST_MAX_LIMIT) and `offset`.
+     * Body: plain list; `X-Total-Count`: number of all matches.
+     */
     #[Route('', methods: ['GET'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     public function list(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
@@ -64,10 +69,16 @@ class EventController extends AbstractApiController
         $from = Input::optionalDate($query['from'] ?? null, 'from');
         $to = Input::optionalDate($query['to'] ?? null, 'to');
         Input::assertDateRange($from, $to);
+        Input::assertMaxRange($from, $to, EventService::LIST_MAX_RANGE_DAYS);
         $tgParam = $request->query->get('targetGroupIds');
-        $tgIds = $tgParam ? array_values(array_filter(array_map('trim', explode(',', $tgParam)))) : null;
+        $tgIds = $tgParam ? Input::idList(['targetGroupIds' => array_values(array_filter(array_map('trim', explode(',', (string) $tgParam))))], 'targetGroupIds') : null;
+        $limit = Input::optionalInt($query['limit'] ?? null, 'limit', 1, EventService::LIST_MAX_LIMIT) ?? EventService::LIST_MAX_LIMIT;
+        $offset = Input::optionalInt($query['offset'] ?? null, 'offset', 0, PHP_INT_MAX) ?? 0;
 
-        return new JsonResponse($this->eventService->listEvents($calendar, $from, $to, $tgIds ?: null));
+        $page = $this->eventService->listEvents($calendar, $from, $to, $tgIds ?: null, $limit, $offset);
+
+        // The body stays a plain list; the total of all matches (before limit/offset) is in a header
+        return new JsonResponse($page['items'], 200, ['X-Total-Count' => (string) $page['total']]);
     }
 
     #[Route('/from-template', methods: ['POST'])]

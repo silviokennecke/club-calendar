@@ -14,6 +14,7 @@ readonly class LocationService
     public function __construct(
         private EntityManagerInterface $em,
         private UsageCounts $counts,
+        private Quota $quota,
     ) {
     }
 
@@ -29,6 +30,7 @@ readonly class LocationService
 
     public function create(Calendar $calendar, array $data): array
     {
+        $this->quota->assertRoom(Quota::LOCATIONS_PER_CALENDAR, $calendar);
         $location = $this->build($calendar, $data);
         $this->em->persist($location);
         $this->em->flush();

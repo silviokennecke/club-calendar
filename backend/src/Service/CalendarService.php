@@ -24,6 +24,7 @@ class CalendarService
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly UsageCounts $counts,
+        private readonly Quota $quota,
     ) {
     }
 
@@ -59,6 +60,7 @@ class CalendarService
 
     public function createCalendar(Club $club, string $name, ?string $timezone): array
     {
+        $this->quota->assertRoom(Quota::CALENDARS_PER_CLUB, $club);
         $cal = new Calendar();
         $cal->setClub($club);
         $cal->setName($name);
@@ -114,6 +116,7 @@ class CalendarService
      */
     public function duplicateCalendar(Calendar $source, ?string $name = null): array
     {
+        $this->quota->assertRoom(Quota::CALENDARS_PER_CLUB, $source->getClub());
         $newCal = new Calendar();
         $newCal->setClub($source->getClub());
         $newCal->setName($name ?? mb_substr('Copy of '.$source->getName(), 0, 255));

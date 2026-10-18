@@ -16,6 +16,10 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 readonly class HolidayCalendarService
 {
+    /** Largest ICS body accepted from a holiday URL (bytes) and most events stored per fetch (M7). */
+    public const MAX_BYTES = 1_048_576;
+    public const MAX_EVENTS = 5000;
+
     public function __construct(
         private HttpClientInterface $httpClient,
         private EntityManagerInterface $em,
@@ -66,9 +70,17 @@ readonly class HolidayCalendarService
     {
         $this->assertSafeUrl($holidayCalendar->getUrl());
 
-        $response = $this->httpClient->request('GET', $holidayCalendar->getUrl(), ['max_duration' => 10]);
+        $response = $this->httpClient->request('GET', $holidayCalendar->getUrl(), [
+            'max_duration' => 10,
+            // Abort the download as soon as more than MAX_BYTES arrived (also without a Content-Length)
+            'on_progress' => static function (int $downloaded): void {
+                if ($downloaded > self::MAX_BYTES) {
+                    throw new \RuntimeException('ICS feed exceeds maximum allowed size (1 MB)');
+                }
+            },
+        ]);
         $icsContent = $response->getContent(); // throws on 4xx/5xx
-        if (strlen($icsContent) > 1_048_576) {
+        if (strlen($icsContent) > self::MAX_BYTES) {
             throw new \RuntimeException('ICS feed exceeds maximum allowed size (1 MB)');
         }
 
@@ -108,6 +120,9 @@ readonly class HolidayCalendarService
                 }
             }
 
+            if ($count >= self::MAX_EVENTS) {
+                throw new \RuntimeException(sprintf('ICS feed has more than %d events', self::MAX_EVENTS));
+            }
             $this->em->persist(new HolidayEvent($holidayCalendar, $uid, $summary, $date, $dateEnd));
             ++$count;
         }

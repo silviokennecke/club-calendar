@@ -48,6 +48,7 @@ readonly class EventImportService
         private EntityManagerInterface $em,
         private EventService $events,
         private LocationService $locations,
+        private Quota $quota,
     ) {
     }
 
@@ -129,6 +130,10 @@ readonly class EventImportService
             }
             $ids[] = $event->getId();
         }
+
+        $newPlaces = count(array_filter($places, fn (Location $l) => isset($used[spl_object_id($l)])));
+        $this->quota->assertRoom(Quota::EVENTS_PER_CALENDAR, $calendar, count($ids));
+        $this->quota->assertRoom(Quota::LOCATIONS_PER_CALENDAR, $calendar, $newPlaces);
 
         // New places are only created for imported events (not for unused or only skipped ones)
         $created = [];

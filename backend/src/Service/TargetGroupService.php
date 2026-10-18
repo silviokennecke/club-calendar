@@ -15,6 +15,7 @@ readonly class TargetGroupService
         private EntityManagerInterface $em,
         private UniqueNames $names,
         private UsageCounts $counts,
+        private Quota $quota,
     ) {
     }
 
@@ -30,6 +31,7 @@ readonly class TargetGroupService
 
     public function create(Calendar $calendar, array $data): array
     {
+        $this->quota->assertRoom(Quota::TARGET_GROUPS_PER_CALENDAR, $calendar);
         $targetGroup = new TargetGroup();
         $targetGroup->setCalendar($calendar);
         $name = Input::string($data, 'name');

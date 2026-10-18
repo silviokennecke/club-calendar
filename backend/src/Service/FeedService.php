@@ -17,6 +17,7 @@ readonly class FeedService
     public function __construct(
         private EntityManagerInterface $em,
         private CalendarReferences $references,
+        private Quota $quota,
     ) {
     }
 
@@ -35,6 +36,7 @@ readonly class FeedService
 
     public function create(Calendar $calendar, array $data, bool $includeSecret = false): array
     {
+        $this->quota->assertRoom(Quota::FEEDS_PER_CALENDAR, $calendar);
         $feed = new CalendarFeed();
         $feed->setCalendar($calendar);
         $feed->setName(Input::string($data, 'name'));

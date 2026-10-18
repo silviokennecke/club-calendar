@@ -82,4 +82,35 @@ class HolidayCalendarFetchTest extends WebTestCase
         $list = TestHelper::jsonRequest($this->client, 'GET', $base, [], $auth);
         $this->assertSame([2], array_column($list['body'], 'eventCount'));
     }
+
+    public function testOversizedFeedIsRefused(): void
+    {
+        ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $auth = TestHelper::authHeader($user, $this->tokens);
+        // A comment line pads the body past the 1 MB limit
+        $this->feeds = [str_replace('END:VCALENDAR', 'X-PAD:'.str_repeat('a', HolidayCalendarService::MAX_BYTES)."\r\nEND:VCALENDAR", self::ics(1))];
+
+        $r = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/holiday-calendars", [
+            'name' => 'Gross', 'url' => 'https://holidays.invalid/gross.ics',
+        ], $auth);
+        $this->assertSame(422, $r['status'], $r['content']);
+        $this->assertSame('ics_fetch_failed', $r['body']['code']);
+    }
+
+    public function testFeedWithTooManyEventsIsRefused(): void
+    {
+        ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $auth = TestHelper::authHeader($user, $this->tokens);
+        $events = '';
+        for ($i = 0; $i <= HolidayCalendarService::MAX_EVENTS; ++$i) {
+            $events .= "BEGIN:VEVENT\r\nUID:h$i@t\r\nDTSTART;VALUE=DATE:20261201\r\nEND:VEVENT\r\n";
+        }
+        $this->feeds = ["BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//T//T//EN\r\n{$events}END:VCALENDAR\r\n"];
+
+        $r = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/holiday-calendars", [
+            'name' => 'Viele', 'url' => 'https://holidays.invalid/viele.ics',
+        ], $auth);
+        $this->assertSame(422, $r['status'], $r['content']);
+        $this->assertSame('ics_fetch_failed', $r['body']['code']);
+    }
 }

@@ -14,6 +14,7 @@ use App\Security\ArchivedCalendarVoter;
 use App\Security\CalendarMemberVoter;
 use App\Service\HolidayCalendarService;
 use App\Service\Input;
+use App\Service\Quota;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -31,6 +32,7 @@ class HolidayCalendarController extends AbstractApiController
         private readonly EntityManagerInterface $em,
         private readonly HolidayCalendarRepository $holidayCalendarRepo,
         private readonly HolidayCalendarService $holidayCalendarService,
+        private readonly Quota $quota,
     ) {
     }
 
@@ -56,6 +58,7 @@ class HolidayCalendarController extends AbstractApiController
         $dto->name = self::stringValue($data, 'name') ?? '';
         $dto->url = self::stringValue($data, 'url') ?? '';
         $this->validateDto($dto, $validator);
+        $this->quota->assertRoom(Quota::HOLIDAY_CALENDARS_PER_CALENDAR, $calendar);
 
         $hc = new HolidayCalendar($calendar, $dto->name, $dto->url);
         try {

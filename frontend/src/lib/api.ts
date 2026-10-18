@@ -1,3 +1,5 @@
+import i18n from "i18next";
+import { toast } from "sonner";
 import { API_URL } from "./apiUrl";
 import { markSessionEnded } from "./sessionEnd";
 import type { HolidayCalendar, HolidayEvent, User } from "./types";
@@ -184,6 +186,8 @@ async function errorFrom(res: Response): Promise<ApiError> {
     retryAt?: unknown;
     email?: unknown;
   } | null;
+  // Quota of a club/calendar used up (422): one clear message for every create form and import
+  if (err?.code === "quota_exceeded") toast.error(i18n.t("common.quotaExceeded"));
   return new ApiError(err?.detail ?? `API error ${res.status}`, res.status, err?.code, err?.field, {
     retryAt: typeof err?.retryAt === "string" ? err.retryAt : undefined,
     email: typeof err?.email === "string" ? err.email : undefined,
