@@ -121,17 +121,17 @@ Security headers (audit M4) live in both `backend/public/.htaccess` and `docker/
 
 - **Club** — the top-level entity; has one or more Calendars; managed by its members (Users via `ClubUser` with role `viewer`/`editor`/`admin`; viewer reads; editor also writes events, series, templates, locations, properties, features, target groups, holiday calendars and reads feeds; admin also manages calendars, members, invitations and club settings); members join only by accepting an **Invitation** (no direct add); a club never has zero members: the last member cannot be removed or leave (422 `last_member`, club row locked for the check), the last admin cannot be demoted/removed/leave while others remain (422 `last_admin`), and `DELETE /api/auth/me` is refused with 422 `last_admin_of_club` while the user is the last admin of a club (delete the club first or demote to a lower role)
 - **ClubInvitation** — an invitation of an e-mail address to a club (see "Club invitations" below); pending, accepted or declined, valid 7 days, an expired one stays listed and can be re-sent
-- **Calendar** — belongs to a Club; contains Events, EventTemplates, and reference data; can be archived (read-only) or duplicated
-- **CalendarFeed** — a publishable view of a Calendar (ICS + web) with one of three states: `PUBLIC` (by link, search
+- **Calendar** — belongs to a Club; contains Events, EventTemplates, Properties, Features, HolidayCalendars, and reference data per calendar; can be archived (read-only) or duplicated
+- **CalendarFeed** — a publishable view of 1..n Calendars of a Club (ICS + web) with one of three states: `PUBLIC` (by link, search
   engines may index it only with the opt-in `searchable`), `CLUB` ("Nur per Link", default: by link, never indexed)
-  or `PRIVATE` (shared-secret protected); see `docs/api/openapi.yaml`
+  or `PRIVATE` (shared-secret protected); the web view merges published events and holiday events of all selected non-archived calendars; ICS lists events only, never holidays; scoped to a Club; see `docs/api/openapi.yaml`
 - **Event** — a single occurrence on a Calendar; may be based on an EventTemplate; may belong to an EventSeries
 - **EventSeries** — a recurrence rule (weekly, every two weeks, monthly on the n-th weekday; until a date or a count; skip holidays) with the events created from it; edit/delete "only this event" or "all events of the series" (`scope`); the rule can be changed later ("Reihe ändern", `PATCH …/event-series/{id}`: only future events change, past ones stay). ICS imports with RRULE create single events, not series
 - **EventTemplate** — reusable event definition (name, time, location, properties)
 - **Property** — a tag/attribute for events (e.g. "Schützentracht"); can have an emoji icon
 - **Feature** — an optional add-on for events (e.g. "Bonusschießen")
-- **TargetGroup** — audience filter for events (e.g. "Schüler", "Jugend", "Erwachsene")
-- **Location** — a venue with an address and optional map position; scoped to a Calendar
+- **TargetGroup** — audience filter for events (e.g. "Schüler", "Jugend", "Erwachsene"); scoped to a Club
+- **Location** — a venue with an address and optional map position; scoped to a Club
 - **HolidayCalendar** — an external ICS source of holidays/school breaks for a Calendar (`HolidayEvent`s); shown in the calendar views and skipped in series previews
 - **User** — signs in with password, Google/Microsoft SSO (`OAuthAccount`) or passkeys (`Passkey`); e-mail confirmation by 6-digit code (`EmailVerification`)
 
@@ -176,14 +176,14 @@ Every error is an RFC 7807 body (`App\Http\ProblemResponse`) with a stable `code
 
 ## Limits and Quotas (audit M7)
 
-All quotas live in `App\Service\Quota` (`LIMITS`, generous on purpose; checked by a count before the write via `Quota::assertRoom()`); exceeding one is 422 `quota_exceeded` with the members `resource` and `limit`: 50 clubs per user, 100 calendars per club (create + duplicate), 500 members per club, 20000 events per calendar (create, from-template, series create/rule change, import), 2000 locations (import included), 500 each of templates/properties/features/target groups, 50 feeds, 20 holiday calendars per calendar. Per-request caps: 5000 events/locations per import and 5000 ids per bulk (413), 366 events per series and 366 `dates` of `from-template` (422 `too_many_events`), 500 distinct ids per id-list field (`Input::MAX_IDS`, 400), holiday ICS 1 MB / 5000 events (`HolidayCalendarService`). `GET …/events`: at most 1830 days between `from` and `to` (400 on `to`), `limit` (default and max 5000) and `offset`, `X-Total-Count` header, body stays a plain list (the list page without `from`/`to` shows at most the first 5000). A new create route must call `Quota::assertRoom()`; document it in `docs/api/openapi.yaml` ("Quotas and input limits"). The frontend shows one toast for every `quota_exceeded` (`errorFrom` in `frontend/src/lib/api.ts`, `common.quotaExceeded`).
+All quotas live in `App\Service\Quota` (`LIMITS`, generous on purpose; checked by a count before the write via `Quota::assertRoom()`); exceeding one is 422 `quota_exceeded` with the members `resource` and `limit`: 50 clubs per user, 100 calendars per club (create + duplicate), 500 members per club, 20000 events per calendar (create, from-template, series create/rule change, import), 2000 locations per club (import included), 500 target groups per club, 50 feeds per club, 500 each of properties/features per calendar, 20 holiday calendars per calendar. Per-request caps: 5000 events/locations per import and 5000 ids per bulk (413), 366 events per series and 366 `dates` of `from-template` (422 `too_many_events`), 500 distinct ids per id-list field (`Input::MAX_IDS`, 400), holiday ICS 1 MB / 5000 events (`HolidayCalendarService`). `GET …/events`: at most 1830 days between `from` and `to` (400 on `to`), `limit` (default and max 5000) and `offset`, `X-Total-Count` header, body stays a plain list (the list page without `from`/`to` shows at most the first 5000). A new create route must call `Quota::assertRoom()`; document it in `docs/api/openapi.yaml` ("Quotas and input limits"). The frontend shows one toast for every `quota_exceeded` (`errorFrom` in `frontend/src/lib/api.ts`, `common.quotaExceeded`).
 
 ## Event Import, Export, Bulk, Series
 
 ```
-POST /api/calendars/:id/events/import/preview   # {events, locations?} → status per entry (new|duplicate|invalid), writes nothing
-POST /api/calendars/:id/events/import           # {events, locations?: [{tempId, name, …}], skipDuplicates?} → one transaction
-GET  /api/calendars/:id/events.ics?from&to&includeDrafts&targetGroupIds[]   # member ICS download
+POST /api/calendars/:id/events/import/preview   # {events, locations?} → status per entry (new|duplicate|invalid), writes nothing; new locations reference club-scoped locations
+POST /api/calendars/:id/events/import           # {events, locations?: [{tempId, name, …}], skipDuplicates?} → one transaction; locations scoped to club
+GET  /api/calendars/:id/events.ics?from&to&includeDrafts&targetGroupIds[]   # member ICS download (target groups club-scoped)
 POST /api/calendars/:id/events/bulk             # {ids, action: publish|draft|delete} → {affected}, all or nothing
 POST /api/calendars/:id/events/series/preview   # {rule} → {dates, count, skippedHolidays, holidays}, writes nothing
 POST /api/calendars/:id/events/series           # {rule, templateId?, event?, isDraft?} → {series, events}, atomic, max. 366
@@ -198,11 +198,11 @@ Duplicates: same `externalUid` (ICS UID, stored on `Event`) or same name + start
 ```
 GET /api/feed/:feedId/ics
 GET /api/feed/:feedId/ics?secret=<token>   # for private feeds
-GET /api/feed/:feedId/events[?from=YYYY-MM-DD&to=YYYY-MM-DD]   # web view: header (club, calendar, zone, visibility), events, holidays
+GET /api/feed/:feedId/events[?from=YYYY-MM-DD&to=YYYY-MM-DD]   # web view: header (club, feed name, zone, visibility, eventCount), events and holidays of all selected calendars merged, holidays de-duplicated by uid
 GET /api/feed/:feedId/events/:eventId                          # one published event (secret checked first)
 ```
 
-Feed management responses (`/api/calendars/:id/feeds…`) omit `sharedSecret` unless `?includeSecret=1|true` is sent (the frontend sends it where it shows or copies the feed address).
+Feed ICS contains events only (no holidays). Feed web view merges published events and holiday events of all selected non-archived calendars in the feed's timezone; if all selected calendars are archived, returns 404. Feed management responses (`/api/clubs/:clubId/feeds…`) omit `sharedSecret` unless `?includeSecret=1|true` is sent (the frontend sends it where it shows or copies the feed address). Deleting a calendar deletes feeds whose only calendar it is; other feeds simply lose that calendar from their selection.
 
 Counters for lists and delete dialogs (clubs, calendars, `usage` of reference data, `eventCount` of templates) come
 from the API in one grouped query per counter (`App\Service\UsageCounts`); the frontend never loads whole lists just

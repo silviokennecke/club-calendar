@@ -184,8 +184,8 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
   the calendar.
   Pure logic in `src/lib/settings/` (`masterList.ts` name check + delete consequences from the API's `usage`, `location.ts`, `holidays.ts`,
   `timezones.ts`) with Vitest tests. Pages: `CalendarSettingsPage` (name, time zone; archiving / duplicating /
-  deleting are NOT here, a text link leads to the club page), `PropertiesPage` / `FeaturesPage` /
-  `TargetGroupsPage` (club level; `MasterList kind=…`), `LocationsPage`, `HolidayCalendarsPage`.
+  deleting are NOT here, a text link leads to the club page), `PropertiesPage` / `FeaturesPage` (calendar level; `MasterList kind=…`),
+  `TargetGroupsPage` / `LocationsPage` (club level since Paket 5; `MasterList kind=…` / locations), `HolidayCalendarsPage` (calendar level).
   - `MasterList` (properties, features, audiences): add form, list, rename in a `FormDialog` (label, error summary,
     Enter saves, Escape cancels, focus returns to the edit button), delete with the usage counts of the list
     endpoint (`usage: {events, templates, feeds?, eventNames}`; the list is refetched when the dialog opens, no event
@@ -206,8 +206,7 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
     states `PUBLIC` / `CLUB` / `PRIVATE` (default `CLUB`), the `Toggle` "Für Suchmaschinen auffindbar" only for
     `PUBLIC` (switched off when the form leaves `PUBLIC`), saving a saved private feed as `PUBLIC`/`CLUB` asks first (`ConfirmDialog`, `dropsSecret`), audience chips,
     secret panel (only `PRIVATE`) with "Geheimnis neu erzeugen" behind a `ConfirmDialog`, addresses of the saved feed; archived
-    calendars are read-only). The page loads its feed with the single GET (`useFeed`, key below
-    `["feeds", calendarId]`, so list invalidations refresh it). UI in
+    calendars are read-only). The page loads its feed with the single GET (`useFeed`, key `["feeds", clubId, "one", feedId]`). UI in
     `components/feeds/` (`FeedAccess` = CopyFields for secret / ICS / webcal / web, `AudienceTags`, `useFeeds`);
     pure logic in `src/lib/feeds/` (`feedAddresses`: private feeds carry `?secret=` in every address, public and club
     feeds never; `feedStatus`, `requiresSecret`, `effectiveSearchable` (only `PUBLIC` sends `searchable: true`),
