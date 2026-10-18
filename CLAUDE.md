@@ -117,7 +117,7 @@ Security headers (audit M4) live in both `backend/public/.htaccess` and `docker/
 
 ## Domain Concepts
 
-- **Club** — the top-level entity; has one or more Calendars; managed by its members (Users via `ClubUser`, no roles yet)
+- **Club** — the top-level entity; has one or more Calendars; managed by its members (Users via `ClubUser`, no roles yet); a club never has zero members: the last member cannot be removed or leave (422 `last_member`, club row locked for the check) and `DELETE /api/auth/me` is refused with 422 `last_member_of_club` while the user is the only member of a club (delete the club first)
 - **Calendar** — belongs to a Club; contains Events, EventTemplates, and reference data; can be archived (read-only) or duplicated
 - **CalendarFeed** — a publishable view of a Calendar (ICS + web) with one of three states: `PUBLIC` (by link, search
   engines may index it only with the opt-in `searchable`), `CLUB` ("Nur per Link", default: by link, never indexed)

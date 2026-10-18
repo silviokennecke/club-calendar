@@ -677,10 +677,18 @@ paths:
     delete:
       tags: [Auth]
       summary: Delete the account
+      description: >-
+        Refused with `422 last_member_of_club` while the user is the only member of a club (no club is named):
+        delete that club first (`DELETE /api/clubs/{clubId}`) or add another member.
       operationId: deleteMe
       responses:
         '200': { $ref: '#/components/responses/Ok' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '422':
+          description: "`last_member_of_club`."
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
 
   /api/auth/providers:
     get:
@@ -1126,7 +1134,9 @@ paths:
       summary: Remove a member
       description: >-
         Removes the membership (also leaving the club oneself). An id that is no member of the club is
-        `404 member_not_found`, the same answer for unknown ids and for users outside the club.
+        `404 member_not_found`, the same answer for unknown ids and for users outside the club. The last
+        member can neither be removed nor leave: `422 last_member` (a club never has zero members; the
+        club row is locked for the check, so concurrent removals cannot empty it). Delete the club instead.
       operationId: removeMember
       responses:
         '200': { $ref: '#/components/responses/Ok' }
@@ -1134,6 +1144,11 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404':
           description: Club unknown (no `code`), or `member_not_found`.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422':
+          description: "`last_member`: the user is the only member of the club."
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -2969,6 +2984,8 @@ components:
         | `invalid_token` | 401 | Access token malformed, wrongly signed, of an ended session or of a deleted user |
         | `token_expired` | 401 | Access token expired (refresh it) |
         | `member_not_found` | 404 | `DELETE /api/clubs/{clubId}/members/{userId}`: no member of the club (unknown ids alike); `POST /api/clubs/{clubId}/members`: unknown or unverified address |
+        | `last_member` | 422 | `DELETE /api/clubs/{clubId}/members/{userId}`: the user is the only member of the club (also when leaving it); a club never has zero members |
+        | `last_member_of_club` | 422 | `DELETE /api/auth/me`: the user is the only member of at least one club; delete the club first |
         | `ics_fetch_failed` | 422 | Holiday calendar create/refresh: the ICS URL could not be fetched or parsed (field `url`) |
         | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After` |
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
@@ -3033,6 +3050,8 @@ components:
         - invalid_token
         - token_expired
         - member_not_found
+        - last_member
+        - last_member_of_club
         - ics_fetch_failed
         - rate_limited
 
