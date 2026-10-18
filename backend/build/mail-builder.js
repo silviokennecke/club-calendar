@@ -97,51 +97,55 @@ function replaceThemeVariables(content) {
  * Handles relative paths and logs results
  */
 function inlineComponents(content, templateDir) {
-  const includePattern = /<mj-include\s+path="([^"]+)"\s*\/>/g;
   const inlinedComponents = [];
-  const skippedIncludes = [];
 
   // MJML drops raw text between components, so `{% set name = expr %}` lines of the including template
-  // would never reach the Twig output. Take them out and substitute the variables into the components.
-  const setPattern = /^[ \t]*\{%\s*set\s+(\w+)\s*=\s*(.+?)\s*%\}[ \t]*\r?\n?/gm;
-  const variables = {};
-  content = content.replace(setPattern, (match, name, expression) => {
-    variables[name] = expression;
-    return '';
-  });
-  const bindVariables = component =>
-    component.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, name) =>
-      name in variables ? `{{ (${variables[name]}) }}` : match,
+  // would never reach the Twig output. They are bound in document order: a set applies to the next
+  // include only (then it is cleared), so the same component can be included several times with
+  // different values. Variables a component declares as optional (OPTIONAL_VARIABLES) default to ''.
+  const OPTIONAL_VARIABLES = { noticeTitle: "''", noticeLink: "''" };
+  const tokenPattern =
+    /^[ \t]*\{%\s*set\s+(\w+)\s*=\s*(.+?)\s*%\}[ \t]*\r?\n?|<mj-include\s+path="([^"]+)"\s*\/>/gm;
+
+  let variables = {};
+  const bindVariables = component => {
+    const scope = { ...OPTIONAL_VARIABLES, ...variables };
+    const names = Object.keys(scope);
+    // Twig output and tag blocks only ({{ name }}, {% if name %}), never plain text
+    return component.replace(/\{\{[\s\S]*?\}\}|\{%[\s\S]*?%\}/g, block =>
+      block.replace(new RegExp(`(?<![.\\w])(${names.join('|')})(?![\\w]|\\s*:)`, 'g'), (m, name) => `(${scope[name]})`),
     );
+  };
 
-  let processed = content.replace(includePattern, (match, includePath) => {
-    // Resolve relative path (relative to template directory)
+  const processed = content.replace(tokenPattern, (match, setName, setExpression, includePath) => {
+    if (setName) {
+      variables[setName] = setExpression;
+      return '';
+    }
+
     const resolvedPath = path.join(templateDir, includePath);
-
     try {
       if (!fs.existsSync(resolvedPath)) {
-        skippedIncludes.push(includePath);
         console.warn(`  ⚠ Component file not found: ${includePath}`);
         return match; // Keep original include if file not found
       }
-
-      // Read component file
       const componentContent = fs.readFileSync(resolvedPath, 'utf8');
       inlinedComponents.push(includePath);
-      return bindVariables(componentContent);
+      const bound = bindVariables(componentContent);
+      variables = {};
+      return bound;
     } catch (error) {
-      skippedIncludes.push(includePath);
       console.warn(`  ⚠ Failed to read component ${includePath}: ${error.message}`);
       return match; // Keep original include on error
     }
   });
 
-  // Log inlined components
   if (inlinedComponents.length > 0) {
-    console.log(`    → inlined ${inlinedComponents.length} component(s): ${inlinedComponents.join(', ')}`);
+    console.log(`    → inlined ${inlinedComponents.length} component(s): ${[...new Set(inlinedComponents)].join(', ')}`);
   }
 
-  return processed;
+  // Components may use theme variables too: they are only part of the content now
+  return replaceThemeVariables(processed);
 }
 
 /**
@@ -229,6 +233,9 @@ function compileTemplate(filename) {
     // Read MJML file
     let content = fs.readFileSync(mjmlPath, 'utf8');
 
+    // Hardcoded colors are checked in the source, before theme variables are resolved
+    const source = content;
+
     // Replace theme variables
     content = replaceThemeVariables(content);
 
@@ -236,7 +243,7 @@ function compileTemplate(filename) {
     content = inlineComponents(content, TEMPLATE_DIR);
 
     // Validate for hardcoded colors
-    const colorWarnings = validateTemplate(filename, content);
+    const colorWarnings = validateTemplate(filename, source);
     if (colorWarnings.length > 0) {
       colorWarnings.forEach(warning => {
         console.warn(`  ⚠ ${filename}:${warning.line} - ${warning.message}`);

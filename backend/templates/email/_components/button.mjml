@@ -1,27 +1,27 @@
-<!-- CTA Button component with fallback link.
+<!-- CTA button (redesign) with fallback link.
      NOTE: keep this comment free of Twig tags and mj-include tags: the mail builder inlines the whole
      file (comment included) and Twig evaluates tags inside HTML comments.
-     See USAGE.md for how to include the component.
 
      Required Twig variables in the including template: buttonUrl (the link) and buttonText (the label).
-     Theme styling: primary color #2563eb, white text, border radius 6px, 16px font, padding 12px 24px,
-     fallback link below the button for clients that do not render buttons.
+     Colors, fonts and sizes come from the theme (config/mail-theme.js), min height 44px, copyable link below.
 -->
-
-<!-- Primary CTA Button -->
 <mj-button
   href="{{ buttonUrl }}"
-  background-color="#2563eb"
-  color="#ffffff"
-  border-radius="6px"
-  font-size="16px"
-  padding="12px 24px"
+  background-color="{{ THEME.components.button.backgroundColor }}"
+  color="{{ THEME.components.button.textColor }}"
+  border-radius="{{ THEME.components.button.borderRadius }}"
+  font-family="{{ THEME.fonts.family }}"
+  font-size="{{ THEME.components.button.fontSize }}"
+  font-weight="700"
+  inner-padding="{{ THEME.components.button.paddingVertical }} {{ THEME.components.button.paddingHorizontal }}"
+  padding="8px 0 16px 0"
+  align="left"
 >
   {{ buttonText }}
 </mj-button>
 
 <!-- Fallback link text for button-unsupported clients -->
-<mj-text font-size="13px" color="#888888" padding-top="12px">
+<mj-text font-family="{{ THEME.fonts.family }}" font-size="{{ THEME.fonts.size.small }}" line-height="20px" color="{{ THEME.colors.textMuted }}" padding="0 0 16px 0">
   Or copy this link:<br />
-  <a href="{{ buttonUrl }}" style="color:#2563eb;word-break:break-all;">{{ buttonUrl }}</a>
+  <a href="{{ buttonUrl }}" style="color:{{ THEME.colors.primary }};word-break:break-all;">{{ buttonUrl }}</a>
 </mj-text>

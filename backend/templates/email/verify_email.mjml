@@ -3,34 +3,33 @@
     <mj-title>{{ 'email.verify.subject'|trans }}</mj-title>
     <mj-preview>{{ 'email.verify.subject'|trans }}</mj-preview>
     <mj-attributes>
-      <mj-all font-family="Arial, sans-serif" />
-      <mj-text font-size="16px" color="{{ THEME.colors.text }}" line-height="1.6" />
+      <mj-all font-family="{{ THEME.fonts.family }}" />
+      <mj-text font-size="{{ THEME.fonts.size.body }}" color="{{ THEME.colors.text }}" line-height="{{ THEME.fonts.lineHeight.normal }}" />
     </mj-attributes>
   </mj-head>
   <mj-body background-color="{{ THEME.colors.background }}">
-    <mj-section background-color="{{ THEME.colors.surface }}" padding="40px 30px">
+    <mj-section background-color="{{ THEME.colors.surface }}" padding="{{ THEME.spacing.xxl }} {{ THEME.spacing.xl }}">
       <mj-column>
         <mj-include path="./_components/header.mjml" />
 
-        <mj-text font-size="18px" font-weight="bold" padding-bottom="8px">
+        <mj-text font-size="{{ THEME.fonts.size.heading }}" font-weight="bold" padding-bottom="8px">
           {{ 'email.verify.greeting'|trans({name: userName}) }}
         </mj-text>
-        <mj-text padding-bottom="24px">
+        <mj-text padding-bottom="16px">
           {{ 'email.verify.body'|trans }}
         </mj-text>
 
-        <!-- Code display (unique to verification emails) -->
-        <!-- Monospace, bold, with padding for visual emphasis -->
-        <mj-text align="center" font-size="36px" font-weight="bold" letter-spacing="10px" color="{{ THEME.colors.text }}" container-background-color="{{ THEME.colors.background }}" padding="16px 24px">
-          {{ code }}
-        </mj-text>
+        <!-- Verification code -->
+        <mj-include path="./_components/code.mjml" />
 
-        <mj-text font-size="13px" color="{{ THEME.colors.textMuted }}" padding-top="24px">
-          {{ 'email.verify.expiry_note'|trans({minutes: validMinutes}) }}
-        </mj-text>
-        <mj-text font-size="13px" color="{{ THEME.colors.textMuted }}">
-          {{ 'email.verify.ignore_note'|trans }}
-        </mj-text>
+        {% set noticeText = 'email.verify.expiry_note'|trans({minutes: validMinutes}) %}
+        <mj-include path="./_components/notice.mjml" />
+
+        {% set noticeText = 'email.verify.ignore_note'|trans %}
+        <mj-include path="./_components/notice.mjml" />
+
+
+        <mj-include path="./_components/footer.mjml" />
       </mj-column>
     </mj-section>
   </mj-body>

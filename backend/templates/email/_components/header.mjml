@@ -1,9 +1,7 @@
-<!-- Brand header component for email templates
-     Usage: <mj-include path="./_components/header.mjml" />
-
-     This component renders the consistent "📅 Club Calendar" header
-     seen across all email templates. It uses theme brand styling.
+<!-- Brand header (redesign): text wordmark in brand green with a hairline below. No images, no external hosts.
+     Usage: include as the first element inside the content column. No parameters.
 -->
-<mj-text font-size="14px" color="#888888" padding-bottom="16px">
-  📅 Club Calendar
+<mj-text font-family="{{ THEME.fonts.family }}" font-size="{{ THEME.fonts.size.heading }}" line-height="24px" font-weight="800" color="{{ THEME.colors.primary }}" padding="0 0 16px 0">
+  {{ THEME.brand.name }}
 </mj-text>
+<mj-divider border-width="1px" border-color="{{ THEME.colors.border }}" padding="0 0 24px 0" />

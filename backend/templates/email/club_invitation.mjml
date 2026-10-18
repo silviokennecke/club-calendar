@@ -3,19 +3,19 @@
     <mj-title>{{ 'email.invitation.subject'|trans({club: clubName}) }}</mj-title>
     <mj-preview>{{ 'email.invitation.subject'|trans({club: clubName}) }}</mj-preview>
     <mj-attributes>
-      <mj-all font-family="Arial, sans-serif" />
-      <mj-text font-size="16px" color="{{ THEME.colors.text }}" line-height="1.6" />
+      <mj-all font-family="{{ THEME.fonts.family }}" />
+      <mj-text font-size="{{ THEME.fonts.size.body }}" color="{{ THEME.colors.text }}" line-height="{{ THEME.fonts.lineHeight.normal }}" />
     </mj-attributes>
   </mj-head>
   <mj-body background-color="{{ THEME.colors.background }}">
-    <mj-section background-color="{{ THEME.colors.surface }}" padding="40px 30px">
+    <mj-section background-color="{{ THEME.colors.surface }}" padding="{{ THEME.spacing.xxl }} {{ THEME.spacing.xl }}">
       <mj-column>
         <mj-include path="./_components/header.mjml" />
 
-        <mj-text font-size="18px" font-weight="bold" padding-bottom="8px">
+        <mj-text font-size="{{ THEME.fonts.size.heading }}" font-weight="bold" padding-bottom="8px">
           {{ 'email.invitation.greeting'|trans }}
         </mj-text>
-        <mj-text padding-bottom="24px">
+        <mj-text padding-bottom="16px">
           {{ 'email.invitation.body'|trans({inviter: inviterName, club: clubName}) }}
         </mj-text>
 
@@ -24,16 +24,19 @@
         {% set buttonText = 'email.invitation.button'|trans %}
         <mj-include path="./_components/button.mjml" />
 
-        <mj-text padding-top="24px">
+        <mj-text padding="8px 0 16px 0">
           {{ 'email.invitation.no_account'|trans }}
-          <a href="{{ registerUrl }}" style="color:#2563eb;word-break:break-all;">{{ registerUrl }}</a>
+          <a href="{{ registerUrl }}" style="color:{{ THEME.colors.primary }};word-break:break-all;">{{ registerUrl }}</a>
         </mj-text>
-        <mj-text font-size="13px" color="{{ THEME.colors.textMuted }}" padding-top="24px">
-          {{ 'email.invitation.expiry_note'|trans({days: validDays}) }}
-        </mj-text>
-        <mj-text font-size="13px" color="{{ THEME.colors.textMuted }}">
-          {{ 'email.invitation.ignore_note'|trans }}
-        </mj-text>
+
+        {% set noticeText = 'email.invitation.expiry_note'|trans({days: validDays}) %}
+        <mj-include path="./_components/notice.mjml" />
+
+        {% set noticeText = 'email.invitation.ignore_note'|trans %}
+        <mj-include path="./_components/notice.mjml" />
+
+
+        <mj-include path="./_components/footer.mjml" />
       </mj-column>
     </mj-section>
   </mj-body>

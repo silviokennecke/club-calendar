@@ -3,16 +3,16 @@
     <mj-title>{{ 'email.email_changed.subject'|trans }}</mj-title>
     <mj-preview>{{ 'email.email_changed.subject'|trans }}</mj-preview>
     <mj-attributes>
-      <mj-all font-family="Arial, sans-serif" />
-      <mj-text font-size="16px" color="{{ THEME.colors.text }}" line-height="1.6" />
+      <mj-all font-family="{{ THEME.fonts.family }}" />
+      <mj-text font-size="{{ THEME.fonts.size.body }}" color="{{ THEME.colors.text }}" line-height="{{ THEME.fonts.lineHeight.normal }}" />
     </mj-attributes>
   </mj-head>
   <mj-body background-color="{{ THEME.colors.background }}">
-    <mj-section background-color="{{ THEME.colors.surface }}" padding="40px 30px">
+    <mj-section background-color="{{ THEME.colors.surface }}" padding="{{ THEME.spacing.xxl }} {{ THEME.spacing.xl }}">
       <mj-column>
         <mj-include path="./_components/header.mjml" />
 
-        <mj-text font-size="18px" font-weight="bold" padding-bottom="8px">
+        <mj-text font-size="{{ THEME.fonts.size.heading }}" font-weight="bold" padding-bottom="8px">
           {{ 'email.email_changed.greeting'|trans({name: userName}) }}
         </mj-text>
         <mj-text padding-bottom="16px">
@@ -21,16 +21,18 @@
         <mj-text padding-bottom="16px">
           {{ 'email.email_changed.info'|trans }}
         </mj-text>
-        <mj-text font-size="14px" color="{{ THEME.colors.text }}" padding-bottom="8px" font-weight="bold">
-          {{ 'email.notice.not_you_title'|trans }}
-        </mj-text>
-        <mj-text font-size="14px" color="{{ THEME.colors.text }}">
-          {{ 'email.email_changed.not_you'|trans }}<br />
-          <a href="{{ forgotUrl }}" style="color:{{ THEME.colors.primary }};word-break:break-all;">{{ forgotUrl }}</a>
-        </mj-text>
-        <mj-text font-size="13px" color="{{ THEME.colors.textMuted }}" padding-top="24px">
+
+        {% set noticeText = 'email.email_changed.not_you'|trans %}
+        {% set noticeTitle = 'email.notice.not_you_title'|trans %}
+        {% set noticeLink = forgotUrl %}
+        <mj-include path="./_components/notice-warning.mjml" />
+
+        <mj-text font-size="{{ THEME.fonts.size.small }}" color="{{ THEME.colors.textMuted }}" padding="8px 0 0 0">
           {{ 'email.notice.automatic'|trans }}
         </mj-text>
+
+
+        <mj-include path="./_components/footer.mjml" />
       </mj-column>
     </mj-section>
   </mj-body>
