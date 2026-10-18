@@ -25,7 +25,7 @@ class DatabaseResetter
             'calendar_feed_target_group', 'calendar_feed',
             'target_group', 'location', 'feature', 'property',
             'holiday_event', 'holiday_calendar',
-            'calendar', 'club_user', 'passkey', 'oauth_account', 'club',
+            'calendar', 'club_invitation', 'club_user', 'passkey', 'oauth_account', 'club',
             'email_verification', 'password_reset', 'email_change', 'refresh_token', 'user', 'auth_nonce',
         ];
 

@@ -233,24 +233,6 @@ class ApiConsistencyTest extends WebTestCase
         $this->assertSame(['ok' => true], $r['body']);
     }
 
-    public function testAddMemberTreatsUnverifiedUsersLikeUnknownAddresses(): void
-    {
-        ['user' => $user, 'club' => $club] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
-        $unverified = TestHelper::createUser($this->em, $this->hasher, 'claimed@example.com', 'password123', false);
-        $verified = TestHelper::createUser($this->em, $this->hasher, 'real@example.com');
-        $auth = TestHelper::authHeader($user, $this->tokens);
-        $url = "/api/clubs/{$club->getId()}/members";
-
-        $unverifiedAnswer = $this->req('POST', $url, $auth, ['email' => $unverified->getEmail()]);
-        $this->assertProblem(404, ['code' => 'member_not_found'], $unverifiedAnswer);
-        $unknownAnswer = $this->req('POST', $url, $auth, ['email' => 'nobody@example.com']);
-        $this->assertSame($unknownAnswer['body'], $unverifiedAnswer['body']);
-        $this->em->clear();
-        $this->assertSame(1, $this->em->getRepository(ClubUser::class)->count([]));
-
-        $this->assertSame(201, $this->req('POST', $url, $auth, ['email' => $verified->getEmail()])['status']);
-    }
-
     public function testHolidayCalendarCreateRejectsNonStringValuesLikePatch(): void
     {
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
@@ -281,28 +263,7 @@ class ApiConsistencyTest extends WebTestCase
         }
     }
 
-    // --- 7. members: no no-op successes ---
-
-    public function testAddingAnExistingMemberIs200AndCreatingIs201(): void
-    {
-        ['user' => $user, 'club' => $club] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
-        $other = TestHelper::createUser($this->em, $this->hasher, 'other@example.com');
-        $auth = TestHelper::authHeader($user, $this->tokens);
-        $url = "/api/clubs/{$club->getId()}/members";
-        $expected = ['id' => $other->getId(), 'name' => $other->getName(), 'email' => 'other@example.com'];
-
-        $r = $this->req('POST', $url, $auth, ['email' => 'other@example.com']);
-        $this->assertSame(201, $r['status'], $r['content']);
-        $this->assertSame($expected, $r['body']);
-
-        $r = $this->req('POST', $url, $auth, ['email' => 'other@example.com']);
-        $this->assertSame(200, $r['status'], $r['content']);
-        $this->assertSame($expected, $r['body']);
-        $this->assertSame(2, $this->em->getRepository(ClubUser::class)->count(['club' => $club]));
-
-        // Unknown addresses stay as before (404 without more detail)
-        $this->assertSame(404, $this->req('POST', $url, $auth, ['email' => 'nobody@example.com'])['status']);
-    }
+    // --- 7. members: unknown ids are 404 ---
 
     public function testRemovingANonMemberIs404WithTheSameAnswerForUnknownUsers(): void
     {

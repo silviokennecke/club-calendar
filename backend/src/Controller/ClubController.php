@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Dto\Club\AddMemberDto;
 use App\Dto\Club\CreateClubDto;
 use App\Entity\Club;
 use App\Security\ClubMemberVoter;
@@ -83,23 +82,6 @@ class ClubController extends AbstractApiController
     public function listMembers(#[MapEntity(id: 'clubId')] Club $club): JsonResponse
     {
         return new JsonResponse($this->clubService->listMembers($club));
-    }
-
-    #[Route('/{clubId}/members', methods: ['POST'])]
-    #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
-    public function addMember(#[MapEntity(id: 'clubId')] Club $club, Request $request): JsonResponse
-    {
-        try {
-            $dto = $this->serializer->deserialize($request->getContent(), AddMemberDto::class, 'json');
-        } catch (SerializerException $e) {
-            throw self::invalidJson('Invalid JSON body: '.$e->getMessage(), $e);
-        }
-        $this->validateDto($dto, $this->validator);
-
-        // 201 for a new member, 200 (same body) when the user already belongs to the club
-        $result = $this->clubService->addMember($club, $dto->email);
-
-        return new JsonResponse($result['member'], $result['created'] ? Response::HTTP_CREATED : Response::HTTP_OK);
     }
 
     #[Route('/{clubId}/members/{userId}', methods: ['DELETE'])]

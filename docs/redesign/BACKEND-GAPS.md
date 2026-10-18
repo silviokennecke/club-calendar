@@ -76,13 +76,13 @@ E2E-Umgebung: `E2E.md`.
 
 ## Offene Sicherheitsrisiken
 
-**Siehe Security-Audit** (Bericht des Auftraggebers, nicht im Repository): Rollen/Einladungen/letzter Admin,
+**Siehe Security-Audit** (Bericht des Auftraggebers, nicht im Repository): Rollen/letzter Admin (Einladungen: umgesetzt, M8),
 Vorab-Registrierung mit fremder Adresse (Pre-Hijacking, nachgestellt in
 `SessionInvalidationTest::testPreRegisteredPasswordStillWorksAfterTheOwnerConfirms`), Mapbox-Proxy,
 Microsoft-SSO ohne vertrauenswürdiges `email_verified` (inkl. "unbestätigtes Microsoft-Konto blockiert die
 Registrierung"), Rate-Limiting für Login/Token/Passkey/OAuth-Callback, Host-Header, ICS-Injection, CSP/Header, Tokens
 im SSO-Redirect, Quoten und unbegrenzte ID-Listen, Konto-Enumeration
-(`POST …/members` 404), Kartenbilder privater Termine/Orte, CORS-Regex, Geheimnisse/Deploy.
+(Registrierung, Login-Timing, OAuth), Kartenbilder privater Termine/Orte, CORS-Regex, Geheimnisse/Deploy.
 
 Nicht im Audit, gering:
 

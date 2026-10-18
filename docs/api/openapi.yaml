@@ -53,7 +53,7 @@ info:
       wrong signature, ended session, user gone) or `token_expired`; the sign-in routes themselves answer
       `invalid_credentials` (login), `invalid_refresh_token` (`POST /api/auth/token`) or `invalid_passkey`.
       Clients may refresh on any 401 of a request that carried an access token.
-    - Every route under `/api/clubs`, `/api/calendars` and `/api/map/geocode/` needs a signed-in user before the
+    - Every route under `/api/clubs`, `/api/calendars`, `/api/invitations` and `/api/map/geocode/` needs a signed-in user before the
       id in the path is looked up: without a token it is `401 missing_token` (never 403 or 404, so ids cannot be
       probed). 403 means signed in but not allowed (no member, archived calendar).
 
@@ -169,7 +169,8 @@ info:
     | --- | --- |
     | `clubsPerUser` | 50 clubs a user is a member of (create club) |
     | `calendarsPerClub` | 100 calendars per club (create, duplicate; archived ones count) |
-    | `membersPerClub` | 500 members per club |
+    | `membersPerClub` | 500 members per club (also checked when an invitation is accepted) |
+    | `pendingInvitationsPerClub` | 200 open (pending or expired, not yet answered) invitations per club |
     | `eventsPerCalendar` | 20000 events per calendar (create, from-template, series create/rule change, import) |
     | `locationsPerCalendar` | 2000 locations (also those an import creates) |
     | `templatesPerCalendar` / `propertiesPerCalendar` / `featuresPerCalendar` / `targetGroupsPerCalendar` | 500 each |
@@ -201,7 +202,9 @@ tags:
   - name: SSO
     description: OAuth 2.0 / OpenID Connect sign-in and account linking (browser redirects).
   - name: Clubs
-    description: Clubs and their members.
+    description: Clubs, their members and their invitations.
+  - name: Invitations
+    description: Club invitations of the signed-in user (list, accept, decline); club members manage them under Clubs.
   - name: Calendars
     description: 'Calendars of a club (create, archive, duplicate).'
   - name: Events
@@ -1136,14 +1139,47 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/clubs/{clubId}/invitations:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+    get:
+      tags: [Clubs]
+      summary: Open and expired invitations of a club
+      description: >-
+        Newest first. `status` is `pending` (valid) or `expired` (older than 7 days and unanswered). Accepted,
+        declined and revoked invitations are not listed. Any member may read, create, re-send and revoke
+        invitations (no roles yet).
+      operationId: listClubInvitations
+      responses:
+        '200':
+          description: Invitations.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ClubInvitation' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
     post:
       tags: [Clubs]
-      summary: Add a registered user as member
+      summary: Invite an e-mail address to the club
       description: >-
-        201 when the user becomes a member, 200 with the same body when the user already is one (nothing changes).
-        An unknown address and an address of a user who never confirmed it (e.g. created by a Microsoft SSO login)
-        are the same 404 `member_not_found`.
-      operationId: addMember
+        Replaces the former direct "add member" route (nobody is added without consent, and the answer no longer
+        tells whether an address has an account). **204 with an empty body for every well-formed address**:
+        unknown, registered, unconfirmed, already a member, already invited. An address that already is a member
+        is ignored silently (nothing stored, no mail); an open invitation of this club for the address is kept
+        (idempotent, no second mail); an expired one is renewed like a re-send (new token, new 7 days, new mail);
+        otherwise an invitation is stored (address normalized to lower case, valid 7 days, SHA-256 hash of a
+        random one-time token) and the mail with `{FRONTEND_URL}/invitations?token=…` plus a link to
+        `{FRONTEND_URL}/signup` is sent after the response. The mail names the club and the inviter and contains no
+        other club data. Over 5 mails per address and day the mail is dropped silently (same answer).
+        Limits: 20 invitations/re-sends per user and day and 50 per club and day (`429 rate_limited`, `Retry-After`),
+        at most 200 open invitations per club (`422 quota_exceeded`, resource `pendingInvitationsPerClub`;
+        independent of the address). Nobody is auto-accepted: after registering with the address and confirming
+        it, the invitee finds the invitation via `GET /api/invitations`.
+      operationId: inviteMember
       requestBody:
         required: true
         content:
@@ -1152,27 +1188,166 @@ paths:
               type: object
               required: [email]
               properties:
-                email: { type: string, format: email }
+                email: { type: string, format: email, maxLength: 254 }
       responses:
-        '200':
-          description: The user already is a member (unchanged).
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Member' }
-        '201':
-          description: The new member.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Member' }
+        '204': { description: Accepted (same answer for every address). }
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
-        '404':
-          description: Club unknown (no `code`), or no usable user with this address (`member_not_found`).
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: '`validation_failed` (field `email`) or `quota_exceeded` (`pendingInvitationsPerClub`).'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
-        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+
+  /api/clubs/{clubId}/invitations/{invitationId}/resend:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+      - { $ref: '#/components/parameters/InvitationId' }
+    post:
+      tags: [Clubs]
+      summary: Send an expired invitation again
+      description: >-
+        Only after the invitation expired: new token (the old link stops working), new 7 days, new mail after the
+        response. Earlier it is `422 invitation_not_expired`. Accepted, declined, revoked and unknown invitations
+        (also of another club) are `404 invitation_not_found`. Counts against the invitation rate limits of
+        `POST /api/clubs/{clubId}/invitations`.
+      operationId: resendClubInvitation
+      responses:
+        '204': { description: Renewed and mailed. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Club unknown (no `code`), or `invitation_not_found`.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422':
+          description: '`invitation_not_expired`: the invitation is still valid.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+
+  /api/clubs/{clubId}/invitations/{invitationId}:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+      - { $ref: '#/components/parameters/InvitationId' }
+    delete:
+      tags: [Clubs]
+      summary: Revoke an invitation
+      description: >-
+        Deletes an open or expired invitation; its link stops working. Answered and unknown invitations are
+        `404 invitation_not_found`.
+      operationId: revokeClubInvitation
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Club unknown (no `code`), or `invitation_not_found`.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /api/invitations:
+    get:
+      tags: [Invitations]
+      summary: Own pending invitations
+      description: >-
+        The open, not expired invitations for the signed-in user's VERIFIED e-mail address (compared case
+        insensitively); a user whose address is not confirmed gets an empty list. Only the club name, the inviter's
+        name and the expiry are disclosed (no club id, no other club data). One indexed query; also fine for users
+        without any club.
+      operationId: listOwnInvitations
+      responses:
+        '200':
+          description: Invitations, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/OwnInvitation' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/invitations/accept:
+    post:
+      tags: [Invitations]
+      summary: Accept an invitation by the token of the mail
+      description: >-
+        The SPA calls this after sign-in with the `token` of `{FRONTEND_URL}/invitations?token=…`. The token only
+        identifies the invitation: the signed-in user's verified address must equal the invited one, otherwise
+        (also for unknown tokens, answered invitations and unconfirmed users) the answer is the same
+        `404 invitation_not_found`. Creates the membership in a transaction under the club lock (member quota
+        respected, a user who already is a member is not added twice) and returns the club.
+      operationId: acceptInvitationByToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InvitationToken' }
+      responses:
+        '200':
+          description: The club the user joined.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Club' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/InvitationNotFound' }
+        '422': { $ref: '#/components/responses/InvitationUnprocessable' }
+
+  /api/invitations/decline:
+    post:
+      tags: [Invitations]
+      summary: Decline an invitation by the token of the mail
+      description: Same identification and errors as `POST /api/invitations/accept`; nobody is added and the invitation disappears from the club's list.
+      operationId: declineInvitationByToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InvitationToken' }
+      responses:
+        '204': { description: Declined. }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/InvitationNotFound' }
+        '422': { $ref: '#/components/responses/InvitationUnprocessable' }
+
+  /api/invitations/{invitationId}/accept:
+    parameters:
+      - { $ref: '#/components/parameters/InvitationId' }
+    post:
+      tags: [Invitations]
+      summary: Accept an invitation from the own list
+      description: Like `POST /api/invitations/accept`, identified by the `id` of `GET /api/invitations`.
+      operationId: acceptInvitation
+      responses:
+        '200':
+          description: The club the user joined.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Club' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/InvitationNotFound' }
+        '422': { $ref: '#/components/responses/InvitationUnprocessable' }
+
+  /api/invitations/{invitationId}/decline:
+    parameters:
+      - { $ref: '#/components/parameters/InvitationId' }
+    post:
+      tags: [Invitations]
+      summary: Decline an invitation from the own list
+      description: Like `POST /api/invitations/decline`, identified by the `id` of `GET /api/invitations`.
+      operationId: declineInvitation
+      responses:
+        '204': { description: Declined. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/InvitationNotFound' }
+        '422': { $ref: '#/components/responses/InvitationUnprocessable' }
 
   /api/clubs/{clubId}/members/{userId}:
     parameters:
@@ -2767,6 +2942,11 @@ components:
       in: path
       required: true
       schema: { type: string }
+    InvitationId:
+      name: invitationId
+      in: path
+      required: true
+      schema: { type: string }
     CalendarId:
       name: calendarId
       in: path
@@ -2818,6 +2998,16 @@ components:
       schema: { type: string, const: noindex }
 
   responses:
+    InvitationNotFound:
+      description: '`invitation_not_found`: unknown token or id, an invitation for another address, an answered one, or the user has no confirmed address (always the same answer).'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    InvitationUnprocessable:
+      description: '`invitation_expired` (the invitation is for this user but older than 7 days), `validation_failed` (field `token`; token routes only) or `quota_exceeded` (resource `membersPerClub`, accept only).'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
     Ok:
       description: Done.
       content:
@@ -3027,20 +3217,23 @@ components:
 
         | Code | Status | Where |
         | --- | --- | --- |
-        | `validation_failed` | 400 / 422 | Input errors with `field`. **400** = malformed input (typed input checks): wrong JSON types (also `PATCH /api/auth/me`), date parameters `from`/`to` (events, holidays, public feed, export), any query parameter sent as an array, import `events[n].<field>`, export parameters, bulk, series rule `rule.*`, `scope`, feeds `visibility`, `searchable` no boolean, invalid time zone, location coordinates, template times as half a pair, `from-template` without `templateId`/`dates`. **422** = DTO constraints (register, login, password/e-mail routes, create club/calendar, add member, holiday calendars) and conflicts with stored state: series without events (field `rule`), `searchable` on a non-`PUBLIC` feed, e-mail change to the current address |
+        | `validation_failed` | 400 / 422 | Input errors with `field`. **400** = malformed input (typed input checks): wrong JSON types (also `PATCH /api/auth/me`), date parameters `from`/`to` (events, holidays, public feed, export), any query parameter sent as an array, import `events[n].<field>`, export parameters, bulk, series rule `rule.*`, `scope`, feeds `visibility`, `searchable` no boolean, invalid time zone, location coordinates, template times as half a pair, `from-template` without `templateId`/`dates`. **422** = DTO constraints (register, login, password/e-mail routes, create club/calendar, invite member, invitation token, holiday calendars) and conflicts with stored state: series without events (field `rule`), `searchable` on a non-`PUBLIC` feed, e-mail change to the current address |
         | `invalid_request` | 400 | Body is no JSON object; passkey body incomplete; any other 400 the framework rejects; Mapbox proxy with a host other than `api.mapbox.com` (field `domain`) |
         | `missing_token` | 401 | No access token on a route that needs a user (all of `/api/clubs`, `/api/calendars`, `/api/map/geocode/` before the id is looked up) |
         | `invalid_token` | 401 | Access token malformed, wrongly signed, of an ended session or of a deleted user |
         | `token_expired` | 401 | Access token expired (refresh it) |
-        | `member_not_found` | 404 | `DELETE /api/clubs/{clubId}/members/{userId}`: no member of the club (unknown ids alike); `POST /api/clubs/{clubId}/members`: unknown or unverified address |
+        | `member_not_found` | 404 | `DELETE /api/clubs/{clubId}/members/{userId}`: no member of the club (unknown ids alike) |
         | `last_member` | 422 | `DELETE /api/clubs/{clubId}/members/{userId}`: the user is the only member of the club (also when leaving it); a club never has zero members |
         | `last_member_of_club` | 422 | `DELETE /api/auth/me`: the user is the only member of at least one club; delete the club first |
+        | `invitation_not_found` | 404 | Club invitation routes: unknown, answered or revoked invitation, or one of another club; `/api/invitations/*`: unknown token or id, an invitation for another address, or an unconfirmed user (all the same answer) |
+        | `invitation_expired` | 422 | Accept/decline of an invitation that is addressed to the signed-in user but older than 7 days; the club can re-send it |
+        | `invitation_not_expired` | 422 | `POST /api/clubs/{clubId}/invitations/{invitationId}/resend` before the invitation expired |
         | `ics_fetch_failed` | 422 | Holiday calendar create/refresh: the ICS URL could not be fetched or parsed (field `url`) |
-        | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After`; account deletion (`DELETE /api/auth/me`, `POST /api/auth/delete-account/code`): per user and per IP |
+        | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After`; club invitations (create, re-send): 20 per user and 50 per club and day; account deletion (`DELETE /api/auth/me`, `POST /api/auth/delete-account/code`): per user and per IP |
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
         | `duplicate_name` | 422 | Name of a property/feature/target group already used in the calendar |
         | `too_many_events` | 413 / 422 | 413: import > 5000 events/locations, bulk > 5000 ids; 422: series > 366 events (preview, create, rule change) |
-        | `quota_exceeded` | 422 | A create/import would exceed a quota (clubs per user, calendars/members per club, events/locations/templates/properties/features/target groups/feeds/holiday calendars per calendar); extra members `resource`, `limit`. List: "Quotas and input limits" |
+        | `quota_exceeded` | 422 | A create/import would exceed a quota (clubs per user, calendars/members/open invitations per club, events/locations/templates/properties/features/target groups/feeds/holiday calendars per calendar); extra members `resource`, `limit`. List: "Quotas and input limits" |
         | `series_empty` | 409 | Rule change preview/PATCH: the series has no events |
         | `series_changed` | 409 | Rule change PATCH: prototype/reference deleted concurrently or deadlock; nothing changed |
         | `email_taken` | 400 | Registration, field `email` |
@@ -3105,6 +3298,9 @@ components:
         - member_not_found
         - last_member
         - last_member_of_club
+        - invitation_not_found
+        - invitation_expired
+        - invitation_not_expired
         - ics_fetch_failed
         - rate_limited
 
@@ -3234,6 +3430,29 @@ components:
             memberCount: { type: integer }
             eventCount: { type: integer, description: All calendars incl. archived. }
             feedCount: { type: integer }
+    ClubInvitation:
+      type: object
+      required: [id, email, status, invitedByName, createdAt, expiresAt]
+      properties:
+        id: { type: string }
+        email: { type: string, format: email, description: Normalized (lower case) address that was invited. }
+        status: { type: string, enum: [pending, expired] }
+        invitedByName: { type: [string, 'null'], description: Name of the (last) inviter; null after that account was deleted. }
+        createdAt: { type: string, format: date-time, description: Creation or last re-send (UTC). }
+        expiresAt: { type: string, format: date-time, description: Seven days after `createdAt` (UTC). }
+    OwnInvitation:
+      type: object
+      required: [id, clubName, invitedByName, expiresAt]
+      properties:
+        id: { type: string }
+        clubName: { type: string }
+        invitedByName: { type: [string, 'null'] }
+        expiresAt: { type: string, format: date-time }
+    InvitationToken:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, maxLength: 128, description: The `token` query parameter of the link in the invitation mail. }
     Member:
       type: object
       required: [id, name, email]

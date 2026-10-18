@@ -6,9 +6,9 @@ namespace App\Dto\Club;
 
 use Symfony\Component\Validator\Constraints as Assert;
 
-class AddMemberDto
+class InvitationTokenDto
 {
     #[Assert\NotBlank]
-    #[Assert\Email]
-    public string $email = '';
+    #[Assert\Length(max: 128)]
+    public string $token = '';
 }

@@ -40,6 +40,12 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $accountDeleteAttempt,
         #[Autowire(service: 'limiter.account_delete_code')]
         private readonly RateLimiterFactory $accountDeleteCode,
+        #[Autowire(service: 'limiter.invitation_user')]
+        private readonly RateLimiterFactory $invitationUser,
+        #[Autowire(service: 'limiter.invitation_club')]
+        private readonly RateLimiterFactory $invitationClub,
+        #[Autowire(service: 'limiter.invitation_email')]
+        private readonly RateLimiterFactory $invitationEmail,
     ) {
     }
 
@@ -103,6 +109,22 @@ class AuthRateLimiter
     {
         self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
         self::assertAccepted($this->accountDeleteCode->create($userId)->consume());
+    }
+
+    /** Creating or re-sending a club invitation: 20 per user and day and 50 per club and day (M8). */
+    public function assertInvitationAllowed(string $userId, string $clubId): void
+    {
+        self::assertAccepted($this->invitationUser->create($userId)->consume());
+        self::assertAccepted($this->invitationClub->create($clubId)->consume());
+    }
+
+    /**
+     * One address cannot be mail-bombed by invitations: 5 mails per address and day. Returns false over the
+     * limit; the caller then sends no mail but answers as always (no oracle, no error).
+     */
+    public function allowInvitationMail(string $email): bool
+    {
+        return $this->invitationEmail->create(self::normalize($email))->consume()->isAccepted();
     }
 
     public static function normalize(string $email): string
