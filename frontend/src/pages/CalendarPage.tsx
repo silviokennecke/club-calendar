@@ -77,8 +77,8 @@ export default function CalendarPage() {
     queryFn: () => apiGet<Calendar>(`/api/clubs/${clubId}/calendars/${calendarId}`),
   });
   const { data: targetGroups = [] } = useQuery<TargetGroup[]>({
-    queryKey: ["targetGroups", calendarId],
-    queryFn: () => apiGet(`/api/calendars/${calendarId}/target-groups`),
+    queryKey: ["targetGroups", clubId],
+    queryFn: () => apiGet(`/api/clubs/${clubId}/target-groups`),
   });
 
   const club = shell?.clubs.find((c) => c.id === clubId);

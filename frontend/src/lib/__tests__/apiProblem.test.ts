@@ -48,7 +48,7 @@ describe("quota_exceeded", () => {
     fetchMock.mockResolvedValueOnce(
       problem(422, { code: "quota_exceeded", resource: "feedsPerCalendar", limit: 50 }),
     );
-    const err = (await apiPost("/api/calendars/c/feeds", {}).catch((e) => e)) as ApiError;
+    const err = (await apiPost("/api/clubs/c/feeds", {}).catch((e) => e)) as ApiError;
     expect(err).toMatchObject({ status: 422, code: "quota_exceeded" });
     expect(toast.error).toHaveBeenCalledTimes(1);
   });

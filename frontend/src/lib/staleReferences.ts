@@ -3,7 +3,7 @@ import { ApiError, apiGet } from "@/lib/api";
 
 /**
  * The backend answers 422 `code: "unknown_reference"` ("<field>: unknown id …") when a request assigns a
- * property, feature, target group, location or template that does not exist (any more) in the calendar,
+ * property, feature, target group, location or template that does not exist (any more) in the calendar or club,
  * e.g. because it was deleted in another tab or by another member while the form was open.
  */
 export function isUnknownIdError(e: unknown): boolean {
@@ -12,26 +12,47 @@ export function isUnknownIdError(e: unknown): boolean {
 
 export type ReferenceKind = "properties" | "features" | "targetGroups" | "locations" | "templates";
 
-const PATHS: Record<ReferenceKind, string> = {
-  properties: "properties",
-  features: "features",
-  targetGroups: "target-groups",
-  locations: "locations",
-  templates: "templates",
-};
+/** Locations and target groups belong to the club, the rest to the calendar. */
+export interface ReferenceScope {
+  clubId: string;
+  calendarId: string;
+}
+
+/** Query key and API path of a reference list: `["locations", clubId]`, `["properties", calendarId]`. */
+export function referenceList(kind: ReferenceKind, scope: ReferenceScope) {
+  switch (kind) {
+    case "targetGroups":
+      return { key: [kind, scope.clubId], path: `/api/clubs/${scope.clubId}/target-groups` };
+    case "locations":
+      return { key: [kind, scope.clubId], path: `/api/clubs/${scope.clubId}/locations` };
+    case "properties":
+      return {
+        key: [kind, scope.calendarId],
+        path: `/api/calendars/${scope.calendarId}/properties`,
+      };
+    case "features":
+      return { key: [kind, scope.calendarId], path: `/api/calendars/${scope.calendarId}/features` };
+    case "templates":
+      return {
+        key: [kind, scope.calendarId],
+        path: `/api/calendars/${scope.calendarId}/templates`,
+      };
+  }
+}
 
 /** Reloads reference lists of a calendar (also updating the cached lists) and returns their ids. */
 async function freshReferenceIds(
   qc: QueryClient,
-  calendarId: string,
+  scope: ReferenceScope,
   kinds: ReferenceKind[],
 ): Promise<Record<ReferenceKind, Set<string>>> {
   const result = {} as Record<ReferenceKind, Set<string>>;
   await Promise.all(
     kinds.map(async (kind) => {
+      const { key, path } = referenceList(kind, scope);
       const list = await qc.fetchQuery({
-        queryKey: [kind, calendarId],
-        queryFn: () => apiGet<{ id: string }[]>(`/api/calendars/${calendarId}/${PATHS[kind]}`),
+        queryKey: key,
+        queryFn: () => apiGet<{ id: string }[]>(path),
         staleTime: 0,
       });
       result[kind] = new Set(list.map((x) => x.id));
@@ -47,7 +68,7 @@ async function freshReferenceIds(
  */
 export async function saveDroppingDeletedReferences<B, R>(
   qc: QueryClient,
-  calendarId: string,
+  scope: ReferenceScope,
   kinds: ReferenceKind[],
   body: B,
   send: (body: B) => Promise<R>,
@@ -57,7 +78,7 @@ export async function saveDroppingDeletedReferences<B, R>(
     return await send(body);
   } catch (e) {
     if (!isUnknownIdError(e)) throw e;
-    const existing = await freshReferenceIds(qc, calendarId, kinds);
+    const existing = await freshReferenceIds(qc, scope, kinds);
     return send(prune(body, existing));
   }
 }

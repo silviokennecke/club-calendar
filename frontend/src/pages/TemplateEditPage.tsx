@@ -129,7 +129,7 @@ function TemplateLoader() {
 
 function TemplateEditor({ template }: { template?: EventTemplate }) {
   const page = useEventPage();
-  const res = useEventResources(page.calendarId);
+  const res = useEventResources(page.clubId, page.calendarId);
   const navigate = useNavigate();
   const location = useLocation();
   const qc = useQueryClient();
@@ -180,7 +180,7 @@ function TemplateEditor({ template }: { template?: EventTemplate }) {
     try {
       await saveDroppingDeletedReferences(
         qc,
-        page.calendarId,
+        page,
         ["properties", "features", "targetGroups", "locations"],
         toTemplatePayload(values, clubTimezone),
         (body) =>

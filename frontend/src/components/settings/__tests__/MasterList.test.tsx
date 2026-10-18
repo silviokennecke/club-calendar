@@ -32,7 +32,7 @@ function renderList(kind: "properties" | "features" | "audiences", readOnly = fa
   return render(
     <ThemeProvider>
       <QueryClientProvider client={client}>
-        <MasterList kind={kind} calendarId="k1" readOnly={readOnly} />
+        <MasterList kind={kind} clubId="club1" calendarId="k1" readOnly={readOnly} />
       </QueryClientProvider>
     </ThemeProvider>,
   );
@@ -85,7 +85,10 @@ describe("MasterList", () => {
     await user.type(screen.getByLabelText(/^Name/), "  Neu  ");
     await user.click(screen.getByRole("button", { name: label }));
     await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith(`/api/calendars/k1/${path}`, { name: "Neu" }),
+      expect(apiPost).toHaveBeenCalledWith(
+        `/api/${kind === "audiences" ? "clubs/club1" : "calendars/k1"}/${path}`,
+        { name: "Neu" },
+      ),
     );
     expect(apiPath[kind]).toBe(path);
   });

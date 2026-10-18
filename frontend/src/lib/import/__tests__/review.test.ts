@@ -44,7 +44,7 @@ function ev(name: string, date: string, extra: Partial<ParsedIcsEvent> = {}): Pa
 
 const haus: Location = {
   id: "l1",
-  calendarid: "k1",
+  clubId: "k1",
   name: "Schützenhaus Waldblick",
   street: "Waldstraße 12",
   zip: "12345",

@@ -61,7 +61,7 @@ vi.mock("@/components/locations/LocationsOverviewMap", () => ({
 
 const haus = {
   id: "l1",
-  calendarid: "k1",
+  clubId: "k1",
   name: "Schützenhaus Waldblick",
   street: "Waldstraße 12",
   zip: "12345",
@@ -70,7 +70,7 @@ const haus = {
   latitude: 48.0,
   longitude: 11.0,
 };
-const heim = { id: "l2", calendarid: "k1", name: "Vereinsheim Mitte", street: "Marktplatz 5" };
+const heim = { id: "l2", clubId: "k1", name: "Vereinsheim Mitte", street: "Marktplatz 5" };
 
 let calendar: Record<string, unknown>;
 let locations: unknown[];
@@ -197,7 +197,7 @@ describe("LocationsPage", () => {
     await user.type(screen.getByLabelText("Stadt"), "Musterstadt");
     await user.click(screen.getByRole("button", { name: "Ort speichern" }));
     await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith("/api/calendars/k1/locations", {
+      expect(apiPost).toHaveBeenCalledWith("/api/clubs/c1/locations", {
         name: "Gasthof Linde",
         street: "Dorfstraße 1",
         zip: "12345",
@@ -303,7 +303,7 @@ describe("LocationsPage", () => {
     await user.click(screen.getByRole("button", { name: "Ort speichern" }));
     await waitFor(() =>
       expect(apiPost).toHaveBeenCalledWith(
-        "/api/calendars/k1/locations",
+        "/api/clubs/c1/locations",
         expect.objectContaining({ latitude: 48.1, longitude: 11.5, street: "Eigene Straße 1" }),
       ),
     );
@@ -348,7 +348,7 @@ describe("LocationsPage", () => {
     await user.click(screen.getByRole("button", { name: "Ort speichern" }));
     await waitFor(() =>
       expect(apiPost).toHaveBeenCalledWith(
-        "/api/calendars/k1/locations",
+        "/api/clubs/c1/locations",
         expect.objectContaining({ latitude: 47.5, longitude: 10.25 }),
       ),
     );
@@ -365,7 +365,7 @@ describe("LocationsPage", () => {
     await user.click(screen.getByRole("button", { name: "Ort speichern" }));
     await waitFor(() =>
       expect(apiPatch).toHaveBeenCalledWith(
-        "/api/calendars/k1/locations/l2",
+        "/api/clubs/c1/locations/l2",
         expect.objectContaining({ name: "Vereinsheim", street: "Marktplatz 5" }),
       ),
     );
@@ -408,7 +408,7 @@ describe("LocationsPage", () => {
     );
     expect(apiDelete).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Ort löschen" }));
-    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/calendars/k1/locations/l1"));
+    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/clubs/c1/locations/l1"));
   });
 
   it("shows the empty state", async () => {

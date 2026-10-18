@@ -18,14 +18,15 @@ vi.mock("@/lib/api", () => ({
   apiDelete: (...a: unknown[]) => apiDelete(...a),
 }));
 
-const feedsPath = "/api/calendars/k1/feeds";
+const feedsPath = "/api/clubs/c1/feeds";
 const q = "?includeSecret=1";
 let calendar: Record<string, unknown>;
 let feeds: unknown[];
 
 const privateFeed = {
   id: "f2",
-  calendarId: "k1",
+  clubId: "c1",
+  calendarIds: ["k1"],
   name: "Vorstand intern",
   visibility: "PRIVATE",
   searchable: false,
@@ -54,7 +55,7 @@ beforeEach(() => {
         ? Promise.resolve(feed)
         : Promise.reject(Object.assign(new Error("API error 404"), { status: 404 }));
     }
-    if (path === "/api/calendars/k1/target-groups")
+    if (path === "/api/clubs/c1/target-groups")
       return Promise.resolve([
         { id: "g1", name: "Jugend" },
         { id: "g2", name: "Erwachsene" },
@@ -146,6 +147,7 @@ describe("FeedEditPage (new)", () => {
         name: "Termine",
         visibility: "PUBLIC",
         searchable: true,
+        calendarIds: ["k1"],
         targetGroupIds: [],
       }),
     );
@@ -161,6 +163,7 @@ describe("FeedEditPage (new)", () => {
         name: "Mitglieder",
         visibility: "CLUB",
         searchable: false,
+        calendarIds: ["k1"],
         targetGroupIds: [],
       }),
     );
@@ -178,6 +181,7 @@ describe("FeedEditPage (new)", () => {
         name: "Jugend-Abo",
         visibility: "PRIVATE",
         searchable: false,
+        calendarIds: ["k1"],
         targetGroupIds: ["g1"],
       }),
     );
@@ -249,6 +253,7 @@ describe("FeedEditPage (edit)", () => {
         name: "Vorstand",
         visibility: "PRIVATE",
         searchable: false,
+        calendarIds: ["k1"],
         targetGroupIds: ["g2"],
       }),
     );
@@ -285,6 +290,7 @@ describe("FeedEditPage (edit)", () => {
         name: "Vorstand intern",
         visibility: "PUBLIC",
         searchable: false,
+        calendarIds: ["k1"],
         targetGroupIds: ["g1"],
       }),
     );
@@ -303,6 +309,7 @@ describe("FeedEditPage (edit)", () => {
         name: "Vorstand intern",
         visibility: "PUBLIC",
         searchable: true,
+        calendarIds: ["k1"],
         targetGroupIds: [],
       }),
     );

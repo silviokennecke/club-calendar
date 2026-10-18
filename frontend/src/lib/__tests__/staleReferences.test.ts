@@ -36,7 +36,7 @@ describe("staleReferences", () => {
       .mockResolvedValueOnce({ id: "saved" });
     const result = await saveDroppingDeletedReferences(
       qc,
-      "cal",
+      { clubId: "club", calendarId: "cal" },
       ["properties"],
       { propertyIds: ["keep", "gone"] },
       send,
@@ -49,7 +49,14 @@ describe("staleReferences", () => {
   it("passes other errors on without a second try", async () => {
     const send = vi.fn().mockRejectedValue(new ApiError("Bad Request", 400));
     await expect(
-      saveDroppingDeletedReferences(new QueryClient(), "cal", ["properties"], {}, send, (b) => b),
+      saveDroppingDeletedReferences(
+        new QueryClient(),
+        { clubId: "club", calendarId: "cal" },
+        ["properties"],
+        {},
+        send,
+        (b) => b,
+      ),
     ).rejects.toThrow("Bad Request");
     expect(send).toHaveBeenCalledTimes(1);
   });

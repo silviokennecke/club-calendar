@@ -36,6 +36,7 @@ const GLYPHS: Record<MasterKind, Glyph> = {
 
 interface MasterListProps {
   kind: MasterKind;
+  clubId: string;
   calendarId: string;
   /** Archived calendars: list only, no add / rename / delete. */
   readOnly?: boolean;
@@ -46,14 +47,18 @@ interface MasterListProps {
  * list, rename in a dialog (Enter saves, Escape cancels, focus returns to the edit button), delete with
  * the consequences for events and templates, empty / loading / error states.
  */
-export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
+export function MasterList({ kind, clubId, calendarId, readOnly }: MasterListProps) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const cfg = MASTER_KINDS[kind];
   const tk = (key: string, opts?: Record<string, unknown>) =>
     t(`settings.master.${kind}.${key}`, opts);
-  const base = `/api/calendars/${calendarId}/${cfg.path}`;
-  const queryKey = [cfg.queryKey, calendarId];
+  // Audiences belong to the club (shared by all its calendars), properties / features to the calendar.
+  const ownerId = cfg.owner === "clubs" ? clubId : calendarId;
+  const base = `/api/${cfg.owner}/${ownerId}/${cfg.path}`;
+  const queryKey = [cfg.queryKey, ownerId];
+  // Renaming / deleting a club-wide item changes the events and templates of every calendar.
+  const usageScope = cfg.owner === "clubs" ? [] : [calendarId];
 
   const list = useQuery<MasterItem[]>({ queryKey, queryFn: () => apiGet<MasterItem[]>(base) });
   const items = list.data ?? [];
@@ -152,8 +157,8 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
       );
       await qc.invalidateQueries({ queryKey });
       // Events and templates show the name and symbol.
-      void qc.invalidateQueries({ queryKey: ["events", calendarId] });
-      void qc.invalidateQueries({ queryKey: ["templates", calendarId] });
+      void qc.invalidateQueries({ queryKey: ["events", ...usageScope] });
+      void qc.invalidateQueries({ queryKey: ["templates", ...usageScope] });
       toast.success(t("settings.master.saved"));
       setEditing(null);
     } catch (error) {
@@ -171,8 +176,8 @@ export function MasterList({ kind, calendarId, readOnly }: MasterListProps) {
     try {
       await apiDelete(`${base}/${item.id}`);
       await qc.invalidateQueries({ queryKey });
-      void qc.invalidateQueries({ queryKey: ["events", calendarId] });
-      void qc.invalidateQueries({ queryKey: ["templates", calendarId] });
+      void qc.invalidateQueries({ queryKey: ["events", ...usageScope] });
+      void qc.invalidateQueries({ queryKey: ["templates", ...usageScope] });
       toast.success(tk("deleted", { name: item.name }));
       setTimeout(() => headingRef.current?.focus(), 0);
     } catch {

@@ -46,8 +46,8 @@ export default function TemplatesPage() {
     queryFn: () => apiGet<EventTemplate[]>(`/api/calendars/${page.calendarId}/templates`),
   });
   const groups = useQuery<TargetGroup[]>({
-    queryKey: ["targetGroups", page.calendarId],
-    queryFn: () => apiGet<TargetGroup[]>(`/api/calendars/${page.calendarId}/target-groups`),
+    queryKey: ["targetGroups", page.clubId],
+    queryFn: () => apiGet<TargetGroup[]>(`/api/clubs/${page.clubId}/target-groups`),
   });
   const toneOf = (id: string) => audienceTone((groups.data ?? []).findIndex((g) => g.id === id));
 

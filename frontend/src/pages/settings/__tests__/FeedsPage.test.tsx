@@ -49,8 +49,8 @@ beforeEach(() => {
   for (const fn of [apiGet, apiPost, apiDelete]) fn.mockReset();
   mockApiGet(apiGet, (path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
-    if (path === "/api/calendars/k1/feeds?includeSecret=1") return Promise.resolve(feeds);
-    if (path === "/api/calendars/k1/target-groups")
+    if (path === "/api/clubs/c1/feeds?includeSecret=1") return Promise.resolve(feeds);
+    if (path === "/api/clubs/c1/target-groups")
       return Promise.resolve([
         { id: "g1", name: "Jugend" },
         { id: "g2", name: "Erwachsene" },
@@ -187,7 +187,7 @@ describe("FeedsPage", () => {
     expect(dialog).toHaveTextContent("Wer den Feed abonniert hat, bekommt keine Updates mehr.");
     expect(apiDelete).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Feed löschen" }));
-    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/calendars/k1/feeds/f2"));
+    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/clubs/c1/feeds/f2"));
   });
 
   it("cancelling the delete dialog deletes nothing", async () => {

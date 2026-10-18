@@ -5,18 +5,18 @@ import { feedAddresses } from "@/lib/feeds";
 import type { CalendarFeed, TargetGroup } from "@/lib/types";
 
 /**
- * Feeds and audiences of a calendar (design: Feeds, FeedEdit), plus the addresses of a feed.
+ * Feeds and audiences of a club (design: Feeds, FeedEdit), plus the addresses of a feed.
  * `withList: false` skips the feed list (the edit page loads its feed with the single GET).
  */
-export function useFeeds(calendarId: string, { withList = true }: { withList?: boolean } = {}) {
+export function useFeeds(clubId: string, { withList = true }: { withList?: boolean } = {}) {
   const feeds = useQuery<CalendarFeed[]>({
-    queryKey: ["feeds", calendarId],
-    queryFn: () => apiGet<CalendarFeed[]>(`/api/calendars/${calendarId}/feeds?includeSecret=1`),
+    queryKey: ["feeds", clubId],
+    queryFn: () => apiGet<CalendarFeed[]>(`/api/clubs/${clubId}/feeds?includeSecret=1`),
     enabled: withList,
   });
   const groups = useQuery<TargetGroup[]>({
-    queryKey: ["targetGroups", calendarId],
-    queryFn: () => apiGet<TargetGroup[]>(`/api/calendars/${calendarId}/target-groups`),
+    queryKey: ["targetGroups", clubId],
+    queryFn: () => apiGet<TargetGroup[]>(`/api/clubs/${clubId}/target-groups`),
   });
   const groupList = groups.data ?? [];
   return {
@@ -30,12 +30,11 @@ export function useFeeds(calendarId: string, { withList = true }: { withList?: b
   };
 }
 
-/** One feed by the single GET; its key lies below ["feeds", calendarId], so list invalidations refresh it. */
-export function useFeed(calendarId: string, feedId: string | undefined) {
+/** One feed by the single GET; its key lies below ["feeds", clubId], so list invalidations refresh it. */
+export function useFeed(clubId: string, feedId: string | undefined) {
   return useQuery<CalendarFeed>({
-    queryKey: ["feeds", calendarId, "one", feedId],
-    queryFn: () =>
-      apiGet<CalendarFeed>(`/api/calendars/${calendarId}/feeds/${feedId}?includeSecret=1`),
+    queryKey: ["feeds", clubId, "one", feedId],
+    queryFn: () => apiGet<CalendarFeed>(`/api/clubs/${clubId}/feeds/${feedId}?includeSecret=1`),
     enabled: !!feedId,
   });
 }

@@ -70,7 +70,7 @@ function FeedLoader() {
   const { feedId } = useParams<{ feedId: string }>();
   const page = useEventPage();
   const { t } = useTranslation();
-  const one = useFeed(page.calendarId, page.roleCanEdit ? feedId : undefined);
+  const one = useFeed(page.clubId, page.roleCanEdit ? feedId : undefined);
   const isNew = !feedId;
   const feed = one.data;
   const notFound = (one.error as { status?: number } | null)?.status === 404;
@@ -128,7 +128,7 @@ function FeedLoader() {
 
 function FeedEditor({ feed }: { feed?: CalendarFeed }) {
   const page = useEventPage();
-  const data = useFeeds(page.calendarId, { withList: false });
+  const data = useFeeds(page.clubId, { withList: false });
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { t } = useTranslation();
@@ -136,7 +136,7 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
   const readOnly = page.isArchived || !page.isAdmin;
 
   const [initial] = useState<FeedFormValues>(() =>
-    feed ? feedValuesFromRecord(feed) : emptyFeedValues(),
+    feed ? feedValuesFromRecord(feed) : emptyFeedValues([page.calendarId]),
   );
   const [values, setValues] = useState<FeedFormValues>(initial);
   const [submits, setSubmits] = useState(0);
@@ -194,23 +194,23 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
       const body = toFeedPayload(values);
       const saved = await saveDroppingDeletedReferences(
         qc,
-        page.calendarId,
+        page,
         ["targetGroups"],
         body,
         (b) =>
           feed
             ? apiPatch<CalendarFeed>(
-                `/api/calendars/${page.calendarId}/feeds/${feed.id}?includeSecret=1`,
+                `/api/clubs/${page.clubId}/feeds/${feed.id}?includeSecret=1`,
                 b,
               )
-            : apiPost<CalendarFeed>(`/api/calendars/${page.calendarId}/feeds?includeSecret=1`, b),
+            : apiPost<CalendarFeed>(`/api/clubs/${page.clubId}/feeds?includeSecret=1`, b),
         (b, existing) => ({
           ...b,
           targetGroupIds: keepExisting(b.targetGroupIds, existing.targetGroups),
         }),
       );
       const savedId = feed?.id ?? saved.id;
-      await qc.invalidateQueries({ queryKey: ["feeds", page.calendarId] });
+      await qc.invalidateQueries({ queryKey: ["feeds", page.clubId] });
       toast.success(t(isNew ? "feeds.form.created" : "feeds.form.saved", { name: body.name }));
       navigate(page.routes.feeds, { state: { open: savedId } });
     } catch {
@@ -225,10 +225,10 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
     if (!feed) return;
     try {
       await apiPost(
-        `/api/calendars/${page.calendarId}/feeds/${feed.id}/regenerate-secret?includeSecret=1`,
+        `/api/clubs/${page.clubId}/feeds/${feed.id}/regenerate-secret?includeSecret=1`,
         {},
       );
-      await qc.invalidateQueries({ queryKey: ["feeds", page.calendarId] });
+      await qc.invalidateQueries({ queryKey: ["feeds", page.clubId] });
       toast.success(t("feeds.regen.done"));
     } catch {
       toast.error(t("feeds.regen.failed"));
@@ -238,8 +238,8 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
   async function remove() {
     if (!feed) return;
     try {
-      await apiDelete(`/api/calendars/${page.calendarId}/feeds/${feed.id}`);
-      await qc.invalidateQueries({ queryKey: ["feeds", page.calendarId] });
+      await apiDelete(`/api/clubs/${page.clubId}/feeds/${feed.id}`);
+      await qc.invalidateQueries({ queryKey: ["feeds", page.clubId] });
       toast.success(t("feeds.delete.done", { name: feed.name }));
       navigate(page.routes.feeds);
     } catch {

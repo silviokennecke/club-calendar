@@ -50,14 +50,16 @@ export function feedAudienceIds(feed: Pick<CalendarFeed, "targetGroups">): strin
 export interface FeedFormValues {
   name: string;
   visibility: FeedVisibility;
+  /** Calendars the feed publishes (at least one). */
+  calendarIds: string[];
   /** Search engine opt-in; only effective (and only sent as true) for PUBLIC. */
   searchable: boolean;
   targetGroupIds: string[];
 }
 
 /** New feeds are CLUB ("Nur per Link"), not searchable. */
-export function emptyFeedValues(): FeedFormValues {
-  return { name: "", visibility: "CLUB", searchable: false, targetGroupIds: [] };
+export function emptyFeedValues(calendarIds: string[] = []): FeedFormValues {
+  return { name: "", visibility: "CLUB", searchable: false, calendarIds, targetGroupIds: [] };
 }
 
 export function feedValuesFromRecord(feed: CalendarFeed): FeedFormValues {
@@ -65,6 +67,7 @@ export function feedValuesFromRecord(feed: CalendarFeed): FeedFormValues {
     name: feed.name,
     visibility: feed.visibility,
     searchable: feed.visibility === "PUBLIC" && feed.searchable === true,
+    calendarIds: feed.calendarIds ?? [],
     targetGroupIds: feedAudienceIds(feed),
   };
 }
@@ -92,14 +95,18 @@ export function isFeedDirty(initial: FeedFormValues, values: FeedFormValues): bo
     initial.name.trim() !== values.name.trim() ||
     initial.visibility !== values.visibility ||
     effectiveSearchable(initial) !== effectiveSearchable(values) ||
+    !same(initial.calendarIds, values.calendarIds) ||
     !same(initial.targetGroupIds, values.targetGroupIds)
   );
 }
 
-export type FeedProblem = "nameEmpty";
+export type FeedProblem = "nameEmpty" | "noCalendar";
 
 export function validateFeed(values: FeedFormValues): FeedProblem[] {
-  return values.name.trim() ? [] : ["nameEmpty"];
+  const problems: FeedProblem[] = [];
+  if (!values.name.trim()) problems.push("nameEmpty");
+  if (values.calendarIds.length === 0) problems.push("noCalendar");
+  return problems;
 }
 
 export function toFeedPayload(values: FeedFormValues) {
@@ -107,6 +114,7 @@ export function toFeedPayload(values: FeedFormValues) {
     name: values.name.trim(),
     visibility: values.visibility,
     searchable: effectiveSearchable(values),
+    calendarIds: values.calendarIds,
     targetGroupIds: values.targetGroupIds,
   };
 }

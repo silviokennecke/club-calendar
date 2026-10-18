@@ -44,7 +44,7 @@ function Import() {
   const { t } = useTranslation();
   const page = useEventPage();
   const qc = useQueryClient();
-  const resources = useEventResources(page.calendarId);
+  const resources = useEventResources(page.clubId, page.calendarId);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -177,7 +177,7 @@ function Import() {
     } finally {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["events", page.calendarId] }),
-        qc.invalidateQueries({ queryKey: ["locations", page.calendarId] }),
+        qc.invalidateQueries({ queryKey: ["locations", page.clubId] }),
       ]);
       setImporting(false);
       // Replaces the review entry: back from the result leads to the file step, never to the review.

@@ -16,7 +16,8 @@ import type { CalendarFeed } from "@/lib/types";
 
 const feed = (over: Partial<CalendarFeed> = {}): CalendarFeed => ({
   id: "f1",
-  calendarid: "k1",
+  clubId: "k1",
+  calendarIds: ["c1"],
   name: "Öffentlicher Kalender",
   visibility: "PUBLIC",
   searchable: false,
@@ -56,10 +57,11 @@ describe("feedAddresses", () => {
 
 describe("feed form values", () => {
   it("starts club internal, not searchable, with no audience filter", () => {
-    expect(emptyFeedValues()).toEqual({
+    expect(emptyFeedValues(["c1"])).toEqual({
       name: "",
       visibility: "CLUB",
       searchable: false,
+      calendarIds: ["c1"],
       targetGroupIds: [],
     });
   });
@@ -80,14 +82,24 @@ describe("feed form values", () => {
     expect(feedValuesFromRecord(f).targetGroupIds).toEqual(["g1", "g2"]);
   });
   it("requires a name", () => {
-    expect(validateFeed({ ...emptyFeedValues(), name: "  " })).toEqual(["nameEmpty"]);
-    expect(validateFeed({ ...emptyFeedValues(), name: "Jugend" })).toEqual([]);
+    expect(validateFeed({ ...emptyFeedValues(["c1"]), name: "  " })).toEqual(["nameEmpty"]);
+    expect(validateFeed({ ...emptyFeedValues(["c1"]), name: "Jugend" })).toEqual([]);
+  });
+  it("requires at least one calendar", () => {
+    expect(validateFeed({ ...emptyFeedValues(), name: "Jugend" })).toEqual(["noCalendar"]);
+  });
+  it("reads and sends the calendars of the feed", () => {
+    const values = feedValuesFromRecord(feed({ calendarIds: ["c1", "c2"] }));
+    expect(values.calendarIds).toEqual(["c1", "c2"]);
+    expect(toFeedPayload(values).calendarIds).toEqual(["c1", "c2"]);
+    expect(isFeedDirty(values, { ...values, calendarIds: ["c1"] })).toBe(true);
   });
   it("detects changes regardless of audience order and surrounding spaces", () => {
     const initial = {
       name: "A",
       visibility: "PUBLIC" as const,
       searchable: false,
+      calendarIds: ["c1"],
       targetGroupIds: ["g1", "g2"],
     };
     expect(isFeedDirty(initial, { ...initial, name: " A ", targetGroupIds: ["g2", "g1"] })).toBe(
@@ -106,17 +118,19 @@ describe("feed form values", () => {
         name: " Jugend ",
         visibility: "PRIVATE",
         searchable: false,
+        calendarIds: ["c1"],
         targetGroupIds: ["g1"],
       }),
     ).toEqual({
       name: "Jugend",
       visibility: "PRIVATE",
       searchable: false,
+      calendarIds: ["c1"],
       targetGroupIds: ["g1"],
     });
   });
   it("sends searchable only for public feeds", () => {
-    const base = { name: "A", searchable: true, targetGroupIds: [] };
+    const base = { name: "A", searchable: true, calendarIds: ["c1"], targetGroupIds: [] };
     expect(toFeedPayload({ ...base, visibility: "PUBLIC" }).searchable).toBe(true);
     expect(toFeedPayload({ ...base, visibility: "CLUB" }).searchable).toBe(false);
     expect(toFeedPayload({ ...base, visibility: "PRIVATE" }).searchable).toBe(false);

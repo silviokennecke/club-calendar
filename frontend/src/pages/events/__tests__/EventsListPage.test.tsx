@@ -25,7 +25,7 @@ const sample = [
     date: "2026-10-01",
     seriesId: "ser1",
     targetGroups: [{ targetGroup: groups[1] }],
-    location: { id: "l1", calendarid: "k1", name: "Schützenhaus Waldblick" },
+    location: { id: "l1", clubId: "k1", name: "Schützenhaus Waldblick" },
   }),
   makeEvent({
     id: "2",

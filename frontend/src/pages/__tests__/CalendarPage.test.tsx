@@ -26,8 +26,8 @@ vi.mock("@/lib/auth-context", () => ({
 }));
 
 const groups = [
-  { id: "tg-j", calendarid: "k1", name: "Jugend" },
-  { id: "tg-e", calendarid: "k1", name: "Erwachsene" },
+  { id: "tg-j", clubId: "k1", name: "Jugend" },
+  { id: "tg-e", clubId: "k1", name: "Erwachsene" },
 ];
 
 function event(partial: Record<string, unknown>) {
@@ -84,7 +84,7 @@ function mockApi() {
     // The single GET carries the calendar's eventCount (empty-state check)
     if (path === "/api/clubs/c1/calendars/k1")
       return Promise.resolve({ ...calendar, eventCount: events.length });
-    if (path === "/api/calendars/k1/target-groups") return Promise.resolve(groups);
+    if (path === "/api/clubs/c1/target-groups") return Promise.resolve(groups);
     if (path.startsWith("/api/calendars/k1/events")) {
       if (failEvents) return Promise.reject(new Error("offline"));
       const url = new URL(path, "http://x");

@@ -64,8 +64,8 @@ export default function EventsListPage() {
 
   const events = useAllEvents(page.calendarId);
   const groups = useQuery<TargetGroup[]>({
-    queryKey: ["targetGroups", page.calendarId],
-    queryFn: () => apiGet(`/api/calendars/${page.calendarId}/target-groups`),
+    queryKey: ["targetGroups", page.clubId],
+    queryFn: () => apiGet(`/api/clubs/${page.clubId}/target-groups`),
   });
   const all = useMemo(() => events.data ?? [], [events.data]);
   const filter = { tab, query, groupIds };

@@ -195,7 +195,7 @@ interface EventEditorProps {
 function EventEditor({ initial, event, template, presetDate }: EventEditorProps) {
   const page = useEventPage();
   const nav = useModalNav();
-  const res = useEventResources(page.calendarId);
+  const res = useEventResources(page.clubId, page.calendarId);
   const qc = useQueryClient();
   const { t } = useTranslation();
   const locale = useLocale();
@@ -267,7 +267,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
         scope === "all" ? { ...changed, scope: "all" } : toEventPayload(values);
       const saved = await saveDroppingDeletedReferences(
         qc,
-        page.calendarId,
+        page,
         ["properties", "features", "targetGroups", "locations", "templates"],
         body,
         send,

@@ -11,7 +11,12 @@ export default function MasterListPage({ kind }: { kind: MasterKind }) {
   return (
     <SettingsLayout>
       <p className="t-body t-muted t-prose">{t(`settings.master.${kind}.description`)}</p>
-      <MasterList kind={kind} calendarId={page.calendarId} readOnly={page.readOnly} />
+      <MasterList
+        kind={kind}
+        clubId={page.clubId}
+        calendarId={page.calendarId}
+        readOnly={page.readOnly}
+      />
     </SettingsLayout>
   );
 }
