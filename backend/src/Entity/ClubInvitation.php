@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\ClubRole;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
@@ -50,6 +51,10 @@ class ClubInvitation
     #[ORM\Column(length: 10)]
     private string $status = self::PENDING;
 
+    /** The role the invitee gets on accepting. */
+    #[ORM\Column(length: 10, enumType: ClubRole::class)]
+    private ClubRole $role = ClubRole::DEFAULT_INVITED;
+
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
@@ -89,6 +94,18 @@ class ClubInvitation
     public function getEmail(): string
     {
         return $this->email;
+    }
+
+    public function getRole(): ClubRole
+    {
+        return $this->role;
+    }
+
+    public function setRole(ClubRole $role): static
+    {
+        $this->role = $role;
+
+        return $this;
     }
 
     public function getTokenHash(): string

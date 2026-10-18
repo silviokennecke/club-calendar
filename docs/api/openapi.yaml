@@ -46,8 +46,17 @@ info:
       and the session version. The purposes are not interchangeable with any other signed token.
     - Every `/api/*` route except `/api/feed/*` passes the JWT firewall. A route marked "no authentication"
       still rejects an *invalid* `Authorization` header with 401 (send none instead).
-    - Authorization: club routes require club membership (403 otherwise; there are no roles), calendar routes
-      membership in the calendar's club. Writes to an **archived** calendar are 403 (reads stay possible).
+    - Authorization: club routes require club membership, calendar routes membership in the calendar's club
+      (403 otherwise). Members have one of three **roles** (`viewer` < `editor` < `admin`, each includes the
+      lower ones): *viewer* reads (club, calendars, events, reference data, members, `events.ics`); *editor* also
+      creates, changes and deletes events, series, templates, locations, properties, features, target groups and
+      holiday calendars (import, bulk and series included) and reads the feeds of a calendar (their addresses
+      and secrets); *admin* also changes and deletes the club, creates/changes/archives/duplicates/deletes
+      calendars, manages feeds, invitations, members and roles. A role too low is 403 (`Forbidden`). Anyone may
+      leave a club (`DELETE …/members/{ownId}`). A club never has zero members or zero admins: the last admin can
+      neither be demoted, removed nor leave (`422 last_admin`) and cannot delete the account
+      (`422 last_admin_of_club`) while other members remain. Writes to an **archived** calendar are 403 (reads
+      stay possible).
     - **401** is always an RFC 7807 problem with `WWW-Authenticate: Bearer`. For the access token the code is
       `missing_token` (no `Authorization` header on a route that needs a user), `invalid_token` (malformed,
       wrong signature, ended session, user gone) or `token_expired`; the sign-in routes themselves answer
@@ -224,7 +233,7 @@ tags:
   - name: Locations
     description: Venues with address and map position.
   - name: Feeds
-    description: Feed management (members).
+    description: Feed management (admins; editors may read).
   - name: Public feed
     description: Published feeds (no authentication; `?secret=` for private feeds).
   - name: Holidays
@@ -350,6 +359,11 @@ paths:
               required: [email]
               properties:
                 email: { type: string, format: email, maxLength: 254 }
+                role:
+                  type: string
+                  enum: [viewer, editor, admin]
+                  default: editor
+                  description: The role the invitee gets on accepting. Inviting an address with an open invitation sets the role of that invitation (no second mail).
       responses:
         '204': { description: 'Accepted: a code was mailed, or nothing to do for this address.' }
         '400': { $ref: '#/components/responses/InvalidRequest' }
@@ -708,7 +722,7 @@ paths:
               schema: { $ref: '#/components/schemas/Problem' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '422':
-          description: "`last_member_of_club`."
+          description: "`last_member_of_club` or `last_admin_of_club` (the only admin of a club that has other members)."
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -1048,7 +1062,7 @@ paths:
     post:
       tags: [Clubs]
       summary: Create a club
-      description: The creator becomes a member.
+      description: The creator becomes an admin.
       operationId: createClub
       requestBody:
         required: true
@@ -1090,6 +1104,7 @@ paths:
     patch:
       tags: [Clubs]
       summary: Update a club
+      description: Admins only.
       operationId: updateClub
       requestBody:
         required: true
@@ -1113,7 +1128,7 @@ paths:
     delete:
       tags: [Clubs]
       summary: Delete a club with all calendars
-      description: Any member may delete (no roles yet).
+      description: Admins only.
       operationId: deleteClub
       responses:
         '200': { $ref: '#/components/responses/Ok' }
@@ -1148,8 +1163,8 @@ paths:
       summary: Open and expired invitations of a club
       description: >-
         Newest first. `status` is `pending` (valid) or `expired` (older than 7 days and unanswered). Accepted,
-        declined and revoked invitations are not listed. Any member may read, create, re-send and revoke
-        invitations (no roles yet).
+        declined and revoked invitations are not listed. Only admins may read, create, re-send and revoke
+        invitations.
       operationId: listClubInvitations
       responses:
         '200':
@@ -1353,14 +1368,52 @@ paths:
     parameters:
       - { $ref: '#/components/parameters/ClubId' }
       - { name: userId, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [Clubs]
+      summary: Change the role of a member
+      description: >-
+        Admins only (`403`, checked again under the club lock). Demoting the last admin is `422 last_admin`;
+        an unknown role is `422 invalid_role` (field `role`). An id that is no member is `404 member_not_found`.
+      operationId: changeMemberRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [viewer, editor, admin] }
+      responses:
+        '200':
+          description: The member with the new role.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Member' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Club unknown (no `code`), or `member_not_found`.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422':
+          description: "`invalid_role` or `last_admin`."
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
     delete:
       tags: [Clubs]
       summary: Remove a member
       description: >-
-        Removes the membership (also leaving the club oneself). An id that is no member of the club is
+        Removes the membership. Leaving the club oneself is open to every role; removing somebody else needs an
+        admin (`403`). An id that is no member of the club is
         `404 member_not_found`, the same answer for unknown ids and for users outside the club. The last
         member can neither be removed nor leave: `422 last_member` (a club never has zero members; the
         club row is locked for the check, so concurrent removals cannot empty it). Delete the club instead.
+        The last admin cannot be removed or leave while other members remain: `422 last_admin` (promote
+        somebody first).
       operationId: removeMember
       responses:
         '200': { $ref: '#/components/responses/Ok' }
@@ -1372,7 +1425,7 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '422':
-          description: "`last_member`: the user is the only member of the club."
+          description: "`last_member`: the user is the only member of the club; `last_admin`: the user is the only admin."
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -3245,6 +3298,10 @@ components:
         | `member_not_found` | 404 | `DELETE /api/clubs/{clubId}/members/{userId}`: no member of the club (unknown ids alike) |
         | `last_member` | 422 | `DELETE /api/clubs/{clubId}/members/{userId}`: the user is the only member of the club (also when leaving it); a club never has zero members |
         | `last_member_of_club` | 422 | `DELETE /api/auth/me`: the user is the only member of at least one club; delete the club first |
+        | `last_admin` | 422 | `DELETE /api/clubs/{clubId}/members/{userId}`, `PATCH …`: the user is the only admin (removing, leaving, demoting); promote another member first |
+        | `last_admin_of_club` | 422 | `DELETE /api/auth/me`: the user is the only admin of a club with other members |
+        | `forbidden` | 403 | Member routes: the role is too low for the service check (removing another member or changing a role without being admin) |
+        | `invalid_role` | 422 | `PATCH /api/clubs/{clubId}/members/{userId}`: role is none of viewer, editor, admin (field `role`) |
         | `invitation_not_found` | 404 | Club invitation routes: unknown, answered or revoked invitation, or one of another club; `/api/invitations/*`: unknown token or id, an invitation for another address, or an unconfirmed user (all the same answer) |
         | `invitation_expired` | 422 | Accept/decline of an invitation that is addressed to the signed-in user but older than 7 days; the club can re-send it |
         | `invitation_not_expired` | 422 | `POST /api/clubs/{clubId}/invitations/{invitationId}/resend` before the invitation expired |
@@ -3318,6 +3375,10 @@ components:
         - member_not_found
         - last_member
         - last_member_of_club
+        - last_admin
+        - last_admin_of_club
+        - forbidden
+        - invalid_role
         - invitation_not_found
         - invitation_expired
         - invitation_not_expired
@@ -3416,6 +3477,10 @@ components:
         challengeToken: { type: string, description: 'Signed, single-use token carrying the challenge; send it back with the response.' }
 
     # ---------------------------------------------------------------- clubs and calendars
+    ClubRole:
+      type: string
+      enum: [viewer, editor, admin]
+      description: Role of the signed-in user in the club (see "Authorization").
     Club:
       type: object
       required: [id, name, timezone]
@@ -3427,8 +3492,9 @@ components:
       allOf:
         - { $ref: '#/components/schemas/Club' }
         - type: object
-          required: [calendarCount, archivedCalendarCount, memberCount, lastCalendarId, _count]
+          required: [role, calendarCount, archivedCalendarCount, memberCount, lastCalendarId, _count]
           properties:
+            role: { $ref: '#/components/schemas/ClubRole' }
             calendarCount: { type: integer, description: Active calendars. }
             archivedCalendarCount: { type: integer }
             memberCount: { type: integer }
@@ -3443,8 +3509,9 @@ components:
       allOf:
         - { $ref: '#/components/schemas/Club' }
         - type: object
-          required: [calendarCount, archivedCalendarCount, memberCount, eventCount, feedCount]
+          required: [role, calendarCount, archivedCalendarCount, memberCount, eventCount, feedCount]
           properties:
+            role: { $ref: '#/components/schemas/ClubRole' }
             calendarCount: { type: integer }
             archivedCalendarCount: { type: integer }
             memberCount: { type: integer }
@@ -3452,20 +3519,22 @@ components:
             feedCount: { type: integer }
     ClubInvitation:
       type: object
-      required: [id, email, status, invitedByName, createdAt, expiresAt]
+      required: [id, email, status, role, invitedByName, createdAt, expiresAt]
       properties:
         id: { type: string }
         email: { type: string, format: email, description: Normalized (lower case) address that was invited. }
         status: { type: string, enum: [pending, expired] }
+        role: { $ref: '#/components/schemas/ClubRole' }
         invitedByName: { type: [string, 'null'], description: Name of the (last) inviter; null after that account was deleted. }
         createdAt: { type: string, format: date-time, description: Creation or last re-send (UTC). }
         expiresAt: { type: string, format: date-time, description: Seven days after `createdAt` (UTC). }
     OwnInvitation:
       type: object
-      required: [id, clubName, invitedByName, expiresAt]
+      required: [id, clubName, role, invitedByName, expiresAt]
       properties:
         id: { type: string }
         clubName: { type: string }
+        role: { $ref: '#/components/schemas/ClubRole' }
         invitedByName: { type: [string, 'null'] }
         expiresAt: { type: string, format: date-time }
     InvitationToken:
@@ -3475,11 +3544,12 @@ components:
         token: { type: string, maxLength: 128, description: The `token` query parameter of the link in the invitation mail. }
     Member:
       type: object
-      required: [id, name, email]
+      required: [id, name, email, role]
       properties:
         id: { type: string }
         name: { type: string }
         email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/ClubRole' }
     Calendar:
       type: object
       required: [id, clubId, name, timezone, archivedAt, eventCount, templateCount, feedCount]

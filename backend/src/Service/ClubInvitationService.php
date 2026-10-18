@@ -8,6 +8,7 @@ use App\Entity\Club;
 use App\Entity\ClubInvitation;
 use App\Entity\ClubUser;
 use App\Entity\User;
+use App\Enum\ClubRole;
 use App\Exception\ApiProblemException;
 use App\Security\AuthRateLimiter;
 use Doctrine\DBAL\LockMode;
@@ -57,13 +58,13 @@ readonly class ClubInvitationService
      *
      * @throws ApiProblemException 422 `quota_exceeded` (the club's open invitations; independent of the address)
      */
-    public function invite(Club $club, User $inviter, string $email): void
+    public function invite(Club $club, User $inviter, string $email, ClubRole $role = ClubRole::DEFAULT_INVITED): void
     {
         $email = AuthRateLimiter::normalize($email);
         $now = $this->now();
 
         /** @var array{0: ClubInvitation, 1: string}|null $created */
-        $created = $this->em->wrapInTransaction(function () use ($club, $inviter, $email, $now): ?array {
+        $created = $this->em->wrapInTransaction(function () use ($club, $inviter, $email, $now, $role): ?array {
             $this->em->lock($club, LockMode::PESSIMISTIC_WRITE);
             $this->quota->assertRoom(Quota::PENDING_INVITATIONS_PER_CLUB, $club);
             if ($this->isMember($club, $email)) {
@@ -75,10 +76,16 @@ readonly class ClubInvitationService
             $token = self::newToken();
             if (null === $open) {
                 $open = new ClubInvitation($club, $inviter, $email, PasswordResetService::hash($token), $now);
+                $open->setRole($role);
                 $this->em->persist($open);
             } elseif ($open->isExpired($now)) {
                 $open->renew($inviter, PasswordResetService::hash($token), $now);
+                $open->setRole($role);
             } else {
+                // Idempotent: no second mail, but the latest choice of role wins.
+                $open->setRole($role);
+                $this->em->flush();
+
                 return null;
             }
             $this->em->flush();
@@ -94,7 +101,7 @@ readonly class ClubInvitationService
     /**
      * Open and expired invitations of the club, newest first.
      *
-     * @return list<array{id: string, email: string, status: string, invitedByName: ?string, createdAt: string, expiresAt: string}>
+     * @return list<array{id: string, email: string, status: string, role: string, invitedByName: ?string, createdAt: string, expiresAt: string}>
      */
     public function listForClub(Club $club): array
     {
@@ -117,6 +124,7 @@ readonly class ClubInvitationService
             'id' => $i->getId(),
             'email' => $i->getEmail(),
             'status' => $i->isExpired($now) ? 'expired' : 'pending',
+            'role' => $i->getRole()->value,
             'invitedByName' => $i->getInvitedBy()?->getName(),
             'createdAt' => self::iso($i->getCreatedAt()),
             'expiresAt' => self::iso($i->getExpiresAt()),
@@ -188,6 +196,7 @@ readonly class ClubInvitationService
         return array_map(fn (ClubInvitation $i) => [
             'id' => $i->getId(),
             'clubName' => $i->getClub()->getName(),
+            'role' => $i->getRole()->value,
             'invitedByName' => $i->getInvitedBy()?->getName(),
             'expiresAt' => self::iso($i->getExpiresAt()),
         ], $rows);
@@ -213,7 +222,7 @@ readonly class ClubInvitationService
             if (null === $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $club, 'user' => $user])) {
                 $this->quota->assertRoom(Quota::MEMBERS_PER_CLUB, $club);
                 $this->quota->assertRoom(Quota::CLUBS_PER_USER, $user);
-                $this->em->persist((new ClubUser())->setClub($club)->setUser($user));
+                $this->em->persist((new ClubUser())->setClub($club)->setUser($user)->setRole($invitation->getRole()));
             }
             $invitation->resolve(ClubInvitation::ACCEPTED, $this->now());
             $this->em->flush();
