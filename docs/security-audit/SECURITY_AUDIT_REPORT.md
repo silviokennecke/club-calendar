@@ -276,6 +276,6 @@
 | Backend API (authorization & CRUD) | `02-backend-api.md` | API-01, API-03 (2) | Complete |
 | Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-54 (3) | Complete |
 | Frontend | `03-frontend.md` | FE-04 … FE-07 (4) | Complete |
-| Scans & config | `04-scans-config.md` | SCAN-01, SCAN-04, SCAN-07, SCAN-09 … SCAN-12 (6) | Complete |
+| Scans & config | `04-scans-config.md` | SCAN-04, SCAN-07, SCAN-09 … SCAN-12 (5) | Complete |
 
 These reports live in `docs/security-audit/`.
