@@ -8,7 +8,7 @@ class MapCacheKeyHelper
 {
     public static function forGeocoderSuggest(string $query, ?float $lat, ?float $lng, int $limit): string
     {
-        return hash('sha256', "suggest:$query:$lat:$lng:$limit");
+        return hash('sha256', "suggest:v2:$query:$lat:$lng:$limit");
     }
 
     public static function forGeocoderReverse(float $lng, float $lat): string

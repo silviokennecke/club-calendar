@@ -72,6 +72,7 @@ services:
     App\Service\Map\BazingaGeocoderAdapter:
         arguments:
             $geocoder: '@geocoder.mapbox_de'
+            $mapboxToken: '%env(MAPBOX_TOKEN)%'
 
     App\Service\Map\MapboxMapImageProvider:
         arguments:
