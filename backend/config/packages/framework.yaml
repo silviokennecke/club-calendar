@@ -5,6 +5,11 @@ framework:
     php_errors:
         log: true
     session: false
+    # Host header poisoning (M2): only the hosts of APP_URL / FRONTEND_URL / BACKEND_URL, the optional extra
+    # hosts in TRUSTED_HOSTS (comma-separated) and loopback names are accepted, anything else is a 400.
+    # See App\Security\TrustedHostsEnvVarProcessor.
+    trusted_hosts:
+        - '%env(trusted_hosts:TRUSTED_HOSTS)%'
     # Symfony would add `X-Robots-Tag: noindex` to every response in debug mode (dev/test) only; the
     # feed API decides per feed (FeedResponseHeadersListener), so all environments behave like prod.
     disallow_search_engine_index: false

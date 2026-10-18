@@ -236,9 +236,9 @@ class PasswordResetTest extends WebTestCase
     public function testLinkIsBuiltFromTheConfiguredFrontendUrlNotFromTheHostHeader(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, self::uniqueEmail());
-        $this->forgot($user->getEmail(), ['HTTP_HOST' => 'evil.example', 'HTTP_X_FORWARDED_HOST' => 'evil.example']);
+        $this->forgot($user->getEmail(), ['HTTP_HOST' => '127.0.0.1:9999', 'HTTP_X_FORWARDED_HOST' => 'evil.example']);
         $html = $this->lastMailHtml();
-        $this->assertStringNotContainsString('evil.example', $html);
+        $this->assertStringNotContainsString('9999', $html);
         $this->assertNotNull($this->tokenFromMail());
     }
 
