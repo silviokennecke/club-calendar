@@ -9,7 +9,8 @@
     "back": "Back",
     "search": "Search…",
     "all": "All",
-    "name": "Name"
+    "name": "Name",
+    "quotaExceeded": "Limit reached: this club or calendar cannot hold more of these items. Delete unused ones first."
   },
   "auth": {
     "signIn": "Sign in",

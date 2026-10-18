@@ -104,7 +104,7 @@ info:
       resend-verification, forgot/reset password, change-password, change-email, create club, add member, create
       calendar, holiday calendar create/update), and well-formed values that conflict with stored state
       (`searchable` on a feed that is not `PUBLIC`, a series rule without events, an e-mail change to the current
-      address). Other 422 codes (`unknown_reference`, `duplicate_name`, `too_many_events`, `ics_fetch_failed`)
+      address). Other 422 codes (`unknown_reference`, `duplicate_name`, `too_many_events`, `quota_exceeded`, `ics_fetch_failed`)
       are semantic as well.
 
     ## Feeds, visibility and robots rules
@@ -157,6 +157,30 @@ info:
     - Unknown time zones in an import fall back to the calendar's (else the club's) zone and are reported in
       `warnings` (`code: timezone_replaced`).
     - Member ICS export: `GET /api/calendars/{calendarId}/events.ics`, at most 100 `targetGroupIds`.
+
+    ## Quotas and input limits
+
+    Per-account growth is bounded (security audit M7; constants in `App\Service\Quota`, generous on purpose).
+    A write that would exceed one answers **422 `quota_exceeded`** with the members `resource` (the name below)
+    and `limit`; nothing is written. Counts are checked before the write, so parallel requests may overshoot by
+    one batch.
+
+    | `resource` | Limit |
+    | --- | --- |
+    | `clubsPerUser` | 50 clubs a user is a member of (create club) |
+    | `calendarsPerClub` | 100 calendars per club (create, duplicate; archived ones count) |
+    | `membersPerClub` | 500 members per club |
+    | `eventsPerCalendar` | 20000 events per calendar (create, from-template, series create/rule change, import) |
+    | `locationsPerCalendar` | 2000 locations (also those an import creates) |
+    | `templatesPerCalendar` / `propertiesPerCalendar` / `featuresPerCalendar` / `targetGroupsPerCalendar` | 500 each |
+    | `feedsPerCalendar` | 50 feeds |
+    | `holidayCalendarsPerCalendar` | 20 holiday calendars |
+
+    Further limits: an id list field (`propertyIds`, `featureIds`, `targetGroupIds`, also the `targetGroupIds`
+    query of the event list) has at most 500 ids (400 `validation_failed`); `from-template` takes at most 366
+    `dates` (422 `too_many_events`, field `dates`); a holiday ICS is read at most 1 MB and 5000 events (else
+    `ics_fetch_failed`). Strings have maximum lengths (255, or 100/32/20 for short fields; 400 `validation_failed`).
+    The public feed is bounded by the event quota (one constant number of queries per request).
   contact:
     name: Club Calendar
 servers:
@@ -1282,6 +1306,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/QuotaExceeded' }
 
   # ------------------------------------------------------------------ Events
   /api/calendars/{calendarId}/events:
@@ -1293,15 +1318,24 @@ paths:
       description: >-
         Ordered by date and start time. `from`/`to` select by overlap (multi-day events reaching into the range are
         included); both strictly `YYYY-MM-DD` (a real day; `now`, `2026-02-31` or an array are a 400
-        `validation_failed` with field `from`/`to`), `to` before `from` is a 400 on `to`.
+        `validation_failed` with field `from`/`to`), `to` before `from` is a 400 on `to`, and a range longer than
+        1830 days (about five years) a 400 on `to`. At most `limit` (default and maximum 5000) events are returned
+        per request; page with `offset`. The body stays a plain list, the number of all matches is in the
+        `X-Total-Count` header. Without `from`/`to` the first 5000 events are returned.
       operationId: listEvents
       parameters:
         - { name: from, in: query, schema: { type: string, format: date } }
         - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: limit, in: query, description: 'Page size, 1..5000 (default 5000); outside → 400 `validation_failed` field `limit`.', schema: { type: integer, minimum: 1, maximum: 5000, default: 5000 } }
+        - { name: offset, in: query, description: 'Events to skip (default 0).', schema: { type: integer, minimum: 0, default: 0 } }
         - { name: targetGroupIds, in: query, description: Comma-separated target group ids (events with at least one)., schema: { type: string } }
       responses:
         '200':
           description: Events.
+          headers:
+            X-Total-Count:
+              description: Number of all events matching `from`/`to`/`targetGroupIds` (before `limit`/`offset`).
+              schema: { type: integer }
           content:
             application/json:
               schema:
@@ -2115,6 +2149,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/ForbiddenWrite' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/QuotaExceeded' }
 
   /api/calendars/{calendarId}/locations/{id}:
     parameters:
@@ -2793,6 +2828,11 @@ components:
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
+    QuotaExceeded:
+      description: '`quota_exceeded`: a per-club/calendar/user quota is used up; members `resource` and `limit` (see "Quotas and input limits").'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
     SeriesTooMany:
       description: '`too_many_events` (more than 366 events, field `rule` or `rule.count`) or `validation_failed` field `rule` (the series would have no events).'
       content:
@@ -2904,6 +2944,8 @@ components:
         code: { $ref: '#/components/schemas/ErrorCode' }
         retryAt: { type: string, format: date-time, description: 'Only `verification_resend_too_early`.' }
         email: { type: string, description: 'Only `email_not_verified`.' }
+        resource: { type: string, description: 'Only `quota_exceeded`: the quota that is used up.' }
+        limit: { type: integer, description: 'Only `quota_exceeded`: its limit.' }
         field:
           type: string
           description: Path of the offending input, e.g. `name`, `rule.weekday`, `event.locationId`, `events[3].date`, `locations[0].tempId`, `ids`.
@@ -2932,6 +2974,7 @@ components:
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
         | `duplicate_name` | 422 | Name of a property/feature/target group already used in the calendar |
         | `too_many_events` | 413 / 422 | 413: import > 5000 events/locations, bulk > 5000 ids; 422: series > 366 events (preview, create, rule change) |
+        | `quota_exceeded` | 422 | A create/import would exceed a quota (clubs per user, calendars/members per club, events/locations/templates/properties/features/target groups/feeds/holiday calendars per calendar); extra members `resource`, `limit`. List: "Quotas and input limits" |
         | `series_empty` | 409 | Rule change preview/PATCH: the series has no events |
         | `series_changed` | 409 | Rule change PATCH: prototype/reference deleted concurrently or deadlock; nothing changed |
         | `email_taken` | 400 | Registration, field `email` |
@@ -2963,6 +3006,7 @@ components:
         - unknown_reference
         - duplicate_name
         - too_many_events
+        - quota_exceeded
         - series_empty
         - series_changed
         - email_taken

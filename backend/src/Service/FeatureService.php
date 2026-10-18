@@ -15,6 +15,7 @@ readonly class FeatureService
         private EntityManagerInterface $em,
         private UniqueNames $names,
         private UsageCounts $counts,
+        private Quota $quota,
     ) {
     }
 
@@ -30,6 +31,7 @@ readonly class FeatureService
 
     public function create(Calendar $calendar, array $data): array
     {
+        $this->quota->assertRoom(Quota::FEATURES_PER_CALENDAR, $calendar);
         $feature = new Feature();
         $feature->setCalendar($calendar);
         $name = Input::string($data, 'name');

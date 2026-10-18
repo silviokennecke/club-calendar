@@ -22,6 +22,7 @@ readonly class EventTemplateService
         private EntityManagerInterface $em,
         private CalendarReferences $references,
         private UsageCounts $counts,
+        private Quota $quota,
     ) {
     }
 
@@ -36,6 +37,7 @@ readonly class EventTemplateService
 
     public function createTemplate(Calendar $calendar, array $data): array
     {
+        $this->quota->assertRoom(Quota::TEMPLATES_PER_CALENDAR, $calendar);
         $template = new EventTemplate();
         $template->setCalendar($calendar);
         $this->applyInput($template, $calendar, $data, false);

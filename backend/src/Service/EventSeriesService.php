@@ -33,6 +33,7 @@ readonly class EventSeriesService
         private CalendarReferences $references,
         private HolidayEventRepository $holidays,
         private ClockInterface $clock,
+        private Quota $quota,
     ) {
     }
 
@@ -90,6 +91,7 @@ readonly class EventSeriesService
             throw new ApiProblemException(422, 'The rule creates no events', Input::CODE, 'rule');
         }
 
+        $this->quota->assertRoom(Quota::EVENTS_PER_CALENDAR, $calendar, count($dates));
         $series = new EventSeries($calendar, $rule, $template);
         $this->em->persist($series);
         $created = [];
@@ -169,6 +171,7 @@ readonly class EventSeriesService
                 $series = $this->findSeries($calendar, $id);
                 $plan = $this->planUpdate($calendar, $series, $data);
 
+                $this->quota->assertRoom(Quota::EVENTS_PER_CALENDAR, $calendar, count($plan['create']) - count($plan['delete']));
                 $prototype = $this->em->find(Event::class, $plan['prototype']);
                 if (null === $prototype) {
                     // Deleted between reading the events and loading it (a parallel request)

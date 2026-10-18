@@ -15,6 +15,7 @@ readonly class PropertyService
         private EntityManagerInterface $em,
         private UniqueNames $names,
         private UsageCounts $counts,
+        private Quota $quota,
     ) {
     }
 
@@ -30,6 +31,7 @@ readonly class PropertyService
 
     public function create(Calendar $calendar, array $data): array
     {
+        $this->quota->assertRoom(Quota::PROPERTIES_PER_CALENDAR, $calendar);
         $property = new Property();
         $property->setCalendar($calendar);
         $name = Input::string($data, 'name');

@@ -25,19 +25,33 @@ readonly class EventService
     public function __construct(
         private EntityManagerInterface $em,
         private CalendarReferences $references,
+        private Quota $quota,
     ) {
     }
 
-    /** $from / $to: days of the overlap filter, already validated (Input::optionalDate). */
-    public function listEvents(Calendar $calendar, ?\DateTimeImmutable $from, ?\DateTimeImmutable $to, ?array $targetGroupIds): array
+    /** Most events one list request returns (`limit` is capped to it; the default is the maximum). */
+    public const LIST_MAX_LIMIT = 5000;
+    /** Longest window (`from`..`to`) of one list request in days (about five years). */
+    public const LIST_MAX_RANGE_DAYS = 1830;
+
+    /**
+     * $from / $to: days of the overlap filter, already validated (Input::optionalDate). Sorted by date and
+     * time; `$limit` (1..LIST_MAX_LIMIT) and `$offset` page through the result, `total` counts all matches.
+     *
+     * @return array{items: list<array<string, mixed>>, total: int}
+     */
+    public function listEvents(Calendar $calendar, ?\DateTimeImmutable $from, ?\DateTimeImmutable $to, ?array $targetGroupIds, int $limit = self::LIST_MAX_LIMIT, int $offset = 0): array
     {
         $qb = $this->em->createQueryBuilder()
-            ->select('e')
+            ->select('e', 'l', 't')
             ->from(Event::class, 'e')
+            ->leftJoin('e.location', 'l')
+            ->leftJoin('e.template', 't')
             ->where('e.calendar = :calendar')
             ->setParameter('calendar', $calendar)
             ->orderBy('e.date', 'ASC')
-            ->addOrderBy('e.timeBegin', 'ASC');
+            ->addOrderBy('e.timeBegin', 'ASC')
+            ->addOrderBy('e.id', 'ASC');
 
         if (null !== $from) {
             // Overlap: multi-day events that started before the range but reach into it are included
@@ -51,11 +65,32 @@ readonly class EventService
                ->setParameter('tgIds', $targetGroupIds);
         }
 
-        return array_map(fn (Event $e) => $this->serializeEvent($e), $qb->getQuery()->getResult());
+        $count = clone $qb;
+        $total = (int) $count->select('COUNT(e.id)')->resetDQLPart('orderBy')->getQuery()->getSingleScalarResult();
+        /** @var list<Event> $events */
+        $events = $qb->setFirstResult($offset)->setMaxResults($limit)->getQuery()->getResult();
+
+        // One query per collection instead of one per event (the page is already loaded and managed)
+        if ([] !== $events) {
+            foreach ([['properties', 'ep', 'property', 'p'], ['features', 'ef', 'feature', 'f'], ['targetGroups', 'etg', 'targetGroup', 'g']] as [$assoc, $pivot, $ref, $alias]) {
+                $this->em->createQueryBuilder()
+                    ->select('e', $pivot, $alias)
+                    ->from(Event::class, 'e')
+                    ->leftJoin("e.$assoc", $pivot)
+                    ->leftJoin("$pivot.$ref", $alias)
+                    ->where('e IN (:events)')
+                    ->setParameter('events', $events)
+                    ->getQuery()
+                    ->getResult();
+            }
+        }
+
+        return ['items' => array_map(fn (Event $e) => $this->serializeEvent($e), $events), 'total' => $total];
     }
 
     public function createEvent(Calendar $calendar, array $data): array
     {
+        $this->quota->assertRoom(Quota::EVENTS_PER_CALENDAR, $calendar);
         $event = $this->buildEvent($calendar, $data);
         $this->em->flush();
 
@@ -68,6 +103,14 @@ readonly class EventService
         if (!$template || $template->getCalendar()->getId() !== $calendar->getId()) {
             throw new NotFoundHttpException('Template not found');
         }
+
+        if (!array_is_list($dates)) {
+            throw Input::invalid('dates', 'dates must be a list of YYYY-MM-DD');
+        }
+        if (count($dates) > SeriesRule::MAX_EVENTS) {
+            throw SeriesRule::tooMany('dates');
+        }
+        $this->quota->assertRoom(Quota::EVENTS_PER_CALENDAR, $calendar, count($dates));
 
         $input = $this->templateInput($template, $overrides);
         $events = [];

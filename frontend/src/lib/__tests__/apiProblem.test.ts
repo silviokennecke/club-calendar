@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { toast } from "sonner";
 import { ApiError, apiPost, exchangeOneTimeToken } from "../api";
+
+vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -37,6 +40,17 @@ describe("ApiError extra problem members", () => {
     const err = (await apiPost("/api/auth/login", {}).catch((e) => e)) as ApiError;
     expect(err.email).toBe("a@b.de");
     expect(err.retryAt).toBeUndefined();
+  });
+});
+
+describe("quota_exceeded", () => {
+  it("raises an ApiError and shows one toast", async () => {
+    fetchMock.mockResolvedValueOnce(
+      problem(422, { code: "quota_exceeded", resource: "feedsPerCalendar", limit: 50 }),
+    );
+    const err = (await apiPost("/api/calendars/c/feeds", {}).catch((e) => e)) as ApiError;
+    expect(err).toMatchObject({ status: 422, code: "quota_exceeded" });
+    expect(toast.error).toHaveBeenCalledTimes(1);
   });
 });
 

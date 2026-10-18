@@ -27,16 +27,6 @@ Static, read-only code review: full reads of every in-scope controller, service,
 **Fix recommendation:** Introduce a role or owner concept (e.g. `role` on `ClubUser`), gate club deletion, member removal, member addition, and club metadata changes to club admins/owner; block removal of the last remaining admin (and optionally of oneself if it orphans the club); consider re-authentication or a confirmation step for club deletion.
 **Notes:** The membership voter itself works as designed — the gap is the missing privilege layer above it. Member self-removal and club deletion by any member are the two most dangerous sub-cases.
 
-### API-03 — Unbounded list and bulk-operation endpoints
-
-> **Status (git-log check 2026-10-15): PARTIALLY FIXED** — max 5000 events per import/preview and 5000 ids per bulk request (413 `too_many_events`, `8913ce8`), max 366 events per series (`eacd4d0`). **`listEvents` pagination not confirmed.**
-**Severity:** Low
-**Attack scope:** Any authenticated member of the calendar's club
-**Description:** `EventService::listEvents` applies no pagination or row limit, so a single request can force a full scan/serialization of every event (and its properties) in a large calendar. Similarly, `createSeriesFromTemplate` accepts an unbounded `$dates` array and `importEvents` an unbounded `$eventsData` array, allowing one request to create an arbitrarily large batch of events.
-**Affected parts:** `EventService.php:30-67` (listEvents, no limit), `:77` (createSeriesFromTemplate, unbounded `$dates`), `:115` (importEvents, unbounded `$eventsData`)
-**Fix recommendation:** Add server-side caps: offset/limit (or cursor) pagination for `listEvents`, and a maximum batch size for the `$dates` / `$eventsData` arrays (reject or truncate beyond it with a clear 400/422).
-**Notes:** All endpoints require `CALENDAR_MEMBER` (plus `NOT_ARCHIVED` for the mutators), so this is resource exhaustion by a legitimate member rather than an unauthenticated DoS; no data leak involved.
-
 ## Reviewed & OK
 
 - **Route authorization coverage:** every in-scope route requires authentication; per-resource routes enforce the matching membership voter — club routes via `CLUB_MEMBER`, all calendar sub-resources via `CALENDAR_MEMBER`. List/getOne routes require membership only; all nested create/update/delete routes additionally carry `NOT_ARCHIVED` (verified per route against `EventTemplateController`, which is the reference pattern).

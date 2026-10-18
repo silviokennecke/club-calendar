@@ -28,7 +28,7 @@
 ## Executive Summary
 
 - **No Critical findings** in the completed areas.
-- Counts so far (4 of 5 areas complete): **1 High, 0 Medium, 7 Low, 9 Informational** — 17 findings; API-02, API-54 and the OAuth token-in-URL finding removed after implementation (AUTH-13 added for the residual risk of the fix).
+- Counts so far (4 of 5 areas complete): **1 High, 0 Medium, 6 Low, 9 Informational** — 16 findings; API-02, API-03, API-54 and the OAuth token-in-URL finding removed after implementation (AUTH-13 added for the residual risk of the fix).
 - **Top design gaps:** club membership equals full admin with no role model (API-01); Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
 - **Positives:** no IDOR/cross-tenant gaps in the API surface; no live Mapbox token in the frontend (fully proxied through the backend); WebAuthn ceremonies, OAuth state handling, and exception → RFC 7807 response masking are sound; feed-secret checks are constant-time and the Mapbox proxy is SSRF-safe (fixed upstream host, strict path allowlist, caller token stripped).
 
@@ -75,17 +75,6 @@
 **Fix recommendation:** Log `$e->getMessage()` plus sanitized context, or add a Monolog processor that strips paths from traces.
 **Notes:** HTTP responses are properly masked by `ExceptionListener` (RFC 7807, no traces to clients) — this is a log-side issue only.
 **Source:** `01-backend-auth.md` (AUTH-05).
-
-#### API-03 — Unbounded list and bulk-operation endpoints
-
-> **Status (git-log check 2026-10-15): PARTIALLY FIXED** — max 5000 events per import/preview and 5000 ids per bulk request (413 `too_many_events`, `8913ce8`), max 366 events per series (`eacd4d0`). **`listEvents` pagination not confirmed.**
-**Severity:** Low
-**Attack scope:** Any authenticated member of the calendar's club.
-**Description:** `EventService::listEvents` applies no pagination or row limit, so a single request can force a full scan/serialization of every event (and its properties) in a large calendar. Similarly, `createSeriesFromTemplate` accepts an unbounded `$dates` array and `importEvents` an unbounded `$eventsData` array, allowing one request to create an arbitrarily large batch of events.
-**Affected parts:** `EventService.php:30-67` (listEvents, no limit), `:77` (createSeriesFromTemplate), `:115` (importEvents).
-**Fix recommendation:** Add server-side caps: offset/limit (or cursor) pagination for `listEvents`, and a maximum batch size for `$dates` / `$eventsData` (reject or truncate with a clear 400/422).
-**Notes:** All endpoints require `CALENDAR_MEMBER` (plus `NOT_ARCHIVED` on mutators) — resource exhaustion by a legitimate member, not unauthenticated DoS; no data leakage.
-**Source:** `02-backend-api.md` (API-03).
 
 #### FE-04 — CLI-only `shadcn` package listed as a runtime dependency
 **Severity:** Low
@@ -243,7 +232,6 @@
 | API-52 | Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation | Medium |
 | AUTH-03 | Account deletion without confirmation, cascading memberships | Low |
 | AUTH-05 | Raw exception objects logged with full stack traces | Low |
-| API-03 | Unbounded list and bulk-operation endpoints | Low |
 | FE-04 | CLI-only `shadcn` package listed as a runtime dependency | Low |
 | FE-05 | Type-only `@types/mapbox-gl` listed as a runtime dependency | Low |
 | API-53 | Static map image endpoints expose coordinates of calendars the user does not belong to | Low |
@@ -263,7 +251,7 @@
 | Area | Report | Findings | Status |
 |---|---|---|---|
 | Backend auth | `01-backend-auth.md` | AUTH-03, AUTH-05 … AUTH-13 (10) | Complete |
-| Backend API (authorization & CRUD) | `02-backend-api.md` | API-01, API-03 (2) | Complete |
+| Backend API (authorization & CRUD) | `02-backend-api.md` | API-01 (1) | Complete |
 | Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-53 (2) | Complete |
 | Frontend | `03-frontend.md` | FE-04 … FE-07 (4) | Complete |
 | Scans & config | `04-scans-config.md` | SCAN-04, SCAN-07, SCAN-09 … SCAN-12 (5) | Complete |

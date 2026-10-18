@@ -18,6 +18,7 @@ readonly class ClubService
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly UsageCounts $counts,
+        private readonly Quota $quota,
     ) {
     }
 
@@ -65,6 +66,7 @@ readonly class ClubService
 
     public function createClub(User $user, string $name, string $timezone = 'Europe/Berlin'): array
     {
+        $this->quota->assertRoom(Quota::CLUBS_PER_USER, $user);
         $club = new Club();
         $club->setName($name);
         $club->setTimezone($timezone);
@@ -147,6 +149,7 @@ readonly class ClubService
         if ($existing) {
             return ['member' => $member, 'created' => false];
         }
+        $this->quota->assertRoom(Quota::MEMBERS_PER_CLUB, $club);
         $cu = new ClubUser();
         $cu->setClub($club);
         $cu->setUser($user);
