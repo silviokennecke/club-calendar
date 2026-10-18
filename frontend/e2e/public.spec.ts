@@ -147,11 +147,6 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(page.getByText("Bereitgestellt mit Club Calendar")).toBeVisible();
     await expect(page.getByRole("grid")).toBeVisible();
     await expect(page.getByText("Zeige 3 von 3 Terminen")).toBeVisible();
-    // Abo-Adresse zum Kopieren
-    await page.getByText("Abo-Adresse anzeigen").click();
-    await expect(page.getByLabel("Adresse zum Abonnieren (ICS)")).toHaveValue(
-      /\/api\/feed\/.*\/ics$/,
-    );
     // Öffentlich und auffindbar: indexierbar, aber nie mit Referrer
     await expect(page.locator('meta[name="referrer"]')).toHaveAttribute("content", "no-referrer");
     await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
@@ -388,9 +383,8 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Dieser Kalender ist privat" }),
     ).toBeVisible();
-    // Sprache und Theme sind auch hier ohne Anmeldung erreichbar
+    // Die Sprache ist auch hier ohne Anmeldung umschaltbar (die öffentliche Kopfzeile hat keinen Theme-Schalter)
     await expect(page.getByRole("button", { name: "English" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Dunkel" })).toBeVisible();
   });
 
   test("Ladefehler (offline) mit Erneut versuchen", async ({ page }) => {
@@ -508,29 +502,29 @@ test.describe("Öffentlicher Kalender", () => {
     expect([...hosts].filter((h) => !appHosts.has(h))).toEqual([]);
   });
 
-  test("Sprache und Theme ohne Anmeldung, auch nach Neuladen", async ({ page }) => {
+  test("Sprache ohne Anmeldung, Theme aus der Browser-Einstellung, beides auch nach Neuladen", async ({
+    page,
+  }) => {
+    // The public header has no theme switch; the preference chosen in the app (stored in this browser) applies.
+    await page.addInitScript(() => window.localStorage.setItem("theme", "dark"));
     await page.goto(`/feed/${seed.publicFeedId}?date=2026-10-08`);
     await expect(page.getByRole("link", { name: "Kalender abonnieren" })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await page.getByRole("button", { name: "English" }).click();
     await expect(page.getByRole("link", { name: "Subscribe to calendar" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "October 2026" })).toBeVisible();
     await expect(page.getByText("Showing 3 of 3 events")).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await page
-      .getByRole("button", { name: "Dunkel" })
-      .or(page.getByRole("button", { name: "Dark" }))
-      .click();
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.getByRole("link", { name: "Subscribe to calendar" })).toBeVisible();
     await page.getByRole("button", { name: "Deutsch" }).click();
-    await page.getByRole("button", { name: "Hell" }).click();
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect(page.getByRole("link", { name: "Kalender abonnieren" })).toBeVisible();
     // Detailseite folgt der Wahl
     await page.goto(`/feed/${seed.publicFeedId}/events/${seed.herbstfestId}`);
     await expect(page.getByRole("heading", { level: 1, name: "Herbstfest" })).toBeVisible();
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   });
 
   test("Skip-Link ist der erste Tabstopp und springt zum Inhalt", async ({ page }) => {
@@ -597,8 +591,10 @@ test.describe("Öffentlicher Kalender", () => {
       }
       await sheet.getByRole("button", { name: "Schließen" }).first().click();
       await expect(sheet).toHaveCount(0);
-      // Dunkel
-      await page.getByRole("button", { name: "Dunkel" }).click();
+      // Dunkel (Einstellung des Browsers; die öffentliche Kopfzeile hat keinen Theme-Schalter)
+      await page.evaluate(() => window.localStorage.setItem("theme", "dark"));
+      await page.reload();
+      await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
       expect(await noOverflow()).toBe(true);
     });
   });

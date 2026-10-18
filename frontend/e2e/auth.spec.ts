@@ -62,7 +62,9 @@ test.describe("Login", () => {
     await page.goto("/auth/callback?code=invalid");
     await expect(page).toHaveURL(/\/login\?error=invalid_login_code/);
     expect(page.url()).not.toContain("code=invalid");
-    await expect(page.getByRole("alert")).toContainText("Der Anmeldelink ist abgelaufen");
+    await expect(page.getByRole("alert")).toContainText(
+      "Die Anmeldung ist abgelaufen oder wurde bereits verwendet",
+    );
   });
 
   const ssoTexts: Record<string, string> = {
@@ -130,7 +132,8 @@ test.describe("Registration", () => {
       page.getByRole("heading", { level: 1, name: "E-Mail-Adresse bestätigen" }),
     ).toBeVisible();
     await expect(page.getByText(email)).toBeVisible();
-    await expect(page.getByRole("group", { name: "Bestätigungscode" })).toBeVisible();
+    // the labelled field and the digit group inside it share the name
+    await expect(page.getByRole("group", { name: "Bestätigungscode" }).first()).toBeVisible();
 
     await page.getByLabel("Ziffer 1 von 6").click();
     await page.keyboard.type("000000");
@@ -146,6 +149,7 @@ test.describe("Registration", () => {
     ).toBeVisible();
 
     await page.getByRole("link", { name: "Zurück zur Anmeldung" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Anmelden" })).toBeVisible();
     await page.getByLabel("E-Mail").fill(email);
     await page.getByLabel("Passwort", { exact: true }).fill(PASSWORD);
     await page.getByRole("button", { name: "Anmelden", exact: true }).click();

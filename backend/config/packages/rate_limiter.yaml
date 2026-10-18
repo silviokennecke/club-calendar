@@ -1,3 +1,11 @@
+parameters:
+    # Per-IP limits of the sign-in, registration and token refresh endpoints. The defaults are the production
+    # values; only the Playwright suite (docs/redesign/E2E.md, CI) raises them, because it registers and signs in
+    # far more often than that from one IP. The test environment has its own limits (config/packages/test).
+    env(AUTH_LOGIN_IP_LIMIT): '10'
+    env(AUTH_REGISTER_IP_LIMIT): '5'
+    env(AUTH_REFRESH_IP_LIMIT): '60'
+
 framework:
     rate_limiter:
         geocoder_daily:
@@ -68,7 +76,7 @@ framework:
         # normalized e-mail address (a successful sign-in clears them).
         auth_login_ip:
             policy: sliding_window
-            limit: 10
+            limit: '%env(int:AUTH_LOGIN_IP_LIMIT)%'
             interval: '15 minutes'
         auth_login_email:
             policy: sliding_window
@@ -76,7 +84,7 @@ framework:
             interval: '15 minutes'
         auth_register_ip:
             policy: sliding_window
-            limit: 5
+            limit: '%env(int:AUTH_REGISTER_IP_LIMIT)%'
             interval: '1 hour'
         auth_register_email:
             policy: sliding_window
@@ -84,7 +92,7 @@ framework:
             interval: '1 hour'
         auth_refresh_ip:
             policy: sliding_window
-            limit: 60
+            limit: '%env(int:AUTH_REFRESH_IP_LIMIT)%'
             interval: '1 minute'
         # E-mail confirmation code, passkey ceremonies, SSO start/callback.
         auth_other_ip:
