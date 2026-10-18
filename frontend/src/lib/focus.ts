@@ -17,6 +17,6 @@ export function focusAfterDialog(id: string) {
  * Field errors are not live regions: without the focus move a screen reader would not hear an error
  * the server reported (e.g. a wrong current password), focus would stay on the submit button.
  */
-export function focusFirstInvalid(form: HTMLFormElement | null) {
-  form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+export function focusFirstInvalid(container: Element | null) {
+  container?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
 }
