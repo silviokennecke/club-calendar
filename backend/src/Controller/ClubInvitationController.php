@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Dto\Club\InviteMemberDto;
 use App\Entity\Club;
+use App\Enum\ClubRole;
 use App\Security\AuthRateLimiter;
 use App\Security\ClubMemberVoter;
 use App\Security\CurrentUserResolver;
@@ -20,9 +21,9 @@ use Symfony\Component\Serializer\Exception\ExceptionInterface as SerializerExcep
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-/** Invitations of a club, managed by its members (no roles yet). */
+/** Invitations of a club, managed by its admins. */
 #[Route('/api/clubs/{clubId}/invitations')]
-#[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
+#[IsGranted(ClubMemberVoter::CLUB_ADMIN, subject: 'club')]
 class ClubInvitationController extends AbstractApiController
 {
     public function __construct(
@@ -52,7 +53,7 @@ class ClubInvitationController extends AbstractApiController
         }
         $this->validateDto($dto, $this->validator);
         $this->rateLimiter->assertInvitationAllowed($user->getId(), $club->getId());
-        $this->invitations->invite($club, $user, $dto->email);
+        $this->invitations->invite($club, $user, $dto->email, ClubRole::from($dto->role));
 
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }

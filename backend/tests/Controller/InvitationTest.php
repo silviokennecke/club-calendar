@@ -278,7 +278,7 @@ class InvitationTest extends WebTestCase
         $this->assertSame('expired', $byEmail['expired@example.com']['status']);
         $this->assertSame($pendingId, $byEmail['pending@example.com']['id']);
         $this->assertSame('Olga Owner', $byEmail['pending@example.com']['invitedByName']);
-        $this->assertEqualsCanonicalizing(['id', 'email', 'status', 'invitedByName', 'createdAt', 'expiresAt'], array_keys($byEmail['pending@example.com']));
+        $this->assertEqualsCanonicalizing(['id', 'email', 'status', 'role', 'invitedByName', 'createdAt', 'expiresAt'], array_keys($byEmail['pending@example.com']));
         $this->assertMatchesRegularExpression('/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/', $byEmail['pending@example.com']['expiresAt']);
         $this->assertStringNotContainsString('token', strtolower($r['content']));
     }
@@ -378,7 +378,7 @@ class InvitationTest extends WebTestCase
         $r = $this->req('GET', '/api/invitations', $this->auth($ina));
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertCount(1, $r['body']);
-        $this->assertSame(['id', 'clubName', 'invitedByName', 'expiresAt'], array_keys($r['body'][0]));
+        $this->assertSame(['id', 'clubName', 'role', 'invitedByName', 'expiresAt'], array_keys($r['body'][0]));
         $this->assertSame($id, $r['body'][0]['id']);
         $this->assertSame('Schützenverein', $r['body'][0]['clubName']);
         $this->assertSame('Olga Owner', $r['body'][0]['invitedByName']);

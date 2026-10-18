@@ -31,7 +31,7 @@ class LocationController extends AbstractApiController
     }
 
     #[Route('', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function create(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
@@ -41,7 +41,7 @@ class LocationController extends AbstractApiController
     }
 
     #[Route('/{id}', methods: ['PATCH'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function update(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id, Request $request): JsonResponse
     {
@@ -51,7 +51,7 @@ class LocationController extends AbstractApiController
     }
 
     #[Route('/{id}', methods: ['DELETE'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id): JsonResponse
     {

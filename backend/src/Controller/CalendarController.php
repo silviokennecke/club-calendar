@@ -41,7 +41,7 @@ class CalendarController extends AbstractApiController
     }
 
     #[Route('', methods: ['POST'])]
-    #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
+    #[IsGranted(ClubMemberVoter::CLUB_ADMIN, subject: 'club')]
     public function create(#[MapEntity(id: 'clubId')] Club $club, Request $request): JsonResponse
     {
         try {
@@ -69,7 +69,7 @@ class CalendarController extends AbstractApiController
     // Archived calendars are read-only: renaming / changing the zone is denied (403). Deliberately NOT guarded:
     // DELETE, duplicate, archive and unarchive (an archived calendar may be deleted, copied and restored).
     #[Route('/{calendarId}', methods: ['PATCH'])]
-    #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
+    #[IsGranted(ClubMemberVoter::CLUB_ADMIN, subject: 'club')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function update(
         #[MapEntity(id: 'clubId')] Club $club,
@@ -82,7 +82,7 @@ class CalendarController extends AbstractApiController
     }
 
     #[Route('/{calendarId}', methods: ['DELETE'])]
-    #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
+    #[IsGranted(ClubMemberVoter::CLUB_ADMIN, subject: 'club')]
     public function delete(
         #[MapEntity(id: 'clubId')] Club $club,
         #[MapEntity(expr: 'repository.findByIdAndClubId(calendarId, clubId)')] Calendar $calendar,
@@ -93,7 +93,7 @@ class CalendarController extends AbstractApiController
     }
 
     #[Route('/{calendarId}/archive', methods: ['POST'])]
-    #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
+    #[IsGranted(ClubMemberVoter::CLUB_ADMIN, subject: 'club')]
     public function archive(
         #[MapEntity(id: 'clubId')] Club $club,
         #[MapEntity(expr: 'repository.findByIdAndClubId(calendarId, clubId)')] Calendar $calendar,
@@ -102,7 +102,7 @@ class CalendarController extends AbstractApiController
     }
 
     #[Route('/{calendarId}/unarchive', methods: ['POST'])]
-    #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
+    #[IsGranted(ClubMemberVoter::CLUB_ADMIN, subject: 'club')]
     public function unarchive(
         #[MapEntity(id: 'clubId')] Club $club,
         #[MapEntity(expr: 'repository.findByIdAndClubId(calendarId, clubId)')] Calendar $calendar,
@@ -111,7 +111,7 @@ class CalendarController extends AbstractApiController
     }
 
     #[Route('/{calendarId}/duplicate', methods: ['POST'])]
-    #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
+    #[IsGranted(ClubMemberVoter::CLUB_ADMIN, subject: 'club')]
     public function duplicate(
         #[MapEntity(id: 'clubId')] Club $club,
         #[MapEntity(expr: 'repository.findByIdAndClubId(calendarId, clubId)')] Calendar $calendar,

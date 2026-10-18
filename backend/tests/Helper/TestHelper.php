@@ -10,6 +10,7 @@ use App\Entity\ClubUser;
 use App\Entity\Event;
 use App\Entity\EventTemplate;
 use App\Entity\User;
+use App\Enum\ClubRole;
 use App\Service\TokenService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -50,6 +51,15 @@ class TestHelper
         $em->flush();
 
         return $club;
+    }
+
+    public static function addMember(EntityManagerInterface $em, Club $club, User $user, ClubRole $role): ClubUser
+    {
+        $cu = (new ClubUser())->setClub($club)->setUser($user)->setRole($role);
+        $em->persist($cu);
+        $em->flush();
+
+        return $cu;
     }
 
     public static function createCalendar(EntityManagerInterface $em, Club $club, string $name = 'Test Calendar'): Calendar

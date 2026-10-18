@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\ClubRole;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
@@ -25,6 +26,13 @@ class ClubUser
      */
     #[ORM\Column(length: 36, nullable: true)]
     private ?string $lastCalendarId = null;
+
+    /**
+     * The member's role. The property default only keeps fixtures and tests working (they expect full rights);
+     * every production path (club creation, accepting an invitation) sets it explicitly.
+     */
+    #[ORM\Column(length: 10, enumType: ClubRole::class)]
+    private ClubRole $role = ClubRole::ADMIN;
 
     public function getClub(): Club
     {
@@ -58,6 +66,18 @@ class ClubUser
     public function setLastCalendarId(?string $lastCalendarId): static
     {
         $this->lastCalendarId = $lastCalendarId;
+
+        return $this;
+    }
+
+    public function getRole(): ClubRole
+    {
+        return $this->role;
+    }
+
+    public function setRole(ClubRole $role): static
+    {
+        $this->role = $role;
 
         return $this;
     }

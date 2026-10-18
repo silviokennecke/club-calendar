@@ -25,14 +25,14 @@ class FeedController extends AbstractApiController
     }
 
     #[Route('', methods: ['GET'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     public function list(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
         return new JsonResponse($this->feedService->list($calendar, $this->includeSecret($request)));
     }
 
     #[Route('', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_ADMIN, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function create(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
@@ -42,14 +42,14 @@ class FeedController extends AbstractApiController
     }
 
     #[Route('/{feedId}', methods: ['GET'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     public function getOne(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId, Request $request): JsonResponse
     {
         return new JsonResponse($this->feedService->get($feedId, $calendar, $this->includeSecret($request)));
     }
 
     #[Route('/{feedId}', methods: ['PATCH'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_ADMIN, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function update(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId, Request $request): JsonResponse
     {
@@ -59,7 +59,7 @@ class FeedController extends AbstractApiController
     }
 
     #[Route('/{feedId}', methods: ['DELETE'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_ADMIN, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId): JsonResponse
     {
@@ -69,7 +69,7 @@ class FeedController extends AbstractApiController
     }
 
     #[Route('/{feedId}/regenerate-secret', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_ADMIN, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function regenerateSecret(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId, Request $request): JsonResponse
     {

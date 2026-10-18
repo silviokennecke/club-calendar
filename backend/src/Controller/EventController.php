@@ -82,7 +82,7 @@ class EventController extends AbstractApiController
     }
 
     #[Route('/from-template', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function createFromTemplate(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
@@ -109,7 +109,7 @@ class EventController extends AbstractApiController
      * `{dates, count, skippedHolidays, holidays}` (same validation as creating the series).
      */
     #[Route('/series/preview', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function seriesPreview(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
@@ -121,7 +121,7 @@ class EventController extends AbstractApiController
      * At most SeriesRule::MAX_EVENTS events (422 `too_many_events`).
      */
     #[Route('/series', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function createSeries(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
@@ -133,7 +133,7 @@ class EventController extends AbstractApiController
      * Same body and limits as the import; blocked in archived calendars like every write route.
      */
     #[Route('/import/preview', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function importPreview(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
@@ -145,7 +145,7 @@ class EventController extends AbstractApiController
      * At most EventImportService::MAX_EVENTS events per request (413 `too_many_events`).
      */
     #[Route('/import', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function import(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
@@ -159,7 +159,7 @@ class EventController extends AbstractApiController
      * JSON body (DELETE bodies are not reliably supported by proxies and clients).
      */
     #[Route('/bulk', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function bulk(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
@@ -167,7 +167,7 @@ class EventController extends AbstractApiController
     }
 
     #[Route('', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function create(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
@@ -185,7 +185,7 @@ class EventController extends AbstractApiController
 
     /** Body may carry `scope: "this" | "all"` (series events, default `this`, see EventService::updateEvent). */
     #[Route('/{id}', methods: ['PATCH'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function update(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id, Request $request): JsonResponse
     {
@@ -196,7 +196,7 @@ class EventController extends AbstractApiController
 
     /** `?scope=this|all` (series events, default `this`, see EventService::deleteEvent). */
     #[Route('/{id}', methods: ['DELETE'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $id, Request $request): JsonResponse
     {

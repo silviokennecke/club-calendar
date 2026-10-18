@@ -35,7 +35,7 @@ class EventSeriesController extends AbstractApiController
      * toDelete: [{id, date, name, isDraft}], kept, past, skippedHolidays}` (only future events change).
      */
     #[Route('/{seriesId}/preview-update', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function previewUpdate(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $seriesId, Request $request): JsonResponse
     {
@@ -47,7 +47,7 @@ class EventSeriesController extends AbstractApiController
      * kept}` (see EventSeriesService::update).
      */
     #[Route('/{seriesId}', methods: ['PATCH'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function update(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $seriesId, Request $request): JsonResponse
     {
