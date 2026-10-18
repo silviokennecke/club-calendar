@@ -113,6 +113,7 @@ export function LocationPanel({
         )}
 
         <AddressSearch
+          key={formKey}
           onPick={onSuggestion}
           proximity={has ? { lat: form.latitude!, lng: form.longitude! } : null}
         />

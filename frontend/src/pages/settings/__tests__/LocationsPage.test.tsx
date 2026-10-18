@@ -221,6 +221,20 @@ describe("LocationsPage", () => {
     expect(screen.queryByRole("list", { name: "Adressvorschläge" })).not.toBeInTheDocument();
   });
 
+  it("clears the address search input when switching to another place", async () => {
+    const user = userEvent.setup();
+    renderRoute(route, url, <LocationsPage />);
+    await screen.findByRole("heading", { name: "Alle Orte (2)" });
+    const searchInput = screen.getByLabelText("Adresse suchen") as HTMLInputElement;
+    await user.type(searchInput, "Waldstr");
+    expect(searchInput.value).toBe("Waldstr");
+    // Switch to editing another place
+    await user.click(screen.getByRole("button", { name: "Schützenhaus Waldblick bearbeiten" }));
+    await screen.findByRole("heading", { name: "Ort bearbeiten" });
+    // The search field should now be empty after remounting
+    expect((screen.getByLabelText("Adresse suchen") as HTMLInputElement).value).toBe("");
+  });
+
   it("explains when the address search is unavailable", async () => {
     apiFetch.mockImplementation(() => json({}, false, 503));
     const user = userEvent.setup();
