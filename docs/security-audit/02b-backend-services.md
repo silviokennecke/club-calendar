@@ -66,35 +66,6 @@ Load the `Location`/`Event`, resolve its calendar, and enforce `CalendarMemberVo
 **Notes:**
 The geocode routes in the same controller correctly enforce `ROLE_USER` and per-user rate limiting, so the gap is specific to the two image actions. No secrets or tokens are exposed by the image response itself; the finding is coordinate disclosure of non-member calendars.
 
-### API-54 — ICS `X-APPLE-STRUCTURED-LOCATION` `X-TITLE` built from unescaped input allows ICS property-line injection
-
-**Severity:** Low
-
-**Attack scope:** Any club member with write access to a calendar (they can create/update events and locations). Affects subscribers who import the feed into Apple Calendar / other ICS clients.
-
-**Description:**
-`IcsService::buildXAppleLine()` hand-builds the `X-APPLE-STRUCTURED-LOCATION` property line and embeds the location's display name directly in the `X-TITLE` parameter value without escaping:
-
-```php
-$title = $loc['name'] ?? ($addrParts[0] ?: 'Unknown');
-...
-$line = 'X-APPLE-STRUCTURED-LOCATION;X-ADDRESS=' . $addr . ';X-TITLE=' . $title . ';' . $geo . ';VALUE=URI:' . $uri;
-```
-
-The address (`$addr`) is properly escaped for embedded newlines (`str_replace("\n", '\\n', ...)`), but `$title` is not escaped at all. ICS parameter values are quoted strings; a location name containing `";\r\n` or a raw CRLF (e.g. `My Hall";\r\nBEGIN:VALARM\r\n...`) can inject additional properties into that line or terminate the parameter list early, corrupting the calendar object or — depending on the parser — injecting extra `VALARM`/`ATTACH`/`URL` properties into every subscribed client's calendar.
-
-The main event body is rendered by `eluceo/ical`, which escapes text values, so the body is not affected. This only concerns the hand-built Apple line. The `X-ADDRESS` part is the same unescaped `$addr` (escaped for `\n` but not for `;` or `"`), so a location *address* containing a double quote could also break parameter quoting, though newlines (the dangerous CRLF case) are already neutralized there.
-
-**Affected parts:**
-- `backend/src/Service/IcsService.php:191-204` — `$addr` and `$title` concatenated into the property line; `$title` has no escaping, `$addr` only escapes `\n`
-- `backend/src/Service/IcsService.php:184-212` — `buildXAppleLine()` overall
-
-**Fix recommendation:**
-Escape parameter values per RFC 5545 §3.1: double any `"` inside the value to `\"`, and replace `\r\n` / `\n` with the literal `\n` sequence for both `$title` and `$addr`. A small helper (`escapeIcsParamValue`) used for both values is enough. Alternatively, drop `X-TITLE` from the hand-built line (Apple falls back to the SUMMARY for the display name) and keep only the `VALUE=URI` GEO part, which is machine-safe.
-
-**Notes:**
-Exploitation requires calendar write access, so the attacker is a club member; the impact is client-side calendar corruption / property injection in *other* club members' calendar apps, not data exfiltration. The same unescaped `$addr` also flows into `$geo`/`$uri` via `geo:lat,lon` — those come from numeric DB columns (`latitude`/`longitude`), so they are not attacker-controllable text.
-
 ## Reviewed & OK
 
 - **SSRF (Mapbox proxy):** `MapboxProxyService::callUpstream()` hardcodes `https://api.mapbox.com/` as the upstream host and only the path is taken from the request. Path traversal is rejected for any `..` segment, including iterative double-encoding (decode-then-check loop, `str_replace('\\', '/', ...)` normalization, and a final `str_contains($path, '..')` guard). An explicit regex allowlist (`^[a-z0-9._/\-]+$` plus a `rate_limited` pattern match) is applied before any upstream call. The caller's own `access_token` query parameter is stripped and replaced with the server-side token, so no user-supplied value can reach the upstream host. SSRF cleared.
