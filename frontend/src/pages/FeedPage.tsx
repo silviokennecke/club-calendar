@@ -84,6 +84,9 @@ export default function FeedPage() {
       title={`${feed.data.feed.name} – ${t("feed.brand")}`}
       indexable={feed.data.feed.indexable}
       brand={feed.data.feed.clubName}
+      footerNote={
+        feed.data.feed.timezone && t("feed.timeZoneNote", { zone: feed.data.feed.timezone })
+      }
       hero={<FeedHero data={feed.data} secret={secret} feedId={feedId!} />}
     >
       <FeedCalendar
@@ -99,8 +102,8 @@ export default function FeedPage() {
 }
 
 /**
- * Calendar name as title (the club name is in the brand row), the time
- * zone note and the subscribe actions (the audience selection is part of the address).
+ * Calendar name as title (the club name is in the brand row) and the
+ * subscribe actions (the audience selection is part of the address).
  */
 function FeedHero({
   data,
@@ -115,13 +118,11 @@ function FeedHero({
   const [params] = useSearchParams();
   const groupIds = parseGroupIds(params.get("groups"), data.feed.audiences);
   const addresses = publicFeedAddresses(feedId, secret, groupIds);
-  const zone = data.feed.timezone;
 
   return (
     <div className="pub-hero">
       <div className="ap-stack ap-stack--sm" style={{ flex: "1 1 420px", minWidth: 0 }}>
         <h1 className="t-display">{data.feed.calendarName}</h1>
-        {zone && <p className="t-sm t-muted">{t("feed.timeZoneNote", { zone })}</p>}
       </div>
       <div className="ap-actions" style={{ flex: "0 1 auto" }}>
         <a className={buttonClass("primary")} style={{ flex: "1 1 auto" }} href={addresses.webcal}>

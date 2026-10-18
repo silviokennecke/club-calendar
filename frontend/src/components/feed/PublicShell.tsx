@@ -10,6 +10,8 @@ interface PublicShellProps {
   indexable?: boolean;
   /** Name shown in the brand row (the club); defaults to the generic "Öffentlicher Kalender". */
   brand?: string;
+  /** Note above the footer line (time zone of the calendar). */
+  footerNote?: ReactNode;
   /** Content of the page header below the brand row (title, actions). */
   hero?: ReactNode;
   children: ReactNode;
@@ -19,7 +21,14 @@ interface PublicShellProps {
  * Frame of the public pages (design: Public.dc.html): skip link, brand row with language switch
  * (no account needed), page header, `<main>` and footer. No app navigation.
  */
-export function PublicShell({ title, indexable, brand, hero, children }: PublicShellProps) {
+export function PublicShell({
+  title,
+  indexable,
+  brand,
+  footerNote,
+  hero,
+  children,
+}: PublicShellProps) {
   const { t } = useTranslation();
   usePublicHead({ title: title ?? t("feed.brand"), indexable });
 
@@ -46,6 +55,7 @@ export function PublicShell({ title, indexable, brand, hero, children }: PublicS
         <div className="pub-wrap">{children}</div>
       </main>
       <footer className="pub-wrap">
+        {footerNote && <p className="pub-note">{footerNote}</p>}
         <div className="pub-foot">
           <span>{t("feed.footer")}</span>
           <Logo variant="mark" size={24} />

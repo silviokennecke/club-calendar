@@ -3236,6 +3236,15 @@
     color: var(--ink-muted);
     font: 600 14px/20px var(--font-sans);
   }
+  .pub-note {
+    margin: 0;
+    padding-top: var(--space-8);
+    color: var(--ink-muted);
+    font: 400 14px/20px var(--font-sans);
+  }
+  .pub-note + .pub-foot {
+    padding-top: var(--space-3);
+  }
   .pub-foot {
     padding: var(--space-8) 0 var(--space-12);
     display: flex;

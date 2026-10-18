@@ -235,7 +235,7 @@ operations), `docs/api/openapi.yaml` (API reference).
 - Public access (no app shell, no sign-in): `pages/FeedPage` (`/feed/:feedId`) and the dialog
   `pages/PublicEventModal` (`/feed/:feedId/events/:eventId`, above the feed; a shared link shows the feed at the
   event's month below; unknown events, drafts and feed errors are states of the dialog) share `components/feed/` (`PublicShell` = skip link, brand row with the club name + `LangSwitch`,
-  header, `<main id="main">`, footer; `usePublicHead` sets `<meta name="referrer" content="no-referrer">` (the web server also sends `Referrer-Policy: no-referrer` for `/feed/*`; `X-Robots-Tag` only comes from the backend for `/api/feed/*`),
+  header, `<main id="main">`, footer (with the time zone note above it); `usePublicHead` sets `<meta name="referrer" content="no-referrer">` (the web server also sends `Referrer-Policy: no-referrer` for `/feed/*`; `X-Robots-Tag` only comes from the backend for `/api/feed/*`),
   `noindex, nofollow` unless `indexable === true` (from `feed.indexable` of the API: only `PUBLIC` feeds with the
   search engine option; club internal, private, loading and error states are noindex), and a title without the secret; `usePublicFeed` =
   react-query over `fetchPublicFeed` for the visible month grid (`from`/`to`, the previous month stays while loading)
