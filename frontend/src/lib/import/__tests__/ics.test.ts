@@ -324,7 +324,7 @@ describe("round trip with the export (Phase 4)", () => {
 
   it("imports the same events again", () => {
     const ics = buildIcs(events, {
-      calendarName: "Verein",
+      name: "Verein",
       timeZone: "Europe/Berlin",
       labels: { features: "Zusatzangebote", targetGroups: "Gruppen" },
     });

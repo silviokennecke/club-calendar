@@ -53,9 +53,9 @@ const VISIBILITIES: { value: FeedVisibility; key: "public" | "club" | "private";
  * filter, the secret (private feeds, regenerating asks first) and the addresses. Saving a private
  * feed as public or club internal asks first (the secret is no longer required).
  *
- * The page lives in the club settings and has no calendar in the URL. A new feed therefore starts with
- * ALL active (non-archived) calendars of the club selected (`activeCalendars`); the form has no calendar
- * picker yet, so an existing feed keeps its `calendarIds` unchanged.
+ * The page lives in the club settings and has no calendar in the URL. The calendar field selects the
+ * calendars the feed publishes (at least one; archived ones are selectable but add no events while
+ * archived). A new feed starts with ALL active (non-archived) calendars selected.
  */
 export default function FeedEditPage() {
   const { feedId } = useParams<{ feedId: string }>();
@@ -174,6 +174,8 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
   const [touched, setTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
+  // Server rejection (422 unknown_reference / validation_failed) of `calendarIds`.
+  const [calendarsRejected, setCalendarsRejected] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [unprotectOpen, setUnprotectOpen] = useState(false);
@@ -191,9 +193,18 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
       ? t("feeds.form.nameError")
       : undefined;
 
+  const calendarsError =
+    problems.includes("noCalendar") && submits > 0
+      ? t("feeds.form.calendarsError")
+      : calendarsRejected
+        ? t("feeds.form.calendarsRejected")
+        : undefined;
+  const hasArchived = page.calendars.some((c) => c.archivedAt);
+
   function set<K extends keyof FeedFormValues>(key: K, value: FeedFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
     setSaveFailed(false);
+    if (key === "calendarIds") setCalendarsRejected(false);
   }
 
   /** The search engine option is an explicit opt-in: leaving PUBLIC switches it off. */
@@ -244,8 +255,17 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
       await qc.invalidateQueries({ queryKey: ["feeds", page.clubId] });
       toast.success(t(isNew ? "feeds.form.created" : "feeds.form.saved", { name: body.name }));
       navigate(page.routes.feeds, { state: { open: savedId } });
-    } catch {
-      setSaveFailed(true);
+    } catch (e) {
+      const err = e as { status?: number; code?: string; field?: string } | null;
+      if (
+        err?.status === 422 &&
+        err.field === "calendarIds" &&
+        (err.code === "unknown_reference" || err.code === "validation_failed")
+      ) {
+        setCalendarsRejected(true);
+      } else {
+        setSaveFailed(true);
+      }
       setSubmits((n) => n + 1);
     } finally {
       setSaving(false);
@@ -280,6 +300,7 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
 
   const summary = [
     ...(nameError ? [{ fieldId: "fe-name", message: nameError }] : []),
+    ...(calendarsError ? [{ fieldId: "fe-calendars-chips", message: calendarsError }] : []),
     ...(saveFailed ? [{ fieldId: "fe-name", message: t("feeds.form.saveFailed") }] : []),
   ];
   const heading1 = readOnly
@@ -332,6 +353,31 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
                 onChange={(e) => set("name", e.target.value)}
                 onBlur={() => setTouched(true)}
               />
+            </Field>
+
+            <Field
+              id="fe-calendars"
+              group
+              label={t("feeds.form.calendars")}
+              required
+              hint={
+                hasArchived
+                  ? `${t("feeds.form.calendarsHint")} ${t("feeds.form.calendarsArchivedHint")}`
+                  : t("feeds.form.calendarsHint")
+              }
+              error={calendarsError}
+            >
+              <div className="ap-chips" id="fe-calendars-chips" tabIndex={-1}>
+                {page.calendars.map((c) => (
+                  <Chip
+                    key={c.id}
+                    pressed={values.calendarIds.includes(c.id)}
+                    onClick={() => set("calendarIds", toggleId(values.calendarIds, c.id))}
+                  >
+                    {c.archivedAt ? t("feeds.form.calendarArchived", { name: c.name }) : c.name}
+                  </Chip>
+                ))}
+              </div>
             </Field>
 
             <fieldset className="ap-fieldset">

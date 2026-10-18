@@ -38,7 +38,7 @@ let feeds: unknown[];
 
 const publicFeed = {
   id: "f1",
-  calendarId: "k1",
+  calendarIds: ["k1"],
   name: "Öffentlicher Kalender",
   visibility: "PUBLIC",
   searchable: false,
@@ -48,7 +48,7 @@ const publicFeed = {
 };
 const privateFeed = {
   id: "f2",
-  calendarId: "k1",
+  calendarIds: ["k1", "k2"],
   name: "Vorstand intern",
   visibility: "PRIVATE",
   searchable: false,
@@ -89,6 +89,13 @@ describe("FeedsPage", () => {
     expect(
       within(priv).getByRole("group", { name: "Gruppen von Vorstand intern" }),
     ).toHaveTextContent("Jugend");
+    // Names of the selected calendars (archived ones are marked)
+    expect(
+      within(priv).getByRole("group", { name: "Kalender von Vorstand intern" }),
+    ).toHaveTextContent("Schießbetrieb 2026Saison 2025 (archiviert)");
+    expect(
+      within(pub).getByRole("group", { name: "Kalender von Öffentlicher Kalender" }),
+    ).toHaveTextContent("Schießbetrieb 2026");
     // No emoji icons for the visibility.
     expect(pub.textContent).not.toMatch(/[\u{1F310}\u{1F512}]/u);
   });

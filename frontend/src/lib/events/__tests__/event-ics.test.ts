@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildEventIcs, type IcsEvent } from "../ics";
 
 const opts = {
-  calendarName: "Schießbetrieb",
+  name: "Schießbetrieb",
   timeZone: "Europe/Berlin",
   labels: { features: "Zusatzangebote", targetGroups: "Gruppen" },
   now: new Date("2026-10-03T10:00:00Z"),

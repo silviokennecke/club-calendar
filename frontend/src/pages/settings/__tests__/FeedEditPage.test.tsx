@@ -17,6 +17,7 @@ const apiDelete = vi.fn();
 
 vi.mock("@/lib/api", () => ({
   BACKEND_URL: "https://api.example.org",
+  ApiError: class ApiError extends Error {},
   apiGet: (...a: unknown[]) => apiGet(...a),
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiPatch: (...a: unknown[]) => apiPatch(...a),
@@ -115,6 +116,74 @@ describe("FeedEditPage (new)", () => {
     );
     expect(screen.getByLabelText(/^Name/)).toHaveFocus();
     expect(apiPost).not.toHaveBeenCalled();
+  });
+
+  it("lists all calendars (archived ones marked, with a hint) and preselects the active ones", async () => {
+    renderEdit();
+    const group = await screen.findByRole("group", { name: /^Kalender/ });
+    expect(within(group).getByRole("button", { name: "Schießbetrieb 2026" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(within(group).getByRole("button", { name: "Saison 2025 (archiviert)" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(group).toHaveAccessibleDescription(/Archivierte Kalender liefern keine Termine/);
+  });
+
+  it("requires at least one calendar: message, summary link, nothing is sent", async () => {
+    const user = userEvent.setup();
+    renderEdit();
+    await user.type(await screen.findByLabelText(/^Name/), "Termine");
+    await user.click(await screen.findByRole("button", { name: "Schießbetrieb 2026" }));
+    await user.click(screen.getByRole("button", { name: "Feed speichern" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Bitte wähle mindestens einen Kalender für den Feed.");
+    expect(screen.getByRole("group", { name: /^Kalender/ })).toHaveAccessibleDescription(
+      /Bitte wähle mindestens einen Kalender/,
+    );
+    await user.click(
+      within(alert).getByRole("link", {
+        name: "Bitte wähle mindestens einen Kalender für den Feed.",
+      }),
+    );
+    expect(document.getElementById("fe-calendars-chips")).toHaveFocus();
+    expect(apiPost).not.toHaveBeenCalled();
+  });
+
+  it("sends the chosen calendars, archived ones included", async () => {
+    const user = userEvent.setup();
+    renderEdit();
+    await user.type(await screen.findByLabelText(/^Name/), "Beide");
+    await user.click(await screen.findByRole("button", { name: "Saison 2025 (archiviert)" }));
+    await user.click(screen.getByRole("button", { name: "Feed speichern" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith(
+        `${feedsPath}${q}`,
+        expect.objectContaining({ calendarIds: ["k1", "k2"] }),
+      ),
+    );
+  });
+
+  it("maps a 422 on calendarIds to the calendar field", async () => {
+    apiPost.mockRejectedValue(
+      Object.assign(new Error("x"), {
+        status: 422,
+        code: "unknown_reference",
+        field: "calendarIds",
+      }),
+    );
+    const user = userEvent.setup();
+    renderEdit();
+    await user.type(await screen.findByLabelText(/^Name/), "Termine");
+    await user.click(screen.getByRole("button", { name: "Feed speichern" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Die Auswahl der Kalender wurde abgelehnt");
+    expect(alert).not.toHaveTextContent("konnte nicht gespeichert werden");
+    expect(screen.getByRole("group", { name: /^Kalender/ })).toHaveAccessibleDescription(
+      /Auswahl der Kalender wurde abgelehnt/,
+    );
   });
 
   it("offers three states in one radio group, each with an explanation", async () => {

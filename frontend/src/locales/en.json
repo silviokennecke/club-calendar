@@ -197,7 +197,7 @@
   "feed": {
     "brand": "Public calendar",
     "loading": "Loading calendar.",
-    "timeZoneNote": "All times are in the {{zone}} time zone.",
+    "timeZoneNote": "All times are in the club's time zone ({{zone}}).",
     "subscribe": "Subscribe to calendar",
     "downloadIcs": "Download ICS file",
     "view": {
@@ -239,7 +239,7 @@
     },
     "footer": "Provided with Club Calendar",
     "event": {
-      "subtitle": "{{club}} · {{calendar}}",
+      "subtitle": "{{club}} · {{feed}}",
       "date": "Date",
       "time": "Time",
       "timeRange": "{{from}} to {{to}}",
@@ -1124,9 +1124,9 @@
     },
     "duplicate": {
       "copyName": "Copy of {{name}}",
-      "done": "Calendar duplicated. You are now in the copy.",
+      "done": "Calendar duplicated. You are now in the copy. Locations and audiences belong to the club and are not copied; properties, features and templates are.",
       "failed": "The calendar could not be duplicated. Please try again.",
-      "doneStay": "Calendar “{{name}}” was created."
+      "doneStay": "Calendar “{{name}}” was created. Locations and audiences belong to the club and are not copied; properties, features and templates are."
     },
     "delete": {
       "confirmTitle": "Delete calendar “{{name}}”?",
@@ -1136,16 +1136,20 @@
       "failed": "The calendar could not be deleted. Please try again.",
       "consequence": {
         "loading": "Working out the scope …",
-        "unknown": "Permanently deletes the calendar with all its events and feeds. The feed addresses stop working.",
-        "noEvents": "Permanently deletes the calendar and its feeds. The feed addresses stop working.",
-        "events_one": "Permanently deletes the calendar with its 1 event and its feeds. The feed addresses stop working.",
-        "events_other": "Permanently deletes the calendar with all {{count}} events and its feeds. The feed addresses stop working."
+        "unknown": "Permanently deletes the calendar with all its events.",
+        "noEvents": "Permanently deletes the calendar.",
+        "events_one": "Permanently deletes the calendar with its 1 event.",
+        "events_other": "Permanently deletes the calendar with all {{count}} events."
       },
       "archived": {
         "title": "Delete archived calendar “{{name}}”?",
         "text": "The archived calendar will be deleted permanently.",
-        "consequence": "Permanently deletes {{name}} with all events and feeds. It cannot be restored afterwards."
-      }
+        "consequence": "Permanently deletes {{name}} with all events. It cannot be restored afterwards."
+      },
+      "feedsDeleted_one": "{{count}} feed that contains only this calendar is deleted with it; its addresses stop working.",
+      "feedsDeleted_other": "{{count}} feeds that contain only this calendar are deleted with it; their addresses stop working.",
+      "feedsLost_one": "{{count}} other feed loses this calendar but stays.",
+      "feedsLost_other": "{{count}} other feeds lose this calendar but stay."
     },
     "general": {
       "calendar": "Calendar",
@@ -1850,6 +1854,12 @@
       "nameHint": "This is how the feed is named in your overview.",
       "namePlaceholder": "e.g. Public calendar",
       "nameError": "Please enter a name for the feed.",
+      "calendars": "Calendars",
+      "calendarsHint": "Choose at least one calendar. The feed contains their published events and holidays.",
+      "calendarsArchivedHint": "Archived calendars add no events while they are archived.",
+      "calendarsError": "Please choose at least one calendar for the feed.",
+      "calendarsRejected": "The calendar selection was rejected. A calendar may no longer exist. Please check the selection.",
+      "calendarArchived": "{{name}} (archived)",
       "visibility": "Visibility",
       "vis": {
         "public": {
@@ -1894,7 +1904,8 @@
       "text": "Only editors and admins can see the feeds of this club.",
       "back": "Back to the club"
     },
-    "readOnlyRole": "Only club admins can create or change feeds. You can view them."
+    "readOnlyRole": "Only club admins can create or change feeds. You can view them.",
+    "calendarsOf": "Calendars of {{name}}"
   },
   "profile": {
     "title": "Profile",

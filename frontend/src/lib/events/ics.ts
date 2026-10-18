@@ -190,7 +190,7 @@ function locationText(loc: NonNullable<IcsEvent["location"]>): string {
 }
 
 export interface IcsOptions {
-  calendarName: string;
+  name: string;
   /** Fallback zone for events without their own (calendar or club zone). */
   timeZone: string | null;
   /** Labels in the user's language. */
@@ -254,7 +254,7 @@ export function buildIcs(events: IcsEvent[], opts: IcsOptions): string {
     "PRODID:-//Club Calendar//Export//DE",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    `X-WR-CALNAME:${escapeText(opts.calendarName)}`,
+    `X-WR-CALNAME:${escapeText(opts.name)}`,
     ...(opts.timeZone ? [`X-WR-TIMEZONE:${opts.timeZone}`] : []),
     ...events.flatMap((ev) => eventLines(ev, opts, stamp)),
     "END:VCALENDAR",
@@ -271,8 +271,8 @@ export function buildEventIcs(event: IcsEvent, opts: IcsOptions): string {
 }
 
 /** File name like "schiessbetrieb-2026.ics". */
-export function icsFileName(calendarName: string): string {
-  const slug = calendarName
+export function icsFileName(name: string): string {
+  const slug = name
     .normalize("NFKD")
     .replace(/ß/g, "ss")
     .replace(/[̀-ͯ]/g, "")

@@ -102,7 +102,7 @@ export default function FeedPage() {
 }
 
 /**
- * Calendar name as title (the club name is in the brand row) and the
+ * Feed name as title (the club name is in the brand row) and the
  * subscribe actions (the audience selection is part of the address).
  */
 function FeedHero({

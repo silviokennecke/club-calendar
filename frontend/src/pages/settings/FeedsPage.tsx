@@ -16,6 +16,7 @@ import {
   toast,
 } from "@/components/ui/shared";
 import { AudienceTags } from "@/components/feeds/AudienceTags";
+import { CalendarTags } from "@/components/feeds/CalendarTags";
 import { FeedsForbidden } from "@/components/feeds/FeedsForbidden";
 import { FeedAccess } from "@/components/feeds/FeedAccess";
 import { useFeeds } from "@/components/feeds/useFeeds";
@@ -127,6 +128,7 @@ export default function FeedsPage() {
                       <StatusBadge status={feedStatus(feed.visibility)} />
                       {feed.indexable && <StatusBadge status="searchable" />}
                     </div>
+                    <CalendarTags feed={feed} calendars={page.calendars} />
                     <AudienceTags feed={feed} data={data} />
                   </div>
                   <div className="ap-actions">
