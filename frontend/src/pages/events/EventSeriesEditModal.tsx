@@ -92,11 +92,11 @@ export default function EventSeriesEditModal() {
         </div>
       </>
     );
-  } else if (page.isArchived) {
+  } else if (page.readOnly) {
     body = (
       <>
         <Banner tone="warning" icon="lock">
-          {t("events.form.readOnly")}
+          {page.isArchived ? t("events.form.readOnly") : t("shell.roleReadOnly")}
         </Banner>
         <div className="ap-dialog-foot">
           <LinkButton

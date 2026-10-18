@@ -16,6 +16,7 @@ import {
   toast,
 } from "@/components/ui/shared";
 import { AudienceTags } from "@/components/feeds/AudienceTags";
+import { FeedsForbidden } from "@/components/feeds/FeedsForbidden";
 import { FeedAccess } from "@/components/feeds/FeedAccess";
 import { useFeeds } from "@/components/feeds/useFeeds";
 import { useEventPage } from "@/components/events/useEventPage";
@@ -36,9 +37,10 @@ export default function FeedsPage() {
   const page = useEventPage();
   const qc = useQueryClient();
   const location = useLocation();
-  const data = useFeeds(page.calendarId);
+  const data = useFeeds(page.calendarId, { withList: page.roleCanEdit });
   const calendarActions = useCalendarActions(page.clubId, page.calendarId, page.calendar?.name);
-  const readOnly = page.isArchived;
+  // Feeds are managed by club admins; editors only view them, viewers do not see them at all.
+  const readOnly = page.isArchived || !page.isAdmin;
   const fromState = (location.state as { open?: string } | null)?.open;
   // The first feed is open by default (like in the design); a freshly saved one opens instead.
   const [openMap, setOpenMap] = useState<Record<string, boolean>>(
@@ -62,7 +64,7 @@ export default function FeedsPage() {
   }
 
   let content;
-  if (data.feeds.isLoading) {
+  if (page.roleLoading || data.feeds.isLoading) {
     content = (
       <div className="ap-stack" aria-busy="true">
         <p className="ap-sr" role="status">
@@ -172,6 +174,8 @@ export default function FeedsPage() {
     );
   }
 
+  if (!page.roleLoading && !page.roleCanEdit) return <FeedsForbidden calendarHref={page.base} />;
+
   return (
     <div className="ap-wrap">
       <header className="ap-pagehead">
@@ -200,22 +204,28 @@ export default function FeedsPage() {
         </div>
       </header>
       <div className="ap-stack ap-stack--lg">
-        {readOnly ? (
+        {page.isArchived ? (
           <Banner
             tone="warning"
             icon="lock"
             title={t("shell.archivedReadOnly")}
             action={
-              <Button
-                variant="secondary"
-                onClick={calendarActions.unarchive}
-                loading={calendarActions.busy === "unarchive"}
-              >
-                {t("calendar.archived.unarchive")}
-              </Button>
+              page.isAdmin && (
+                <Button
+                  variant="secondary"
+                  onClick={calendarActions.unarchive}
+                  loading={calendarActions.busy === "unarchive"}
+                >
+                  {t("calendar.archived.unarchive")}
+                </Button>
+              )
             }
           >
             {t("feeds.archived")}
+          </Banner>
+        ) : readOnly ? (
+          <Banner tone="info" icon="lock">
+            {t("feeds.readOnlyRole")}
           </Banner>
         ) : (
           <Banner tone="info">{t("feeds.intro")}</Banner>

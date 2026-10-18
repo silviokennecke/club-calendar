@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { Toaster } from "@/components/ui/shared";
 import EventsListPage from "../EventsListPage";
 import { BASE, PATTERN, groups, makeEvent, renderRoute } from "./testUtils";
+import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
@@ -54,7 +55,7 @@ beforeEach(() => {
   calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026" };
   events = sample;
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete]) fn.mockReset();
-  apiGet.mockImplementation((path: string) => {
+  mockApiGet(apiGet, (path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
     if (path.endsWith("/target-groups")) return Promise.resolve(groups);
     if (path === "/api/calendars/k1/events")

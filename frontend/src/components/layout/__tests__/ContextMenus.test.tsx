@@ -18,7 +18,7 @@ let currentData: ShellData;
 function data(overrides: Partial<ShellData> = {}): ShellData {
   return {
     clubs: [
-      { id: "c1", name: "Schützenverein Waldblick", timezone: "Europe/Berlin" },
+      { id: "c1", name: "Schützenverein Waldblick", timezone: "Europe/Berlin", role: "admin" },
       { id: "c2", name: "Segelclub Möwe e. V.", timezone: "Europe/Berlin" },
     ],
     calendars: [

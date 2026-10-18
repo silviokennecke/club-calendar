@@ -8,7 +8,7 @@ import { Banner, Button, EmptyState, Icon, LinkButton, Modal } from "@/component
 import { useEventPage } from "@/components/events/useEventPage";
 import { useTemplateMeta } from "@/components/events/useTemplateMeta";
 import { CreateGateBody, ModalSkeleton } from "@/components/events/CreateGate";
-import { createGate } from "@/components/events/createGateState";
+import { createGate, gateTitle } from "@/components/events/createGateState";
 import { useModalNav } from "@/lib/useModalNav";
 
 /**
@@ -23,7 +23,7 @@ export default function EventTemplatePickModal() {
   return (
     <Modal
       size="wide"
-      title={gate === "archived" ? t("events.new.archived.title") : t("events.templatePick.title")}
+      title={gateTitle(gate, t, t("events.templatePick.title"))}
       subtitle={gate ? undefined : t("events.templatePick.subtitle")}
       closeLabel={t("events.new.close")}
       onClose={nav.close}

@@ -7,6 +7,7 @@ import CalendarPage from "../CalendarPage";
 import { BackgroundRoutes } from "@/components/layout/BackgroundRoutes";
 import { Modal, ModalFrame } from "@/components/ui/shared";
 import { useModalNav } from "@/lib/useModalNav";
+import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
@@ -79,7 +80,7 @@ let extraHolidays: {
 let failEvents = false;
 
 function mockApi() {
-  apiGet.mockImplementation((path: string) => {
+  mockApiGet(apiGet, (path: string) => {
     // The single GET carries the calendar's eventCount (empty-state check)
     if (path === "/api/clubs/c1/calendars/k1")
       return Promise.resolve({ ...calendar, eventCount: events.length });

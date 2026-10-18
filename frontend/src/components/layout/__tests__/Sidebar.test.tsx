@@ -11,7 +11,7 @@ const base = "/clubs/c1/calendars/k1";
 function data(overrides: Partial<ShellData> = {}): ShellData {
   return {
     clubs: [
-      { id: "c1", name: "Schützenverein Waldblick", timezone: "Europe/Berlin" },
+      { id: "c1", name: "Schützenverein Waldblick", timezone: "Europe/Berlin", role: "admin" },
       { id: "c2", name: "Segelclub Möwe e. V.", timezone: "Europe/Berlin" },
     ],
     calendars: [
@@ -129,7 +129,7 @@ describe("Tabbar", () => {
   ])("highlights the right tab on %s", (path, label) => {
     render(
       <MemoryRouter initialEntries={[path]}>
-        <Tabbar clubId="c1" calendarId="k1" />
+        <Tabbar clubId="c1" calendarId="k1" role="admin" />
       </MemoryRouter>,
     );
     const nav = screen.getByRole("navigation", { name: "Hauptbereiche" });

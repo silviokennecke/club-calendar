@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import HolidayCalendarsPage from "../HolidayCalendarsPage";
 import { BASE, PATTERN, renderRoute } from "../../events/__tests__/testUtils";
+import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
 const getHolidayCalendars = vi.fn();
@@ -53,7 +54,7 @@ beforeEach(() => {
     getHolidayEvents,
   ])
     fn.mockReset();
-  apiGet.mockImplementation((path: string) =>
+  mockApiGet(apiGet, (path: string) =>
     path === "/api/clubs/c1/calendars/k1" ? Promise.resolve(calendar) : Promise.resolve([]),
   );
   getHolidayCalendars.mockImplementation(() => Promise.resolve(holidays));

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth-context";
 import { Icon, LangSwitch, type Glyph } from "@/components/ui/shared";
 import { calendarBase } from "@/components/layout/navigation";
+import { roleAtLeast } from "@/lib/club/permissions";
 import type { ShellData } from "@/components/layout/shellTypes";
 
 interface Row {
@@ -25,7 +26,9 @@ export default function MorePage() {
   const rows: Row[] = [
     ...(base
       ? [
-          { labelKey: "shell.nav.import", href: `${base}/import`, icon: "upload" as const },
+          ...(roleAtLeast(club?.role, "editor")
+            ? [{ labelKey: "shell.nav.import", href: `${base}/import`, icon: "upload" as const }]
+            : []),
           { labelKey: "shell.nav.templates", href: `${base}/templates`, icon: "layers" as const },
           { labelKey: "shell.nav.settings", href: `${base}/settings`, icon: "sliders" as const },
         ]

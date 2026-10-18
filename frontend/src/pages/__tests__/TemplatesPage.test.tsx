@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import TemplatesPage from "../TemplatesPage";
 import TemplateEditPage from "../TemplateEditPage";
 import { BASE, PATTERN, groups, renderRoute } from "../events/__tests__/testUtils";
+import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
@@ -64,7 +65,7 @@ beforeEach(() => {
   calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026", timezone: "Europe/Berlin" };
   templates = [makeTemplate(), youthTemplate];
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete]) fn.mockReset();
-  apiGet.mockImplementation((path: string) => {
+  mockApiGet(apiGet, (path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
     if (path === "/api/calendars/k1/templates") return Promise.resolve(templates);
     if (path === "/api/calendars/k1/templates/t1") return Promise.resolve(templates[0]);
@@ -175,7 +176,7 @@ describe("TemplatesPage", () => {
   });
 
   it("shows an error with retry when loading fails", async () => {
-    apiGet.mockImplementation((path: string) => {
+    mockApiGet(apiGet, (path: string) => {
       if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
       if (path === "/api/calendars/k1/templates")
         return Promise.reject(new ApiError("Internal error", 500));

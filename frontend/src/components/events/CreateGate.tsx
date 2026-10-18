@@ -39,7 +39,9 @@ export function CreateGateBody({
   }
   return (
     <>
-      <p className="t-body">{t("events.new.archived.text")}</p>
+      <p className="t-body">
+        {gate === "forbidden" ? t("events.new.forbidden.text") : t("events.new.archived.text")}
+      </p>
       <div className="ap-dialog-foot">
         <LinkButton variant="secondary" icon="list" to={page.routes.list}>
           {t("events.new.archived.back")}

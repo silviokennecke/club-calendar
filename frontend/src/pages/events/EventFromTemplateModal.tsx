@@ -32,7 +32,7 @@ import { StatusSeg } from "@/components/events/StatusSeg";
 import { useEventPage } from "@/components/events/useEventPage";
 import { useLocale } from "@/components/calendar/useLocale";
 import { CreateGateBody, ModalSkeleton } from "@/components/events/CreateGate";
-import { createGate } from "@/components/events/createGateState";
+import { createGate, gateTitle } from "@/components/events/createGateState";
 import { useSeriesPreview } from "@/components/events/useSeriesPreview";
 import { SeriesRuleFields } from "@/components/events/SeriesRuleFields";
 import { useModalNav } from "@/lib/useModalNav";
@@ -92,7 +92,7 @@ export default function EventFromTemplateModal() {
     <Modal
       size="xl"
       form
-      title={gate === "archived" ? t("events.new.archived.title") : t("events.series.title")}
+      title={gateTitle(gate, t, t("events.series.title"))}
       subtitle={gate ? undefined : t("events.series.subtitle")}
       closeLabel={t("events.series.close")}
       onClose={nav.close}

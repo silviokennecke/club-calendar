@@ -474,6 +474,10 @@
         "title": "Calendar archived",
         "text": "You can't create events in an archived calendar. Viewing and exporting events still works.",
         "back": "To all events"
+      },
+      "forbidden": {
+        "title": "No permission",
+        "text": "Your role in this club only allows viewing events. Editors and admins can create events."
       }
     },
     "form": {
@@ -1596,7 +1600,8 @@
       "holidays": "Holidays"
     },
     "unavailable": "Not available",
-    "toClubPicker": "Go to club selection"
+    "toClubPicker": "Go to club selection",
+    "roleReadOnly": "Your role in this club only allows viewing. Editors and admins can make changes."
   },
   "club": {
     "title": "Manage club",
@@ -1879,7 +1884,13 @@
       "textPublic": "“{{name}}” becomes public. The calendar can then be reached through the link without the secret.",
       "consequence": "Afterwards, anyone with the link can see the calendar, including people who don’t know the previous link with the secret.",
       "confirm": "Save without secret"
-    }
+    },
+    "forbidden": {
+      "title": "Feeds are not available for your role",
+      "text": "Only editors and admins can see the feeds of this calendar.",
+      "back": "Back to the calendar"
+    },
+    "readOnlyRole": "Only club admins can create or change feeds. You can view them."
   },
   "profile": {
     "title": "Profile",

@@ -39,7 +39,7 @@ export default function TemplatesPage() {
   const query = params.get("q") ?? "";
   const [deleting, setDeleting] = useState<EventTemplate | null>(null);
   const here = location.pathname + location.search;
-  const readOnly = page.isArchived;
+  const readOnly = page.readOnly;
 
   const templates = useQuery<EventTemplate[]>({
     queryKey: ["templates", page.calendarId],

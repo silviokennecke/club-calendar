@@ -474,6 +474,10 @@
         "title": "Kalender archiviert",
         "text": "In einem archivierten Kalender lassen sich keine Termine anlegen. Termine ansehen und exportieren geht weiterhin.",
         "back": "Zu allen Terminen"
+      },
+      "forbidden": {
+        "title": "Keine Berechtigung",
+        "text": "Deine Rolle in diesem Verein erlaubt nur das Ansehen von Terminen. Bearbeiter und Admins können Termine anlegen."
       }
     },
     "form": {
@@ -1596,7 +1600,8 @@
       "holidays": "Feiertage"
     },
     "unavailable": "Nicht verfügbar",
-    "toClubPicker": "Zur Vereinsauswahl"
+    "toClubPicker": "Zur Vereinsauswahl",
+    "roleReadOnly": "Deine Rolle in diesem Verein erlaubt nur das Ansehen. Bearbeiter und Admins können Änderungen vornehmen."
   },
   "club": {
     "title": "Verein verwalten",
@@ -1879,7 +1884,13 @@
       "textPublic": "„{{name}}“ wird öffentlich. Der Kalender ist dann ohne Geheimnis über den Link erreichbar.",
       "consequence": "Danach kann jeder mit dem Link den Kalender sehen, auch wer den bisherigen Link mit Geheimnis nicht kennt.",
       "confirm": "Ohne Geheimnis speichern"
-    }
+    },
+    "forbidden": {
+      "title": "Feeds sind für deine Rolle nicht verfügbar",
+      "text": "Nur Bearbeiter und Admins sehen die Feeds dieses Kalenders.",
+      "back": "Zurück zum Kalender"
+    },
+    "readOnlyRole": "Nur Vereins-Admins können Feeds anlegen oder ändern. Du kannst sie ansehen."
   },
   "profile": {
     "title": "Profil",

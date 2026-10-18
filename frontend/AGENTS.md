@@ -204,6 +204,12 @@ operations), `docs/api/openapi.yaml` (API reference).
     pure logic in `src/lib/feeds/` (`feedAddresses`: private feeds carry `?secret=` in every address, public and club
     feeds never; `feedStatus`, `requiresSecret`, `effectiveSearchable` (only `PUBLIC` sends `searchable: true`),
     form values, payload). Visibility is always icon + word (no emoji icons). Type `FeedVisibility` in `lib/types.ts`.
+  - Club roles (viewer < editor < admin, `lib/club/permissions.ts`): write controls are gated, never shown disabled-with-403.
+    `useEventPage()` (calendar pages, dialogs, settings) exposes `roleCanEdit` (editor+), `isAdmin`, `canEdit` (role + calendar loaded and
+    not archived), `readOnly` and `roleLoading`; an unknown role counts as no right. Events, templates, import and reference data need
+    editor; calendar management (club page, general settings), club rename/delete and feed changes need admin; viewers get no feeds
+    (`FeedsForbidden`, no request) and no import/feeds navigation entries. Create dialogs show the `forbidden` gate (`createGateState`).
+    Tests: `mockApiGet` (`src/test/clubRole.ts`) answers `GET /api/clubs` with the wanted role; see `pages/__tests__/ClubRoles.test.tsx`.
   - Club: `/clubs/:clubId` (`pages/ClubPage`, in `components/club/`: `ClubNameSection`, `MembersSection` (table with role per member,
     remove / leave with `ConfirmDialog` (last admin guard); `InviteSection`: admins only, invite by e-mail with role (default editor), open
     invitations pending / expired with "send again" (expired only) and revoke), `CalendarsSection` (create form,

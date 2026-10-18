@@ -70,7 +70,7 @@ export function Sidebar({ data }: { data: ShellData }) {
 
       {data.calendarId && (
         <nav className="ap-navgroup" aria-label={t("shell.navLabel")}>
-          {buildNavGroups(data.clubId, data.calendarId).map((group) => (
+          {buildNavGroups(data.clubId, data.calendarId, club?.role).map((group) => (
             <div key={group.titleKey} className="ap-navgroup">
               <div className="ap-navtitle">{t(group.titleKey)}</div>
               {group.items.map((item) => (

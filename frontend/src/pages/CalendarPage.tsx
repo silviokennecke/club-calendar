@@ -44,6 +44,7 @@ import { useCalendarData } from "@/components/calendar/useCalendarData";
 import { useLocale } from "@/components/calendar/useLocale";
 import { audienceTone } from "@/components/calendar/eventDisplay";
 import type { EventItemTag } from "@/components/calendar/EventItem";
+import { useEventPage } from "@/components/events/useEventPage";
 import { eventRoutes } from "@/components/events/routes";
 import { openModalState } from "@/lib/modalRoutes";
 import { preloadEventModals } from "./lazy";
@@ -86,7 +87,9 @@ export default function CalendarPage() {
   const view = isMobile ? "month" : parseView(params.get("view"));
   const anchor = parseAnchor(params.get("date"), today);
   const isArchived = !!calendar?.archivedAt;
-  const canEdit = !!calendar && !isArchived;
+  // Club role (shell clubs, or the club list when rendered without the shell).
+  const { roleCanEdit, isAdmin } = useEventPage();
+  const canEdit = !!calendar && !isArchived && roleCanEdit;
   const filtering = search.trim() !== "" || selectedGroups.length > 0;
 
   const data = useCalendarData({
@@ -326,9 +329,11 @@ export default function CalendarPage() {
               icon="lock"
               title={t("shell.archivedReadOnly")}
               action={
-                <Button variant="secondary" onClick={handleUnarchive} loading={unarchiving}>
-                  {t("calendar.archived.unarchive")}
-                </Button>
+                isAdmin && (
+                  <Button variant="secondary" onClick={handleUnarchive} loading={unarchiving}>
+                    {t("calendar.archived.unarchive")}
+                  </Button>
+                )
               }
             >
               {t("calendar.archived.text")}
