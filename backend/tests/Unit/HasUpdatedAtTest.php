@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
-use App\Entity\Calendar;
+use App\Entity\Club;
 use App\Entity\Location;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -59,9 +59,9 @@ class HasUpdatedAtTest extends KernelTestCase
         $this->em->getConnection()->executeStatement(
             "INSERT INTO calendar (id, club_id, name) VALUES ('cal-1', 'club-1', 'Test')",
         );
-        $cal = $this->em->find(Calendar::class, 'cal-1');
+        $club = $this->em->find(Club::class, 'club-1');
         $location = new Location();
-        $location->setCalendar($cal);
+        $location->setClub($club);
         $location->setName('Test Location');
 
         return $location;

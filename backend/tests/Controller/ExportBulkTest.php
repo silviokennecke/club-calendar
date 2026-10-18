@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Controller;
 
 use App\Entity\Calendar;
-use App\Entity\Club;
 use App\Entity\Event;
 use App\Entity\EventTargetGroup;
 use App\Service\TokenService;
@@ -76,7 +75,7 @@ class ExportBulkTest extends WebTestCase
     public function testMembersDownloadTheCalendarAsIcsFile(): void
     {
         ['auth' => $auth, 'base' => $base] = $this->setupCalendar();
-        $prop = TestHelper::jsonRequest(self::$client, 'POST', "$base/properties", ['name' => 'Wettkampf', 'icon' => '🏆'], $auth)['body']['id'];
+        $prop = TestHelper::jsonRequest(self::$client, 'POST', $base.'/properties', ['name' => 'Wettkampf', 'icon' => '🏆'], $auth)['body']['id'];
         $this->create($base, $auth, ['name' => 'Vereinsmeisterschaft', 'timezone' => 'Europe/Berlin', 'propertyIds' => [$prop]]);
         $this->create($base, $auth, ['name' => 'Vorstandssitzung', 'isDraft' => true, 'date' => '2026-10-07']);
 
@@ -100,8 +99,8 @@ class ExportBulkTest extends WebTestCase
     public function testExportFiltersByOverlappingRangeAndTargetGroups(): void
     {
         ['auth' => $auth, 'base' => $base, 'calendar' => $cal] = $this->setupCalendar();
-        $youth = TestHelper::jsonRequest(self::$client, 'POST', "$base/target-groups", ['name' => 'Jugend'], $auth)['body']['id'];
-        $adults = TestHelper::jsonRequest(self::$client, 'POST', "$base/target-groups", ['name' => 'Erwachsene'], $auth)['body']['id'];
+        $youth = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/target-groups', ['name' => 'Jugend'], $auth)['body']['id'];
+        $adults = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/target-groups', ['name' => 'Erwachsene'], $auth)['body']['id'];
         $this->create($base, $auth, ['name' => 'Zeltlager', 'date' => '2026-09-28', 'dateEnd' => '2026-10-02', 'targetGroupIds' => [$youth]]);
         $this->create($base, $auth, ['name' => 'Herbstfest', 'date' => '2026-10-24', 'targetGroupIds' => [$adults]]);
         $this->create($base, $auth, ['name' => 'Silvester', 'date' => '2026-12-31']);
@@ -119,8 +118,9 @@ class ExportBulkTest extends WebTestCase
         $this->assertStringNotContainsString('Silvester', $r['content']);
 
         // Target groups of another calendar (or unknown ones) are rejected, not ignored
-        $other = TestHelper::createCalendar(self::$em, self::$em->find(Club::class, $cal->getClub()->getId()), 'Fremd');
-        $foreign = TestHelper::jsonRequest(self::$client, 'POST', "/api/calendars/{$other->getId()}/target-groups", ['name' => 'Fremd'], $auth)['body']['id'];
+        $otherUser = TestHelper::createUser(self::$em, self::$hasher);
+        $otherClub = TestHelper::createClub(self::$em, $otherUser, 'Fremder Verein');
+        $foreign = TestHelper::jsonRequest(self::$client, 'POST', "/api/clubs/{$otherClub->getId()}/target-groups", ['name' => 'Fremd'], TestHelper::authHeader($otherUser, self::$tokens))['body']['id'];
         $r = $this->get("$base/events.ics?targetGroupIds[]=$foreign", $auth);
         $this->assertSame(422, $r['status']);
         $this->assertSame('unknown_reference', $r['body']['code']);
@@ -151,9 +151,9 @@ class ExportBulkTest extends WebTestCase
     public function testExportRunsTheSameNumberOfQueriesForMoreEvents(): void
     {
         ['auth' => $auth, 'base' => $base] = $this->setupCalendar();
-        $tg = TestHelper::jsonRequest(self::$client, 'POST', "$base/target-groups", ['name' => 'Jugend'], $auth)['body']['id'];
-        $prop = TestHelper::jsonRequest(self::$client, 'POST', "$base/properties", ['name' => 'Draußen', 'icon' => '🌳'], $auth)['body']['id'];
-        $loc = TestHelper::jsonRequest(self::$client, 'POST', "$base/locations", ['name' => 'Halle', 'latitude' => 51.1, 'longitude' => 7.2], $auth)['body']['id'];
+        $tg = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/target-groups', ['name' => 'Jugend'], $auth)['body']['id'];
+        $prop = TestHelper::jsonRequest(self::$client, 'POST', $base.'/properties', ['name' => 'Draußen', 'icon' => '🌳'], $auth)['body']['id'];
+        $loc = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/locations', ['name' => 'Halle', 'latitude' => 51.1, 'longitude' => 7.2], $auth)['body']['id'];
         $data = ['name' => 'T', 'targetGroupIds' => [$tg], 'propertyIds' => [$prop], 'locationId' => $loc];
         $this->create($base, $auth, $data);
 
@@ -187,7 +187,7 @@ class ExportBulkTest extends WebTestCase
     public function testBulkPublishesUnpublishesAndDeletes(): void
     {
         ['auth' => $auth, 'base' => $base] = $this->setupCalendar();
-        $tg = TestHelper::jsonRequest(self::$client, 'POST', "$base/target-groups", ['name' => 'Jugend'], $auth)['body']['id'];
+        $tg = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/target-groups', ['name' => 'Jugend'], $auth)['body']['id'];
         $ids = array_map(fn ($i) => $this->create($base, $auth, ['name' => "T$i", 'isDraft' => true, 'targetGroupIds' => [$tg]]), [1, 2, 3]);
 
         $r = $this->bulk($base, $auth, [$ids[0], $ids[1], $ids[0], strtoupper($ids[1])], 'publish');

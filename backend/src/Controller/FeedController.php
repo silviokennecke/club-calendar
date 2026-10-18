@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Entity\Calendar;
-use App\Security\ArchivedCalendarVoter;
-use App\Security\CalendarMemberVoter;
+use App\Entity\Club;
+use App\Security\ClubMemberVoter;
 use App\Service\FeedService;
 use App\Service\Input;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
@@ -16,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/api/calendars/{calendarId}/feeds')]
+#[Route('/api/clubs/{clubId}/feeds')]
 class FeedController extends AbstractApiController
 {
     public function __construct(
@@ -25,55 +24,51 @@ class FeedController extends AbstractApiController
     }
 
     #[Route('', methods: ['GET'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
-    public function list(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
+    #[IsGranted(ClubMemberVoter::CLUB_EDITOR, subject: 'club')]
+    public function list(#[MapEntity(id: 'clubId')] Club $club, Request $request): JsonResponse
     {
-        return new JsonResponse($this->feedService->list($calendar, $this->includeSecret($request)));
+        return new JsonResponse($this->feedService->list($club, $this->includeSecret($request)));
     }
 
     #[Route('', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_ADMIN, subject: 'calendar')]
-    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function create(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
+    #[IsGranted(ClubMemberVoter::CLUB_ADMIN, subject: 'club')]
+    public function create(#[MapEntity(id: 'clubId')] Club $club, Request $request): JsonResponse
     {
         $data = $this->decodeJson($request);
 
-        return new JsonResponse($this->feedService->create($calendar, $data, $this->includeSecret($request)), Response::HTTP_CREATED);
+        return new JsonResponse($this->feedService->create($club, $data, $this->includeSecret($request)), Response::HTTP_CREATED);
     }
 
     #[Route('/{feedId}', methods: ['GET'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
-    public function getOne(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId, Request $request): JsonResponse
+    #[IsGranted(ClubMemberVoter::CLUB_EDITOR, subject: 'club')]
+    public function getOne(#[MapEntity(id: 'clubId')] Club $club, string $feedId, Request $request): JsonResponse
     {
-        return new JsonResponse($this->feedService->get($feedId, $calendar, $this->includeSecret($request)));
+        return new JsonResponse($this->feedService->get($feedId, $club, $this->includeSecret($request)));
     }
 
     #[Route('/{feedId}', methods: ['PATCH'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_ADMIN, subject: 'calendar')]
-    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function update(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId, Request $request): JsonResponse
+    #[IsGranted(ClubMemberVoter::CLUB_ADMIN, subject: 'club')]
+    public function update(#[MapEntity(id: 'clubId')] Club $club, string $feedId, Request $request): JsonResponse
     {
         $data = $this->decodeJson($request);
 
-        return new JsonResponse($this->feedService->update($feedId, $calendar, $data, $this->includeSecret($request)));
+        return new JsonResponse($this->feedService->update($feedId, $club, $data, $this->includeSecret($request)));
     }
 
     #[Route('/{feedId}', methods: ['DELETE'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_ADMIN, subject: 'calendar')]
-    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function delete(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId): JsonResponse
+    #[IsGranted(ClubMemberVoter::CLUB_ADMIN, subject: 'club')]
+    public function delete(#[MapEntity(id: 'clubId')] Club $club, string $feedId): JsonResponse
     {
-        $this->feedService->delete($feedId, $calendar);
+        $this->feedService->delete($feedId, $club);
 
         return new JsonResponse(['ok' => true]);
     }
 
     #[Route('/{feedId}/regenerate-secret', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_ADMIN, subject: 'calendar')]
-    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
-    public function regenerateSecret(#[MapEntity(id: 'calendarId')] Calendar $calendar, string $feedId, Request $request): JsonResponse
+    #[IsGranted(ClubMemberVoter::CLUB_ADMIN, subject: 'club')]
+    public function regenerateSecret(#[MapEntity(id: 'clubId')] Club $club, string $feedId, Request $request): JsonResponse
     {
-        return new JsonResponse($this->feedService->regenerateSecret($feedId, $calendar, $this->includeSecret($request)));
+        return new JsonResponse($this->feedService->regenerateSecret($feedId, $club, $this->includeSecret($request)));
     }
 
     /** `?includeSecret=1|true` returns the shared secret; absent, `0` or `false` omits it, anything else is 400. */

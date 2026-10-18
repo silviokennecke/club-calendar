@@ -70,7 +70,7 @@ class CountersTest extends WebTestCase
         self::$em->flush();
     }
 
-    /** Club with one active calendar (2 events, 1 template, 1 feed), one archived calendar (1 event, 1 feed). */
+    /** Club with one active calendar (2 events, 1 template), one archived calendar (1 event); 3 feeds: one on each calendar, one on both. */
     private function populatedClub(User $user, string $name = 'Verein'): Club
     {
         $user = self::$em->find(User::class, $user->getId()) ?? $user;
@@ -82,8 +82,10 @@ class CountersTest extends WebTestCase
         TestHelper::createEvent(self::$em, $archived);
         TestHelper::createTemplate(self::$em, $active);
         $auth = $this->auth($user);
-        $this->req('POST', "/api/calendars/{$active->getId()}/feeds", $auth, ['name' => 'Alle', 'visibility' => 'PUBLIC']);
-        $this->req('POST', "/api/calendars/{$archived->getId()}/feeds", $auth, ['name' => 'Alt', 'visibility' => 'PRIVATE']);
+        $feeds = "/api/clubs/{$club->getId()}/feeds";
+        $this->req('POST', $feeds, $auth, ['name' => 'Alle', 'visibility' => 'PUBLIC', 'calendarIds' => [$active->getId()]]);
+        $this->req('POST', $feeds, $auth, ['name' => 'Alt', 'visibility' => 'PRIVATE', 'calendarIds' => [$archived->getId()]]);
+        $this->req('POST', $feeds, $auth, ['name' => 'Beide', 'visibility' => 'CLUB', 'calendarIds' => [$active->getId(), $archived->getId()]]);
         $this->archive($archived);
 
         return $club;
@@ -142,7 +144,7 @@ class CountersTest extends WebTestCase
         $this->assertSame(1, $r['body']['archivedCalendarCount']);
         $this->assertSame(1, $r['body']['memberCount']);
         $this->assertSame(3, $r['body']['eventCount']);
-        $this->assertSame(2, $r['body']['feedCount']);
+        $this->assertSame(3, $r['body']['feedCount'], 'feeds of the club, each once');
     }
 
     public function testClubDetailOfAForeignClubIsDenied(): void
@@ -167,14 +169,15 @@ class CountersTest extends WebTestCase
         $r = $this->req('GET', "/api/clubs/{$club->getId()}/calendars?includeArchived=true", $auth);
         $this->assertSame(200, $r['status']);
         $byName = array_column($r['body'], null, 'name');
-        $this->assertSame([2, 1, 1], [$byName['Aktiv']['eventCount'], $byName['Aktiv']['templateCount'], $byName['Aktiv']['feedCount']]);
-        $this->assertSame([1, 0, 1], [$byName['Alt']['eventCount'], $byName['Alt']['templateCount'], $byName['Alt']['feedCount']]);
+        $this->assertSame([2, 1, 2, 1], [$byName['Aktiv']['eventCount'], $byName['Aktiv']['templateCount'], $byName['Aktiv']['feedCount'], $byName['Aktiv']['exclusiveFeedCount']]);
+        $this->assertSame([1, 0, 2, 1], [$byName['Alt']['eventCount'], $byName['Alt']['templateCount'], $byName['Alt']['feedCount'], $byName['Alt']['exclusiveFeedCount']]);
 
         $one = $this->req('GET', "/api/clubs/{$club->getId()}/calendars/{$byName['Aktiv']['id']}", $auth);
         $this->assertSame(200, $one['status']);
         $this->assertSame(2, $one['body']['eventCount']);
         $this->assertSame(1, $one['body']['templateCount']);
-        $this->assertSame(1, $one['body']['feedCount']);
+        $this->assertSame(2, $one['body']['feedCount']);
+        $this->assertSame(1, $one['body']['exclusiveFeedCount'], 'the feed on both calendars survives deleting one');
     }
 
     public function testCalendarListRunsTheSameNumberOfQueriesForMoreCalendars(): void
@@ -207,11 +210,11 @@ class CountersTest extends WebTestCase
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $auth = $this->auth($user);
         $base = "/api/calendars/{$cal->getId()}";
-        $prop = $this->req('POST', "$base/properties", $auth, ['name' => 'Draußen'])['body']['id'];
-        $busy = $this->req('POST', "$base/properties", $auth, ['name' => 'Tracht'])['body']['id'];
-        $unused = $this->req('POST', "$base/properties", $auth, ['name' => 'Leer'])['body']['id'];
-        $feature = $this->req('POST', "$base/features", $auth, ['name' => 'Bonusschießen'])['body']['id'];
-        $group = $this->req('POST', "$base/target-groups", $auth, ['name' => 'Jugend'])['body']['id'];
+        $prop = $this->req('POST', $base.'/properties', $auth, ['name' => 'Draußen'])['body']['id'];
+        $busy = $this->req('POST', $base.'/properties', $auth, ['name' => 'Tracht'])['body']['id'];
+        $unused = $this->req('POST', $base.'/properties', $auth, ['name' => 'Leer'])['body']['id'];
+        $feature = $this->req('POST', $base.'/features', $auth, ['name' => 'Bonusschießen'])['body']['id'];
+        $group = $this->req('POST', TestHelper::clubBase(self::$em, $base).'/target-groups', $auth, ['name' => 'Jugend'])['body']['id'];
 
         $event = fn (string $name, array $extra) => $this->req('POST', "$base/events", $auth, [
             'name' => $name, 'date' => '2026-10-24', 'timeBegin' => '18:00', 'timeEnd' => '20:00',
@@ -221,10 +224,11 @@ class CountersTest extends WebTestCase
         $event('Arbeitsdienst', ['propertyIds' => [$busy]]);
         $event('Training', ['propertyIds' => [$busy]]);
         $this->req('POST', "$base/templates", $auth, ['name' => 'Vorlage', 'propertyIds' => [$prop], 'targetGroupIds' => [$group]]);
-        $this->req('POST', "$base/feeds", $auth, ['name' => 'Jugendfeed', 'visibility' => 'PUBLIC', 'targetGroupIds' => [$group]]);
-        $this->req('POST', "$base/feeds", $auth, ['name' => 'Alle', 'visibility' => 'PUBLIC']);
+        $feeds = TestHelper::clubBase(self::$em, $base).'/feeds';
+        $this->req('POST', $feeds, $auth, ['name' => 'Jugendfeed', 'visibility' => 'PUBLIC', 'targetGroupIds' => [$group], 'calendarIds' => [$cal->getId()]]);
+        $this->req('POST', $feeds, $auth, ['name' => 'Alle', 'visibility' => 'PUBLIC', 'calendarIds' => [$cal->getId()]]);
 
-        $props = array_column($this->req('GET', "$base/properties", $auth)['body'], null, 'id');
+        $props = array_column($this->req('GET', $base.'/properties', $auth)['body'], null, 'id');
         // 2 events: names in date order, distinct
         $this->assertSame(['events' => 2, 'templates' => 1, 'eventNames' => ['Herbstfest', 'Arbeitsdienst']], $props[$prop]['usage']);
         // 4 events: more than 3, no names
@@ -234,27 +238,31 @@ class CountersTest extends WebTestCase
         $this->assertSame('Draußen', $props[$prop]['name']);
         $this->assertSame($cal->getId(), $props[$prop]['calendarId']);
 
-        $features = $this->req('GET', "$base/features", $auth)['body'];
+        $features = $this->req('GET', $base.'/features', $auth)['body'];
         $this->assertSame(['events' => 1, 'templates' => 0, 'eventNames' => ['Herbstfest']], $features[0]['usage']);
 
-        $groups = $this->req('GET', "$base/target-groups", $auth)['body'];
+        $groups = $this->req('GET', TestHelper::clubBase(self::$em, $base).'/target-groups', $auth)['body'];
         $this->assertSame(['events' => 1, 'templates' => 1, 'feeds' => 1, 'eventNames' => ['Herbstfest']], $groups[0]['usage']);
     }
 
-    public function testUsageCountsOnlyTheOwnCalendar(): void
+    public function testUsageCountsAllCalendarsOfTheClubAndNothingOfOtherClubs(): void
     {
         ['user' => $user, 'club' => $club, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
-        $other = TestHelper::createCalendar(self::$em, $club, 'Anderer');
+        $second = TestHelper::createCalendar(self::$em, $club, 'Zweiter');
+        $foreignClub = TestHelper::createClub(self::$em, self::$em->find(User::class, $user->getId()), 'Fremd');
+        $foreignCal = TestHelper::createCalendar(self::$em, $foreignClub, 'Fremdkalender');
         $auth = $this->auth($user);
-        $mine = $this->req('POST', "/api/calendars/{$cal->getId()}/target-groups", $auth, ['name' => 'Jugend'])['body']['id'];
-        $theirs = $this->req('POST', "/api/calendars/{$other->getId()}/target-groups", $auth, ['name' => 'Jugend'])['body']['id'];
-        $this->req('POST', "/api/calendars/{$other->getId()}/events", $auth, [
-            'name' => 'Fremd', 'date' => '2026-10-24', 'timeBegin' => '18:00', 'timeEnd' => '20:00', 'targetGroupIds' => [$theirs],
-        ]);
+        $mine = $this->req('POST', "/api/clubs/{$club->getId()}/target-groups", $auth, ['name' => 'Jugend'])['body']['id'];
+        $theirs = $this->req('POST', "/api/clubs/{$foreignClub->getId()}/target-groups", $auth, ['name' => 'Jugend'])['body']['id'];
+        $event = ['date' => '2026-10-24', 'timeBegin' => '18:00', 'timeEnd' => '20:00'];
+        $this->req('POST', "/api/calendars/{$cal->getId()}/events", $auth, ['name' => 'Eins', 'targetGroupIds' => [$mine]] + $event);
+        $this->req('POST', "/api/calendars/{$second->getId()}/events", $auth, ['name' => 'Zwei', 'targetGroupIds' => [$mine]] + $event);
+        $this->req('POST', "/api/calendars/{$foreignCal->getId()}/events", $auth, ['name' => 'Fremd', 'targetGroupIds' => [$theirs]] + $event);
 
-        $groups = $this->req('GET', "/api/calendars/{$cal->getId()}/target-groups", $auth)['body'];
+        $groups = $this->req('GET', "/api/clubs/{$club->getId()}/target-groups", $auth)['body'];
+        $this->assertCount(1, $groups);
         $this->assertSame($mine, $groups[0]['id']);
-        $this->assertSame(['events' => 0, 'templates' => 0, 'feeds' => 0, 'eventNames' => []], $groups[0]['usage']);
+        $this->assertSame(['events' => 2, 'templates' => 0, 'feeds' => 0, 'eventNames' => ['Eins', 'Zwei']], $groups[0]['usage']);
     }
 
     public function testLocationListReportsUsageAndTemplateNames(): void
@@ -262,8 +270,8 @@ class CountersTest extends WebTestCase
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $auth = $this->auth($user);
         $base = "/api/calendars/{$cal->getId()}";
-        $place = $this->req('POST', "$base/locations", $auth, ['name' => 'Vereinsheim'])['body']['id'];
-        $empty = $this->req('POST', "$base/locations", $auth, ['name' => 'Wiese'])['body']['id'];
+        $place = $this->req('POST', TestHelper::clubBase(self::$em, $base).'/locations', $auth, ['name' => 'Vereinsheim'])['body']['id'];
+        $empty = $this->req('POST', TestHelper::clubBase(self::$em, $base).'/locations', $auth, ['name' => 'Wiese'])['body']['id'];
         foreach (['A', 'B'] as $name) {
             $this->req('POST', "$base/events", $auth, [
                 'name' => $name, 'date' => '2026-10-24', 'timeBegin' => '18:00', 'timeEnd' => '20:00', 'locationId' => $place,
@@ -271,7 +279,7 @@ class CountersTest extends WebTestCase
         }
         $this->req('POST', "$base/templates", $auth, ['name' => 'Vereinsabend', 'locationId' => $place]);
 
-        $list = array_column($this->req('GET', "$base/locations", $auth)['body'], null, 'id');
+        $list = array_column($this->req('GET', TestHelper::clubBase(self::$em, $base).'/locations', $auth)['body'], null, 'id');
         $this->assertSame(['events' => 2, 'templates' => 1, 'templateNames' => ['Vereinsabend']], $list[$place]['usage']);
         $this->assertSame(['events' => 0, 'templates' => 0, 'templateNames' => []], $list[$empty]['usage']);
         $this->assertSame('Vereinsheim', $list[$place]['name']);
@@ -295,28 +303,30 @@ class CountersTest extends WebTestCase
 
     // --- Single feed ---
 
-    public function testSingleFeedHasTheListSerializationAndStaysInItsCalendar(): void
+    public function testSingleFeedHasTheListSerializationAndStaysInItsClub(): void
     {
         ['user' => $user, 'club' => $club, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
-        $other = TestHelper::createCalendar(self::$em, $club, 'Anderer');
+        ['user' => $otherUser, 'club' => $otherClub] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $auth = $this->auth($user);
-        $group = $this->req('POST', "/api/calendars/{$cal->getId()}/target-groups", $auth, ['name' => 'Jugend'])['body']['id'];
-        $feed = $this->req('POST', "/api/calendars/{$cal->getId()}/feeds", $auth, [
-            'name' => 'Jugend', 'visibility' => 'PRIVATE', 'targetGroupIds' => [$group],
+        $base = "/api/clubs/{$club->getId()}";
+        $group = $this->req('POST', "$base/target-groups", $auth, ['name' => 'Jugend'])['body']['id'];
+        $feed = $this->req('POST', "$base/feeds", $auth, [
+            'name' => 'Jugend', 'visibility' => 'PRIVATE', 'targetGroupIds' => [$group], 'calendarIds' => [$cal->getId()],
         ])['body'];
 
-        $r = $this->req('GET', "/api/calendars/{$cal->getId()}/feeds/{$feed['id']}", $auth);
+        $r = $this->req('GET', "$base/feeds/{$feed['id']}", $auth);
         $this->assertSame(200, $r['status']);
-        $list = $this->req('GET', "/api/calendars/{$cal->getId()}/feeds", $auth)['body'];
+        $this->assertSame([$cal->getId()], $r['body']['calendarIds']);
+        $this->assertSame($club->getId(), $r['body']['clubId']);
+        $list = $this->req('GET', "$base/feeds", $auth)['body'];
         $this->assertSame($list[0], $r['body']);
 
-        // The feed through another calendar of the same club: 404 like an unknown id
-        $this->assertSame(404, $this->req('GET', "/api/calendars/{$other->getId()}/feeds/{$feed['id']}", $auth)['status']);
-        $this->assertSame(404, $this->req('GET', "/api/calendars/{$cal->getId()}/feeds/unknown", $auth)['status']);
+        // The feed through another club the caller belongs to: 404 like an unknown id
+        $this->assertSame(404, $this->req('GET', "/api/clubs/{$otherClub->getId()}/feeds/{$feed['id']}", $this->auth($otherUser))['status']);
+        $this->assertSame(404, $this->req('GET', "$base/feeds/unknown", $auth)['status']);
 
         // Not a member: 403 before anything about the feed is looked up
-        $stranger = TestHelper::createUser(self::$em, self::$hasher);
-        $this->assertSame(403, $this->req('GET', "/api/calendars/{$cal->getId()}/feeds/{$feed['id']}", $this->auth($stranger))['status']);
+        $this->assertSame(403, $this->req('GET', "$base/feeds/{$feed['id']}", $this->auth($otherUser))['status']);
     }
 
     // --- Duplicate with name ---
@@ -352,12 +362,15 @@ class CountersTest extends WebTestCase
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('referencePaths')]
-    public function testDuplicateNamesAreRejectedPerCalendar(string $path): void
+    public function testDuplicateNamesAreRejectedPerScope(string $path): void
     {
         ['user' => $user, 'club' => $club, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
-        $other = TestHelper::createCalendar(self::$em, $club, 'Anderer');
+        $otherClub = TestHelper::createClub(self::$em, self::$em->find(User::class, $user->getId()), 'Anderer Verein');
+        $otherCal = TestHelper::createCalendar(self::$em, $club, 'Anderer');
         $auth = $this->auth($user);
-        $base = "/api/calendars/{$cal->getId()}/$path";
+        // Properties and features are unique per calendar, target groups per club
+        $perCalendar = 'target-groups' !== $path;
+        $base = $perCalendar ? "/api/calendars/{$cal->getId()}/$path" : "/api/clubs/{$club->getId()}/$path";
 
         $first = $this->req('POST', $base, $auth, ['name' => 'Jugend']);
         $this->assertSame(201, $first['status']);
@@ -379,8 +392,9 @@ class CountersTest extends WebTestCase
             $this->assertSame(200, $this->req('DELETE', "$base/$id", $auth)['status']);
         }
 
-        // Same name in another calendar is fine
-        $this->assertSame(201, $this->req('POST', "/api/calendars/{$other->getId()}/$path", $auth, ['name' => 'Jugend'])['status']);
+        // Same name in another calendar (properties, features) or club (target groups) is fine
+        $otherBase = $perCalendar ? "/api/calendars/{$otherCal->getId()}/$path" : "/api/clubs/{$otherClub->getId()}/$path";
+        $this->assertSame(201, $this->req('POST', $otherBase, $auth, ['name' => 'Jugend'])['status']);
 
         // Rename: own name (other spelling) is fine, another item's name is not
         $second = $this->req('POST', $base, $auth, ['name' => 'Erwachsene'])['body']['id'];

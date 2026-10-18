@@ -5,12 +5,19 @@ declare(strict_types=1);
 namespace App\Tests\Helper;
 
 use App\Entity\Calendar;
+use App\Entity\CalendarFeed;
+use App\Entity\CalendarFeedCalendar;
 use App\Entity\Club;
 use App\Entity\ClubUser;
 use App\Entity\Event;
 use App\Entity\EventTemplate;
+use App\Entity\Feature;
+use App\Entity\Location;
+use App\Entity\Property;
+use App\Entity\TargetGroup;
 use App\Entity\User;
 use App\Enum\ClubRole;
+use App\Enum\FeedVisibility;
 use App\Service\TokenService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -120,6 +127,71 @@ class TestHelper
         $em->flush();
 
         return $tmpl;
+    }
+
+    /** `/api/clubs/{id}` of the club that owns the calendar behind a `/api/calendars/{id}` base URI. */
+    public static function clubBase(EntityManagerInterface $em, string $calendarBase): string
+    {
+        $calendar = $em->find(Calendar::class, basename($calendarBase));
+
+        return '/api/clubs/'.$calendar->getClub()->getId();
+    }
+
+    /**
+     * A feed stored directly, selecting the given calendars (all of the club).
+     *
+     * @param list<Calendar> $calendars
+     */
+    public static function createFeed(EntityManagerInterface $em, Club $club, array $calendars, FeedVisibility $visibility = FeedVisibility::PUBLIC, string $name = 'Test Feed', ?string $secret = null): CalendarFeed
+    {
+        static $no = 0;
+        $feed = (new CalendarFeed())->setClub($club)->setName($name)->setVisibility($visibility);
+        $feed->setSharedSecret($secret ?? 'test-feed-secret-'.++$no.'-'.bin2hex(random_bytes(4)));
+        $em->persist($feed);
+        foreach ($calendars as $calendar) {
+            $link = (new CalendarFeedCalendar())->setFeed($feed)->setCalendar($calendar);
+            $em->persist($link);
+            $feed->getCalendars()->add($link);
+        }
+        $em->flush();
+
+        return $feed;
+    }
+
+    public static function createLocation(EntityManagerInterface $em, Club $club, string $name = 'Test Location'): Location
+    {
+        $location = (new Location())->setClub($club)->setName($name);
+        $em->persist($location);
+        $em->flush();
+
+        return $location;
+    }
+
+    public static function createProperty(EntityManagerInterface $em, Calendar $calendar, string $name = 'Test Property', ?string $icon = null): Property
+    {
+        $property = (new Property())->setCalendar($calendar)->setName($name)->setIcon($icon);
+        $em->persist($property);
+        $em->flush();
+
+        return $property;
+    }
+
+    public static function createFeature(EntityManagerInterface $em, Calendar $calendar, string $name = 'Test Feature'): Feature
+    {
+        $feature = (new Feature())->setCalendar($calendar)->setName($name);
+        $em->persist($feature);
+        $em->flush();
+
+        return $feature;
+    }
+
+    public static function createTargetGroup(EntityManagerInterface $em, Club $club, string $name = 'Test Target Group'): TargetGroup
+    {
+        $group = (new TargetGroup())->setClub($club)->setName($name);
+        $em->persist($group);
+        $em->flush();
+
+        return $group;
     }
 
     public static function authHeader(User $user, TokenService $tokens): string

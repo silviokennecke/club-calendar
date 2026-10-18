@@ -40,12 +40,12 @@ class Quota
     public const MEMBERS_PER_CLUB = 'membersPerClub';
     public const PENDING_INVITATIONS_PER_CLUB = 'pendingInvitationsPerClub';
     public const EVENTS_PER_CALENDAR = 'eventsPerCalendar';
-    public const LOCATIONS_PER_CALENDAR = 'locationsPerCalendar';
+    public const LOCATIONS_PER_CLUB = 'locationsPerClub';
     public const TEMPLATES_PER_CALENDAR = 'templatesPerCalendar';
     public const PROPERTIES_PER_CALENDAR = 'propertiesPerCalendar';
     public const FEATURES_PER_CALENDAR = 'featuresPerCalendar';
-    public const TARGET_GROUPS_PER_CALENDAR = 'targetGroupsPerCalendar';
-    public const FEEDS_PER_CALENDAR = 'feedsPerCalendar';
+    public const TARGET_GROUPS_PER_CLUB = 'targetGroupsPerClub';
+    public const FEEDS_PER_CLUB = 'feedsPerClub';
     public const HOLIDAY_CALENDARS_PER_CALENDAR = 'holidayCalendarsPerCalendar';
 
     /** @var array<string, int> */
@@ -55,12 +55,12 @@ class Quota
         self::MEMBERS_PER_CLUB => 500,
         self::PENDING_INVITATIONS_PER_CLUB => 200,
         self::EVENTS_PER_CALENDAR => 20000,
-        self::LOCATIONS_PER_CALENDAR => 2000,
+        self::LOCATIONS_PER_CLUB => 2000,
         self::TEMPLATES_PER_CALENDAR => 500,
         self::PROPERTIES_PER_CALENDAR => 500,
         self::FEATURES_PER_CALENDAR => 500,
-        self::TARGET_GROUPS_PER_CALENDAR => 500,
-        self::FEEDS_PER_CALENDAR => 50,
+        self::TARGET_GROUPS_PER_CLUB => 500,
+        self::FEEDS_PER_CLUB => 50,
         self::HOLIDAY_CALENDARS_PER_CALENDAR => 20,
     ];
 
@@ -72,12 +72,12 @@ class Quota
         // Open invitations (also expired ones, they stay listed until revoked or pruned)
         self::PENDING_INVITATIONS_PER_CLUB => [ClubInvitation::class, 'club', ['status' => ClubInvitation::PENDING]],
         self::EVENTS_PER_CALENDAR => [Event::class, 'calendar'],
-        self::LOCATIONS_PER_CALENDAR => [Location::class, 'calendar'],
+        self::LOCATIONS_PER_CLUB => [Location::class, 'club'],
         self::TEMPLATES_PER_CALENDAR => [EventTemplate::class, 'calendar'],
         self::PROPERTIES_PER_CALENDAR => [Property::class, 'calendar'],
         self::FEATURES_PER_CALENDAR => [Feature::class, 'calendar'],
-        self::TARGET_GROUPS_PER_CALENDAR => [TargetGroup::class, 'calendar'],
-        self::FEEDS_PER_CALENDAR => [CalendarFeed::class, 'calendar'],
+        self::TARGET_GROUPS_PER_CLUB => [TargetGroup::class, 'club'],
+        self::FEEDS_PER_CLUB => [CalendarFeed::class, 'club'],
         self::HOLIDAY_CALENDARS_PER_CALENDAR => [HolidayCalendar::class, 'calendar'],
     ];
 

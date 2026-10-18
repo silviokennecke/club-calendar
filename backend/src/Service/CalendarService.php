@@ -6,16 +6,14 @@ namespace App\Service;
 
 use App\Entity\Calendar;
 use App\Entity\CalendarFeed;
-use App\Entity\CalendarFeedTargetGroup;
+use App\Entity\CalendarFeedCalendar;
 use App\Entity\Club;
 use App\Entity\EventTemplate;
 use App\Entity\EventTemplateFeature;
 use App\Entity\EventTemplateProperty;
 use App\Entity\EventTemplateTargetGroup;
 use App\Entity\Feature;
-use App\Entity\Location;
 use App\Entity\Property;
-use App\Entity\TargetGroup;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
@@ -89,8 +87,16 @@ class CalendarService
         return $this->serializeCalendar($calendar);
     }
 
+    /** Feeds that select only this calendar go with it; shared feeds lose just the link (DB cascade). */
     public function deleteCalendar(Calendar $calendar): void
     {
+        $exclusive = $this->em->createQuery(
+            'SELECT f FROM '.CalendarFeed::class.' f WHERE f.club = :club AND EXISTS (SELECT 1 FROM '.CalendarFeedCalendar::class.' x WHERE x.feed = f AND x.calendar = :cal)'
+            .' AND NOT EXISTS (SELECT 1 FROM '.CalendarFeedCalendar::class.' y WHERE y.feed = f AND y.calendar <> :cal)',
+        )->setParameter('club', $calendar->getClub())->setParameter('cal', $calendar)->getResult();
+        foreach ($exclusive as $feed) {
+            $this->em->remove($feed);
+        }
         $this->em->remove($calendar);
         $this->em->flush();
     }
@@ -123,12 +129,9 @@ class CalendarService
         $newCal->setTimezone($source->getTimezone());
         $this->em->persist($newCal);
 
-        // Map old IDs to new entities
+        // Properties and features are calendar-level: the copy gets its own (old id => new entity)
         $propMap = [];
         $featureMap = [];
-        $tgMap = [];
-        $locMap = [];
-
         foreach ($source->getProperties() as $p) {
             $n = new Property();
             $n->setCalendar($newCal);
@@ -137,35 +140,12 @@ class CalendarService
             $this->em->persist($n);
             $propMap[$p->getId()] = $n;
         }
-
         foreach ($source->getFeatures() as $f) {
             $n = new Feature();
             $n->setCalendar($newCal);
             $n->setName($f->getName());
             $this->em->persist($n);
             $featureMap[$f->getId()] = $n;
-        }
-
-        foreach ($source->getTargetGroups() as $tg) {
-            $n = new TargetGroup();
-            $n->setCalendar($newCal);
-            $n->setName($tg->getName());
-            $this->em->persist($n);
-            $tgMap[$tg->getId()] = $n;
-        }
-
-        foreach ($source->getLocations() as $loc) {
-            $n = new Location();
-            $n->setCalendar($newCal);
-            $n->setName($loc->getName());
-            $n->setStreet($loc->getStreet());
-            $n->setZip($loc->getZip());
-            $n->setCity($loc->getCity());
-            $n->setCountry($loc->getCountry());
-            $n->setLatitude($loc->getLatitude());
-            $n->setLongitude($loc->getLongitude());
-            $this->em->persist($n);
-            $locMap[$loc->getId()] = $n;
         }
 
         foreach ($source->getTemplates() as $tmpl) {
@@ -175,10 +155,8 @@ class CalendarService
             $n->setTimezone($tmpl->getTimezone());
             $n->setTimeBegin($tmpl->getTimeBegin());
             $n->setTimeEnd($tmpl->getTimeEnd());
-            $oldLocId = $tmpl->getLocation()?->getId();
-            if (null !== $oldLocId && isset($locMap[$oldLocId])) {
-                $n->setLocation($locMap[$oldLocId]);
-            }
+            // Locations and target groups are club-level: the copy references the same ones
+            $n->setLocation($tmpl->getLocation());
             $this->em->persist($n);
 
             foreach ($tmpl->getProperties() as $tp) {
@@ -200,34 +178,10 @@ class CalendarService
                 }
             }
             foreach ($tmpl->getTargetGroups() as $ttg) {
-                $oldId = $ttg->getTargetGroup()->getId();
-                if (isset($tgMap[$oldId])) {
-                    $pivot = new EventTemplateTargetGroup();
-                    $pivot->setTemplate($n);
-                    $pivot->setTargetGroup($tgMap[$oldId]);
-                    $this->em->persist($pivot);
-                }
-            }
-        }
-
-        foreach ($source->getFeeds() as $feed) {
-            $n = new CalendarFeed();
-            $n->setCalendar($newCal);
-            $n->setName($feed->getName());
-            // Same status, but never indexable (no second indexed copy of the same events) and a new secret
-            $n->setVisibility($feed->getVisibility());
-            $n->setSearchable(false);
-            $n->setSharedSecret(bin2hex(random_bytes(16)));
-            $this->em->persist($n);
-
-            foreach ($feed->getTargetGroups() as $ftg) {
-                $oldId = $ftg->getTargetGroup()->getId();
-                if (isset($tgMap[$oldId])) {
-                    $pivot = new CalendarFeedTargetGroup();
-                    $pivot->setFeed($n);
-                    $pivot->setTargetGroup($tgMap[$oldId]);
-                    $this->em->persist($pivot);
-                }
+                $pivot = new EventTemplateTargetGroup();
+                $pivot->setTemplate($n);
+                $pivot->setTargetGroup($ttg->getTargetGroup());
+                $this->em->persist($pivot);
             }
         }
 
@@ -239,7 +193,7 @@ class CalendarService
     /**
      * Counters: precomputed for a list (UsageCounts::byCalendar), else counted for this calendar.
      *
-     * @param array{events: array<string, int>, templates: array<string, int>, feeds: array<string, int>}|null $counts
+     * @param array{events: array<string, int>, templates: array<string, int>, feeds: array<string, int>, exclusiveFeeds: array<string, int>}|null $counts
      */
     public function serializeCalendar(Calendar $cal, ?array $counts = null): array
     {
@@ -255,6 +209,7 @@ class CalendarService
             'eventCount' => $counts['events'][$id] ?? 0,
             'templateCount' => $counts['templates'][$id] ?? 0,
             'feedCount' => $counts['feeds'][$id] ?? 0,
+            'exclusiveFeedCount' => $counts['exclusiveFeeds'][$id] ?? 0,
         ];
     }
 }

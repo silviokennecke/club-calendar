@@ -77,7 +77,7 @@ class ImportTest extends WebTestCase
     private function locationCount(Calendar $calendar): int
     {
         return (int) self::$em->createQueryBuilder()->select('COUNT(l.id)')->from(Location::class, 'l')
-            ->where('l.calendar = :c')->setParameter('c', $calendar->getId())->getQuery()->getSingleScalarResult();
+            ->where('l.club = :c')->setParameter('c', $calendar->getClub()->getId())->getQuery()->getSingleScalarResult();
     }
 
     // --- externalUid ---
@@ -145,9 +145,9 @@ class ImportTest extends WebTestCase
     public function testPreviewChecksReferencesOfThisCalendarOnly(): void
     {
         ['auth' => $auth, 'base' => $base, 'calendar' => $cal, 'user' => $user] = $this->setupCalendar();
-        $other = TestHelper::createCalendar(self::$em, $cal->getClub(), 'Fremd');
-        $foreignTg = TestHelper::jsonRequest(self::$client, 'POST', "/api/calendars/{$other->getId()}/target-groups", ['name' => 'Fremd'], $auth)['body']['id'];
-        $ownTg = TestHelper::jsonRequest(self::$client, 'POST', "$base/target-groups", ['name' => 'Jugend'], $auth)['body']['id'];
+        $otherClub = TestHelper::createClub(self::$em, self::$em->find(\App\Entity\User::class, $user->getId()), 'Fremd');
+        $foreignTg = TestHelper::jsonRequest(self::$client, 'POST', "/api/clubs/{$otherClub->getId()}/target-groups", ['name' => 'Fremd'], $auth)['body']['id'];
+        $ownTg = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/target-groups', ['name' => 'Jugend'], $auth)['body']['id'];
         self::$em->clear();
 
         $r = $this->post("$base/events/import/preview", [
@@ -190,9 +190,9 @@ class ImportTest extends WebTestCase
     public function testPreviewRunsTheSameNumberOfQueriesForMoreEntries(): void
     {
         ['auth' => $auth, 'base' => $base, 'calendar' => $cal] = $this->setupCalendar();
-        $tg = TestHelper::jsonRequest(self::$client, 'POST', "$base/target-groups", ['name' => 'Jugend'], $auth)['body']['id'];
-        $prop = TestHelper::jsonRequest(self::$client, 'POST', "$base/properties", ['name' => 'Draußen'], $auth)['body']['id'];
-        $loc = TestHelper::jsonRequest(self::$client, 'POST', "$base/locations", ['name' => 'Halle'], $auth)['body']['id'];
+        $tg = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/target-groups', ['name' => 'Jugend'], $auth)['body']['id'];
+        $prop = TestHelper::jsonRequest(self::$client, 'POST', $base.'/properties', ['name' => 'Draußen'], $auth)['body']['id'];
+        $loc = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/locations', ['name' => 'Halle'], $auth)['body']['id'];
         TestHelper::createEvent(self::$em, $cal);
         self::$em->clear();
         $entries = fn (int $n) => array_map(fn ($i) => $this->event([
@@ -213,7 +213,7 @@ class ImportTest extends WebTestCase
     public function testImportCreatesPlacesAndEventsInOneGo(): void
     {
         ['auth' => $auth, 'base' => $base, 'calendar' => $cal] = $this->setupCalendar();
-        $existing = TestHelper::jsonRequest(self::$client, 'POST', "$base/locations", ['name' => 'Schützenhaus'], $auth)['body']['id'];
+        $existing = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/locations', ['name' => 'Schützenhaus'], $auth)['body']['id'];
         self::$em->clear();
 
         $r = $this->post("$base/events/import", [
@@ -385,7 +385,7 @@ class ImportTest extends WebTestCase
     public function testFiveThousandEventsImportInOneRequest(): void
     {
         ['auth' => $auth, 'base' => $base, 'calendar' => $cal] = $this->setupCalendar();
-        $tg = TestHelper::jsonRequest(self::$client, 'POST', "$base/target-groups", ['name' => 'Jugend'], $auth)['body']['id'];
+        $tg = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, $base).'/target-groups', ['name' => 'Jugend'], $auth)['body']['id'];
         $events = array_map(fn ($i) => $this->event([
             'name' => "Termin $i", 'date' => sprintf('2027-%02d-%02d', $i % 12 + 1, $i % 28 + 1), 'targetGroupIds' => [$tg], 'locationTempId' => 'p',
         ]), range(1, 5000));

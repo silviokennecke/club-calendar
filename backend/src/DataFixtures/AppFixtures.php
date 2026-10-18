@@ -6,6 +6,7 @@ namespace App\DataFixtures;
 
 use App\Entity\Calendar;
 use App\Entity\CalendarFeed;
+use App\Entity\CalendarFeedCalendar;
 use App\Entity\Club;
 use App\Entity\ClubUser;
 use App\Entity\User;
@@ -40,21 +41,24 @@ class AppFixtures extends Fixture
         $manager->persist($calendar);
 
         $publicFeed = new CalendarFeed();
-        $publicFeed->setCalendar($calendar);
+        $publicFeed->setClub($club);
+        $publicFeed->getCalendars()->add((new CalendarFeedCalendar())->setFeed($publicFeed)->setCalendar($calendar));
         $publicFeed->setName('Öffentlicher Kalender');
         $publicFeed->setVisibility(FeedVisibility::PUBLIC);
         $publicFeed->setSharedSecret('00000000-0000-0000-0000-000000000001');
         $manager->persist($publicFeed);
 
         $clubFeed = new CalendarFeed();
-        $clubFeed->setCalendar($calendar);
+        $clubFeed->setClub($club);
+        $clubFeed->getCalendars()->add((new CalendarFeedCalendar())->setFeed($clubFeed)->setCalendar($calendar));
         $clubFeed->setName('Vereinskalender');
         $clubFeed->setVisibility(FeedVisibility::CLUB);
         $clubFeed->setSharedSecret('00000000-0000-0000-0000-000000000003');
         $manager->persist($clubFeed);
 
         $privateFeed = new CalendarFeed();
-        $privateFeed->setCalendar($calendar);
+        $privateFeed->setClub($club);
+        $privateFeed->getCalendars()->add((new CalendarFeedCalendar())->setFeed($privateFeed)->setCalendar($calendar));
         $privateFeed->setName('Privater Kalender');
         $privateFeed->setVisibility(FeedVisibility::PRIVATE);
         $privateFeed->setSharedSecret('00000000-0000-0000-0000-000000000002');

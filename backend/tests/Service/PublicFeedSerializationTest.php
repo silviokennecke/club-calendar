@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
-use App\Entity\CalendarFeed;
 use App\Entity\Event;
 use App\Entity\EventFeature;
 use App\Entity\EventProperty;
@@ -35,18 +34,13 @@ class PublicFeedSerializationTest extends KernelTestCase
         DatabaseResetter::reset($em);
         ['calendar' => $cal] = TestHelper::createCalendarWithClub($em, $container->get(UserPasswordHasherInterface::class));
 
-        $feed = new CalendarFeed();
-        $feed->setCalendar($cal);
-        $feed->setName('Alle');
-        $feed->setVisibility(FeedVisibility::PUBLIC);
-        $feed->setSharedSecret('secret-'.$cal->getId());
-        $em->persist($feed);
+        $feed = TestHelper::createFeed($em, $cal->getClub(), [$cal], FeedVisibility::PUBLIC, 'Alle', 'secret-'.$cal->getId());
 
         $event = TestHelper::createEvent($em, $cal, ['isDraft' => false]);
         foreach (['A', 'B'] as $name) {
             $property = (new Property())->setCalendar($cal)->setName("Eigenschaft $name");
             $feature = (new Feature())->setCalendar($cal)->setName("Zusatz $name");
-            $group = (new TargetGroup())->setCalendar($cal)->setName("Gruppe $name");
+            $group = (new TargetGroup())->setClub($cal->getClub())->setName("Gruppe $name");
             $em->persist($property);
             $em->persist($feature);
             $em->persist($group);

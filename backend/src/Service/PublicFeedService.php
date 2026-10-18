@@ -31,7 +31,7 @@ class PublicFeedService
 
     /**
      * Published events of the feed, optionally limited to the days from/to (YYYY-MM-DD, overlap: a
-     * multi-day event reaching into the range is included), plus the holidays of the calendar in the
+     * multi-day event reaching into the range is included), plus the holidays of the selected calendars (de-duplicated by uid) in the
      * same range. Access is checked before the range is looked at.
      */
     public function getFeedEvents(string $feedId, ?string $secret, ?array $targetGroupIds, mixed $from = null, mixed $to = null): array
@@ -42,7 +42,7 @@ class PublicFeedService
         Input::assertDateRange($fromDate, $toDate);
 
         $events = $this->fetchEvents($this->eventQuery($feed, $targetGroupIds, $fromDate, $toDate));
-        $holidays = $this->holidays->findByCalendar($feed->getCalendar()->getId(), $fromDate, $toDate);
+        $holidays = $this->dedupeHolidays($this->holidays->findByCalendars($this->activeCalendarIds($feed), $fromDate, $toDate));
 
         return [
             'feed' => $this->serializeFeed($feed),
@@ -55,6 +55,56 @@ class PublicFeedService
                 'dateEnd' => $h->getDateEnd()?->format('Y-m-d'),
             ], $holidays),
         ];
+    }
+
+    /**
+     * The same holiday (same non-empty uid) of several calendars is shown once; the first in
+     * date-then-id order wins. Holidays without uid are never collapsed.
+     *
+     * @param HolidayEvent[] $holidays
+     *
+     * @return HolidayEvent[]
+     */
+    private function dedupeHolidays(array $holidays): array
+    {
+        usort($holidays, fn (HolidayEvent $a, HolidayEvent $b) => [$a->getDate(), $a->getId()] <=> [$b->getDate(), $b->getId()]);
+        $seen = [];
+        $result = [];
+        foreach ($holidays as $h) {
+            if ('' !== $h->getUid()) {
+                if (isset($seen[$h->getUid()])) {
+                    continue;
+                }
+                $seen[$h->getUid()] = true;
+            }
+            $result[] = $h;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Selected calendars of the feed that are not archived.
+     *
+     * @return Calendar[]
+     */
+    private function activeCalendars(CalendarFeed $feed): array
+    {
+        $calendars = [];
+        foreach ($feed->getCalendars() as $link) {
+            $calendar = $link->getCalendar();
+            if (null === $calendar->getArchivedAt()) {
+                $calendars[] = $calendar;
+            }
+        }
+
+        return $calendars;
+    }
+
+    /** @return string[] */
+    private function activeCalendarIds(CalendarFeed $feed): array
+    {
+        return array_map(fn (Calendar $c) => $c->getId(), $this->activeCalendars($feed));
     }
 
     /**
@@ -78,14 +128,13 @@ class PublicFeedService
     }
 
     /**
-     * Header of the public page: club and calendar name, the effective time zone of the calendar
-     * (calendar, else club), the visibility (same values as the feed API: PUBLIC, CLUB, PRIVATE),
+     * Header of the public page: feed name, club name, the time zone of the club, the visibility (same values as the feed API: PUBLIC, CLUB, PRIVATE),
      * whether search engines may index the feed, the number of published events and the audiences
      * used by them.
      */
     private function serializeFeed(CalendarFeed $feed): array
     {
-        $calendar = $feed->getCalendar();
+        $club = $feed->getClub();
 
         // Counted over all published events of the feed (not only a from/to range), so the page keeps
         // its audience filter and knows whether the feed is empty; nothing beyond what the feed shows.
@@ -102,9 +151,8 @@ class PublicFeedService
         return [
             'id' => $feed->getId(),
             'name' => $feed->getName(),
-            'clubName' => $calendar->getClub()->getName(),
-            'calendarName' => $calendar->getName(),
-            'timezone' => $this->calendarTimezone($calendar),
+            'clubName' => $club->getName(),
+            'timezone' => Input::canonicalTimezone($club->getTimezone()) ?? 'UTC',
             'visibility' => $feed->getVisibility()->value,
             'indexable' => $feed->isIndexable(),
             'eventCount' => (int) $count->getQuery()->getSingleScalarResult(),
@@ -126,9 +174,8 @@ class PublicFeedService
     {
         $feed = $this->loadFeed($feedId, $secret);
         $events = $this->fetchEvents($this->eventQuery($feed, $targetGroupIds, null, null));
-        $club = $feed->getCalendar()->getClub();
 
-        return $this->icsService->buildIcs($feed, $club, $events);
+        return $this->icsService->buildIcs($feed, $feed->getClub(), $events);
     }
 
     private function loadFeed(string $feedId, ?string $secret): CalendarFeed
@@ -146,8 +193,8 @@ class PublicFeedService
             }
         }
 
-        // Archived calendar → 404
-        if (null !== $feed->getCalendar()->getArchivedAt()) {
+        // No active (non-archived) calendar → 404
+        if ([] === $this->activeCalendars($feed)) {
             throw new NotFoundHttpException('Feed not found');
         }
 
@@ -203,9 +250,9 @@ class PublicFeedService
             ->map(fn ($ftg) => $ftg->getTargetGroup()->getId())
             ->getValues();
 
-        $qb->andWhere('e.calendar = :calendar')
+        $qb->andWhere('e.calendar IN (:calendars)')
             ->andWhere('e.isDraft = false')
-            ->setParameter('calendar', $feed->getCalendar());
+            ->setParameter('calendars', $this->activeCalendars($feed));
 
         $effectiveTgIds = $targetGroupIds;
         if (count($feedTargetGroupIds) > 0) {

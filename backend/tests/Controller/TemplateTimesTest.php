@@ -141,7 +141,7 @@ class TemplateTimesTest extends WebTestCase
         $id = $this->req('POST', "$base/templates", $auth, ['name' => 'Vereinsfest'])['body']['id'];
         $events = $this->req('POST', "$base/events/from-template", $auth, ['templateId' => $id, 'dates' => ['2026-10-24']])['body'];
         $this->req('PATCH', "$base/events/{$events[0]['id']}", $auth, ['isDraft' => false]);
-        $feed = $this->req('POST', "$base/feeds", $auth, ['name' => 'Alle', 'visibility' => FeedVisibility::PUBLIC->value])['body'];
+        $feed = $this->req('POST', "/api/clubs/$clubId/feeds", $auth, ['name' => 'Alle', 'visibility' => FeedVisibility::PUBLIC->value, 'calendarIds' => [$calId]])['body'];
 
         $this->assertSame(200, $this->req('GET', "$base/events?from=2026-10-01&to=2026-10-31", $auth)['status']);
         $public = TestHelper::jsonRequest(self::$client, 'GET', "/api/feed/{$feed['id']}/events");
@@ -155,6 +155,6 @@ class TemplateTimesTest extends WebTestCase
         $this->assertSame(201, $copy['status']);
         $templates = $this->req('GET', "/api/calendars/{$copy['body']['id']}/templates", $auth)['body'];
         $this->assertNull($templates[0]['timeBegin']);
-        $this->assertSame(2, self::$em->getRepository(CalendarFeed::class)->count(['name' => 'Alle']));
+        $this->assertSame(1, self::$em->getRepository(CalendarFeed::class)->count(['name' => 'Alle']), 'feeds are not copied');
     }
 }

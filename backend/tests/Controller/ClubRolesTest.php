@@ -87,15 +87,24 @@ class ClubRolesTest extends WebTestCase
         yield 'read events' => ['GET', '/api/calendars/{cal}/events', ['viewer' => true, 'editor' => true, 'admin' => true]];
         yield 'read ics' => ['GET', '/api/calendars/{cal}/events.ics', ['viewer' => true, 'editor' => true, 'admin' => true]];
         yield 'read members' => ['GET', '/api/clubs/{club}/members', ['viewer' => true, 'editor' => true, 'admin' => true]];
-        yield 'read locations' => ['GET', '/api/calendars/{cal}/locations', ['viewer' => true, 'editor' => true, 'admin' => true]];
-        yield 'read feeds' => ['GET', '/api/calendars/{cal}/feeds?includeSecret=1', ['viewer' => false, 'editor' => true, 'admin' => true]];
+        yield 'read locations' => ['GET', '/api/clubs/{club}/locations', ['viewer' => true, 'editor' => true, 'admin' => true]];
+        yield 'read feeds' => ['GET', '/api/clubs/{club}/feeds?includeSecret=1', ['viewer' => false, 'editor' => true, 'admin' => true]];
         yield 'write event' => ['POST', '/api/calendars/{cal}/events', ['viewer' => false, 'editor' => true, 'admin' => true]];
-        yield 'write location' => ['POST', '/api/calendars/{cal}/locations', ['viewer' => false, 'editor' => true, 'admin' => true]];
+        yield 'write location' => ['POST', '/api/clubs/{club}/locations', ['viewer' => false, 'editor' => true, 'admin' => true]];
         yield 'write property' => ['POST', '/api/calendars/{cal}/properties', ['viewer' => false, 'editor' => true, 'admin' => true]];
+        yield 'read properties' => ['GET', '/api/calendars/{cal}/properties', ['viewer' => true, 'editor' => true, 'admin' => true]];
+        yield 'read features' => ['GET', '/api/calendars/{cal}/features', ['viewer' => true, 'editor' => true, 'admin' => true]];
+        yield 'write feature' => ['POST', '/api/calendars/{cal}/features', ['viewer' => false, 'editor' => true, 'admin' => true]];
+        yield 'read target groups' => ['GET', '/api/clubs/{club}/target-groups', ['viewer' => true, 'editor' => true, 'admin' => true]];
+        yield 'write target group' => ['POST', '/api/clubs/{club}/target-groups', ['viewer' => false, 'editor' => true, 'admin' => true]];
         yield 'bulk' => ['POST', '/api/calendars/{cal}/events/bulk', ['viewer' => false, 'editor' => true, 'admin' => true]];
         yield 'import' => ['POST', '/api/calendars/{cal}/events/import', ['viewer' => false, 'editor' => true, 'admin' => true]];
         yield 'series preview' => ['POST', '/api/calendars/{cal}/events/series/preview', ['viewer' => false, 'editor' => true, 'admin' => true]];
-        yield 'write feed' => ['POST', '/api/calendars/{cal}/feeds', ['viewer' => false, 'editor' => false, 'admin' => true]];
+        yield 'write feed' => ['POST', '/api/clubs/{club}/feeds', ['viewer' => false, 'editor' => false, 'admin' => true]];
+        yield 'read one feed' => ['GET', '/api/clubs/{club}/feeds/{feed}', ['viewer' => false, 'editor' => true, 'admin' => true]];
+        yield 'change feed' => ['PATCH', '/api/clubs/{club}/feeds/{feed}', ['viewer' => false, 'editor' => false, 'admin' => true]];
+        yield 'regenerate feed secret' => ['POST', '/api/clubs/{club}/feeds/{feed}/regenerate-secret', ['viewer' => false, 'editor' => false, 'admin' => true]];
+        yield 'delete feed' => ['DELETE', '/api/clubs/{club}/feeds/{feed}', ['viewer' => false, 'editor' => false, 'admin' => true]];
         yield 'create calendar' => ['POST', '/api/clubs/{club}/calendars', ['viewer' => false, 'editor' => false, 'admin' => true]];
         yield 'archive calendar' => ['POST', '/api/clubs/{club}/calendars/{cal}/archive', ['viewer' => false, 'editor' => false, 'admin' => true]];
         yield 'rename club' => ['PATCH', '/api/clubs/{club}', ['viewer' => false, 'editor' => false, 'admin' => true]];
@@ -116,6 +125,7 @@ class ClubRolesTest extends WebTestCase
         $uri = strtr($uri, [
             '{club}' => $this->cid(),
             '{cal}' => $this->calId(),
+            '{feed}' => TestHelper::createFeed(self::$em, $this->club, [$this->calendar])->getId(),
             '{viewer}' => $this->users['viewer']->getId(),
             '{stranger}' => $this->users['stranger']->getId(),
         ]);
@@ -156,7 +166,7 @@ class ClubRolesTest extends WebTestCase
         $this->assertSame('editor', $r['body']['role']);
         $this->assertSame(ClubRole::EDITOR, $this->role('viewer'));
         // The new right applies immediately
-        $this->assertSame(201, $this->req('viewer', 'POST', "/api/calendars/{$this->calId()}/locations", ['name' => 'Hall'])['status']);
+        $this->assertSame(201, $this->req('viewer', 'POST', "/api/clubs/{$this->cid()}/locations", ['name' => 'Hall'])['status']);
     }
 
     public function testInvalidRoleAndUnknownMember(): void

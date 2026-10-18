@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-use App\Entity\Calendar;
+use App\Entity\Club;
 use App\Entity\Location;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -18,20 +18,20 @@ readonly class LocationService
     ) {
     }
 
-    public function list(Calendar $calendar): array
+    public function list(Club $club): array
     {
-        $items = $this->em->getRepository(Location::class)->findBy(['calendar' => $calendar]);
+        $items = $this->em->getRepository(Location::class)->findBy(['club' => $club]);
 
-        $usage = $this->counts->locationUsage($calendar);
+        $usage = $this->counts->locationUsage($club);
 
         // usage: events / templates at this place (templateNames only when at most 3 templates use it)
         return array_map(fn (Location $l) => $this->serialize($l) + ['usage' => $usage[$l->getId()] ?? null], $items);
     }
 
-    public function create(Calendar $calendar, array $data): array
+    public function create(Club $club, array $data): array
     {
-        $this->quota->assertRoom(Quota::LOCATIONS_PER_CALENDAR, $calendar);
-        $location = $this->build($calendar, $data);
+        $this->quota->assertRoom(Quota::LOCATIONS_PER_CLUB, $club);
+        $location = $this->build($club, $data);
         $this->em->persist($location);
         $this->em->flush();
 
@@ -39,10 +39,10 @@ readonly class LocationService
     }
 
     /** New location from request data (validated, not persisted; also used by the atomic import). */
-    public function build(Calendar $calendar, array $data): Location
+    public function build(Club $club, array $data): Location
     {
         $location = new Location();
-        $location->setCalendar($calendar);
+        $location->setClub($club);
         $location->setName(Input::nullableString($data, 'name'));
         $location->setStreet(Input::nullableString($data, 'street'));
         $location->setZip(Input::nullableString($data, 'zip', 20));
@@ -89,9 +89,9 @@ readonly class LocationService
         return [$latitude, $longitude];
     }
 
-    public function update(string $id, Calendar $calendar, array $data): array
+    public function update(string $id, Club $club, array $data): array
     {
-        $location = $this->find($id, $calendar);
+        $location = $this->find($id, $club);
 
         if (array_key_exists('name', $data)) {
             $location->setName(Input::nullableString($data, 'name'));
@@ -123,17 +123,17 @@ readonly class LocationService
         return $this->serialize($location);
     }
 
-    public function delete(string $id, Calendar $calendar): void
+    public function delete(string $id, Club $club): void
     {
-        $location = $this->find($id, $calendar);
+        $location = $this->find($id, $club);
         $this->em->remove($location);
         $this->em->flush();
     }
 
-    private function find(string $id, Calendar $calendar): Location
+    private function find(string $id, Club $club): Location
     {
         $location = $this->em->getRepository(Location::class)->find($id);
-        if (!$location || $location->getCalendar()->getId() !== $calendar->getId()) {
+        if (!$location || $location->getClub()->getId() !== $club->getId()) {
             throw new NotFoundHttpException('Location not found');
         }
 
@@ -144,7 +144,7 @@ readonly class LocationService
     {
         return [
             'id' => $location->getId(),
-            'calendarId' => $location->getCalendar()->getId(),
+            'clubId' => $location->getClub()->getId(),
             'name' => $location->getName(),
             'street' => $location->getStreet(),
             'zip' => $location->getZip(),

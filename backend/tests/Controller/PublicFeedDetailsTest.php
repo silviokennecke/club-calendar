@@ -24,7 +24,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
- * Public feed: header (club, calendar, zone, visibility), effective event zone, from/to, holidays
+ * Public feed: header (feed, club, club zone, visibility), effective event zone, from/to, holidays
  * and the single-event endpoint (package 1 of BACKEND-PLAN.md).
  */
 class PublicFeedDetailsTest extends WebTestCase
@@ -68,13 +68,8 @@ class PublicFeedDetailsTest extends WebTestCase
 
     private function feed(Calendar $cal, FeedVisibility $visibility = FeedVisibility::PUBLIC, ?TargetGroup $group = null): CalendarFeed
     {
-        $feed = new CalendarFeed();
-        $feed->setCalendar($cal);
-        $feed->setName('Alle Termine');
-        $feed->setVisibility($visibility);
         // Secrets are unique: only private feeds get the known one
-        $feed->setSharedSecret(FeedVisibility::PRIVATE === $visibility ? self::SECRET : 'public-'.$cal->getId());
-        self::$em->persist($feed);
+        $feed = TestHelper::createFeed(self::$em, $cal->getClub(), [$cal], $visibility, 'Alle Termine', FeedVisibility::PRIVATE === $visibility ? self::SECRET : 'public-'.$cal->getId());
         if ($group) {
             self::$em->persist((new CalendarFeedTargetGroup())->setFeed($feed)->setTargetGroup($group));
         }
@@ -86,7 +81,7 @@ class PublicFeedDetailsTest extends WebTestCase
     private function group(Calendar $cal, string $name): TargetGroup
     {
         $group = new TargetGroup();
-        $group->setCalendar($cal);
+        $group->setClub($cal->getClub());
         $group->setName($name);
         self::$em->persist($group);
         self::$em->flush();
@@ -112,7 +107,7 @@ class PublicFeedDetailsTest extends WebTestCase
         return $event;
     }
 
-    public function testFeedHeaderNamesClubCalendarZoneAndVisibility(): void
+    public function testFeedHeaderNamesFeedClubClubZoneAndVisibility(): void
     {
         $cal = $this->calendar('Europe/Vienna');
         $public = $this->feed($cal);
@@ -124,8 +119,7 @@ class PublicFeedDetailsTest extends WebTestCase
             'id' => $public->getId(),
             'name' => 'Alle Termine',
             'clubName' => 'Schützenverein Waldblick',
-            'calendarName' => 'Schießbetrieb 2026',
-            'timezone' => 'Europe/Vienna',
+            'timezone' => 'Europe/Berlin',
             'visibility' => 'PUBLIC',
             'indexable' => false,
             'eventCount' => 0,
@@ -180,7 +174,7 @@ class PublicFeedDetailsTest extends WebTestCase
         $calendar->setTimezone('Europe/London');
         self::$em->flush();
         $r = $this->get("/api/feed/{$feed->getId()}/events");
-        $this->assertSame('Europe/London', $r['body']['feed']['timezone']);
+        $this->assertSame('Europe/Berlin', $r['body']['feed']['timezone'], 'header zone is the club zone');
         $this->assertSame('Europe/London', array_column($r['body']['events'], 'timezone', 'id')[$inherited->getId()]);
     }
 
