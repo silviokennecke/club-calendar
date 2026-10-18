@@ -29,7 +29,9 @@
 		Cross-Origin-Opener-Policy "same-origin"
 		?Referrer-Policy "strict-origin-when-cross-origin"
 		# No HSTS here: TLS ends at the proxy in front, which must send Strict-Transport-Security
+		# Do not reveal the web server: no Server, no Via (deletes run deferred, i.e. also hit upstream headers)
 		-Server
+		-Via
 	}
 
 	# API -> Symfony front controller via PHP-FPM
