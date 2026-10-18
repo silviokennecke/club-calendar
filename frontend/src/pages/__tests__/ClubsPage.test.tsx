@@ -1,16 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import ClubsPage from "../ClubsPage";
 
 const apiGet = vi.fn();
+const apiPost = vi.fn();
 const logout = vi.fn();
+const updateUser = vi.fn();
+let invitations: unknown[] = [];
 let authUser: Record<string, unknown> = {};
 
-vi.mock("@/lib/api", () => ({ apiGet: (...a: unknown[]) => apiGet(...a) }));
-vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ user: authUser, logout }) }));
+vi.mock("@/lib/api", () => ({
+  apiGet: (...a: unknown[]) => apiGet(...a),
+  apiPost: (...a: unknown[]) => apiPost(...a),
+}));
+vi.mock("@/lib/auth-context", () => ({
+  useAuth: () => ({ user: authUser, logout, updateUser }),
+}));
 
 function Probe() {
   const loc = useLocation();
@@ -66,6 +74,7 @@ const members: Record<string, unknown[]> = {
 function mockApi(clubList: unknown[] = clubs) {
   apiGet.mockImplementation((path: string) => {
     if (path === "/api/clubs") return Promise.resolve(clubList);
+    if (path === "/api/invitations") return Promise.resolve(invitations);
     const cal = path.match(/^\/api\/clubs\/([^/]+)\/calendars/);
     if (cal) return Promise.resolve(calendars[cal[1]] ?? []);
     const mem = path.match(/^\/api\/clubs\/([^/]+)\/members/);
@@ -76,6 +85,9 @@ function mockApi(clubList: unknown[] = clubs) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  sessionStorage.clear();
+  invitations = [];
+  updateUser.mockResolvedValue(true);
   authUser = { name: "Alex Beispiel", email: "alex@beispiel.de" };
   mockApi();
 });
@@ -106,7 +118,7 @@ describe("ClubsPage", () => {
   it("loads no calendars or members per club (counts come with the club list)", async () => {
     renderClubs("/clubs?select=1");
     await screen.findByRole("link", { name: "Segelclub Möwe e. V." });
-    expect(apiGet.mock.calls.map((c) => c[0])).toEqual(["/api/clubs"]);
+    expect(apiGet.mock.calls.map((c) => c[0])).toEqual(["/api/clubs", "/api/invitations"]);
   });
 
   it("links a club without any calendar to the setup step", async () => {
@@ -176,6 +188,91 @@ describe("ClubsPage", () => {
       "href",
       "/setup?new=1",
     );
+  });
+
+  it("hides the invitations section when there are none", async () => {
+    renderClubs("/clubs?select=1");
+    await screen.findByRole("link", { name: "Segelclub Möwe e. V." });
+    expect(screen.queryByRole("heading", { name: "Einladungen" })).not.toBeInTheDocument();
+  });
+
+  it("lists invitations with club, inviter and expiry and accepts one", async () => {
+    invitations = [
+      {
+        id: "i1",
+        clubName: "Angelverein Fisch",
+        invitedByName: "Mara Sommer",
+        expiresAt: "2026-11-01T10:00:00+00:00",
+      },
+    ];
+    apiPost.mockResolvedValue({ id: "c2", name: "Angelverein Fisch", timezone: "Europe/Berlin" });
+    renderClubs("/clubs?select=1");
+    const section = (await screen.findByRole("heading", { name: "Einladungen" })).closest(
+      "section",
+    ) as HTMLElement;
+    expect(within(section).getByText("Angelverein Fisch")).toBeInTheDocument();
+    expect(section).toHaveTextContent("Eingeladen von Mara Sommer");
+    expect(section).toHaveTextContent("gültig bis 01.11.2026");
+    await userEvent.click(
+      within(section).getByRole("button", {
+        name: "Einladung zum Verein Angelverein Fisch annehmen",
+      }),
+    );
+    expect(apiPost).toHaveBeenCalledWith("/api/invitations/i1/accept", {});
+    // switches to the club and opens its calendar
+    expect(await screen.findByTestId("location")).toHaveTextContent("/clubs/c2/calendars/k3");
+    expect(updateUser).toHaveBeenCalledWith({ lastClubId: "c2", lastCalendarId: "k3" });
+  });
+
+  it("declines an invitation and reloads the list", async () => {
+    invitations = [
+      {
+        id: "i1",
+        clubName: "Angelverein Fisch",
+        invitedByName: null,
+        expiresAt: "2026-11-01T10:00:00+00:00",
+      },
+    ];
+    apiPost.mockImplementation(() => {
+      invitations = []; // the server no longer lists it
+      return Promise.resolve(undefined);
+    });
+    renderClubs("/clubs?select=1");
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Einladung zum Verein Angelverein Fisch ablehnen",
+      }),
+    );
+    expect(apiPost).toHaveBeenCalledWith("/api/invitations/i1/decline", {});
+    await waitFor(() =>
+      expect(screen.queryByRole("heading", { name: "Einladungen" })).not.toBeInTheDocument(),
+    );
+  });
+
+  it("shows an invitation without clubs and offers to create a club", async () => {
+    mockApi([]);
+    invitations = [
+      {
+        id: "i1",
+        clubName: "Angelverein Fisch",
+        invitedByName: "Mara",
+        expiresAt: "2026-11-01T10:00:00+00:00",
+      },
+    ];
+    // no ?select=1: invitations keep the user here instead of the onboarding
+    renderClubs();
+    expect(await screen.findByRole("heading", { name: "Einladungen" })).toBeInTheDocument();
+    expect(screen.queryByTestId("location")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Neuen Verein anlegen" })).toHaveAttribute(
+      "href",
+      "/setup?new=1",
+    );
+  });
+
+  it("continues at the invitation page when a link token waits after the sign-in", async () => {
+    sessionStorage.setItem("cc.invitationToken", "tok");
+    renderClubs();
+    expect(await screen.findByTestId("location")).toHaveTextContent("/invitations");
   });
 
   it("shows an error when the clubs cannot be loaded", async () => {

@@ -31,6 +31,7 @@ import {
   ForgotPasswordPage,
   HolidayCalendarsPage,
   ImportPage,
+  InvitationPage,
   LocationsPage,
   LoginPage,
   MorePage,
@@ -63,6 +64,8 @@ function AppRoutes() {
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/auth/verify-email" element={<EmailVerifyPage />} />
           <Route path="/feed/:feedId" element={<FeedPage />} />
+          {/* Handles the signed-out case itself: the token survives the login (sessionStorage). */}
+          <Route path="/invitations" element={<InvitationPage />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/clubs" element={<ClubsPage />} />

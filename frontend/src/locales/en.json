@@ -174,7 +174,8 @@
     "back": "Back",
     "getStarted": "Create calendar",
     "errorTitle": "That did not work",
-    "errorText": "Please check your connection and try again."
+    "errorText": "Please check your connection and try again.",
+    "skip": "Skip for now"
   },
   "clubs": {
     "selectClub": "Choose your club",
@@ -1649,22 +1650,8 @@
       "removeFailed": "The member could not be removed. Please try again.",
       "left": "You left the club {{club}}.",
       "leaveFailed": "You could not leave the club. Please try again.",
-      "lastMemberHint": "You are the only member. A club needs at least one member: add someone first or delete the club.",
-      "lastMember": "You are the last member of the club. Add someone first or delete the club.",
-      "addTitle": "Add member",
-      "emailLabel": "Email address",
-      "emailHint": "The person already needs a Club Calendar account.",
-      "emailPlaceholder": "name@example.com",
-      "add": "Add member",
-      "added": "{{email}} was added to the club.",
-      "errorSummary": "The member could not be added yet.",
-      "problem": {
-        "empty": "Please enter an email address.",
-        "invalid": "Please enter a valid email address.",
-        "duplicate": "This person is already a member of the club.",
-        "notFound": "There is no account for this email address. Please check the address or ask the person to register first.",
-        "failed": "The member could not be added. Please try again."
-      }
+      "lastMemberHint": "You are the only member. A club needs at least one member: invite someone first or delete the club.",
+      "lastMember": "You are the last member of the club. Invite someone first or delete the club."
     },
     "calendars": {
       "title": "Calendars",
@@ -1720,6 +1707,45 @@
       "requireLabel": "Type the club name to confirm",
       "done": "The club “{{name}}” was deleted.",
       "failed": "The club could not be deleted. Please try again."
+    },
+    "invite": {
+      "title": "Invite by email",
+      "emailLabel": "Email address",
+      "emailHint": "The person receives an invitation by email and can accept it in Club Calendar.",
+      "emailPlaceholder": "name@example.com",
+      "send": "Send invitation",
+      "sent": "If {{email}} can be invited, an invitation was sent.",
+      "errorSummary": "The invitation has not been sent yet.",
+      "problem": {
+        "empty": "Please enter an email address.",
+        "invalid": "Please enter a valid email address.",
+        "duplicate": "This person is already a member of the club.",
+        "quota": "The club already has as many open invitations as it may have. Revoke invitations you no longer need.",
+        "rateLimited": "Too many invitations in a short time. Please try again later.",
+        "failed": "The invitation could not be sent. Please try again."
+      },
+      "loadError": "The open invitations could not be loaded.",
+      "openTitle": "Open invitations",
+      "openText": "Invited people are not members yet.",
+      "caption": "Open invitations ({{count}})",
+      "colStatus": "Status",
+      "pending": "Open until {{date}}",
+      "expired": "Expired",
+      "expiredText": "The invitation expired on {{date}}.",
+      "resend": "Send again",
+      "resendLabel": "Send the invitation to {{email}} again",
+      "resent": "The invitation to {{email}} was sent again.",
+      "notExpired": "This invitation has not expired yet.",
+      "gone": "This invitation no longer exists.",
+      "resendFailed": "The invitation could not be sent again. Please try again.",
+      "revoke": "Revoke",
+      "revokeLabel": "Revoke the invitation to {{email}}",
+      "revokeTitle": "Revoke the invitation to {{email}}?",
+      "revokeText": "The invitation to the club {{club}} will be withdrawn.",
+      "revokeConsequence": "The link in the email stops working. You can invite the person again at any time.",
+      "revokeConfirm": "Revoke invitation",
+      "revoked": "The invitation to {{email}} was revoked.",
+      "revokeFailed": "The invitation could not be revoked. Please try again."
     }
   },
   "feeds": {
@@ -2010,6 +2036,34 @@
     "generic": {
       "title": "Something went wrong",
       "text": "The page could not be displayed. Reload it or go to the home page. Data you have already saved is not affected."
+    }
+  },
+  "invitations": {
+    "title": "Invitations",
+    "invitedBy": "Invited by {{name}}",
+    "invited": "Invited",
+    "validUntil": "valid until {{date}}",
+    "accept": "Accept",
+    "decline": "Decline",
+    "acceptLabel": "Accept the invitation to the club {{club}}",
+    "declineLabel": "Decline the invitation to the club {{club}}",
+    "accepted": "Welcome to the club {{club}}.",
+    "declined": "The invitation to the club {{club}} was declined.",
+    "problem": {
+      "notFound": "The invitation is invalid, expired or meant for another account.",
+      "expired": "The invitation has expired. Please ask a member of the club to send it again.",
+      "quota": "The club has reached its maximum number of members. Please ask a member of the club for help.",
+      "rateLimited": "Too many attempts in a short time. Please try again later.",
+      "failed": "That did not work. Please try again."
+    },
+    "page": {
+      "title": "Invitation to a club",
+      "intro": "You have been invited to a club in Club Calendar. Do you want to accept the invitation?",
+      "errorTitle": "The invitation could not be answered",
+      "later": "Decide later",
+      "toClubs": "Go to my clubs",
+      "declinedTitle": "Invitation declined",
+      "declinedText": "You declined the invitation. Nothing changed in your account."
     }
   }
 }

@@ -174,7 +174,8 @@
     "back": "Zurück",
     "getStarted": "Kalender anlegen",
     "errorTitle": "Das hat nicht geklappt",
-    "errorText": "Bitte prüfe deine Verbindung und versuche es noch einmal."
+    "errorText": "Bitte prüfe deine Verbindung und versuche es noch einmal.",
+    "skip": "Vorerst überspringen"
   },
   "clubs": {
     "selectClub": "Wähle deinen Verein",
@@ -1649,22 +1650,8 @@
       "removeFailed": "Das Mitglied konnte nicht entfernt werden. Bitte versuche es erneut.",
       "left": "Du hast den Verein {{club}} verlassen.",
       "leaveFailed": "Du konntest den Verein nicht verlassen. Bitte versuche es erneut.",
-      "lastMemberHint": "Du bist das einzige Mitglied. Ein Verein braucht mindestens ein Mitglied: Füge zuerst jemanden hinzu oder lösche den Verein.",
-      "lastMember": "Du bist das letzte Mitglied des Vereins. Füge zuerst jemanden hinzu oder lösche den Verein.",
-      "addTitle": "Mitglied hinzufügen",
-      "emailLabel": "E-Mail-Adresse",
-      "emailHint": "Die Person braucht bereits ein Club-Calendar-Konto.",
-      "emailPlaceholder": "name@beispiel.de",
-      "add": "Mitglied hinzufügen",
-      "added": "{{email}} wurde zum Verein hinzugefügt.",
-      "errorSummary": "Das Mitglied konnte noch nicht hinzugefügt werden.",
-      "problem": {
-        "empty": "Bitte gib eine E-Mail-Adresse ein.",
-        "invalid": "Bitte gib eine gültige E-Mail-Adresse ein.",
-        "duplicate": "Diese Person ist schon Mitglied im Verein.",
-        "notFound": "Zu dieser E-Mail-Adresse gibt es kein Konto. Bitte prüfe die Adresse oder bitte die Person, sich zuerst zu registrieren.",
-        "failed": "Das Mitglied konnte nicht hinzugefügt werden. Bitte versuche es erneut."
-      }
+      "lastMemberHint": "Du bist das einzige Mitglied. Ein Verein braucht mindestens ein Mitglied: Lade zuerst jemanden ein oder lösche den Verein.",
+      "lastMember": "Du bist das letzte Mitglied des Vereins. Lade zuerst jemanden ein oder lösche den Verein."
     },
     "calendars": {
       "title": "Kalender",
@@ -1720,6 +1707,45 @@
       "requireLabel": "Vereinsname zur Bestätigung eingeben",
       "done": "Der Verein „{{name}}“ wurde gelöscht.",
       "failed": "Der Verein konnte nicht gelöscht werden. Bitte versuche es erneut."
+    },
+    "invite": {
+      "title": "Per E-Mail einladen",
+      "emailLabel": "E-Mail-Adresse",
+      "emailHint": "Die Person bekommt eine Einladung per E-Mail und kann sie in Club Calendar annehmen.",
+      "emailPlaceholder": "name@beispiel.de",
+      "send": "Einladung senden",
+      "sent": "Wenn {{email}} eingeladen werden kann, wurde eine Einladung verschickt.",
+      "errorSummary": "Die Einladung wurde noch nicht verschickt.",
+      "problem": {
+        "empty": "Bitte gib eine E-Mail-Adresse ein.",
+        "invalid": "Bitte gib eine gültige E-Mail-Adresse ein.",
+        "duplicate": "Diese Person ist schon Mitglied im Verein.",
+        "quota": "Es sind schon so viele Einladungen offen, wie der Verein haben darf. Widerrufe nicht mehr benötigte Einladungen.",
+        "rateLimited": "Zu viele Einladungen in kurzer Zeit. Bitte versuche es später noch einmal.",
+        "failed": "Die Einladung konnte nicht verschickt werden. Bitte versuche es noch einmal."
+      },
+      "loadError": "Die offenen Einladungen konnten nicht geladen werden.",
+      "openTitle": "Offene Einladungen",
+      "openText": "Eingeladene Personen sind noch keine Mitglieder.",
+      "caption": "Offene Einladungen ({{count}})",
+      "colStatus": "Status",
+      "pending": "Offen bis {{date}}",
+      "expired": "Abgelaufen",
+      "expiredText": "Die Einladung ist am {{date}} abgelaufen.",
+      "resend": "Erneut senden",
+      "resendLabel": "Einladung an {{email}} erneut senden",
+      "resent": "Die Einladung an {{email}} wurde erneut verschickt.",
+      "notExpired": "Diese Einladung ist noch nicht abgelaufen.",
+      "gone": "Diese Einladung gibt es nicht mehr.",
+      "resendFailed": "Die Einladung konnte nicht erneut verschickt werden. Bitte versuche es noch einmal.",
+      "revoke": "Widerrufen",
+      "revokeLabel": "Einladung an {{email}} widerrufen",
+      "revokeTitle": "Einladung an {{email}} widerrufen?",
+      "revokeText": "Die Einladung zum Verein {{club}} wird zurückgezogen.",
+      "revokeConsequence": "Der Link in der E-Mail funktioniert danach nicht mehr. Du kannst die Person jederzeit neu einladen.",
+      "revokeConfirm": "Einladung widerrufen",
+      "revoked": "Die Einladung an {{email}} wurde widerrufen.",
+      "revokeFailed": "Die Einladung konnte nicht widerrufen werden. Bitte versuche es noch einmal."
     }
   },
   "feeds": {
@@ -2010,6 +2036,34 @@
     "generic": {
       "title": "Da ist etwas schiefgelaufen",
       "text": "Die Seite konnte nicht angezeigt werden. Lade sie neu oder gehe zur Startseite. Bereits gespeicherte Daten sind davon nicht betroffen."
+    }
+  },
+  "invitations": {
+    "title": "Einladungen",
+    "invitedBy": "Eingeladen von {{name}}",
+    "invited": "Eingeladen",
+    "validUntil": "gültig bis {{date}}",
+    "accept": "Annehmen",
+    "decline": "Ablehnen",
+    "acceptLabel": "Einladung zum Verein {{club}} annehmen",
+    "declineLabel": "Einladung zum Verein {{club}} ablehnen",
+    "accepted": "Willkommen im Verein {{club}}.",
+    "declined": "Die Einladung zum Verein {{club}} wurde abgelehnt.",
+    "problem": {
+      "notFound": "Die Einladung ist ungültig, abgelaufen oder für ein anderes Konto bestimmt.",
+      "expired": "Die Einladung ist abgelaufen. Bitte ein Mitglied des Vereins, sie erneut zu senden.",
+      "quota": "Der Verein hat die höchste Mitgliederzahl erreicht. Bitte ein Mitglied des Vereins um Hilfe.",
+      "rateLimited": "Zu viele Versuche in kurzer Zeit. Bitte versuche es später noch einmal.",
+      "failed": "Das hat nicht geklappt. Bitte versuche es noch einmal."
+    },
+    "page": {
+      "title": "Einladung zu einem Verein",
+      "intro": "Du wurdest zu einem Verein in Club Calendar eingeladen. Möchtest du die Einladung annehmen?",
+      "errorTitle": "Die Einladung konnte nicht beantwortet werden",
+      "later": "Später entscheiden",
+      "toClubs": "Zu meinen Vereinen",
+      "declinedTitle": "Einladung abgelehnt",
+      "declinedText": "Du hast die Einladung abgelehnt. Es wurde nichts an deinem Konto geändert."
     }
   }
 }

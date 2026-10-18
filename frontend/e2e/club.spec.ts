@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
-import { API, createVerifiedUser, login, seedClub } from "./helpers";
+import { API, authHeaders, createVerifiedUser, inviteAndAccept, login, seedClub } from "./helpers";
 
 // ——— Verein verwalten (phase 7): Name, Mitglieder, Kalender (duplizieren, archivieren, löschen), Gefahrenbereich ———
 
@@ -71,7 +71,7 @@ test.describe("Verein verwalten", () => {
     expect(club.name).toBe("Waldblick e. V.");
   });
 
-  test("Mitglieder: hinzufügen mit Fehlern, entfernen mit Bestätigung", async ({
+  test("Mitglieder: einladen mit Fehlern, Einladungen verwalten, entfernen mit Bestätigung", async ({
     page,
     request,
   }) => {
@@ -85,35 +85,63 @@ test.describe("Verein verwalten", () => {
     await expect(own).toContainText("Du");
     await expect(own.getByRole("button", { name: `Verein ${s.clubName} verlassen` })).toBeVisible();
 
-    // Fehler: leer, ungültig, unbekannt
+    // Fehler: leer, ungültig
     const email = page.getByLabel(/^E-Mail-Adresse/);
-    const add = page.getByRole("button", { name: "Mitglied hinzufügen" });
-    await add.click();
+    const invite = page.getByRole("button", { name: "Einladung senden" });
+    await invite.click();
     await expect(page.getByRole("alert")).toContainText("Bitte gib eine E-Mail-Adresse ein.");
     await email.fill("kein-mail");
-    await add.click();
+    await invite.click();
     await expect(page.getByRole("alert")).toContainText(
       "Bitte gib eine gültige E-Mail-Adresse ein.",
     );
-    await email.fill("niemand@example.com");
-    await add.click();
-    await expect(page.getByRole("alert")).toContainText(
-      "Zu dieser E-Mail-Adresse gibt es kein Konto.",
-    );
-    await expect(email).toHaveValue("niemand@example.com");
-    await expect(email).toHaveAccessibleDescription(/kein Konto/);
 
-    // Hinzufügen
-    await email.fill(otherEmail);
-    await add.click();
-    await expect(page.getByText(`${otherEmail} wurde zum Verein hinzugefügt.`)).toBeVisible();
+    // Einladen: die Antwort ist neutral, auch für eine Adresse ohne Konto
+    await email.fill("niemand@example.com");
+    await invite.click();
+    await expect(page.getByText(/Wenn niemand@example.com eingeladen werden kann/)).toBeVisible();
     await expect(email).toHaveValue("");
+    const invitations = page.getByRole("table", { name: /Offene Einladungen/ });
+    await expect(
+      invitations.getByRole("row").filter({ hasText: "niemand@example.com" }),
+    ).toContainText(/Offen bis \d{2}\.\d{2}\.\d{4}/);
+    // Noch offene Einladungen kann man nicht erneut senden, aber widerrufen
+    await expect(page.getByRole("button", { name: /erneut senden/ })).toHaveCount(0);
+    await page.getByRole("button", { name: "Einladung an niemand@example.com widerrufen" }).click();
+    await page
+      .getByRole("alertdialog", { name: "Einladung an niemand@example.com widerrufen?" })
+      .getByRole("button", { name: "Einladung widerrufen" })
+      .click();
+    await expect(
+      page.getByText("Die Einladung an niemand@example.com wurde widerrufen."),
+    ).toBeVisible();
+    await expect(invitations).toHaveCount(0);
+
+    // Schon Mitglied wird erst nach der Annahme erkannt: einladen, als Eingeladene annehmen
+    await email.fill(otherEmail);
+    await invite.click();
+    await expect(page.getByText(/Wenn .* eingeladen werden kann/)).toBeVisible();
+    await expect(invitations.getByRole("row").filter({ hasText: otherEmail })).toBeVisible();
+    const otherHeaders = await authHeaders(request, otherEmail);
+    const pending = (await (
+      await request.get(`${API}/api/invitations`, { headers: otherHeaders })
+    ).json()) as { id: string }[];
+    expect(pending).toHaveLength(1);
+    expect(
+      (
+        await request.post(`${API}/api/invitations/${pending[0].id}/accept`, {
+          headers: otherHeaders,
+        })
+      ).ok(),
+    ).toBeTruthy();
+    await page.reload();
     await expect(table.getByRole("row")).toHaveCount(3);
+    await expect(invitations).toHaveCount(0);
     const row = table.getByRole("row").filter({ hasText: otherEmail });
     await expect(row).toContainText("Mara Sommer");
     // Schon Mitglied
     await email.fill(otherEmail.toUpperCase());
-    await add.click();
+    await invite.click();
     await expect(page.getByRole("alert")).toContainText(
       "Diese Person ist schon Mitglied im Verein.",
     );
@@ -229,10 +257,7 @@ test.describe("Verein verwalten", () => {
   test("Verein verlassen: der Verein verschwindet aus meiner Liste", async ({ page, request }) => {
     const s = await seed(request, "Club Verlassen");
     const otherEmail = await createVerifiedUser(request, "Bleibt Da");
-    await request.post(`${API}/api/clubs/${s.clubId}/members`, {
-      headers: s.headers,
-      data: { email: otherEmail },
-    });
+    await inviteAndAccept(request, s.clubId, s.headers, otherEmail);
     await openClub(page, s);
     await page.getByRole("button", { name: `Verein ${s.clubName} verlassen` }).click();
     const dialog = page.getByRole("alertdialog", { name: "Verein verlassen?" });

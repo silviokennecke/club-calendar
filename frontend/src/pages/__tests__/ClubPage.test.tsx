@@ -34,6 +34,7 @@ const club = {
   eventCount: 14,
   feedCount: 2,
 };
+let invitations: unknown[];
 let members: { id: string; name: string; email: string }[];
 let calendars: Record<string, unknown>[];
 let clubError: Error | null;
@@ -53,6 +54,7 @@ beforeEach(() => {
     { id: "k2", name: "Jugend", timezone: "Europe/Vienna", eventCount: 1 },
     { id: "k0", name: "Saison 2025", archivedAt: "2026-01-15T10:00:00+00:00", eventCount: 1 },
   ];
+  invitations = [];
   clubError = null;
   clubList = [club];
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete, updateUser]) fn.mockReset();
@@ -62,6 +64,7 @@ beforeEach(() => {
     if (path === "/api/clubs/c1")
       return clubError ? Promise.reject(clubError) : Promise.resolve(club);
     if (path === "/api/clubs/c1/members") return Promise.resolve(members);
+    if (path === "/api/clubs/c1/invitations") return Promise.resolve(invitations);
     // Single GET (delete dialog): fresh counters
     if (path === "/api/clubs/c1/calendars/k2")
       return Promise.resolve({ ...calendars[1], eventCount: 3 });
@@ -131,51 +134,150 @@ describe("ClubPage", () => {
     );
   });
 
-  it("adds a member by e-mail and clears the field", async () => {
+  it("invites by e-mail with a neutral message and clears the field", async () => {
+    const success = vi.spyOn(toast, "success");
     const user = userEvent.setup();
     renderClub();
     await user.type(await screen.findByLabelText(/^E-Mail-Adresse/), "jonas@beispiel.de");
-    await user.click(screen.getByRole("button", { name: "Mitglied hinzufügen" }));
+    await user.click(screen.getByRole("button", { name: "Einladung senden" }));
     await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith("/api/clubs/c1/members", { email: "jonas@beispiel.de" }),
+      expect(apiPost).toHaveBeenCalledWith("/api/clubs/c1/invitations", {
+        email: "jonas@beispiel.de",
+      }),
     );
     await waitFor(() => expect(screen.getByLabelText(/^E-Mail-Adresse/)).toHaveValue(""));
+    // never says whether the address has an account
+    expect(success).toHaveBeenCalledWith(
+      "Wenn jonas@beispiel.de eingeladen werden kann, wurde eine Einladung verschickt.",
+    );
+    expect(apiPost).not.toHaveBeenCalledWith("/api/clubs/c1/members", expect.anything());
   });
 
-  it("explains invalid, duplicate and unknown e-mail addresses", async () => {
+  it("explains invalid and duplicate addresses, quota and rate limits", async () => {
     const user = userEvent.setup();
     renderClub();
     const field = await screen.findByLabelText(/^E-Mail-Adresse/);
-    const add = screen.getByRole("button", { name: "Mitglied hinzufügen" });
+    const send = screen.getByRole("button", { name: "Einladung senden" });
 
-    await user.click(add);
+    await user.click(send);
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Bitte gib eine E-Mail-Adresse ein.",
     );
 
     await user.type(field, "kein-mail");
-    await user.click(add);
+    await user.click(send);
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Bitte gib eine gültige E-Mail-Adresse ein.",
     );
 
     await user.clear(field);
     await user.type(field, "MARA@beispiel.de");
-    await user.click(add);
+    await user.click(send);
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Diese Person ist schon Mitglied im Verein.",
     );
     expect(apiPost).not.toHaveBeenCalled();
 
-    apiPost.mockRejectedValue(Object.assign(new Error("User not found"), { status: 404 }));
+    apiPost.mockRejectedValue(new ApiError("x", 422, "quota_exceeded"));
     await user.clear(field);
-    await user.type(field, "niemand@beispiel.de");
-    await user.click(add);
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Zu dieser E-Mail-Adresse gibt es kein Konto.",
+    await user.type(field, "viele@beispiel.de");
+    await user.click(send);
+    expect(await screen.findByRole("alert")).toHaveTextContent("so viele Einladungen offen");
+    expect(field).toHaveAccessibleDescription(/so viele Einladungen offen/);
+    expect(field).toHaveValue("viele@beispiel.de");
+
+    apiPost.mockRejectedValue(new ApiError("x", 429, "rate_limited"));
+    await user.click(send);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Zu viele Einladungen");
+  });
+
+  it("lists open invitations: pending with expiry, expired with 'send again'", async () => {
+    invitations = [
+      {
+        id: "i1",
+        email: "offen@beispiel.de",
+        status: "pending",
+        invitedByName: "Alex Beispiel",
+        createdAt: "2026-10-10T10:00:00+00:00",
+        expiresAt: "2026-10-24T10:00:00+00:00",
+      },
+      {
+        id: "i2",
+        email: "alt@beispiel.de",
+        status: "expired",
+        invitedByName: null,
+        createdAt: "2026-09-01T10:00:00+00:00",
+        expiresAt: "2026-09-15T10:00:00+00:00",
+      },
+    ];
+    const user = userEvent.setup();
+    renderClub();
+    const table = await screen.findByRole("table", { name: "Offene Einladungen (2)" });
+    const pending = within(within(table).getByText("offen@beispiel.de").closest("tr")!);
+    expect(pending.getByText("Offen bis 24.10.2026")).toBeInTheDocument();
+    // only expired invitations can be sent again
+    expect(pending.queryByRole("button", { name: /erneut senden/ })).not.toBeInTheDocument();
+    const expired = within(within(table).getByText("alt@beispiel.de").closest("tr")!);
+    expect(expired.getByText("Abgelaufen")).toBeInTheDocument();
+    await user.click(
+      expired.getByRole("button", { name: "Einladung an alt@beispiel.de erneut senden" }),
     );
-    expect(field).toHaveAccessibleDescription(/kein Konto/);
-    expect(field).toHaveValue("niemand@beispiel.de");
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith("/api/clubs/c1/invitations/i2/resend", {}),
+    );
+  });
+
+  it("handles invitation_not_expired when sending again", async () => {
+    invitations = [
+      {
+        id: "i2",
+        email: "alt@beispiel.de",
+        status: "expired",
+        invitedByName: null,
+        createdAt: "2026-09-01T10:00:00+00:00",
+        expiresAt: "2026-09-15T10:00:00+00:00",
+      },
+    ];
+    apiPost.mockRejectedValue(new ApiError("x", 422, "invitation_not_expired"));
+    const info = vi.spyOn(toast, "info");
+    const user = userEvent.setup();
+    renderClub();
+    await user.click(
+      await screen.findByRole("button", { name: "Einladung an alt@beispiel.de erneut senden" }),
+    );
+    await waitFor(() =>
+      expect(info).toHaveBeenCalledWith(expect.stringContaining("noch nicht abgelaufen")),
+    );
+  });
+
+  it("revokes an invitation only after confirming", async () => {
+    invitations = [
+      {
+        id: "i1",
+        email: "offen@beispiel.de",
+        status: "pending",
+        invitedByName: null,
+        createdAt: "2026-10-10T10:00:00+00:00",
+        expiresAt: "2026-10-24T10:00:00+00:00",
+      },
+    ];
+    const user = userEvent.setup();
+    renderClub();
+    await user.click(
+      await screen.findByRole("button", { name: "Einladung an offen@beispiel.de widerrufen" }),
+    );
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Einladung an offen@beispiel.de widerrufen?",
+    });
+    expect(apiDelete).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Einladung widerrufen" }));
+    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/clubs/c1/invitations/i1"));
+  });
+
+  it("shows no invitation list without open invitations", async () => {
+    renderClub();
+    await screen.findByLabelText(/^E-Mail-Adresse/);
+    expect(screen.queryByRole("heading", { name: "Offene Einladungen" })).not.toBeInTheDocument();
   });
 
   it("removes a member only after confirming and names the consequence", async () => {
@@ -385,7 +487,9 @@ describe("ClubPage", () => {
         ? Promise.resolve(withoutCounts)
         : path === "/api/clubs/c1/members"
           ? Promise.resolve(members)
-          : Promise.resolve(path === "/api/clubs" ? clubList : calendars),
+          : path === "/api/clubs/c1/invitations"
+            ? Promise.resolve([])
+            : Promise.resolve(path === "/api/clubs" ? clubList : calendars),
     );
     const user = userEvent.setup();
     renderClub();
@@ -457,6 +561,9 @@ describe("ClubPage", () => {
     expect(
       await screen.findByText("Die Kalender konnten nicht geladen werden."),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Erneut versuchen" })).toHaveLength(2);
+    expect(
+      await screen.findByText("Die offenen Einladungen konnten nicht geladen werden."),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Erneut versuchen" })).toHaveLength(3);
   });
 });
