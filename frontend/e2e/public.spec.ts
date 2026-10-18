@@ -293,7 +293,7 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(day).toHaveCount(0);
   });
 
-  test("Termin-Detail: Datum, Ort, Eigenschaften, Kalender-Datei, Zurück mit Auswahl", async ({
+  test("Termin-Detail: Datum, Ort, Besonderheiten, Kalender-Datei, Zurück mit Auswahl", async ({
     page,
   }) => {
     await page.goto(`/feed/${seed.publicFeedId}?date=2026-10-24&view=list&groups=`);
@@ -321,7 +321,7 @@ test.describe("Öffentlicher Kalender", () => {
       "href",
       /openstreetmap\.org/,
     );
-    await expect(dialog.getByRole("region", { name: "Eigenschaften" })).toContainText("Draußen");
+    await expect(dialog.getByRole("region", { name: "Besonderheiten" })).toContainText("Draußen");
     await expect(dialog.getByRole("region", { name: "Features" })).toContainText("Getränkeverkauf");
     await expect(dialog.getByRole("region", { name: "Zielgruppen" })).toContainText("Jugend");
     // Einzeltermin als ICS

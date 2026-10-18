@@ -501,7 +501,7 @@ describe("PublicEventModal", () => {
     const maps = within(place).getByRole("link", { name: "In Karten-App öffnen" });
     expect(maps).toHaveAttribute("rel", expect.stringContaining("noreferrer"));
     expect(maps.getAttribute("href")).toContain("openstreetmap.org");
-    const props = screen.getByRole("region", { name: "Eigenschaften" });
+    const props = screen.getByRole("region", { name: "Besonderheiten" });
     expect(within(props).getByText("Draußen")).toBeInTheDocument();
     expect(
       within(screen.getByRole("region", { name: "Features" })).getByText("Getränkeverkauf"),
