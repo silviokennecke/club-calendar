@@ -79,6 +79,21 @@ framework:
             limit: 5
             interval: '1 hour'
             cache_pool: app.auth_limiter_pool
+        invitation_user:
+            policy: sliding_window
+            limit: 20
+            interval: '24 hours'
+            cache_pool: app.auth_limiter_pool
+        invitation_club:
+            policy: sliding_window
+            limit: 50
+            interval: '24 hours'
+            cache_pool: app.auth_limiter_pool
+        invitation_email:
+            policy: sliding_window
+            limit: 5
+            interval: '24 hours'
+            cache_pool: app.auth_limiter_pool
 
 services:
     app.auth_limiter_pool:

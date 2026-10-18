@@ -16,7 +16,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  * passkey_already_registered, passkey_not_found, invalid_request, invalid_reset_token, no_password,
  * last_login_method, oauth_account_not_found, unknown_provider, invalid_state / account_in_use /
  * already_linked (SSO link-complete), invalid_verification_code, verification_resend_too_early (with `retryAt`),
- * last_member / last_member_of_club (422), rate_limited, map_unavailable (503, no MAPBOX_TOKEN: geocoding and Mapbox proxy).
+ * last_member / last_member_of_club (422), invitation_not_found / invitation_expired / invitation_not_expired, rate_limited, map_unavailable (503, no MAPBOX_TOKEN: geocoding and Mapbox proxy).
  */
 class ApiProblemException extends HttpException
 {

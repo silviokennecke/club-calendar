@@ -58,6 +58,15 @@
             "body": "Du möchtest dein Club-Calendar-Konto löschen. Gib diesen Code in der App ein, um das zu bestätigen. Das Konto und seine Daten werden danach endgültig entfernt.",
             "expiry_note": "Der Code ist mindestens {minutes} Minuten gültig und funktioniert nur für dieses Konto.",
             "ignore_note": "Warst du das nicht, gib den Code nicht ein und ignoriere diese E-Mail. Dein Konto bleibt unverändert."
+        },
+        "invitation": {
+            "subject": "Einladung in den Verein {club} bei Club Calendar",
+            "greeting": "Hallo,",
+            "body": "{inviter} hat dich in den Verein „{club}“ bei Club Calendar eingeladen. Klicke auf den Button und melde dich mit dieser E-Mail-Adresse an, um die Einladung anzunehmen oder abzulehnen.",
+            "button": "Einladung ansehen",
+            "no_account": "Du hast noch kein Konto? Registriere dich zuerst mit dieser E-Mail-Adresse:",
+            "expiry_note": "Die Einladung ist {days} Tage gültig. Du trittst dem Verein erst bei, wenn du sie annimmst.",
+            "ignore_note": "Kennst du den Absender nicht oder möchtest nicht beitreten, ignoriere diese E-Mail oder lehne die Einladung ab. Ohne deine Zustimmung passiert nichts."
         }
     }
 }

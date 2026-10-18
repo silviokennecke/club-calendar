@@ -133,36 +133,6 @@ readonly class ClubService
     }
 
     /**
-     * Adds the user with this address to the club. `created` is false when the user already was a member
-     * (nothing changes; the caller answers 200 instead of 201 with the same body). Unknown and unverified addresses are the same
-     * 404 `member_not_found` (see the security audit: account enumeration).
-     *
-     * @return array{member: array{id: string, name: string, email: string}, created: bool}
-     */
-    public function addMember(Club $club, string $email): array
-    {
-        $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
-        // Unverified users (e.g. created by an SSO login that did not prove the address) are as unknown as
-        // missing ones: whoever claimed the address must not get access by it.
-        if (!$user || !$user->isEmailVerified()) {
-            throw new ApiProblemException(404, 'Member not found', self::MEMBER_NOT_FOUND_CODE);
-        }
-        $member = ['id' => $user->getId(), 'name' => $user->getName(), 'email' => $user->getEmail()];
-        $existing = $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $club, 'user' => $user]);
-        if ($existing) {
-            return ['member' => $member, 'created' => false];
-        }
-        $this->quota->assertRoom(Quota::MEMBERS_PER_CLUB, $club);
-        $cu = new ClubUser();
-        $cu->setClub($club);
-        $cu->setUser($user);
-        $this->em->persist($cu);
-        $this->em->flush();
-
-        return ['member' => $member, 'created' => true];
-    }
-
-    /**
      * Removes a member. A user id that is no member of the club, unknown or not a user id at all, is the same
      * 404 `member_not_found`: the answer never tells whether an account exists. The last member can neither
      * be removed nor leave (422 `last_member`): a club never has zero members. The club row is locked for the

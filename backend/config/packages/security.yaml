@@ -33,7 +33,7 @@ security:
     # Member routes need a signed-in user before their entity is loaded or the member check runs: without
     # a token they answer 401 `missing_token` (ExceptionListener), never 403/404 (no probing of ids).
     access_control:
-        - { path: ^/api/(clubs|calendars)(/|$), roles: IS_AUTHENTICATED }
+        - { path: ^/api/(clubs|calendars|invitations)(/|$), roles: IS_AUTHENTICATED }
         - { path: ^/api/map/geocode/, roles: IS_AUTHENTICATED }
 
 when@test:

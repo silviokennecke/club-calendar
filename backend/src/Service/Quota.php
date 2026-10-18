@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\Calendar;
 use App\Entity\CalendarFeed;
 use App\Entity\Club;
+use App\Entity\ClubInvitation;
 use App\Entity\ClubUser;
 use App\Entity\Event;
 use App\Entity\EventTemplate;
@@ -37,6 +38,7 @@ class Quota
     public const CLUBS_PER_USER = 'clubsPerUser';
     public const CALENDARS_PER_CLUB = 'calendarsPerClub';
     public const MEMBERS_PER_CLUB = 'membersPerClub';
+    public const PENDING_INVITATIONS_PER_CLUB = 'pendingInvitationsPerClub';
     public const EVENTS_PER_CALENDAR = 'eventsPerCalendar';
     public const LOCATIONS_PER_CALENDAR = 'locationsPerCalendar';
     public const TEMPLATES_PER_CALENDAR = 'templatesPerCalendar';
@@ -51,6 +53,7 @@ class Quota
         self::CLUBS_PER_USER => 50,
         self::CALENDARS_PER_CLUB => 100,
         self::MEMBERS_PER_CLUB => 500,
+        self::PENDING_INVITATIONS_PER_CLUB => 200,
         self::EVENTS_PER_CALENDAR => 20000,
         self::LOCATIONS_PER_CALENDAR => 2000,
         self::TEMPLATES_PER_CALENDAR => 500,
@@ -61,11 +64,13 @@ class Quota
         self::HOLIDAY_CALENDARS_PER_CALENDAR => 20,
     ];
 
-    /** resource => [entity, owning field] */
+    /** resource => [entity, owning field, optional field => value filter] */
     private const COUNTED = [
         self::CLUBS_PER_USER => [ClubUser::class, 'user'],
         self::CALENDARS_PER_CLUB => [Calendar::class, 'club'],
         self::MEMBERS_PER_CLUB => [ClubUser::class, 'club'],
+        // Open invitations (also expired ones, they stay listed until revoked or pruned)
+        self::PENDING_INVITATIONS_PER_CLUB => [ClubInvitation::class, 'club', ['status' => ClubInvitation::PENDING]],
         self::EVENTS_PER_CALENDAR => [Event::class, 'calendar'],
         self::LOCATIONS_PER_CALENDAR => [Location::class, 'calendar'],
         self::TEMPLATES_PER_CALENDAR => [EventTemplate::class, 'calendar'],
@@ -90,15 +95,17 @@ class Quota
         if ($adding <= 0) {
             return;
         }
-        [$class, $field] = self::COUNTED[$resource];
+        [$class, $field, $filter] = self::COUNTED[$resource] + [2 => []];
         $limit = self::LIMITS[$resource];
-        $count = (int) $this->em->createQueryBuilder()
+        $qb = $this->em->createQueryBuilder()
             ->select(sprintf('COUNT(IDENTITY(r.%s))', $field)) // COUNT(r) fails on the composite key of ClubUser
             ->from($class, 'r')
             ->where(sprintf('r.%s = :owner', $field))
-            ->setParameter('owner', $owner)
-            ->getQuery()
-            ->getSingleScalarResult();
+            ->setParameter('owner', $owner);
+        foreach ($filter as $column => $value) {
+            $qb->andWhere(sprintf('r.%s = :f_%s', $column, $column))->setParameter('f_'.$column, $value);
+        }
+        $count = (int) $qb->getQuery()->getSingleScalarResult();
         if ($count + $adding > $limit) {
             throw new ApiProblemException(422, sprintf('Limit reached: at most %d %s', $limit, $resource), self::CODE, null, [], null, ['resource' => $resource, 'limit' => $limit]);
         }

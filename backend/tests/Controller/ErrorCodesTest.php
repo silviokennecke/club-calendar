@@ -140,7 +140,7 @@ class ErrorCodesTest extends WebTestCase
             $this->assertSame(400, self::$client->getResponse()->getStatusCode(), $path);
             $this->assertSame('invalid_request', $body['code'] ?? null, $path);
         }
-        foreach (['/api/clubs', "$clubs/members", "$clubs/calendars"] as $path) {
+        foreach (['/api/clubs', "$clubs/invitations", "$clubs/calendars"] as $path) {
             self::$client->request('POST', $path, [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => $auth], '{kaputt');
             $body = json_decode((string) self::$client->getResponse()->getContent(), true);
             $this->assertSame(400, self::$client->getResponse()->getStatusCode(), $path);

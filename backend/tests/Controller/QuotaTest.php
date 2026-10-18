@@ -6,6 +6,7 @@ namespace App\Tests\Controller;
 
 use App\Entity\Calendar;
 use App\Entity\Club;
+use App\Entity\ClubInvitation;
 use App\Entity\ClubUser;
 use App\Entity\User;
 use App\Service\EventService;
@@ -139,7 +140,7 @@ class QuotaTest extends WebTestCase
 
     public function testMembersPerClub(): void
     {
-        ['auth' => $auth, 'club' => $club] = $this->setup1();
+        ['club' => $club, 'user' => $owner] = $this->setup1();
         $limit = Quota::LIMITS[Quota::MEMBERS_PER_CLUB];
         $extra = TestHelper::createUser(self::$em, self::$hasher, 'extra@example.com');
         for ($i = 1; $i < $limit; ++$i) {
@@ -147,10 +148,35 @@ class QuotaTest extends WebTestCase
             self::$em->persist($u);
             self::$em->persist((new ClubUser())->setClub($club)->setUser($u));
         }
+        self::$em->persist(new ClubInvitation($club, $owner, 'extra@example.com', str_repeat('a', 64), new \DateTimeImmutable()));
+        self::$em->flush();
+        $invitation = self::$em->getRepository(ClubInvitation::class)->findOneBy([]);
+
+        // The invitation is accepted by the user who would be the 501st member
+        $r = $this->req('POST', "/api/invitations/{$invitation->getId()}/accept", TestHelper::authHeader($extra, self::$tokens));
+        $this->assertQuota($r, Quota::MEMBERS_PER_CLUB, $limit);
+    }
+
+    public function testPendingInvitationsPerClub(): void
+    {
+        ['auth' => $auth, 'club' => $club, 'user' => $user] = $this->setup1();
+        $limit = Quota::LIMITS[Quota::PENDING_INVITATIONS_PER_CLUB];
+        for ($i = 0; $i < $limit; ++$i) {
+            self::$em->persist(new ClubInvitation($club, $user, "p$i@example.com", hash('sha256', "t$i"), new \DateTimeImmutable()));
+        }
+        // Answered invitations do not count
+        $done = new ClubInvitation($club, $user, 'done@example.com', hash('sha256', 'done'), new \DateTimeImmutable());
+        $done->resolve(ClubInvitation::DECLINED, new \DateTimeImmutable());
+        self::$em->persist($done);
         self::$em->flush();
 
-        $r = $this->req('POST', "/api/clubs/{$club->getId()}/members", $auth, ['email' => $extra->getEmail()]);
-        $this->assertQuota($r, Quota::MEMBERS_PER_CLUB, $limit);
+        $r = $this->req('POST', "/api/clubs/{$club->getId()}/invitations", $auth, ['email' => 'one-too-many@example.com']);
+        $this->assertQuota($r, Quota::PENDING_INVITATIONS_PER_CLUB, $limit);
+        self::$em->clear();
+        $this->assertSame($limit + 1, self::$em->getRepository(ClubInvitation::class)->count([]));
+
+        self::$em->getConnection()->executeStatement("DELETE FROM club_invitation WHERE email = 'p0@example.com'");
+        $this->assertSame(204, $this->req('POST', "/api/clubs/{$club->getId()}/invitations", $auth, ['email' => 'fits@example.com'])['status']);
     }
 
     public function testEventsPerCalendarOnEveryWritePath(): void

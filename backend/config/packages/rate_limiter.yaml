@@ -100,3 +100,16 @@ framework:
             policy: sliding_window
             limit: 5
             interval: '1 hour'
+        # Club invitations (mail sending): per user, per club and per invited address, 24 hours each.
+        invitation_user:
+            policy: sliding_window
+            limit: 20
+            interval: '24 hours'
+        invitation_club:
+            policy: sliding_window
+            limit: 50
+            interval: '24 hours'
+        invitation_email:
+            policy: sliding_window
+            limit: 5
+            interval: '24 hours'
