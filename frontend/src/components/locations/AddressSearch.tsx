@@ -5,6 +5,8 @@ import { apiFetch } from "@/lib/api";
 
 export interface AddressSuggestion {
   label: string;
+  /** Name of a place (POI); its label starts with it. */
+  name?: string | null;
   lat: number;
   lng: number;
   street?: string | null;
@@ -152,7 +154,20 @@ export function AddressSearch({ onPick, proximity, id = "pl-search" }: AddressSe
             <li key={`${s.label}-${i}`}>
               <button type="button" onClick={() => pick(s)}>
                 <Icon glyph="map-pin" size={18} />
-                <span className="ap-grow">{s.label}</span>
+                <span className="ap-grow">
+                  {s.name ? (
+                    <>
+                      <strong>{s.name}</strong>
+                      <span className="t-sm" style={{ display: "block" }}>
+                        {s.label.startsWith(`${s.name}, `)
+                          ? s.label.slice(s.name.length + 2)
+                          : s.label}
+                      </span>
+                    </>
+                  ) : (
+                    s.label
+                  )}
+                </span>
               </button>
             </li>
           ))}

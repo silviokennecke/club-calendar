@@ -1358,8 +1358,8 @@
       },
       "search": {
         "label": "Search address",
-        "hint": "Pick a suggestion to set the fields and the position.",
-        "placeholder": "Enter street and town",
+        "hint": "Search by place name or address. Pick a suggestion to set the fields and the position.",
+        "placeholder": "Enter name, street or town",
         "loading": "Searching …",
         "found_one": "{{count}} suggestion found",
         "found_other": "{{count}} suggestions found",
