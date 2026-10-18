@@ -99,11 +99,11 @@ class IcsService
         $parts = [];
         if ($event->getFeatures()->count() > 0) {
             $names = array_map(fn ($ef) => $ef->getFeature()->getName(), $event->getFeatures()->getValues());
-            $parts[] = 'Features: '.implode(', ', $names);
+            $parts[] = 'Zusatzangebote: '.implode(', ', $names);
         }
         if ($event->getTargetGroups()->count() > 0) {
             $names = array_map(fn ($etg) => $etg->getTargetGroup()->getName(), $event->getTargetGroups()->getValues());
-            $parts[] = 'Zielgruppen: '.implode(', ', $names);
+            $parts[] = 'Gruppen: '.implode(', ', $names);
         }
         $description = implode("\n", $parts);
 
