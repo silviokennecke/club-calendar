@@ -65,7 +65,6 @@ E2E-Umgebung: `E2E.md`.
 
 - **Doppelte Namen** von Eigenschaften/Features/Zielgruppen aus der Zeit vor Paket 1 bleiben erhalten; es gibt keinen
   Unique-Index (die Prüfung ist eine Komfortprüfung, gleichzeitige Anlagen können beide durchgehen).
-- **Rollen:** keine (jedes Mitglied darf alles, auch den Verein löschen; siehe Security-Audit).
 - `PATCH /api/clubs/{id}` kann die Zeitzone ändern; das Design zeigt sie nur im Seitenkopf, daher kein UI-Feld.
 
 ### Dokumentation
@@ -76,7 +75,7 @@ E2E-Umgebung: `E2E.md`.
 
 ## Offene Sicherheitsrisiken
 
-**Siehe Security-Audit** (Bericht des Auftraggebers, nicht im Repository): Rollen/letzter Admin (Einladungen: umgesetzt, M8),
+**Siehe Security-Audit** (Bericht des Auftraggebers, nicht im Repository): Rollen/letzter Admin (umgesetzt),
 Vorab-Registrierung mit fremder Adresse (Pre-Hijacking, nachgestellt in
 `SessionInvalidationTest::testPreRegisteredPasswordStillWorksAfterTheOwnerConfirms`), Mapbox-Proxy (jetzt nur für angemeldete Nutzer, `access_control` `^/api/mapbox/`; anonym bleiben nur die statischen Kartenbilder `/api/map/image/*`),
 Microsoft-SSO ohne vertrauenswürdiges `email_verified` (inkl. "unbestätigtes Microsoft-Konto blockiert die
@@ -99,7 +98,7 @@ Nicht im Audit, gering:
   `Version20261009120000` (Vorlagen-Zeiten nullable), `Version20261010120000` (`event.external_uid`),
   `Version20261013120000` (`password_reset`, `email_change`, `passkey.last_used_at`, `club_user.last_calendar_id`),
   `Version20261014120000` (`event_series`, `event.series_id`), `Version20261015120000` (Feed-Status: `PUBLIC` →
-  `CLUB`, `PRIVATE` bleibt, `calendar_feed.searchable`). Nach dieser Migration sind bisher öffentliche Feeds
+  `CLUB`, `PRIVATE` bleibt, `calendar_feed.searchable`), `Version20261019120000` (Club roles: `club_user.role` mit Enum viewer|editor|admin, alle bestehenden Mitglieder werden admin, Einladungen tragen eine `role` mit default editor). Nach der Feed-Status-Migration sind bisher öffentliche Feeds
   nur per Link (nicht indexiert); wer einen Feed in Suchmaschinen haben will, stellt ihn auf "Öffentlich" und
   schaltet "Für Suchmaschinen auffindbar" ein.
 - **Umgebungsvariablen (Produktion):** `APP_SECRET` (signiert Passkey-Challenges, OAuth-State und SSO-Tickets; ein

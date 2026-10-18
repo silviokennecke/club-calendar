@@ -204,8 +204,8 @@ operations), `docs/api/openapi.yaml` (API reference).
     pure logic in `src/lib/feeds/` (`feedAddresses`: private feeds carry `?secret=` in every address, public and club
     feeds never; `feedStatus`, `requiresSecret`, `effectiveSearchable` (only `PUBLIC` sends `searchable: true`),
     form values, payload). Visibility is always icon + word (no emoji icons). Type `FeedVisibility` in `lib/types.ts`.
-  - Club: `/clubs/:clubId` (`pages/ClubPage`, in `components/club/`: `ClubNameSection`, `MembersSection` (table,
-    remove / leave with `ConfirmDialog`; `InviteSection`: invite by e-mail with a neutral answer (never "no account"), open
+  - Club: `/clubs/:clubId` (`pages/ClubPage`, in `components/club/`: `ClubNameSection`, `MembersSection` (table with role per member,
+    remove / leave with `ConfirmDialog` (last admin guard); `InviteSection`: admins only, invite by e-mail with role (default editor), open
     invitations pending / expired with "send again" (expired only) and revoke), `CalendarsSection` (create form,
     one `CalendarRow` per calendar with open / duplicate / archive / delete, archived list with restore). Rows show "n Termine"
     (`eventCount`). Deleting the club asks to type its name (`ConfirmDialog` `requireText`) and names the scope from
