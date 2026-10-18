@@ -5,7 +5,7 @@ This directory contains reusable MJML components for the Club Calendar email tem
 ## Components Overview
 
 ### 1. header.mjml
-Renders the brand header with the "📅 Club Calendar" logo and styling.
+Renders the brand header with the "Club Calendar wordmark" logo and styling.
 
 **Usage:**
 ```mjml
@@ -15,7 +15,7 @@ Renders the brand header with the "📅 Club Calendar" logo and styling.
 **Output:**
 - Brand name with emoji icon
 - Consistent styling across all templates
-- Font size: 14px, Color: #888888
+- Font size: 14px, Color: #4a5b55
 
 ---
 
@@ -33,10 +33,10 @@ Reference documentation for the content section wrapper pattern.
 
 **Theme Variables:**
 - Section background: `#ffffff` (white)
-- Body background: `#f4f4f4` (light gray)
-- Text color: `#333333` (dark)
-- Muted text: `#888888` (light gray)
-- Primary/link color: `#2563eb` (blue)
+- Body background: `#f7f8f5` (light, greenish)
+- Text color: `#14221e` (dark)
+- Muted text: `#4a5b55` (light, greenish)
+- Primary/link color: `#0b6b58` (brand green)
 - Padding: `40px 30px`
 
 ---
@@ -54,9 +54,9 @@ Reusable CTA button with fallback link for email clients that don't support butt
 ```
 
 **Button Styling:**
-- Background color: `#2563eb` (primary blue)
+- Background color: `#0b6b58` (brand green)
 - Text color: `#ffffff` (white)
-- Border radius: `6px`
+- Border radius: `8px`
 - Font size: `16px`
 - Padding: `12px 24px`
 
@@ -72,7 +72,7 @@ Reusable CTA button with fallback link for email clients that don't support butt
 ---
 
 ### 4. footer.mjml
-Placeholder for footer content (currently minimal).
+Footer: hairline and muted brand line.
 
 **Usage:**
 ```mjml
@@ -98,11 +98,11 @@ Here's how to structure a template using these components:
     <mj-title>{{ 'email.reset.subject'|trans }}</mj-title>
     <mj-preview>{{ 'email.reset.subject'|trans }}</mj-preview>
     <mj-attributes>
-      <mj-all font-family="Arial, sans-serif" />
-      <mj-text font-size="16px" color="#333333" line-height="1.6" />
+      <mj-all font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" />
+      <mj-text font-size="16px" color="#14221e" line-height="1.6" />
     </mj-attributes>
   </mj-head>
-  <mj-body background-color="#f4f4f4">
+  <mj-body background-color="#f7f8f5">
     <mj-section background-color="#ffffff" padding="40px 30px">
       <mj-column>
         <!-- Brand header -->
@@ -124,10 +124,10 @@ Here's how to structure a template using these components:
         <mj-include path="./_components/button.mjml" />
         
         <!-- Additional notes -->
-        <mj-text font-size="13px" color="#888888" padding-top="24px">
+        <mj-text font-size="13px" color="#4a5b55" padding-top="24px">
           {{ 'email.reset.expiry_note'|trans }}
         </mj-text>
-        <mj-text font-size="13px" color="#888888">
+        <mj-text font-size="13px" color="#4a5b55">
           {{ 'email.reset.ignore_note'|trans }}
         </mj-text>
       </mj-column>
@@ -156,11 +156,11 @@ Keep these constants consistent across all templates:
 
 | Element | Color | Usage |
 |---------|-------|-------|
-| Body background | `#f4f4f4` | Page background |
+| Body background | `#f7f8f5` | Page background |
 | Section background | `#ffffff` | Content wrapper |
-| Primary text | `#333333` | Body text |
-| Muted text | `#888888` | Headers, hints, secondary text |
-| Primary/Link | `#2563eb` | Buttons, links |
+| Primary text | `#14221e` | Body text |
+| Muted text | `#4a5b55` | Headers, hints, secondary text |
+| Primary/Link | `#0b6b58` | Buttons, links |
 | Button text | `#ffffff` | Button label |
 
 ---
@@ -169,10 +169,27 @@ Keep these constants consistent across all templates:
 
 When refactoring existing templates to use components:
 
-- [ ] Remove hardcoded header "📅 Club Calendar" lines
+- [ ] Remove hardcoded header "Club Calendar wordmark" lines
 - [ ] Replace with `<mj-include path="./_components/header.mjml" />`
 - [ ] Extract button definitions into component pattern
 - [ ] Set `buttonUrl` and `buttonText` variables before including button component
 - [ ] Verify all theme colors remain consistent
 - [ ] Test compiled `.html.twig` output
 - [ ] Run `npm run build:mail` to rebuild all templates
+
+## New components (redesign)
+
+All use the redesign palette (light only). Set the Twig variable first, then include.
+
+```
+{% set code = code %}                      {# optional: code is usually already in the context #}
+<mj-include path="./_components/code.mjml" />        <!-- code: big monospace verification code box -->
+
+{% set noticeText = 'email.xyz.note'|trans %}
+<mj-include path="./_components/notice.mjml" />          <!-- neutral info box -->
+<mj-include path="./_components/notice-warning.mjml" />  <!-- red warning box, same variable -->
+```
+
+Recommended page frame: `mj-body` background `#f7f8f5`, `mj-section` background `#ffffff` padding `32px`,
+body text `#14221e` 16px/24px, muted text `#4a5b55` 13-14px, headings 24px weight 800. Font stack:
+`system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif` (the app's Figtree is not loaded in mails).

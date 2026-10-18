@@ -19,16 +19,23 @@ module.exports = {
    */
   colors: {
     // Primary brand color
-    primary: '#2563eb',
+    primary: '#0b6b58',
 
     // Backgrounds
-    background: '#f4f4f4',    // Page background
+    background: '#f7f8f5',    // Page background
     surface: '#ffffff',       // Content container
 
     // Text colors
-    text: '#333333',          // Primary text
-    textMuted: '#888888',     // Secondary/disabled text
-    textDark: '#111111',      // High contrast (code display)
+    text: '#14221e',          // Primary text
+    textMuted: '#4a5b55',     // Secondary/disabled text
+    textDark: '#14221e',      // High contrast (code display)
+
+    // UI elements
+    border: '#cfd7d2',        // Borders and dividers
+    softBrandFill: '#dcefe9', // Soft brand background (code box)
+    sunken: '#edf0ec',        // Sunken/neutral background (notice)
+    danger: '#b3261e',        // Danger/error color
+    dangerSoftFill: '#fbe3e0', // Danger background
   },
 
   /**
@@ -37,7 +44,8 @@ module.exports = {
    */
   fonts: {
     // Font family stack
-    family: 'Arial, sans-serif',
+    family: 'system-ui, -apple-system, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif',
+    monospace: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
 
     // Font sizes for semantic usage
     size: {
@@ -98,9 +106,9 @@ module.exports = {
 
     // Primary button
     button: {
-      backgroundColor: '#2563eb',
+      backgroundColor: '#0b6b58',
       textColor: '#ffffff',
-      borderRadius: '6px',
+      borderRadius: '8px',
       fontSize: '16px',
       paddingVertical: '12px',
       paddingHorizontal: '24px',
@@ -109,7 +117,7 @@ module.exports = {
     // Brand header
     header: {
       fontSize: '14px',
-      color: '#888888',
+      color: '#4a5b55',
       paddingBottom: '16px',
     },
 
@@ -123,7 +131,7 @@ module.exports = {
     // Body paragraph
     paragraph: {
       fontSize: '16px',
-      color: '#333333',
+      color: '#14221e',
       paddingBottom: '24px',
       lineHeight: 1.6,
     },
@@ -131,7 +139,7 @@ module.exports = {
     // Small text / fine print
     small: {
       fontSize: '13px',
-      color: '#888888',
+      color: '#4a5b55',
       paddingTop: '24px',
     },
 
@@ -139,9 +147,11 @@ module.exports = {
     code: {
       fontSize: '36px',
       fontWeight: 'bold',
-      letterSpacing: '10px',
-      color: '#111111',
-      containerBackgroundColor: '#f4f4f4',
+      letterSpacing: '8px',
+      color: '#14221e',
+      containerBackgroundColor: '#dcefe9',
+      containerBorder: '1px solid #cfd7d2',
+      containerBorderRadius: '10px',
       padding: '16px 24px',
     },
   },

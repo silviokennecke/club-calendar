@@ -5,12 +5,12 @@ Reusable MJML components for Club Calendar email templates. These components ens
 ## Components
 
 ### `header.mjml`
-The brand header component with "📅 Club Calendar" branding.
+The brand header component with "Club Calendar wordmark" branding.
 
 **Includes:**
-- Brand emoji icon (📅)
+- Text wordmark "Club Calendar" in brand green plus a hairline
 - Company name
-- Consistent styling (14px, #888888 color)
+- Consistent styling (14px, #4a5b55 color)
 
 **Reusable across:** All email types
 
@@ -25,7 +25,7 @@ The brand header component with "📅 Club Calendar" branding.
 Call-to-action button component with fallback link.
 
 **Features:**
-- Primary action button (#2563eb blue background)
+- Primary action button (#0b6b58 brand-green background)
 - Fallback text link for email clients that don't support buttons
 - Consistent padding, border-radius, and typography
 - White text on colored background for contrast
@@ -46,7 +46,7 @@ Call-to-action button component with fallback link.
 **Output:**
 ```
 ┌─────────────────────────────┐
-│      [Reset Password]       │  ← clickable button (#2563eb)
+│      [Reset Password]       │  ← clickable button (#0b6b58)
 └─────────────────────────────┘
 
 Or copy this link:
@@ -72,12 +72,12 @@ Reference documentation for the content section wrapper pattern.
 **Theme values to use:**
 - `background-color="#ffffff"` — white content section
 - `padding="40px 30px"` — standard margins
-- Wrap in `<mj-body background-color="#f4f4f4">` — light gray body background
+- Wrap in `<mj-body background-color="#f7f8f5">` — light gray body background
 
 ---
 
 ### `footer.mjml`
-Placeholder footer component for future expansion.
+Footer: hairline and muted brand line.
 
 **Current state:** Minimal/empty (ready for expansion)
 
@@ -101,13 +101,13 @@ Keep these values consistent across all templates and components:
 
 | Element | Hex Code | Usage |
 |---------|----------|-------|
-| **Body Background** | `#f4f4f4` | Page background (light gray) |
+| **Body Background** | `#f7f8f5` | Page background (light, greenish) |
 | **Section Background** | `#ffffff` | Content wrapper (white) |
-| **Primary Text** | `#333333` | Body text, headings |
-| **Muted Text** | `#888888` | Headers, hints, timestamps, secondary info |
-| **Primary Color** | `#2563eb` | Button background, link color (blue) |
+| **Primary Text** | `#14221e` | Body text, headings |
+| **Muted Text** | `#4a5b55` | Headers, hints, timestamps, secondary info |
+| **Primary Color** | `#0b6b58` | Button background, link color (brand green) |
 | **Button Text** | `#ffffff` | Text on button (white) |
-| **Border Radius** | `6px` | Button corners |
+| **Border Radius** | `8px` | Button corners (boxes 6-10px) |
 
 ---
 
@@ -135,11 +135,11 @@ The MJML compiler resolves all `<mj-include>` statements, inlining the component
     <mj-title>{{ 'email.action.subject'|trans }}</mj-title>
     <mj-preview>{{ 'email.action.subject'|trans }}</mj-preview>
     <mj-attributes>
-      <mj-all font-family="Arial, sans-serif" />
-      <mj-text font-size="16px" color="#333333" line-height="1.6" />
+      <mj-all font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" />
+      <mj-text font-size="16px" color="#14221e" line-height="1.6" />
     </mj-attributes>
   </mj-head>
-  <mj-body background-color="#f4f4f4">
+  <mj-body background-color="#f7f8f5">
     <mj-section background-color="#ffffff" padding="40px 30px">
       <mj-column>
         
@@ -207,8 +207,8 @@ To refactor an existing template to use components:
 
 ### Before:
 ```mjml
-<mj-text font-size="14px" color="#888888" padding-bottom="16px">
-  📅 Club Calendar
+<mj-text font-size="14px" color="#4a5b55" padding-bottom="16px">
+  Club Calendar wordmark
 </mj-text>
 ```
 
@@ -218,7 +218,7 @@ To refactor an existing template to use components:
 ```
 
 ### Migration checklist:
-- [ ] Remove hardcoded "📅 Club Calendar" header
+- [ ] Remove hardcoded "Club Calendar wordmark" header
 - [ ] Replace with header component include
 - [ ] Extract button pattern into button component
 - [ ] Define `buttonUrl` and `buttonText` before button include
@@ -255,9 +255,9 @@ To refactor an existing template to use components:
    - 12px between related items
 
 6. **Color contrast**
-   - Primary text (#333333) on white background ✓
-   - Muted text (#888888) on white background ✓
-   - Button text (#ffffff) on blue background (#2563eb) ✓
+   - Primary text (#14221e) on white background ✓
+   - Muted text (#4a5b55) on white background ✓
+   - Button text (#ffffff) on brand-green background (#0b6b58) ✓
 
 ---
 
@@ -268,5 +268,5 @@ To refactor an existing template to use components:
 - **`example-verify-email.mjml`** — Example without button
 - **`header.mjml`** — Brand header component
 - **`button.mjml`** — CTA button component with fallback
-- **`footer.mjml`** — Footer placeholder
+- **`footer.mjml`** — Footer (hairline + brand line)
 - **`section.mjml`** — Section pattern documentation

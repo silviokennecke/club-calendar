@@ -16,11 +16,11 @@
     <mj-title>{{ 'email.verify.subject'|trans }}</mj-title>
     <mj-preview>{{ 'email.verify.subject'|trans }}</mj-preview>
     <mj-attributes>
-      <mj-all font-family="Arial, sans-serif" />
-      <mj-text font-size="16px" color="#333333" line-height="1.6" />
+      <mj-all font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" />
+      <mj-text font-size="16px" color="#14221e" line-height="1.6" />
     </mj-attributes>
   </mj-head>
-  <mj-body background-color="#f4f4f4">
+  <mj-body background-color="#f7f8f5">
     <mj-section background-color="#ffffff" padding="40px 30px">
       <mj-column>
         <!-- Brand header component - same across all templates -->
@@ -43,18 +43,18 @@
           font-size="36px"
           font-weight="bold"
           letter-spacing="10px"
-          color="#111111"
-          container-background-color="#f4f4f4"
+          color="#14221e"
+          container-background-color="#f7f8f5"
           padding="16px 24px"
         >
           {{ code }}
         </mj-text>
 
         <!-- Expiry and security notes -->
-        <mj-text font-size="13px" color="#888888" padding-top="24px">
+        <mj-text font-size="13px" color="#4a5b55" padding-top="24px">
           {{ 'email.verify.expiry_note'|trans({minutes: validMinutes}) }}
         </mj-text>
-        <mj-text font-size="13px" color="#888888">
+        <mj-text font-size="13px" color="#4a5b55">
           {{ 'email.verify.ignore_note'|trans }}
         </mj-text>
       </mj-column>
