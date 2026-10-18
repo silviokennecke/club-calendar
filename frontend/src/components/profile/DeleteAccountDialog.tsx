@@ -100,6 +100,7 @@ export function DeleteAccountDialog({
       else if (errorCode === "rate_limited") setFailure(t("profile.danger.rateLimited"));
       else if (errorCode === "last_member_of_club")
         setFailure(t("profile.danger.lastMemberOfClub"));
+      else if (errorCode === "last_admin_of_club") setFailure(t("profile.danger.lastAdminOfClub"));
       else setFailure(t("profile.danger.failed"));
       setBusy(false);
       return;

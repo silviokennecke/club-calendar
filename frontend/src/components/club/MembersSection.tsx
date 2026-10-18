@@ -2,12 +2,22 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Banner, Button, ConfirmDialog, EmptyState, Skeleton, toast } from "@/components/ui/shared";
-import { apiDelete, apiGet } from "@/lib/api";
+import {
+  Banner,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  NativeSelect,
+  Skeleton,
+  Tag,
+  toast,
+} from "@/components/ui/shared";
+import { apiDelete, apiGet, apiPatch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { focusAfterDialog } from "@/lib/focus";
-import { isLastMember, isMemberGone } from "@/lib/club";
-import type { Club, User } from "@/lib/types";
+import { isInvalidRole, isLastAdmin, isLastMember, isMemberGone } from "@/lib/club";
+import { CLUB_ROLES, permissionsFor } from "@/lib/club/permissions";
+import type { Club, ClubMember, ClubRole } from "@/lib/types";
 import { InviteSection } from "./InviteSection";
 
 /**
@@ -19,16 +29,37 @@ export function MembersSection({ club }: { club: Club }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
-  const [removing, setRemoving] = useState<User | null>(null);
+  const [removing, setRemoving] = useState<ClubMember | null>(null);
+  const { isAdmin } = permissionsFor(club.role);
   const queryKey = ["members", club.id];
 
-  const members = useQuery<User[]>({
+  const members = useQuery<ClubMember[]>({
     queryKey,
-    queryFn: () => apiGet<User[]>(`/api/clubs/${club.id}/members`),
+    queryFn: () => apiGet<ClubMember[]>(`/api/clubs/${club.id}/members`),
   });
   const list = members.data ?? [];
 
-  async function remove(member: User) {
+  async function changeRole(member: ClubMember, role: ClubRole) {
+    try {
+      await apiPatch(`/api/clubs/${club.id}/members/${member.id}`, { role });
+      toast.success(
+        t("club.members.roleChanged", { name: member.name, role: t(`club.roles.${role}`) }),
+      );
+      // the own role decides what the page offers
+      if (member.id === user?.id) void qc.invalidateQueries({ queryKey: ["club", club.id] });
+    } catch (error) {
+      toast.error(
+        isLastAdmin(error)
+          ? t("club.members.lastAdmin")
+          : isInvalidRole(error)
+            ? t("club.members.invalidRole")
+            : t("club.members.roleFailed"),
+      );
+    }
+    await qc.invalidateQueries({ queryKey });
+  }
+
+  async function remove(member: ClubMember) {
     const self = member.id === user?.id;
     try {
       await apiDelete(`/api/clubs/${club.id}/members/${member.id}`);
@@ -37,11 +68,13 @@ export function MembersSection({ club }: { club: Club }) {
       if (!isMemberGone(error)) {
         // 422 last_member: the others left meanwhile; the club keeps at least one member
         toast.error(
-          isLastMember(error)
-            ? t("club.members.lastMember")
-            : t(self ? "club.members.leaveFailed" : "club.members.removeFailed"),
+          isLastAdmin(error)
+            ? t("club.members.lastAdmin")
+            : isLastMember(error)
+              ? t("club.members.lastMember")
+              : t(self ? "club.members.leaveFailed" : "club.members.removeFailed"),
         );
-        if (isLastMember(error)) void qc.invalidateQueries({ queryKey });
+        if (isLastMember(error) || isLastAdmin(error)) void qc.invalidateQueries({ queryKey });
         return;
       }
     }
@@ -98,6 +131,7 @@ export function MembersSection({ club }: { club: Club }) {
             <tr>
               <th scope="col">{t("club.members.colName")}</th>
               <th scope="col">{t("club.members.colEmail")}</th>
+              <th scope="col">{t("club.members.colRole")}</th>
               <th scope="col" className="ap-col-actions">
                 {t("club.members.colAction")}
               </th>
@@ -117,19 +151,40 @@ export function MembersSection({ club }: { club: Club }) {
                     </span>
                   </td>
                   <td data-label={t("club.members.colEmail")}>{m.email}</td>
+                  <td data-label={t("club.members.colRole")}>
+                    {isAdmin ? (
+                      <NativeSelect
+                        value={m.role}
+                        aria-label={t("club.members.roleLabel", { name: m.name })}
+                        onChange={(e) => void changeRole(m, e.target.value as ClubRole)}
+                      >
+                        {CLUB_ROLES.map((r) => (
+                          <option key={r} value={r}>
+                            {t(`club.roles.${r}`)}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                    ) : (
+                      <Tag tone={m.role === "admin" ? "brand" : "neutral"}>
+                        {t(`club.roles.${m.role}`)}
+                      </Tag>
+                    )}
+                  </td>
                   <td className="ap-col-actions" data-label={t("club.members.colAction")}>
-                    <Button
-                      variant="secondary"
-                      disabled={list.length <= 1}
-                      aria-label={
-                        self
-                          ? t("club.members.leaveLabel", { club: club.name })
-                          : t("club.members.removeLabel", { name: m.name })
-                      }
-                      onClick={() => setRemoving(m)}
-                    >
-                      {self ? t("club.members.leave") : t("club.members.remove")}
-                    </Button>
+                    {(self || isAdmin) && (
+                      <Button
+                        variant="secondary"
+                        disabled={list.length <= 1}
+                        aria-label={
+                          self
+                            ? t("club.members.leaveLabel", { club: club.name })
+                            : t("club.members.removeLabel", { name: m.name })
+                        }
+                        onClick={() => setRemoving(m)}
+                      >
+                        {self ? t("club.members.leave") : t("club.members.remove")}
+                      </Button>
+                    )}
                   </td>
                 </tr>
               );
@@ -158,7 +213,7 @@ export function MembersSection({ club }: { club: Club }) {
         </div>
       </div>
       {table}
-      <InviteSection club={club} members={list} />
+      {isAdmin && <InviteSection club={club} members={list} />}
 
       {removing && (
         <ConfirmDialog

@@ -28,6 +28,16 @@ export function isLastMember(error: unknown): boolean {
   return (error as { code?: unknown } | null)?.code === "last_member";
 }
 
+/** Removing / demoting / leaving was refused: the user is the only admin of a club with other members (422 `last_admin`). */
+export function isLastAdmin(error: unknown): boolean {
+  return (error as { code?: unknown } | null)?.code === "last_admin";
+}
+
+/** The role is not one of viewer|editor|admin (422 `invalid_role`). */
+export function isInvalidRole(error: unknown): boolean {
+  return (error as { code?: unknown } | null)?.code === "invalid_role";
+}
+
 /** Name check of the club name and the "Kalender anlegen" forms. */
 export function isBlank(value: string): boolean {
   return value.trim().length === 0;

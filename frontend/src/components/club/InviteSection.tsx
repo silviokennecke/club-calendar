@@ -7,6 +7,8 @@ import {
   ConfirmDialog,
   ErrorSummary,
   Field,
+  NativeSelect,
+  Tag,
   TextInput,
   toast,
 } from "@/components/ui/shared";
@@ -21,7 +23,8 @@ import {
   type ClubInvitation,
   type InviteProblem,
 } from "@/lib/invitations";
-import type { Club, User } from "@/lib/types";
+import { CLUB_ROLES } from "@/lib/club/permissions";
+import type { Club, ClubRole, User } from "@/lib/types";
 
 /**
  * "Per E-Mail einladen" form and the list of open invitations of the club. The answer to an invitation is
@@ -32,6 +35,7 @@ export function InviteSection({ club, members }: { club: Club; members: Readonly
   const qc = useQueryClient();
   const { user } = useAuth();
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState<ClubRole>("editor");
   const [problem, setProblem] = useState<InviteProblem | null>(null);
   const [signal, setSignal] = useState(0);
   const [sending, setSending] = useState(false);
@@ -58,10 +62,18 @@ export function InviteSection({ club, members }: { club: Club; members: Readonly
     setProblem(null);
     setSending(true);
     try {
-      await apiPost(`/api/clubs/${club.id}/invitations`, { email: email.trim() });
+      await apiPost(`/api/clubs/${club.id}/invitations`, {
+        email: email.trim(),
+        role,
+      });
       await qc.invalidateQueries({ queryKey });
       setEmail("");
-      toast.success(t("club.invite.sent", { email: email.trim() }));
+      toast.success(
+        t("club.invite.sent", {
+          email: email.trim(),
+          role,
+        }),
+      );
       emailRef.current?.focus();
     } catch (error) {
       setProblem(inviteFailure(error));
@@ -140,6 +152,15 @@ export function InviteSection({ club, members }: { club: Club; members: Readonly
             }}
           />
         </Field>
+        <Field id="cl-role" label={t("club.invite.roleLabel")} hint={t("club.invite.roleHint")}>
+          <NativeSelect value={role} onChange={(e) => setRole(e.target.value as ClubRole)}>
+            {CLUB_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {t(`club.roles.${r}`)}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
         <div className="ap-actions">
           <Button type="submit" icon="mail" loading={sending}>
             {t("club.invite.send")}
@@ -173,6 +194,7 @@ export function InviteSection({ club, members }: { club: Club; members: Readonly
               <thead>
                 <tr>
                   <th scope="col">{t("club.members.colEmail")}</th>
+                  <th scope="col">{t("club.members.colRole")}</th>
                   <th scope="col">{t("club.invite.colStatus")}</th>
                   <th scope="col" className="ap-col-actions">
                     {t("club.members.colAction")}
@@ -185,6 +207,9 @@ export function InviteSection({ club, members }: { club: Club; members: Readonly
                   return (
                     <tr key={inv.id}>
                       <td data-label={t("club.members.colEmail")}>{inv.email}</td>
+                      <td data-label={t("club.members.colRole")}>
+                        <Tag>{t(`club.roles.${inv.role}`)}</Tag>
+                      </td>
                       <td data-label={t("club.invite.colStatus")}>
                         {expired ? (
                           <>
