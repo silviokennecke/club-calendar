@@ -43,8 +43,9 @@ module.exports = {
    * Defines font families and size scale
    */
   fonts: {
-    // Font family stack
-    family: 'system-ui, -apple-system, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif',
+    // Font family stack. No Roboto: MJML auto-imports Google Fonts for it (external host);
+    // `sans-serif` resolves to Roboto on Android anyway.
+    family: 'system-ui, -apple-system, \'Segoe UI\', Helvetica, Arial, sans-serif',
     monospace: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
 
     // Font sizes for semantic usage

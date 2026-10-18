@@ -98,7 +98,7 @@ class AccountDeletionTest extends WebTestCase
     {
         $mail = $this->getMailerMessage($index);
         $this->assertInstanceOf(Email::class, $mail);
-        $this->assertSame(1, preg_match('/letter-spacing:10px[^>]*>(\d{6})</', (string) $mail->getHtmlBody(), $m));
+        $this->assertSame(1, preg_match('/letter-spacing:\d+px[^>]*>(\d{6})</', (string) $mail->getHtmlBody(), $m));
 
         return $m[1];
     }
