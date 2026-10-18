@@ -160,9 +160,10 @@ class ApiConsistencyTest extends WebTestCase
     public function testMapboxProxyErrorsAreProblems(): void
     {
         static::getContainer()->set(MapAvailability::class, new MapAvailability('pk.test'));
+        $auth = TestHelper::authHeader(TestHelper::createUser($this->em, $this->hasher), $this->tokens);
 
-        $this->assertProblem(400, ['code' => 'invalid_request'], $this->req('GET', '/api/mapbox/evil.example.com/styles/v1/x'));
-        $this->assertProblem(403, [], $this->req('GET', '/api/mapbox/api.mapbox.com/not/allowed/path'));
+        $this->assertProblem(400, ['code' => 'invalid_request'], $this->req('GET', '/api/mapbox/evil.example.com/styles/v1/x', $auth));
+        $this->assertProblem(403, [], $this->req('GET', '/api/mapbox/api.mapbox.com/not/allowed/path', $auth));
     }
 
     // --- 3. every 400 carries a code ---
@@ -256,8 +257,9 @@ class ApiConsistencyTest extends WebTestCase
     public function testMapboxProxyAllowsOnlyGet(): void
     {
         static::getContainer()->set(MapAvailability::class, new MapAvailability('pk.test'));
+        $auth = TestHelper::authHeader(TestHelper::createUser($this->em, $this->hasher), $this->tokens);
         foreach (['POST', 'PUT', 'PATCH', 'DELETE'] as $method) {
-            $r = $this->req($method, '/api/mapbox/api.mapbox.com/styles/v1/mapbox/streets-v12');
+            $r = $this->req($method, '/api/mapbox/api.mapbox.com/styles/v1/mapbox/streets-v12', $auth);
             $this->assertProblem(405, [], $r);
             $this->assertStringContainsString('GET', $r['headers']['allow'][0] ?? '', $method);
         }

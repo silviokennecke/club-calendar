@@ -367,7 +367,7 @@ Before writing raw Tailwind layout divs in a page, check `src/components/ui/shar
 | `SearchInput`                                   | Search field (`ap-search`) for lists and the calendar                                                                       |
 | `FullPageLoader`                                | Page loading state (`role="status"`, `aria-busy`); also the lazy-route Suspense fallback                                    |
 
-For Mapbox maps: use `useMapbox` from `src/components/locations/useMapbox.ts`.
+For Mapbox maps: use `useMapbox` from `src/components/locations/useMapbox.ts`. The tile/style/font proxy `/api/mapbox/*` is for signed-in users only: `mapboxProxy.ts` sends the access token as `Authorization: Bearer`, `useMapbox` renews it once after a 401 (`refreshSession`). Anonymous routes (public feed) must use the static image `/api/map/image/*`, never mapbox-gl.
 
 ## Build
 

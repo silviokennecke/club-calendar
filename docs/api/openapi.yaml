@@ -53,7 +53,7 @@ info:
       wrong signature, ended session, user gone) or `token_expired`; the sign-in routes themselves answer
       `invalid_credentials` (login), `invalid_refresh_token` (`POST /api/auth/token`) or `invalid_passkey`.
       Clients may refresh on any 401 of a request that carried an access token.
-    - Every route under `/api/clubs`, `/api/calendars`, `/api/invitations` and `/api/map/geocode/` needs a signed-in user before the
+    - Every route under `/api/clubs`, `/api/calendars`, `/api/invitations`, `/api/map/geocode/` and `/api/mapbox/` needs a signed-in user before the
       id in the path is looked up: without a token it is `401 missing_token` (never 403 or 404, so ids cannot be
       probed). 403 means signed in but not allowed (no member, archived calendar).
 
@@ -2890,16 +2890,18 @@ paths:
       summary: Mapbox proxy (adds the server token)
       description: >-
         Forwards to Mapbox with the server's token (an `access_token` in the query is dropped); GET responses are
-        cached. No authentication. Upstream status, body and headers are passed through. GET only: other methods
+        cached. Needs a signed-in user (access token as `Authorization: Bearer`; without one `401 missing_token` before anything else; the public static images `/api/map/image/*` stay anonymous). Upstream status, body and headers are passed through. GET only: other methods
         are `405` (`Allow: GET`).
       operationId: mapboxProxyGet
-      security: []
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Upstream response (tiles, styles, glyphs).
           content:
             '*/*':
               schema: {}
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '400':
           description: '`invalid_request` field `domain`: the upstream host is not allowed.'
           content:
@@ -3236,7 +3238,7 @@ components:
         | --- | --- | --- |
         | `validation_failed` | 400 / 422 | Input errors with `field`. **400** = malformed input (typed input checks): wrong JSON types (also `PATCH /api/auth/me`), date parameters `from`/`to` (events, holidays, public feed, export), any query parameter sent as an array, import `events[n].<field>`, export parameters, bulk, series rule `rule.*`, `scope`, feeds `visibility`, `searchable` no boolean, invalid time zone, location coordinates, template times as half a pair, `from-template` without `templateId`/`dates`. **422** = DTO constraints (register, login, password/e-mail routes, create club/calendar, invite member, invitation token, holiday calendars) and conflicts with stored state: series without events (field `rule`), `searchable` on a non-`PUBLIC` feed, e-mail change to the current address |
         | `invalid_request` | 400 | Body is no JSON object; passkey body incomplete; any other 400 the framework rejects; Mapbox proxy with a host other than `api.mapbox.com` (field `domain`) |
-        | `missing_token` | 401 | No access token on a route that needs a user (all of `/api/clubs`, `/api/calendars`, `/api/map/geocode/` before the id is looked up) |
+        | `missing_token` | 401 | No access token on a route that needs a user (all of `/api/clubs`, `/api/calendars`, `/api/map/geocode/`, `/api/mapbox/` before the id is looked up) |
         | `invalid_token` | 401 | Access token malformed, wrongly signed, of an ended session or of a deleted user |
         | `token_expired` | 401 | Access token expired (refresh it) |
         | `member_not_found` | 404 | `DELETE /api/clubs/{clubId}/members/{userId}`: no member of the club (unknown ids alike) |

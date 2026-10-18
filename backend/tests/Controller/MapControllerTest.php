@@ -431,9 +431,31 @@ class MapControllerTest extends WebTestCase
 
     public function testMapboxProxyWithoutTokenReturns503Problem(): void
     {
+        ['user' => $user] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $auth = TestHelper::authHeader($user, $this->tokens);
         $this->withoutMapService();
-        $r = TestHelper::jsonRequest($this->client, 'GET', '/api/mapbox/api.mapbox.com/styles/v1/mapbox/streets-v12');
+        $r = TestHelper::jsonRequest($this->client, 'GET', '/api/mapbox/api.mapbox.com/styles/v1/mapbox/streets-v12', [], $auth);
         $this->assertSame(503, $r['status'], $r['content']);
         $this->assertSame('map_unavailable', $r['body']['code']);
+    }
+
+    public function testMapboxProxyRequiresSignIn(): void
+    {
+        // Anonymous: 401 before any validation (also for a disallowed host/path), tokens and upstream untouched.
+        foreach ([
+            '/api/mapbox/api.mapbox.com/styles/v1/mapbox/streets-v12',
+            '/api/mapbox/evil.example.com/styles/v1/x',
+            '/api/mapbox/api.mapbox.com/not/allowed/path',
+        ] as $url) {
+            $r = TestHelper::jsonRequest($this->client, 'GET', $url);
+            $this->assertSame(401, $r['status'], $url);
+            $this->assertSame('missing_token', $r['body']['code'], $url);
+        }
+
+        // Signed in: reaches the proxy (validation answers, not 401)
+        ['user' => $user] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $auth = TestHelper::authHeader($user, $this->tokens);
+        $r = TestHelper::jsonRequest($this->client, 'GET', '/api/mapbox/evil.example.com/styles/v1/x', [], $auth);
+        $this->assertSame(400, $r['status'], $r['content']);
     }
 }
