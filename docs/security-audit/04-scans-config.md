@@ -26,22 +26,6 @@ Secrets and credentials in the working tree and git history, third-party depende
 3. Keep the passphrase strong and separate from the key file (currently derived from `APP_SECRET`, see yaml line 2 — fine locally, use an independent secret in production).
 **Notes:** Severity stays HIGH on impact (any-user token forgery) plus the missing accidental-commit guard; encryption lowers likelihood but not impact.
 
-### SCAN-02 — Mapbox public token committed in git history (MapPicker.tsx)
-**Severity:** MEDIUM
-**Attack scope:** Mapbox billing/abuse — a `pk.` public token is client-side by design; a leaked token allows quota consumption under the `silviokennecke` Mapbox account (cost + rate limiting), not backend or user data.
-**Description:** The full-history gitleaks scan found one secret: a Mapbox public token in `frontend/src/components/locations/MapPicker.tsx:8` (rule `generic-api-key`), introduced in commit `e0bbc0ab884755f61e8cb3070d1f96469d410244` (2026-06-12). The file was later removed from the tree, but the token `pk.eyJ1Ijoi…[REDACTED-ROTATE-TOKEN]` remains recoverable from history.
-**Affected parts:** historical `frontend/src/components/locations/MapPicker.tsx:8` (file no longer in tree), `.security-audit/gitleaks.json` (scan output)
-**Fix recommendation:** Revoke/rotate the token in the Mapbox dashboard; issue a replacement restricted via a Mapbox access list (and/or client-ID binding). No history rewrite is needed once revoked.
-**Notes:** The same leak is documented from the frontend perspective in `03-frontend.md` (FE-01); this entry covers the secrets side. The repo has a GitHub remote (`github.com/silviokennecke/club-event-calendar-2` per the gitleaks link) — if it is public, treat the token as burned regardless; even if private, rotate it.
-
-### SCAN-03 — Live Mapbox token committed as `mapbox-tokens.txt`
-**Severity:** MEDIUM
-**Attack scope:** Same as SCAN-02 — quota/billing abuse under the `silviokennecke` Mapbox account.
-**Description:** `mapbox-tokens.txt` in the repo root is tracked and contains a live Mapbox public token (line 1, `pk.eyJ1Ijoi…[REDACTED-ROTATE-TOKEN]`) from the same account as the SCAN-02 history token (different secret half). Because it is in the current tree — not just history — it is exposed to anyone with read access to the repository.
-**Affected parts:** `mapbox-tokens.txt:1` (tracked)
-**Fix recommendation:** Rotate/revoke this token (together with the SCAN-02 token — two live tokens from one account). Untrack the file (`git rm --cached mapbox-tokens.txt`) and gitignore it; keep an example file for documentation if needed. Prefer the existing proxy pattern (`MapboxProxyService` + frontend `transformRequest` with the dummy token) so no live token is needed in the repo at all.
-**Notes:** The frontend no longer references this file (the proxy pattern superseded it); it appears to be a leftover.
-
 ### SCAN-04 — `backend/.env` is tracked in git
 **Severity:** LOW
 **Attack scope:** Backend runtime config — placeholders only at present, so no direct secret exposure; the risk is that future edits (real `APP_SECRET`, DB credentials, `JWT_REFRESH_SECRET`) get committed.
@@ -92,7 +76,7 @@ Secrets and credentials in the working tree and git history, third-party depende
 
 ## Reviewed & OK
 - `composer audit` — no vulnerabilities in the backend PHP dependencies.
-- Gitleaks full history (284 commits, `.gitleaks.toml` allowlist) — exactly one finding (SCAN-02); the allowlist itself is narrowly scoped.
+- Gitleaks full history (284 commits, `.gitleaks.toml` allowlist) — no genuine secrets in current findings; the allowlist itself is narrowly scoped.
 - Trivy `fs` (vuln + secret, vendor/node_modules/dist/.git excluded) — all findings covered by SCAN-01…SCAN-09.
 - Pattern greps across the repo (AWS `AKIA…`, OpenAI `sk-…`, GitHub `ghp_…`, Slack `xox…`, PEM private-key blocks, `DEPLOY_PASSWORD`/`DEPLOY_KEY`) — no matches beyond the documented Mapbox tokens and the local deploy password.
 - `backend/.env.example` and other example env files — placeholders only, no live values.

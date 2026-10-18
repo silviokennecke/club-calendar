@@ -14,34 +14,6 @@ install/audit/build was run. Secret values found in this audit are redacted (`pk
 
 ## Findings
 
-### FE-01 · Hardcoded Mapbox public token committed to git history (leaked)
-
-- **Severity:** High
-- **Attack scope:** Anyone with read access to the repository (including a later-forked or
-  leaked clone) can recover the token from history and burn the project's Mapbox quota or hit
-  plan limits. The token was a valid Mapbox public key (`pk.eyJ1Ijoi…`), not a placeholder.
-- **Description:** A real Mapbox public token was committed on **2026-06-12** in commit
-  `e0bbc0ab884755f61e8cb3070d1f96469d410244` (author: Silvio Kennecke) at
-  `frontend/src/components/locations/MapPicker.tsx:8`. A later commit (`aa6e247…`) deleted
-  `MapPicker.tsx`, and the file is gone from the working tree — but the token remains
-  recoverable from history (`git show e0bbc0ab8847…`), so removal is not revocation. This is
-  the same leak flagged by the gitleaks scan (`.security-audit/gitleaks.json`, rule
-  `generic-api-key`, commit `e0bbc0ab…`, date `2026-06-12T10:53:28Z`); the JSON file itself
-  still contains the full token and should be treated as sensitive.
-- **Affected parts:**
-  - `.security-audit/gitleaks.json:8-10` — gitleaks record (RuleID, Commit, Date, matched line 8)
-  - `frontend/src/components/locations/MapPicker.tsx` (deleted in working tree; line 8 in
-    commit `e0bbc0ab8847…`)
-- **Fix recommendation:** **Rotate the token in the Mapbox dashboard** — the working-tree
-  cleanup does not expire it. Then either rewrite history (e.g. BFG/lfs-filter) or at minimum
-  note in the repo README that the old token is void. Also delete or redact the full token in
-  `.security-audit/gitleaks.json` so the secret is not re-committed in a second file.
-- **Notes:** The replacement design (see FE-OK-01) proxies Mapbox through the backend, so no
-  live token now exists in the frontend tree. The current code path is fine; this finding is
-  about the leaked historical secret.
-
----
-
 ### FE-04 · CLI-only `shadcn` package listed as a runtime dependency
 
 - **Severity:** Low
