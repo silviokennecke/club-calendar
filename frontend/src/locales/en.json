@@ -198,9 +198,6 @@
     "timeZoneNote": "All times are in the {{zone}} time zone.",
     "subscribe": "Subscribe to calendar",
     "downloadIcs": "Download ICS file",
-    "addressToggle": "Show subscription address",
-    "addressLabel": "Address for subscribing (ICS)",
-    "addressHint": "Add this address as a subscription in your calendar app.",
     "view": {
       "label": "View",
       "month": "Month",

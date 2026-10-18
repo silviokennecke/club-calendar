@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { LangSwitch, Logo, ThemeSwitch } from "@/components/ui/shared";
+import { LangSwitch, Logo } from "@/components/ui/shared";
 import { usePublicHead } from "./usePublicHead";
 
 interface PublicShellProps {
@@ -8,16 +8,18 @@ interface PublicShellProps {
   title?: string;
   /** `feed.indexable`; missing (loading, errors) means noindex. */
   indexable?: boolean;
+  /** Name shown in the brand row (the club); defaults to the generic "Öffentlicher Kalender". */
+  brand?: string;
   /** Content of the page header below the brand row (title, actions). */
   hero?: ReactNode;
   children: ReactNode;
 }
 
 /**
- * Frame of the public pages (design: Public.dc.html): skip link, brand row with language and
- * theme switch (no account needed), page header, `<main>` and footer. No app navigation.
+ * Frame of the public pages (design: Public.dc.html): skip link, brand row with language switch
+ * (no account needed), page header, `<main>` and footer. No app navigation.
  */
-export function PublicShell({ title, indexable, hero, children }: PublicShellProps) {
+export function PublicShell({ title, indexable, brand, hero, children }: PublicShellProps) {
   const { t } = useTranslation();
   usePublicHead({ title: title ?? t("feed.brand"), indexable });
 
@@ -31,11 +33,10 @@ export function PublicShell({ title, indexable, hero, children }: PublicShellPro
           <div className="pub-topbar">
             <div className="pub-brandrow">
               <Logo variant="mark" size={28} />
-              <span>{t("feed.brand")}</span>
+              <span>{brand ?? t("feed.brand")}</span>
             </div>
             <div className="pub-tools">
               <LangSwitch />
-              <ThemeSwitch label={t("ui.theme.label")} />
             </div>
           </div>
           {hero}

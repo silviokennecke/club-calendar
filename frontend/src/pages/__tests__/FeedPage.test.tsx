@@ -181,12 +181,12 @@ afterEach(() => {
 });
 
 describe("FeedPage", () => {
-  it("shows a loading state first, then the feed with header, switches and footer", async () => {
+  it("shows a loading state first, then the feed with header, language switch and footer", async () => {
     renderAt("/feed/f1");
     expect(screen.getByRole("status")).toHaveTextContent("Kalender wird geladen.");
-    expect(await screen.findByRole("heading", { level: 1, name: CLUB })).toBeInTheDocument();
-    // Design (Public): club as title, calendar below, zone from the API
-    expect(screen.getByText(CALENDAR)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: CALENDAR })).toBeInTheDocument();
+    // calendar as title, club in the brand row, zone from the API
+    expect(screen.getByText(CLUB)).toBeInTheDocument();
     expect(
       screen.getByText("Alle Uhrzeiten gelten in der Zeitzone Europe/Berlin."),
     ).toBeInTheDocument();
@@ -197,7 +197,7 @@ describe("FeedPage", () => {
       "#main",
     );
     expect(screen.getByRole("main")).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Darstellung" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Darstellung" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Deutsch" })).toBeInTheDocument();
     expect(screen.getByText("Bereitgestellt mit Club Calendar")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Oktober 2026" })).toBeInTheDocument();
@@ -221,7 +221,7 @@ describe("FeedPage", () => {
       ],
     });
     renderAt("/feed/f1");
-    await screen.findByRole("heading", { level: 1, name: CLUB });
+    await screen.findByRole("heading", { level: 1, name: CALENDAR });
     const [url] = fetchMock.mock.calls[0] as unknown as [string];
     expect(url).toContain("/api/feed/f1/events?from=2026-09-28&to=2026-11-01");
     expect(
@@ -234,7 +234,7 @@ describe("FeedPage", () => {
   it("requests without credentials and never leaks the secret into title or referrer", async () => {
     respond = feedApi({ header: { visibility: "PRIVATE" } });
     renderAt(`/feed/f1?secret=${SECRET}`);
-    await screen.findByRole("heading", { level: 1, name: CLUB });
+    await screen.findByRole("heading", { level: 1, name: CALENDAR });
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toContain(`secret=${SECRET}`);
     expect(init.referrerPolicy).toBe("no-referrer");
@@ -266,7 +266,7 @@ describe("FeedPage", () => {
   ])("robots meta for %s", async (_label, header, expected) => {
     respond = feedApi({ header });
     renderAt(`/feed/f1?secret=${SECRET}`);
-    await screen.findByRole("heading", { level: 1, name: CLUB });
+    await screen.findByRole("heading", { level: 1, name: CALENDAR });
     const metas = document.head.querySelectorAll<HTMLMetaElement>("meta[name=robots]");
     expect(Array.from(metas).map((m) => m.content)).toEqual(expected ? [expected] : []);
     expect(document.head.querySelector("meta[name=referrer]")).toHaveAttribute(
@@ -279,7 +279,7 @@ describe("FeedPage", () => {
     // 2026-10-03 23:30 UTC is already 04.10. in Berlin
     vi.setSystemTime(new Date("2026-10-03T23:30:00Z"));
     renderAt("/feed/f1");
-    await screen.findByRole("heading", { level: 1, name: CLUB });
+    await screen.findByRole("heading", { level: 1, name: CALENDAR });
     const grid = screen.getByRole("grid");
     expect(within(grid).getByLabelText(/^4\. Oktober, heute/)).toBeInTheDocument();
     expect(within(grid).queryByLabelText(/^3\. Oktober, heute/)).not.toBeInTheDocument();
@@ -320,7 +320,7 @@ describe("FeedPage", () => {
 
   it("shows a load error with retry and recovers", async () => {
     let fail = true;
-    const api = feedApi({ header: { clubName: "Wieder da" } });
+    const api = feedApi({ header: { calendarName: "Wieder da" } });
     respond = (url) => (fail ? json({}, 500) : api(url));
     renderAt("/feed/f1");
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -349,7 +349,7 @@ describe("FeedPage", () => {
   it("filters by audience, counts the month and passes the choice to the subscription", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderAt("/feed/f1");
-    await screen.findByRole("heading", { level: 1, name: CLUB });
+    await screen.findByRole("heading", { level: 1, name: CALENDAR });
     expect(screen.getByText("Zeige 3 von 3 Terminen")).toBeInTheDocument();
     const chip = screen.getByRole("button", { name: "Erwachsene" });
     expect(chip).toHaveAttribute("aria-pressed", "false");
@@ -368,7 +368,7 @@ describe("FeedPage", () => {
   it("searches by name and offers a way out when nothing matches", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderAt("/feed/f1");
-    await screen.findByRole("heading", { level: 1, name: CLUB });
+    await screen.findByRole("heading", { level: 1, name: CALENDAR });
     await user.type(screen.getByRole("searchbox", { name: "Termine suchen" }), "herbst");
     expect(screen.getByText("Zeige 1 von 3 Terminen")).toBeInTheDocument();
     await user.clear(screen.getByRole("searchbox", { name: "Termine suchen" }));
@@ -383,7 +383,7 @@ describe("FeedPage", () => {
   it("keeps the audience chips of the whole feed in a month without those audiences", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderAt("/feed/f1?groups=tg-j");
-    await screen.findByRole("heading", { level: 1, name: CLUB });
+    await screen.findByRole("heading", { level: 1, name: CALENDAR });
     await user.click(screen.getByRole("button", { name: "Nächster Monat" }));
     expect(
       await screen.findByRole("heading", { level: 2, name: "November 2026" }),
@@ -395,7 +395,7 @@ describe("FeedPage", () => {
   it("navigates months and says so when a month has no events", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderAt("/feed/f1");
-    await screen.findByRole("heading", { level: 1, name: CLUB });
+    await screen.findByRole("heading", { level: 1, name: CALENDAR });
     await user.click(screen.getByRole("button", { name: "Nächster Monat" }));
     expect(screen.getByRole("heading", { level: 2, name: "November 2026" })).toBeInTheDocument();
     expect(
@@ -411,7 +411,7 @@ describe("FeedPage", () => {
   it("switches to the list of the month and opens an event page that keeps the secret", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderAt(`/feed/f1?secret=${SECRET}`);
-    await screen.findByRole("heading", { level: 1, name: CLUB });
+    await screen.findByRole("heading", { level: 1, name: CALENDAR });
     await user.click(screen.getByRole("button", { name: "Liste" }));
     const list = screen.getByRole("region", { name: "Termine im Oktober 2026" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(3);
@@ -430,14 +430,14 @@ describe("FeedPage", () => {
     );
     expect(screen.getByTestId("location")).toHaveTextContent(`/feed/f1/events/e3?secret=${SECRET}`);
     // The feed stays below the dialog (same view), but inert and hidden from screen readers.
-    const feedHeading = screen.getByRole("heading", { level: 1, name: CLUB, hidden: true });
+    const feedHeading = screen.getByRole("heading", { level: 1, name: CALENDAR, hidden: true });
     expect(feedHeading.closest("[inert]")).not.toBeNull();
-    expect(screen.queryByRole("heading", { level: 1, name: CLUB })).toBeNull();
+    expect(screen.queryByRole("heading", { level: 1, name: CALENDAR })).toBeNull();
     // The router state keeps the view, never the secret.
     expect(JSON.stringify(window.history.state ?? "")).not.toContain(SECRET);
     // Closing goes back to the same view with the secret, focus returns to the opener.
     await user.click(within(dialog).getAllByRole("button", { name: "Schließen" })[0]);
-    expect(await screen.findByRole("heading", { level: 1, name: CLUB })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: CALENDAR })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByTestId("location")).toHaveTextContent(`secret=${SECRET}`);
     expect(screen.getByTestId("location")).toHaveTextContent("view=list");
@@ -447,7 +447,7 @@ describe("FeedPage", () => {
   it("closes the event dialog with Escape", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderAt("/feed/f1?date=2026-10-01&view=list");
-    await screen.findByRole("heading", { level: 1, name: CLUB });
+    await screen.findByRole("heading", { level: 1, name: CALENDAR });
     await user.click(screen.getByRole("button", { name: "Jugendtraining" }));
     await screen.findByRole("dialog", { name: "Jugendtraining" });
     await user.keyboard("{Escape}");

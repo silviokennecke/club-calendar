@@ -39,7 +39,7 @@ import { useLocale } from "@/components/calendar/useLocale";
 import { PublicShell } from "@/components/feed/PublicShell";
 import { PublicError, PublicLoading } from "@/components/feed/PublicStates";
 import { usePublicFeed } from "@/components/feed/usePublicFeed";
-import { Button, CopyField, EmptyState, Icon, buttonClass } from "@/components/ui/shared";
+import { Button, EmptyState, Icon, buttonClass } from "@/components/ui/shared";
 import { preloadPublicEventModal } from "./lazy";
 
 /**
@@ -83,6 +83,7 @@ export default function FeedPage() {
     <PublicShell
       title={`${feed.data.feed.name} – ${t("feed.brand")}`}
       indexable={feed.data.feed.indexable}
+      brand={feed.data.feed.clubName}
       hero={<FeedHero data={feed.data} secret={secret} feedId={feedId!} />}
     >
       <FeedCalendar
@@ -98,7 +99,7 @@ export default function FeedPage() {
 }
 
 /**
- * Club and calendar name (design: Public "Schützenverein Waldblick" + "Schießbetrieb 2026"), the time
+ * Calendar name as title (the club name is in the brand row), the time
  * zone note and the subscribe actions (the audience selection is part of the address).
  */
 function FeedHero({
@@ -117,44 +118,27 @@ function FeedHero({
   const zone = data.feed.timezone;
 
   return (
-    <>
-      <div className="pub-hero">
-        <div className="ap-stack ap-stack--sm" style={{ flex: "1 1 420px", minWidth: 0 }}>
-          <h1 className="t-display">{data.feed.clubName}</h1>
-          <p className="t-h3 t-muted">{data.feed.calendarName}</p>
-          {zone && <p className="t-sm t-muted">{t("feed.timeZoneNote", { zone })}</p>}
-        </div>
-        <div className="ap-actions" style={{ flex: "0 1 auto" }}>
-          <a
-            className={buttonClass("primary")}
-            style={{ flex: "1 1 auto" }}
-            href={addresses.webcal}
-          >
-            <Icon glyph="rss" size={18} />
-            {t("feed.subscribe")}
-          </a>
-          <a
-            className={buttonClass("secondary")}
-            style={{ flex: "1 1 auto" }}
-            href={addresses.ics}
-            download
-          >
-            <Icon glyph="download" size={18} />
-            {t("feed.downloadIcs")}
-          </a>
-        </div>
+    <div className="pub-hero">
+      <div className="ap-stack ap-stack--sm" style={{ flex: "1 1 420px", minWidth: 0 }}>
+        <h1 className="t-display">{data.feed.calendarName}</h1>
+        {zone && <p className="t-sm t-muted">{t("feed.timeZoneNote", { zone })}</p>}
       </div>
-      <details className="pub-address">
-        <summary>{t("feed.addressToggle")}</summary>
-        <div className="pub-address-body">
-          <CopyField
-            label={t("feed.addressLabel")}
-            value={addresses.ics}
-            hint={t("feed.addressHint")}
-          />
-        </div>
-      </details>
-    </>
+      <div className="ap-actions" style={{ flex: "0 1 auto" }}>
+        <a className={buttonClass("primary")} style={{ flex: "1 1 auto" }} href={addresses.webcal}>
+          <Icon glyph="rss" size={18} />
+          {t("feed.subscribe")}
+        </a>
+        <a
+          className={buttonClass("secondary")}
+          style={{ flex: "1 1 auto" }}
+          href={addresses.ics}
+          download
+        >
+          <Icon glyph="download" size={18} />
+          {t("feed.downloadIcs")}
+        </a>
+      </div>
+    </div>
   );
 }
 
