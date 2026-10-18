@@ -9,11 +9,14 @@ use App\Entity\Club;
 use App\Entity\ClubUser;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 
 readonly class ClubService
 {
     public const string MEMBER_NOT_FOUND_CODE = 'member_not_found';
+    public const string LAST_MEMBER_CODE = 'last_member';
+    public const string LAST_MEMBER_OF_CLUB_CODE = 'last_member_of_club';
 
     public function __construct(
         private readonly EntityManagerInterface $em,
@@ -161,16 +164,57 @@ readonly class ClubService
 
     /**
      * Removes a member. A user id that is no member of the club, unknown or not a user id at all, is the same
-     * 404 `member_not_found`: the answer never tells whether an account exists.
+     * 404 `member_not_found`: the answer never tells whether an account exists. The last member can neither
+     * be removed nor leave (422 `last_member`): a club never has zero members. The club row is locked for the
+     * check, so two concurrent removals cannot empty the club.
      */
     public function removeMember(Club $club, string $memberId): void
     {
-        $cu = $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $club, 'user' => $memberId]);
-        if (!$cu) {
-            throw new ApiProblemException(404, 'Member not found', self::MEMBER_NOT_FOUND_CODE);
+        $this->em->wrapInTransaction(function () use ($club, $memberId): void {
+            $this->em->lock($club, LockMode::PESSIMISTIC_WRITE);
+            $cu = $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $club, 'user' => $memberId]);
+            if (!$cu) {
+                throw new ApiProblemException(404, 'Member not found', self::MEMBER_NOT_FOUND_CODE);
+            }
+            if ($this->countMembers($club) <= 1) {
+                throw new ApiProblemException(422, 'The last member cannot be removed from a club', self::LAST_MEMBER_CODE);
+            }
+            $this->em->remove($cu);
+            $this->em->flush();
+        });
+    }
+
+    /**
+     * Locks the clubs of the user (in id order, so concurrent calls cannot deadlock) and fails with 422
+     * `last_member_of_club` if the user is the only member of one of them. Must run inside a transaction
+     * that also removes the memberships (account deletion).
+     */
+    public function assertNotLastMemberAnywhere(User $user): void
+    {
+        $clubs = $this->em->createQueryBuilder()
+            ->select('c')
+            ->from(Club::class, 'c')
+            ->join(ClubUser::class, 'cu', 'WITH', 'cu.club = c')
+            ->where('cu.user = :user')
+            ->orderBy('c.id', 'ASC')
+            ->setParameter('user', $user)
+            ->getQuery()
+            ->getResult();
+        foreach ($clubs as $club) {
+            $this->em->lock($club, LockMode::PESSIMISTIC_WRITE);
         }
-        $this->em->remove($cu);
-        $this->em->flush();
+        foreach ($clubs as $club) {
+            if ($this->countMembers($club) <= 1) {
+                throw new ApiProblemException(422, 'You are the last member of a club; delete the club first', self::LAST_MEMBER_OF_CLUB_CODE);
+            }
+        }
+    }
+
+    private function countMembers(Club $club): int
+    {
+        return (int) $this->em->createQuery('SELECT COUNT(cu.user) FROM '.ClubUser::class.' cu WHERE cu.club = :club')
+            ->setParameter('club', $club)
+            ->getSingleScalarResult();
     }
 
     private function serializeClub(Club $club): array

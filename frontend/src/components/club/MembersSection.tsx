@@ -17,6 +17,7 @@ import { apiDelete, apiGet, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { focusAfterDialog } from "@/lib/focus";
 import {
+  isLastMember,
   isMemberGone,
   memberAddFailure,
   validateMemberEmail,
@@ -79,7 +80,13 @@ export function MembersSection({ club }: { club: Club }) {
     } catch (error) {
       // 404 member_not_found: someone else removed the member meanwhile; the goal is reached
       if (!isMemberGone(error)) {
-        toast.error(t(self ? "club.members.leaveFailed" : "club.members.removeFailed"));
+        // 422 last_member: the others left meanwhile; the club keeps at least one member
+        toast.error(
+          isLastMember(error)
+            ? t("club.members.lastMember")
+            : t(self ? "club.members.leaveFailed" : "club.members.removeFailed"),
+        );
+        if (isLastMember(error)) void qc.invalidateQueries({ queryKey });
         return;
       }
     }
@@ -160,6 +167,7 @@ export function MembersSection({ club }: { club: Club }) {
                   <td className="ap-col-actions" data-label={t("club.members.colAction")}>
                     <Button
                       variant="secondary"
+                      disabled={list.length <= 1}
                       aria-label={
                         self
                           ? t("club.members.leaveLabel", { club: club.name })
@@ -175,6 +183,11 @@ export function MembersSection({ club }: { club: Club }) {
             })}
           </tbody>
         </table>
+        {list.length <= 1 && (
+          <p className="t-small" style={{ padding: "var(--space-3) var(--space-4)" }}>
+            {t("club.members.lastMemberHint")}
+          </p>
+        )}
       </div>
     );
   }
@@ -249,13 +262,7 @@ export function MembersSection({ club }: { club: Club }) {
               : t("club.members.removeText", { name: removing.name, club: club.name })
           }
           consequence={
-            removingSelf
-              ? t(
-                  list.length <= 1
-                    ? "club.members.leaveLastConsequence"
-                    : "club.members.leaveConsequence",
-                )
-              : t("club.members.removeConsequence")
+            removingSelf ? t("club.members.leaveConsequence") : t("club.members.removeConsequence")
           }
           confirmLabel={
             removingSelf ? t("club.members.leaveConfirm") : t("club.members.removeConfirm")

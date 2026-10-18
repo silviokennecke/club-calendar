@@ -106,8 +106,10 @@ export default function ProfilePage() {
   async function deleteAccount() {
     try {
       await apiDelete("/api/auth/me");
-    } catch {
-      toast.error(t("profile.danger.failed"));
+    } catch (error) {
+      // 422 last_member_of_club: the user is the only member of a club and has to delete it first
+      const lastMember = (error as { code?: unknown } | null)?.code === "last_member_of_club";
+      toast.error(t(lastMember ? "profile.danger.lastMemberOfClub" : "profile.danger.failed"));
       return;
     }
     logout();

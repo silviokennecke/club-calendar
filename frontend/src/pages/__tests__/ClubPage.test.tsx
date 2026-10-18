@@ -197,6 +197,29 @@ describe("ClubPage", () => {
     await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/clubs/c1/members/u2"));
   });
 
+  it("disables leaving for the only member and explains why", async () => {
+    members = [members[0]];
+    renderClub();
+    expect(await screen.findByRole("button", { name: /Verein .* verlassen/ })).toBeDisabled();
+    expect(screen.getByText(/Du bist das einzige Mitglied/)).toBeInTheDocument();
+  });
+
+  it("explains a refused removal of the last member (422 last_member)", async () => {
+    apiDelete.mockRejectedValue(new ApiError("last", 422, "last_member"));
+    const error = vi.spyOn(toast, "error");
+    const user = userEvent.setup();
+    renderClub();
+    await user.click(await screen.findByRole("button", { name: "Mara Sommer entfernen" }));
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Mitglied entfernen",
+      }),
+    );
+    await waitFor(() =>
+      expect(error).toHaveBeenCalledWith(expect.stringContaining("letzte Mitglied")),
+    );
+  });
+
   it("treats a member someone else removed meanwhile (404 member_not_found) as removed", async () => {
     apiDelete.mockRejectedValue(new ApiError("Member not found", 404, "member_not_found"));
     const success = vi.spyOn(toast, "success");

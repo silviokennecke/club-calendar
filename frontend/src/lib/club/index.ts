@@ -31,6 +31,11 @@ export function isMemberGone(error: unknown): boolean {
   return (error as { code?: unknown } | null)?.code === "member_not_found";
 }
 
+/** Removing a member / leaving was refused: the user is the only member (422 `last_member`). */
+export function isLastMember(error: unknown): boolean {
+  return (error as { code?: unknown } | null)?.code === "last_member";
+}
+
 /** Name check of the club name and the "Kalender anlegen" forms. */
 export function isBlank(value: string): boolean {
   return value.trim().length === 0;

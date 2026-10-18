@@ -1644,12 +1644,13 @@
       "leaveTitle": "Leave club?",
       "leaveText": "You are leaving the club {{club}}.",
       "leaveConsequence": "You lose access to all calendars, events and feeds of this club. The other members keep it.",
-      "leaveLastConsequence": "You are the last member. The club is left without members and nobody can open or delete it afterwards.",
       "leaveConfirm": "Leave club",
       "removed": "{{name}} was removed from the club.",
       "removeFailed": "The member could not be removed. Please try again.",
       "left": "You left the club {{club}}.",
       "leaveFailed": "You could not leave the club. Please try again.",
+      "lastMemberHint": "You are the only member. A club needs at least one member: add someone first or delete the club.",
+      "lastMember": "You are the last member of the club. Add someone first or delete the club.",
       "addTitle": "Add member",
       "emailLabel": "Email address",
       "emailHint": "The person already needs a Club Calendar account.",
@@ -1941,7 +1942,8 @@
       "consequence": "Deletes your account, your passkeys and linked sign-ins. You will be signed out.",
       "confirm": "Delete account",
       "requireLabel": "Type your email address to confirm",
-      "failed": "The account could not be deleted. Please try again."
+      "failed": "The account could not be deleted. Please try again.",
+      "lastMemberOfClub": "Your account cannot be deleted while you are the only member of a club. Delete the club first or add another member."
     },
     "account": {
       "title": "Name and email address",

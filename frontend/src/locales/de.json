@@ -1644,12 +1644,13 @@
       "leaveTitle": "Verein verlassen?",
       "leaveText": "Du verlässt den Verein {{club}}.",
       "leaveConsequence": "Du verlierst den Zugriff auf alle Kalender, Termine und Feeds dieses Vereins. Die anderen Mitglieder behalten ihn.",
-      "leaveLastConsequence": "Du bist das letzte Mitglied. Der Verein bleibt ohne Mitglied zurück und niemand kann ihn danach noch öffnen oder löschen.",
       "leaveConfirm": "Verein verlassen",
       "removed": "{{name}} wurde aus dem Verein entfernt.",
       "removeFailed": "Das Mitglied konnte nicht entfernt werden. Bitte versuche es erneut.",
       "left": "Du hast den Verein {{club}} verlassen.",
       "leaveFailed": "Du konntest den Verein nicht verlassen. Bitte versuche es erneut.",
+      "lastMemberHint": "Du bist das einzige Mitglied. Ein Verein braucht mindestens ein Mitglied: Füge zuerst jemanden hinzu oder lösche den Verein.",
+      "lastMember": "Du bist das letzte Mitglied des Vereins. Füge zuerst jemanden hinzu oder lösche den Verein.",
       "addTitle": "Mitglied hinzufügen",
       "emailLabel": "E-Mail-Adresse",
       "emailHint": "Die Person braucht bereits ein Club-Calendar-Konto.",
@@ -1941,7 +1942,8 @@
       "consequence": "Löscht dein Konto, deine Passkeys und verknüpften Anmeldungen. Du wirst abgemeldet.",
       "confirm": "Konto löschen",
       "requireLabel": "Zur Bestätigung deine E-Mail-Adresse eingeben",
-      "failed": "Das Konto konnte nicht gelöscht werden. Bitte versuche es erneut."
+      "failed": "Das Konto konnte nicht gelöscht werden. Bitte versuche es erneut.",
+      "lastMemberOfClub": "Das Konto kann nicht gelöscht werden, solange du das einzige Mitglied eines Vereins bist. Lösche zuerst den Verein oder füge ein weiteres Mitglied hinzu."
     },
     "account": {
       "title": "Name und E-Mail-Adresse",

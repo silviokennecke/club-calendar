@@ -567,6 +567,21 @@ describe("ProfilePage", () => {
     expect(await screen.findByTestId("location")).toHaveTextContent("/login");
   });
 
+  it("explains that the account stays while the user is the only member of a club", async () => {
+    apiDelete.mockRejectedValue(new ApiError("x", 422, "last_member_of_club"));
+    const user = userEvent.setup();
+    renderProfile();
+    await user.click(await screen.findByRole("button", { name: "Konto löschen" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Konto löschen?" });
+    await user.type(
+      within(dialog).getByLabelText("Zur Bestätigung deine E-Mail-Adresse eingeben"),
+      "alex@beispiel.de",
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
+    expect(await screen.findByText(/einzige Mitglied eines Vereins/)).toBeInTheDocument();
+    expect(logout).not.toHaveBeenCalled();
+  });
+
   it("shows an error with retry when the profile cannot be loaded", async () => {
     const user = userEvent.setup();
     apiGet.mockImplementation((path: string) =>

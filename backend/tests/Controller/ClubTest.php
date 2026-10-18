@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller;
 
+use App\Entity\ClubUser;
+use App\Entity\User;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
@@ -89,5 +91,66 @@ class ClubTest extends WebTestCase
         $auth = TestHelper::authHeader($user, self::$tokens);
         $r = TestHelper::jsonRequest(self::$client, 'DELETE', "/api/clubs/{$club->getId()}", [], $auth);
         $this->assertSame(200, $r['status']);
+    }
+
+    // --- L1: a club never has zero members ---
+
+    public function testTheLastMemberCannotLeaveOrBeRemoved(): void
+    {
+        $user = TestHelper::createUser(self::$em, self::$hasher);
+        $club = TestHelper::createClub(self::$em, $user);
+        $auth = TestHelper::authHeader($user, self::$tokens);
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', "/api/clubs/{$club->getId()}/members/{$user->getId()}", [], $auth);
+        $this->assertSame(422, $r['status'], $r['content']);
+        $this->assertSame('last_member', $r['body']['code']);
+        $this->assertSame(1, self::$em->getRepository(ClubUser::class)->count(['club' => $club]));
+    }
+
+    public function testTheSecondToLastMemberCanLeaveButThenTheOtherIsTheLast(): void
+    {
+        $a = TestHelper::createUser(self::$em, self::$hasher, 'a@example.com');
+        $b = TestHelper::createUser(self::$em, self::$hasher, 'b@example.com');
+        $club = TestHelper::createClub(self::$em, $a);
+        self::$em->persist((new ClubUser())->setClub($club)->setUser($b));
+        self::$em->flush();
+        $url = "/api/clubs/{$club->getId()}/members";
+
+        $left = TestHelper::jsonRequest(self::$client, 'DELETE', "$url/{$a->getId()}", [], TestHelper::authHeader($a, self::$tokens));
+        $this->assertSame(200, $left['status'], $left['content']);
+        $last = TestHelper::jsonRequest(self::$client, 'DELETE', "$url/{$b->getId()}", [], TestHelper::authHeader($b, self::$tokens));
+        $this->assertSame(422, $last['status'], $last['content']);
+        $this->assertSame('last_member', $last['body']['code']);
+    }
+
+    public function testDeletingTheAccountOfTheOnlyMemberOfAClubIsRefused(): void
+    {
+        $user = TestHelper::createUser(self::$em, self::$hasher, 'solo@example.com');
+        $club = TestHelper::createClub(self::$em, $user);
+        $auth = TestHelper::authHeader($user, self::$tokens);
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', [], $auth);
+        $this->assertSame(422, $r['status'], $r['content']);
+        $this->assertSame('last_member_of_club', $r['body']['code']);
+        $this->assertStringNotContainsString($club->getName(), $r['content']);
+        self::$em->clear();
+        $this->assertNotNull(self::$em->getRepository(User::class)->findOneBy(['email' => 'solo@example.com']));
+
+        // Deleting the club first makes the account deletion possible
+        $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'DELETE', "/api/clubs/{$club->getId()}", [], $auth)['status']);
+        $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', [], $auth)['status']);
+        self::$em->clear();
+        $this->assertNull(self::$em->getRepository(User::class)->findOneBy(['email' => 'solo@example.com']));
+    }
+
+    public function testAccountDeletionIsAllowedWhenEveryClubHasOtherMembers(): void
+    {
+        $a = TestHelper::createUser(self::$em, self::$hasher, 'a@example.com');
+        $b = TestHelper::createUser(self::$em, self::$hasher, 'b@example.com');
+        $club = TestHelper::createClub(self::$em, $a);
+        self::$em->persist((new ClubUser())->setClub($club)->setUser($b));
+        self::$em->flush();
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', [], TestHelper::authHeader($a, self::$tokens));
+        $this->assertSame(200, $r['status'], $r['content']);
+        self::$em->clear();
+        $this->assertSame(1, self::$em->getRepository(ClubUser::class)->count([]));
     }
 }

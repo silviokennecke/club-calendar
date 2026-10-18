@@ -37,6 +37,7 @@ readonly class AuthService
         private ClockInterface $clock,
         private RefreshTokenRepository $refreshTokens,
         private NonceStore $nonces,
+        private ClubService $clubs,
         /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
         #[Autowire(env: 'int:REFRESH_TOKEN_REUSE_GRACE')]
         private int $refreshReuseGrace,
@@ -351,8 +352,12 @@ readonly class AuthService
 
     public function deleteMe(User $user): void
     {
-        $this->em->remove($user);
-        $this->em->flush();
+        $this->em->wrapInTransaction(function () use ($user): void {
+            // L1: a club never loses its last member; the user deletes such a club first.
+            $this->clubs->assertNotLastMemberAnywhere($user);
+            $this->em->remove($user);
+            $this->em->flush();
+        });
     }
 
     /**
