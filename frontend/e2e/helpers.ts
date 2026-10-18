@@ -80,6 +80,31 @@ export async function seedClub(request: APIRequestContext, email: string, clubNa
 }
 
 /**
+ * Invites `inviteeEmail` to a club (as the member whose headers are given) and accepts the invitation as that
+ * user through the API. The mail token is not available to the tests, so the invitee answers by id
+ * (`GET /api/invitations`).
+ */
+export async function inviteAndAccept(
+  request: APIRequestContext,
+  clubId: string,
+  memberHeaders: Record<string, string>,
+  inviteeEmail: string,
+) {
+  const invited = await request.post(`${API}/api/clubs/${clubId}/invitations`, {
+    headers: memberHeaders,
+    data: { email: inviteeEmail },
+  });
+  expect(invited.status()).toBe(204);
+  const headers = await authHeaders(request, inviteeEmail);
+  const list = (await (await request.get(`${API}/api/invitations`, { headers })).json()) as {
+    id: string;
+  }[];
+  expect(list).toHaveLength(1);
+  const accepted = await request.post(`${API}/api/invitations/${list[0].id}/accept`, { headers });
+  expect(accepted.ok()).toBeTruthy();
+}
+
+/**
  * Presses `key` and waits for the file chooser it opens.
  *
  * `page.waitForEvent("filechooser")` only starts intercepting the dialog once the browser has processed

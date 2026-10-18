@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isBlank, isMemberGone, memberAddFailure, validateMemberEmail } from "..";
+import { isBlank, isMemberGone, validateMemberEmail } from "..";
 
 const members = [{ email: "Alex@Beispiel.de" }, { email: "mara@beispiel.de" }];
 
@@ -18,17 +18,6 @@ describe("validateMemberEmail", () => {
   });
   it("accepts a new address", () => {
     expect(validateMemberEmail("jonas@beispiel.de", members)).toBeNull();
-  });
-});
-
-describe("memberAddFailure", () => {
-  it("maps 404 to 'no account' and everything else to a generic failure", () => {
-    expect(memberAddFailure(Object.assign(new Error("User not found"), { status: 404 }))).toBe(
-      "notFound",
-    );
-    expect(memberAddFailure(Object.assign(new Error("x"), { status: 500 }))).toBe("failed");
-    expect(memberAddFailure(new Error("network"))).toBe("failed");
-    expect(memberAddFailure(null)).toBe("failed");
   });
 });
 

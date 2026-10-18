@@ -53,6 +53,21 @@ beforeEach(() => {
   );
 });
 
+describe("SetupPage skipping", () => {
+  it("lets a new user skip the club for now and lands on the club picker", async () => {
+    renderSetup();
+    await userEvent.click(await screen.findByRole("link", { name: "Vorerst überspringen" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent("/clubs");
+    expect(apiPost).not.toHaveBeenCalled();
+  });
+
+  it("does not offer to skip when another club is created on purpose (?new=1)", async () => {
+    renderSetup("/setup?new=1");
+    await screen.findByRole("heading", { level: 1, name: "Willkommen bei Club Calendar" });
+    expect(screen.queryByRole("link", { name: "Vorerst überspringen" })).not.toBeInTheDocument();
+  });
+});
+
 describe("SetupPage step 1 (club)", () => {
   it("shows the stepper on step 1 and a labelled form", async () => {
     renderSetup();

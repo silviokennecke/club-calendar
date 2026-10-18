@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { createVerifiedUser, login, seedClub } from "./helpers";
+import { API, createVerifiedUser, login, seedClub } from "./helpers";
 
 // Setup and context switching are tested in German (the design's source language).
 test.use({ locale: "de-DE" });
@@ -74,6 +74,53 @@ test.describe("Erst-Einrichtung", () => {
     await page.waitForURL(/\/calendars\//);
     await page.goto("/clubs?select=1");
     await expect(page.getByRole("heading", { level: 2 })).toHaveCount(2); // one club + "new club" card
+  });
+
+  test("a new user can skip the club and reaches the picker with the option to create one", async ({
+    page,
+    request,
+  }) => {
+    const email = await createVerifiedUser(request, "Sven Später");
+    await login(page, email);
+    await page.waitForURL("**/setup");
+    await page.getByRole("link", { name: "Vorerst überspringen" }).click();
+    await page.waitForURL("**/clubs?select=1");
+    await expect(
+      page.getByRole("heading", { level: 2, name: "Du bist noch in keinem Verein" }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Einladungen" })).toHaveCount(0);
+    await page.getByRole("link", { name: "Neuen Verein anlegen" }).click();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Willkommen bei Club Calendar" }),
+    ).toBeVisible();
+  });
+
+  test("a user with an invitation sees it instead of the forced club setup and accepts it", async ({
+    page,
+    request,
+  }) => {
+    const owner = await createVerifiedUser(request, "Olga Einladend");
+    const club = await seedClub(request, owner, "Einladungsclub E2E");
+    const email = await createVerifiedUser(request, "Ina Eingeladen");
+    const invited = await request.post(`${API}/api/clubs/${club.clubId}/invitations`, {
+      headers: club.headers,
+      data: { email },
+    });
+    expect(invited.status()).toBe(204);
+
+    await login(page, email);
+    // Pending invitations keep the user on the picker (no redirect to /setup)
+    await expect(page.getByRole("heading", { level: 2, name: "Einladungen" })).toBeVisible();
+    await expect(page).toHaveURL(/\/clubs$/);
+    const section = page.getByRole("region", { name: "Einladungen" });
+    await expect(section).toContainText("Einladungsclub E2E");
+    await expect(section).toContainText("Eingeladen von Olga Einladend");
+    await expect(page.getByRole("link", { name: "Neuen Verein anlegen" })).toBeVisible();
+
+    await section
+      .getByRole("button", { name: "Einladung zum Verein Einladungsclub E2E annehmen" })
+      .click();
+    await page.waitForURL(`**/clubs/${club.clubId}/calendars/${club.calendarId}`);
   });
 
   test("signed-in users are redirected away from the login pages", async ({ page, request }) => {

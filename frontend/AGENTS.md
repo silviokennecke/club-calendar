@@ -74,7 +74,13 @@ operations), `docs/api/openapi.yaml` (API reference).
   via `useOutletContext()`.
 - Auth/setup frame: `components/auth/AuthLayout.tsx` (card, `top` for the Stepper, `headerEnd`, `bare` for the
   club picker, `headingRef` for focus). `/setup` is the onboarding (Stepper Verein/Kalender; always starts at step 1 (new
-  club), `?clubId=` continues at step 2 for that club); `/clubs` is the club picker (`?select=1` skips the last-calendar redirect);
+  club), `?clubId=` continues at step 2 for that club; "Vorerst überspringen" on step 1 leads to `/clubs?select=1`); `/clubs` is the club
+  picker (`?select=1` skips the last-calendar redirect and the redirect to /setup; without a club it forwards to /setup unless invitations
+  are waiting, which `components/clubs/InvitationsSection` lists with accept / decline);
+  Invitation mail link: `/invitations?token=…` (`pages/InvitationPage`, outside `ProtectedRoute`, neutral accept / decline via
+  `POST /api/invitations/accept|decline`). The token moves into `sessionStorage` (`lib/invitations`: `stashInvitationToken`) and
+  out of the URL at once; a signed-out visitor goes to /login, after the sign-in `/clubs` forwards back to `/invitations`; the
+  token is cleared after use or when dead. Accepting switches to the club (`lib/useEnterClub`).
   `GuestRoute` sends signed-in users from /login, /signup, /forgot-password, /reset-password to /clubs.
 - Password reset: `/forgot-password` (`ForgotPasswordPage`: form → "Prüfe dein Postfach" with the entered address;
   the API answers 204 for every address, 429 counts as sent, only network / server errors show a banner) and
@@ -197,7 +203,8 @@ operations), `docs/api/openapi.yaml` (API reference).
     feeds never; `feedStatus`, `requiresSecret`, `effectiveSearchable` (only `PUBLIC` sends `searchable: true`),
     form values, payload). Visibility is always icon + word (no emoji icons). Type `FeedVisibility` in `lib/types.ts`.
   - Club: `/clubs/:clubId` (`pages/ClubPage`, in `components/club/`: `ClubNameSection`, `MembersSection` (table,
-    remove / leave with `ConfirmDialog`, add by e-mail with 404 -> "no account"), `CalendarsSection` (create form,
+    remove / leave with `ConfirmDialog`; `InviteSection`: invite by e-mail with a neutral answer (never "no account"), open
+    invitations pending / expired with "send again" (expired only) and revoke), `CalendarsSection` (create form,
     one `CalendarRow` per calendar with open / duplicate / archive / delete, archived list with restore). Rows show "n Termine"
     (`eventCount`). Deleting the club asks to type its name (`ConfirmDialog` `requireText`) and names the scope from
     the club's counters (`clubDeleteConsequence`). Pure logic: `src/lib/club/`. The club picker (`ClubsPage` /

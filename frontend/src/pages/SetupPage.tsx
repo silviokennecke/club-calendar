@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPatch, apiPost } from "@/lib/api";
@@ -143,6 +143,14 @@ export default function SetupPage() {
     </button>
   );
 
+  // Newly registered users may postpone the club (invitations wait on the club picker). Not offered when
+  // the user deliberately asked for another club (?new=1).
+  const skip = !searchParams.has("new") && (
+    <Link to="/clubs?select=1" className="ap-link min-h-tap inline-flex items-center">
+      {t("setup.skip")}
+    </Link>
+  );
+
   const errorBanner = failed && (
     <Banner tone="danger" title={t("setup.errorTitle")}>
       {t("setup.errorText")}
@@ -156,7 +164,14 @@ export default function SetupPage() {
       top={<Stepper steps={[t("setup.stepClub"), t("setup.stepCalendar")]} current={step} />}
       title={step === 1 ? t("setup.welcome") : t("setup.createCalendar")}
       intro={step === 1 ? t("setup.setupClubFirst") : undefined}
-      footer={step === 1 ? signOut : undefined}
+      footer={
+        step === 1 ? (
+          <span className="ap-row ap-spread">
+            {skip}
+            {signOut}
+          </span>
+        ) : undefined
+      }
     >
       {step === 1 && (
         <form

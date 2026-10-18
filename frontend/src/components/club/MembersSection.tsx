@@ -1,33 +1,18 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import {
-  Banner,
-  Button,
-  ConfirmDialog,
-  EmptyState,
-  ErrorSummary,
-  Field,
-  Skeleton,
-  TextInput,
-  toast,
-} from "@/components/ui/shared";
-import { apiDelete, apiGet, apiPost } from "@/lib/api";
+import { Banner, Button, ConfirmDialog, EmptyState, Skeleton, toast } from "@/components/ui/shared";
+import { apiDelete, apiGet } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { focusAfterDialog } from "@/lib/focus";
-import {
-  isLastMember,
-  isMemberGone,
-  memberAddFailure,
-  validateMemberEmail,
-  type MemberProblem,
-} from "@/lib/club";
+import { isLastMember, isMemberGone } from "@/lib/club";
 import type { Club, User } from "@/lib/types";
+import { InviteSection } from "./InviteSection";
 
 /**
- * "Mitglieder" panel (design: Club): table with remove / leave (confirmed with consequences) and the
- * "Mitglied hinzufügen" form (the person needs an account already).
+ * "Mitglieder" panel (design: Club): table with remove / leave (confirmed with consequences), the
+ * invitation form and the open invitations (`InviteSection`).
  */
 export function MembersSection({ club }: { club: Club }) {
   const { t } = useTranslation();
@@ -35,11 +20,6 @@ export function MembersSection({ club }: { club: Club }) {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const [removing, setRemoving] = useState<User | null>(null);
-  const [email, setEmail] = useState("");
-  const [problem, setProblem] = useState<MemberProblem | "notFound" | "failed" | null>(null);
-  const [signal, setSignal] = useState(0);
-  const [adding, setAdding] = useState(false);
-  const emailRef = useRef<HTMLInputElement>(null);
   const queryKey = ["members", club.id];
 
   const members = useQuery<User[]>({
@@ -47,31 +27,6 @@ export function MembersSection({ club }: { club: Club }) {
     queryFn: () => apiGet<User[]>(`/api/clubs/${club.id}/members`),
   });
   const list = members.data ?? [];
-
-  async function add(e: FormEvent) {
-    e.preventDefault();
-    const found = validateMemberEmail(email, list);
-    if (found) {
-      setProblem(found);
-      setSignal((n) => n + 1);
-      return;
-    }
-    setProblem(null);
-    setAdding(true);
-    const value = email.trim();
-    try {
-      await apiPost(`/api/clubs/${club.id}/members`, { email: value });
-      await qc.invalidateQueries({ queryKey });
-      setEmail("");
-      toast.success(t("club.members.added", { email: value }));
-      emailRef.current?.focus();
-    } catch (error) {
-      setProblem(memberAddFailure(error));
-      setSignal((n) => n + 1);
-    } finally {
-      setAdding(false);
-    }
-  }
 
   async function remove(member: User) {
     const self = member.id === user?.id;
@@ -102,8 +57,6 @@ export function MembersSection({ club }: { club: Club }) {
     toast.success(t("club.members.removed", { name: member.name }));
     focusAfterDialog("cl-mem-h");
   }
-
-  const message = problem ? t(`club.members.problem.${problem}`) : undefined;
 
   let table;
   if (members.isLoading) {
@@ -205,46 +158,7 @@ export function MembersSection({ club }: { club: Club }) {
         </div>
       </div>
       {table}
-      <form
-        className="ap-form"
-        style={{ marginTop: "var(--space-6)" }}
-        aria-labelledby="cl-add-h"
-        noValidate
-        onSubmit={(e) => void add(e)}
-      >
-        <h3 className="t-h3" id="cl-add-h">
-          {t("club.members.addTitle")}
-        </h3>
-        <ErrorSummary
-          title={t("club.members.errorSummary")}
-          errors={message ? [{ fieldId: "cl-email", message }] : []}
-          focusSignal={signal}
-        />
-        <Field
-          id="cl-email"
-          label={t("club.members.emailLabel")}
-          required
-          hint={t("club.members.emailHint")}
-          error={message}
-        >
-          <TextInput
-            ref={emailRef}
-            type="email"
-            value={email}
-            autoComplete="off"
-            placeholder={t("club.members.emailPlaceholder")}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setProblem(null);
-            }}
-          />
-        </Field>
-        <div className="ap-actions">
-          <Button type="submit" icon="user-plus" loading={adding}>
-            {t("club.members.add")}
-          </Button>
-        </div>
-      </form>
+      <InviteSection club={club} members={list} />
 
       {removing && (
         <ConfirmDialog

@@ -1,26 +1,18 @@
-// Pure club-page logic (no React): member e-mail check, error mapping, delete consequence.
+// Pure club-page logic (no React): invite e-mail check, error mapping, delete consequence.
 import type { TFunction } from "i18next";
 import type { Club, User } from "@/lib/types";
 
-export type MemberProblem = "empty" | "invalid" | "duplicate";
-
-/** E-mail check of the "Mitglied hinzufügen" form (the backend only knows existing accounts). */
+/** E-mail check of the "Per E-Mail einladen" form (members cannot be invited again). */
 export function validateMemberEmail(
   email: string,
   members: ReadonlyArray<Pick<User, "email">>,
-): MemberProblem | null {
+): "empty" | "invalid" | "duplicate" | null {
   const value = email.trim();
   if (!value) return "empty";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "invalid";
   const lower = value.toLowerCase();
   if (members.some((m) => m.email.toLowerCase() === lower)) return "duplicate";
   return null;
-}
-
-/** Why the backend refused to add a member: no account (404) or anything else. */
-export function memberAddFailure(error: unknown): "notFound" | "failed" {
-  const status = (error as { status?: number } | null)?.status;
-  return status === 404 ? "notFound" : "failed";
 }
 
 /**

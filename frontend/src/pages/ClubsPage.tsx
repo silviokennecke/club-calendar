@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { ClubCard } from "@/components/clubs/ClubCard";
+import { InvitationsSection } from "@/components/clubs/InvitationsSection";
+import { readInvitationToken, type MyInvitation } from "@/lib/invitations";
 import { initials } from "@/components/layout/navigation";
 import type { Club } from "@/lib/types";
 
@@ -38,8 +40,22 @@ export default function ClubsPage() {
     queryFn: () => apiGet<Club[]>("/api/clubs"),
   });
 
+  // Invitations to this account. A failed request counts as "none": the page works without them.
+  const { data: invitations = [], isLoading: invitationsLoading } = useQuery({
+    queryKey: ["invitations"],
+    queryFn: () => apiGet<MyInvitation[]>("/api/invitations"),
+    retry: false,
+  });
+
   useEffect(() => {
-    if (isLoading || isError || redirected) return;
+    if (redirected) return;
+    // Back from the sign-in with the link of an invitation e-mail: continue there.
+    if (readInvitationToken()) {
+      setRedirected(true);
+      navigate("/invitations", { replace: true });
+      return;
+    }
+    if (isLoading || isError || invitationsLoading) return;
     if (!explicitSelect && user?.lastClubId && user?.lastCalendarId) {
       const clubExists = clubs.some((c) => c.id === user.lastClubId);
       if (clubs.length > 0 && clubExists) {
@@ -48,14 +64,26 @@ export default function ClubsPage() {
         return;
       }
     }
-    // No club yet: onboarding. (With ?select=1 the empty state below explains it instead.)
-    if (clubs.length === 0 && !explicitSelect) {
+    // No club yet: onboarding, unless invitations are waiting (they are shown here instead). With
+    // ?select=1 (skipped onboarding) the empty state below explains it.
+    if (clubs.length === 0 && invitations.length === 0 && !explicitSelect) {
       setRedirected(true);
       navigate("/setup", { replace: true });
     }
-  }, [user, clubs, isLoading, isError, redirected, navigate, explicitSelect]);
+  }, [
+    user,
+    clubs,
+    invitations,
+    isLoading,
+    isError,
+    invitationsLoading,
+    redirected,
+    navigate,
+    explicitSelect,
+  ]);
 
-  if (isLoading || redirected) return <FullPageLoader />;
+  if (isLoading || redirected || (clubs.length === 0 && !explicitSelect && invitationsLoading))
+    return <FullPageLoader />;
 
   const name = user?.name || user?.email || "";
   const headerEnd = (
@@ -83,6 +111,7 @@ export default function ClubsPage() {
   if (clubs.length === 0) {
     return (
       <AuthLayout bare title={t("clubs.selectClub")} headerEnd={headerEnd}>
+        <InvitationsSection invitations={invitations} />
         <EmptyState
           icon="building"
           title={t("clubs.emptyTitle")}
@@ -104,6 +133,7 @@ export default function ClubsPage() {
       intro={clubs.length > 1 ? t("clubs.selectIntro") : t("clubs.selectIntroOne")}
       headerEnd={headerEnd}
     >
+      <InvitationsSection invitations={invitations} />
       <div className="ap-cols-3">
         {clubs.map((club) => (
           <ClubCard
