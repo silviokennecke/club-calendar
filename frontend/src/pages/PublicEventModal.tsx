@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { formatWeekdayDate } from "@/lib/events/format";
@@ -10,6 +10,7 @@ import {
   type PublicFeedEvent,
   type PublicFeedHeader,
 } from "@/lib/feeds/public";
+import { API_URL } from "@/lib/apiUrl";
 import { formatAddress } from "@/lib/types";
 import { useModalNav } from "@/lib/useModalNav";
 import { audienceTone } from "@/components/calendar/eventDisplay";
@@ -17,10 +18,40 @@ import { useLocale } from "@/components/calendar/useLocale";
 import { ModalSkeleton } from "@/components/events/CreateGate";
 import { usePublicEvent, usePublicFeed } from "@/components/feed/usePublicFeed";
 import { usePublicHead } from "@/components/feed/usePublicHead";
-import { MapBoundary } from "@/components/locations/MapBoundary";
-import { Button, Icon, Modal, Skeleton, Tag, buttonClass } from "@/components/ui/shared";
+import { Button, Icon, Modal, Tag, buttonClass } from "@/components/ui/shared";
 
-const PublicEventMap = lazy(() => import("@/components/feed/PublicEventMap"));
+/**
+ * Static map image of a location from the backend (`/api/map/image/location/{id}`, fixed 800x288,
+ * public). No mapbox-gl on public pages, so anonymous visitors cause at most one cached static image
+ * request. `v` (the location's `updatedAt`) busts the cache after a change.
+ */
+function PublicLocationImage({
+  id,
+  version,
+  label,
+}: {
+  id: string;
+  version?: number;
+  label: string;
+}) {
+  const { t } = useTranslation();
+  const [failed, setFailed] = useState(false);
+  if (failed) return <p className="t-sm t-muted">{t("feed.event.mapUnavailable")}</p>;
+  const query = version != null ? `?v=${encodeURIComponent(String(version))}` : "";
+  return (
+    <img
+      src={`${API_URL}/api/map/image/location/${encodeURIComponent(id)}${query}`}
+      alt={label}
+      width={800}
+      height={288}
+      loading="lazy"
+      decoding="async"
+      className="ap-map object-cover"
+      style={{ height: "auto", aspectRatio: "800 / 288" }}
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 /**
  * Public event details (design: PublicEvent, PublicEventMobile) as a dialog above the public feed;
@@ -225,17 +256,11 @@ function EventDetail({ event, feed, onClose }: EventDetailProps) {
             )}
           </p>
           {hasCoords && (
-            <MapBoundary
-              fallback={<p className="t-sm t-muted">{t("feed.event.mapUnavailable")}</p>}
-            >
-              <Suspense fallback={<Skeleton style={{ height: 220, width: "100%" }} />}>
-                <PublicEventMap
-                  latitude={loc!.latitude!}
-                  longitude={loc!.longitude!}
-                  label={t("feed.event.mapLabel", { place: placeName })}
-                />
-              </Suspense>
-            </MapBoundary>
+            <PublicLocationImage
+              id={loc!.id}
+              version={loc!.updatedAt}
+              label={t("feed.event.mapLabel", { place: placeName })}
+            />
           )}
           {mapHref && (
             <a
