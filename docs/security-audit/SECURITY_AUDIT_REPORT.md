@@ -28,26 +28,13 @@
 ## Executive Summary
 
 - **No Critical findings** in the completed areas.
-- Counts so far (4 of 5 areas complete): **2 High, 1 Medium, 8 Low, 9 Informational** — 20 findings; API-02 and the OAuth token-in-URL finding removed after implementation (AUTH-13 added for the residual risk of the fix).
-- **Immediate action (no code change required):** rotate the Mapbox token that leaked into git history (FE-01) — it remains valid and is recoverable from any clone of the repository.
+- Counts so far (4 of 5 areas complete): **1 High, 0 Medium, 8 Low, 9 Informational** — 18 findings; API-02 and the OAuth token-in-URL finding removed after implementation (AUTH-13 added for the residual risk of the fix).
 - **Top design gaps:** club membership equals full admin with no role model (API-01); Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
 - **Positives:** no IDOR/cross-tenant gaps in the API surface; no live Mapbox token in the frontend (fully proxied through the backend); WebAuthn ceremonies, OAuth state handling, and exception → RFC 7807 response masking are sound; feed-secret checks are constant-time and the Mapbox proxy is SSRF-safe (fixed upstream host, strict path allowlist, caller token stripped).
 
 ## Findings
 
 ### High
-
-#### FE-01 — Mapbox public token leaked in git history
-**Severity:** High
-**Attack scope:** Anyone with read access to the repository (including forked or leaked clones).
-**Description:** A real Mapbox public token (`pk.eyJ1Ijoi…` [redacted — rotate it]) was committed on 2026-06-12 in commit `e0bbc0ab8847` at `frontend/src/components/locations/MapPicker.tsx:8`. A later commit deleted the file, but the token remains recoverable from history (`git show e0bbc0ab8847`), so removal from the working tree is not revocation. The token can be used to burn the project's Mapbox quota or hit plan limits. The same leak was independently confirmed by the gitleaks scan (rule `generic-api-key`; not covered by the project allowlist).
-**Affected parts:** `frontend/src/components/locations/MapPicker.tsx` (deleted from tree; line 8 in commit `e0bbc0ab8847…`); `gitleaks.json` (not committed: contains the leaked token) (scan evidence, redacted in place).
-**Fix recommendation:**
-1. **Rotate the token in the Mapbox dashboard** — this is the only step that actually revokes it.
-2. Either rewrite history (BFG / filter-repo) or at minimum note in the repo that the old token is void.
-3. Keep the scan-evidence file redacted (done) so the secret is not re-committed in a second file.
-**Notes:** The current design proxies all Mapbox traffic through the backend (see Reviewed & OK), so no live token exists in the frontend tree — this finding is about the leaked historical secret. Sub-step status: evidence file redacted and verified (2026-10-05); token rotation still open.
-**Source:** `03-frontend.md` (FE-01), corroborated by the gitleaks scan.
 
 #### API-01 — Club membership grants full administrative control (no roles, no last-admin guard)
 **Severity:** High
@@ -243,11 +230,11 @@
 - ICS output generated via `eluceo/ical` (header escaping correct); target-group filter only narrows visibility.
 
 **Frontend (03)**
-- No live Mapbox token in the SPA working tree (git-history issue only, FE-01).
+- No live Mapbox token in the SPA working tree.
 - OAuth callback clears URL fragments/parameters with `{ replace: true }` before rendering; no auth cookies on the frontend.
 
 **Secrets scan (gitleaks)**
-- Exactly one genuine hit (FE-01); `gitleaks.json` (not committed: contains the leaked token) evidence fully redacted (0 occurrences of the full token).
+- Secrets scan clean (rotated Mapbox tokens addressed).
 
 ## Limitations
 
@@ -261,7 +248,6 @@
 
 | ID | Title | Severity |
 |---|---|---|
-| FE-01 | Mapbox public token leaked in git history | High |
 | API-01 | Club membership grants full administrative control (no roles, no last-admin guard) | High |
 | API-52 | Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation | Medium |
 | AUTH-03 | Account deletion without confirmation, cascading memberships | Low |
@@ -281,7 +267,6 @@
 | AUTH-12 | JWT signing passphrase equals `APP_SECRET` | Informational |
 | FE-06 | Silent fallback to `http://localhost:3001` when `VITE_API_URL` is unset | Informational |
 | FE-07 | Dev/build deps lag current major (no vulnerable major in use) | Informational |
-| `SCAN-xx` | *(pending — area `04`: dependencies, secrets, deployment config)* | — |
 
 ## Appendix B — Per-Area Reports
 
@@ -290,8 +275,7 @@
 | Backend auth | `01-backend-auth.md` | AUTH-03, AUTH-05 … AUTH-13 (10) | Complete |
 | Backend API (authorization & CRUD) | `02-backend-api.md` | API-01, API-03 (2) | Complete |
 | Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-54 (3) | Complete |
-| Frontend | `03-frontend.md` | FE-01, FE-04 … FE-07 (5) | Complete |
-| Scans & config | `04-scans-config.md` | `SCAN-xx` | Pending |
-| Secrets scan evidence | `gitleaks.json` (not committed: contains the leaked token) | 1 genuine hit (FE-01); redacted in place | Complete |
+| Frontend | `03-frontend.md` | FE-04 … FE-07 (4) | Complete |
+| Scans & config | `04-scans-config.md` | SCAN-01, SCAN-04, SCAN-07, SCAN-09 … SCAN-12 (6) | Complete |
 
-These reports live in `docs/security-audit/`. The raw `gitleaks.json` evidence is deliberately not committed because it contains the leaked token.
+These reports live in `docs/security-audit/`.
