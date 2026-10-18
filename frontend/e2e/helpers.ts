@@ -80,6 +80,19 @@ export async function seedClub(request: APIRequestContext, email: string, clubNa
 }
 
 /**
+ * API URL of a resource below a club or calendar: locations, target groups and feeds belong to the club
+ * (`/api/clubs/:id/…`), everything else (events, templates, properties, features, holiday calendars) to the
+ * calendar (`/api/calendars/:id/…`). `path` may carry a sub path or query (`feeds?includeSecret=1`).
+ */
+export function resourceUrl(clubId: string, calendarId: string, path: string) {
+  const kind = path.split(/[/?]/)[0];
+  const clubLevel = ["locations", "target-groups", "feeds"].includes(kind);
+  return clubLevel
+    ? `${API}/api/clubs/${clubId}/${path}`
+    : `${API}/api/calendars/${calendarId}/${path}`;
+}
+
+/**
  * Invites `inviteeEmail` to a club (as the member whose headers are given) and accepts the invitation as that
  * user through the API. The mail token is not available to the tests, so the invitee answers by id
  * (`GET /api/invitations`).
@@ -89,10 +102,11 @@ export async function inviteAndAccept(
   clubId: string,
   memberHeaders: Record<string, string>,
   inviteeEmail: string,
+  role?: "viewer" | "editor" | "admin",
 ) {
   const invited = await request.post(`${API}/api/clubs/${clubId}/invitations`, {
     headers: memberHeaders,
-    data: { email: inviteeEmail },
+    data: role ? { email: inviteeEmail, role } : { email: inviteeEmail },
   });
   expect(invited.status()).toBe(204);
   const headers = await authHeaders(request, inviteeEmail);

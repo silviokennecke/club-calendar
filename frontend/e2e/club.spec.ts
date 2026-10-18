@@ -1,5 +1,13 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
-import { API, authHeaders, createVerifiedUser, inviteAndAccept, login, seedClub } from "./helpers";
+import {
+  API,
+  authHeaders,
+  createVerifiedUser,
+  inviteAndAccept,
+  login,
+  resourceUrl,
+  seedClub,
+} from "./helpers";
 
 // ——— Verein verwalten (phase 7): Name, Mitglieder, Kalender (duplizieren, archivieren, löschen), Gefahrenbereich ———
 
@@ -243,7 +251,7 @@ test.describe("Verein verwalten", () => {
     const del = page.getByRole("alertdialog", { name: `Kalender „${copy}“ löschen?` });
     await expect(del).toContainText("Der Kalender wird dauerhaft gelöscht.");
     await expect(del).toContainText(
-      "Löscht den Kalender und seine Feeds unwiderruflich. Die Adressen der Feeds funktionieren danach nicht mehr.",
+      "Löscht den Kalender unwiderruflich.",
     );
     await del.getByRole("button", { name: "Abbrechen" }).click();
     expect(await calendars(request, s)).toHaveLength(3);
@@ -257,7 +265,8 @@ test.describe("Verein verwalten", () => {
   test("Verein verlassen: der Verein verschwindet aus meiner Liste", async ({ page, request }) => {
     const s = await seed(request, "Club Verlassen");
     const otherEmail = await createVerifiedUser(request, "Bleibt Da");
-    await inviteAndAccept(request, s.clubId, s.headers, otherEmail);
+    // The last admin cannot leave: the second member becomes an admin first
+    await inviteAndAccept(request, s.clubId, s.headers, otherEmail, "admin");
     await openClub(page, s);
     await page.getByRole("button", { name: `Verein ${s.clubName} verlassen` }).click();
     const dialog = page.getByRole("alertdialog", { name: "Verein verlassen?" });
@@ -273,7 +282,7 @@ test.describe("Verein verwalten", () => {
     const add = async (path: string, data: object) =>
       expect(
         (
-          await request.post(`${API}/api/calendars/${s.calendarId}/${path}`, {
+          await request.post(resourceUrl(s.clubId, s.calendarId, path), {
             headers: s.headers,
             data,
           })
@@ -281,7 +290,7 @@ test.describe("Verein verwalten", () => {
       ).toBeTruthy();
     for (const date of ["2026-10-10", "2026-10-17"])
       await add("events", { name: "Training", date, timeBegin: "19:00", timeEnd: "21:00" });
-    await add("feeds", { name: "Alle", visibility: "PUBLIC" });
+    await add("feeds", { name: "Alle", visibility: "PUBLIC", calendarIds: [s.calendarId] });
     await openClub(page, s);
     await expect(page.getByRole("heading", { name: "Gefahrenbereich" })).toBeVisible();
     await page.getByRole("button", { name: "Verein löschen" }).click();

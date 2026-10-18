@@ -112,7 +112,7 @@ async function seedCalendar(request: APIRequestContext, name: string): Promise<S
   const group = async (groupName: string) =>
     (
       await (
-        await request.post(`${API}/api/calendars/${calendarId}/target-groups`, {
+        await request.post(`${API}/api/clubs/${clubId}/target-groups`, {
           headers,
           data: { name: groupName },
         })

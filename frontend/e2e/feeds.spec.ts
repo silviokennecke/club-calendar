@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
-import { API, createVerifiedUser, login, seedClub } from "./helpers";
+import { API, createVerifiedUser, inviteAndAccept, login, resourceUrl, seedClub } from "./helpers";
 
 // ——— Veröffentlichen (phase 7): Feedliste, Feed anlegen/bearbeiten, Geheimnis neu erzeugen, löschen ———
 
@@ -7,9 +7,29 @@ async function seed(request: APIRequestContext, name: string) {
   const email = await createVerifiedUser(request, name);
   const { clubId, calendarId, headers } = await seedClub(request, email, `${name} Verein`);
   const base = `/clubs/${clubId}/calendars/${calendarId}`;
+  // Feeds are club data: the settings live below /clubs/:id/settings, no calendar in the address
+  const feedsPath = `/clubs/${clubId}/settings/feeds`;
   const post = async (path: string, data: object) =>
-    (await request.post(`${API}/api/calendars/${calendarId}/${path}`, { headers, data })).json();
-  return { email, clubId, calendarId, headers, base, post, calendarName: `${name} Verein Termine` };
+    (await request.post(resourceUrl(clubId, calendarId, path), { headers, data })).json();
+  const createFeed = async (data: object, query = "") =>
+    (
+      await request.post(`${API}/api/clubs/${clubId}/feeds${query}`, {
+        headers,
+        data: { calendarIds: [calendarId], ...data },
+      })
+    ).json();
+  return {
+    email,
+    clubId,
+    calendarId,
+    headers,
+    base,
+    feedsPath,
+    post,
+    createFeed,
+    clubName: `${name} Verein`,
+    calendarName: `${name} Verein Termine`,
+  };
 }
 
 async function openFeeds(page: Page, email: string, path: string) {
@@ -20,7 +40,7 @@ async function openFeeds(page: Page, email: string, path: string) {
 
 async function listFeeds(request: APIRequestContext, s: Awaited<ReturnType<typeof seed>>) {
   return (
-    await request.get(`${API}/api/calendars/${s.calendarId}/feeds?includeSecret=1`, {
+    await request.get(`${API}/api/clubs/${s.clubId}/feeds?includeSecret=1`, {
       headers: s.headers,
     })
   ).json() as Promise<
@@ -48,10 +68,10 @@ test.describe("Veröffentlichen", () => {
       .getByRole("navigation", { name: "Bereiche" })
       .getByRole("link", { name: "Veröffentlichen" })
       .click();
-    await expect(page).toHaveURL(new RegExp(`${s.base}/settings/feeds$`));
+    await expect(page).toHaveURL(new RegExp(`${s.feedsPath}$`));
     await expect(page.getByRole("heading", { level: 1, name: "Veröffentlichen" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Noch kein Feed" })).toBeVisible();
-    await expect(page.getByText(`${s.calendarName} · 0 Feeds`)).toBeVisible();
+    await expect(page.getByText(`${s.clubName} · 0 Feeds`)).toBeVisible();
     await page.getByRole("main").getByRole("link", { name: "Feed anlegen" }).first().click();
     await expect(page).toHaveURL(new RegExp(`/settings/feeds/new$`));
     await expect(page.getByRole("heading", { level: 1, name: "Feed anlegen" })).toBeFocused();
@@ -63,16 +83,14 @@ test.describe("Veröffentlichen", () => {
   }) => {
     const s = await seed(request, "Feeds Liste");
     const group = await s.post("target-groups", { name: "Jugend" });
-    await request.post(`${API}/api/calendars/${s.calendarId}/feeds`, {
-      headers: s.headers,
-      data: { name: "Öffentlicher Kalender", visibility: "PUBLIC" },
+    await s.createFeed({ name: "Öffentlicher Kalender", visibility: "PUBLIC" });
+    await s.createFeed({
+      name: "Vorstand intern",
+      visibility: "PRIVATE",
+      targetGroupIds: [group.id],
     });
-    await request.post(`${API}/api/calendars/${s.calendarId}/feeds`, {
-      headers: s.headers,
-      data: { name: "Vorstand intern", visibility: "PRIVATE", targetGroupIds: [group.id] },
-    });
-    await openFeeds(page, s.email, `${s.base}/settings/feeds`);
-    await expect(page.getByText(`${s.calendarName} · 2 Feeds`)).toBeVisible();
+    await openFeeds(page, s.email, `${s.feedsPath}`);
+    await expect(page.getByText(`${s.clubName} · 2 Feeds`)).toBeVisible();
 
     const pub = page.getByRole("region", { name: "Öffentlicher Kalender" });
     const priv = page.getByRole("region", { name: "Vorstand intern" });
@@ -133,7 +151,7 @@ test.describe("Veröffentlichen", () => {
     const s = await seed(request, "Feeds Neu");
     await s.post("target-groups", { name: "Jugend" });
     await s.post("target-groups", { name: "Erwachsene" });
-    await openFeeds(page, s.email, `${s.base}/settings/feeds/new`);
+    await openFeeds(page, s.email, `${s.feedsPath}/new`);
 
     // Validierung mit Fehlerzusammenfassung
     await page.getByRole("button", { name: "Feed speichern" }).click();
@@ -152,7 +170,7 @@ test.describe("Veröffentlichen", () => {
       "true",
     );
     await page.getByRole("button", { name: "Feed speichern" }).click();
-    await expect(page).toHaveURL(new RegExp(`${s.base}/settings/feeds$`));
+    await expect(page).toHaveURL(new RegExp(`${s.feedsPath}$`));
     await expect(page.getByText("Feed „Jugend-Abo“ angelegt.")).toBeVisible();
 
     const feeds = await listFeeds(request, s);
@@ -175,13 +193,8 @@ test.describe("Veröffentlichen", () => {
   }) => {
     const s = await seed(request, "Feeds Edit");
     const group = await s.post("target-groups", { name: "Senioren" });
-    const created = await (
-      await request.post(`${API}/api/calendars/${s.calendarId}/feeds`, {
-        headers: s.headers,
-        data: { name: "Alt", visibility: "PUBLIC" },
-      })
-    ).json();
-    await openFeeds(page, s.email, `${s.base}/settings/feeds/${created.id}`);
+    const created = await s.createFeed({ name: "Alt", visibility: "PUBLIC" });
+    await openFeeds(page, s.email, `${s.feedsPath}/${created.id}`);
     await expect(page.getByRole("heading", { level: 1, name: "Feed bearbeiten" })).toBeVisible();
     await expect(page.getByLabel(/^Name/)).toHaveValue("Alt");
     await expect(page.getByRole("radio", { name: /Öffentlich/ })).toBeChecked();
@@ -199,7 +212,7 @@ test.describe("Veröffentlichen", () => {
     await page.getByRole("radio", { name: /Privat/ }).check();
     await page.getByRole("button", { name: "Senioren" }).click();
     await page.getByRole("button", { name: "Feed speichern" }).click();
-    await expect(page).toHaveURL(new RegExp(`${s.base}/settings/feeds$`));
+    await expect(page).toHaveURL(new RegExp(`${s.feedsPath}$`));
     const [saved] = await listFeeds(request, s);
     expect(saved).toMatchObject({ name: "Neu", visibility: "PRIVATE" });
     expect(saved.targetGroups).toEqual([{ feedId: created.id, targetGroupId: group.id }]);
@@ -214,7 +227,7 @@ test.describe("Veröffentlichen", () => {
     request,
   }) => {
     const s = await seed(request, "Feeds Status");
-    await openFeeds(page, s.email, `${s.base}/settings/feeds/new`);
+    await openFeeds(page, s.email, `${s.feedsPath}/new`);
     const group = page.getByRole("group", { name: "Sichtbarkeit" });
     const searchable = page.getByRole("switch", { name: "Für Suchmaschinen auffindbar" });
 
@@ -291,16 +304,11 @@ test.describe("Veröffentlichen", () => {
     request,
   }) => {
     const s = await seed(request, "Feeds Wechsel");
-    const created = await (
-      await request.post(`${API}/api/calendars/${s.calendarId}/feeds`, {
-        headers: s.headers,
-        data: { name: "Vorstand", visibility: "PRIVATE" },
-      })
-    ).json();
+    const created = await s.createFeed({ name: "Vorstand", visibility: "PRIVATE" });
     const openIcs = `${API}/api/feed/${created.id}/ics`;
     expect((await request.get(openIcs)).status()).toBe(403);
 
-    await openFeeds(page, s.email, `${s.base}/settings/feeds/${created.id}`);
+    await openFeeds(page, s.email, `${s.feedsPath}/${created.id}`);
     await expect(page.getByRole("heading", { name: "Geheimnis" })).toBeVisible();
     await page.getByRole("radio", { name: /^Nur per Link/ }).check();
     await page.getByRole("button", { name: "Feed speichern" }).click();
@@ -319,7 +327,7 @@ test.describe("Veröffentlichen", () => {
       .getByRole("alertdialog")
       .getByRole("button", { name: "Ohne Geheimnis speichern" })
       .click();
-    await expect(page).toHaveURL(new RegExp(`${s.base}/settings/feeds$`));
+    await expect(page).toHaveURL(new RegExp(`${s.feedsPath}$`));
     await expect(page.getByRole("region", { name: "Vorstand" }).locator(".ap-badge")).toHaveText(
       "Nur per Link",
     );
@@ -339,16 +347,14 @@ test.describe("Veröffentlichen", () => {
     request,
   }) => {
     const s = await seed(request, "Feeds Geheimnis");
-    const created = await (
-      await request.post(`${API}/api/calendars/${s.calendarId}/feeds?includeSecret=1`, {
-        headers: s.headers,
-        data: { name: "Intern", visibility: "PRIVATE" },
-      })
-    ).json();
+    const created = await s.createFeed(
+      { name: "Intern", visibility: "PRIVATE" },
+      "?includeSecret=1",
+    );
     const oldIcs = `${API}/api/feed/${created.id}/ics?secret=${created.sharedSecret}`;
     expect((await request.get(oldIcs)).status()).toBe(200);
 
-    await openFeeds(page, s.email, `${s.base}/settings/feeds/${created.id}`);
+    await openFeeds(page, s.email, `${s.feedsPath}/${created.id}`);
     const secret = page.getByRole("textbox", { name: "Geheimnis" });
     await expect(secret).toHaveValue(/^•+$/);
 
@@ -392,12 +398,9 @@ test.describe("Veröffentlichen", () => {
   test("Feed löschen aus der Liste und von der Bearbeiten-Seite", async ({ page, request }) => {
     const s = await seed(request, "Feeds Löschen");
     for (const name of ["Eins", "Zwei"]) {
-      await request.post(`${API}/api/calendars/${s.calendarId}/feeds`, {
-        headers: s.headers,
-        data: { name, visibility: "PUBLIC" },
-      });
+      await s.createFeed({ name, visibility: "PUBLIC" });
     }
-    await openFeeds(page, s.email, `${s.base}/settings/feeds`);
+    await openFeeds(page, s.email, `${s.feedsPath}`);
 
     // Liste: Bestätigung mit Folgen, Abbrechen löscht nichts
     await page.getByRole("button", { name: "Feed „Eins“ löschen" }).click();
@@ -415,29 +418,115 @@ test.describe("Veröffentlichen", () => {
     await page.getByRole("link", { name: "Feed „Zwei“ bearbeiten" }).click();
     await page.getByRole("button", { name: "Feed löschen" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Feed löschen" }).click();
-    await expect(page).toHaveURL(new RegExp(`${s.base}/settings/feeds$`));
+    await expect(page).toHaveURL(new RegExp(`${s.feedsPath}$`));
     await expect(page.getByRole("heading", { name: "Noch kein Feed" })).toBeVisible();
     expect(await listFeeds(request, s)).toHaveLength(0);
   });
 
-  test("Archivierter Kalender: Feeds nur lesbar", async ({ page, request }) => {
-    const s = await seed(request, "Feeds Archiv");
-    await request.post(`${API}/api/calendars/${s.calendarId}/feeds`, {
-      headers: s.headers,
-      data: { name: "Archivfeed", visibility: "PUBLIC" },
-    });
-    const archive = await request.post(
-      `${API}/api/clubs/${s.clubId}/calendars/${s.calendarId}/archive`,
-      { headers: s.headers, data: {} },
+  test("Feed über zwei Kalender: Webansicht und ICS enthalten beide, Feedname als Überschrift", async ({
+    page,
+    request,
+  }) => {
+    const s = await seed(request, "Feeds Zwei");
+    const second = await (
+      await request.post(`${API}/api/clubs/${s.clubId}/calendars`, {
+        headers: s.headers,
+        data: { name: "Jugendkalender" },
+      })
+    ).json();
+    const addEvent = async (calendarId: string, name: string, date: string) => {
+      const res = await request.post(`${API}/api/calendars/${calendarId}/events`, {
+        headers: s.headers,
+        data: {
+          name,
+          date,
+          timeBegin: "19:00",
+          timeEnd: "21:00",
+          timezone: "Europe/Berlin",
+          isDraft: false,
+        },
+      });
+      expect(res.ok(), await res.text()).toBeTruthy();
+    };
+    await addEvent(s.calendarId, "Schießabend Hauptkalender", "2026-10-08");
+    await addEvent(second.id, "Zeltlager Jugendkalender", "2026-10-15");
+    // A third calendar the feed does not contain: its event must not appear
+    const third = await (
+      await request.post(`${API}/api/clubs/${s.clubId}/calendars`, {
+        headers: s.headers,
+        data: { name: "Intern" },
+      })
+    ).json();
+    await addEvent(third.id, "Nur intern", "2026-10-20");
+
+    // Anlegen im Formular: neue Feeds wählen alle aktiven Kalender vor, hier einen abwählen
+    await openFeeds(page, s.email, `${s.feedsPath}/new`);
+    const calendars = page.getByRole("group", { name: "Kalender" });
+    await expect(calendars.getByRole("button", { name: s.calendarName })).toHaveAttribute(
+      "aria-pressed",
+      "true",
     );
-    expect(archive.ok()).toBeTruthy();
-    await openFeeds(page, s.email, `${s.base}/settings/feeds`);
-    await expect(page.getByText("Archiviert, schreibgeschützt").first()).toBeVisible();
+    await expect(calendars.getByRole("button", { name: "Jugendkalender" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await calendars.getByRole("button", { name: "Intern" }).click();
+    await expect(calendars.getByRole("button", { name: "Intern" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    await page.getByLabel(/^Name/).fill("Gesamtprogramm");
+    await page.getByRole("radio", { name: /^Öffentlich/ }).check();
+    await page.getByRole("button", { name: "Feed speichern" }).click();
+    await expect(page.getByText("Feed „Gesamtprogramm“ angelegt.")).toBeVisible();
+
+    const [feed] = await listFeeds(request, s);
+    expect(feed.name).toBe("Gesamtprogramm");
+    const card = page.getByRole("region", { name: "Gesamtprogramm" });
+    await expect(card.getByRole("group", { name: "Kalender von Gesamtprogramm" })).toContainText(
+      "Jugendkalender",
+    );
+
+    // Webansicht ohne Anmeldung: Feedname als Überschrift, Termine beider Kalender
+    await page.goto(`/feed/${feed.id}?date=2026-10-08`);
+    await expect(page.getByRole("heading", { level: 1, name: "Gesamtprogramm" })).toBeVisible();
+    await expect(page.getByText("Zeige 2 von 2 Terminen")).toBeVisible();
+    await expect(page.getByText("Schießabend Hauptkalender").first()).toBeVisible();
+    await expect(page.getByText("Zeltlager Jugendkalender").first()).toBeVisible();
+    await expect(page.getByText("Nur intern")).toHaveCount(0);
+
+    // ICS: beide Termine, nicht der des dritten Kalenders
+    const icsRes = await request.get(`${API}/api/feed/${feed.id}/ics`);
+    expect(icsRes.status()).toBe(200);
+    const ics = await icsRes.text();
+    expect(ics).toContain("Schießabend Hauptkalender");
+    expect(ics).toContain("Zeltlager Jugendkalender");
+    expect(ics).not.toContain("Nur intern");
+    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(2);
+  });
+
+  test("Bearbeiter sehen Feeds nur lesbar, Betrachter gar nicht", async ({ page, request }) => {
+    const s = await seed(request, "Feeds Rollen");
+    await s.createFeed({ name: "Verbandsfeed", visibility: "PUBLIC" });
+    const editor = await createVerifiedUser(request, "Feeds Bearbeiter");
+    await inviteAndAccept(request, s.clubId, s.headers, editor, "editor");
+    await openFeeds(page, editor, s.feedsPath);
+    await expect(page.getByRole("region", { name: "Verbandsfeed" })).toBeVisible();
+    await expect(
+      page.getByText("Nur Vereins-Admins können Feeds anlegen oder ändern."),
+    ).toBeVisible();
     await expect(page.getByRole("link", { name: "Feed anlegen" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /löschen/ })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /bearbeiten/ })).toHaveCount(0);
     await expect(page.getByLabel("ICS-Adresse")).toBeVisible();
-    await page.getByRole("button", { name: "Archivierung aufheben" }).click();
-    await expect(page.getByText("Archivierung aufgehoben.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Feed anlegen" }).first()).toBeVisible();
+
+    const viewer = await createVerifiedUser(request, "Feeds Betrachter");
+    await inviteAndAccept(request, s.clubId, s.headers, viewer, "viewer");
+    await page.context().clearCookies();
+    await page.evaluate(() => sessionStorage.clear());
+    await openFeeds(page, viewer, s.feedsPath);
+    await expect(
+      page.getByRole("heading", { name: "Feeds sind für deine Rolle nicht verfügbar" }),
+    ).toBeVisible();
   });
 });

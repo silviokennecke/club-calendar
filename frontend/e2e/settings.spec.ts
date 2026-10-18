@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { API, createVerifiedUser, login, seedClub } from "./helpers";
+import { API, createVerifiedUser, login, resourceUrl, seedClub } from "./helpers";
 
 // ——— Einstellungen (phase 6): Allgemein, Besonderheiten/Zusatzangebote/Gruppen, Orte, Archiv ———
 
@@ -30,8 +30,6 @@ test.describe("Einstellungen", () => {
       "Allgemein",
       "Besonderheiten",
       "Zusatzangebote",
-      "Gruppen",
-      "Orte",
       "Feiertage",
     ]);
     await expect(tabs.getByRole("link", { name: "Allgemein" })).toHaveAttribute(
@@ -93,6 +91,7 @@ test.describe("Einstellungen", () => {
 
   const kinds = [
     {
+      scope: "calendar",
       tab: "Besonderheiten",
       path: "properties",
       list: "Vorhandene Besonderheiten",
@@ -104,6 +103,7 @@ test.describe("Einstellungen", () => {
       empty: "Noch keine Besonderheiten",
     },
     {
+      scope: "calendar",
       tab: "Zusatzangebote",
       path: "features",
       list: "Vorhandene Zusatzangebote",
@@ -115,6 +115,7 @@ test.describe("Einstellungen", () => {
       empty: "Noch keine Zusatzangebote",
     },
     {
+      scope: "club",
       tab: "Gruppen",
       path: "target-groups",
       list: "Vorhandene Gruppen",
@@ -130,12 +131,27 @@ test.describe("Einstellungen", () => {
   for (const k of kinds) {
     test(`${k.tab}: anlegen, umbenennen, löschen`, async ({ page, request }) => {
       const s = await seed(request, `Settings ${k.tab}`);
-      await openSettings(page, s.email, `${s.base}/settings`);
-      await page
-        .getByRole("navigation", { name: "Einstellungen des Kalenders" })
-        .getByRole("link", { name: k.tab })
-        .click();
-      await expect(page).toHaveURL(new RegExp(`/settings/${k.path}$`));
+      if (k.scope === "club") {
+        // Gruppen sind Vereinsdaten: Tab der Vereinseinstellungen, keine Kalender-ID in der Adresse
+        await openSettings(
+          page,
+          s.email,
+          `/clubs/${s.clubId}/settings/locations`,
+          "Vereinseinstellungen",
+        );
+        await page
+          .getByRole("navigation", { name: "Einstellungen des Vereins" })
+          .getByRole("link", { name: k.tab })
+          .click();
+        await expect(page).toHaveURL(new RegExp(`/clubs/${s.clubId}/settings/${k.path}$`));
+      } else {
+        await openSettings(page, s.email, `${s.base}/settings`);
+        await page
+          .getByRole("navigation", { name: "Einstellungen des Kalenders" })
+          .getByRole("link", { name: k.tab })
+          .click();
+        await expect(page).toHaveURL(new RegExp(`/settings/${k.path}$`));
+      }
 
       // Leerzustand
       await expect(page.getByRole("heading", { name: k.empty })).toBeVisible();
@@ -195,7 +211,10 @@ test.describe("Einstellungen", () => {
       await dialog.getByRole("button", { name: k.deleteConfirm }).click();
       await expect(page.getByRole("heading", { name: k.empty })).toBeVisible();
       const items = await (
-        await request.get(`${API}/api/calendars/${s.calendarId}/${k.path}`, { headers: s.headers })
+        await request.get(
+          `${API}/api/${k.scope === "club" ? `clubs/${s.clubId}` : `calendars/${s.calendarId}`}/${k.path}`,
+          { headers: s.headers },
+        )
       ).json();
       expect(items).toHaveLength(0);
     });
@@ -248,7 +267,12 @@ test.describe("Einstellungen", () => {
 
   test("Orte: anlegen, bearbeiten, löschen ohne Karte", async ({ page, request }) => {
     const s = await seed(request, "Settings Orte");
-    await openSettings(page, s.email, `${s.base}/settings/locations`);
+    await openSettings(
+      page,
+      s.email,
+      `/clubs/${s.clubId}/settings/locations`,
+      "Vereinseinstellungen",
+    );
     await expect(page.getByRole("heading", { name: "Noch keine Orte" })).toBeVisible();
 
     // Validierung: Name oder Straße
@@ -275,7 +299,7 @@ test.describe("Einstellungen", () => {
     const row = page.getByRole("listitem").filter({ hasText: "Schützenhaus Waldblick" });
     await expect(row).toContainText("Waldstraße 12, 12345 Musterstadt");
     const saved = await (
-      await request.get(`${API}/api/calendars/${s.calendarId}/locations`, { headers: s.headers })
+      await request.get(`${API}/api/clubs/${s.clubId}/locations`, { headers: s.headers })
     ).json();
     expect(saved).toHaveLength(1);
     expect(saved[0]).toMatchObject({
@@ -314,6 +338,19 @@ test.describe("Einstellungen", () => {
     );
     await dialog.getByRole("button", { name: "Ort löschen" }).click();
     await expect(page.getByRole("heading", { name: "Alle Orte (1)" })).toBeVisible();
+  });
+
+  test("Alte Kalender-Adressen für Orte, Gruppen und Feeds leiten zu den Vereinseinstellungen", async ({
+    page,
+    request,
+  }) => {
+    const s = await seed(request, "Settings Umleitung");
+    await login(page, s.email);
+    await page.waitForURL(/\/clubs/);
+    for (const path of ["locations", "target-groups", "feeds"]) {
+      await page.goto(`${s.base}/settings/${path}`);
+      await expect(page).toHaveURL(new RegExp(`/clubs/${s.clubId}/settings/${path}$`));
+    }
   });
 
   test("Feiertage: Leerzustand, Validierung und Fehler beim Abrufen", async ({ page, request }) => {
@@ -364,7 +401,7 @@ test.describe("Einstellungen", () => {
   test("Archivierter Kalender: alle Einstellungen nur lesbar", async ({ page, request }) => {
     const s = await seed(request, "Settings Readonly");
     const post = (path: string, data: object) =>
-      request.post(`${API}/api/calendars/${s.calendarId}/${path}`, { headers: s.headers, data });
+      request.post(resourceUrl(s.clubId, s.calendarId, path), { headers: s.headers, data });
     await post("properties", { name: "Wettkampf", icon: "🏆" });
     await post("features", { name: "Bonusschießen" });
     await post("target-groups", { name: "Jugend" });
@@ -381,8 +418,6 @@ test.describe("Einstellungen", () => {
     const cases = [
       { link: "Besonderheiten", text: "Wettkampf", addForm: "Neue Besonderheit hinzufügen" },
       { link: "Zusatzangebote", text: "Bonusschießen", addForm: "Neues Zusatzangebot hinzufügen" },
-      { link: "Gruppen", text: "Jugend", addForm: "Neue Gruppe hinzufügen" },
-      { link: "Orte", text: "Vereinsheim Mitte", addForm: "Neuen Ort anlegen" },
       {
         link: "Feiertage",
         text: "Noch keine Feiertagskalender",
@@ -399,6 +434,16 @@ test.describe("Einstellungen", () => {
         page.getByRole("button", { name: /bearbeiten|löschen|anlegen|speichern/ }),
       ).toHaveCount(0);
     }
+
+    // Orte und Gruppen sind Vereinsdaten: ein archivierter Kalender sperrt sie nicht
+    await page.goto(`/clubs/${s.clubId}/settings/target-groups`);
+    await expect(page.getByText("Jugend").first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Neue Gruppe hinzufügen" })).toBeVisible();
+    await expect(page.locator("#main").getByText("Archiviert, schreibgeschützt")).toHaveCount(0);
+    await page.goto(`/clubs/${s.clubId}/settings/locations`);
+    await expect(page.getByText("Vereinsheim Mitte").first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Neuen Ort anlegen" })).toBeVisible();
+    await page.goto(`${s.base}/settings/holiday-calendars`);
 
     // Aufheben macht die Einstellungen wieder bearbeitbar
     await page.getByRole("button", { name: "Archivierung aufheben" }).click();

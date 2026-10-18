@@ -192,13 +192,13 @@ test("Orte: Koordinaten bleiben beim Tippen von Text sichtbar und blockieren das
 }) => {
   const email = await createVerifiedUser(request, "Koordinaten");
   const { clubId, calendarId, headers } = await seedClub(request, email, "Koordinaten Verein");
-  await request.post(`${API}/api/calendars/${calendarId}/locations`, {
+  await request.post(`${API}/api/clubs/${clubId}/locations`, {
     headers,
     data: { name: "Schützenhaus", latitude: 48.1371, longitude: 11.5754 },
   });
   await login(page, email);
   await page.waitForURL(/\/clubs/);
-  await page.goto(`/clubs/${clubId}/calendars/${calendarId}/settings/locations`);
+  await page.goto(`/clubs/${clubId}/settings/locations`);
   await page
     .getByRole("button", { name: /Schützenhaus.*bearbeiten|bearbeiten.*Schützenhaus/ })
     .click();
