@@ -103,18 +103,18 @@ class MapController extends AbstractController
     }
 
     #[Route('/image/location/{id}', methods: ['GET'])]
-    public function locationImage(string $id): Response
+    public function locationImage(string $id, Request $request): Response
     {
         $location = $this->em->find(Location::class, $id);
         if (null === $location || null === $location->getLatitude() || null === $location->getLongitude()) {
             throw new NotFoundHttpException('Location not found or has no coordinates');
         }
 
-        return $this->buildImageResponse($location->getLongitude(), $location->getLatitude());
+        return $this->buildImageResponse($request, $location->getLongitude(), $location->getLatitude(), '' !== trim((string) $request->query->get('v', '')));
     }
 
     #[Route('/image/event/{id}', methods: ['GET'])]
-    public function eventImage(string $id): Response
+    public function eventImage(string $id, Request $request): Response
     {
         $event = $this->em->find(Event::class, $id);
         // Public endpoint: drafts are not published anywhere, so their location is not either
@@ -123,7 +123,7 @@ class MapController extends AbstractController
             throw new NotFoundHttpException('Event not found or has no location with coordinates');
         }
 
-        return $this->buildImageResponse($location->getLongitude(), $location->getLatitude());
+        return $this->buildImageResponse($request, $location->getLongitude(), $location->getLatitude(), false);
     }
 
     /** 429 `rate_limited` (RFC 7807) of the JSON routes (geocoding, Mapbox proxy); map images answer an empty 429. */
@@ -135,8 +135,11 @@ class MapController extends AbstractController
     /**
      * Only called after the access checks of the route (unknown / draft / without position → 404), so the
      * placeholder reveals nothing about places or events.
+     *
+     * $versioned: the URL carries a cache-buster (`v`) that changes with the location, so the image may be cached
+     * for the full provider TTL and treated as immutable.
      */
-    private function buildImageResponse(float $lng, float $lat): Response
+    private function buildImageResponse(Request $request, float $lng, float $lat, bool $versioned): Response
     {
         if (!$this->mapAvailability->isConfigured()) {
             // 503 with an image body: an <img> still shows a (blurred, text-free) map.
@@ -149,13 +152,19 @@ class MapController extends AbstractController
         try {
             $bytes = $this->mapImageProvider->getImage($lng, $lat, $this->imageZoom, $this->imageWidth, $this->imageHeight);
         } catch (RateLimitExceededException) {
-            return new Response(null, 429);
+            return new Response(null, 429, ['Cache-Control' => 'no-store']);
         }
 
-        return new Response($bytes, 200, [
+        $response = new Response($bytes, 200, [
             'Content-Type' => 'image/jpeg',
-            'Cache-Control' => 'public, max-age=3600',
+            'Cache-Control' => $versioned
+                ? 'public, max-age=2592000, s-maxage=2592000, immutable'
+                : 'public, max-age=86400, s-maxage=86400',
         ]);
+        $response->setEtag(hash('sha256', $bytes));
+        $response->isNotModified($request);
+
+        return $response;
     }
 
     /** JSON routes without a configured map service: 503 `code: map_unavailable`. */

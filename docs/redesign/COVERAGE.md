@@ -98,7 +98,7 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 | SettingsPlaces.dc.html | `pages/settings/LocationsPage.tsx`, `components/locations/*` (Übersichtskarte mit Pins als Buttons, Liste mit "Auf Karte markiert", Formular mit Adresssuche, Koordinaten, Positionskarte, Lösch-Dialog) | vollständig |
 | SettingsPlacesMobile.dc.html | `LocationsPage` < 720px (Liste, Formular unter der Karte) | vollständig |
 | SettingsHolidays.dc.html | `pages/settings/HolidayCalendarsPage.tsx`, `HolidayPreview.tsx` (Hinzufügen, Aktualisieren mit Busy-Label, Vorschau, Lösch-Dialog mit Anzahl) | vollständig |
-| MapView.dc.html | `locations/PositionMap.tsx`, `LocationsOverviewMap.tsx`, `events/EventLocationMap.tsx`, `feed/PublicEventMap.tsx` (Karte + Textalternative, `MapBoundary`) | vollständig |
+| MapView.dc.html | `locations/PositionMap.tsx`, `LocationsOverviewMap.tsx`, `events/EventLocationMap.tsx`, öffentliche Terminansicht: statisches Kartenbild vom Backend (`PublicEventModal.tsx`, kein mapbox-gl; Textalternative) | vollständig |
 
 ## Veröffentlichen, Verein, Profil
 

@@ -168,8 +168,44 @@ class MapControllerTest extends WebTestCase
         $this->assertSame(200, $response->getStatusCode());
         $this->assertSame('image/jpeg', $response->headers->get('Content-Type'));
         $this->assertStringContainsString('public', $response->headers->get('Cache-Control'));
-        $this->assertStringContainsString('max-age=3600', $response->headers->get('Cache-Control'));
+        $this->assertStringContainsString('max-age=86400', $response->headers->get('Cache-Control'));
+        $this->assertStringNotContainsString('immutable', $response->headers->get('Cache-Control'));
+        $this->assertSame('"'.hash('sha256', 'FAKEJPEG').'"', $response->headers->get('ETag'));
         $this->assertSame('FAKEJPEG', $response->getContent());
+    }
+
+    public function testLocationImageWithVersionIsImmutableAndSupportsEtag(): void
+    {
+        ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $auth = TestHelper::authHeader($user, $this->tokens);
+        $create = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/locations", [
+            'name' => 'Venue', 'latitude' => 48.137, 'longitude' => 11.575,
+        ], $auth);
+        $locationId = $create['body']['id'];
+        static::getContainer()->set(\App\Service\Map\MapImageProviderInterface::class, $this->fakeImageProvider());
+
+        $this->client->request('GET', "/api/map/image/location/$locationId?v=123");
+        $response = $this->client->getResponse();
+        $this->assertSame(200, $response->getStatusCode());
+        $cc = (string) $response->headers->get('Cache-Control');
+        $this->assertStringContainsString('max-age=2592000', $cc);
+        $this->assertStringContainsString('s-maxage=2592000', $cc);
+        $this->assertStringContainsString('immutable', $cc);
+        $etag = $response->headers->get('ETag');
+        $this->assertNotEmpty($etag);
+
+        $this->client->request('GET', "/api/map/image/location/$locationId?v=123", server: ['HTTP_IF_NONE_MATCH' => $etag]);
+        $response = $this->client->getResponse();
+        $this->assertSame(304, $response->getStatusCode());
+        $this->assertSame('', (string) $response->getContent());
+
+        // Empty v counts as absent
+        $this->client->request('GET', "/api/map/image/location/$locationId?v=");
+        $this->assertStringNotContainsString('immutable', (string) $this->client->getResponse()->headers->get('Cache-Control'));
+
+        // Other validator: full response again
+        $this->client->request('GET', "/api/map/image/location/$locationId?v=123", server: ['HTTP_IF_NONE_MATCH' => '"other"']);
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
     }
 
     public function testLocationImageReturns404WhenNoCoordinates(): void

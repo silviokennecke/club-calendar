@@ -2837,9 +2837,19 @@ paths:
     get:
       tags: [Maps]
       summary: Static map image of a location
-      description: Public (used by feed pages and mails), cached; 404 when the location has no coordinates.
+      description: >-
+        Public (used by feed pages and mails), cached; 404 when the location has no coordinates. The optional
+        cache-buster `v` (the SPA sends the location's `updatedAt`) selects long-lived caching, see `MapImage`.
       operationId: locationMapImage
       security: []
+      parameters:
+        - name: v
+          in: query
+          required: false
+          description: >-
+            Cache-buster, ignored by the server except that a non-empty value turns on 30-day `immutable` caching.
+            Change it whenever the location changes.
+          schema: { type: string }
       responses:
         '200': { $ref: '#/components/responses/MapImage' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -3164,7 +3174,14 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     MapImage:
-      description: 'JPEG (`Cache-Control: public, max-age=3600`).'
+      description: >-
+        JPEG with a strong `ETag` (hash of the image); `If-None-Match` is answered with 304. `Cache-Control` is
+        `public, max-age=2592000, s-maxage=2592000, immutable` (30 days) when the location route carries a non-empty
+        `v`, otherwise (no `v`, event route) `public, max-age=86400, s-maxage=86400`. A rate-limited request is an
+        empty 429 with `Cache-Control: no-store`.
+      headers:
+        Cache-Control: { schema: { type: string } }
+        ETag: { schema: { type: string } }
       content:
         image/jpeg:
           schema: { type: string, contentMediaType: image/jpeg }
