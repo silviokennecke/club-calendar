@@ -4,6 +4,8 @@ import type { User } from "./types";
 export interface AuthContextValue {
   user: User | null;
   loading: boolean;
+  /** Tokens exist but /me failed for a reason that is no rejection (network, 429, 5xx): not a guest. */
+  sessionError: boolean;
   login: (accessToken: string, refreshToken: string, user: User) => void;
   logout: () => void;
   updateUser: (data: {

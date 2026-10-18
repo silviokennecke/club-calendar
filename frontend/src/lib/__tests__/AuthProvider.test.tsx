@@ -13,8 +13,7 @@ vi.mock("../api", async (importOriginal) => {
 });
 
 function Probe() {
-  const { user, loading } = useAuth();
-  const { logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   return (
     <div>
       <p>{loading ? "loading" : (user?.email ?? "none")}</p>
@@ -41,19 +40,44 @@ describe("AuthProvider session restore", () => {
     sessionStorage.setItem("refresh_token", "refresh");
   });
 
-  it("forgets the tokens when the server rejects /me", async () => {
-    apiGet.mockRejectedValue(new ApiError("API error 500", 500));
+  it.each([401, 403])("forgets the tokens when the server rejects /me with %i", async (status) => {
+    apiGet.mockRejectedValue(new ApiError(`API error ${status}`, status));
     renderProvider();
     await waitFor(() => expect(screen.getByText("none")).toBeInTheDocument());
     expect(sessionStorage.getItem("access_token")).toBeNull();
+    expect(apiGet).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps the tokens when /me fails without an answer (aborted while leaving the page)", async () => {
-    apiGet.mockRejectedValue(new TypeError("Failed to fetch"));
+  it.each([
+    ["a network error", () => new TypeError("Failed to fetch")],
+    ["a 500", () => new ApiError("API error 500", 500)],
+    ["a 429", () => new ApiError("API error 429", 429)],
+  ])("keeps the tokens and retries after %s", async (_name, make) => {
+    apiGet.mockImplementation(() => Promise.reject(make()));
     renderProvider();
-    await waitFor(() => expect(screen.getByText("none")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("none")).toBeInTheDocument(), { timeout: 4000 });
+    expect(apiGet).toHaveBeenCalledTimes(3);
     expect(sessionStorage.getItem("access_token")).toBe("access");
     expect(sessionStorage.getItem("refresh_token")).toBe("refresh");
+  });
+
+  it("signs in when a retry succeeds", async () => {
+    apiGet
+      .mockRejectedValueOnce(new ApiError("API error 500", 500))
+      .mockResolvedValue({ id: "u1", email: "a@b.de", language: "de" });
+    renderProvider();
+    await waitFor(() => expect(screen.getByText("a@b.de")).toBeInTheDocument(), { timeout: 3000 });
+  });
+
+  it("ignores a late /me rejection after the user signed out", async () => {
+    let reject: (e: unknown) => void = () => {};
+    apiGet.mockReturnValue(new Promise((_, r) => (reject = r)));
+    renderProvider();
+    await userEvent.click(screen.getByRole("button", { name: "out" }));
+    sessionStorage.setItem("access_token", "new");
+    reject(new ApiError("API error 401", 401));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(sessionStorage.getItem("access_token")).toBe("new");
   });
 });
 

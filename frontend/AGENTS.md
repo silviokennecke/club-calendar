@@ -81,7 +81,9 @@ operations), `docs/api/openapi.yaml` (API reference).
   `POST /api/invitations/accept|decline`). The token moves into `sessionStorage` (`lib/invitations`: `stashInvitationToken`) and
   out of the URL at once; a signed-out visitor goes to /login, after the sign-in `/clubs` forwards back to `/invitations`; the
   token is cleared after use or when dead. Accepting switches to the club (`lib/useEnterClub`).
-  `GuestRoute` sends signed-in users from /login, /signup, /forgot-password, /reset-password to /clubs.
+  `GuestRoute` sends signed-in users from /login, /signup, /verify-email, /forgot-password, /reset-password to /clubs.
+  `AuthProvider` clears the tokens only when `/me` answers 401/403; network errors, 429 and 5xx keep them, retry twice
+  and then set `sessionError` (retried on `online` / tab visible), during which `GuestRoute` shows the loader, not the form.
 - Password reset: `/forgot-password` (`ForgotPasswordPage`: form → "Prüfe dein Postfach" with the entered address;
   the API answers 204 for every address, 429 counts as sent, only network / server errors show a banner) and
   `/reset-password?token=` (`ResetPasswordPage`: reads the token once and removes it from the address with a
