@@ -101,6 +101,19 @@ function inlineComponents(content, templateDir) {
   const inlinedComponents = [];
   const skippedIncludes = [];
 
+  // MJML drops raw text between components, so `{% set name = expr %}` lines of the including template
+  // would never reach the Twig output. Take them out and substitute the variables into the components.
+  const setPattern = /^[ \t]*\{%\s*set\s+(\w+)\s*=\s*(.+?)\s*%\}[ \t]*\r?\n?/gm;
+  const variables = {};
+  content = content.replace(setPattern, (match, name, expression) => {
+    variables[name] = expression;
+    return '';
+  });
+  const bindVariables = component =>
+    component.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, name) =>
+      name in variables ? `{{ (${variables[name]}) }}` : match,
+    );
+
   let processed = content.replace(includePattern, (match, includePath) => {
     // Resolve relative path (relative to template directory)
     const resolvedPath = path.join(templateDir, includePath);
@@ -115,7 +128,7 @@ function inlineComponents(content, templateDir) {
       // Read component file
       const componentContent = fs.readFileSync(resolvedPath, 'utf8');
       inlinedComponents.push(includePath);
-      return componentContent;
+      return bindVariables(componentContent);
     } catch (error) {
       skippedIncludes.push(includePath);
       console.warn(`  ⚠ Failed to read component ${includePath}: ${error.message}`);

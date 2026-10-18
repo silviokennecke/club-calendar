@@ -1,32 +1,11 @@
-<!-- CTA Button component with fallback link
-     Usage: Include this snippet and pass context variables:
+<!-- CTA Button component with fallback link.
+     NOTE: keep this comment free of Twig tags and mj-include tags: the mail builder inlines the whole
+     file (comment included) and Twig evaluates tags inside HTML comments.
+     See USAGE.md for how to include the component.
 
-     <mj-include path="./_components/button.mjml" />
-
-     Required Twig variables in the including template:
-     - buttonUrl: The URL the button links to
-     - buttonText: The button label text (e.g., 'email.reset.button'|trans)
-
-     Optional:
-     - buttonColor: Override default primary color (defaults to #2563eb)
-
-     Example in a template:
-
-     {% set buttonUrl = resetUrl %}
-     {% set buttonText = 'email.reset.button'|trans %}
-     <mj-include path="./_components/button.mjml" />
-
-     Theme styling:
-     - Primary color (background): #2563eb
-     - Text color: #ffffff (white)
-     - Border radius: 6px
-     - Font size: 16px
-     - Padding: 12px 24px
-     - Fallback link color: #2563eb
-     - Link word-break: break-all (for long URLs)
-
-     The component includes a fallback text link below the button
-     for email clients that don't render buttons properly.
+     Required Twig variables in the including template: buttonUrl (the link) and buttonText (the label).
+     Theme styling: primary color #2563eb, white text, border radius 6px, 16px font, padding 12px 24px,
+     fallback link below the button for clients that do not render buttons.
 -->
 
 <!-- Primary CTA Button -->
