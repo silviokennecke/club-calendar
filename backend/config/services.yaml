@@ -2,6 +2,7 @@ parameters:
     env(APP_URL): 'http://localhost:8080'
     env(FRONTEND_URL): '%env(APP_URL)%'
     env(BACKEND_URL): '%env(APP_URL)%'
+    env(TRUSTED_HOSTS): ''
     env(WEBAUTHN_RP_ID): '%env(string:key:host:url:APP_URL)%'
     env(WEBAUTHN_RP_NAME): 'Club Calendar'
     env(WEBAUTHN_USER_VERIFICATION): 'preferred'

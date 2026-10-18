@@ -332,7 +332,7 @@ class AccountTest extends WebTestCase
     public function testChangeEmailSendsTheConfirmationLinkToTheNewAddressOnly(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
-        $r = $this->changeEmail($user, 'alice.new@example.com', 'password123', ['HTTP_HOST' => 'evil.example']);
+        $r = $this->changeEmail($user, 'alice.new@example.com', 'password123', ['HTTP_HOST' => '127.0.0.1:9999']);
         $this->assertSame(204, $r['status'], $r['content']);
 
         // The link to the new address; the current address only gets a notice without link (NoticeMailTest)
@@ -342,7 +342,7 @@ class AccountTest extends WebTestCase
         $notice = $this->getMailerMessage(1);
         $this->assertInstanceOf(Email::class, $notice);
         $this->assertStringNotContainsString('verify-new-email', (string) $notice->getHtmlBody());
-        $this->assertStringNotContainsString('evil.example', $this->lastMailHtml());
+        $this->assertStringNotContainsString('9999', $this->lastMailHtml());
         $token = $this->confirmTokenFromMail();
 
         // Hashed token, 24 hours; the account keeps its address until the link is opened.
