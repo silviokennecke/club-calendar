@@ -1,7 +1,15 @@
-<!-- Brand header (redesign): text wordmark in brand green with a hairline below. No images, no external hosts.
+<!-- Brand header (redesign): logo (PNG embedded inline via Twig `email.image`, no external hosts) next to the wordmark in
+     brand green, hairline below. Email clients do not render SVG, hence the PNG in `backend/assets/mail/`.
      Usage: include as the first element inside the content column. No parameters.
 -->
-<mj-text font-family="{{ THEME.fonts.family }}" font-size="{{ THEME.fonts.size.heading }}" line-height="24px" font-weight="800" color="{{ THEME.colors.primary }}" padding="0 0 16px 0">
-  {{ THEME.brand.name }}
-</mj-text>
+<mj-table padding="0 0 16px 0" cellpadding="0" cellspacing="0">
+  <tr>
+    <td width="36" style="width:36px;padding:0 12px 0 0;vertical-align:middle;">
+      <img src="{{ email.image('@mail_assets/logo.png') }}" width="36" height="36" alt="" style="display:block;border:0;border-radius:8px;" />
+    </td>
+    <td style="vertical-align:middle;font-family:{{ THEME.fonts.family }};font-size:{{ THEME.fonts.size.heading }};line-height:24px;font-weight:800;color:{{ THEME.colors.primary }};">
+      {{ THEME.brand.name }}
+    </td>
+  </tr>
+</mj-table>
 <mj-divider border-width="1px" border-color="{{ THEME.colors.border }}" padding="0 0 24px 0" />
