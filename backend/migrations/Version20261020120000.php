@@ -43,8 +43,8 @@ final class Version20261020120000 extends AbstractMigration
             $this->addSql("ALTER TABLE $table ADD club_id VARCHAR(36) DEFAULT NULL");
             $this->addSql("UPDATE $table t INNER JOIN calendar c ON c.id = t.calendar_id SET t.club_id = c.club_id");
             $this->addSql("ALTER TABLE $table MODIFY club_id VARCHAR(36) NOT NULL");
-            $this->addSql("ALTER TABLE $table ADD CONSTRAINT ".$this->ident($table, 'club_id', 'FK')." FOREIGN KEY (club_id) REFERENCES club (id) ON DELETE CASCADE");
-            $this->addSql("CREATE INDEX ".$this->ident($table, 'club_id')." ON $table (club_id)");
+            $this->addSql("ALTER TABLE $table ADD CONSTRAINT ".$this->ident($table, 'club_id', 'FK').' FOREIGN KEY (club_id) REFERENCES club (id) ON DELETE CASCADE');
+            $this->addSql('CREATE INDEX '.$this->ident($table, 'club_id')." ON $table (club_id)");
 
             // The old foreign key, its index and the column: names are looked up, not assumed.
             foreach ($this->foreignKeys($table, 'calendar_id') as $fk) {
@@ -93,7 +93,7 @@ final class Version20261020120000 extends AbstractMigration
 
         foreach (self::TABLES as $table) {
             $this->addSql("ALTER TABLE $table MODIFY calendar_id VARCHAR(36) NOT NULL");
-            $this->addSql("ALTER TABLE $table ADD CONSTRAINT ".$this->ident($table, 'calendar_id', 'FK')." FOREIGN KEY (calendar_id) REFERENCES calendar (id) ON DELETE CASCADE");
+            $this->addSql("ALTER TABLE $table ADD CONSTRAINT ".$this->ident($table, 'calendar_id', 'FK').' FOREIGN KEY (calendar_id) REFERENCES calendar (id) ON DELETE CASCADE');
             $this->addSql('CREATE INDEX '.$this->ident($table, 'calendar_id')." ON $table (calendar_id)");
             foreach ($this->foreignKeys($table, 'club_id') as $fk) {
                 $this->addSql("ALTER TABLE $table DROP FOREIGN KEY `$fk`");
