@@ -275,6 +275,18 @@ describe("ClubsPage", () => {
     expect(await screen.findByTestId("location")).toHaveTextContent("/invitations");
   });
 
+  it("redirects to the invitation page only once per stored token", async () => {
+    sessionStorage.setItem("cc.invitationToken", "tok");
+    const first = renderClubs("/clubs?select=1");
+    expect(await screen.findByTestId("location")).toHaveTextContent("/invitations");
+    first.unmount();
+    // the invitation page failed (network): the token stays, the next visit stays on the clubs page
+    expect(sessionStorage.getItem("cc.invitationToken")).toBe("tok");
+    renderClubs("/clubs?select=1");
+    expect(await screen.findByText("Schützenverein Waldblick")).toBeInTheDocument();
+    expect(screen.queryByTestId("location")).toBeNull();
+  });
+
   it("shows an error when the clubs cannot be loaded", async () => {
     apiGet.mockRejectedValue(new Error("down"));
     renderClubs("/clubs?select=1");

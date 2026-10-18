@@ -12,6 +12,7 @@ import {
   revokeRefreshToken,
   storeTokens,
 } from "../api";
+import { readInvitationToken, stashInvitationToken, takeInvitationRedirect } from "../invitations";
 
 /** RFC 7807 401 of the backend (JwtProblemListener) */
 function unauthorized(code: string): Response {
@@ -222,5 +223,24 @@ describe("sign-out calls", () => {
       new Response(JSON.stringify({ status: 500, detail: "x" }), { status: 500 }),
     );
     await expect(logoutEverywhere()).rejects.toMatchObject({ status: 500 });
+  });
+});
+
+describe("invitation token and sign-out", () => {
+  it("clearTokens also drops a stashed invitation token and its redirect flag", () => {
+    stashInvitationToken("tok");
+    expect(takeInvitationRedirect()).toBe(true);
+    clearTokens();
+    expect(readInvitationToken()).toBeNull();
+    expect(takeInvitationRedirect()).toBe(true);
+  });
+
+  it("ending the session (revoked) forgets the invitation token", async () => {
+    storeTokens("a", "r");
+    stashInvitationToken("tok");
+    fetchMock.mockResolvedValueOnce(unauthorized("invalid_token"));
+    fetchMock.mockResolvedValueOnce(unauthorized("invalid_refresh_token"));
+    await apiGet("/api/x").catch(() => undefined);
+    expect(readInvitationToken()).toBeNull();
   });
 });

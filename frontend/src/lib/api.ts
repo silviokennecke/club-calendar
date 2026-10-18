@@ -1,6 +1,7 @@
 import i18n from "i18next";
 import { toast } from "sonner";
 import { API_URL } from "./apiUrl";
+import { clearInvitationToken } from "./invitations";
 import { markSessionEnded } from "./sessionEnd";
 import type { HolidayCalendar, HolidayEvent, User } from "./types";
 
@@ -75,6 +76,8 @@ export function clearTokens() {
     // Also remove old key in case it exists
     sessionStorage.removeItem("accessToken");
   }
+  // A pending invitation belongs to the visitor who opened the link, not to whoever signs in next.
+  clearInvitationToken();
 }
 
 /** The session was rejected: forget the tokens and leave for the login page (without unsaved-changes prompt). */
