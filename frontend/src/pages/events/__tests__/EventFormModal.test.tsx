@@ -198,7 +198,7 @@ describe("EventFormModal – new event", () => {
     expect(
       await screen.findByRole("region", { name: "Karte mit dem Ort Schützenhaus Waldblick" }),
     ).toBeInTheDocument();
-    const audiences = screen.getByRole("group", { name: "Zielgruppen" });
+    const audiences = screen.getByRole("group", { name: "Gruppen" });
     await user.click(within(audiences).getByRole("button", { name: "Jugend" }));
 
     await user.click(screen.getByRole("button", { name: "Termin speichern" }));
@@ -245,7 +245,7 @@ describe("EventFormModal – new event", () => {
     expect(screen.getByLabelText(/^Startdatum/)).toHaveValue("2026-10-15");
     expect(screen.getByLabelText(/^Startzeit/)).toHaveValue("19:00");
     expect(await screen.findByRole("combobox", { name: /^Ort/ })).toHaveValue("l1");
-    const feats = screen.getByRole("group", { name: "Features" });
+    const feats = screen.getByRole("group", { name: "Zusatzangebote" });
     expect(within(feats).getByRole("button", { name: "Bonusschießen" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -270,7 +270,7 @@ describe("EventFormModal – new event", () => {
     const user = userEvent.setup();
     apiPost.mockResolvedValueOnce({ id: "g9", calendarid: "k1", name: "Senioren" });
     renderNew("?date=2026-10-14");
-    await user.click(await screen.findByRole("button", { name: "Neue Zielgruppe anlegen" }));
+    await user.click(await screen.findByRole("button", { name: "Neue Gruppe anlegen" }));
     await user.type(screen.getByLabelText("Name"), "Senioren{Enter}");
     expect(apiPost).toHaveBeenCalledWith("/api/calendars/k1/target-groups", { name: "Senioren" });
   });

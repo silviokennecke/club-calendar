@@ -75,8 +75,8 @@ describe("MasterList", () => {
   });
 
   it.each([
-    ["features", "Feature anlegen", "features"],
-    ["audiences", "Zielgruppe anlegen", "target-groups"],
+    ["features", "Zusatzangebot anlegen", "features"],
+    ["audiences", "Gruppe anlegen", "target-groups"],
   ] as const)("creates an item of kind %s without a symbol picker", async (kind, label, path) => {
     const user = userEvent.setup();
     renderList(kind);
@@ -131,9 +131,9 @@ describe("MasterList", () => {
     renderList("features");
     await screen.findByRole("list");
     await user.type(screen.getByLabelText(/^Name/), "Siegerehrung");
-    await user.click(screen.getByRole("button", { name: "Feature anlegen" }));
+    await user.click(screen.getByRole("button", { name: "Zusatzangebot anlegen" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Das Feature konnte nicht angelegt werden",
+      "Das Zusatzangebot konnte nicht angelegt werden",
     );
     expect(screen.getByLabelText(/^Name/)).toHaveValue("Siegerehrung");
   });
@@ -143,7 +143,7 @@ describe("MasterList", () => {
     renderList("features");
     await screen.findByRole("list");
     await user.click(screen.getByRole("button", { name: "Draußen bearbeiten" }));
-    const dialog = await screen.findByRole("dialog", { name: "Feature bearbeiten" });
+    const dialog = await screen.findByRole("dialog", { name: "Zusatzangebot bearbeiten" });
     const input = within(dialog).getByLabelText(/^Name/);
     expect(input).toHaveValue("Draußen");
     // The dialog moves the focus after opening (async)
@@ -165,7 +165,7 @@ describe("MasterList", () => {
     await screen.findByRole("list");
     const trigger = screen.getByRole("button", { name: "Wettkampf bearbeiten" });
     await user.click(trigger);
-    const dialog = await screen.findByRole("dialog", { name: "Feature bearbeiten" });
+    const dialog = await screen.findByRole("dialog", { name: "Zusatzangebot bearbeiten" });
     await user.type(within(dialog).getByLabelText(/^Name/), "xyz");
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -263,14 +263,14 @@ describe("MasterList", () => {
     renderList("audiences");
     await user.click(await screen.findByRole("button", { name: "Senioren löschen" }));
     const dialog = await screen.findByRole("alertdialog", {
-      name: "Zielgruppe „Senioren“ löschen?",
+      name: "Gruppe „Senioren“ löschen?",
     });
     expect(dialog).toHaveAccessibleDescription(
-      expect.stringContaining("Die Zielgruppe wird aus der Liste entfernt."),
+      expect.stringContaining("Die Gruppe wird aus der Liste entfernt."),
     );
     await waitFor(() =>
       expect(dialog).toHaveTextContent(
-        "Bei 5 Terminen wird die Zuordnung entfernt. Feeds, die diese Zielgruppe ausgewählt haben, verlieren sie aus ihrer Auswahl.",
+        "Bei 5 Terminen wird die Zuordnung entfernt. Feeds, die diese Gruppe ausgewählt haben, verlieren sie aus ihrer Auswahl.",
       ),
     );
   });
@@ -302,7 +302,7 @@ describe("MasterList", () => {
     await waitFor(() =>
       expect(dialog).toHaveTextContent("Bei 1 Termin (Fest) wird die Zuordnung entfernt."),
     );
-    expect(dialog).not.toHaveTextContent("Feeds, die diese Zielgruppe");
+    expect(dialog).not.toHaveTextContent("Feeds, die diese Gruppe");
   });
 
   it("shows the backend's duplicate check at the field", async () => {
@@ -313,7 +313,7 @@ describe("MasterList", () => {
     renderList("features");
     await screen.findByRole("list");
     await user.type(screen.getByLabelText(/^Name/), "Siegerehrung");
-    await user.click(screen.getByRole("button", { name: "Feature anlegen" }));
+    await user.click(screen.getByRole("button", { name: "Zusatzangebot anlegen" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Diesen Namen gibt es schon");
   });
 
@@ -334,11 +334,9 @@ describe("MasterList", () => {
     items = [];
     const user = userEvent.setup();
     renderList("audiences");
-    expect(
-      await screen.findByRole("heading", { name: "Noch keine Zielgruppen" }),
-    ).toBeInTheDocument();
-    const empty = screen.getByRole("heading", { name: "Noch keine Zielgruppen" }).parentElement!;
-    await user.click(within(empty).getByRole("button", { name: "Zielgruppe anlegen" }));
+    expect(await screen.findByRole("heading", { name: "Noch keine Gruppen" })).toBeInTheDocument();
+    const empty = screen.getByRole("heading", { name: "Noch keine Gruppen" }).parentElement!;
+    await user.click(within(empty).getByRole("button", { name: "Gruppe anlegen" }));
     expect(screen.getByLabelText(/^Name/)).toHaveFocus();
   });
 
@@ -346,7 +344,7 @@ describe("MasterList", () => {
     apiGet.mockRejectedValue(new Error("API error 500"));
     renderList("features");
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Die Features konnten nicht geladen werden.",
+      "Die Zusatzangebote konnten nicht geladen werden.",
     );
     expect(screen.getByRole("button", { name: "Erneut versuchen" })).toBeInTheDocument();
   });

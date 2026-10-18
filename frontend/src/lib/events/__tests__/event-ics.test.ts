@@ -4,7 +4,7 @@ import { buildEventIcs, type IcsEvent } from "../ics";
 const opts = {
   calendarName: "Schießbetrieb",
   timeZone: "Europe/Berlin",
-  labels: { features: "Features", targetGroups: "Zielgruppen" },
+  labels: { features: "Zusatzangebote", targetGroups: "Gruppen" },
   now: new Date("2026-10-03T10:00:00Z"),
 };
 
@@ -44,7 +44,7 @@ describe("buildEventIcs", () => {
     expect(ics).toContain("LOCATION:Vereinsheim Mitte\\, Marktplatz 5\\, 12345 Musterstadt");
     expect(ics).toContain("GEO:50.5;8.25");
     expect(ics).toContain(
-      "DESCRIPTION:Features: Getränkeverkauf\\nZielgruppen: Jugend\\, Senioren",
+      "DESCRIPTION:Zusatzangebote: Getränkeverkauf\\nGruppen: Jugend\\, Senioren",
     );
     expect(ics).toContain("STATUS:CONFIRMED");
   });

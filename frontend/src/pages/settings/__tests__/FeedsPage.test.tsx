@@ -69,11 +69,11 @@ describe("FeedsPage", () => {
     expect(await screen.findByText("Schießbetrieb 2026 · 2 Feeds")).toBeInTheDocument();
     const pub = screen.getByRole("region", { name: "Öffentlicher Kalender" });
     expect(within(pub).getByText("Öffentlich")).toBeInTheDocument();
-    expect(within(pub).getByText("Alle Zielgruppen")).toBeInTheDocument();
+    expect(within(pub).getByText("Alle Gruppen")).toBeInTheDocument();
     const priv = screen.getByRole("region", { name: "Vorstand intern" });
     expect(within(priv).getByText("Privat")).toBeInTheDocument();
     expect(
-      within(priv).getByRole("group", { name: "Zielgruppen von Vorstand intern" }),
+      within(priv).getByRole("group", { name: "Gruppen von Vorstand intern" }),
     ).toHaveTextContent("Jugend");
     // No emoji icons for the visibility.
     expect(pub.textContent).not.toMatch(/[\u{1F310}\u{1F512}]/u);

@@ -242,12 +242,12 @@ test.describe("Kalender (Redesign)", () => {
     await expect(page).toHaveURL(/view=week/);
   });
 
-  test("Filter nach Zielgruppe und Suche", async ({ page, request }) => {
+  test("Filter nach Gruppe und Suche", async ({ page, request }) => {
     const seeded = await seedCalendar(request, "Filter Suche");
     await openCalendar(page, seeded);
     await expect(page.getByTitle(/^Training Luftgewehr/)).toBeVisible();
 
-    const chips = page.getByRole("group", { name: "Nach Zielgruppe filtern" });
+    const chips = page.getByRole("group", { name: "Nach Gruppe filtern" });
     const youth = chips.getByRole("button", { name: "Jugend" });
     await youth.click();
     await expect(youth).toHaveAttribute("aria-pressed", "true");

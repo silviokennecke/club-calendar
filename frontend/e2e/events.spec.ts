@@ -81,7 +81,7 @@ test.describe("Termine", () => {
     await page.clock.setFixedTime(new Date("2026-10-02T10:00:00+02:00"));
   });
 
-  test("Liste: Tabs, Suche und Zielgruppenfilter", async ({ page, request }) => {
+  test("Liste: Tabs, Suche und Gruppenfilter", async ({ page, request }) => {
     const seeded = await seedEvents(request, "Liste Filter");
     await openList(page, seeded);
 
@@ -105,7 +105,7 @@ test.describe("Termine", () => {
     await page.getByRole("button", { name: "Suche zurücksetzen" }).click();
 
     await page
-      .getByRole("group", { name: "Nach Zielgruppe filtern" })
+      .getByRole("group", { name: "Nach Gruppe filtern" })
       .getByRole("button", { name: "Jugend" })
       .click();
     await expect(rowLink(page, "Jugendtraining")).toBeVisible();
@@ -144,7 +144,7 @@ test.describe("Termine", () => {
       .getByRole("combobox", { name: /^Ort/ })
       .selectOption({ label: "Schützenhaus Waldblick" });
     await page
-      .getByRole("group", { name: "Zielgruppen" })
+      .getByRole("group", { name: "Gruppen" })
       .getByRole("button", { name: "Jugend" })
       .click();
     await page.getByRole("button", { name: "Termin speichern" }).click();

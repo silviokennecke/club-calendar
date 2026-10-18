@@ -211,7 +211,7 @@ describe("ICS", () => {
       {
         calendarName: "Schießbetrieb 2026",
         timeZone: "Europe/Berlin",
-        labels: { features: "Features", targetGroups: "Zielgruppen" },
+        labels: { features: "Zusatzangebote", targetGroups: "Gruppen" },
         now: new Date("2026-10-02T08:00:00Z"),
       },
     );
@@ -222,7 +222,7 @@ describe("ICS", () => {
     expect(lines).toContain("SUMMARY:🏆 Training\\, Luftgewehr");
     expect(lines).toContain("DTSTART:20261001T170000Z");
     expect(lines).toContain("DTEND:20261001T190000Z");
-    expect(lines).toContain("DESCRIPTION:Features: Bonusschießen\\nZielgruppen: Erwachsene");
+    expect(lines).toContain("DESCRIPTION:Zusatzangebote: Bonusschießen\\nGruppen: Erwachsene");
     expect(lines).toContain("LOCATION:Schützenhaus\\, Musterstadt");
     expect(lines).toContain("GEO:51.5;7.25");
     expect(lines).toContain("DTSTART;VALUE=DATE:20261010");

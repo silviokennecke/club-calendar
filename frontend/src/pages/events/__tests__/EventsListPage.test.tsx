@@ -149,7 +149,7 @@ describe("EventsListPage", () => {
     const user = userEvent.setup();
     renderList();
     await screen.findByRole("table");
-    const chips = screen.getByRole("group", { name: "Nach Zielgruppe filtern" });
+    const chips = screen.getByRole("group", { name: "Nach Gruppe filtern" });
     await user.click(within(chips).getByRole("button", { name: "Jugend" }));
     expect(rows()).toEqual(["Jugendtraining"]);
     await user.click(screen.getByRole("button", { name: "Filter zurücksetzen" }));

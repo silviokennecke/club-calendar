@@ -326,7 +326,7 @@ describe("round trip with the export (Phase 4)", () => {
     const ics = buildIcs(events, {
       calendarName: "Verein",
       timeZone: "Europe/Berlin",
-      labels: { features: "Features", targetGroups: "Zielgruppen" },
+      labels: { features: "Zusatzangebote", targetGroups: "Gruppen" },
     });
     const { events: back, skipped } = parseIcs(ics, { timeZone: "Europe/Berlin" });
     expect(skipped).toEqual([]);
