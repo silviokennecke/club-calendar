@@ -234,8 +234,8 @@ operations), `docs/api/openapi.yaml` (API reference).
     shows the initials and names itself "AB, Mein Profil" (no `aria-label`).
 - Public access (no app shell, no sign-in): `pages/FeedPage` (`/feed/:feedId`) and the dialog
   `pages/PublicEventModal` (`/feed/:feedId/events/:eventId`, above the feed; a shared link shows the feed at the
-  event's month below; unknown events, drafts and feed errors are states of the dialog) share `components/feed/` (`PublicShell` = skip link, brand row with `LangSwitch` +
-  `ThemeSwitch`, header, `<main id="main">`, footer; `usePublicHead` sets `<meta name="referrer" content="no-referrer">` (the web server also sends `Referrer-Policy: no-referrer` for `/feed/*`; `X-Robots-Tag` only comes from the backend for `/api/feed/*`),
+  event's month below; unknown events, drafts and feed errors are states of the dialog) share `components/feed/` (`PublicShell` = skip link, brand row with the club name + `LangSwitch`,
+  header, `<main id="main">`, footer; `usePublicHead` sets `<meta name="referrer" content="no-referrer">` (the web server also sends `Referrer-Policy: no-referrer` for `/feed/*`; `X-Robots-Tag` only comes from the backend for `/api/feed/*`),
   `noindex, nofollow` unless `indexable === true` (from `feed.indexable` of the API: only `PUBLIC` feeds with the
   search engine option; club internal, private, loading and error states are noindex), and a title without the secret; `usePublicFeed` =
   react-query over `fetchPublicFeed` for the visible month grid (`from`/`to`, the previous month stays while loading)
@@ -249,7 +249,7 @@ operations), `docs/api/openapi.yaml` (API reference).
   paths that keep `?secret=`). View state lives in the URL (`date`, `view=list`, `q`, `groups`, plus `secret`); the event
   dialog keeps it as router state `background` without the secret. `MonthView`/`EventItem`/`CalendarLegend` take `publicView` / `showStatus` /
   `showDraft` (no status badges, no draft legend). The one-event ICS file is `buildEventIcs` (`lib/events/ics.ts`;
-  in the event's effective zone from the API). `ThemeSwitch` (shared) is also used by the profile.
+  in the event's effective zone from the API). `ThemeSwitch` (shared) is used by the profile only.
 - Unsaved changes: `useUnsavedChanges(dirty)` (`src/lib/useUnsavedChanges.ts`) + `<UnsavedChangesDialog {...dialog}>`;
   intercepts in-app link clicks and `guard(fn)` navigation, `beforeunload`, and the browser's back / forward
   buttons (`useBlocker` for POP navigations, rendered by the dialog only inside the data router, so `<MemoryRouter>`

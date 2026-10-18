@@ -198,9 +198,6 @@
     "timeZoneNote": "Alle Uhrzeiten gelten in der Zeitzone {{zone}}.",
     "subscribe": "Kalender abonnieren",
     "downloadIcs": "Als ICS-Datei laden",
-    "addressToggle": "Abo-Adresse anzeigen",
-    "addressLabel": "Adresse zum Abonnieren (ICS)",
-    "addressHint": "Füge diese Adresse in deiner Kalender-App als Abo hinzu.",
     "view": {
       "label": "Ansicht",
       "month": "Monat",
