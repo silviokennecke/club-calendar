@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\CalendarFeed;
 use App\Entity\Club;
 use App\Entity\Event;
+use App\Ics\EventFactory;
 use Eluceo\iCal\Domain\Entity\Calendar;
 use Eluceo\iCal\Domain\Entity\Event as ICalEvent;
 use Eluceo\iCal\Domain\Entity\TimeZone as ICalTimeZone;
@@ -64,28 +65,7 @@ class IcsService
             $calendar->addTimeZone(ICalTimeZone::createFromPhpDateTimeZone(new \DateTimeZone($tz), $from->modify('-1 day'), $until->modify('+1 day')));
         }
 
-        $factory = new CalendarFactory();
-        $component = $factory->createCalendar($calendar);
-        $icsStr = (string) $component;
-
-        // Inject X-APPLE-STRUCTURED-LOCATION after rendering
-        foreach ($events as $event) {
-            $loc = $event->getLocation();
-            if (!$loc || null === $loc->getLatitude() || null === $loc->getLongitude()) {
-                continue;
-            }
-            $uid = 'event-'.$event->getId().'@club-calendar';
-            $xAppleLine = $this->buildXAppleLine($loc);
-            if ($xAppleLine) {
-                $icsStr = preg_replace(
-                    '/(UID:'.preg_quote($uid, '/').'[\s\S]*?)(\r?\nEND:VEVENT)/',
-                    '$1'."\r\n".$xAppleLine.'$2',
-                    $icsStr,
-                );
-            }
-        }
-
-        return $icsStr;
+        return (string) (new CalendarFactory(new EventFactory()))->createCalendar($calendar);
     }
 
     /**
@@ -138,11 +118,15 @@ class IcsService
         if ($loc) {
             $locationStr = $this->buildLocationStr($loc);
             if ($locationStr) {
-                $iCalLocation = new ICalLocation($locationStr);
+                $iCalLocation = new ICalLocation($locationStr, $loc->getName() ?: $loc->getStreet() ?: $locationStr);
                 if (null !== $loc->getLatitude() && null !== $loc->getLongitude()) {
-                    $iCalLocation = $iCalLocation->withGeographicPosition(
-                        new GeographicPosition((float) $loc->getLatitude(), (float) $loc->getLongitude()),
-                    );
+                    try {
+                        $iCalLocation = $iCalLocation->withGeographicPosition(
+                            new GeographicPosition((float) $loc->getLatitude(), (float) $loc->getLongitude()),
+                        );
+                    } catch (\InvalidArgumentException) {
+                        // coordinates outside the valid range: leave the position out instead of failing the feed
+                    }
                 }
                 $icalEvent->setLocation($iCalLocation);
             }
@@ -204,35 +188,5 @@ class IcsService
         }
 
         return implode(', ', $parts);
-    }
-
-    private function buildXAppleLine(\App\Entity\Location $loc): string
-    {
-        if (null === $loc->getLatitude() || null === $loc->getLongitude()) {
-            return '';
-        }
-        $addrParts = [];
-        if ($loc->getStreet()) {
-            $addrParts[] = $loc->getStreet();
-        }
-        $city = array_filter([$loc->getZip(), $loc->getCity()]);
-        if ($city) {
-            $addrParts[] = implode(' ', $city);
-        }
-        if ($loc->getCountry()) {
-            $addrParts[] = $loc->getCountry();
-        }
-        $xAddress = implode('\\n', $addrParts);
-        $xTitle = $loc->getName() ?? ($addrParts[0] ?? '');
-        $params = ['VALUE=URI'];
-        if ($xTitle) {
-            $params[] = 'X-TITLE="'.$xTitle.'"';
-        }
-        if ($xAddress) {
-            $params[] = 'X-ADDRESS="'.$xAddress.'"';
-        }
-        $params[] = 'X-APPLE-RADIUS=100';
-
-        return 'X-APPLE-STRUCTURED-LOCATION;'.implode(';', $params).':geo:'.$loc->getLatitude().','.$loc->getLongitude();
     }
 }

@@ -28,7 +28,7 @@
 ## Executive Summary
 
 - **No Critical findings** in the completed areas.
-- Counts so far (4 of 5 areas complete): **1 High, 0 Medium, 8 Low, 9 Informational** — 18 findings; API-02 and the OAuth token-in-URL finding removed after implementation (AUTH-13 added for the residual risk of the fix).
+- Counts so far (4 of 5 areas complete): **1 High, 0 Medium, 7 Low, 9 Informational** — 17 findings; API-02, API-54 and the OAuth token-in-URL finding removed after implementation (AUTH-13 added for the residual risk of the fix).
 - **Top design gaps:** club membership equals full admin with no role model (API-01); Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
 - **Positives:** no IDOR/cross-tenant gaps in the API surface; no live Mapbox token in the frontend (fully proxied through the backend); WebAuthn ceremonies, OAuth state handling, and exception → RFC 7807 response masking are sound; feed-secret checks are constant-time and the Mapbox proxy is SSRF-safe (fixed upstream host, strict path allowlist, caller token stripped).
 
@@ -111,15 +111,6 @@
 **Fix recommendation:** Load the `Location`/`Event`, resolve its calendar, and enforce `CalendarMemberVoter::CALENDAR_MEMBER` before rendering (plus `NOT_ARCHIVED` if images should also be blocked for archived calendars). Return 404 (not 403) for non-members to avoid confirming UUID existence, mirroring the public feed's behavior.
 **Notes:** The geocode routes in the same controller correctly enforce `ROLE_USER` and per-user rate limiting, so the gap is limited to the two image actions. The image response itself exposes no secret — the finding is coordinate leakage.
 **Source:** `02b-backend-services.md` (API-53).
-
-#### API-54 — ICS `X-APPLE-STRUCTURED-LOCATION` `X-TITLE` built from unescaped input enables ICS property-line injection
-**Severity:** Low
-**Attack scope:** Any club member with write access to a calendar. Affects subscribers who import the feed into Apple Calendar / other ICS clients.
-**Description:** `IcsService::buildXAppleLine()` hand-builds the `X-APPLE-STRUCTURED-LOCATION` property line and embeds the location's display name directly into the `X-TITLE` parameter without escaping. The address is escaped for embedded newlines, but the title is not. A location name containing `";\r\n` or a raw CRLF can inject additional properties into that line or terminate the parameter list early, corrupting the calendar object or, depending on the parser, injecting extra `VALARM`/`ATTACH`/`URL` properties into all subscribing clients' calendars. The main event body is rendered by `eluceo/ical` (which escapes text values), so only the hand-built Apple line is affected. `X-ADDRESS` shares the same partially escaped value, but its dangerous newline case is already neutralized.
-**Affected parts:** `backend/src/Service/IcsService.php:184-212` (`buildXAppleLine()`; `$title` unescaped, `$addr` escapes only `\n`).
-**Fix recommendation:** Escape parameter values per RFC 5545 §3.1 (double `"` and replace CRLF with the literal `\n` sequence) for both `$title` and `$addr`, using a small `escapeIcsParamValue` helper. Alternatively, drop `X-TITLE` (Apple falls back to SUMMARY) and keep only the machine-safe `VALUE=URI` GEO portion.
-**Notes:** Exploitation requires calendar write access — the attacker is a club member. Impact is calendar corruption/property injection on *other* club members' calendar clients, not data exfiltration. `geo:lat,lon` is sourced from a numeric DB column and is not attacker-controllable text.
-**Source:** `02b-backend-services.md` (API-54).
 
 #### AUTH-13 — SSO login code is not bound to the browser that started the flow (login CSRF)
 **Severity:** Low
@@ -256,7 +247,6 @@
 | FE-04 | CLI-only `shadcn` package listed as a runtime dependency | Low |
 | FE-05 | Type-only `@types/mapbox-gl` listed as a runtime dependency | Low |
 | API-53 | Static map image endpoints expose coordinates of calendars the user does not belong to | Low |
-| API-54 | ICS `X-APPLE-STRUCTURED-LOCATION` `X-TITLE` built from unescaped input enables ICS property-line injection | Low |
 | AUTH-13 | SSO login code is not bound to the browser that started the flow (login CSRF) | Low |
 | AUTH-06 | Register: check-then-insert race on the email | Informational |
 | AUTH-07 | Email verification error redirect leaks the failure reason | Informational |
@@ -274,7 +264,7 @@
 |---|---|---|---|
 | Backend auth | `01-backend-auth.md` | AUTH-03, AUTH-05 … AUTH-13 (10) | Complete |
 | Backend API (authorization & CRUD) | `02-backend-api.md` | API-01, API-03 (2) | Complete |
-| Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-54 (3) | Complete |
+| Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-53 (2) | Complete |
 | Frontend | `03-frontend.md` | FE-04 … FE-07 (4) | Complete |
 | Scans & config | `04-scans-config.md` | SCAN-04, SCAN-07, SCAN-09 … SCAN-12 (5) | Complete |
 
