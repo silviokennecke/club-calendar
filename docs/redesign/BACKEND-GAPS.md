@@ -98,7 +98,7 @@ Nicht im Audit, gering:
   `Version20261009120000` (Vorlagen-Zeiten nullable), `Version20261010120000` (`event.external_uid`),
   `Version20261013120000` (`password_reset`, `email_change`, `passkey.last_used_at`, `club_user.last_calendar_id`),
   `Version20261014120000` (`event_series`, `event.series_id`), `Version20261015120000` (Feed-Status: `PUBLIC` →
-  `CLUB`, `PRIVATE` bleibt, `calendar_feed.searchable`), `Version20261019120000` (Club roles: `club_user.role` mit Enum viewer|editor|admin, alle bestehenden Mitglieder werden admin, Einladungen tragen eine `role` mit default editor). Nach der Feed-Status-Migration sind bisher öffentliche Feeds
+  `CLUB`, `PRIVATE` bleibt, `calendar_feed.searchable`), `Version20261019120000` (Club roles: `club_user.role` mit Enum viewer|editor|admin, alle bestehenden Mitglieder werden admin, Einladungen tragen eine `role` mit default editor), `Version20261020120000` (Club-Scoping: `calendar_feed` + `calendar_feed_calendar` (join-Tabelle für N:M), `location` + `target_group` auf Club-Ebene statt Calendar; bestehende Feeds auf den einen Kalender begrenzt, keine Zusammenfassung; Backup empfohlen, auf Testumgebung ausprobieren). Nach der Feed-Status-Migration sind bisher öffentliche Feeds
   nur per Link (nicht indexiert); wer einen Feed in Suchmaschinen haben will, stellt ihn auf "Öffentlich" und
   schaltet "Für Suchmaschinen auffindbar" ein.
 - **Umgebungsvariablen (Produktion):** `APP_SECRET` (signiert Passkey-Challenges, OAuth-State und SSO-Tickets; ein

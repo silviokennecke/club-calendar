@@ -86,25 +86,27 @@ Status: **vollständig** = Inhalte, Zustände, Texte, Interaktionen und Mobil-Ve
 | Templates.dc.html | `pages/TemplatesPage.tsx`, `…/templates` (Karten, Suche, Leerzustand, "Termin aus Vorlage", Lösch-Dialog mit `eventCount`) | vollständig (Vorlage ohne Zeiten: "Ganztägig" statt der Uhrzeit, nicht im Design) |
 | TemplateEdit.dc.html | `pages/TemplateEditPage.tsx`, `…/templates/new`, `…/templates/:templateId` (Zeitzone des Vereins / eigene, Zeiten optional und leer bei neuen Vorlagen, Pflichtfehler, Lösch-Dialog mit Anzahl erzeugter Termine, schreibgeschützt im Archiv) | vollständig (ohne Zeiten entstehen ganztägige Termine; Hinweis an der Endzeit) |
 
-## Kalender-Einstellungen
+## Einstellungen
+
+Kalender-Einstellungen (Name, Zeitzone, Eigenschaften, Features, Feiertagskalender, allgemein) und Club-Einstellungen (Orte, Zielgruppen, Feeds).
 
 | Artboard | Umsetzung | Status |
 | --- | --- | --- |
 | SettingsGeneral.dc.html | `pages/settings/CalendarSettingsPage.tsx`, `…/settings` (Name, Zeitzone, Hinweis "… findest du unter Verein verwalten") | vollständig |
 | SettingsMasterList.dc.html | `components/settings/MasterList.tsx` (Anlegen, Umbenennen im `FormDialog`, Löschen mit Folgen, Leer/Laden/Fehler, schreibgeschützt) | vollständig; Lösch-Wortlaut nach Dialogs.dc.html |
-| SettingsProps.dc.html | `PropertiesPage` → `MasterList kind="properties"` (+ `EmojiPicker`) | vollständig |
-| SettingsFeatures.dc.html | `FeaturesPage` → `MasterList kind="features"` | vollständig |
-| SettingsAudiences.dc.html | `TargetGroupsPage` → `MasterList kind="audiences"` | vollständig |
-| SettingsPlaces.dc.html | `pages/settings/LocationsPage.tsx`, `components/locations/*` (Übersichtskarte mit Pins als Buttons, Liste mit "Auf Karte markiert", Formular mit Adresssuche, Koordinaten, Positionskarte, Lösch-Dialog) | vollständig |
+| SettingsProps.dc.html | `PropertiesPage` → `MasterList kind="properties"` (+ `EmojiPicker`; Kalender-Ebene) | vollständig |
+| SettingsFeatures.dc.html | `FeaturesPage` → `MasterList kind="features"` (Kalender-Ebene) | vollständig |
+| SettingsAudiences.dc.html | `/clubs/:clubId/settings/target-groups` (`TargetGroupsPage` → `MasterList kind="audiences"`; Club-Ebene seit Paket 5) | vollständig |
+| SettingsPlaces.dc.html | `/clubs/:clubId/settings/locations` (`pages/settings/LocationsPage.tsx`, `components/locations/*` mit Übersichtskarte mit Pins als Buttons, Liste mit "Auf Karte markiert", Formular mit Adresssuche, Koordinaten, Positionskarte, Lösch-Dialog; Club-Ebene seit Paket 5) | vollständig |
 | SettingsPlacesMobile.dc.html | `LocationsPage` < 720px (Liste, Formular unter der Karte) | vollständig |
-| SettingsHolidays.dc.html | `pages/settings/HolidayCalendarsPage.tsx`, `HolidayPreview.tsx` (Hinzufügen, Aktualisieren mit Busy-Label, Vorschau, Lösch-Dialog mit Anzahl) | vollständig |
+| SettingsHolidays.dc.html | `pages/settings/HolidayCalendarsPage.tsx`, `HolidayPreview.tsx` (Hinzufügen, Aktualisieren mit Busy-Label, Vorschau, Lösch-Dialog mit Anzahl; Kalender-Ebene) | vollständig |
 | MapView.dc.html | `locations/PositionMap.tsx`, `LocationsOverviewMap.tsx`, `events/EventLocationMap.tsx`, öffentliche Terminansicht: statisches Kartenbild vom Backend (`PublicEventModal.tsx`, kein mapbox-gl; Textalternative) | vollständig |
 
 ## Veröffentlichen, Verein, Profil
 
 | Artboard | Umsetzung | Status |
 | --- | --- | --- |
-| Feeds.dc.html | `pages/settings/FeedsPage.tsx`, `…/settings/feeds` (Status als Wort + Icon, Zielgruppen, Adressen als `CopyField`, Lösch-Dialog) | abweichend: lange Adressen statt kurzer Slugs `/k/<verein>/<feed>` (`BACKEND-GAPS.md`, Feeds); **drei Status statt zwei** (Entscheidung des Auftraggebers 2026-10-15, siehe unten "Feed-Status"): Badge "Öffentlich" (globe), "Nur per Link" (users, eigene Variante `club`), "Privat" (lock), dazu "Auffindbar" (search, Variante `searchable`) bei öffentlichen Feeds mit Suchmaschinen-Option; Adressen nur bei Privat mit `?secret=` |
+| Feeds.dc.html | `/clubs/:clubId/settings/feeds` (`pages/settings/FeedsPage.tsx`; Status als Wort + Icon, Zielgruppen, Adressen als `CopyField`, Lösch-Dialog; Club-Ebene seit Paket 5) | abweichend: lange Adressen statt kurzer Slugs `/k/<verein>/<feed>` (`BACKEND-GAPS.md`, Feeds); **drei Status statt zwei** (Entscheidung des Auftraggebers 2026-10-15, siehe unten "Feed-Status"): Badge "Öffentlich" (globe), "Nur per Link" (users, eigene Variante `club`), "Privat" (lock), dazu "Auffindbar" (search, Variante `searchable`) bei öffentlichen Feeds mit Suchmaschinen-Option; Adressen nur bei Privat mit `?secret=` |
 | FeedEdit.dc.html | `pages/settings/FeedEditPage.tsx`, `…/settings/feeds/new`, `…/settings/feeds/:feedId` (Name, Sichtbarkeit, Zielgruppen, Geheimnis neu erzeugen, Löschen; Feed per Einzel-GET) | abweichend (Entscheidung des Auftraggebers): Radiogruppe "Sichtbarkeit" mit drei Optionen statt zwei (Öffentlich / Nur per Link / Privat (geschützt), je mit Erklärtext; Standard für neue Feeds Nur per Link statt Öffentlich), darunter nur bei "Öffentlich" der Schalter "Für Suchmaschinen auffindbar" (`Toggle`, Standard aus, Hilfetext); Speichern eines privaten Feeds als öffentlich/nur per Link fragt per `ConfirmDialog` ("Geheimnis nicht mehr verlangen?", Folgenhinweis). Wortlaut eigen (nicht im Design) |
 | Club.dc.html | `pages/ClubPage.tsx`, `components/club/*`, `/clubs/:clubId` (Name, Mitglieder, Kalender anlegen/duplizieren/archivieren/löschen, archivierte Kalender, Verein löschen mit Namenseingabe) | vollständig (Kalenderzeile "n Termine" aus `eventCount`; Lösch-Dialoge mit den API-Zählern) |
 | ClubMobile.dc.html | `ClubPage` < 720px (Karten statt Tabelle) | vollständig |
