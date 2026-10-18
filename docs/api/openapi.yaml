@@ -2769,10 +2769,10 @@ paths:
   /api/map/geocode/suggest:
     get:
       tags: [Maps]
-      summary: Address suggestions (geocoding)
+      summary: Address and place suggestions (geocoding)
       operationId: geocodeSuggest
       parameters:
-        - { name: q, in: query, schema: { type: string }, description: Search text; empty → no suggestions. }
+        - { name: q, in: query, schema: { type: string }, description: 'Search text: an address or the name of a place (POI, for example Schützenhaus Musterstadt); empty → no suggestions.' }
         - { name: lat, in: query, schema: { type: number }, description: Proximity bias. }
         - { name: lng, in: query, schema: { type: number } }
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 10, default: 6 } }
@@ -2797,6 +2797,7 @@ paths:
                         zip: { type: [string, 'null'] }
                         city: { type: [string, 'null'] }
                         country: { type: [string, 'null'] }
+                        name: { type: [string, 'null'], description: Name of the place for a POI result (also the first part of label); null for a plain address. }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
