@@ -8,7 +8,7 @@ export default function TargetGroupsPage() {
   const { t } = useTranslation();
   const page = useClubSettingsPage();
   return (
-    <ClubSettingsLayout>
+    <ClubSettingsLayout wide>
       <p className="t-body t-muted t-prose">{t("settings.master.audiences.description")}</p>
       <MasterList kind="audiences" clubId={page.clubId} readOnly={page.readOnly} />
     </ClubSettingsLayout>
