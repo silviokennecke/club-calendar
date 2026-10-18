@@ -56,7 +56,9 @@ function GeneralForm({ calendar }: { calendar: Calendar }) {
   const locale = useLocale();
   const qc = useQueryClient();
   const page = useSettingsPage();
-  const { clubId, calendarId, readOnly } = page;
+  const { clubId, calendarId } = page;
+  // Renaming a calendar or changing its zone is calendar management: club admins only.
+  const readOnly = page.readOnly || !page.isAdmin;
   const clubZone = page.club?.timezone ?? "";
 
   const saved: FormValues = useMemo(

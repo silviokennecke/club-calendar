@@ -4,6 +4,7 @@ import { apiGet } from "@/lib/api";
 import { todayIn } from "@/lib/calendar";
 import type { Calendar, CalendarEvent, Club } from "@/lib/types";
 import type { ShellData } from "@/components/layout/shellTypes";
+import { permissionsFor } from "@/lib/club/permissions";
 import { eventRoutes } from "./routes";
 
 /**
@@ -28,6 +29,9 @@ export function useEventPage() {
   const calendar = calendarQuery.data;
   const club = (shell?.clubs ?? clubsQuery.data)?.find((c) => c.id === clubId);
   const timeZone = calendar?.timezone || club?.timezone || null;
+  // Club role (viewer < editor < admin): unknown until the club list is loaded, then no write control.
+  const { canEdit: roleCanEdit, isAdmin } = permissionsFor(club?.role);
+  const roleLoading = !club?.role && !shell && clubsQuery.isLoading;
 
   return {
     clubId,
@@ -39,6 +43,16 @@ export function useEventPage() {
     calendarFailed: calendarQuery.isError && !calendar,
     reloadCalendar: () => void calendarQuery.refetch(),
     isArchived: !!calendar?.archivedAt,
+    /** The club role is still loading (no write control until known). */
+    roleLoading,
+    /** Role editor or admin: may write events, templates and reference data. */
+    roleCanEdit,
+    /** Role admin: manages calendars and feeds. */
+    isAdmin,
+    /** Role editor or admin and the calendar is loaded and not archived: events etc. can be changed. */
+    canEdit: roleCanEdit && !!calendar && !calendar.archivedAt,
+    /** Opposite of `canEdit` for loaded calendars (archived or role too low). */
+    readOnly: !roleCanEdit || !!calendar?.archivedAt,
     timeZone,
     today: todayIn(timeZone),
     routes: eventRoutes(base),

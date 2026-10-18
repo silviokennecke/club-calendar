@@ -74,7 +74,7 @@ export default function EventsListPage() {
     [all, tab, query, groupIds],
   );
   const counts = countByStatus(all, { query, groupIds });
-  const canEdit = !!page.calendar && !page.isArchived;
+  const canEdit = page.canEdit;
   const selectedEvents = shown.filter((e) => selected.has(e.id));
   const groupList = groups.data ?? [];
   const toneOf = (id: string) => audienceTone(groupList.findIndex((g) => g.id === id));

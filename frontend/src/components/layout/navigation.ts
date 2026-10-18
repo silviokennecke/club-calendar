@@ -1,4 +1,6 @@
 import type { Glyph } from "@/components/ui/shared";
+import { roleAtLeast } from "@/lib/club/permissions";
+import type { ClubRole } from "@/lib/types";
 
 /** Areas of the app shell (design: Sidebar.dc.html "active"). */
 export type NavKey =
@@ -40,9 +42,15 @@ export function calendarBase(clubId: string, calendarId: string) {
 }
 
 /** Sidebar navigation mapped onto the existing routes. */
-export function buildNavGroups(clubId: string, calendarId: string): NavGroup[] {
+export function buildNavGroups(
+  clubId: string,
+  calendarId: string,
+  /** Role of the signed-in user: viewers (and an unknown role) get no import and no feeds. */
+  role?: ClubRole,
+): NavGroup[] {
   const base = calendarBase(clubId, calendarId);
-  return [
+  const canEdit = roleAtLeast(role, "editor");
+  const groups: NavGroup[] = [
     {
       titleKey: "shell.groups.events",
       items: [
@@ -76,16 +84,20 @@ export function buildNavGroups(clubId: string, calendarId: string): NavGroup[] {
       ],
     },
   ];
+  const hidden: NavKey[] = canEdit ? [] : ["import", "feeds"];
+  return groups.map((g) => ({ ...g, items: g.items.filter((i) => !hidden.includes(i.key)) }));
 }
 
-export function buildTabs(clubId: string, calendarId: string): TabItem[] {
+export function buildTabs(clubId: string, calendarId: string, role?: ClubRole): TabItem[] {
   const base = calendarBase(clubId, calendarId);
-  return [
+  const tabs: TabItem[] = [
     { key: "calendar", labelKey: "shell.tabs.calendar", href: base, icon: "calendar" },
     { key: "events", labelKey: "shell.tabs.events", href: `${base}/events`, icon: "list" },
     { key: "feeds", labelKey: "shell.tabs.feeds", href: `${base}/settings/feeds`, icon: "rss" },
     { key: "more", labelKey: "shell.tabs.more", href: `${base}/more`, icon: "menu" },
   ];
+  // Feeds are not readable for viewers.
+  return roleAtLeast(role, "editor") ? tabs : tabs.filter((tab) => tab.key !== "feeds");
 }
 
 /** Which area the current path belongs to (null = none of the shell areas). */

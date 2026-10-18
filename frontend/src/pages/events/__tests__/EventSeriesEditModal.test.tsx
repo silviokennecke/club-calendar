@@ -6,6 +6,7 @@ import { ApiError } from "@/lib/api";
 import EventSeriesEditModal from "../EventSeriesEditModal";
 import EventFormModal from "../EventFormModal";
 import { BASE, PATTERN, groups, makeEvent, renderRoute } from "./testUtils";
+import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
@@ -54,7 +55,7 @@ let calendar: Record<string, unknown>;
 beforeEach(() => {
   calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026" };
   for (const fn of [apiGet, apiPost, apiPatch]) fn.mockReset();
-  apiGet.mockImplementation((path: string) => {
+  mockApiGet(apiGet, (path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
     if (path === "/api/calendars/k1/events/s2") return Promise.resolve(seriesEvent);
     if (path.endsWith("/target-groups")) return Promise.resolve(groups);

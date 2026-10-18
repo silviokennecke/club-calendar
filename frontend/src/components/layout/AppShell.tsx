@@ -135,7 +135,13 @@ export function AppShell({
           <Outlet context={data} />
         </Suspense>
       </main>
-      {calendarId && <Tabbar clubId={clubId} calendarId={calendarId} />}
+      {calendarId && (
+        <Tabbar
+          clubId={clubId}
+          calendarId={calendarId}
+          role={clubs.find((c) => c.id === clubId)?.role}
+        />
+      )}
     </div>
   );
 }

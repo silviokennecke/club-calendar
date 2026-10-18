@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CalendarSettingsPage from "../CalendarSettingsPage";
 import { BASE, PATTERN, renderRoute } from "../../events/__tests__/testUtils";
+import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
@@ -25,7 +26,7 @@ const calPath = "/api/clubs/c1/calendars/k1";
 beforeEach(() => {
   calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026", timezone: null };
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete]) fn.mockReset();
-  apiGet.mockImplementation((path: string) => {
+  mockApiGet(apiGet, (path: string) => {
     if (path === calPath) return Promise.resolve(calendar);
     if (path.endsWith("/events")) return Promise.resolve([{}, {}, {}]);
     if (path.endsWith("/templates")) return Promise.resolve([{}]);

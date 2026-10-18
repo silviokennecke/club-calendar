@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button, ErrorSummary, Field, TextInput, toast } from "@/components/ui/shared";
 import { apiPatch } from "@/lib/api";
 import { isBlank } from "@/lib/club";
+import { permissionsFor } from "@/lib/club/permissions";
 import type { Club } from "@/lib/types";
 
 /** "Vereinsname" panel (design: Club): one field, Enter or the button saves. */
@@ -16,6 +17,8 @@ export function ClubNameSection({ club }: { club: Club }) {
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const value = draft ?? club.name;
+  // Renaming the club is admin-only.
+  const { isAdmin } = permissionsFor(club.role);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -78,6 +81,7 @@ export function ClubNameSection({ club }: { club: Club }) {
                 value={value}
                 maxLength={255}
                 autoComplete="off"
+                readOnly={!isAdmin}
                 onChange={(e) => {
                   setDraft(e.target.value);
                   setProblem(false);
@@ -86,9 +90,11 @@ export function ClubNameSection({ club }: { club: Club }) {
               />
             </Field>
           </div>
-          <Button type="submit" variant="secondary" loading={saving}>
-            {t("club.name.save")}
-          </Button>
+          {isAdmin && (
+            <Button type="submit" variant="secondary" loading={saving}>
+              {t("club.name.save")}
+            </Button>
+          )}
         </div>
       </form>
     </section>

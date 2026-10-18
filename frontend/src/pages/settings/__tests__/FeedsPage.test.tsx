@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FeedsPage from "../FeedsPage";
 import { BASE, PATTERN, renderRoute } from "../../events/__tests__/testUtils";
+import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
@@ -46,7 +47,7 @@ beforeEach(() => {
   calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026", timezone: null };
   feeds = [publicFeed, privateFeed];
   for (const fn of [apiGet, apiPost, apiDelete]) fn.mockReset();
-  apiGet.mockImplementation((path: string) => {
+  mockApiGet(apiGet, (path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
     if (path === "/api/calendars/k1/feeds?includeSecret=1") return Promise.resolve(feeds);
     if (path === "/api/calendars/k1/target-groups")
@@ -208,14 +209,14 @@ describe("FeedsPage", () => {
 
   it("shows an error with retry when the feeds cannot be loaded", async () => {
     const user = userEvent.setup();
-    apiGet.mockImplementation((path: string) =>
+    mockApiGet(apiGet, (path: string) =>
       path === "/api/clubs/c1/calendars/k1"
         ? Promise.resolve(calendar)
         : Promise.reject(new Error("API error 500")),
     );
     renderRoute(route, url, <FeedsPage />);
     expect(await screen.findByText("Die Feeds konnten nicht geladen werden.")).toBeInTheDocument();
-    apiGet.mockImplementation((path: string) =>
+    mockApiGet(apiGet, (path: string) =>
       path === "/api/clubs/c1/calendars/k1" ? Promise.resolve(calendar) : Promise.resolve([]),
     );
     await user.click(screen.getByRole("button", { name: "Erneut versuchen" }));
@@ -231,7 +232,7 @@ describe("FeedsPage", () => {
     expect(screen.queryByRole("link", { name: /bearbeiten/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /löschen/ })).not.toBeInTheDocument();
     // The addresses can still be looked up.
-    expect(screen.getAllByRole("button", { name: /Zugänge/ }).length).toBe(2);
+    expect((await screen.findAllByRole("button", { name: /Zugänge/ })).length).toBe(2);
     await user.click(screen.getByRole("button", { name: "Archivierung aufheben" }));
     await waitFor(() =>
       expect(apiPost).toHaveBeenCalledWith("/api/clubs/c1/calendars/k1/unarchive", {}),

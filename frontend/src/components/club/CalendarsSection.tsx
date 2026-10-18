@@ -23,6 +23,7 @@ import { useAuth } from "@/lib/auth-context";
 import { focusAfterDialog } from "@/lib/focus";
 import { formatDate } from "@/lib/dateFormat";
 import { isBlank } from "@/lib/club";
+import { permissionsFor } from "@/lib/club/permissions";
 import type { Calendar, Club } from "@/lib/types";
 
 /**
@@ -40,6 +41,8 @@ export function CalendarsSection({ club }: { club: Club }) {
   const [signal, setSignal] = useState(0);
   const [saving, setSaving] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  // Creating, archiving, duplicating and deleting calendars is admin-only.
+  const { isAdmin } = permissionsFor(club.role);
 
   const calendars = useQuery<Calendar[]>({
     queryKey: ["calendars", club.id, "all"],
@@ -123,7 +126,7 @@ export function CalendarsSection({ club }: { club: Club }) {
           <div className="ap-panel ap-panel--flush" style={{ boxShadow: "none" }}>
             <ul className="ap-list" style={{ listStyle: "none", margin: 0, padding: 0 }}>
               {active.map((c) => (
-                <CalendarRow key={c.id} club={club} calendar={c} />
+                <CalendarRow key={c.id} club={club} calendar={c} isAdmin={isAdmin} />
               ))}
             </ul>
           </div>
@@ -144,7 +147,7 @@ export function CalendarsSection({ club }: { club: Club }) {
                 aria-labelledby="cl-arch-h"
               >
                 {archived.map((c) => (
-                  <CalendarRow key={c.id} club={club} calendar={c} archived />
+                  <CalendarRow key={c.id} club={club} calendar={c} isAdmin={isAdmin} archived />
                 ))}
               </ul>
             </div>
@@ -163,18 +166,20 @@ export function CalendarsSection({ club }: { club: Club }) {
           </h2>
           <p>{t("club.calendars.text")}</p>
         </div>
-        <Button
-          ref={toggleRef}
-          variant="secondary"
-          icon="plus"
-          aria-expanded={creating}
-          aria-controls="cl-newcal-form"
-          onClick={() => (creating ? closeForm() : setCreating(true))}
-        >
-          {t("club.calendars.create")}
-        </Button>
+        {isAdmin && (
+          <Button
+            ref={toggleRef}
+            variant="secondary"
+            icon="plus"
+            aria-expanded={creating}
+            aria-controls="cl-newcal-form"
+            onClick={() => (creating ? closeForm() : setCreating(true))}
+          >
+            {t("club.calendars.create")}
+          </Button>
+        )}
       </div>
-      {creating && (
+      {isAdmin && creating && (
         <form
           id="cl-newcal-form"
           className="ap-panel ap-panel--sunken ap-stack"
@@ -233,10 +238,12 @@ export function CalendarsSection({ club }: { club: Club }) {
 function CalendarRow({
   club,
   calendar,
+  isAdmin,
   archived = false,
 }: {
   club: Club;
   calendar: Calendar;
+  isAdmin: boolean;
   archived?: boolean;
 }) {
   const { t } = useTranslation();
@@ -283,7 +290,7 @@ function CalendarRow({
         >
           {t(archived ? "club.calendars.view" : "club.calendars.open")}
         </Link>
-        {archived ? (
+        {!isAdmin ? null : archived ? (
           <Button
             variant="secondary"
             aria-label={t("club.calendars.restoreLabel", { name })}
@@ -323,13 +330,15 @@ function CalendarRow({
             />
           </>
         )}
-        <Button
-          variant="ghost-danger"
-          aria-label={t("club.calendars.deleteLabel", { name })}
-          onClick={() => setDeleting(true)}
-        >
-          {t("club.calendars.delete")}
-        </Button>
+        {isAdmin && (
+          <Button
+            variant="ghost-danger"
+            aria-label={t("club.calendars.deleteLabel", { name })}
+            onClick={() => setDeleting(true)}
+          >
+            {t("club.calendars.delete")}
+          </Button>
+        )}
       </div>
       {deleting && (
         <CalendarDeleteDialog

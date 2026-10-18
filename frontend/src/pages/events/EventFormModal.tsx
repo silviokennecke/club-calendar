@@ -42,7 +42,7 @@ import { AssignmentFields } from "@/components/events/AssignmentFields";
 import { LocationSection } from "@/components/events/LocationSection";
 import { useEventPage } from "@/components/events/useEventPage";
 import { CreateGateBody, ModalSkeleton } from "@/components/events/CreateGate";
-import { createGate } from "@/components/events/createGateState";
+import { createGate, gateTitle } from "@/components/events/createGateState";
 import { useEventResources } from "@/components/events/useEventResources";
 import { useLocale } from "@/components/calendar/useLocale";
 import { useModalNav } from "@/lib/useModalNav";
@@ -103,19 +103,16 @@ export default function EventFormModal() {
 
   const loading =
     page.calendarLoading ||
+    gate === "loading" ||
     (!isNew && eventQuery.isPending && !eventQuery.isError) ||
     (isNew && !!templateId && templatesQuery.isPending && !templatesQuery.isError);
 
   const newTitle = t("events.form.newTitle");
   const closeNew = t("events.form.closeNew");
 
-  if (gate === "archived" || gate === "failed") {
+  if (gate === "archived" || gate === "forbidden" || gate === "failed") {
     return (
-      <Modal
-        title={gate === "archived" ? t("events.new.archived.title") : newTitle}
-        closeLabel={closeNew}
-        onClose={nav.close}
-      >
+      <Modal title={gateTitle(gate, t, newTitle)} closeLabel={closeNew} onClose={nav.close}>
         <CreateGateBody gate={gate} page={page} onClose={nav.close} />
       </Modal>
     );
@@ -203,7 +200,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   const { t } = useTranslation();
   const locale = useLocale();
   const isNew = !event;
-  const readOnly = page.isArchived;
+  const readOnly = page.readOnly;
 
   const [values, setValues] = useState<EventFormValues>(initial);
   const [touched, setTouched] = useState<Set<EventField>>(new Set());
@@ -359,7 +356,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
     >
       {readOnly && (
         <Banner tone="warning" icon="lock">
-          {t("events.form.readOnly")}
+          {page.isArchived ? t("events.form.readOnly") : t("shell.roleReadOnly")}
         </Banner>
       )}
       {presetDate && values.date === presetDate && !template && (

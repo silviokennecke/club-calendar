@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import LocationsPage from "../LocationsPage";
 import { BASE, PATTERN, renderRoute } from "../../events/__tests__/testUtils";
+import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
@@ -89,7 +90,7 @@ beforeEach(() => {
     { ...heim, usage: { events: 0, templates: 0, templateNames: [] } },
   ];
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete, apiFetch]) fn.mockReset();
-  apiGet.mockImplementation((path: string) => {
+  mockApiGet(apiGet, (path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
     if (path.endsWith("/locations")) return Promise.resolve(locations);
     return Promise.resolve([]);
@@ -418,7 +419,7 @@ describe("LocationsPage", () => {
   });
 
   it("shows an error with retry when loading fails", async () => {
-    apiGet.mockImplementation((path: string) =>
+    mockApiGet(apiGet, (path: string) =>
       path === "/api/clubs/c1/calendars/k1"
         ? Promise.resolve(calendar)
         : Promise.reject(new Error("API error 500")),

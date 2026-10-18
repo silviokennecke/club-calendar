@@ -3,6 +3,7 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ImportPage from "../ImportPage";
 import { BASE, PATTERN, groups, renderRoute } from "../events/__tests__/testUtils";
+import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
@@ -94,7 +95,7 @@ beforeEach(() => {
   existing = [];
   apiGet.mockReset();
   apiPost.mockReset();
-  apiGet.mockImplementation((path: string) => {
+  mockApiGet(apiGet, (path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
     if (path.endsWith("/target-groups")) return Promise.resolve(groups);
     if (path.endsWith("/locations")) return Promise.resolve([place]);

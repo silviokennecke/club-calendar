@@ -17,6 +17,7 @@ import { CalendarsSection } from "@/components/club/CalendarsSection";
 import { apiDelete, apiErrorStatus, apiGet } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { clubDeleteConsequence } from "@/lib/club";
+import { permissionsFor } from "@/lib/club/permissions";
 import type { Club } from "@/lib/types";
 /**
  * Club management (design: Club, ClubMobile): name, members, calendars (incl. archived, with
@@ -106,27 +107,29 @@ export default function ClubPage() {
         <MembersSection club={club} />
         <CalendarsSection club={club} />
 
-        <section className="ap-panel ap-panel--danger" aria-labelledby="cl-danger-h">
-          <div className="ap-panel-head">
-            <div>
-              <h2 className="t-h2" id="cl-danger-h">
-                {t("club.danger.title")}
-              </h2>
-              <p>{t("club.danger.text")}</p>
+        {permissionsFor(club.role).isAdmin && (
+          <section className="ap-panel ap-panel--danger" aria-labelledby="cl-danger-h">
+            <div className="ap-panel-head">
+              <div>
+                <h2 className="t-h2" id="cl-danger-h">
+                  {t("club.danger.title")}
+                </h2>
+                <p>{t("club.danger.text")}</p>
+              </div>
+              <Button
+                variant="danger"
+                icon="trash"
+                onClick={() => {
+                  // Fresh counters for the consequence ("… mit 14 Terminen und 2 Feeds …")
+                  void query.refetch();
+                  setDeleteOpen(true);
+                }}
+              >
+                {t("club.danger.action")}
+              </Button>
             </div>
-            <Button
-              variant="danger"
-              icon="trash"
-              onClick={() => {
-                // Fresh counters for the consequence ("… mit 14 Terminen und 2 Feeds …")
-                void query.refetch();
-                setDeleteOpen(true);
-              }}
-            >
-              {t("club.danger.action")}
-            </Button>
-          </div>
-        </section>
+          </section>
+        )}
         <ConfirmDialog
           open={deleteOpen}
           onOpenChange={setDeleteOpen}

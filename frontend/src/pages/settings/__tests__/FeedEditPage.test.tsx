@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FeedEditPage from "../FeedEditPage";
 import { BASE, PATTERN, renderRoute } from "../../events/__tests__/testUtils";
+import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
@@ -43,7 +44,7 @@ beforeEach(() => {
   calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026", timezone: null };
   feeds = [privateFeed];
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete]) fn.mockReset();
-  apiGet.mockImplementation((path: string) => {
+  mockApiGet(apiGet, (path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
     if (path === `${feedsPath}${q}`) return Promise.resolve(feeds);
     // Single GET of the edit page; unknown ids are a 404 like in the backend
@@ -215,7 +216,10 @@ describe("FeedEditPage (edit)", () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/^Name/)).toHaveValue("Vorstand intern");
     expect(screen.getByRole("radio", { name: /^Privat/ })).toBeChecked();
-    expect(screen.getByRole("button", { name: "Jugend" })).toHaveAttribute("aria-pressed", "true");
+    expect(await screen.findByRole("button", { name: "Jugend" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(screen.getByRole("button", { name: "Erwachsene" })).toHaveAttribute(
       "aria-pressed",
       "false",
@@ -377,7 +381,7 @@ describe("FeedEditPage (edit)", () => {
 
   it("offers a retry when the feed cannot be loaded", async () => {
     const fallback = apiGet.getMockImplementation()!;
-    apiGet.mockImplementation((path: string) =>
+    mockApiGet(apiGet, (path: string) =>
       path === `${feedsPath}/f2${q}`
         ? Promise.reject(Object.assign(new Error("API error 500"), { status: 500 }))
         : fallback(path),

@@ -8,6 +8,7 @@ import EventsExportPage from "../EventsExportPage";
 import { BASE, PATTERN, groups, makeEvent, renderRoute } from "./testUtils";
 import { ApiError } from "@/lib/api";
 import type { SeriesRule } from "@/lib/events";
+import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
@@ -77,7 +78,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(2026, 9, 2, 12, 0, 0));
   for (const fn of [apiGet, apiPost, download, apiFetch]) fn.mockReset();
-  apiGet.mockImplementation((path: string) => {
+  mockApiGet(apiGet, (path: string) => {
     if (path === "/api/clubs/c1/calendars/k1")
       return Promise.resolve({
         id: "k1",
@@ -155,7 +156,7 @@ describe("create choice", () => {
   });
 
   it("shows the archive notice instead of the choice in an archived calendar", async () => {
-    apiGet.mockImplementation((path: string) =>
+    mockApiGet(apiGet, (path: string) =>
       Promise.resolve(
         path === "/api/clubs/c1/calendars/k1"
           ? { id: "k1", clubId: "c1", name: "Alt", archivedAt: "2026-01-01T00:00:00Z" }

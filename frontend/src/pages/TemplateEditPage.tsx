@@ -135,7 +135,7 @@ function TemplateEditor({ template }: { template?: EventTemplate }) {
   const qc = useQueryClient();
   const { t } = useTranslation();
   const isNew = !template;
-  const readOnly = page.isArchived;
+  const readOnly = page.readOnly;
   const clubTimezone = page.timeZone;
 
   // The starting point of this edit session.
@@ -246,7 +246,7 @@ function TemplateEditor({ template }: { template?: EventTemplate }) {
 
         {readOnly ? (
           <Banner tone="warning" icon="lock" title={t("shell.archivedReadOnly")}>
-            {t("templates.form.readOnly")}
+            {page.isArchived ? t("templates.form.readOnly") : t("shell.roleReadOnly")}
           </Banner>
         ) : (
           <Banner

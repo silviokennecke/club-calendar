@@ -10,7 +10,7 @@ export function useSettingsPage() {
   return {
     ...page,
     club,
-    /** Archived calendars show their settings read-only. */
-    readOnly: page.isArchived,
+    /** Archived calendars and viewers see their settings read-only. */
+    readOnly: page.readOnly,
   };
 }

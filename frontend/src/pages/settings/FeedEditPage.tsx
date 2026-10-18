@@ -20,6 +20,7 @@ import {
   toast,
   type Glyph,
 } from "@/components/ui/shared";
+import { FeedsForbidden } from "@/components/feeds/FeedsForbidden";
 import { ArchivedCreateGuard } from "@/components/events/ArchivedCreateGuard";
 import { useEventPage } from "@/components/events/useEventPage";
 import { FeedAccess } from "@/components/feeds/FeedAccess";
@@ -59,7 +60,7 @@ export default function FeedEditPage() {
   return feedId ? (
     <FeedLoader />
   ) : (
-    <ArchivedCreateGuard>
+    <ArchivedCreateGuard require="admin">
       <FeedLoader />
     </ArchivedCreateGuard>
   );
@@ -69,12 +70,13 @@ function FeedLoader() {
   const { feedId } = useParams<{ feedId: string }>();
   const page = useEventPage();
   const { t } = useTranslation();
-  const one = useFeed(page.calendarId, feedId);
+  const one = useFeed(page.calendarId, page.roleCanEdit ? feedId : undefined);
   const isNew = !feedId;
   const feed = one.data;
   const notFound = (one.error as { status?: number } | null)?.status === 404;
 
-  if (page.calendarLoading || (!isNew && one.isPending && !one.isError)) {
+  if (!page.roleLoading && !page.roleCanEdit) return <FeedsForbidden calendarHref={page.base} />;
+  if (page.calendarLoading || page.roleLoading || (!isNew && one.isPending && !one.isError)) {
     return (
       <div className="ap-wrap--narrow" aria-busy="true">
         <p className="ap-sr" role="status">
@@ -131,7 +133,7 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
   const qc = useQueryClient();
   const { t } = useTranslation();
   const isNew = !feed;
-  const readOnly = page.isArchived;
+  const readOnly = page.isArchived || !page.isAdmin;
 
   const [initial] = useState<FeedFormValues>(() =>
     feed ? feedValuesFromRecord(feed) : emptyFeedValues(),
@@ -272,7 +274,7 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
       <form className="ap-form" noValidate onSubmit={onSubmit}>
         {readOnly ? (
           <Banner tone="warning" icon="lock" title={t("shell.archivedReadOnly")}>
-            {t("feeds.form.readOnly")}
+            {page.isArchived ? t("feeds.form.readOnly") : t("feeds.readOnlyRole")}
           </Banner>
         ) : (
           <Banner tone="info">{t("feeds.form.intro")}</Banner>

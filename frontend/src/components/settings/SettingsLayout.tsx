@@ -51,22 +51,29 @@ export function SettingsLayout({ wide, actions, children }: SettingsLayoutProps)
   } else {
     body = (
       <>
-        {page.readOnly && (
+        {page.isArchived && (
           <Banner
             tone="warning"
             icon="lock"
             title={t("shell.archivedReadOnly")}
             action={
-              <Button
-                variant="secondary"
-                onClick={actionsApi.unarchive}
-                loading={actionsApi.busy === "unarchive"}
-              >
-                {t("calendar.archived.unarchive")}
-              </Button>
+              page.isAdmin && (
+                <Button
+                  variant="secondary"
+                  onClick={actionsApi.unarchive}
+                  loading={actionsApi.busy === "unarchive"}
+                >
+                  {t("calendar.archived.unarchive")}
+                </Button>
+              )
             }
           >
             {t("settings.archived.text")}
+          </Banner>
+        )}
+        {!page.isArchived && !page.roleCanEdit && !page.roleLoading && (
+          <Banner tone="info" icon="lock">
+            {t("shell.roleReadOnly")}
           </Banner>
         )}
         {children}

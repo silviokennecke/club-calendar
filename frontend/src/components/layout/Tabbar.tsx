@@ -1,22 +1,25 @@
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Icon } from "@/components/ui/shared";
+import type { ClubRole } from "@/lib/types";
 import { activeNavKey, buildTabs, tabForNavKey } from "./navigation";
 
 interface TabbarProps {
   clubId: string;
+  /** Role of the signed-in user (viewers get no feeds tab). */
+  role?: ClubRole;
   calendarId: string;
 }
 
 /** Mobile bottom tabs: Kalender, Termine, Veröffentlichen, Mehr. */
-export function Tabbar({ clubId, calendarId }: TabbarProps) {
+export function Tabbar({ clubId, calendarId, role }: TabbarProps) {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const activeTab = tabForNavKey(activeNavKey(pathname, clubId, calendarId));
 
   return (
     <nav className="ap-tabbar" aria-label={t("shell.tabsLabel")}>
-      {buildTabs(clubId, calendarId).map((tab) => (
+      {buildTabs(clubId, calendarId, role).map((tab) => (
         <Link
           key={tab.key}
           className="ap-tab"

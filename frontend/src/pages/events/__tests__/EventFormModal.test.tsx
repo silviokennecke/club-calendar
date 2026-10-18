@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { ApiError } from "@/lib/api";
 import EventFormModal from "../EventFormModal";
 import { BASE, PATTERN, groups, makeEvent, renderRoute } from "./testUtils";
+import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
@@ -63,7 +64,7 @@ let calendar: Record<string, unknown>;
 beforeEach(() => {
   calendar = { id: "k1", clubId: "c1", name: "Schießbetrieb 2026" };
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete]) fn.mockReset();
-  apiGet.mockImplementation((path: string) => {
+  mockApiGet(apiGet, (path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
     if (path.endsWith("/target-groups")) return Promise.resolve(groups);
     if (path.endsWith("/locations")) return Promise.resolve(locations);
@@ -376,7 +377,7 @@ describe("EventFormModal – edit", () => {
 
   it("shows a load error instead of the form when the calendar cannot be loaded", async () => {
     const base = apiGet.getMockImplementation()!;
-    apiGet.mockImplementation((path: string) =>
+    mockApiGet(apiGet, (path: string) =>
       path === "/api/clubs/c1/calendars/k1"
         ? Promise.reject(new ApiError("Event not found", 404))
         : base(path),
@@ -413,7 +414,7 @@ describe("EventFormModal – event of a series", () => {
 
   beforeEach(() => {
     const base = apiGet.getMockImplementation()!;
-    apiGet.mockImplementation((path: string) =>
+    mockApiGet(apiGet, (path: string) =>
       path === "/api/calendars/k1/events/s2" ? Promise.resolve(seriesEvent) : base(path),
     );
   });

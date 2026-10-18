@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Icon, LinkButton, Modal } from "@/components/ui/shared";
 import { useEventPage } from "@/components/events/useEventPage";
 import { CreateGateBody } from "@/components/events/CreateGate";
-import { createGate } from "@/components/events/createGateState";
+import { createGate, gateTitle } from "@/components/events/createGateState";
 import { useModalNav } from "@/lib/useModalNav";
 
 /**
@@ -21,7 +21,7 @@ export default function EventNewModal() {
   return (
     <Modal
       size="wide"
-      title={gate === "archived" ? t("events.new.archived.title") : t("events.new.title")}
+      title={gateTitle(gate, t, t("events.new.title"))}
       subtitle={gate ? undefined : t("events.new.subtitle")}
       closeLabel={t("events.new.close")}
       onClose={nav.close}
