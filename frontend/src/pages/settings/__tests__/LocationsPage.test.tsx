@@ -98,6 +98,21 @@ beforeEach(() => {
   apiPatch.mockImplementation((_p: string, body: object) => Promise.resolve({ id: "l1", ...body }));
   apiDelete.mockResolvedValue(undefined);
   apiFetch.mockImplementation((path: string) => {
+    if (path.includes("geocode/suggest") && path.includes("q=Schuetz"))
+      return json({
+        suggestions: [
+          {
+            label: "Schützenhaus, Waldweg 1, 12347 Musterdorf, Deutschland",
+            name: "Schützenhaus",
+            lat: 48.4,
+            lng: 11.4,
+            street: "Waldweg 1",
+            zip: "12347",
+            city: "Musterdorf",
+            country: "Deutschland",
+          },
+        ],
+      });
     if (path.includes("geocode/suggest"))
       return json({
         suggestions: [
@@ -219,6 +234,31 @@ describe("LocationsPage", () => {
     expect(screen.getByLabelText("Stadt")).toHaveValue("Musterdorf");
     expect(screen.getByTestId("position")).toHaveTextContent("48.3,11.3");
     expect(screen.queryByRole("list", { name: "Adressvorschläge" })).not.toBeInTheDocument();
+  });
+
+  it("shows a place name and fills an empty name field from it", async () => {
+    const user = userEvent.setup();
+    renderRoute(route, url, <LocationsPage />);
+    await screen.findByRole("heading", { name: "Alle Orte (2)" });
+    await user.type(screen.getByLabelText("Adresse suchen"), "Schuetz");
+    const results = await screen.findByRole("list", { name: "Adressvorschläge" });
+    expect(within(results).getByText("Schützenhaus").tagName).toBe("STRONG");
+    expect(within(results).getByText("Waldweg 1, 12347 Musterdorf, Deutschland")).toBeVisible();
+    await user.click(within(results).getByRole("button", { name: /Schützenhaus/ }));
+    expect(screen.getByLabelText(/^Name/)).toHaveValue("Schützenhaus");
+    expect(screen.getByLabelText("Straße")).toHaveValue("Waldweg 1");
+  });
+
+  it("keeps a typed name when a place suggestion is picked", async () => {
+    const user = userEvent.setup();
+    renderRoute(route, url, <LocationsPage />);
+    await screen.findByRole("heading", { name: "Alle Orte (2)" });
+    await user.type(screen.getByLabelText(/^Name/), "Mein Name");
+    await user.type(screen.getByLabelText("Adresse suchen"), "Schuetz");
+    const results = await screen.findByRole("list", { name: "Adressvorschläge" });
+    await user.click(within(results).getByRole("button", { name: /Schützenhaus/ }));
+    expect(screen.getByLabelText(/^Name/)).toHaveValue("Mein Name");
+    expect(screen.getByLabelText("Straße")).toHaveValue("Waldweg 1");
   });
 
   it("clears the address search input when switching to another place", async () => {
