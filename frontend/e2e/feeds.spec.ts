@@ -81,10 +81,10 @@ test.describe("Veröffentlichen", () => {
     await expect(priv.locator(".ap-badge")).toHaveText("Privat");
     await expect(pub.locator(".ap-badge svg")).toBeVisible();
     expect(await pub.innerText()).not.toMatch(/[\u{1F310}\u{1F512}]/u);
-    await expect(pub).toContainText("Alle Zielgruppen");
-    await expect(
-      priv.getByRole("group", { name: "Zielgruppen von Vorstand intern" }),
-    ).toContainText("Jugend");
+    await expect(pub).toContainText("Alle Gruppen");
+    await expect(priv.getByRole("group", { name: "Gruppen von Vorstand intern" })).toContainText(
+      "Jugend",
+    );
 
     // Der erste Feed ist geöffnet, der zweite nicht
     const ics = pub.getByLabel("ICS-Adresse");
@@ -126,7 +126,7 @@ test.describe("Veröffentlichen", () => {
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(icsUrl);
   });
 
-  test("Feed anlegen: Validierung, privat mit Zielgruppe, danach geöffnet in der Liste", async ({
+  test("Feed anlegen: Validierung, privat mit Gruppe, danach geöffnet in der Liste", async ({
     page,
     request,
   }) => {
@@ -164,12 +164,12 @@ test.describe("Veröffentlichen", () => {
     const card = page.getByRole("region", { name: "Jugend-Abo" });
     await expect(card.locator(".ap-badge")).toHaveText("Privat");
     await expect(card.getByLabel("ICS-Adresse")).toHaveValue(/secret=/);
-    await expect(card.getByRole("group", { name: "Zielgruppen von Jugend-Abo" })).toContainText(
+    await expect(card.getByRole("group", { name: "Gruppen von Jugend-Abo" })).toContainText(
       "Jugend",
     );
   });
 
-  test("Feed bearbeiten: umbenennen, Sichtbarkeit und Zielgruppen ändern, Verwerfen-Dialog", async ({
+  test("Feed bearbeiten: umbenennen, Sichtbarkeit und Gruppen ändern, Verwerfen-Dialog", async ({
     page,
     request,
   }) => {

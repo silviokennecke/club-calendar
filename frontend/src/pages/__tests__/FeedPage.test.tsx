@@ -504,9 +504,9 @@ describe("PublicEventModal", () => {
     const props = screen.getByRole("region", { name: "Besonderheiten" });
     expect(within(props).getByText("Draußen")).toBeInTheDocument();
     expect(
-      within(screen.getByRole("region", { name: "Features" })).getByText("Getränkeverkauf"),
+      within(screen.getByRole("region", { name: "Zusatzangebote" })).getByText("Getränkeverkauf"),
     ).toBeInTheDocument();
-    const aud = screen.getByRole("region", { name: "Zielgruppen" });
+    const aud = screen.getByRole("region", { name: "Gruppen" });
     expect(within(aud).getByText("Jugend")).toBeInTheDocument();
     expect(within(aud).getByText("Erwachsene")).toBeInTheDocument();
 

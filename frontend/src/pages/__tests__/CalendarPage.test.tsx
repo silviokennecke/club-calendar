@@ -405,7 +405,7 @@ describe("CalendarPage – filters and search", () => {
     renderPage();
     await grid();
     await screen.findByTitle(/^Training Luftgewehr/);
-    const group = screen.getByRole("group", { name: "Nach Zielgruppe filtern" });
+    const group = screen.getByRole("group", { name: "Nach Gruppe filtern" });
     const chip = within(group).getByRole("button", { name: "Jugend" });
     expect(chip).toHaveAttribute("aria-pressed", "false");
     await user.click(chip);

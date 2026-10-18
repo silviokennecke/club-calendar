@@ -213,7 +213,7 @@
     "noResults": {
       "searchTitle": "Keine Termine zu „{{query}}“ gefunden",
       "filterTitle": "Keine Termine für diese Auswahl",
-      "text": "Prüfe die Schreibweise oder wähle eine andere Zielgruppe.",
+      "text": "Prüfe die Schreibweise oder wähle eine andere Gruppe.",
       "reset": "Auswahl zurücksetzen"
     },
     "empty": {
@@ -250,8 +250,8 @@
       "mapUnavailable": "Die Karte ist gerade nicht verfügbar. Die Adresse steht oben.",
       "openMap": "In Karten-App öffnen",
       "properties": "Besonderheiten",
-      "features": "Features",
-      "audiences": "Zielgruppen",
+      "features": "Zusatzangebote",
+      "audiences": "Gruppen",
       "addToCalendar": "Zum Kalender hinzufügen",
       "addToCalendarHint": "Lädt eine ICS-Datei nur für diesen Termin.",
       "notFound": {
@@ -285,7 +285,7 @@
       "placeholder": "Name eines Termins"
     },
     "filter": {
-      "label": "Nach Zielgruppe filtern",
+      "label": "Nach Gruppe filtern",
       "reset": "Filter zurücksetzen"
     },
     "cell": {
@@ -334,7 +334,7 @@
     },
     "noResults": {
       "title": "Keine Termine zu „{{query}}“ gefunden",
-      "text": "Prüfe die Schreibweise oder suche nach einem anderen Namen. Auch ein gesetzter Zielgruppen-Filter kann Termine ausblenden.",
+      "text": "Prüfe die Schreibweise oder suche nach einem anderen Namen. Auch ein gesetzter Gruppen-Filter kann Termine ausblenden.",
       "reset": "Suche zurücksetzen"
     },
     "archived": {
@@ -367,7 +367,7 @@
         "published": "Veröffentlicht",
         "draft": "Entwurf"
       },
-      "groupFilter": "Nach Zielgruppe filtern",
+      "groupFilter": "Nach Gruppe filtern",
       "resetFilter": "Filter zurücksetzen",
       "caption": "Termine des Kalenders {{calendar}}, sortiert nach Datum und Startzeit",
       "col": {
@@ -376,8 +376,8 @@
         "date": "Datum",
         "time": "Zeit",
         "place": "Ort",
-        "audiences": "Zielgruppen",
-        "features": "Features",
+        "audiences": "Gruppen",
+        "features": "Zusatzangebote",
         "status": "Status"
       },
       "selectOne": "{{name}} am {{date}} auswählen",
@@ -467,7 +467,7 @@
       },
       "template": {
         "title": "Aus Vorlage",
-        "text": "Übernimm Zeiten, Ort und Zielgruppen und lege auch Terminreihen an."
+        "text": "Übernimm Zeiten, Ort und Gruppen und lege auch Terminreihen an."
       },
       "import": "Oder Termine aus einer ICS-Datei importieren",
       "archived": {
@@ -493,7 +493,7 @@
         "basic": "Grunddaten",
         "status": "Status",
         "place": "Ort",
-        "tags": "Besonderheiten, Features und Zielgruppen"
+        "tags": "Besonderheiten, Zusatzangebote und Gruppen"
       },
       "name": "Name",
       "namePlaceholder": "z. B. Training Luftgewehr",
@@ -531,10 +531,10 @@
       },
       "properties": "Besonderheiten",
       "createProperty": "Neue Besonderheit anlegen",
-      "features": "Features",
-      "createFeature": "Neues Feature anlegen",
-      "targetGroups": "Zielgruppen",
-      "createTargetGroup": "Neue Zielgruppe anlegen",
+      "features": "Zusatzangebote",
+      "createFeature": "Neues Zusatzangebot anlegen",
+      "targetGroups": "Gruppen",
+      "createTargetGroup": "Neue Gruppe anlegen",
       "targetGroupsHint": "Ohne Auswahl gilt der Termin für alle.",
       "createFailed": "Das konnte nicht angelegt werden. Bitte versuche es erneut.",
       "back": "Zurück",
@@ -677,10 +677,10 @@
         "draftsNotice": "Entwürfe stehen dann in deiner Datei. In Feeds bleiben sie weiterhin ausgeschlossen."
       },
       "audiences": {
-        "title": "Zielgruppen",
-        "label": "Zielgruppen filtern",
-        "hint": "Ohne Auswahl werden alle Zielgruppen exportiert.",
-        "none": "Dieser Kalender hat noch keine Zielgruppen."
+        "title": "Gruppen",
+        "label": "Gruppen filtern",
+        "hint": "Ohne Auswahl werden alle Gruppen exportiert.",
+        "none": "Dieser Kalender hat noch keine Gruppen."
       },
       "preview": {
         "title": "Vorschau",
@@ -698,8 +698,8 @@
         "text": "Bitte prüfe deine Verbindung und versuche es erneut."
       },
       "ics": {
-        "features": "Features",
-        "targetGroups": "Zielgruppen"
+        "features": "Zusatzangebote",
+        "targetGroups": "Gruppen"
       }
     },
     "seriesInfo": {
@@ -935,7 +935,7 @@
       "checking": "Termine werden geprüft …",
       "summaryLabel": "Zusammenfassung und Import",
       "loadError": {
-        "title": "Orte, Besonderheiten oder Zielgruppen konnten nicht geladen werden",
+        "title": "Orte, Besonderheiten oder Gruppen konnten nicht geladen werden",
         "text": "Ohne diese Angaben lässt sich der Import nicht sicher starten.",
         "retry": "Erneut laden"
       },
@@ -1004,7 +1004,7 @@
   },
   "templates": {
     "title": "Vorlagen",
-    "description": "Vorlagen sind Vorgaben für Zeit, Ort und Zielgruppen – ideal für Einzeltermine und Serien.",
+    "description": "Vorlagen sind Vorgaben für Zeit, Ort und Gruppen – ideal für Einzeltermine und Serien.",
     "create": "Vorlage anlegen",
     "loading": "Vorlagen werden geladen.",
     "loadError": {
@@ -1028,9 +1028,9 @@
     "time": "{{from}} – {{to}}",
     "allDay": "Ganztägig",
     "noPlace": "Kein Standardort",
-    "audiences": "Zielgruppen",
+    "audiences": "Gruppen",
     "everyone": "Alle",
-    "extras": "Besonderheiten und Features",
+    "extras": "Besonderheiten und Zusatzangebote",
     "noExtras": "Keine",
     "deleteLabel": "Vorlage {{name}} löschen",
     "useTemplate": "Termin aus Vorlage",
@@ -1214,25 +1214,25 @@
         "editText": "Name und Symbol von „{{name}}“ ändern."
       },
       "features": {
-        "description": "Features sind Zusatzangebote an einem Termin, z. B. Bonusschießen. Du wählst sie beim Anlegen eines Termins aus.",
-        "addTitle": "Neues Feature hinzufügen",
-        "create": "Feature anlegen",
+        "description": "Zusatzangebote sind optionale Extras an einem Termin, z. B. Bonusschießen. Du wählst sie beim Anlegen eines Termins aus.",
+        "addTitle": "Neues Zusatzangebot hinzufügen",
+        "create": "Zusatzangebot anlegen",
         "placeholder": "z. B. Bonusschießen",
-        "emptyTitle": "Noch keine Features",
-        "emptyText": "Lege das erste Feature an, zum Beispiel „Bonusschießen“. Features zeigen Zusatzangebote an einem Termin.",
-        "emptyReadOnly": "In diesem Kalender gibt es keine Features.",
-        "listTitle": "Vorhandene Features ({{count}})",
-        "created": "Feature „{{name}}“ angelegt",
+        "emptyTitle": "Noch keine Zusatzangebote",
+        "emptyText": "Lege das erste Zusatzangebot an, zum Beispiel „Bonusschießen“. Sie erscheinen danach am Termin.",
+        "emptyReadOnly": "In diesem Kalender gibt es keine Zusatzangebote.",
+        "listTitle": "Vorhandene Zusatzangebote ({{count}})",
+        "created": "Zusatzangebot „{{name}}“ angelegt",
         "deleted": "„{{name}}“ gelöscht",
-        "deleteFailed": "Das Feature „{{name}}“ konnte nicht gelöscht werden.",
-        "createFailed": "Das Feature konnte nicht angelegt werden. Bitte versuche es erneut.",
-        "loadError": "Die Features konnten nicht geladen werden.",
+        "deleteFailed": "Das Zusatzangebot „{{name}}“ konnte nicht gelöscht werden.",
+        "createFailed": "Das Zusatzangebot konnte nicht angelegt werden. Bitte versuche es erneut.",
+        "loadError": "Die Zusatzangebote konnten nicht geladen werden.",
         "editLabel": "{{name}} bearbeiten",
         "deleteLabel": "{{name}} löschen",
-        "editTitle": "Feature bearbeiten",
-        "deleteTitle": "Feature „{{name}}“ löschen?",
-        "deleteText": "Das Feature wird aus der Liste entfernt.",
-        "deleteConfirm": "Feature löschen",
+        "editTitle": "Zusatzangebot bearbeiten",
+        "deleteTitle": "Zusatzangebot „{{name}}“ löschen?",
+        "deleteText": "Das Zusatzangebot wird aus der Liste entfernt.",
+        "deleteConfirm": "Zusatzangebot löschen",
         "consequence": {
           "loading": "Betroffene Termine werden ermittelt …",
           "unknown": "Bei allen Terminen und Vorlagen mit „{{name}}“ wird die Zuordnung entfernt. Die Termine selbst bleiben bestehen.",
@@ -1247,25 +1247,25 @@
         "editText": "Namen von „{{name}}“ ändern."
       },
       "audiences": {
-        "description": "Zielgruppen sagen, für wen ein Termin gedacht ist, z. B. Jugend. Besucher können den Kalender danach filtern, und Abos lassen sich auf Zielgruppen beschränken.",
-        "addTitle": "Neue Zielgruppe hinzufügen",
-        "create": "Zielgruppe anlegen",
+        "description": "Gruppen sagen, für wen ein Termin gedacht ist, z. B. Jugend. Besucher können den Kalender danach filtern, und Abos lassen sich auf Gruppen beschränken.",
+        "addTitle": "Neue Gruppe hinzufügen",
+        "create": "Gruppe anlegen",
         "placeholder": "z. B. Jugend",
-        "emptyTitle": "Noch keine Zielgruppen",
-        "emptyText": "Lege die erste Zielgruppe an, zum Beispiel „Jugend“. Damit lassen sich Termine und Abos nach Zielgruppe filtern.",
-        "emptyReadOnly": "In diesem Kalender gibt es keine Zielgruppen.",
-        "listTitle": "Vorhandene Zielgruppen ({{count}})",
-        "created": "Zielgruppe „{{name}}“ angelegt",
+        "emptyTitle": "Noch keine Gruppen",
+        "emptyText": "Lege die erste Gruppe an, zum Beispiel „Jugend“. Damit lassen sich Termine und Abos nach Gruppe filtern.",
+        "emptyReadOnly": "In diesem Kalender gibt es keine Gruppen.",
+        "listTitle": "Vorhandene Gruppen ({{count}})",
+        "created": "Gruppe „{{name}}“ angelegt",
         "deleted": "„{{name}}“ gelöscht",
-        "deleteFailed": "Die Zielgruppe „{{name}}“ konnte nicht gelöscht werden.",
-        "createFailed": "Die Zielgruppe konnte nicht angelegt werden. Bitte versuche es erneut.",
-        "loadError": "Die Zielgruppen konnten nicht geladen werden.",
+        "deleteFailed": "Die Gruppe „{{name}}“ konnte nicht gelöscht werden.",
+        "createFailed": "Die Gruppe konnte nicht angelegt werden. Bitte versuche es erneut.",
+        "loadError": "Die Gruppen konnten nicht geladen werden.",
         "editLabel": "{{name}} bearbeiten",
         "deleteLabel": "{{name}} löschen",
-        "editTitle": "Zielgruppe bearbeiten",
-        "deleteTitle": "Zielgruppe „{{name}}“ löschen?",
-        "deleteText": "Die Zielgruppe wird aus der Liste entfernt.",
-        "deleteConfirm": "Zielgruppe löschen",
+        "editTitle": "Gruppe bearbeiten",
+        "deleteTitle": "Gruppe „{{name}}“ löschen?",
+        "deleteText": "Die Gruppe wird aus der Liste entfernt.",
+        "deleteConfirm": "Gruppe löschen",
         "consequence": {
           "loading": "Betroffene Termine werden ermittelt …",
           "unknown": "Bei allen Terminen und Vorlagen mit „{{name}}“ wird die Zuordnung entfernt.",
@@ -1276,7 +1276,7 @@
           "events_other": "Bei {{count}} Terminen wird die Zuordnung entfernt.",
           "eventsNamed_one": "Bei 1 Termin ({{names}}) wird die Zuordnung entfernt.",
           "eventsNamed_other": "Bei {{count}} Terminen ({{names}}) wird die Zuordnung entfernt.",
-          "feeds": "Feeds, die diese Zielgruppe ausgewählt haben, verlieren sie aus ihrer Auswahl."
+          "feeds": "Feeds, die diese Gruppe ausgewählt haben, verlieren sie aus ihrer Auswahl."
         },
         "editText": "Namen von „{{name}}“ ändern."
       }
@@ -1590,8 +1590,8 @@
       "label": "Einstellungen des Kalenders",
       "general": "Allgemein",
       "properties": "Besonderheiten",
-      "features": "Features",
-      "targetGroups": "Zielgruppen",
+      "features": "Zusatzangebote",
+      "targetGroups": "Gruppen",
       "locations": "Orte",
       "holidays": "Feiertage"
     },
@@ -1768,8 +1768,8 @@
       "text": "Lege einen Feed an, damit Mitglieder und Gäste deinen Kalender sehen oder abonnieren können.",
       "readOnly": "Dieser archivierte Kalender hat keine Feeds."
     },
-    "audiencesOf": "Zielgruppen von {{name}}",
-    "allAudiences": "Alle Zielgruppen",
+    "audiencesOf": "Gruppen von {{name}}",
+    "allAudiences": "Alle Gruppen",
     "showAccess": "Zugänge anzeigen",
     "hideAccess": "Zugänge verbergen",
     "edit": "Bearbeiten",
@@ -1843,10 +1843,10 @@
           "text": "Nur mit dem Geheimnis im Link."
         }
       },
-      "audiences": "Zielgruppen",
-      "audiencesHint": "Ohne Auswahl enthält der Feed alle Zielgruppen.",
-      "audiencesNone": "In diesem Kalender gibt es noch keine Zielgruppen. Der Feed enthält alle Termine.",
-      "audiencesError": "Die Zielgruppen konnten nicht geladen werden.",
+      "audiences": "Gruppen",
+      "audiencesHint": "Ohne Auswahl enthält der Feed alle Gruppen.",
+      "audiencesNone": "In diesem Kalender gibt es noch keine Gruppen. Der Feed enthält alle Termine.",
+      "audiencesError": "Die Gruppen konnten nicht geladen werden.",
       "access": "Zugänge",
       "accessNew": "Die drei Adressen (ICS, Abo und Webansicht) erscheinen hier, sobald du den Feed gespeichert hast.",
       "save": "Feed speichern",

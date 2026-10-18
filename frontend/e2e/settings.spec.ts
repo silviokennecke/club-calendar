@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { API, createVerifiedUser, login, seedClub } from "./helpers";
 
-// ——— Einstellungen (phase 6): Allgemein, Besonderheiten/Features/Zielgruppen, Orte, Archiv ———
+// ——— Einstellungen (phase 6): Allgemein, Besonderheiten/Zusatzangebote/Gruppen, Orte, Archiv ———
 
 async function seed(request: Parameters<typeof createVerifiedUser>[0], name: string) {
   const email = await createVerifiedUser(request, name);
@@ -29,8 +29,8 @@ test.describe("Einstellungen", () => {
     await expect(tabs.getByRole("link")).toHaveText([
       "Allgemein",
       "Besonderheiten",
-      "Features",
-      "Zielgruppen",
+      "Zusatzangebote",
+      "Gruppen",
       "Orte",
       "Feiertage",
     ]);
@@ -104,26 +104,26 @@ test.describe("Einstellungen", () => {
       empty: "Noch keine Besonderheiten",
     },
     {
-      tab: "Features",
+      tab: "Zusatzangebote",
       path: "features",
-      list: "Vorhandene Features",
-      create: "Feature anlegen",
-      created: "Feature „Rollstuhlgerecht“ angelegt",
-      deleteTitle: "Feature „Barrierefrei“ löschen?",
-      deleteConfirm: "Feature löschen",
-      editTitle: "Feature bearbeiten",
-      empty: "Noch keine Features",
+      list: "Vorhandene Zusatzangebote",
+      create: "Zusatzangebot anlegen",
+      created: "Zusatzangebot „Rollstuhlgerecht“ angelegt",
+      deleteTitle: "Zusatzangebot „Barrierefrei“ löschen?",
+      deleteConfirm: "Zusatzangebot löschen",
+      editTitle: "Zusatzangebot bearbeiten",
+      empty: "Noch keine Zusatzangebote",
     },
     {
-      tab: "Zielgruppen",
+      tab: "Gruppen",
       path: "target-groups",
-      list: "Vorhandene Zielgruppen",
-      create: "Zielgruppe anlegen",
-      created: "Zielgruppe „Rollstuhlgerecht“ angelegt",
-      deleteTitle: "Zielgruppe „Barrierefrei“ löschen?",
-      deleteConfirm: "Zielgruppe löschen",
-      editTitle: "Zielgruppe bearbeiten",
-      empty: "Noch keine Zielgruppen",
+      list: "Vorhandene Gruppen",
+      create: "Gruppe anlegen",
+      created: "Gruppe „Rollstuhlgerecht“ angelegt",
+      deleteTitle: "Gruppe „Barrierefrei“ löschen?",
+      deleteConfirm: "Gruppe löschen",
+      editTitle: "Gruppe bearbeiten",
+      empty: "Noch keine Gruppen",
     },
   ];
 
@@ -380,8 +380,8 @@ test.describe("Einstellungen", () => {
 
     const cases = [
       { link: "Besonderheiten", text: "Wettkampf", addForm: "Neue Besonderheit hinzufügen" },
-      { link: "Features", text: "Bonusschießen", addForm: "Neues Feature hinzufügen" },
-      { link: "Zielgruppen", text: "Jugend", addForm: "Neue Zielgruppe hinzufügen" },
+      { link: "Zusatzangebote", text: "Bonusschießen", addForm: "Neues Zusatzangebot hinzufügen" },
+      { link: "Gruppen", text: "Jugend", addForm: "Neue Gruppe hinzufügen" },
       { link: "Orte", text: "Vereinsheim Mitte", addForm: "Neuen Ort anlegen" },
       {
         link: "Feiertage",

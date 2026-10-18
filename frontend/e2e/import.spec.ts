@@ -148,12 +148,12 @@ test.describe("Import", () => {
     await table.getByRole("checkbox", { name: /22\.10\.2026 auswählen/ }).uncheck();
     await expect(page.getByText("4 von 5 ausgewählt")).toBeVisible();
 
-    // Gruppe bearbeiten: Zielgruppe anlegen und zuweisen
+    // Gruppe bearbeiten: Gruppe anlegen und zuweisen
     await page
       .getByRole("button", { name: "Gruppe bearbeiten: Training Luftgewehr", exact: true })
       .click();
     const dialog = page.getByRole("dialog", { name: "Gruppe bearbeiten: Training Luftgewehr" });
-    await dialog.getByRole("button", { name: "Neue Zielgruppe anlegen" }).click();
+    await dialog.getByRole("button", { name: "Neue Gruppe anlegen" }).click();
     await dialog.getByLabel("Name", { exact: true }).last().fill("Erwachsene");
     await dialog.getByRole("button", { name: "Anlegen und zuweisen" }).click();
     await expect(dialog.getByRole("button", { name: "Erwachsene" })).toHaveAttribute(

@@ -380,7 +380,7 @@ describe("export", () => {
       ),
     ).toBeVisible();
     await user.click(
-      within(screen.getByRole("group", { name: "Zielgruppen filtern" })).getByRole("button", {
+      within(screen.getByRole("group", { name: "Gruppen filtern" })).getByRole("button", {
         name: "Jugend",
       }),
     );

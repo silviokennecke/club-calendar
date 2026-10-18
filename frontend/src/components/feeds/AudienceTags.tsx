@@ -4,7 +4,7 @@ import type { CalendarFeed } from "@/lib/types";
 import { feedAudienceIds } from "@/lib/feeds";
 import type { useFeeds } from "./useFeeds";
 
-/** Audience tags of a feed, or the words "Alle Zielgruppen" when it is not limited (design: Feeds). */
+/** Audience tags of a feed, or the words "Alle Gruppen" when it is not limited (design: Feeds). */
 export function AudienceTags({
   feed,
   data,

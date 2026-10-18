@@ -248,7 +248,7 @@ test.describe("Öffentlicher Kalender", () => {
     ).toBeVisible();
   });
 
-  test("Zielgruppenfilter und Suche: Zähler, Abo übernimmt die Auswahl, Zurücksetzen", async ({
+  test("Gruppenfilter und Suche: Zähler, Abo übernimmt die Auswahl, Zurücksetzen", async ({
     page,
   }) => {
     await page.goto(`/feed/${seed.publicFeedId}?date=2026-10-08`);
@@ -322,8 +322,10 @@ test.describe("Öffentlicher Kalender", () => {
       /openstreetmap\.org/,
     );
     await expect(dialog.getByRole("region", { name: "Besonderheiten" })).toContainText("Draußen");
-    await expect(dialog.getByRole("region", { name: "Features" })).toContainText("Getränkeverkauf");
-    await expect(dialog.getByRole("region", { name: "Zielgruppen" })).toContainText("Jugend");
+    await expect(dialog.getByRole("region", { name: "Zusatzangebote" })).toContainText(
+      "Getränkeverkauf",
+    );
+    await expect(dialog.getByRole("region", { name: "Gruppen" })).toContainText("Jugend");
     // Einzeltermin als ICS
     const download = page.waitForEvent("download");
     await dialog.getByRole("button", { name: "Zum Kalender hinzufügen" }).click();

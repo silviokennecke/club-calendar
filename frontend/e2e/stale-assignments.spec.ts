@@ -119,10 +119,7 @@ test("Vorlage speichern, nachdem zugeordnete Daten anderswo gelöscht wurden", a
   expect(saved.targetGroups).toEqual([]);
 });
 
-test("Feed speichern, nachdem eine Zielgruppe anderswo gelöscht wurde", async ({
-  page,
-  request,
-}) => {
+test("Feed speichern, nachdem eine Gruppe anderswo gelöscht wurde", async ({ page, request }) => {
   const s = await seed(request, "Veraltet Feed");
   const other = await post<{ id: string }>(request, `${s.base}/target-groups`, s.headers, {
     name: "Senioren",

@@ -203,7 +203,7 @@ describe("FeedEditPage (new)", () => {
     expect(chip).toHaveAttribute("aria-pressed", "false");
     await user.click(chip);
     expect(chip).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("Ohne Auswahl enthält der Feed alle Zielgruppen.")).toBeInTheDocument();
+    expect(screen.getByText("Ohne Auswahl enthält der Feed alle Gruppen.")).toBeInTheDocument();
   });
 });
 
