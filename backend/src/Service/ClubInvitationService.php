@@ -12,6 +12,7 @@ use App\Exception\ApiProblemException;
 use App\Security\AuthRateLimiter;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\EntityNotFoundException;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -26,8 +27,10 @@ use Psr\Clock\ClockInterface;
  * - The token is 32 random bytes (hex), stored as SHA-256 hash; it only identifies an invitation. To see,
  *   accept or decline one the signed-in user needs a VERIFIED address equal to the invited one, otherwise the
  *   answer is the generic 404 `invitation_not_found` (a stolen token is useless to another account).
- * - Accepting runs in a transaction under the club row lock (like removing a member): the invitation is
- *   claimed once, the member quota is respected, the membership is created.
+ * - Accepting runs in a transaction under the club row lock (like removing a member; revoking, declining and
+ *   re-sending take the same lock): the invitation is claimed once, the member and club quotas are respected,
+ *   the membership is created.
+ * - `club_invitation.email` is utf8mb4_bin, so SQL matches are as strict as the PHP comparison in isFor().
  */
 readonly class ClubInvitationService
 {
@@ -147,8 +150,12 @@ readonly class ClubInvitationService
     /** @throws ApiProblemException 404 `invitation_not_found` (also accepted/declined ones) */
     public function revoke(Club $club, string $invitationId): void
     {
-        $this->em->remove($this->findOpenOfClub($club, $invitationId));
-        $this->em->flush();
+        // Same club lock as accept/decline/resend: a parallel answer never refreshes a row that vanishes under it.
+        $this->em->wrapInTransaction(function () use ($club, $invitationId): void {
+            $this->em->lock($club, LockMode::PESSIMISTIC_WRITE);
+            $this->em->remove($this->findOpenOfClub($club, $invitationId));
+            $this->em->flush();
+        });
     }
 
     /**
@@ -192,7 +199,7 @@ readonly class ClubInvitationService
      * @return array{id: string, name: string, timezone: string}
      *
      * @throws ApiProblemException 404 `invitation_not_found` (unknown, not for this verified address, already
-     *                             answered), 422 `invitation_expired`, 422 `quota_exceeded` (members)
+     *                             answered), 422 `invitation_expired`, 422 `quota_exceeded` (members of the club, clubs of the user)
      */
     public function accept(User $user, ?string $id, ?string $token): array
     {
@@ -201,10 +208,11 @@ readonly class ClubInvitationService
 
         return $this->em->wrapInTransaction(function () use ($user, $invitation, $club): array {
             $this->em->lock($club, LockMode::PESSIMISTIC_WRITE);
-            $this->em->refresh($invitation); // claimed by a parallel request in the meantime?
+            $this->refreshLocked($invitation); // claimed by a parallel request in the meantime?
             $this->assertAnswerable($user, $invitation);
             if (null === $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $club, 'user' => $user])) {
                 $this->quota->assertRoom(Quota::MEMBERS_PER_CLUB, $club);
+                $this->quota->assertRoom(Quota::CLUBS_PER_USER, $user);
                 $this->em->persist((new ClubUser())->setClub($club)->setUser($user));
             }
             $invitation->resolve(ClubInvitation::ACCEPTED, $this->now());
@@ -222,7 +230,7 @@ readonly class ClubInvitationService
         $invitation = $this->findForUser($user, $id, $token);
         $this->em->wrapInTransaction(function () use ($user, $invitation): void {
             $this->em->lock($invitation->getClub(), LockMode::PESSIMISTIC_WRITE);
-            $this->em->refresh($invitation);
+            $this->refreshLocked($invitation);
             $this->assertAnswerable($user, $invitation);
             $invitation->resolve(ClubInvitation::DECLINED, $this->now());
             $this->em->flush();
@@ -263,6 +271,16 @@ readonly class ClubInvitationService
         return $invitation;
     }
 
+    /** Reloads the invitation under the club lock; revoked (or deleted with the club) meanwhile is the generic 404. */
+    private function refreshLocked(ClubInvitation $invitation): void
+    {
+        try {
+            $this->em->refresh($invitation);
+        } catch (EntityNotFoundException) {
+            throw self::notFound();
+        }
+    }
+
     /** Re-check under the lock (state may have changed since the lookup). */
     private function assertAnswerable(User $user, ClubInvitation $invitation): void
     {
@@ -293,10 +311,11 @@ readonly class ClubInvitationService
 
     private function isMember(Club $club, string $email): bool
     {
-        return (int) $this->em->createQuery('SELECT COUNT(cu.user) FROM '.ClubUser::class.' cu JOIN cu.user u WHERE cu.club = :club AND u.email = :email')
-            ->setParameter('club', $club)
-            ->setParameter('email', $email)
-            ->getSingleScalarResult() > 0;
+        // user.email is utf8mb4_unicode_ci (equates "é" and "e"); the match must be as strict as isFor()
+        return (int) $this->em->getConnection()->fetchOne(
+            'SELECT COUNT(*) FROM club_user cu JOIN user u ON u.id = cu.user_id WHERE cu.club_id = ? AND u.email COLLATE utf8mb4_bin = ?',
+            [$club->getId(), $email],
+        ) > 0;
     }
 
     /** The mail goes out after the response, and not at all above the per-address limit (answer unchanged). */
