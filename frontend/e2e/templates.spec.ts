@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { API, createVerifiedUser, login, seedClub } from "./helpers";
+import { API, createVerifiedUser, login, seedClub, resourceUrl } from "./helpers";
 
 // ——— Templates (phase 5): create, edit, search, use in an event, delete ———
 
@@ -7,7 +7,7 @@ async function seed(request: Parameters<typeof createVerifiedUser>[0], name: str
   const email = await createVerifiedUser(request, name);
   const { clubId, calendarId, headers } = await seedClub(request, email, `${name} Verein`);
   const post = async (path: string, data: object) => {
-    const res = await request.post(`${API}/api/calendars/${calendarId}/${path}`, { headers, data });
+    const res = await request.post(resourceUrl(clubId, calendarId, path), { headers, data });
     expect(res.ok(), `${path}: ${res.status()}`).toBeTruthy();
     return (await res.json()) as { id: string };
   };

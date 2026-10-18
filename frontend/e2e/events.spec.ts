@@ -1,6 +1,6 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import { API, authHeaders, createVerifiedUser, login, seedClub } from "./helpers";
+import { API, authHeaders, createVerifiedUser, login, seedClub, resourceUrl } from "./helpers";
 
 // ——— Events (phase 4): list, create, edit, publish, delete, template, export, mobile ———
 
@@ -14,7 +14,7 @@ async function seedEvents(request: APIRequestContext, name: string): Promise<See
   const email = await createVerifiedUser(request, name);
   const { clubId, calendarId, headers } = await seedClub(request, email, `${name} Verein`);
   const post = async (path: string, data: object) => {
-    const res = await request.post(`${API}/api/calendars/${calendarId}/${path}`, { headers, data });
+    const res = await request.post(resourceUrl(clubId, calendarId, path), { headers, data });
     expect(res.ok(), `${path}: ${res.status()}`).toBeTruthy();
     return (await res.json()) as { id: string };
   };

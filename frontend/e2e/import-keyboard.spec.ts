@@ -27,7 +27,7 @@ const ics = [
 async function seed(request: Parameters<typeof createVerifiedUser>[0], name: string) {
   const email = await createVerifiedUser(request, name);
   const { clubId, calendarId, headers } = await seedClub(request, email, `${name} Verein`);
-  const res = await request.post(`${API}/api/calendars/${calendarId}/locations`, {
+  const res = await request.post(`${API}/api/clubs/${clubId}/locations`, {
     headers,
     data: { name: "Schützenhaus Waldblick" },
   });

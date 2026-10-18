@@ -20,14 +20,15 @@ async function seed(request: APIRequestContext, label: string) {
   const email = await createVerifiedUser(request, label);
   const { clubId, calendarId, headers } = await seedClub(request, email, `${label} Verein`);
   const base = `/api/calendars/${calendarId}`;
+  const clubBase = `/api/clubs/${clubId}`;
   const [keep, gone] = [
     await post<{ id: string }>(request, `${base}/properties`, headers, { name: "Bleibt" }),
     await post<{ id: string }>(request, `${base}/properties`, headers, { name: "Wird gelöscht" }),
   ];
-  const group = await post<{ id: string }>(request, `${base}/target-groups`, headers, {
+  const group = await post<{ id: string }>(request, `${clubBase}/target-groups`, headers, {
     name: "Jugend",
   });
-  const location = await post<{ id: string }>(request, `${base}/locations`, headers, {
+  const location = await post<{ id: string }>(request, `${clubBase}/locations`, headers, {
     name: "Halle",
   });
   const del = async () => {
@@ -36,11 +37,12 @@ async function seed(request: APIRequestContext, label: string) {
       `target-groups/${group.id}`,
       `locations/${location.id}`,
     ]) {
-      const res = await request.delete(`${API}${base}/${path}`, { headers });
+      const root = path.startsWith("properties") ? base : clubBase;
+      const res = await request.delete(`${API}${root}/${path}`, { headers });
       expect(res.ok()).toBeTruthy();
     }
   };
-  return { email, clubId, calendarId, headers, base, keep, gone, group, location, del };
+  return { email, clubId, calendarId, headers, base, clubBase, keep, gone, group, location, del };
 }
 
 test("Termin speichern, nachdem zugeordnete Daten anderswo gelöscht wurden", async ({
@@ -121,19 +123,20 @@ test("Vorlage speichern, nachdem zugeordnete Daten anderswo gelöscht wurden", a
 
 test("Feed speichern, nachdem eine Gruppe anderswo gelöscht wurde", async ({ page, request }) => {
   const s = await seed(request, "Veraltet Feed");
-  const other = await post<{ id: string }>(request, `${s.base}/target-groups`, s.headers, {
+  const other = await post<{ id: string }>(request, `${s.clubBase}/target-groups`, s.headers, {
     name: "Senioren",
   });
-  const feed = await post<{ id: string }>(request, `${s.base}/feeds`, s.headers, {
+  const feed = await post<{ id: string }>(request, `${s.clubBase}/feeds`, s.headers, {
     name: "Jugendfeed",
     visibility: "PUBLIC",
+    calendarIds: [s.calendarId],
     targetGroupIds: [s.group.id, other.id],
   });
   await login(page, s.email);
   await page.waitForURL(/\/clubs/);
   // Let the sign-in redirects settle before opening the page directly
   await page.waitForLoadState("networkidle");
-  await page.goto(`/clubs/${s.clubId}/calendars/${s.calendarId}/settings/feeds/${feed.id}`);
+  await page.goto(`/clubs/${s.clubId}/settings/feeds/${feed.id}`);
   await expect(page.getByLabel(/^Name/)).toHaveValue("Jugendfeed", { timeout: 15_000 });
 
   await s.del();
@@ -142,7 +145,9 @@ test("Feed speichern, nachdem eine Gruppe anderswo gelöscht wurde", async ({ pa
   await page.getByRole("button", { name: "Feed speichern" }).click();
   await expect(page.getByText("Feed „Jugendfeed neu“ gespeichert.")).toBeVisible();
 
-  const list = await (await request.get(`${API}${s.base}/feeds`, { headers: s.headers })).json();
+  const list = await (
+    await request.get(`${API}${s.clubBase}/feeds`, { headers: s.headers })
+  ).json();
   const saved = list.find((x: { id: string }) => x.id === feed.id);
   expect(saved.targetGroups.map((g: { targetGroupId: string }) => g.targetGroupId)).toEqual([
     other.id,
