@@ -1,5 +1,5 @@
 import { defineConfig } from "vitest/config";
-import { Plugin } from "vite";
+import type { Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import fs from "fs";
@@ -26,7 +26,7 @@ export default defineConfig({
       output: {
         // Long-lived vendor chunks (cached across app releases). Pages and dialogs are split per
         // route (src/pages/lazy.ts); mapbox-gl and emoji-mart stay in their own lazy chunks.
-        manualChunks(id) {
+        manualChunks(id: string) {
           if (!id.includes("/node_modules/")) return undefined;
           if (
             /\/node_modules\/(react|react-dom|scheduler|react-router|react-router-dom)\//.test(id)
@@ -49,5 +49,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    // Heavy jsdom renders (e.g. 230 import events) exceed the 5 s default on loaded machines/CI.
+    testTimeout: 20000,
   },
 });

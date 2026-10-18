@@ -12,12 +12,7 @@
     "noEmit": true,
     "strict": true,
     "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "baseUrl": ".",
-    "paths": {
-      "vite": ["./node_modules/vite"],
-      "vite/*": ["./node_modules/vite/*"]
-    }
+    "noUnusedParameters": false
   },
   "include": ["vite.config.ts"]
 }
