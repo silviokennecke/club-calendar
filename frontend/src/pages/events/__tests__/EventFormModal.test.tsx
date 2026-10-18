@@ -26,7 +26,7 @@ vi.mock("@/components/events/EventLocationMap", () => ({
 const locations = [
   {
     id: "l1",
-    calendarid: "k1",
+    clubId: "k1",
     name: "Schützenhaus Waldblick",
     street: "Waldstraße 12",
     zip: "12345",
@@ -269,11 +269,11 @@ describe("EventFormModal – new event", () => {
 
   it("creates audiences inline and selects them", async () => {
     const user = userEvent.setup();
-    apiPost.mockResolvedValueOnce({ id: "g9", calendarid: "k1", name: "Senioren" });
+    apiPost.mockResolvedValueOnce({ id: "g9", clubId: "k1", name: "Senioren" });
     renderNew("?date=2026-10-14");
     await user.click(await screen.findByRole("button", { name: "Neue Gruppe anlegen" }));
     await user.type(screen.getByLabelText("Name"), "Senioren{Enter}");
-    expect(apiPost).toHaveBeenCalledWith("/api/calendars/k1/target-groups", { name: "Senioren" });
+    expect(apiPost).toHaveBeenCalledWith("/api/clubs/c1/target-groups", { name: "Senioren" });
   });
 
   it("asks before discarding unsaved changes", async () => {

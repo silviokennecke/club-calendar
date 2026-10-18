@@ -2,8 +2,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import type { Feature, Location, Property, TargetGroup } from "@/lib/types";
 
-/** Reference data of a calendar for the event form, plus inline creation. */
-export function useEventResources(calendarId: string) {
+/**
+ * Reference data for the event form, plus inline creation. Properties and features belong to the
+ * calendar (`["properties", calendarId]`), target groups and locations to the club
+ * (`["locations", clubId]`).
+ */
+export function useEventResources(clubId: string, calendarId: string) {
   const qc = useQueryClient();
   const properties = useQuery({
     queryKey: ["properties", calendarId],
@@ -14,17 +18,24 @@ export function useEventResources(calendarId: string) {
     queryFn: () => apiGet<Feature[]>(`/api/calendars/${calendarId}/features`),
   });
   const targetGroups = useQuery({
-    queryKey: ["targetGroups", calendarId],
-    queryFn: () => apiGet<TargetGroup[]>(`/api/calendars/${calendarId}/target-groups`),
+    queryKey: ["targetGroups", clubId],
+    queryFn: () => apiGet<TargetGroup[]>(`/api/clubs/${clubId}/target-groups`),
   });
   const locations = useQuery({
-    queryKey: ["locations", calendarId],
-    queryFn: () => apiGet<Location[]>(`/api/calendars/${calendarId}/locations`),
+    queryKey: ["locations", clubId],
+    queryFn: () => apiGet<Location[]>(`/api/clubs/${clubId}/locations`),
   });
 
-  async function create<T extends { id: string }>(path: string, key: string, body: object) {
-    const created = await apiPost<T>(`/api/calendars/${calendarId}/${path}`, body);
-    await qc.invalidateQueries({ queryKey: [key, calendarId] });
+  /** `scope` is the owner of the list: the calendar or the club. */
+  async function create<T extends { id: string }>(
+    owner: "calendars" | "clubs",
+    path: string,
+    key: string,
+    body: object,
+  ) {
+    const ownerId = owner === "clubs" ? clubId : calendarId;
+    const created = await apiPost<T>(`/api/${owner}/${ownerId}/${path}`, body);
+    await qc.invalidateQueries({ queryKey: [key, ownerId] });
     return created;
   }
 
@@ -40,17 +51,18 @@ export function useEventResources(calendarId: string) {
     features: features.data ?? [],
     targetGroups: targetGroups.data ?? [],
     locations: locations.data ?? [],
-    createProperty: (name: string) => create<Property>("properties", "properties", { name }),
-    createFeature: (name: string) => create<Feature>("features", "features", { name }),
+    createProperty: (name: string) =>
+      create<Property>("calendars", "properties", "properties", { name }),
+    createFeature: (name: string) => create<Feature>("calendars", "features", "features", { name }),
     createTargetGroup: (name: string) =>
-      create<TargetGroup>("target-groups", "targetGroups", { name }),
-    createLocation: (name: string) => create<Location>("locations", "locations", { name }),
+      create<TargetGroup>("clubs", "target-groups", "targetGroups", { name }),
+    createLocation: (name: string) => create<Location>("clubs", "locations", "locations", { name }),
     async moveLocation(locationId: string, latitude: number, longitude: number) {
-      await apiPatch(`/api/calendars/${calendarId}/locations/${locationId}`, {
+      await apiPatch(`/api/clubs/${clubId}/locations/${locationId}`, {
         latitude,
         longitude,
       });
-      await qc.invalidateQueries({ queryKey: ["locations", calendarId] });
+      await qc.invalidateQueries({ queryKey: ["locations", clubId] });
     },
   };
 }

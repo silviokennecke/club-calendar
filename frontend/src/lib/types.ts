@@ -45,14 +45,19 @@ export interface Calendar {
   /** Counters of the calendar list and the single GET. */
   eventCount?: number;
   templateCount?: number;
+  /** Feeds that select this calendar. */
   feedCount?: number;
+  /** Feeds that exist only for this calendar (deleted with it). */
+  exclusiveFeedCount?: number;
 }
 
 export type FeedVisibility = "PUBLIC" | "CLUB" | "PRIVATE";
 
 export interface CalendarFeed {
   id: string;
-  calendarid: string;
+  clubId: string;
+  /** Calendars the feed publishes (at least one, all of the feed's club). */
+  calendarIds: string[];
   name: string;
   /**
    * PUBLIC and CLUB ("Nur per Link"): reachable by link without the secret; they differ only in
@@ -97,7 +102,7 @@ export interface Feature {
 
 export interface TargetGroup {
   id: string;
-  calendarid: string;
+  clubId: string;
   name: string;
   usage?: ReferenceUsage;
 }
@@ -111,7 +116,7 @@ export interface LocationUsage {
 
 export interface Location {
   id: string;
-  calendarid: string;
+  clubId: string;
   name?: string | null;
   street?: string | null;
   zip?: string | null;

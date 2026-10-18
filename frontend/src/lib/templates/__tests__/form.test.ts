@@ -19,10 +19,10 @@ const tpl: EventTemplate = {
   timeBegin: "19:00:00",
   timeEnd: "21:00:00",
   locationId: "l1",
-  location: { id: "l1", calendarid: "k1", name: "Schützenhaus Waldblick", city: "Musterstadt" },
+  location: { id: "l1", clubId: "k1", name: "Schützenhaus Waldblick", city: "Musterstadt" },
   properties: [{ property: { id: "p1", calendarid: "k1", name: "Wettkampf", icon: "🏆" } }],
   features: [{ feature: { id: "f1", calendarid: "k1", name: "Bonusschießen" } }],
-  targetGroups: [{ targetGroup: { id: "g1", calendarid: "k1", name: "Erwachsene" } }],
+  targetGroups: [{ targetGroup: { id: "g1", clubId: "k1", name: "Erwachsene" } }],
 };
 
 describe("template form values", () => {

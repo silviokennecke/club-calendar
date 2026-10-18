@@ -122,7 +122,7 @@ function FeedHero({
   return (
     <div className="pub-hero">
       <div className="ap-stack ap-stack--sm" style={{ flex: "1 1 420px", minWidth: 0 }}>
-        <h1 className="t-display">{data.feed.calendarName}</h1>
+        <h1 className="t-display">{data.feed.name}</h1>
       </div>
       <div className="ap-actions" style={{ flex: "0 1 auto" }}>
         <a className={buttonClass("primary")} style={{ flex: "1 1 auto" }} href={addresses.webcal}>

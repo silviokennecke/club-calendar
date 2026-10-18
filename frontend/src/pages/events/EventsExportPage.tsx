@@ -37,8 +37,8 @@ export default function EventsExportPage() {
   const locale = useLocale();
   const events = useAllEvents(page.calendarId);
   const groups = useQuery<TargetGroup[]>({
-    queryKey: ["targetGroups", page.calendarId],
-    queryFn: () => apiGet(`/api/calendars/${page.calendarId}/target-groups`),
+    queryKey: ["targetGroups", page.clubId],
+    queryFn: () => apiGet(`/api/clubs/${page.clubId}/target-groups`),
   });
 
   const [first, last] = monthBounds(page.today);

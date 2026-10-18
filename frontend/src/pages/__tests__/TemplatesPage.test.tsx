@@ -22,11 +22,11 @@ vi.mock("@/lib/api", async (orig) => ({
 
 const place = {
   id: "l1",
-  calendarid: "k1",
+  clubId: "k1",
   name: "Schützenhaus Waldblick",
   street: "Waldstraße 12",
 };
-const place2 = { id: "l2", calendarid: "k1", name: "Vereinsheim Mitte" };
+const place2 = { id: "l2", clubId: "k1", name: "Vereinsheim Mitte" };
 const properties = [{ id: "p1", calendarid: "k1", name: "Schützentracht", icon: "🧥" }];
 const features = [{ id: "f1", calendarid: "k1", name: "Bonusschießen" }];
 

@@ -37,7 +37,7 @@ const templates = [
     timeBegin: "19:00:00",
     timeEnd: "21:00",
     locationId: "l1",
-    location: { id: "l1", calendarid: "k1", name: "Schützenhaus Waldblick" },
+    location: { id: "l1", clubId: "k1", name: "Schützenhaus Waldblick" },
     properties: [],
     features: [],
     targetGroups: [],

@@ -49,8 +49,7 @@ export interface PublicFeedHeader {
   id: string;
   name: string;
   clubName: string;
-  calendarName: string;
-  /** Effective zone of the calendar (calendar, else club): "today" and the time note. */
+  /** Zone of the club: "today" and the time note. */
   timezone: string;
   visibility: FeedVisibility;
   /** Search engines may index the page (PUBLIC feed with the search engine option); else noindex. */

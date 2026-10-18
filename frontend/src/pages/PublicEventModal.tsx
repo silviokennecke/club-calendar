@@ -194,7 +194,7 @@ function EventDetail({ event, feed, onClose }: EventDetailProps) {
 
   function addToCalendar() {
     const ics = buildEventIcs(event, {
-      calendarName: feed.calendarName,
+      calendarName: feed.name,
       timeZone: zone,
       labels: {
         features: t("events.export.ics.features"),
@@ -220,7 +220,7 @@ function EventDetail({ event, feed, onClose }: EventDetailProps) {
           </span>
         )
       }
-      subtitle={t("feed.event.subtitle", { club: feed.clubName, calendar: feed.calendarName })}
+      subtitle={t("feed.event.subtitle", { club: feed.clubName, calendar: feed.name })}
       closeLabel={t("feed.event.close")}
       onClose={onClose}
     >

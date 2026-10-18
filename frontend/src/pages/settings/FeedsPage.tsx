@@ -37,7 +37,7 @@ export default function FeedsPage() {
   const page = useEventPage();
   const qc = useQueryClient();
   const location = useLocation();
-  const data = useFeeds(page.calendarId, { withList: page.roleCanEdit });
+  const data = useFeeds(page.clubId, { withList: page.roleCanEdit });
   const calendarActions = useCalendarActions(page.clubId, page.calendarId, page.calendar?.name);
   // Feeds are managed by club admins; editors only view them, viewers do not see them at all.
   const readOnly = page.isArchived || !page.isAdmin;
@@ -54,8 +54,8 @@ export default function FeedsPage() {
 
   async function remove(feed: CalendarFeed) {
     try {
-      await apiDelete(`/api/calendars/${page.calendarId}/feeds/${feed.id}`);
-      await qc.invalidateQueries({ queryKey: ["feeds", page.calendarId] });
+      await apiDelete(`/api/clubs/${page.clubId}/feeds/${feed.id}`);
+      await qc.invalidateQueries({ queryKey: ["feeds", page.clubId] });
       toast.success(t("feeds.delete.done", { name: feed.name }));
       focusAfterDialog("feeds-h1");
     } catch {

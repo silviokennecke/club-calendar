@@ -37,8 +37,8 @@ function ev(partial: Partial<CalendarEvent> & { id: string; name: string; date: 
   } as CalendarEvent;
 }
 
-const youth = { targetGroup: { id: "g1", calendarid: "k1", name: "Jugend" } };
-const adults = { targetGroup: { id: "g2", calendarid: "k1", name: "Erwachsene" } };
+const youth = { targetGroup: { id: "g1", clubId: "k1", name: "Jugend" } };
+const adults = { targetGroup: { id: "g2", clubId: "k1", name: "Erwachsene" } };
 
 const events = [
   ev({
@@ -192,7 +192,7 @@ describe("ICS", () => {
           targetGroups: [adults],
           location: {
             id: "l",
-            calendarid: "k1",
+            clubId: "k1",
             name: "Schützenhaus",
             city: "Musterstadt",
             latitude: 51.5,

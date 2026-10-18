@@ -48,12 +48,12 @@ export default function LocationsPage() {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const page = useSettingsPage();
-  const { calendarId, readOnly } = page;
-  const queryKey = ["locations", calendarId];
+  const { clubId, readOnly } = page;
+  const queryKey = ["locations", clubId];
 
   const list = useQuery<Location[]>({
     queryKey,
-    queryFn: () => apiGet<Location[]>(`/api/calendars/${calendarId}/locations`),
+    queryFn: () => apiGet<Location[]>(`/api/clubs/${clubId}/locations`),
   });
   const places = useMemo(() => list.data ?? [], [list.data]);
 
@@ -172,12 +172,12 @@ export default function LocationsPage() {
     try {
       const payload = locationPayload(form);
       const saved = editId
-        ? await apiPatch<Location>(`/api/calendars/${calendarId}/locations/${editId}`, payload)
-        : await apiPost<Location>(`/api/calendars/${calendarId}/locations`, payload);
+        ? await apiPatch<Location>(`/api/clubs/${clubId}/locations/${editId}`, payload)
+        : await apiPost<Location>(`/api/clubs/${clubId}/locations`, payload);
       await qc.invalidateQueries({ queryKey });
       // Events and templates show the place.
-      void qc.invalidateQueries({ queryKey: ["events", calendarId] });
-      void qc.invalidateQueries({ queryKey: ["templates", calendarId] });
+      void qc.invalidateQueries({ queryKey: ["events"] });
+      void qc.invalidateQueries({ queryKey: ["templates"] });
       const next = locationToForm(saved);
       setEditId(saved.id);
       setSelectedId(saved.id);
@@ -202,10 +202,10 @@ export default function LocationsPage() {
 
   async function confirmDelete(loc: Location) {
     try {
-      await apiDelete(`/api/calendars/${calendarId}/locations/${loc.id}`);
+      await apiDelete(`/api/clubs/${clubId}/locations/${loc.id}`);
       await qc.invalidateQueries({ queryKey });
-      void qc.invalidateQueries({ queryKey: ["events", calendarId] });
-      void qc.invalidateQueries({ queryKey: ["templates", calendarId] });
+      void qc.invalidateQueries({ queryKey: ["events"] });
+      void qc.invalidateQueries({ queryKey: ["templates"] });
       load(null, EMPTY_LOCATION_FORM, null);
       toast.success(t("settings.places.deleted", { name: placeTitle(loc) ?? "" }));
       focusPanel();

@@ -114,7 +114,7 @@ const event: CalendarEvent = {
   eventTemplateId: null,
   properties: [{ property: { id: "p1", calendarid: "k1", name: "Wettkampf", icon: "🏆" } }],
   features: [{ feature: { id: "f1", calendarid: "k1", name: "Bonusschießen" } }],
-  targetGroups: [{ targetGroup: { id: "g1", calendarid: "k1", name: "Jugend" } }],
+  targetGroups: [{ targetGroup: { id: "g1", clubId: "k1", name: "Jugend" } }],
 };
 
 describe("valuesFromEvent", () => {
@@ -153,8 +153,8 @@ describe("valuesFromTemplate", () => {
     properties: [{ property: { id: "p1", calendarid: "k1", name: "Wettkampf", icon: null } }],
     features: [],
     targetGroups: [
-      { targetGroup: { id: "g2", calendarid: "k1", name: "Erwachsene" } },
-      { targetGroup: { id: "g3", calendarid: "k1", name: "Senioren" } },
+      { targetGroup: { id: "g2", clubId: "k1", name: "Erwachsene" } },
+      { targetGroup: { id: "g3", clubId: "k1", name: "Senioren" } },
     ],
   };
 

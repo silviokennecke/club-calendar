@@ -12,9 +12,11 @@ export interface MasterItem {
 }
 
 export interface MasterKindConfig {
-  /** API collection below /api/calendars/:id/. */
+  /** API collection below the owner. */
   path: string;
-  /** Query key base, shared with the event and template forms so their lists refresh, too. */
+  /** Owner of the list: properties / features belong to the calendar, audiences to the club. */
+  owner: "calendars" | "clubs";
+  /** Query key base (`[queryKey, ownerId]`), shared with the event and template forms so their lists refresh, too. */
   queryKey: string;
   /** Items can carry a club-chosen emoji. */
   hasSymbol: boolean;
@@ -23,9 +25,27 @@ export interface MasterKindConfig {
 }
 
 export const MASTER_KINDS: Record<MasterKind, MasterKindConfig> = {
-  properties: { path: "properties", queryKey: "properties", hasSymbol: true, hasTone: false },
-  features: { path: "features", queryKey: "features", hasSymbol: false, hasTone: false },
-  audiences: { path: "target-groups", queryKey: "targetGroups", hasSymbol: false, hasTone: true },
+  properties: {
+    owner: "calendars",
+    path: "properties",
+    queryKey: "properties",
+    hasSymbol: true,
+    hasTone: false,
+  },
+  features: {
+    owner: "calendars",
+    path: "features",
+    queryKey: "features",
+    hasSymbol: false,
+    hasTone: false,
+  },
+  audiences: {
+    owner: "clubs",
+    path: "target-groups",
+    queryKey: "targetGroups",
+    hasSymbol: false,
+    hasTone: true,
+  },
 };
 
 export type NameProblem = "empty" | "duplicate";

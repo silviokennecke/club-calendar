@@ -10,8 +10,8 @@ export const BASE = "/clubs/c1/calendars/k1";
 export const PATTERN = "/clubs/:clubId/calendars/:calendarId";
 
 export const groups = [
-  { id: "g1", calendarid: "k1", name: "Jugend" },
-  { id: "g2", calendarid: "k1", name: "Erwachsene" },
+  { id: "g1", clubId: "k1", name: "Jugend" },
+  { id: "g2", clubId: "k1", name: "Erwachsene" },
 ];
 
 export function makeEvent(

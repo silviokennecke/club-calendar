@@ -97,9 +97,8 @@ function feedApi({
         audiences.set(targetGroup.id, targetGroup.name);
     const feed = {
       id: m[1],
-      name: "Alle Termine",
+      name: CALENDAR,
       clubName: CLUB,
-      calendarName: CALENDAR,
       timezone: "Europe/Berlin",
       visibility: "PUBLIC",
       indexable: false,
@@ -202,7 +201,7 @@ describe("FeedPage", () => {
     const sub = screen.getByRole("link", { name: "Kalender abonnieren" });
     expect(sub.getAttribute("href")).toMatch(/^webcal:\/\/.*\/api\/feed\/f1\/ics$/);
     expect(screen.getByRole("link", { name: "Als ICS-Datei laden" })).toHaveAttribute("download");
-    expect(document.title).toBe("Alle Termine – Öffentlicher Kalender");
+    expect(document.title).toBe(`${CALENDAR} – Öffentlicher Kalender`);
   });
 
   it("loads only the visible month grid, with its holidays", async () => {
@@ -317,7 +316,7 @@ describe("FeedPage", () => {
 
   it("shows a load error with retry and recovers", async () => {
     let fail = true;
-    const api = feedApi({ header: { calendarName: "Wieder da" } });
+    const api = feedApi({ header: { name: "Wieder da" } });
     respond = (url) => (fail ? json({}, 500) : api(url));
     renderAt("/feed/f1");
     expect(await screen.findByRole("alert")).toHaveTextContent(

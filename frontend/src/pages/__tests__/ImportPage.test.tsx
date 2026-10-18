@@ -79,7 +79,7 @@ const ics = [
   "END:VCALENDAR",
 ].join("\r\n");
 
-const place = { id: "l1", calendarid: "k1", name: "Schützenhaus Waldblick" };
+const place = { id: "l1", clubId: "k1", name: "Schützenhaus Waldblick" };
 let calendar: Record<string, unknown>;
 let existing: unknown[];
 
@@ -537,7 +537,7 @@ describe("ImportPage – import and result", () => {
 
     // ONE atomic request with the new place; no separate POST …/locations
     expect(importCalls()).toHaveLength(1);
-    expect(apiPost).not.toHaveBeenCalledWith("/api/calendars/k1/locations", expect.anything());
+    expect(apiPost).not.toHaveBeenCalledWith("/api/clubs/c1/locations", expect.anything());
     const body = importCalls()[0][1] as Body & { skipDuplicates: boolean };
     expect(body.skipDuplicates).toBe(false);
     expect(body.locations).toEqual([
