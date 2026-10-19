@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode, type Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { LegalLinks } from "@/components/legal/LegalLinks";
 import { Icon, LangSwitch, Logo, type Glyph } from "@/components/ui/shared";
 
 interface AuthLayoutProps {
@@ -23,6 +24,8 @@ interface AuthLayoutProps {
   bare?: boolean;
   /** Ref for the h1, so flows can move focus to it when the step changes. */
   headingRef?: Ref<HTMLHeadingElement>;
+  /** Imprint / privacy / terms links below the card; off where no router or query client exists (error page). */
+  legalLinks?: boolean;
   children?: ReactNode;
 }
 
@@ -47,6 +50,7 @@ export function AuthLayout({
   headerEnd,
   bare,
   headingRef,
+  legalLinks = true,
   children,
 }: AuthLayoutProps) {
   const { t } = useTranslation();
@@ -90,18 +94,22 @@ export function AuthLayout({
           <div className="ap-wrap ap-stack ap-stack--lg" style={{ width: "100%" }}>
             {head}
             {children}
+            {legalLinks && <LegalLinks />}
           </div>
         ) : (
-          <div className={cn("ap-authcard", wide && "ap-authcard--wide")}>
-            {top}
-            {icon && (
-              <span className={cn("ap-dialog-icon", TONE_CLASS[iconTone])} aria-hidden="true">
-                <Icon glyph={icon} size={24} />
-              </span>
-            )}
-            {head}
-            {children}
-            {footer && <p className="ap-auth-foot">{footer}</p>}
+          <div className="ap-auth-col">
+            <div className={cn("ap-authcard", wide && "ap-authcard--wide")}>
+              {top}
+              {icon && (
+                <span className={cn("ap-dialog-icon", TONE_CLASS[iconTone])} aria-hidden="true">
+                  <Icon glyph={icon} size={24} />
+                </span>
+              )}
+              {head}
+              {children}
+              {footer && <p className="ap-auth-foot">{footer}</p>}
+            </div>
+            {legalLinks && <LegalLinks />}
           </div>
         )}
       </main>

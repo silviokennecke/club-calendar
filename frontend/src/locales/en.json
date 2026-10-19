@@ -2111,5 +2111,16 @@
       "declinedText": "You declined the invitation. Nothing changed in your account."
     },
     "role": "Role: {{role}}"
+  },
+  "legal": {
+    "nav": "Legal",
+    "imprint": "Imprint",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "loading": "Loading document.",
+    "notProvided": "This document is not provided.",
+    "loadFailed": "The document could not be loaded. Please try again.",
+    "publishedAt": "As of {{date}}",
+    "close": "Close"
   }
 }

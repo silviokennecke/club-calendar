@@ -2111,5 +2111,16 @@
       "declinedText": "Du hast die Einladung abgelehnt. Es wurde nichts an deinem Konto geändert."
     },
     "role": "Rolle: {{role}}"
+  },
+  "legal": {
+    "nav": "Rechtliches",
+    "imprint": "Impressum",
+    "privacy": "Datenschutz",
+    "terms": "Nutzungsbedingungen",
+    "loading": "Dokument wird geladen.",
+    "notProvided": "Dieses Dokument wird nicht bereitgestellt.",
+    "loadFailed": "Das Dokument konnte nicht geladen werden. Bitte versuche es erneut.",
+    "publishedAt": "Stand: {{date}}",
+    "close": "Schließen"
   }
 }

@@ -83,6 +83,7 @@ export function ErrorScreen({ kind, error }: ErrorScreenProps) {
       icon={ICONS[kind]}
       iconTone={kind === "generic" ? "danger" : "neutral"}
       headingRef={headingRef}
+      legalLinks={false}
     >
       <div className="ap-actions">
         <Button icon="refresh" onClick={reloadPage}>
