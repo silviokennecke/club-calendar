@@ -76,9 +76,9 @@ COPY --from=backend-vendor --chown=www-data:www-data /app/backend/ ./
 COPY --from=frontend-build --chown=www-data:www-data /build/backend/public/ ./public/
 COPY --from=frontend-build --chown=www-data:www-data /build/backend/templates/email/*.html.twig templates/email/
 
-# Create data directory
-RUN mkdir -p /data/config /data/cache && \
-    chown -R www-data:www-data /data
+# Create data and legal directories
+RUN mkdir -p /data/config /data/cache legal && \
+    chown -R www-data:www-data /data legal
 VOLUME ["/data"]
 
 # Symfony runtime needs a .env; real configuration comes from environment variables.

@@ -1,14 +1,40 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import SignupPage from "../SignupPage";
 import { renderAt } from "./authTestUtils";
 
 const apiPost = vi.fn();
-vi.mock("@/lib/api", () => ({ apiPost: (...a: unknown[]) => apiPost(...a) }));
+const apiGet = vi.fn();
+vi.mock("@/lib/api", () => ({
+  apiPost: (...a: unknown[]) => apiPost(...a),
+  apiGet: (...a: unknown[]) => apiGet(...a),
+  apiErrorStatus: () => undefined,
+}));
 
-function renderSignup() {
-  return renderAt("/signup", "/signup", <SignupPage />);
+const NONE = { imprint: null, privacy: null, terms: null };
+const BOTH = {
+  imprint: null,
+  privacy: { id: "doc-p", title: null, publishedAt: "2026-01-01T00:00:00Z" },
+  terms: { id: "doc-t", title: null, publishedAt: "2026-01-01T00:00:00Z" },
+};
+
+async function renderSignup(overview: unknown = NONE) {
+  apiGet.mockResolvedValue(overview);
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const view = renderAt(
+    "/signup",
+    "/signup",
+    <QueryClientProvider client={qc}>
+      <SignupPage />
+    </QueryClientProvider>,
+  );
+  // submit is blocked until the list of documents is known
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Konto erstellen" })).toBeEnabled(),
+  );
+  return view;
 }
 
 async function fill(pw: string, pw2: string, email = "alex@beispiel.de") {
@@ -23,8 +49,8 @@ async function fill(pw: string, pw2: string, email = "alex@beispiel.de") {
 beforeEach(() => vi.clearAllMocks());
 
 describe("SignupPage", () => {
-  it("has labelled fields with autocomplete attributes", () => {
-    renderSignup();
+  it("has labelled fields with autocomplete attributes", async () => {
+    await renderSignup();
     expect(screen.getByRole("heading", { level: 1, name: "Konto erstellen" })).toBeInTheDocument();
     expect(screen.getByLabelText(/^Name/)).toHaveAttribute("autocomplete", "name");
     expect(screen.getByLabelText(/^E-Mail/)).toHaveAttribute("autocomplete", "email");
@@ -36,7 +62,7 @@ describe("SignupPage", () => {
   });
 
   it("rejects a short password without calling the API", async () => {
-    renderSignup();
+    await renderSignup();
     await fill("abc123", "abc123");
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Das Konto wurde noch nicht erstellt");
@@ -52,7 +78,7 @@ describe("SignupPage", () => {
   });
 
   it("rejects mismatching passwords", async () => {
-    renderSignup();
+    await renderSignup();
     await fill("sicheres-passwort", "anderes-passwort");
     expect(await screen.findByRole("alert")).toHaveTextContent("nicht gleich");
     expect(screen.getByLabelText(/^Passwort wiederholen/)).toHaveAttribute("aria-invalid", "true");
@@ -60,7 +86,7 @@ describe("SignupPage", () => {
   });
 
   it("reports missing required fields", async () => {
-    renderSignup();
+    await renderSignup();
     await fill("", "", "");
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Bitte gib deine E-Mail-Adresse ein.",
@@ -74,7 +100,7 @@ describe("SignupPage", () => {
     apiPost.mockRejectedValue(
       Object.assign(new Error("Diese Adresse ist vergeben"), { status: 400, code: "email_taken" }),
     );
-    renderSignup();
+    await renderSignup();
     await fill("sicheres-passwort", "sicheres-passwort");
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("schon ein Konto");
@@ -84,7 +110,7 @@ describe("SignupPage", () => {
 
   it("does not treat other 400 errors as an existing account", async () => {
     apiPost.mockRejectedValue(Object.assign(new Error("Email already in use"), { status: 400 }));
-    renderSignup();
+    await renderSignup();
     await fill("sicheres-passwort", "sicheres-passwort");
     const alert = await screen.findByRole("alert");
     expect(alert).not.toHaveTextContent("schon ein Konto");
@@ -92,7 +118,7 @@ describe("SignupPage", () => {
 
   it("registers and continues to the confirmation page", async () => {
     apiPost.mockResolvedValue({});
-    renderSignup();
+    await renderSignup();
     await fill("sicheres-passwort", "sicheres-passwort");
     await waitFor(() =>
       expect(apiPost).toHaveBeenCalledWith("/api/auth/register", {
@@ -100,10 +126,73 @@ describe("SignupPage", () => {
         email: "alex@beispiel.de",
         password: "sicheres-passwort",
         language: expect.any(String),
+        acceptedDocuments: [],
       }),
     );
     expect(await screen.findByTestId("location")).toHaveTextContent(
       "/verify-email?email=alex%40beispiel.de",
     );
+  });
+
+  describe("consent documents", () => {
+    it("shows no checkbox and sends an empty list when nothing is provided", async () => {
+      apiPost.mockResolvedValue({});
+      await renderSignup(NONE);
+      expect(screen.queryByRole("checkbox")).toBeNull();
+      await fill("sicheres-passwort", "sicheres-passwort");
+      await waitFor(() =>
+        expect(apiPost).toHaveBeenCalledWith(
+          "/api/auth/register",
+          expect.objectContaining({ acceptedDocuments: [] }),
+        ),
+      );
+    });
+
+    it("requires every provided document and links it as a modal", async () => {
+      await renderSignup({ ...BOTH, terms: null });
+      expect(screen.getAllByRole("checkbox")).toHaveLength(1);
+      expect(screen.getByRole("link", { name: "Datenschutzerklärung" })).toHaveAttribute(
+        "href",
+        "/privacy",
+      );
+      await fill("sicheres-passwort", "sicheres-passwort");
+      expect(await screen.findByRole("alert")).toHaveTextContent("Datenschutzerklärung");
+      expect(screen.getByRole("checkbox")).toHaveAttribute("aria-invalid", "true");
+      expect(screen.getByRole("checkbox")).toHaveFocus();
+      expect(apiPost).not.toHaveBeenCalled();
+    });
+
+    it("sends the ids of the accepted documents", async () => {
+      apiPost.mockResolvedValue({});
+      await renderSignup(BOTH);
+      const user = userEvent.setup();
+      for (const box of screen.getAllByRole("checkbox")) await user.click(box);
+      await fill("sicheres-passwort", "sicheres-passwort");
+      await waitFor(() =>
+        expect(apiPost).toHaveBeenCalledWith(
+          "/api/auth/register",
+          expect.objectContaining({ acceptedDocuments: ["doc-p", "doc-t"] }),
+        ),
+      );
+    });
+
+    it("unchecks, reloads the list and reports an outdated document", async () => {
+      apiPost.mockRejectedValue(
+        Object.assign(new Error("x"), { status: 422, code: "consent_outdated" }),
+      );
+      await renderSignup(BOTH);
+      const user = userEvent.setup();
+      for (const box of screen.getAllByRole("checkbox")) await user.click(box);
+      apiGet.mockClear();
+      apiGet.mockResolvedValue({
+        ...BOTH,
+        privacy: { id: "doc-p2", title: null, publishedAt: "2026-02-01T00:00:00Z" },
+      });
+      await fill("sicheres-passwort", "sicheres-passwort");
+      expect(await screen.findByText(/aktualisiert/)).toBeInTheDocument();
+      expect(apiGet).toHaveBeenCalledWith("/api/legal");
+      for (const box of screen.getAllByRole("checkbox")) expect(box).not.toBeChecked();
+      expect(screen.getAllByText(/Bitte akzeptiere/).length).toBeGreaterThan(0);
+    });
   });
 });

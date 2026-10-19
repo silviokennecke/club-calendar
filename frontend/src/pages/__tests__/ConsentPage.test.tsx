@@ -1,0 +1,98 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
+import ConsentPage from "../ConsentPage";
+import ProtectedRoute from "@/components/layout/ProtectedRoute";
+
+const apiPost = vi.fn();
+const apiGet = vi.fn();
+vi.mock("@/lib/api", () => ({
+  apiPost: (...a: unknown[]) => apiPost(...a),
+  apiGet: (...a: unknown[]) => apiGet(...a),
+  apiErrorCode: (e: unknown) => (e as { code?: string }).code,
+}));
+
+const setUser = vi.fn();
+const logout = vi.fn();
+let auth: { user: unknown; loading: boolean };
+vi.mock("@/lib/auth-context", () => ({
+  useAuth: () => ({ ...auth, setUser, logout }),
+}));
+vi.mock("@/components/legal/LegalLinks", () => ({ LegalLinks: () => null }));
+
+const pending = [
+  { type: "privacy", id: "p1", title: null, publishedAt: "2026-01-01T00:00:00Z" },
+  { type: "terms", id: "t1", title: null, publishedAt: "2026-01-01T00:00:00Z" },
+];
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  auth = {
+    user: { id: "u", consentRequired: true, pendingConsents: pending },
+    loading: false,
+  };
+});
+
+function renderPage() {
+  return render(
+    <MemoryRouter>
+      <ConsentPage />
+    </MemoryRouter>,
+  );
+}
+
+describe("ConsentPage", () => {
+  it("requires every pending document", async () => {
+    renderPage();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(2);
+    await userEvent.setup().click(screen.getByRole("button", { name: /Akzeptieren/ }));
+    expect(apiPost).not.toHaveBeenCalled();
+    expect(screen.getAllByRole("checkbox")[0]).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("posts the ids and stores the new user", async () => {
+    const me = { id: "u", consentRequired: false, pendingConsents: [] };
+    apiPost.mockResolvedValue(me);
+    renderPage();
+    const user = userEvent.setup();
+    for (const box of screen.getAllByRole("checkbox")) await user.click(box);
+    await user.click(screen.getByRole("button", { name: /Akzeptieren/ }));
+    await waitFor(() => expect(setUser).toHaveBeenCalledWith(me));
+    expect(apiPost).toHaveBeenCalledWith("/api/auth/consents", { documentIds: ["p1", "t1"] });
+  });
+
+  it("reloads /me on consent_outdated", async () => {
+    apiPost.mockRejectedValue(
+      Object.assign(new Error("x"), { status: 422, code: "consent_outdated" }),
+    );
+    const fresh = { id: "u", consentRequired: true, pendingConsents: pending };
+    apiGet.mockResolvedValue(fresh);
+    renderPage();
+    const user = userEvent.setup();
+    for (const box of screen.getAllByRole("checkbox")) await user.click(box);
+    await user.click(screen.getByRole("button", { name: /Akzeptieren/ }));
+    await waitFor(() => expect(setUser).toHaveBeenCalledWith(fresh));
+    expect(apiGet).toHaveBeenCalledWith("/api/auth/me");
+    expect(await screen.findByText(/aktualisiert/)).toBeInTheDocument();
+  });
+
+  it("signs out", async () => {
+    renderPage();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Abmelden" }));
+    expect(logout).toHaveBeenCalled();
+  });
+});
+
+describe("consent gate", () => {
+  it("ProtectedRoute shows the consent page instead of the app", async () => {
+    render(
+      <MemoryRouter initialEntries={["/clubs"]}>
+        <ProtectedRoute />
+      </MemoryRouter>,
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Zustimmung erforderlich" }),
+    ).toBeInTheDocument();
+  });
+});

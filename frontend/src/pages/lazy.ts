@@ -90,3 +90,4 @@ export const TargetGroupsPage = lazyPage(() => import("./settings/TargetGroupsPa
 export const HolidayCalendarsPage = lazyPage(() => import("./settings/HolidayCalendarsPage"));
 export const LegalPage = lazyPage(() => import("./LegalPage"));
 export const LegalModal = lazyPage(modalImports.LegalModal);
+export const ConsentPage = lazyPage(() => import("./ConsentPage"));

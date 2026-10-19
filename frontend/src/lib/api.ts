@@ -37,6 +37,9 @@ export class ApiError extends Error {
   }
 }
 
+/** Fired on a 403 `consent_required`: the AuthProvider reloads the user so the consent gate appears. */
+export const CONSENT_REQUIRED_EVENT = "cc:consent-required";
+
 /** Whether a request failed because the name already exists in the calendar (422 duplicate_name). */
 export function isDuplicateNameError(error: unknown): boolean {
   return error instanceof ApiError && error.status === 422 && error.code === "duplicate_name";
@@ -191,6 +194,9 @@ async function errorFrom(res: Response): Promise<ApiError> {
   } | null;
   // Quota of a club/calendar used up (422): one clear message for every create form and import
   if (err?.code === "quota_exceeded") toast.error(i18n.t("common.quotaExceeded"));
+  if (res.status === 403 && err?.code === "consent_required" && typeof window !== "undefined") {
+    window.dispatchEvent(new Event(CONSENT_REQUIRED_EVENT));
+  }
   return new ApiError(err?.detail ?? `API error ${res.status}`, res.status, err?.code, err?.field, {
     retryAt: typeof err?.retryAt === "string" ? err.retryAt : undefined,
     email: typeof err?.email === "string" ? err.email : undefined,

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { FullPageLoader } from "@/components/ui/shared";
+import { ConsentPage } from "@/pages/lazy";
 import { AppShell } from "./AppShell";
 
 function parseContextFromPath(
@@ -30,6 +31,9 @@ export default function ProtectedRoute() {
   }, [user, loading, navigate]);
 
   if (loading || !user) return <FullPageLoader />;
+
+  // Consent gate: pending legal documents lock the app (the API answers 403 `consent_required` anyway).
+  if (user.consentRequired) return <ConsentPage />;
 
   // Club picker and onboarding are standalone pages (no sidebar), even for users with a last club.
   if (pathname === "/setup" || pathname === "/clubs") {

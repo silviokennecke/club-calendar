@@ -44,10 +44,14 @@ export default function InvitationPage() {
   useEffect(() => {
     if (loading || urlToken) return;
     if (!user) navigate("/login", { replace: true });
+    // Pending consents: the gate on the protected pages comes first; the token stays stashed and the
+    // clubs page forwards here again once the documents are accepted.
+    else if (user.consentRequired) navigate("/clubs", { replace: true });
     else if (!token) navigate("/clubs", { replace: true });
   }, [loading, user, token, urlToken, navigate]);
 
-  if (loading || !user || !token) return <FullPageLoader message={t("common.loading")} />;
+  if (loading || !user || user.consentRequired || !token)
+    return <FullPageLoader message={t("common.loading")} />;
 
   async function answer(accept: boolean) {
     setBusy(accept ? "accept" : "decline");

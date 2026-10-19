@@ -7,9 +7,11 @@
 #            WEBAUTHN_RP_NAME
 # Optional:  FRONTEND_URL / BACKEND_URL / WEBAUTHN_RP_ID (derived from APP_URL), MAILER_DSN, MAILER_FROM, MAPBOX_TOKEN,
 #            GOOGLE_*/MICROSOFT_*/APPLE_* OAuth settings, SYMFONY_TRUSTED_PROXIES (behind a TLS proxy, e.g. PRIVATE_SUBNETS),
-#            RUN_MIGRATIONS (default 1), MIGRATION_RETRIES (default 15), PORT (default 8080)
+#            RUN_MIGRATIONS (default 1), MIGRATION_RETRIES (default 15), PORT (default 8080), LEGAL_DOCUMENTS_PATH
 # JWT keys:  JWT_PRIVATE_KEY / JWT_PUBLIC_KEY (paths) or keys in /var/www/html/config/jwt (mount a volume there,
 #            otherwise a new keypair is generated on every container start and sessions are lost).
+# Legal documents: mount your legal Markdown files (imprint.md, privacy.md, terms.md) at /var/www/html/legal or set
+#                  LEGAL_DOCUMENTS_PATH to another directory (see backend/legal/README.md).
 set -euo pipefail
 
 APP_DIR=/var/www/html
@@ -57,6 +59,11 @@ if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
         log "migration attempt $attempt failed (database not ready?), retrying in 2s"
         sleep 2
     done
+fi
+
+# Sync legal documents from the mounted directory
+if ! php bin/console app:legal:sync --no-interaction 2>&1 | tee /dev/stderr; then
+    log "WARNING: legal document sync failed (non-fatal, documents may be out of date)"
 fi
 
 # Run PHP-FPM + Caddy; if one exits, take the other down so the container restarts

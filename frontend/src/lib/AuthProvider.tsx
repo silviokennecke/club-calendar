@@ -7,6 +7,7 @@ import {
   clearTokens,
   revokeRefreshToken,
   storeTokens,
+  CONSENT_REQUIRED_EVENT,
   getAccessToken,
 } from "./api";
 import { AuthContext, type AuthContextValue } from "./auth-context";
@@ -116,6 +117,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   };
 
+  const refreshUser = async () => {
+    try {
+      setUser(await apiGet<User>("/api/auth/me"));
+    } catch {
+      // no verdict: the next request reports the problem
+    }
+  };
+
+  // A 403 `consent_required` from any call (api.ts): load /me so the consent gate appears.
+  useEffect(() => {
+    const onRequired = () => {
+      if (getAccessToken()) void refreshUser();
+    };
+    window.addEventListener(CONSENT_REQUIRED_EVENT, onRequired);
+    return () => window.removeEventListener(CONSENT_REQUIRED_EVENT, onRequired);
+  }, []);
+
   /** Saves profile settings on the account; resolves to false when the request failed. */
   const updateUser = async (data: Parameters<AuthContextValue["updateUser"]>[0]) => {
     try {
@@ -128,7 +146,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, sessionError, login, logout, updateUser }}>
+    <AuthContext.Provider
+      value={{ user, loading, sessionError, login, logout, updateUser, refreshUser, setUser }}
+    >
       {children}
     </AuthContext.Provider>
   );

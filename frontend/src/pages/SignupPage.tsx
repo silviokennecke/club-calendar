@@ -1,7 +1,15 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { apiPost } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
+import {
+  consentCheckboxId,
+  legalKeys,
+  useLegalOverview,
+  type LegalOverview,
+  type LegalType,
+} from "@/lib/legal";
 import { passwordProblem } from "@/lib/password";
 import i18n from "@/lib/i18n";
 import {
@@ -14,6 +22,7 @@ import {
 } from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { FocusBanner } from "@/components/auth/FocusBanner";
+import { ConsentCheckboxes } from "@/components/legal/ConsentCheckboxes";
 
 interface FieldErrors {
   name?: string;
@@ -22,7 +31,10 @@ interface FieldErrors {
   confirm?: string;
 }
 
-type Problem = "exists" | "generic";
+type Problem = "exists" | "generic" | "consent";
+
+/** Documents the user has to accept at signup (when the operator provides them). */
+const CONSENT_TYPES: readonly LegalType[] = ["privacy", "terms"];
 
 const IDS = {
   name: "signup-name",
@@ -42,6 +54,18 @@ export default function SignupPage() {
   const [problem, setProblem] = useState<Problem | null>(null);
   const [problemKey, setProblemKey] = useState(0);
   const [loading, setLoading] = useState(false);
+  const qc = useQueryClient();
+  const legal = useLegalOverview();
+  const [accepted, setAccepted] = useState<ReadonlySet<string>>(new Set());
+  const [consentErrors, setConsentErrors] = useState<Record<string, string | undefined>>({});
+  const consentItems = useMemo(
+    () =>
+      CONSENT_TYPES.flatMap((type) => {
+        const doc = legal.data?.[type];
+        return doc ? [{ type, id: doc.id }] : [];
+      }),
+    [legal.data],
+  );
 
   function fail(next: Problem, fieldErrors: FieldErrors = {}) {
     setErrors(fieldErrors);
@@ -53,6 +77,7 @@ export default function SignupPage() {
     e.preventDefault();
     setProblem(null);
     setErrors({});
+    setConsentErrors({});
 
     const found: FieldErrors = {};
     if (!name.trim()) found.name = t("auth.register.nameMissing");
@@ -63,10 +88,20 @@ export default function SignupPage() {
     else if (pwProblem === "long") found.password = t("auth.register.passwordLongField");
     if (password && confirm !== password) found.confirm = t("auth.register.confirmMismatchField");
 
-    if (Object.keys(found).length > 0) {
+    const missing: Record<string, string> = {};
+    for (const item of consentItems) {
+      if (!accepted.has(item.id)) missing[item.id] = t(`consent.required.${item.type}`);
+    }
+
+    if (Object.keys(found).length > 0 || Object.keys(missing).length > 0) {
       setErrors(found);
+      setConsentErrors(missing);
       const first = (["name", "email", "password", "confirm"] as const).find((k) => found[k]);
       if (first) document.getElementById(IDS[first])?.focus();
+      else {
+        const doc = consentItems.find((i) => missing[i.id]);
+        if (doc) document.getElementById(consentCheckboxId("signup-consent", doc.type))?.focus();
+      }
       return;
     }
 
@@ -77,6 +112,7 @@ export default function SignupPage() {
         email,
         password,
         language: i18n.resolvedLanguage ?? "en",
+        acceptedDocuments: consentItems.map((i) => i.id),
       });
       // no tokens yet: the address is confirmed with the code from the e-mail
       navigate(`/verify-email?email=${encodeURIComponent(res?.email ?? email)}`);
@@ -84,6 +120,25 @@ export default function SignupPage() {
       // Stable error code of the API (RFC 7807 body), never the English `detail` text
       if ((err as { code?: string }).code === "email_taken") {
         fail("exists", { email: t("auth.register.emailExistsField") });
+      } else if (
+        ["consent_outdated", "consent_required"].includes((err as { code?: string }).code ?? "")
+      ) {
+        // A document was replaced while the form was open: show the new list, ask again.
+        setAccepted(new Set());
+        const fresh = await qc
+          .fetchQuery({
+            queryKey: legalKeys.overview,
+            queryFn: () => apiGet<LegalOverview>("/api/legal"),
+            staleTime: 0,
+          })
+          .catch(() => null);
+        const stale: Record<string, string> = {};
+        for (const type of CONSENT_TYPES) {
+          const doc = fresh?.[type];
+          if (doc) stale[doc.id] = t(`consent.required.${type}`);
+        }
+        fail("consent");
+        setConsentErrors(stale);
       } else {
         fail("generic");
       }
@@ -118,7 +173,11 @@ export default function SignupPage() {
           }
         >
           {t(
-            problem === "exists" ? "auth.register.problem.exists" : "auth.register.problem.generic",
+            problem === "exists"
+              ? "auth.register.problem.exists"
+              : problem === "consent"
+                ? "consent.outdated"
+                : "auth.register.problem.generic",
           )}
         </FocusBanner>
       )}
@@ -133,9 +192,20 @@ export default function SignupPage() {
           errors={
             problem
               ? []
-              : (["name", "email", "password", "confirm"] as const).flatMap((k) =>
-                  errors[k] ? [{ fieldId: IDS[k], message: errors[k] }] : [],
-                )
+              : (["name", "email", "password", "confirm"] as const)
+                  .flatMap((k) => (errors[k] ? [{ fieldId: IDS[k], message: errors[k] }] : []))
+                  .concat(
+                    consentItems.flatMap((i) =>
+                      consentErrors[i.id]
+                        ? [
+                            {
+                              fieldId: consentCheckboxId("signup-consent", i.type),
+                              message: consentErrors[i.id],
+                            },
+                          ]
+                        : [],
+                    ),
+                  )
           }
         />
         <Field id={IDS.name} label={t("auth.register.name")} required error={errors.name}>
@@ -170,7 +240,30 @@ export default function SignupPage() {
           onChange={(e) => setConfirm(e.target.value)}
           autoComplete="new-password"
         />
-        <Button type="submit" block loading={loading} loadingLabel={t("auth.creatingAccount")}>
+        {consentItems.length > 0 && (
+          <ConsentCheckboxes
+            items={consentItems}
+            idPrefix="signup-consent"
+            checked={accepted}
+            errors={consentErrors}
+            onToggle={(id, on) => {
+              setAccepted((prev) => {
+                const next = new Set(prev);
+                if (on) next.add(id);
+                else next.delete(id);
+                return next;
+              });
+              setConsentErrors((prev) => ({ ...prev, [id]: undefined }));
+            }}
+          />
+        )}
+        <Button
+          type="submit"
+          block
+          loading={loading}
+          disabled={legal.isPending}
+          loadingLabel={t("auth.creatingAccount")}
+        >
           {t("auth.createAccount")}
         </Button>
       </form>
