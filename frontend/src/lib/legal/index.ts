@@ -29,6 +29,7 @@ export const legalKeys = {
   overview: ["legal"] as const,
   current: (type: LegalType) => ["legal", "type", type] as const,
   version: (id: string) => ["legal", "document", id] as const,
+  consents: ["legal", "consents"] as const,
 };
 
 const LONG = 30 * 60_000;
@@ -82,4 +83,28 @@ export function legalTypeOf(pathname: string): LegalType {
 /** Id of the consent checkbox of a document type (`<prefix>-<type>`). */
 export function consentCheckboxId(prefix: string, type: LegalType): string {
   return `${prefix}-${type}`;
+}
+
+/** Entry of `GET /api/auth/consents` (newest first). */
+export interface ConsentRecord {
+  id: string;
+  type: LegalType;
+  documentId: string;
+  documentTitle: string | null;
+  documentPublishedAt: string;
+  consentedAt: string;
+  /** Still the current version of its type. */
+  current: boolean;
+  ipAddress: string | null;
+  userAgent: string | null;
+}
+
+/** The user's consent history; `enabled` defers the request until the profile section is opened. */
+export function useConsentHistory(enabled: boolean) {
+  return useQuery({
+    queryKey: legalKeys.consents,
+    queryFn: () => apiGet<ConsentRecord[]>("/api/auth/consents"),
+    enabled,
+    retry: false,
+  });
 }
