@@ -22,6 +22,8 @@
         <!-- ###- nelmio/cors-bundle ### -->
 
         <env name="MAILER_DSN" value="null://null"/>
+        <!-- never pick up real legal texts; tests that need files build their own directory -->
+        <env name="LEGAL_DOCUMENTS_PATH" value="/nonexistent/legal-documents"/>
         <env name="MAILER_FROM" value="noreply@test.example.com"/>
 
         <!-- URLs and passkey relying party the tests assert against; independent of backend/.env (which now derives them from APP_URL) -->

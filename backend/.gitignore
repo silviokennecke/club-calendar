@@ -28,3 +28,8 @@
 !/public/index.php
 !/public/.htaccess
 ###< frontend build ###
+
+###> legal documents (real texts are installation specific) ###
+/legal/*.md
+!/legal/README.md
+###< legal documents ###
