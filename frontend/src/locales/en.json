@@ -2064,6 +2064,24 @@
       "linkSentText": "We have sent a link to <strong>{{email}}</strong>. Use it to set your password (valid for 60 minutes). Afterwards you sign in again everywhere.",
       "linkFailed": "The link could not be requested. Please try again.",
       "setByMail": "Set password by email"
+    },
+    "legal": {
+      "title": "Legal & consents",
+      "text": "The current documents and the versions you have accepted.",
+      "current": "Current documents",
+      "history": "Consent history",
+      "loading": "Loading consent history.",
+      "loadFailed": "The consent history could not be loaded.",
+      "retry": "Try again",
+      "emptyTitle": "No consents yet",
+      "emptyText": "Accepted documents will be listed here.",
+      "consentedAt": "Accepted on {{date}}",
+      "version": "Version of {{date}}",
+      "currentBadge": "Current",
+      "outdatedBadge": "Outdated",
+      "view": "View",
+      "viewLabel": "View {{type}}, version of {{date}}",
+      "close": "Close"
     }
   },
   "errorPage": {

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
+import { legalKeys } from "@/lib/legal";
 import { apiGet, apiPost, apiErrorCode } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import type { User } from "@/lib/types";
@@ -14,6 +16,7 @@ import { ConsentCheckboxes } from "@/components/legal/ConsentCheckboxes";
 export default function ConsentPage() {
   const { t } = useTranslation();
   const { user, setUser, logout } = useAuth();
+  const queryClient = useQueryClient();
   const pending = user?.pendingConsents ?? [];
   const [accepted, setAccepted] = useState<ReadonlySet<string>>(new Set());
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
@@ -39,6 +42,7 @@ export default function ConsentPage() {
         documentIds: pending.map((d) => d.id),
       });
       setUser(me);
+      void queryClient.invalidateQueries({ queryKey: legalKeys.consents });
     } catch (err) {
       if (apiErrorCode(err) === "consent_outdated") {
         // a newer version was published meanwhile: show the current list

@@ -9,6 +9,7 @@ import type { ShellData } from "@/components/layout/shellTypes";
 import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
 import { AccountSection } from "@/components/profile/AccountSection";
 import { LinkedLoginsSection, type LinkOutcome } from "@/components/profile/LinkedLoginsSection";
+import { LegalSection } from "@/components/profile/LegalSection";
 import { PasswordSection } from "@/components/profile/PasswordSection";
 import { PasskeysSection } from "@/components/profile/PasskeysSection";
 import { PreferencesSection } from "@/components/profile/PreferencesSection";
@@ -167,6 +168,8 @@ export default function ProfilePage() {
       <PreferencesSection />
 
       <SessionsSection />
+
+      <LegalSection />
 
       <section className="ap-panel ap-panel--danger" aria-labelledby="pr-danger">
         <div className="ap-panel-head">

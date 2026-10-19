@@ -2064,6 +2064,24 @@
       "linkSentText": "Wir haben dir einen Link an <strong>{{email}}</strong> geschickt. Damit legst du dein Passwort fest (60 Minuten gültig). Danach meldest du dich überall neu an.",
       "linkFailed": "Der Link konnte nicht angefordert werden. Bitte versuche es erneut.",
       "setByMail": "Passwort per E-Mail festlegen"
+    },
+    "legal": {
+      "title": "Rechtliches & Einwilligungen",
+      "text": "Die aktuellen Dokumente und die Fassungen, denen du zugestimmt hast.",
+      "current": "Aktuelle Dokumente",
+      "history": "Einwilligungsverlauf",
+      "loading": "Einwilligungsverlauf wird geladen.",
+      "loadFailed": "Der Einwilligungsverlauf konnte nicht geladen werden.",
+      "retry": "Erneut versuchen",
+      "emptyTitle": "Noch keine Einwilligungen",
+      "emptyText": "Akzeptierte Dokumente werden hier aufgelistet.",
+      "consentedAt": "Akzeptiert am {{date}}",
+      "version": "Fassung vom {{date}}",
+      "currentBadge": "Aktuell",
+      "outdatedBadge": "Veraltet",
+      "view": "Ansehen",
+      "viewLabel": "{{type}}, Fassung vom {{date}} ansehen",
+      "close": "Schließen"
     }
   },
   "errorPage": {

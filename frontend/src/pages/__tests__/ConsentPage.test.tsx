@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import ConsentPage from "../ConsentPage";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
@@ -36,9 +37,11 @@ beforeEach(() => {
 
 function renderPage() {
   return render(
-    <MemoryRouter>
-      <ConsentPage />
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <ConsentPage />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -87,9 +90,11 @@ describe("ConsentPage", () => {
 describe("consent gate", () => {
   it("ProtectedRoute shows the consent page instead of the app", async () => {
     render(
-      <MemoryRouter initialEntries={["/clubs"]}>
-        <ProtectedRoute />
-      </MemoryRouter>,
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/clubs"]}>
+          <ProtectedRoute />
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
     expect(
       await screen.findByRole("heading", { name: "Zustimmung erforderlich" }),
