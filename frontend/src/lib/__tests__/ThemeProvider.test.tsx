@@ -99,4 +99,26 @@ describe("ThemeProvider", () => {
     getSpy.mockRestore();
     setSpy.mockRestore();
   });
+
+  it("updates the theme-color metas when the theme changes", async () => {
+    mockSystem(false);
+    document.head.innerHTML =
+      '<meta name="theme-color" content="#f7f8f5" media="(prefers-color-scheme: light)">' +
+      '<meta name="theme-color" content="#0f1715" media="(prefers-color-scheme: dark)">';
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
+    const metas = () => Array.from(document.querySelectorAll('meta[name="theme-color"]'));
+    await userEvent.click(screen.getByText("dark"));
+    for (const m of metas()) {
+      expect(m.getAttribute("content")).toBe("#0f1715");
+      expect(m.hasAttribute("media")).toBe(false);
+    }
+    await userEvent.click(screen.getByText("system"));
+    expect(metas()[0].getAttribute("media")).toBe("(prefers-color-scheme: light)");
+    expect(metas()[1].getAttribute("media")).toBe("(prefers-color-scheme: dark)");
+    document.head.innerHTML = "";
+  });
 });

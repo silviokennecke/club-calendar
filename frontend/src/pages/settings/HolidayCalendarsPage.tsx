@@ -185,7 +185,9 @@ export default function HolidayCalendarsPage() {
             >
               <div className="ap-listrow-main" style={{ minWidth: 220 }}>
                 <b>{hc.name}</b>
-                <span style={{ overflowWrap: "anywhere" }}>{hc.url}</span>
+                <span translate="no" style={{ overflowWrap: "anywhere" }}>
+                  {hc.url}
+                </span>
                 <span>
                   {busy
                     ? t("settings.holidays.refreshing")

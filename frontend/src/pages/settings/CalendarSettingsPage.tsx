@@ -185,7 +185,7 @@ function GeneralForm({ calendar }: { calendar: Calendar }) {
                 onChange={(e) => change({ zone: e.target.value })}
               >
                 {zones.map((z) => (
-                  <option key={z} value={z}>
+                  <option key={z} value={z} translate="no">
                     {z}
                   </option>
                 ))}

@@ -57,7 +57,7 @@ export function Logo({ variant = "full", size = 40, className }: LogoProps) {
 
   if (variant === "mark") {
     return (
-      <span className={cn("cc-logo", className)} role="img" aria-label={name}>
+      <span className={cn("cc-logo", className)} role="img" aria-label={name} translate="no">
         {mark}
       </span>
     );
@@ -65,7 +65,7 @@ export function Logo({ variant = "full", size = 40, className }: LogoProps) {
   return (
     <span className={cn("cc-logo", className)}>
       {mark}
-      {name}
+      <span translate="no">{name}</span>
     </span>
   );
 }

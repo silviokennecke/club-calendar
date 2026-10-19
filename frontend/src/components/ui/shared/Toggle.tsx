@@ -40,9 +40,9 @@ export function Toggle({
   return (
     <div className={cn("cc-toggle-row", className)}>
       <div>
-        <div className="cc-label" id={labelId}>
+        <label className="cc-label block" id={labelId} htmlFor={baseId}>
           {label}
-        </div>
+        </label>
         {hint && (
           <div className="cc-hint" id={hintId}>
             {hint}
