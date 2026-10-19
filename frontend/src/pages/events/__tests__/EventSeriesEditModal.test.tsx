@@ -228,3 +228,26 @@ describe("EventSeriesEditModal", () => {
     expect(screen.queryByLabelText(/^Bis/)).toBeNull();
   });
 });
+
+describe("EventSeriesEditModal – unsaved changes", () => {
+  it("closes directly while the rule is unchanged", async () => {
+    const user = userEvent.setup();
+    renderSeries();
+    await screen.findByLabelText(/^Bis/);
+    await user.click(screen.getByRole("button", { name: "Schließen, nichts ändern" }));
+    expect(await screen.findByTestId("location")).toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("asks before closing with a changed rule and keeps the dialog on 'Weiter bearbeiten'", async () => {
+    const user = userEvent.setup();
+    renderSeries();
+    await changeEnd(user, "2026-12-31");
+    await user.click(screen.getByRole("button", { name: "Schließen, nichts ändern" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Änderungen verwerfen?");
+    await user.click(within(dialog).getByRole("button", { name: "Weiter bearbeiten" }));
+    expect(screen.queryByTestId("location")).toBeNull();
+    expect(screen.getByLabelText(/^Bis/)).toHaveValue("2026-12-31");
+  });
+});

@@ -10,6 +10,7 @@ import {
   Field,
   Skeleton,
   TextInput,
+  UnsavedChangesDialog,
   toast,
 } from "@/components/ui/shared";
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
@@ -22,6 +23,7 @@ import {
   getHolidayCalendars,
   refreshHolidayCalendar,
 } from "@/lib/api";
+import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import { formatFetched, validateHolidayForm, type HolidayFormProblem } from "@/lib/settings";
 import type { HolidayCalendar } from "@/lib/types";
 
@@ -58,6 +60,7 @@ export default function HolidayCalendarsPage() {
   const [signal, setSignal] = useState(0);
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<"fetch" | "other" | null>(null);
+  const unsaved = useUnsavedChanges(!readOnly && (name.trim() !== "" || url.trim() !== ""));
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, boolean>>({});
   const [deleting, setDeleting] = useState<HolidayCalendar | null>(null);
@@ -339,6 +342,7 @@ export default function HolidayCalendarsPage() {
           onConfirm={() => remove(deleting)}
         />
       )}
+      <UnsavedChangesDialog {...unsaved.dialog} />
     </SettingsLayout>
   );
 }

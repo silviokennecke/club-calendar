@@ -22,6 +22,7 @@ import {
   LinkButton,
   Modal,
   StatusBadge,
+  UnsavedChangesDialog,
   toast,
   useModalInitialFocus,
 } from "@/components/ui/shared";
@@ -31,6 +32,7 @@ import { useEventPage } from "@/components/events/useEventPage";
 import { useSeriesUpdatePreview } from "@/components/events/useSeriesPreview";
 import { useLocale } from "@/components/calendar/useLocale";
 import { useModalNav } from "@/lib/useModalNav";
+import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import { eventSelector, focusAfterModalClose } from "@/lib/modalFocus";
 
 /**
@@ -45,6 +47,9 @@ export default function EventSeriesEditModal() {
   const page = useEventPage();
   const nav = useModalNav();
   const { t } = useTranslation();
+  // The rule form lives in SeriesEditor, which reports whether it differs from the stored rule.
+  const [dirty, setDirty] = useState(false);
+  const unsaved = useUnsavedChanges(dirty);
 
   const eventQuery = useQuery<CalendarEvent>({
     queryKey: ["events", page.calendarId, "one", eventId],
@@ -110,7 +115,15 @@ export default function EventSeriesEditModal() {
       </>
     );
   } else {
-    body = <SeriesEditor key={event.series.id} event={event} series={event.series} />;
+    body = (
+      <SeriesEditor
+        key={event.series.id}
+        event={event}
+        series={event.series}
+        onDirtyChange={setDirty}
+        allow={unsaved.allow}
+      />
+    );
   }
 
   return (
@@ -120,14 +133,25 @@ export default function EventSeriesEditModal() {
       title={title}
       subtitle={event ? t("events.seriesEdit.subtitle", { name: event.name }) : undefined}
       closeLabel={closeLabel}
-      onClose={nav.close}
+      onClose={() => unsaved.guard(nav.close)}
     >
       {body}
+      <UnsavedChangesDialog {...unsaved.dialog} />
     </Modal>
   );
 }
 
-function SeriesEditor({ event, series }: { event: CalendarEvent; series: EventSeriesInfo }) {
+function SeriesEditor({
+  event,
+  series,
+  onDirtyChange,
+  allow,
+}: {
+  event: CalendarEvent;
+  series: EventSeriesInfo;
+  onDirtyChange: (dirty: boolean) => void;
+  allow: () => void;
+}) {
   const page = useEventPage();
   const nav = useModalNav();
   const qc = useQueryClient();
@@ -141,6 +165,11 @@ function SeriesEditor({ event, series }: { event: CalendarEvent; series: EventSe
 
   const rule = toSeriesRule(form);
   const unchanged = !!rule && sameSeriesRule(series.rule, rule);
+  const dirty = JSON.stringify(form) !== JSON.stringify(formFromRule(series.rule));
+  useEffect(() => {
+    onDirtyChange(dirty);
+    return () => onDirtyChange(false);
+  }, [dirty, onDirtyChange]);
   // The stored rule is never previewed (nothing to change)
   const preview = useSeriesUpdatePreview(page.calendarId, series.id, unchanged ? null : rule, true);
   const data = rule && !unchanged && !preview.error ? preview.data : undefined;
@@ -194,6 +223,7 @@ function SeriesEditor({ event, series }: { event: CalendarEvent; series: EventSe
       );
       const stays = !data?.toDelete.some((d) => d.id === event.id);
       focusAfterModalClose(stays ? eventSelector(event.id) : null);
+      allow();
       nav.close();
     } catch (err) {
       setConfirmOpen(false);
