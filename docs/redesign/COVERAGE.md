@@ -106,7 +106,7 @@ Kalender-Einstellungen (Name, Zeitzone, Eigenschaften, Features, Feiertagskalend
 
 | Artboard | Umsetzung | Status |
 | --- | --- | --- |
-| Feeds.dc.html | `/clubs/:clubId/settings/feeds` (`pages/settings/FeedsPage.tsx`; Status als Wort + Icon, Zielgruppen, Adressen als `CopyField`, Lösch-Dialog; Club-Ebene seit Paket 5) | abweichend: lange Adressen statt kurzer Slugs `/k/<verein>/<feed>` (`BACKEND-GAPS.md`, Feeds); **drei Status statt zwei** (Entscheidung des Auftraggebers 2026-10-15, siehe unten "Feed-Status"): Badge "Öffentlich" (globe), "Nur per Link" (users, eigene Variante `club`), "Privat" (lock), dazu "Auffindbar" (search, Variante `searchable`) bei öffentlichen Feeds mit Suchmaschinen-Option; Adressen nur bei Privat mit `?secret=` |
+| Feeds.dc.html | `/clubs/:clubId/settings/feeds` (`pages/settings/FeedsPage.tsx`; Status als Wort + Icon, Zielgruppen, Adressen als `CopyField`, Lösch-Dialog; Club-Ebene seit Paket 5) | abweichend: lange Adressen statt kurzer Slugs `/k/<verein>/<feed>` (`BACKEND-GAPS.md`, Feeds); **drei Status statt zwei** (Entscheidung des Auftraggebers 2026-10-15, siehe unten "Feed-Status"): Badge "Öffentlich" (globe), "Nur per Link" (users, eigene Variante `club`), "Privat" (lock); Adressen nur bei Privat mit `?secret=` |
 | FeedEdit.dc.html | `pages/settings/FeedEditPage.tsx`, `…/settings/feeds/new`, `…/settings/feeds/:feedId` (Name, Sichtbarkeit, Zielgruppen, Geheimnis neu erzeugen, Löschen; Feed per Einzel-GET) | abweichend (Entscheidung des Auftraggebers): Radiogruppe "Sichtbarkeit" mit drei Optionen statt zwei (Öffentlich / Nur per Link / Privat (geschützt), je mit Erklärtext; Standard für neue Feeds Nur per Link statt Öffentlich), darunter nur bei "Öffentlich" der Schalter "Für Suchmaschinen auffindbar" (`Toggle`, Standard aus, Hilfetext); Speichern eines privaten Feeds als öffentlich/nur per Link fragt per `ConfirmDialog` ("Geheimnis nicht mehr verlangen?", Folgenhinweis). Wortlaut eigen (nicht im Design) |
 | Club.dc.html | `pages/ClubPage.tsx`, `components/club/*`, `/clubs/:clubId` (Name, Mitglieder, Kalender anlegen/duplizieren/archivieren/löschen, archivierte Kalender, Verein löschen mit Namenseingabe) | vollständig (Kalenderzeile "n Termine" aus `eventCount`; Lösch-Dialoge mit den API-Zählern) |
 | ClubMobile.dc.html | `ClubPage` < 720px (Karten statt Tabelle) | vollständig |
@@ -219,7 +219,7 @@ Paket 3 erledigt, L3 (Terminserien anlegen, Serien-Dialoge) mit Paket 4 (siehe E
 Das Design kennt zwei Sichtbarkeiten (öffentlich / privat). Auf Entscheidung des Auftraggebers gibt es drei Status:
 **Öffentlich** (`PUBLIC`), **Nur per Link** (`CLUB`, Standard für neue Feeds) und **Privat (geschützt)**
 (`PRIVATE`). Öffentlich und Nur per Link sind ohne Geheimnis per Link erreichbar und unterscheiden sich nur in der
-Suchmaschinen-Anweisung; nur öffentliche Feeds haben die Option "Für Suchmaschinen auffindbar" (Opt-in). Umsetzung:
-`FeedEditPage` (Radiogruppe, Schalter, Bestätigung beim Wechsel von Privat), `FeedsPage` (`StatusBadge` `public` /
-`club` / `private` + `searchable`), `usePublicHead` (`indexable`). Backend, Migration und Robots-Logik:
+Suchmaschinen-Anweisung; nur öffentliche Feeds sind für Suchmaschinen auffindbar (`indexable` = `PUBLIC`, keine eigene Option). Umsetzung:
+`FeedEditPage` (Radiogruppe, Bestätigung beim Wechsel von Privat), `FeedsPage` (`StatusBadge` `public` /
+`club` / `private`), `usePublicHead` (`indexable`). Backend, Migration und Robots-Logik:
 `docs/api/openapi.yaml` (Feeds).

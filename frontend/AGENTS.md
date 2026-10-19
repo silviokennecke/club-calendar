@@ -200,17 +200,15 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
     delete confirmation with the calendar's `eventCount` (single GET when it opens).
 - Publish, club, profile:
   - Feeds: list `/clubs/:clubId/settings/feeds` (`pages/settings/FeedsPage`: status as `StatusBadge` word + icon (`public` /
-    `club` "Nur per Link" / `private`, plus `searchable` "Auffindbar" for indexable public feeds), audience
+    `club` "Nur per Link" / `private`), audience
     tags, addresses behind a disclosure, first feed open, a freshly saved one opens via router state `{ open }`),
     `…/settings/feeds/new` and `…/settings/feeds/:feedId` (`FeedEditPage`: name, visibility radio group with three
-    states `PUBLIC` / `CLUB` / `PRIVATE` (default `CLUB`), the `Toggle` "Für Suchmaschinen auffindbar" only for
-    `PUBLIC` (switched off when the form leaves `PUBLIC`), saving a saved private feed as `PUBLIC`/`CLUB` asks first (`ConfirmDialog`, `dropsSecret`), audience chips,
+    states `PUBLIC` / `CLUB` / `PRIVATE` (default `CLUB`), no search engine option (a feed is indexable iff it is `PUBLIC`, API field `indexable`), saving a saved private feed as `PUBLIC`/`CLUB` asks first (`ConfirmDialog`, `dropsSecret`), audience chips,
     secret panel (only `PRIVATE`) with "Geheimnis neu erzeugen" behind a `ConfirmDialog`, addresses of the saved feed; archived
     calendars are read-only). The page loads its feed with the single GET (`useFeed`, key `["feeds", clubId, "one", feedId]`). UI in
     `components/feeds/` (`FeedAccess` = CopyFields for secret / ICS / webcal / web, `AudienceTags`, `useFeeds`);
     pure logic in `src/lib/feeds/` (`feedAddresses`: private feeds carry `?secret=` in every address, public and club
-    feeds never; `feedStatus`, `requiresSecret`, `effectiveSearchable` (only `PUBLIC` sends `searchable: true`),
-    form values, payload). Visibility is always icon + word (no emoji icons). Type `FeedVisibility` in `lib/types.ts`.
+    feeds never; `feedStatus`, `requiresSecret`, form values, payload). Visibility is always icon + word (no emoji icons). Type `FeedVisibility` in `lib/types.ts`.
   - Club roles (viewer < editor < admin, `lib/club/permissions.ts`): write controls are gated, never shown disabled-with-403.
     `useEventPage()` (calendar pages, dialogs, settings) exposes `roleCanEdit` (editor+), `isAdmin`, `canEdit` (role + calendar loaded and
     not archived), `readOnly` and `roleLoading`; an unknown role counts as no right. Events, templates, import and reference data need

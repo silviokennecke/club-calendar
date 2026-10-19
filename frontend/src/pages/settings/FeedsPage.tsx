@@ -126,7 +126,6 @@ export default function FeedsPage() {
                         {feed.name}
                       </h2>
                       <StatusBadge status={feedStatus(feed.visibility)} />
-                      {feed.indexable && <StatusBadge status="searchable" />}
                     </div>
                     <CalendarTags feed={feed} calendars={page.calendars} />
                     <AudienceTags feed={feed} data={data} />
