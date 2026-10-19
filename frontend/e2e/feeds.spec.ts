@@ -136,10 +136,14 @@ test.describe("Veröffentlichen", () => {
 
     // Kopieren: Rückmeldung sichtbar und per Statusmeldung angekündigt
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-    await pub.getByRole("button", { name: "Kopieren" }).first().click();
-    await expect(pub.getByRole("button", { name: "Kopiert" })).toBeVisible();
+    // Each address field has its own copy button; the ICS field is not the first one.
+    const icsField = pub
+      .getByLabel("ICS-Adresse")
+      .locator("xpath=ancestor::div[contains(@class,'ap-stack--sm')][1]");
+    await icsField.getByRole("button", { name: "Kopieren" }).click();
+    await expect(icsField.getByRole("button", { name: "Kopiert" })).toBeVisible();
     await expect(
-      pub.getByRole("status").filter({ hasText: "wurde in die Zwischenablage kopiert" }),
+      icsField.getByRole("status").filter({ hasText: "wurde in die Zwischenablage kopiert" }),
     ).toHaveCount(1);
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(icsUrl);
   });

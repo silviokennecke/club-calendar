@@ -32,13 +32,15 @@ test("die 404-Seite ist auch auf Englisch da und bietet Reload und Zurück", asy
   await page.waitForURL(/\/login$/);
 });
 
-// Dev server: modules are native imports, a blocked page module rejects the import (no
-// `vite:preloadError`, so no automatic reload). The error page shows, the reload action recovers.
+// A blocked page module must end on the error page and "Seite neu laden" must recover. Dev server:
+// native module import (`src/pages/LoginPage.tsx`), rejects without reload. Production build
+// (`vite preview`, CI): hashed chunk `assets/LoginPage-*.js`, one automatic reload, then the error
+// page. Both URLs are blocked, whichever one the running server uses.
 test("fehlgeschlagener Seiten-Import zeigt die Fehlerseite, 'Seite neu laden' stellt die Seite her", async ({
   page,
 }) => {
-  test.skip(!!process.env.E2E_PREVIEW_URL, "Dev server only; the production flow is tested below");
-  await page.route("**/src/pages/LoginPage.tsx*", (route) => route.abort());
+  const patterns = ["**/src/pages/LoginPage.tsx*", "**/assets/LoginPage-*.js"];
+  for (const pattern of patterns) await page.route(pattern, (route) => route.abort());
   const consoleErrors: string[] = [];
   page.on("pageerror", (error) => consoleErrors.push(error.message));
   await page.goto("/login");
@@ -53,7 +55,7 @@ test("fehlgeschlagener Seiten-Import zeigt die Fehlerseite, 'Seite neu laden' st
   ).toBeVisible();
   await expect(page.getByText("Unexpected Application Error")).toHaveCount(0);
 
-  await page.unroute("**/src/pages/LoginPage.tsx*");
+  for (const pattern of patterns) await page.unroute(pattern);
   await page.getByRole("button", { name: "Seite neu laden" }).click();
   await expect(page.getByLabel("E-Mail")).toBeVisible();
   await expect(

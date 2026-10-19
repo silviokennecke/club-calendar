@@ -446,6 +446,7 @@ test.describe("Öffentlicher Kalender", () => {
 
   test("privater Feed mit Geheimnis: Inhalt, Adresse mit Geheimnis, kein Leak (Titel, Referrer, Dritte)", async ({
     page,
+    baseURL,
   }) => {
     const hosts = new Set<string>();
     const referers: string[] = [];
@@ -497,12 +498,21 @@ test.describe("Öffentlicher Kalender", () => {
     });
     expect(leaks).toEqual([]);
     expect(referers.some((r) => r.startsWith("http://localhost:3001/api/feed/"))).toBe(false);
-    const appHosts = new Set([
-      "localhost:5199",
-      "localhost:3001",
-      "127.0.0.1:3001",
-      "127.0.0.1:5199",
-    ]);
+    // The app itself and its API, taken from the running environment (local: Vite 5199, CI:
+    // `vite preview` on 3000); loopback aliases of both. Everything else is a third party.
+    const appHosts = new Set<string>();
+    for (const raw of [
+      baseURL,
+      process.env.PLAYWRIGHT_BASE_URL,
+      process.env.E2E_API_URL,
+      process.env.VITE_API_URL,
+      "http://localhost:3001",
+    ]) {
+      if (!raw) continue;
+      const u = new URL(raw);
+      appHosts.add(u.host);
+      for (const alias of ["localhost", "127.0.0.1"]) appHosts.add(`${alias}:${u.port}`);
+    }
     expect([...hosts].filter((h) => !appHosts.has(h))).toEqual([]);
   });
 
