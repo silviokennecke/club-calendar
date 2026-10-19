@@ -26,7 +26,7 @@ function currentOffset(el: HTMLElement): number {
  * it springs back too.
  */
 export function useSheetDrag(onDismiss: () => void) {
-  const popupRef = useRef<HTMLElement | null>(null);
+  const popupRef = useRef<HTMLDivElement | null>(null);
   const drag = useRef<Drag | null>(null);
   const anim = useRef<Animation | null>(null);
   const dismissRef = useRef(onDismiss);
