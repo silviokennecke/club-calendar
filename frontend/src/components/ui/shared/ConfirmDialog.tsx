@@ -92,7 +92,7 @@ export function ConfirmDialog({
         {/* forceRender: also dim a dialog below (delete / unsaved above the event dialog). */}
         <AlertDialogPrimitive.Backdrop
           forceRender
-          className="data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 bg-scrim fixed inset-0 isolate z-50 duration-100"
+          className="ap-backdrop bg-scrim fixed inset-0 isolate z-50"
         />
         <AlertDialogPrimitive.Popup
           ref={layerRef}

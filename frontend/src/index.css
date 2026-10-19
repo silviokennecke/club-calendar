@@ -2969,11 +2969,40 @@
   padding: var(--space-4);
   background: var(--scrim);
 }
+/* Enter/exit motion (Base UI keeps the element mounted while [data-ending-style] transitions run):
+   transform + opacity only; enter --ease-out, exit --ease-in. */
+.ap-scrim,
+.ap-backdrop {
+  opacity: 1;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+.ap-scrim[data-starting-style],
+.ap-scrim[data-ending-style],
+.ap-backdrop[data-starting-style],
+.ap-backdrop[data-ending-style] {
+  opacity: 0;
+}
+.ap-scrim[data-ending-style],
+.ap-backdrop[data-ending-style] {
+  transition-timing-function: var(--ease-in);
+}
+.ap-dialog {
+  transition:
+    opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+.ap-dialog[data-starting-style],
+.ap-dialog[data-ending-style] {
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+}
+.ap-dialog[data-ending-style] {
+  transition-timing-function: var(--ease-in);
+}
 .ap-scrim > .ap-dialog {
   width: min(520px, 100%);
   max-height: calc(100dvh - 32px);
   overscroll-behavior: contain;
-  animation: ap-dialog-in var(--dur-base) var(--ease-out);
 }
 .ap-scrim > .ap-dialog--wide {
   width: min(760px, 100%);
@@ -3033,12 +3062,6 @@
   background: var(--surface-raised);
   border-top: 1px solid var(--border);
 }
-@keyframes ap-dialog-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-}
 @media (max-width: 720px) {
   .ap-scrim {
     align-items: flex-end;
@@ -3049,20 +3072,20 @@
     max-height: calc(100dvh - var(--space-4));
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     border-bottom: 0;
-    animation-name: ap-sheet-in;
-    animation-duration: var(--dur-slow);
+  }
+  .ap-dialog {
+    transition-duration: var(--dur-slow);
+  }
+  .ap-dialog[data-starting-style],
+  .ap-dialog[data-ending-style] {
+    opacity: 1;
+    transform: translateY(100%);
   }
   .ap-dialog-foot--split .cc-btn {
     flex: 1 1 auto;
   }
   .ap-dialog--form .ap-dialog-foot {
     padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
-  }
-}
-@keyframes ap-sheet-in {
-  from {
-    transform: translateY(24px);
-    opacity: 0;
   }
 }
 @keyframes ap-fade-in {
@@ -3072,7 +3095,20 @@
 }
 /* Reduced motion: no slide/scale, a short cross-fade instead (comprehension stays) */
 @media (prefers-reduced-motion: reduce) {
-  .ap-scrim > .ap-dialog {
+  .ap-scrim,
+  .ap-backdrop,
+  .ap-dialog {
+    transition-duration: 120ms;
+    transition-timing-function: linear;
+  }
+  .ap-dialog[data-starting-style],
+  .ap-dialog[data-ending-style] {
+    opacity: 0;
+    transform: none;
+  }
+  .ap-menu,
+  .ap-menu-list,
+  .ap-suggest {
     animation: ap-fade-in 120ms linear;
   }
 }
@@ -3482,5 +3518,38 @@
     .ap-seg > button:active {
       scale: none;
     }
+  }
+}
+
+/* Plain absolutely positioned menus have no Base UI exit: enter animation only, scaling from the
+   trigger side. */
+@keyframes ap-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+.ap-menu {
+  transform-origin: top left;
+  animation: ap-pop-in var(--dur-fast) var(--ease-out);
+}
+.ap-menu-list {
+  transform-origin: top right;
+  animation: ap-pop-in var(--dur-fast) var(--ease-out);
+}
+.ap-suggest {
+  transform-origin: top left;
+  animation: ap-pop-in var(--dur-fast) var(--ease-out);
+}
+@media (max-width: 720px) {
+  .ap-topbar .ap-menu {
+    transform-origin: top center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ap-menu,
+  .ap-menu-list,
+  .ap-suggest {
+    animation: ap-fade-in 120ms linear;
   }
 }
