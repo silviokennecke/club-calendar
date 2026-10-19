@@ -191,6 +191,8 @@ info:
     | `feedsPerClub` | 50 feeds per club |
     | `holidayCalendarsPerCalendar` | 20 holiday calendars |
 
+    Notes: `note` of events and templates at most 2000 characters (422 `validation_failed`, field `note`).
+
     Further limits: an id list field (`propertyIds`, `featureIds`, `targetGroupIds`, also the `targetGroupIds`
     query of the event list) has at most 500 ids (400 `validation_failed`); `from-template` takes at most 366
     `dates` (422 `too_many_events`, field `dates`); a holiday ICS is read at most 1 MB and 5000 events (else
@@ -1755,6 +1757,7 @@ paths:
                     timeEnd: { $ref: '#/components/schemas/Time' }
                     isAllDay: { type: boolean }
                     isDraft: { type: boolean }
+                    note: { type: [string, 'null'], maxLength: 2000, description: 'Plain-text note (multi-line). Trimmed; empty or whitespace-only becomes null; more than 2000 characters is 422 `validation_failed`, field `note`. PATCH: omitted = unchanged, null or empty clears.' }
                     locationId: { type: [string, 'null'] }
                     propertyIds: { $ref: '#/components/schemas/IdList' }
                     featureIds: { $ref: '#/components/schemas/IdList' }
@@ -2043,7 +2046,7 @@ paths:
       summary: ICS download of a calendar's events (members)
       description: >-
         Built like the feeds (VTIMEZONE, property icons, Apple location); series events are single VEVENTs. Drafts
-        only with `includeDrafts` (as `STATUS:TENTATIVE`). Allowed for archived calendars.
+        only with `includeDrafts` (as `STATUS:TENTATIVE`). The event `note` is the first lines of `DESCRIPTION`. Allowed for archived calendars.
       operationId: exportIcs
       parameters:
         - { name: from, in: query, description: Events ending on or after this day., schema: { type: string, format: date } }
@@ -2691,7 +2694,7 @@ paths:
     get:
       tags: [Public feed]
       summary: ICS subscription of a feed
-      description: Published events of all non-archived calendars of the feed. Holidays are never part of the ICS.
+      description: Published events of all non-archived calendars of the feed. Holidays are never part of the ICS. The event `note` is the first lines of `DESCRIPTION`.
       operationId: publicFeedIcs
       security: [{}, { feedSecret: [] }]
       parameters:
@@ -3712,13 +3715,14 @@ components:
         timezone: { type: [string, 'null'] }
         timeBegin: { type: [string, 'null'], pattern: '^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$' }
         timeEnd: { type: [string, 'null'], pattern: '^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$' }
+        note: { type: [string, 'null'], maxLength: 2000, description: 'Plain-text note (multi-line). Trimmed; empty or whitespace-only becomes null; more than 2000 characters is 422 `validation_failed`, field `note`. PATCH: omitted = unchanged, null or empty clears.' }
         locationId: { type: [string, 'null'] }
         propertyIds: { $ref: '#/components/schemas/IdList' }
         featureIds: { $ref: '#/components/schemas/IdList' }
         targetGroupIds: { $ref: '#/components/schemas/IdList' }
     Template:
       type: object
-      required: [id, calendarId, locationId, name, timezone, timeBegin, timeEnd, location, properties, features, targetGroups]
+      required: [id, calendarId, locationId, name, timezone, timeBegin, timeEnd, note, location, properties, features, targetGroups]
       properties:
         id: { type: string }
         calendarId: { type: string }
@@ -3727,6 +3731,7 @@ components:
         timezone: { type: [string, 'null'] }
         timeBegin: { type: [string, 'null'], examples: ['19:00'] }
         timeEnd: { type: [string, 'null'] }
+        note: { type: [string, 'null'], description: Plain-text note copied into events created from the template. }
         location:
           oneOf:
             - { $ref: '#/components/schemas/LocationRef' }
@@ -3754,6 +3759,7 @@ components:
         timeEnd: { $ref: '#/components/schemas/Time' }
         isAllDay: { type: [boolean, 'null'] }
         isDraft: { type: [boolean, 'null'] }
+        note: { type: [string, 'null'], maxLength: 2000, description: 'Plain-text note (multi-line). Trimmed; empty or whitespace-only becomes null; more than 2000 characters is 422 `validation_failed`, field `note`. PATCH: omitted = unchanged, null or empty clears.' }
         locationId: { type: [string, 'null'] }
         eventTemplateId: { type: [string, 'null'] }
         propertyIds: { $ref: '#/components/schemas/IdList' }
@@ -3773,7 +3779,7 @@ components:
             scope: { $ref: '#/components/schemas/Scope' }
     Event:
       type: object
-      required: [id, calendarId, eventTemplateId, seriesId, locationId, name, timezone, date, dateEnd, timeBegin, timeEnd, isAllDay, isDraft, externalUid, location, template, properties, features, targetGroups]
+      required: [id, calendarId, eventTemplateId, seriesId, locationId, name, timezone, date, dateEnd, timeBegin, timeEnd, isAllDay, isDraft, externalUid, note, location, template, properties, features, targetGroups]
       properties:
         id: { type: string }
         calendarId: { type: string }
@@ -3789,6 +3795,7 @@ components:
         isAllDay: { type: boolean }
         isDraft: { type: boolean }
         externalUid: { type: [string, 'null'], description: ICS UID of imported events. }
+        note: { type: [string, 'null'], description: Plain-text note (also written as ICS `DESCRIPTION`). }
         location:
           oneOf:
             - { $ref: '#/components/schemas/LocationRef' }
@@ -4065,7 +4072,7 @@ components:
               name: { type: string }
     PublicEvent:
       type: object
-      required: [id, calendarId, name, date, dateEnd, timeBegin, timeEnd, isAllDay, timezone, location, properties, features, targetGroups]
+      required: [id, calendarId, name, date, dateEnd, timeBegin, timeEnd, isAllDay, note, timezone, location, properties, features, targetGroups]
       properties:
         id: { type: string }
         calendarId: { type: string }
@@ -4075,6 +4082,7 @@ components:
         timeBegin: { type: string }
         timeEnd: { type: string }
         isAllDay: { type: boolean }
+        note: { type: [string, 'null'] }
         timezone: { type: string, description: 'Effective zone (event, else calendar, else club).' }
         location:
           oneOf:

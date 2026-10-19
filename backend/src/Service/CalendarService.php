@@ -155,6 +155,7 @@ class CalendarService
             $n->setTimezone($tmpl->getTimezone());
             $n->setTimeBegin($tmpl->getTimeBegin());
             $n->setTimeEnd($tmpl->getTimeEnd());
+            $n->setNote($tmpl->getNote());
             // Locations and target groups are club-level: the copy references the same ones
             $n->setLocation($tmpl->getLocation());
             $this->em->persist($n);

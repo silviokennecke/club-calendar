@@ -57,6 +57,33 @@ final class Input
         return $value;
     }
 
+    /** Maximum length of an event / template note. */
+    public const NOTE_MAX_LENGTH = 2000;
+
+    /**
+     * Optional plain-text note: trimmed, newlines kept, empty / whitespace-only is null; more than
+     * NOTE_MAX_LENGTH characters is 422.
+     */
+    public static function note(array $data, string $key = 'note'): ?string
+    {
+        $value = $data[$key] ?? null;
+        if (null === $value) {
+            return null;
+        }
+        if (!is_string($value)) {
+            throw self::invalid($key, sprintf('%s must be a string', $key), 422);
+        }
+        $value = trim($value);
+        if ('' === $value) {
+            return null;
+        }
+        if (mb_strlen($value) > self::NOTE_MAX_LENGTH) {
+            throw self::invalid($key, sprintf('%s must not be longer than %d characters', $key, self::NOTE_MAX_LENGTH), 422);
+        }
+
+        return $value;
+    }
+
     public static function bool(array $data, string $key): bool
     {
         if (!is_bool($data[$key] ?? null)) {

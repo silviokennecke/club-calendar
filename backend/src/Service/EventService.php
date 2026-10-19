@@ -137,6 +137,7 @@ readonly class EventService
             'timeBegin' => $template->getTimeBegin(),
             'timeEnd' => $template->getTimeEnd(),
             'isDraft' => true,
+            'note' => $template->getNote(),
             'locationId' => $template->getLocation()?->getId(),
             'eventTemplateId' => $template->getId(),
             'propertyIds' => array_map(fn ($p) => $p->getProperty()->getId(), $template->getProperties()->getValues()),
@@ -154,6 +155,9 @@ readonly class EventService
                 $input['timeBegin'] = '00:00';
                 $input['timeEnd'] = '23:59';
             }
+        }
+        if (array_key_exists('note', $overrides)) {
+            $input['note'] = $overrides['note'];
         }
         if (array_key_exists('locationId', $overrides)) {
             $input['locationId'] = $overrides['locationId'];
@@ -435,6 +439,9 @@ readonly class EventService
         if ($has('timeEnd')) {
             $event->setTimeEnd(Input::time($data, 'timeEnd'));
         }
+        if ($has('note')) {
+            $event->setNote(Input::note($data));
+        }
         foreach (['isAllDay' => $event->setIsAllDay(...), 'isDraft' => $event->setIsDraft(...)] as $key => $set) {
             if (array_key_exists($key, $data) && null !== $data[$key]) {
                 $set(Input::bool($data, $key));
@@ -506,6 +513,7 @@ readonly class EventService
             'isAllDay' => $event->isAllDay(),
             'isDraft' => $event->isDraft(),
             'externalUid' => $event->getExternalUid(),
+            'note' => $event->getNote(),
             'location' => $event->getLocation() ? [
                 'id' => $event->getLocation()->getId(),
                 'name' => $event->getLocation()->getName(),

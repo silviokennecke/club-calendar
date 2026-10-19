@@ -38,6 +38,10 @@ class EventTemplate
     #[ORM\Column(length: 5, nullable: true)]
     private ?string $timeEnd = null;
 
+    /** Optional plain-text note (multi-line, at most 2000 characters, enforced in Input::note). */
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $note = null;
+
     #[ORM\OneToMany(targetEntity: Event::class, mappedBy: 'template')]
     private Collection $events;
 
@@ -132,6 +136,18 @@ class EventTemplate
     public function setTimeEnd(?string $timeEnd): static
     {
         $this->timeEnd = $timeEnd;
+
+        return $this;
+    }
+
+    public function getNote(): ?string
+    {
+        return $this->note;
+    }
+
+    public function setNote(?string $note): static
+    {
+        $this->note = $note;
 
         return $this;
     }
