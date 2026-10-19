@@ -105,6 +105,9 @@ class IcsService
             $names = array_map(fn ($etg) => $etg->getTargetGroup()->getName(), $event->getTargetGroups()->getValues());
             $parts[] = 'Gruppen: '.implode(', ', $names);
         }
+        if (null !== $event->getNote() && '' !== $event->getNote()) {
+            array_unshift($parts, $event->getNote());
+        }
         $description = implode("\n", $parts);
 
         $icalEvent = new ICalEvent($uid);

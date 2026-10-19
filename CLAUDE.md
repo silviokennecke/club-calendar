@@ -125,9 +125,9 @@ Security headers (audit M4) live in both `backend/public/.htaccess` and `docker/
 - **CalendarFeed** — a publishable view of 1..n Calendars of a Club (ICS + web) with one of three states: `PUBLIC` (by link, search
   engines may index it), `CLUB` ("Nur per Link", default: by link, never indexed)
   or `PRIVATE` (shared-secret protected); the web view merges published events and holiday events of all selected non-archived calendars; ICS lists events only, never holidays; scoped to a Club; see `docs/api/openapi.yaml`
-- **Event** — a single occurrence on a Calendar; may be based on an EventTemplate; may belong to an EventSeries
+- **Event** — a single occurrence on a Calendar; optional plain-text `note` (max 2000 chars, trimmed, empty = null; copied from the template; ICS `DESCRIPTION`, shown in the public feed); may be based on an EventTemplate; may belong to an EventSeries
 - **EventSeries** — a recurrence rule (weekly, every two weeks, monthly on the n-th weekday; until a date or a count; skip holidays) with the events created from it; edit/delete "only this event" or "all events of the series" (`scope`); the rule can be changed later ("Reihe ändern", `PATCH …/event-series/{id}`: only future events change, past ones stay). ICS imports with RRULE create single events, not series
-- **EventTemplate** — reusable event definition (name, time, location, properties)
+- **EventTemplate** — reusable event definition (name, time, location, properties, optional `note`)
 - **Property** — a tag/attribute for events (e.g. "Schützentracht"); can have an emoji icon
 - **Feature** — an optional add-on for events (e.g. "Bonusschießen")
 - **TargetGroup** — audience filter for events (e.g. "Schüler", "Jugend", "Erwachsene"); scoped to a Club

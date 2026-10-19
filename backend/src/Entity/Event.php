@@ -60,6 +60,10 @@ class Event
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $externalUid = null;
 
+    /** Optional plain-text note (multi-line, at most 2000 characters, enforced in Input::note). */
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $note = null;
+
     #[ORM\Column]
     private bool $isDraft = true;
 
@@ -237,6 +241,18 @@ class Event
     public function setIsDraft(bool $isDraft): static
     {
         $this->isDraft = $isDraft;
+
+        return $this;
+    }
+
+    public function getNote(): ?string
+    {
+        return $this->note;
+    }
+
+    public function setNote(?string $note): static
+    {
+        $this->note = $note;
 
         return $this;
     }

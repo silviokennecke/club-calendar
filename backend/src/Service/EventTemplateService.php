@@ -106,6 +106,9 @@ readonly class EventTemplateService
             // The field is the missing half of the pair
             throw Input::invalid(null === $template->getTimeBegin() ? 'timeBegin' : 'timeEnd', 'timeBegin and timeEnd must both be given or both be empty');
         }
+        if ($has('note')) {
+            $template->setNote(Input::note($data));
+        }
         if ($has('locationId')) {
             $template->setLocation($this->references->find(Location::class, $calendar->getClub(), $data['locationId'] ?? null, 'locationId'));
         }
@@ -152,6 +155,7 @@ readonly class EventTemplateService
             'timezone' => $template->getTimezone(),
             'timeBegin' => $template->getTimeBegin(),
             'timeEnd' => $template->getTimeEnd(),
+            'note' => $template->getNote(),
             'location' => $template->getLocation() ? [
                 'id' => $template->getLocation()->getId(),
                 'name' => $template->getLocation()->getName(),

@@ -59,7 +59,7 @@ readonly class EventSeriesService
 
     /**
      * `{rule, templateId?, event?: {name, timeBegin, timeEnd, isAllDay, timezone, locationId, propertyIds,
-     * featureIds, targetGroupIds, isDraft, durationDays}, isDraft?}` → `{series, events}`. Template values
+     * featureIds, targetGroupIds, note, isDraft, durationDays}, isDraft?}` → `{series, events}`. Template values
      * are taken like `from-template` (template without times → all-day); `event` fields override them.
      * Default draft. One flush (transaction): an invalid field or a reference of another calendar saves
      * nothing. No dates → 422 `validation_failed` (field `rule`), more than SeriesRule::MAX_EVENTS → 422
@@ -296,7 +296,8 @@ readonly class EventSeriesService
             ->setTimeBegin($prototype->getTimeBegin())
             ->setTimeEnd($prototype->getTimeEnd())
             ->setIsAllDay($prototype->isAllDay())
-            ->setIsDraft($prototype->isDraft());
+            ->setIsDraft($prototype->isDraft())
+            ->setNote($prototype->getNote());
         $this->em->persist($event);
         foreach ($prototype->getProperties() as $link) {
             $copy = (new EventProperty())->setEvent($event)->setProperty($link->getProperty());

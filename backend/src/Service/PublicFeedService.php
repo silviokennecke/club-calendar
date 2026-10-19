@@ -281,6 +281,7 @@ class PublicFeedService
             'timeBegin' => $e->getTimeBegin(),
             'timeEnd' => $e->getTimeEnd(),
             'isAllDay' => $e->isAllDay(),
+            'note' => $e->getNote(),
             // effective zone: event, else calendar, else club (as in the ICS feed)
             'timezone' => Input::canonicalTimezone($e->getTimezone()) ?? $this->calendarTimezone($e->getCalendar()),
             'location' => $e->getLocation() ? [
