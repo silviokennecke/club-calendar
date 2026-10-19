@@ -80,10 +80,12 @@ describe("contrast rules in the stylesheet", () => {
     expect(rule(".ap-skel")).toContain("background: var(--skeleton)");
   });
 
-  it("the skeleton pulse does not fade the outline (it animates the fill, not the opacity)", () => {
+  it("the skeleton pulse fades an overlay inside the outline, never the element itself", () => {
     const start = css.indexOf("@keyframes ap-pulse");
     const keyframes = css.slice(start, css.indexOf("\n}", start));
-    expect(keyframes).toContain("background-color");
-    expect(keyframes).not.toContain("opacity");
+    expect(keyframes).toContain("opacity");
+    expect(rule(".ap-skel")).not.toContain("animation");
+    expect(rule(".ap-skel::after")).toContain("inset: 1px");
+    expect(rule(".ap-skel::after")).toContain("animation: ap-pulse");
   });
 });
