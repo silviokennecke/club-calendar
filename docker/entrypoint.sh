@@ -62,7 +62,7 @@ if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
 fi
 
 # Sync legal documents from the mounted directory
-if ! php bin/console app:legal:sync --no-interaction 2>&1 | tee /dev/stderr; then
+if ! php bin/console app:legal:sync --no-interaction >&2; then
     log "WARNING: legal document sync failed (non-fatal, documents may be out of date)"
 fi
 
