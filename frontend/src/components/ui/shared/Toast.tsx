@@ -18,7 +18,9 @@ export function Toaster(props: ToasterProps) {
         error: <Icon glyph="alert" size={20} />,
         warning: <Icon glyph="alert" size={20} />,
         info: <Icon glyph="info" size={20} />,
-        loading: <Icon glyph="loader" size={20} className="animate-spin" />,
+        loading: (
+          <Icon glyph="loader" size={20} className="animate-spin motion-reduce:animate-none" />
+        ),
       }}
       toastOptions={{
         unstyled: true,
