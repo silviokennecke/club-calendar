@@ -105,7 +105,7 @@ operations), `docs/api/openapi.yaml` (API reference).
   look-back); "Noch keine Termine in diesem Kalender" uses the calendar's `eventCount`. UI in `components/calendar/`: `MonthView` (desktop `MonthBoard` with event bars +
   `DayPanel`, phones `MonthGrid` + day list), `WeekView`, `EventChip`, `EventItem`, `CalendarToolbar`/`MonthNav`,
   `FilterBar`, `CalendarLegend`, `CalendarSkeleton`, `useCalendarData`, `useGridKeyboard` (roving tabindex).
-  The calendar page keeps view and date in the URL (`?view=week&date=2026-10-08`). `useIsMobile()` /
+  The calendar page keeps view and date in the URL (`?view=week&date=2026-10-08`). The shown view and date are also remembered per calendar in sessionStorage (`calendarView:<id>`, `view.ts` neighbour `viewMemory.ts`); opening the page without `view` and `date` restores them (replace navigation), explicit URL parameters win. `useIsMobile()` /
   `useMediaQuery()` in `src/lib/useMediaQuery.ts`.
 - Routed modals (background-location pattern): the event dialogs and the public event detail have their own,
   deep-linkable URLs but render as a dialog above a background page. `src/lib/modalRoutes.ts` (pure, tested):

@@ -22,9 +22,11 @@ import {
   matchesSearch,
   parseAnchor,
   parseView,
+  readCalendarView,
   shiftEventDates,
   startOfWeek,
   stepAnchor,
+  storeCalendarView,
   todayIn,
   weekDays,
   yearMonthOf,
@@ -84,8 +86,15 @@ export default function CalendarPage() {
   const club = shell?.clubs.find((c) => c.id === clubId);
   const today = todayIn(calendar?.timezone || club?.timezone);
   const weekStart: WeekStart = user?.firstDayOfWeek === 0 ? 0 : 1;
-  const view = isMobile ? "month" : parseView(params.get("view"));
-  const anchor = parseAnchor(params.get("date"), today);
+  // Opened without view and date (sidebar link): return to the month / week shown before in this
+  // session. Explicit URL parameters always win. Used while rendering, so no wrong month flashes;
+  // the effect below writes it into the address (replace, no history entry).
+  const remembered = useMemo(
+    () => (params.has("date") || params.has("view") ? null : readCalendarView(calendarId!)),
+    [params, calendarId],
+  );
+  const view = isMobile ? "month" : parseView(remembered ? remembered.view : params.get("view"));
+  const anchor = parseAnchor(remembered ? remembered.date : params.get("date"), today);
   const isArchived = !!calendar?.archivedAt;
   // Club role (shell clubs, or the club list when rendered without the shell).
   const { roleCanEdit, isAdmin } = useEventPage();
@@ -121,6 +130,25 @@ export default function CalendarPage() {
   useEffect(() => {
     latestAnchor.current = anchor;
   }, [anchor]);
+
+  useEffect(() => {
+    if (!remembered) return;
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("date", remembered.date);
+        if (remembered.view === "week") next.set("view", "week");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [remembered, setParams]);
+
+  // Remember what the address shows (only explicit dates: "today" by default needs no memory).
+  const hasDateParam = params.has("date");
+  useEffect(() => {
+    if (calendarId && hasDateParam) storeCalendarView(calendarId, { view, date: anchor });
+  }, [calendarId, hasDateParam, view, anchor]);
 
   const setAnchor = useCallback(
     (date: IsoDate, { replace = true }: { replace?: boolean } = {}) => {
