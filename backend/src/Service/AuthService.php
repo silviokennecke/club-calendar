@@ -330,16 +330,7 @@ readonly class AuthService
         }
         $this->em->flush();
 
-        return [
-            'id' => $user->getId(),
-            'name' => $user->getName(),
-            'email' => $user->getEmail(),
-            'dateFormat' => $user->getDateFormat(),
-            'firstDayOfWeek' => $user->getFirstDayOfWeek(),
-            'language' => $user->getLanguage(),
-            'lastClubId' => $user->getLastClubId(),
-            'lastCalendarId' => $user->getLastCalendarId(),
-        ];
+        return $this->getMe($user);
     }
 
     /**

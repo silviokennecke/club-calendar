@@ -816,10 +816,10 @@ paths:
                 lastCalendarId: { type: [string, 'null'], maxLength: 36 }
       responses:
         '200':
-          description: The updated user.
+          description: The updated user (same body as `GET /api/auth/me`).
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/UserSummary' }
+              schema: { $ref: '#/components/schemas/Me' }
         '400': { $ref: '#/components/responses/InvalidInput' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
