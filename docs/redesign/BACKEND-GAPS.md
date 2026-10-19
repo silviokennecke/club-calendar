@@ -117,6 +117,7 @@ Nicht im Audit, gering:
 - **Reverse Proxy:** der IP-Limiter von "Passwort vergessen" nutzt `Request::getClientIp()`; hinter einem Proxy, der
   die Client-Adresse nicht als `REMOTE_ADDR` weitergibt, `framework.trusted_proxies` setzen (sonst teilen sich alle
   Nutzer einen Zähler).
+- **Rechtstexte:** `imprint.md`, `privacy.md`, `terms.md` (siehe `backend/legal/README.md`) in ein Verzeichnis legen und es im Container nach `/var/www/html/legal` mounten (oder `LEGAL_DOCUMENTS_PATH` setzen); `app:legal:sync` läuft beim Start und bei Cache-Warmup, fehlende Dokumente erscheinen als Warnung im Log. Neue Datei-Inhalte erzeugen eine neue Version und fordern erneute Zustimmung.
 - **Support:** `app:user:verify <email>` bestätigt eine Adresse, `app:user:reset-link <email>` gibt einen Reset-Link
   aus (60 Minuten gültig, gewährt Zugang zum Konto: nur an den Eigentümer).
 - **HTTPS für SSO:** das State-Cookie ist `Secure; SameSite=None`; lokal Chrome/Firefox oder HTTPS (Safari nicht

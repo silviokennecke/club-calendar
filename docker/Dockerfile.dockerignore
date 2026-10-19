@@ -13,6 +13,7 @@
 docs
 docker-compose.yml
 *.md
+backend/legal/*.md
 !backend/legal/README.md
 !backend/legal/*.md.example
 .env
@@ -20,7 +21,6 @@ docker-compose.yml
 **/.env
 **/.env.*
 
-backend/legal/*.md
 backend/vendor
 backend/var
 backend/tests
