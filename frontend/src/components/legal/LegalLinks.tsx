@@ -1,8 +1,33 @@
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { openModalState } from "@/lib/modalRoutes";
-import { LEGAL_TYPES, legalPath, useLegalOverview } from "@/lib/legal";
+import { Modal } from "@/components/ui/shared";
+import { LegalDocumentView } from "@/components/legal/LegalDocumentView";
+import {
+  LEGAL_TYPES,
+  legalPath,
+  useLegalDocument,
+  useLegalOverview,
+  type LegalType,
+} from "@/lib/legal";
+
+/** Dialog without navigation: the address (with a feed secret) never reaches history state. */
+function LocalLegalModal({ type, onClose }: { type: LegalType; onClose: () => void }) {
+  const { t } = useTranslation();
+  const q = useLegalDocument(type);
+  return (
+    <Modal
+      size="wide"
+      title={q.data?.title || t(`legal.${type}`)}
+      closeLabel={t("legal.close")}
+      onClose={onClose}
+      busy={q.isPending}
+    >
+      <LegalDocumentView document={q.data} loading={q.isPending} error={q.error} />
+    </Modal>
+  );
+}
 
 /**
  * Imprint · Privacy · Terms. A link opens the document as a routed modal above the current page; a
@@ -12,6 +37,10 @@ export function LegalLinks({ className }: { className?: string }) {
   const { t } = useTranslation();
   const location = useLocation();
   const { data } = useLegalOverview();
+  const [open, setOpen] = useState<LegalType | null>(null);
+  // A feed address with a secret must not be copied into history state: open a local dialog instead.
+  const secretFeed =
+    location.pathname.startsWith("/feed/") && !!new URLSearchParams(location.search).get("secret");
   return (
     <nav
       className={className ? `legal-links ${className}` : "legal-links"}
@@ -24,7 +53,11 @@ export function LegalLinks({ className }: { className?: string }) {
               ·
             </span>
           )}
-          {data?.[type] ? (
+          {data?.[type] && secretFeed ? (
+            <button type="button" className="legal-link" onClick={() => setOpen(type)}>
+              {t(`legal.${type}`)}
+            </button>
+          ) : data?.[type] ? (
             <Link to={legalPath(type)} state={openModalState(location)} className="legal-link">
               {t(`legal.${type}`)}
             </Link>
@@ -35,6 +68,7 @@ export function LegalLinks({ className }: { className?: string }) {
           )}
         </Fragment>
       ))}
+      {open && <LocalLegalModal type={open} onClose={() => setOpen(null)} />}
     </nav>
   );
 }

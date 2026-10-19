@@ -1,17 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 
 vi.mock("@/lib/api", () => ({ apiGet: vi.fn(), apiErrorStatus: () => undefined }));
 
-async function renderLinks() {
+async function renderLinks(path = "/login") {
   const { LegalLinks } = await vi.importActual<typeof import("./LegalLinks")>("./LegalLinks");
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={["/login"]}>
+      <MemoryRouter initialEntries={[path]}>
         <LegalLinks />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -40,5 +40,28 @@ describe("LegalLinks", () => {
     await renderLinks();
     expect(screen.queryAllByRole("link")).toHaveLength(0);
     expect(screen.getByText("Impressum")).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("opens a local dialog (no link, no history state) on a feed with a secret", async () => {
+    vi.mocked(apiGet).mockImplementation(async (path: string) =>
+      path === "/api/legal/privacy"
+        ? {
+            id: "b",
+            type: "privacy",
+            title: "Datenschutz",
+            html: "<p>Text</p>",
+            publishedAt: "2026-01-01T00:00:00Z",
+          }
+        : {
+            imprint: null,
+            privacy: { id: "b", title: null, publishedAt: "2026-01-01T00:00:00Z" },
+            terms: null,
+          },
+    );
+    await renderLinks("/feed/f1?secret=abc");
+    const btn = await screen.findByRole("button", { name: "Datenschutz" });
+    expect(screen.queryByRole("link")).toBeNull();
+    fireEvent.click(btn);
+    expect(await screen.findByText("Text")).toBeInTheDocument();
   });
 });
