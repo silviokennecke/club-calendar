@@ -10,8 +10,27 @@
 :{$PORT:8080} {
 	root * /var/www/html/public
 
+	# Access log reduced to what operation and abuse detection need: no headers (Referer, User-Agent,
+	# X-Forwarded-*, …), no TLS details, no proxy address and no secrets from the query string
+	# (one-time links, private feed links, SSO callback; KEEP IN SYNC with App\Logging\RedactTokensProcessor).
 	log {
 		output stdout
+		format filter {
+			request>headers delete
+			request>tls delete
+			request>remote_ip delete
+			request>remote_port delete
+			resp_headers delete
+			request>uri query {
+				delete token
+				delete ticket
+				delete secret
+				delete refresh_token
+				delete code
+				delete state
+				delete link_proof
+			}
+		}
 	}
 
 	encode zstd gzip
