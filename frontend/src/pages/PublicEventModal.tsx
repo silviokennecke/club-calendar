@@ -235,6 +235,17 @@ function EventDetail({ event, feed, onClose }: EventDetailProps) {
         </div>
       </dl>
 
+      {event.note && (
+        <section className="ap-stack ap-stack--sm" aria-labelledby="pe-note">
+          <h2 className="t-label" id="pe-note">
+            {t("feed.event.note")}
+          </h2>
+          <p className="t-body" style={{ whiteSpace: "pre-line" }}>
+            {event.note}
+          </p>
+        </section>
+      )}
+
       {hasPlace && (
         <section className="ap-stack ap-stack--sm" aria-labelledby="pe-place">
           <h2 className="t-label" id="pe-place">

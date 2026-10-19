@@ -7,6 +7,9 @@ import type { CalendarEvent, EventTemplate } from "@/lib/types";
 
 export type EventStatus = "draft" | "published";
 
+/** Longest note the backend accepts (422 `validation_failed` on `note` beyond that). */
+export const NOTE_MAX = 2000;
+
 export interface EventFormValues {
   name: string;
   date: string;
@@ -23,6 +26,8 @@ export interface EventFormValues {
   targetGroupIds: string[];
   /** Template the event was created from (kept when editing). */
   eventTemplateId: string | null;
+  /** Plain-text note, newlines kept; empty = no note. */
+  note: string;
 }
 
 export const DEFAULT_TIME_BEGIN = "19:00";
@@ -42,6 +47,7 @@ export function emptyEventValues(date?: string | null): EventFormValues {
     featureIds: [],
     targetGroupIds: [],
     eventTemplateId: null,
+    note: "",
   };
 }
 
@@ -67,6 +73,7 @@ export function valuesFromEvent(ev: CalendarEvent): EventFormValues {
     featureIds: ev.features.map((f) => f.feature.id),
     targetGroupIds: ev.targetGroups.map((g) => g.targetGroup.id),
     eventTemplateId: ev.eventTemplateId ?? null,
+    note: ev.note ?? "",
   };
 }
 
@@ -86,10 +93,11 @@ export function valuesFromTemplate(tpl: EventTemplate, date?: string | null): Ev
     featureIds: tpl.features.map((f) => f.feature.id),
     targetGroupIds: tpl.targetGroups.map((g) => g.targetGroup.id),
     eventTemplateId: tpl.id,
+    note: tpl.note ?? "",
   };
 }
 
-export type EventField = "name" | "date" | "dateEnd" | "timeBegin" | "timeEnd";
+export type EventField = "name" | "date" | "dateEnd" | "timeBegin" | "timeEnd" | "note";
 
 export type EventErrorCode =
   | "nameRequired"
@@ -99,7 +107,8 @@ export type EventErrorCode =
   | "dateEndBeforeStart"
   | "timeBeginRequired"
   | "timeEndRequired"
-  | "timeEndBeforeStart";
+  | "timeEndBeforeStart"
+  | "noteTooLong";
 
 export interface EventFormError {
   field: EventField;
@@ -124,6 +133,7 @@ export function validateEvent(v: EventFormValues): EventFormError[] {
     if (v.timeBegin && v.timeEnd && !isMultiDayValues(v) && v.timeEnd < v.timeBegin)
       errors.push({ field: "timeEnd", code: "timeEndBeforeStart" });
   }
+  if (v.note.length > NOTE_MAX) errors.push({ field: "note", code: "noteTooLong" });
   return errors;
 }
 
@@ -144,6 +154,8 @@ export interface EventPayload {
   propertyIds: string[];
   featureIds: string[];
   targetGroupIds: string[];
+  /** "" = no note. */
+  note: string;
   eventTemplateId?: string;
 }
 
@@ -164,6 +176,7 @@ export function toEventPayload(v: EventFormValues): EventPayload {
     propertyIds: v.propertyIds,
     featureIds: v.featureIds,
     targetGroupIds: v.targetGroupIds,
+    note: v.note,
   };
   if (v.eventTemplateId) payload.eventTemplateId = v.eventTemplateId;
   return payload;
@@ -183,6 +196,7 @@ export function isFormDirty(initial: EventFormValues, current: EventFormValues):
     (!current.isAllDay &&
       (initial.timeBegin !== current.timeBegin || initial.timeEnd !== current.timeEnd)) ||
     initial.status !== current.status ||
+    initial.note !== current.note ||
     initial.locationId !== current.locationId ||
     !sameSet(initial.propertyIds, current.propertyIds) ||
     !sameSet(initial.featureIds, current.featureIds) ||

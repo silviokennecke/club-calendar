@@ -146,6 +146,10 @@ operations), `docs/api/openapi.yaml` (API reference).
   behind the modal for screen readers). Pure logic in `src/lib/events/` (`form.ts` values/validation/payload,
   `list.ts` tabs/search/groups, `series.ts` series types, preview rows, rule text (`describeSeriesRule`) and the
   changed-fields diff for "all", `ics.ts` export query/selection + the one-event ICS writer `buildEventIcs` of the public event, `format.ts`), with Vitest tests.
+  Note (`note`, plain text, max `NOTE_MAX` = 2000, newlines kept, "" = none): `TextArea` in the event and template
+  forms (with a character counter in the hint), prefilled from the template (`valuesFromTemplate`, shown in the
+  "Termin aus Vorlage" step), shown read-only in `PublicEventModal` (`white-space: pre-line`, rendered as text, URLs
+  stay plain text), written first in the DESCRIPTION of `buildEventIcs`, filled from DESCRIPTION by the ICS import.
   Events of a series (`seriesId` in every event list) carry the tag "Wiederkehrend" (`Tag tone="brand"`) in
   `EventsTable` and `EventItem` (`CalItem.recurring`), not on the month chips; bulk actions treat them like any event.
   UI in `components/events/` (`EventsTable`, `LocationSection` + lazy `EventLocationMap`, `StatusSeg`,

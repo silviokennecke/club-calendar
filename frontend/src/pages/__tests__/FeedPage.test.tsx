@@ -535,6 +535,25 @@ describe("PublicEventModal", () => {
     expect(document.querySelector("img[src=x]")).toBeNull();
   });
 
+  it("shows the note as text with its line breaks, links stay plain text", async () => {
+    const note = "Bitte Hausschuhe mitbringen.\nInfos: https://example.org/<b>x</b>";
+    respond = feedApi({ events: [event({ id: "n1", name: "Fest", date: "2026-10-08", note })] });
+    renderAt("/feed/f1/events/n1");
+    await screen.findByRole("heading", { level: 1, name: "Fest" });
+    const region = screen.getByRole("region", { name: "Notiz" });
+    const p = region.querySelector("p")!;
+    expect(p.textContent).toBe(note);
+    expect(p).toHaveStyle({ whiteSpace: "pre-line" });
+    expect(p.querySelector("a, b")).toBeNull();
+  });
+
+  it("omits the note section without a note", async () => {
+    respond = feedApi({ events: [event({ id: "n2", name: "Fest", date: "2026-10-08" })] });
+    renderAt("/feed/f1/events/n2");
+    await screen.findByRole("heading", { level: 1, name: "Fest" });
+    expect(screen.queryByRole("region", { name: "Notiz" })).toBeNull();
+  });
+
   it("explains an unknown or unpublished event and leads back", async () => {
     respond = feedApi({ header: { visibility: "PRIVATE" } });
     renderAt(`/feed/f1/events/unbekannt?secret=${SECRET}`);

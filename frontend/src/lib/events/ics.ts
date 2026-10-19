@@ -176,6 +176,8 @@ export interface IcsEvent {
   isAllDay?: boolean;
   timezone?: string | null;
   isDraft?: boolean;
+  /** Plain-text note, written first in DESCRIPTION. */
+  note?: string | null;
   location?: Pick<
     Location,
     "name" | "street" | "zip" | "city" | "country" | "latitude" | "longitude"
@@ -226,6 +228,7 @@ function eventLines(ev: IcsEvent, opts: IcsOptions, stamp: string): string[] {
     }
   }
   const description = [
+    ev.note?.trim() ? ev.note.trim() : null,
     ev.features.length > 0
       ? `${opts.labels.features}: ${ev.features.map((f) => f.feature.name).join(", ")}`
       : null,

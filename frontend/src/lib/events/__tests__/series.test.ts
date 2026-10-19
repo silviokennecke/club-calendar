@@ -107,6 +107,7 @@ describe("changedEventFields", () => {
     propertyIds: ["a", "b"],
     featureIds: [],
     targetGroupIds: [],
+    note: "",
   };
 
   it("keeps only what the user changed (lists as sets)", () => {

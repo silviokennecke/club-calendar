@@ -151,6 +151,8 @@ export interface EventTemplate {
   targetGroups: { targetGroup: TargetGroup }[];
   /** Events created from this template (list and single GET). */
   eventCount?: number;
+  /** Plain-text note taken over by events created from the template (null = none). */
+  note?: string | null;
 }
 
 export interface CalendarEvent {
@@ -174,6 +176,8 @@ export interface CalendarEvent {
   seriesId?: string | null;
   /** Rule and size of the series; only in the single GET (`…/events/:id`). */
   series?: EventSeriesInfo | null;
+  /** Plain-text note, visible to everyone who sees the event (null = none). */
+  note?: string | null;
   properties: { property: Property }[];
   features: { feature: Feature }[];
   targetGroups: { targetGroup: TargetGroup }[];

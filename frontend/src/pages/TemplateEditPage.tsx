@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiDelete, apiErrorStatus, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { keepExisting, saveDroppingDeletedReferences } from "@/lib/staleReferences";
-import { locationName } from "@/lib/events";
+import { NOTE_MAX, locationName } from "@/lib/events";
 import {
   TIMEZONES,
   emptyTemplateValues,
@@ -29,6 +29,7 @@ import {
   LinkButton,
   NativeSelect,
   Skeleton,
+  TextArea,
   TextInput,
   Toggle,
   UnsavedChangesDialog,
@@ -45,6 +46,7 @@ const FIELD_IDS: Record<TemplateField, string> = {
   name: "tpl-name",
   timeBegin: "tpl-start",
   timeEnd: "tpl-end",
+  note: "tpl-note",
 };
 
 /**
@@ -351,6 +353,24 @@ function TemplateEditor({ template }: { template?: EventTemplate }) {
                   </option>
                 ))}
               </NativeSelect>
+            </Field>
+
+            <Field
+              id={FIELD_IDS.note}
+              label={t("templates.form.noteField")}
+              optional
+              hint={`${t("templates.form.noteFieldHint")} ${t("templates.form.noteCount", {
+                count: values.note.length,
+                max: NOTE_MAX,
+              })}`}
+              error={errorFor("note")}
+            >
+              <TextArea
+                rows={4}
+                value={values.note}
+                onChange={(e) => set("note", e.target.value)}
+                onBlur={blur("note")}
+              />
             </Field>
 
             <AssignmentFields

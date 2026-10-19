@@ -34,6 +34,8 @@ export interface ImportItem {
   timezone: string | null;
   /** Original LOCATION text of the file. */
   locationText: string;
+  /** Plain-text note from DESCRIPTION ("" = none). */
+  note: string;
   /** Set when the user picked a place; otherwise the place follows from `locationText`. */
   placeOverride: PlaceRef | null;
   /** Instance of an expanded recurrence of the file (imported as a single event). */
@@ -82,6 +84,7 @@ export function buildItems(parsed: ParsedIcsEvent[]): ImportItem[] {
       timeEnd: ev.timeEnd,
       timezone: ev.timezone,
       locationText: ev.locationText,
+      note: ev.note,
       placeOverride: null,
       recurring: ev.recurring,
       recurrenceKey: ev.recurrenceKey,
@@ -320,6 +323,8 @@ export interface ImportEventPayload {
   locationTempId?: string;
   /** UID of the ICS file (duplicate check of later imports). */
   externalUid: string | null;
+  /** "" = no note. */
+  note: string;
   propertyIds: string[];
   featureIds: string[];
   targetGroupIds: string[];
@@ -356,6 +361,7 @@ export function toImportPayload(item: ImportItem, locations: Location[]): Import
     locationId: place.kind === "existing" ? place.id : null,
     ...(place.kind === "new" ? { locationTempId: placeTempId(place.name) } : {}),
     externalUid: item.uid || null,
+    note: item.note,
     propertyIds: item.propertyIds,
     featureIds: item.featureIds,
     targetGroupIds: item.targetGroupIds,

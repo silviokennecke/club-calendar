@@ -3,12 +3,14 @@ import {
   emptyEventValues,
   isFormDirty,
   isMultiDayValues,
+  NOTE_MAX,
   toEventPayload,
   validateEvent,
   valuesFromEvent,
   valuesFromTemplate,
   type EventFormValues,
 } from "../form";
+import { changedEventFields } from "../series";
 import type { CalendarEvent, EventTemplate } from "@/lib/types";
 
 function values(partial: Partial<EventFormValues> = {}): EventFormValues {
@@ -71,6 +73,7 @@ describe("toEventPayload", () => {
       propertyIds: [],
       featureIds: [],
       targetGroupIds: [],
+      note: "",
     });
   });
 
@@ -132,6 +135,7 @@ describe("valuesFromEvent", () => {
       featureIds: ["f1"],
       targetGroupIds: ["g1"],
       eventTemplateId: null,
+      note: "",
     });
   });
 
@@ -172,6 +176,7 @@ describe("valuesFromTemplate", () => {
       featureIds: [],
       targetGroupIds: ["g2", "g3"],
       eventTemplateId: "t1",
+      note: "",
     });
   });
 
@@ -198,3 +203,62 @@ describe("isFormDirty", () => {
     expect(isFormDirty(allDay, { ...allDay, timeBegin: "08:00" })).toBe(false);
   });
 });
+
+describe("note", () => {
+  it("is optional, limited to 2000 characters", () => {
+    expect(codes(values({ note: "x".repeat(NOTE_MAX) }))).toEqual([]);
+    expect(codes(values({ note: "x".repeat(NOTE_MAX + 1) }))).toEqual(["note:noteTooLong"]);
+  });
+
+  it("goes into the payload unchanged (newlines kept), empty meaning no note", () => {
+    expect(toEventPayload(values({ note: "Zeile 1\nZeile 2" })).note).toBe("Zeile 1\nZeile 2");
+    expect(toEventPayload(values()).note).toBe("");
+  });
+
+  it("is read from an event and a template, null meaning empty", () => {
+    const ev = { ...baseEvent(), note: "Hinweis" } as CalendarEvent;
+    expect(valuesFromEvent(ev).note).toBe("Hinweis");
+    expect(valuesFromEvent({ ...ev, note: null }).note).toBe("");
+    const tpl = {
+      id: "t1",
+      calendarId: "k1",
+      name: "V",
+      timezone: null,
+      timeBegin: null,
+      timeEnd: null,
+      locationId: null,
+      location: null,
+      properties: [],
+      features: [],
+      targetGroups: [],
+      note: "Aus der Vorlage",
+    } satisfies EventTemplate;
+    expect(valuesFromTemplate(tpl, "2026-10-14").note).toBe("Aus der Vorlage");
+    expect(valuesFromTemplate({ ...tpl, note: undefined }).note).toBe("");
+  });
+
+  it("makes the form dirty and is a changed field for series scope all", () => {
+    const a = values();
+    const b = values({ note: "neu" });
+    expect(isFormDirty(a, b)).toBe(true);
+    expect(changedEventFields(toEventPayload(a), toEventPayload(b))).toEqual({ note: "neu" });
+  });
+});
+
+function baseEvent() {
+  return {
+    id: "e1",
+    calendarId: "k1",
+    name: "Training",
+    date: "2026-10-14",
+    timeBegin: "19:00:00",
+    timeEnd: "21:00:00",
+    timezone: null,
+    isDraft: false,
+    locationId: null,
+    location: null,
+    properties: [],
+    features: [],
+    targetGroups: [],
+  };
+}

@@ -145,3 +145,18 @@ describe("matchesTemplateQuery", () => {
     expect(matchesTemplateQuery(tpl, "jugend")).toBe(false);
   });
 });
+
+describe("template note", () => {
+  it("is read from the template, validated to 2000 characters and sent in the payload", () => {
+    expect(emptyTemplateValues().note).toBe("");
+    const v = valuesFromTemplateRecord({ ...tpl, note: "Hinweis\nZeile 2" }, null);
+    expect(v.note).toBe("Hinweis\nZeile 2");
+    expect(valuesFromTemplateRecord({ ...tpl, note: null }, null).note).toBe("");
+    expect(toTemplatePayload(v, null).note).toBe("Hinweis\nZeile 2");
+    expect(validateTemplate({ ...v, note: "x".repeat(2001) }).map((e) => e.code)).toEqual([
+      "noteTooLong",
+    ]);
+    expect(validateTemplate({ ...v, note: "x".repeat(2000) })).toEqual([]);
+    expect(isTemplateDirty(v, { ...v, note: "anders" })).toBe(true);
+  });
+});

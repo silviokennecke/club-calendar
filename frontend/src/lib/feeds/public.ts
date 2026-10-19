@@ -29,6 +29,7 @@ export interface PublicFeedEvent {
   isAllDay?: boolean;
   timezone?: string | null;
   isDraft?: boolean;
+  note?: string | null;
   location?: PublicFeedLocation | null;
   properties: { property: { id: string; name: string; icon: string | null } }[];
   features: { feature: { id: string; name: string } }[];
