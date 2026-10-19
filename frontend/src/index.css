@@ -1107,8 +1107,8 @@
     color: var(--brand);
   }
   /*
-   * Sliding indicator (CSS anchor positioning): one pill (::after) is anchored to the current item
-   * and glides to the hovered / focused one, then back. Items 1-5 get an anchor name; the active
+   * Indicator (CSS anchor positioning): one pill (::after) is anchored to the current item
+   * and jumps to the hovered / focused one (geometry is not animated, only opacity fades). Items 1-5 get an anchor name; the active
    * anchor is picked through the custom property --seg-a. Without anchor support the static
    * styles above stay in place.
    */
@@ -1140,7 +1140,7 @@
     .ap-seg > button {
       position: relative;
       z-index: 1;
-      transition: color 0.2s ease;
+      transition: color var(--dur-base) var(--ease-out);
     }
     .ap-seg > a:hover,
     .ap-seg > button:hover,
@@ -1163,14 +1163,8 @@
       border-radius: var(--radius-pill);
       background: var(--seg-bg);
       opacity: var(--seg-o);
-      transition:
-        top 0.3s cubic-bezier(0.3, 1.2, 0.4, 1),
-        right 0.3s cubic-bezier(0.3, 1.2, 0.4, 1),
-        bottom 0.3s cubic-bezier(0.3, 1.2, 0.4, 1),
-        left 0.3s cubic-bezier(0.3, 1.2, 0.4, 1),
-        background-color 0.2s ease,
-        border-color 0.2s ease,
-        opacity 0.2s ease;
+      /* Geometry (anchor offsets) changes instantly: only opacity is animated (compositor). */
+      transition: opacity var(--dur-base) var(--ease-out);
     }
     .ap-seg:has(> :nth-child(1):is([aria-current="page"], [aria-pressed="true"])) {
       --seg-a: --seg-1;
@@ -1301,7 +1295,7 @@
     color: var(--brand);
     border-bottom-color: var(--brand);
   }
-  /* Sliding underline for the tabs, same anchor technique as the segments (.ap-seg). */
+  /* Underline for the tabs, same anchor technique as the segments (.ap-seg). */
   @supports (anchor-name: --a) and (position-anchor: --a) {
     .ap-tabs {
       position: relative;
@@ -1330,9 +1324,7 @@
     }
     .ap-tabs > a,
     .ap-tabs > button {
-      transition:
-        color 0.2s ease,
-        background-color 0.2s ease;
+      transition: color var(--dur-base) var(--ease-out);
     }
     .ap-tabs > [aria-current="page"],
     .ap-tabs > [aria-selected="true"] {
@@ -1349,11 +1341,8 @@
       height: 3px;
       background: var(--tab-c);
       opacity: var(--tab-o);
-      transition:
-        left 0.3s cubic-bezier(0.3, 1.2, 0.4, 1),
-        right 0.3s cubic-bezier(0.3, 1.2, 0.4, 1),
-        background-color 0.2s ease,
-        opacity 0.2s ease;
+      /* Geometry changes instantly; only opacity is animated (compositor). */
+      transition: opacity var(--dur-base) var(--ease-out);
     }
     .ap-tabs:has(
       > :nth-child(1):is([aria-current="page"], [aria-selected="true"], [aria-pressed="true"])
@@ -1760,6 +1749,18 @@
     background: var(--skeleton);
     /* 3:1 outline (not animated, so the shape keeps its contrast while the fill pulses). */
     box-shadow: inset 0 0 0 1px var(--border-strong);
+    position: relative;
+  }
+  /* Pulse = opacity of an overlay (compositor), not a background-color animation. */
+  .ap-skel::after {
+    content: "";
+    position: absolute;
+    /* Inside the 1px outline, which must stay fully visible (3:1). */
+    inset: 1px;
+    border-radius: inherit;
+    background: var(--skeleton-pulse);
+    opacity: 0;
+    pointer-events: none;
     animation: ap-pulse 1.4s ease-in-out infinite;
   }
 
@@ -1813,16 +1814,12 @@
 }
 
 @keyframes ap-pulse {
-  0%,
-  100% {
-    background-color: var(--skeleton);
-  }
   50% {
-    background-color: var(--skeleton-pulse);
+    opacity: 1;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ap-skel {
+  .ap-skel::after {
     animation: none;
   }
 }
