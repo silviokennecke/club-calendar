@@ -115,7 +115,7 @@ info:
     - **422**: constraint violations of a request DTO (routes that map the body onto a DTO: register, login,
       resend-verification, forgot/reset password, change-password, change-email, create club, add member, create
       calendar, holiday calendar create/update), and well-formed values that conflict with stored state
-      (`searchable` on a feed that is not `PUBLIC`, a series rule without events, an e-mail change to the current
+      (a series rule without events, an e-mail change to the current
       address). Other 422 codes (`unknown_reference`, `duplicate_name`, `too_many_events`, `quota_exceeded`, `ics_fetch_failed`)
       are semantic as well.
 
@@ -126,12 +126,11 @@ info:
 
     | State | Access | Search engines |
     | --- | --- | --- |
-    | `PUBLIC` | by link, no secret (a sent secret is ignored) | indexable only with `searchable: true` (opt-in) |
+    | `PUBLIC` | by link, no secret (a sent secret is ignored) | indexable |
     | `CLUB` ("club-internal", **default** for new feeds) | by link, no secret | never indexed |
     | `PRIVATE` | only with `?secret=<sharedSecret>` (403 without or with a wrong one, checked first) | never indexed |
 
-    - `indexable` = `visibility == PUBLIC && searchable`. `searchable: true` with another (resulting) state is
-      `422 validation_failed` field `searchable`; leaving `PUBLIC` resets `searchable` to `false`.
+    - `indexable` = `visibility == PUBLIC`. There is no separate search engine setting.
     - Every response of `/api/feed/*` (errors included) carries `Referrer-Policy: no-referrer` and
       `X-Robots-Tag: noindex`, **except** successful responses of an indexable feed, which carry no
       `X-Robots-Tag`. The header is set by the backend only (web server configs add nothing).
@@ -2564,7 +2563,7 @@ paths:
       tags: [Feeds]
       summary: Update a feed
       description: >-
-        Leaving `PUBLIC` resets `searchable` to false (also when going back to `PUBLIC` later). Switching from
+        Switching from
         `PUBLIC`/`CLUB` to `PRIVATE` generates a new secret. `targetGroupIds` and `calendarIds` replace the selection when present (`calendarIds` must then be non-empty).
       operationId: updateFeed
       parameters:
@@ -2576,7 +2575,7 @@ paths:
             schema: { $ref: '#/components/schemas/FeedInput' }
       responses:
         '200':
-          description: The updated feed (effective `searchable` and `indexable`).
+          description: The updated feed (including `indexable`).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Feed' }
@@ -3076,7 +3075,7 @@ components:
       description: Always `no-referrer` on `/api/feed/*` (errors included).
       schema: { type: string, const: no-referrer }
     XRobotsTag:
-      description: '`noindex` unless the response is successful and the feed is indexable (`PUBLIC` + `searchable`); then absent.'
+      description: '`noindex` unless the response is successful and the feed is indexable (`PUBLIC`); then absent.'
       schema: { type: string, const: noindex }
 
   responses:
@@ -3180,7 +3179,7 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     FeedInputRejected:
-      description: '`validation_failed` field `searchable` (only `PUBLIC` feeds may be searchable) or `calendarIds` (empty), `unknown_reference` field `targetGroupIds` or `calendarIds` (not a calendar / target group of this club), `quota_exceeded` (`feedsPerClub`).'
+      description: '`validation_failed` field `calendarIds` (empty), `unknown_reference` field `targetGroupIds` or `calendarIds` (not a calendar / target group of this club), `quota_exceeded` (`feedsPerClub`).'
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
@@ -3306,7 +3305,7 @@ components:
 
         | Code | Status | Where |
         | --- | --- | --- |
-        | `validation_failed` | 400 / 422 | Input errors with `field`. **400** = malformed input (typed input checks): wrong JSON types (also `PATCH /api/auth/me`), date parameters `from`/`to` (events, holidays, public feed, export), any query parameter sent as an array, import `events[n].<field>`, export parameters, bulk, series rule `rule.*`, `scope`, feeds `visibility`, `searchable` no boolean, invalid time zone, location coordinates, template times as half a pair, `from-template` without `templateId`/`dates`. **422** = DTO constraints (register, login, password/e-mail routes, create club/calendar, invite member, invitation token, holiday calendars) and conflicts with stored state: series without events (field `rule`), `searchable` on a non-`PUBLIC` feed, e-mail change to the current address |
+        | `validation_failed` | 400 / 422 | Input errors with `field`. **400** = malformed input (typed input checks): wrong JSON types (also `PATCH /api/auth/me`), date parameters `from`/`to` (events, holidays, public feed, export), any query parameter sent as an array, import `events[n].<field>`, export parameters, bulk, series rule `rule.*`, `scope`, feeds `visibility`, invalid time zone, location coordinates, template times as half a pair, `from-template` without `templateId`/`dates`. **422** = DTO constraints (register, login, password/e-mail routes, create club/calendar, invite member, invitation token, holiday calendars) and conflicts with stored state: series without events (field `rule`), e-mail change to the current address |
         | `invalid_request` | 400 | Body is no JSON object; passkey body incomplete; any other 400 the framework rejects; Mapbox proxy with a host other than `api.mapbox.com` (field `domain`) |
         | `missing_token` | 401 | No access token on a route that needs a user (all of `/api/clubs`, `/api/calendars`, `/api/map/geocode/`, `/api/mapbox/` before the id is looked up) |
         | `invalid_token` | 401 | Access token malformed, wrongly signed, of an ended session or of a deleted user |
@@ -4017,15 +4016,14 @@ components:
       description: '`PUBLIC` and `CLUB` are reachable by link without the secret and differ only for search engines; `PRIVATE` requires the secret.'
     Feed:
       type: object
-      required: [id, clubId, calendarIds, name, visibility, searchable, indexable, targetGroups]
+      required: [id, clubId, calendarIds, name, visibility, indexable, targetGroups]
       properties:
         id: { type: string }
         clubId: { type: string }
         calendarIds: { type: array, items: { type: string }, description: 'Calendars of the club the feed publishes (at least one; archived ones contribute nothing while archived).' }
         name: { type: string }
         visibility: { $ref: '#/components/schemas/FeedVisibility' }
-        searchable: { type: boolean, description: Effective search engine opt-in (always false unless `PUBLIC`). }
-        indexable: { type: boolean, description: '`visibility == PUBLIC && searchable`.' }
+        indexable: { type: boolean, description: '`visibility == PUBLIC`.' }
         sharedSecret: { type: string, description: '32 hex characters; only `PRIVATE` feeds require it. Present only when the request sets `includeSecret` (omitted by default).' }
         targetGroups:
           type: array
@@ -4043,7 +4041,6 @@ components:
         visibility:
           allOf: [{ $ref: '#/components/schemas/FeedVisibility' }]
           description: 'Default `CLUB` on create. Invalid or empty → 400 `validation_failed` field `visibility`.'
-        searchable: { type: boolean, description: 'Only with (resulting) `PUBLIC`; else 422 field `searchable`. No boolean → 400.' }
         targetGroupIds: { $ref: '#/components/schemas/IdList' }
         calendarIds: { allOf: [{ $ref: '#/components/schemas/IdList' }], description: 'Required on create; optional on update but non-empty when sent. Every id must be a calendar of the club (422 `unknown_reference`; empty: 422 `validation_failed`).' }
     PublicFeedHeader:

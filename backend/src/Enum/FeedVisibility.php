@@ -6,8 +6,8 @@ namespace App\Enum;
 
 /**
  * Status of a feed. PUBLIC and CLUB work the same (web view, ICS and single events reachable by link
- * without the secret); they differ only in the instruction to search engines: only a PUBLIC feed with
- * `searchable` may be indexed (CalendarFeed::isIndexable()). PRIVATE requires the shared secret.
+ * without the secret); they differ only in the instruction to search engines: only a PUBLIC feed may be
+ * indexed (CalendarFeed::isIndexable()). PRIVATE requires the shared secret.
  */
 enum FeedVisibility: string
 {

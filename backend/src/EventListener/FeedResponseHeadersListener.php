@@ -16,7 +16,7 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * indexed. The web server sets only the Referrer-Policy for the SPA pages under `/feed/*`; their noindex
  * comes from a `<meta>` tag (from `feed.indexable` of the API).
  *
- * Whether a feed may be indexed (PUBLIC and `searchable`) is decided by PublicFeedService after the
+ * Whether a feed may be indexed (visibility PUBLIC) is decided by PublicFeedService after the
  * access checks; it stores the result in the request attribute INDEXABLE_ATTRIBUTE, so the feed is not
  * loaded twice. Without the attribute (unknown feed, 403/404, any error) the response is noindex.
  */

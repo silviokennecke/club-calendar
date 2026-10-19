@@ -90,7 +90,7 @@ $this->denyAccessUnlessGranted(ArchivedCalendarVoter::NOT_ARCHIVED, $calendar); 
 - PHP camelCase properties → snake_case DB columns (UnderscoreNamingStrategy)
 - All relations use cascade delete (carried over from the original Prisma schema)
 - Join table entities (e.g. `EventProperty`, `ClubUser`) use composite `#[ORM\Id]`
-- `FeedVisibility` is a PHP 8.1 backed enum mapped via `enumType` (VARCHAR column): `PUBLIC`, `CLUB` (default for new feeds), `PRIVATE`. `PUBLIC` and `CLUB` are reachable without the secret and differ only in indexing; `PRIVATE` requires the secret (`requiresSecret()`); switching from `PUBLIC`/`CLUB` to `PRIVATE` always generates a new secret (`FeedService::update()`). `CalendarFeed.searchable` (search engine opt-in) is only allowed for `PUBLIC` (`searchable: true` otherwise → 422 `validation_failed` field `searchable`; switching away from `PUBLIC` resets it); `isIndexable()` = `PUBLIC && searchable`. Feed responses carry `searchable` and `indexable`, the public feed header `visibility` and `indexable`
+- `FeedVisibility` is a PHP 8.1 backed enum mapped via `enumType` (VARCHAR column): `PUBLIC`, `CLUB` (default for new feeds), `PRIVATE`. `PUBLIC` and `CLUB` are reachable without the secret and differ only in indexing; `PRIVATE` requires the secret (`requiresSecret()`); switching from `PUBLIC`/`CLUB` to `PRIVATE` always generates a new secret (`FeedService::update()`). `isIndexable()` = `PUBLIC` (CLUB and PRIVATE are never indexed; no separate setting since `Version20261021120000`). Feed responses carry `indexable`, the public feed header `visibility` and `indexable`
 - **Entity IDs are always UUIDs** — use `#[ORM\Column(length: 36)]` with `Uuid::v7()->toRfc4122()` assigned in the constructor. Never use `#[ORM\GeneratedValue]` or `int` IDs. `getId()` returns `string`.
 - **Frontend types for entity IDs are always `string`** — never `number`
 
@@ -111,7 +111,7 @@ Run: `cd backend && composer test` (requires a MySQL test DB on port 3360). `TES
 - `Calendar::archivedAt` — null = active; set = archived and read-only
 - `POST /api/clubs/{clubId}/calendars/{calendarId}/archive` — sets `archivedAt`
 - `POST /api/clubs/{clubId}/calendars/{calendarId}/unarchive` — clears `archivedAt`
-- `POST /api/clubs/{clubId}/calendars/{calendarId}/duplicate` (201) — deep-copies calendar + properties/features/target-groups/locations/templates/feeds (new feed secrets, same visibility, `searchable` reset to false); events (and therefore event series) not copied; optional body `{name}` (default "Copy of …", the frontend sends the localized name)
+- `POST /api/clubs/{clubId}/calendars/{calendarId}/duplicate` (201) — deep-copies calendar + properties/features/target-groups/locations/templates/feeds (new feed secrets, same visibility); events (and therefore event series) not copied; optional body `{name}` (default "Copy of …", the frontend sends the localized name)
 - Calendar responses carry `eventCount`, `templateCount`, `feedCount`; club responses `calendarCount`, `archivedCalendarCount`, `memberCount` (single club also `eventCount`, `feedCount`); `GET /api/clubs` also the caller's `lastCalendarId` per club (`club_user.last_calendar_id`, set by `PATCH /api/auth/me`)
 - Event templates: `timezone`, `timeBegin`, `timeEnd` are optional (times only as a pair); without times in the template and in the request, `from-template` creates all-day events (`docs/api/openapi.yaml`)
 - Archived calendar public feeds → 404; nested write endpoints → 403 (via `ArchivedCalendarVoter`)
