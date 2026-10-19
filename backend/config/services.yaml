@@ -3,6 +3,10 @@ parameters:
     env(FRONTEND_URL): '%env(APP_URL)%'
     env(BACKEND_URL): '%env(APP_URL)%'
     env(TRUSTED_HOSTS): ''
+
+    env(LEGAL_DOCUMENTS_PATH): '%kernel.project_dir%/legal'
+    app.legal_documents_path: '%env(resolve:LEGAL_DOCUMENTS_PATH)%'
+
     env(WEBAUTHN_RP_ID): '%env(string:key:host:url:APP_URL)%'
     env(WEBAUTHN_RP_NAME): 'Club Calendar'
     env(WEBAUTHN_USER_VERIFICATION): 'preferred'
@@ -27,8 +31,6 @@ parameters:
     env(MAPBOX_PROXY_CACHE_TTL): '2592000' # 30 days
 
     env(MAPBOX_TOKEN): ''
-    env(LEGAL_DOCUMENTS_PATH): '%kernel.project_dir%/legal'
-    app.legal_documents_path: '%env(resolve:LEGAL_DOCUMENTS_PATH)%'
     map.image.zoom: 14
     map.image.width: 800
     map.image.height: 288

@@ -66,6 +66,7 @@ ENV APP_ENV=prod \
     CACHE_DIR=/data/cache \
     JWT_PRIVATE_KEY=/data/config/private.pem \
     JWT_PUBLIC_KEY=/data/config/public.pem \
+    LEGAL_DOCUMENTS_PATH=/data/legal \
     PORT=8080 \
     XDG_DATA_HOME=/tmp/caddy-data \
     XDG_CONFIG_HOME=/tmp/caddy-config
@@ -77,8 +78,8 @@ COPY --from=frontend-build --chown=www-data:www-data /build/backend/public/ ./pu
 COPY --from=frontend-build --chown=www-data:www-data /build/backend/templates/email/*.html.twig templates/email/
 
 # Create data and legal directories
-RUN mkdir -p /data/config /data/cache legal && \
-    chown -R www-data:www-data /data legal
+RUN mkdir -p /data/config /data/cache /data/legal && \
+    chown -R www-data:www-data /data
 VOLUME ["/data"]
 
 # Symfony runtime needs a .env; real configuration comes from environment variables.
