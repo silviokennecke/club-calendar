@@ -244,7 +244,10 @@ readonly class AuthService
             }
         }
 
-        return $this->tokens->tokenResponse($user, $family, $state['family_expires_at']);
+        // The family keeps the consent flag it started with; a token from before the claim existed gets it evaluated once.
+        $consentOk = is_bool($payload[TokenService::CONSENT_CLAIM] ?? null) ? $payload[TokenService::CONSENT_CLAIM] : null;
+
+        return $this->tokens->tokenResponse($user, $family, $state['family_expires_at'], $consentOk);
     }
 
     /**
@@ -271,7 +274,7 @@ readonly class AuthService
         $this->tokens->revokeAllRefreshTokens($user);
     }
 
-    public function getMe(User $user): array
+    public function getMe(User $user, bool $sessionConsentOk): array
     {
         // Reload with relations (ignore if entity is detached)
         try {
@@ -292,7 +295,7 @@ readonly class AuthService
             'language' => $user->getLanguage(),
             'hasPassword' => null !== $user->getPassword(),
             'pendingConsents' => LegalPresenter::pending($pending),
-            'consentRequired' => [] !== $pending,
+            'consentRequired' => !$sessionConsentOk && [] !== $pending,
             'pendingEmail' => $this->accounts->pendingEmail($user),
             'passkeys' => array_values($user->getPasskeys()->map(fn ($p) => [
                 'id' => $p->getId(),
@@ -307,7 +310,7 @@ readonly class AuthService
         ];
     }
 
-    public function updateMe(User $user, array $data): array
+    public function updateMe(User $user, array $data, bool $sessionConsentOk): array
     {
         if (array_key_exists('name', $data)) {
             $user->setName($data['name']);
@@ -330,7 +333,7 @@ readonly class AuthService
         }
         $this->em->flush();
 
-        return $this->getMe($user);
+        return $this->getMe($user, $sessionConsentOk);
     }
 
     /**

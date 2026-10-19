@@ -347,4 +347,139 @@ class ConsentTest extends WebTestCase
         $me = TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], 'Bearer '.$access);
         $this->assertTrue($me['body']['consentRequired']);
     }
+
+    // --- Sessions that were compliant at their start are not locked out by a document update ---
+
+    /** @return array{status: int, body: mixed} */
+    private function login(User $user): array
+    {
+        return TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', ['email' => $user->getEmail(), 'password' => 'password123']);
+    }
+
+    /** @return array{status: int, body: mixed} */
+    private function refreshWith(string $token): array
+    {
+        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'refresh_token', 'refresh_token' => $token]);
+
+        return ['status' => self::$client->getResponse()->getStatusCode(), 'body' => json_decode((string) self::$client->getResponse()->getContent(), true)];
+    }
+
+    private static function claims(string $jwt): array
+    {
+        return json_decode((string) base64_decode(explode('.', $jwt)[1]), true);
+    }
+
+    private function clubsStatus(string $access): int
+    {
+        return TestHelper::jsonRequest(self::$client, 'GET', '/api/clubs', [], 'Bearer '.$access)['status'];
+    }
+
+    public function testCompliantSessionSurvivesDocumentUpdateIncludingRefresh(): void
+    {
+        $user = $this->user();
+        $v1 = LegalTestHelper::publish(self::$em, LegalDocumentType::PRIVACY, 'v1', new \DateTimeImmutable('-2 days'));
+        self::$em->persist(new UserConsent($user, $v1, new \DateTimeImmutable(), null, null));
+        self::$em->flush();
+
+        $session = $this->login($user)['body'];
+        $this->assertTrue(self::claims($session['access_token'])['lc']);
+        $this->assertTrue(self::claims($session['refresh_token'])['lc']);
+
+        LegalTestHelper::publish(self::$em, LegalDocumentType::PRIVACY, 'v2');
+
+        $this->assertSame(200, $this->clubsStatus($session['access_token']), 'old access token keeps working');
+        $me = TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], 'Bearer '.$session['access_token']);
+        $this->assertCount(1, $me['body']['pendingConsents']);
+        $this->assertFalse($me['body']['consentRequired']);
+
+        $rotated = $this->refreshWith($session['refresh_token']);
+        $this->assertSame(200, $rotated['status']);
+        $this->assertTrue(self::claims($rotated['body']['access_token'])['lc'], 'rotation keeps the flag');
+        $this->assertTrue(self::claims($rotated['body']['refresh_token'])['lc']);
+        $this->assertSame(200, $this->clubsStatus($rotated['body']['access_token']));
+        $this->assertFalse(TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', ['name' => 'X'], 'Bearer '.$rotated['body']['access_token'])['body']['consentRequired']);
+
+        // A new sign-in starts a new session: gated.
+        $fresh = $this->login($user)['body'];
+        $this->assertFalse(self::claims($fresh['access_token'])['lc']);
+        $this->assertSame(403, $this->clubsStatus($fresh['access_token']));
+        $me = TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], 'Bearer '.$fresh['access_token']);
+        $this->assertTrue($me['body']['consentRequired']);
+    }
+
+    public function testNonCompliantSessionStaysGatedAcrossRefreshUntilConsent(): void
+    {
+        $user = $this->user();
+        $doc = LegalTestHelper::publish(self::$em, LegalDocumentType::PRIVACY);
+        $session = $this->login($user)['body'];
+        $this->assertFalse(self::claims($session['access_token'])['lc']);
+        $this->assertSame(403, $this->clubsStatus($session['access_token']));
+
+        $rotated = $this->refreshWith($session['refresh_token'])['body'];
+        $this->assertFalse(self::claims($rotated['refresh_token'])['lc']);
+        $this->assertSame(403, $this->clubsStatus($rotated['access_token']));
+
+        $given = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/consents', ['documentIds' => [$doc->getId()]], 'Bearer '.$rotated['access_token']);
+        $this->assertFalse($given['body']['consentRequired']);
+        $this->assertSame([], $given['body']['pendingConsents']);
+        $this->assertSame(200, $this->clubsStatus($rotated['access_token']), 'passes by the DB check after consent');
+    }
+
+    public function testPasswordChangeInCompliantSessionStaysUngated(): void
+    {
+        $user = $this->user();
+        $v1 = LegalTestHelper::publish(self::$em, LegalDocumentType::PRIVACY, 'v1', new \DateTimeImmutable('-2 days'));
+        self::$em->persist(new UserConsent($user, $v1, new \DateTimeImmutable(), null, null));
+        self::$em->flush();
+        $session = $this->login($user)['body'];
+        LegalTestHelper::publish(self::$em, LegalDocumentType::PRIVACY, 'v2');
+
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', ['currentPassword' => 'password123', 'newPassword' => 'password456'], 'Bearer '.$session['access_token']);
+        $this->assertSame(200, $r['status']);
+        $this->assertTrue(self::claims($r['body']['access_token'])['lc']);
+        $this->assertTrue(self::claims($r['body']['refresh_token'])['lc']);
+        $this->assertSame(200, $this->clubsStatus($r['body']['access_token']));
+    }
+
+    public function testPasswordChangeInGatedSessionStaysGated(): void
+    {
+        $user = $this->user();
+        $doc = LegalTestHelper::publish(self::$em, LegalDocumentType::PRIVACY);
+        $h = $this->auth($user);
+        // change-password is behind the gate; consent first via the allow-listed route is not wanted here, so only the claim is checked
+        $this->assertFalse(self::claims(substr($h, 7))['lc']);
+        $this->assertSame(403, TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', ['currentPassword' => 'password123', 'newPassword' => 'password456'], $h)['status']);
+        $this->assertNotNull($doc);
+    }
+
+    public function testPasskeyDeletionCarriesTheSessionFlag(): void
+    {
+        $user = $this->user();
+        $v1 = LegalTestHelper::publish(self::$em, LegalDocumentType::PRIVACY, 'v1', new \DateTimeImmutable('-2 days'));
+        self::$em->persist(new UserConsent($user, $v1, new \DateTimeImmutable(), null, null));
+        $passkey = (new \App\Entity\Passkey())->setId('pk-1')->setUser($user)->setCredentialId('cred-1')->setPublicKey('pk')->setCounter(0);
+        self::$em->persist($passkey);
+        self::$em->flush();
+        $session = $this->login($user)['body'];
+        LegalTestHelper::publish(self::$em, LegalDocumentType::PRIVACY, 'v2');
+
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/webauthn/'.$passkey->getId(), [], 'Bearer '.$session['access_token']);
+        $this->assertSame(200, $r['status']);
+        $this->assertTrue(self::claims($r['body']['access_token'])['lc']);
+    }
+
+    public function testLegacyRefreshTokenStartsSessionWithEvaluatedFlag(): void
+    {
+        $user = $this->user();
+        LegalTestHelper::publish(self::$em, LegalDocumentType::PRIVACY);
+        $secret = $_SERVER['JWT_REFRESH_SECRET'] ?? $_ENV['JWT_REFRESH_SECRET'] ?? getenv('JWT_REFRESH_SECRET');
+        $header = base64_encode((string) json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
+        $body = base64_encode((string) json_encode(['sub' => $user->getId(), 'exp' => time() + 3600, 'type' => 'refresh', 'uid' => $user->getId(), 'tv' => $user->getTokenVersion()]));
+        $legacy = "$header.$body.".base64_encode(hash_hmac('sha256', "$header.$body", (string) $secret, true));
+
+        $r = $this->refreshWith($legacy);
+        $this->assertSame(200, $r['status']);
+        $this->assertFalse(self::claims($r['body']['access_token'])['lc']);
+        $this->assertSame(403, $this->clubsStatus($r['body']['access_token']));
+    }
 }
