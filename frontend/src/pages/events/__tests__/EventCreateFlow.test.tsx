@@ -232,6 +232,27 @@ describe("event from template", () => {
     );
   }
 
+  it("closes the template dialog directly while nothing was changed", async () => {
+    const user = userEvent.setup();
+    renderSeries("?date=2026-10-15");
+    expect(await screen.findByText("Training Luftgewehr")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Schließen, nichts anlegen" }));
+    expect(await screen.findByTestId("location")).toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("asks before closing the template dialog with changes", async () => {
+    const user = userEvent.setup();
+    renderSeries("?date=2026-10-15");
+    await screen.findByText("Training Luftgewehr");
+    await user.click(screen.getByRole("button", { name: "Veröffentlicht" }));
+    await user.click(screen.getByRole("button", { name: "Schließen, nichts anlegen" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Änderungen verwerfen?");
+    await user.click(within(dialog).getByRole("button", { name: "Weiter bearbeiten" }));
+    expect(screen.queryByTestId("location")).toBeNull();
+  });
+
   it("creates a single event from the template", async () => {
     const user = userEvent.setup();
     renderSeries("?date=2026-10-15");

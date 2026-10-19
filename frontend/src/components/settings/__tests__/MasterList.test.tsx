@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import { MasterList } from "../MasterList";
 
@@ -32,7 +33,9 @@ function renderList(kind: "properties" | "features" | "audiences", readOnly = fa
   return render(
     <ThemeProvider>
       <QueryClientProvider client={client}>
-        <MasterList kind={kind} clubId="club1" calendarId="k1" readOnly={readOnly} />
+        <MemoryRouter>
+          <MasterList kind={kind} clubId="club1" calendarId="k1" readOnly={readOnly} />
+        </MemoryRouter>
       </QueryClientProvider>
     </ThemeProvider>,
   );
@@ -171,6 +174,9 @@ describe("MasterList", () => {
     const dialog = await screen.findByRole("dialog", { name: "Zusatzangebot bearbeiten" });
     await user.type(within(dialog).getByLabelText(/^Name/), "xyz");
     await user.keyboard("{Escape}");
+    // Typed text is unsaved: the discard question comes first.
+    const ask = await screen.findByRole("alertdialog");
+    await user.click(within(ask).getByRole("button", { name: "Änderungen verwerfen" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(apiPatch).not.toHaveBeenCalled();
     expect(screen.getByText("Wettkampf")).toBeInTheDocument();
@@ -186,6 +192,17 @@ describe("MasterList", () => {
     await user.click(within(dialog).getByRole("button", { name: "Abbrechen" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(apiPatch).not.toHaveBeenCalled();
+  });
+
+  it("closes the rename dialog directly when nothing was typed", async () => {
+    const user = userEvent.setup();
+    renderList("features");
+    await screen.findByRole("list");
+    await user.click(screen.getByRole("button", { name: "Wettkampf bearbeiten" }));
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 
   it("rejects a rename to an existing name with an error summary in the dialog", async () => {

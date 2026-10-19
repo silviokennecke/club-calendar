@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -26,6 +26,7 @@ import {
   Modal,
   StatusBadge,
   TextInput,
+  UnsavedChangesDialog,
   toast,
 } from "@/components/ui/shared";
 import { StatusSeg } from "@/components/events/StatusSeg";
@@ -36,6 +37,7 @@ import { createGate, gateTitle } from "@/components/events/createGateState";
 import { useSeriesPreview } from "@/components/events/useSeriesPreview";
 import { SeriesRuleFields } from "@/components/events/SeriesRuleFields";
 import { useModalNav } from "@/lib/useModalNav";
+import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import { eventSelector, focusAfterModalClose } from "@/lib/modalFocus";
 
 /**
@@ -52,6 +54,9 @@ export default function EventFromTemplateModal() {
   const { t } = useTranslation();
   const [params] = useSearchParams();
   const gate = createGate(page);
+  // The form state lives in SeriesForm, which reports whether it differs from its defaults.
+  const [dirty, setDirty] = useState(false);
+  const unsaved = useUnsavedChanges(dirty);
 
   const templates = useQuery<EventTemplate[]>({
     queryKey: ["templates", page.calendarId],
@@ -84,6 +89,8 @@ export default function EventFromTemplateModal() {
         key={template.id}
         template={template}
         presetDate={isValidIso(preset) ? preset : null}
+        onDirtyChange={setDirty}
+        allow={unsaved.allow}
       />
     );
   }
@@ -95,9 +102,10 @@ export default function EventFromTemplateModal() {
       title={gateTitle(gate, t, t("events.series.title"))}
       subtitle={gate ? undefined : t("events.series.subtitle")}
       closeLabel={t("events.series.close")}
-      onClose={nav.close}
+      onClose={() => unsaved.guard(nav.close)}
     >
       {body}
+      <UnsavedChangesDialog {...unsaved.dialog} />
     </Modal>
   );
 }
@@ -120,9 +128,13 @@ function StepHeading({ n, id, children }: { n: number; id: string; children: Rea
 function SeriesForm({
   template,
   presetDate,
+  onDirtyChange,
+  allow,
 }: {
   template: EventTemplate;
   presetDate: string | null;
+  onDirtyChange: (dirty: boolean) => void;
+  allow: () => void;
 }) {
   const page = useEventPage();
   const nav = useModalNav();
@@ -133,14 +145,15 @@ function SeriesForm({
   const start = presetDate ?? page.today;
   const [mode, setMode] = useState<"single" | "series">("single");
   const [date, setDate] = useState<string>(start);
-  const [ruleForm, setRuleForm] = useState<SeriesFormRule>({
+  const [initialRule] = useState<SeriesFormRule>(() => ({
     rhythm: "weekly",
     nth: 1,
     weekday: dayOfWeek(start),
     from: start,
     to: addDays(start, 8 * 7),
     skipHolidays: true,
-  });
+  }));
+  const [ruleForm, setRuleForm] = useState<SeriesFormRule>(initialRule);
   const skip = ruleForm.skipHolidays;
   const [status, setStatus] = useState<EventStatus>("draft");
   const [saving, setSaving] = useState(false);
@@ -149,6 +162,15 @@ function SeriesForm({
   const [dateError, setDateError] = useState(false);
 
   const series = mode === "series";
+  const dirty =
+    mode !== "single" ||
+    date !== start ||
+    status !== "draft" ||
+    JSON.stringify(ruleForm) !== JSON.stringify(initialRule);
+  useEffect(() => {
+    onDirtyChange(dirty);
+    return () => onDirtyChange(false);
+  }, [dirty, onDirtyChange]);
   const rule = toSeriesRule(ruleForm);
   const preview = useSeriesPreview(page.calendarId, rule, series);
   const tooMany = preview.error instanceof ApiError && preview.error.code === "too_many_events";
@@ -211,6 +233,7 @@ function SeriesForm({
       toast.success(t("events.series.created"));
       const first = Array.isArray(created) ? created[0]?.id : undefined;
       focusAfterModalClose(first ? eventSelector(first) : null);
+      allow();
       nav.close();
     } catch {
       setFailed(t("events.series.failed"));
@@ -233,6 +256,7 @@ function SeriesForm({
       toast.success(t("events.series.createdSeries", { count }));
       const first = created.events[0]?.id;
       focusAfterModalClose(first ? eventSelector(first) : null);
+      allow();
       nav.close();
     } catch (err) {
       const message =

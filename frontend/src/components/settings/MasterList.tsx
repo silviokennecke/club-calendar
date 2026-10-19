@@ -14,11 +14,13 @@ import {
   Skeleton,
   Tag,
   TextInput,
+  UnsavedChangesDialog,
   toast,
   type Glyph,
 } from "@/components/ui/shared";
 import { audienceTone } from "@/components/calendar/eventDisplay";
 import { apiDelete, apiGet, apiPatch, apiPost, isDuplicateNameError } from "@/lib/api";
+import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import {
   MASTER_KINDS,
   masterConsequence,
@@ -82,6 +84,12 @@ export function MasterList({ kind, clubId, calendarId, readOnly }: MasterListPro
   const [editSignal, setEditSignal] = useState(0);
   const [saving, setSaving] = useState(false);
   const [editFailed, setEditFailed] = useState(false);
+  // Dirty-only guards for the inline add form and the edit dialog (separate: cancelling the
+  // dialog must not ask about a half-typed new entry and vice versa).
+  const addGuard = useUnsavedChanges(!readOnly && (draft.trim() !== "" || draftIcon !== ""));
+  const editGuard = useUnsavedChanges(
+    !!editing && (editName !== editing.name || editIcon !== (editing.icon ?? "")),
+  );
 
   // Delete: the consequences come from the list's `usage` (counted by the backend), refreshed when the
   // dialog opens so that events created meanwhile are counted.
@@ -338,14 +346,18 @@ export function MasterList({ kind, clubId, calendarId, readOnly }: MasterListPro
       {editing && (
         <FormDialog
           open
-          onOpenChange={(open) => !open && stopEdit()}
+          onOpenChange={(open) => !open && editGuard.guard(stopEdit)}
           title={tk("editTitle")}
           description={tk("editText", { name: editing.name })}
           onSubmit={() => void submitEdit()}
           finalFocus={() => document.getElementById(`ml-edit-btn-${editing.id}`)}
           actions={
             <>
-              <Button variant="secondary" onClick={stopEdit} disabled={saving}>
+              <Button
+                variant="secondary"
+                onClick={() => editGuard.guard(stopEdit)}
+                disabled={saving}
+              >
                 {t("common.cancel")}
               </Button>
               <Button type="submit" loading={saving}>
@@ -387,6 +399,8 @@ export function MasterList({ kind, clubId, calendarId, readOnly }: MasterListPro
           )}
         </FormDialog>
       )}
+      <UnsavedChangesDialog {...editGuard.dialog} />
+      <UnsavedChangesDialog {...addGuard.dialog} />
 
       {deleting && (
         <ConfirmDialog

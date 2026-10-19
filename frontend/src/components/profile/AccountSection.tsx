@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trans, useTranslation } from "react-i18next";
-import { Banner, Button, Field, PasswordField, TextInput, toast } from "@/components/ui/shared";
+import {
+  Banner,
+  Button,
+  Field,
+  PasswordField,
+  TextInput,
+  UnsavedChangesDialog,
+  toast,
+} from "@/components/ui/shared";
 import { ApiError, apiDelete, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { focusFirstInvalid } from "@/lib/focus";
+import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import type { ProfileData } from "./profileTypes";
 
 const NAME_MAX = 255;
@@ -28,6 +37,7 @@ export function AccountSection({ profile }: { profile: ProfileData }) {
   const [emailErrors, setEmailErrors] = useState<{ email?: string; password?: string }>({});
   const [emailFailed, setEmailFailed] = useState(false);
   const [sending, setSending] = useState(false);
+  const unsaved = useUnsavedChanges(name !== profile.name || email !== "" || password !== "");
 
   // A failed submit (client check or server answer) moves focus to the first invalid field.
   const nameForm = useRef<HTMLFormElement>(null);
@@ -194,6 +204,7 @@ export function AccountSection({ profile }: { profile: ProfileData }) {
           )}
         </form>
       </div>
+      <UnsavedChangesDialog {...unsaved.dialog} />
     </section>
   );
 }

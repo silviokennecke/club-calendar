@@ -1,10 +1,18 @@
 import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Button, ErrorSummary, Field, TextInput, toast } from "@/components/ui/shared";
+import {
+  Button,
+  ErrorSummary,
+  Field,
+  TextInput,
+  UnsavedChangesDialog,
+  toast,
+} from "@/components/ui/shared";
 import { apiPatch } from "@/lib/api";
 import { isBlank } from "@/lib/club";
 import { permissionsFor } from "@/lib/club/permissions";
+import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import type { Club } from "@/lib/types";
 
 /** "Vereinsname" panel (design: Club): one field, Enter or the button saves. */
@@ -17,6 +25,7 @@ export function ClubNameSection({ club }: { club: Club }) {
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const value = draft ?? club.name;
+  const unsaved = useUnsavedChanges(draft !== null && draft !== club.name);
   // Renaming the club is admin-only.
   const { isAdmin } = permissionsFor(club.role);
 
@@ -97,6 +106,7 @@ export function ClubNameSection({ club }: { club: Club }) {
           )}
         </div>
       </form>
+      <UnsavedChangesDialog {...unsaved.dialog} />
     </section>
   );
 }
