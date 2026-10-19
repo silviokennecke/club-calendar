@@ -2150,6 +2150,9 @@
       "button": "Akzeptieren und fortfahren"
     },
     "accepting": "Wird gespeichert",
+    "deleteAccount": "Stattdessen mein Konto löschen",
+    "showHistory": "Meine Zustimmungshistorie anzeigen",
+    "deleteHint": "Um den Verein zu löschen oder zu übergeben, akzeptiere zuerst die Dokumente. Alternativ kann das auch ein anderer Admin des Vereins tun.",
     "signOut": "Abmelden",
     "required": {
       "privacy": "Bitte akzeptiere die Datenschutzerklärung.",

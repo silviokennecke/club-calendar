@@ -20,7 +20,11 @@ interface DeleteAccountDialogProps {
   email: string;
   /** Called after the account was deleted (sign out, leave the page). */
   onDeleted: () => void;
+  /** Extra sentence under the last-member / last-admin errors (e.g. the consent gate: accept first). */
+  blockedHint?: string;
 }
+
+const joinHint = (text: string, hint?: string) => (hint ? `${text} ${hint}` : text);
 
 const CODE_ID = "pr-del-code";
 
@@ -35,6 +39,7 @@ export function DeleteAccountDialog({
   hasPassword,
   email,
   onDeleted,
+  blockedHint,
 }: DeleteAccountDialogProps) {
   const { t } = useTranslation();
   const [password, setPassword] = useState("");
@@ -99,8 +104,9 @@ export function DeleteAccountDialog({
         setFieldError(t("profile.danger.wrongCode"));
       else if (errorCode === "rate_limited") setFailure(t("profile.danger.rateLimited"));
       else if (errorCode === "last_member_of_club")
-        setFailure(t("profile.danger.lastMemberOfClub"));
-      else if (errorCode === "last_admin_of_club") setFailure(t("profile.danger.lastAdminOfClub"));
+        setFailure(joinHint(t("profile.danger.lastMemberOfClub"), blockedHint));
+      else if (errorCode === "last_admin_of_club")
+        setFailure(joinHint(t("profile.danger.lastAdminOfClub"), blockedHint));
       else setFailure(t("profile.danger.failed"));
       setBusy(false);
       return;

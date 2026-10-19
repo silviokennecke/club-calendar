@@ -130,7 +130,7 @@ operations), `docs/api/openapi.yaml` (API reference).
   stay while the steps swap.
 - Legal documents: `lib/legal/index.ts` (`useLegalOverview` = `GET /api/legal`, `useLegalDocument(type)`, `useLegalVersion(id)`),
   `components/legal/LegalDocumentView` (backend HTML in `.legal-prose`, loading / 404 "not provided" states) and
-  `ConsentCheckboxes` (signup, consent page) and `LegalLinks` (footer of `AuthLayout` and `PublicShell`; missing type = muted `aria-disabled` text). `/imprint`,
+  `ConsentCheckboxes` (signup, consent page), `ConsentHistoryList` (profile and the consent page's history modal; the gate also offers `DeleteAccountDialog`) and `LegalLinks` (footer of `AuthLayout` and `PublicShell`; missing type = muted `aria-disabled` text). `/imprint`,
   `/privacy`, `/terms` are a routed modal (`pages/LegalModal`) only with a stored `background` (`openModalState`),
   else the standalone `pages/LegalPage`. Texts: `legal.*`. The test setup mocks `LegalLinks` (needs router + query client).
 - Events (create / edit are routed dialogs; URL helpers in `components/events/routes.ts`):

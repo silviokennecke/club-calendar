@@ -11,6 +11,7 @@ const apiGet = vi.fn();
 vi.mock("@/lib/api", () => ({
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiGet: (...a: unknown[]) => apiGet(...a),
+  apiDelete: vi.fn(),
   apiErrorCode: (e: unknown) => (e as { code?: string }).code,
 }));
 
@@ -78,6 +79,36 @@ describe("ConsentPage", () => {
     await waitFor(() => expect(setUser).toHaveBeenCalledWith(fresh));
     expect(apiGet).toHaveBeenCalledWith("/api/auth/me");
     expect(await screen.findByText(/aktualisiert/)).toBeInTheDocument();
+  });
+
+  it("opens the delete account dialog with the password field", async () => {
+    apiGet.mockResolvedValue({ id: "u", email: "a@b.de", hasPassword: true });
+    renderPage();
+    await userEvent.setup().click(screen.getByRole("button", { name: /Konto löschen/ }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(apiGet).toHaveBeenCalledWith("/api/auth/me");
+    expect(await screen.findByLabelText(/Zur Bestätigung dein Passwort/)).toBeInTheDocument();
+  });
+
+  it("opens the consent history modal and loads the list", async () => {
+    apiGet.mockResolvedValue([
+      {
+        id: "r1",
+        type: "privacy",
+        documentId: "d1",
+        documentTitle: null,
+        documentPublishedAt: "2026-01-01T00:00:00Z",
+        consentedAt: "2026-01-02T10:00:00Z",
+        current: false,
+        ipAddress: null,
+        userAgent: null,
+      },
+    ]);
+    renderPage();
+    await userEvent.setup().click(screen.getByRole("button", { name: /Zustimmungshistorie/ }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByText("Datenschutzerklärung")).toBeInTheDocument();
+    expect(apiGet).toHaveBeenCalledWith("/api/auth/consents");
   });
 
   it("signs out", async () => {

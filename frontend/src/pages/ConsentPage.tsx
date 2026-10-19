@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { legalKeys } from "@/lib/legal";
 import { apiGet, apiPost, apiErrorCode } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -8,6 +9,9 @@ import type { User } from "@/lib/types";
 import { Banner, Button } from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { ConsentCheckboxes } from "@/components/legal/ConsentCheckboxes";
+import { ConsentHistoryDialog } from "@/components/legal/ConsentHistoryList";
+import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
+import type { ProfileData } from "@/components/profile/profileTypes";
 
 /**
  * Consent gate (rendered by ProtectedRoute while `user.consentRequired`): the user accepts the current
@@ -22,6 +26,20 @@ export default function ConsentPage() {
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const [problem, setProblem] = useState<"generic" | "outdated" | null>(null);
   const [busy, setBusy] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const navigate = useNavigate();
+  // the kind of deletion proof (password or mailed code) comes from /me, which the gate allows
+  const profile = useQuery<ProfileData>({
+    queryKey: ["profile"],
+    queryFn: () => apiGet<ProfileData>("/api/auth/me"),
+    enabled: deleteOpen,
+  });
+
+  function accountDeleted() {
+    logout();
+    navigate("/login", { replace: true });
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -91,7 +109,36 @@ export default function ConsentPage() {
         <Button type="button" block variant="ghost" disabled={busy} onClick={logout}>
           {t("consent.signOut")}
         </Button>
+        <Button
+          type="button"
+          block
+          variant="ghost"
+          icon="clock"
+          disabled={busy}
+          onClick={() => setHistoryOpen(true)}
+        >
+          {t("consent.showHistory")}
+        </Button>
+        <Button
+          type="button"
+          block
+          variant="ghost-danger"
+          icon="trash"
+          disabled={busy}
+          onClick={() => setDeleteOpen(true)}
+        >
+          {t("consent.deleteAccount")}
+        </Button>
       </form>
+      {historyOpen && <ConsentHistoryDialog onClose={() => setHistoryOpen(false)} />}
+      <DeleteAccountDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        hasPassword={profile.data?.hasPassword}
+        email={profile.data?.email ?? user?.email ?? ""}
+        onDeleted={accountDeleted}
+        blockedHint={t("consent.deleteHint")}
+      />
     </AuthLayout>
   );
 }

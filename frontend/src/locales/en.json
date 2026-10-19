@@ -2150,6 +2150,9 @@
       "button": "Accept and continue"
     },
     "accepting": "Saving",
+    "deleteAccount": "Delete my account instead",
+    "showHistory": "Show my consent history",
+    "deleteHint": "To delete or hand over the club, accept the documents first. Alternatively, another admin of the club can do it.",
     "signOut": "Sign out",
     "required": {
       "privacy": "Please accept the privacy policy.",
