@@ -65,6 +65,12 @@ info:
       wrong signature, ended session, user gone) or `token_expired`; the sign-in routes themselves answer
       `invalid_credentials` (login), `invalid_refresh_token` (`POST /api/auth/token`) or `invalid_passkey`.
       Clients may refresh on any 401 of a request that carried an access token.
+    - **Consent gate**: a signed-in user who has not consented to the current privacy policy / terms of use
+      (see `GET /api/legal`, `pendingConsents` of `GET /api/auth/me`) gets `403 consent_required` (+ `documents`)
+      on every `/api/*` route except `GET|DELETE /api/auth/me`, `GET|POST /api/auth/consents`, `/api/legal*`,
+      `POST /api/auth/logout`, `/logout-all`, `/token`, `/delete-account/code`, `GET /api/auth/providers`,
+      `GET /api/health` and `/api/feed/*`. Sign-in still returns tokens. Without any provided consent document
+      nobody is gated.
     - Every route under `/api/clubs`, `/api/calendars`, `/api/invitations`, `/api/map/geocode/` and `/api/mapbox/` needs a signed-in user before the
       id in the path is looked up: without a token it is `401 missing_token` (never 403 or 404, so ids cannot be
       probed). 403 means signed in but not allowed (no member, archived calendar).
@@ -213,6 +219,8 @@ tags:
     description: Liveness check.
   - name: Auth
     description: Registration, sign-in, tokens, account.
+  - name: Legal
+    description: Imprint, privacy policy and terms of use (public) and the users' consents.
   - name: Passkeys
     description: WebAuthn registration and sign-in.
   - name: SSO
@@ -269,6 +277,61 @@ paths:
                 properties:
                   status: { type: string, const: ok }
 
+  # ------------------------------------------------------------------ Legal
+  /api/legal:
+    get:
+      tags: [Legal]
+      summary: Current legal documents
+      description: >-
+        The current version of each document (`null` = not provided). `Cache-Control: public, max-age=60`.
+      operationId: listLegal
+      security: []
+      responses:
+        '200':
+          description: One entry per document type.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [imprint, privacy, terms]
+                properties:
+                  imprint: { oneOf: [{ $ref: '#/components/schemas/LegalDocumentSummary' }, { type: 'null' }] }
+                  privacy: { oneOf: [{ $ref: '#/components/schemas/LegalDocumentSummary' }, { type: 'null' }] }
+                  terms: { oneOf: [{ $ref: '#/components/schemas/LegalDocumentSummary' }, { type: 'null' }] }
+
+  /api/legal/{type}:
+    get:
+      tags: [Legal]
+      summary: Current document of a type
+      operationId: getLegalDocument
+      security: []
+      parameters:
+        - { name: type, in: path, required: true, schema: { type: string, enum: [imprint, privacy, terms] } }
+      responses:
+        '200':
+          description: The current document (HTML rendered from Markdown by the server).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LegalDocument' }
+        '404': { $ref: '#/components/responses/LegalDocumentNotFound' }
+
+  /api/legal/documents/{id}:
+    get:
+      tags: [Legal]
+      summary: Any version of a document
+      description: Also retired and superseded versions (needed to show what a user consented to). Public.
+      operationId: getLegalDocumentVersion
+      security: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The document version.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LegalDocument' }
+        '404': { $ref: '#/components/responses/LegalDocumentNotFound' }
+
   # ------------------------------------------------------------------ Auth
   /api/auth/register:
     post:
@@ -291,6 +354,13 @@ paths:
                 email: { type: string, format: email, maxLength: 254 }
                 password: { $ref: '#/components/schemas/Password' }
                 language: { type: [string, 'null'], examples: [de] }
+                acceptedDocuments:
+                  type: array
+                  maxItems: 20
+                  items: { type: string, maxLength: 36 }
+                  description: >-
+                    Ids of the accepted legal documents. The current document of every consent type that is provided
+                    (privacy, terms) must be in the list. Stored as consents with IP address and user agent.
       responses:
         '201':
           description: Account created, confirmation code mailed.
@@ -303,11 +373,20 @@ paths:
                   verificationRequired: { type: boolean, const: true }
                   email: { type: string, format: email }
         '400':
-          description: '`email_taken` (field `email`) or `invalid_request` (no JSON object).'
+          description: >-
+            `email_taken` (field `email`), `invalid_request` (no JSON object) or `validation_failed` (field
+            `acceptedDocuments`: unknown id, not a list, more than 20).
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
-        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '422':
+          description: >-
+            `validation_failed`, or (checked before `email_taken`) `consent_required` (a current document is missing)
+            / `consent_outdated` (an older version of a document was sent), field `acceptedDocuments`, member
+            `documents` = the current documents to accept.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/auth/login:
@@ -654,6 +733,52 @@ paths:
         '204': { description: All sessions ended. }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /api/auth/consents:
+    get:
+      tags: [Legal]
+      summary: Own consent history
+      description: >-
+        All consents of the signed-in user, newest first. IP address and user agent are included (the user's own data).
+      operationId: listConsents
+      responses:
+        '200':
+          description: The consents.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Consent' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Legal]
+      summary: Give consent
+      description: >-
+        Records one consent per document id (with IP address and user agent). Every id must be a CURRENT privacy or
+        terms document; ids already consented to are ignored (no duplicate).
+      operationId: giveConsents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [documentIds]
+              properties:
+                documentIds: { type: array, minItems: 1, maxItems: 20, items: { type: string, maxLength: 36 } }
+      responses:
+        '200':
+          description: The updated user (`pendingConsents`, `consentRequired`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422':
+          description: '`consent_outdated`: an id is not a current consent document; `documents` = the current documents still pending.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
   /api/auth/me:
     get:
       tags: [Auth]
@@ -661,7 +786,7 @@ paths:
       operationId: getMe
       responses:
         '200':
-          description: Profile, sign-in methods and preferences.
+          description: Profile, sign-in methods, preferences and pending consents.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Me' }
@@ -3113,6 +3238,11 @@ components:
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
+    LegalDocumentNotFound:
+      description: '`legal_document_not_found`: the type is not provided / unknown, or the id is unknown.'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
     Forbidden:
       description: Signed in, but not a member of the club / the calendar's club (no `code`).
       content:
@@ -3288,6 +3418,15 @@ components:
         detail: { type: string, description: Human-readable; not a contract. }
         code: { $ref: '#/components/schemas/ErrorCode' }
         retryAt: { type: string, format: date-time, description: 'Only `verification_resend_too_early`.' }
+        documents:
+          type: array
+          description: 'Only `consent_required` / `consent_outdated`: the current documents to consent to.'
+          items:
+            type: object
+            required: [type, id]
+            properties:
+              type: { type: string, enum: [privacy, terms] }
+              id: { type: string }
         email: { type: string, description: 'Only `email_not_verified`.' }
         resource: { type: string, description: 'Only `quota_exceeded`: the quota that is used up.' }
         limit: { type: integer, description: 'Only `quota_exceeded`: its limit.' }
@@ -3313,6 +3452,9 @@ components:
         | `missing_token` | 401 | No access token on a route that needs a user (all of `/api/clubs`, `/api/calendars`, `/api/map/geocode/`, `/api/mapbox/` before the id is looked up) |
         | `invalid_token` | 401 | Access token malformed, wrongly signed, of an ended session or of a deleted user |
         | `token_expired` | 401 | Access token expired (refresh it) |
+        | `consent_required` | 403 / 422 | **403** on any gated `/api/*` route (see the consent gate in the overview): the user has not consented to the current privacy policy / terms; member `documents` = `[{type, id}]`. **422** `POST /api/auth/register`: a current document is missing in `acceptedDocuments` (field `acceptedDocuments`, `documents` = the missing ones) |
+        | `consent_outdated` | 422 | `POST /api/auth/register` (field `acceptedDocuments`) or `POST /api/auth/consents`: an older version / a non-consent document was sent; `documents` = the current documents to accept (the client reloads `GET /api/legal`) |
+        | `legal_document_not_found` | 404 | `GET /api/legal/{type}` (not provided, unknown type) and `GET /api/legal/documents/{id}` |
         | `member_not_found` | 404 | `DELETE /api/clubs/{clubId}/members/{userId}`: no member of the club (unknown ids alike) |
         | `last_member` | 422 | `DELETE /api/clubs/{clubId}/members/{userId}`: the user is the only member of the club (also when leaving it); a club never has zero members |
         | `last_member_of_club` | 422 | `DELETE /api/auth/me`: the user is the only member of at least one club; delete the club first |
@@ -3390,6 +3532,9 @@ components:
         - missing_token
         - invalid_token
         - token_expired
+        - consent_required
+        - consent_outdated
+        - legal_document_not_found
         - member_not_found
         - last_member
         - last_member_of_club
@@ -3455,13 +3600,54 @@ components:
         expires_in: { type: integer, const: 900 }
         refresh_token: { type: string, description: 'Single-use, 7 days (never past the session''s absolute end); exchange at `POST /api/auth/token`, which rotates it.' }
         user: { $ref: '#/components/schemas/UserSummary' }
+    LegalDocumentSummary:
+      type: object
+      required: [id, title, publishedAt]
+      properties:
+        id: { type: string, description: 'UUID of this version (changes with every new text).' }
+        title: { type: [string, 'null'], description: First `# ` heading of the Markdown source. }
+        publishedAt: { type: string, format: date-time }
+    LegalDocument:
+      type: object
+      required: [id, type, title, html, publishedAt]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [imprint, privacy, terms] }
+        title: { type: [string, 'null'] }
+        html: { type: string, description: 'Sanitised HTML (raw HTML of the source is escaped, unsafe links removed).' }
+        publishedAt: { type: string, format: date-time }
+    Consent:
+      type: object
+      required: [id, type, documentId, documentTitle, documentPublishedAt, consentedAt, current, ipAddress, userAgent]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [privacy, terms] }
+        documentId: { type: string, description: 'Version consented to; readable at `GET /api/legal/documents/{id}`.' }
+        documentTitle: { type: [string, 'null'] }
+        documentPublishedAt: { type: string, format: date-time }
+        consentedAt: { type: string, format: date-time }
+        current: { type: boolean, description: 'The document is still the current one of its type.' }
+        ipAddress: { type: [string, 'null'] }
+        userAgent: { type: [string, 'null'] }
     Me:
       allOf:
         - { $ref: '#/components/schemas/UserSummary' }
         - type: object
-          required: [hasPassword, pendingEmail, passkeys, oauthAccounts]
+          required: [hasPassword, pendingConsents, consentRequired, pendingEmail, passkeys, oauthAccounts]
           properties:
             hasPassword: { type: boolean }
+            pendingConsents:
+              type: array
+              description: Current privacy / terms documents the user has not consented to yet.
+              items:
+                type: object
+                required: [type, id, title, publishedAt]
+                properties:
+                  type: { type: string, enum: [privacy, terms] }
+                  id: { type: string }
+                  title: { type: [string, 'null'] }
+                  publishedAt: { type: string, format: date-time }
+            consentRequired: { type: boolean, description: 'True while `pendingConsents` is not empty: the consent gate blocks the API.' }
             pendingEmail: { type: [string, 'null'], description: New address of a waiting e-mail change. }
             passkeys:
               type: array
