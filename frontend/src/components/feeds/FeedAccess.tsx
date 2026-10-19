@@ -33,6 +33,14 @@ export function FeedAccess({ feed, addresses, withSecret }: FeedAccessProps) {
         </>
       )}
       <CopyField
+        id={`${id}-web`}
+        label={t("feeds.access.web")}
+        value={addresses.web}
+        openLabel={t("feeds.access.webOpen")}
+        openHref={addresses.web}
+        hint={t("feeds.access.webHint")}
+      />
+      <CopyField
         id={`${id}-ics`}
         label={t("feeds.access.ics")}
         value={addresses.ics}
@@ -45,14 +53,6 @@ export function FeedAccess({ feed, addresses, withSecret }: FeedAccessProps) {
         openLabel={t("feeds.access.webcalOpen")}
         openHref={addresses.webcal}
         hint={t("feeds.access.webcalHint")}
-      />
-      <CopyField
-        id={`${id}-web`}
-        label={t("feeds.access.web")}
-        value={addresses.web}
-        openLabel={t("feeds.access.webOpen")}
-        openHref={addresses.web}
-        hint={t("feeds.access.webHint")}
       />
     </div>
   );
