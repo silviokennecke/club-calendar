@@ -2122,5 +2122,23 @@
     "loadFailed": "The document could not be loaded. Please try again.",
     "publishedAt": "As of {{date}}",
     "close": "Close"
+  },
+  "consent": {
+    "title": "Consent required",
+    "intro": "Please accept the current version of the following documents to keep using Club Calendar.",
+    "accept": {
+      "privacy": "I have read and accept the <doc>privacy policy</doc>.",
+      "terms": "I have read and accept the <doc>terms of use</doc>.",
+      "button": "Accept and continue"
+    },
+    "accepting": "Saving",
+    "signOut": "Sign out",
+    "required": {
+      "privacy": "Please accept the privacy policy.",
+      "terms": "Please accept the terms of use."
+    },
+    "outdated": "The documents were updated in the meantime. Please read and accept the current version.",
+    "errorTitle": "That did not work",
+    "failed": "Your consent could not be saved. Please try again."
   }
 }

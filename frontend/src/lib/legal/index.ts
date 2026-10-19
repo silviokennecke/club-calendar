@@ -78,3 +78,8 @@ export function legalTypeOf(pathname: string): LegalType {
   const seg = pathname.replace(/^\//, "").split("/")[0] ?? "";
   return isLegalType(seg) ? seg : "imprint";
 }
+
+/** Id of the consent checkbox of a document type (`<prefix>-<type>`). */
+export function consentCheckboxId(prefix: string, type: LegalType): string {
+  return `${prefix}-${type}`;
+}

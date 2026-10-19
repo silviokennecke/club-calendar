@@ -12,6 +12,17 @@ export interface User {
   lastClubId?: string | null;
   lastCalendarId?: string | null;
   language: string;
+  /** Legal documents the user has not accepted in their current version (`GET /api/auth/me`). */
+  pendingConsents?: PendingConsent[];
+  /** Consent gate: the app is locked until `pendingConsents` are accepted. */
+  consentRequired?: boolean;
+}
+
+export interface PendingConsent {
+  type: "privacy" | "terms";
+  id: string;
+  title: string | null;
+  publishedAt: string;
 }
 
 export interface Club {

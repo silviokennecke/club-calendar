@@ -2122,5 +2122,23 @@
     "loadFailed": "Das Dokument konnte nicht geladen werden. Bitte versuche es erneut.",
     "publishedAt": "Stand: {{date}}",
     "close": "Schließen"
+  },
+  "consent": {
+    "title": "Zustimmung erforderlich",
+    "intro": "Bitte akzeptiere die aktuelle Fassung der folgenden Dokumente, um Club Calendar weiter zu nutzen.",
+    "accept": {
+      "privacy": "Ich habe die <doc>Datenschutzerklärung</doc> gelesen und akzeptiere sie.",
+      "terms": "Ich habe die <doc>Nutzungsbedingungen</doc> gelesen und akzeptiere sie.",
+      "button": "Akzeptieren und fortfahren"
+    },
+    "accepting": "Wird gespeichert",
+    "signOut": "Abmelden",
+    "required": {
+      "privacy": "Bitte akzeptiere die Datenschutzerklärung.",
+      "terms": "Bitte akzeptiere die Nutzungsbedingungen."
+    },
+    "outdated": "Die Dokumente wurden in der Zwischenzeit aktualisiert. Bitte lies und akzeptiere die aktuelle Fassung.",
+    "errorTitle": "Das hat nicht geklappt",
+    "failed": "Die Zustimmung konnte nicht gespeichert werden. Bitte versuche es erneut."
   }
 }

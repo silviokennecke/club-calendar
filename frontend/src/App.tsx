@@ -171,7 +171,8 @@ function AppRoutes() {
 /** Modal routes of the app: the background (ProtectedRoute) handles sign-in redirects. */
 function SignedIn() {
   const { user, loading } = useAuth();
-  return !loading && user ? <Outlet /> : null;
+  // Pending consents lock the app: no event dialogs above the consent gate.
+  return !loading && user && !user.consentRequired ? <Outlet /> : null;
 }
 
 function Root() {

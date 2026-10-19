@@ -6,6 +6,10 @@ export interface AuthContextValue {
   loading: boolean;
   /** Tokens exist but /me failed for a reason that is no rejection (network, 429, 5xx): not a guest. */
   sessionError: boolean;
+  /** Loads /api/auth/me again (e.g. after a 403 `consent_required`); keeps the current user on failure. */
+  refreshUser: () => Promise<void>;
+  /** Replaces the current user with a fresh /me body (e.g. the answer of `POST /api/auth/consents`). */
+  setUser: (user: User) => void;
   login: (accessToken: string, refreshToken: string, user: User) => void;
   logout: () => void;
   updateUser: (data: {
