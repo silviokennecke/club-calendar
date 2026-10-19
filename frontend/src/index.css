@@ -164,6 +164,14 @@
 
 /* ---------- 2. shadcn variables -> design tokens ---------- */
 :root {
+  /* Motion tokens (durations, easings; none overshoots) */
+  --dur-fast: 100ms;
+  --dur-base: 160ms;
+  --dur-slow: 240ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.64, 0, 0.78, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --background: var(--surface);
   --foreground: var(--ink);
   --card: var(--surface-raised);
@@ -465,7 +473,7 @@
     height: 20px;
     border-radius: 50%;
     background: var(--border-strong);
-    transition: transform 0.15s;
+    transition: transform var(--dur-base) var(--ease-out);
   }
   .cc-toggle[aria-checked="true"] {
     background: var(--brand);
@@ -2960,7 +2968,7 @@
   width: min(520px, 100%);
   max-height: calc(100dvh - 32px);
   overscroll-behavior: contain;
-  animation: ap-dialog-in 160ms ease-out;
+  animation: ap-dialog-in var(--dur-base) var(--ease-out);
 }
 .ap-scrim > .ap-dialog--wide {
   width: min(760px, 100%);
@@ -3037,7 +3045,7 @@
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     border-bottom: 0;
     animation-name: ap-sheet-in;
-    animation-duration: 200ms;
+    animation-duration: var(--dur-slow);
   }
   .ap-dialog-foot--split .cc-btn {
     flex: 1 1 auto;
@@ -3109,8 +3117,8 @@
     background: var(--surface-raised);
     cursor: pointer;
     transition:
-      background-color 0.15s ease,
-      border-color 0.15s ease;
+      background-color var(--dur-base) var(--ease-out),
+      border-color var(--dur-base) var(--ease-out);
   }
   .ap-checkhit input::before {
     content: "";
@@ -3118,7 +3126,7 @@
     inset: 0;
     background: var(--on-brand);
     transform: scale(0);
-    transition: transform 0.15s ease;
+    transition: transform var(--dur-base) var(--ease-out);
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E")
       center / contain no-repeat;
   }

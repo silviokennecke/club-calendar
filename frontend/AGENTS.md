@@ -64,6 +64,10 @@ operations), `docs/api/openapi.yaml` (API reference).
   `text-ink-muted`, `border-border`, `border-border-strong`, `bg-brand`, `text-on-brand`, `bg-brand-soft`,
   `bg-danger`, `bg-danger-soft`, `text-info`, `bg-highlight` (= design `--accent`, orange),
   `bg-tag-youth|adult|senior`, `min-h-tap`/`size-tap` (44px). Tailwind `accent` stays the shadcn hover surface.
+- Motion tokens on `:root` in `index.css`: durations `--dur-fast` (100ms), `--dur-base` (160ms), `--dur-slow` (240ms);
+  easings `--ease-out` (enter, default), `--ease-in` (exit), `--ease-in-out`, `--ease-spring` (critically damped,
+  no overshoot). Use them for every new `transition`/`animation` instead of literal times; the `.ap-seg`/`.ap-tabs`
+  indicator keeps its own curve.
 - shadcn variables (`--primary`, `--background`, ...) point at the design tokens.
 - Font: Figtree via `@fontsource-variable/figtree` (self-hosted, imported in `main.tsx`).
 - Theme: `ThemeProvider` (`src/lib/ThemeProvider.tsx`) + `useTheme()` (`src/lib/theme.ts`), `light|dark|system`,
