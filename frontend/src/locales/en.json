@@ -309,7 +309,7 @@
       "published": "Published",
       "draft": "Draft, only visible internally",
       "holiday": "Holiday, not editable",
-      "drag": "Events can be dragged to another day. Without a mouse: open the event and change the date."
+      "drag": "Events can be dragged to another day (on touch screens: press and hold, then drag). Alternatively open the event and change the date."
     },
     "dayPanel": {
       "empty": "There are no events on this day.",

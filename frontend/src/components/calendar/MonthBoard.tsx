@@ -16,6 +16,7 @@ import {
 } from "@/lib/calendar";
 import { EventChip } from "./EventChip";
 import { dayCellLabel } from "./dayLabel";
+import { useTouchDrag } from "./useTouchDrag";
 import { useGridKeyboard } from "./useGridKeyboard";
 import { useLocale } from "./useLocale";
 
@@ -81,6 +82,7 @@ export function MonthBoard({
   const dragged = useRef<CalItem | null>(null);
   const [dropDate, setDropDate] = useState<IsoDate | null>(null);
   const canDrag = !!onDropItem;
+  const touchDrag = useTouchDrag({ items, onDrop: onDropItem, onTarget: setDropDate });
 
   function onBodyClick(e: MouseEvent<HTMLDivElement>, week: IsoDate[]) {
     if (e.target !== e.currentTarget) return;
@@ -119,6 +121,7 @@ export function MonthBoard({
       aria-labelledby={labelledBy}
       className="ap-month"
       onKeyDown={onKeyDown}
+      onPointerDown={canDrag ? touchDrag.onPointerDown : undefined}
     >
       <div role="row" className="ap-month-head">
         {shortNames.map((name, i) => (
@@ -145,6 +148,7 @@ export function MonthBoard({
             </div>
             <div
               className="ap-wk-body"
+              data-days={week.join(",")}
               onClick={(e) => onBodyClick(e, week)}
               onDoubleClick={(e) => onBodyDoubleClick(e, week)}
               onDragOver={canDrag ? (e) => onDragOver(e, week) : undefined}

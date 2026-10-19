@@ -78,6 +78,7 @@ export function EventChip({
       aria-hidden={presentational || undefined}
       tabIndex={presentational ? -1 : undefined}
       draggable={draggable || undefined}
+      data-touch-drag={draggable || undefined}
       onDragStart={draggable ? (e) => onDragStart?.(e, item) : undefined}
       onDragEnd={draggable ? onDragEnd : undefined}
       onClick={(e) => {

@@ -309,7 +309,7 @@
       "published": "Veröffentlicht",
       "draft": "Entwurf, nur intern sichtbar",
       "holiday": "Feiertag, nicht bearbeitbar",
-      "drag": "Termine lassen sich auf einen anderen Tag ziehen. Ohne Maus: Termin öffnen und Datum ändern."
+      "drag": "Termine lassen sich auf einen anderen Tag ziehen (am Touchscreen: gedrückt halten, dann ziehen). Alternativ Termin öffnen und Datum ändern."
     },
     "dayPanel": {
       "empty": "An diesem Tag gibt es keine Termine.",
