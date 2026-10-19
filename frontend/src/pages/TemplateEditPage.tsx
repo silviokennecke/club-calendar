@@ -318,6 +318,7 @@ function TemplateEditor({ template }: { template?: EventTemplate }) {
                   error={errorFor("timeBegin")}
                 >
                   <TextInput
+                    autoComplete="off"
                     type="time"
                     value={values.timeBegin}
                     onChange={(e) => set("timeBegin", e.target.value)}
@@ -332,6 +333,7 @@ function TemplateEditor({ template }: { template?: EventTemplate }) {
                   error={errorFor("timeEnd")}
                 >
                   <TextInput
+                    autoComplete="off"
                     type="time"
                     value={values.timeEnd}
                     onChange={(e) => set("timeEnd", e.target.value)}

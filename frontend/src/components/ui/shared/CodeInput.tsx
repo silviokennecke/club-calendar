@@ -138,6 +138,8 @@ export function CodeInput({
         id={i === 0 ? id : undefined}
         className={cn("cc-input t-h2 w-11 px-0 text-center tabular-nums")}
         type="text"
+        name={`code-${i + 1}`}
+        spellCheck={false}
         inputMode="numeric"
         pattern="[0-9]*"
         autoComplete={i === 0 ? "one-time-code" : "off"}

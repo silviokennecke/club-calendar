@@ -171,6 +171,7 @@ export function AccountSection({ profile }: { profile: ProfileData }) {
                   value={email}
                   autoComplete="email"
                   inputMode="email"
+                  spellCheck={false}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </Field>

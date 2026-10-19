@@ -34,6 +34,9 @@ export function FilterBar({
         <Field id="calendar-search" label={t("calendar.search.label")}>
           <TextInput
             type="search"
+            name="search"
+            autoComplete="off"
+            spellCheck={false}
             value={search}
             placeholder={t("calendar.search.placeholder")}
             onChange={(e) => onSearchChange(e.target.value)}

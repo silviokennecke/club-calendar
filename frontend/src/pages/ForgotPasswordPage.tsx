@@ -111,6 +111,7 @@ export default function ForgotPasswordPage() {
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
             inputMode="email"
+            spellCheck={false}
           />
         </Field>
         <Button type="submit" block loading={loading}>

@@ -224,6 +224,7 @@ export default function SetupPage() {
             >
               <TextInput
                 ref={calendarInputRef}
+                autoComplete="off"
                 value={calendarName}
                 onChange={(e) => {
                   setCalendarName(e.target.value);

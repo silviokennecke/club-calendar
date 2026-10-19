@@ -288,10 +288,11 @@ export default function HolidayCalendarsPage() {
               <TextInput
                 type="url"
                 inputMode="url"
+                spellCheck={false}
                 autoComplete="off"
                 value={url}
                 maxLength={2048}
-                placeholder="https://"
+                placeholder={t("settings.holidays.urlPlaceholder")}
                 onChange={(e) => {
                   setUrl(e.target.value);
                   setProblem((p) => ({ ...p, url: undefined }));
