@@ -3,3 +3,4 @@ export * from "./dates";
 export * from "./items";
 export * from "./format";
 export * from "./view";
+export * from "./viewMemory";

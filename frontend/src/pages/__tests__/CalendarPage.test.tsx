@@ -180,6 +180,7 @@ beforeEach(() => {
   events = october;
   failEvents = false;
   extraHolidays = [];
+  sessionStorage.clear();
   apiGet.mockReset();
   apiPost.mockReset();
   apiPatch.mockReset();
@@ -194,6 +195,36 @@ afterEach(() => {
 async function grid() {
   return screen.findByRole("grid", { name: "Oktober 2026" });
 }
+
+describe("CalendarPage – remembered view", () => {
+  it("returns to the shown month when reopened without parameters", async () => {
+    const user = userEvent.setup();
+    const first = renderPage();
+    await grid();
+    await user.click(screen.getByRole("button", { name: "Nächster Monat" }));
+    await screen.findByRole("grid", { name: "November 2026" });
+    first.unmount();
+
+    renderPage();
+    await screen.findByRole("grid", { name: "November 2026" });
+    await waitFor(() =>
+      expect(screen.getByTestId("location")).toHaveTextContent("date=2026-11-02"),
+    );
+  });
+
+  it("restores the week view and lets explicit URL parameters win", async () => {
+    sessionStorage.setItem("calendarView:k1", JSON.stringify({ view: "week", date: "2026-11-04" }));
+    const first = renderPage();
+    await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("view=week"));
+    expect(screen.getByTestId("location")).toHaveTextContent("date=2026-11-04");
+    first.unmount();
+
+    renderPage("/clubs/c1/calendars/k1?date=2026-10-08");
+    await grid();
+    expect(screen.getByTestId("location")).toHaveTextContent("date=2026-10-08");
+    expect(screen.getByTestId("location")).not.toHaveTextContent("view=week");
+  });
+});
 
 describe("CalendarPage – month view", () => {
   it("shows holidays that began before the visible range and reach into it", async () => {
