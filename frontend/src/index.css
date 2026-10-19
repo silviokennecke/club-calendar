@@ -120,6 +120,8 @@
   --shadow-sm: 0 1px 2px rgba(20, 34, 30, 0.1);
   --shadow-md: 0 8px 24px rgba(20, 34, 30, 0.14);
   --scrim: rgba(20, 34, 30, 0.55);
+  --surface-chrome: color-mix(in srgb, var(--surface-raised) 72%, transparent);
+  --border-chrome: color-mix(in srgb, var(--border-strong) 45%, transparent);
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -930,9 +932,55 @@
     align-items: center;
     gap: var(--space-3);
     padding: 0 var(--space-4);
-    background: var(--surface-raised);
-    border-bottom: 1px solid var(--border);
+    background: transparent;
     z-index: 20;
+  }
+  /* Material on a pseudo-element: backdrop-filter on the bar itself would become the containing
+     block of the fixed .ap-menu inside it. */
+  .ap-topbar::before,
+  .ap-tabbar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: var(--surface-chrome);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+  .ap-topbar::before {
+    border-bottom: 1px solid var(--border-chrome);
+  }
+  .ap-tabbar::before {
+    border-top: 1px solid var(--border-chrome);
+  }
+  @supports not (backdrop-filter: blur(1px)) {
+    .ap-topbar::before,
+    .ap-tabbar::before {
+      background: var(--surface-raised);
+    }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .ap-topbar::before,
+    .ap-tabbar::before {
+      background: var(--surface-raised);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+  @media (prefers-contrast: more) {
+    .ap-topbar::before,
+    .ap-tabbar::before {
+      background: var(--surface-raised);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+    .ap-topbar::before {
+      border-bottom: 2px solid var(--border-strong);
+    }
+    .ap-tabbar::before {
+      border-top: 2px solid var(--border-strong);
+    }
   }
   .ap-topbar .ap-ctxwrap {
     flex: 1;
@@ -957,8 +1005,7 @@
     bottom: 0;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     padding-bottom: env(safe-area-inset-bottom);
-    background: var(--surface-raised);
-    border-top: 1px solid var(--border);
+    background: transparent;
     z-index: 20;
   }
   .ap-tab {
@@ -3603,5 +3650,20 @@
   .ap-menu-list,
   .ap-suggest {
     animation: ap-fade-in 120ms linear;
+  }
+}
+
+/* Smooth colour change on an explicit theme switch (ThemeProvider sets the attribute for ~250ms). */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-theme-transition],
+  html[data-theme-transition] *,
+  html[data-theme-transition] *::before,
+  html[data-theme-transition] *::after {
+    transition:
+      background-color var(--dur-slow) var(--ease-in-out),
+      border-color var(--dur-slow) var(--ease-in-out),
+      color var(--dur-slow) var(--ease-in-out),
+      fill var(--dur-slow) var(--ease-in-out),
+      stroke var(--dur-slow) var(--ease-in-out) !important;
   }
 }

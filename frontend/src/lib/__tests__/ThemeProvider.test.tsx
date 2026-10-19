@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ThemeProvider } from "../ThemeProvider";
 import { useTheme, THEME_STORAGE_KEY } from "../theme";
@@ -120,5 +120,24 @@ describe("ThemeProvider", () => {
     expect(metas()[0].getAttribute("media")).toBe("(prefers-color-scheme: light)");
     expect(metas()[1].getAttribute("media")).toBe("(prefers-color-scheme: dark)");
     document.head.innerHTML = "";
+  });
+
+  it("animates only explicit changes, not the initial mount or an OS flip", async () => {
+    const system = mockSystem(false);
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
+    const root = document.documentElement;
+    expect(root).not.toHaveAttribute("data-theme-transition");
+    await userEvent.click(screen.getByText("dark"));
+    expect(root).toHaveAttribute("data-theme-transition");
+    await waitFor(() => expect(root).not.toHaveAttribute("data-theme-transition"));
+    await userEvent.click(screen.getByText("system"));
+    await waitFor(() => expect(root).not.toHaveAttribute("data-theme-transition"));
+    act(() => system.change(true));
+    expect(root).toHaveAttribute("data-theme", "dark");
+    expect(root).not.toHaveAttribute("data-theme-transition");
   });
 });
