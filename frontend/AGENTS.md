@@ -68,6 +68,7 @@ operations), `docs/api/openapi.yaml` (API reference).
   easings `--ease-out` (enter, default), `--ease-in` (exit), `--ease-in-out`, `--ease-spring` (critically damped,
   no overshoot). Use them for every new `transition`/`animation` instead of literal times; the `.ap-seg`/`.ap-tabs`
   indicator keeps its own curve.
+- Pressed state: one shared `:active` block at the end of `index.css` (`scale` 0.97, 0.985 for rows/cards/day cells; reduced motion keeps only an opacity change). New interactive classes go into that block.
 - shadcn variables (`--primary`, `--background`, ...) point at the design tokens.
 - Font: Figtree via `@fontsource-variable/figtree` (self-hosted, imported in `main.tsx`).
 - Theme: `ThemeProvider` (`src/lib/ThemeProvider.tsx`) + `useTheme()` (`src/lib/theme.ts`), `light|dark|system`,

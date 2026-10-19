@@ -3380,3 +3380,96 @@
     }
   }
 }
+
+/* ---------- Shared pressed (:active) state ----------
+   Instant feedback (--dur-fast); uses the individual `scale` property so it never fights a `transform`.
+   Large surfaces press less (0.985). Disabled / aria-disabled elements do not react. */
+@layer components {
+  .cc-btn,
+  .ap-iconbtn,
+  .ap-listrow,
+  .ap-navlink,
+  .ap-tab,
+  .ap-chip,
+  .cc-chip,
+  .cc-day,
+  .ap-evchip,
+  .ap-evcard,
+  .ap-seg > a,
+  .ap-seg > button {
+    transition:
+      scale var(--dur-fast) var(--ease-out),
+      opacity var(--dur-fast) var(--ease-out),
+      background-color var(--dur-fast) var(--ease-out),
+      border-color var(--dur-fast) var(--ease-out),
+      color var(--dur-fast) var(--ease-out);
+  }
+  .cc-btn:active:not([disabled], [aria-disabled="true"]),
+  .ap-iconbtn:active:not([disabled], [aria-disabled="true"]),
+  .ap-tab:active,
+  .ap-chip:active:not([disabled], [aria-disabled="true"]),
+  .cc-chip:active:not([disabled], [aria-disabled="true"]),
+  .ap-seg > a:active,
+  .ap-seg > button:active:not([disabled]) {
+    scale: 0.97;
+  }
+  .ap-navlink:active,
+  .ap-listrow:active,
+  .cc-day:active:not([disabled], [aria-disabled="true"]),
+  .ap-evchip:active,
+  .ap-evcard:active {
+    scale: 0.985;
+  }
+  .cc-btn--primary:active:not([disabled], [aria-disabled="true"]),
+  .cc-btn--danger-solid:active:not([disabled], [aria-disabled="true"]) {
+    filter: brightness(0.92);
+  }
+  .cc-btn:active:not([disabled], [aria-disabled="true"]),
+  .ap-iconbtn:active:not([disabled]),
+  .ap-chip:active,
+  .cc-chip:active,
+  .ap-navlink:active,
+  .ap-tab:active,
+  .ap-listrow:active,
+  .cc-day:active,
+  .ap-evchip:active,
+  .ap-evcard:active,
+  .ap-seg > a:active,
+  .ap-seg > button:active:not([disabled]) {
+    opacity: 0.85;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cc-btn,
+    .ap-iconbtn,
+    .ap-listrow,
+    .ap-navlink,
+    .ap-tab,
+    .ap-chip,
+    .cc-chip,
+    .cc-day,
+    .ap-evchip,
+    .ap-evcard,
+    .ap-seg > a,
+    .ap-seg > button {
+      transition:
+        opacity var(--dur-fast) linear,
+        background-color var(--dur-fast) linear,
+        border-color var(--dur-fast) linear,
+        color var(--dur-fast) linear;
+    }
+    .cc-btn:active,
+    .ap-iconbtn:active,
+    .ap-listrow:active,
+    .ap-navlink:active,
+    .ap-tab:active,
+    .ap-chip:active,
+    .cc-chip:active,
+    .cc-day:active,
+    .ap-evchip:active,
+    .ap-evcard:active,
+    .ap-seg > a:active,
+    .ap-seg > button:active {
+      scale: none;
+    }
+  }
+}
