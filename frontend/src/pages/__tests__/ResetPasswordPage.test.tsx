@@ -91,15 +91,17 @@ describe("ResetPasswordPage", () => {
   it("checks the password policy and the repetition before sending", async () => {
     renderReset();
     const user = await fill("short");
-    expect(screen.getByText(/Das Passwort ist zu kurz/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Das Passwort ist zu kurz/)[0]).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("noch nicht gespeichert");
+    expect(screen.getByLabelText(/^Neues Passwort/)).toHaveFocus();
     await user.clear(screen.getByLabelText(/^Neues Passwort/));
     await user.type(screen.getByLabelText(/^Neues Passwort/), "a".repeat(129));
     await user.click(screen.getByRole("button", { name: "Passwort speichern" }));
-    expect(screen.getByText(/Das Passwort ist zu lang/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Das Passwort ist zu lang/)[0]).toBeInTheDocument();
     await user.clear(screen.getByLabelText(/^Neues Passwort/));
     await user.type(screen.getByLabelText(/^Neues Passwort/), "new-password-1");
     await user.click(screen.getByRole("button", { name: "Passwort speichern" }));
-    expect(screen.getByText(/Die Passwörter sind nicht gleich/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Die Passwörter sind nicht gleich/)[0]).toBeInTheDocument();
     expect(apiPost).not.toHaveBeenCalled();
   });
 

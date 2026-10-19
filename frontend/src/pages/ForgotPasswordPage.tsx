@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
-import { Button, Field, TextInput } from "@/components/ui/shared";
+import { Button, ErrorSummary, Field, TextInput } from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { FocusBanner } from "@/components/auth/FocusBanner";
 import { requestPasswordReset } from "@/lib/passwordReset";
 
 type Phase = "form" | "sent";
+
+const EMAIL_ID = "forgot-email";
 
 /**
  * Forgot password (design: ForgotPassword, AuthStates). The API answers the same whether or not the
@@ -28,11 +30,16 @@ export default function ForgotPasswordPage() {
     if (changedPhase.current) headingRef.current?.focus();
   }, [phase]);
 
+  function focusEmail() {
+    document.getElementById(EMAIL_ID)?.focus();
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const address = email.trim();
     if (!address) {
       setEmailError(t("auth.register.emailMissing"));
+      focusEmail();
       return;
     }
     setEmailError("");
@@ -42,6 +49,7 @@ export default function ForgotPasswordPage() {
     setLoading(false);
     if (result === "invalid_email") {
       setEmailError(t("auth.forgot.emailInvalid"));
+      focusEmail();
     } else if (result === "failed") {
       setFailed((n) => n + 1);
     } else {
@@ -104,7 +112,11 @@ export default function ForgotPasswordPage() {
         onSubmit={handleSubmit}
         noValidate
       >
-        <Field label={t("auth.email")} required error={emailError}>
+        <ErrorSummary
+          title={t("auth.forgot.errorTitle")}
+          errors={emailError ? [{ fieldId: EMAIL_ID, message: emailError }] : []}
+        />
+        <Field id={EMAIL_ID} label={t("auth.email")} required error={emailError}>
           <TextInput
             type="email"
             value={email}

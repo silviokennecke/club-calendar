@@ -40,7 +40,9 @@ describe("ForgotPasswordPage", () => {
 
   it("asks for the address before sending", async () => {
     await submit("");
-    expect(screen.getByText("Bitte gib deine E-Mail-Adresse ein.")).toBeInTheDocument();
+    expect(screen.getAllByText("Bitte gib deine E-Mail-Adresse ein.").length).toBeGreaterThan(0);
+    expect(screen.getByRole("alert")).toHaveTextContent("noch nicht angefordert");
+    expect(screen.getByLabelText(/^E-Mail/)).toHaveFocus();
     expect(apiPost).not.toHaveBeenCalled();
   });
 
@@ -77,7 +79,7 @@ describe("ForgotPasswordPage", () => {
     apiPost.mockRejectedValueOnce(new ApiError("x", 422, "validation_failed"));
     await user.click(screen.getByRole("button", { name: "Link zum Zurücksetzen senden" }));
     expect(
-      await screen.findByText("Bitte gib eine gültige E-Mail-Adresse ein."),
+      (await screen.findAllByText("Bitte gib eine gültige E-Mail-Adresse ein."))[0],
     ).toBeInTheDocument();
   });
 });

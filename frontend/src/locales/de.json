@@ -66,12 +66,8 @@
       "confirmMismatchField": "Die Passwörter sind nicht gleich. Bitte gib dasselbe Passwort noch einmal ein.",
       "emailExistsField": "Für diese E-Mail-Adresse gibt es schon ein Konto. Bitte melde dich an.",
       "problem": {
-        "missing": "Bitte fülle alle Pflichtfelder aus.",
-        "short": "Dein Passwort ist zu kurz. Bitte wähle ein Passwort mit mindestens 8 Zeichen.",
-        "mismatch": "Die beiden Passwörter sind nicht gleich. Bitte gib dasselbe Passwort in beiden Feldern ein.",
         "exists": "Mit dieser E-Mail-Adresse gibt es schon ein Konto. Melde dich an oder setze dein Passwort zurück.",
-        "generic": "Das Konto konnte nicht erstellt werden. Bitte prüfe deine Angaben und versuche es noch einmal.",
-        "long": "Dein Passwort ist zu lang. Bitte wähle ein Passwort mit höchstens 128 Zeichen."
+        "generic": "Das Konto konnte nicht erstellt werden. Bitte prüfe deine Angaben und versuche es noch einmal."
       },
       "passwordLongField": "Das Passwort ist zu lang. Bitte nutze höchstens 128 Zeichen."
     },
@@ -122,7 +118,8 @@
       "sentTitle": "Prüfe dein Postfach",
       "sentText": "Wenn zu <strong>{{email}}</strong> ein Konto gehört, haben wir dir einen Link zum Zurücksetzen geschickt. Der Link ist 60 Minuten gültig.",
       "sentHint": "Nichts angekommen? Schau im Spamordner nach oder gib die Adresse noch einmal ein.",
-      "again": "Andere E-Mail-Adresse eingeben"
+      "again": "Andere E-Mail-Adresse eingeben",
+      "errorTitle": "Der Link wurde noch nicht angefordert"
     },
     "callback": {
       "title": "Anmeldung"
@@ -146,7 +143,8 @@
       "doneText": "Aus Sicherheitsgründen bist du auf allen Geräten abgemeldet. Melde dich mit dem neuen Passwort an.",
       "toLogin": "Weiter zur Anmeldung",
       "failedTitle": "Das Passwort konnte nicht gespeichert werden",
-      "failedText": "Bitte prüfe deine Internetverbindung und versuche es noch einmal."
+      "failedText": "Bitte prüfe deine Internetverbindung und versuche es noch einmal.",
+      "errorTitle": "Das Passwort wurde noch nicht gespeichert"
     }
   },
   "setup": {
