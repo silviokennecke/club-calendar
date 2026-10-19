@@ -5,7 +5,7 @@
 <mj-table padding="0 0 16px 0" cellpadding="0" cellspacing="0">
   <tr>
     <td width="36" style="width:36px;padding:0 12px 0 0;vertical-align:middle;">
-      <img src="{{ email.image('@mail_assets/logo.png') }}" width="36" height="36" alt="" style="display:block;border:0;border-radius:8px;" />
+      <img src="{{ email.image('@mail_assets/logo.png') }}" width="36" height="36" alt="" style="display:block;border:0;" />
     </td>
     <td style="vertical-align:middle;font-family:{{ THEME.fonts.family }};font-size:{{ THEME.fonts.size.heading }};line-height:24px;font-weight:800;color:{{ THEME.colors.primary }};">
       {{ THEME.brand.name }}
