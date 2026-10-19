@@ -475,6 +475,11 @@
     background: var(--border-strong);
     transition: transform var(--dur-base) var(--ease-out);
   }
+  @media (prefers-reduced-motion: reduce) {
+    .cc-toggle::after {
+      transition: none;
+    }
+  }
   .cc-toggle[aria-checked="true"] {
     background: var(--brand);
     border-color: var(--brand);
@@ -3060,9 +3065,15 @@
     opacity: 0;
   }
 }
+@keyframes ap-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+/* Reduced motion: no slide/scale, a short cross-fade instead (comprehension stays) */
 @media (prefers-reduced-motion: reduce) {
   .ap-scrim > .ap-dialog {
-    animation: none;
+    animation: ap-fade-in 120ms linear;
   }
 }
 
