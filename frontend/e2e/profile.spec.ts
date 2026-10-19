@@ -104,15 +104,20 @@ test.describe("Profil", () => {
       "true",
     );
     // Kontrast: heller Text auf dunklem Grund
-    const colors = await page.evaluate(() => {
-      const cs = getComputedStyle(document.body);
-      return { bg: cs.backgroundColor, fg: cs.color };
-    });
+    // The theme switch fades colours for ~250ms (data-theme-transition): wait until they settled.
     const lum = (c: string) => {
       const [r, g, b] = (c.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
       return 0.2126 * r + 0.7152 * g + 0.0722 * b;
     };
-    expect(lum(colors.bg)).toBeLessThan(lum(colors.fg));
+    await expect
+      .poll(async () => {
+        const colors = await page.evaluate(() => {
+          const cs = getComputedStyle(document.body);
+          return { bg: cs.backgroundColor, fg: cs.color };
+        });
+        return lum(colors.bg) < lum(colors.fg);
+      })
+      .toBe(true);
 
     await page.reload();
     await expect(html).toHaveAttribute("data-theme", "dark");

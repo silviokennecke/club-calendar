@@ -197,6 +197,10 @@ test.describe("Einstellungen", () => {
       await page.getByRole("button", { name: "Barrierefrei bearbeiten" }).click();
       await editDialog.getByLabel(/^Name/).fill("Verworfen");
       await page.keyboard.press("Escape");
+      // Geänderter Name: der Unsaved-Changes-Guard fragt nach, erst "Änderungen verwerfen" bricht ab
+      const unsaved = page.getByRole("alertdialog", { name: "Änderungen verwerfen?" });
+      await expect(unsaved).toBeVisible();
+      await unsaved.getByRole("button", { name: "Änderungen verwerfen" }).click();
       await expect(editDialog).toHaveCount(0);
       await expect(list).toContainText("Barrierefrei");
       await expect(list).not.toContainText("Verworfen");
