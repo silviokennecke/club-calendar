@@ -18,6 +18,11 @@ interface ConsentCheckboxesProps {
   /** Prefix of the checkbox ids (`<prefix>-<type>`). */
   idPrefix: string;
   disabled?: boolean;
+  /**
+   * Opens a document inside the surrounding (non-routed) dialog instead of navigating to the routed
+   * legal modal (stacking a routed modal on a dialog is not supported).
+   */
+  onOpenDocument?: (item: ConsentItem) => void;
 }
 
 /**
@@ -31,6 +36,7 @@ export function ConsentCheckboxes({
   errors = {},
   idPrefix,
   disabled,
+  onOpenDocument,
 }: ConsentCheckboxesProps) {
   const { t } = useTranslation();
   const location = useLocation();
@@ -56,7 +62,13 @@ export function ConsentCheckboxes({
                 <Trans
                   i18nKey={`consent.accept.${item.type}`}
                   components={{
-                    doc: (
+                    doc: onOpenDocument ? (
+                      <button
+                        type="button"
+                        className="ap-link"
+                        onClick={() => onOpenDocument(item)}
+                      />
+                    ) : (
                       <Link
                         to={legalPath(item.type)}
                         state={openModalState(location)}

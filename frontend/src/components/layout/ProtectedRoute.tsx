@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { FullPageLoader } from "@/components/ui/shared";
 import { ConsentPage } from "@/pages/lazy";
+import { ConsentChangeBanner } from "@/components/legal/ConsentChangeBanner";
 import { AppShell } from "./AppShell";
 
 function parseContextFromPath(
@@ -39,7 +40,12 @@ export default function ProtectedRoute() {
   if (pathname === "/setup" || pathname === "/clubs") {
     // Leaving a club (picker, deleted or left club): do not carry it over to the profile page.
     if (visitedClubId) setVisitedClubId(null);
-    return <Outlet />;
+    return (
+      <>
+        <StandaloneBanner />
+        <Outlet />
+      </>
+    );
   }
 
   const fromUrl = parseContextFromPath(pathname);
@@ -57,9 +63,24 @@ export default function ProtectedRoute() {
         clubId={clubId}
         calendarId={calendarId}
         trackLastUsed={!!fromUrl?.calendarId}
+        banner={<ConsentChangeBanner />}
       />
     );
   }
 
-  return <Outlet />;
+  return (
+    <>
+      <StandaloneBanner />
+      <Outlet />
+    </>
+  );
+}
+
+/** Banner above pages without the app shell (club picker, onboarding). */
+function StandaloneBanner() {
+  return (
+    <div className="ap">
+      <ConsentChangeBanner standalone />
+    </div>
+  );
 }
