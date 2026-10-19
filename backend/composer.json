@@ -13,6 +13,7 @@
         "eluceo/ical": "^2.16",
         "geocoder-php/mapbox-provider": "^1.5",
         "knpuniversity/oauth2-client-bundle": "^2.20.2",
+        "league/commonmark": "^2.10",
         "lexik/jwt-authentication-bundle": "^3.2",
         "nelmio/cors-bundle": "^2.6",
         "php-http/guzzle7-adapter": "^1.1",

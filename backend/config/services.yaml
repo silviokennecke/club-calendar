@@ -27,6 +27,8 @@ parameters:
     env(MAPBOX_PROXY_CACHE_TTL): '2592000' # 30 days
 
     env(MAPBOX_TOKEN): ''
+    env(LEGAL_DOCUMENTS_PATH): '%kernel.project_dir%/legal'
+    app.legal_documents_path: '%env(resolve:LEGAL_DOCUMENTS_PATH)%'
     map.image.zoom: 14
     map.image.width: 800
     map.image.height: 288
