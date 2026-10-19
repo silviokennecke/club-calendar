@@ -139,8 +139,8 @@ export function Field({
 export const TextInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   function TextInput({ className, type = "text", ...rest }, ref) {
     const hygiene = type === "email" || type === "url";
-    const defaultMode = { email: "email", url: "url", tel: "tel" }[type] as
-      "email" | "url" | "tel" | undefined;
+    const inputModeMap: Record<string, string> = { email: "email", url: "url", tel: "tel" };
+    const defaultMode = inputModeMap[type] as "email" | "url" | "tel" | undefined;
     return (
       <input
         ref={ref}
