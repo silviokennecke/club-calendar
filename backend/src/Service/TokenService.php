@@ -28,6 +28,7 @@ class TokenService
         /** Seconds a session (token family) lasts at most, however often it is refreshed. */
         #[Autowire(env: 'int:REFRESH_TOKEN_ABSOLUTE_LIFETIME')]
         private readonly int $absoluteLifetime,
+        private readonly LegalDocumentService $legal,
     ) {
     }
 
@@ -36,17 +37,23 @@ class TokenService
         return $this->clock->now()->setTimezone(new \DateTimeZone('UTC'));
     }
 
-    public function createAccessToken(User $user): string
+    /** Claim of access and refresh tokens: the session started with all current consents given (see ConsentGateListener). */
+    public const string CONSENT_CLAIM = 'lc';
+
+    public function createAccessToken(User $user, ?bool $consentOk = null): string
     {
-        return $this->jwtManager->createFromPayload($user, $this->sessionClaims($user));
+        $consentOk ??= $this->consentOk($user);
+
+        return $this->jwtManager->createFromPayload($user, $this->sessionClaims($user) + [self::CONSENT_CLAIM => $consentOk]);
     }
 
     /**
      * Issues and stores a refresh token: a new session (family), or the next token of `$familyId`, which
      * then ends at `$familyExpiresAt` at the latest.
      */
-    public function createRefreshToken(User $user, ?string $familyId = null, ?\DateTimeImmutable $familyExpiresAt = null): string
+    public function createRefreshToken(User $user, ?string $familyId = null, ?\DateTimeImmutable $familyExpiresAt = null, ?bool $consentOk = null): string
     {
+        $consentOk ??= $this->consentOk($user);
         $now = $this->now();
         $familyExpiresAt ??= $now->modify('+'.$this->absoluteLifetime.' seconds');
         $expiresAt = min($now->modify('+'.self::REFRESH_TTL.' seconds'), $familyExpiresAt);
@@ -59,7 +66,7 @@ class TokenService
             'type' => 'refresh',
             'jti' => $row->getId(),
             'fam' => $row->getFamilyId(),
-        ] + $this->sessionClaims($user);
+        ] + $this->sessionClaims($user) + [self::CONSENT_CLAIM => $consentOk];
         $header = base64_encode(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
         $body = base64_encode(json_encode($payload));
         $sig = hash_hmac('sha256', "$header.$body", $this->refreshSecret, true);
@@ -116,6 +123,12 @@ class TokenService
         return ['uid' => $user->getId(), 'tv' => $user->getTokenVersion()];
     }
 
+    /** Evaluates the consent flag of a new session: no current consent document is pending. */
+    private function consentOk(User $user): bool
+    {
+        return [] === $this->legal->pendingConsents($user);
+    }
+
     /** Revokes every refresh token (session) of the user. */
     public function revokeAllRefreshTokens(User $user): void
     {
@@ -125,14 +138,20 @@ class TokenService
     /**
      * Token response for a login / grant. `$familyId` + `$familyExpiresAt` continue an existing session
      * (rotation); without them a new session starts.
+     *
+     * `$consentOk` is the consent flag of the session (claim `lc`, fixed for the family's lifetime): rotation
+     * and re-issuance inside a running session pass the session's flag on; `null` evaluates it now (a new
+     * session started by a sign-in: true only if no current consent document is pending).
      */
-    public function tokenResponse(User $user, ?string $familyId = null, ?\DateTimeImmutable $familyExpiresAt = null): array
+    public function tokenResponse(User $user, ?string $familyId = null, ?\DateTimeImmutable $familyExpiresAt = null, ?bool $consentOk = null): array
     {
+        $consentOk ??= $this->consentOk($user);
+
         return [
-            'access_token' => $this->createAccessToken($user),
+            'access_token' => $this->createAccessToken($user, $consentOk),
             'token_type' => 'Bearer',
             'expires_in' => 900,
-            'refresh_token' => $this->createRefreshToken($user, $familyId, $familyExpiresAt),
+            'refresh_token' => $this->createRefreshToken($user, $familyId, $familyExpiresAt, $consentOk),
             'user' => [
                 'id' => $user->getId(),
                 'name' => $user->getName(),

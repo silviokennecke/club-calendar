@@ -7,6 +7,7 @@ namespace App\EventListener;
 use App\Entity\LegalDocument;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
+use App\Security\SessionConsentListener;
 use App\Service\LegalDocumentService;
 use App\Service\LegalPresenter;
 use Doctrine\ORM\EntityManagerInterface;
@@ -20,6 +21,10 @@ use Symfony\Component\Security\Core\User\UserInterface;
  * Consent gate: a signed-in user who has not consented to the current privacy policy / terms gets
  * 403 `consent_required` (+ `documents`) on every `/api/*` route except the allow-list below (reading the own
  * profile, giving consent, signing out, deleting the account, the public legal documents).
+ *
+ * Applies only to sessions that started without up-to-date consents (access token claim `lc` false/missing; see
+ * `TokenService::tokenResponse`): a session that was compliant at its start passes without a query. Once the user
+ * consents, the DB check passes for the non-compliant session too.
  *
  * Runs after the firewall (priority 8) has authenticated the JWT. Costs two queries per authenticated request
  * (current documents, consents); when no consent document exists, one.
@@ -56,7 +61,12 @@ class ConsentGateListener
         if (!str_starts_with($path, '/api/') || self::isAllowed($path, $request->getMethod())) {
             return;
         }
-        $securityUser = $this->tokenStorage->getToken()?->getUser();
+        $token = $this->tokenStorage->getToken();
+        if (SessionConsentListener::isOk($token)) {
+            // The session started with all consents given: a later document update does not lock it out.
+            return;
+        }
+        $securityUser = $token?->getUser();
         if (!$securityUser instanceof UserInterface) {
             return;
         }

@@ -85,6 +85,6 @@ class WebAuthnController extends AbstractController
         $user = $this->userResolver->resolve();
 
         // `ok` like every delete, plus the fresh token pair: the deletion ended all sessions.
-        return new JsonResponse(['ok' => true] + $this->webAuthn->deletePasskey($id, $user));
+        return new JsonResponse(['ok' => true] + $this->webAuthn->deletePasskey($id, $user, $this->userResolver->sessionConsentOk()));
     }
 }

@@ -70,7 +70,12 @@ info:
       on every `/api/*` route except `GET|DELETE /api/auth/me`, `GET|POST /api/auth/consents`, `/api/legal*`,
       `POST /api/auth/logout`, `/logout-all`, `/token`, `/delete-account/code`, `GET /api/auth/providers`,
       `GET /api/health` and `/api/feed/*`. Sign-in still returns tokens. Without any provided consent document
-      nobody is gated.
+      nobody is gated. The gate applies only to sessions that STARTED without up-to-date consents: a new session
+      (login, SSO/e-mail code, passkey, legacy refresh token) stores the flag `lc` (consent ok = no pending
+      document) in its refresh-token family and access tokens; refresh rotation and re-issuance inside a running
+      session (password change, passkey deletion) carry it over. A session that was compliant keeps working
+      after a document update (the update reaches it at its next sign-in, at most 30 days later). A gated
+      session passes as soon as the user consents (`POST /api/auth/consents`).
     - Every route under `/api/clubs`, `/api/calendars`, `/api/invitations`, `/api/map/geocode/` and `/api/mapbox/` needs a signed-in user before the
       id in the path is looked up: without a token it is `401 missing_token` (never 403 or 404, so ids cannot be
       probed). 403 means signed in but not allowed (no member, archived calendar).
@@ -3647,7 +3652,7 @@ components:
                   id: { type: string }
                   title: { type: [string, 'null'] }
                   publishedAt: { type: string, format: date-time }
-            consentRequired: { type: boolean, description: 'True while `pendingConsents` is not empty: the consent gate blocks the API.' }
+            consentRequired: { type: boolean, description: 'True only if the consent gate blocks THIS session: `pendingConsents` is not empty AND the session started without up-to-date consents. A session that was compliant when it started sees `pendingConsents` but `consentRequired` false.' }
             pendingEmail: { type: [string, 'null'], description: New address of a waiting e-mail change. }
             passkeys:
               type: array

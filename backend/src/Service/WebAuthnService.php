@@ -282,7 +282,7 @@ class WebAuthnService
      * Removes a passkey and ends all sessions (token version, refresh tokens): whoever signed in with it
      * must not stay signed in. Returns fresh tokens so that the session that made the change continues.
      */
-    public function deletePasskey(string $id, User $user): array
+    public function deletePasskey(string $id, User $user, ?bool $consentOk = null): array
     {
         $passkey = $this->em->getRepository(Passkey::class)->find($id);
         if (!$passkey || $passkey->getUser()->getId() !== $user->getId()) {
@@ -293,7 +293,7 @@ class WebAuthnService
         $this->em->flush();
         $this->tokens->revokeAllRefreshTokens($user);
 
-        return $this->tokens->tokenResponse($user);
+        return $this->tokens->tokenResponse($user, null, null, $consentOk);
     }
 
     private function authenticationFailed(): ApiProblemException

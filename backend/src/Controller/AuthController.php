@@ -171,7 +171,7 @@ class AuthController extends AbstractApiController
         $dto = $this->deserializeDto($request, ChangePasswordDto::class);
         $this->validateDto($dto, $this->validator);
 
-        return new JsonResponse($this->accounts->changePassword($user, $dto->currentPassword, $dto->newPassword));
+        return new JsonResponse($this->accounts->changePassword($user, $dto->currentPassword, $dto->newPassword, $this->userResolver->sessionConsentOk()));
     }
 
     /**
@@ -280,7 +280,7 @@ class AuthController extends AbstractApiController
     {
         $user = $this->userResolver->resolve();
 
-        return new JsonResponse($this->auth->getMe($user));
+        return new JsonResponse($this->auth->getMe($user, $this->userResolver->sessionConsentOk()));
     }
 
     /** The user's consent history, newest first (own data: GDPR access, so IP and user agent are included). */
@@ -305,7 +305,7 @@ class AuthController extends AbstractApiController
         }
         $this->legal->giveConsents($user, array_values($ids), $request->getClientIp(), $request->headers->get('User-Agent'));
 
-        return new JsonResponse($this->auth->getMe($user));
+        return new JsonResponse($this->auth->getMe($user, $this->userResolver->sessionConsentOk()));
     }
 
     #[Route('/me', methods: ['PATCH'])]
@@ -339,7 +339,7 @@ class AuthController extends AbstractApiController
         }
         $this->validateDto($dto, $this->validator);
 
-        return new JsonResponse($this->auth->updateMe($user, $data));
+        return new JsonResponse($this->auth->updateMe($user, $data, $this->userResolver->sessionConsentOk()));
     }
 
     /** A profile field that must be a JSON string (null only if nullable), else 400 validation_failed. */

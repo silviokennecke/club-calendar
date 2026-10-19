@@ -17,6 +17,12 @@ readonly class CurrentUserResolver
     ) {
     }
 
+    /** Consent flag (`lc` claim) of the presenting access token: the session started with all current consents given. */
+    public function sessionConsentOk(): bool
+    {
+        return SessionConsentListener::isOk($this->security->getToken());
+    }
+
     public function resolve(): User
     {
         $securityUser = $this->security->getUser();
