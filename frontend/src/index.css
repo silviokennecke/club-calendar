@@ -223,6 +223,21 @@
   .ap-focus-target {
     scroll-margin-top: 72px;
   }
+  h1,
+  h2,
+  h3,
+  .t-display,
+  .t-h1,
+  .t-h2,
+  .t-h3 {
+    text-wrap: balance;
+  }
+  p,
+  .t-body,
+  .ap-banner,
+  .ap-empty p {
+    text-wrap: pretty;
+  }
   button,
   a,
   [role="button"],
