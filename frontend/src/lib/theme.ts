@@ -56,3 +56,23 @@ export function useTheme(): ThemeContextValue {
   if (!ctx) throw new Error("useTheme must be used inside ThemeProvider");
   return ctx;
 }
+
+const THEME_COLORS = { light: "#f7f8f5", dark: "#0f1715" } as const;
+
+/**
+ * Keeps `<meta name="theme-color">` in step with the theme (mirrors public/theme-init.js):
+ * a forced theme overrides the media-query metas, "system" restores them.
+ */
+export function applyThemeColor(preference: ThemePreference, resolved: ResolvedTheme) {
+  const metas = document.querySelectorAll('meta[name="theme-color"]');
+  metas.forEach((meta, i) => {
+    if (preference === "system") {
+      const scheme = i === 0 ? "light" : "dark";
+      meta.setAttribute("content", THEME_COLORS[scheme]);
+      meta.setAttribute("media", `(prefers-color-scheme: ${scheme})`);
+    } else {
+      meta.setAttribute("content", THEME_COLORS[resolved]);
+      meta.removeAttribute("media");
+    }
+  });
+}

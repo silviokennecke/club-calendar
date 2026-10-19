@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   DARK_QUERY,
+  applyThemeColor,
   ThemeContext,
   readStoredTheme,
   resolveTheme,
@@ -27,6 +28,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", resolvedTheme);
   }, [resolvedTheme]);
+
+  useEffect(() => {
+    applyThemeColor(theme, resolvedTheme);
+  }, [theme, resolvedTheme]);
 
   const setTheme = useCallback((next: ThemePreference) => {
     writeStoredTheme(next);

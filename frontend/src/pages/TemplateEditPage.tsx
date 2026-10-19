@@ -299,7 +299,7 @@ function TemplateEditor({ template }: { template?: EventTemplate }) {
                   onChange={(e) => set("timezone", e.target.value)}
                 >
                   {zones.map((zone) => (
-                    <option key={zone} value={zone}>
+                    <option key={zone} value={zone} translate="no">
                       {zone}
                     </option>
                   ))}

@@ -128,22 +128,18 @@ export function AddressSearch({ onPick, proximity, id = "pl-search" }: AddressSe
           }}
         />
       </Field>
-      <p className="ap-sr" role="status">
-        {status === "loading"
-          ? t("settings.places.search.loading")
-          : status === "done" && results.length > 0
-            ? t("settings.places.search.found", { count: results.length })
-            : ""}
+      <p
+        className={message ? "t-sm" : "ap-sr"}
+        role="status"
+        style={message ? { color: status === "done" ? undefined : "var(--danger)" } : undefined}
+      >
+        {message ??
+          (status === "loading"
+            ? t("settings.places.search.loading")
+            : status === "done" && results.length > 0
+              ? t("settings.places.search.found", { count: results.length })
+              : "")}
       </p>
-      {message && (
-        <p
-          className="t-sm"
-          role="status"
-          style={{ color: status === "done" ? undefined : "var(--danger)" }}
-        >
-          {message}
-        </p>
-      )}
       {results.length > 0 && (
         <ul
           id={listId}

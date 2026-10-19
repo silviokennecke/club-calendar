@@ -36,4 +36,13 @@ describe("Toggle", () => {
     await userEvent.keyboard(" ");
     expect(sw).toHaveAttribute("aria-checked", "true");
   });
+
+  it("toggles when the label text is clicked", async () => {
+    render(<Toggle label="Beschriftung" />);
+    await userEvent.click(screen.getByText("Beschriftung"));
+    expect(screen.getByRole("switch", { name: "Beschriftung" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+  });
 });

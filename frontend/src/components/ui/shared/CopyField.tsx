@@ -58,6 +58,7 @@ export function CopyField({ label, value, hint, secret, openHref, openLabel, id 
         <input
           id={inputId}
           className="cc-input ap-code"
+          translate="no"
           type="text"
           readOnly
           name="copy-value"
