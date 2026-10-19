@@ -1,10 +1,10 @@
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { formatMonthTitle, yearMonthOf } from "@/lib/calendar";
 import { formatEventDates, groupByMonth, locationName } from "@/lib/events";
 import type { CalendarEvent } from "@/lib/types";
-import { StatusBadge, Tag, type TagTone } from "@/components/ui/shared";
+import { Button, StatusBadge, Tag, type TagTone } from "@/components/ui/shared";
 import { useLocale } from "@/components/calendar/useLocale";
 
 interface EventsTableProps {
@@ -19,6 +19,9 @@ interface EventsTableProps {
   onToggle?: (id: string) => void;
   onToggleAll?: () => void;
 }
+
+/** Rows rendered at first and added by each "show more" (lists can hold up to 5000 events). */
+export const EVENTS_PAGE_SIZE = 200;
 
 /**
  * Event table (design: Events.dc.html ap-table). Rows are grouped by month (row group headers);
@@ -40,6 +43,10 @@ export function EventsTable({
   const allChecked = selectable && events.length > 0 && events.every((e) => selected.has(e.id));
   const someChecked = selectable && !allChecked && events.some((e) => selected.has(e.id));
   const columns = selectable ? 8 : 7;
+  // Incremental rendering: select-all and bulk actions still cover every event (props), only the DOM rows are windowed.
+  const [shown, setShown] = useState(EVENTS_PAGE_SIZE);
+  const visible = events.length > shown ? events.slice(0, shown) : events;
+  const remaining = events.length - visible.length;
 
   return (
     <div className="ap-tablescroll">
@@ -71,7 +78,7 @@ export function EventsTable({
             <th scope="col">{t("events.list.col.status")}</th>
           </tr>
         </thead>
-        {groupByMonth(events).map((group) => (
+        {groupByMonth(visible).map((group) => (
           <tbody key={group.key}>
             <tr>
               <th scope="rowgroup" colSpan={columns} className="ap-table-group">
@@ -172,6 +179,18 @@ export function EventsTable({
           </tbody>
         ))}
       </table>
+      {events.length > EVENTS_PAGE_SIZE && (
+        <div className="ap-row" style={{ padding: "var(--space-3) var(--space-4)" }}>
+          <p className="t-sm t-muted" role="status">
+            {t("events.list.shownOf", { shown: visible.length, count: events.length })}
+          </p>
+          {remaining > 0 && (
+            <Button variant="secondary" onClick={() => setShown((n) => n + EVENTS_PAGE_SIZE)}>
+              {t("events.list.showMore", { count: Math.min(remaining, EVENTS_PAGE_SIZE) })}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -380,6 +380,8 @@
         "status": "Status"
       },
       "selectOne": "{{name}} am {{date}} auswählen",
+      "shownOf": "{{shown}} von {{count}} Terminen angezeigt",
+      "showMore": "{{count}} weitere anzeigen",
       "allDay": "Ganztägig",
       "timeRange": "{{from}} – {{to}}",
       "none": "–",

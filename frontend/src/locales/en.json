@@ -380,6 +380,8 @@
         "status": "Status"
       },
       "selectOne": "Select {{name}} on {{date}}",
+      "shownOf": "Showing {{shown}} of {{count}} events",
+      "showMore": "Show {{count}} more",
       "allDay": "All day",
       "timeRange": "{{from}} – {{to}}",
       "none": "–",
