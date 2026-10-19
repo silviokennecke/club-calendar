@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -13,6 +13,8 @@ import type { ShellData } from "./shellTypes";
 import { FullPageLoader } from "@/components/ui/shared";
 
 interface AppShellProps {
+  /** Shown at the top of the content area (e.g. the consent-change banner). */
+  banner?: ReactNode;
   clubId: string;
   /** Calendar from the URL or the user's last one; falls back to the club's first calendar. */
   calendarId: string | null;
@@ -25,6 +27,7 @@ interface AppShellProps {
  * Child routes get the ShellData via useOutletContext().
  */
 export function AppShell({
+  banner,
   clubId,
   calendarId: requestedCalendarId,
   trackLastUsed,
@@ -130,6 +133,7 @@ export function AppShell({
       <Sidebar data={data} />
       <Topbar data={data} />
       <main className="ap-main" id="main" tabIndex={-1}>
+        {banner}
         {/* First load of a lazy page: keep the shell, show the loading state in the content area. */}
         <Suspense fallback={<FullPageLoader className="min-h-[50vh]" />}>
           <Outlet context={data} />

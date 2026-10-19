@@ -132,7 +132,7 @@ operations), `docs/api/openapi.yaml` (API reference).
   `components/legal/LegalDocumentView` (backend HTML in `.legal-prose`, loading / 404 "not provided" states) and
   `ConsentCheckboxes` (signup, consent page), `ConsentHistoryList` (profile and the consent page's history modal; the gate also offers `DeleteAccountDialog`) and `LegalLinks` (footer of `AuthLayout` and `PublicShell`; missing type = muted `aria-disabled` text). `/imprint`,
   `/privacy`, `/terms` are a routed modal (`pages/LegalModal`) only with a stored `background` (`openModalState`),
-  else the standalone `pages/LegalPage`. Texts: `legal.*`. The test setup mocks `LegalLinks` (needs router + query client).
+  else the standalone `pages/LegalPage`. Texts: `legal.*`. `ConsentChangeBanner` (rendered by `ProtectedRoute`: top of `AppShell`'s `<main>` or above the standalone `/clubs` and `/setup`) is a dismissible banner (sessionStorage, keyed by the pending document ids) for `pendingConsents` without `consentRequired`; its dialog opens documents inline via `ConsentCheckboxes` `onOpenDocument` (no routed modal on a dialog). The test setup mocks `LegalLinks` (needs router + query client).
 - Events (create / edit are routed dialogs; URL helpers in `components/events/routes.ts`):
   `…/events` list page (`?status=draft&q=`); dialogs (`pages/events/*Modal.tsx`): `…/events/new` choice
   (`?date=`, design EventNew), `…/events/new/form` form (`?date=`, `?templateId=` pre-fills from a template,

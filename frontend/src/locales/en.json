@@ -2160,6 +2160,22 @@
     },
     "outdated": "The documents were updated in the meantime. Please read and accept the current version.",
     "errorTitle": "That did not work",
-    "failed": "Your consent could not be saved. Please try again."
+    "failed": "Your consent could not be saved. Please try again.",
+    "banner": {
+      "title": "Legal documents have changed",
+      "text": "The following documents have changed: {{documents}}. Please review and accept them. At the latest, you will be asked at your next sign-in.",
+      "review": "Review and accept",
+      "later": "Later",
+      "type": {
+        "imprint": "Imprint",
+        "privacy": "Privacy policy",
+        "terms": "Terms of use"
+      },
+      "dialogTitle": "Review changed documents",
+      "dialogDescription": "Accept the current version of the changed documents.",
+      "viewDescription": "Text of the legal document.",
+      "back": "Back",
+      "cancel": "Cancel"
+    }
   }
 }

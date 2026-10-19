@@ -2160,6 +2160,22 @@
     },
     "outdated": "Die Dokumente wurden in der Zwischenzeit aktualisiert. Bitte lies und akzeptiere die aktuelle Fassung.",
     "errorTitle": "Das hat nicht geklappt",
-    "failed": "Die Zustimmung konnte nicht gespeichert werden. Bitte versuche es erneut."
+    "failed": "Die Zustimmung konnte nicht gespeichert werden. Bitte versuche es erneut.",
+    "banner": {
+      "title": "Rechtliche Dokumente wurden geändert",
+      "text": "Folgende Dokumente wurden geändert: {{documents}}. Bitte lies und akzeptiere sie. Spätestens bei deiner nächsten Anmeldung wirst du danach gefragt.",
+      "review": "Prüfen und akzeptieren",
+      "later": "Später",
+      "type": {
+        "imprint": "Impressum",
+        "privacy": "Datenschutzerklärung",
+        "terms": "Nutzungsbedingungen"
+      },
+      "dialogTitle": "Geänderte Dokumente prüfen",
+      "dialogDescription": "Akzeptiere die aktuelle Version der geänderten Dokumente.",
+      "viewDescription": "Text des rechtlichen Dokuments.",
+      "back": "Zurück",
+      "cancel": "Abbrechen"
+    }
   }
 }
