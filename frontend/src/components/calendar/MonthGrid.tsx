@@ -26,6 +26,8 @@ export interface MonthGridProps {
   labelledBy: string;
   onMoveFocus: (date: IsoDate) => void;
   onSelectDay: (date: IsoDate) => void;
+  /** Mouse shortcut: double click on a day opens "new event" for it (absent: no shortcut). */
+  onCreateOnDay?: (date: IsoDate) => void;
 }
 
 /**
@@ -43,6 +45,7 @@ export function MonthGrid({
   labelledBy,
   onMoveFocus,
   onSelectDay,
+  onCreateOnDay,
 }: MonthGridProps) {
   const { t } = useTranslation();
   const locale = useLocale();
@@ -93,6 +96,7 @@ export function MonthGrid({
                     aria-label={dayCellLabel(day, dayItems, { locale, today, t })}
                     aria-current={day === today ? "date" : undefined}
                     onClick={() => onSelectDay(day)}
+                    onDoubleClick={onCreateOnDay ? () => onCreateOnDay(day) : undefined}
                   >
                     {parseIso(day).day}
                     {dots > 0 && (

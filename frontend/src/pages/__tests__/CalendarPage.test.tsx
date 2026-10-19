@@ -347,9 +347,19 @@ describe("CalendarPage – month view", () => {
     await user.click(within(g).getByRole("button", { name: /^14\. Oktober/ }));
     expect(await screen.findByText("An diesem Tag gibt es keine Termine.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Termin an diesem Tag anlegen" }));
-    // Straight to the form dialog with the day as start date (design: EventNewForm).
+    // The start screen (blank / template / import) with the day preset.
     expect(await screen.findByTestId("modal-location")).toHaveTextContent(
-      "/clubs/c1/calendars/k1/events/new/form?date=2026-10-14",
+      "/clubs/c1/calendars/k1/events/new?date=2026-10-14",
+    );
+  });
+
+  it("opens the new-event start screen on a double click on a day", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const g = await grid();
+    await user.dblClick(within(g).getByRole("button", { name: /^14\. Oktober/ }));
+    expect(await screen.findByTestId("modal-location")).toHaveTextContent(
+      "/clubs/c1/calendars/k1/events/new?date=2026-10-14",
     );
   });
 
@@ -524,6 +534,9 @@ describe("CalendarPage – archived calendar", () => {
     await user.click(within(g).getByRole("button", { name: /^14\. Oktober/ }));
     expect(await screen.findByText("An diesem Tag gibt es keine Termine.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Termin an diesem Tag anlegen" })).toBeNull();
+    // A double click on a day does not navigate without edit rights.
+    await user.dblClick(within(g).getByRole("button", { name: /^14\. Oktober/ }));
+    expect(screen.queryByTestId("modal-location")).toBeNull();
     // Archived calendars can still be exported (design: CalendarArchived).
     expect(screen.getByRole("link", { name: "Termine exportieren" })).toHaveAttribute(
       "href",

@@ -117,7 +117,7 @@ operations), `docs/api/openapi.yaml` (API reference).
   `focusAfterModalClose(eventSelector(id))` focuses the saved event via `data-event-id`, else the opener, else the
   page heading (`h1`, e.g. the month title: deep links have no opener and a new series may start outside the visible
   month), else `#main`). Openers pass `state={openModalState(location)}` (calendar: create, split button, day panel
-  "Termin am … anlegen", FAB, chips / items; list: rows, create, FAB, empty states; templates: "Termin aus
+  "Termin am … anlegen" (leads to the start screen choice; a double click on a day does the same), FAB, chips / items; list: rows, create, FAB, empty states; templates: "Termin aus
   Vorlage"). Inside a modal `useModalNav()` (`lib/useModalNav.ts`): `step(to)` / `stepLink(to)` replace the
   history entry (one entry per dialog, so the browser's back button closes it), `close()` = history back (or
   replace to the background for deep links / `direct`), `setBackground(path)` lets a deep link show the event's

@@ -35,6 +35,8 @@ export interface MonthBoardProps {
   onMoveFocus: (date: IsoDate) => void;
   onActivateDay: (date: IsoDate) => void;
   onOpenItem: (item: CalItem) => void;
+  /** Mouse shortcut: double click on a day opens "new event" for it (absent: no shortcut). */
+  onCreateOnDay?: (date: IsoDate) => void;
   /** Enables dragging events to another day. */
   onDropItem?: (item: CalItem, date: IsoDate) => void;
 }
@@ -62,6 +64,7 @@ export function MonthBoard({
   onMoveFocus,
   onActivateDay,
   onOpenItem,
+  onCreateOnDay,
   onDropItem,
 }: MonthBoardProps) {
   const { t } = useTranslation();
@@ -83,6 +86,12 @@ export function MonthBoard({
     if (e.target !== e.currentTarget) return;
     const col = columnAt(e);
     if (col >= 0) onActivateDay(week[col]);
+  }
+
+  function onBodyDoubleClick(e: MouseEvent<HTMLDivElement>, week: IsoDate[]) {
+    if (!onCreateOnDay || e.target !== e.currentTarget) return;
+    const col = columnAt(e);
+    if (col >= 0) onCreateOnDay(week[col]);
   }
 
   function onDragOver(e: DragEvent<HTMLDivElement>, week: IsoDate[]) {
@@ -137,6 +146,7 @@ export function MonthBoard({
             <div
               className="ap-wk-body"
               onClick={(e) => onBodyClick(e, week)}
+              onDoubleClick={(e) => onBodyDoubleClick(e, week)}
               onDragOver={canDrag ? (e) => onDragOver(e, week) : undefined}
               onDrop={canDrag ? (e) => onDrop(e, week) : undefined}
             >
@@ -161,6 +171,7 @@ export function MonthBoard({
                       aria-label={dayCellLabel(day, itemsOnDay(items, day), { locale, today, t })}
                       aria-current={day === today ? "date" : undefined}
                       onClick={() => onActivateDay(day)}
+                      onDoubleClick={onCreateOnDay ? () => onCreateOnDay(day) : undefined}
                     >
                       <span>{parseIso(day).day}</span>
                     </button>

@@ -115,6 +115,7 @@ export function MonthView({
           labelledBy={labelledBy}
           onMoveFocus={onMoveFocus}
           onSelectDay={selectDay}
+          onCreateOnDay={onCreateOnDay}
         />
         {panel}
       </div>
@@ -140,6 +141,7 @@ export function MonthView({
           onMoveFocus={onMoveFocus}
           onActivateDay={selectDay}
           onOpenItem={onOpenItem}
+          onCreateOnDay={onCreateOnDay}
           onDropItem={onDropItem}
         />
         {panelOpen && panel}
