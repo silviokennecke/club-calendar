@@ -22,6 +22,7 @@ use App\Service\AccountDeletionService;
 use App\Service\AccountService;
 use App\Service\AuthService;
 use App\Service\Input;
+use App\Service\LegalConsentService;
 use App\Service\PasswordResetService;
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -48,6 +49,7 @@ class AuthController extends AbstractApiController
         private readonly PasswordResetService $passwordResets,
         private readonly AccountService $accounts,
         private readonly AccountDeletionService $accountDeletion,
+        private readonly LegalConsentService $legal,
         #[Autowire(service: 'limiter.password_reset_email')]
         private readonly RateLimiterFactory $passwordResetEmailLimiter,
         #[Autowire(service: 'limiter.password_reset_ip')]
@@ -72,7 +74,7 @@ class AuthController extends AbstractApiController
         }
         $this->validateDto($dto, $this->validator);
         $this->rateLimiter->assertRegisterEmailAllowed($dto->email);
-        $this->auth->register($dto->name, $dto->email, $dto->password, $dto->language);
+        $this->auth->register($dto->name, $dto->email, $dto->password, $dto->language, $dto->acceptedDocuments, $request->getClientIp(), $request->headers->get('User-Agent'));
 
         // No tokens: the address is confirmed with the code from the mail first (POST /api/auth/verify-email).
         return new JsonResponse(['verificationRequired' => true, 'email' => $dto->email], Response::HTTP_CREATED);
@@ -277,6 +279,31 @@ class AuthController extends AbstractApiController
     public function getMe(): JsonResponse
     {
         $user = $this->userResolver->resolve();
+
+        return new JsonResponse($this->auth->getMe($user));
+    }
+
+    /** The user's consent history, newest first (own data: GDPR access, so IP and user agent are included). */
+    #[Route('/consents', methods: ['GET'])]
+    public function consents(): JsonResponse
+    {
+        return new JsonResponse($this->legal->consentHistory($this->userResolver->resolve()));
+    }
+
+    /**
+     * `{documentIds}`: records the consent to these CURRENT privacy/terms documents (already given ones are
+     * ignored); anything else is 422 `consent_outdated`. Responds with the new `/me` body.
+     */
+    #[Route('/consents', methods: ['POST'])]
+    public function giveConsents(Request $request): JsonResponse
+    {
+        $user = $this->userResolver->resolve();
+        $data = $this->decodeJson($request);
+        $ids = $data['documentIds'] ?? null;
+        if (!is_array($ids) || [] === $ids || count($ids) > 20 || array_filter($ids, static fn ($id): bool => !is_string($id))) {
+            throw Input::invalid('documentIds', 'documentIds must be a non-empty list of document ids');
+        }
+        $this->legal->giveConsents($user, array_values($ids), $request->getClientIp(), $request->headers->get('User-Agent'));
 
         return new JsonResponse($this->auth->getMe($user));
     }

@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 final class ProblemResponse
 {
     /**
-     * @param array<string, string> $extra   stable members such as `code` / `field` (RFC 7807 extensions)
+     * @param array<string, mixed>  $extra   stable members such as `code` / `field` (RFC 7807 extensions)
      * @param array<string, string> $headers e.g. WWW-Authenticate of a 401, Allow of a 405
      */
     public static function create(int $status, string $detail, array $extra = [], array $headers = []): JsonResponse

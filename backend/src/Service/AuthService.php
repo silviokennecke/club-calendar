@@ -38,6 +38,7 @@ readonly class AuthService
         private RefreshTokenRepository $refreshTokens,
         private NonceStore $nonces,
         private ClubService $clubs,
+        private LegalConsentService $legal,
         /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
         #[Autowire(env: 'int:REFRESH_TOKEN_REUSE_GRACE')]
         private int $refreshReuseGrace,
@@ -50,8 +51,13 @@ readonly class AuthService
     ) {
     }
 
-    public function register(string $name, string $email, string $password, ?string $language = null): void
+    /**
+     * @param array<mixed> $acceptedDocuments ids of the accepted legal documents (all current ones are required)
+     */
+    public function register(string $name, string $email, string $password, ?string $language = null, array $acceptedDocuments = [], ?string $ip = null, ?string $userAgent = null): void
     {
+        // Before the e-mail-taken check and the hashing
+        $accepted = $this->legal->assertAccepted($acceptedDocuments);
         $existing = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         if ($existing) {
             throw new ApiProblemException(400, 'Email already in use', 'email_taken', 'email');
@@ -65,6 +71,7 @@ readonly class AuthService
         }
         $this->em->persist($user);
         $this->em->flush();
+        $this->legal->record($user, $accepted, $ip, $userAgent);
         $this->verificationMailer->send($user);
     }
 
@@ -272,6 +279,7 @@ readonly class AuthService
         } catch (ORMException) {
             // entity already managed or detached; continue with current state
         }
+        $pending = $this->legal->pending($user);
 
         return [
             'id' => $user->getId(),
@@ -283,6 +291,8 @@ readonly class AuthService
             'lastCalendarId' => $user->getLastCalendarId(),
             'language' => $user->getLanguage(),
             'hasPassword' => null !== $user->getPassword(),
+            'pendingConsents' => LegalPresenter::pending($pending),
+            'consentRequired' => [] !== $pending,
             'pendingEmail' => $this->accounts->pendingEmail($user),
             'passkeys' => array_values($user->getPasskeys()->map(fn ($p) => [
                 'id' => $p->getId(),

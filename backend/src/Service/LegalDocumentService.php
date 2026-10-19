@@ -126,6 +126,16 @@ class LegalDocumentService
         return $all;
     }
 
+    /**
+     * Current documents that need consent (privacy, terms), one query.
+     *
+     * @return array<string, LegalDocument> type value => document
+     */
+    public function currentOfConsentTypes(): array
+    {
+        return $this->documents->findCurrentOfTypes(LegalDocumentType::consentTypes());
+    }
+
     /** Any version, retired ones included. */
     public function find(string $id): ?LegalDocument
     {
@@ -140,10 +150,8 @@ class LegalDocumentService
     public function pendingConsents(User $user): array
     {
         $current = [];
-        foreach (LegalDocumentType::consentTypes() as $type) {
-            if (null !== $doc = $this->current($type)) {
-                $current[$doc->getId()] = $doc;
-            }
+        foreach ($this->documents->findCurrentOfTypes(LegalDocumentType::consentTypes()) as $doc) {
+            $current[$doc->getId()] = $doc;
         }
         $done = $this->consents->consentedDocumentIds($user, array_keys($current));
 

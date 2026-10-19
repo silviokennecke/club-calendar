@@ -22,4 +22,7 @@ class RegisterDto
     public string $password = '';
 
     public ?string $language = null;
+
+    /** @var array<mixed> ids of the legal documents the user accepts (checked by AuthService::register) */
+    public array $acceptedDocuments = [];
 }
