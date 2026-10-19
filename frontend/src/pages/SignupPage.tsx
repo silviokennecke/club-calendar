@@ -73,6 +73,16 @@ export default function SignupPage() {
     setProblemKey((k) => k + 1);
   }
 
+  const summary: { fieldId: string; message: string }[] = [
+    ...(["name", "email", "password", "confirm"] as const).flatMap((k) =>
+      errors[k] ? [{ fieldId: IDS[k], message: errors[k] }] : [],
+    ),
+    ...consentItems.flatMap((i) => {
+      const message = consentErrors[i.id];
+      return message ? [{ fieldId: consentCheckboxId("signup-consent", i.type), message }] : [];
+    }),
+  ];
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setProblem(null);
@@ -187,27 +197,7 @@ export default function SignupPage() {
         onSubmit={handleSubmit}
         noValidate
       >
-        <ErrorSummary
-          title={t("auth.register.errorTitle")}
-          errors={
-            problem
-              ? []
-              : (["name", "email", "password", "confirm"] as const)
-                  .flatMap((k) => (errors[k] ? [{ fieldId: IDS[k], message: errors[k] }] : []))
-                  .concat(
-                    consentItems.flatMap((i) =>
-                      consentErrors[i.id]
-                        ? [
-                            {
-                              fieldId: consentCheckboxId("signup-consent", i.type),
-                              message: consentErrors[i.id],
-                            },
-                          ]
-                        : [],
-                    ),
-                  )
-          }
-        />
+        <ErrorSummary title={t("auth.register.errorTitle")} errors={problem ? [] : summary} />
         <Field id={IDS.name} label={t("auth.register.name")} required error={errors.name}>
           <TextInput value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
         </Field>
