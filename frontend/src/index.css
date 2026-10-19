@@ -3035,6 +3035,9 @@
   width: min(880px, 100%);
   gap: var(--space-6);
 }
+.ap-sheet-handle {
+  display: none;
+}
 .ap-dialog-head {
   display: flex;
   align-items: flex-start;
@@ -3107,6 +3110,31 @@
   }
   .ap-dialog-foot--split .cc-btn {
     flex: 1 1 auto;
+  }
+  /* Grabber of the drag-to-dismiss gesture (decorative; touch drag, see useSheetDrag) */
+  .ap-dialog {
+    position: relative;
+  }
+  .ap-sheet-handle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--space-6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    touch-action: none;
+  }
+  .ap-sheet-handle::before {
+    content: "";
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border-strong, var(--border));
+  }
+  .ap-dialog-head {
+    touch-action: none;
   }
   .ap-dialog--form .ap-dialog-foot {
     padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));

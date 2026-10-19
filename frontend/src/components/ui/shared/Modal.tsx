@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { IconButton } from "./Button";
 import { FullPageLoader } from "./PageLoader";
 import { useDialogLayer } from "./dialogStack";
+import { useSheetDrag } from "./useSheetDrag";
 
 type FocusTarget =
   boolean | RefObject<HTMLElement | null> | (() => HTMLElement | boolean | null | void);
@@ -51,11 +52,14 @@ export function DialogFrame({
   children,
 }: DialogFrameProps) {
   const layerRef = useDialogLayer(open);
+  const sheet = useSheetDrag(() => onOpenChange(false));
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(next) => onOpenChange(next)}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Viewport ref={layerRef} className="ap-scrim">
           <DialogPrimitive.Popup
+            ref={sheet.ref}
+            {...sheet.handlers}
             initialFocus={initialFocus}
             finalFocus={finalFocus}
             aria-modal="true"
@@ -68,6 +72,7 @@ export function DialogFrame({
             }
             className={cn("ap-dialog outline-none", className)}
           >
+            <div className="ap-sheet-handle" data-sheet-handle aria-hidden="true" />
             {children}
           </DialogPrimitive.Popup>
         </DialogPrimitive.Viewport>
