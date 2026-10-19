@@ -11,7 +11,8 @@
 	root * /var/www/html/public
 
 	# Access log reduced to what operation and abuse detection need: no headers (Referer, User-Agent,
-	# X-Forwarded-*, …), no TLS details, no proxy address and no secrets from the query string
+	# X-Forwarded-*, …), no TLS details, no proxy address (request>client_ip, the real
+	# client resolved via trusted_proxies, stays) and no secrets from the query string
 	# (one-time links, private feed links, SSO callback; KEEP IN SYNC with App\Logging\RedactTokensProcessor).
 	log {
 		output stdout
