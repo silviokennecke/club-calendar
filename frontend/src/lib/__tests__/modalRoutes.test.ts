@@ -99,3 +99,21 @@ describe("modalBackground", () => {
     expect(modalBackground({ pathname: BASE, search: "" })).toBeNull();
   });
 });
+
+describe("legal modals", () => {
+  it("matches the legal paths", () => {
+    expect(matchModal("/privacy")).toEqual({ kind: "legal", type: "privacy" });
+    expect(matchModal("/imprint")).toEqual({ kind: "legal", type: "imprint" });
+    expect(matchModal("/terms")).toEqual({ kind: "legal", type: "terms" });
+    expect(matchModal("/profile")).toBeNull();
+  });
+
+  it("is a modal only with a valid stored background", () => {
+    const loc = { pathname: "/terms", search: "" };
+    expect(modalBackground({ ...loc, state: { background: "/login" } })).toBe("/login");
+    expect(modalBackground(loc)).toBeNull();
+    expect(modalBackground({ ...loc, state: {} })).toBeNull();
+    expect(modalBackground({ ...loc, state: { background: "//evil.example" } })).toBeNull();
+    expect(modalBackground({ ...loc, state: { background: "/privacy" } })).toBeNull();
+  });
+});

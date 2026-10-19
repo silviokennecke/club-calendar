@@ -19,6 +19,7 @@ const modalImports = {
   EventFromTemplateModal: () => import("./events/EventFromTemplateModal"),
   EventSeriesEditModal: () => import("./events/EventSeriesEditModal"),
   PublicEventModal: () => import("./PublicEventModal"),
+  LegalModal: () => import("./LegalModal"),
 };
 
 const preloaded = new Set<string>();
@@ -87,3 +88,5 @@ export const FeaturesPage = lazyPage(() => import("./settings/FeaturesPage"));
 export const LocationsPage = lazyPage(() => import("./settings/LocationsPage"));
 export const TargetGroupsPage = lazyPage(() => import("./settings/TargetGroupsPage"));
 export const HolidayCalendarsPage = lazyPage(() => import("./settings/HolidayCalendarsPage"));
+export const LegalPage = lazyPage(() => import("./LegalPage"));
+export const LegalModal = lazyPage(modalImports.LegalModal);

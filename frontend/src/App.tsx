@@ -33,6 +33,8 @@ import {
   HolidayCalendarsPage,
   ImportPage,
   InvitationPage,
+  LegalModal,
+  LegalPage,
   LocationsPage,
   LoginPage,
   MorePage,
@@ -62,6 +64,10 @@ function AppRoutes() {
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
           </Route>
+          {/* Legal documents: standalone pages (the modal variant needs a background page). */}
+          <Route path="/imprint" element={<LegalPage />} />
+          <Route path="/privacy" element={<LegalPage />} />
+          <Route path="/terms" element={<LegalPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/auth/verify-email" element={<EmailVerifyPage />} />
           <Route path="/feed/:feedId" element={<FeedPage />} />
@@ -151,6 +157,9 @@ function AppRoutes() {
             </Route>
           </Route>
           <Route element={<ModalFrame />}>
+            <Route path="/imprint" element={<LegalModal />} />
+            <Route path="/privacy" element={<LegalModal />} />
+            <Route path="/terms" element={<LegalModal />} />
             <Route path="/feed/:feedId/events/:eventId" element={<PublicEventModal />} />
           </Route>
         </>

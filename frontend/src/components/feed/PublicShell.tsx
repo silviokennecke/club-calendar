@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { LangSwitch, Logo } from "@/components/ui/shared";
+import { LegalLinks } from "@/components/legal/LegalLinks";
 import { usePublicHead } from "./usePublicHead";
 
 interface PublicShellProps {
@@ -60,6 +61,7 @@ export function PublicShell({
           <span>{t("feed.footer")}</span>
           <Logo variant="mark" size={24} />
         </div>
+        <LegalLinks className="legal-links--public" />
       </footer>
     </div>
   );
