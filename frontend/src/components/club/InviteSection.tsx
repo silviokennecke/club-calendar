@@ -143,6 +143,8 @@ export function InviteSection({ club, members }: { club: Club; members: Readonly
           <TextInput
             ref={emailRef}
             type="email"
+            inputMode="email"
+            spellCheck={false}
             value={email}
             autoComplete="off"
             placeholder={t("club.invite.emailPlaceholder")}

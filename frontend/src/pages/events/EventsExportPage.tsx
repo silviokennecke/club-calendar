@@ -163,7 +163,12 @@ export default function EventsExportPage() {
           {range === "custom" && (
             <div className="ap-inputrow">
               <Field id="x-from" label={t("events.export.range.from")}>
-                <TextInput type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+                <TextInput
+                  autoComplete="off"
+                  type="date"
+                  value={from}
+                  onChange={(e) => setFrom(e.target.value)}
+                />
               </Field>
               <Field
                 id="x-to"
@@ -171,6 +176,7 @@ export default function EventsExportPage() {
                 error={customInvalid ? t("events.export.range.invalid") : undefined}
               >
                 <TextInput
+                  autoComplete="off"
                   type="date"
                   value={to}
                   min={from || undefined}

@@ -12,4 +12,12 @@
       window.matchMedia &&
       window.matchMedia("(prefers-color-scheme: dark)").matches);
   document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  // A forced theme must override the media-query theme-color metas from index.html.
+  if (pref !== "system") {
+    var metas = document.querySelectorAll('meta[name="theme-color"]');
+    for (var i = 0; i < metas.length; i++) {
+      metas[i].setAttribute("content", dark ? "#0f1715" : "#f7f8f5");
+      metas[i].removeAttribute("media");
+    }
+  }
 })();

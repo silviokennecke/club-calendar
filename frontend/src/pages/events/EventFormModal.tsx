@@ -427,6 +427,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
                   error={errorFor("date")}
                 >
                   <TextInput
+                    autoComplete="off"
                     type="date"
                     value={values.date}
                     onChange={(e) => set("date", e.target.value)}
@@ -440,6 +441,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
                   error={errorFor("dateEnd")}
                 >
                   <TextInput
+                    autoComplete="off"
                     type="date"
                     value={values.dateEnd}
                     min={values.date || undefined}
@@ -472,6 +474,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
                     error={errorFor("timeBegin")}
                   >
                     <TextInput
+                      autoComplete="off"
                       type="time"
                       value={values.timeBegin}
                       onChange={(e) => set("timeBegin", e.target.value)}
@@ -485,6 +488,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
                     error={errorFor("timeEnd")}
                   >
                     <TextInput
+                      autoComplete="off"
                       type="time"
                       value={values.timeEnd}
                       onChange={(e) => set("timeEnd", e.target.value)}

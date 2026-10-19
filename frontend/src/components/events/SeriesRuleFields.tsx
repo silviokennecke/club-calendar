@@ -97,7 +97,12 @@ export function SeriesRuleFields({
       </Field>
       <div className="ap-inputrow">
         <Field id={`${idPrefix}-from`} label={t("events.series.from")} required>
-          <TextInput type="date" value={value.from} onChange={(e) => set("from", e.target.value)} />
+          <TextInput
+            autoComplete="off"
+            type="date"
+            value={value.from}
+            onChange={(e) => set("from", e.target.value)}
+          />
         </Field>
         <Field
           id={`${idPrefix}-to`}
@@ -107,6 +112,7 @@ export function SeriesRuleFields({
           error={rangeError ? t("events.series.rangeInvalid") : undefined}
         >
           <TextInput
+            autoComplete="off"
             type="date"
             value={value.to}
             min={value.from || undefined}

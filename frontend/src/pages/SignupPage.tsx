@@ -124,6 +124,7 @@ export default function SignupPage() {
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
             inputMode="email"
+            spellCheck={false}
           />
         </Field>
         <PasswordField

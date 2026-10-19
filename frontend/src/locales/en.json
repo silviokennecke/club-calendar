@@ -1416,6 +1416,7 @@
       "nameLabel": "Name",
       "namePlaceholder": "e.g. Public holidays Germany",
       "urlLabel": "ICS address",
+      "urlPlaceholder": "https://example.org/holidays.ics",
       "urlHint": "The address usually ends in .ics and starts with https://.",
       "errors": {
         "nameEmpty": "Please enter a name.",

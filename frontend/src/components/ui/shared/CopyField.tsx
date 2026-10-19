@@ -60,6 +60,9 @@ export function CopyField({ label, value, hint, secret, openHref, openLabel, id 
           className="cc-input ap-code"
           type="text"
           readOnly
+          name="copy-value"
+          autoComplete="off"
+          spellCheck={false}
           value={shown}
           aria-describedby={hintId}
           style={{ flex: "1 1 240px", minWidth: 0 }}

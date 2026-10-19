@@ -106,6 +106,9 @@ export function EmojiPicker({ label, value, onChange, className }: EmojiPickerPr
             style={{ fontSize: 20 }}
             type="text"
             maxLength={8}
+            name="custom-emoji"
+            autoComplete="off"
+            spellCheck={false}
             value={draft}
             aria-describedby={hintId}
             placeholder={t("ui.emojiPicker.customPlaceholder")}

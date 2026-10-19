@@ -330,6 +330,7 @@ function SeriesForm({
             error={dateError && !singleValid ? t("events.series.dateRequired") : undefined}
           >
             <TextInput
+              autoComplete="off"
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}

@@ -28,6 +28,9 @@ export function SearchInput({ value, onChange, placeholder, label, className }: 
       <input
         id={id}
         type="search"
+        name="search"
+        autoComplete="off"
+        spellCheck={false}
         className="cc-input"
         value={value}
         onChange={(e) => onChange(e.target.value)}

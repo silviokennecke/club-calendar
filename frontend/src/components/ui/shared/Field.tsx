@@ -138,7 +138,19 @@ export function Field({
 /** Text input in design-system style (use inside Field). */
 export const TextInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   function TextInput({ className, type = "text", ...rest }, ref) {
-    return <input ref={ref} type={type} className={cn("cc-input", className)} {...rest} />;
+    const hygiene = type === "email" || type === "url";
+    const defaultMode = { email: "email", url: "url", tel: "tel" }[type] as
+      "email" | "url" | "tel" | undefined;
+    return (
+      <input
+        ref={ref}
+        type={type}
+        className={cn("cc-input", className)}
+        {...(hygiene ? { spellCheck: false, autoCapitalize: "none" } : {})}
+        {...(defaultMode ? { inputMode: defaultMode } : {})}
+        {...rest}
+      />
+    );
   },
 );
 

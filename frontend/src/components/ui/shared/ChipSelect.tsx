@@ -103,6 +103,9 @@ export function ChipSelect({
               <TextInput
                 value={draft}
                 autoFocus
+                name="new-chip-name"
+                autoComplete="off"
+                spellCheck={false}
                 placeholder={t("ui.chipSelect.placeholder")}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {

@@ -202,6 +202,7 @@ export default function LoginPage() {
             required
             autoComplete="username"
             inputMode="email"
+            spellCheck={false}
           />
         </Field>
         <PasswordField

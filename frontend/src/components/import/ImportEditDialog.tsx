@@ -209,6 +209,7 @@ export function ImportEditDialog({
           <div className="ap-inputrow">
             <Field id={FIELD.date} label={t("events.form.date")} required error={errorFor("date")}>
               <TextInput
+                autoComplete="off"
                 type="date"
                 value={values.date}
                 onChange={(e) => set("date", e.target.value)}
@@ -221,6 +222,7 @@ export function ImportEditDialog({
               error={errorFor("dateEnd")}
             >
               <TextInput
+                autoComplete="off"
                 type="date"
                 value={values.dateEnd}
                 min={values.date || undefined}
@@ -249,6 +251,7 @@ export function ImportEditDialog({
               error={errorFor("timeBegin")}
             >
               <TextInput
+                autoComplete="off"
                 type="time"
                 value={values.timeBegin}
                 onChange={(e) => set("timeBegin", e.target.value)}
@@ -261,6 +264,7 @@ export function ImportEditDialog({
               error={errorFor("timeEnd")}
             >
               <TextInput
+                autoComplete="off"
                 type="time"
                 value={values.timeEnd}
                 onChange={(e) => set("timeEnd", e.target.value)}
