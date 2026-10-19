@@ -66,12 +66,8 @@
       "confirmMismatchField": "The passwords do not match. Please enter the same password again.",
       "emailExistsField": "There is already an account for this email address. Please sign in.",
       "problem": {
-        "missing": "Please fill in all required fields.",
-        "short": "Your password is too short. Please choose a password with at least 8 characters.",
-        "mismatch": "The two passwords do not match. Please enter the same password in both fields.",
         "exists": "There is already an account with this email address. Sign in or reset your password.",
-        "generic": "The account could not be created. Please check your details and try again.",
-        "long": "Your password is too long. Please choose a password with at most 128 characters."
+        "generic": "The account could not be created. Please check your details and try again."
       },
       "passwordLongField": "The password is too long. Please use at most 128 characters."
     },
@@ -122,7 +118,8 @@
       "sentTitle": "Check your inbox",
       "sentText": "If <strong>{{email}}</strong> belongs to an account, we have sent you a link to reset your password. The link is valid for 60 minutes.",
       "sentHint": "Nothing arrived? Check your spam folder or enter the address again.",
-      "again": "Enter a different email address"
+      "again": "Enter a different email address",
+      "errorTitle": "The link has not been requested yet"
     },
     "callback": {
       "title": "Sign in"
@@ -146,7 +143,8 @@
       "doneText": "For your security you have been signed out on all devices. Sign in with your new password.",
       "toLogin": "Continue to sign in",
       "failedTitle": "The password could not be saved",
-      "failedText": "Please check your internet connection and try again."
+      "failedText": "Please check your internet connection and try again.",
+      "errorTitle": "The password has not been saved yet"
     }
   },
   "setup": {

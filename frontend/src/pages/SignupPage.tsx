@@ -4,7 +4,14 @@ import { useTranslation } from "react-i18next";
 import { apiPost } from "@/lib/api";
 import { passwordProblem } from "@/lib/password";
 import i18n from "@/lib/i18n";
-import { Button, Field, LinkButton, PasswordField, TextInput } from "@/components/ui/shared";
+import {
+  Button,
+  ErrorSummary,
+  Field,
+  LinkButton,
+  PasswordField,
+  TextInput,
+} from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { FocusBanner } from "@/components/auth/FocusBanner";
 
@@ -15,7 +22,14 @@ interface FieldErrors {
   confirm?: string;
 }
 
-type Problem = "missing" | "short" | "long" | "mismatch" | "exists" | "generic";
+type Problem = "exists" | "generic";
+
+const IDS = {
+  name: "signup-name",
+  email: "signup-email",
+  password: "signup-password",
+  confirm: "signup-confirm",
+} as const;
 
 export default function SignupPage() {
   const { t } = useTranslation();
@@ -50,11 +64,9 @@ export default function SignupPage() {
     if (password && confirm !== password) found.confirm = t("auth.register.confirmMismatchField");
 
     if (Object.keys(found).length > 0) {
-      const empty = !name.trim() || !email.trim() || !password;
-      fail(
-        empty ? "missing" : pwProblem === "short" || pwProblem === "long" ? pwProblem : "mismatch",
-        found,
-      );
+      setErrors(found);
+      const first = (["name", "email", "password", "confirm"] as const).find((k) => found[k]);
+      if (first) document.getElementById(IDS[first])?.focus();
       return;
     }
 
@@ -105,7 +117,9 @@ export default function SignupPage() {
             ) : undefined
           }
         >
-          {t(`auth.register.problem.${problem}`)}
+          {t(
+            problem === "exists" ? "auth.register.problem.exists" : "auth.register.problem.generic",
+          )}
         </FocusBanner>
       )}
       <form
@@ -114,10 +128,20 @@ export default function SignupPage() {
         onSubmit={handleSubmit}
         noValidate
       >
-        <Field label={t("auth.register.name")} required error={errors.name}>
+        <ErrorSummary
+          title={t("auth.register.errorTitle")}
+          errors={
+            problem
+              ? []
+              : (["name", "email", "password", "confirm"] as const).flatMap((k) =>
+                  errors[k] ? [{ fieldId: IDS[k], message: errors[k] }] : [],
+                )
+          }
+        />
+        <Field id={IDS.name} label={t("auth.register.name")} required error={errors.name}>
           <TextInput value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
         </Field>
-        <Field label={t("auth.email")} required error={errors.email}>
+        <Field id={IDS.email} label={t("auth.email")} required error={errors.email}>
           <TextInput
             type="email"
             value={email}
@@ -128,6 +152,7 @@ export default function SignupPage() {
           />
         </Field>
         <PasswordField
+          id={IDS.password}
           label={t("auth.password")}
           requiredLabel
           hint={t("auth.register.passwordHint")}
@@ -137,6 +162,7 @@ export default function SignupPage() {
           autoComplete="new-password"
         />
         <PasswordField
+          id={IDS.confirm}
           label={t("auth.register.confirmPassword")}
           requiredLabel
           error={errors.confirm}

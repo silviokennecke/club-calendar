@@ -41,8 +41,13 @@ describe("SignupPage", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Das Konto wurde noch nicht erstellt");
     expect(alert).toHaveTextContent("zu kurz");
-    expect(screen.getByLabelText(/^Passwort \(Pflicht\)/)).toHaveAttribute("aria-invalid", "true");
-    expect(alert.parentElement).toHaveFocus();
+    const password = screen.getByLabelText(/^Passwort \(Pflicht\)/);
+    expect(password).toHaveAttribute("aria-invalid", "true");
+    expect(password).toHaveFocus();
+    expect(screen.getByRole("link", { name: /zu kurz/ })).toHaveAttribute(
+      "href",
+      "#signup-password",
+    );
     expect(apiPost).not.toHaveBeenCalled();
   });
 
@@ -57,8 +62,11 @@ describe("SignupPage", () => {
   it("reports missing required fields", async () => {
     renderSignup();
     await fill("", "", "");
-    expect(await screen.findByRole("alert")).toHaveTextContent("Pflichtfelder");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Bitte gib deine E-Mail-Adresse ein.",
+    );
     expect(screen.getByLabelText(/^E-Mail/)).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText(/^E-Mail/)).toHaveFocus();
   });
 
   it("points existing accounts to the login", async () => {
