@@ -374,6 +374,7 @@ test.describe("Termin-Dialoge", () => {
     await grid.getByRole("button", { name: /^14\. Oktober/ }).click();
     const create = page.getByRole("button", { name: "Termin an diesem Tag anlegen" });
     await create.click();
+    await page.getByRole("link", { name: /Neuer Termin/ }).click();
 
     const dialog = page.getByRole("dialog", { name: "Neuer Termin" });
     await expect(dialog).toBeVisible();
@@ -426,6 +427,7 @@ test.describe("Termin-Dialoge", () => {
       .getByRole("button", { name: /^14\. Oktober/ })
       .click();
     await page.getByRole("button", { name: "Termin an diesem Tag anlegen" }).click();
+    await page.getByRole("link", { name: /Neuer Termin/ }).click();
     await page.getByLabel("Name (Pflicht)").fill("Dialog Herbstfest");
     await page.getByRole("button", { name: "Veröffentlicht", exact: true }).click();
     await page.getByRole("button", { name: "Termin speichern" }).click();

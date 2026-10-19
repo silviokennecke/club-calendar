@@ -171,11 +171,6 @@ export default function CalendarPage() {
     routerNavigate(routes.create(date), { state: navState });
   }
 
-  /** Day panel "Termin am … anlegen": straight to the form with the date. */
-  function openCreateOnDay(date: IsoDate) {
-    routerNavigate(routes.form(date), { state: navState });
-  }
-
   function openItem(item: CalItem) {
     if (item.kind !== "event") return;
     routerNavigate(routes.edit(item.id), { state: navState });
@@ -311,7 +306,7 @@ export default function CalendarPage() {
         }}
         onClosePanel={() => setPanelOpen(false)}
         onOpenItem={openItem}
-        onCreateOnDay={canEdit ? openCreateOnDay : undefined}
+        onCreateOnDay={canEdit ? openCreate : undefined}
         onDropItem={canEdit && !isMobile ? moveItem : undefined}
         placeOf={placeOf}
         tagsOf={tagsOf}
