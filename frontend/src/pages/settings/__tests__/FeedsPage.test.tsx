@@ -41,7 +41,6 @@ const publicFeed = {
   calendarIds: ["k1"],
   name: "Öffentlicher Kalender",
   visibility: "PUBLIC",
-  searchable: false,
   indexable: false,
   sharedSecret: "s-public",
   targetGroups: [],
@@ -51,7 +50,6 @@ const privateFeed = {
   calendarIds: ["k1", "k2"],
   name: "Vorstand intern",
   visibility: "PRIVATE",
-  searchable: false,
   indexable: false,
   sharedSecret: "test-secret-value",
   targetGroups: [{ feedId: "f2", targetGroupId: "g1" }],
@@ -100,12 +98,11 @@ describe("FeedsPage", () => {
     expect(pub.textContent).not.toMatch(/[\u{1F310}\u{1F512}]/u);
   });
 
-  it("shows each of the three states as word and icon and marks findable public feeds", async () => {
+  it("shows each of the three states as word and icon", async () => {
     const user = userEvent.setup();
     feeds = [
-      { ...publicFeed, id: "f3", name: "Auffindbar", searchable: true, indexable: true },
-      { ...publicFeed, id: "f4", name: "Vereinskalender", visibility: "CLUB", sharedSecret: "s-c" },
       publicFeed,
+      { ...publicFeed, id: "f4", name: "Vereinskalender", visibility: "CLUB", sharedSecret: "s-c" },
       privateFeed,
     ];
     renderRoute(route, url, <FeedsPage />);
@@ -115,10 +112,6 @@ describe("FeedsPage", () => {
       ).map((b) => [b.dataset.status, b.textContent, !!b.querySelector("svg")]);
 
     await screen.findByRole("region", { name: "Vereinskalender" });
-    expect(badges("Auffindbar")).toEqual([
-      ["public", "Öffentlich", true],
-      ["searchable", "Auffindbar", true],
-    ]);
     expect(badges("Vereinskalender")).toEqual([["club", "Nur per Link", true]]);
     expect(badges("Öffentlicher Kalender")).toEqual([["public", "Öffentlich", true]]);
     expect(badges("Vorstand intern")).toEqual([["private", "Privat", true]]);

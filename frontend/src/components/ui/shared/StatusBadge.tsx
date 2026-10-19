@@ -3,16 +3,7 @@ import { cn } from "@/lib/utils";
 import { Icon, type Glyph } from "./Icon";
 
 export type Status =
-  | "published"
-  | "draft"
-  | "holiday"
-  | "archived"
-  | "new"
-  | "private"
-  | "public"
-  | "club"
-  | "searchable"
-  | "danger";
+  "published" | "draft" | "holiday" | "archived" | "new" | "private" | "public" | "club" | "danger";
 
 const ICONS: Record<Status, Glyph> = {
   published: "check",
@@ -23,7 +14,6 @@ const ICONS: Record<Status, Glyph> = {
   private: "lock",
   public: "globe",
   club: "users",
-  searchable: "search",
   danger: "alert",
 };
 

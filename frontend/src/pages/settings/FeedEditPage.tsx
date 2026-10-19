@@ -14,7 +14,6 @@ import {
   LinkButton,
   Skeleton,
   TextInput,
-  Toggle,
   UnsavedChangesDialog,
   CopyField,
   toast,
@@ -207,13 +206,8 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
     if (key === "calendarIds") setCalendarsRejected(false);
   }
 
-  /** The search engine option is an explicit opt-in: leaving PUBLIC switches it off. */
   function setVisibility(visibility: FeedVisibility) {
-    setValues((v) => ({
-      ...v,
-      visibility,
-      searchable: visibility === "PUBLIC" ? v.searchable : false,
-    }));
+    setValues((v) => ({ ...v, visibility }));
     setSaveFailed(false);
   }
 
@@ -406,16 +400,6 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
                   </label>
                 ))}
               </div>
-              {values.visibility === "PUBLIC" && (
-                <Toggle
-                  id="fe-searchable"
-                  label={t("feeds.form.searchable.label")}
-                  hint={t("feeds.form.searchable.hint")}
-                  checked={values.searchable}
-                  onChange={(on) => set("searchable", on)}
-                  disabled={readOnly}
-                />
-              )}
             </fieldset>
 
             <fieldset className="ap-fieldset">

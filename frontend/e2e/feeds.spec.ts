@@ -48,7 +48,7 @@ async function listFeeds(request: APIRequestContext, s: Awaited<ReturnType<typeo
       id: string;
       name: string;
       visibility: string;
-      searchable: boolean;
+      indexable: boolean;
       sharedSecret: string;
       targetGroups: unknown[];
     }[]
@@ -222,54 +222,47 @@ test.describe("Veröffentlichen", () => {
     await expect(page.getByRole("heading", { name: "Geheimnis" })).toBeVisible();
   });
 
-  test("Feed je Status anlegen: Standard nur per Link, Suchoption nur bei öffentlich, Liste und Webansicht", async ({
+  test("Feed je Status anlegen: Standard nur per Link, Liste und Webansicht", async ({
     page,
     request,
   }) => {
     const s = await seed(request, "Feeds Status");
     await openFeeds(page, s.email, `${s.feedsPath}/new`);
     const group = page.getByRole("group", { name: "Sichtbarkeit" });
-    const searchable = page.getByRole("switch", { name: "Für Suchmaschinen auffindbar" });
 
-    // Standard: nur per Link, keine Suchoption
+    // Standard: nur per Link
     await expect(group.getByRole("radio", { name: /^Nur per Link/ })).toBeChecked();
-    await expect(searchable).toHaveCount(0);
     await page.getByLabel(/^Name/).fill("Mitglieder");
     await page.getByRole("button", { name: "Feed speichern" }).click();
     await expect(page.getByText("Feed „Mitglieder“ angelegt.")).toBeVisible();
 
-    // Öffentlich und auffindbar
+    // Öffentlich (von Suchmaschinen auffindbar)
     await page.getByRole("main").getByRole("link", { name: "Feed anlegen" }).first().click();
     await page.getByLabel(/^Name/).fill("Für alle");
     await group.getByRole("radio", { name: /^Öffentlich/ }).check();
-    await expect(searchable).toHaveAttribute("aria-checked", "false");
-    await searchable.click();
-    await expect(searchable).toHaveAttribute("aria-checked", "true");
     await page.getByRole("button", { name: "Feed speichern" }).click();
     await expect(page.getByText("Feed „Für alle“ angelegt.")).toBeVisible();
 
-    // Privat: Schalter verschwindet
+    // Privat
     await page.getByRole("main").getByRole("link", { name: "Feed anlegen" }).first().click();
     await page.getByLabel(/^Name/).fill("Vorstand");
     await group.getByRole("radio", { name: /^Öffentlich/ }).check();
-    await expect(searchable).toBeVisible();
     await group.getByRole("radio", { name: /^Privat \(geschützt\)/ }).check();
-    await expect(searchable).toHaveCount(0);
     await page.getByRole("button", { name: "Feed speichern" }).click();
     await expect(page.getByText("Feed „Vorstand“ angelegt.")).toBeVisible();
 
     const byName = Object.fromEntries((await listFeeds(request, s)).map((f) => [f.name, f]));
-    expect(byName["Mitglieder"]).toMatchObject({ visibility: "CLUB", searchable: false });
-    expect(byName["Für alle"]).toMatchObject({ visibility: "PUBLIC", searchable: true });
-    expect(byName["Vorstand"]).toMatchObject({ visibility: "PRIVATE", searchable: false });
+    expect(byName["Mitglieder"]).toMatchObject({ visibility: "CLUB", indexable: false });
+    expect(byName["Für alle"]).toMatchObject({ visibility: "PUBLIC", indexable: true });
+    expect(byName["Vorstand"]).toMatchObject({ visibility: "PRIVATE", indexable: false });
 
-    // Liste: Wort + Icon je Status, "Auffindbar" nur beim öffentlichen Feed mit Suchoption
+    // Liste: Wort + Icon je Status
     const badges = (name: string) => page.getByRole("region", { name }).locator(".ap-badge");
     await expect(badges("Mitglieder")).toHaveText(["Nur per Link"]);
-    await expect(badges("Für alle")).toHaveText(["Öffentlich", "Auffindbar"]);
+    await expect(badges("Für alle")).toHaveText(["Öffentlich"]);
     await expect(badges("Vorstand")).toHaveText(["Privat"]);
     for (const name of ["Mitglieder", "Für alle", "Vorstand"])
-      await expect(badges(name).locator("svg")).toHaveCount(name === "Für alle" ? 2 : 1);
+      await expect(badges(name).locator("svg")).toHaveCount(1);
 
     // Adressen: nur per Link ohne, privat mit Geheimnis
     const club = page.getByRole("region", { name: "Mitglieder" });
@@ -285,7 +278,7 @@ test.describe("Veröffentlichen", () => {
       await priv.getByRole("button", { name: "Zugänge anzeigen" }).click();
     await expect(priv.getByLabel("ICS-Adresse")).toHaveValue(/secret=[0-9a-f]{32}$/);
 
-    // Webansicht: nur per Link noindex, öffentlich + auffindbar ohne
+    // Webansicht: nur per Link noindex, öffentlich ohne
     await page.goto(new URL(clubWeb).pathname);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
@@ -333,7 +326,7 @@ test.describe("Veröffentlichen", () => {
     );
     expect((await listFeeds(request, s))[0]).toMatchObject({
       visibility: "CLUB",
-      searchable: false,
+      indexable: false,
     });
     expect((await request.get(openIcs)).status()).toBe(200);
     // Kein Geheimnis-Panel mehr

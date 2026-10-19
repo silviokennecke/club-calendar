@@ -84,7 +84,6 @@ async function seedPublic(request: APIRequestContext, name: string): Promise<Pub
       data: {
         name: "Schießbetrieb 2026",
         visibility: "PUBLIC",
-        searchable: true,
         calendarIds: [calendarId],
       },
     })

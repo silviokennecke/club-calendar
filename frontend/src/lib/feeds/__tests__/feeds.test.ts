@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   dropsSecret,
-  effectiveSearchable,
   emptyFeedValues,
   feedAddresses,
   feedStatus,
@@ -20,7 +19,6 @@ const feed = (over: Partial<CalendarFeed> = {}): CalendarFeed => ({
   calendarIds: ["c1"],
   name: "Öffentlicher Kalender",
   visibility: "PUBLIC",
-  searchable: false,
   indexable: false,
   sharedSecret: "abc123",
   targetGroups: [],
@@ -56,20 +54,13 @@ describe("feedAddresses", () => {
 });
 
 describe("feed form values", () => {
-  it("starts club internal, not searchable, with no audience filter", () => {
+  it("starts club internal, with no audience filter", () => {
     expect(emptyFeedValues(["c1"])).toEqual({
       name: "",
       visibility: "CLUB",
-      searchable: false,
       calendarIds: ["c1"],
       targetGroupIds: [],
     });
-  });
-  it("reads the search engine option only for public feeds", () => {
-    expect(feedValuesFromRecord(feed({ searchable: true })).searchable).toBe(true);
-    expect(feedValuesFromRecord(feed({ visibility: "CLUB", searchable: true })).searchable).toBe(
-      false,
-    );
   });
   it("reads the audience ids from the API shape", () => {
     const f = feed({
@@ -98,7 +89,6 @@ describe("feed form values", () => {
     const initial = {
       name: "A",
       visibility: "PUBLIC" as const,
-      searchable: false,
       calendarIds: ["c1"],
       targetGroupIds: ["g1", "g2"],
     };
@@ -107,34 +97,21 @@ describe("feed form values", () => {
     );
     expect(isFeedDirty(initial, { ...initial, visibility: "PRIVATE" })).toBe(true);
     expect(isFeedDirty(initial, { ...initial, targetGroupIds: ["g1"] })).toBe(true);
-    expect(isFeedDirty(initial, { ...initial, searchable: true })).toBe(true);
-    // The option of a non-public feed is never saved, so it does not count as a change
-    const club = { ...initial, visibility: "CLUB" as const };
-    expect(isFeedDirty(club, { ...club, searchable: true })).toBe(false);
   });
   it("trims the name in the payload", () => {
     expect(
       toFeedPayload({
         name: " Jugend ",
         visibility: "PRIVATE",
-        searchable: false,
         calendarIds: ["c1"],
         targetGroupIds: ["g1"],
       }),
     ).toEqual({
       name: "Jugend",
       visibility: "PRIVATE",
-      searchable: false,
       calendarIds: ["c1"],
       targetGroupIds: ["g1"],
     });
-  });
-  it("sends searchable only for public feeds", () => {
-    const base = { name: "A", searchable: true, calendarIds: ["c1"], targetGroupIds: [] };
-    expect(toFeedPayload({ ...base, visibility: "PUBLIC" }).searchable).toBe(true);
-    expect(toFeedPayload({ ...base, visibility: "CLUB" }).searchable).toBe(false);
-    expect(toFeedPayload({ ...base, visibility: "PRIVATE" }).searchable).toBe(false);
-    expect(effectiveSearchable({ visibility: "PUBLIC", searchable: false })).toBe(false);
   });
   it("asks before a saved private feed loses its secret", () => {
     expect(dropsSecret({ visibility: "PRIVATE" }, { visibility: "CLUB" })).toBe(true);

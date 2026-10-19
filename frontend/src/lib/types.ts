@@ -64,9 +64,7 @@ export interface CalendarFeed {
    * the search engine instruction. PRIVATE: only with the secret.
    */
   visibility: FeedVisibility;
-  /** Search engine opt-in; only ever true for PUBLIC feeds (the API resets it otherwise). */
-  searchable: boolean;
-  /** Search engines may index the feed (PUBLIC and searchable). */
+  /** Search engines may index the feed (exactly the PUBLIC feeds). */
   indexable: boolean;
   /** Only present when requested with `?includeSecret=1`; the feed screens always request it. */
   sharedSecret: string;

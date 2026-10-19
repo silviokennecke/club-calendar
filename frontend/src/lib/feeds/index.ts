@@ -52,29 +52,21 @@ export interface FeedFormValues {
   visibility: FeedVisibility;
   /** Calendars the feed publishes (at least one). */
   calendarIds: string[];
-  /** Search engine opt-in; only effective (and only sent as true) for PUBLIC. */
-  searchable: boolean;
   targetGroupIds: string[];
 }
 
-/** New feeds are CLUB ("Nur per Link"), not searchable. */
+/** New feeds are CLUB ("Nur per Link"). */
 export function emptyFeedValues(calendarIds: string[] = []): FeedFormValues {
-  return { name: "", visibility: "CLUB", searchable: false, calendarIds, targetGroupIds: [] };
+  return { name: "", visibility: "CLUB", calendarIds, targetGroupIds: [] };
 }
 
 export function feedValuesFromRecord(feed: CalendarFeed): FeedFormValues {
   return {
     name: feed.name,
     visibility: feed.visibility,
-    searchable: feed.visibility === "PUBLIC" && feed.searchable === true,
     calendarIds: feed.calendarIds ?? [],
     targetGroupIds: feedAudienceIds(feed),
   };
-}
-
-/** The search engine option as it will be saved: only PUBLIC feeds keep it. */
-export function effectiveSearchable(values: Pick<FeedFormValues, "visibility" | "searchable">) {
-  return values.visibility === "PUBLIC" && values.searchable;
 }
 
 /**
@@ -94,7 +86,6 @@ export function isFeedDirty(initial: FeedFormValues, values: FeedFormValues): bo
   return (
     initial.name.trim() !== values.name.trim() ||
     initial.visibility !== values.visibility ||
-    effectiveSearchable(initial) !== effectiveSearchable(values) ||
     !same(initial.calendarIds, values.calendarIds) ||
     !same(initial.targetGroupIds, values.targetGroupIds)
   );
@@ -113,7 +104,6 @@ export function toFeedPayload(values: FeedFormValues) {
   return {
     name: values.name.trim(),
     visibility: values.visibility,
-    searchable: effectiveSearchable(values),
     calendarIds: values.calendarIds,
     targetGroupIds: values.targetGroupIds,
   };
