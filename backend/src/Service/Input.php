@@ -13,8 +13,8 @@ use App\Exception\ApiProblemException;
  *
  * Status convention: a malformed input value (missing, wrong type, format, range, time zone, half a pair)
  * is 400 on every route checked here. 422 `validation_failed` comes from DTO constraints (routes that map
- * the body onto a DTO) and from values that are well-formed but conflict with stored state (e.g.
- * `searchable` on a feed that is not PUBLIC, a series without events).
+ * the body onto a DTO) and from values that are well-formed but conflict with stored state (e.g. a series
+ * without events).
  */
 final class Input
 {

@@ -46,7 +46,6 @@ readonly class FeedService
         if (array_key_exists('visibility', $data)) {
             $feed->setVisibility($this->visibility($data));
         }
-        $this->applySearchable($feed, $data);
         // Every feed gets a secret (only PRIVATE feeds require it; switching to PRIVATE later needs one)
         $feed->setSharedSecret(bin2hex(random_bytes(16)));
         $calendarIds = $this->calendarIds($data);
@@ -74,7 +73,6 @@ readonly class FeedService
                 $feed->setSharedSecret(bin2hex(random_bytes(16)));
             }
         }
-        $this->applySearchable($feed, $data);
         if (array_key_exists('targetGroupIds', $data)) {
             $this->syncTargetGroups($feed, $club, $data);
         }
@@ -99,25 +97,6 @@ readonly class FeedService
         }
 
         return $visibility;
-    }
-
-    /**
-     * The search engine opt-in exists only for PUBLIC feeds: `searchable: true` for another (resulting)
-     * visibility is 422; a feed that is no longer PUBLIC loses the option automatically (also when only
-     * the visibility is changed), so the stored and returned value is always the effective one.
-     */
-    private function applySearchable(CalendarFeed $feed, array $data): void
-    {
-        if (array_key_exists('searchable', $data)) {
-            $searchable = Input::bool($data, 'searchable');
-            if ($searchable && FeedVisibility::PUBLIC !== $feed->getVisibility()) {
-                throw Input::invalid('searchable', 'searchable is only allowed for PUBLIC feeds', 422);
-            }
-            $feed->setSearchable($searchable);
-        }
-        if (FeedVisibility::PUBLIC !== $feed->getVisibility()) {
-            $feed->setSearchable(false);
-        }
     }
 
     public function delete(string $id, Club $club): void
@@ -207,7 +186,6 @@ readonly class FeedService
             'calendarIds' => self::sortedIds($feed),
             'name' => $feed->getName(),
             'visibility' => $feed->getVisibility()->value,
-            'searchable' => $feed->isSearchable(),
             'indexable' => $feed->isIndexable(),
             'targetGroups' => $feed->getTargetGroups()->map(fn (CalendarFeedTargetGroup $ftg) => [
                 'feedId' => $ftg->getFeed()->getId(),

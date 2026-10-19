@@ -48,13 +48,17 @@ class PublicTest extends WebTestCase
     public function testFeedApiResponsesSendNoReferrerAndNoindex(): void
     {
         ['calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
-        $feed = $this->createFeed($cal->getId());
+        $feed = $this->createFeed($cal->getId(), FeedVisibility::CLUB, 'club-secret');
         foreach (["/api/feed/{$feed->getId()}/events", "/api/feed/{$feed->getId()}/ics", '/api/feed/unknown/events'] as $url) {
             self::$client->request('GET', $url);
             $headers = self::$client->getResponse()->headers;
             $this->assertSame('no-referrer', $headers->get('Referrer-Policy'), $url);
             $this->assertSame('noindex', $headers->get('X-Robots-Tag'), $url);
         }
+        // PUBLIC feeds are indexable: no noindex on success
+        $public = $this->createFeed($cal->getId());
+        self::$client->request('GET', "/api/feed/{$public->getId()}/events");
+        $this->assertNull(self::$client->getResponse()->headers->get('X-Robots-Tag'));
         // Not a feed route: no Referrer-Policy from the app (the web server sets its general default)
         self::$client->request('GET', '/api/health');
         $this->assertFalse(self::$client->getResponse()->headers->has('Referrer-Policy'));

@@ -20,8 +20,8 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
- * Three feed states (PUBLIC, CLUB, PRIVATE) and the search engine opt-in `searchable`: access matrix of
- * the public feed API, validation of the option, X-Robots-Tag per feed and duplicating a calendar.
+ * Three feed states (PUBLIC, CLUB, PRIVATE) (only PUBLIC is indexable): access matrix of
+ * the public feed API, X-Robots-Tag per feed and duplicating a calendar.
  */
 class FeedStatusTest extends WebTestCase
 {
@@ -60,11 +60,9 @@ class FeedStatusTest extends WebTestCase
     }
 
     /** A feed stored directly (secrets are unique, so each feed gets its own; PRIVATE ones the known one). */
-    private function feed(Calendar $cal, FeedVisibility $visibility, bool $searchable = false): CalendarFeed
+    private function feed(Calendar $cal, FeedVisibility $visibility): CalendarFeed
     {
         $feed = TestHelper::createFeed(self::$em, $cal->getClub(), [$cal], $visibility, 'Feed '.$visibility->value, FeedVisibility::PRIVATE === $visibility ? self::SECRET : self::SECRET.'-'.++self::$feedNo);
-        $feed->setSearchable($searchable);
-        self::$em->flush();
 
         return $feed;
     }
@@ -98,22 +96,21 @@ class FeedStatusTest extends WebTestCase
         return null === $secret ? $path : $path.(str_contains($path, '?') ? '&' : '?').'secret='.$secret;
     }
 
-    /** @return iterable<string, array{FeedVisibility, bool}> */
+    /** @return iterable<string, array{FeedVisibility}> */
     public static function statuses(): iterable
     {
-        yield 'PUBLIC' => [FeedVisibility::PUBLIC, false];
-        yield 'PUBLIC searchable' => [FeedVisibility::PUBLIC, true];
-        yield 'CLUB' => [FeedVisibility::CLUB, false];
-        yield 'PRIVATE' => [FeedVisibility::PRIVATE, false];
+        yield 'PUBLIC' => [FeedVisibility::PUBLIC];
+        yield 'CLUB' => [FeedVisibility::CLUB];
+        yield 'PRIVATE' => [FeedVisibility::PRIVATE];
     }
 
     // --- Access matrix ---
 
     #[DataProvider('statuses')]
-    public function testAccessMatrix(FeedVisibility $visibility, bool $searchable): void
+    public function testAccessMatrix(FeedVisibility $visibility): void
     {
         ['calendar' => $cal, 'event' => $event] = $this->calendarWithContent();
-        $feed = $this->feed($cal, $visibility, $searchable);
+        $feed = $this->feed($cal, $visibility);
 
         foreach (['none' => null, 'right' => self::SECRET, 'wrong' => 'wrong-secret'] as $mode => $secret) {
             foreach (self::endpoints($event->getId()) as $label => $path) {
@@ -130,7 +127,7 @@ class FeedStatusTest extends WebTestCase
                     continue;
                 }
                 $this->assertSame($visibility->value, $r['body']['feed']['visibility'], $label);
-                $this->assertSame(FeedVisibility::PUBLIC === $visibility && $searchable, $r['body']['feed']['indexable'], $label);
+                $this->assertSame(FeedVisibility::PUBLIC === $visibility, $r['body']['feed']['indexable'], $label);
                 $this->assertArrayNotHasKey('sharedSecret', $r['body']['feed']);
                 if ('single event' === $label) {
                     $this->assertSame('Schützenfest', $r['body']['event']['name']);
@@ -143,10 +140,10 @@ class FeedStatusTest extends WebTestCase
     }
 
     #[DataProvider('statuses')]
-    public function testArchivedCalendarStays404AndTheSecretIsCheckedFirst(FeedVisibility $visibility, bool $searchable): void
+    public function testArchivedCalendarStays404AndTheSecretIsCheckedFirst(FeedVisibility $visibility): void
     {
         ['calendar' => $cal, 'event' => $event] = $this->calendarWithContent();
-        $feed = $this->feed($cal, $visibility, $searchable);
+        $feed = $this->feed($cal, $visibility);
         $cal->setArchivedAt(new \DateTimeImmutable());
         self::$em->flush();
 
@@ -168,11 +165,8 @@ class FeedStatusTest extends WebTestCase
     {
         ['calendar' => $cal, 'event' => $event] = $this->calendarWithContent();
         $cases = [
-            'PUBLIC searchable' => [$this->feed($cal, FeedVisibility::PUBLIC, true), null],
-            'PUBLIC' => [$this->feed($cal, FeedVisibility::PUBLIC), 'noindex'],
+            'PUBLIC' => [$this->feed($cal, FeedVisibility::PUBLIC), null],
             'CLUB' => [$this->feed($cal, FeedVisibility::CLUB), 'noindex'],
-            // Not possible via the API; the entity must not treat it as indexable either
-            'CLUB with stale searchable flag' => [$this->feed($cal, FeedVisibility::CLUB, true), 'noindex'],
             'PRIVATE with secret' => [$this->feed($cal, FeedVisibility::PRIVATE), 'noindex'],
         ];
         foreach ($cases as $label => [$feed, $expected]) {
@@ -184,7 +178,7 @@ class FeedStatusTest extends WebTestCase
             }
         }
 
-        $indexable = $cases['PUBLIC searchable'][0]->getId();
+        $indexable = $cases['PUBLIC'][0]->getId();
         $errors = [
             'PRIVATE without secret (403)' => "/api/feed/{$cases['PRIVATE with secret'][0]->getId()}/events",
             'PRIVATE wrong secret (403)' => "/api/feed/{$cases['PRIVATE with secret'][0]->getId()}/ics?secret=wrong-secret",
@@ -200,9 +194,9 @@ class FeedStatusTest extends WebTestCase
         }
     }
 
-    // --- Feed API: defaults and validation of `searchable` ---
+    // --- Feed API: defaults and indexable ---
 
-    public function testNewFeedsAreClubAndNotSearchableByDefault(): void
+    public function testNewFeedsAreClubAndNotIndexableByDefault(): void
     {
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $base = "/api/clubs/{$cal->getClub()->getId()}/feeds";
@@ -210,86 +204,45 @@ class FeedStatusTest extends WebTestCase
         $r = $this->req('POST', $base.'?includeSecret=1', $this->auth($user), ['calendarIds' => [$cal->getId()], 'name' => 'Ohne Angabe']);
         $this->assertSame(201, $r['status']);
         $this->assertSame('CLUB', $r['body']['visibility']);
-        $this->assertFalse($r['body']['searchable']);
         $this->assertFalse($r['body']['indexable']);
+        $this->assertArrayNotHasKey('searchable', $r['body']);
         $this->assertNotSame('', $r['body']['sharedSecret']);
 
         $public = $this->req('POST', $base, $this->auth($user), ['calendarIds' => [$cal->getId()], 'name' => 'Öffentlich', 'visibility' => 'PUBLIC']);
         $this->assertSame(201, $public['status']);
-        $this->assertFalse($public['body']['searchable'], 'opt-in: PUBLIC is not searchable by default');
+        $this->assertTrue($public['body']['indexable'], 'PUBLIC is indexable');
 
         $stored = self::$em->getRepository(CalendarFeed::class)->find($r['body']['id']);
         $this->assertSame(FeedVisibility::CLUB, $stored->getVisibility());
     }
 
-    public function testSearchableIsOnlyAllowedForPublicFeeds(): void
+    public function testIndexableFollowsTheVisibility(): void
     {
         ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
         $auth = $this->auth($user);
         $base = "/api/clubs/{$cal->getClub()->getId()}/feeds";
 
-        foreach (['CLUB', 'PRIVATE', null] as $visibility) {
-            $data = ['calendarIds' => [$cal->getId()], 'name' => 'X', 'searchable' => true] + (null === $visibility ? [] : ['visibility' => $visibility]);
-            $r = $this->req('POST', $base, $auth, $data);
-            $this->assertSame(422, $r['status'], (string) $visibility);
-            $this->assertSame('validation_failed', $r['body']['code']);
-            $this->assertSame('searchable', $r['body']['field']);
-        }
-        $this->assertSame(0, self::$em->getRepository(CalendarFeed::class)->count([]), 'nothing created');
-
-        // false is fine for every status
-        $club = $this->req('POST', $base, $auth, ['calendarIds' => [$cal->getId()], 'name' => 'Verein', 'visibility' => 'CLUB', 'searchable' => false]);
-        $this->assertSame(201, $club['status']);
-        $this->assertFalse($club['body']['searchable']);
-
-        $bad = $this->req('POST', $base, $auth, ['calendarIds' => [$cal->getId()], 'name' => 'X', 'visibility' => 'PUBLIC', 'searchable' => 'yes']);
-        $this->assertSame(400, $bad['status']);
-        $this->assertSame('searchable', $bad['body']['field']);
         $badVisibility = $this->req('POST', $base, $auth, ['calendarIds' => [$cal->getId()], 'name' => 'X', 'visibility' => 'INTERNAL']);
         $this->assertSame(400, $badVisibility['status']);
         $this->assertSame(['validation_failed', 'visibility'], [$badVisibility['body']['code'], $badVisibility['body']['field']]);
 
-        $public = $this->req('POST', $base, $auth, ['calendarIds' => [$cal->getId()], 'name' => 'Öffentlich', 'visibility' => 'PUBLIC', 'searchable' => true]);
+        $public = $this->req('POST', $base, $auth, ['calendarIds' => [$cal->getId()], 'name' => 'Öffentlich', 'visibility' => 'PUBLIC']);
         $this->assertSame(201, $public['status']);
-        $this->assertTrue($public['body']['searchable']);
         $this->assertTrue($public['body']['indexable']);
         $id = $public['body']['id'];
-        $this->assertTrue($this->req('GET', "$base/$id", $auth)['body']['searchable']);
+        $this->assertTrue($this->req('GET', "$base/$id", $auth)['body']['indexable']);
 
-        // Switching to another status with searchable: true is rejected, nothing changes
-        $r = $this->req('PATCH', "$base/$id", $auth, ['visibility' => 'PRIVATE', 'searchable' => true]);
-        $this->assertSame(422, $r['status']);
-        $this->assertSame('searchable', $r['body']['field']);
-        $after = $this->req('GET', "$base/$id", $auth)['body'];
-        $this->assertSame(['PUBLIC', true], [$after['visibility'], $after['searchable']]);
+        foreach (['CLUB' => false, 'PRIVATE' => false, 'PUBLIC' => true] as $visibility => $indexable) {
+            $r = $this->req('PATCH', "$base/$id", $auth, ['visibility' => $visibility]);
+            $this->assertSame(200, $r['status']);
+            $this->assertSame([$visibility, $indexable], [$r['body']['visibility'], $r['body']['indexable']], $visibility);
+            $this->assertSame($indexable, $this->req('GET', "$base/$id", $auth)['body']['indexable'], $visibility);
+        }
 
-        // Switching away from PUBLIC resets the option (the answer has the effective value)
-        $r = $this->req('PATCH', "$base/$id", $auth, ['visibility' => 'CLUB']);
-        $this->assertSame(200, $r['status']);
-        $this->assertSame(['CLUB', false, false], [$r['body']['visibility'], $r['body']['searchable'], $r['body']['indexable']]);
-        $this->assertFalse($this->req('GET', "$base/$id", $auth)['body']['searchable']);
-
-        // Back to PUBLIC: still off until opted in again
-        $r = $this->req('PATCH', "$base/$id", $auth, ['visibility' => 'PUBLIC']);
-        $this->assertFalse($r['body']['searchable']);
-
-        // On a CLUB feed, searchable: true alone is 422
-        $clubId = $club['body']['id'];
-        $r = $this->req('PATCH', "$base/$clubId", $auth, ['searchable' => true]);
-        $this->assertSame(422, $r['status']);
-        $this->assertSame('searchable', $r['body']['field']);
-
-        // Status and option together
-        $r = $this->req('PATCH', "$base/$clubId", $auth, ['visibility' => 'PUBLIC', 'searchable' => true]);
-        $this->assertSame(['PUBLIC', true, true], [$r['body']['visibility'], $r['body']['searchable'], $r['body']['indexable']]);
-        $r = $this->req('PATCH', "$base/$clubId", $auth, ['searchable' => false]);
-        $this->assertSame(['PUBLIC', false], [$r['body']['visibility'], $r['body']['searchable']]);
-        $r = $this->req('PATCH', "$base/$clubId", $auth, ['name' => 'Umbenannt']);
-        $this->assertSame(['PUBLIC', false], [$r['body']['visibility'], $r['body']['searchable']]);
-
-        // The list carries the fields as well
-        $list = $this->req('GET', $base, $auth)['body'];
-        $this->assertSame([false, false], array_column($list, 'searchable'));
+        // A rename keeps the state; the list carries the field as well
+        $r = $this->req('PATCH', "$base/$id", $auth, ['name' => 'Umbenannt']);
+        $this->assertSame(['PUBLIC', true], [$r['body']['visibility'], $r['body']['indexable']]);
+        $this->assertSame([true], array_column($this->req('GET', $base, $auth)['body'], 'indexable'));
     }
 
     public function testFeedRoutesKeepTenantRulesAndIgnoreArchiving(): void
@@ -299,14 +252,14 @@ class FeedStatusTest extends WebTestCase
         $feed = $this->feed($cal, FeedVisibility::PUBLIC);
         $uri = "/api/clubs/{$cal->getClub()->getId()}/feeds/{$feed->getId()}";
 
-        $this->assertSame(403, $this->req('PATCH', $uri, $this->auth($stranger), ['searchable' => true])['status']);
+        $this->assertSame(403, $this->req('PATCH', $uri, $this->auth($stranger), ['name' => 'Neu'])['status']);
         // A feed of another calendar through a calendar the user is a member of
-        $this->assertSame(404, $this->req('PATCH', "/api/clubs/{$otherCal->getClub()->getId()}/feeds/{$feed->getId()}", $this->auth($stranger), ['searchable' => true])['status']);
+        $this->assertSame(404, $this->req('PATCH', "/api/clubs/{$otherCal->getClub()->getId()}/feeds/{$feed->getId()}", $this->auth($stranger), ['name' => 'Neu'])['status']);
 
         // Archived calendars do not block feed management (feeds belong to the club)
         $cal->setArchivedAt(new \DateTimeImmutable());
         self::$em->flush();
-        $this->assertSame(200, $this->req('PATCH', $uri, $this->auth($user), ['searchable' => true])['status']);
+        $this->assertSame(200, $this->req('PATCH', $uri, $this->auth($user), ['name' => 'Neu'])['status']);
     }
 
     // --- The shared secret is only returned on request ---
@@ -373,7 +326,7 @@ class FeedStatusTest extends WebTestCase
         $this->assertSame(200, $this->req('GET', $public)['status']);
 
         // Changes that keep the feed open do not touch the secret
-        $r = $this->req('PATCH', $uri.'?includeSecret=true', $auth, ['visibility' => 'PUBLIC', 'searchable' => true]);
+        $r = $this->req('PATCH', $uri.'?includeSecret=true', $auth, ['visibility' => 'PUBLIC']);
         $this->assertSame(self::SECRET, $r['body']['sharedSecret']);
 
         // Back to PRIVATE: the old secret (it may have spread while the feed was open) no longer works
@@ -400,11 +353,6 @@ class FeedStatusTest extends WebTestCase
             $this->assertSame(400, $r['status'], json_encode($value));
             $this->assertSame(['validation_failed', 'visibility'], [$r['body']['code'], $r['body']['field']], json_encode($value));
         }
-        foreach (['true', 1, null] as $value) {
-            $r = $this->req('POST', $base, $auth, ['calendarIds' => [$cal->getId()], 'name' => 'X', 'visibility' => 'PUBLIC', 'searchable' => $value]);
-            $this->assertSame(400, $r['status'], json_encode($value));
-            $this->assertSame('searchable', $r['body']['field']);
-        }
         $this->assertSame(0, self::$em->getRepository(CalendarFeed::class)->count([]));
     }
 
@@ -413,7 +361,7 @@ class FeedStatusTest extends WebTestCase
     public function testDuplicatingACalendarDoesNotCopyFeeds(): void
     {
         ['user' => $user, 'club' => $club, 'calendar' => $cal] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
-        $this->feed($cal, FeedVisibility::PUBLIC, true);
+        $this->feed($cal, FeedVisibility::PUBLIC);
         $this->feed($cal, FeedVisibility::PRIVATE);
         $auth = $this->auth($user);
 

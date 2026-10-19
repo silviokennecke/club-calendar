@@ -121,7 +121,7 @@ class PublicFeedDetailsTest extends WebTestCase
             'clubName' => 'Schützenverein Waldblick',
             'timezone' => 'Europe/Berlin',
             'visibility' => 'PUBLIC',
-            'indexable' => false,
+            'indexable' => true,
             'eventCount' => 0,
             'audiences' => [],
         ], $r['body']['feed']);

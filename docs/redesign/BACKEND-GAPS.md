@@ -40,7 +40,7 @@ E2E-Umgebung: `E2E.md`.
   Zugriff geben); die Feedliste zeigt danach die neuen Adressen.
 - **Archiviert vs. unbekannt:** beide 404 ohne Code; ein Zustand "Kalender archiviert" bräuchte einen eigenen
   Status/Code. Falsches und fehlendes Geheimnis sind nicht unterscheidbar (für Gäste gewollt).
-- **Indexierung:** gesteuert je Feed (Status `PUBLIC` + Option `searchable`, siehe "Feed-Status"). Die SPA-Seiten
+- **Indexierung:** gesteuert je Feed (indexierbar genau bei Status `PUBLIC`; die Option `searchable` entfiel mit `Version20261021120000`, siehe "Feed-Status"). Die SPA-Seiten
   `/feed/*` bekommen ihr noindex nur per `<meta>` (aus `feed.indexable`); der Webserver sendet für sie kein
   `X-Robots-Tag` (bewusst nur Backend). Ein Abschalten der Option entfernt bereits indexierte Seiten erst beim
   nächsten Besuch der Suchmaschine.
