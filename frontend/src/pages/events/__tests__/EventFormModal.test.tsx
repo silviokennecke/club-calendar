@@ -216,6 +216,7 @@ describe("EventFormModal – new event", () => {
         propertyIds: [],
         featureIds: [],
         targetGroupIds: ["g1"],
+        note: "",
       }),
     );
     expect(await screen.findByTestId("location")).toHaveTextContent(

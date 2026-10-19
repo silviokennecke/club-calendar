@@ -3,6 +3,7 @@
  * Mirrors lib/events/form.ts; times are "HH:MM" as the native inputs deliver them. Times are optional
  * (design: TemplateEdit, new templates start empty): a template without times creates all-day events.
  */
+import { NOTE_MAX } from "@/lib/events/form";
 import type { EventTemplate } from "@/lib/types";
 
 export interface TemplateFormValues {
@@ -19,6 +20,8 @@ export interface TemplateFormValues {
   propertyIds: string[];
   featureIds: string[];
   targetGroupIds: string[];
+  /** Plain-text note events from the template start with; empty = none. */
+  note: string;
 }
 
 const FALLBACK_TIMEZONE = "Europe/Berlin";
@@ -42,6 +45,7 @@ export function emptyTemplateValues(): TemplateFormValues {
     propertyIds: [],
     featureIds: [],
     targetGroupIds: [],
+    note: "",
   };
 }
 
@@ -66,12 +70,13 @@ export function valuesFromTemplateRecord(
     propertyIds: tpl.properties.map((p) => p.property.id),
     featureIds: tpl.features.map((f) => f.feature.id),
     targetGroupIds: tpl.targetGroups.map((g) => g.targetGroup.id),
+    note: tpl.note ?? "",
   };
 }
 
-export type TemplateField = "name" | "timeBegin" | "timeEnd";
+export type TemplateField = "name" | "timeBegin" | "timeEnd" | "note";
 export type TemplateErrorCode =
-  "nameRequired" | "timeBeginRequired" | "timeEndRequired" | "timeEndBeforeStart";
+  "nameRequired" | "timeBeginRequired" | "timeEndRequired" | "timeEndBeforeStart" | "noteTooLong";
 
 export interface TemplateFormError {
   field: TemplateField;
@@ -89,6 +94,7 @@ export function validateTemplate(v: TemplateFormValues): TemplateFormError[] {
   if (v.timeBegin && !v.timeEnd) errors.push({ field: "timeEnd", code: "timeEndRequired" });
   if (v.timeBegin && v.timeEnd && v.timeEnd < v.timeBegin)
     errors.push({ field: "timeEnd", code: "timeEndBeforeStart" });
+  if (v.note.length > NOTE_MAX) errors.push({ field: "note", code: "noteTooLong" });
   return errors;
 }
 
@@ -102,6 +108,8 @@ export interface TemplatePayload {
   propertyIds: string[];
   featureIds: string[];
   targetGroupIds: string[];
+  /** "" = no note. */
+  note: string;
 }
 
 /** Request body for POST / PATCH; `clubTimezone` is sent when the club's zone is used. */
@@ -118,6 +126,7 @@ export function toTemplatePayload(
     propertyIds: v.propertyIds,
     featureIds: v.featureIds,
     targetGroupIds: v.targetGroupIds,
+    note: v.note,
   };
 }
 
@@ -133,6 +142,7 @@ export function isTemplateDirty(initial: TemplateFormValues, current: TemplateFo
     initial.timeBegin !== current.timeBegin ||
     initial.timeEnd !== current.timeEnd ||
     initial.locationId !== current.locationId ||
+    initial.note !== current.note ||
     !sameSet(initial.propertyIds, current.propertyIds) ||
     !sameSet(initial.featureIds, current.featureIds) ||
     !sameSet(initial.targetGroupIds, current.targetGroupIds)

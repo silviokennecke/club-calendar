@@ -252,6 +252,7 @@
       "properties": "Besonderheiten",
       "features": "Zusatzangebote",
       "audiences": "Gruppen",
+      "note": "Notiz",
       "addToCalendar": "Zum Kalender hinzufügen",
       "addToCalendarHint": "Lädt eine ICS-Datei nur für diesen Termin.",
       "notFound": {
@@ -503,6 +504,9 @@
       "namePlaceholder": "z. B. Training Luftgewehr",
       "date": "Startdatum",
       "dateEnd": "Enddatum",
+      "note": "Notiz",
+      "noteHint": "Optional. Alle Mitglieder des Kalenders sehen die Notiz; in veröffentlichten Kalendern (Feeds) ist sie ebenfalls sichtbar.",
+      "noteCount": "{{count}} / {{max}} Zeichen",
       "dateEndHint": "Nur für mehrtägige Termine.",
       "dates": "Datum",
       "times": "Uhrzeit",
@@ -566,7 +570,8 @@
         "dateEndBeforeStart": "Das Enddatum liegt vor dem Startdatum.",
         "timeBeginRequired": "Bitte gib eine Startzeit ein.",
         "timeEndRequired": "Bitte gib eine Endzeit ein.",
-        "timeEndBeforeStart": "Die Endzeit liegt vor der Startzeit."
+        "timeEndBeforeStart": "Die Endzeit liegt vor der Startzeit.",
+        "noteTooLong": "Die Notiz ist zu lang (höchstens {{max}} Zeichen)."
       },
       "loadingTitle": "Termin wird geladen"
     },
@@ -1066,6 +1071,9 @@
         "retry": "Erneut versuchen"
       },
       "back": "Zurück zu Vorlagen",
+      "noteField": "Notiz",
+      "noteFieldHint": "Optional. Termine aus dieser Vorlage übernehmen die Notiz; sie lässt sich pro Termin ändern.",
+      "noteCount": "{{count}} / {{max}} Zeichen",
       "newTitle": "Neue Vorlage",
       "editTitle": "Vorlage bearbeiten: {{name}}",
       "viewTitle": "Vorlage: {{name}}",
@@ -1097,7 +1105,8 @@
         "nameRequired": "Bitte gib einen Namen ein.",
         "timeBeginRequired": "Bitte gib auch eine Startzeit ein oder lass beide Zeiten leer.",
         "timeEndRequired": "Bitte gib auch eine Endzeit ein oder lass beide Zeiten leer.",
-        "timeEndBeforeStart": "Die Endzeit liegt vor der Startzeit."
+        "timeEndBeforeStart": "Die Endzeit liegt vor der Startzeit.",
+        "noteTooLong": "Die Notiz ist zu lang (höchstens {{max}} Zeichen)."
       }
     }
   },

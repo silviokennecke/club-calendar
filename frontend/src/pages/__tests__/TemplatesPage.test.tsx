@@ -246,6 +246,7 @@ describe("TemplateEditPage – new", () => {
       propertyIds: [],
       featureIds: ["f1"],
       targetGroupIds: ["g2"],
+      note: "",
     });
     expect(await screen.findByTestId("location")).toHaveTextContent(`${BASE}/templates`);
   });

@@ -19,6 +19,25 @@ describe("unfoldIcs / unescapeIcsText", () => {
   });
 });
 
+describe("parseIcs note", () => {
+  it("maps DESCRIPTION to a plain-text note with line breaks, cut at 2000 characters", () => {
+    const { events } = parseIcs(
+      wrap(
+        vevent(
+          "SUMMARY:A",
+          "DTSTART;VALUE=DATE:20261010",
+          "DESCRIPTION:Zeile 1\\nZeile 2\\, mit Komma",
+        ),
+        vevent("SUMMARY:B", "DTSTART;VALUE=DATE:20261011", `DESCRIPTION:${"x".repeat(2500)}`),
+        vevent("SUMMARY:C", "DTSTART;VALUE=DATE:20261012"),
+      ),
+    );
+    expect(events[0].note).toBe("Zeile 1\nZeile 2, mit Komma");
+    expect(events[1].note).toHaveLength(2000);
+    expect(events[2].note).toBe("");
+  });
+});
+
 describe("parseIcs", () => {
   it("reads a timed event with TZID, location and uid", () => {
     const { events, skipped } = parseIcs(
@@ -44,6 +63,7 @@ describe("parseIcs", () => {
         timeEnd: "21:00",
         timezone: "Europe/Berlin",
         locationText: "Schützenhaus Waldblick, Waldstraße 12",
+        note: "",
         recurring: false,
         recurrenceKey: null,
         recurrenceUnsupported: false,

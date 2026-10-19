@@ -267,6 +267,12 @@ function SeriesForm({
           <span className="t-sm t-muted" style={{ display: "block" }}>
             {[time, place].filter(Boolean).join(" · ")}
           </span>
+          {template.note && (
+            <span className="t-sm" style={{ display: "block", whiteSpace: "pre-line" }}>
+              <span className="t-muted">{t("events.form.note")}: </span>
+              {template.note}
+            </span>
+          )}
         </div>
         <LinkButton variant="secondary" {...nav.stepLink(page.routes.pickTemplate(presetDate))}>
           {t("events.series.change")}

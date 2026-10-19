@@ -252,6 +252,7 @@
       "properties": "Properties",
       "features": "Features",
       "audiences": "Audiences",
+      "note": "Note",
       "addToCalendar": "Add to calendar",
       "addToCalendarHint": "Downloads an ICS file for this event only.",
       "notFound": {
@@ -503,6 +504,9 @@
       "namePlaceholder": "e.g. Air rifle training",
       "date": "Start date",
       "dateEnd": "End date",
+      "note": "Note",
+      "noteHint": "Optional. All members of the calendar see the note; it is also visible in published calendars (feeds).",
+      "noteCount": "{{count}} / {{max}} characters",
       "dateEndHint": "Only for events spanning several days.",
       "dates": "Date",
       "times": "Time",
@@ -566,7 +570,8 @@
         "dateEndBeforeStart": "The end date is before the start date.",
         "timeBeginRequired": "Please enter a start time.",
         "timeEndRequired": "Please enter an end time.",
-        "timeEndBeforeStart": "The end time is before the start time."
+        "timeEndBeforeStart": "The end time is before the start time.",
+        "noteTooLong": "The note is too long (at most {{max}} characters)."
       },
       "loadingTitle": "Loading event"
     },
@@ -1066,6 +1071,9 @@
         "retry": "Try again"
       },
       "back": "Back to templates",
+      "noteField": "Note",
+      "noteFieldHint": "Optional. Events created from this template take over the note; it can be changed per event.",
+      "noteCount": "{{count}} / {{max}} characters",
       "newTitle": "New template",
       "editTitle": "Edit template: {{name}}",
       "viewTitle": "Template: {{name}}",
@@ -1097,7 +1105,8 @@
         "nameRequired": "Please enter a name.",
         "timeBeginRequired": "Please also enter a start time or leave both times empty.",
         "timeEndRequired": "Please also enter an end time or leave both times empty.",
-        "timeEndBeforeStart": "The end time is before the start time."
+        "timeEndBeforeStart": "The end time is before the start time.",
+        "noteTooLong": "The note is too long (at most {{max}} characters)."
       }
     }
   },

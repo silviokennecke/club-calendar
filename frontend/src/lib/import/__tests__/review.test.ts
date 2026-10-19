@@ -35,6 +35,7 @@ function ev(name: string, date: string, extra: Partial<ParsedIcsEvent> = {}): Pa
     timeEnd: "21:00",
     timezone: null,
     locationText: "",
+    note: "",
     recurring: false,
     recurrenceKey: null,
     recurrenceUnsupported: false,
@@ -248,11 +249,13 @@ describe("payload", () => {
       locationId: null,
       locationTempId: "new:gasthof zur linde",
       externalUid: "Herbstfest-2026-10-24",
+      note: "",
       propertyIds: [],
       featureIds: [],
       targetGroupIds: [],
     });
     const training = items[0];
+    expect(toImportPayload({ ...training, note: "Hinweis" }, locations).note).toBe("Hinweis");
     expect(toImportPayload(training, locations).locationId).toBe("l1");
     expect(toImportPayload(training, locations)).not.toHaveProperty("locationTempId");
     expect(toImportPayload({ ...training, dateEnd: "2026-10-01" }, locations).dateEnd).toBeNull();

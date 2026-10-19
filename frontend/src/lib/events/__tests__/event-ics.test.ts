@@ -70,4 +70,22 @@ describe("buildEventIcs", () => {
     expect(ics).toContain("DTSTART:20261024T150000Z");
     expect(ics).toContain("Fest\\; mit\\, Komma");
   });
+
+  it("writes the note first in DESCRIPTION, escaped, newlines as \\n", () => {
+    const ics = buildEventIcs(
+      ev({ note: "Treffpunkt: Halle; bitte pünktlich,\nDank!" }),
+      opts,
+    ).replace(/\r\n /g, "");
+    expect(ics).toContain(
+      "DESCRIPTION:Treffpunkt: Halle\\; bitte pünktlich\\,\\nDank!\\nZusatzangebote: Getränkeverkauf",
+    );
+    const only = buildEventIcs(ev({ note: "Nur Notiz", features: [], targetGroups: [] }), opts);
+    expect(only).toContain("DESCRIPTION:Nur Notiz");
+  });
+
+  it("folds a long note to 75 octets per line", () => {
+    const ics = buildEventIcs(ev({ note: "lang ".repeat(60) }), opts);
+    for (const line of ics.split("\r\n"))
+      expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(75);
+  });
 });

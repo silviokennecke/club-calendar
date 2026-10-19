@@ -51,6 +51,7 @@ const FIELD = {
   dateEnd: "imp-date-end",
   timeBegin: "imp-time-begin",
   timeEnd: "imp-time-end",
+  note: "imp-note",
 } as const;
 
 interface DraftValues extends Assignments {
@@ -119,6 +120,7 @@ export function ImportEditDialog({
     status: values.status,
     locationId: "",
     eventTemplateId: null,
+    note: "",
   });
   const summary = errors.map((e) => ({
     fieldId: FIELD[e.field],

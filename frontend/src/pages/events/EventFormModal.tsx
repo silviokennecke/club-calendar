@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { apiDelete, apiErrorStatus, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { isValidIso } from "@/lib/calendar";
 import {
+  NOTE_MAX,
   changedEventFields,
   changesDate,
   describeSeriesRule,
@@ -32,6 +33,7 @@ import {
   Modal,
   StatusBadge,
   Tag,
+  TextArea,
   TextInput,
   UnsavedChangesDialog,
   toast,
@@ -55,6 +57,7 @@ const FIELD_IDS: Record<EventField, string> = {
   dateEnd: "ev-end",
   timeBegin: "ev-st",
   timeEnd: "ev-et",
+  note: "ev-note",
 };
 
 /** Scope of saving / deleting an event of a series (`scope` of the API). */
@@ -491,6 +494,23 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
                 </div>
               </fieldset>
             )}
+            <Field
+              id={FIELD_IDS.note}
+              label={t("events.form.note")}
+              optional
+              hint={`${t("events.form.noteHint")} ${t("events.form.noteCount", {
+                count: values.note.length,
+                max: NOTE_MAX,
+              })}`}
+              error={errorFor("note")}
+            >
+              <TextArea
+                rows={4}
+                value={values.note}
+                onChange={(e) => set("note", e.target.value)}
+                onBlur={blur("note")}
+              />
+            </Field>
           </section>
 
           <section className="ap-panel ap-form-section" aria-labelledby="sec-status">

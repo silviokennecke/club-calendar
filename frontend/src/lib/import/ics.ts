@@ -6,6 +6,7 @@
 import { addDays, isValidIso, type IsoDate } from "@/lib/calendar";
 import { windowsZoneToIana } from "./windowsZones";
 import { expandRule, fromDay, parseRRule, toDay, twoYearsAfter } from "./rrule";
+import { NOTE_MAX } from "@/lib/events/form";
 import { IMPORT_MAX } from "./review";
 
 /** Most instances one recurrence (RRULE + RDATE) is expanded to (a year of daily events). */
@@ -25,6 +26,8 @@ export interface ParsedIcsEvent {
   timezone: string | null;
   /** Free text of the LOCATION property ("" = none). */
   locationText: string;
+  /** DESCRIPTION as plain text, newlines kept, cut at NOTE_MAX ("" = none). */
+  note: string;
   /**
    * Instance of a recurrence of the file (RRULE / RDATE / RECURRENCE-ID), imported as a single event;
    * `uid` is then `${UID}#${YYYYMMDD}` (date of the instance as imported), one per instance.
@@ -643,6 +646,10 @@ function buildEvent(props: Props, tz: string | null | undefined): Built | Skippe
   const locationText = unescapeIcsText(first(props, "LOCATION")?.value ?? "")
     .replace(/\s+/g, " ")
     .trim();
+  const note = unescapeIcsText(first(props, "DESCRIPTION")?.value ?? "")
+    .replace(/\r\n?/g, "\n")
+    .trim()
+    .slice(0, NOTE_MAX);
   return {
     start,
     event: {
@@ -655,6 +662,7 @@ function buildEvent(props: Props, tz: string | null | undefined): Built | Skippe
       timeEnd,
       timezone: start.tzid,
       locationText,
+      note,
       recurring: false,
       recurrenceKey: null,
       recurrenceUnsupported: false,
