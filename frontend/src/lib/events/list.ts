@@ -3,6 +3,7 @@
  */
 import { type IsoDate } from "@/lib/calendar";
 import type { CalendarEvent } from "@/lib/types";
+import { locationName } from "./format";
 
 export type StatusTab = "all" | "published" | "draft";
 
@@ -49,6 +50,69 @@ function compareEvents(a: ListEvent, b: ListEvent): number {
   if (!!a.isAllDay !== !!b.isAllDay) return a.isAllDay ? -1 : 1;
   const t = (a.timeBegin ?? "").localeCompare(b.timeBegin ?? "");
   return t !== 0 ? t : a.name.localeCompare(b.name);
+}
+
+export type SortKey = "name" | "date" | "place" | "status";
+export type SortDir = "asc" | "desc";
+export interface SortState {
+  key: SortKey;
+  dir: SortDir;
+}
+
+export const SORTABLE_KEYS: SortKey[] = ["name", "date", "place", "status"];
+export const DEFAULT_SORT: SortState = { key: "date", dir: "asc" };
+
+/** URL value: "name" = ascending, "-name" = descending; anything unknown = default (date ascending). */
+export function parseSort(value: string | null | undefined): SortState {
+  const desc = !!value?.startsWith("-");
+  const key = (desc ? value!.slice(1) : (value ?? "")) as SortKey;
+  return SORTABLE_KEYS.includes(key) ? { key, dir: desc ? "desc" : "asc" } : DEFAULT_SORT;
+}
+
+/** Inverse of parseSort; the default state has no URL value. */
+export function serializeSort(sort: SortState): string {
+  if (sort.key === DEFAULT_SORT.key && sort.dir === DEFAULT_SORT.dir) return "";
+  return `${sort.dir === "desc" ? "-" : ""}${sort.key}`;
+}
+
+/** Click cycle of a column header: ascending, descending, back to the default. */
+export function nextSort(current: SortState, key: SortKey): SortState {
+  if (current.key !== key) return { key, dir: "asc" };
+  return current.dir === "asc" ? { key, dir: "desc" } : DEFAULT_SORT;
+}
+
+type SortableEvent = ListEvent & {
+  location?: Parameters<typeof locationName>[0] | null;
+};
+
+/**
+ * Sorts a copy by the chosen column. Ties keep the default order (date, all-day, start, name);
+ * text compares locale-aware, events without a place come last in both directions.
+ */
+export function sortEvents<T extends SortableEvent>(
+  events: T[],
+  sort: SortState,
+  locale: string,
+): T[] {
+  const collator = new Intl.Collator(locale, { numeric: true, sensitivity: "base" });
+  const sign = sort.dir === "desc" ? -1 : 1;
+  const cmp = (a: T, b: T): number => {
+    switch (sort.key) {
+      case "name":
+        return sign * collator.compare(a.name, b.name);
+      case "date":
+        return sign * compareEvents(a, b);
+      case "status":
+        return sign * (Number(a.isDraft) - Number(b.isDraft));
+      case "place": {
+        const pa = a.location ? locationName(a.location) : "";
+        const pb = b.location ? locationName(b.location) : "";
+        if (!pa || !pb) return pa === pb ? 0 : pa ? -1 : 1;
+        return sign * collator.compare(pa, pb);
+      }
+    }
+  };
+  return [...events].sort((a, b) => cmp(a, b) || compareEvents(a, b));
 }
 
 export function filterEvents<T extends ListEvent>(events: T[], filter: ListFilter): T[] {

@@ -2,9 +2,17 @@ import { Fragment, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { formatMonthTitle, yearMonthOf } from "@/lib/calendar";
-import { formatEventDates, groupByMonth, locationName } from "@/lib/events";
+import {
+  DEFAULT_SORT,
+  formatEventDates,
+  groupByMonth,
+  locationName,
+  nextSort,
+  type SortKey,
+  type SortState,
+} from "@/lib/events";
 import type { CalendarEvent } from "@/lib/types";
-import { Button, StatusBadge, Tag, type TagTone } from "@/components/ui/shared";
+import { Button, Icon, StatusBadge, Tag, type TagTone } from "@/components/ui/shared";
 import { useLocale } from "@/components/calendar/useLocale";
 
 interface EventsTableProps {
@@ -18,6 +26,9 @@ interface EventsTableProps {
   selected?: Set<string>;
   onToggle?: (id: string) => void;
   onToggleAll?: () => void;
+  /** Current sort; with `onSort` the name, date, place and status headers become sort buttons. */
+  sort?: SortState;
+  onSort?: (next: SortState) => void;
 }
 
 /** Rows rendered at first and added by each "show more" (lists can hold up to 5000 events). */
@@ -36,6 +47,8 @@ export function EventsTable({
   selected,
   onToggle,
   onToggleAll,
+  sort = DEFAULT_SORT,
+  onSort,
 }: EventsTableProps) {
   const { t } = useTranslation();
   const locale = useLocale();
@@ -47,9 +60,46 @@ export function EventsTable({
   const [shown, setShown] = useState(EVENTS_PAGE_SIZE);
   const visible = events.length > shown ? events.slice(0, shown) : events;
   const remaining = events.length - visible.length;
+  // Month groups only make sense while the list is ordered by date.
+  const grouped = sort.key === "date";
+  const groups = grouped ? groupByMonth(visible) : [{ key: "all", month: null, events: visible }];
+
+  function sortTh(key: SortKey, label: string) {
+    if (!onSort) return <th scope="col">{label}</th>;
+    const active = sort.key === key;
+    const next = nextSort(sort, key);
+    const action =
+      next.key === DEFAULT_SORT.key && next.dir === "asc" && active ? "reset" : next.dir;
+    return (
+      <th
+        scope="col"
+        aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+      >
+        <button
+          type="button"
+          className="ap-sortbtn"
+          aria-label={t(`events.list.sort.${action}`, { col: label })}
+          onClick={() => onSort(next)}
+        >
+          {label}
+          <Icon
+            glyph={
+              !active ? "chevrons-up-down" : sort.dir === "asc" ? "chevron-up" : "chevron-down"
+            }
+            size={14}
+          />
+        </button>
+      </th>
+    );
+  }
 
   return (
     <div className="ap-tablescroll">
+      <p className="ap-sr" role="status">
+        {onSort
+          ? t(`events.list.sort.state.${sort.dir}`, { col: t(`events.list.col.${sort.key}`) })
+          : ""}
+      </p>
       <table className="ap-table">
         <caption className="ap-sr">{caption}</caption>
         <thead>
@@ -69,22 +119,24 @@ export function EventsTable({
                 </label>
               </th>
             )}
-            <th scope="col">{t("events.list.col.name")}</th>
-            <th scope="col">{t("events.list.col.date")}</th>
+            {sortTh("name", t("events.list.col.name"))}
+            {sortTh("date", t("events.list.col.date"))}
             <th scope="col">{t("events.list.col.time")}</th>
-            <th scope="col">{t("events.list.col.place")}</th>
+            {sortTh("place", t("events.list.col.place"))}
             <th scope="col">{t("events.list.col.audiences")}</th>
             <th scope="col">{t("events.list.col.features")}</th>
-            <th scope="col">{t("events.list.col.status")}</th>
+            {sortTh("status", t("events.list.col.status"))}
           </tr>
         </thead>
-        {groupByMonth(visible).map((group) => (
+        {groups.map((group) => (
           <tbody key={group.key}>
-            <tr>
-              <th scope="rowgroup" colSpan={columns} className="ap-table-group">
-                {formatMonthTitle(yearMonthOf(group.month), locale)}
-              </th>
-            </tr>
+            {group.month && (
+              <tr>
+                <th scope="rowgroup" colSpan={columns} className="ap-table-group">
+                  {formatMonthTitle(yearMonthOf(group.month), locale)}
+                </th>
+              </tr>
+            )}
             {group.events.map((ev) => {
               const isSel = selectable && selected.has(ev.id);
               const withIcons = ev.properties.filter((p) => p.property.icon);

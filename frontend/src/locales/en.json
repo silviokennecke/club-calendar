@@ -440,6 +440,15 @@
         "undo": "Undo",
         "undone": "Change undone.",
         "failed": "The events could not be changed. Nothing was changed. Please try again."
+      },
+      "sort": {
+        "asc": "{{col}}: sort ascending",
+        "desc": "{{col}}: sort descending",
+        "reset": "{{col}}: reset sorting",
+        "state": {
+          "asc": "Sorted by {{col}}, ascending",
+          "desc": "Sorted by {{col}}, descending"
+        }
       }
     },
     "delete": {

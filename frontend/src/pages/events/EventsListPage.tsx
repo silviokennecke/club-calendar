@@ -9,9 +9,13 @@ import {
   filterEvents,
   formatShortDate,
   joinList,
+  parseSort,
   parseStatusTab,
+  serializeSort,
+  sortEvents,
   STATUS_TABS,
   summarizeSelection,
+  type SortState,
   type StatusTab,
 } from "@/lib/events";
 import type { BulkAction, TargetGroup } from "@/lib/types";
@@ -40,7 +44,7 @@ const MAX_NAMED = 5;
 /**
  * All events of a calendar (design: Events, EventsStates, EventsMobile): status tabs with
  * counters, search, audience filter, month groups, multi-select with bulk actions.
- * Tab and search live in the URL (?status=draft&q=…).
+ * Tab, search and sort live in the URL (?status=draft&q=…&sort=-name).
  */
 export default function EventsListPage() {
   useEffect(preloadEventModals, []);
@@ -53,6 +57,7 @@ export default function EventsListPage() {
   const [params, setParams] = useSearchParams();
   const tab = parseStatusTab(params.get("status"));
   const query = params.get("q") ?? "";
+  const sort = parseSort(params.get("sort"));
   const latestParams = useRef(params);
   useEffect(() => {
     latestParams.current = params;
@@ -69,9 +74,16 @@ export default function EventsListPage() {
   });
   const all = useMemo(() => events.data ?? [], [events.data]);
   const filter = { tab, query, groupIds };
+  const sortKey = sort.key;
+  const sortDir = sort.dir;
   const shown = useMemo(
-    () => filterEvents(all, { tab, query, groupIds }),
-    [all, tab, query, groupIds],
+    () =>
+      sortEvents(
+        filterEvents(all, { tab, query, groupIds }),
+        { key: sortKey, dir: sortDir },
+        locale,
+      ),
+    [all, tab, query, groupIds, sortKey, sortDir, locale],
   );
   const counts = countByStatus(all, { query, groupIds });
   const canEdit = page.canEdit;
@@ -81,7 +93,7 @@ export default function EventsListPage() {
   // Event dialogs open above this list (with its tab, search and filter).
   const modalState = openModalState(location);
 
-  function setParam(key: "status" | "q", value: string) {
+  function setParam(key: "status" | "q" | "sort", value: string) {
     // Router updates run in a transition: `prev` / `params` can still be the state before a
     // just-clicked tab, which would bring the old tab back. Build on the last params we set.
     const next = new URLSearchParams(latestParams.current);
@@ -89,6 +101,9 @@ export default function EventsListPage() {
     else next.delete(key);
     latestParams.current = next;
     setParams(next, { replace: true });
+  }
+  function pickSort(next: SortState) {
+    setParam("sort", serializeSort(next));
   }
   function pickTab(next: StatusTab) {
     setParam("status", next);
@@ -232,6 +247,8 @@ export default function EventsListPage() {
           selected={canEdit ? selected : undefined}
           onToggle={canEdit ? toggle : undefined}
           onToggleAll={canEdit ? toggleAll : undefined}
+          sort={sort}
+          onSort={pickSort}
         />
       </div>
     );

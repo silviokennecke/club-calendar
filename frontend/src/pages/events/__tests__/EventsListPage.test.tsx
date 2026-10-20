@@ -110,6 +110,59 @@ describe("EventsListPage", () => {
     expect(screen.getAllByText("Wiederkehrend")).toHaveLength(1);
   });
 
+  it("sorts by sortable headers with aria-sort and cycles back to the default", async () => {
+    const user = userEvent.setup();
+    renderList();
+    await screen.findByRole("table");
+    const th = (name: string) => screen.getByRole("columnheader", { name: new RegExp(name) });
+    expect(th("Datum")).toHaveAttribute("aria-sort", "ascending");
+    expect(th("Name")).toHaveAttribute("aria-sort", "none");
+    expect(th("Zeit")).not.toHaveAttribute("aria-sort");
+    expect(th("Gruppen").querySelector("button")).toBeNull();
+
+    await user.click(
+      within(th("Name")).getByRole("button", { name: "Name: aufsteigend sortieren" }),
+    );
+    expect(th("Name")).toHaveAttribute("aria-sort", "ascending");
+    expect(th("Datum")).toHaveAttribute("aria-sort", "none");
+    expect(rows()).toEqual([
+      "Arbeitsdienst",
+      "Jugendtraining",
+      "Training Luftgewehr",
+      "Vereinsmeisterschaft",
+      "Vorstandssitzung",
+    ]);
+    expect(screen.queryByRole("rowheader")).toBeNull();
+
+    await user.click(
+      within(th("Name")).getByRole("button", { name: "Name: absteigend sortieren" }),
+    );
+    expect(th("Name")).toHaveAttribute("aria-sort", "descending");
+    expect(rows()[0]).toBe("Vorstandssitzung");
+
+    await user.click(
+      within(th("Name")).getByRole("button", { name: "Name: Sortierung zurücksetzen" }),
+    );
+    expect(th("Datum")).toHaveAttribute("aria-sort", "ascending");
+    expect(th("Name")).toHaveAttribute("aria-sort", "none");
+    expect(screen.getByRole("rowheader", { name: "Oktober 2026" })).toBeVisible();
+  });
+
+  it("restores the sort from the URL and keeps selection by id", async () => {
+    const user = userEvent.setup();
+    renderList("?sort=-status");
+    await screen.findByRole("table");
+    expect(screen.getByRole("columnheader", { name: /Status/ })).toHaveAttribute(
+      "aria-sort",
+      "descending",
+    );
+    expect(rows().slice(0, 2).sort()).toEqual(["Arbeitsdienst", "Vorstandssitzung"]);
+    await user.click(screen.getByRole("checkbox", { name: /Arbeitsdienst/ }));
+    await user.click(screen.getByRole("button", { name: "Datum: aufsteigend sortieren" }));
+    expect(screen.getByRole("checkbox", { name: /Arbeitsdienst/ })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Vorstandssitzung/ })).not.toBeChecked();
+  });
+
   it("switches status tabs with counters and keeps the tab in the URL", async () => {
     const user = userEvent.setup();
     renderList();
