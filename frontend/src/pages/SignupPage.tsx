@@ -10,9 +10,11 @@ import {
   type LegalOverview,
   type LegalType,
 } from "@/lib/legal";
+import { useRegistrationInfo } from "@/lib/registration";
 import { passwordProblem } from "@/lib/password";
 import i18n from "@/lib/i18n";
 import {
+  Banner,
   Button,
   ErrorSummary,
   Field,
@@ -31,7 +33,7 @@ interface FieldErrors {
   confirm?: string;
 }
 
-type Problem = "exists" | "generic" | "consent";
+type Problem = "exists" | "generic" | "consent" | "restricted";
 
 /** Documents the user has to accept at signup (when the operator provides them). */
 const CONSENT_TYPES: readonly LegalType[] = ["privacy", "terms"];
@@ -56,6 +58,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const qc = useQueryClient();
   const legal = useLegalOverview();
+  const restricted = useRegistrationInfo().data?.restricted === true;
   const [accepted, setAccepted] = useState<ReadonlySet<string>>(new Set());
   const [consentErrors, setConsentErrors] = useState<Record<string, string | undefined>>({});
   const consentItems = useMemo(
@@ -130,6 +133,8 @@ export default function SignupPage() {
       // Stable error code of the API (RFC 7807 body), never the English `detail` text
       if ((err as { code?: string }).code === "email_taken") {
         fail("exists", { email: t("auth.register.emailExistsField") });
+      } else if ((err as { code?: string }).code === "registration_restricted") {
+        fail("restricted", { email: t("auth.register.emailRestrictedField") });
       } else if (
         ["consent_outdated", "consent_required"].includes((err as { code?: string }).code ?? "")
       ) {
@@ -169,6 +174,7 @@ export default function SignupPage() {
         </>
       }
     >
+      {restricted && <Banner tone="info">{t("auth.register.restrictedHint")}</Banner>}
       {problem && (
         <FocusBanner
           key={problemKey}
@@ -187,7 +193,9 @@ export default function SignupPage() {
               ? "auth.register.problem.exists"
               : problem === "consent"
                 ? "consent.outdated"
-                : "auth.register.problem.generic",
+                : problem === "restricted"
+                  ? "auth.register.emailRestrictedField"
+                  : "auth.register.problem.generic",
           )}
         </FocusBanner>
       )}

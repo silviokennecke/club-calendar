@@ -11,6 +11,7 @@ export const SSO_ERROR_CODES = [
   "account_exists",
   "email_unverified_at_provider",
   "email_verification_required",
+  "registration_restricted",
   // set by the SPA itself when the one-time code of the redirect was rejected
   "invalid_login_code",
 ] as const;

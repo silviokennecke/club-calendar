@@ -16,6 +16,9 @@ describe("ssoErrorKey", () => {
     expect(ssoErrorKey("email_unverified_at_provider")).toBe(
       "auth.login.ssoError.email_unverified_at_provider",
     );
+    expect(ssoErrorKey("registration_restricted")).toBe(
+      "auth.login.ssoError.registration_restricted",
+    );
   });
 
   it("falls back to the general text", () => {

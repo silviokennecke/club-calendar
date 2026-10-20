@@ -43,7 +43,8 @@
         "account_exists": "Zu dieser E-Mail-Adresse gibt es schon ein Konto. Melde dich so an, wie du es bisher getan hast.",
         "email_unverified_at_provider": "Deine E-Mail-Adresse ist beim Anbieter noch nicht bestätigt. Bestätige sie dort und versuche es erneut, oder melde dich mit E-Mail und Passwort an.",
         "invalid_login_code": "Die Anmeldung ist abgelaufen oder wurde bereits verwendet. Bitte melde dich erneut an.",
-        "email_verification_required": "Wir müssen zuerst deine E-Mail-Adresse bestätigen. Melde dich mit E-Mail-Adresse und Passwort an oder registriere dich erneut."
+        "email_verification_required": "Wir müssen zuerst deine E-Mail-Adresse bestätigen. Melde dich mit E-Mail-Adresse und Passwort an oder registriere dich erneut.",
+        "registration_restricted": "Es wurde kein Konto erstellt. Die Registrierung ist nur mit einer Einladung möglich. Bitte die Verwalter deines Vereins um eine Einladung an diese E-Mail-Adresse."
       },
       "forgot": "Passwort vergessen?",
       "signInWith": "Mit {{provider}} anmelden",
@@ -64,6 +65,8 @@
       "passwordMissing": "Bitte wähle ein Passwort.",
       "passwordShortField": "Das Passwort ist zu kurz. Bitte gib mindestens 8 Zeichen ein.",
       "confirmMismatchField": "Die Passwörter sind nicht gleich. Bitte gib dasselbe Passwort noch einmal ein.",
+      "restrictedHint": "Die Registrierung ist nur mit einer Einladung möglich. Verwende die E-Mail-Adresse, an die die Einladung gesendet wurde.",
+      "emailRestrictedField": "Für diese E-Mail-Adresse liegt keine Einladung vor. Die Registrierung ist nur mit Einladung möglich.",
       "emailExistsField": "Für diese E-Mail-Adresse gibt es schon ein Konto. Bitte melde dich an.",
       "problem": {
         "exists": "Mit dieser E-Mail-Adresse gibt es schon ein Konto. Melde dich an oder setze dein Passwort zurück.",

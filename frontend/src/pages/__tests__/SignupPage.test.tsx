@@ -20,8 +20,10 @@ const BOTH = {
   terms: { id: "doc-t", title: null, publishedAt: "2026-01-01T00:00:00Z" },
 };
 
-async function renderSignup(overview: unknown = NONE) {
-  apiGet.mockResolvedValue(overview);
+async function renderSignup(overview: unknown = NONE, restricted = false) {
+  apiGet.mockImplementation((path: string) =>
+    Promise.resolve(path === "/api/auth/registration" ? { restricted } : overview),
+  );
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const view = renderAt(
     "/signup",
@@ -106,6 +108,26 @@ describe("SignupPage", () => {
     expect(alert).toHaveTextContent("schon ein Konto");
     expect(screen.getByRole("link", { name: "Zur Anmeldung" })).toHaveAttribute("href", "/login");
     expect(screen.getByLabelText(/^E-Mail/)).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("shows the invitation-only hint only when registration is restricted", async () => {
+    const { unmount } = await renderSignup(NONE, true);
+    expect(await screen.findByText(/nur mit einer Einladung möglich/)).toBeInTheDocument();
+    unmount();
+    await renderSignup(NONE, false);
+    expect(screen.queryByText(/nur mit einer Einladung möglich/)).not.toBeInTheDocument();
+  });
+
+  it("shows a field error on the e-mail when registration_restricted comes back", async () => {
+    apiPost.mockRejectedValue(
+      Object.assign(new Error("x"), { status: 403, code: "registration_restricted" }),
+    );
+    await renderSignup();
+    await fill("sicheres-passwort", "sicheres-passwort");
+    await waitFor(() =>
+      expect(screen.getByLabelText(/^E-Mail/)).toHaveAttribute("aria-invalid", "true"),
+    );
+    expect(screen.getAllByText(/liegt keine Einladung vor/).length).toBeGreaterThan(0);
   });
 
   it("does not treat other 400 errors as an existing account", async () => {
