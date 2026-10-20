@@ -27,6 +27,7 @@ import { feedStatus } from "@/lib/feeds";
 import { focusAfterDialog } from "@/lib/focus";
 import type { CalendarFeed } from "@/lib/types";
 import { usePageTitle } from "@/lib/usePageTitle";
+import { enterListRef } from "@/lib/pageMotion";
 
 /**
  * Publish (design: Feeds): the feeds of the club (club settings; a feed can span several calendars) with their status (word + icon: public, club
@@ -111,7 +112,11 @@ export default function FeedsPage() {
     );
   } else {
     content = (
-      <ul className="ap-stack" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+      <ul
+        ref={enterListRef}
+        className="ap-stack"
+        style={{ listStyle: "none", margin: 0, padding: 0 }}
+      >
         {list.map((feed, index) => {
           const open = isOpen(feed, index);
           const titleId = `feed-${feed.id}-t`;

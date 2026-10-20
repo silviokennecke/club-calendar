@@ -26,6 +26,7 @@ import {
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import { formatFetched, validateHolidayForm, type HolidayFormProblem } from "@/lib/settings";
 import type { HolidayCalendar } from "@/lib/types";
+import { enterListRef } from "@/lib/pageMotion";
 
 /**
  * Settings "Feiertage" (design: SettingsHolidays): holiday calendars from an ICS address — add,
@@ -179,7 +180,11 @@ export default function HolidayCalendarsPage() {
     );
   } else {
     listContent = (
-      <ul className="ap-panel ap-panel--flush ap-list" aria-labelledby="hol-list-h">
+      <ul
+        ref={enterListRef}
+        className="ap-panel ap-panel--flush ap-list"
+        aria-labelledby="hol-list-h"
+      >
         {items.map((hc) => {
           const busy = busyId === hc.id;
           const fetched = hc.lastFetchedAt ? formatFetched(hc.lastFetchedAt, timeZone, locale) : "";

@@ -173,10 +173,14 @@ export default function CalendarPage() {
   const pendingDirection = useRef<-1 | 1 | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
   const periodKey = view === "week" ? anchor : anchor.slice(0, 7);
+  const previousView = useRef(view);
   useEffect(() => {
     const dir = pendingDirection.current;
     pendingDirection.current = null;
+    const switched = previousView.current !== view;
+    previousView.current = view;
     if (dir) playPeriodTransition(boardRef.current, dir);
+    else if (switched) playPeriodTransition(boardRef.current, view === "week" ? 1 : -1, "view");
   }, [periodKey, view]);
 
   function navigate(direction: -1 | 1) {

@@ -24,6 +24,7 @@ import { audienceTone } from "@/components/calendar/eventDisplay";
 import { locationName } from "@/lib/events";
 import { preloadEventModals } from "./lazy";
 import { usePageTitle } from "@/lib/usePageTitle";
+import { enterListRef } from "@/lib/pageMotion";
 
 /**
  * Templates of a calendar (design: Templates): cards with time, place, audiences and tags, a search,
@@ -138,7 +139,11 @@ export default function TemplatesPage() {
     );
   } else {
     content = (
-      <ul className="ap-stack" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+      <ul
+        ref={enterListRef}
+        className="ap-stack"
+        style={{ listStyle: "none", margin: 0, padding: 0 }}
+      >
         {shown.map((tpl) => {
           const times = templateTimes(tpl);
           const extras: { id: string; name: string; icon?: string | null }[] = [
