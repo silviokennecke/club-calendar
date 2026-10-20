@@ -801,6 +801,54 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .ap-ac {
+    position: relative;
+  }
+  .ap-ac-list {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + var(--space-1));
+    z-index: 30;
+    max-height: 16rem;
+    overflow-y: auto;
+    margin: 0;
+    padding: var(--space-2);
+    list-style: none;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    animation: ap-ac-in var(--dur-base) var(--ease-out);
+  }
+  .ap-ac-list[hidden] {
+    display: none;
+  }
+  .ap-ac-option {
+    display: flex;
+    align-items: center;
+    min-height: var(--tap-min);
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-md);
+    color: var(--ink);
+    cursor: pointer;
+    font: 400 1rem/1.5rem var(--font-sans);
+  }
+  .ap-ac-option[aria-selected="true"] {
+    background: var(--brand-soft);
+    color: var(--brand);
+  }
+  @keyframes ap-ac-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ap-ac-list {
+      animation: none;
+    }
+  }
   .ap-menu {
     position: absolute;
     left: 0;
