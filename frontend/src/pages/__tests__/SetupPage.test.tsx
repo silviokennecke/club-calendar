@@ -85,8 +85,9 @@ describe("SetupPage step 1 (club)", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Verein anlegen" }));
     const input = screen.getByLabelText(/Name deines Vereins/);
     expect(input).toHaveAttribute("aria-invalid", "true");
-    expect(input).toHaveFocus();
-    expect(screen.getByText("Bitte gib den Namen deines Vereins ein.")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveFocus();
+    expect(screen.getByRole("alert")).toHaveTextContent("Der Verein ist noch nicht angelegt.");
+    expect(screen.getAllByText("Bitte gib den Namen deines Vereins ein.")).toHaveLength(2);
     expect(apiPost).not.toHaveBeenCalled();
   });
 
@@ -156,8 +157,10 @@ describe("SetupPage step 2 (calendar)", () => {
     const input = screen.getByLabelText(/Name des Kalenders/);
     await userEvent.clear(input);
     await userEvent.click(screen.getByRole("button", { name: "Kalender anlegen" }));
-    expect(screen.getByText("Bitte gib einen Namen für den Kalender ein.")).toBeInTheDocument();
-    expect(input).toHaveFocus();
+    expect(screen.getAllByText("Bitte gib einen Namen für den Kalender ein.")).toHaveLength(2);
+    expect(screen.getByRole("alert")).toHaveFocus();
+    await userEvent.type(input, "x");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("goes back without creating a second club and renames it when changed", async () => {

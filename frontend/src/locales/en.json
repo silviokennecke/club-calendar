@@ -16,6 +16,7 @@
     "signIn": "Sign in",
     "signOut": "Sign out",
     "email": "Email",
+    "emailInvalid": "Please enter a valid email address, for example name@example.com.",
     "password": "Password",
     "signingIn": "Signing in…",
     "createAccount": "Create account",
@@ -50,7 +51,6 @@
       "signInWith": "Sign in with {{provider}}",
       "errorTitle": "The sign-in is not complete yet",
       "emailMissing": "Please enter your email address.",
-      "emailInvalid": "Please enter a valid email address, for example name@example.com.",
       "passwordMissing": "Please enter your password."
     },
     "register": {
@@ -115,7 +115,6 @@
       "intro": "Enter the email address of your account. We will send you a link to set a new password.",
       "formLabel": "Reset",
       "submit": "Send reset link",
-      "emailInvalid": "Please enter a valid email address.",
       "failedTitle": "The link could not be requested",
       "failedText": "Please check your internet connection and try again.",
       "sentTitle": "Check your inbox",
@@ -160,6 +159,8 @@
     "clubNamePlaceholder": "e.g. Waldblick Shooting Club…",
     "clubNameHint": "All members will see this name.",
     "clubNameError": "Please enter the name of your club.",
+    "clubErrorSummary": "The club has not been created yet.",
+    "calendarErrorSummary": "The calendar has not been created yet.",
     "createClub": "Create club",
     "creating": "Creating…",
     "createCalendar": "Create the first calendar",
@@ -436,6 +437,8 @@
         "published_other": "{{count}} events published.",
         "drafted_one": "1 event marked as draft.",
         "drafted_other": "{{count}} events marked as draft.",
+        "undo": "Undo",
+        "undone": "Change undone.",
         "failed": "The events could not be changed. Nothing was changed. Please try again."
       }
     },

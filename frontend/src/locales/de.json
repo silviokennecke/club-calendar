@@ -16,6 +16,7 @@
     "signIn": "Anmelden",
     "signOut": "Abmelden",
     "email": "E-Mail",
+    "emailInvalid": "Bitte gib eine gültige E-Mail-Adresse ein, zum Beispiel name@beispiel.de.",
     "password": "Passwort",
     "signingIn": "Anmelden…",
     "createAccount": "Konto erstellen",
@@ -50,7 +51,6 @@
       "signInWith": "Mit {{provider}} anmelden",
       "errorTitle": "Die Anmeldung ist noch nicht vollständig",
       "emailMissing": "Bitte gib deine E-Mail-Adresse ein.",
-      "emailInvalid": "Bitte gib eine gültige E-Mail-Adresse ein, zum Beispiel name@beispiel.de.",
       "passwordMissing": "Bitte gib dein Passwort ein."
     },
     "register": {
@@ -115,7 +115,6 @@
       "intro": "Gib die E-Mail-Adresse deines Kontos ein. Wir schicken dir einen Link, mit dem du ein neues Passwort festlegst.",
       "formLabel": "Zurücksetzen",
       "submit": "Link zum Zurücksetzen senden",
-      "emailInvalid": "Bitte gib eine gültige E-Mail-Adresse ein.",
       "failedTitle": "Der Link konnte nicht angefordert werden",
       "failedText": "Bitte prüfe deine Internetverbindung und versuche es noch einmal.",
       "sentTitle": "Prüfe dein Postfach",
@@ -160,6 +159,8 @@
     "clubNamePlaceholder": "z. B. Schützenverein Waldblick…",
     "clubNameHint": "Diesen Namen sehen alle Mitglieder.",
     "clubNameError": "Bitte gib den Namen deines Vereins ein.",
+    "clubErrorSummary": "Der Verein ist noch nicht angelegt.",
+    "calendarErrorSummary": "Der Kalender ist noch nicht angelegt.",
     "createClub": "Verein anlegen",
     "creating": "Wird angelegt…",
     "createCalendar": "Ersten Kalender anlegen",
@@ -436,6 +437,8 @@
         "published_other": "{{count}} Termine veröffentlicht.",
         "drafted_one": "1 Termin als Entwurf markiert.",
         "drafted_other": "{{count}} Termine als Entwurf markiert.",
+        "undo": "Rückgängig",
+        "undone": "Änderung rückgängig gemacht.",
         "failed": "Die Termine konnten nicht geändert werden. Es wurde nichts geändert. Bitte versuche es erneut."
       }
     },

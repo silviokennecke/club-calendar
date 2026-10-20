@@ -71,7 +71,7 @@ describe("SignupPage", () => {
     expect(alert).toHaveTextContent("zu kurz");
     const password = screen.getByLabelText(/^Passwort \(Pflicht\)/);
     expect(password).toHaveAttribute("aria-invalid", "true");
-    expect(password).toHaveFocus();
+    expect(alert).toHaveFocus();
     expect(screen.getByRole("link", { name: /zu kurz/ })).toHaveAttribute(
       "href",
       "#signup-password",
@@ -94,7 +94,30 @@ describe("SignupPage", () => {
       "Bitte gib deine E-Mail-Adresse ein.",
     );
     expect(screen.getByLabelText(/^E-Mail/)).toHaveAttribute("aria-invalid", "true");
-    expect(screen.getByLabelText(/^E-Mail/)).toHaveFocus();
+    expect(screen.getByRole("alert")).toHaveFocus();
+  });
+
+  it("validates on blur, not while typing, and clears the error once fixed", async () => {
+    await renderSignup();
+    const user = userEvent.setup();
+    const email = screen.getByLabelText(/^E-Mail/);
+    await user.type(email, "abc");
+    expect(email).not.toHaveAttribute("aria-invalid");
+    await user.tab();
+    expect(email).toHaveAttribute("aria-invalid", "true");
+    expect(email).toHaveAccessibleDescription(/gültige E-Mail-Adresse/);
+    expect(screen.getByRole("alert")).toHaveTextContent("gültige E-Mail-Adresse");
+
+    await user.type(email, "@beispiel.de");
+    expect(email).not.toHaveAttribute("aria-invalid");
+    expect(screen.queryByText(/gültige E-Mail-Adresse/)).not.toBeInTheDocument();
+  });
+
+  it("flags a malformed email on submit", async () => {
+    await renderSignup();
+    await fill("sicheres-passwort", "sicheres-passwort", "abc");
+    expect(await screen.findByRole("alert")).toHaveTextContent("gültige E-Mail-Adresse");
+    expect(apiPost).not.toHaveBeenCalled();
   });
 
   it("points existing accounts to the login", async () => {
@@ -180,7 +203,7 @@ describe("SignupPage", () => {
       await fill("sicheres-passwort", "sicheres-passwort");
       expect(await screen.findByRole("alert")).toHaveTextContent("Datenschutzerklärung");
       expect(screen.getByRole("checkbox")).toHaveAttribute("aria-invalid", "true");
-      expect(screen.getByRole("checkbox")).toHaveFocus();
+      expect(screen.getByRole("alert")).toHaveFocus();
       expect(apiPost).not.toHaveBeenCalled();
     });
 

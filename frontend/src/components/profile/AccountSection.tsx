@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/shared";
 import { ApiError, apiDelete, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { isEmailShape } from "@/lib/email";
 import { focusFirstInvalid } from "@/lib/focus";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import type { ProfileData } from "./profileTypes";
@@ -68,6 +69,7 @@ export function AccountSection({ profile }: { profile: ProfileData }) {
     setEmailFailed(false);
     const found: { email?: string; password?: string } = {};
     if (!email.trim()) found.email = t("auth.register.emailMissing");
+    else if (!isEmailShape(email)) found.email = t("auth.emailInvalid");
     if (!password) found.password = t("profile.account.passwordMissing");
     setEmailErrors(found);
     if (Object.keys(found).length > 0) return;
@@ -182,7 +184,14 @@ export function AccountSection({ profile }: { profile: ProfileData }) {
                   autoComplete="email"
                   inputMode="email"
                   spellCheck={false}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailErrors((prev) => (prev.email ? { ...prev, email: undefined } : prev));
+                  }}
+                  onBlur={() => {
+                    if (email.trim() && !isEmailShape(email))
+                      setEmailErrors((prev) => ({ ...prev, email: t("auth.emailInvalid") }));
+                  }}
                 />
               </Field>
               <PasswordField
@@ -191,7 +200,12 @@ export function AccountSection({ profile }: { profile: ProfileData }) {
                 error={emailErrors.password}
                 value={password}
                 autoComplete="current-password"
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setEmailErrors((prev) =>
+                    prev.password ? { ...prev, password: undefined } : prev,
+                  );
+                }}
               />
               <div className="ap-actions">
                 <Button type="submit" variant="secondary" icon="send" loading={sending}>

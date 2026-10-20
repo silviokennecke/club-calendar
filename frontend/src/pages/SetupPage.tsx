@@ -8,6 +8,7 @@ import type { Club, Calendar } from "@/lib/types";
 import {
   Banner,
   Button,
+  ErrorSummary,
   Field,
   FullPageLoader,
   Icon,
@@ -17,6 +18,9 @@ import {
 import { AuthLayout } from "@/components/auth/AuthLayout";
 
 type Step = 1 | 2;
+
+const CLUB_NAME_ID = "setup-club-name";
+const CALENDAR_NAME_ID = "setup-calendar-name";
 
 /**
  * Onboarding (design: Onboarding / OnboardingCalendar): step 1 creates a club, step 2 its first
@@ -39,12 +43,12 @@ export default function SetupPage() {
   const [clubIsNew, setClubIsNew] = useState(false);
   const [clubError, setClubError] = useState(false);
   const [calendarError, setCalendarError] = useState(false);
+  // Bumped on every failed submit so the ErrorSummary takes focus.
+  const [signal, setSignal] = useState(0);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const clubInputRef = useRef<HTMLInputElement>(null);
-  const calendarInputRef = useRef<HTMLInputElement>(null);
   const stepChanged = useRef(false);
 
   const { data: paramClub, isLoading: paramClubLoading } = useQuery<Club>({
@@ -83,7 +87,7 @@ export default function SetupPage() {
     const name = clubName.trim();
     if (!name) {
       setClubError(true);
-      clubInputRef.current?.focus();
+      setSignal((n) => n + 1);
       return;
     }
     setFailed(false);
@@ -118,7 +122,7 @@ export default function SetupPage() {
     const name = calendarName.trim();
     if (!name) {
       setCalendarError(true);
-      calendarInputRef.current?.focus();
+      setSignal((n) => n + 1);
       return;
     }
     if (!createdClub) return;
@@ -181,14 +185,19 @@ export default function SetupPage() {
           noValidate
         >
           {errorBanner}
+          <ErrorSummary
+            title={t("setup.clubErrorSummary")}
+            errors={clubError ? [{ fieldId: CLUB_NAME_ID, message: t("setup.clubNameError") }] : []}
+            focusSignal={signal}
+          />
           <Field
+            id={CLUB_NAME_ID}
             label={t("setup.clubName")}
             required
             hint={t("setup.clubNameHint")}
             error={clubError ? t("setup.clubNameError") : undefined}
           >
             <TextInput
-              ref={clubInputRef}
               placeholder={t("setup.clubNamePlaceholder")}
               value={clubName}
               autoComplete="organization"
@@ -216,14 +225,23 @@ export default function SetupPage() {
             noValidate
           >
             {errorBanner}
+            <ErrorSummary
+              title={t("setup.calendarErrorSummary")}
+              errors={
+                calendarError
+                  ? [{ fieldId: CALENDAR_NAME_ID, message: t("setup.calendarNameError") }]
+                  : []
+              }
+              focusSignal={signal}
+            />
             <Field
+              id={CALENDAR_NAME_ID}
               label={t("setup.calendarName")}
               required
               hint={t("setup.calendarNameHint")}
               error={calendarError ? t("setup.calendarNameError") : undefined}
             >
               <TextInput
-                ref={calendarInputRef}
                 autoComplete="off"
                 value={calendarName}
                 onChange={(e) => {

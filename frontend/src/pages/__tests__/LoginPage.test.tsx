@@ -32,8 +32,8 @@ function renderLogin(path = "/login") {
 
 async function fillAndSubmit() {
   const user = userEvent.setup();
-  await user.type(screen.getByLabelText("E-Mail"), "alex@beispiel.de");
-  await user.type(screen.getByLabelText("Passwort"), "geheim123");
+  await user.type(screen.getByLabelText(/^E-Mail/), "alex@beispiel.de");
+  await user.type(screen.getByLabelText(/^Passwort \(Pflicht\)/), "geheim123");
   await user.click(screen.getByRole("button", { name: "Anmelden" }));
   return user;
 }
@@ -52,8 +52,11 @@ describe("LoginPage", () => {
       "#main",
     );
     expect(screen.getByRole("main")).toHaveAttribute("id", "main");
-    expect(screen.getByLabelText("E-Mail")).toHaveAttribute("autocomplete", "username");
-    expect(screen.getByLabelText("Passwort")).toHaveAttribute("autocomplete", "current-password");
+    expect(screen.getByLabelText(/^E-Mail/)).toHaveAttribute("autocomplete", "username");
+    expect(screen.getByLabelText(/^Passwort \(Pflicht\)/)).toHaveAttribute(
+      "autocomplete",
+      "current-password",
+    );
     expect(screen.getByRole("link", { name: "Passwort vergessen?" })).toHaveAttribute(
       "href",
       "/forgot-password",
@@ -67,7 +70,7 @@ describe("LoginPage", () => {
   it("toggles password visibility with aria-pressed", async () => {
     const user = userEvent.setup();
     renderLogin();
-    const input = screen.getByLabelText("Passwort");
+    const input = screen.getByLabelText(/^Passwort \(Pflicht\)/);
     const toggle = screen.getByRole("button", { name: "Passwort anzeigen" });
     expect(input).toHaveAttribute("type", "password");
     expect(toggle).toHaveAttribute("aria-pressed", "false");
@@ -90,7 +93,7 @@ describe("LoginPage", () => {
     expect(await screen.findByTestId("location")).toHaveTextContent("/clubs");
   });
 
-  it("has no native validation bubble: empty fields get translated errors, focus on the first one", async () => {
+  it("has no native validation bubble: empty fields get translated errors, summary takes focus", async () => {
     const user = userEvent.setup();
     renderLogin();
     expect(screen.getByRole("form", { name: "Anmeldeformular" })).toHaveAttribute("novalidate");
@@ -100,35 +103,51 @@ describe("LoginPage", () => {
     expect(alert).toHaveTextContent("Die Anmeldung ist noch nicht vollständig");
     expect(alert).toHaveTextContent("Bitte gib deine E-Mail-Adresse ein.");
     expect(alert).toHaveTextContent("Bitte gib dein Passwort ein.");
-    const email = screen.getByLabelText("E-Mail");
-    expect(email).toHaveFocus();
+    const email = screen.getByLabelText(/^E-Mail/);
+    expect(alert).toHaveFocus();
     expect(email).toHaveAttribute("aria-invalid", "true");
     expect(email).toHaveAccessibleDescription("Bitte gib deine E-Mail-Adresse ein.");
-    expect(screen.getByLabelText("Passwort")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText(/^Passwort \(Pflicht\)/)).toHaveAttribute("aria-invalid", "true");
     expect(apiPost).not.toHaveBeenCalled();
 
     // The summary links to the fields.
     await user.click(screen.getByRole("link", { name: "Bitte gib dein Passwort ein." }));
-    expect(screen.getByLabelText("Passwort")).toHaveFocus();
+    expect(screen.getByLabelText(/^Passwort \(Pflicht\)/)).toHaveFocus();
   });
 
   it("focuses the password when only that is missing and rejects a malformed email", async () => {
     const user = userEvent.setup();
     renderLogin();
-    await user.type(screen.getByLabelText("E-Mail"), "alex@beispiel.de");
+    await user.type(screen.getByLabelText(/^E-Mail/), "alex@beispiel.de");
     await user.click(screen.getByRole("button", { name: "Anmelden" }));
-    expect(screen.getByLabelText("Passwort")).toHaveFocus();
-    expect(screen.getByLabelText("E-Mail")).not.toHaveAttribute("aria-invalid");
+    expect(screen.getByLabelText(/^Passwort \(Pflicht\)/)).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText(/^E-Mail/)).not.toHaveAttribute("aria-invalid");
 
-    await user.clear(screen.getByLabelText("E-Mail"));
-    await user.type(screen.getByLabelText("E-Mail"), "kein-at-zeichen");
-    await user.type(screen.getByLabelText("Passwort"), "geheim123");
+    await user.clear(screen.getByLabelText(/^E-Mail/));
+    await user.type(screen.getByLabelText(/^E-Mail/), "kein-at-zeichen");
+    await user.type(screen.getByLabelText(/^Passwort \(Pflicht\)/), "geheim123");
     await user.click(screen.getByRole("button", { name: "Anmelden" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Bitte gib eine gültige E-Mail-Adresse ein",
     );
-    expect(screen.getByLabelText("E-Mail")).toHaveFocus();
+    expect(screen.getByLabelText(/^E-Mail/)).toHaveAttribute("aria-invalid", "true");
     expect(apiPost).not.toHaveBeenCalled();
+  });
+
+  it("marks required fields and validates on blur, clearing errors while editing", async () => {
+    const user = userEvent.setup();
+    renderLogin();
+    const email = screen.getByLabelText("E-Mail (Pflicht)");
+    expect(screen.getByLabelText("Passwort (Pflicht)")).toBeInTheDocument();
+    await user.type(email, "kein-at");
+    expect(email).not.toHaveAttribute("aria-invalid");
+    await user.tab();
+    expect(email).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("alert")).toHaveTextContent("gültige E-Mail-Adresse");
+
+    await user.type(email, "@beispiel.de");
+    expect(email).not.toHaveAttribute("aria-invalid");
+    expect(screen.queryByText(/gültige E-Mail-Adresse/)).not.toBeInTheDocument();
   });
 
   it("shows a focused alert banner with a reset link for wrong credentials", async () => {
