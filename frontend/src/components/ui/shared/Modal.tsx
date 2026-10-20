@@ -20,6 +20,9 @@ import { FullPageLoader } from "./PageLoader";
 import { useDialogLayer } from "./dialogStack";
 import { useSheetDrag } from "./useSheetDrag";
 
+/** True while a routed modal plays its exit animation after the route already changed. */
+export const ModalClosingContext = createContext(false);
+
 type FocusTarget =
   boolean | RefObject<HTMLElement | null> | (() => HTMLElement | boolean | null | void);
 
@@ -107,6 +110,7 @@ export function ModalFrame({ children }: { children?: ReactNode }) {
   const closeRef = useRef<() => void>(() => {});
   const headingRef = useRef<HTMLHeadingElement>(null);
   const startFieldRef = useRef<string | null>(null);
+  const closing = useContext(ModalClosingContext);
   const ctx = useMemo<ModalFrameContext>(
     () => ({
       setVariant: (size, form) =>
@@ -119,7 +123,8 @@ export function ModalFrame({ children }: { children?: ReactNode }) {
   );
   return (
     <DialogFrame
-      open
+      open={!closing}
+      finalFocus={closing ? false : undefined}
       onOpenChange={(next) => {
         if (!next) closeRef.current();
       }}

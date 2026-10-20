@@ -1,9 +1,4 @@
-export function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-  );
-}
+import { motionEasing, motionMs, prefersReducedMotion } from "@/lib/motion";
 
 /**
  * Slide the new period in from the side it came from (interruptible WAAPI, transform + opacity);
@@ -19,6 +14,9 @@ export function playPeriodTransition(el: HTMLElement | null, direction: -1 | 1) 
       { opacity: 0, transform: from },
       { opacity: 1, transform: "none" },
     ],
-    { duration: reduced ? 120 : 160, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+    {
+      duration: motionMs(reduced ? "--dur-fast" : "--dur-base"),
+      easing: motionEasing("--ease-out"),
+    },
   );
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { motionEasing, motionMs } from "@/lib/motion";
 import { releaseVelocity, sheetOffset, shouldDismiss, type DragSample } from "./sheetDrag";
 
 const MOBILE_QUERY = "(max-width: 720px)";
@@ -43,7 +44,7 @@ export function useSheetDrag(onDismiss: () => void) {
     if (from === 0 || reduced() || typeof el.animate !== "function") return;
     anim.current = el.animate(
       [{ transform: `translateY(${from}px)` }, { transform: "translateY(0)" }],
-      { duration: 380, easing: "cubic-bezier(0.22, 1.2, 0.36, 1)" },
+      { duration: motionMs("--dur-sheet-spring"), easing: motionEasing("--ease-sheet-spring") },
     );
   }, []);
 

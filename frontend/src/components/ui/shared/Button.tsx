@@ -1,6 +1,7 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { Link, type LinkProps } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useDelayedVisible } from "@/lib/useDelayedVisible";
 import { Icon, type Glyph } from "./Icon";
 import { buttonClass, type ButtonVariant } from "./buttonClass";
 
@@ -34,6 +35,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   },
   ref,
 ) {
+  const showSpinner = useDelayedVisible(!!loading);
   return (
     <button
       ref={ref}
@@ -43,7 +45,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       aria-busy={loading || undefined}
       {...rest}
     >
-      {loading ? (
+      {showSpinner ? (
         <Icon glyph="loader" size={18} className="animate-spin motion-reduce:animate-none" />
       ) : (
         icon && <Icon glyph={icon} size={18} />

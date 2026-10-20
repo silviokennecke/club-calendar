@@ -11,5 +11,5 @@ interface SkeletonProps {
  * Put `aria-busy="true"` on the surrounding region.
  */
 export function Skeleton({ className, style }: SkeletonProps) {
-  return <span aria-hidden="true" className={cn("ap-skel", className)} style={style} />;
+  return <span aria-hidden="true" className={cn("ap-skel ap-delayed", className)} style={style} />;
 }
