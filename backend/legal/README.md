@@ -13,3 +13,12 @@ The files are synchronised into the database on `cache:clear`/`cache:warmup` and
 (docker entrypoint and deploy run it after the migrations). Versions are identified by the SHA-256 hash of the file:
 a changed file creates a new version (users must consent again), an unchanged file does nothing, a removed file
 retires the document ("not provided"), and the unchanged file coming back restores it.
+
+## External links instead of files
+
+A document can also be an externally hosted page: set `LEGAL_IMPRINT`, `LEGAL_PRIVACY` and/or `LEGAL_TERMS` to an
+absolute `http(s)://` URL. A Markdown file of the same type always wins; without a file the link is used; without
+either the document is "not provided". Invalid values are ignored and reported as a warning by `app:legal:sync`.
+A link is one single version: users consent to a privacy policy / terms given as a link once and are not asked
+again when the URL changes (the new URL is stored in place). Switching between file and link creates a new version
+(consent is asked again). Removing the link retires the document; the same kind of link coming back restores it.

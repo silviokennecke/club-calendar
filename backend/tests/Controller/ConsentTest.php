@@ -152,7 +152,7 @@ class ConsentTest extends WebTestCase
         $this->assertSame(200, $r['status']);
         $this->assertTrue($r['body']['consentRequired']);
         $this->assertCount(1, $r['body']['pendingConsents']);
-        $this->assertSame(['type', 'id', 'title', 'publishedAt'], array_keys($r['body']['pendingConsents'][0]));
+        $this->assertSame(['type', 'id', 'title', 'url', 'publishedAt'], array_keys($r['body']['pendingConsents'][0]));
         $this->assertSame($privacy->getId(), $r['body']['pendingConsents'][0]['id']);
     }
 

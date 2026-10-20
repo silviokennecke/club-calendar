@@ -11,7 +11,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * One version of a legal document (imprint, privacy policy, terms). A new row is created whenever the source file
- * content changes (SHA-256 `contentHash`); the id is the version. The current document of a type is its latest
+ * content changes (SHA-256 `contentHash`); the id is the version. A link version (`url` set, externally hosted
+ * document) has a constant hash per kind: changing the URL keeps the version. The current document of a type is its latest
  * row that is not retired. Rows are never deleted: consents reference them. Times are UTC.
  */
 #[ORM\Entity(repositoryClass: LegalDocumentRepository::class)]
@@ -37,6 +38,10 @@ class LegalDocument
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $title;
 
+    /** External address of the document (link version: markdown and html are empty); null for a Markdown document. */
+    #[ORM\Column(length: 2048, nullable: true)]
+    private ?string $url;
+
     #[ORM\Column]
     private \DateTimeImmutable $publishedAt;
 
@@ -50,6 +55,7 @@ class LegalDocument
         string $html,
         ?string $title,
         \DateTimeImmutable $publishedAt,
+        ?string $url = null,
     ) {
         $this->id = Uuid::v7()->toRfc4122();
         $this->type = $type;
@@ -58,6 +64,7 @@ class LegalDocument
         $this->html = $html;
         $this->title = $title;
         $this->publishedAt = $publishedAt;
+        $this->url = $url;
     }
 
     public function getId(): string
@@ -88,6 +95,21 @@ class LegalDocument
     public function getTitle(): ?string
     {
         return $this->title;
+    }
+
+    public function getUrl(): ?string
+    {
+        return $this->url;
+    }
+
+    public function isLink(): bool
+    {
+        return null !== $this->url;
+    }
+
+    public function setUrl(string $url): void
+    {
+        $this->url = $url;
     }
 
     public function getPublishedAt(): \DateTimeImmutable

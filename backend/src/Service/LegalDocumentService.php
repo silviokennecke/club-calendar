@@ -25,6 +25,10 @@ class LegalDocumentService
     public const string RESTORED = 'restored';
     public const string RETIRED = 'retired';
     public const string MISSING = 'missing';
+    public const string UPDATED = 'updated';
+
+    /** Constant content hash of every link version: a link is ONE version, whatever its URL. */
+    public const string LINK_HASH_SOURCE = 'legal-document-link:v1';
 
     public function __construct(
         private readonly EntityManagerInterface $em,
@@ -32,6 +36,11 @@ class LegalDocumentService
         private readonly UserConsentRepository $consents,
         #[Autowire('%app.legal_documents_path%')]
         private readonly string $path,
+        /** @var array<string, string> type value => configured external URL (may be empty or invalid) */
+        #[Autowire(['imprint' => '%app.legal_imprint%', 'privacy' => '%app.legal_privacy%', 'terms' => '%app.legal_terms%'])]
+        private readonly array $links = [],
+        #[Autowire('%env(FRONTEND_URL)%')]
+        private readonly string $frontendUrl = '',
     ) {
     }
 
@@ -43,7 +52,7 @@ class LegalDocumentService
     /**
      * Compares the files with the stored versions.
      *
-     * @return array<string, string> type value => created|unchanged|restored|retired|missing
+     * @return array<string, string> type value => created|unchanged|updated|restored|retired|missing
      */
     public function sync(): array
     {
@@ -63,6 +72,9 @@ class LegalDocumentService
         $now = new \DateTimeImmutable();
 
         $raw = is_file($file) ? @file_get_contents($file) : false;
+        if (false === $raw && null !== ($url = $this->validLink($type))) {
+            return $this->syncLink($type, $url, $latest, $now);
+        }
         if (false === $raw) {
             if (null !== $latest && !$latest->isRetired()) {
                 $latest->retire($now);
@@ -87,6 +99,75 @@ class LegalDocumentService
         $this->em->persist(new LegalDocument($type, $hash, $raw, $this->renderMarkdown($raw), $this->extractTitle($raw), $now));
 
         return self::CREATED;
+    }
+
+    private function syncLink(LegalDocumentType $type, string $url, ?LegalDocument $latest, \DateTimeImmutable $now): string
+    {
+        if (null !== $latest && $latest->isLink()) {
+            $restored = $latest->isRetired();
+            $changed = $latest->getUrl() !== $url;
+            if ($restored) {
+                $latest->restore();
+            }
+            if ($changed) {
+                $latest->setUrl($url);
+            }
+
+            return $restored ? self::RESTORED : ($changed ? self::UPDATED : self::UNCHANGED);
+        }
+
+        $this->em->persist(new LegalDocument($type, hash('sha256', self::LINK_HASH_SOURCE), '', '', null, $now, $url));
+
+        return self::CREATED;
+    }
+
+    /** The configured link of the type if it is an absolute http(s) URL, else null. */
+    private function validLink(LegalDocumentType $type): ?string
+    {
+        $url = trim($this->links[$type->value] ?? '');
+        if ('' === $url || strlen($url) > 2048) {
+            return null;
+        }
+        $parts = parse_url($url);
+        if (false === $parts || !in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true) || '' === ($parts['host'] ?? '')
+            || 1 === preg_match('/[\x00-\x20\x7f]/', $url)) {
+            return null;
+        }
+
+        return $url;
+    }
+
+    /**
+     * Types whose LEGAL_* link is set but not an absolute http(s) URL (ignored by the sync).
+     *
+     * @return list<string> type values
+     */
+    public function invalidLinks(): array
+    {
+        $invalid = [];
+        foreach (LegalDocumentType::cases() as $type) {
+            if ('' !== trim($this->links[$type->value] ?? '') && null === $this->validLink($type)) {
+                $invalid[] = $type->value;
+            }
+        }
+
+        return $invalid;
+    }
+
+    /**
+     * Public address of every provided document, for mails: Markdown document => `{FRONTEND_URL}/{type}`, link => the
+     * external URL. Types without a current document are omitted. One query.
+     *
+     * @return array<string, string> type value => absolute URL
+     */
+    public function publicLinks(): array
+    {
+        $links = [];
+        foreach ($this->documents->findCurrentOfTypes(LegalDocumentType::cases()) as $type => $doc) {
+            $links[$type] = $doc->getUrl() ?? rtrim($this->frontendUrl, '/').'/'.$type;
+        }
+
+        return $links;
     }
 
     public function renderMarkdown(string $markdown): string

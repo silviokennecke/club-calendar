@@ -10,7 +10,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /** Synchronises the legal Markdown files with the database (after migrations, on deploy and startup). */
-#[AsCommand(name: 'app:legal:sync', description: 'Synchronise the legal documents (imprint, privacy, terms) from LEGAL_DOCUMENTS_PATH')]
+#[AsCommand(name: 'app:legal:sync', description: 'Synchronise the legal documents (imprint, privacy, terms) from LEGAL_DOCUMENTS_PATH or the LEGAL_* links')]
 class LegalSyncCommand
 {
     public function __construct(private readonly LegalDocumentService $legal)
@@ -23,8 +23,12 @@ class LegalSyncCommand
         foreach ($report as $type => $result) {
             $io->writeln(sprintf('%s: %s', $type, $result));
             if (LegalDocumentService::MISSING === $result || LegalDocumentService::RETIRED === $result) {
-                $io->writeln(sprintf('WARNING: %s document not provided (%s/%s.md)', $type, rtrim($this->legal->getPath(), '/'), $type));
+                $io->writeln(sprintf('WARNING: %s document not provided (%s/%s.md or LEGAL_%s)', $type, rtrim($this->legal->getPath(), '/'), $type, strtoupper($type)));
             }
+        }
+
+        foreach ($this->legal->invalidLinks() as $type) {
+            $io->writeln(sprintf('WARNING: LEGAL_%s is not an absolute http(s) URL and is ignored', strtoupper($type)));
         }
 
         return Command::SUCCESS;

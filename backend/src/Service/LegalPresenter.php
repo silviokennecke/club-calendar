@@ -15,19 +15,20 @@ final class LegalPresenter
         return $time->setTimezone(new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
     }
 
-    /** @return array{id: string, title: ?string, publishedAt: string} */
+    /** @return array{id: string, title: ?string, url: ?string, publishedAt: string} */
     public static function summary(LegalDocument $doc): array
     {
-        return ['id' => $doc->getId(), 'title' => $doc->getTitle(), 'publishedAt' => self::time($doc->getPublishedAt())];
+        return ['id' => $doc->getId(), 'title' => $doc->getTitle(), 'url' => $doc->getUrl(), 'publishedAt' => self::time($doc->getPublishedAt())];
     }
 
-    /** @return array{id: string, type: string, title: ?string, html: string, publishedAt: string} */
+    /** @return array{id: string, type: string, title: ?string, url: ?string, html: string, publishedAt: string} */
     public static function full(LegalDocument $doc): array
     {
         return [
             'id' => $doc->getId(),
             'type' => $doc->getType()->value,
             'title' => $doc->getTitle(),
+            'url' => $doc->getUrl(),
             'html' => $doc->getHtml(),
             'publishedAt' => self::time($doc->getPublishedAt()),
         ];
@@ -36,7 +37,7 @@ final class LegalPresenter
     /**
      * @param list<LegalDocument> $docs
      *
-     * @return list<array{type: string, id: string, title: ?string, publishedAt: string}>
+     * @return list<array{type: string, id: string, title: ?string, url: ?string, publishedAt: string}>
      */
     public static function pending(array $docs): array
     {
@@ -69,6 +70,7 @@ final class LegalPresenter
             'type' => $c->getType()->value,
             'documentId' => $doc->getId(),
             'documentTitle' => $doc->getTitle(),
+            'documentUrl' => $doc->getUrl(),
             'documentPublishedAt' => self::time($doc->getPublishedAt()),
             'consentedAt' => self::time($c->getConsentedAt()),
             'current' => ($currentIds[$c->getType()->value] ?? null) === $doc->getId(),

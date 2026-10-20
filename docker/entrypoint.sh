@@ -12,6 +12,8 @@
 #            otherwise a new keypair is generated on every container start and sessions are lost).
 # Legal documents: mount your legal Markdown files (imprint.md, privacy.md, terms.md) at /var/www/html/legal or set
 #                  LEGAL_DOCUMENTS_PATH to another directory (see backend/legal/README.md).
+#                  Or set LEGAL_IMPRINT / LEGAL_PRIVACY / LEGAL_TERMS to an http(s) URL of an external document
+#                  (used only when the Markdown file of that type is missing).
 set -euo pipefail
 
 APP_DIR=/var/www/html

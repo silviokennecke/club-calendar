@@ -40,7 +40,7 @@ class LegalControllerTest extends WebTestCase
         $this->assertSame(200, $r['status']);
         $this->assertNull($r['body']['imprint']);
         $this->assertNull($r['body']['terms']);
-        $this->assertSame(['id', 'title', 'publishedAt'], array_keys($r['body']['privacy']));
+        $this->assertSame(['id', 'title', 'url', 'publishedAt'], array_keys($r['body']['privacy']));
         $this->assertSame($privacy->getId(), $r['body']['privacy']['id']);
         $this->assertSame('Datenschutz', $r['body']['privacy']['title']);
         $this->assertStringContainsString('max-age=60', $r['headers']['cache-control'][0]);
@@ -91,5 +91,23 @@ class LegalControllerTest extends WebTestCase
         $r = TestHelper::jsonRequest(self::$client, 'GET', '/api/legal/documents/nope');
         $this->assertSame(404, $r['status']);
         $this->assertSame('legal_document_not_found', $r['body']['code']);
+    }
+
+    public function testLinkDocumentShapes(): void
+    {
+        $doc = new \App\Entity\LegalDocument(LegalDocumentType::PRIVACY, hash('sha256', 'x'), '', '', null, new \DateTimeImmutable(), 'https://example.org/privacy');
+        self::$em->persist($doc);
+        self::$em->flush();
+
+        $r = TestHelper::jsonRequest(self::$client, 'GET', '/api/legal');
+        $this->assertSame('https://example.org/privacy', $r['body']['privacy']['url']);
+        $this->assertNull($r['body']['privacy']['title']);
+
+        $r = TestHelper::jsonRequest(self::$client, 'GET', '/api/legal/privacy');
+        $this->assertSame('https://example.org/privacy', $r['body']['url']);
+        $this->assertSame('', $r['body']['html']);
+
+        $r = TestHelper::jsonRequest(self::$client, 'GET', '/api/legal/documents/'.$doc->getId());
+        $this->assertSame('https://example.org/privacy', $r['body']['url']);
     }
 }
