@@ -10,7 +10,8 @@
     "search": "Search…",
     "all": "All",
     "name": "Name",
-    "quotaExceeded": "Limit reached: this club or calendar cannot hold more of these items. Delete unused ones first."
+    "quotaExceeded": "Limit reached: this club or calendar cannot hold more of these items. Delete unused ones first.",
+    "requestTimeout": "The request took too long. Check your connection and try again."
   },
   "auth": {
     "signIn": "Sign in",

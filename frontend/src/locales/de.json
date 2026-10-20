@@ -10,7 +10,8 @@
     "search": "Suchen…",
     "all": "Alle",
     "name": "Name",
-    "quotaExceeded": "Limit erreicht: Dieser Verein oder Kalender kann nicht mehr davon aufnehmen. Lösche zuerst nicht mehr benötigte Einträge."
+    "quotaExceeded": "Limit erreicht: Dieser Verein oder Kalender kann nicht mehr davon aufnehmen. Lösche zuerst nicht mehr benötigte Einträge.",
+    "requestTimeout": "Die Anfrage hat zu lange gedauert. Prüfe deine Verbindung und versuche es erneut."
   },
   "auth": {
     "signIn": "Anmelden",

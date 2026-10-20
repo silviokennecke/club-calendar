@@ -306,7 +306,7 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
   `docs/api/openapi.yaml`, `ErrorCode`). SSO callback errors (`?error=`) map to their own texts via
   `lib/ssoError.ts` (`auth.login.ssoError.<code>`, unknown codes → `generic`). The react-query
   default `retry` (`lib/queryRetry.ts`) does not retry 4xx (401/403/404 show their error state at once), 5xx and
-  network errors get 2 retries. Auth: `lib/auth-context.ts` (context + `useAuth`), `lib/AuthProvider.tsx` (provider);
+  network errors get 2 retries. Every request times out (`fetchWithTimeout` in `lib/api.ts`: 30 s, 120 s for import, import preview and ICS export) with `ApiError` `code: "request_timeout"`, `status` 0 (shown like a network error; a refresh timeout does not end the session; the caller's own `signal` still aborts as a plain AbortError). Auth: `lib/auth-context.ts` (context + `useAuth`), `lib/AuthProvider.tsx` (provider);
   button styling is `buttonClass()` in `ui/shared/` (the old shadcn component files in `components/ui/` are gone;
   only the shadcn CSS variables and `tw-animate-css` remain as a base in `index.css`). Lint: `--max-warnings 0`.
 - Club / calendar switch: the last calendar per club is stored at the membership on the server (`PATCH
