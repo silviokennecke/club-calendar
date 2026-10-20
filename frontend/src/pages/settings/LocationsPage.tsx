@@ -280,7 +280,7 @@ export default function LocationsPage() {
           text={readOnly ? t("settings.places.empty.readOnly") : t("settings.places.empty.text")}
           actions={
             readOnly ? undefined : (
-              <Button icon="plus" onClick={startNew}>
+              <Button variant="secondary" icon="plus" onClick={startNew}>
                 {t("settings.places.create")}
               </Button>
             )
@@ -383,7 +383,7 @@ export default function LocationsPage() {
       wide
       actions={
         !readOnly && (
-          <Button icon="plus" onClick={startNew}>
+          <Button variant="secondary" icon="plus" onClick={startNew}>
             {t("settings.places.create")}
           </Button>
         )

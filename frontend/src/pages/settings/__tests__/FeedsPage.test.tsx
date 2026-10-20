@@ -217,7 +217,7 @@ describe("FeedsPage", () => {
     feeds = [];
     renderRoute(route, url, <FeedsPage />);
     expect(await screen.findByRole("heading", { name: "Noch kein Feed" })).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Feed anlegen" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "Feed anlegen" })).toHaveLength(1);
   });
 
   it("shows an error with retry when the feeds cannot be loaded", async () => {

@@ -356,7 +356,9 @@ describe("MasterList", () => {
     renderList("audiences");
     expect(await screen.findByRole("heading", { name: "Noch keine Gruppen" })).toBeInTheDocument();
     const empty = screen.getByRole("heading", { name: "Noch keine Gruppen" }).parentElement!;
-    await user.click(within(empty).getByRole("button", { name: "Gruppe anlegen" }));
+    const emptyAdd = within(empty).getByRole("button", { name: "Gruppe anlegen" });
+    expect(emptyAdd).toHaveClass("cc-btn--secondary");
+    await user.click(emptyAdd);
     expect(screen.getByLabelText(/^Name/)).toHaveFocus();
   });
 
