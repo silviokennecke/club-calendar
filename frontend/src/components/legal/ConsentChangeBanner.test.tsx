@@ -90,6 +90,20 @@ describe("ConsentChangeBanner", () => {
     await waitFor(() => expect(setUser).toHaveBeenCalledWith(me));
   });
 
+  it("links a linked document in a new tab inside the dialog", async () => {
+    user = {
+      id: "u",
+      pendingConsents: [{ ...privacy, url: "https://example.org/datenschutz" }],
+      consentRequired: false,
+    };
+    renderBanner();
+    fireEvent.click(screen.getByRole("button", { name: "Prüfen und akzeptieren" }));
+    const link = await screen.findByRole("link", { name: "Datenschutzerklärung" });
+    expect(link).toHaveAttribute("href", "https://example.org/datenschutz");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
   it("requires every checkbox", async () => {
     renderBanner();
     fireEvent.click(screen.getByRole("button", { name: "Prüfen und akzeptieren" }));

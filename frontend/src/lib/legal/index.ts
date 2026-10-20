@@ -10,6 +10,8 @@ export const LEGAL_TYPES: readonly LegalType[] = ["imprint", "privacy", "terms"]
 export interface LegalSummary {
   id: string;
   title: string | null;
+  /** Absolute http(s) URL of an externally linked document; null for a Markdown document. */
+  url: string | null;
   publishedAt: string;
 }
 
@@ -21,6 +23,8 @@ export interface LegalDocument {
   id: string;
   type: LegalType;
   title: string | null;
+  /** External link (then `html` is empty); null for a Markdown document. */
+  url: string | null;
   html: string;
   publishedAt: string;
 }
@@ -80,6 +84,15 @@ export function legalTypeOf(pathname: string): LegalType {
   return isLegalType(seg) ? seg : "imprint";
 }
 
+/** Props of an anchor that leaves the app for an external legal document. */
+export function externalLinkProps(url: string, newTab: boolean) {
+  return {
+    href: url,
+    rel: "noopener noreferrer",
+    ...(newTab ? { target: "_blank" } : {}),
+  };
+}
+
 /** Id of the consent checkbox of a document type (`<prefix>-<type>`). */
 export function consentCheckboxId(prefix: string, type: LegalType): string {
   return `${prefix}-${type}`;
@@ -91,6 +104,8 @@ export interface ConsentRecord {
   type: LegalType;
   documentId: string;
   documentTitle: string | null;
+  /** Link of the accepted version if it was an external document (no stored text). */
+  documentUrl: string | null;
   documentPublishedAt: string;
   consentedAt: string;
   /** Still the current version of its type. */

@@ -22,6 +22,7 @@ export interface PendingConsent {
   type: "privacy" | "terms";
   id: string;
   title: string | null;
+  url?: string | null;
   publishedAt: string;
 }
 

@@ -111,6 +111,26 @@ describe("ConsentPage", () => {
     expect(apiGet).toHaveBeenCalledWith("/api/auth/consents");
   });
 
+  it("links a linked pending document in a new tab", () => {
+    auth = {
+      user: {
+        id: "u",
+        consentRequired: true,
+        pendingConsents: [{ ...pending[0], url: "https://example.org/datenschutz" }, pending[1]],
+      },
+      loading: false,
+    };
+    renderPage();
+    const link = screen.getByRole("link", { name: "Datenschutzerklärung" });
+    expect(link).toHaveAttribute("href", "https://example.org/datenschutz");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getByRole("link", { name: "Nutzungsbedingungen" })).toHaveAttribute(
+      "href",
+      "/terms",
+    );
+  });
+
   it("signs out", async () => {
     renderPage();
     await userEvent.setup().click(screen.getByRole("button", { name: "Abmelden" }));

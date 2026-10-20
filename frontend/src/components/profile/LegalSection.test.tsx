@@ -19,6 +19,7 @@ const record = {
   type: "privacy",
   documentId: "d1",
   documentTitle: "Datenschutz",
+  documentUrl: null,
   documentPublishedAt: "2026-01-05T10:00:00Z",
   consentedAt: "2026-02-03T10:00:00Z",
   current: false,
@@ -47,6 +48,7 @@ describe("LegalSection", () => {
           id: "d1",
           type: "privacy",
           title: "Datenschutz",
+          url: null,
           html: "<p>Alter Text</p>",
           publishedAt: record.documentPublishedAt,
         };
@@ -74,6 +76,21 @@ describe("LegalSection", () => {
     renderSection();
     await userEvent.click(screen.getByText("Rechtliches & Einwilligungen"));
     expect(await screen.findByText("Noch keine Einwilligungen")).toBeInTheDocument();
+  });
+
+  it("links a version that was an external document instead of opening a dialog", async () => {
+    apiGet.mockImplementation(async (path: string) =>
+      path === "/api/auth/consents"
+        ? [{ ...record, documentUrl: "https://example.org/datenschutz" }]
+        : { imprint: null, privacy: null, terms: null },
+    );
+    renderSection();
+    await userEvent.click(screen.getByText("Rechtliches & Einwilligungen"));
+    const link = await screen.findByRole("link", { name: /ansehen/ });
+    expect(link).toHaveAttribute("href", "https://example.org/datenschutz");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(apiGet).not.toHaveBeenCalledWith("/api/legal/documents/d1");
   });
 
   it("opens the exact version in a dialog", async () => {

@@ -1,11 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 import { openModalState } from "@/lib/modalRoutes";
-import { consentCheckboxId, legalPath, type LegalType } from "@/lib/legal";
+import { consentCheckboxId, externalLinkProps, legalPath, type LegalType } from "@/lib/legal";
 
 export interface ConsentItem {
   type: LegalType;
   id: string;
+  /** External document: the label opens it in a new tab (leaving would lose the entered state). */
+  url?: string | null;
 }
 
 interface ConsentCheckboxesProps {
@@ -62,7 +64,9 @@ export function ConsentCheckboxes({
                 <Trans
                   i18nKey={`consent.accept.${item.type}`}
                   components={{
-                    doc: onOpenDocument ? (
+                    doc: item.url ? (
+                      <a {...externalLinkProps(item.url, true)} className="ap-link" />
+                    ) : onOpenDocument ? (
                       <button
                         type="button"
                         className="ap-link"
