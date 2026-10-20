@@ -68,7 +68,7 @@ info:
     - **Consent gate**: a signed-in user who has not consented to the current privacy policy / terms of use
       (see `GET /api/legal`, `pendingConsents` of `GET /api/auth/me`) gets `403 consent_required` (+ `documents`)
       on every `/api/*` route except `GET|DELETE /api/auth/me`, `GET|POST /api/auth/consents`, `/api/legal*`,
-      `POST /api/auth/logout`, `/logout-all`, `/token`, `/delete-account/code`, `GET /api/auth/providers`,
+      `POST /api/auth/logout`, `/logout-all`, `/token`, `/delete-account/code`, `GET /api/auth/providers`, `GET /api/auth/registration`,
       `GET /api/health` and `/api/feed/*`. Sign-in still returns tokens. Without any provided consent document
       nobody is gated. The gate applies only to sessions that STARTED without up-to-date consents: a new session
       (login, SSO/e-mail code, passkey, legacy refresh token) stores the flag `lc` (consent ok = no pending
@@ -88,7 +88,8 @@ info:
     2. The provider calls back `GET|POST /api/auth/oauth/{provider}/callback`; the API redirects to
        `{FRONTEND_URL}/auth/callback?code=<one-time code>` (redeemed at `POST /api/auth/token`, `grant_type=one_time_token`; no token in the URL) or `?error=<code>` with one of
        `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`,
-       `email_unverified_at_provider`, `email_verification_required` (the provider does not prove the address, Microsoft:
+       `email_unverified_at_provider`, `registration_restricted` (`RESTRICT_REGISTRATION`: a new account needs an open club
+       invitation for the address; existing accounts and linking are not affected), `email_verification_required` (the provider does not prove the address, Microsoft:
        no tokens are issued, the account is created unverified, the 6-digit code is mailed and the redirect is
        `…/auth/callback?error=email_verification_required&email=<address>`; the frontend asks for the code at
        `POST /api/auth/verify-email` and signs in with the returned login token at `POST /api/auth/token`, or
@@ -379,6 +380,13 @@ paths:
                 properties:
                   verificationRequired: { type: boolean, const: true }
                   email: { type: string, format: email }
+        '403':
+          description: >-
+            `registration_restricted` (field `email`): `RESTRICT_REGISTRATION` is set and the address has no open
+            club invitation. Checked after the consent check and before `email_taken`.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '400':
           description: >-
             `email_taken` (field `email`), `invalid_request` (no JSON object) or `validation_failed` (field
@@ -894,6 +902,26 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
+
+  /api/auth/registration:
+    get:
+      tags: [Auth]
+      summary: Whether registration is restricted
+      description: >-
+        `restricted` is true when `RESTRICT_REGISTRATION` is set: only e-mail addresses with an open club invitation
+        (pending, not expired) may create an account, by password or by a first SSO sign-in.
+      operationId: getRegistrationPolicy
+      security: []
+      responses:
+        '200':
+          description: The registration policy.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [restricted]
+                properties:
+                  restricted: { type: boolean }
 
   /api/auth/providers:
     get:
@@ -3481,6 +3509,7 @@ components:
         | `series_empty` | 409 | Rule change preview/PATCH: the series has no events |
         | `series_changed` | 409 | Rule change PATCH: prototype/reference deleted concurrently or deadlock; nothing changed |
         | `email_taken` | 400 | Registration, field `email` |
+        | `registration_restricted` | 403 | `POST /api/auth/register` with `RESTRICT_REGISTRATION` and no open invitation for the address, field `email` (SSO: redirect error code) |
         | `invalid_credentials` | 401 / 400 | Login 401; 400 for `change-password` (field `currentPassword`), `change-email` and `DELETE /api/auth/me` (field `password`) |
         | `invalid_reset_token` | 400 | `reset-password`: unknown, used or expired (same answer), field `token` |
         | `no_password` | 409 | `change-password` / `change-email` of SSO-only accounts |
@@ -3515,6 +3544,7 @@ components:
         - series_empty
         - series_changed
         - email_taken
+        - registration_restricted
         - invalid_credentials
         - invalid_reset_token
         - no_password

@@ -13,6 +13,7 @@ use App\Exception\ApiProblemException;
 use App\Exception\EmailNotVerifiedException;
 use App\Exception\OAuthAccountConflictException;
 use App\Exception\OAuthEmailVerificationRequiredException;
+use App\Exception\OAuthRegistrationRestrictedException;
 use App\Repository\RefreshTokenRepository;
 use App\Security\NonceStore;
 use App\Security\OneTimeTokenService;
@@ -39,6 +40,7 @@ readonly class AuthService
         private NonceStore $nonces,
         private ClubService $clubs,
         private LegalConsentService $legal,
+        private RegistrationPolicy $registrationPolicy,
         /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
         #[Autowire(env: 'int:REFRESH_TOKEN_REUSE_GRACE')]
         private int $refreshReuseGrace,
@@ -58,6 +60,9 @@ readonly class AuthService
     {
         // Before the e-mail-taken check and the hashing
         $accepted = $this->legal->assertAccepted($acceptedDocuments);
+        if (!$this->registrationPolicy->mayRegister($email)) {
+            throw new ApiProblemException(403, 'Registration is restricted to invited addresses', 'registration_restricted', 'email');
+        }
         $existing = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         if ($existing) {
             throw new ApiProblemException(400, 'Email already in use', 'email_taken', 'email');
@@ -425,6 +430,9 @@ readonly class AuthService
                 $user->setIsEmailVerified(true);
             }
         } else {
+            if (!$this->registrationPolicy->mayRegister($email)) {
+                throw new OAuthRegistrationRestrictedException();
+            }
             $user = new User();
             $user->setName($name);
             $user->setEmail($email);

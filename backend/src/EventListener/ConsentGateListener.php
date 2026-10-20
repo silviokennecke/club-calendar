@@ -40,6 +40,7 @@ class ConsentGateListener
         '/api/auth/logout-all' => ['POST'],
         '/api/auth/token' => ['POST'],
         '/api/auth/providers' => ['GET'],
+        '/api/auth/registration' => ['GET'],
         '/api/auth/delete-account/code' => ['POST'],
         '/api/health' => ['GET'],
     ];

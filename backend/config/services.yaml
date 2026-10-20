@@ -33,6 +33,10 @@ parameters:
     env(REFRESH_TOKEN_ABSOLUTE_LIFETIME): '2592000' # 30 days
     env(REFRESH_TOKEN_REUSE_GRACE): '10'
 
+    # Only addresses with an open (pending, not expired) club invitation may create an account
+    env(RESTRICT_REGISTRATION): 'false'
+    app.restrict_registration: '%env(bool:RESTRICT_REGISTRATION)%'
+
     env(MAP_IMAGE_CACHE_TTL): '2592000'  # 30 days
     env(GEOCODER_CACHE_TTL): '3600'       # 1 hour
     env(MAPBOX_PROXY_CACHE_TTL): '2592000' # 30 days
