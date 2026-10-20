@@ -392,6 +392,7 @@ Before writing raw Tailwind layout divs in a page, check `src/components/ui/shar
 | `ErrorSummary`                                  | Form error list with links to the fields, focus after a failed submit                                                       |
 | `UnsavedChangesDialog`                          | "Änderungen verwerfen?" (with `useUnsavedChanges`)                                                                          |
 | `Logo`, `Icon`                                  | Brand mark, design glyphs                                                                                                   |
+| `AutocompleteInput`                             | Text input with a suggestion list (combobox; fuzzy `suggestions` or debounced `onSearch`, `onSelect`, `minChars`)           |
 | `SearchInput`                                   | Search field (`ap-search`) for lists and the calendar                                                                       |
 | `FullPageLoader`                                | Page loading state (`role="status"`, `aria-busy`); also the lazy-route Suspense fallback                                    |
 

@@ -1467,6 +1467,10 @@
     "name": "Club Calendar"
   },
   "ui": {
+    "autocomplete": {
+      "results_one": "{{count}} suggestion available",
+      "results_other": "{{count}} suggestions available"
+    },
     "field": {
       "required": "(required)",
       "optional": "(optional)"

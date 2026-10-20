@@ -43,3 +43,5 @@ export { CodeInput } from "./CodeInput";
 export { ErrorSummary } from "./ErrorSummary";
 export type { ErrorSummaryItem } from "./ErrorSummary";
 export { UnsavedChangesDialog } from "./UnsavedChangesDialog";
+export { AutocompleteInput } from "./AutocompleteInput";
+export type { AutocompleteInputProps } from "./AutocompleteInput";
