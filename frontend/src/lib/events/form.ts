@@ -97,6 +97,31 @@ export function valuesFromTemplate(tpl: EventTemplate, date?: string | null): Ev
   };
 }
 
+/**
+ * Applies a template to the values of an event being created: everything the template has a value
+ * for overwrites the form (name, both times, location, assignments, note, template id); the dates
+ * and the status are never touched. Without both times, all-day and times stay as they are.
+ */
+export function applyTemplateToValues(v: EventFormValues, tpl: EventTemplate): EventFormValues {
+  const begin = shortTime(tpl.timeBegin);
+  const end = shortTime(tpl.timeEnd);
+  const locationId = tpl.locationId ?? tpl.location?.id ?? "";
+  const propertyIds = tpl.properties.map((p) => p.property.id);
+  const featureIds = tpl.features.map((f) => f.feature.id);
+  const targetGroupIds = tpl.targetGroups.map((g) => g.targetGroup.id);
+  return {
+    ...v,
+    name: tpl.name,
+    ...(begin && end ? { isAllDay: false, timeBegin: begin, timeEnd: end } : {}),
+    locationId: locationId || v.locationId,
+    propertyIds: propertyIds.length > 0 ? propertyIds : v.propertyIds,
+    featureIds: featureIds.length > 0 ? featureIds : v.featureIds,
+    targetGroupIds: targetGroupIds.length > 0 ? targetGroupIds : v.targetGroupIds,
+    note: tpl.note ? tpl.note : v.note,
+    eventTemplateId: tpl.id,
+  };
+}
+
 export type EventField = "name" | "date" | "dateEnd" | "timeBegin" | "timeEnd" | "note";
 
 export type EventErrorCode =
