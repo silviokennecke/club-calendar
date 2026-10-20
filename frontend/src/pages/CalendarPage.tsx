@@ -42,7 +42,7 @@ import { MonthView } from "@/components/calendar/MonthView";
 import { WeekView } from "@/components/calendar/WeekView";
 import { CalendarLegend } from "@/components/calendar/CalendarLegend";
 import { CalendarSkeleton } from "@/components/calendar/CalendarSkeleton";
-import { playPeriodTransition, useSwipeNav } from "@/components/calendar/useSwipeNav";
+import { playPeriodTransition } from "@/components/calendar/periodTransition";
 import { useCalendarData } from "@/components/calendar/useCalendarData";
 import { useLocale } from "@/components/calendar/useLocale";
 import { audienceTone } from "@/components/calendar/eventDisplay";
@@ -170,17 +170,6 @@ export default function CalendarPage() {
 
   const pendingDirection = useRef<-1 | 1 | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
-  const swipeRef = useSwipeNav<HTMLDivElement>({
-    onPrev: () => navigate(-1),
-    onNext: () => navigate(1),
-  });
-  const setBoard = useCallback(
-    (node: HTMLDivElement | null) => {
-      boardRef.current = node;
-      swipeRef(node);
-    },
-    [swipeRef],
-  );
   const periodKey = view === "week" ? anchor : anchor.slice(0, 7);
   useEffect(() => {
     const dir = pendingDirection.current;
@@ -445,7 +434,7 @@ export default function CalendarPage() {
         </Banner>
       )}
 
-      {(!data.isError || data.hasData) && <div ref={setBoard}>{content}</div>}
+      {(!data.isError || data.hasData) && <div ref={boardRef}>{content}</div>}
 
       {canEdit && isMobile && (
         <Button className="ap-fab" icon="plus" onClick={() => openCreate(anchor)}>
