@@ -16,7 +16,7 @@ retires the document ("not provided"), and the unchanged file coming back restor
 
 ## External links instead of files
 
-A document can also be an externally hosted page: set `LEGAL_IMPRINT`, `LEGAL_PRIVACY` and/or `LEGAL_TERMS` to an
+A document can also be an externally hosted page: set `LEGAL_IMPRINT_URL`, `LEGAL_PRIVACY_URL` and/or `LEGAL_TERMS_URL` to an
 absolute `http(s)://` URL. A Markdown file of the same type always wins; without a file the link is used; without
 either the document is "not provided". Invalid values are ignored and reported as a warning by `app:legal:sync`.
 A link is one single version: users consent to a privacy policy / terms given as a link once and are not asked
