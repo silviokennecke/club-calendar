@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, EmptyState, Modal, StatusBadge } from "@/components/ui/shared";
+import { Button, EmptyState, LinkButton, Modal, StatusBadge } from "@/components/ui/shared";
 import { LegalDocumentView } from "@/components/legal/LegalDocumentView";
 import { useAuth } from "@/lib/auth-context";
 import { formatDate } from "@/lib/dateFormat";
-import { useConsentHistory, useLegalVersion, type ConsentRecord } from "@/lib/legal";
+import {
+  externalLinkProps,
+  useConsentHistory,
+  useLegalVersion,
+  type ConsentRecord,
+} from "@/lib/legal";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -81,6 +86,10 @@ export function ConsentHistoryList({
         <ul className="ap-stack ap-stack--sm" style={{ listStyle: "none", padding: 0 }}>
           {history.data.map((r) => {
             const version = formatDate(r.documentPublishedAt, dateFormat);
+            const viewLabel = t("profile.legal.viewLabel", {
+              type: t(`legal.${r.type}`),
+              date: version,
+            });
             return (
               <li
                 key={r.id}
@@ -114,16 +123,22 @@ export function ConsentHistoryList({
                     </p>
                   )}
                 </div>
-                <Button
-                  variant="secondary"
-                  aria-label={t("profile.legal.viewLabel", {
-                    type: t(`legal.${r.type}`),
-                    date: version,
-                  })}
-                  onClick={() => onView(r)}
-                >
-                  {t("profile.legal.view")}
-                </Button>
+                {r.documentUrl ? (
+                  <LinkButton
+                    variant="secondary"
+                    icon="external"
+                    to={externalLinkProps(r.documentUrl, true).href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={viewLabel}
+                  >
+                    {t("profile.legal.view")}
+                  </LinkButton>
+                ) : (
+                  <Button variant="secondary" aria-label={viewLabel} onClick={() => onView(r)}>
+                    {t("profile.legal.view")}
+                  </Button>
+                )}
               </li>
             );
           })}

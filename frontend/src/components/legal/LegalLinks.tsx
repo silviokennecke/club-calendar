@@ -6,6 +6,7 @@ import { Modal } from "@/components/ui/shared";
 import { LegalDocumentView } from "@/components/legal/LegalDocumentView";
 import {
   LEGAL_TYPES,
+  externalLinkProps,
   legalPath,
   useLegalDocument,
   useLegalOverview,
@@ -30,7 +31,7 @@ function LocalLegalModal({ type, onClose }: { type: LegalType; onClose: () => vo
 }
 
 /**
- * Imprint · Privacy · Terms. A link opens the document as a routed modal above the current page; a
+ * Imprint · Privacy · Terms. An externally linked document is a plain link (same tab); other links open the document as a routed modal above the current page; a
  * type without a published document (or while the list loads / failed) is muted, non-interactive text.
  */
 export function LegalLinks({ className }: { className?: string }) {
@@ -53,7 +54,11 @@ export function LegalLinks({ className }: { className?: string }) {
               ·
             </span>
           )}
-          {data?.[type] && secretFeed ? (
+          {data?.[type]?.url ? (
+            <a {...externalLinkProps(data[type].url, false)} className="legal-link">
+              {t(`legal.${type}`)}
+            </a>
+          ) : data?.[type] && secretFeed ? (
             <button type="button" className="legal-link" onClick={() => setOpen(type)}>
               {t(`legal.${type}`)}
             </button>

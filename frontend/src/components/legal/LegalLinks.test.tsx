@@ -35,6 +35,25 @@ describe("LegalLinks", () => {
     expect(screen.getByText("Nutzungsbedingungen")).toHaveAttribute("aria-disabled", "true");
   });
 
+  it("renders an externally linked document as a plain same-tab link, even on a secret feed", async () => {
+    vi.mocked(apiGet).mockResolvedValue({
+      imprint: {
+        id: "a",
+        title: null,
+        url: "https://example.org/impressum",
+        publishedAt: "2026-01-01T00:00:00Z",
+      },
+      privacy: { id: "b", title: null, url: null, publishedAt: "2026-01-01T00:00:00Z" },
+      terms: null,
+    });
+    await renderLinks("/feed/f1?secret=abc");
+    const link = await screen.findByRole("link", { name: "Impressum" });
+    expect(link).toHaveAttribute("href", "https://example.org/impressum");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(link).not.toHaveAttribute("target");
+    expect(screen.getByRole("button", { name: "Datenschutz" })).toBeInTheDocument();
+  });
+
   it("is disabled while loading", async () => {
     vi.mocked(apiGet).mockReturnValue(new Promise(() => {}));
     await renderLinks();

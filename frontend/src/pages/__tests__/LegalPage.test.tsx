@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import LegalPage from "../LegalPage";
 import { renderAt } from "./authTestUtils";
@@ -39,6 +39,35 @@ describe("LegalPage", () => {
       await screen.findByRole("heading", { level: 2, name: "Verantwortlich" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Datenschutzerklärung");
+  });
+
+  it("redirects to the external URL of a linked document", async () => {
+    const replace = vi.fn();
+    const original = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...original, replace },
+    });
+    try {
+      vi.mocked(apiGet).mockImplementation(async (path: string) =>
+        path === "/api/legal/imprint"
+          ? {
+              id: "d2",
+              type: "imprint",
+              title: "Impressum",
+              url: "https://example.org/impressum",
+              html: "",
+              publishedAt: "2026-05-01T00:00:00Z",
+            }
+          : { imprint: null, privacy: null, terms: null },
+      );
+      renderPage("/imprint");
+      await waitFor(() => expect(replace).toHaveBeenCalledWith("https://example.org/impressum"));
+      expect(screen.queryByText("Dieses Dokument wird nicht bereitgestellt.")).toBeNull();
+      expect(screen.getByRole("status")).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window, "location", { configurable: true, value: original });
+    }
   });
 
   it("shows a not-provided message for 404", async () => {

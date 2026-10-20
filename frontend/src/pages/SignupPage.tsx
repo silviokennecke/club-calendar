@@ -62,7 +62,7 @@ export default function SignupPage() {
     () =>
       CONSENT_TYPES.flatMap((type) => {
         const doc = legal.data?.[type];
-        return doc ? [{ type, id: doc.id }] : [];
+        return doc ? [{ type, id: doc.id, url: doc.url }] : [];
       }),
     [legal.data],
   );

@@ -162,6 +162,23 @@ describe("SignupPage", () => {
       expect(apiPost).not.toHaveBeenCalled();
     });
 
+    it("opens a linked document in a new tab instead of the modal", async () => {
+      await renderSignup({
+        ...BOTH,
+        terms: null,
+        privacy: {
+          id: "doc-p",
+          title: null,
+          url: "https://example.org/datenschutz",
+          publishedAt: "2026-01-01T00:00:00Z",
+        },
+      });
+      const link = await screen.findByRole("link", { name: "Datenschutzerklärung" });
+      expect(link).toHaveAttribute("href", "https://example.org/datenschutz");
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    });
+
     it("sends the ids of the accepted documents", async () => {
       apiPost.mockResolvedValue({});
       await renderSignup(BOTH);
