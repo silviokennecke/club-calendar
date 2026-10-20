@@ -3392,12 +3392,6 @@
     outline-offset: 0;
     border-radius: var(--radius-md);
   }
-  .ap-details {
-    list-style: none;
-  }
-  .ap-details::-webkit-details-marker {
-    display: none;
-  }
   .ap-details > summary {
     display: flex;
     align-items: center;
@@ -3408,6 +3402,10 @@
     cursor: pointer;
     color: var(--ink);
     font: 600 0.875rem/1.25rem var(--font-sans);
+    list-style: none;
+  }
+  .ap-details > summary::-webkit-details-marker {
+    display: none;
   }
   .ap-details > summary:focus-visible {
     outline: 3px solid var(--brand);
