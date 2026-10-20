@@ -142,6 +142,17 @@ export default function EventsListPage() {
         t(isDraft ? "events.list.bulk.drafted" : "events.list.bulk.published", {
           count: selectedEvents.length,
         }),
+        {
+          action: {
+            label: t("events.list.bulk.undo"),
+            onClick: () => {
+              runBulk(ids, isDraft ? "publish" : "draft")
+                .then(() => toast.success(t("events.list.bulk.undone")))
+                .catch(() => toast.error(t("events.list.bulk.failed")))
+                .finally(() => void refresh());
+            },
+          },
+        },
       );
       setSelected(new Set());
     } catch {

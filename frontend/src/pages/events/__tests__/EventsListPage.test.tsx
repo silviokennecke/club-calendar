@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster } from "@/components/ui/shared";
 import EventsListPage from "../EventsListPage";
@@ -236,6 +236,33 @@ describe("EventsListPage", () => {
       action: "publish",
     });
     expect(apiPatch).not.toHaveBeenCalled();
+  });
+
+  it("offers Undo after a bulk publish that reverses it with the opposite bulk action", async () => {
+    const user = userEvent.setup();
+    apiPost.mockResolvedValue({ affected: 1 });
+    renderRoute(
+      `${PATTERN}/events`,
+      `${BASE}/events`,
+      <>
+        <EventsListPage />
+        <Toaster />
+      </>,
+    );
+    await screen.findByRole("table");
+    await user.click(
+      screen.getByRole("checkbox", { name: "Vorstandssitzung am 07.10.2026 auswählen" }),
+    );
+    const bar = screen.getByRole("region", { name: "Sammelaktionen" });
+    await user.click(within(bar).getByRole("button", { name: "Veröffentlichen" }));
+    // sonner reads pointer capture, which jsdom lacks
+    fireEvent.click(await screen.findByRole("button", { name: "Rückgängig" }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledTimes(2));
+    expect(apiPost).toHaveBeenLastCalledWith("/api/calendars/k1/events/bulk", {
+      ids: ["3"],
+      action: "draft",
+    });
+    expect(await screen.findByText("Änderung rückgängig gemacht.")).toBeVisible();
   });
 
   it("reports a failed bulk action as a whole and keeps the selection", async () => {

@@ -4,7 +4,9 @@ import { Trans, useTranslation } from "react-i18next";
 import { Button, ErrorSummary, Field, TextInput } from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { FocusBanner } from "@/components/auth/FocusBanner";
+import { isEmailShape } from "@/lib/email";
 import { requestPasswordReset } from "@/lib/passwordReset";
+import { useFieldTouch } from "@/lib/useFieldTouch";
 
 type Phase = "form" | "sent";
 
@@ -18,7 +20,9 @@ const EMAIL_ID = "forgot-email";
 export default function ForgotPasswordPage() {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
-  const [emailError, setEmailError] = useState("");
+  const form = useFieldTouch<"email">();
+  // The API rejected the address although it passed the shape check.
+  const [rejected, setRejected] = useState(false);
   const [phase, setPhase] = useState<Phase>("form");
   const [failed, setFailed] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -30,26 +34,24 @@ export default function ForgotPasswordPage() {
     if (changedPhase.current) headingRef.current?.focus();
   }, [phase]);
 
-  function focusEmail() {
-    document.getElementById(EMAIL_ID)?.focus();
-  }
+  const address = email.trim();
+  const found = !address
+    ? t("auth.register.emailMissing")
+    : !isEmailShape(address) || rejected
+      ? t("auth.emailInvalid")
+      : "";
+  const emailError = form.shown("email") ? found : "";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const address = email.trim();
-    if (!address) {
-      setEmailError(t("auth.register.emailMissing"));
-      focusEmail();
-      return;
-    }
-    setEmailError("");
+    form.submit();
+    if (found) return;
     setFailed(0);
     setLoading(true);
     const result = await requestPasswordReset(address);
     setLoading(false);
     if (result === "invalid_email") {
-      setEmailError(t("auth.forgot.emailInvalid"));
-      focusEmail();
+      setRejected(true);
     } else if (result === "failed") {
       setFailed((n) => n + 1);
     } else {
@@ -114,13 +116,18 @@ export default function ForgotPasswordPage() {
       >
         <ErrorSummary
           title={t("auth.forgot.errorTitle")}
+          focusSignal={form.submits}
           errors={emailError ? [{ fieldId: EMAIL_ID, message: emailError }] : []}
         />
         <Field id={EMAIL_ID} label={t("auth.email")} required error={emailError}>
           <TextInput
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setRejected(false);
+            }}
+            onBlur={() => form.touch("email")}
             autoComplete="email"
             inputMode="email"
             spellCheck={false}

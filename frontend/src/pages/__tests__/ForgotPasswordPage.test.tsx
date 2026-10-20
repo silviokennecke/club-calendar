@@ -42,7 +42,20 @@ describe("ForgotPasswordPage", () => {
     await submit("");
     expect(screen.getAllByText("Bitte gib deine E-Mail-Adresse ein.").length).toBeGreaterThan(0);
     expect(screen.getByRole("alert")).toHaveTextContent("noch nicht angefordert");
-    expect(screen.getByLabelText(/^E-Mail/)).toHaveFocus();
+    expect(screen.getByRole("alert")).toHaveFocus();
+    expect(apiPost).not.toHaveBeenCalled();
+  });
+
+  it("flags a malformed address on blur and clears the error while editing", async () => {
+    const user = userEvent.setup();
+    renderAt("/forgot-password", "/forgot-password", <ForgotPasswordPage />);
+    const input = screen.getByLabelText(/^E-Mail/);
+    await user.type(input, "abc");
+    expect(input).not.toHaveAttribute("aria-invalid");
+    await user.tab();
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    await user.type(input, "@beispiel.de");
+    expect(input).not.toHaveAttribute("aria-invalid");
     expect(apiPost).not.toHaveBeenCalled();
   });
 
@@ -79,7 +92,7 @@ describe("ForgotPasswordPage", () => {
     apiPost.mockRejectedValueOnce(new ApiError("x", 422, "validation_failed"));
     await user.click(screen.getByRole("button", { name: "Link zum Zurücksetzen senden" }));
     expect(
-      (await screen.findAllByText("Bitte gib eine gültige E-Mail-Adresse ein."))[0],
+      (await screen.findAllByText(/Bitte gib eine gültige E-Mail-Adresse ein/))[0],
     ).toBeInTheDocument();
   });
 });

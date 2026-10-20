@@ -3,7 +3,9 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ApiError, apiPost, apiFetch, BACKEND_URL } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { isEmailShape } from "@/lib/email";
 import { ssoErrorKey } from "@/lib/ssoError";
+import { useFieldTouch } from "@/lib/useFieldTouch";
 import type { User } from "@/lib/types";
 import {
   Button,
@@ -36,8 +38,6 @@ interface FieldErrors {
 
 const EMAIL_ID = "login-email";
 const PASSWORD_ID = "login-password";
-/** Loose check (something@something.tld); the backend decides whether the account exists. */
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -45,7 +45,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [problem, setProblem] = useState<LoginProblem>(null);
-  const [errors, setErrors] = useState<FieldErrors>({});
+  const form = useFieldTouch<"email" | "password">();
   // Bumped on every new problem so the banner remounts and takes focus again.
   const [problemKey, setProblemKey] = useState(0);
   // The OAuth callback redirects here with ?error=... when the provider sign-in failed.
@@ -69,23 +69,23 @@ export default function LoginPage() {
     setProblemKey((k) => k + 1);
   }
 
+  // The browser's own "Please fill out this field" bubble is not translated and cannot be styled,
+  // so the form has noValidate and checks the fields itself.
+  const found: FieldErrors = {};
+  if (!email.trim()) found.email = t("auth.login.emailMissing");
+  else if (!isEmailShape(email)) found.email = t("auth.emailInvalid");
+  if (!password) found.password = t("auth.login.passwordMissing");
+  const errors: FieldErrors = {
+    email: form.shown("email") ? found.email : undefined,
+    password: form.shown("password") ? found.password : undefined,
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setProblem(null);
     setSsoError(null);
-
-    // The browser's own "Please fill out this field" bubble is not translated and cannot be styled,
-    // so the form has noValidate and checks the fields itself (focus goes to the first invalid one).
-    const found: FieldErrors = {};
-    if (!email.trim()) found.email = t("auth.login.emailMissing");
-    else if (!EMAIL_SHAPE.test(email.trim())) found.email = t("auth.login.emailInvalid");
-    if (!password) found.password = t("auth.login.passwordMissing");
-    setErrors(found);
-    const firstInvalid = found.email ? EMAIL_ID : found.password ? PASSWORD_ID : null;
-    if (firstInvalid) {
-      document.getElementById(firstInvalid)?.focus();
-      return;
-    }
+    form.submit();
+    if (found.email || found.password) return;
 
     setLoading(true);
     try {
@@ -189,17 +189,18 @@ export default function LoginPage() {
       >
         <ErrorSummary
           title={t("auth.login.errorTitle")}
+          focusSignal={form.submits}
           errors={[
             ...(errors.email ? [{ fieldId: EMAIL_ID, message: errors.email }] : []),
             ...(errors.password ? [{ fieldId: PASSWORD_ID, message: errors.password }] : []),
           ]}
         />
-        <Field id={EMAIL_ID} label={t("auth.email")} error={errors.email}>
+        <Field id={EMAIL_ID} label={t("auth.email")} required error={errors.email}>
           <TextInput
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            required
+            onBlur={() => form.touch("email")}
             autoComplete="username"
             inputMode="email"
             spellCheck={false}
@@ -208,10 +209,11 @@ export default function LoginPage() {
         <PasswordField
           id={PASSWORD_ID}
           label={t("auth.password")}
+          requiredLabel
           error={errors.password}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          required
+          onBlur={() => form.touch("password")}
           autoComplete="current-password"
         />
         <Link

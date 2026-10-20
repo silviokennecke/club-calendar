@@ -11,7 +11,9 @@ import {
   type LegalType,
 } from "@/lib/legal";
 import { useRegistrationInfo } from "@/lib/registration";
+import { isEmailShape } from "@/lib/email";
 import { passwordProblem } from "@/lib/password";
+import { useFieldTouch } from "@/lib/useFieldTouch";
 import i18n from "@/lib/i18n";
 import {
   Banner,
@@ -52,7 +54,9 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [errors, setErrors] = useState<FieldErrors>({});
+  const form = useFieldTouch<keyof FieldErrors>();
+  // Answers of the API (address taken / restricted); dropped as soon as the address is edited.
+  const [serverErrors, setServerErrors] = useState<FieldErrors>({});
   const [problem, setProblem] = useState<Problem | null>(null);
   const [problemKey, setProblemKey] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -71,9 +75,24 @@ export default function SignupPage() {
   );
 
   function fail(next: Problem, fieldErrors: FieldErrors = {}) {
-    setErrors(fieldErrors);
+    setServerErrors(fieldErrors);
     setProblem(next);
     setProblemKey((k) => k + 1);
+  }
+
+  const found: FieldErrors = {};
+  if (!name.trim()) found.name = t("auth.register.nameMissing");
+  if (!email.trim()) found.email = t("auth.register.emailMissing");
+  else if (!isEmailShape(email)) found.email = t("auth.emailInvalid");
+  const pwProblem = passwordProblem(password);
+  if (pwProblem === "missing") found.password = t("auth.register.passwordMissing");
+  else if (pwProblem === "short") found.password = t("auth.register.passwordShortField");
+  else if (pwProblem === "long") found.password = t("auth.register.passwordLongField");
+  if (password && confirm !== password) found.confirm = t("auth.register.confirmMismatchField");
+
+  const errors: FieldErrors = {};
+  for (const k of ["name", "email", "password", "confirm"] as const) {
+    errors[k] = serverErrors[k] ?? (form.shown(k) ? found[k] : undefined);
   }
 
   const summary: { fieldId: string; message: string }[] = [
@@ -89,17 +108,9 @@ export default function SignupPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setProblem(null);
-    setErrors({});
+    setServerErrors({});
     setConsentErrors({});
-
-    const found: FieldErrors = {};
-    if (!name.trim()) found.name = t("auth.register.nameMissing");
-    if (!email.trim()) found.email = t("auth.register.emailMissing");
-    const pwProblem = passwordProblem(password);
-    if (pwProblem === "missing") found.password = t("auth.register.passwordMissing");
-    else if (pwProblem === "short") found.password = t("auth.register.passwordShortField");
-    else if (pwProblem === "long") found.password = t("auth.register.passwordLongField");
-    if (password && confirm !== password) found.confirm = t("auth.register.confirmMismatchField");
+    form.submit();
 
     const missing: Record<string, string> = {};
     for (const item of consentItems) {
@@ -107,14 +118,7 @@ export default function SignupPage() {
     }
 
     if (Object.keys(found).length > 0 || Object.keys(missing).length > 0) {
-      setErrors(found);
       setConsentErrors(missing);
-      const first = (["name", "email", "password", "confirm"] as const).find((k) => found[k]);
-      if (first) document.getElementById(IDS[first])?.focus();
-      else {
-        const doc = consentItems.find((i) => missing[i.id]);
-        if (doc) document.getElementById(consentCheckboxId("signup-consent", doc.type))?.focus();
-      }
       return;
     }
 
@@ -205,15 +209,28 @@ export default function SignupPage() {
         onSubmit={handleSubmit}
         noValidate
       >
-        <ErrorSummary title={t("auth.register.errorTitle")} errors={problem ? [] : summary} />
+        <ErrorSummary
+          title={t("auth.register.errorTitle")}
+          errors={problem ? [] : summary}
+          focusSignal={form.submits}
+        />
         <Field id={IDS.name} label={t("auth.register.name")} required error={errors.name}>
-          <TextInput value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+          <TextInput
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => form.touch("name")}
+            autoComplete="name"
+          />
         </Field>
         <Field id={IDS.email} label={t("auth.email")} required error={errors.email}>
           <TextInput
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setServerErrors((prev) => (prev.email ? { ...prev, email: undefined } : prev));
+            }}
+            onBlur={() => form.touch("email")}
             autoComplete="email"
             inputMode="email"
             spellCheck={false}
@@ -227,6 +244,7 @@ export default function SignupPage() {
           error={errors.password}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          onBlur={() => form.touch("password")}
           autoComplete="new-password"
         />
         <PasswordField
@@ -236,6 +254,7 @@ export default function SignupPage() {
           error={errors.confirm}
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
+          onBlur={() => form.touch("confirm")}
           autoComplete="new-password"
         />
         {consentItems.length > 0 && (
