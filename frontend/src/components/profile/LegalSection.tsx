@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Disclosure } from "@/components/ui/shared";
 import { ConsentHistoryList, ConsentVersionModal } from "@/components/legal/ConsentHistoryList";
 import { LegalLinks } from "@/components/legal/LegalLinks";
 import type { ConsentRecord } from "@/lib/legal";
@@ -15,17 +16,16 @@ export function LegalSection() {
 
   return (
     <section className="ap-panel" aria-labelledby="pr-legal">
-      <details
-        className="ap-details"
-        onToggle={(e) => {
-          if (e.currentTarget.open) setOpened(true);
-        }}
-      >
-        <summary>
+      <Disclosure
+        title={
           <span className="t-h2" id="pr-legal">
             {t("profile.legal.title")}
           </span>
-        </summary>
+        }
+        onToggle={(open) => {
+          if (open) setOpened(true);
+        }}
+      >
         <div className="ap-stack" style={{ marginTop: 12 }}>
           <p>{t("profile.legal.text")}</p>
           <h3 className="t-h3">{t("profile.legal.current")}</h3>
@@ -33,7 +33,7 @@ export function LegalSection() {
           <h3 className="t-h3">{t("profile.legal.history")}</h3>
           <ConsentHistoryList enabled={opened} onView={setViewing} />
         </div>
-      </details>
+      </Disclosure>
       {viewing && <ConsentVersionModal record={viewing} onClose={() => setViewing(null)} />}
     </section>
   );

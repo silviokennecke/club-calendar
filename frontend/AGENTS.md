@@ -380,6 +380,7 @@ Before writing raw Tailwind layout divs in a page, check `src/components/ui/shar
 | `FormDialog`                                    | Dialog with a form (title, fields, footer; Enter submits, Escape closes)                                                    |
 | `Modal` / `ModalFrame` / `useModalInitialFocus` | Large dialog with h1, subtitle, x button (`closeLabel`), sizes, form layout; steps in one frame                             |
 | `DialogFrame`                                   | Base dialog shell (scrim, focus trap, scroll lock, bottom sheet < 720px)                                                    |
+| `Disclosure`                                    | Collapsible disclosure with rotating chevron icon (`title`, `children`, `onToggle`); forwards ref to details element        |
 | `CopyField`                                     | URLs/secrets with copy feedback                                                                                             |
 | `Chip` / `ChipSelect` / `FilterPillGroup`       | Toggle chips, multi-select with create, filters                                                                             |
 | `EmojiPicker`                                   | Club-chosen symbols (presets, custom, emoji-mart lazy)                                                                      |

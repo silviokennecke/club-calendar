@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Field, TextInput, type ErrorSummaryItem } from "@/components/ui/shared";
+import { Disclosure, Field, TextInput, type ErrorSummaryItem } from "@/components/ui/shared";
 import { parseCoordinate } from "@/lib/settings";
 
 function text(value: number | null) {
@@ -106,8 +106,7 @@ export function CoordinateFields({
     [],
   );
   return (
-    <details className="ap-details" ref={details}>
-      <summary>{t("settings.places.coordinates.summary")}</summary>
+    <Disclosure ref={details} title={t("settings.places.coordinates.summary")}>
       <div className="ap-stack ap-stack--sm">
         <p className="t-sm t-muted">{t("settings.places.coordinates.hint")}</p>
         <div className="ap-inputrow">
@@ -129,6 +128,6 @@ export function CoordinateFields({
           />
         </div>
       </div>
-    </details>
+    </Disclosure>
   );
 }

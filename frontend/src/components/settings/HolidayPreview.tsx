@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Skeleton } from "@/components/ui/shared";
+import { Disclosure, Skeleton } from "@/components/ui/shared";
 import { useLocale } from "@/components/calendar/useLocale";
 import { addDays, todayIn } from "@/lib/calendar";
 import { formatEventDates } from "@/lib/events";
@@ -35,13 +35,14 @@ export function HolidayPreview({
   const mine = (events.data ?? []).filter((h) => h.holidayCalendarId === holidayCalendarId);
 
   return (
-    <details
-      className="ap-details"
-      onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}
+    <Disclosure
+      title={
+        <span aria-label={t("settings.holidays.previewLabel", { name: holidayCalendarName })}>
+          {t("settings.holidays.preview")}
+        </span>
+      }
+      onToggle={setOpen}
     >
-      <summary aria-label={t("settings.holidays.previewLabel", { name: holidayCalendarName })}>
-        {t("settings.holidays.preview")}
-      </summary>
       <div className="ap-stack ap-stack--sm" style={{ paddingBottom: "var(--space-2)" }}>
         {events.isLoading && (
           <div aria-busy="true">
@@ -69,6 +70,6 @@ export function HolidayPreview({
           </ul>
         )}
       </div>
-    </details>
+    </Disclosure>
   );
 }
