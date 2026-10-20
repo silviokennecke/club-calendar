@@ -29,10 +29,12 @@ interface EventsTableProps {
   /** Current sort; with `onSort` the name, date, place and status headers become sort buttons. */
   sort?: SortState;
   onSort?: (next: SortState) => void;
+  /** The window shrinks back to the first chunk whenever this changes (filters, search). */
+  resetKey?: string;
 }
 
 /** Rows rendered at first and added by each "show more" (lists can hold up to 5000 events). */
-export const EVENTS_PAGE_SIZE = 200;
+export const EVENTS_PAGE_SIZE = 100;
 
 /**
  * Event table (design: Events.dc.html ap-table). Rows are grouped by month (row group headers);
@@ -49,6 +51,7 @@ export function EventsTable({
   onToggleAll,
   sort = DEFAULT_SORT,
   onSort,
+  resetKey = "",
 }: EventsTableProps) {
   const { t } = useTranslation();
   const locale = useLocale();
@@ -58,6 +61,12 @@ export function EventsTable({
   const columns = selectable ? 8 : 7;
   // Incremental rendering: select-all and bulk actions still cover every event (props), only the DOM rows are windowed.
   const [shown, setShown] = useState(EVENTS_PAGE_SIZE);
+  const windowKey = `${resetKey}|${sort.key}|${sort.dir}`;
+  const [seenKey, setSeenKey] = useState(windowKey);
+  if (seenKey !== windowKey) {
+    setSeenKey(windowKey);
+    setShown(EVENTS_PAGE_SIZE);
+  }
   const visible = events.length > shown ? events.slice(0, shown) : events;
   const remaining = events.length - visible.length;
   // Month groups only make sense while the list is ordered by date.
@@ -109,7 +118,7 @@ export function EventsTable({
                 <label className="ap-checkhit">
                   <input
                     type="checkbox"
-                    aria-label={t("events.list.col.select")}
+                    aria-label={t("events.list.col.select", { count: events.length })}
                     checked={allChecked}
                     ref={(el) => {
                       if (el) el.indeterminate = someChecked;

@@ -374,7 +374,8 @@
       "resetFilter": "Reset filters",
       "caption": "Events of the calendar {{calendar}}, sorted by date and start time",
       "col": {
-        "select": "Select all shown events",
+        "select_one": "Select the filtered event",
+        "select_other": "Select all {{count}} filtered events",
         "name": "Name",
         "date": "Date",
         "time": "Time",

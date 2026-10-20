@@ -276,7 +276,9 @@ describe("EventsListPage", () => {
     });
     expect(apiDelete).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("checkbox", { name: "Alle angezeigten Termine auswählen" }));
+    await user.click(
+      screen.getByRole("checkbox", { name: "Alle 5 gefilterten Termine auswählen" }),
+    );
     await user.click(
       within(screen.getByRole("region", { name: "Sammelaktionen" })).getByRole("button", {
         name: "Veröffentlichen",
@@ -362,5 +364,51 @@ describe("EventsListPage", () => {
     expect(screen.queryByRole("checkbox")).toBeNull();
     expect(screen.queryByRole("link", { name: "Termin anlegen" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Termine exportieren" })).toBeNull();
+  });
+});
+
+describe("EventsListPage chunked rendering", () => {
+  beforeEach(() => {
+    events = Array.from({ length: 250 }, (_, i) =>
+      makeEvent({
+        id: `b${i}`,
+        name: `Termin ${String(i).padStart(3, "0")}`,
+        date: `2026-${String(1 + (i % 12)).padStart(2, "0")}-10`,
+      }),
+    );
+  });
+
+  it("renders the first chunk, reveals more and selects the whole filtered set", async () => {
+    const user = userEvent.setup();
+    renderList();
+    await screen.findByRole("table");
+    expect(rows()).toHaveLength(100);
+    expect(screen.getByText("100 von 250 Terminen angezeigt")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "100 weitere anzeigen" }));
+    expect(rows()).toHaveLength(200);
+    await user.click(screen.getByRole("button", { name: "50 weitere anzeigen" }));
+    expect(rows()).toHaveLength(250);
+    expect(screen.queryByRole("button", { name: /weitere anzeigen/ })).toBeNull();
+
+    await user.click(
+      screen.getByRole("checkbox", { name: "Alle 250 gefilterten Termine auswählen" }),
+    );
+    const bar = screen.getByRole("region", { name: "Sammelaktionen" });
+    expect(within(bar).getByText("250 ausgewählt")).toBeInTheDocument();
+  });
+
+  it("selects events beyond the rendered window and resets the window on sort", async () => {
+    const user = userEvent.setup();
+    renderList();
+    await screen.findByRole("table");
+    await user.click(screen.getByRole("button", { name: "100 weitere anzeigen" }));
+    expect(rows()).toHaveLength(200);
+    await user.click(screen.getByRole("button", { name: "Name: aufsteigend sortieren" }));
+    expect(rows()).toHaveLength(100);
+    await user.click(
+      screen.getByRole("checkbox", { name: "Alle 250 gefilterten Termine auswählen" }),
+    );
+    expect(screen.getByRole("checkbox", { name: /Termin 000/ })).toBeChecked();
+    expect(screen.getAllByText("250 ausgewählt").length).toBeGreaterThan(0);
   });
 });

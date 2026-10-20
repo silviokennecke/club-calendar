@@ -249,6 +249,7 @@ export default function EventsListPage() {
           onToggleAll={canEdit ? toggleAll : undefined}
           sort={sort}
           onSort={pickSort}
+          resetKey={`${tab}|${query}|${groupIds.join(",")}`}
         />
       </div>
     );
