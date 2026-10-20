@@ -2803,6 +2803,26 @@
     color: var(--ink);
     border-top: 1px solid var(--border);
   }
+  .ap-table .ap-sortbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin: calc(var(--space-2) * -1) calc(var(--space-2) * -1);
+    padding: var(--space-2);
+    min-height: 2.75rem;
+    border-radius: var(--radius-sm, 6px);
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+  .ap-table th[aria-sort="ascending"] .ap-sortbtn,
+  .ap-table th[aria-sort="descending"] .ap-sortbtn {
+    color: var(--ink);
+  }
   .ap-table td {
     padding: var(--space-3) var(--space-4);
     border-top: 1px solid var(--border);

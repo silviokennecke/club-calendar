@@ -440,6 +440,15 @@
         "undo": "Rückgängig",
         "undone": "Änderung rückgängig gemacht.",
         "failed": "Die Termine konnten nicht geändert werden. Es wurde nichts geändert. Bitte versuche es erneut."
+      },
+      "sort": {
+        "asc": "{{col}}: aufsteigend sortieren",
+        "desc": "{{col}}: absteigend sortieren",
+        "reset": "{{col}}: Sortierung zurücksetzen",
+        "state": {
+          "asc": "Sortiert nach {{col}}, aufsteigend",
+          "desc": "Sortiert nach {{col}}, absteigend"
+        }
       }
     },
     "delete": {
