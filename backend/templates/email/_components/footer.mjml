@@ -1,7 +1,16 @@
-<!-- Footer (redesign): hairline, small muted brand line. No parameters, no links (the app has no imprint URL for mails).
+<!-- Footer (redesign): hairline, small muted brand line and, below it, the legal links (imprint, privacy, terms of use).
+     No parameters. The links come from the Twig function legal_links() (App\Twig\LegalLinksExtension: type => absolute URL,
+     types without a document or external link are missing); labels are the translations email.footer.<type>.
+     Without any link the line is not rendered at all.
+     NOTE: keep this comment free of Twig tags and mj-include tags.
      Usage: include as the last element inside the content column.
 -->
 <mj-divider border-width="1px" border-color="{{ THEME.colors.border }}" padding="16px 0 12px 0" />
 <mj-text font-family="{{ THEME.fonts.family }}" font-size="{{ THEME.fonts.size.small }}" line-height="20px" color="{{ THEME.colors.textMuted }}" padding="0">
   {{ THEME.brand.name }}
 </mj-text>
+<mj-raw>
+  {% if legal_links() %}
+  <tr><td style="padding:4px 0 0 0;font-family:{{ THEME.fonts.family }};font-size:{{ THEME.fonts.size.small }};line-height:20px;color:{{ THEME.colors.textMuted }};">{% for type, url in legal_links() %}{% if not loop.first %} &middot; {% endif %}<a href="{{ url }}" style="color:{{ THEME.colors.textMuted }};text-decoration:underline;">{{ ('email.footer.' ~ type)|trans }}</a>{% endfor %}</td></tr>
+  {% endif %}
+</mj-raw>

@@ -72,7 +72,7 @@ Reusable CTA button with fallback link for email clients that don't support butt
 ---
 
 ### 4. footer.mjml
-Footer: hairline and muted brand line.
+Footer: hairline, muted brand line and the legal links (imprint, privacy, terms; Twig function `legal_links()`, labels `email.footer.<type>`; no line when none is provided).
 
 **Usage:**
 ```mjml
@@ -83,7 +83,6 @@ Footer: hairline and muted brand line.
 - Unsubscribe links
 - Social media links
 - Company contact info
-- Legal/privacy links
 - Copyright notice
 
 ---

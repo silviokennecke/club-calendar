@@ -67,6 +67,11 @@
             "no_account": "You do not have an account yet? Register with this e-mail address first:",
             "expiry_note": "The invitation is valid for {days} days. You only join the club once you accept.",
             "ignore_note": "If you do not know the sender or do not want to join, ignore this email or decline the invitation. Nothing happens without your consent."
+        },
+        "footer": {
+            "imprint": "Imprint",
+            "privacy": "Privacy policy",
+            "terms": "Terms of use"
         }
     }
 }

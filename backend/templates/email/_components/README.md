@@ -77,7 +77,7 @@ Reference documentation for the content section wrapper pattern.
 ---
 
 ### `footer.mjml`
-Footer: hairline and muted brand line.
+Footer: hairline, muted brand line and the legal links (imprint, privacy, terms) from the Twig function `legal_links()` (`App\Twig\LegalLinksExtension`, `LegalDocumentService::publicLinks()`); labels `email.footer.<type>`; the link line is omitted when no link exists.
 
 **Current state:** Minimal/empty (ready for expansion)
 
@@ -268,5 +268,5 @@ To refactor an existing template to use components:
 - **`example-verify-email.mjml`** — Example without button
 - **`header.mjml`** — Brand header component
 - **`button.mjml`** — CTA button component with fallback
-- **`footer.mjml`** — Footer (hairline + brand line)
+- **`footer.mjml`** — Footer (hairline + brand line + legal links)
 - **`section.mjml`** — Section pattern documentation

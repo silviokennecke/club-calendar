@@ -67,6 +67,11 @@
             "no_account": "Du hast noch kein Konto? Registriere dich zuerst mit dieser E-Mail-Adresse:",
             "expiry_note": "Die Einladung ist {days} Tage gültig. Du trittst dem Verein erst bei, wenn du sie annimmst.",
             "ignore_note": "Kennst du den Absender nicht oder möchtest nicht beitreten, ignoriere diese E-Mail oder lehne die Einladung ab. Ohne deine Zustimmung passiert nichts."
+        },
+        "footer": {
+            "imprint": "Impressum",
+            "privacy": "Datenschutz",
+            "terms": "Nutzungsbedingungen"
         }
     }
 }
