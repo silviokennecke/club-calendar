@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyTemplateToValues,
   emptyEventValues,
   isFormDirty,
   isMultiDayValues,
@@ -262,3 +263,83 @@ function baseEvent() {
     targetGroups: [],
   };
 }
+
+describe("applyTemplateToValues", () => {
+  const tpl: EventTemplate = {
+    id: "t1",
+    calendarId: "k1",
+    name: "Training Luftgewehr",
+    timezone: null,
+    timeBegin: "18:30:00",
+    timeEnd: "20:00:00",
+    locationId: "l1",
+    location: null,
+    properties: [{ property: { id: "p1", calendarid: "k1", name: "Wettkampf", icon: null } }],
+    features: [{ feature: { id: "f1", calendarid: "k1", name: "Bonus" } }],
+    targetGroups: [{ targetGroup: { id: "g2", clubId: "k1", name: "Erwachsene" } }],
+    note: "Bitte pünktlich",
+  };
+  const current = values({
+    name: "Tra",
+    date: "2026-10-20",
+    dateEnd: "2026-10-21",
+    status: "published",
+    isAllDay: true,
+    locationId: "l9",
+    propertyIds: ["p9"],
+    featureIds: ["f9"],
+    targetGroupIds: ["g9"],
+    note: "alt",
+  });
+
+  it("overwrites everything the template has and keeps dates and status", () => {
+    expect(applyTemplateToValues(current, tpl)).toEqual({
+      name: "Training Luftgewehr",
+      date: "2026-10-20",
+      dateEnd: "2026-10-21",
+      status: "published",
+      isAllDay: false,
+      timeBegin: "18:30",
+      timeEnd: "20:00",
+      locationId: "l1",
+      propertyIds: ["p1"],
+      featureIds: ["f1"],
+      targetGroupIds: ["g2"],
+      eventTemplateId: "t1",
+      note: "Bitte pünktlich",
+    });
+  });
+
+  it("keeps existing values where the template has none", () => {
+    const empty: EventTemplate = {
+      ...tpl,
+      timeBegin: null,
+      timeEnd: null,
+      locationId: null,
+      location: null,
+      properties: [],
+      features: [],
+      targetGroups: [],
+      note: null,
+    };
+    expect(applyTemplateToValues(current, empty)).toEqual({
+      ...current,
+      name: "Training Luftgewehr",
+      eventTemplateId: "t1",
+    });
+  });
+
+  it("leaves the times alone when the template has only one of them", () => {
+    const v = applyTemplateToValues(current, { ...tpl, timeEnd: null });
+    expect(v.isAllDay).toBe(true);
+    expect(v.timeBegin).toBe(current.timeBegin);
+    expect(v.timeEnd).toBe(current.timeEnd);
+  });
+
+  it("takes the location from the embedded object", () => {
+    const loc = { id: "l2" } as EventTemplate["location"];
+    expect(
+      applyTemplateToValues(current, { ...tpl, locationId: null, location: loc }).locationId,
+    ).toBe("l2");
+  });
+});

@@ -505,6 +505,7 @@
       },
       "name": "Name",
       "namePlaceholder": "z. B. Training Luftgewehr…",
+      "nameTemplateHint": "Ab 3 Buchstaben schlägt die App passende Vorlagen vor und übernimmt deren Einstellungen.",
       "date": "Startdatum",
       "dateEnd": "Enddatum",
       "note": "Notiz",

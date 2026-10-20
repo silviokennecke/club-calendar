@@ -6,6 +6,7 @@ import { apiDelete, apiErrorStatus, apiGet, apiPatch, apiPost } from "@/lib/api"
 import { isValidIso } from "@/lib/calendar";
 import {
   NOTE_MAX,
+  applyTemplateToValues,
   changedEventFields,
   changesDate,
   describeSeriesRule,
@@ -24,6 +25,7 @@ import { keepExisting, saveDroppingDeletedReferences } from "@/lib/staleReferenc
 import type { CalendarEvent, EventTemplate } from "@/lib/types";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import {
+  AutocompleteInput,
   Banner,
   Button,
   ConfirmDialog,
@@ -46,6 +48,7 @@ import { useEventPage } from "@/components/events/useEventPage";
 import { CreateGateBody, ModalSkeleton } from "@/components/events/CreateGate";
 import { createGate, gateTitle } from "@/components/events/createGateState";
 import { useEventResources } from "@/components/events/useEventResources";
+import { useTemplateMeta } from "@/components/events/useTemplateMeta";
 import { useLocale } from "@/components/calendar/useLocale";
 import { useModalNav } from "@/lib/useModalNav";
 import { eventSelector, focusAfterModalClose } from "@/lib/modalFocus";
@@ -204,6 +207,14 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   const locale = useLocale();
   const isNew = !event;
   const readOnly = page.readOnly;
+  const suggestTemplates = isNew && !readOnly;
+  // Same key and function as in EventFormModal: the cache is shared. Failing or loading = no suggestions.
+  const templatesQuery = useQuery<EventTemplate[]>({
+    queryKey: ["templates", page.calendarId],
+    queryFn: () => apiGet<EventTemplate[]>(`/api/calendars/${page.calendarId}/templates`),
+    enabled: suggestTemplates,
+  });
+  const templateMeta = useTemplateMeta();
 
   const [values, setValues] = useState<EventFormValues>(initial);
   const [touched, setTouched] = useState<Set<EventField>>(new Set());
@@ -408,14 +419,34 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
               label={t("events.form.name")}
               required
               error={errorFor("name")}
+              hint={suggestTemplates ? t("events.form.nameTemplateHint") : undefined}
             >
-              <TextInput
-                value={values.name}
-                autoComplete="off"
-                placeholder={t("events.form.namePlaceholder")}
-                onChange={(e) => set("name", e.target.value)}
-                onBlur={blur("name")}
-              />
+              {suggestTemplates ? (
+                <AutocompleteInput<EventTemplate>
+                  value={values.name}
+                  placeholder={t("events.form.namePlaceholder")}
+                  suggestions={templatesQuery.data ?? []}
+                  labelKey="name"
+                  searchKeys={["name"]}
+                  renderItem={(tpl) => (
+                    <>
+                      <span>{tpl.name}</span>
+                      <span className="text-ink-muted block">{templateMeta(tpl)}</span>
+                    </>
+                  )}
+                  onValueChange={(name) => set("name", name)}
+                  onSelect={(tpl) => setValues((v) => applyTemplateToValues(v, tpl))}
+                  onBlur={blur("name")}
+                />
+              ) : (
+                <TextInput
+                  value={values.name}
+                  autoComplete="off"
+                  placeholder={t("events.form.namePlaceholder")}
+                  onChange={(e) => set("name", e.target.value)}
+                  onBlur={blur("name")}
+                />
+              )}
             </Field>
             <fieldset className="ap-fieldset">
               <legend className="ap-sr">{t("events.form.dates")}</legend>

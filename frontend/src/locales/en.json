@@ -505,6 +505,7 @@
       },
       "name": "Name",
       "namePlaceholder": "e.g. Air rifle training…",
+      "nameTemplateHint": "From 3 letters on, matching templates are suggested and their settings are applied.",
       "date": "Start date",
       "dateEnd": "End date",
       "note": "Note",

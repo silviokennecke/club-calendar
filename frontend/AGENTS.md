@@ -160,6 +160,10 @@ operations), `docs/api/openapi.yaml` (API reference).
   forms (with a character counter in the hint), prefilled from the template (`valuesFromTemplate`, shown in the
   "Termin aus Vorlage" step), shown read-only in `PublicEventModal` (`white-space: pre-line`, rendered as text, URLs
   stay plain text), written first in the DESCRIPTION of `buildEventIcs`, filled from DESCRIPTION by the ICS import.
+  In the create form (not when editing or read-only) the name field is an `AutocompleteInput` over the calendar's templates
+  (same query key `["templates", calendarId]` as the dialog, no error UI: without data it is a plain input); applying a suggestion
+  (`applyTemplateToValues`, `lib/events/form.ts`) overwrites name, both times (only if the template has both), location, properties, features,
+  target groups and note wherever the template has a value and sets `eventTemplateId`; dates and status are never touched.
   Events of a series (`seriesId` in every event list) carry the tag "Wiederkehrend" (`Tag tone="brand"`) in
   `EventsTable` and `EventItem` (`CalItem.recurring`), not on the month chips; bulk actions treat them like any event.
   UI in `components/events/` (`EventsTable`, `LocationSection` + lazy `EventLocationMap`, `StatusSeg`,

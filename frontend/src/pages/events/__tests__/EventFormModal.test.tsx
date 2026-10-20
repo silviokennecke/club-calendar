@@ -104,6 +104,28 @@ describe("EventFormModal – new event", () => {
     await waitFor(() => expect(name).toHaveFocus());
   });
 
+  it("suggests templates for the name and applies them with Enter without submitting", async () => {
+    const user = userEvent.setup();
+    renderNew("?date=2026-10-14");
+    const name = await screen.findByLabelText(/^Name/);
+    await user.type(name, "Trai");
+    const option = await screen.findByRole("option", { name: /Training Luftgewehr/ });
+    expect(option).toHaveTextContent("19:00");
+    await user.keyboard("{ArrowDown}{Enter}");
+    expect(name).toHaveValue("Training Luftgewehr");
+    expect(screen.queryByRole("option", { name: /Training/ })).toBeNull();
+    expect(screen.getByLabelText(/^Startdatum/)).toHaveValue("2026-10-14");
+    expect(apiPost).not.toHaveBeenCalled();
+  });
+
+  it("does not suggest templates when editing", async () => {
+    const user = userEvent.setup();
+    renderEdit();
+    const name = await screen.findByLabelText(/^Name/);
+    await user.type(name, "Trai");
+    expect(screen.queryByRole("option", { name: /Training/ })).toBeNull();
+  });
+
   it("asks before Escape discards changes", async () => {
     const user = userEvent.setup();
     renderNew("?date=2026-10-14", { background: `${BASE}?date=2026-10-14` });
@@ -159,7 +181,7 @@ describe("EventFormModal – new event", () => {
     ]);
     const name = screen.getByLabelText(/^Name/);
     expect(name).toHaveAttribute("aria-invalid", "true");
-    expect(name).toHaveAccessibleDescription("Bitte gib einen Namen ein.");
+    expect(name).toHaveAccessibleDescription(expect.stringContaining("Bitte gib einen Namen ein."));
     await user.click(links[1]);
     expect(screen.getByLabelText(/^Startdatum/)).toHaveFocus();
     expect(apiPost).not.toHaveBeenCalled();
