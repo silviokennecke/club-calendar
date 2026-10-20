@@ -19,7 +19,7 @@ async function renderLinks(path = "/login") {
 }
 
 describe("LegalLinks", () => {
-  it("links provided documents and disables missing ones", async () => {
+  it("links provided documents and hides missing ones", async () => {
     vi.mocked(apiGet).mockResolvedValue({
       imprint: { id: "a", title: null, publishedAt: "2026-01-01T00:00:00Z" },
       privacy: { id: "b", title: null, publishedAt: "2026-01-01T00:00:00Z" },
@@ -32,7 +32,7 @@ describe("LegalLinks", () => {
     );
     expect(screen.getByRole("link", { name: "Datenschutz" })).toHaveAttribute("href", "/privacy");
     expect(screen.queryByRole("link", { name: "Nutzungsbedingungen" })).toBeNull();
-    expect(screen.getByText("Nutzungsbedingungen")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByText("Nutzungsbedingungen")).toBeNull();
   });
 
   it("renders an externally linked document as a plain same-tab link, even on a secret feed", async () => {
@@ -54,11 +54,11 @@ describe("LegalLinks", () => {
     expect(screen.getByRole("button", { name: "Datenschutz" })).toBeInTheDocument();
   });
 
-  it("is disabled while loading", async () => {
+  it("renders nothing while loading", async () => {
     vi.mocked(apiGet).mockReturnValue(new Promise(() => {}));
     await renderLinks();
     expect(screen.queryAllByRole("link")).toHaveLength(0);
-    expect(screen.getByText("Impressum")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByText("Impressum")).toBeNull();
   });
 
   it("opens a local dialog (no link, no history state) on a feed with a secret", async () => {
@@ -82,5 +82,16 @@ describe("LegalLinks", () => {
     expect(screen.queryByRole("link")).toBeNull();
     fireEvent.click(btn);
     expect(await screen.findByText("Text")).toBeInTheDocument();
+  });
+
+  it("renders nothing when no documents are available", async () => {
+    vi.mocked(apiGet).mockResolvedValue({
+      imprint: null,
+      privacy: null,
+      terms: null,
+    });
+    await renderLinks();
+    expect(screen.queryByRole("navigation")).toBeNull();
+    expect(screen.queryAllByText(/Impressum|Datenschutz|Nutzungsbedingungen/)).toHaveLength(0);
   });
 });

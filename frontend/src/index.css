@@ -3697,11 +3697,6 @@
   .legal-link:hover {
     color: var(--ink);
   }
-  .legal-link--off {
-    text-decoration: none;
-    opacity: 0.7;
-    cursor: default;
-  }
   .legal-prose {
     color: var(--ink);
     font: 400 0.9375rem/1.65 var(--font-sans);

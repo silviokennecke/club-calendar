@@ -31,8 +31,8 @@ function LocalLegalModal({ type, onClose }: { type: LegalType; onClose: () => vo
 }
 
 /**
- * Imprint · Privacy · Terms. An externally linked document is a plain link (same tab); other links open the document as a routed modal above the current page; a
- * type without a published document (or while the list loads / failed) is muted, non-interactive text.
+ * Imprint · Privacy · Terms. An externally linked document is a plain link (same tab); other links open the document as a routed modal above the current page.
+ * Only renders types that have a published document. Returns null when no types are available (while loading, on error, or none published).
  */
 export function LegalLinks({ className }: { className?: string }) {
   const { t } = useTranslation();
@@ -42,34 +42,39 @@ export function LegalLinks({ className }: { className?: string }) {
   // A feed address with a secret must not be copied into history state: open a local dialog instead.
   const secretFeed =
     location.pathname.startsWith("/feed/") && !!new URLSearchParams(location.search).get("secret");
+
+  // Filter to only available types (those with a document or external URL)
+  const availableTypes = LEGAL_TYPES.filter((type) => data?.[type]);
+
+  // Return nothing while loading, on error, or when no types are available
+  if (!data || availableTypes.length === 0) {
+    return null;
+  }
+
   return (
     <nav
       className={className ? `legal-links ${className}` : "legal-links"}
       aria-label={t("legal.nav")}
     >
-      {LEGAL_TYPES.map((type, i) => (
+      {availableTypes.map((type, i) => (
         <Fragment key={type}>
           {i > 0 && (
             <span aria-hidden="true" className="legal-links-sep">
               ·
             </span>
           )}
-          {data?.[type]?.url ? (
+          {data[type]?.url ? (
             <a {...externalLinkProps(data[type].url, false)} className="legal-link">
               {t(`legal.${type}`)}
             </a>
-          ) : data?.[type] && secretFeed ? (
+          ) : secretFeed ? (
             <button type="button" className="legal-link" onClick={() => setOpen(type)}>
               {t(`legal.${type}`)}
             </button>
-          ) : data?.[type] ? (
+          ) : (
             <Link to={legalPath(type)} state={openModalState(location)} className="legal-link">
               {t(`legal.${type}`)}
             </Link>
-          ) : (
-            <span className="legal-link legal-link--off" aria-disabled="true">
-              {t(`legal.${type}`)}
-            </span>
           )}
         </Fragment>
       ))}
