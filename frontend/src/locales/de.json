@@ -374,7 +374,8 @@
       "resetFilter": "Filter zurücksetzen",
       "caption": "Termine des Kalenders {{calendar}}, sortiert nach Datum und Startzeit",
       "col": {
-        "select": "Alle angezeigten Termine auswählen",
+        "select_one": "Den gefilterten Termin auswählen",
+        "select_other": "Alle {{count}} gefilterten Termine auswählen",
         "name": "Name",
         "date": "Datum",
         "time": "Zeit",
