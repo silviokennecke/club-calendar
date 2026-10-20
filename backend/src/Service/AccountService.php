@@ -51,6 +51,23 @@ readonly class AccountService
     }
 
     /**
+     * Operator action (console): sets the password like a reset does for security: all sessions end (token
+     * version), open reset links are void and a waiting e-mail change is discarded. The verification state
+     * stays as it is and no mail is sent.
+     */
+    public function setPasswordAsOperator(User $user, string $newPassword): void
+    {
+        $user->setPassword($this->hasher->hashPassword($user, $newPassword));
+        $user->invalidateTokens();
+        $this->em->getConnection()->executeStatement(
+            'UPDATE password_reset SET used_at = ? WHERE user_id = ? AND used_at IS NULL',
+            [$this->now()->format('Y-m-d H:i:s'), $user->getId()],
+        );
+        $this->deleteOpenEmailChanges($user);
+        $this->em->flush();
+    }
+
+    /**
      * Starts an e-mail change: the new address gets a confirmation link (24 h), the account keeps its
      * address until then. If the new address already belongs to an account, no mail goes there, but the
      * request looks the same (answer and pending address; no oracle). The current address gets a notice

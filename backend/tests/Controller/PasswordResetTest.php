@@ -489,10 +489,10 @@ class PasswordResetTest extends WebTestCase
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, self::uniqueEmail(), 'password123', false);
         $this->assertSame(403, $this->login($user->getEmail(), 'password123'));
-        $this->assertSame(0, $this->command('app:user:verify')->execute(['email' => $user->getEmail()]));
+        $this->assertSame(0, $this->command('app:user:verify')->execute(['user' => $user->getEmail()]));
         $this->assertSame(200, $this->login($user->getEmail(), 'password123'));
 
-        $this->assertSame(1, $this->command('app:user:verify')->execute(['email' => 'nobody@example.com']));
+        $this->assertSame(1, $this->command('app:user:verify')->execute(['user' => 'nobody@example.com']));
     }
 
     public function testPruneCommandDeletesExpiredLinksOnly(): void
