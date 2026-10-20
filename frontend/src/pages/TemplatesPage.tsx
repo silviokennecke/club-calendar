@@ -241,7 +241,7 @@ export default function TemplatesPage() {
           <h1 className="t-h1">{t("templates.title")}</h1>
           <p className="t-body t-prose">{t("templates.description")}</p>
         </div>
-        {!readOnly && (
+        {!readOnly && !(templates.isSuccess && all.length === 0) && (
           <div className="ap-actions">
             <LinkButton icon="plus" to={page.routes.templateNew} state={{ from: here }}>
               {t("templates.create")}

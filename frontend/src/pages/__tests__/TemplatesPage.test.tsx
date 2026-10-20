@@ -137,7 +137,7 @@ describe("TemplatesPage", () => {
     templates = [];
     renderRoute(listRoute, listUrl, <TemplatesPage />);
     expect(await screen.findByRole("heading", { name: "Noch keine Vorlagen" })).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Vorlage anlegen" })).toHaveLength(2);
+    expect(screen.getAllByRole("link", { name: "Vorlage anlegen" })).toHaveLength(1);
     expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
   });
 

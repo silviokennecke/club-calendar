@@ -165,7 +165,11 @@ export default function HolidayCalendarsPage() {
           }
           actions={
             readOnly ? undefined : (
-              <Button icon="plus" onClick={() => document.getElementById("hol-name")?.focus()}>
+              <Button
+                variant="secondary"
+                icon="plus"
+                onClick={() => document.getElementById("hol-name")?.focus()}
+              >
                 {t("settings.holidays.empty.action")}
               </Button>
             )

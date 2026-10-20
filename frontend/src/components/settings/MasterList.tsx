@@ -239,7 +239,7 @@ export function MasterList({ kind, clubId, calendarId, readOnly }: MasterListPro
           text={readOnly ? tk("emptyReadOnly") : tk("emptyText")}
           actions={
             readOnly ? undefined : (
-              <Button icon="plus" onClick={() => addInputRef.current?.focus()}>
+              <Button variant="secondary" icon="plus" onClick={() => addInputRef.current?.focus()}>
                 {tk("create")}
               </Button>
             )

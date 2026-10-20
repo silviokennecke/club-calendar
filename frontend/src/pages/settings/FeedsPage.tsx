@@ -49,6 +49,7 @@ export default function FeedsPage() {
   const [deleting, setDeleting] = useState<CalendarFeed | null>(null);
 
   const list = data.feeds.data ?? [];
+  const emptyList = data.feeds.isSuccess && list.length === 0;
   const isOpen = (feed: CalendarFeed, index: number) =>
     openMap[feed.id] ?? (!fromState && index === 0);
 
@@ -199,7 +200,7 @@ export default function FeedsPage() {
               {t("feeds.export")}
             </LinkButton>
           )}
-          {!readOnly && (
+          {!readOnly && !emptyList && (
             <LinkButton icon="plus" to={page.routes.feedNew}>
               {t("feeds.create")}
             </LinkButton>
@@ -217,7 +218,7 @@ export default function FeedsPage() {
         )}
         {content}
       </div>
-      {!readOnly && (
+      {!readOnly && !emptyList && (
         <LinkButton className="ap-fab" icon="plus" to={page.routes.feedNew}>
           {t("feeds.create")}
         </LinkButton>
