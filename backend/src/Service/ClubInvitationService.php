@@ -166,6 +166,22 @@ readonly class ClubInvitationService
         });
     }
 
+    /** Whether the address has an open (pending, not expired) invitation to any club. */
+    public function hasOpenInvitationFor(string $email): bool
+    {
+        return (int) $this->em->createQueryBuilder()
+            ->select('COUNT(i.id)')
+            ->from(ClubInvitation::class, 'i')
+            ->where('i.email = :email')
+            ->andWhere('i.status = :pending')
+            ->andWhere('i.expiresAt > :now')
+            ->setParameter('email', AuthRateLimiter::normalize($email))
+            ->setParameter('pending', ClubInvitation::PENDING)
+            ->setParameter('now', $this->now())
+            ->getQuery()
+            ->getSingleScalarResult() > 0;
+    }
+
     /**
      * The open, not expired invitations for the verified address of the user. An unverified user sees none.
      *

@@ -24,6 +24,7 @@ use App\Service\AuthService;
 use App\Service\Input;
 use App\Service\LegalConsentService;
 use App\Service\PasswordResetService;
+use App\Service\RegistrationPolicy;
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -50,6 +51,7 @@ class AuthController extends AbstractApiController
         private readonly AccountService $accounts,
         private readonly AccountDeletionService $accountDeletion,
         private readonly LegalConsentService $legal,
+        private readonly RegistrationPolicy $registrationPolicy,
         #[Autowire(service: 'limiter.password_reset_email')]
         private readonly RateLimiterFactory $passwordResetEmailLimiter,
         #[Autowire(service: 'limiter.password_reset_ip')]
@@ -393,6 +395,12 @@ class AuthController extends AbstractApiController
         $this->accountDeletion->sendCode($user);
 
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+    }
+
+    #[Route('/registration', methods: ['GET'])]
+    public function registration(): JsonResponse
+    {
+        return new JsonResponse(['restricted' => $this->registrationPolicy->isRestricted()]);
     }
 
     #[Route('/providers', methods: ['GET'])]

@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Exception\OAuthAccountConflictException;
 use App\Exception\OAuthEmailVerificationRequiredException;
+use App\Exception\OAuthRegistrationRestrictedException;
 use App\OAuth\OidcResourceOwner;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
@@ -46,7 +47,8 @@ use Symfony\Component\Routing\Attribute\Route;
  * not verified there, so an existing account is not linked), email_verification_required (the provider does not
  * prove the address, e.g. Microsoft: no session before the address is confirmed; the confirmation code was mailed
  * and the redirect carries `&email=<address>`; after `POST /api/auth/verify-email` the frontend signs in with the
- * returned login token).
+ * returned login token), registration_restricted (RESTRICT_REGISTRATION: a new account needs an open club
+ * invitation for the address; existing accounts and linking are not affected).
  *
  * Linking (signed in, profile): POST /{provider}/link-start (JWT) returns {url}, a one-time ticket URL on
  * this API (60 s, bound to user and session version). Opening it in the browser sets the state cookie and
@@ -239,6 +241,8 @@ class OAuthController extends AbstractController
             return $this->fail($e->unverifiedAtProvider ? 'email_unverified_at_provider' : 'account_exists');
         } catch (OAuthEmailVerificationRequiredException $e) {
             return $this->fail('email_verification_required', ['email' => $e->email]);
+        } catch (OAuthRegistrationRestrictedException) {
+            return $this->fail('registration_restricted');
         } catch (\Throwable $e) {
             $this->logger->error('OAuth sign-in failed', ['provider' => $provider, 'exception' => $e]);
 
