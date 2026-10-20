@@ -3643,7 +3643,7 @@ components:
       properties:
         id: { type: string, description: 'UUID of this version (changes with every new text; a link version keeps its id when only the URL changes).' }
         title: { type: [string, 'null'], description: First `# ` heading of the Markdown source; null for a link. }
-        url: { type: [string, 'null'], description: 'External address (absolute http(s) URL) when the operator provides the document as a link (`LEGAL_IMPRINT|PRIVACY|TERMS`, only when no Markdown file exists for the type); null for a Markdown document. Clients open the link instead of rendering `html`.' }
+        url: { type: [string, 'null'], description: 'External address (absolute http(s) URL) when the operator provides the document as a link (`LEGAL_IMPRINT_URL|LEGAL_PRIVACY_URL|LEGAL_TERMS_URL`, only when no Markdown file exists for the type); null for a Markdown document. Clients open the link instead of rendering `html`.' }
         publishedAt: { type: string, format: date-time }
     LegalDocument:
       type: object
