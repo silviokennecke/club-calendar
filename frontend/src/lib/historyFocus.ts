@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
-import { useLocation, useNavigationType } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { matchModal } from "./modalRoutes";
 
 /**
- * Moves focus to the page heading (else `#main`) after a route change by the browser's back / forward
- * buttons; without it focus stays on `<body>` because the focused link or button no longer exists.
+ * Moves focus to the page heading (else `#main`) after a route change (link, redirect or the
+ * browser's back / forward buttons); without it focus stays on `<body>` or on a link of the old page.
  * Skipped for dialogs opening / closing (they have their own focus handling, `modalFocus.ts`) and
  * for changes of the query only (month switch, filters), which keep the page and its focus.
  */
@@ -18,30 +18,32 @@ export function focusPageStart(root: Document = document): boolean {
 }
 
 /** Whether a route change should move focus to the page start. */
-export function shouldFocusPageStart(
-  navigationType: string,
-  fromPath: string,
-  toPath: string,
-): boolean {
-  if (navigationType !== "POP" || fromPath === toPath) return false;
+export function shouldFocusPageStart(fromPath: string, toPath: string): boolean {
+  if (fromPath === toPath) return false;
   return !matchModal(fromPath) && !matchModal(toPath);
+}
+
+/** A page that already moved focus into its content (first field, own heading) keeps it. */
+function focusIsInContent(root: Document): boolean {
+  const active = root.activeElement;
+  const main = root.getElementById("main");
+  return !!main && !!active && active !== main && main.contains(active);
 }
 
 export function useHistoryFocus() {
   const { pathname } = useLocation();
-  const type = useNavigationType();
   const previous = useRef(pathname);
 
   useEffect(() => {
     const from = previous.current;
     previous.current = pathname;
-    if (!shouldFocusPageStart(type, from, pathname)) return;
+    if (!shouldFocusPageStart(from, pathname)) return;
     // The new page may render its heading a moment later (data); try for a few ticks.
     let frames = 0;
     let timer = 0;
     const tick = () => {
-      if (document.querySelector("main h1, #main h1") || frames >= 20) {
-        focusPageStart();
+      if (document.querySelector("main h1, #main h1") || frames >= 60) {
+        if (!focusIsInContent(document)) focusPageStart();
         return;
       }
       frames += 1;
@@ -49,5 +51,5 @@ export function useHistoryFocus() {
     };
     timer = window.setTimeout(tick, 16);
     return () => window.clearTimeout(timer);
-  }, [pathname, type]);
+  }, [pathname]);
 }

@@ -18,6 +18,7 @@ import type { ProfileData } from "@/components/profile/profileTypes";
 import { ApiError, apiGet, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { linkErrorKind, providerLabel } from "@/lib/profile";
+import { usePageTitle } from "@/lib/usePageTitle";
 
 /** URL parameters of the SSO link flow; read once, then removed from the address. */
 const LINK_PARAMS = ["linked", "link_error", "link_provider", "link_proof"];
@@ -60,6 +61,7 @@ async function completeLink(provider: string, proof: string): Promise<LinkOutcom
  */
 export default function ProfilePage() {
   const { t } = useTranslation();
+  usePageTitle(t("profile.title"));
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();

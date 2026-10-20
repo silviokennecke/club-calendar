@@ -463,7 +463,7 @@ describe("PublicEventModal", () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderAt("/feed/f1/events/e3");
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Herbstfest" }),
+      await screen.findByRole("heading", { level: 2, name: "Herbstfest" }),
     ).toBeInTheDocument();
     // A shared link shows the feed at the event's month below the dialog.
     // Design (PublicEvent): "Schützenverein Waldblick · Schießbetrieb 2026"
@@ -527,7 +527,7 @@ describe("PublicEventModal", () => {
       events: [event({ id: "x1", name: "<b>fett</b>", date: "2026-10-08" })],
     });
     renderAt("/feed/f1/events/x1");
-    const heading = await screen.findByRole("heading", { level: 1, name: "<b>fett</b>" });
+    const heading = await screen.findByRole("heading", { level: 2, name: "<b>fett</b>" });
     expect(heading.querySelector("b")).toBeNull();
     expect(screen.getByRole("dialog")).toHaveAccessibleDescription(
       `<img src=x onerror=alert(1)> · ${FEED_NAME}`,
@@ -539,7 +539,7 @@ describe("PublicEventModal", () => {
     const note = "Bitte Hausschuhe mitbringen.\nInfos: https://example.org/<b>x</b>";
     respond = feedApi({ events: [event({ id: "n1", name: "Fest", date: "2026-10-08", note })] });
     renderAt("/feed/f1/events/n1");
-    await screen.findByRole("heading", { level: 1, name: "Fest" });
+    await screen.findByRole("heading", { level: 2, name: "Fest" });
     const region = screen.getByRole("region", { name: "Notiz" });
     const p = region.querySelector("p")!;
     expect(p.textContent).toBe(note);
@@ -550,7 +550,7 @@ describe("PublicEventModal", () => {
   it("omits the note section without a note", async () => {
     respond = feedApi({ events: [event({ id: "n2", name: "Fest", date: "2026-10-08" })] });
     renderAt("/feed/f1/events/n2");
-    await screen.findByRole("heading", { level: 1, name: "Fest" });
+    await screen.findByRole("heading", { level: 2, name: "Fest" });
     expect(screen.queryByRole("region", { name: "Notiz" })).toBeNull();
   });
 
@@ -558,7 +558,7 @@ describe("PublicEventModal", () => {
     respond = feedApi({ header: { visibility: "PRIVATE" } });
     renderAt(`/feed/f1/events/unbekannt?secret=${SECRET}`);
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Termin nicht gefunden" }),
+      await screen.findByRole("heading", { level: 2, name: "Termin nicht gefunden" }),
     ).toBeInTheDocument();
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     await user.click(screen.getByRole("button", { name: "Zum Kalender" }));
@@ -575,7 +575,7 @@ describe("PublicEventModal", () => {
     respond = feedApi({ header });
     renderAt(`/feed/f1/events/${id}`);
     await screen.findByRole("heading", {
-      level: 1,
+      level: 2,
       name: id === "e3" ? "Herbstfest" : "Termin nicht gefunden",
     });
     // The feed below the dialog and the dialog each set their own tag; any noindex counts
@@ -592,7 +592,7 @@ describe("PublicEventModal", () => {
     respond = () => json({ detail: "Not Found" }, 404);
     renderAt("/feed/nope/events/e1");
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Kalender nicht gefunden" }),
+      await screen.findByRole("heading", { level: 2, name: "Kalender nicht gefunden" }),
     ).toBeInTheDocument();
   });
 
@@ -600,7 +600,7 @@ describe("PublicEventModal", () => {
     respond = () => json({}, 403);
     renderAt("/feed/f1/events/e1");
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Dieser Kalender ist privat" }),
+      await screen.findByRole("heading", { level: 2, name: "Dieser Kalender ist privat" }),
     ).toBeInTheDocument();
   });
 
@@ -617,7 +617,7 @@ describe("PublicEventModal", () => {
       ],
     });
     renderAt("/feed/f1/events/m1");
-    await screen.findByRole("heading", { level: 1, name: "Pokalschießen" });
+    await screen.findByRole("heading", { level: 2, name: "Pokalschießen" });
     expect(screen.getByText("Sa 10.10.2026 bis So 11.10.2026")).toBeInTheDocument();
     expect(screen.getByText("Ganztägig")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Ort" })).not.toBeInTheDocument();

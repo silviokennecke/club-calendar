@@ -317,7 +317,10 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
   `ShellData.contextState` (`loading | ready | unavailable`): a club that is not the user's or whose calendars fail to
   load shows "Nicht verfügbar" + link to the club picker in Sidebar / Topbar instead of "Laden…".
 - History focus: `lib/historyFocus.ts` (`useHistoryFocus` in `BackgroundRoutes`) moves focus to the page `h1`
-  (else `#main`) after back / forward between different pages; not for dialogs (own focus logic) or query-only changes.
+  (else `#main`) after every route change between different pages (link, redirect, back / forward) unless the page
+  already focused something in `#main`; not for dialogs (own focus logic) or query-only changes. Page titles:
+  `usePageTitle(title)` (`lib/usePageTitle.ts`, "<title> – Club Calendar", i18n) in every page / layout; routed modals
+  never set a title. Dialog titles are `h2` (the page keeps the only `h1`).
 - Import details: the step is kept in the history state (`{ importStep: "review" | "done" }`, same URL), so back /
   forward move between the steps; `useUnsavedChanges(dirty, { blockSamePath: true })` also holds same-path POPs; the
   result step replaces the review entry (back never reaches a second import). Files are decoded by
@@ -367,38 +370,38 @@ docker rm -f cc-verify-mysql
 Before writing raw Tailwind layout divs in a page, check `src/components/ui/shared/` first
 (import from `@/components/ui/shared`):
 
-| Component                                       | Use for                                                                                                                     |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `Button` / `LinkButton` / `IconButton`          | Buttons (primary, secondary, ghost, danger, danger-solid, ghost-danger)                                                     |
-| `SplitButton`                                   | Primary action + menu of alternatives (e.g. "Termin anlegen")                                                               |
-| `buttonClass()`                                 | Button styling for other elements (e.g. dialog triggers)                                                                    |
-| `Field` + `TextInput`/`TextArea`/`NativeSelect` | Label, hint, error, aria wiring (`group` mode for composite controls)                                                       |
-| `PasswordField`                                 | Password input with show / hide toggle                                                                                      |
-| `Toggle`                                        | On/off switch (`role="switch"`)                                                                                             |
-| `Tag`                                           | Audience/property/feature labels (tones, optional emoji)                                                                    |
-| `StatusBadge`                                   | Status as icon + word (published, draft, holiday, archived, ...)                                                            |
-| `Banner`                                        | Persistent info/warning/danger/success notice                                                                               |
-| `Toaster` / `toast`                             | Short feedback (sonner, styled)                                                                                             |
-| `EmptyState`                                    | Empty lists with explanation and next action                                                                                |
-| `ConfirmDialog`                                 | Destructive confirmations incl. consequences (`tone="primary"`: neutral note); `alternative` = second action (series scope) |
-| `FormDialog`                                    | Dialog with a form (title, fields, footer; Enter submits, Escape closes)                                                    |
-| `Modal` / `ModalFrame` / `useModalInitialFocus` | Large dialog with h1, subtitle, x button (`closeLabel`), sizes, form layout; steps in one frame                             |
-| `DialogFrame`                                   | Base dialog shell (scrim, focus trap, scroll lock, bottom sheet < 720px)                                                    |
-| `Disclosure`                                    | Collapsible disclosure with rotating chevron icon (`title`, `children`, `onToggle`); forwards ref to details element        |
-| `CopyField`                                     | URLs/secrets with copy feedback                                                                                             |
-| `Chip` / `ChipSelect` / `FilterPillGroup`       | Toggle chips, multi-select with create, filters                                                                             |
-| `EmojiPicker`                                   | Club-chosen symbols (presets, custom, emoji-mart lazy)                                                                      |
-| `Stepper`                                       | Setup progress                                                                                                              |
-| `LangSwitch`                                    | Language (bound to i18next)                                                                                                 |
-| `ThemeSwitch`                                   | Hell / Dunkel / Wie System (profile, public pages)                                                                          |
-| `Skeleton`                                      | Loading placeholders (`aria-busy` on the region)                                                                            |
-| `CodeInput`                                     | One-time code entry (six digit fields `[ ][ ][ ] - [ ][ ][ ]`, paste, auto-advance, `onComplete`; e-mail confirmation)      |
-| `ErrorSummary`                                  | Form error list with links to the fields, focus after a failed submit                                                       |
-| `UnsavedChangesDialog`                          | "Änderungen verwerfen?" (with `useUnsavedChanges`)                                                                          |
-| `Logo`, `Icon`                                  | Brand mark, design glyphs                                                                                                   |
-| `AutocompleteInput`                             | Text input with a suggestion list (combobox; fuzzy `suggestions` or debounced `onSearch`, `onSelect`, `minChars`)           |
-| `SearchInput`                                   | Search field (`ap-search`) for lists and the calendar                                                                       |
-| `FullPageLoader`                                | Page loading state (`role="status"`, `aria-busy`); also the lazy-route Suspense fallback                                    |
+| Component                                       | Use for                                                                                                                      |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `Button` / `LinkButton` / `IconButton`          | Buttons (primary, secondary, ghost, danger, danger-solid, ghost-danger)                                                      |
+| `SplitButton`                                   | Primary action + menu of alternatives (e.g. "Termin anlegen")                                                                |
+| `buttonClass()`                                 | Button styling for other elements (e.g. dialog triggers)                                                                     |
+| `Field` + `TextInput`/`TextArea`/`NativeSelect` | Label, hint, error, aria wiring (`group` mode for composite controls)                                                        |
+| `PasswordField`                                 | Password input with show / hide toggle                                                                                       |
+| `Toggle`                                        | On/off switch (`role="switch"`)                                                                                              |
+| `Tag`                                           | Audience/property/feature labels (tones, optional emoji)                                                                     |
+| `StatusBadge`                                   | Status as icon + word (published, draft, holiday, archived, ...)                                                             |
+| `Banner`                                        | Persistent info/warning/danger/success notice                                                                                |
+| `Toaster` / `toast`                             | Short feedback (sonner, styled)                                                                                              |
+| `EmptyState`                                    | Empty lists with explanation and next action                                                                                 |
+| `ConfirmDialog`                                 | Destructive confirmations incl. consequences (`tone="primary"`: neutral note); `alternative` = second action (series scope)  |
+| `FormDialog`                                    | Dialog with a form (title, fields, footer; Enter submits, Escape closes)                                                     |
+| `Modal` / `ModalFrame` / `useModalInitialFocus` | Large dialog with h2 (the page keeps the only h1), subtitle, x button (`closeLabel`), sizes, form layout; steps in one frame |
+| `DialogFrame`                                   | Base dialog shell (scrim, focus trap, scroll lock, bottom sheet < 720px)                                                     |
+| `Disclosure`                                    | Collapsible disclosure with rotating chevron icon (`title`, `children`, `onToggle`); forwards ref to details element         |
+| `CopyField`                                     | URLs/secrets with copy feedback                                                                                              |
+| `Chip` / `ChipSelect` / `FilterPillGroup`       | Toggle chips, multi-select with create, filters                                                                              |
+| `EmojiPicker`                                   | Club-chosen symbols (presets, custom, emoji-mart lazy)                                                                       |
+| `Stepper`                                       | Setup progress                                                                                                               |
+| `LangSwitch`                                    | Language (bound to i18next)                                                                                                  |
+| `ThemeSwitch`                                   | Hell / Dunkel / Wie System (profile, public pages)                                                                           |
+| `Skeleton`                                      | Loading placeholders (`aria-busy` on the region)                                                                             |
+| `CodeInput`                                     | One-time code entry (six digit fields `[ ][ ][ ] - [ ][ ][ ]`, paste, auto-advance, `onComplete`; e-mail confirmation)       |
+| `ErrorSummary`                                  | Form error list with links to the fields, focus after a failed submit                                                        |
+| `UnsavedChangesDialog`                          | "Änderungen verwerfen?" (with `useUnsavedChanges`)                                                                           |
+| `Logo`, `Icon`                                  | Brand mark, design glyphs                                                                                                    |
+| `AutocompleteInput`                             | Text input with a suggestion list (combobox; fuzzy `suggestions` or debounced `onSearch`, `onSelect`, `minChars`)            |
+| `SearchInput`                                   | Search field (`ap-search`) for lists and the calendar                                                                        |
+| `FullPageLoader`                                | Page loading state (`role="status"`, `aria-busy`); also the lazy-route Suspense fallback                                     |
 
 For Mapbox maps: use `useMapbox` from `src/components/locations/useMapbox.ts`. The tile/style/font proxy `/api/mapbox/*` is for signed-in users only: `mapboxProxy.ts` sends the access token as `Authorization: Bearer`, `useMapbox` renews it once after a 401 (`refreshSession`). Anonymous routes (public feed) must use the static image `/api/map/image/*`, never mapbox-gl.
 

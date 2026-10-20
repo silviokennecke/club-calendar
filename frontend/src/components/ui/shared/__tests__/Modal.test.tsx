@@ -34,10 +34,10 @@ describe("Modal", () => {
     const dialog = await screen.findByRole("dialog", { name: "Termin anlegen" });
     expect(dialog).toHaveAttribute("aria-modal", "true");
     expect(dialog).toHaveAccessibleDescription("Wie möchtest du starten?");
-    expect(within(dialog).getByRole("heading", { level: 1 })).toHaveTextContent("Termin anlegen");
+    expect(within(dialog).getByRole("heading", { level: 2 })).toHaveTextContent("Termin anlegen");
     // Everything else is hidden from assistive technology.
     expect(screen.queryByRole("button", { name: "Draußen" })).toBeNull();
-    await waitFor(() => expect(within(dialog).getByRole("heading", { level: 1 })).toHaveFocus());
+    await waitFor(() => expect(within(dialog).getByRole("heading", { level: 2 })).toHaveFocus());
 
     const user = userEvent.setup();
     await user.click(within(dialog).getByRole("button", { name: "Schließen" }));
@@ -89,7 +89,7 @@ describe("Modal", () => {
     expect(await screen.findByRole("dialog", { name: "Schritt zwei" })).toBe(dialog);
     expect(dialog).not.toHaveClass("ap-dialog--wide");
     await waitFor(() =>
-      expect(screen.getByRole("heading", { level: 1, name: "Schritt zwei" })).toHaveFocus(),
+      expect(screen.getByRole("heading", { level: 2, name: "Schritt zwei" })).toHaveFocus(),
     );
   });
 });

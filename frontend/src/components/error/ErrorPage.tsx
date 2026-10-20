@@ -4,6 +4,7 @@ import { useRouteError } from "react-router-dom";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button, buttonClass, type Glyph } from "@/components/ui/shared";
 import { classifyError, type ErrorKind } from "@/lib/loadError";
+import { usePageTitle } from "@/lib/usePageTitle";
 
 const ICONS: Record<ErrorKind, Glyph> = { notFound: "search", load: "refresh", generic: "alert" };
 
@@ -52,6 +53,7 @@ export function ErrorScreen({ kind, error }: ErrorScreenProps) {
     headingRef.current?.focus({ preventScroll: true });
   }, []);
   const texts = i18n.isInitialized && i18n.exists(`errorPage.${kind}.title`);
+  usePageTitle(texts ? t(`errorPage.${kind}.title`) : null);
 
   if (!texts) {
     return (

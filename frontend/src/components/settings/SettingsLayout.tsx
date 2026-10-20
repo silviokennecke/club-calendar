@@ -4,6 +4,7 @@ import { Banner, Button, Skeleton } from "@/components/ui/shared";
 import { SettingsTabs } from "@/components/layout/SettingsTabs";
 import { useSettingsPage } from "./useSettingsPage";
 import { useCalendarActions } from "./useCalendarActions";
+import { usePageTitle } from "@/lib/usePageTitle";
 
 interface SettingsLayoutProps {
   /** Wide frame (places with map) instead of the narrow one. */
@@ -20,6 +21,7 @@ interface SettingsLayoutProps {
  */
 export function SettingsLayout({ wide, actions, children }: SettingsLayoutProps) {
   const { t } = useTranslation();
+  usePageTitle(t("settings.title"));
   const page = useSettingsPage();
   const actionsApi = useCalendarActions(page.clubId, page.calendarId, page.calendar?.name);
 

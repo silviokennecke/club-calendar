@@ -38,6 +38,7 @@ import {
 } from "@/lib/feeds";
 import type { CalendarFeed } from "@/lib/types";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
+import { usePageTitle } from "@/lib/usePageTitle";
 
 /** From open to protected; CLUB ("Nur per Link") is the default for new feeds. */
 const VISIBILITIES: { value: FeedVisibility; key: "public" | "club" | "private"; icon: Glyph }[] = [
@@ -300,6 +301,7 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
   const heading1 = readOnly
     ? t("feeds.form.viewTitle", { name: feed?.name })
     : t(isNew ? "feeds.form.newTitle" : "feeds.form.editTitle");
+  usePageTitle(heading1);
   // The addresses and the secret describe the saved feed, not the unsaved form.
   const saved = feed;
 

@@ -165,7 +165,7 @@ function ModalLoading() {
 }
 
 export interface ModalProps {
-  /** The dialog's h1 (labels the dialog). */
+  /** The dialog's h2 (labels the dialog). */
   title: ReactNode;
   /** Next to the title (e.g. property symbols). */
   titleAside?: ReactNode;
@@ -187,7 +187,7 @@ export interface ModalProps {
 }
 
 /**
- * Head (h1, subtitle, close button) and body of a dialog. Inside a `ModalFrame` it becomes the
+ * Head (h2, subtitle, close button) and body of a dialog. Inside a `ModalFrame` it becomes the
  * current step of that dialog, on its own it opens its own dialog. Focus starts at the heading;
  * forms move it to their first field with `useModalInitialFocus`.
  */
@@ -242,7 +242,7 @@ function ModalStep({
 
   const heading = (
     <DialogPrimitive.Title
-      render={<h1 />}
+      render={<h2 />}
       ref={headingRef}
       tabIndex={-1}
       className="t-h1 ap-focus-target"
@@ -302,7 +302,7 @@ export function useModalInitialFocus(fieldId: string, enabled = true) {
         active === document.body ||
         active === popup ||
         !popup.contains(active) ||
-        active.matches("h1.ap-focus-target");
+        active.matches("h2.ap-focus-target");
       if (onStart) focusWithoutUser(el, { preventScroll: false });
     });
     return () => {
