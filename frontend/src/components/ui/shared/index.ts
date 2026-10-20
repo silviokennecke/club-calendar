@@ -1,6 +1,8 @@
 // Shared design-system building blocks (see docs/redesign/PLAN.md). Import from "@/components/ui/shared".
 export { Icon, GLYPHS } from "./Icon";
 export type { Glyph } from "./Icon";
+export { Disclosure } from "./Disclosure";
+export type { DisclosureProps } from "./Disclosure";
 export { Logo } from "./Logo";
 export { Button, LinkButton, IconButton } from "./Button";
 export { SplitButton } from "./SplitButton";
