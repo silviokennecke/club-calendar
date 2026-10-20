@@ -10,6 +10,7 @@ import {
   changedEventFields,
   changesDate,
   describeSeriesRule,
+  dropUnknownReferences,
   emptyEventValues,
   formatWeekdayDate,
   isFormDirty,
@@ -50,6 +51,7 @@ import { createGate, gateTitle } from "@/components/events/createGateState";
 import { useEventResources } from "@/components/events/useEventResources";
 import { useTemplateMeta } from "@/components/events/useTemplateMeta";
 import { useLocale } from "@/components/calendar/useLocale";
+import { useEventDraft } from "@/lib/events/useEventDraft";
 import { useModalNav } from "@/lib/useModalNav";
 import { useFieldTouch } from "@/lib/useFieldTouch";
 import { eventSelector, focusAfterModalClose } from "@/lib/modalFocus";
@@ -230,6 +232,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   const series = event?.series && event.series.eventCount > 1 ? event.series : null;
   const changed = changedEventFields(toEventPayload(initial), toEventPayload(values));
   const unsaved = useUnsavedChanges(dirty);
+  const draft = useEventDraft(page.calendarId, event?.id ?? null, initial, values, !readOnly);
   // Start in the first field (the heading when read-only).
   useModalInitialFocus(FIELD_IDS.name, !readOnly);
 
@@ -247,6 +250,21 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
     setValues((v) => ({ ...v, [key]: value }));
   }
   const blur = (field: EventField) => (e: FocusEvent<HTMLElement>) => touch(field, e);
+
+  function restoreDraft() {
+    const stored = draft.takePending();
+    if (!stored) return;
+    setValues(
+      res.failed
+        ? stored
+        : dropUnknownReferences(stored, {
+            locations: res.locations.map((x) => x.id),
+            properties: res.properties.map((x) => x.id),
+            features: res.features.map((x) => x.id),
+            targetGroups: res.targetGroups.map((x) => x.id),
+          }),
+    );
+  }
 
   function leave() {
     unsaved.guard(nav.close);
@@ -304,6 +322,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
       toast.success(scope === "all" ? t("events.seriesScope.savedAll") : t("events.form.saved"));
       // Back on the page, focus the saved event (if it is shown there).
       focusAfterModalClose(savedId ? eventSelector(savedId) : null);
+      draft.clear();
       unsaved.allow();
       nav.close();
     } catch {
@@ -323,6 +342,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
       await qc.invalidateQueries({ queryKey: ["events", page.calendarId] });
       toast.success(scope === "all" ? t("events.seriesScope.deletedAll") : t("events.delete.done"));
       setDeleteOpen(false);
+      draft.clear();
       unsaved.allow();
       nav.close();
     } catch {
@@ -364,6 +384,24 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
       }
       onClose={leave}
     >
+      {draft.pending && (
+        <Banner
+          tone="info"
+          title={t("events.form.draft.title")}
+          action={
+            <span className="ap-row">
+              <Button variant="secondary" disabled={res.loading} onClick={restoreDraft}>
+                {t("events.form.draft.restore")}
+              </Button>
+              <Button variant="ghost" onClick={draft.discardPending}>
+                {t("events.form.draft.discard")}
+              </Button>
+            </span>
+          }
+        >
+          {t("events.form.draft.text")}
+        </Banner>
+      )}
       {readOnly && (
         <Banner tone="warning" icon="lock">
           {page.isArchived ? t("events.form.readOnly") : t("shell.roleReadOnly")}
@@ -676,7 +714,13 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
           />
         </>
       )}
-      <UnsavedChangesDialog {...unsaved.dialog} />
+      <UnsavedChangesDialog
+        {...unsaved.dialog}
+        onConfirm={() => {
+          draft.clear();
+          unsaved.dialog.onConfirm();
+        }}
+      />
     </Modal>
   );
 }

@@ -591,7 +591,13 @@
         "timeEndBeforeStart": "The end time is before the start time.",
         "noteTooLong": "The note is too long (at most {{max}} characters)."
       },
-      "loadingTitle": "Loading event"
+      "loadingTitle": "Loading event",
+      "draft": {
+        "title": "Restore draft?",
+        "text": "There is an unsaved draft of this event on this device.",
+        "restore": "Restore",
+        "discard": "Discard"
+      }
     },
     "templatePick": {
       "title": "Choose template",

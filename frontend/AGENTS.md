@@ -292,6 +292,13 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
   intercepts in-app link clicks and `guard(fn)` navigation, `beforeunload`, and the browser's back / forward
   buttons (`useBlocker` for POP navigations, rendered by the dialog only inside the data router, so `<MemoryRouter>`
   tests work unchanged). Call `allow()` before navigating away after a save / delete.
+- Event form draft (FRM-19): the event create / edit form autosaves its field values (no tokens) to localStorage
+  `cc:draft:v1:<userId>:<calendarId>:<eventId|new>` (`lib/events/draft.ts`, hook `lib/events/useEventDraft.ts`): debounced 1 s,
+  only with changes against the initial values, every storage access in try/catch. A differing draft is offered by a
+  non-blocking `Banner` ("Wiederherstellen" / "Verwerfen", never applied automatically; restoring drops ids of
+  deleted places / properties / features / target groups). Deleted on save, delete and "Änderungen verwerfen"; drafts older
+  than 14 days or with a wrong shape are ignored and removed when read; `AuthProvider` clears all drafts on logout
+  (and other users' drafts on login). Only the event form uses it.
 - Icons: lucide-react via `<Icon glyph="..." />` (design glyph names, `shared/Icon.tsx`). No emojis as UI icons.
 - All texts via i18n (`src/locales/de.json`, `en.json`); shared component texts under `ui.*`, shell under `shell.*`.
 - Tests: Vitest + Testing Library (jsdom, setup in `src/test/setup.ts`, tests run in German).
