@@ -172,6 +172,14 @@
   --dur-fast: 100ms;
   --dur-base: 160ms;
   --dur-slow: 240ms;
+  /* Exits are ~60-70% of the matching enter (dialog 160 -> 100, sheet/toast 240 -> 160) */
+  --dur-exit-base: 100ms;
+  --dur-exit-slow: 160ms;
+  /* Sheet spring-back after a drag (the only overshooting curve) */
+  --dur-sheet-spring: 380ms;
+  --ease-sheet-spring: cubic-bezier(0.22, 1.2, 0.36, 1);
+  /* Loaders appear after this delay (no flash on fast loads) */
+  --loader-delay: 150ms;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in: cubic-bezier(0.64, 0, 0.78, 0);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
@@ -1876,6 +1884,9 @@
     max-width: 46ch;
     color: var(--ink-muted);
   }
+  .ap-delayed {
+    animation: ap-loader-in var(--dur-base) var(--ease-out) var(--loader-delay) backwards;
+  }
   .ap-skel {
     display: block;
     border-radius: var(--radius-md);
@@ -3159,6 +3170,7 @@
 }
 .ap-scrim[data-ending-style],
 .ap-backdrop[data-ending-style] {
+  transition-duration: var(--dur-exit-base);
   transition-timing-function: var(--ease-in);
 }
 .ap-dialog {
@@ -3172,6 +3184,7 @@
   transform: translateY(8px) scale(0.98);
 }
 .ap-dialog[data-ending-style] {
+  transition-duration: var(--dur-exit-base);
   transition-timing-function: var(--ease-in);
 }
 .ap-scrim > .ap-dialog {
@@ -3254,6 +3267,10 @@
   .ap-dialog {
     transition-duration: var(--dur-slow);
   }
+  .ap-dialog[data-ending-style],
+  .ap-scrim[data-ending-style] {
+    transition-duration: var(--dur-exit-slow);
+  }
   .ap-dialog[data-starting-style],
   .ap-dialog[data-ending-style] {
     opacity: 1;
@@ -3291,6 +3308,11 @@
     padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
   }
 }
+@keyframes ap-loader-in {
+  from {
+    opacity: 0;
+  }
+}
 @keyframes ap-fade-in {
   from {
     opacity: 0;
@@ -3301,8 +3323,12 @@
   .ap-scrim,
   .ap-backdrop,
   .ap-dialog {
-    transition-duration: 120ms;
+    transition-duration: var(--dur-fast);
     transition-timing-function: linear;
+  }
+  .ap-dialog[data-ending-style],
+  .ap-scrim[data-ending-style] {
+    transition-duration: var(--dur-fast);
   }
   .ap-dialog[data-starting-style],
   .ap-dialog[data-ending-style] {
@@ -3312,7 +3338,7 @@
   .ap-menu,
   .ap-menu-list,
   .ap-suggest {
-    animation: ap-fade-in 120ms linear;
+    animation: ap-fade-in var(--dur-fast) linear;
   }
 }
 
@@ -3524,6 +3550,27 @@
   }
   .ap-details[open] > summary .ap-disclosure-chevron {
     transform: rotate(90deg);
+  }
+  /* Smooth height where ::details-content exists; elsewhere the content simply snaps. */
+  @supports selector(::details-content) {
+    @media (prefers-reduced-motion: no-preference) {
+      .ap-details {
+        interpolate-size: allow-keywords;
+      }
+      .ap-details::details-content {
+        block-size: 0;
+        overflow: clip;
+        transition:
+          block-size var(--dur-exit-base) var(--ease-in),
+          content-visibility var(--dur-exit-base) allow-discrete;
+      }
+      .ap-details[open]::details-content {
+        block-size: auto;
+        transition:
+          block-size var(--dur-base) var(--ease-out),
+          content-visibility var(--dur-base) allow-discrete;
+      }
+    }
   }
   .ap-suggest {
     box-shadow: var(--shadow-md);
@@ -3780,7 +3827,7 @@
   .ap-menu,
   .ap-menu-list,
   .ap-suggest {
-    animation: ap-fade-in 120ms linear;
+    animation: ap-fade-in var(--dur-fast) linear;
   }
 }
 
@@ -4000,5 +4047,23 @@
   [data-sonner-toaster] {
     --offset-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
     --mobile-offset-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* Sonner ships height/box-shadow transitions and 0.4s timings; only transform + opacity animate. */
+[data-sonner-toaster] [data-sonner-toast] {
+  transition:
+    transform var(--dur-slow) var(--ease-out),
+    opacity var(--dur-slow) var(--ease-out);
+}
+[data-sonner-toaster] [data-sonner-toast][data-removed="true"] {
+  transition-property: transform, opacity !important;
+  transition-duration: var(--dur-exit-slow) !important;
+  transition-timing-function: var(--ease-in) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-sonner-toaster] [data-sonner-toast],
+  [data-sonner-toaster] [data-sonner-toast][data-removed="true"] {
+    transition-duration: var(--dur-fast) !important;
   }
 }

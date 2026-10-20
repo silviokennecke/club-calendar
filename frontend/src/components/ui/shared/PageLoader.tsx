@@ -15,7 +15,7 @@ export function FullPageLoader({ message, className }: FullPageLoaderProps) {
       role="status"
       aria-busy="true"
     >
-      <p className="t-sm t-muted flex items-center gap-2">
+      <p className="ap-delayed t-sm t-muted flex items-center gap-2">
         <Icon glyph="loader" size={18} className="animate-spin motion-reduce:animate-none" />
         {message ?? t("common.loading")}
       </p>
