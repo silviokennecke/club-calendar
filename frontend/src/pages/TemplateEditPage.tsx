@@ -40,6 +40,7 @@ import { useEventPage } from "@/components/events/useEventPage";
 import { useEventResources } from "@/components/events/useEventResources";
 import type { EventNavState } from "@/components/events/routes";
 import { ArchivedCreateGuard } from "@/components/events/ArchivedCreateGuard";
+import { usePageTitle } from "@/lib/usePageTitle";
 
 /** Field ids, also the targets of the error summary links. */
 const FIELD_IDS: Record<TemplateField, string> = {
@@ -232,6 +233,7 @@ function TemplateEditor({ template }: { template?: EventTemplate }) {
     : isNew
       ? t("templates.form.newTitle")
       : t("templates.form.editTitle", { name: template?.name });
+  usePageTitle(heading1);
 
   return (
     <div className="ap-wrap--narrow">

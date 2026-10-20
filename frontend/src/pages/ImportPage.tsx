@@ -23,6 +23,7 @@ import { ImportDone, type ImportResult } from "@/components/import/ImportDone";
 import { ImportReview } from "@/components/import/ImportReview";
 import { ImportUpload, type ParsedFile } from "@/components/import/ImportUpload";
 import { useImportPreview } from "@/components/import/useImportPreview";
+import { usePageTitle } from "@/lib/usePageTitle";
 
 type Step = "upload" | "review" | "done";
 
@@ -42,6 +43,7 @@ export default function ImportPage() {
 
 function Import() {
   const { t } = useTranslation();
+  usePageTitle(t("import.title"));
   const page = useEventPage();
   const qc = useQueryClient();
   const resources = useEventResources(page.clubId, page.calendarId);

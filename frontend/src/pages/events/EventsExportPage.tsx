@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/shared";
 import { useAllEvents, useEventPage } from "@/components/events/useEventPage";
 import { useLocale } from "@/components/calendar/useLocale";
+import { usePageTitle } from "@/lib/usePageTitle";
 
 /**
  * Export (design: Export, route …/events/export). The ICS file comes from the backend
@@ -34,6 +35,7 @@ import { useLocale } from "@/components/calendar/useLocale";
 export default function EventsExportPage() {
   const page = useEventPage();
   const { t } = useTranslation();
+  usePageTitle(t("events.export.title"));
   const locale = useLocale();
   const events = useAllEvents(page.calendarId);
   const groups = useQuery<TargetGroup[]>({

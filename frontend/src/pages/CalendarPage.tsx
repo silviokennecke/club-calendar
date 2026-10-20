@@ -51,6 +51,7 @@ import { useEventPage } from "@/components/events/useEventPage";
 import { eventRoutes } from "@/components/events/routes";
 import { openModalState } from "@/lib/modalRoutes";
 import { preloadEventModals } from "./lazy";
+import { usePageTitle } from "@/lib/usePageTitle";
 
 /**
  * Calendar (design: Calendar, CalendarWeek, CalendarArchived, CalendarStates, CalendarMobile).
@@ -62,6 +63,7 @@ export default function CalendarPage() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const { t } = useTranslation();
+  usePageTitle(t("shell.nav.calendar"));
   const locale = useLocale();
   const isMobile = useIsMobile();
   const titleId = `cal-title-${useId().replace(/:/g, "")}`;

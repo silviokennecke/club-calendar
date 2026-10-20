@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Banner } from "@/components/ui/shared";
 import { ClubSettingsTabs } from "@/components/layout/SettingsTabs";
 import { useClubSettingsPage } from "./useClubSettingsPage";
+import { usePageTitle } from "@/lib/usePageTitle";
 
 interface ClubSettingsLayoutProps {
   /** Wide frame (places with map) instead of the narrow one. */
@@ -18,6 +19,7 @@ interface ClubSettingsLayoutProps {
  */
 export function ClubSettingsLayout({ wide, actions, children }: ClubSettingsLayoutProps) {
   const { t } = useTranslation();
+  usePageTitle(t("settings.club.title"));
   const page = useClubSettingsPage();
 
   return (

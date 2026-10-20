@@ -142,7 +142,7 @@ describe("create choice", () => {
       background: `${BASE}/events?status=draft`,
     });
     await waitFor(() =>
-      expect(screen.getByRole("heading", { level: 1, name: "Termin anlegen" })).toHaveFocus(),
+      expect(screen.getByRole("heading", { level: 2, name: "Termin anlegen" })).toHaveFocus(),
     );
     await user.keyboard("{Escape}");
     expect(await screen.findByTestId("location")).toHaveTextContent(`${BASE}/events?status=draft`);
@@ -175,7 +175,7 @@ describe("create choice", () => {
   it("offers blank, template and import and keeps the date", async () => {
     renderRoute(`${PATTERN}/events/new`, `${BASE}/events/new?date=2026-10-14`, <EventNewModal />);
     await waitFor(() =>
-      expect(screen.getByRole("heading", { level: 1, name: "Termin anlegen" })).toHaveFocus(),
+      expect(screen.getByRole("heading", { level: 2, name: "Termin anlegen" })).toHaveFocus(),
     );
     expect(screen.getByRole("link", { name: /Neuer Termin/ })).toHaveAttribute(
       "href",

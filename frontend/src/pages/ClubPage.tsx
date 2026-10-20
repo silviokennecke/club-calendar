@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/auth-context";
 import { clubDeleteConsequence } from "@/lib/club";
 import { permissionsFor } from "@/lib/club/permissions";
 import type { Club } from "@/lib/types";
+import { usePageTitle } from "@/lib/usePageTitle";
 /**
  * Club management (design: Club, ClubMobile): name, members, calendars (incl. archived, with
  * duplicate / archive / delete) and the danger zone. Calendar and club deletion name their
@@ -26,6 +27,7 @@ import type { Club } from "@/lib/types";
  */
 export default function ClubPage() {
   const { t } = useTranslation();
+  usePageTitle(t("club.title"));
   const { clubId = "" } = useParams<{ clubId: string }>();
   const qc = useQueryClient();
   const navigate = useNavigate();

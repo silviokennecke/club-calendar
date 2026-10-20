@@ -163,7 +163,7 @@ test.describe("Termine", () => {
     await openList(page, seeded);
 
     await rowLink(page, "Vorstandssitzung").click();
-    await expect(page.getByRole("heading", { level: 1, name: "Termin bearbeiten" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Termin bearbeiten" })).toBeVisible();
     await expect(page.getByLabel("Name (Pflicht)")).toHaveValue("Vorstandssitzung");
     await page.getByLabel("Name (Pflicht)").fill("Vorstandssitzung Herbst");
     await page.getByRole("button", { name: "Veröffentlicht", exact: true }).click();
@@ -259,12 +259,12 @@ test.describe("Termine", () => {
 
     await page.getByRole("button", { name: "Termin anlegen", exact: true }).click();
     await page.getByRole("link", { name: /Aus Vorlage/ }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Vorlage wählen" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Vorlage wählen" })).toBeVisible();
     await expect(page.getByRole("radio", { name: /Training Luftgewehr/ })).toBeChecked();
     await page.getByRole("button", { name: "Weiter" }).click();
 
     // Single event
-    await expect(page.getByRole("heading", { level: 1, name: "Termin aus Vorlage" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Termin aus Vorlage" })).toBeVisible();
     await page.getByLabel("Datum (Pflicht)").fill("2026-10-22");
     await expect(page.getByText("1 Termin wird angelegt.")).toBeVisible();
     await page.getByRole("button", { name: "1 Termin als Entwurf anlegen" }).click();

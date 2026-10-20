@@ -37,6 +37,7 @@ import { useAllEvents, useEventPage } from "@/components/events/useEventPage";
 import { audienceTone } from "@/components/calendar/eventDisplay";
 import { useLocale } from "@/components/calendar/useLocale";
 import { preloadEventModals } from "../lazy";
+import { usePageTitle } from "@/lib/usePageTitle";
 
 /** Names in the bulk delete dialog; more are summarized ("und 3 weitere"). */
 const MAX_NAMED = 5;
@@ -51,6 +52,7 @@ export default function EventsListPage() {
   const page = useEventPage();
   const qc = useQueryClient();
   const { t } = useTranslation();
+  usePageTitle(t("events.list.title"));
   const locale = useLocale();
   const location = useLocation();
   const navigate = useNavigate();

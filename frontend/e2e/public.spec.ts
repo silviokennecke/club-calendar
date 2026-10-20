@@ -172,11 +172,11 @@ test.describe("Öffentlicher Kalender", () => {
     );
     // Termin eines nur per Link erreichbaren Feeds: ebenfalls noindex
     await page.goto(`/feed/${seed.clubFeedId}/events/${seed.herbstfestId}`);
-    await expect(page.getByRole("heading", { level: 1, name: "Herbstfest" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Herbstfest" })).toBeVisible();
     await expect(page.locator('meta[name="robots"]').last()).toHaveAttribute("content", /noindex/);
     // Termin eines indexierbaren Feeds: kein noindex
     await page.goto(`/feed/${seed.publicFeedId}/events/${seed.herbstfestId}`);
-    await expect(page.getByRole("heading", { level: 1, name: "Herbstfest" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Herbstfest" })).toBeVisible();
     await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
 
     // Die Feed-API entscheidet gleich (X-Robots-Tag), Referrer-Policy immer
@@ -307,7 +307,7 @@ test.describe("Öffentlicher Kalender", () => {
     // Details open as a dialog above the feed (design: PublicEvent).
     const dialog = page.getByRole("dialog", { name: "Herbstfest" });
     await expect(dialog).toHaveAttribute("aria-modal", "true");
-    await expect(dialog.getByRole("heading", { level: 1, name: "Herbstfest" })).toBeFocused();
+    await expect(dialog.getByRole("heading", { level: 2, name: "Herbstfest" })).toBeFocused();
     await expect(page.locator("[inert]").getByText(seed.clubName).first()).toBeAttached();
     // Subtitle: "Verein · Feed"
     await expect(dialog.getByText(`${seed.clubName} · ${seed.feedName}`)).toBeVisible();
@@ -537,7 +537,7 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(page.getByRole("link", { name: "Kalender abonnieren" })).toBeVisible();
     // Detailseite folgt der Wahl
     await page.goto(`/feed/${seed.publicFeedId}/events/${seed.herbstfestId}`);
-    await expect(page.getByRole("heading", { level: 1, name: "Herbstfest" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Herbstfest" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   });
 

@@ -23,6 +23,7 @@ import { openModalState } from "@/lib/modalRoutes";
 import { audienceTone } from "@/components/calendar/eventDisplay";
 import { locationName } from "@/lib/events";
 import { preloadEventModals } from "./lazy";
+import { usePageTitle } from "@/lib/usePageTitle";
 
 /**
  * Templates of a calendar (design: Templates): cards with time, place, audiences and tags, a search,
@@ -34,6 +35,7 @@ export default function TemplatesPage() {
   const page = useEventPage();
   const qc = useQueryClient();
   const { t } = useTranslation();
+  usePageTitle(t("templates.title"));
   const location = useLocation();
   const [params, setParams] = useSearchParams();
   const query = params.get("q") ?? "";

@@ -1,6 +1,7 @@
-import { useEffect, type ReactNode, type Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { usePageTitle } from "@/lib/usePageTitle";
 import { LegalLinks } from "@/components/legal/LegalLinks";
 import { Icon, LangSwitch, Logo, type Glyph } from "@/components/ui/shared";
 
@@ -54,14 +55,7 @@ export function AuthLayout({
   children,
 }: AuthLayoutProps) {
   const { t } = useTranslation();
-  useEffect(() => {
-    if (typeof title !== "string") return;
-    const previous = document.title;
-    document.title = `${title} – Club Calendar`;
-    return () => {
-      document.title = previous;
-    };
-  }, [title]);
+  usePageTitle(typeof title === "string" ? title : null);
   const heading = (
     <h1 className="t-h1 ap-focus-target" tabIndex={headingRef ? -1 : undefined} ref={headingRef}>
       {title}

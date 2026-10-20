@@ -6,6 +6,7 @@ import { calendarBase } from "@/components/layout/navigation";
 import { clubSettingsRoutes } from "@/components/settings/clubSettingsRoutes";
 import { roleAtLeast } from "@/lib/club/permissions";
 import type { ShellData } from "@/components/layout/shellTypes";
+import { usePageTitle } from "@/lib/usePageTitle";
 
 interface Row {
   labelKey: string;
@@ -16,6 +17,7 @@ interface Row {
 /** Mobile "Mehr" page (design: Menu.dc.html): context, further areas, language, sign out. */
 export default function MorePage() {
   const { t } = useTranslation();
+  usePageTitle(t("shell.more.title"));
   const { updateUser } = useAuth();
   const data = useOutletContext<ShellData>();
   const club = data.clubs.find((c) => c.id === data.clubId);

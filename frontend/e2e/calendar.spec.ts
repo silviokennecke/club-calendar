@@ -73,7 +73,7 @@ test.describe("Calendar", () => {
       .first()
       .click();
     await page.waitForURL("**/events/new");
-    await expect(page.getByRole("heading", { level: 1, name: "Create event" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Create event" })).toBeVisible();
     await expect(page.getByRole("link", { name: /New event/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /From template/ })).toBeVisible();
   });

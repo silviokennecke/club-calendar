@@ -26,6 +26,7 @@ import { apiDelete } from "@/lib/api";
 import { feedStatus } from "@/lib/feeds";
 import { focusAfterDialog } from "@/lib/focus";
 import type { CalendarFeed } from "@/lib/types";
+import { usePageTitle } from "@/lib/usePageTitle";
 
 /**
  * Publish (design: Feeds): the feeds of the club (club settings; a feed can span several calendars) with their status (word + icon: public, club
@@ -35,6 +36,7 @@ import type { CalendarFeed } from "@/lib/types";
  */
 export default function FeedsPage() {
   const { t } = useTranslation();
+  usePageTitle(t("feeds.title"));
   const page = useClubSettingsPage();
   const qc = useQueryClient();
   const location = useLocation();

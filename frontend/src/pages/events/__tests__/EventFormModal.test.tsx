@@ -184,7 +184,7 @@ describe("EventFormModal – new event", () => {
     const user = userEvent.setup();
     renderNew();
     await screen.findByLabelText(/^Name/);
-    expect(screen.getByRole("heading", { level: 1, name: "Neuer Termin" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 2, name: "Neuer Termin" })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Termin speichern" }));
 
     const summary = await screen.findByRole("alert");
@@ -350,7 +350,7 @@ describe("EventFormModal – edit", () => {
     renderEdit("e1", { background: `${BASE}/events?status=published` });
     const name = await screen.findByLabelText(/^Name/);
     expect(name).toHaveValue("Herbstfest");
-    expect(screen.getByRole("heading", { level: 1, name: "Termin bearbeiten" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 2, name: "Termin bearbeiten" })).toBeVisible();
     const dialog = screen.getByRole("dialog", { name: "Termin bearbeiten" });
     expect(dialog).toHaveAccessibleDescription("Schießbetrieb 2026");
     expect(
@@ -388,7 +388,7 @@ describe("EventFormModal – edit", () => {
   it("is read-only in an archived calendar", async () => {
     calendar = { ...calendar, archivedAt: "2026-01-01T00:00:00Z" };
     renderEdit();
-    const heading = await screen.findByRole("heading", { level: 1, name: "Termin ansehen" });
+    const heading = await screen.findByRole("heading", { level: 2, name: "Termin ansehen" });
     expect(screen.getByRole("dialog", { name: "Termin ansehen" })).toBeVisible();
     await waitFor(() => expect(heading).toHaveFocus());
     expect(
