@@ -545,6 +545,17 @@
     text-decoration: underline;
     text-underline-offset: 3px;
   }
+  /* A link on its own line (not inside a sentence): 24px target, 44px on phones */
+  .ap-link--standalone {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+  }
+  @media (max-width: 720px) {
+    .ap-link--standalone {
+      min-height: var(--tap-min);
+    }
+  }
   @media (hover: hover) {
     .ap-link:hover {
       color: var(--brand-hover);
@@ -3961,5 +3972,13 @@
   .mapboxgl-map .mapboxgl-ctrl-group button {
     width: 44px;
     height: 44px;
+  }
+}
+
+/* Phones: toasts sit above the fixed tab bar (64px) and the safe area; sonner sets these inline */
+@media (max-width: 720px) {
+  [data-sonner-toaster] {
+    --offset-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+    --mobile-offset-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
   }
 }

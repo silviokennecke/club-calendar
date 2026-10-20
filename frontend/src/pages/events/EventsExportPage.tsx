@@ -117,7 +117,7 @@ export default function EventsExportPage() {
           <h1 className="t-h1">{t("events.export.title")}</h1>
           <p className="t-body t-prose">{t("events.export.intro")}</p>
           <p className="t-sm" style={{ marginTop: "var(--space-2)" }}>
-            <Link className="ap-link" to={page.routes.feeds}>
+            <Link className="ap-link ap-link--standalone" to={page.routes.feeds}>
               {t("events.export.feeds")}
             </Link>
           </p>
