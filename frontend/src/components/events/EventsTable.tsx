@@ -14,6 +14,7 @@ import {
 import type { CalendarEvent } from "@/lib/types";
 import { Button, Icon, StatusBadge, Tag, type TagTone } from "@/components/ui/shared";
 import { useLocale } from "@/components/calendar/useLocale";
+import { enterTableRef } from "@/lib/pageMotion";
 
 interface EventsTableProps {
   events: CalendarEvent[];
@@ -109,7 +110,7 @@ export function EventsTable({
           ? t(`events.list.sort.state.${sort.dir}`, { col: t(`events.list.col.${sort.key}`) })
           : ""}
       </p>
-      <table className="ap-table">
+      <table ref={enterTableRef} className="ap-table">
         <caption className="ap-sr">{caption}</caption>
         <thead>
           <tr>

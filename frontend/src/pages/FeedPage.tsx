@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { enterListRef } from "@/lib/pageMotion";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -280,6 +281,7 @@ function FeedCalendar({ data, feedId, secret, today, anchor, range }: FeedCalend
             {t("feed.listHeading", { month: formatMonthTitle(month, locale) })}
           </h2>
           <ul
+            ref={enterListRef}
             className="ap-stack ap-stack--sm"
             style={{ listStyle: "none", margin: 0, padding: 0 }}
           >

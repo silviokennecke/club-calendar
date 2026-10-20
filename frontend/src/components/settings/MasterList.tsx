@@ -29,6 +29,7 @@ import {
   type MasterKind,
   type NameProblem,
 } from "@/lib/settings";
+import { enterListRef } from "@/lib/pageMotion";
 
 const GLYPHS: Record<MasterKind, Glyph> = {
   properties: "tag",
@@ -249,7 +250,11 @@ export function MasterList({ kind, clubId, calendarId, readOnly }: MasterListPro
     );
   } else {
     listContent = (
-      <ul className="ap-panel ap-panel--flush ap-list" aria-labelledby={`ml-list-h-${kind}`}>
+      <ul
+        ref={enterListRef}
+        className="ap-panel ap-panel--flush ap-list"
+        aria-labelledby={`ml-list-h-${kind}`}
+      >
         {items.map((item, index) => (
           <li key={item.id} className="ap-listrow">
             {cfg.hasSymbol && item.icon && (

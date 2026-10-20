@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { matchModal } from "./modalRoutes";
+import { playPageEnter } from "./pageMotion";
 
 /**
  * Moves focus to the page heading (else `#main`) after a route change (link, redirect or the
@@ -38,6 +39,7 @@ export function useHistoryFocus() {
     const from = previous.current;
     previous.current = pathname;
     if (!shouldFocusPageStart(from, pathname)) return;
+    playPageEnter(document.getElementById("main"));
     // The new page may render its heading a moment later (data); try for a few ticks.
     let frames = 0;
     let timer = 0;

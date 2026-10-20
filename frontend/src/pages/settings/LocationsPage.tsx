@@ -36,6 +36,7 @@ import {
 } from "@/lib/settings";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import { cn } from "@/lib/utils";
+import { enterListRef } from "@/lib/pageMotion";
 
 const LocationsOverviewMap = lazy(() => import("@/components/locations/LocationsOverviewMap"));
 
@@ -320,7 +321,7 @@ export default function LocationsPage() {
           <h2 className="t-h3" id="pl-list-h">
             {t("settings.places.listTitle", { count: places.length })}
           </h2>
-          <ul className="ap-panel ap-panel--flush ap-list">
+          <ul ref={enterListRef} className="ap-panel ap-panel--flush ap-list">
             {places.map((loc) => {
               const title = placeTitle(loc) ?? t("settings.places.unnamed");
               const marked = selectedId === loc.id;

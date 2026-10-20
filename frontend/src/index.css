@@ -171,6 +171,7 @@
   /* Motion tokens (durations, easings; none overshoots) */
   --dur-fast: 100ms;
   --dur-base: 160ms;
+  --stagger: 20ms;
   --dur-slow: 240ms;
   /* Exits are ~60-70% of the matching enter (dialog 160 -> 100, sheet/toast 240 -> 160) */
   --dur-exit-base: 100ms;
@@ -3311,6 +3312,18 @@
 @keyframes ap-loader-in {
   from {
     opacity: 0;
+  }
+}
+@keyframes ap-enter-item {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-enter-i] {
+    animation: ap-enter-item var(--dur-fast) var(--ease-out) backwards;
+    animation-delay: calc(var(--i, 0) * var(--stagger));
   }
 }
 @keyframes ap-fade-in {
