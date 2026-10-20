@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ApiError } from "@/lib/api";
 import EventFormModal from "../EventFormModal";
@@ -102,6 +102,22 @@ describe("EventFormModal – new event", () => {
     expect(dialog).toHaveClass("ap-dialog--xl", "ap-dialog--form");
     expect(dialog).toHaveAccessibleDescription("Der neue Termin ist zunächst ein Entwurf.");
     await waitFor(() => expect(name).toHaveFocus());
+  });
+
+  it("shows no error on open, even if the dialog briefly takes the focus; validates after the user leaves the field", async () => {
+    const user = userEvent.setup();
+    renderNew();
+    const name = await screen.findByLabelText(/^Name/);
+    await waitFor(() => expect(name).toHaveFocus());
+    act(() => name.blur());
+    expect(name).not.toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByText("Bitte gib einen Namen ein.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    await user.click(name);
+    await user.tab();
+    expect(name).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getAllByText("Bitte gib einen Namen ein.").length).toBeGreaterThan(0);
   });
 
   it("suggests templates for the name and applies them with Enter without submitting", async () => {

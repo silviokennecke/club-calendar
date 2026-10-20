@@ -1,4 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- component + its focus hook */
+import { focusWithoutUser } from "@/lib/initialFocus";
 import {
   Suspense,
   createContext,
@@ -126,7 +127,8 @@ export function ModalFrame({ children }: { children?: ReactNode }) {
       // Focus fell back to the dialog (a step replaced the focused element): start again.
       onSelfFocus={() => {
         const field = startFieldRef.current && document.getElementById(startFieldRef.current);
-        (field || headingRef.current)?.focus({ preventScroll: true });
+        const target = field || headingRef.current;
+        if (target) focusWithoutUser(target, { preventScroll: true });
       }}
       className={cn(
         variant.size === "wide" && "ap-dialog--wide",
@@ -154,7 +156,7 @@ function ModalLoading() {
         const target = (fieldId && document.getElementById(fieldId)) || ctx?.headingRef.current;
         const active = document.activeElement;
         const onFrame = !active || active === document.body || active.matches(".ap-dialog");
-        if (target && onFrame) target.focus({ preventScroll: true });
+        if (target && onFrame) focusWithoutUser(target, { preventScroll: true });
       });
     },
     [ctx],
@@ -301,7 +303,7 @@ export function useModalInitialFocus(fieldId: string, enabled = true) {
         active === popup ||
         !popup.contains(active) ||
         active.matches("h1.ap-focus-target");
-      if (onStart) el.focus({ preventScroll: false });
+      if (onStart) focusWithoutUser(el, { preventScroll: false });
     });
     return () => {
       cancelAnimationFrame(id);

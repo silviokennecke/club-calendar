@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FocusEvent, type FormEvent } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -51,6 +51,7 @@ import { useEventResources } from "@/components/events/useEventResources";
 import { useTemplateMeta } from "@/components/events/useTemplateMeta";
 import { useLocale } from "@/components/calendar/useLocale";
 import { useModalNav } from "@/lib/useModalNav";
+import { useFieldTouch } from "@/lib/useFieldTouch";
 import { eventSelector, focusAfterModalClose } from "@/lib/modalFocus";
 
 /** Field ids, also the targets of the error summary links. */
@@ -217,8 +218,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   const templateMeta = useTemplateMeta();
 
   const [values, setValues] = useState<EventFormValues>(initial);
-  const [touched, setTouched] = useState<Set<EventField>>(new Set());
-  const [submits, setSubmits] = useState(0);
+  const { submits, touch, submit, shown } = useFieldTouch<EventField>();
   const [saving, setSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [scopeOpen, setScopeOpen] = useState(false);
@@ -236,11 +236,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   const errors = useMemo(() => validateEvent(values), [values]);
   // Inline errors appear once a field was left or after "save"; an end before the start at once.
   const visible = errors.filter(
-    (e) =>
-      submits > 0 ||
-      touched.has(e.field) ||
-      e.code === "dateEndBeforeStart" ||
-      e.code === "timeEndBeforeStart",
+    (e) => shown(e.field) || e.code === "dateEndBeforeStart" || e.code === "timeEndBeforeStart",
   );
   const errorFor = (field: EventField) => {
     const err = visible.find((e) => e.field === field);
@@ -250,7 +246,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   function set<K extends keyof EventFormValues>(key: K, value: EventFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
   }
-  const blur = (field: EventField) => () => setTouched((prev) => new Set(prev).add(field));
+  const blur = (field: EventField) => (e: FocusEvent<HTMLElement>) => touch(field, e);
 
   function leave() {
     unsaved.guard(nav.close);
@@ -259,7 +255,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (readOnly) return;
-    setSubmits((n) => n + 1);
+    submit();
     if (errors.length > 0) return;
     if (series && dirty) {
       setScopeOpen(true);
