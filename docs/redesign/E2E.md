@@ -47,9 +47,8 @@ Xdebug: Läuft PhpStorm (oder eine andere IDE) mit Debug-Listener auf Port 9003,
 Debugger und hängen. Dann `XDEBUG_MODE=off` setzen, für den PHP-Server (Schritt 3), für Konsolenbefehle (Schritte 1–2)
 und für Playwright (Schritt 5). `e2e/helpers.ts` ruft Konsolenbefehle des Backends auf (`backendConsole`: `php
 bin/console` in `backend/` mit `DATABASE_URL` der E2E-Datenbank, überschreibbar mit `E2E_DATABASE_URL`;
-`XDEBUG_MODE=off`, wenn nicht gesetzt): `app:user:verify <email>` bestätigt neu registrierte Nutzer (der E2E-Server
-verschickt keine Mails), `app:user:reset-link <email>` liefert Reset-Links (`account.spec.ts`; `session-revoked.spec.ts`
-beendet Sitzungen über einen echten Reset). Der Konsolenbefehl läuft mit `APP_ENV` aus `.env` (prod) und teilt sich den
+`XDEBUG_MODE=off`, wenn nicht gesetzt): `app:user:verify` / `app:user:activate` (`<id|email>` bestätigt Adressen und entfernt ausstehende Bestätigungscodes), `app:user:reset-link <email>` liefert Reset-Links (`account.spec.ts`; `session-revoked.spec.ts`
+beendet Sitzungen über einen echten Reset), `app:user:create` und `app:user:set-password` (Nutzer anlegen/Passwörter ändern). Der Konsolenbefehl läuft mit `APP_ENV` aus `.env` (prod) und teilt sich den
 Cache `backend/var/cache/prod` mit dem PHP-Server.
 
 Aufräumen (immer, auch nach Fehlern): Server auf 3001 / 5199 beenden (auch den `npm exec`-Elternprozess von Vite),
