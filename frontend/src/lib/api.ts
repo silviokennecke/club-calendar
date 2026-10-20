@@ -92,6 +92,39 @@ function endSession() {
   }
 }
 
+const REQUEST_TIMEOUT_MS = 30_000;
+const LONG_REQUEST_TIMEOUT_MS = 120_000;
+/** Import, import preview and ICS export can legitimately take longer. */
+const LONG_REQUEST_PATH = /\/events\/import(\/preview)?(\?|$)|\/events\.ics(\?|$)/;
+
+/**
+ * fetch with a timeout. A timeout rejects with ApiError `request_timeout` (status 0, like a network error:
+ * no verdict from the server); the caller's own `signal` still aborts with a plain AbortError.
+ */
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number) {
+  const controller = new AbortController();
+  const caller = init.signal;
+  const onCallerAbort = () => controller.abort(caller?.reason);
+  if (caller?.aborted) onCallerAbort();
+  else caller?.addEventListener("abort", onCallerAbort, { once: true });
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (timedOut && !caller?.aborted) {
+      throw new ApiError(i18n.t("common.requestTimeout"), 0, "request_timeout");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    caller?.removeEventListener("abort", onCallerAbort);
+  }
+}
+
 /** Refresh request in flight: concurrent 401s share it (the refresh token is single-use, see `refreshSession`). */
 let refreshInFlight: Promise<string | null> | null = null;
 
@@ -116,14 +149,18 @@ async function doRefresh(): Promise<string | null> {
     endSession();
     return null;
   }
-  const res = await fetch(BASE_URL + "/api/auth/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-    }).toString(),
-  });
+  const res = await fetchWithTimeout(
+    BASE_URL + "/api/auth/token",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+      }).toString(),
+    },
+    REQUEST_TIMEOUT_MS,
+  );
   if (res.ok) {
     const data = (await res.json()) as { access_token: string; refresh_token: string };
     storeTokens(data.access_token, data.refresh_token);
@@ -168,7 +205,8 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  let res = await fetch(BASE_URL + path, { ...options, headers });
+  const timeoutMs = LONG_REQUEST_PATH.test(path) ? LONG_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
+  let res = await fetchWithTimeout(BASE_URL + path, { ...options, headers }, timeoutMs);
 
   if (res.status === 401 && token) {
     // Another request may have refreshed while this one was in flight: then just retry with the current token.
@@ -176,7 +214,7 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
     const fresh = current && current !== token ? current : await refreshSession();
     if (fresh) {
       headers["Authorization"] = `Bearer ${fresh}`;
-      res = await fetch(BASE_URL + path, { ...options, headers });
+      res = await fetchWithTimeout(BASE_URL + path, { ...options, headers }, timeoutMs);
     }
   }
 
@@ -221,11 +259,15 @@ export interface TokenResponse {
  * normal token pair (`grant_type=one_time_token`, form-encoded like the refresh grant). Failure: 400 `invalid_grant`.
  */
 export async function exchangeOneTimeToken(token: string): Promise<TokenResponse> {
-  const res = await fetch(BASE_URL + "/api/auth/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ grant_type: "one_time_token", token }).toString(),
-  });
+  const res = await fetchWithTimeout(
+    BASE_URL + "/api/auth/token",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ grant_type: "one_time_token", token }).toString(),
+    },
+    REQUEST_TIMEOUT_MS,
+  );
   if (!res.ok) throw await errorFrom(res);
   return res.json();
 }
