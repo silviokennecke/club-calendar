@@ -41,6 +41,19 @@ class LegalDocumentServiceTest extends KernelTestCase
         parent::tearDown();
     }
 
+    /** @param array<string, string> $links */
+    private function withLinks(array $links): void
+    {
+        $this->service = new LegalDocumentService(
+            $this->em,
+            self::getContainer()->get(LegalDocumentRepository::class),
+            self::getContainer()->get(UserConsentRepository::class),
+            $this->dir,
+            $links,
+            'https://app.example.org/',
+        );
+    }
+
     private function write(string $type, string $content): void
     {
         file_put_contents($this->dir.'/'.$type.'.md', $content);
@@ -150,5 +163,113 @@ class LegalDocumentServiceTest extends KernelTestCase
         self::assertSame(['terms'], array_map(static fn ($d) => $d->getType()->value, $pending));
         $this->service->recordConsents($user, $pending, null, null);
         self::assertCount(3, $this->service->history($user));
+    }
+
+    public function testLinkOnly(): void
+    {
+        $this->withLinks(['privacy' => 'https://example.org/p']);
+        $report = $this->service->sync();
+        self::assertSame(['imprint' => 'missing', 'privacy' => 'created', 'terms' => 'missing'], $report);
+        $doc = $this->service->current(LegalDocumentType::PRIVACY);
+        self::assertSame('https://example.org/p', $doc->getUrl());
+        self::assertTrue($doc->isLink());
+        self::assertSame('', $doc->getMarkdown());
+        self::assertSame('', $doc->getHtml());
+        self::assertNull($doc->getTitle());
+        self::assertSame('unchanged', $this->service->sync()['privacy']);
+    }
+
+    public function testFileWinsOverLink(): void
+    {
+        $this->write('privacy', '# Privacy');
+        $this->withLinks(['privacy' => 'https://example.org/p']);
+        self::assertSame('created', $this->service->sync()['privacy']);
+        self::assertNull($this->service->current(LegalDocumentType::PRIVACY)->getUrl());
+        self::assertSame('unchanged', $this->service->sync()['privacy']);
+    }
+
+    public function testUrlChangeKeepsVersionAndConsent(): void
+    {
+        $this->withLinks(['privacy' => 'https://example.org/p']);
+        $this->service->sync();
+        $v1 = $this->service->current(LegalDocumentType::PRIVACY);
+        $user = $this->user();
+        $this->service->recordConsents($user, [$v1], null, null);
+
+        $this->withLinks(['privacy' => 'https://example.org/p2']);
+        self::assertSame('updated', $this->service->sync()['privacy']);
+        $v2 = $this->service->current(LegalDocumentType::PRIVACY);
+        self::assertSame($v1->getId(), $v2->getId());
+        self::assertSame('https://example.org/p2', $v2->getUrl());
+        self::assertSame([], $this->service->pendingConsents($user));
+    }
+
+    public function testSwitchBetweenFileAndLinkCreatesNewVersion(): void
+    {
+        $this->withLinks(['privacy' => 'https://example.org/p']);
+        $this->service->sync();
+        $link = $this->service->current(LegalDocumentType::PRIVACY);
+        $user = $this->user();
+        $this->service->recordConsents($user, [$link], null, null);
+
+        $this->write('privacy', '# Privacy');
+        self::assertSame('created', $this->service->sync()['privacy']);
+        $file = $this->service->current(LegalDocumentType::PRIVACY);
+        self::assertNotSame($link->getId(), $file->getId());
+        self::assertCount(1, $this->service->pendingConsents($user));
+
+        unlink($this->dir.'/privacy.md');
+        self::assertSame('created', $this->service->sync()['privacy']);
+        self::assertNotSame($file->getId(), $this->service->current(LegalDocumentType::PRIVACY)->getId());
+    }
+
+    public function testLinkRetiredAndRestored(): void
+    {
+        $this->withLinks(['terms' => 'https://example.org/t']);
+        $this->service->sync();
+        $v = $this->service->current(LegalDocumentType::TERMS);
+
+        $this->withLinks([]);
+        self::assertSame('retired', $this->service->sync()['terms']);
+        self::assertNull($this->service->current(LegalDocumentType::TERMS));
+
+        $this->withLinks(['terms' => 'https://example.org/t-new']);
+        self::assertSame('restored', $this->service->sync()['terms']);
+        $back = $this->service->current(LegalDocumentType::TERMS);
+        self::assertSame($v->getId(), $back->getId());
+        self::assertSame('https://example.org/t-new', $back->getUrl());
+    }
+
+    public function testInvalidUrlIsIgnoredAndReported(): void
+    {
+        $this->withLinks(['imprint' => 'ftp://example.org/i', 'privacy' => '/relative', 'terms' => 'javascript:alert(1)']);
+        self::assertSame(['imprint' => 'missing', 'privacy' => 'missing', 'terms' => 'missing'], $this->service->sync());
+        self::assertSame(['imprint', 'privacy', 'terms'], $this->service->invalidLinks());
+
+        $this->withLinks(['imprint' => '', 'privacy' => 'https://example.org/p']);
+        self::assertSame([], $this->service->invalidLinks());
+    }
+
+    public function testPublicLinks(): void
+    {
+        $this->write('imprint', '# Imprint');
+        $this->withLinks(['privacy' => 'https://example.org/p']);
+        $this->service->sync();
+        self::assertSame(
+            ['imprint' => 'https://app.example.org/imprint', 'privacy' => 'https://example.org/p'],
+            $this->service->publicLinks(),
+        );
+    }
+
+    public function testConsentHistoryShowsDocumentUrl(): void
+    {
+        $this->withLinks(['privacy' => 'https://example.org/p']);
+        $this->service->sync();
+        $doc = $this->service->current(LegalDocumentType::PRIVACY);
+        $user = $this->user();
+        $this->service->recordConsents($user, [$doc], null, null);
+        $c = \App\Service\LegalPresenter::consent($this->service->history($user)[0], []);
+        self::assertSame('https://example.org/p', $c['documentUrl']);
+        self::assertSame('https://example.org/p', \App\Service\LegalPresenter::pending([$doc])[0]['url']);
     }
 }

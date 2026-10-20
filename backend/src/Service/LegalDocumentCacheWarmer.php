@@ -25,6 +25,9 @@ class LegalDocumentCacheWarmer implements CacheWarmerInterface
     {
         try {
             $this->legal->sync();
+            foreach ($this->legal->invalidLinks() as $type) {
+                $this->logger->warning(sprintf('LEGAL_%s is not an absolute http(s) URL and is ignored', strtoupper($type)));
+            }
         } catch (\Throwable $e) {
             $this->logger->warning('Legal documents were not synchronised: '.$e->getMessage());
         }

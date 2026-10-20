@@ -6,6 +6,13 @@ parameters:
 
     env(LEGAL_DOCUMENTS_PATH): '%kernel.project_dir%/legal'
     app.legal_documents_path: '%env(resolve:LEGAL_DOCUMENTS_PATH)%'
+    # External documents (absolute http(s) URL) used when the Markdown file of the type is missing
+    env(LEGAL_IMPRINT): ''
+    env(LEGAL_PRIVACY): ''
+    env(LEGAL_TERMS): ''
+    app.legal_imprint: '%env(LEGAL_IMPRINT)%'
+    app.legal_privacy: '%env(LEGAL_PRIVACY)%'
+    app.legal_terms: '%env(LEGAL_TERMS)%'
 
     env(WEBAUTHN_RP_ID): '%env(string:key:host:url:APP_URL)%'
     env(WEBAUTHN_RP_NAME): 'Club Calendar'

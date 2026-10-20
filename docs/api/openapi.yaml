@@ -288,7 +288,9 @@ paths:
       tags: [Legal]
       summary: Current legal documents
       description: >-
-        The current version of each document (`null` = not provided). `Cache-Control: public, max-age=60`.
+        The current version of each document (`null` = not provided). A document is either Markdown (`url` null) or
+        an external link (`url` set, see `LEGAL_*` env vars: a Markdown file wins over a link; a link is ONE version,
+        so changing its URL does not ask for consent again). `Cache-Control: public, max-age=60`.
       operationId: listLegal
       security: []
       responses:
@@ -3607,28 +3609,31 @@ components:
         user: { $ref: '#/components/schemas/UserSummary' }
     LegalDocumentSummary:
       type: object
-      required: [id, title, publishedAt]
+      required: [id, title, url, publishedAt]
       properties:
-        id: { type: string, description: 'UUID of this version (changes with every new text).' }
-        title: { type: [string, 'null'], description: First `# ` heading of the Markdown source. }
+        id: { type: string, description: 'UUID of this version (changes with every new text; a link version keeps its id when only the URL changes).' }
+        title: { type: [string, 'null'], description: First `# ` heading of the Markdown source; null for a link. }
+        url: { type: [string, 'null'], description: 'External address (absolute http(s) URL) when the operator provides the document as a link (`LEGAL_IMPRINT|PRIVACY|TERMS`, only when no Markdown file exists for the type); null for a Markdown document. Clients open the link instead of rendering `html`.' }
         publishedAt: { type: string, format: date-time }
     LegalDocument:
       type: object
-      required: [id, type, title, html, publishedAt]
+      required: [id, type, title, url, html, publishedAt]
       properties:
         id: { type: string }
         type: { type: string, enum: [imprint, privacy, terms] }
         title: { type: [string, 'null'] }
-        html: { type: string, description: 'Sanitised HTML (raw HTML of the source is escaped, unsafe links removed).' }
+        url: { type: [string, 'null'], description: 'External address of a link document (then `html` is an empty string); null for a Markdown document.' }
+        html: { type: string, description: 'Sanitised HTML (raw HTML of the source is escaped, unsafe links removed); empty for a link document.' }
         publishedAt: { type: string, format: date-time }
     Consent:
       type: object
-      required: [id, type, documentId, documentTitle, documentPublishedAt, consentedAt, current, ipAddress, userAgent]
+      required: [id, type, documentId, documentTitle, documentUrl, documentPublishedAt, consentedAt, current, ipAddress, userAgent]
       properties:
         id: { type: string }
         type: { type: string, enum: [privacy, terms] }
         documentId: { type: string, description: 'Version consented to; readable at `GET /api/legal/documents/{id}`.' }
         documentTitle: { type: [string, 'null'] }
+        documentUrl: { type: [string, 'null'], description: 'External address when the consented document is a link document.' }
         documentPublishedAt: { type: string, format: date-time }
         consentedAt: { type: string, format: date-time }
         current: { type: boolean, description: 'The document is still the current one of its type.' }
@@ -3646,11 +3651,12 @@ components:
               description: Current privacy / terms documents the user has not consented to yet.
               items:
                 type: object
-                required: [type, id, title, publishedAt]
+                required: [type, id, title, url, publishedAt]
                 properties:
                   type: { type: string, enum: [privacy, terms] }
                   id: { type: string }
                   title: { type: [string, 'null'] }
+                  url: { type: [string, 'null'], description: 'External address for a link document, else null.' }
                   publishedAt: { type: string, format: date-time }
             consentRequired: { type: boolean, description: 'True only if the consent gate blocks THIS session: `pendingConsents` is not empty AND the session started without up-to-date consents. A session that was compliant when it started sees `pendingConsents` but `consentRequired` false.' }
             pendingEmail: { type: [string, 'null'], description: New address of a waiting e-mail change. }
