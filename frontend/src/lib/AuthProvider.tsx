@@ -11,6 +11,7 @@ import {
   getAccessToken,
 } from "./api";
 import { AuthContext, type AuthContextValue } from "./auth-context";
+import { clearDrafts } from "./events/draft";
 import i18n from "./i18n";
 import type { User } from "./types";
 
@@ -99,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = (accessToken: string, refreshToken: string, user: User) => {
     decision.current++;
     storeTokens(accessToken, refreshToken);
+    clearDrafts(user.id);
     applyUserLanguage(user);
     setUser(user);
     setSessionError(false);
@@ -110,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     decision.current++;
     revokeRefreshToken();
     clearTokens();
+    clearDrafts();
     // Cached clubs/events of this account must not show up for the next one in the same tab.
     queryClient.clear();
     setUser(null);

@@ -591,7 +591,13 @@
         "timeEndBeforeStart": "Die Endzeit liegt vor der Startzeit.",
         "noteTooLong": "Die Notiz ist zu lang (höchstens {{max}} Zeichen)."
       },
-      "loadingTitle": "Termin wird geladen"
+      "loadingTitle": "Termin wird geladen",
+      "draft": {
+        "title": "Entwurf wiederherstellen?",
+        "text": "Auf diesem Gerät liegt ein nicht gespeicherter Entwurf dieses Termins.",
+        "restore": "Wiederherstellen",
+        "discard": "Verwerfen"
+      }
     },
     "templatePick": {
       "title": "Vorlage wählen",
