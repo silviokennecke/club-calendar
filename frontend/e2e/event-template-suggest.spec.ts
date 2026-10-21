@@ -198,7 +198,7 @@ test.describe("Vorlagenvorschläge im Termin-Formular", () => {
     await nameField(page).fill("");
     await nameField(page).fill("training");
     await expect(options(page).first()).toBeVisible();
-    await page.getByRole("heading", { level: 1, name: "Neuer Termin" }).click();
+    await page.getByRole("heading", { level: 2, name: "Neuer Termin" }).click();
     await expect(options(page)).toHaveCount(0);
     await expect(nameField(page)).toHaveValue("training");
     await unchanged();
@@ -238,7 +238,7 @@ test.describe("Vorlagenvorschläge im Termin-Formular", () => {
     await expect(row).toContainText("19:00");
     await row.getByRole("link", { name: "Training Luftgewehr", exact: true }).click();
 
-    await expect(page.getByRole("heading", { level: 1, name: "Termin bearbeiten" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Termin bearbeiten" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Startzeit (Pflicht)" })).toHaveValue("19:00");
     await expect(page.getByRole("textbox", { name: "Endzeit (Pflicht)" })).toHaveValue("21:00");
     await expect(page.getByLabel(/^Notiz/)).toHaveValue("Bitte Hausschuhe mitbringen.");

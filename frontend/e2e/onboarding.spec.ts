@@ -17,10 +17,16 @@ test.describe("Erst-Einrichtung", () => {
     const steps = page.getByRole("list", { name: "Fortschritt" });
     await expect(steps.locator("[aria-current='step']")).toHaveText(/Verein/);
 
-    // Empty name: error, focus stays in the field.
+    // Empty name: error summary and field error.
     await page.getByRole("button", { name: "Verein anlegen" }).click();
     const clubName = page.getByLabel(/^Name deines Vereins/);
-    await expect(page.getByText("Bitte gib den Namen deines Vereins ein.")).toBeVisible();
+    await expect(page.locator("#setup-club-name-error")).toBeVisible();
+    // A failed submit moves focus to the error summary; its link leads to the field.
+    const summary = page
+      .getByRole("alert")
+      .filter({ hasText: "Bitte gib den Namen deines Vereins ein." });
+    await expect(summary).toBeFocused();
+    await summary.getByRole("link", { name: "Bitte gib den Namen deines Vereins ein." }).click();
     await expect(clubName).toBeFocused();
     await expect(clubName).toHaveAttribute("aria-invalid", "true");
 
