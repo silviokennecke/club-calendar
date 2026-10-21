@@ -68,7 +68,9 @@ export function useModalFocusReturn(open: boolean) {
         return;
       }
       const active = document.activeElement;
-      if (active && active !== document.body && active.isConnected) return;
+      // The dialog stays rendered during its exit animation; focus inside it is not a valid place.
+      const inClosingDialog = !!active?.closest('[role="dialog"], [role="alertdialog"]');
+      if (active && active !== document.body && active.isConnected && !inClosingDialog) return;
       if (before?.isConnected && before !== document.body) before.focus();
       else focusPageStart();
     };
