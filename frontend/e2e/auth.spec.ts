@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { API } from "./helpers";
+import { API, loginPassword } from "./helpers";
 
 // The auth pages are tested in German (the design's source language).
 test.use({ locale: "de-DE" });
@@ -10,8 +10,8 @@ test.describe("Login", () => {
   test("login page is accessible", async ({ page }) => {
     await page.goto("/login");
     await expect(page.getByRole("heading", { level: 1, name: "Anmelden" })).toBeVisible();
-    await expect(page.getByLabel("E-Mail")).toBeVisible();
-    await expect(page.getByLabel("Passwort", { exact: true })).toBeVisible();
+    await expect(page.getByLabel(/^E-Mail \(Pflicht\)/)).toBeVisible();
+    await expect(loginPassword(page)).toBeVisible();
     await expect(page.getByRole("button", { name: "Mit Passkey anmelden" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Passwort vergessen?" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Zum Inhalt springen" })).toBeAttached();
@@ -20,7 +20,7 @@ test.describe("Login", () => {
 
   test("password can be shown and hidden", async ({ page }) => {
     await page.goto("/login");
-    const input = page.getByLabel("Passwort", { exact: true });
+    const input = loginPassword(page);
     const toggle = page.getByRole("button", { name: "Passwort anzeigen" });
     await input.fill("geheim");
     await expect(input).toHaveAttribute("type", "password");
@@ -40,7 +40,7 @@ test.describe("Login", () => {
   test("wrong credentials show an error banner with focus", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("E-Mail").fill("wrong@example.com");
-    await page.getByLabel("Passwort", { exact: true }).fill("wrongpassword");
+    await loginPassword(page).fill("wrongpassword");
     await page.getByRole("button", { name: "Anmelden", exact: true }).click();
     const alert = page.getByRole("alert");
     await expect(alert).toContainText("E-Mail oder Passwort stimmt nicht");
@@ -98,7 +98,7 @@ test.describe("Login", () => {
   test("login with correct credentials redirects to clubs", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("E-Mail").fill("admin@example.com");
-    await page.getByLabel("Passwort", { exact: true }).fill("password123");
+    await loginPassword(page).fill("password123");
     await page.getByRole("button", { name: "Anmelden", exact: true }).click();
     await page.waitForURL("**/clubs**");
     await expect(page).toHaveURL(/\/clubs/);
@@ -151,7 +151,7 @@ test.describe("Registration", () => {
     await page.getByRole("link", { name: "Zurück zur Anmeldung" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Anmelden" })).toBeVisible();
     await page.getByLabel("E-Mail").fill(email);
-    await page.getByLabel("Passwort", { exact: true }).fill(PASSWORD);
+    await loginPassword(page).fill(PASSWORD);
     await page.getByRole("button", { name: "Anmelden", exact: true }).click();
     await expect(page).toHaveURL(/\/verify-email\?email=/);
     await expect(page.getByText(email)).toBeVisible();

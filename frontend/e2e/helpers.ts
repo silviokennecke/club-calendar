@@ -46,11 +46,16 @@ export async function createVerifiedUser(request: APIRequestContext, name: strin
   return email;
 }
 
+/** Password field of the login form (accessible name carries the required marker). */
+export function loginPassword(page: Page) {
+  return page.getByLabel(/^Passwort \(Pflicht\)/);
+}
+
 /** Signs in through the German login form. */
 export async function login(page: Page, email: string) {
   await page.goto("/login");
   await page.getByLabel("E-Mail").fill(email);
-  await page.getByLabel("Passwort", { exact: true }).fill(PASSWORD);
+  await loginPassword(page).fill(PASSWORD);
   await page.getByRole("button", { name: "Anmelden", exact: true }).click();
 }
 

@@ -4,7 +4,7 @@ import { API, authHeaders, createVerifiedUser, login, seedClub } from "./helpers
 async function loginAdmin(page: Page) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill("admin@example.com");
-  await page.getByLabel("Password", { exact: true }).fill("password123");
+  await page.getByLabel(/^Password \(required\)/).fill("password123");
   await page.getByRole("button", { name: /^sign in$/i }).click();
   await page.waitForURL("**/clubs**");
 }
