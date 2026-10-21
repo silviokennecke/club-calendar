@@ -243,7 +243,7 @@ test.describe("Öffentlicher Kalender", () => {
     expect(JSON.stringify(await res.json())).not.toContain("Geheimer Entwurf");
     await page.goto(`/feed/${seed.publicFeedId}/events/${seed.draftEventId}`);
     await expect(
-      page.getByRole("heading", { level: 1, name: "Termin nicht gefunden" }),
+      page.getByRole("heading", { level: 2, name: "Termin nicht gefunden" }),
     ).toBeVisible();
   });
 
