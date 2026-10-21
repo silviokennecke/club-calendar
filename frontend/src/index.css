@@ -514,6 +514,13 @@
       transition: none;
     }
   }
+  @media (max-width: 720px) {
+    .cc-toggle::before {
+      content: "";
+      position: absolute;
+      inset: -8px -4px;
+    }
+  }
   .cc-toggle[aria-checked="true"] {
     background: var(--brand);
     border-color: var(--brand);
@@ -3885,7 +3892,7 @@
     color: var(--ink);
     font: 400 1rem/1.65 var(--font-sans);
     overflow-wrap: anywhere;
-    max-width: 58ch;
+    max-width: 50ch;
   }
   .legal-prose > :first-child {
     margin-top: 0;
@@ -4052,6 +4059,22 @@
   .mapboxgl-map .mapboxgl-ctrl-group button {
     width: 44px;
     height: 44px;
+  }
+  .mapboxgl-map .mapboxgl-ctrl-attrib.mapboxgl-compact {
+    box-sizing: border-box;
+    min-height: 44px;
+    border-radius: 22px;
+    margin: 4px;
+    padding-right: 44px;
+  }
+  .mapboxgl-map .mapboxgl-ctrl-logo {
+    min-height: 44px;
+    background-position: left bottom;
+  }
+  .mapboxgl-map .mapboxgl-ctrl-attrib-button {
+    width: 44px;
+    height: 44px;
+    border-radius: 22px;
   }
 }
 
