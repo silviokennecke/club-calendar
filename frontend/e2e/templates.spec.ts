@@ -229,7 +229,7 @@ test.describe("Vorlagen", () => {
 
     await page.goto(`${seeded.base}/events`);
     await page.getByRole("link", { name: "Jahresschießen", exact: true }).click();
-    await expect(page.getByLabel(/^Name/)).toHaveValue("Jahresschießen");
+    await expect(page.getByRole("dialog").getByLabel(/^Name/)).toHaveValue("Jahresschießen");
     await expect(page.getByRole("textbox", { name: /^Startzeit/ })).toHaveValue("10:00");
     await expect(page.getByRole("textbox", { name: /^Endzeit/ })).toHaveValue("16:30");
     for (const name of [/Schützentracht/, "Bonusschießen", "Jugend", "Erwachsene"]) {

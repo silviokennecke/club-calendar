@@ -270,9 +270,9 @@ test.describe("Kalender (Redesign)", () => {
     await openCalendar(page, seeded);
 
     await page.getByRole("button", { name: "Termin anlegen", exact: true }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Termin anlegen" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Termin anlegen" })).toBeVisible();
     await page.getByRole("link", { name: /Neuer Termin/ }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Neuer Termin" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Neuer Termin" })).toBeVisible();
     await page.getByLabel("Name (Pflicht)").fill("E2E Herbstfest");
     await page.getByLabel("Startdatum (Pflicht)").fill("2026-10-24");
     await page.getByRole("button", { name: "Veröffentlicht", exact: true }).click();
@@ -283,7 +283,7 @@ test.describe("Kalender (Redesign)", () => {
     const chip = page.getByTitle(/^E2E Herbstfest, 19:00 bis 21:00 Uhr \(veröffentlicht\)$/);
     await expect(chip).toBeVisible();
     await chip.click();
-    await expect(page.getByRole("heading", { level: 1, name: "Termin bearbeiten" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Termin bearbeiten" })).toBeVisible();
     await expect(page.getByLabel("Name (Pflicht)")).toHaveValue("E2E Herbstfest");
     await page.getByRole("button", { name: "Termin löschen" }).click();
     const confirm = page.getByRole("alertdialog");
@@ -308,7 +308,7 @@ test.describe("Kalender (Redesign)", () => {
     await expect(page.getByRole("button", { name: "Termin anlegen", exact: true })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Termine exportieren" })).toBeVisible();
     await page.getByTitle(/^Training Luftgewehr/).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Termin ansehen" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Termin ansehen" })).toBeVisible();
     await expect(page.getByLabel("Name (Pflicht)")).toBeDisabled();
     await expect(page.getByRole("button", { name: "Termin löschen" })).toHaveCount(0);
     await page.getByRole("button", { name: "Schließen", exact: true }).last().click();
@@ -466,7 +466,7 @@ test.describe("Termin-Dialoge", () => {
     await expect(page.getByRole("dialog", { name: "Vorlage wählen" })).toBeVisible();
     await page.getByRole("link", { name: "Zurück" }).click();
     await expect(create).toBeVisible();
-    await expect(create.getByRole("heading", { level: 1 })).toBeFocused();
+    await expect(create.getByRole("heading", { level: 2 })).toBeFocused();
     await page.goBack();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page).toHaveURL(new RegExp(`${seeded.url}$`));
@@ -497,7 +497,7 @@ test.describe("Termin-Dialoge", () => {
     await page.getByTitle(/^Training Luftgewehr/).click();
     const view = page.getByRole("dialog", { name: "Termin ansehen" });
     await expect(view).toBeVisible();
-    await expect(view.getByRole("heading", { level: 1 })).toBeFocused();
+    await expect(view.getByRole("heading", { level: 2, name: "Termin ansehen" })).toBeFocused();
     await expect(view.getByLabel("Name (Pflicht)")).toBeDisabled();
     await expect(view.getByRole("button", { name: "Termin speichern" })).toHaveCount(0);
     await page.keyboard.press("Escape");
@@ -552,7 +552,7 @@ test.describe("Termin-Dialoge", () => {
           return 0.2126 * r + 0.7152 * g + 0.0722 * b;
         };
         const style = getComputedStyle(el);
-        const h1 = getComputedStyle(el.querySelector("h1")!);
+        const h1 = getComputedStyle(el.querySelector("h2")!);
         const [a, b] = [lum(h1.color), lum(style.backgroundColor)].sort((x, y) => y - x);
         return (a + 0.05) / (b + 0.05);
       });

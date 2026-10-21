@@ -119,7 +119,7 @@ test.describe("Termine", () => {
     await page.getByRole("button", { name: "Termin anlegen", exact: true }).click();
     const choice = page.getByRole("dialog", { name: "Termin anlegen" });
     await expect(choice).toBeVisible();
-    await expect(choice.getByRole("heading", { level: 1 })).toBeFocused();
+    await expect(choice.getByRole("heading", { level: 2 })).toBeFocused();
     await choice.getByRole("link", { name: /Neuer Termin/ }).click();
     // Same dialog, next step: the form starts in its first field.
     const dialog = page.getByRole("dialog", { name: "Neuer Termin" });
