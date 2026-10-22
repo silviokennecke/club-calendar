@@ -13,11 +13,13 @@ const apiGet = vi.fn();
 const apiPost = vi.fn();
 const apiPatch = vi.fn();
 const getHolidayEvents = vi.fn();
+const apiGetWithTotal = vi.fn();
 
 vi.mock("@/lib/api", () => ({
   apiGet: (...a: unknown[]) => apiGet(...a),
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiPatch: (...a: unknown[]) => apiPatch(...a),
+  apiGetWithTotal: (...a: unknown[]) => apiGetWithTotal(...a),
   apiDelete: vi.fn(),
   getHolidayEvents: (...a: unknown[]) => getHolidayEvents(...a),
 }));
@@ -466,24 +468,22 @@ describe("CalendarPage – filters and search", () => {
     expect(screen.queryByRole("button", { name: "Filter zurücksetzen" })).toBeNull();
   });
 
-  it("searches by name and explains when nothing matches", async () => {
+  it("does not filter the grid by the search text; a result opens its event on its date", async () => {
     const user = userEvent.setup();
+    apiGetWithTotal.mockResolvedValue({
+      data: [event({ id: "e9", name: "Sommerfest", date: "2026-12-05" })],
+      total: 1,
+    });
     renderPage();
     await grid();
     await screen.findByTitle(/^Training Luftgewehr/);
-    const input = screen.getByLabelText("Termine suchen");
-    await user.type(input, "meister");
-    expect(screen.getByTitle(/^Vereinsmeisterschaft/)).toBeInTheDocument();
-    expect(screen.queryByTitle(/^Training Luftgewehr/)).toBeNull();
-
-    await user.clear(input);
-    await user.type(input, "Sommerfest");
-    expect(
-      screen.getByRole("heading", { name: "Keine Termine zu „Sommerfest“ gefunden" }),
-    ).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Suche zurücksetzen" }));
-    expect(input).toHaveValue("");
-    expect(await grid()).toBeInTheDocument();
+    await user.type(screen.getByRole("combobox", { name: "Termine suchen" }), "sommer");
+    expect(screen.getByTitle(/^Training Luftgewehr/)).toBeInTheDocument();
+    await user.click(await screen.findByRole("option", { name: /Sommerfest/ }));
+    expect(await screen.findByTestId("modal-location")).toHaveTextContent(
+      "/clubs/c1/calendars/k1/events/e9",
+    );
+    expect(screen.getByTestId("location")).toHaveTextContent("date=2026-12-05");
   });
 });
 

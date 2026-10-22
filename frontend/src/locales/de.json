@@ -296,7 +296,14 @@
     "import": "Termine importieren",
     "search": {
       "label": "Termine suchen",
-      "placeholder": "Name eines Termins…"
+      "placeholder": "Name eines Termins…",
+      "error": "Suche fehlgeschlagen.",
+      "loading": "Suche läuft …",
+      "empty": "Keine Termine zu „{{query}}“ gefunden",
+      "more": "{{shown}} von {{total}} Treffern angezeigt. Präzisiere die Suche.",
+      "results_one": "1 Treffer",
+      "results_other": "{{count}} Treffer",
+      "placeholderAll": "Name, Notiz, Ort oder Besonderheit…"
     },
     "filter": {
       "label": "Nach Gruppe filtern",
@@ -345,11 +352,6 @@
       "title": "Noch keine Termine in diesem Kalender",
       "text": "Lege den ersten Termin an. Er bleibt ein Entwurf, bis du ihn veröffentlichst. Oder übernimm Termine aus einer Datei.",
       "archivedText": "Dieser archivierte Kalender enthält keine Termine."
-    },
-    "noResults": {
-      "title": "Keine Termine zu „{{query}}“ gefunden",
-      "text": "Prüfe die Schreibweise oder suche nach einem anderen Namen. Auch ein gesetzter Gruppen-Filter kann Termine ausblenden.",
-      "reset": "Suche zurücksetzen"
     },
     "archived": {
       "text": "Dieser Kalender ist archiviert und schreibgeschützt. Termine lassen sich nicht ändern.",

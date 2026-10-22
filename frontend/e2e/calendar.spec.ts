@@ -257,12 +257,15 @@ test.describe("Kalender (Redesign)", () => {
     await expect(youth).toHaveAttribute("aria-pressed", "false");
     await expect(page.getByTitle(/^Training Luftgewehr/)).toBeVisible();
 
-    await page.getByLabel("Termine suchen").fill("Sommerfest");
-    await expect(
-      page.getByRole("heading", { name: "Keine Termine zu „Sommerfest“ gefunden" }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Suche zurücksetzen" }).click();
-    await expect(page.getByRole("grid")).toBeVisible();
+    const search = page.getByRole("combobox", { name: "Termine suchen" });
+    await search.fill("Sommerfest");
+    await expect(page.getByText("Keine Termine zu „Sommerfest“ gefunden")).toBeVisible();
+    await search.fill("Training Luftgewehr");
+    await page
+      .getByRole("option", { name: /Training Luftgewehr/ })
+      .first()
+      .click();
+    await expect(page.getByRole("heading", { level: 2, name: "Termin bearbeiten" })).toBeVisible();
   });
 
   test("Termin anlegen, ansehen und löschen", async ({ page, request }) => {
