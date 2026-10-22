@@ -424,7 +424,7 @@ paths:
       description: >-
         Form-encoded. `grant_type` `authorization_code` (`code`, `redirect_uri`, `code_verifier`) or `refresh_token`
         (`refresh_token`, single use, rotated); `client_id` is required, `resource` (if sent) must be the MCP URL.
-        Errors are RFC 6749 bodies; an unknown client is 401 `invalid_client`. Never cacheable.
+        Errors are RFC 6749 bodies; an unknown client is 401 `invalid_client`. Never cacheable. Limited to 60 requests per minute per client IP (shared with `/api/oauth/revoke`; 429 `rate_limited` + `Retry-After`).
       operationId: oauthToken
       security: []
       requestBody:
@@ -466,6 +466,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/OAuthError' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/oauth/revoke:
     post:
@@ -494,6 +495,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/OAuthError' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/oauth/authorize:
     get:
