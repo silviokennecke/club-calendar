@@ -126,6 +126,11 @@ framework:
             policy: sliding_window
             limit: 10
             interval: '1 hour'
+        # OAuth consent decisions (signed-in user): per user.
+        oauth_decision_user:
+            policy: sliding_window
+            limit: 30
+            interval: '1 hour'
         # Remote MCP endpoint: per grant and per client IP.
         mcp_grant:
             policy: sliding_window

@@ -289,7 +289,7 @@ class OAuthServerService
         return $canonical;
     }
 
-    private function redirectUriRegistered(OAuthClient $client, string $redirectUri): bool
+    public function redirectUriRegistered(OAuthClient $client, string $redirectUri): bool
     {
         foreach ($client->getRedirectUris() as $registered) {
             if (hash_equals($registered, $redirectUri)) {

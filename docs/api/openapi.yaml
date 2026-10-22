@@ -413,6 +413,134 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/OAuthError' }
 
+  /api/oauth/authorize:
+    get:
+      tags: [OAuth]
+      summary: Authorization endpoint (code flow with PKCE S256)
+      description: >-
+        Query: `client_id`, `redirect_uri` (registered), `response_type=code`, `code_challenge`,
+        `code_challenge_method=S256`, optional `scope` (default `mcp:read`), `state`, `resource`. Always answers 302:
+        to the SPA consent page `{FRONTEND_URL}/oauth/consent?request=<id>`, or, for errors other than
+        `client_id` / `redirect_uri`, to the verified redirect URI with `error`, `error_description` and `state`.
+        An unknown `client_id` or an unregistered `redirect_uri` is never redirected: `400 invalid_request`
+        (field `client_id` / `redirect_uri`).
+      operationId: oauthAuthorize
+      security: []
+      responses:
+        '302': { description: Redirect to the consent page or (error) to the client. }
+        '400':
+          description: '`invalid_request` for `client_id` / `redirect_uri`.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+
+  /api/oauth/authorization-request/{id}:
+    get:
+      tags: [OAuth]
+      summary: Authorization request for the consent page
+      description: Valid 10 minutes, single use. Needs a signed-in user.
+      operationId: oauthAuthorizationRequest
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The request.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, clientName, redirectHost, family, scopes, createdAt, expiresAt]
+                properties:
+                  id: { type: string }
+                  clientName: { type: string }
+                  redirectHost: { type: string }
+                  family: { type: [string, 'null'], description: 'Matched client family (claude, openai, ...); null = unverified.' }
+                  scopes: { type: array, items: { type: string, enum: ['mcp:read', 'mcp:write'] } }
+                  createdAt: { type: string, format: date-time }
+                  expiresAt: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: '`authorization_request_not_found`: unknown, expired or already answered.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /api/oauth/authorize/decision:
+    post:
+      tags: [OAuth]
+      summary: Allow or deny an authorization request
+      description: >-
+        Approving needs consent to the current legal documents (`403 consent_required`), a confirmed e-mail address
+        (`403 email_not_verified`) and room in the quota of connected apps (`422 quota_exceeded`); a new grant
+        replaces the user's open grant of the same client. 30 decisions per user and hour. The SPA navigates the
+        browser to `redirectUrl`.
+      operationId: oauthDecision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [requestId, approve]
+              properties:
+                requestId: { type: string }
+                approve: { type: boolean }
+      responses:
+        '200':
+          description: Where to send the browser (`code` + `state`, or `error=access_denied` + `state`).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [redirectUrl]
+                properties:
+                  redirectUrl: { type: string }
+        '400': { description: '`invalid_request`: body incomplete.', content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: '`consent_required` or `email_not_verified`.', content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '404': { description: '`authorization_request_not_found`.', content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '422': { description: '`quota_exceeded`.', content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+
+  /api/auth/mcp-grants:
+    get:
+      tags: [Auth]
+      summary: Connected apps (MCP clients) of the user
+      description: Open grants only (not revoked, not expired), newest first.
+      operationId: listMcpGrants
+      responses:
+        '200':
+          description: The grants.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, clientName, family, scopes, createdAt, lastUsedAt]
+                  properties:
+                    id: { type: string }
+                    clientName: { type: string }
+                    family: { type: [string, 'null'] }
+                    scopes: { type: array, items: { type: string } }
+                    createdAt: { type: string, format: date-time }
+                    lastUsedAt: { type: [string, 'null'], format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/auth/mcp-grants/{id}:
+    delete:
+      tags: [Auth]
+      summary: Disconnect an app
+      description: Deletes the grant with all its tokens. Own grants only.
+      operationId: deleteMcpGrant
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Disconnected. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: '`mcp_grant_not_found`.', content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+
   /api/legal:
     get:
       tags: [Legal]
@@ -3637,6 +3765,8 @@ components:
         | `invitation_not_found` | 404 | Club invitation routes: unknown, answered or revoked invitation, or one of another club; `/api/invitations/*`: unknown token or id, an invitation for another address, or an unconfirmed user (all the same answer) |
         | `invitation_expired` | 422 | Accept/decline of an invitation that is addressed to the signed-in user but older than 7 days; the club can re-send it |
         | `invitation_not_expired` | 422 | `POST /api/clubs/{clubId}/invitations/{invitationId}/resend` before the invitation expired |
+        | `authorization_request_not_found` | 404 | `GET /api/oauth/authorization-request/{id}`, `POST /api/oauth/authorize/decision`: unknown, expired (10 min) or already answered request |
+        | `mcp_grant_not_found` | 404 | `DELETE /api/auth/mcp-grants/{id}`: unknown id or a grant of another user |
         | `ics_fetch_failed` | 422 | Holiday calendar create/refresh: the ICS URL could not be fetched or parsed (field `url`) |
         | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After`; club invitations (create, re-send): 20 per user and 50 per club and day; account deletion (`DELETE /api/auth/me`, `POST /api/auth/delete-account/code`): per user and per IP |
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
@@ -3720,6 +3850,8 @@ components:
         - invitation_expired
         - invitation_not_expired
         - ics_fetch_failed
+        - authorization_request_not_found
+        - mcp_grant_not_found
         - rate_limited
 
     # ---------------------------------------------------------------- primitives
