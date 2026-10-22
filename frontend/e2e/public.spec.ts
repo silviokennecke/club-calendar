@@ -142,11 +142,12 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(page.getByRole("navigation", { name: "Bereiche" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Anmelden" })).toHaveCount(0);
     await expect(page).toHaveURL(new RegExp(`/feed/${seed.publicFeedId}`));
-    const sub = page.getByRole("link", { name: "Kalender abonnieren" });
-    await expect(sub).toHaveAttribute("href", /^webcal:\/\/.*\/api\/feed\/.*\/ics$/);
-    await expect(page.getByRole("link", { name: "Als ICS-Datei laden" })).toHaveAttribute(
+    await expect(page.getByRole("button", { name: "Kalender abonnieren" })).toBeVisible();
+    await page.getByRole("button", { name: "Weitere Wege, den Kalender zu abonnieren" }).click();
+    await expect(page.getByRole("button", { name: "ICS herunterladen" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Hilfe: So klappt's" })).toHaveAttribute(
       "href",
-      /^https?:\/\/.*\/api\/feed\/.*\/ics$/,
+      "/help/subscribe",
     );
     await expect(page.getByText("Bereitgestellt mit Club Calendar")).toBeVisible();
     await expect(page.getByRole("grid")).toBeVisible();
@@ -166,10 +167,10 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Mitglieder" })).toBeVisible();
     await expect(page.getByText("Zeige 3 von 3 Terminen")).toBeVisible();
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-    await expect(page.getByRole("link", { name: "Kalender abonnieren" })).toHaveAttribute(
-      "href",
-      /\/api\/feed\/.*\/ics$/,
-    );
+    await page.getByRole("button", { name: "Weitere Wege, den Kalender zu abonnieren" }).click();
+    const popup = page.waitForEvent("popup");
+    await page.getByRole("button", { name: "Zu Google Kalender hinzufügen" }).click();
+    expect(decodeURIComponent((await popup).url())).toMatch(/\/api\/feed\/.*\/ics/);
     // Termin eines nur per Link erreichbaren Feeds: ebenfalls noindex
     await page.goto(`/feed/${seed.clubFeedId}/events/${seed.herbstfestId}`);
     await expect(page.getByRole("heading", { level: 2, name: "Herbstfest" })).toBeVisible();
@@ -258,10 +259,10 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(chip).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByText("Zeige 2 von 3 Terminen")).toBeVisible();
     await expect(page.getByText("Dein Abo übernimmt diese Auswahl.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Kalender abonnieren" })).toHaveAttribute(
-      "href",
-      /targetGroupIds=/,
-    );
+    await page.getByRole("button", { name: "Weitere Wege, den Kalender zu abonnieren" }).click();
+    const popup = page.waitForEvent("popup");
+    await page.getByRole("button", { name: "Zu Google Kalender hinzufügen" }).click();
+    expect(decodeURIComponent((await popup).url())).toMatch(/targetGroupIds=/);
     await page.getByRole("searchbox", { name: "Termine suchen" }).fill("herbst");
     await expect(page.getByText("Zeige 1 von 3 Terminen")).toBeVisible();
     await page.getByRole("button", { name: "Filter zurücksetzen" }).click();
@@ -459,10 +460,10 @@ test.describe("Öffentlicher Kalender", () => {
     await page.goto(`/feed/${seed.privateFeedId}?secret=${seed.secret}&date=2026-10-08`);
     await expect(page.getByRole("heading", { level: 1, name: "Vorstand intern" })).toBeVisible();
     await expect(page.getByRole("grid")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Kalender abonnieren" })).toHaveAttribute(
-      "href",
-      new RegExp(`secret=${seed.secret}`),
-    );
+    await page.getByRole("button", { name: "Weitere Wege, den Kalender zu abonnieren" }).click();
+    const popup = page.waitForEvent("popup");
+    await page.getByRole("button", { name: "Zu Google Kalender hinzufügen" }).click();
+    expect(decodeURIComponent((await popup).url())).toMatch(new RegExp(`secret=${seed.secret}`));
     await expect(page).toHaveTitle(/^Vorstand intern – Öffentlicher Kalender$/);
     expect(await page.title()).not.toContain(seed.secret);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
@@ -522,19 +523,19 @@ test.describe("Öffentlicher Kalender", () => {
     // The public header has no theme switch; the preference chosen in the app (stored in this browser) applies.
     await page.addInitScript(() => window.localStorage.setItem("theme", "dark"));
     await page.goto(`/feed/${seed.publicFeedId}?date=2026-10-08`);
-    await expect(page.getByRole("link", { name: "Kalender abonnieren" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Kalender abonnieren" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await page.getByRole("button", { name: "English" }).click();
-    await expect(page.getByRole("link", { name: "Subscribe to calendar" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Subscribe to calendar" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "October 2026" })).toBeVisible();
     await expect(page.getByText("Showing 3 of 3 events")).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.getByRole("link", { name: "Subscribe to calendar" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Subscribe to calendar" })).toBeVisible();
     await page.getByRole("button", { name: "Deutsch" }).click();
-    await expect(page.getByRole("link", { name: "Kalender abonnieren" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Kalender abonnieren" })).toBeVisible();
     // Detailseite folgt der Wahl
     await page.goto(`/feed/${seed.publicFeedId}/events/${seed.herbstfestId}`);
     await expect(page.getByRole("heading", { level: 2, name: "Herbstfest" })).toBeVisible();
@@ -568,8 +569,8 @@ test.describe("Öffentlicher Kalender", () => {
         page.getByRole("heading", { level: 2, name: "Donnerstag, 8. Oktober" }),
       ).toBeVisible();
       await expect(page.getByRole("button", { name: "Training Luftgewehr" })).toBeVisible();
-      for (const name of ["Kalender abonnieren", "Als ICS-Datei laden"]) {
-        const box = await page.getByRole("link", { name }).boundingBox();
+      for (const name of ["Kalender abonnieren", "Weitere Wege, den Kalender zu abonnieren"]) {
+        const box = await page.getByRole("button", { name }).boundingBox();
         expect(box!.height).toBeGreaterThanOrEqual(44);
       }
       for (const name of ["Vorheriger Monat", "Nächster Monat", "Heute"]) {

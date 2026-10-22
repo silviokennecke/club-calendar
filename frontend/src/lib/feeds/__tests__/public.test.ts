@@ -4,7 +4,9 @@ import {
   fetchPublicEvent,
   fetchPublicFeed,
   filterPublicEvents,
+  googleCalendarUrl,
   mapLinkFor,
+  outlookCalendarUrl,
   parseGroupIds,
   publicBackPath,
   publicEventPath,
@@ -222,5 +224,24 @@ describe("fetchPublicFeed", () => {
     const err = await fetchPublicFeed("f1", undefined).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(PublicFeedError);
     expect((err as PublicFeedError).kind).toBe("error");
+  });
+});
+
+describe("subscribe URLs", () => {
+  it("builds the Google Calendar add-by-URL link from the webcal address", () => {
+    expect(googleCalendarUrl("webcal://x.test/api/feed/f1/ics?secret=a b")).toBe(
+      "https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fx.test%2Fapi%2Ffeed%2Ff1%2Fics%3Fsecret%3Da%20b",
+    );
+  });
+
+  it("builds the Outlook add-from-web link with address and name", () => {
+    expect(
+      outlookCalendarUrl(
+        "https://x.test/api/feed/f1/ics?secret=s&targetGroupIds=a,b",
+        "Schützen & Co",
+      ),
+    ).toBe(
+      "https://outlook.live.com/calendar/0/addfromweb?url=https%3A%2F%2Fx.test%2Fapi%2Ffeed%2Ff1%2Fics%3Fsecret%3Ds%26targetGroupIds%3Da%2Cb&name=Sch%C3%BCtzen%20%26%20Co",
+    );
   });
 });

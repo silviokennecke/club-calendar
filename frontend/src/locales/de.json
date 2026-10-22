@@ -202,7 +202,17 @@
     "loading": "Kalender wird geladen.",
     "timeZoneNote": "Alle Uhrzeiten gelten in der Zeitzone des Vereins ({{zone}}).",
     "subscribe": "Kalender abonnieren",
-    "downloadIcs": "Als ICS-Datei laden",
+    "subscribeMenu": {
+      "label": "Weitere Wege, den Kalender zu abonnieren",
+      "app": "Mit Kalender-App öffnen",
+      "google": "Zu Google Kalender hinzufügen",
+      "outlook": "Zu Outlook hinzufügen",
+      "copy": "Link kopieren",
+      "download": "ICS herunterladen",
+      "help": "Hilfe: So klappt's",
+      "copied": "Link kopiert",
+      "copyFailed": "Link konnte nicht kopiert werden"
+    },
     "view": {
       "label": "Ansicht",
       "month": "Monat",

@@ -22,12 +22,15 @@ import {
   filterPublicEvents,
   parseGroupIds,
   publicEventPath,
+  googleCalendarUrl,
+  outlookCalendarUrl,
   publicFeedAddresses,
   viewPathWithoutSecret,
   type PublicFeedData,
   type PublicFeedEvent,
 } from "@/lib/feeds/public";
 import { toggleId } from "@/lib/feeds";
+import { detectPlatform } from "@/lib/platform";
 import type { ModalNavState } from "@/lib/modalRoutes";
 import { formatAddress } from "@/lib/types";
 import { useIsMobile } from "@/lib/useMediaQuery";
@@ -40,7 +43,7 @@ import { useLocale } from "@/components/calendar/useLocale";
 import { PublicShell } from "@/components/feed/PublicShell";
 import { PublicError, PublicLoading } from "@/components/feed/PublicStates";
 import { usePublicFeed } from "@/components/feed/usePublicFeed";
-import { Button, EmptyState, Icon, buttonClass } from "@/components/ui/shared";
+import { Button, EmptyState, SplitButton, toast } from "@/components/ui/shared";
 import { preloadPublicEventModal } from "./lazy";
 
 /**
@@ -119,6 +122,30 @@ function FeedHero({
   const [params] = useSearchParams();
   const groupIds = parseGroupIds(params.get("groups"), data.feed.audiences);
   const addresses = publicFeedAddresses(feedId, secret, groupIds);
+  const platform = detectPlatform();
+
+  const actions = {
+    app: () => window.location.assign(addresses.webcal),
+    google: () => window.open(googleCalendarUrl(addresses.webcal), "_blank", "noopener"),
+    outlook: () =>
+      window.open(outlookCalendarUrl(addresses.ics, data.feed.name), "_blank", "noopener"),
+    copy: async () => {
+      try {
+        await navigator.clipboard.writeText(addresses.ics);
+        toast.success(t("feed.subscribeMenu.copied"));
+      } catch {
+        toast.error(t("feed.subscribeMenu.copyFailed"));
+      }
+    },
+    download: () => {
+      const a = document.createElement("a");
+      a.href = addresses.ics;
+      a.download = "";
+      a.click();
+    },
+  };
+  const defaultAction =
+    platform === "ios" || platform === "macos" ? "app" : platform === "android" ? "google" : "copy";
 
   return (
     <div className="pub-hero">
@@ -126,19 +153,51 @@ function FeedHero({
         <h1 className="t-display">{data.feed.name}</h1>
       </div>
       <div className="ap-actions" style={{ flex: "0 1 auto" }}>
-        <a className={buttonClass("primary")} style={{ flex: "1 1 auto" }} href={addresses.webcal}>
-          <Icon glyph="rss" size={18} />
-          {t("feed.subscribe")}
-        </a>
-        <a
-          className={buttonClass("secondary")}
-          style={{ flex: "1 1 auto" }}
-          href={addresses.ics}
-          download
-        >
-          <Icon glyph="download" size={18} />
-          {t("feed.downloadIcs")}
-        </a>
+        <SplitButton
+          className="pub-subscribe"
+          icon="rss"
+          label={t("feed.subscribe")}
+          menuLabel={t("feed.subscribeMenu.label")}
+          onClick={actions[defaultAction]}
+          items={[
+            {
+              key: "app",
+              icon: "calendar",
+              label: t("feed.subscribeMenu.app"),
+              onSelect: actions.app,
+            },
+            {
+              key: "google",
+              icon: "external",
+              label: t("feed.subscribeMenu.google"),
+              onSelect: actions.google,
+            },
+            {
+              key: "outlook",
+              icon: "external",
+              label: t("feed.subscribeMenu.outlook"),
+              onSelect: actions.outlook,
+            },
+            {
+              key: "copy",
+              icon: "copy",
+              label: t("feed.subscribeMenu.copy"),
+              onSelect: actions.copy,
+            },
+            {
+              key: "download",
+              icon: "download",
+              label: t("feed.subscribeMenu.download"),
+              onSelect: actions.download,
+            },
+            {
+              key: "help",
+              icon: "info",
+              label: t("feed.subscribeMenu.help"),
+              to: "/help/subscribe",
+            },
+          ]}
+        />
       </div>
     </div>
   );
