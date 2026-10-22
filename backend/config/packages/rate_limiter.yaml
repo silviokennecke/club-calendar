@@ -126,6 +126,11 @@ framework:
             policy: sliding_window
             limit: 10
             interval: '1 hour'
+        # OAuth token and revoke endpoints (shared bucket): per client IP.
+        oauth_token_ip:
+            policy: sliding_window
+            limit: 60
+            interval: '1 minute'
         # OAuth consent decisions (signed-in user): per user.
         oauth_decision_user:
             policy: sliding_window

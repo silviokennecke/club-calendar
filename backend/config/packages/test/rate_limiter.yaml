@@ -99,6 +99,11 @@ framework:
             limit: 10
             interval: '1 hour'
             cache_pool: app.auth_limiter_pool
+        oauth_token_ip:
+            policy: sliding_window
+            limit: 100
+            interval: '1 minute'
+            cache_pool: app.auth_limiter_pool
         mcp_grant:
             policy: sliding_window
             limit: 120
