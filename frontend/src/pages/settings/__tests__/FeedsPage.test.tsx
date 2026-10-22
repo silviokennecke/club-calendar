@@ -119,9 +119,7 @@ describe("FeedsPage", () => {
     // Club internal: addresses without the secret, no secret field
     const club = screen.getByRole("region", { name: "Vereinskalender" });
     await user.click(within(club).getByRole("button", { name: "Zugänge anzeigen" }));
-    expect(within(club).getByLabelText("ICS-Adresse")).toHaveValue(
-      "https://api.example.org/api/feed/f4/ics",
-    );
+    expect(within(club).queryByLabelText("ICS-Adresse")).not.toBeInTheDocument();
     expect(within(club).getByLabelText("Adresse der Webansicht")).toHaveValue(
       `${window.location.origin}/feed/f4`,
     );
@@ -134,31 +132,21 @@ describe("FeedsPage", () => {
     const pub = await screen.findByRole("region", { name: "Öffentlicher Kalender" });
     const hide = within(pub).getByRole("button", { name: "Zugänge verbergen" });
     expect(hide).toHaveAttribute("aria-expanded", "true");
-    expect(within(pub).getByLabelText("ICS-Adresse")).toHaveValue(
-      "https://api.example.org/api/feed/f1/ics",
-    );
-    expect(within(pub).getByLabelText("Abo-Adresse (webcal)")).toHaveValue(
-      "webcal://api.example.org/api/feed/f1/ics",
-    );
+    expect(within(pub).queryByLabelText("ICS-Adresse")).not.toBeInTheDocument();
+    expect(within(pub).queryByLabelText("Abo-Adresse (webcal)")).not.toBeInTheDocument();
     expect(within(pub).getByLabelText("Adresse der Webansicht")).toHaveValue(
       `${window.location.origin}/feed/f1`,
     );
     expect(within(pub).queryByLabelText("Geheimnis")).not.toBeInTheDocument();
 
     const priv = screen.getByRole("region", { name: "Vorstand intern" });
-    expect(within(priv).queryByLabelText("ICS-Adresse")).not.toBeInTheDocument();
+    expect(within(priv).queryByLabelText("Adresse der Webansicht")).not.toBeInTheDocument();
     await user.click(within(priv).getByRole("button", { name: "Zugänge anzeigen" }));
-    // The secret is masked (and the toggle says so) until it is revealed.
-    const secret = within(priv).getByLabelText("Geheimnis");
-    expect(secret).toHaveValue("•".repeat("test-secret-value".length));
-    expect(within(priv).getByLabelText("ICS-Adresse")).toHaveValue(
-      "https://api.example.org/api/feed/f2/ics?secret=test-secret-value",
+    expect(within(priv).queryByLabelText("Geheimnis")).not.toBeInTheDocument();
+    expect(within(priv).getByLabelText("Adresse der Webansicht")).toHaveValue(
+      `${window.location.origin}/feed/f2?secret=test-secret-value`,
     );
-    await user.click(within(priv).getByRole("button", { name: "Geheimnis anzeigen" }));
-    expect(secret).toHaveValue("test-secret-value");
-    expect(
-      within(priv).getByText(/Wer das Geheimnis kennt, kann den Feed lesen/),
-    ).toBeInTheDocument();
+    expect(within(priv).getByText(/Wer den Link kennt, kann den Feed lesen/)).toBeInTheDocument();
   });
 
   it("announces a copied address", async () => {
@@ -167,11 +155,13 @@ describe("FeedsPage", () => {
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     renderRoute(route, url, <FeedsPage />);
     const pub = await screen.findByRole("region", { name: "Öffentlicher Kalender" });
-    const ics = within(pub).getByLabelText("ICS-Adresse").closest(".ap-stack") as HTMLElement;
-    await user.click(within(ics).getByRole("button", { name: "Kopieren" }));
-    expect(writeText).toHaveBeenCalledWith("https://api.example.org/api/feed/f1/ics");
-    expect(await within(ics).findByRole("status")).toHaveTextContent(
-      "ICS-Adresse wurde in die Zwischenablage kopiert.",
+    const web = within(pub)
+      .getByLabelText("Adresse der Webansicht")
+      .closest(".ap-stack") as HTMLElement;
+    await user.click(within(web).getByRole("button", { name: "Kopieren" }));
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/feed/f1`);
+    expect(await within(web).findByRole("status")).toHaveTextContent(
+      "Adresse der Webansicht wurde in die Zwischenablage kopiert.",
     );
   });
 

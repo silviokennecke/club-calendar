@@ -93,7 +93,7 @@ describe("FeedEditPage (new)", () => {
     expect(screen.getByRole("radio", { name: /^Privat \(geschützt\)/ })).not.toBeChecked();
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     expect(
-      screen.getByText(/erscheinen hier, sobald du den Feed gespeichert hast/),
+      screen.getByText(/erscheint hier, sobald du den Feed gespeichert hast/),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Geheimnis" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Feed löschen" })).not.toBeInTheDocument();
@@ -281,7 +281,7 @@ describe("FeedEditPage (new)", () => {
 });
 
 describe("FeedEditPage (edit)", () => {
-  it("fills the form and shows the secret and the three addresses of the saved feed", async () => {
+  it("fills the form and shows the secret and the page link of the saved feed", async () => {
     renderEdit("f2");
     expect(
       await screen.findByRole("heading", { level: 1, name: "Feed bearbeiten" }),
@@ -300,11 +300,10 @@ describe("FeedEditPage (edit)", () => {
     expect(screen.getByRole("textbox", { name: "Geheimnis" })).toHaveValue(
       "•".repeat("test-secret-value".length),
     );
-    expect(screen.getByLabelText("ICS-Adresse")).toHaveValue(
-      "https://api.example.org/api/feed/f2/ics?secret=test-secret-value",
+    expect(screen.getByLabelText("Adresse der Webansicht")).toHaveValue(
+      `${window.location.origin}/feed/f2?secret=test-secret-value`,
     );
-    expect(screen.getByLabelText("Abo-Adresse (webcal)")).toBeInTheDocument();
-    expect(screen.getByLabelText("Adresse der Webansicht")).toBeInTheDocument();
+    expect(screen.queryByLabelText("ICS-Adresse")).not.toBeInTheDocument();
   });
 
   it("saves changes with a PATCH", async () => {
@@ -424,8 +423,8 @@ describe("FeedEditPage (edit)", () => {
     expect(
       screen.queryByRole("button", { name: "Geheimnis neu erzeugen" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByLabelText("ICS-Adresse")).toHaveValue(
-      "https://api.example.org/api/feed/f2/ics",
+    expect(screen.getByLabelText("Adresse der Webansicht")).toHaveValue(
+      `${window.location.origin}/feed/f2`,
     );
   });
 

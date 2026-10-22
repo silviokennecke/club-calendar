@@ -1852,13 +1852,7 @@
     "deleteLabel": "Delete feed “{{name}}”",
     "access": {
       "secret": "Secret",
-      "secretHint": "The secret is part of every address of this feed.",
-      "secretWarning": "Only share the addresses with people who should see this calendar. Anyone who knows the secret can read the feed.",
-      "ics": "ICS address",
-      "icsHint": "For calendar apps and programs that subscribe to a web address.",
-      "webcal": "Subscription address (webcal)",
-      "webcalOpen": "Open in calendar app",
-      "webcalHint": "Opens your calendar app directly and sets up the subscription.",
+      "secretWarning": "Only share the link with people who should see this calendar. Anyone who knows the link can read the feed.",
       "web": "Web view address",
       "webOpen": "Open",
       "webHint": "The page for members and guests, without sign-in."
@@ -1866,7 +1860,7 @@
     "delete": {
       "title": "Delete feed “{{name}}”?",
       "text": "The feed will be deleted permanently.",
-      "consequence": "The three addresses stop working. Anyone who subscribed to the feed gets no more updates.",
+      "consequence": "The link to the feed stops working. Anyone who subscribed to the feed gets no more updates.",
       "confirm": "Delete feed",
       "done": "Feed “{{name}}” deleted.",
       "failed": "The feed could not be deleted. Please try again."
@@ -1928,7 +1922,7 @@
       "audiencesNone": "This club has no audiences yet. The feed contains all events.",
       "audiencesError": "The audiences could not be loaded.",
       "access": "Addresses",
-      "accessNew": "The three addresses (ICS, subscription and web view) appear here once you have saved the feed.",
+      "accessNew": "The link to the feed page appears here once you have saved the feed.",
       "save": "Save feed",
       "saving": "Saving …",
       "delete": "Delete feed",
