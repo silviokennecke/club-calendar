@@ -2028,6 +2028,28 @@
       "saved": "Saved",
       "saveFailed": "The setting could not be saved. Please try again."
     },
+    "apps": {
+      "title": "Connected apps",
+      "text": "Apps and AI assistants you allowed to access your club data.",
+      "loading": "Loading connected apps",
+      "loadFailed": "The connected apps could not be loaded.",
+      "retry": "Try again",
+      "emptyTitle": "No connected apps",
+      "emptyText": "Once you allow an app to access your account, it appears here.",
+      "scopeRead": "Read only",
+      "scopeWrite": "Read and drafts",
+      "connectedAt": "Connected on {{date}}",
+      "lastUsed": "Last used on {{date}}",
+      "neverUsed": "Never used",
+      "revoke": "Disconnect",
+      "revokeLabel": "Disconnect {{name}}",
+      "confirmTitle": "Disconnect {{name}}?",
+      "confirmText": "The app loses access to your account immediately.",
+      "consequence": "Events and drafts it created are kept.",
+      "confirm": "Disconnect",
+      "revoked": "{{name}} was disconnected.",
+      "revokeFailed": "The app could not be disconnected. Please try again."
+    },
     "sessions": {
       "title": "Sign-ins",
       "text": "Signs you out on all devices and in all browsers, including this one. You will have to sign in again everywhere.",
@@ -2349,6 +2371,40 @@
       },
       "done": "Done! The calendar is on the left under <b>Other calendars</b>. Google does not show new events right away. It can take a few hours until changes appear. That is normal.",
       "trouble": "The calendar is missing on your phone? Open the Google Calendar app, tap the menu and then <b>Settings</b>. Tap the club's calendar and turn on <b>Sync</b>."
+    }
+  },
+  "oauth": {
+    "consent": {
+      "title": "Connect app?",
+      "intro": "{{name}} wants to access your account.",
+      "app": "App",
+      "redirectHost": "Redirects to",
+      "unverifiedTitle": "Unverified app",
+      "unverifiedText": "This app does not belong to a known provider. Only allow access if you trust it and expect the address above.",
+      "scopesTitle": "What the app may do",
+      "writeNote": "The app cannot publish anything or delete events. New events stay drafts.",
+      "allow": "Allow",
+      "deny": "Deny",
+      "revokeHint": "You can end access at any time in your profile under “Connected apps”.",
+      "loading": "Loading request",
+      "loadFailed": "The request could not be loaded. Please try again.",
+      "retry": "Try again",
+      "errorTitle": "That did not work",
+      "expiredTitle": "Request expired",
+      "expiredText": "This request has expired or was already answered. Start the connection in the app again.",
+      "toApp": "Go to Club Calendar",
+      "toProfile": "Go to profile",
+      "problem": {
+        "consent": "Please accept the current documents first and then try again.",
+        "emailUnverified": "Confirm your e-mail address first to connect apps.",
+        "quota": "You have reached the maximum number of connected apps. Disconnect one in your profile first.",
+        "rateLimited": "Too many attempts in a short time. Please try again later.",
+        "failed": "The answer could not be sent. Please try again."
+      }
+    },
+    "scope": {
+      "read": "View clubs, calendars, events, templates and feeds",
+      "write": "Create draft events, target groups, properties, features, locations and non-public feeds, and edit event templates"
     }
   }
 }

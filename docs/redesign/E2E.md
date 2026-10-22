@@ -29,7 +29,7 @@ Migrationen gehören nicht ungeprüft auf die Dev-DB).
    und 60 Token-Erneuerungen/min je IP, die Suite läuft sonst nach wenigen Tests in 429 `rate_limited`
    (`AUTH_LOGIN_IP_LIMIT`, `AUTH_REGISTER_IP_LIMIT`, `AUTH_REFRESH_IP_LIMIT`). Die Umgebung `test` taugt nicht: dort
    speichert der Hasher Passwörter im Klartext, die Fixture-Anmeldung `admin@example.com` schlüge fehl:
-   `AUTH_LOGIN_IP_LIMIT=100000 AUTH_REGISTER_IP_LIMIT=100000 AUTH_REFRESH_IP_LIMIT=100000 FRONTEND_URL=http://localhost:5199 BACKEND_URL=http://localhost:3001 MAILER_DSN=null://null php -S 127.0.0.1:3001 -t backend/public`.
+   `AUTH_LOGIN_IP_LIMIT=100000 AUTH_REGISTER_IP_LIMIT=100000 AUTH_REFRESH_IP_LIMIT=100000 MCP_ALLOWED_CLIENTS= FRONTEND_URL=http://localhost:5199 BACKEND_URL=http://localhost:3001 MAILER_DSN=null://null php -S 127.0.0.1:3001 -t backend/public`.
    `FRONTEND_URL`/`BACKEND_URL` stehen nicht mehr in `.env` (sie folgen `APP_URL`, siehe `config/services.yaml`) und
    müssen hier gesetzt werden: Passkey-Origin, Links der neuen E-Mail-Adresse und der SSO-Verknüpfung bauen darauf
    auf (für PHPUnit setzt sie `phpunit.dist.xml`).
@@ -42,6 +42,8 @@ Migrationen gehören nicht ungeprüft auf die Dev-DB).
    `npx vite preview --outDir /tmp/e2e-dist --port 5198`, dann
    `E2E_PREVIEW_URL=http://localhost:5198 PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend -- error-page`.
    Ohne `E2E_PREVIEW_URL` wird dieser Test übersprungen.
+
+`MCP_ALLOWED_CLIENTS=` (leer) erlaubt für `e2e/mcp-consent.spec.ts` jeden OAuth-Client, auch die Loopback-Weiterleitung `http://127.0.0.1/callback`; ohne die Variable gilt die Standardliste (claude, grok, openai, gemini) und die Registrierung schlägt mit 400 `invalid_redirect_uri` fehl. Liegt auf Port 3001 schon ein anderer Server, den E2E-Backend-Port wechseln (`php -S 127.0.0.1:3011`, `BACKEND_URL`, `VITE_API_URL` und `E2E_API_URL=http://localhost:3011` anpassen).
 
 Xdebug: Läuft PhpStorm (oder eine andere IDE) mit Debug-Listener auf Port 9003, warten PHP-Prozesse dort auf den
 Debugger und hängen. Dann `XDEBUG_MODE=off` setzen, für den PHP-Server (Schritt 3), für Konsolenbefehle (Schritte 1–2)
