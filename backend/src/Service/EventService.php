@@ -42,6 +42,40 @@ readonly class EventService
      */
     public const SEARCH_MAX_LENGTH = 100;
 
+    /**
+     * Parses and validates list parameters (`from`, `to` strictly YYYY-MM-DD, `targetGroupIds` as comma-separated
+     * string or list, `limit`, `offset`, `q`) and lists; shared by the REST route and the MCP tool.
+     *
+     * @param array<string, mixed> $query
+     *
+     * @return array{items: list<array<string, mixed>>, total: int}
+     */
+    public function listFromQuery(Calendar $calendar, array $query, bool $includeDrafts): array
+    {
+        $from = Input::optionalDate($query['from'] ?? null, 'from');
+        $to = Input::optionalDate($query['to'] ?? null, 'to');
+        Input::assertDateRange($from, $to);
+        Input::assertMaxRange($from, $to, self::LIST_MAX_RANGE_DAYS);
+        $tg = $query['targetGroupIds'] ?? null;
+        if (is_string($tg)) {
+            $tg = array_values(array_filter(array_map('trim', explode(',', $tg))));
+        }
+        $tgIds = $tg ? Input::idList(['targetGroupIds' => $tg], 'targetGroupIds') : null;
+        $limit = Input::optionalInt($query['limit'] ?? null, 'limit', 1, self::LIST_MAX_LIMIT) ?? self::LIST_MAX_LIMIT;
+        $offset = Input::optionalInt($query['offset'] ?? null, 'offset', 0, PHP_INT_MAX) ?? 0;
+
+        $q = $query['q'] ?? null;
+        if (null !== $q && !is_string($q)) {
+            throw Input::invalid('q', 'q must be a string');
+        }
+        $q = trim((string) $q);
+        if (mb_strlen($q) > self::SEARCH_MAX_LENGTH) {
+            throw Input::invalid('q', sprintf('q must be at most %d characters', self::SEARCH_MAX_LENGTH));
+        }
+
+        return $this->listEvents($calendar, $from, $to, $tgIds ?: null, $limit, $offset, '' === $q ? null : $q, $includeDrafts);
+    }
+
     public function listEvents(Calendar $calendar, ?\DateTimeImmutable $from, ?\DateTimeImmutable $to, ?array $targetGroupIds, int $limit = self::LIST_MAX_LIMIT, int $offset = 0, ?string $search = null, bool $includeDrafts = true): array
     {
         $qb = $this->em->createQueryBuilder()

@@ -65,27 +65,11 @@ class EventController extends AbstractApiController
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
     public function list(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
-        // Strictly YYYY-MM-DD (400 validation_failed with the field), like the export and the public feed
         $query = $request->query->all();
-        $from = Input::optionalDate($query['from'] ?? null, 'from');
-        $to = Input::optionalDate($query['to'] ?? null, 'to');
-        Input::assertDateRange($from, $to);
-        Input::assertMaxRange($from, $to, EventService::LIST_MAX_RANGE_DAYS);
-        $tgParam = $request->query->get('targetGroupIds');
-        $tgIds = $tgParam ? Input::idList(['targetGroupIds' => array_values(array_filter(array_map('trim', explode(',', (string) $tgParam))))], 'targetGroupIds') : null;
-        $limit = Input::optionalInt($query['limit'] ?? null, 'limit', 1, EventService::LIST_MAX_LIMIT) ?? EventService::LIST_MAX_LIMIT;
-        $offset = Input::optionalInt($query['offset'] ?? null, 'offset', 0, PHP_INT_MAX) ?? 0;
-
-        $q = $query['q'] ?? null;
-        if (null !== $q && !is_string($q)) {
-            throw Input::invalid('q', 'q must be a string');
+        if (is_array($query['targetGroupIds'] ?? null)) {
+            throw Input::invalid('targetGroupIds', 'targetGroupIds must be a comma-separated string');
         }
-        $q = trim((string) $q);
-        if (mb_strlen($q) > EventService::SEARCH_MAX_LENGTH) {
-            throw Input::invalid('q', sprintf('q must be at most %d characters', EventService::SEARCH_MAX_LENGTH));
-        }
-
-        $page = $this->eventService->listEvents($calendar, $from, $to, $tgIds ?: null, $limit, $offset, '' === $q ? null : $q, $this->isGranted(CalendarMemberVoter::CALENDAR_EDITOR, $calendar));
+        $page = $this->eventService->listFromQuery($calendar, $query, $this->isGranted(CalendarMemberVoter::CALENDAR_EDITOR, $calendar));
 
         // The body stays a plain list; the total of all matches (before limit/offset) is in a header
         return new JsonResponse($page['items'], 200, ['X-Total-Count' => (string) $page['total']]);
