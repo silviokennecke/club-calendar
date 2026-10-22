@@ -101,6 +101,17 @@ class McpContext
         return $calendar;
     }
 
+    /** Like calendar(), for writes: an archived calendar is read-only (same rule as ArchivedCalendarVoter). */
+    public function writableCalendar(string $id, ClubRole $role): Calendar
+    {
+        $calendar = $this->calendar($id, $role);
+        if (null !== $calendar->getArchivedAt()) {
+            throw new ToolCallException('Calendar is archived and read-only.');
+        }
+
+        return $calendar;
+    }
+
     /** True when the caller is a member with at least this role (no exception; for optional content such as drafts). */
     public function hasRole(Club|Calendar $subject, ClubRole $role): bool
     {

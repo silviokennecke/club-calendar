@@ -3828,6 +3828,7 @@ components:
         | `ics_fetch_failed` | 422 | Holiday calendar create/refresh: the ICS URL could not be fetched or parsed (field `url`) |
         | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After`; club invitations (create, re-send): 20 per user and 50 per club and day; account deletion (`DELETE /api/auth/me`, `POST /api/auth/delete-account/code`): per user and per IP |
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
+        | `event_not_draft` | 409 | MCP tool `update_event_draft` only: the event is published (not a draft) and stays unchanged |
         | `duplicate_name` | 422 | Name of a property/feature already used in the calendar, or of a target group in the club |
         | `too_many_events` | 413 / 422 | 413: import > 5000 events/locations, bulk > 5000 ids; 422: series > 366 events (preview, create, rule change) |
         | `quota_exceeded` | 422 | A create/import would exceed a quota (clubs per user, calendars/members/open invitations per club, events/templates/properties/features/holiday calendars per calendar, locations/target groups/feeds per club); extra members `resource`, `limit`. List: "Quotas and input limits" |
@@ -3864,6 +3865,7 @@ components:
         - invalid_request
         - unknown_reference
         - duplicate_name
+        - event_not_draft
         - too_many_events
         - quota_exceeded
         - series_empty

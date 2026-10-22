@@ -130,7 +130,7 @@ class McpReadToolsTest extends WebTestCase
         $token = $this->token($this->viewer);
         $r = $this->rpc(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'tools/list'], $token, $this->session($token));
         $names = array_column($r['body']['result']['tools'], 'name');
-        $expected = ['list_clubs', 'list_calendars', 'list_events', 'get_event', 'list_target_groups', 'list_properties', 'list_features', 'list_locations', 'list_event_templates', 'get_event_template', 'list_feeds', 'get_feed'];
+        $expected = ['create_event_draft', 'update_event_draft', 'create_target_group', 'create_location', 'create_property', 'create_feature', 'create_event_template', 'update_event_template', 'delete_event_template', 'create_feed', 'list_clubs', 'list_calendars', 'list_events', 'get_event', 'list_target_groups', 'list_properties', 'list_features', 'list_locations', 'list_event_templates', 'get_event_template', 'list_feeds', 'get_feed'];
         sort($names);
         sort($expected);
         $this->assertSame($expected, $names);
