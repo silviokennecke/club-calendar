@@ -72,7 +72,7 @@ class McpReadToolsTest extends WebTestCase
         return $this->tokens[$key];
     }
 
-    /** @return array{status: int, body: mixed} */
+    /** @return array{status: int, body: mixed, session: string} */
     private function rpc(array $message, string $token, ?string $session = null): array
     {
         $headers = ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json, text/event-stream', 'HTTP_AUTHORIZATION' => 'Bearer '.$token];

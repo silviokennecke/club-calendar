@@ -15,7 +15,13 @@ final class OAuthResponse
         return self::noStore(new JsonResponse(['error' => $error, 'error_description' => $description], $status));
     }
 
-    /** @template T of Response @param T $response @return T */
+    /**
+     * @template T of Response
+     *
+     * @param T $response
+     *
+     * @return T
+     */
     public static function noStore(Response $response): Response
     {
         $response->headers->set('Cache-Control', 'no-store');
