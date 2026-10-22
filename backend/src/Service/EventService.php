@@ -16,6 +16,7 @@ use App\Entity\Location;
 use App\Entity\Property;
 use App\Entity\TargetGroup;
 use App\Exception\ApiProblemException;
+use Doctrine\DBAL\LockMode;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -257,6 +258,29 @@ readonly class EventService
         $this->em->flush();
 
         return $this->serializeEvent($event);
+    }
+
+    /**
+     * PATCH of a draft for the MCP tools: the draft check and the write share one transaction under a row lock, so a
+     * concurrent publish is never overwritten. The event stays a draft, `scope`, series and `isDraft` input are ignored.
+     *
+     * @throws ApiProblemException 409 `event_not_draft`
+     */
+    public function updateDraft(string $id, Calendar $calendar, array $data): array
+    {
+        unset($data['scope'], $data['isDraft']);
+
+        return $this->em->wrapInTransaction(function () use ($id, $calendar, $data): array {
+            $event = $this->findEvent($id, $calendar);
+            $this->em->refresh($event, LockMode::PESSIMISTIC_WRITE);
+            if (!$event->isDraft()) {
+                throw new ApiProblemException(409, 'Only drafts can be changed', 'event_not_draft');
+            }
+            $this->applyInput($event, $calendar, $data, true);
+            $this->em->flush();
+
+            return $this->serializeEvent($event);
+        });
     }
 
     /**
