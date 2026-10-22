@@ -14,6 +14,7 @@ use App\Entity\EventTemplate;
 use App\Entity\Feature;
 use App\Entity\HolidayCalendar;
 use App\Entity\Location;
+use App\Entity\McpGrant;
 use App\Entity\Property;
 use App\Entity\TargetGroup;
 use App\Entity\User;
@@ -47,6 +48,7 @@ class Quota
     public const TARGET_GROUPS_PER_CLUB = 'targetGroupsPerClub';
     public const FEEDS_PER_CLUB = 'feedsPerClub';
     public const HOLIDAY_CALENDARS_PER_CALENDAR = 'holidayCalendarsPerCalendar';
+    public const MCP_CLIENTS_PER_USER = 'mcpClientsPerUser';
 
     /** @var array<string, int> */
     public const LIMITS = [
@@ -62,6 +64,7 @@ class Quota
         self::TARGET_GROUPS_PER_CLUB => 500,
         self::FEEDS_PER_CLUB => 50,
         self::HOLIDAY_CALENDARS_PER_CALENDAR => 20,
+        self::MCP_CLIENTS_PER_USER => 20,
     ];
 
     /** resource => [entity, owning field, optional field => value filter] */
@@ -79,6 +82,8 @@ class Quota
         self::TARGET_GROUPS_PER_CLUB => [TargetGroup::class, 'club'],
         self::FEEDS_PER_CLUB => [CalendarFeed::class, 'club'],
         self::HOLIDAY_CALENDARS_PER_CALENDAR => [HolidayCalendar::class, 'calendar'],
+        // Connected apps = grants of the user (revoked ones are deleted by the revoke route, not kept)
+        self::MCP_CLIENTS_PER_USER => [McpGrant::class, 'user'],
     ];
 
     public function __construct(private readonly EntityManagerInterface $em)

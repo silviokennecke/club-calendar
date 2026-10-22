@@ -121,3 +121,17 @@ framework:
             policy: sliding_window
             limit: 5
             interval: '24 hours'
+        # OAuth dynamic client registration (unauthenticated): per client IP.
+        oauth_register_ip:
+            policy: sliding_window
+            limit: 10
+            interval: '1 hour'
+        # Remote MCP endpoint: per grant and per client IP.
+        mcp_grant:
+            policy: sliding_window
+            limit: 120
+            interval: '1 minute'
+        mcp_ip:
+            policy: sliding_window
+            limit: 120
+            interval: '1 minute'

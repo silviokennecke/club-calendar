@@ -33,6 +33,15 @@ parameters:
     env(REFRESH_TOKEN_ABSOLUTE_LIFETIME): '2592000' # 30 days
     env(REFRESH_TOKEN_REUSE_GRACE): '10'
 
+    # MCP / OAuth: access token lifetime (s); refresh token lifetime (sliding, s), absolute end of a grant (s) and
+    # the grace (s) in which a rotated refresh token may be presented again. MCP_ALLOWED_CLIENTS: comma-separated
+    # client families allowed to register (empty string = all clients)
+    env(MCP_ACCESS_TOKEN_TTL): '3600'
+    env(MCP_REFRESH_TOKEN_LIFETIME): '604800' # 7 days
+    env(MCP_REFRESH_TOKEN_ABSOLUTE_LIFETIME): '2592000' # 30 days
+    env(MCP_REFRESH_TOKEN_REUSE_GRACE): '10'
+    env(MCP_ALLOWED_CLIENTS): 'claude,grok,openai,gemini'
+
     # Only addresses with an open (pending, not expired) club invitation may create an account
     env(RESTRICT_REGISTRATION): 'false'
     app.restrict_registration: '%env(bool:RESTRICT_REGISTRATION)%'
