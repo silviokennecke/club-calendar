@@ -54,8 +54,20 @@
 		-Via
 	}
 
-	# API -> Symfony front controller via PHP-FPM
-	handle /api/* {
+	# MCP endpoint (Streamable HTTP, may stream SSE): do not buffer the response
+	handle /api/mcp {
+		request_body {
+			max_size 16MB
+		}
+		php_fastcgi 127.0.0.1:9000 {
+			try_files /index.php =404
+			flush_interval -1
+		}
+	}
+
+	# API and the OAuth/MCP discovery documents (RFC 8414 / 9728, not under /api) -> Symfony via PHP-FPM
+	@symfony path /api/* /.well-known/oauth-authorization-server /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/*
+	handle @symfony {
 		request_body {
 			max_size 16MB
 		}

@@ -183,6 +183,81 @@ info:
       `warnings` (`code: timezone_replaced`).
     - Member ICS export: `GET /api/calendars/{calendarId}/events.ics`, at most 100 `targetGroupIds`.
 
+    ## MCP server and OAuth
+
+    The app is a remote **MCP server** (Model Context Protocol, Streamable HTTP) with its own OAuth 2.1
+    authorization server, so AI clients (Claude, ChatGPT, Gemini, Grok, ...) can read and draft calendar data on
+    behalf of a signed-in user.
+
+    **Discovery (not under `/api`, so not listed in `paths`; the web server must route them to PHP):**
+
+    | Path | Document |
+    | --- | --- |
+    | `GET /.well-known/oauth-authorization-server` | RFC 8414 metadata: issuer = `APP_URL`; `authorization_endpoint`, `token_endpoint`, `registration_endpoint`, `revocation_endpoint` under `{BACKEND_URL}/api/oauth`; `code_challenge_methods_supported` `["S256"]`; `token_endpoint_auth_methods_supported` `["none"]`; `scopes_supported` |
+    | `GET /.well-known/oauth-protected-resource` and `GET /.well-known/oauth-protected-resource/api/mcp` | RFC 9728 metadata: `resource` = `{APP_URL}/api/mcp` (canonical resource), `authorization_servers`, `scopes_supported`, `bearer_methods_supported` `["header"]` |
+
+    Both are public JSON, cacheable for 5 minutes, and built only from `APP_URL` / `BACKEND_URL`.
+
+    **Flow:** register (`POST /api/oauth/register`) -> `GET /api/oauth/authorize` (PKCE S256 only) redirects the
+    browser to the SPA consent page -> the signed-in user allows or denies (`POST /api/oauth/authorize/decision`)
+    -> the client redeems the single-use code (60 s) at `POST /api/oauth/token` -> calls `/api/mcp` with
+    `Authorization: Bearer`. Only public clients, no client secrets. The `resource` parameter, if sent, must be the
+    canonical MCP URL; tokens are bound to it.
+
+    **Tokens:** opaque random 256-bit values, only the SHA-256 hash is stored. Access token 1 h
+    (`MCP_ACCESS_TOKEN_TTL`); refresh token 7 days sliding (`MCP_REFRESH_TOKEN_LIFETIME`), absolute end
+    `MCP_REFRESH_TOKEN_ABSOLUTE_LIFETIME` (30 days), single use and rotated with a reuse grace
+    (`MCP_REFRESH_TOKEN_REUSE_GRACE`, 10 s); presenting a rotated token after the grace, or an authorization code
+    twice, revokes the whole grant. MCP tokens are valid only on `/api/mcp`, normal JWTs never there. Token
+    responses carry `Cache-Control: no-store`.
+
+    **Scopes:** `mcp:read` (read tools) and `mcp:write` (draft and create tools; implies read). The scope is only
+    the ceiling: every tool also checks the caller's **current** club role (viewer/editor/admin).
+
+    **Grants** (connected apps) end by user action (`DELETE /api/auth/mcp-grants/{id}`), by revocation
+    (`POST /api/oauth/revoke`), and whenever the user's session version changes (sign out everywhere, password
+    change/reset, e-mail change, passkey deletion, SSO takeover, account deletion).
+
+    **Registration policy:** `MCP_ALLOWED_CLIENTS` (comma-separated families `claude`, `openai`, `gemini`, `grok`;
+    default all four; empty string = every client) decides which redirect URIs may register. Always: `https`, or
+    `http` on a loopback host; no fragment, userinfo or wildcard. The `grok` family currently accepts nothing (no
+    known callback). A client name is unverified; the consent page shows the redirect host.
+
+    **MCP tools** (`tools/list` returns exactly these 22; all descriptions state that returned texts are untrusted
+    data):
+
+    | Tool | Scope | Role | Notes |
+    | --- | --- | --- | --- |
+    | `list_clubs` | read | member | clubs with the caller's role |
+    | `list_calendars` | read | viewer | |
+    | `list_events` | read | viewer | `from`/`to`/`q`/`limit`/`offset` with the caps of `GET …/events`; drafts only for editors |
+    | `get_event` | read | viewer | drafts only for editors |
+    | `list_target_groups`, `list_locations` | read | viewer | club-scoped |
+    | `list_properties`, `list_features` | read | viewer | calendar-scoped |
+    | `list_event_templates`, `get_event_template` | read | viewer | |
+    | `list_feeds`, `get_feed` | read | editor | include the shared secret |
+    | `create_event_draft` | write | editor | always a draft; calendar not archived; no series |
+    | `update_event_draft` | write | editor | only events that are still drafts (else `event_not_draft`); stays a draft; only this event |
+    | `create_target_group`, `create_location` | write | editor | club-scoped |
+    | `create_property`, `create_feature` | write | editor | calendar-scoped, calendar not archived |
+    | `create_event_template`, `update_event_template`, `delete_event_template` | write | editor | calendar not archived |
+    | `create_feed` | write | admin | visibility `CLUB` (default) or `PRIVATE`; `PUBLIC` is refused |
+
+    **Deliberately not available:** deleting or publishing events, series, import, bulk actions, updating or
+    deleting target groups, properties, features and locations, updating or deleting feeds, public feeds, and
+    everything about members, invitations, accounts and clubs.
+
+    **Errors:** OAuth endpoints answer RFC 6749/7591 bodies (`error`, `error_description`, `no-store`); the consent
+    API and `/api/mcp` answer problem+json (`authorization_request_not_found`, `mcp_grant_not_found`,
+    `consent_required`, `email_not_verified`, `rate_limited`, `quota_exceeded`, `missing_token`,
+    `invalid_token`). Tool failures are MCP tool errors carrying the stable `code` and `detail` of the underlying
+    service (e.g. `forbidden`, `validation_failed`, `quota_exceeded`, `event_not_draft`). Rate limits: 120 requests
+    per minute per client IP and per grant on `/api/mcp`; 10 registrations per IP and hour; 30 consent decisions
+    per user and hour.
+
+    **Browsers:** CORS allows only `FRONTEND_URL`; MCP clients running in a browser on another origin are not
+    supported (server-side connectors and CLIs are).
+
     ## Quotas and input limits
 
     Per-account growth is bounded (security audit M7; constants in `App\Service\Quota`, generous on purpose).
@@ -202,6 +277,11 @@ info:
     | `targetGroupsPerClub` | 500 target groups per club |
     | `feedsPerClub` | 50 feeds per club |
     | `holidayCalendarsPerCalendar` | 20 holiday calendars |
+    | `mcpClientsPerUser` | 20 connected apps (MCP grants) per user (consent decision) |
+
+    OAuth client registration (`POST /api/oauth/register`): 10 per client IP and hour, at most 5 redirect URIs
+    (2048 characters each), `client_name` at most 100 characters (RFC 7591 errors, not `quota_exceeded`). Unused
+    clients are pruned by `app:prune-oauth`.
 
     Notes: `note` of events and templates at most 2000 characters (422 `validation_failed`, field `note`).
 
@@ -228,7 +308,9 @@ tags:
   - name: Legal
     description: Imprint, privacy policy and terms of use (public) and the users' consents.
   - name: OAuth
-    description: OAuth 2.1 authorization server for MCP clients (public clients, PKCE S256, dynamic registration).
+    description: >-
+      OAuth 2.1 authorization server and remote MCP server (`/api/mcp`) for AI clients (public clients, PKCE S256,
+      dynamic registration). See "MCP server and OAuth" in the API description.
   - name: Passkeys
     description: WebAuthn registration and sign-in.
   - name: SSO

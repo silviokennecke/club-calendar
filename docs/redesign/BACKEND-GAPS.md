@@ -87,6 +87,10 @@ Nicht im Audit, gering:
 
 | Schweregrad | Risiko | Details / mögliche Behebung |
 | --- | --- | --- |
+| mittel | **MCP: Clientnamen ungeprüft** | Per Dynamic Client Registration kann sich jeder Client mit beliebigem `client_name` registrieren (nur die Redirect-URI-Familie in `MCP_ALLOWED_CLIENTS` wird geprüft); die Zustimmungsseite zeigt deshalb den Redirect-Host und "nicht verifizierte App". Mit leerem `MCP_ALLOWED_CLIENTS` sind alle Clients erlaubt. |
+| niedrig | **MCP: Request-ID nicht an Nutzer gebunden** | `OAuthAuthorizationRequest` (10 Minuten, einmalig) wird erst bei der Entscheidung an den angemeldeten Nutzer gebunden; wer die Request-ID kennt, könnte als angemeldeter Nutzer zustimmen. Die ID ist zufällig und steht nur in der Zustimmungs-URL. |
+| niedrig | **MCP: Grok-Callback unbekannt** | Für die Familie `grok` ist keine offizielle Callback-URL bekannt, sie akzeptiert nichts (`RedirectUriPolicy`); Regeln nachtragen, sobald sie feststehen. Die Regeln der übrigen Familien vor dem Go-live erneut prüfen. |
+| niedrig | **MCP: Bundle vor 1.0** | `symfony/mcp-bundle` ist auf `~0.14.1` gepinnt (mcp/sdk 0.8.1); API und Verhalten können sich bei Updates ändern, Updates nur mit laufender `McpEndpointTest`/Tool-Tests. |
 | niedrig | **ID-Token-Claims ungeprüft** | `OidcProvider` prüft beim ID-Token weder Signatur noch `aud`/`iss`/`exp`. Das Token kommt direkt vom Token-Endpoint über TLS (nach OIDC zulässig), im Code-Flow mit Client-Secret nicht ausnutzbar; `iss` ist bei Microsoft `common` mandantenabhängig. |
 | niedrig | **Passwort-Hashing** | `App\Entity\User` nutzt explizit `bcrypt` (Kosten 13) statt `auto`; 8–128 Zeichen (`PasswordPolicy`), Symfony hasht Passwörter über 72 Bytes vorab. Umstellung auf `auto` (argon2id) mit Rehash bei Anmeldung möglich. |
 | niedrig | **User-Verification optional** | `WEBAUTHN_USER_VERIFICATION=preferred` (Standard) lässt Passkeys ohne PIN/Biometrie zu; `required` ist strenger, schließt aber Sicherheitsschlüssel ohne PIN aus. |
@@ -112,6 +116,7 @@ Nicht im Audit, gering:
   täglich; abgelaufene Reset-Links und E-Mail-Wechsel) sowie `php bin/console app:prune-refresh-tokens` (beendete
   Refresh-Token-Sitzungen; Lebensdauer `REFRESH_TOKEN_ABSOLUTE_LIFETIME`, Wiederholungsfenster `REFRESH_TOKEN_REUSE_GRACE`) und `php bin/console app:prune-oauth` (abgelaufene OAuth-/MCP-Anfragen, Codes, Tokens, beendete
   Grants, ungenutzte Clients).
+- **MCP / OAuth:** `/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource` (und `…/api/mcp`) sowie `/api/mcp` müssen zu PHP geroutet werden (`.htaccess`, `docker/Caddyfile` tun das; nginx: eigene `location`-Blöcke auf `index.php`, `/.well-known` nicht per Dotfile-Regel sperren, für `/api/mcp` `fastcgi_buffering off`). Hinter einem Proxy `/api/mcp` nicht puffern und lange Verbindungen (SSE) erlauben. Env: `MCP_ACCESS_TOKEN_TTL`, `MCP_REFRESH_TOKEN_LIFETIME`, `MCP_REFRESH_TOKEN_ABSOLUTE_LIFETIME`, `MCP_REFRESH_TOKEN_REUSE_GRACE`, `MCP_ALLOWED_CLIENTS` (`backend/.env.example`; leer = alle Clients). Migration `Version20261025120000` (OAuth-/MCP-Tabellen) und `Version20261026120000`. Cron `app:prune-oauth` (täglich). Nutzer sehen und widerrufen Verbindungen im Profil; Passwortänderung und "Überall abmelden" beenden alle MCP-Zugänge. Browser-Clients auf fremder Origin scheitern an CORS (nur `FRONTEND_URL`).
 - **Mail-Templates:** nach Änderungen an `templates/email/*.mjml` `npm run build:mail -w backend` (die kompilierten
   `*.html.twig` sind eingecheckt; `npm run build` baut sie ebenfalls). Seit Paket 5 auch `password_changed`,
   `email_change_requested`, `email_changed` (Hinweis-Mails ohne Links außer `/forgot-password`).

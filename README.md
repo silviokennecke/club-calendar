@@ -119,6 +119,10 @@ npm run e2e:ui -w frontend   # interactive mode
 Reference of all `/api` routes (OpenAPI 3.1): [`docs/api/openapi.yaml`](docs/api/openapi.yaml). Open it in any
 OpenAPI viewer; the app does not serve it.
 
+MCP server: AI clients (Claude, ChatGPT, Gemini, ...) connect to `{APP_URL}/api/mcp` (OAuth 2.1, discovery under
+`/.well-known/oauth-*`, which the web server must route to PHP; `.htaccess` and the Caddyfile do). Users manage
+connected apps in the profile. Settings `MCP_*` in `backend/.env.example`; details in `CLAUDE.md`.
+
 ICS feed:
 
 ```

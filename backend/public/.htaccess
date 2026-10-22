@@ -1,5 +1,7 @@
 # Serves the built SPA (index.html + assets) and the Symfony API from one docroot.
 #   /api/*        -> Symfony front controller (index.php)
+#   /.well-known/oauth-authorization-server, /.well-known/oauth-protected-resource[/api/mcp]
+#                 -> Symfony (OAuth/MCP discovery documents, RFC 8414 / 9728); other /.well-known paths -> SPA
 #   existing file -> served as is
 #   anything else -> SPA (index.html), so client-side routes survive a reload
 DirectoryIndex index.html index.php
@@ -19,6 +21,7 @@ DirectoryIndex index.html index.php
     RewriteRule ^ - [L]
 
     RewriteRule ^api(?:/|$) index.php [L]
+    RewriteRule ^\.well-known/oauth-(?:authorization-server|protected-resource)(?:/|$) index.php [L]
 
     RewriteRule ^ index.html [L]
 </IfModule>
