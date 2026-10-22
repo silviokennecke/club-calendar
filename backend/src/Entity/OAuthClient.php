@@ -29,9 +29,14 @@ class OAuthClient
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
+    /** The matched `MCP_ALLOWED_CLIENTS` family (claude, openai, ...); null when every client was allowed. */
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $family = null;
+
     /** @param list<string> $redirectUris */
-    public function __construct(string $clientName, array $redirectUris, \DateTimeImmutable $createdAt)
+    public function __construct(string $clientName, array $redirectUris, \DateTimeImmutable $createdAt, ?string $family = null)
     {
+        $this->family = $family;
         $this->id = Uuid::v7()->toRfc4122();
         $this->clientName = $clientName;
         $this->redirectUris = json_encode(array_values($redirectUris), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
@@ -53,6 +58,11 @@ class OAuthClient
     {
         /* @var list<string> */
         return json_decode($this->redirectUris, true, 512, JSON_THROW_ON_ERROR);
+    }
+
+    public function getFamily(): ?string
+    {
+        return $this->family;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

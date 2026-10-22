@@ -227,6 +227,8 @@ tags:
     description: Registration, sign-in, tokens, account.
   - name: Legal
     description: Imprint, privacy policy and terms of use (public) and the users' consents.
+  - name: OAuth
+    description: OAuth 2.1 authorization server for MCP clients (public clients, PKCE S256, dynamic registration).
   - name: Passkeys
     description: WebAuthn registration and sign-in.
   - name: SSO
@@ -284,6 +286,133 @@ paths:
                   status: { type: string, const: ok }
 
   # ------------------------------------------------------------------ Legal
+  /api/oauth/register:
+    post:
+      tags: [OAuth]
+      summary: Register an OAuth client (RFC 7591)
+      description: >-
+        Public clients only (`token_endpoint_auth_method` none). Redirect URIs must match an allowed client family
+        (`MCP_ALLOWED_CLIENTS`; empty = any https/loopback URI). At most 5 redirect URIs, `client_name` at most 100
+        characters. 10 registrations per client IP and hour. Errors are RFC 7591 bodies
+        (`error`, `error_description`) with `Cache-Control: no-store`.
+      operationId: registerOAuthClient
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [redirect_uris]
+              properties:
+                client_name: { type: string, maxLength: 100 }
+                redirect_uris: { type: array, minItems: 1, maxItems: 5, items: { type: string, maxLength: 2048 } }
+                token_endpoint_auth_method: { type: string, enum: [none] }
+                grant_types: { type: array, items: { type: string, enum: [authorization_code, refresh_token] } }
+                response_types: { type: array, items: { type: string, enum: [code] } }
+                scope: { type: string, description: 'Space-separated `mcp:read` / `mcp:write`.' }
+      responses:
+        '201':
+          description: Registered client.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [client_id, client_id_issued_at, client_name, redirect_uris, token_endpoint_auth_method, grant_types, response_types]
+                properties:
+                  client_id: { type: string }
+                  client_id_issued_at: { type: integer }
+                  client_name: { type: string }
+                  redirect_uris: { type: array, items: { type: string } }
+                  token_endpoint_auth_method: { type: string, enum: [none] }
+                  grant_types: { type: array, items: { type: string } }
+                  response_types: { type: array, items: { type: string } }
+                  scope: { type: string }
+        '400':
+          description: '`invalid_redirect_uri` or `invalid_client_metadata`.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OAuthError' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+
+  /api/oauth/token:
+    post:
+      tags: [OAuth]
+      summary: Token endpoint (RFC 6749)
+      description: >-
+        Form-encoded. `grant_type` `authorization_code` (`code`, `redirect_uri`, `code_verifier`) or `refresh_token`
+        (`refresh_token`, single use, rotated); `client_id` is required, `resource` (if sent) must be the MCP URL.
+        Errors are RFC 6749 bodies; an unknown client is 401 `invalid_client`. Never cacheable.
+      operationId: oauthToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [grant_type, client_id]
+              properties:
+                grant_type: { type: string, enum: [authorization_code, refresh_token] }
+                client_id: { type: string }
+                code: { type: string }
+                redirect_uri: { type: string }
+                code_verifier: { type: string }
+                refresh_token: { type: string }
+                resource: { type: string }
+      responses:
+        '200':
+          description: Token pair.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [access_token, token_type, expires_in, refresh_token, scope]
+                properties:
+                  access_token: { type: string }
+                  token_type: { type: string, enum: [Bearer] }
+                  expires_in: { type: integer }
+                  refresh_token: { type: string }
+                  scope: { type: string }
+        '400':
+          description: '`invalid_request`, `invalid_grant`, `invalid_target`, `unsupported_grant_type`.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OAuthError' }
+        '401':
+          description: '`invalid_client`: unknown `client_id`.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OAuthError' }
+
+  /api/oauth/revoke:
+    post:
+      tags: [OAuth]
+      summary: Revoke a token (RFC 7009)
+      description: >-
+        Form-encoded `token` (access or refresh token), optional `token_type_hint` and `client_id`. Revokes the whole
+        grant. 200 with an empty body for any token, known or not.
+      operationId: oauthRevoke
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string }
+                token_type_hint: { type: string, enum: [access_token, refresh_token] }
+                client_id: { type: string }
+      responses:
+        '200': { description: Done (also for unknown tokens). }
+        '400':
+          description: '`invalid_request` (no token) or `unsupported_token_type`.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OAuthError' }
+
   /api/legal:
     get:
       tags: [Legal]
@@ -3443,6 +3572,12 @@ components:
           schema: { $ref: '#/components/schemas/Problem' }
 
   schemas:
+    OAuthError:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        error_description: { type: string }
     # ---------------------------------------------------------------- errors
     Problem:
       type: object
