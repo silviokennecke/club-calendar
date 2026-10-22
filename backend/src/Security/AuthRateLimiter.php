@@ -48,6 +48,8 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $invitationEmail,
         #[Autowire(service: 'limiter.oauth_register_ip')]
         private readonly RateLimiterFactory $oauthRegisterIp,
+        #[Autowire(service: 'limiter.oauth_decision_user')]
+        private readonly RateLimiterFactory $oauthDecisionUser,
     ) {
     }
 
@@ -133,6 +135,12 @@ class AuthRateLimiter
     public function assertClientRegistrationAllowed(Request $request): void
     {
         self::assertAccepted($this->oauthRegisterIp->create(self::ip($request))->consume());
+    }
+
+    /** Consent decisions of the OAuth authorization flow: 30 per user and hour. */
+    public function assertOAuthDecisionAllowed(string $userId): void
+    {
+        self::assertAccepted($this->oauthDecisionUser->create($userId)->consume());
     }
 
     public static function normalize(string $email): string
