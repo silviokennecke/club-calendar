@@ -32,7 +32,7 @@ import { enterListRef } from "@/lib/pageMotion";
 /**
  * Publish (design: Feeds): the feeds of the club (club settings; a feed can span several calendars) with their status (word + icon: public, club
  * internal, private; "findable" for public feeds with the search engine option), audiences and the
- * addresses (ICS, webcal, web; secret for private feeds) behind a disclosure. Creating and editing
+ * address (the public page; secret for private feeds) behind a disclosure. Creating and editing
  * happen on their own pages (/clubs/:clubId/settings/feeds/new, …/feeds/:feedId).
  */
 export default function FeedsPage() {
