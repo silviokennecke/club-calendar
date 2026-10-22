@@ -1782,7 +1782,8 @@ paths:
         `validation_failed` with field `from`/`to`), `to` before `from` is a 400 on `to`, and a range longer than
         1830 days (about five years) a 400 on `to`. At most `limit` (default and maximum 5000) events are returned
         per request; page with `offset`. The body stays a plain list, the number of all matches is in the
-        `X-Total-Count` header. Without `from`/`to` the first 5000 events are returned.
+        `X-Total-Count` header. Without `from`/`to` the first 5000 events are returned. Draft events (`isDraft`) are
+        returned (and counted) only to editors and admins; for viewers they are left out everywhere, search included.
       operationId: listEvents
       parameters:
         - { name: from, in: query, schema: { type: string, format: date } }

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { apiGetWithTotal } from "@/lib/api";
 import { eventToItem, formatNumericDate } from "@/lib/calendar";
 import { formatAddress, type CalendarEvent } from "@/lib/types";
-import { Field, TextInput } from "@/components/ui/shared";
+import { Field, StatusBadge, TextInput } from "@/components/ui/shared";
 import { itemTimeText } from "./eventDisplay";
 import { useLocale } from "./useLocale";
 
@@ -170,7 +170,10 @@ export function CalendarSearch({ calendarId, onPick }: CalendarSearchProps) {
                 onClick={() => choose(ev)}
                 onMouseMove={() => !active && setActiveIndex(i)}
               >
-                <span className="ap-ac-title">{ev.name}</span>
+                <span className="ap-ac-title">
+                  {ev.name}
+                  {ev.isDraft && <StatusBadge status="draft" />}
+                </span>
                 <span className="ap-ac-meta">
                   {[formatNumericDate(item.start, locale), itemTimeText(item, t), place]
                     .filter(Boolean)
