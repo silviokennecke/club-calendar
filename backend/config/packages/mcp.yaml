@@ -1,0 +1,17 @@
+mcp:
+    servers:
+        app:
+            name: 'Club Calendar'
+            description: 'Club Calendar: read clubs, calendars and events, and draft events.'
+            transports:
+                stdio: false
+                http: true
+            http:
+                path: /api/mcp
+                # Placeholder only (config validation takes a literal array); the real list
+                # (`%env(trusted_host_list:...)%`, same hosts as framework.trusted_hosts) is set in services.yaml.
+                allowed_hosts: []
+            session:
+                store: cache
+            registry:
+                - 'App\Mcp\'

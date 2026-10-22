@@ -50,6 +50,10 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $oauthRegisterIp,
         #[Autowire(service: 'limiter.oauth_decision_user')]
         private readonly RateLimiterFactory $oauthDecisionUser,
+        #[Autowire(service: 'limiter.mcp_grant')]
+        private readonly RateLimiterFactory $mcpGrant,
+        #[Autowire(service: 'limiter.mcp_ip')]
+        private readonly RateLimiterFactory $mcpIp,
     ) {
     }
 
@@ -141,6 +145,18 @@ class AuthRateLimiter
     public function assertOAuthDecisionAllowed(string $userId): void
     {
         self::assertAccepted($this->oauthDecisionUser->create($userId)->consume());
+    }
+
+    /** MCP endpoint, checked before the token lookup: per client IP. */
+    public function assertMcpIpAllowed(Request $request): void
+    {
+        self::assertAccepted($this->mcpIp->create(self::ip($request))->consume());
+    }
+
+    /** MCP endpoint, per authenticated grant. */
+    public function assertMcpGrantAllowed(string $grantId): void
+    {
+        self::assertAccepted($this->mcpGrant->create($grantId)->consume());
     }
 
     public static function normalize(string $email): string

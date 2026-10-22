@@ -14,12 +14,27 @@ use Symfony\Component\DependencyInjection\Exception\RuntimeException;
  * given variable (e.g. a www alias) and always the loopback names (the container health check calls
  * http://127.0.0.1, local dev and the E2E setup use localhost). A forged `Host` header can therefore never
  * reach the application, and the links of mails and redirects come from the URL variables anyway.
+ *
+ * `%env(trusted_host_list:TRUSTED_HOSTS)%` returns the same hosts as a list (MCP `http.allowed_hosts`).
  */
 final class TrustedHostsEnvVarProcessor implements EnvVarProcessorInterface
 {
     private const LOOPBACK = ['localhost', '127.0.0.1', '[::1]'];
 
-    public function getEnv(string $prefix, string $name, \Closure $getEnv): string
+    public function getEnv(string $prefix, string $name, \Closure $getEnv): string|array
+    {
+        $hosts = $this->hosts($name, $getEnv);
+        if ('trusted_host_list' === $prefix) {
+            return $hosts;
+        }
+
+        $quoted = array_map(static fn (string $host): string => preg_quote($host, '{'), $hosts);
+
+        return '^(?:'.implode('|', $quoted).')$';
+    }
+
+    /** @return list<string> lower-case host names without port */
+    private function hosts(string $name, \Closure $getEnv): array
     {
         $hosts = self::LOOPBACK;
         foreach (['APP_URL', 'FRONTEND_URL', 'BACKEND_URL'] as $variable) {
@@ -37,13 +52,11 @@ final class TrustedHostsEnvVarProcessor implements EnvVarProcessorInterface
             }
         }
 
-        $quoted = array_map(static fn (string $host): string => preg_quote(strtolower($host), '{'), array_unique($hosts));
-
-        return '^(?:'.implode('|', $quoted).')$';
+        return array_values(array_unique(array_map('strtolower', $hosts)));
     }
 
     public static function getProvidedTypes(): array
     {
-        return ['trusted_hosts' => 'string'];
+        return ['trusted_hosts' => 'string', 'trusted_host_list' => 'array'];
     }
 }

@@ -52,4 +52,12 @@ class TrustedHostsEnvVarProcessorTest extends TestCase
         $this->expectException(RuntimeException::class);
         self::regex(['APP_URL' => 'not-a-url', 'FRONTEND_URL' => 'https://a.test', 'BACKEND_URL' => 'https://a.test']);
     }
+
+    public function testHostListForTheMcpTransport(): void
+    {
+        $env = ['APP_URL' => 'https://Cal.example.com', 'FRONTEND_URL' => 'https://cal.example.com', 'BACKEND_URL' => 'https://api.example.com:8443', 'TRUSTED_HOSTS' => 'www.example.com'];
+        $list = (new TrustedHostsEnvVarProcessor())->getEnv('trusted_host_list', 'TRUSTED_HOSTS', static fn (string $n): string => $env[$n] ?? '');
+
+        $this->assertSame(['localhost', '127.0.0.1', '[::1]', 'cal.example.com', 'api.example.com', 'www.example.com'], $list);
+    }
 }

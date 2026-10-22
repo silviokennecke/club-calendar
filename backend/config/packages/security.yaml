@@ -24,6 +24,14 @@ security:
             pattern: ^/api/feed/
             security: false
 
+        # MCP endpoint: opaque OAuth access tokens only (App\Mcp\Security\McpAuthenticator); must precede `api`.
+        mcp:
+            pattern: ^/api/mcp(/|$)
+            stateless: true
+            provider: jwt_user_provider
+            custom_authenticators:
+                - App\Mcp\Security\McpAuthenticator
+
         api:
             pattern: ^/api/
             stateless: true

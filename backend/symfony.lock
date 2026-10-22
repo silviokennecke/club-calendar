@@ -173,6 +173,9 @@
             "config/packages/mailer.yaml"
         ]
     },
+    "symfony/mcp-bundle": {
+        "version": "v0.14.1"
+    },
     "symfony/monolog-bundle": {
         "version": "4.0",
         "recipe": {
