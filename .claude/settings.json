@@ -14,6 +14,7 @@
     "tdd-workflows@claude-code-workflows": true,
     "ui-design@claude-code-workflows": true,
     "git-pr-workflows@claude-code-workflows": true,
-    "backend-api-security@claude-code-workflows": true
+    "backend-api-security@claude-code-workflows": true,
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true
   }
 }
