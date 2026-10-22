@@ -110,7 +110,8 @@ Nicht im Audit, gering:
   `FRONTEND_URL` (exakt).
 - **Cron:** `php bin/console app:prune-unverified-users` und `php bin/console app:prune-password-resets` (z. B.
   täglich; abgelaufene Reset-Links und E-Mail-Wechsel) sowie `php bin/console app:prune-refresh-tokens` (beendete
-  Refresh-Token-Sitzungen; Lebensdauer `REFRESH_TOKEN_ABSOLUTE_LIFETIME`, Wiederholungsfenster `REFRESH_TOKEN_REUSE_GRACE`).
+  Refresh-Token-Sitzungen; Lebensdauer `REFRESH_TOKEN_ABSOLUTE_LIFETIME`, Wiederholungsfenster `REFRESH_TOKEN_REUSE_GRACE`) und `php bin/console app:prune-oauth` (abgelaufene OAuth-/MCP-Anfragen, Codes, Tokens, beendete
+  Grants, ungenutzte Clients).
 - **Mail-Templates:** nach Änderungen an `templates/email/*.mjml` `npm run build:mail -w backend` (die kompilierten
   `*.html.twig` sind eingecheckt; `npm run build` baut sie ebenfalls). Seit Paket 5 auch `password_changed`,
   `email_change_requested`, `email_changed` (Hinweis-Mails ohne Links außer `/forgot-password`).
