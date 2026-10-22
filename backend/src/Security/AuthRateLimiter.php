@@ -48,6 +48,8 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $invitationEmail,
         #[Autowire(service: 'limiter.oauth_register_ip')]
         private readonly RateLimiterFactory $oauthRegisterIp,
+        #[Autowire(service: 'limiter.oauth_token_ip')]
+        private readonly RateLimiterFactory $oauthTokenIp,
         #[Autowire(service: 'limiter.oauth_decision_user')]
         private readonly RateLimiterFactory $oauthDecisionUser,
         #[Autowire(service: 'limiter.mcp_grant')]
@@ -139,6 +141,12 @@ class AuthRateLimiter
     public function assertClientRegistrationAllowed(Request $request): void
     {
         self::assertAccepted($this->oauthRegisterIp->create(self::ip($request))->consume());
+    }
+
+    /** OAuth token and revoke endpoints: 60 per client IP and minute, shared. */
+    public function assertOAuthTokenAllowed(Request $request): void
+    {
+        self::assertAccepted($this->oauthTokenIp->create(self::ip($request))->consume());
     }
 
     /** Consent decisions of the OAuth authorization flow: 30 per user and hour. */

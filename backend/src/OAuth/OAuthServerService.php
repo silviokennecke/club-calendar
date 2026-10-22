@@ -295,18 +295,29 @@ class OAuthServerService
             if (hash_equals($registered, $redirectUri)) {
                 return true;
             }
-            $a = parse_url($registered);
-            $b = parse_url($redirectUri);
-            if (is_array($a) && is_array($b) && 'http' === ($a['scheme'] ?? null) && 'http' === ($b['scheme'] ?? null)
-                && in_array($a['host'] ?? '', ['localhost', '127.0.0.1', '[::1]'], true)
-                && ($a['host'] ?? null) === ($b['host'] ?? null)
-                && ($a['path'] ?? '') === ($b['path'] ?? '') && ($a['query'] ?? null) === ($b['query'] ?? null)
-                && !isset($a['user'], $b['user'], $b['fragment'])) {
+            if (self::loopbackEquivalent($registered, $redirectUri)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /** Loopback http URIs match ignoring the port (RFC 8252 7.3), but only when both are clean. */
+    private static function loopbackEquivalent(string $registered, string $requested): bool
+    {
+        $a = RedirectUriPolicy::parse($registered);
+        $b = RedirectUriPolicy::parse($requested);
+        if (null === $a || null === $b || !$a['loopback'] || !$b['loopback'] || 'http' !== $a['scheme'] || 'http' !== $b['scheme']) {
+            return false;
+        }
+        if ($a['host'] !== $b['host'] || $a['path'] !== $b['path'] || $a['query'] !== $b['query']) {
+            return false;
+        }
+        $p = parse_url($requested);
+        $rebuilt = 'http://'.$b['host'].(isset($p['port']) ? ':'.$p['port'] : '').$b['path'].(null !== $b['query'] ? '?'.$b['query'] : '');
+
+        return $rebuilt === $requested;
     }
 
     private function grantEnded(McpGrant $grant, \DateTimeImmutable $now): bool

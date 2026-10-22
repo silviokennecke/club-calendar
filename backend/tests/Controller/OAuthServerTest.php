@@ -177,6 +177,21 @@ class OAuthServerTest extends WebTestCase
         $this->assertArrayHasKey('retry-after', $r['headers']);
     }
 
+    public function testTokenAndRevokeAreRateLimitedPerIp(): void
+    {
+        foreach (['/api/oauth/token', '/api/oauth/revoke'] as $uri) {
+            DatabaseResetter::reset($this->em);
+            for ($i = 0; $i < 100; ++$i) {
+                $r = $this->form($uri, []);
+                $this->assertSame(400, $r['status']);
+            }
+            $r = $this->form($uri, []);
+            $this->assertSame(429, $r['status']);
+            $this->assertSame('rate_limited', $r['body']['code']);
+            $this->assertArrayHasKey('retry-after', $r['headers']);
+        }
+    }
+
     public function testEmptyAllowListAcceptsAnyHttpsClient(): void
     {
         static::getContainer()->set(RedirectUriPolicy::class, new RedirectUriPolicy(''));

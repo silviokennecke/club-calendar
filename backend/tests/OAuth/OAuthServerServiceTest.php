@@ -132,6 +132,27 @@ class OAuthServerServiceTest extends KernelTestCase
         $this->assertError('invalid_request', fn () => $this->request(redirect: 'https://claude.ai:444/api/mcp/auth_callback'));
     }
 
+    public function testUncleanLoopbackRedirectsAreRejected(): void
+    {
+        self::assertSame('http://127.0.0.1:5555/callback', $this->request(redirect: 'http://127.0.0.1:5555/callback')->getRedirectUri());
+        $local = new OAuthClient('Local', ['http://localhost/callback'], $this->clock->now());
+        $this->em->persist($local);
+        self::assertTrue($this->service->redirectUriRegistered($local, 'http://localhost:1234/callback'));
+        self::assertFalse($this->service->redirectUriRegistered($local, 'http://localhost\\@localhost/callback'));
+        foreach ([
+            'http://x\\@127.0.0.1/callback',
+            'http://x@127.0.0.1/callback',
+            'http://evil.example\\@127.0.0.1/callback',
+            'http://127.0.0.1/callback#frag',
+            'http://127.0.0.1:5555/callback#',
+            "http://127.0.0.1/callback\n",
+            'http://127.0.0.1:5555/callback?',
+            'http://127.0.0.1:99999/callback',
+        ] as $uri) {
+            $this->assertError('invalid_request', fn () => $this->request(redirect: $uri));
+        }
+    }
+
     public function testApproveStoresOnlyHashAndIsSingleUse(): void
     {
         $r = $this->request();
