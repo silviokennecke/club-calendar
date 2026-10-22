@@ -44,6 +44,7 @@ export default function HelpSubscribePage() {
     <PublicShell
       title={t("helpSubscribe.title")}
       indexable
+      helpLink={false}
       hero={
         <div className="pt-6 pb-4">
           <Button variant="ghost" icon="chevron-left" onClick={goBack}>

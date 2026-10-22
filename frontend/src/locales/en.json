@@ -1601,6 +1601,7 @@
   },
   "shell": {
     "skipToContent": "Skip to content",
+    "helpSubscribe": "Help: subscribing to the calendar",
     "sidebarLabel": "Sidebar",
     "club": "Club",
     "calendar": "Calendar",

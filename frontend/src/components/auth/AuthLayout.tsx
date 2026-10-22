@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/lib/usePageTitle";
 import { LegalLinks } from "@/components/legal/LegalLinks";
+import { HelpFooterLink } from "@/components/help/HelpFooterLink";
 import { Icon, LangSwitch, Logo, type Glyph } from "@/components/ui/shared";
 
 interface AuthLayoutProps {
@@ -69,6 +70,12 @@ export function AuthLayout({
   ) : (
     heading
   );
+  const footerLinks = legalLinks && (
+    <div className="legal-links">
+      <LegalLinks />
+      <HelpFooterLink />
+    </div>
+  );
   return (
     <div className="ap ap-auth">
       <a className="ap-skip cc-btn cc-btn--primary" href="#main">
@@ -88,7 +95,7 @@ export function AuthLayout({
           <div className="ap-wrap ap-stack ap-stack--lg" style={{ width: "100%" }}>
             {head}
             {children}
-            {legalLinks && <LegalLinks />}
+            {footerLinks}
           </div>
         ) : (
           <div className="ap-auth-col">
@@ -103,7 +110,7 @@ export function AuthLayout({
               {children}
               {footer && <p className="ap-auth-foot">{footer}</p>}
             </div>
-            {legalLinks && <LegalLinks />}
+            {footerLinks}
           </div>
         )}
       </main>
