@@ -17,6 +17,10 @@ DirectoryIndex index.html index.php
     RewriteCond %{ENV:REDIRECT_STATUS} =""
     RewriteRule ^index\.php(?:/(.*)|$) /$1 [R=301,L]
 
+    # Keep dotfiles and dot directories private (.env, .git/..., .htaccess), except the OAuth discovery documents.
+    # Not a FilesMatch: that is evaluated while Apache walks the .well-known directory and would deny it.
+    RewriteRule (^|/)\.(?!well-known/oauth-(?:authorization-server|protected-resource)(?:/|$)) - [F]
+
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
@@ -70,7 +74,9 @@ DirectoryIndex index.html index.php
     Require all denied
 </FilesMatch>
 
-# Keep dotfiles private
-<FilesMatch "^\.">
-    Require all denied
-</FilesMatch>
+# Without mod_rewrite the dotfile rule above is inactive: deny them by name
+<IfModule !mod_rewrite.c>
+    <FilesMatch "^\.">
+        Require all denied
+    </FilesMatch>
+</IfModule>
