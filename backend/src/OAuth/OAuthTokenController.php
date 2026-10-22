@@ -6,6 +6,7 @@ namespace App\OAuth;
 
 use App\Entity\OAuthClient;
 use App\Repository\OAuthClientRepository;
+use App\Security\AuthRateLimiter;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,12 +21,14 @@ class OAuthTokenController
     public function __construct(
         private readonly OAuthServerService $oauth,
         private readonly OAuthClientRepository $clients,
+        private readonly AuthRateLimiter $limiter,
     ) {
     }
 
     #[Route('/api/oauth/token', methods: ['POST'])]
     public function token(Request $request): JsonResponse
     {
+        $this->limiter->assertOAuthTokenAllowed($request);
         try {
             $client = $this->client($request);
             $grantType = self::param($request, 'grant_type');
@@ -52,6 +55,7 @@ class OAuthTokenController
     #[Route('/api/oauth/revoke', methods: ['POST'])]
     public function revoke(Request $request): Response
     {
+        $this->limiter->assertOAuthTokenAllowed($request);
         $token = $request->request->get('token');
         if (!is_string($token) || '' === $token) {
             return OAuthResponse::error(OAuthException::INVALID_REQUEST, 'token is required', 400);

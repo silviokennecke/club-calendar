@@ -77,7 +77,7 @@ class RedirectUriPolicy
     /**
      * @return array{scheme: string, host: string, path: string, query: ?string, loopback: bool, port: bool}|null
      */
-    private static function parse(string $uri): ?array
+    public static function parse(string $uri): ?array
     {
         if ('' === $uri || strlen($uri) > self::MAX_LENGTH || 1 === preg_match('/[\x00-\x20\x7f*\\\\]/', $uri) || str_contains($uri, '#')) {
             return null;

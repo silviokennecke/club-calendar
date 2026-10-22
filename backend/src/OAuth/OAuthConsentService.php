@@ -127,12 +127,11 @@ class OAuthConsentService
     private static function redirectHost(string $uri): string
     {
         $parts = parse_url($uri);
-        $host = is_array($parts) ? ($parts['host'] ?? null) : null;
-        if (null === $host) {
+        if (null === RedirectUriPolicy::parse($uri)) {
             return is_array($parts) ? ($parts['scheme'] ?? $uri).':' : $uri;
         }
 
-        return $host.(isset($parts['port']) ? ':'.$parts['port'] : '');
+        return $parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
     }
 
     private function now(): \DateTimeImmutable

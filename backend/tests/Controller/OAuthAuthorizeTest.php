@@ -94,6 +94,21 @@ class OAuthAuthorizeTest extends WebTestCase
         return static::getContainer()->get(OAuthServerService::class)->canonicalResource();
     }
 
+    public function testUncleanLoopbackRedirectIsNeverRedirected(): void
+    {
+        $r = TestHelper::jsonRequest($this->client, 'POST', '/api/oauth/register', ['client_name' => 'X', 'redirect_uris' => ['http://127.0.0.1:7777/callback']]);
+        $this->assertSame(201, $r['status']);
+        $clientId = $r['body']['client_id'];
+        foreach (['http://evil.example\\@127.0.0.1/callback', 'http://x@127.0.0.1/callback', 'http://127.0.0.1/callback#frag'] as $uri) {
+            foreach ([['redirect_uri' => $uri], ['redirect_uri' => $uri, 'response_type' => 'token']] as $o) {
+                $res = $this->authorize($this->query($clientId, $o));
+                $this->assertSame(400, $res->getStatusCode(), $uri);
+                $this->assertNull($res->headers->get('Location'));
+            }
+        }
+        $this->assertSame(302, $this->authorize($this->query($clientId, ['redirect_uri' => 'http://127.0.0.1:5555/callback']))->getStatusCode());
+    }
+
     public function testInvalidClientOrRedirectIsNeverRedirected(): void
     {
         $clientId = $this->registerClient();
