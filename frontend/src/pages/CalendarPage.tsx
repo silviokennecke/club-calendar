@@ -19,7 +19,6 @@ import {
   formatNumericDate,
   formatWeekRange,
   isoWeek,
-  matchesSearch,
   parseAnchor,
   parseView,
   readCalendarView,
@@ -37,6 +36,7 @@ import {
 import type { ShellData } from "@/components/layout/shellTypes";
 import { Banner, Button, EmptyState, LinkButton, toast } from "@/components/ui/shared";
 import { CalendarToolbar } from "@/components/calendar/CalendarToolbar";
+import { CalendarSearch } from "@/components/calendar/CalendarSearch";
 import { FilterBar } from "@/components/calendar/FilterBar";
 import { MonthView } from "@/components/calendar/MonthView";
 import { WeekView } from "@/components/calendar/WeekView";
@@ -72,7 +72,6 @@ export default function CalendarPage() {
   const location = useLocation();
 
   const [panelOpen, setPanelOpen] = useState(false);
-  const [search, setSearch] = useState("");
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [restored, setRestored] = useState(false);
   const [unarchiving, setUnarchiving] = useState(false);
@@ -102,7 +101,7 @@ export default function CalendarPage() {
   // Club role (shell clubs, or the club list when rendered without the shell).
   const { roleCanEdit, isAdmin } = useEventPage();
   const canEdit = !!calendar && !isArchived && roleCanEdit;
-  const filtering = search.trim() !== "" || selectedGroups.length > 0;
+  const filtering = selectedGroups.length > 0;
 
   const data = useCalendarData({
     clubId: clubId!,
@@ -114,12 +113,11 @@ export default function CalendarPage() {
     checkEmpty: !filtering,
   });
 
-  const items = useMemo<CalItem[]>(() => {
-    const events = data.eventItems.filter((i) => matchesSearch(i, search));
-    // Holidays only without a search or filter (design: they would not match anyway).
-    return filtering ? events : [...data.holidayItems, ...events];
-  }, [data.eventItems, data.holidayItems, search, filtering]);
-  const visibleEvents = items.filter((i) => i.kind === "event").length;
+  // Holidays only without a filter (design: they would not match anyway).
+  const items = useMemo<CalItem[]>(
+    () => (filtering ? data.eventItems : [...data.holidayItems, ...data.eventItems]),
+    [data.eventItems, data.holidayItems, filtering],
+  );
 
   /**
    * Focus moves within the grid replace the history entry; previous / next / today push one,
@@ -221,6 +219,20 @@ export default function CalendarPage() {
     routerNavigate(routes.edit(item.id), { state: navState });
   }
 
+  function pickSearchResult(ev: CalendarEvent) {
+    // One navigation: the dialog's background page already shows the event's date (two
+    // navigations in a row would overwrite each other).
+    const date = ev.date.slice(0, 10);
+    latestAnchor.current = date;
+    const next = new URLSearchParams(params);
+    next.set("date", date);
+    if (view === "week") next.set("view", "week");
+    else next.delete("view");
+    routerNavigate(routes.edit(ev.id), {
+      state: openModalState({ pathname: location.pathname, search: `?${next.toString()}` }),
+    });
+  }
+
   async function patchDates(ev: CalendarEvent, dates: { date: string; dateEnd: string | null }) {
     await apiPatch(`/api/calendars/${calendarId}/events/${ev.id}`, {
       date: dates.date,
@@ -263,11 +275,6 @@ export default function CalendarPage() {
     }
   }
 
-  function resetFilters() {
-    setSearch("");
-    setSelectedGroups([]);
-  }
-
   const placeOf = (item: CalItem) => {
     const loc = (item.source as CalendarEvent).location;
     return loc ? loc.name || formatAddress(loc) : null;
@@ -304,19 +311,6 @@ export default function CalendarPage() {
               </LinkButton>
             </>
           )
-        }
-      />
-    );
-  } else if (search.trim() && visibleEvents === 0 && !data.isError) {
-    content = (
-      <EmptyState
-        icon="search"
-        title={t("calendar.noResults.title", { query: search.trim() })}
-        text={t("calendar.noResults.text")}
-        actions={
-          <Button variant="secondary" onClick={() => setSearch("")}>
-            {t("calendar.noResults.reset")}
-          </Button>
         }
       />
     );
@@ -406,8 +400,7 @@ export default function CalendarPage() {
       />
 
       <FilterBar
-        search={search}
-        onSearchChange={setSearch}
+        searchSlot={<CalendarSearch calendarId={calendarId!} onPick={pickSearchResult} />}
         groups={targetGroups.map((g) => ({ id: g.id, label: g.name }))}
         selectedGroups={selectedGroups}
         onToggleGroup={(id) =>
@@ -415,7 +408,7 @@ export default function CalendarPage() {
             prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
           )
         }
-        onReset={resetFilters}
+        onReset={() => setSelectedGroups([])}
         actions={
           isArchived && (
             <LinkButton variant="secondary" icon="download" to={routes.export}>

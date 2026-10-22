@@ -9,7 +9,6 @@ import {
   isMultiDay,
   itemsOnDay,
   layoutWeek,
-  matchesSearch,
   overlapsRange,
   shiftEventDates,
   type CalItem,
@@ -141,13 +140,6 @@ describe("ranges and ordering", () => {
     expect(counts.get("2026-10-10")).toBe(1);
     expect(counts.get("2026-10-11")).toBe(2);
     expect(counts.has("2026-10-08")).toBe(false);
-  });
-
-  it("searches case-insensitively", () => {
-    const item = eventToItem(ev({ id: "x", name: "Herbstfest", date: "2026-10-24" }));
-    expect(matchesSearch(item, "  HERBST ")).toBe(true);
-    expect(matchesSearch(item, "Sommer")).toBe(false);
-    expect(matchesSearch(item, "")).toBe(true);
   });
 });
 

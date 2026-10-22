@@ -296,7 +296,14 @@
     "import": "Import events",
     "search": {
       "label": "Search events",
-      "placeholder": "Name of an event…"
+      "placeholder": "Name of an event…",
+      "error": "Search failed.",
+      "loading": "Searching …",
+      "empty": "No events found for “{{query}}”",
+      "more": "Showing {{shown}} of {{total}} matches. Refine your search.",
+      "results_one": "1 result",
+      "results_other": "{{count}} results",
+      "placeholderAll": "Name, note, place or feature…"
     },
     "filter": {
       "label": "Filter by target group",
@@ -345,11 +352,6 @@
       "title": "No events in this calendar yet",
       "text": "Create the first event. It stays a draft until you publish it. Or import events from a file.",
       "archivedText": "This archived calendar has no events."
-    },
-    "noResults": {
-      "title": "No events found for “{{query}}”",
-      "text": "Check the spelling or search for another name. An active target group filter can also hide events.",
-      "reset": "Reset search"
     },
     "archived": {
       "text": "This calendar is archived and read-only. Events cannot be changed.",

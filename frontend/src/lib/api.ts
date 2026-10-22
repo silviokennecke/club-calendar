@@ -278,6 +278,18 @@ export async function apiGet<T>(path: string): Promise<T> {
   return res.json();
 }
 
+/** GET that also returns the `X-Total-Count` header (null when absent). */
+export async function apiGetWithTotal<T>(
+  path: string,
+  signal?: AbortSignal,
+): Promise<{ data: T; total: number | null }> {
+  const res = await apiFetch(path, { signal });
+  if (!res.ok) throw await errorFrom(res);
+  const header = res.headers.get("X-Total-Count");
+  const total = header === null ? NaN : Number(header);
+  return { data: await res.json(), total: Number.isFinite(total) ? total : null };
+}
+
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const res = await apiFetch(path, { method: "POST", body: JSON.stringify(body) });
   if (!res.ok) throw await errorFrom(res);

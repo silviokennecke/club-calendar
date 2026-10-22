@@ -150,12 +150,6 @@ export function countByDay(items: CalItem[], days: IsoDate[]): Map<IsoDate, numb
   return counts;
 }
 
-/** Case-insensitive name search. */
-export function matchesSearch(item: Pick<CalItem, "title">, query: string): boolean {
-  const q = query.trim().toLocaleLowerCase();
-  return !q || item.title.toLocaleLowerCase().includes(q);
-}
-
 export interface WeekSegment<T extends CalItem = CalItem> {
   item: T;
   /** First and last column (0-6) covered in this week. */
