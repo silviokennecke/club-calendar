@@ -132,6 +132,7 @@ beforeEach(() => {
   apiGet.mockImplementation((path: string) => {
     if (path === "/api/auth/me") return Promise.resolve(profile);
     if (path === "/api/auth/providers") return Promise.resolve(providers);
+    if (path === "/api/auth/mcp-grants") return Promise.resolve([]);
     return Promise.reject(new Error("unexpected " + path));
   });
   Object.defineProperty(window, "PublicKeyCredential", {
@@ -644,7 +645,7 @@ describe("ProfilePage", () => {
     apiGet.mockImplementation((path: string) =>
       path === "/api/auth/me"
         ? Promise.reject(new Error("API error 500"))
-        : Promise.resolve(providers),
+        : Promise.resolve(path === "/api/auth/mcp-grants" ? [] : providers),
     );
     renderProfile();
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -653,7 +654,9 @@ describe("ProfilePage", () => {
     // The settings below still work.
     expect(screen.getByRole("heading", { name: "Persönliche Einstellungen" })).toBeInTheDocument();
     apiGet.mockImplementation((path: string) =>
-      Promise.resolve(path === "/api/auth/me" ? profile : providers),
+      Promise.resolve(
+        path === "/api/auth/me" ? profile : path === "/api/auth/mcp-grants" ? [] : providers,
+      ),
     );
     await user.click(screen.getByRole("button", { name: "Erneut versuchen" }));
     expect(await screen.findByRole("heading", { name: "Passkeys" })).toBeInTheDocument();
@@ -678,7 +681,7 @@ describe("ProfilePage (dialog while loading)", () => {
         ? new Promise((r) => {
             resolveMe = r;
           })
-        : Promise.resolve(providers),
+        : Promise.resolve(path === "/api/auth/mcp-grants" ? [] : providers),
     );
     const user = userEvent.setup();
     renderProfile();

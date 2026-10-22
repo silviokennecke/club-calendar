@@ -92,3 +92,4 @@ export const HolidayCalendarsPage = lazyPage(() => import("./settings/HolidayCal
 export const LegalPage = lazyPage(() => import("./LegalPage"));
 export const LegalModal = lazyPage(modalImports.LegalModal);
 export const ConsentPage = lazyPage(() => import("./ConsentPage"));
+export const OAuthConsentPage = lazyPage(() => import("./OAuthConsentPage"));

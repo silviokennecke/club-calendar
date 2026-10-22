@@ -2028,6 +2028,28 @@
       "saved": "Gespeichert",
       "saveFailed": "Die Einstellung konnte nicht gespeichert werden. Bitte versuche es erneut."
     },
+    "apps": {
+      "title": "Verbundene Apps",
+      "text": "Apps und KI-Assistenten, die du für den Zugriff auf deine Vereinsdaten freigegeben hast.",
+      "loading": "Verbundene Apps werden geladen",
+      "loadFailed": "Die verbundenen Apps konnten nicht geladen werden.",
+      "retry": "Erneut versuchen",
+      "emptyTitle": "Keine verbundenen Apps",
+      "emptyText": "Sobald du einer App den Zugriff erlaubst, erscheint sie hier.",
+      "scopeRead": "Nur lesen",
+      "scopeWrite": "Lesen und Entwürfe",
+      "connectedAt": "Verbunden am {{date}}",
+      "lastUsed": "Zuletzt genutzt am {{date}}",
+      "neverUsed": "Noch nie genutzt",
+      "revoke": "Trennen",
+      "revokeLabel": "{{name}} trennen",
+      "confirmTitle": "{{name}} trennen?",
+      "confirmText": "Die App verliert sofort den Zugriff auf dein Konto.",
+      "consequence": "Neue Termine und Entwürfe, die sie angelegt hat, bleiben erhalten.",
+      "confirm": "Trennen",
+      "revoked": "{{name}} wurde getrennt.",
+      "revokeFailed": "Die App konnte nicht getrennt werden. Bitte versuche es erneut."
+    },
     "sessions": {
       "title": "Anmeldungen",
       "text": "Meldet dich auf allen Geräten und in allen Browsern ab, auch hier. Danach musst du dich überall neu anmelden.",
@@ -2349,6 +2371,40 @@
       },
       "done": "Fertig! Der Kalender steht links unter <b>Weitere Kalender</b>. Google zeigt neue Termine nicht sofort an. Es kann einige Stunden dauern, bis Änderungen erscheinen. Das ist normal.",
       "trouble": "Am Handy fehlt der Kalender? Öffne die Google-Kalender-App, tippe auf das Menü und dann auf <b>Einstellungen</b>. Tippe auf den Kalender des Vereins und schalte <b>Synchronisieren</b> ein."
+    }
+  },
+  "oauth": {
+    "consent": {
+      "title": "App verbinden?",
+      "intro": "{{name}} möchte auf dein Konto zugreifen.",
+      "app": "App",
+      "redirectHost": "Weiterleitung nach",
+      "unverifiedTitle": "Nicht verifizierte App",
+      "unverifiedText": "Diese App gehört nicht zu den bekannten Anbietern. Erlaube den Zugriff nur, wenn du ihr vertraust und die Adresse oben erwartest.",
+      "scopesTitle": "Das darf die App",
+      "writeNote": "Die App kann nichts veröffentlichen und keine Termine löschen. Neue Termine bleiben Entwürfe.",
+      "allow": "Erlauben",
+      "deny": "Ablehnen",
+      "revokeHint": "Du kannst den Zugriff jederzeit im Profil unter „Verbundene Apps“ beenden.",
+      "loading": "Anfrage wird geladen",
+      "loadFailed": "Die Anfrage konnte nicht geladen werden. Bitte versuche es erneut.",
+      "retry": "Erneut versuchen",
+      "errorTitle": "Das hat nicht geklappt",
+      "expiredTitle": "Anfrage abgelaufen",
+      "expiredText": "Diese Anfrage ist abgelaufen oder wurde schon beantwortet. Starte die Verbindung in der App noch einmal.",
+      "toApp": "Zu Club Calendar",
+      "toProfile": "Zum Profil",
+      "problem": {
+        "consent": "Bitte stimme zuerst den aktuellen Dokumenten zu und versuche es dann erneut.",
+        "emailUnverified": "Bestätige zuerst deine E-Mail-Adresse, um Apps zu verbinden.",
+        "quota": "Du hast die maximale Zahl verbundener Apps erreicht. Trenne zuerst eine App im Profil.",
+        "rateLimited": "Zu viele Versuche in kurzer Zeit. Bitte versuche es später noch einmal.",
+        "failed": "Die Antwort konnte nicht gesendet werden. Bitte versuche es erneut."
+      }
+    },
+    "scope": {
+      "read": "Vereine, Kalender, Termine, Vorlagen und Feeds ansehen",
+      "write": "Terminentwürfe, Zielgruppen, Eigenschaften, Merkmale, Orte und nicht öffentliche Feeds anlegen sowie Terminvorlagen bearbeiten"
     }
   }
 }

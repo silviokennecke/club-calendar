@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
+import { stashReturnTo } from "@/lib/mcp";
 import { FullPageLoader } from "@/components/ui/shared";
 import { ConsentPage } from "@/pages/lazy";
 import { ConsentChangeBanner } from "@/components/legal/ConsentChangeBanner";
@@ -20,7 +21,7 @@ function parseContextFromPath(
 export default function ProtectedRoute() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   // The club of the last club or calendar URL: pages without a club in the URL (profile) keep the
   // app shell even while the "last used club" of the user is still being saved.
   const [visitedClubId, setVisitedClubId] = useState<string | null>(null);
@@ -28,8 +29,11 @@ export default function ProtectedRoute() {
   if (urlClubId && urlClubId !== visitedClubId) setVisitedClubId(urlClubId);
 
   useEffect(() => {
-    if (!loading && !user) navigate("/login", { replace: true });
-  }, [user, loading, navigate]);
+    if (loading || user) return;
+    // The consent page of an OAuth client: /clubs forwards back to it after the sign-in.
+    if (pathname === "/oauth/consent") stashReturnTo(pathname + search);
+    navigate("/login", { replace: true });
+  }, [user, loading, navigate, pathname, search]);
 
   if (loading || !user) return <FullPageLoader />;
 
@@ -37,7 +41,7 @@ export default function ProtectedRoute() {
   if (user.consentRequired) return <ConsentPage />;
 
   // Club picker and onboarding are standalone pages (no sidebar), even for users with a last club.
-  if (pathname === "/setup" || pathname === "/clubs") {
+  if (pathname === "/setup" || pathname === "/clubs" || pathname === "/oauth/consent") {
     // Leaving a club (picker, deleted or left club): do not carry it over to the profile page.
     if (visitedClubId) setVisitedClubId(null);
     return (

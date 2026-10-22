@@ -89,6 +89,15 @@ operations), `docs/api/openapi.yaml` (API reference).
   `GuestRoute` sends signed-in users from /login, /signup, /verify-email, /forgot-password, /reset-password to /clubs.
   `AuthProvider` clears the tokens only when `/me` answers 401/403; network errors, 429 and 5xx keep them, retry twice
   and then set `sessionError` (retried on `online` / tab visible), during which `GuestRoute` shows the loader, not the form.
+- MCP consent (`/oauth/consent?request=<id>`, `pages/OAuthConsentPage`, inside `ProtectedRoute` as a standalone page like
+  `/clubs`): an AI client sent the browser here from `GET /api/oauth/authorize`. Shows client name, redirect host,
+  an "unverified app" banner when `family` is null and the scopes as words; Allow / Deny post
+  `POST /api/oauth/authorize/decision` and the browser follows `redirectUrl` (`navigateAway`, replaceable in tests).
+  Unknown / expired / answered requests (404 `authorization_request_not_found`, expired `expiresAt`) show the expired
+  state; codes map in `decisionFailure` (`lib/mcp`). A signed-out visitor: `ProtectedRoute` stashes the consent URL
+  (`stashReturnTo`, sessionStorage, 10 min, only this path shape) and `/clubs` forwards back to it after any sign-in
+  (`takeReturnTo`). Profile: `components/profile/ConnectedAppsSection` ("Verbundene Apps": `GET /api/auth/mcp-grants`,
+  revoke by `ConfirmDialog` + `DELETE /api/auth/mcp-grants/:id`). E2E: `e2e/mcp-consent.spec.ts`.
 - Password reset: `/forgot-password` (`ForgotPasswordPage`: form → "Prüfe dein Postfach" with the entered address;
   the API answers 204 for every address, 429 counts as sent, only network / server errors show a banner) and
   `/reset-password?token=` (`ResetPasswordPage`: reads the token once and removes it from the address with a

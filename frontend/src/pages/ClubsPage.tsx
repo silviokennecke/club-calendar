@@ -17,6 +17,7 @@ import { ClubCard } from "@/components/clubs/ClubCard";
 import { InvitationsSection } from "@/components/clubs/InvitationsSection";
 import { readInvitationToken, takeInvitationRedirect, type MyInvitation } from "@/lib/invitations";
 import { initials } from "@/components/layout/navigation";
+import { takeReturnTo } from "@/lib/mcp";
 import type { Club } from "@/lib/types";
 
 /**
@@ -53,6 +54,12 @@ export default function ClubsPage() {
     if (readInvitationToken() && takeInvitationRedirect()) {
       setRedirected(true);
       navigate("/invitations", { replace: true });
+      return;
+    }
+    const returnTo = takeReturnTo();
+    if (returnTo) {
+      setRedirected(true);
+      navigate(returnTo, { replace: true });
       return;
     }
     if (isLoading || isError || invitationsLoading) return;
