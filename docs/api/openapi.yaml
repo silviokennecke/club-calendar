@@ -1790,12 +1790,13 @@ paths:
         - { name: limit, in: query, description: 'Page size, 1..5000 (default 5000); outside → 400 `validation_failed` field `limit`.', schema: { type: integer, minimum: 1, maximum: 5000, default: 5000 } }
         - { name: offset, in: query, description: 'Events to skip (default 0).', schema: { type: integer, minimum: 0, default: 0 } }
         - { name: targetGroupIds, in: query, description: Comma-separated target group ids (events with at least one)., schema: { type: string } }
+        - { name: q, in: query, description: 'Text search (trimmed, empty = no filter, at most 100 characters, else 400 `validation_failed` field `q`): case-insensitive substring of the event name, note, location name or the name of one of its features. Combines with the other filters; without `from`/`to` the whole calendar is searched.', schema: { type: string, maxLength: 100 } }
       responses:
         '200':
           description: Events.
           headers:
             X-Total-Count:
-              description: Number of all events matching `from`/`to`/`targetGroupIds` (before `limit`/`offset`).
+              description: Number of all events matching `from`/`to`/`targetGroupIds`/`q` (before `limit`/`offset`).
               schema: { type: integer }
           content:
             application/json:
