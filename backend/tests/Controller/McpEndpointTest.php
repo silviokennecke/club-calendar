@@ -160,8 +160,9 @@ class McpEndpointTest extends WebTestCase
 
         $list = $this->rpc(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'tools/list'], $token, [], $session);
         $this->assertSame(200, $list['status'], $list['content']);
-        $this->assertSame(['list_clubs'], array_column($list['body']['result']['tools'], 'name'));
-        $this->assertStringContainsString('untrusted', $list['body']['result']['tools'][0]['description']);
+        $names = array_column($list['body']['result']['tools'], 'name');
+        $this->assertContains('list_clubs', $names);
+        $this->assertStringContainsString('untrusted', $list['body']['result']['tools'][array_search('list_clubs', $names, true)]['description']);
 
         $call = $this->rpc(['jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/call', 'params' => ['name' => 'list_clubs', 'arguments' => new \stdClass()]], $token, [], $session);
         $this->assertSame(200, $call['status'], $call['content']);

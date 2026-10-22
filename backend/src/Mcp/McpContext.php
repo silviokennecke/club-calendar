@@ -10,11 +10,13 @@ use App\Entity\ClubUser;
 use App\Entity\McpGrant;
 use App\Entity\User;
 use App\Enum\ClubRole;
+use App\Exception\ApiProblemException;
 use App\OAuth\McpScope;
 use App\OAuth\ResolvedAccessToken;
 use Doctrine\ORM\EntityManagerInterface;
 use Mcp\Exception\ToolCallException;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
  * The authenticated MCP caller of the current request, filled by {@see Security\McpAuthenticator} (kept on the
@@ -67,13 +69,70 @@ class McpContext
      */
     public function requireRole(Club|Calendar $subject, ClubRole $role): void
     {
-        $club = $subject instanceof Club ? $subject : $subject->getClub();
-        $membership = $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $club, 'user' => $this->user()]);
+        $membership = $this->membership($subject);
         if (null === $membership) {
             throw new ToolCallException($subject instanceof Club ? 'Club not found.' : 'Calendar not found.');
         }
         if (!$membership->getRole()->atLeast($role)) {
             throw new ToolCallException(sprintf('Forbidden: this action needs the "%s" role in the club.', $role->value));
         }
+    }
+
+    /** Looks the club up by id and checks the role; a missing id and a non-member are the same "not found". */
+    public function club(string $id, ClubRole $role): Club
+    {
+        $club = $this->em->find(Club::class, $id);
+        if (null === $club) {
+            throw new ToolCallException('Club not found.');
+        }
+        $this->requireRole($club, $role);
+
+        return $club;
+    }
+
+    public function calendar(string $id, ClubRole $role): Calendar
+    {
+        $calendar = $this->em->find(Calendar::class, $id);
+        if (null === $calendar) {
+            throw new ToolCallException('Calendar not found.');
+        }
+        $this->requireRole($calendar, $role);
+
+        return $calendar;
+    }
+
+    /** True when the caller is a member with at least this role (no exception; for optional content such as drafts). */
+    public function hasRole(Club|Calendar $subject, ClubRole $role): bool
+    {
+        return $this->membership($subject)?->getRole()->atLeast($role) ?? false;
+    }
+
+    /**
+     * Runs a service call and turns the API's HTTP errors into tool errors (code and field kept in the message).
+     *
+     * @template T
+     *
+     * @param callable(): T $call
+     *
+     * @return T
+     *
+     * @throws ToolCallException
+     */
+    public function run(callable $call): mixed
+    {
+        try {
+            return $call();
+        } catch (ApiProblemException $e) {
+            throw new ToolCallException(sprintf('%s [%s%s]', $e->getMessage(), $e->getErrorCode(), $e->getField() ? ', field '.$e->getField() : ''), 0, $e);
+        } catch (HttpExceptionInterface $e) {
+            throw new ToolCallException(404 === $e->getStatusCode() ? $e->getMessage() : sprintf('Request failed (%d).', $e->getStatusCode()), 0, $e);
+        }
+    }
+
+    private function membership(Club|Calendar $subject): ?ClubUser
+    {
+        $club = $subject instanceof Club ? $subject : $subject->getClub();
+
+        return $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $club, 'user' => $this->user()]);
     }
 }
