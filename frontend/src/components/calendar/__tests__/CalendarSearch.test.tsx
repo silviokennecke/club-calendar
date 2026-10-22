@@ -53,6 +53,18 @@ describe("CalendarSearch", () => {
     await waitFor(() => expect(input).toHaveAttribute("aria-expanded", "false"));
   });
 
+  it("marks draft results", async () => {
+    apiGetWithTotal.mockResolvedValue({
+      data: [{ ...event("e1", "Entwurf"), isDraft: true }, event("e2", "Fest")],
+      total: 2,
+    });
+    const { user } = setup();
+    await user.type(screen.getByRole("combobox"), "Fe");
+    const draft = await screen.findByRole("option", { name: /Entwurf/ });
+    expect(draft.querySelector('[data-status="draft"]')).not.toBeNull();
+    expect(screen.getByRole("option", { name: /Fest/ }).querySelector("[data-status]")).toBeNull();
+  });
+
   it("shows the empty state and closes with Escape", async () => {
     apiGetWithTotal.mockResolvedValue({ data: [], total: 0 });
     const { user } = setup();

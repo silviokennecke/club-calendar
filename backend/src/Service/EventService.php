@@ -42,7 +42,7 @@ readonly class EventService
      */
     public const SEARCH_MAX_LENGTH = 100;
 
-    public function listEvents(Calendar $calendar, ?\DateTimeImmutable $from, ?\DateTimeImmutable $to, ?array $targetGroupIds, int $limit = self::LIST_MAX_LIMIT, int $offset = 0, ?string $search = null): array
+    public function listEvents(Calendar $calendar, ?\DateTimeImmutable $from, ?\DateTimeImmutable $to, ?array $targetGroupIds, int $limit = self::LIST_MAX_LIMIT, int $offset = 0, ?string $search = null, bool $includeDrafts = true): array
     {
         $qb = $this->em->createQueryBuilder()
             ->select('e', 'l', 't')
@@ -55,6 +55,9 @@ readonly class EventService
             ->addOrderBy('e.timeBegin', 'ASC')
             ->addOrderBy('e.id', 'ASC');
 
+        if (!$includeDrafts) {
+            $qb->andWhere('e.isDraft = false');
+        }
         if (null !== $from) {
             // Overlap: multi-day events that started before the range but reach into it are included
             $qb->andWhere('COALESCE(e.dateEnd, e.date) >= :from')->setParameter('from', $from, Types::DATE_IMMUTABLE);

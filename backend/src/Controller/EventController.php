@@ -59,6 +59,7 @@ class EventController extends AbstractApiController
      * Events of the calendar, sorted. `from`/`to` (YYYY-MM-DD, overlap, at most EventService::LIST_MAX_RANGE_DAYS
      * apart), `targetGroupIds` (comma-separated), `limit` (1..LIST_MAX_LIMIT, default LIST_MAX_LIMIT) and `offset`.
      * Body: plain list; `X-Total-Count`: number of all matches.
+     * Drafts are only returned to editors and admins; viewers never see them.
      */
     #[Route('', methods: ['GET'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
@@ -84,7 +85,7 @@ class EventController extends AbstractApiController
             throw Input::invalid('q', sprintf('q must be at most %d characters', EventService::SEARCH_MAX_LENGTH));
         }
 
-        $page = $this->eventService->listEvents($calendar, $from, $to, $tgIds ?: null, $limit, $offset, '' === $q ? null : $q);
+        $page = $this->eventService->listEvents($calendar, $from, $to, $tgIds ?: null, $limit, $offset, '' === $q ? null : $q, $this->isGranted(CalendarMemberVoter::CALENDAR_EDITOR, $calendar));
 
         // The body stays a plain list; the total of all matches (before limit/offset) is in a header
         return new JsonResponse($page['items'], 200, ['X-Total-Count' => (string) $page['total']]);

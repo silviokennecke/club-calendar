@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller;
 
+use App\Enum\ClubRole;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
@@ -134,5 +135,24 @@ class EventSearchTest extends WebTestCase
         $r = $this->search($base, $auth, 'q[]=x');
         $this->assertSame(400, $r['status']);
         $this->assertSame('q', $r['body']['field']);
+    }
+
+    public function testDraftsOnlyForEditorsAndAdmins(): void
+    {
+        ['auth' => $auth, 'base' => $base, 'club' => $club] = $this->prepare();
+        $this->create($base, $auth, ['name' => 'Pokal offen', 'isDraft' => true]);
+        $this->create($base, $auth, ['name' => 'Pokal fertig', 'date' => '2026-10-04', 'isDraft' => false]);
+
+        $r = $this->search($base, $auth, 'q=pokal');
+        $this->assertSame(['Pokal offen', 'Pokal fertig'], $r['names']);
+        $this->assertSame('2', $r['total']);
+
+        foreach ([[ClubRole::EDITOR, 2], [ClubRole::VIEWER, 1]] as [$role, $count]) {
+            $member = TestHelper::createUser(self::$em, self::$hasher);
+            TestHelper::addMember(self::$em, $club, $member, $role);
+            $r = $this->search($base, TestHelper::authHeader($member, self::$tokens), 'q=pokal');
+            $this->assertSame($count, count($r['names']), $role->value);
+            $this->assertSame((string) $count, $r['total']);
+        }
     }
 }
