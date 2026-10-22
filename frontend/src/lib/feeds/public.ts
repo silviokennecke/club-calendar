@@ -202,6 +202,16 @@ export function publicFeedAddresses(
   return { ics, webcal: ics.replace(/^https?:/, "webcal:") };
 }
 
+/** Google Calendar "add by URL" (subscribes to the webcal address). */
+export function googleCalendarUrl(webcal: string): string {
+  return `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}`;
+}
+
+/** Outlook.com "add from web" (takes the https ICS address). */
+export function outlookCalendarUrl(ics: string, name: string): string {
+  return `https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(ics)}&name=${encodeURIComponent(name)}`;
+}
+
 /** In-app address of the public feed; `secret` keeps private feeds reachable, `extra` adds view state. */
 export function publicFeedPath(
   feedId: string,

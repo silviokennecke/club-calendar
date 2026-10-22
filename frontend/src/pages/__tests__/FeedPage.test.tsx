@@ -139,6 +139,14 @@ function Probe() {
   return <div data-testid="location">{loc.pathname + loc.search}</div>;
 }
 
+/** jsdom is "other": the main button copies the https address (user-event stubs the clipboard). */
+async function copiedAddress(): Promise<string> {
+  userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+  fireEvent.click(screen.getByRole("button", { name: "Kalender abonnieren" }));
+  await waitFor(async () => expect(await navigator.clipboard.readText()).not.toBe(""));
+  return navigator.clipboard.readText();
+}
+
 function renderAt(path: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -178,6 +186,7 @@ afterEach(() => {
 
 describe("FeedPage", () => {
   it("shows a loading state first, then the feed with header, language switch and footer", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderAt("/feed/f1");
     expect(screen.getByRole("status")).toHaveTextContent("Kalender wird geladen.");
     expect(await screen.findByRole("heading", { level: 1, name: FEED_NAME })).toBeInTheDocument();
@@ -198,9 +207,22 @@ describe("FeedPage", () => {
     expect(screen.getByText("Bereitgestellt mit Club Calendar")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Oktober 2026" })).toBeInTheDocument();
     // subscribe
-    const sub = screen.getByRole("link", { name: "Kalender abonnieren" });
-    expect(sub.getAttribute("href")).toMatch(/^webcal:\/\/.*\/api\/feed\/f1\/ics$/);
-    expect(screen.getByRole("link", { name: "Als ICS-Datei laden" })).toHaveAttribute("download");
+    expect(screen.getByRole("button", { name: "Kalender abonnieren" })).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Weitere Wege, den Kalender zu abonnieren" }),
+    );
+    for (const name of [
+      "Mit Kalender-App öffnen",
+      "Zu Google Kalender hinzufügen",
+      "Zu Outlook hinzufügen",
+      "Link kopieren",
+      "ICS herunterladen",
+    ])
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Hilfe: So klappt's" })).toHaveAttribute(
+      "href",
+      "/help/subscribe",
+    );
     expect(document.title).toBe(`${FEED_NAME} – Öffentlicher Kalender`);
   });
 
@@ -244,9 +266,7 @@ describe("FeedPage", () => {
       expect.stringContaining("noindex"),
     );
     // the subscribe address carries the secret (that is its purpose)
-    expect(
-      screen.getByRole("link", { name: "Kalender abonnieren" }).getAttribute("href"),
-    ).toContain(`secret=${SECRET}`);
+    expect(await copiedAddress()).toContain(`secret=${SECRET}`);
   });
 
   it.each([
@@ -287,7 +307,7 @@ describe("FeedPage", () => {
     expect(
       await screen.findByRole("heading", { name: "Noch keine Termine veröffentlicht" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Kalender abonnieren" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Kalender abonnieren" })).toBeInTheDocument();
   });
 
   it("explains a private feed (403) with a heading and no calendar", async () => {
@@ -353,9 +373,7 @@ describe("FeedPage", () => {
     expect(chip).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("Zeige 1 von 3 Terminen")).toBeInTheDocument();
     expect(screen.getByText("Dein Abo übernimmt diese Auswahl.")).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Kalender abonnieren" }).getAttribute("href"),
-    ).toContain("targetGroupIds=tg-e");
+    expect(await copiedAddress()).toContain("targetGroupIds=tg-e");
     expect(screen.getByTestId("location")).toHaveTextContent("groups=tg-e");
     await user.click(screen.getByRole("button", { name: "Filter zurücksetzen" }));
     expect(screen.getByText("Zeige 3 von 3 Terminen")).toBeInTheDocument();

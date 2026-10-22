@@ -202,7 +202,17 @@
     "loading": "Loading calendar.",
     "timeZoneNote": "All times are in the club's time zone ({{zone}}).",
     "subscribe": "Subscribe to calendar",
-    "downloadIcs": "Download ICS file",
+    "subscribeMenu": {
+      "label": "More ways to subscribe to the calendar",
+      "app": "Open with calendar app",
+      "google": "Add to Google Calendar",
+      "outlook": "Add to Outlook",
+      "copy": "Copy link",
+      "download": "Download ICS",
+      "help": "Help: how to subscribe",
+      "copied": "Link copied",
+      "copyFailed": "Could not copy the link"
+    },
     "view": {
       "label": "View",
       "month": "Month",
