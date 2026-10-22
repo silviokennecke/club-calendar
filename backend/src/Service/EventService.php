@@ -40,7 +40,9 @@ readonly class EventService
      *
      * @return array{items: list<array<string, mixed>>, total: int}
      */
-    public function listEvents(Calendar $calendar, ?\DateTimeImmutable $from, ?\DateTimeImmutable $to, ?array $targetGroupIds, int $limit = self::LIST_MAX_LIMIT, int $offset = 0): array
+    public const SEARCH_MAX_LENGTH = 100;
+
+    public function listEvents(Calendar $calendar, ?\DateTimeImmutable $from, ?\DateTimeImmutable $to, ?array $targetGroupIds, int $limit = self::LIST_MAX_LIMIT, int $offset = 0, ?string $search = null): array
     {
         $qb = $this->em->createQueryBuilder()
             ->select('e', 'l', 't')
@@ -63,6 +65,11 @@ readonly class EventService
         if ($targetGroupIds) {
             $qb->andWhere('EXISTS (SELECT etg FROM App\Entity\EventTargetGroup etg WHERE etg.event = e AND etg.targetGroup IN (:tgIds))')
                ->setParameter('tgIds', $targetGroupIds);
+        }
+        if (null !== $search) {
+            // EXISTS for features: a join would duplicate events with several matching features
+            $qb->andWhere('(LOWER(e.name) LIKE :q OR LOWER(e.note) LIKE :q OR LOWER(l.name) LIKE :q OR EXISTS (SELECT ef FROM App\Entity\EventFeature ef JOIN ef.feature f WHERE ef.event = e AND LOWER(f.name) LIKE :q))')
+               ->setParameter('q', '%'.addcslashes(mb_strtolower($search), '%_\\').'%');
         }
 
         $count = clone $qb;

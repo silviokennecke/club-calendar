@@ -75,7 +75,16 @@ class EventController extends AbstractApiController
         $limit = Input::optionalInt($query['limit'] ?? null, 'limit', 1, EventService::LIST_MAX_LIMIT) ?? EventService::LIST_MAX_LIMIT;
         $offset = Input::optionalInt($query['offset'] ?? null, 'offset', 0, PHP_INT_MAX) ?? 0;
 
-        $page = $this->eventService->listEvents($calendar, $from, $to, $tgIds ?: null, $limit, $offset);
+        $q = $query['q'] ?? null;
+        if (null !== $q && !is_string($q)) {
+            throw Input::invalid('q', 'q must be a string');
+        }
+        $q = trim((string) $q);
+        if (mb_strlen($q) > EventService::SEARCH_MAX_LENGTH) {
+            throw Input::invalid('q', sprintf('q must be at most %d characters', EventService::SEARCH_MAX_LENGTH));
+        }
+
+        $page = $this->eventService->listEvents($calendar, $from, $to, $tgIds ?: null, $limit, $offset, '' === $q ? null : $q);
 
         // The body stays a plain list; the total of all matches (before limit/offset) is in a header
         return new JsonResponse($page['items'], 200, ['X-Total-Count' => (string) $page['total']]);
