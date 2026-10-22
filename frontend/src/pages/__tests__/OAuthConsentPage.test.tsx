@@ -107,6 +107,14 @@ describe("OAuthConsentPage", () => {
     expect(await screen.findByText("Anfrage abgelaufen")).toBeInTheDocument();
   });
 
+  it("switches to the expired state when the decision finds no request", async () => {
+    apiPost.mockRejectedValue(new ApiError("x", 404, "authorization_request_not_found"));
+    await renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: "Erlauben" }));
+    expect(await screen.findByText("Anfrage abgelaufen")).toBeInTheDocument();
+    expect(assign).not.toHaveBeenCalled();
+  });
+
   it("shows the expired state without a request id", async () => {
     await renderPage("/oauth/consent");
     expect(await screen.findByText("Anfrage abgelaufen")).toBeInTheDocument();

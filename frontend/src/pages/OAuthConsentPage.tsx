@@ -143,7 +143,7 @@ export default function OAuthConsentPage() {
           {write && <p className="t-sm t-muted">{t("oauth.consent.writeNote")}</p>}
         </div>
 
-        {failure && failure !== "expired" && (
+        {failure && (
           <Banner tone="danger" title={t("oauth.consent.errorTitle")}>
             {t(`oauth.consent.problem.${failure}`)}{" "}
             {failure === "quota" && (
