@@ -1852,13 +1852,7 @@
     "deleteLabel": "Feed „{{name}}“ löschen",
     "access": {
       "secret": "Geheimnis",
-      "secretHint": "Das Geheimnis ist Teil jeder Adresse dieses Feeds.",
-      "secretWarning": "Gib die Adressen nur an Personen weiter, die diesen Kalender sehen sollen. Wer das Geheimnis kennt, kann den Feed lesen.",
-      "ics": "ICS-Adresse",
-      "icsHint": "Für Kalender-Apps und Programme, die eine Internetadresse abonnieren.",
-      "webcal": "Abo-Adresse (webcal)",
-      "webcalOpen": "Im Kalender-App öffnen",
-      "webcalHint": "Öffnet direkt deine Kalender-App und richtet das Abo ein.",
+      "secretWarning": "Gib den Link nur an Personen weiter, die diesen Kalender sehen sollen. Wer den Link kennt, kann den Feed lesen.",
       "web": "Adresse der Webansicht",
       "webOpen": "Öffnen",
       "webHint": "Die Seite für Mitglieder und Gäste, ohne Anmeldung."
@@ -1866,7 +1860,7 @@
     "delete": {
       "title": "Feed „{{name}}“ löschen?",
       "text": "Der Feed wird dauerhaft gelöscht.",
-      "consequence": "Die drei Adressen funktionieren danach nicht mehr. Wer den Feed abonniert hat, bekommt keine Updates mehr.",
+      "consequence": "Der Link zum Feed funktioniert danach nicht mehr. Wer den Feed abonniert hat, bekommt keine Updates mehr.",
       "confirm": "Feed löschen",
       "done": "Feed „{{name}}“ gelöscht.",
       "failed": "Der Feed konnte nicht gelöscht werden. Bitte versuche es erneut."
@@ -1928,7 +1922,7 @@
       "audiencesNone": "In diesem Verein gibt es noch keine Gruppen. Der Feed enthält alle Termine.",
       "audiencesError": "Die Gruppen konnten nicht geladen werden.",
       "access": "Zugänge",
-      "accessNew": "Die drei Adressen (ICS, Abo und Webansicht) erscheinen hier, sobald du den Feed gespeichert hast.",
+      "accessNew": "Der Link zur Seite des Feeds erscheint hier, sobald du den Feed gespeichert hast.",
       "save": "Feed speichern",
       "saving": "Speichern …",
       "delete": "Feed löschen",

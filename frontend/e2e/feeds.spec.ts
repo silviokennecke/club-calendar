@@ -77,7 +77,7 @@ test.describe("Veröffentlichen", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Feed anlegen" })).toBeFocused();
   });
 
-  test("Feedliste: Sichtbarkeit als Wort, Zugänge, maskiertes Geheimnis, ICS-Abruf", async ({
+  test("Feedliste: Sichtbarkeit als Wort, Link zur Seite, Geheimnis im Link", async ({
     page,
     request,
   }) => {
@@ -105,47 +105,31 @@ test.describe("Veröffentlichen", () => {
     );
 
     // Der erste Feed ist geöffnet, der zweite nicht
-    const ics = pub.getByLabel("ICS-Adresse");
-    await expect(ics).toBeVisible();
-    await expect(priv.getByLabel("ICS-Adresse")).toHaveCount(0);
-    const icsUrl = await ics.inputValue();
-    expect(icsUrl).toContain("/api/feed/");
-    expect(icsUrl).not.toContain("secret=");
-    await expect(pub.getByLabel("Abo-Adresse (webcal)")).toHaveValue(/^webcal:\/\//);
-    await expect(pub.getByLabel("Adresse der Webansicht")).toHaveValue(/\/feed\//);
-    const res = await request.get(icsUrl);
-    expect(res.status()).toBe(200);
-    expect(res.headers()["content-type"]).toContain("text/calendar");
+    const web = pub.getByLabel("Adresse der Webansicht");
+    await expect(web).toBeVisible();
+    await expect(priv.getByLabel("Adresse der Webansicht")).toHaveCount(0);
+    const webUrl = await web.inputValue();
+    expect(webUrl).toMatch(/\/feed\//);
+    expect(webUrl).not.toContain("secret=");
+    await expect(pub.getByLabel("ICS-Adresse")).toHaveCount(0);
+    await expect(pub.getByLabel("Abo-Adresse (webcal)")).toHaveCount(0);
 
-    // Privater Feed: Geheimnis ist maskiert und nur auf Wunsch sichtbar
+    // Privater Feed: der Link trägt das Geheimnis, dazu die Warnung
     await priv.getByRole("button", { name: "Zugänge anzeigen" }).click();
-    const secret = priv.getByRole("textbox", { name: "Geheimnis" });
-    await expect(secret).toHaveValue(/^•{16,}$/);
-    await priv.getByRole("button", { name: "Geheimnis anzeigen" }).click();
-    const secretValue = await secret.inputValue();
-    expect(secretValue).toMatch(/^[0-9a-f]{32}$/);
-    await expect(priv.getByRole("button", { name: "Geheimnis verbergen" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    await expect(priv.getByText(/Wer das Geheimnis kennt, kann den Feed lesen/)).toBeVisible();
-    const privIcs = await priv.getByLabel("ICS-Adresse").inputValue();
-    expect(privIcs).toContain(`secret=${secretValue}`);
-    expect((await request.get(privIcs)).status()).toBe(200);
-    expect((await request.get(privIcs.replace(secretValue, "falsch"))).status()).not.toBe(200);
+    await expect(priv.getByRole("textbox", { name: "Geheimnis" })).toHaveCount(0);
+    await expect(priv.getByText(/Wer den Link kennt, kann den Feed lesen/)).toBeVisible();
+    const privWeb = await priv.getByLabel("Adresse der Webansicht").inputValue();
+    expect(privWeb).toMatch(/secret=[0-9a-f]{32}$/);
 
     // Kopieren: Rückmeldung sichtbar und per Statusmeldung angekündigt
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-    // Each address field has its own copy button; the ICS field is not the first one.
-    const icsField = pub
-      .getByLabel("ICS-Adresse")
-      .locator("xpath=ancestor::div[contains(@class,'ap-stack--sm')][1]");
-    await icsField.getByRole("button", { name: "Kopieren" }).click();
-    await expect(icsField.getByRole("button", { name: "Kopiert" })).toBeVisible();
+    const webField = web.locator("xpath=ancestor::div[contains(@class,'ap-stack--sm')][1]");
+    await webField.getByRole("button", { name: "Kopieren" }).click();
+    await expect(webField.getByRole("button", { name: "Kopiert" })).toBeVisible();
     await expect(
-      icsField.getByRole("status").filter({ hasText: "wurde in die Zwischenablage kopiert" }),
+      webField.getByRole("status").filter({ hasText: "wurde in die Zwischenablage kopiert" }),
     ).toHaveCount(1);
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(icsUrl);
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(webUrl);
   });
 
   test("Feed anlegen: Validierung, privat mit Gruppe, danach geöffnet in der Liste", async ({
@@ -185,7 +169,7 @@ test.describe("Veröffentlichen", () => {
     // Der neue Feed ist aufgeklappt, mit Geheimnis
     const card = page.getByRole("region", { name: "Jugend-Abo" });
     await expect(card.locator(".ap-badge")).toHaveText("Privat");
-    await expect(card.getByLabel("ICS-Adresse")).toHaveValue(/secret=/);
+    await expect(card.getByLabel("Adresse der Webansicht")).toHaveValue(/secret=/);
     await expect(card.getByRole("group", { name: "Gruppen von Jugend-Abo" })).toContainText(
       "Jugend",
     );
@@ -270,17 +254,14 @@ test.describe("Veröffentlichen", () => {
 
     // Adressen: nur per Link ohne, privat mit Geheimnis
     const club = page.getByRole("region", { name: "Mitglieder" });
-    if ((await club.getByLabel("ICS-Adresse").count()) === 0)
+    if ((await club.getByLabel("Adresse der Webansicht").count()) === 0)
       await club.getByRole("button", { name: "Zugänge anzeigen" }).click();
     const clubWeb = await club.getByLabel("Adresse der Webansicht").inputValue();
     expect(clubWeb).not.toContain("secret=");
-    expect((await request.get(await club.getByLabel("ICS-Adresse").inputValue())).status()).toBe(
-      200,
-    );
     const priv = page.getByRole("region", { name: "Vorstand" });
-    if ((await priv.getByLabel("ICS-Adresse").count()) === 0)
+    if ((await priv.getByLabel("Adresse der Webansicht").count()) === 0)
       await priv.getByRole("button", { name: "Zugänge anzeigen" }).click();
-    await expect(priv.getByLabel("ICS-Adresse")).toHaveValue(/secret=[0-9a-f]{32}$/);
+    await expect(priv.getByLabel("Adresse der Webansicht")).toHaveValue(/secret=[0-9a-f]{32}$/);
 
     // Webansicht: nur per Link noindex, öffentlich ohne
     await page.goto(new URL(clubWeb).pathname);
