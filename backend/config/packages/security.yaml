@@ -37,6 +37,9 @@ security:
         - { path: ^/api/map/geocode/, roles: IS_AUTHENTICATED }
         # Tile/style/font proxy: signed-in users only (the public feed uses the static images /api/map/image/*).
         - { path: ^/api/mapbox/, roles: IS_AUTHENTICATED }
+        # OAuth server for MCP clients: metadata, registration, token, revocation (and the authorize redirect) are public;
+        # the tokens/credentials in the request are the authentication.
+        - { path: ^/api/oauth/, roles: PUBLIC_ACCESS }
 
 when@test:
     security:

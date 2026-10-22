@@ -46,6 +46,8 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $invitationClub,
         #[Autowire(service: 'limiter.invitation_email')]
         private readonly RateLimiterFactory $invitationEmail,
+        #[Autowire(service: 'limiter.oauth_register_ip')]
+        private readonly RateLimiterFactory $oauthRegisterIp,
     ) {
     }
 
@@ -125,6 +127,12 @@ class AuthRateLimiter
     public function allowInvitationMail(string $email): bool
     {
         return $this->invitationEmail->create(self::normalize($email))->consume()->isAccepted();
+    }
+
+    /** OAuth dynamic client registration: 10 per client IP and hour. */
+    public function assertClientRegistrationAllowed(Request $request): void
+    {
+        self::assertAccepted($this->oauthRegisterIp->create(self::ip($request))->consume());
     }
 
     public static function normalize(string $email): string
