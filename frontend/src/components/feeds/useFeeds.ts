@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { BACKEND_URL, apiGet } from "@/lib/api";
+import { apiGet } from "@/lib/api";
 import { audienceTone } from "@/components/calendar/eventDisplay";
 import { feedAddresses } from "@/lib/feeds";
 import type { CalendarFeed, TargetGroup } from "@/lib/types";
@@ -26,7 +26,7 @@ export function useFeeds(clubId: string, { withList = true }: { withList?: boole
     /** Audience tag tone: by position in the audience list, like everywhere else. */
     toneOf: (id: string) => audienceTone(groupList.findIndex((g) => g.id === id)),
     nameOf: (id: string) => groupList.find((g) => g.id === id)?.name,
-    addresses: (feed: CalendarFeed) => feedAddresses(feed, BACKEND_URL, window.location.origin),
+    addresses: (feed: CalendarFeed) => feedAddresses(feed, window.location.origin),
   };
 }
 

@@ -26,29 +26,19 @@ const feed = (over: Partial<CalendarFeed> = {}): CalendarFeed => ({
 });
 
 describe("feedAddresses", () => {
-  it("builds the three addresses of a public feed without the secret", () => {
-    const a = feedAddresses(feed(), "https://api.example.org/", "https://app.example.org");
-    expect(a.ics).toBe("https://api.example.org/api/feed/f1/ics");
-    expect(a.webcal).toBe("webcal://api.example.org/api/feed/f1/ics");
+  it("builds the web address of a public feed without the secret", () => {
+    const a = feedAddresses(feed(), "https://app.example.org/");
     expect(a.web).toBe("https://app.example.org/feed/f1");
   });
-  it("builds the addresses of a club internal feed without the secret", () => {
-    const a = feedAddresses(
-      feed({ visibility: "CLUB" }),
-      "https://api.example.org",
-      "https://app.example.org",
-    );
-    expect(a.ics).toBe("https://api.example.org/api/feed/f1/ics");
+  it("builds the web address of a club internal feed without the secret", () => {
+    const a = feedAddresses(feed({ visibility: "CLUB" }), "https://app.example.org");
     expect(a.web).toBe("https://app.example.org/feed/f1");
   });
-  it("puts the secret into every address of a private feed", () => {
+  it("puts the secret into the address of a private feed", () => {
     const a = feedAddresses(
       feed({ visibility: "PRIVATE", sharedSecret: "k7 Q/x" }),
-      "http://localhost:3001",
       "http://localhost:5199",
     );
-    expect(a.ics).toBe("http://localhost:3001/api/feed/f1/ics?secret=k7%20Q%2Fx");
-    expect(a.webcal).toBe("webcal://localhost:3001/api/feed/f1/ics?secret=k7%20Q%2Fx");
     expect(a.web).toBe("http://localhost:5199/feed/f1?secret=k7%20Q%2Fx");
   });
 });

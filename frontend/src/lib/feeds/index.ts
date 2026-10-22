@@ -14,32 +14,22 @@ export function requiresSecret(visibility: FeedVisibility): boolean {
 }
 
 export interface FeedAddresses {
-  /** Subscribe address for calendar apps (ICS). */
-  ics: string;
-  /** Same address with the webcal scheme: opens the calendar app directly. */
-  webcal: string;
   /** Web page without sign-in (route `/feed/:id`). */
   web: string;
 }
 
 /**
- * The three addresses of a feed. Private feeds carry their secret in every address
- * (`?secret=`), public and club feeds never do.
+ * The address of a feed. Private feeds carry their secret in it (`?secret=`), public and club
+ * feeds never do.
  */
 export function feedAddresses(
   feed: Pick<CalendarFeed, "id" | "visibility" | "sharedSecret">,
-  apiUrl: string,
   origin: string,
 ): FeedAddresses {
   const query = requiresSecret(feed.visibility)
     ? `?secret=${encodeURIComponent(feed.sharedSecret)}`
     : "";
-  const ics = `${apiUrl.replace(/\/+$/, "")}/api/feed/${feed.id}/ics${query}`;
-  return {
-    ics,
-    webcal: ics.replace(/^https?:/, "webcal:"),
-    web: `${origin.replace(/\/+$/, "")}/feed/${feed.id}${query}`,
-  };
+  return { web: `${origin.replace(/\/+$/, "")}/feed/${feed.id}${query}` };
 }
 
 /** Ids of the audiences a feed is limited to (empty = all audiences). */
