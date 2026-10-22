@@ -9,3 +9,7 @@ oauth_server:
         path: '../src/OAuth/'
         namespace: App\OAuth
     type: attribute
+
+mcp:
+    resource: .
+    type: mcp
