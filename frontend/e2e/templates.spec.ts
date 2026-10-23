@@ -232,15 +232,18 @@ test.describe("Vorlagen", () => {
     await expect(page.getByRole("dialog").getByLabel(/^Name/)).toHaveValue("Jahresschießen");
     await expect(page.getByRole("textbox", { name: /^Startzeit/ })).toHaveValue("10:00");
     await expect(page.getByRole("textbox", { name: /^Endzeit/ })).toHaveValue("16:30");
-    for (const name of [/Schützentracht/, "Bonusschießen", "Jugend", "Erwachsene"]) {
-      await expect(page.getByRole("button", { name })).toHaveAttribute("aria-pressed", "true");
+    // Assigned entries only: the combobox variant lists chips for what the event has.
+    for (const [group, name] of [
+      ["Besonderheiten", /Schützentracht/],
+      ["Zusatzangebote", "Bonusschießen"],
+      ["Gruppen", "Jugend"],
+      ["Gruppen", "Erwachsene"],
+    ] as const) {
+      await expect(
+        page.getByRole("group", { name: group }).getByRole("button", { name }),
+      ).toHaveAttribute("aria-pressed", "true");
     }
-    await expect(
-      page
-        .locator("select")
-        .filter({ has: page.locator("option", { hasText: "Vereinsheim Mitte" }) })
-        .first(),
-    ).toHaveValue(events[0].location.id);
+    await expect(page.getByRole("combobox", { name: /^Ort/ })).toHaveValue("Vereinsheim Mitte");
   });
 
   test("Mobile Breite: Vorlagenliste und Formular", async ({ page, request }) => {

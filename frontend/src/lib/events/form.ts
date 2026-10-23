@@ -162,6 +162,11 @@ export function validateEvent(v: EventFormValues): EventFormError[] {
   return errors;
 }
 
+/** Pure validity of the whole form: drives the save button at all times. */
+export function isEventValid(v: EventFormValues): boolean {
+  return validateEvent(v).length === 0;
+}
+
 /** True when an end date after the start date is set. */
 export function isMultiDayValues(v: Pick<EventFormValues, "date" | "dateEnd">): boolean {
   return !!v.dateEnd && isValidIso(v.dateEnd) && isValidIso(v.date) && v.dateEnd > v.date;

@@ -7,6 +7,7 @@ import {
   NOTE_MAX,
   toEventPayload,
   validateEvent,
+  isEventValid,
   valuesFromEvent,
   valuesFromTemplate,
   type EventFormValues,
@@ -341,5 +342,19 @@ describe("applyTemplateToValues", () => {
     expect(
       applyTemplateToValues(current, { ...tpl, locationId: null, location: loc }).locationId,
     ).toBe("l2");
+  });
+});
+
+describe("isEventValid", () => {
+  it("mirrors validateEvent", () => {
+    const ok = {
+      ...emptyEventValues("2026-10-14"),
+      name: "A",
+      timeBegin: "10:00",
+      timeEnd: "11:00",
+    };
+    expect(isEventValid(ok)).toBe(true);
+    expect(isEventValid({ ...ok, name: " " })).toBe(false);
+    expect(isEventValid({ ...ok, timeEnd: "09:00" })).toBe(false);
   });
 });

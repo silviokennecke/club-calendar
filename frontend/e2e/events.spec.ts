@@ -127,13 +127,13 @@ test.describe("Termine", () => {
     await expect(page.getByLabel("Name (Pflicht)")).toBeFocused();
     await expect(page).toHaveURL(/\/events\/new\/form$/);
 
-    await page.getByRole("button", { name: "Termin speichern" }).click();
-    const summary = page
-      .getByRole("alert")
-      .filter({ hasText: "Der Termin ist noch nicht vollständig." });
-    await expect(summary).toBeFocused();
-    await summary.getByRole("link", { name: "Bitte gib einen Namen ein." }).click();
-    await expect(page.getByLabel("Name (Pflicht)")).toBeFocused();
+    // Invalid form: save is disabled with a reason; errors show once a field was left.
+    const save = page.getByRole("button", { name: "Termin speichern" });
+    await expect(save).toBeDisabled();
+    await expect(save).toHaveAccessibleDescription(/Bitte gib einen Namen ein\./);
+    await page.getByLabel("Name (Pflicht)").focus();
+    await page.getByLabel("Startdatum (Pflicht)").focus();
+    await expect(page.getByText("Bitte gib einen Namen ein.").first()).toBeVisible();
 
     await page.getByLabel("Name (Pflicht)").fill("Herbstfest");
     await page.getByLabel("Startdatum (Pflicht)").fill("2026-10-24");
