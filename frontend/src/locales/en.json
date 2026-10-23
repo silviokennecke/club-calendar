@@ -481,7 +481,22 @@
         "drafted_other": "{{count}} events marked as draft.",
         "undo": "Undo",
         "undone": "Change undone.",
-        "failed": "The events could not be changed. Nothing was changed. Please try again."
+        "failed": "The events could not be changed. Nothing was changed. Please try again.",
+        "visibility": "Visibility",
+        "assigned_one": "1 event updated.",
+        "assigned_other": "{{count}} events updated.",
+        "assign": {
+          "label": "Assign",
+          "search": "Search assignments",
+          "targetGroups": "Target groups",
+          "properties": "Properties",
+          "features": "Features",
+          "none": "Nothing found.",
+          "hint": "Added to the events. Existing assignments are kept.",
+          "apply_zero": "Add",
+          "apply_one": "Add 1 assignment",
+          "apply_other": "Add {{count}} assignments"
+        }
       },
       "sort": {
         "asc": "{{col}}: sort ascending",
@@ -580,20 +595,19 @@
       },
       "place": {
         "label": "Location",
-        "none": "No location selected",
         "noAddress": "No address yet",
-        "fix": "Correct position",
-        "fixHint": "Drag the marker on the map or click into the map.",
         "create": "Create new location",
-        "newName": "Name of the new location",
-        "newPlaceholder": "e.g. Linden Inn…",
-        "createAndAssign": "Create and assign location",
         "empty": "Choose a location to see it on the map here.",
         "map": "Map showing {{name}}",
-        "noPosition": "This location has no position yet. Use “Correct position” to set it on the map.",
-        "positionSaved": "Position saved.",
-        "positionFailed": "The position could not be saved.",
-        "createFailed": "The location could not be created."
+        "noPosition": "This location has no position yet. You can add one under “Locations” in the settings.",
+        "createFailed": "The location could not be created.",
+        "placeholder": "Search for a location…",
+        "dialog": {
+          "title": "New location",
+          "description": "Enter name, address and position of the new location.",
+          "save": "Create location",
+          "failedText": "Check your connection and try again."
+        }
       },
       "properties": "Properties",
       "createProperty": "Create new property",

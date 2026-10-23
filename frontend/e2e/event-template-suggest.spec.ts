@@ -66,10 +66,7 @@ async function expectTemplateApplied(page: Page) {
   await expect(nameField(page)).toHaveValue("Training Luftgewehr");
   await expect(page.getByRole("textbox", { name: "Startzeit (Pflicht)" })).toHaveValue("19:00");
   await expect(page.getByRole("textbox", { name: "Endzeit (Pflicht)" })).toHaveValue("21:00");
-  await expect(page.getByRole("combobox", { name: /^Ort/ })).toHaveValue(/.+/);
-  await expect(page.getByRole("combobox", { name: /^Ort/ }).locator("option:checked")).toHaveText(
-    "Schützenhaus Waldblick",
-  );
+  await expect(page.getByRole("combobox", { name: /^Ort/ })).toHaveValue("Schützenhaus Waldblick");
   await expect(
     page
       .getByRole("group", { name: "Besonderheiten" })
@@ -242,7 +239,7 @@ test.describe("Vorlagenvorschläge im Termin-Formular", () => {
     await expect(page.getByRole("textbox", { name: "Startzeit (Pflicht)" })).toHaveValue("19:00");
     await expect(page.getByRole("textbox", { name: "Endzeit (Pflicht)" })).toHaveValue("21:00");
     await expect(page.getByLabel(/^Notiz/)).toHaveValue("Bitte Hausschuhe mitbringen.");
-    await expect(page.getByRole("combobox", { name: /^Ort/ }).locator("option:checked")).toHaveText(
+    await expect(page.getByRole("combobox", { name: /^Ort/ })).toHaveValue(
       "Schützenhaus Waldblick",
     );
     await expect(

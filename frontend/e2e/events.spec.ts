@@ -141,9 +141,8 @@ test.describe("Termine", () => {
     await page.getByLabel(/^Notiz/).fill("Bitte Hausschuhe mitbringen.\nBeginn 15 Uhr.");
     await page.getByRole("checkbox", { name: /Ganztägig/ }).check();
     await expect(page.getByLabel("Startzeit")).toHaveCount(0);
-    await page
-      .getByRole("combobox", { name: /^Ort/ })
-      .selectOption({ label: "Schützenhaus Waldblick" });
+    await page.getByRole("combobox", { name: /^Ort/ }).fill("Schützen");
+    await page.getByRole("option", { name: /Schützenhaus Waldblick/ }).click();
     await page
       .getByRole("group", { name: "Gruppen" })
       .getByRole("button", { name: "Jugend" })

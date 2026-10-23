@@ -2412,11 +2412,14 @@ paths:
       - { $ref: '#/components/parameters/CalendarId' }
     post:
       tags: [Events]
-      summary: Publish, unpublish or delete several events
+      summary: Publish, unpublish, delete or assign several events
       description: >-
         All or nothing in one transaction. Every id must belong to the calendar (unknown and foreign ids alike → 422
         `unknown_reference` field `ids`, nothing happens); duplicate ids count once. At most 5000 ids (413
-        `too_many_events`). Series left without events are removed.
+        `too_many_events`). Series left without events are removed. Action `assign` adds the given target groups
+        (club-scoped), features and properties (calendar-scoped) to every event and keeps existing assignments
+        (duplicates are ignored); at least one of the three lists is required (400 otherwise), unknown or foreign
+        ids are 422 `unknown_reference` with the list's field.
       operationId: bulkEvents
       requestBody:
         required: true
@@ -2427,7 +2430,10 @@ paths:
               required: [ids, action]
               properties:
                 ids: { type: array, minItems: 1, maxItems: 5000, items: { type: string, maxLength: 36 } }
-                action: { type: string, enum: [publish, draft, delete] }
+                action: { type: string, enum: [publish, draft, delete, assign] }
+                targetGroupIds: { type: array, maxItems: 500, items: { type: string }, description: Only for `assign`. }
+                featureIds: { type: array, maxItems: 500, items: { type: string }, description: Only for `assign`. }
+                propertyIds: { type: array, maxItems: 500, items: { type: string }, description: Only for `assign`. }
       responses:
         '200':
           description: Number of events of the request (also when a value did not change).

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPatch, apiPost } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 import type { Feature, Location, Property, TargetGroup } from "@/lib/types";
 
 /**
@@ -56,13 +56,6 @@ export function useEventResources(clubId: string, calendarId: string) {
     createFeature: (name: string) => create<Feature>("calendars", "features", "features", { name }),
     createTargetGroup: (name: string) =>
       create<TargetGroup>("clubs", "target-groups", "targetGroups", { name }),
-    createLocation: (name: string) => create<Location>("clubs", "locations", "locations", { name }),
-    async moveLocation(locationId: string, latitude: number, longitude: number) {
-      await apiPatch(`/api/clubs/${clubId}/locations/${locationId}`, {
-        latitude,
-        longitude,
-      });
-      await qc.invalidateQueries({ queryKey: ["locations", clubId] });
-    },
+    createLocation: (body: object) => create<Location>("clubs", "locations", "locations", body),
   };
 }

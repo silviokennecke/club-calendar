@@ -15,11 +15,15 @@ use App\Entity\Feature;
 use App\Entity\Location;
 use App\Entity\Property;
 use App\Entity\TargetGroup;
+use App\Entity\User;
 use App\Exception\ApiProblemException;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\LockMode;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
 readonly class EventService
 {
@@ -28,6 +32,7 @@ readonly class EventService
         private CalendarReferences $references,
         private Quota $quota,
         private CalendarVersionBumper $versionBumper,
+        private TokenStorageInterface $tokenStorage,
     ) {
     }
 
@@ -380,7 +385,7 @@ readonly class EventService
 
     /** Most ids per bulk request (more → 413 `too_many_events`). */
     public const BULK_MAX = 5000;
-    public const BULK_ACTIONS = ['publish', 'draft', 'delete'];
+    public const BULK_ACTIONS = ['publish', 'draft', 'delete', 'assign'];
 
     /**
      * Publishes, unpublishes or deletes several events of the calendar in one transaction. All ids must
@@ -412,6 +417,8 @@ readonly class EventService
             throw new ApiProblemException(413, sprintf('Maximum %d events per bulk action', self::BULK_MAX), EventImportService::TOO_MANY_CODE, 'ids');
         }
 
+        $assign = 'assign' === $action ? $this->bulkAssignment($calendar, $data) : null;
+
         $found = $this->em->createQueryBuilder()
             ->select('e.id')
             ->from(Event::class, 'e')
@@ -424,6 +431,15 @@ readonly class EventService
         $missing = array_values(array_diff($ids, array_map(fn ($id) => strtolower((string) $id), $found)));
         if ([] !== $missing) {
             throw CalendarReferences::unknown('ids', $missing[0]);
+        }
+
+        if (null !== $assign) {
+            $this->em->wrapInTransaction(function () use ($assign, $ids, $calendar): void {
+                $this->assignLinks($assign, $ids);
+                $this->versionBumper->bumpCalendars([$calendar->getId()]);
+            });
+
+            return ['affected' => count($ids)];
         }
 
         $qb = $this->em->createQueryBuilder();
@@ -450,6 +466,61 @@ readonly class EventService
 
         // `affected` = events of the request (an update to the same value reports no changed row in MySQL)
         return ['affected' => count($ids)];
+    }
+
+    /**
+     * Ids of an `assign` bulk action, resolved within the club/calendar (unknown ids: 422).
+     *
+     * @return list<array{table: string, column: string, ids: list<string>}>
+     */
+    private function bulkAssignment(Calendar $calendar, array $data): array
+    {
+        $groups = Input::idList($data, 'targetGroupIds');
+        $features = Input::idList($data, 'featureIds');
+        $properties = Input::idList($data, 'propertyIds');
+        if ([] === $groups && [] === $features && [] === $properties) {
+            throw Input::invalid('targetGroupIds', 'assign needs at least one of targetGroupIds, featureIds, propertyIds');
+        }
+
+        return [
+            ['table' => 'event_target_group', 'column' => 'target_group_id', 'ids' => array_keys($this->references->findAll(TargetGroup::class, $calendar->getClub(), $groups, 'targetGroupIds'))],
+            ['table' => 'event_feature', 'column' => 'feature_id', 'ids' => array_keys($this->references->findAll(Feature::class, $calendar, $features, 'featureIds'))],
+            ['table' => 'event_property', 'column' => 'property_id', 'ids' => array_keys($this->references->findAll(Property::class, $calendar, $properties, 'propertyIds'))],
+        ];
+    }
+
+    /**
+     * Adds the links to every event (existing ones stay, duplicates are ignored) and stamps the events:
+     * plain SQL bypasses the unit of work and the audit listener.
+     *
+     * @param list<array{table: string, column: string, ids: list<string>}> $assign
+     * @param list<string>                                                  $ids
+     */
+    private function assignLinks(array $assign, array $ids): void
+    {
+        $conn = $this->em->getConnection();
+        foreach ($assign as ['table' => $table, 'column' => $column, 'ids' => $linkIds]) {
+            foreach ($linkIds as $linkId) {
+                foreach (array_chunk($ids, 1000) as $chunk) {
+                    $conn->executeStatement(
+                        sprintf('INSERT IGNORE INTO %s (event_id, %s) SELECT id, ? FROM event WHERE id IN (?)', $table, $column),
+                        [$linkId, $chunk],
+                        [ParameterType::STRING, ArrayParameterType::STRING],
+                    );
+                }
+            }
+        }
+        $user = $this->tokenStorage->getToken()?->getUser();
+        $this->em->createQueryBuilder()
+            ->update(Event::class, 'e')
+            ->set('e.updatedAt', ':at')
+            ->set('e.updatedBy', ':by')
+            ->where('e.id IN (:ids)')
+            ->setParameter('at', new \DateTimeImmutable(), Types::DATETIME_IMMUTABLE)
+            ->setParameter('by', $user instanceof User ? $user : null)
+            ->setParameter('ids', $ids)
+            ->getQuery()
+            ->execute();
     }
 
     private function findEvent(string $id, Calendar $calendar): Event

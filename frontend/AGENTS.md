@@ -186,7 +186,7 @@ operations), `docs/api/openapi.yaml` (API reference).
   target groups and note wherever the template has a value and sets `eventTemplateId`; dates and status are never touched.
   Events of a series (`seriesId` in every event list) carry the tag "Wiederkehrend" (`Tag tone="brand"`) in
   `EventsTable` and `EventItem` (`CalItem.recurring`), not on the month chips; bulk actions treat them like any event.
-  UI in `components/events/` (`EventsTable`, `LocationSection` + lazy `EventLocationMap`, `StatusSeg`,
+  UI in `components/events/` (`EventsTable`, `LocationSection` (location autocomplete, last suggestion "Neuen Ort anlegen" opens `LocationCreateDialog`, a stacked `FormDialog` using `components/locations/LocationFields`; position only via that dialog or the places page; static `LocationImage` map, no mapbox-gl in the event form), `StatusSeg`,
   `CreateGate`, `useEventResources`, `useEventPage`, `ArchivedCreateGuard` for the import / template / feed pages).
 - Import: `…/import` is one page with a Stepper (Datei, Prüfen, Fertig; state in `pages/ImportPage.tsx`,
   UI in `components/import/`: `ImportUpload` file input + drop zone, `ImportReview` bulk panel / groups / summary bar,
@@ -402,6 +402,7 @@ Before writing raw Tailwind layout divs in a page, check `src/components/ui/shar
 | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `Button` / `LinkButton` / `IconButton`          | Buttons (primary, secondary, ghost, danger, danger-solid, ghost-danger)                                                      |
 | `SplitButton`                                   | Primary action + menu of alternatives (e.g. "Termin anlegen")                                                                |
+| `MenuButton`                                    | Button that opens a panel (menu list or popover with controls, e.g. the bulk bar of the event list)                          |
 | `buttonClass()`                                 | Button styling for other elements (e.g. dialog triggers)                                                                     |
 | `Field` + `TextInput`/`TextArea`/`NativeSelect` | Label, hint, error, aria wiring (`group` mode for composite controls)                                                        |
 | `PasswordField`                                 | Password input with show / hide toggle                                                                                       |

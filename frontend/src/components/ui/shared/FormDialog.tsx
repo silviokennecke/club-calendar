@@ -49,6 +49,8 @@ export function FormDialog({
         noValidate
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
+          // React bubbles through portals: keep a dialog opened from inside a form from submitting it.
+          e.stopPropagation();
           onSubmit();
         }}
       >

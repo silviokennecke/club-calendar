@@ -3035,6 +3035,55 @@
       background: var(--surface-sunken);
     }
   }
+  .ap-menubtn {
+    position: relative;
+    display: inline-flex;
+  }
+  .ap-menubtn-up {
+    top: auto;
+    bottom: calc(100% + 4px);
+    right: auto;
+    left: 0;
+    transform-origin: bottom left;
+  }
+  .ap-menubtn-items {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .ap-menubtn-panel button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .ap-menubtn--wide .ap-menubtn-panel {
+    width: min(360px, calc(100vw - 2 * var(--space-4)));
+    padding: var(--space-3);
+    color: var(--ink);
+  }
+  .ap-bulkassign {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .ap-bulkassign-sections {
+    max-height: 260px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .ap-bulkassign-section {
+    border: 0;
+    margin: 0;
+    padding: 0;
+  }
+  .ap-bulkassign-option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--tap-min);
+    font: 500 1rem/1.5rem var(--font-sans);
+  }
   .ap-tiles {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3233,6 +3282,16 @@
     }
     .ap-bulkbar > .ap-actions + .cc-btn {
       margin-left: auto;
+    }
+    .ap-bulk-deltext {
+      display: none;
+    }
+    .ap-bulkbar .ap-menubtn--wide .ap-menubtn-panel {
+      position: fixed;
+      left: var(--space-4);
+      right: var(--space-4);
+      bottom: calc(72px + 96px);
+      width: auto;
     }
   }
 }

@@ -171,9 +171,9 @@ class ExportBulkTest extends WebTestCase
 
     // --- bulk ---
 
-    private function bulk(string $base, string $auth, mixed $ids, mixed $action): array
+    private function bulk(string $base, string $auth, mixed $ids, mixed $action, array $extra = []): array
     {
-        $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/events/bulk", ['ids' => $ids, 'action' => $action], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'POST', "$base/events/bulk", ['ids' => $ids, 'action' => $action] + $extra, $auth);
         self::$em->clear();
 
         return $r;
@@ -234,6 +234,56 @@ class ExportBulkTest extends WebTestCase
         $this->assertSame(413, $r['status']);
         $this->assertSame('too_many_events', $r['body']['code']);
         $this->assertNotNull(self::$em->find(Event::class, $own));
+    }
+
+    public function testBulkAssignAddsLinksAndKeepsExistingOnes(): void
+    {
+        ['auth' => $auth, 'base' => $base, 'calendar' => $cal] = $this->setupCalendar();
+        $club = TestHelper::clubBase(self::$em, $base);
+        $youth = TestHelper::jsonRequest(self::$client, 'POST', "$club/target-groups", ['name' => 'Jugend'], $auth)['body']['id'];
+        $adults = TestHelper::jsonRequest(self::$client, 'POST', "$club/target-groups", ['name' => 'Erwachsene'], $auth)['body']['id'];
+        $prop = TestHelper::jsonRequest(self::$client, 'POST', "$base/properties", ['name' => 'Tracht'], $auth)['body']['id'];
+        $feat = TestHelper::jsonRequest(self::$client, 'POST', "$base/features", ['name' => 'Bonus'], $auth)['body']['id'];
+        $a = $this->create($base, $auth, ['name' => 'A', 'targetGroupIds' => [$youth]]);
+        $b = $this->create($base, $auth, ['name' => 'B']);
+        $c = $this->create($base, $auth, ['name' => 'C']);
+        $version = self::$em->find(Calendar::class, $cal->getId())->getContentVersion();
+
+        $r = $this->bulk($base, $auth, [$a, $b], 'assign', ['targetGroupIds' => [$youth, $adults], 'propertyIds' => [$prop], 'featureIds' => [$feat]]);
+        $this->assertSame(200, $r['status'], $r['content']);
+        $this->assertSame(['affected' => 2], $r['body']);
+
+        $groupsOf = fn (string $id) => array_column(TestHelper::jsonRequest(self::$client, 'GET', "$base/events/$id", [], $auth)['body']['targetGroups'], 'targetGroupId');
+        $this->assertEqualsCanonicalizing([$youth, $adults], $groupsOf($a), 'existing link kept, no duplicate');
+        $this->assertEqualsCanonicalizing([$youth, $adults], $groupsOf($b));
+        $this->assertSame([], $groupsOf($c));
+        $this->assertCount(2, self::$em->getRepository(\App\Entity\EventProperty::class)->findAll());
+        $this->assertCount(2, self::$em->getRepository(\App\Entity\EventFeature::class)->findAll());
+        $this->assertNotSame($version, self::$em->find(Calendar::class, $cal->getId())->getContentVersion());
+
+        // Same request again: idempotent
+        $this->assertSame(200, $this->bulk($base, $auth, [$a], 'assign', ['propertyIds' => [$prop]])['status']);
+    }
+
+    public function testBulkAssignValidatesReferencesAndNeedsSomething(): void
+    {
+        ['auth' => $auth, 'base' => $base, 'calendar' => $cal] = $this->setupCalendar();
+        $own = $this->create($base, $auth, ['name' => 'Eigen']);
+        $other = TestHelper::createCalendar(self::$em, $cal->getClub(), 'Anderer');
+        $foreignProp = TestHelper::jsonRequest(self::$client, 'POST', "/api/calendars/{$other->getId()}/properties", ['name' => 'Fremd'], $auth)['body']['id'];
+        ['user' => $u2, 'calendar' => $cal2] = TestHelper::createCalendarWithClub(self::$em, self::$hasher);
+        $foreignGroup = TestHelper::jsonRequest(self::$client, 'POST', TestHelper::clubBase(self::$em, "/api/calendars/{$cal2->getId()}").'/target-groups', ['name' => 'X'], TestHelper::authHeader($u2, self::$tokens))['body']['id'];
+
+        $r = $this->bulk($base, $auth, [$own], 'assign', ['propertyIds' => [$foreignProp]]);
+        $this->assertSame(422, $r['status']);
+        $this->assertSame('propertyIds', $r['body']['field']);
+        $r = $this->bulk($base, $auth, [$own], 'assign', ['targetGroupIds' => [$foreignGroup]]);
+        $this->assertSame(422, $r['status']);
+        $this->assertSame('unknown_reference', $r['body']['code']);
+        $r = $this->bulk($base, $auth, [$own], 'assign', []);
+        $this->assertSame(400, $r['status']);
+        $this->assertSame('validation_failed', $r['body']['code']);
+        $this->assertSame([], self::$em->getRepository(\App\Entity\EventProperty::class)->findAll());
     }
 
     public function testBulkNeedsMembershipAndAnActiveCalendar(): void

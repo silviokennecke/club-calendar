@@ -1,20 +1,9 @@
-import { lazy, Suspense, type Ref } from "react";
+import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Banner,
-  Button,
-  ErrorSummary,
-  Field,
-  Skeleton,
-  TextInput,
-  type ErrorSummaryItem,
-} from "@/components/ui/shared";
+import { Banner, Button, ErrorSummary, type ErrorSummaryItem } from "@/components/ui/shared";
 import type { AddressField, LocationForm } from "@/lib/settings";
-import { AddressSearch, type AddressSuggestion } from "./AddressSearch";
-import { CoordinateFields } from "./CoordinateFields";
-import { MapBoundary } from "./MapBoundary";
-
-const PositionMap = lazy(() => import("./PositionMap"));
+import type { AddressSuggestion } from "./AddressSearch";
+import { LocationFields } from "./LocationFields";
 
 interface LocationPanelProps {
   isNew: boolean;
@@ -63,12 +52,6 @@ export function LocationPanel({
   headingRef,
 }: LocationPanelProps) {
   const { t } = useTranslation();
-  const has = form.latitude != null && form.longitude != null;
-  const fieldNames = filled.map((f) => t(`settings.places.fields.${f}`)).join(", ");
-  const text = (key: "name" | "street" | "zip" | "city" | "country") => ({
-    value: form[key],
-    onChange: (e: { target: { value: string } }) => onChange({ [key]: e.target.value }),
-  });
 
   return (
     <section
@@ -112,72 +95,16 @@ export function LocationPanel({
           </Banner>
         )}
 
-        <AddressSearch
-          key={formKey}
-          onPick={onSuggestion}
-          proximity={has ? { lat: form.latitude!, lng: form.longitude! } : null}
+        <LocationFields
+          form={form}
+          onChange={onChange}
+          onSuggestion={onSuggestion}
+          onPick={onPick}
+          filled={filled}
+          invalid={invalid}
+          onCoordinateErrors={onCoordinateErrors}
+          formKey={formKey}
         />
-
-        {filled.length > 0 && (
-          <Banner tone="info">{t("settings.places.filled", { fields: fieldNames })}</Banner>
-        )}
-
-        <Field
-          id="pl-name"
-          label={t("settings.places.nameLabel")}
-          optional
-          error={invalid ? t("settings.places.nameOrStreet") : undefined}
-        >
-          <TextInput
-            maxLength={255}
-            placeholder={t("settings.places.namePlaceholder")}
-            autoComplete="off"
-            {...text("name")}
-          />
-        </Field>
-        <Field id="pl-street" label={t("settings.places.streetLabel")}>
-          <TextInput maxLength={255} autoComplete="off" {...text("street")} />
-        </Field>
-        <div className="ap-inputrow">
-          <Field id="pl-zip" label={t("settings.places.zipLabel")}>
-            <TextInput maxLength={20} autoComplete="off" {...text("zip")} />
-          </Field>
-          <Field id="pl-city" label={t("settings.places.cityLabel")}>
-            <TextInput maxLength={255} autoComplete="off" {...text("city")} />
-          </Field>
-        </div>
-        <Field id="pl-country" label={t("settings.places.countryLabel")}>
-          <TextInput maxLength={100} autoComplete="off" {...text("country")} />
-        </Field>
-
-        <div className="ap-stack ap-stack--sm">
-          <MapBoundary
-            fallback={
-              <p className="ap-panel ap-panel--sunken t-sm">{t("settings.places.mapFailed")}</p>
-            }
-          >
-            <Suspense fallback={<Skeleton style={{ display: "block", height: 260 }} />}>
-              <PositionMap
-                latitude={form.latitude}
-                longitude={form.longitude}
-                onPick={onPick}
-                label={t("settings.places.positionMap")}
-                describedBy="pl-map-hint"
-                note={t("settings.places.positionNote")}
-              />
-            </Suspense>
-          </MapBoundary>
-          <p className="t-sm t-muted" id="pl-map-hint">
-            {t("settings.places.positionHint")}
-          </p>
-          <CoordinateFields
-            key={formKey}
-            onErrorsChange={onCoordinateErrors}
-            latitude={form.latitude}
-            longitude={form.longitude}
-            onChange={(latitude, longitude) => onChange({ latitude, longitude })}
-          />
-        </div>
 
         <div className="ap-actions">
           <Button type="submit" loading={saving}>
