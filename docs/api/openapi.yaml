@@ -1826,10 +1826,10 @@ paths:
       - { $ref: '#/components/parameters/InvitationId' }
     post:
       tags: [Clubs]
-      summary: Send an expired invitation again
+      summary: Send an invitation again
       description: >-
-        Only after the invitation expired: new token (the old link stops working), new 7 days, new mail after the
-        response. Earlier it is `422 invitation_not_expired`. Accepted, declined, revoked and unknown invitations
+        Works for every pending or expired invitation: new token (the old link stops working), new 7 days, new mail
+        after the response. At most one re-send per invitation per 60 seconds (`429 rate_limited` + `Retry-After`). Accepted, declined, revoked and unknown invitations
         (also of another club) are `404 invitation_not_found`. Counts against the invitation rate limits of
         `POST /api/clubs/{clubId}/invitations`.
       operationId: resendClubInvitation
@@ -1839,11 +1839,6 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404':
           description: Club unknown (no `code`), or `invitation_not_found`.
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '422':
-          description: '`invitation_not_expired`: the invitation is still valid.'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -3943,7 +3938,6 @@ components:
         | `invalid_role` | 422 | `PATCH /api/clubs/{clubId}/members/{userId}`: role is none of viewer, editor, admin (field `role`) |
         | `invitation_not_found` | 404 | Club invitation routes: unknown, answered or revoked invitation, or one of another club; `/api/invitations/*`: unknown token or id, an invitation for another address, or an unconfirmed user (all the same answer) |
         | `invitation_expired` | 422 | Accept/decline of an invitation that is addressed to the signed-in user but older than 7 days; the club can re-send it |
-        | `invitation_not_expired` | 422 | `POST /api/clubs/{clubId}/invitations/{invitationId}/resend` before the invitation expired |
         | `authorization_request_not_found` | 404 | `GET /api/oauth/authorization-request/{id}`, `POST /api/oauth/authorize/decision`: unknown, expired (10 min) or already answered request |
         | `mcp_grant_not_found` | 404 | `DELETE /api/auth/mcp-grants/{id}`: unknown id or a grant of another user |
         | `ics_fetch_failed` | 422 | Holiday calendar create/refresh: the ICS URL could not be fetched or parsed (field `url`) |
@@ -4029,7 +4023,6 @@ components:
         - invalid_role
         - invitation_not_found
         - invitation_expired
-        - invitation_not_expired
         - ics_fetch_failed
         - authorization_request_not_found
         - mcp_grant_not_found

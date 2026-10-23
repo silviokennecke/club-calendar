@@ -99,6 +99,11 @@ framework:
             limit: 50
             interval: '24 hours'
             cache_pool: app.auth_limiter_pool
+        invitation_resend:
+            policy: fixed_window
+            limit: 1
+            interval: '60 seconds'
+            cache_pool: app.auth_limiter_pool
         invitation_email:
             policy: sliding_window
             limit: 5
