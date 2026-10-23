@@ -8,7 +8,8 @@
 # Optional:  FRONTEND_URL / BACKEND_URL / WEBAUTHN_RP_ID (derived from APP_URL), MAILER_DSN, MAILER_FROM, MAPBOX_TOKEN,
 #            GOOGLE_*/MICROSOFT_*/APPLE_* OAuth settings, SYMFONY_TRUSTED_PROXIES (behind a TLS proxy, e.g. PRIVATE_SUBNETS),
 #            RESTRICT_REGISTRATION (default 0/false), MCP_ACCESS_TOKEN_TTL, MCP_REFRESH_TOKEN_LIFETIME,
-#            MCP_REFRESH_TOKEN_ABSOLUTE_LIFETIME, MCP_REFRESH_TOKEN_REUSE_GRACE, MCP_ALLOWED_CLIENTS (MCP server, see backend/.env.example), RUN_MIGRATIONS (default 1), MIGRATION_RETRIES (default 15), PORT (default 8080), LEGAL_DOCUMENTS_PATH
+#            MCP_REFRESH_TOKEN_ABSOLUTE_LIFETIME, MCP_REFRESH_TOKEN_REUSE_GRACE, MCP_ALLOWED_CLIENTS (MCP server, see backend/.env.example),
+#            FEED_ICS_WINDOW_ENABLED, FEED_ICS_PAST_DAYS, FEED_ICS_FUTURE_MONTHS, FEED_ICS_MAX_EVENTS (public feed ICS window), RUN_MIGRATIONS (default 1), MIGRATION_RETRIES (default 15), PORT (default 8080), LEGAL_DOCUMENTS_PATH
 # JWT keys:  JWT_PRIVATE_KEY / JWT_PUBLIC_KEY (paths) or keys in /var/www/html/config/jwt (mount a volume there,
 #            otherwise a new keypair is generated on every container start and sessions are lost).
 # Legal documents: mount your legal Markdown files (imprint.md, privacy.md, terms.md) at /var/www/html/legal or set

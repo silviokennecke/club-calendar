@@ -15,6 +15,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\QueryBuilder;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -26,7 +27,20 @@ class PublicFeedService
         private readonly IcsService $icsService,
         private readonly HolidayEventRepository $holidays,
         private readonly RequestStack $requestStack,
+        #[Autowire(env: 'bool:FEED_ICS_WINDOW_ENABLED')]
+        private readonly bool $icsWindowEnabled = true,
+        #[Autowire(env: 'int:FEED_ICS_PAST_DAYS')]
+        private readonly int $icsPastDays = 180,
+        #[Autowire(env: 'int:FEED_ICS_FUTURE_MONTHS')]
+        private readonly int $icsFutureMonths = 24,
+        #[Autowire(env: 'int:FEED_ICS_MAX_EVENTS')]
+        private readonly int $icsMaxEvents = 0,
     ) {
+        foreach (['FEED_ICS_PAST_DAYS' => $icsPastDays, 'FEED_ICS_FUTURE_MONTHS' => $icsFutureMonths, 'FEED_ICS_MAX_EVENTS' => $icsMaxEvents] as $name => $value) {
+            if ($value < 0) {
+                throw new \InvalidArgumentException(sprintf('%s must be an integer >= 0, got %d', $name, $value));
+            }
+        }
     }
 
     /**
@@ -173,9 +187,35 @@ class PublicFeedService
     public function getFeedIcs(string $feedId, ?string $secret, ?array $targetGroupIds): string
     {
         $feed = $this->loadFeed($feedId, $secret);
-        $events = $this->fetchEvents($this->eventQuery($feed, $targetGroupIds, null, null));
+        [$from, $to] = $this->icsWindow($feed);
+        $qb = $this->eventQuery($feed, $targetGroupIds, $from, $to);
+        if ($this->icsMaxEvents > 0) {
+            // Protective cap only (first N by date, time); not a paging or sync mechanism
+            $qb->setMaxResults($this->icsMaxEvents);
+        }
+        $events = $this->fetchEvents($qb);
 
         return $this->icsService->buildIcs($feed, $feed->getClub(), $events);
+    }
+
+    /**
+     * Default window of the public ICS (FEED_ICS_*): from today minus N days to today plus M months, days in the
+     * club's zone (as the web view), so the start is stable for a whole day. [null, null] when disabled.
+     *
+     * @return array{0: ?\DateTimeImmutable, 1: ?\DateTimeImmutable}
+     */
+    private function icsWindow(CalendarFeed $feed): array
+    {
+        if (!$this->icsWindowEnabled) {
+            return [null, null];
+        }
+        $zone = new \DateTimeZone(Input::canonicalTimezone($feed->getClub()->getTimezone()) ?? 'UTC');
+        $today = new \DateTimeImmutable('today', $zone);
+        // Date-only values: compared as DATE, time and zone of the object do not matter
+        $from = $today->modify(sprintf('-%d days', $this->icsPastDays));
+        $to = $today->modify(sprintf('+%d months', $this->icsFutureMonths));
+
+        return [$from, $to];
     }
 
     private function loadFeed(string $feedId, ?string $secret): CalendarFeed

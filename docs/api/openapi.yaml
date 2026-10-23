@@ -3321,7 +3321,8 @@ paths:
     get:
       tags: [Public feed]
       summary: ICS subscription of a feed
-      description: Published events of all non-archived calendars of the feed. Holidays are never part of the ICS. The event `note` is the first lines of `DESCRIPTION`.
+      description: >-
+        Published events of all non-archived calendars of the feed. Holidays are never part of the ICS. The event `note` is the first lines of `DESCRIPTION`. Only a default time window is delivered: events overlapping `[today - FEED_ICS_PAST_DAYS days, today + FEED_ICS_FUTURE_MONTHS months]` (defaults 180 days / 24 months, days in the club's time zone); `FEED_ICS_WINDOW_ENABLED=false` delivers everything. `FEED_ICS_MAX_EVENTS` > 0 additionally caps the output to the first N events by date and start time (protection only, no error; default 0 = unlimited). Operator settings, no query parameter overrides them; the authenticated member export and the web view `/events` are unaffected.
       operationId: publicFeedIcs
       security: [{}, { feedSecret: [] }]
       parameters:

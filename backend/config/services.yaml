@@ -46,6 +46,14 @@ parameters:
     env(RESTRICT_REGISTRATION): 'false'
     app.restrict_registration: '%env(bool:RESTRICT_REGISTRATION)%'
 
+    # Public feed ICS (/api/feed/:id/ics) default window: events overlapping [today - PAST_DAYS, today + FUTURE_MONTHS]
+    # in the club's zone. WINDOW_ENABLED=false = whole history. MAX_EVENTS > 0 caps the output (first N by date/time,
+    # protection only, no error), 0 = unlimited. Does not affect the member export or the web view.
+    env(FEED_ICS_WINDOW_ENABLED): 'true'
+    env(FEED_ICS_PAST_DAYS): '180'
+    env(FEED_ICS_FUTURE_MONTHS): '24'
+    env(FEED_ICS_MAX_EVENTS): '0'
+
     env(MAP_IMAGE_CACHE_TTL): '2592000'  # 30 days
     env(GEOCODER_CACHE_TTL): '3600'       # 1 hour
     env(MAPBOX_PROXY_CACHE_TTL): '2592000' # 30 days
