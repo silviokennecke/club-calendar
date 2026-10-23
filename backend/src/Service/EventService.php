@@ -27,6 +27,7 @@ readonly class EventService
         private EntityManagerInterface $em,
         private CalendarReferences $references,
         private Quota $quota,
+        private CalendarVersionBumper $versionBumper,
     ) {
     }
 
@@ -300,6 +301,7 @@ readonly class EventService
                     ->setParameter('series', $series->getId())
                     ->setParameter('calendar', $calendar->getId())
                     ->execute();
+                $this->versionBumper->bumpCalendars([$calendar->getId()]);
                 $this->em->detach($event);
             } else {
                 $this->em->remove($event);
@@ -438,6 +440,8 @@ readonly class EventService
 
         $this->em->wrapInTransaction(function () use ($qb, $action, $calendar): void {
             $qb->getQuery()->execute();
+            // The bulk DQL bypasses the unit of work (and ContentVersionListener).
+            $this->versionBumper->bumpCalendars([$calendar->getId()]);
             if ('delete' === $action) {
                 // A series whose last events were deleted goes too
                 $this->removeEmptySeries($calendar);

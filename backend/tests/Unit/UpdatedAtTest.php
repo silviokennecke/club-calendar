@@ -57,7 +57,7 @@ class UpdatedAtTest extends KernelTestCase
             "INSERT INTO club (id, name, timezone, updated_at) VALUES ('club-1', 'Test', 'UTC', NOW())",
         );
         $this->em->getConnection()->executeStatement(
-            "INSERT INTO calendar (id, club_id, name, updated_at) VALUES ('cal-1', 'club-1', 'Test', NOW())",
+            "INSERT INTO calendar (id, club_id, name, content_version, updated_at) VALUES ('cal-1', 'club-1', 'Test', 'v-1', NOW())",
         );
         $club = $this->em->find(Club::class, 'club-1');
         $location = new Location();

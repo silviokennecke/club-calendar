@@ -97,6 +97,12 @@ class CalendarService
         foreach ($exclusive as $feed) {
             $this->em->remove($feed);
         }
+        // The DB cascade drops the link of shared feeds; removing it through the ORM stamps those feeds' updated_at.
+        foreach ($this->em->getRepository(CalendarFeedCalendar::class)->findBy(['calendar' => $calendar]) as $link) {
+            if (!in_array($link->getFeed(), $exclusive, true)) {
+                $this->em->remove($link);
+            }
+        }
         $this->em->remove($calendar);
         $this->em->flush();
     }

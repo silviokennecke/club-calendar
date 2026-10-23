@@ -32,6 +32,10 @@ class Calendar implements UpdateAudited
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $archivedAt = null;
 
+    /** Changes with every change of the calendar's feed output; only ever written by CalendarVersionBumper. */
+    #[ORM\Column(length: 36)]
+    private string $contentVersion;
+
     #[ORM\OneToMany(targetEntity: Property::class, mappedBy: 'calendar', cascade: ['persist', 'remove'])]
     private Collection $properties;
 
@@ -47,6 +51,7 @@ class Calendar implements UpdateAudited
     public function __construct()
     {
         $this->id = Uuid::v7()->toRfc4122();
+        $this->contentVersion = Uuid::v7()->toRfc4122();
         $this->properties = new ArrayCollection();
         $this->features = new ArrayCollection();
         $this->templates = new ArrayCollection();
@@ -56,6 +61,12 @@ class Calendar implements UpdateAudited
     public function getId(): string
     {
         return $this->id;
+    }
+
+    /** Value as loaded: not refreshed in memory when a flush bumps the token in the database. */
+    public function getContentVersion(): string
+    {
+        return $this->contentVersion;
     }
 
     public function getClub(): Club
