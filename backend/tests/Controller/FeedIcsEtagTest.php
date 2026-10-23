@@ -42,7 +42,7 @@ class FeedIcsEtagTest extends WebTestCase
         $this->spy = new class extends IcsService {
             public int $calls = 0;
 
-            public function buildIcs(CalendarFeed $feed, Club $club, array $events): string
+            public function buildIcs(CalendarFeed $feed, Club $club, iterable $events): string
             {
                 ++$this->calls;
 
@@ -53,6 +53,7 @@ class FeedIcsEtagTest extends WebTestCase
         $c->set(PublicFeedService::class, new PublicFeedService(
             $c->get(EntityManagerInterface::class),
             $this->spy,
+            $c->get(\App\Ics\IcsEventReader::class),
             $c->get(\App\Repository\HolidayEventRepository::class),
             $c->get('request_stack'),
         ));

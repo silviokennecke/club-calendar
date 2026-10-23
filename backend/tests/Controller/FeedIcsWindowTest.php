@@ -34,6 +34,7 @@ class FeedIcsWindowTest extends WebTestCase
         $c->set(PublicFeedService::class, new PublicFeedService(
             $c->get(EntityManagerInterface::class),
             $c->get(IcsService::class),
+            $c->get(\App\Ics\IcsEventReader::class),
             $c->get(\App\Repository\HolidayEventRepository::class),
             $c->get('request_stack'),
             $enabled,
@@ -137,7 +138,7 @@ class FeedIcsWindowTest extends WebTestCase
         $this->boot();
         $this->expectException(\InvalidArgumentException::class);
         $c = static::getContainer();
-        new PublicFeedService($this->em, $c->get(IcsService::class), $c->get(\App\Repository\HolidayEventRepository::class), $c->get('request_stack'), true, -1);
+        new PublicFeedService($this->em, $c->get(IcsService::class), $c->get(\App\Ics\IcsEventReader::class), $c->get(\App\Repository\HolidayEventRepository::class), $c->get('request_stack'), true, -1);
     }
 
     public function testMemberExportHasNoWindow(): void

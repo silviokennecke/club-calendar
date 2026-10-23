@@ -10,6 +10,7 @@ use App\Entity\Event;
 use App\Entity\EventTargetGroup;
 use App\Entity\HolidayEvent;
 use App\EventListener\FeedResponseHeadersListener;
+use App\Ics\IcsEventReader;
 use App\Repository\HolidayEventRepository;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Types\Types;
@@ -26,6 +27,7 @@ class PublicFeedService
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly IcsService $icsService,
+        private readonly IcsEventReader $icsReader,
         private readonly HolidayEventRepository $holidays,
         private readonly RequestStack $requestStack,
         #[Autowire(env: 'bool:FEED_ICS_WINDOW_ENABLED')]
@@ -234,7 +236,7 @@ class PublicFeedService
             $qb->setMaxResults($this->icsMaxEvents);
         }
 
-        return $this->icsService->buildIcs($plan->feed, $plan->feed->getClub(), $this->fetchEvents($qb));
+        return $this->icsService->buildIcs($plan->feed, $plan->feed->getClub(), $this->icsReader->read($qb));
     }
 
     /**
@@ -339,7 +341,8 @@ class PublicFeedService
             ->select('e')
             ->from(Event::class, 'e')
             ->orderBy('e.date', 'ASC')
-            ->addOrderBy('e.timeBegin', 'ASC');
+            ->addOrderBy('e.timeBegin', 'ASC')
+            ->addOrderBy('e.id', 'ASC');
         $this->restrictToFeed($qb, $feed, $targetGroupIds);
         if (null !== $from) {
             $qb->andWhere('COALESCE(e.dateEnd, e.date) >= :from')->setParameter('from', $from, Types::DATE_IMMUTABLE);
@@ -352,8 +355,8 @@ class PublicFeedService
     }
 
     /**
-     * Runs an event query and loads the location and the assignments of all events in batches
-     * (one query per association instead of one per event).
+     * Runs an event query for the JSON web view and loads the location and the assignments of all events in
+     * batches (one query per association instead of one per event). The ICS does not use entities (IcsEventReader).
      *
      * @return Event[]
      */

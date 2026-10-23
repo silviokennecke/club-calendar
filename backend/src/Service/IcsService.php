@@ -6,8 +6,9 @@ namespace App\Service;
 
 use App\Entity\CalendarFeed;
 use App\Entity\Club;
-use App\Entity\Event;
 use App\Ics\EventFactory;
+use App\Ics\IcsEvent;
+use App\Ics\IcsLocation;
 use Eluceo\iCal\Domain\Entity\Calendar;
 use Eluceo\iCal\Domain\Entity\Event as ICalEvent;
 use Eluceo\iCal\Domain\Entity\TimeZone as ICalTimeZone;
@@ -32,9 +33,9 @@ class IcsService
     public const FORMAT_VERSION = 1;
 
     /**
-     * @param Event[] $events published events of the feed
+     * @param iterable<IcsEvent> $events published events of the feed
      */
-    public function buildIcs(CalendarFeed $feed, Club $club, array $events): string
+    public function buildIcs(CalendarFeed $feed, Club $club, iterable $events): string
     {
         return $this->render($club, $events, false);
     }
@@ -42,17 +43,17 @@ class IcsService
     /**
      * ICS file of a calendar's events (member export). Drafts are marked STATUS:TENTATIVE.
      *
-     * @param Event[] $events
+     * @param iterable<IcsEvent> $events
      */
-    public function buildCalendarIcs(Club $club, array $events): string
+    public function buildCalendarIcs(Club $club, iterable $events): string
     {
         return $this->render($club, $events, true);
     }
 
     /**
-     * @param Event[] $events
+     * @param iterable<IcsEvent> $events
      */
-    private function render(Club $club, array $events, bool $markDrafts): string
+    private function render(Club $club, iterable $events, bool $markDrafts): string
     {
         $calendar = new Calendar();
 
@@ -60,7 +61,7 @@ class IcsService
         $zoneRanges = [];
         foreach ($events as $event) {
             $icalEvent = $this->buildEvent($event, $this->fallbackTimezone($event, $club), $zoneRanges);
-            if ($markDrafts && $event->isDraft()) {
+            if ($markDrafts && $event->isDraft) {
                 $icalEvent->setStatus(EventStatus::TENTATIVE());
             }
             $calendar->addEvent($icalEvent);
@@ -79,9 +80,9 @@ class IcsService
      * Zone for events without a (valid) own zone: calendar, then club, then UTC. Values stored before
      * time zones were validated (e.g. Windows names from an Outlook import) must not break the feed.
      */
-    private function fallbackTimezone(Event $event, Club $club): string
+    private function fallbackTimezone(IcsEvent $event, Club $club): string
     {
-        return Input::canonicalTimezone($event->getCalendar()->getTimezone())
+        return Input::canonicalTimezone($event->calendarTimezone)
             ?? Input::canonicalTimezone($club->getTimezone())
             ?? 'UTC';
     }
@@ -89,31 +90,23 @@ class IcsService
     /**
      * @param array<string, array{\DateTimeImmutable, \DateTimeImmutable}> $zoneRanges time span per zone used (for VTIMEZONE)
      */
-    private function buildEvent(Event $event, string $fallbackTimezone, array &$zoneRanges): ICalEvent
+    private function buildEvent(IcsEvent $event, string $fallbackTimezone, array &$zoneRanges): ICalEvent
     {
-        $tz = Input::canonicalTimezone($event->getTimezone()) ?? $fallbackTimezone;
-        $uid = new UniqueIdentifier('event-'.$event->getId().'@club-calendar');
+        $tz = Input::canonicalTimezone($event->timezone) ?? $fallbackTimezone;
+        $uid = new UniqueIdentifier('event-'.$event->id.'@club-calendar');
 
-        // Build summary: icons + name
-        $icons = array_filter(array_map(
-            fn ($ep) => $ep->getProperty()->getIcon(),
-            $event->getProperties()->getValues(),
-        ));
-        $iconStr = implode(' ', $icons);
-        $summary = $iconStr ? "$iconStr {$event->getName()}" : $event->getName();
+        $iconStr = implode(' ', $event->propertyIcons);
+        $summary = $iconStr ? "$iconStr {$event->name}" : $event->name;
 
-        // Build description
         $parts = [];
-        if ($event->getFeatures()->count() > 0) {
-            $names = array_map(fn ($ef) => $ef->getFeature()->getName(), $event->getFeatures()->getValues());
-            $parts[] = 'Zusatzangebote: '.implode(', ', $names);
+        if ([] !== $event->featureNames) {
+            $parts[] = 'Zusatzangebote: '.implode(', ', $event->featureNames);
         }
-        if ($event->getTargetGroups()->count() > 0) {
-            $names = array_map(fn ($etg) => $etg->getTargetGroup()->getName(), $event->getTargetGroups()->getValues());
-            $parts[] = 'Gruppen: '.implode(', ', $names);
+        if ([] !== $event->targetGroupNames) {
+            $parts[] = 'Gruppen: '.implode(', ', $event->targetGroupNames);
         }
-        if (null !== $event->getNote() && '' !== $event->getNote()) {
-            array_unshift($parts, $event->getNote());
+        if (null !== $event->note && '' !== $event->note) {
+            array_unshift($parts, $event->note);
         }
         $description = implode("\n", $parts);
 
@@ -124,15 +117,15 @@ class IcsService
         }
 
         // Location
-        $loc = $event->getLocation();
+        $loc = $event->location;
         if ($loc) {
             $locationStr = $this->buildLocationStr($loc);
             if ($locationStr) {
-                $iCalLocation = new ICalLocation($locationStr, $loc->getName() ?: $loc->getStreet() ?: $locationStr);
-                if (null !== $loc->getLatitude() && null !== $loc->getLongitude()) {
+                $iCalLocation = new ICalLocation($locationStr, $loc->name ?: $loc->street ?: $locationStr);
+                if (null !== $loc->latitude && null !== $loc->longitude) {
                     try {
                         $iCalLocation = $iCalLocation->withGeographicPosition(
-                            new GeographicPosition((float) $loc->getLatitude(), (float) $loc->getLongitude()),
+                            new GeographicPosition((float) $loc->latitude, (float) $loc->longitude),
                         );
                     } catch (\InvalidArgumentException) {
                         // coordinates outside the valid range: leave the position out instead of failing the feed
@@ -142,16 +135,16 @@ class IcsService
             }
         }
 
-        $startDateStr = $event->getDate()->format('Y-m-d');
-        $endDateStr = $event->getDateEnd() ? $event->getDateEnd()->format('Y-m-d') : $startDateStr;
+        $startDateStr = $event->date;
+        $endDateStr = $event->dateEnd ?? $startDateStr;
 
         $start = $end = null;
-        if (!$event->isAllDay()) {
+        if (!$event->isAllDay) {
             // Timed: parse start and end in the event timezone (a stored invalid time falls back to all-day)
             try {
                 $tzObj = new \DateTimeZone($tz);
-                $start = new \DateTimeImmutable("$startDateStr {$event->getTimeBegin()}", $tzObj);
-                $end = new \DateTimeImmutable("$endDateStr {$event->getTimeEnd()}", $tzObj);
+                $start = new \DateTimeImmutable("$startDateStr {$event->timeBegin}", $tzObj);
+                $end = new \DateTimeImmutable("$endDateStr {$event->timeEnd}", $tzObj);
             } catch (\Exception) {
                 $start = $end = null;
             }
@@ -160,7 +153,7 @@ class IcsService
         if (null === $start || null === $end) {
             // All-day: MultiDay takes the last day inclusive and writes DTEND as last day + 1
             // (RFC 5545: exclusive end), so the stored end date is passed as it is.
-            $occurrence = $event->getDateEnd()
+            $occurrence = $event->dateEnd
                 ? new MultiDay(
                     new ICalDate(new \DateTimeImmutable($startDateStr)),
                     new ICalDate(new \DateTimeImmutable($endDateStr)),
@@ -180,21 +173,21 @@ class IcsService
         return $icalEvent;
     }
 
-    private function buildLocationStr(\App\Entity\Location $loc): string
+    private function buildLocationStr(IcsLocation $loc): string
     {
         $parts = [];
-        if ($loc->getName()) {
-            $parts[] = $loc->getName();
+        if ($loc->name) {
+            $parts[] = $loc->name;
         }
-        if ($loc->getStreet()) {
-            $parts[] = $loc->getStreet();
+        if ($loc->street) {
+            $parts[] = $loc->street;
         }
-        $city = array_filter([$loc->getZip(), $loc->getCity()]);
+        $city = array_filter([$loc->zip, $loc->city]);
         if ($city) {
             $parts[] = implode(' ', $city);
         }
-        if ($loc->getCountry()) {
-            $parts[] = $loc->getCountry();
+        if ($loc->country) {
+            $parts[] = $loc->country;
         }
 
         return implode(', ', $parts);

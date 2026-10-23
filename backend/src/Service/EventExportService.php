@@ -7,9 +7,9 @@ namespace App\Service;
 use App\Entity\Calendar;
 use App\Entity\Event;
 use App\Entity\TargetGroup;
+use App\Ics\IcsEventReader;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Mapping\ClassMetadata;
 use Symfony\Component\HttpFoundation\HeaderUtils;
 
 /**
@@ -26,6 +26,7 @@ readonly class EventExportService
         private EntityManagerInterface $em,
         private CalendarReferences $references,
         private IcsService $ics,
+        private IcsEventReader $reader,
     ) {
     }
 
@@ -51,9 +52,7 @@ readonly class EventExportService
             ->select('e')
             ->from(Event::class, 'e')
             ->where('e.calendar = :calendar')
-            ->setParameter('calendar', $calendar)
-            ->orderBy('e.date', 'ASC')
-            ->addOrderBy('e.timeBegin', 'ASC');
+            ->setParameter('calendar', $calendar);
         if (!$drafts) {
             $qb->andWhere('e.isDraft = false');
         }
@@ -68,13 +67,7 @@ readonly class EventExportService
                 ->setParameter('tgIds', $groupIds);
         }
 
-        // Location and assignments of all events in one query per association (no N+1)
-        $query = $qb->getQuery();
-        foreach (['location', 'properties', 'features', 'targetGroups'] as $association) {
-            $query->setFetchMode(Event::class, $association, ClassMetadata::FETCH_EAGER);
-        }
-
-        return $this->ics->buildCalendarIcs($calendar->getClub(), $query->getResult());
+        return $this->ics->buildCalendarIcs($calendar->getClub(), $this->reader->read($qb));
     }
 
     /** `attachment` with a file name from the calendar name ("schiessbetrieb-2026.ics", like the frontend). */
