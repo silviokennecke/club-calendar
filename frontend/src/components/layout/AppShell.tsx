@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { Fragment, Suspense, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -136,7 +136,10 @@ export function AppShell({
         {banner}
         {/* First load of a lazy page: keep the shell, show the loading state in the content area. */}
         <Suspense fallback={<FullPageLoader className="min-h-[50vh]" />}>
-          <Outlet context={data} />
+          {/* Keyed: switching the calendar on the same route resets page-local state. */}
+          <Fragment key={calendarId ?? ""}>
+            <Outlet context={data} />
+          </Fragment>
         </Suspense>
       </main>
       {calendarId && (

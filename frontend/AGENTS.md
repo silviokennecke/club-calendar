@@ -343,6 +343,7 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
   (`lastCalendar:*`) are removed at start (`lib/legacyStorage.ts`). `AppShell` exposes
   `ShellData.contextState` (`loading | ready | unavailable`): a club that is not the user's or whose calendars fail to
   load shows "Nicht verfügbar" + link to the club picker in Sidebar / Topbar instead of "Laden…".
+- Calendar switcher (`CalendarMenuItems`): stays in the current section of the new calendar (`layout/calendarSwitchPath.ts`: events, export, import, templates, more, settings pages; an open template or event falls back to its list, club pages to the calendar). `AppShell` keys the `Outlet` by `calendarId`, so page-local state resets and queries (keys contain the calendar id) reload.
 - History focus: `lib/historyFocus.ts` (`useHistoryFocus` in `BackgroundRoutes`) moves focus to the page `h1`
   (else `#main`) after every route change between different pages (link, redirect, back / forward) unless the page
   already focused something in `#main`; not for dialogs (own focus logic) or query-only changes. Page titles:
