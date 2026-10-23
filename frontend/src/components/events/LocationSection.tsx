@@ -23,8 +23,8 @@ interface LocationSectionProps {
 
 /**
  * "Ort" section of the event form: autocomplete over the club's locations whose last suggestion
- * always creates a new one (dialog above the form), address and the static map image of the
- * selected location. The position is not editable here.
+ * always creates a new one (dialog above the form), and the address of the
+ * selected location (the map is `LocationMap`). The position is not editable here.
  */
 export function LocationSection({
   locations,
@@ -39,7 +39,6 @@ export function LocationSection({
   const [creatingName, setCreatingName] = useState<string | null>(null);
   const textRef = useRef(text);
   textRef.current = text;
-  const hasPosition = selected?.latitude != null && selected?.longitude != null;
 
   useEffect(() => {
     if (selected) setText(locationName(selected));
@@ -60,7 +59,7 @@ export function LocationSection({
   }
 
   return (
-    <div className="ap-cols-2" style={{ alignItems: "start" }}>
+    <div className="ap-stack">
       <div className="ap-stack">
         <Field id="ev-place" label={t("events.form.place.label")} optional>
           <AutocompleteInput<Option>
@@ -104,19 +103,6 @@ export function LocationSection({
           </p>
         )}
       </div>
-      <div className="ap-stack">
-        {selected && hasPosition ? (
-          <LocationImage
-            key={selected.id}
-            location={selected}
-            label={t("events.form.place.map", { name: locationName(selected) })}
-          />
-        ) : selected ? (
-          <p className="t-sm t-muted">{t("events.form.place.noPosition")}</p>
-        ) : (
-          <p className="ap-panel ap-panel--sunken t-sm t-muted">{t("events.form.place.empty")}</p>
-        )}
-      </div>
       {creatingName !== null && (
         <LocationCreateDialog
           initialName={creatingName}
@@ -133,5 +119,23 @@ export function LocationSection({
         />
       )}
     </div>
+  );
+}
+
+/** Static map image of the selected location (or why there is none). */
+export function LocationMap({ locations, value }: { locations: Location[]; value: string }) {
+  const { t } = useTranslation();
+  const selected = locations.find((l) => l.id === value);
+  const hasPosition = selected?.latitude != null && selected?.longitude != null;
+  if (!selected) {
+    return <p className="ap-panel ap-panel--sunken t-sm t-muted">{t("events.form.place.empty")}</p>;
+  }
+  if (!hasPosition) return <p className="t-sm t-muted">{t("events.form.place.noPosition")}</p>;
+  return (
+    <LocationImage
+      key={selected.id}
+      location={selected}
+      label={t("events.form.place.map", { name: locationName(selected) })}
+    />
   );
 }
