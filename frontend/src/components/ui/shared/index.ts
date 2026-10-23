@@ -30,6 +30,7 @@ export { DialogFrame, Modal, ModalFrame, useModalInitialFocus } from "./Modal";
 export type { ModalProps } from "./Modal";
 export { CopyField } from "./CopyField";
 export { Chip, ChipSelect } from "./ChipSelect";
+export { ChipCombobox } from "./ChipCombobox";
 export type { ChipOption } from "./ChipSelect";
 export { EmojiPicker } from "./EmojiPicker";
 export { Stepper } from "./Stepper";

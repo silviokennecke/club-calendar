@@ -616,6 +616,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
               value={values}
               onChange={(field, ids) => set(field, ids)}
               readOnly={readOnly}
+              variant="combobox"
             />
             <LocationMap locations={res.locations} value={values.locationId} />
           </section>

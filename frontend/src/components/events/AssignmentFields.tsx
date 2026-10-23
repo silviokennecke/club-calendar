@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { ChipSelect, toast } from "@/components/ui/shared";
+import { ChipCombobox, ChipSelect, toast } from "@/components/ui/shared";
 import type { useEventResources } from "./useEventResources";
 
 export interface Assignments {
@@ -17,6 +17,8 @@ interface AssignmentFieldsProps {
   readOnly?: boolean;
   /** Help text below the target groups (default: "Ohne Auswahl gilt der Termin für alle."). */
   targetGroupsHint?: ReactNode;
+  /** `combobox`: only assigned entries as chips plus an autosuggest add chip (event form). */
+  variant?: "toggle" | "combobox";
 }
 
 /**
@@ -29,6 +31,7 @@ export function AssignmentFields({
   onChange,
   readOnly,
   targetGroupsHint,
+  variant = "toggle",
 }: AssignmentFieldsProps) {
   const { t } = useTranslation();
 
@@ -40,6 +43,41 @@ export function AssignmentFields({
       toast.error(t("events.form.createFailed"));
       throw err;
     }
+  }
+
+  if (variant === "combobox") {
+    return (
+      <>
+        <ChipCombobox
+          label={t("events.form.properties")}
+          options={res.properties.map((p) => ({
+            id: p.id,
+            label: p.icon ? `${p.icon} ${p.name}` : p.name,
+          }))}
+          selected={value.propertyIds}
+          onChange={(ids) => onChange("propertyIds", ids)}
+          onCreate={readOnly ? undefined : (name) => create(res.createProperty, name)}
+          addLabel={t("events.form.createProperty")}
+        />
+        <ChipCombobox
+          label={t("events.form.features")}
+          options={res.features.map((f) => ({ id: f.id, label: f.name }))}
+          selected={value.featureIds}
+          onChange={(ids) => onChange("featureIds", ids)}
+          onCreate={readOnly ? undefined : (name) => create(res.createFeature, name)}
+          addLabel={t("events.form.createFeature")}
+        />
+        <ChipCombobox
+          label={t("events.form.targetGroups")}
+          options={res.targetGroups.map((g) => ({ id: g.id, label: g.name }))}
+          selected={value.targetGroupIds}
+          onChange={(ids) => onChange("targetGroupIds", ids)}
+          onCreate={readOnly ? undefined : (name) => create(res.createTargetGroup, name)}
+          addLabel={t("events.form.createTargetGroup")}
+          hint={targetGroupsHint ?? t("events.form.targetGroupsHint")}
+        />
+      </>
+    );
   }
 
   return (

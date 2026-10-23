@@ -235,7 +235,13 @@ describe("EventFormModal – new event", () => {
     ).toHaveAttribute("src", expect.stringContaining("/api/map/image/location/l1"));
     expect(screen.queryByRole("button", { name: "Position korrigieren" })).toBeNull();
     const audiences = screen.getByRole("group", { name: "Gruppen" });
-    await user.click(within(audiences).getByRole("button", { name: "Jugend" }));
+    expect(within(audiences).queryByRole("button", { name: "Jugend" })).toBeNull();
+    await user.click(within(audiences).getByRole("button", { name: "Neue Gruppe anlegen" }));
+    await user.keyboard("{Enter}");
+    expect(within(audiences).getByRole("button", { name: "Jugend" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
 
     await user.click(screen.getByRole("button", { name: "Termin speichern" }));
     await waitFor(() =>
@@ -333,13 +339,42 @@ describe("EventFormModal – new event", () => {
     );
   });
 
-  it("creates audiences inline and selects them", async () => {
+  it("creates audiences inline via the last suggestion and selects them", async () => {
     const user = userEvent.setup();
-    apiPost.mockResolvedValueOnce({ id: "g9", clubId: "k1", name: "Senioren" });
+    const created = { id: "g9", clubId: "k1", name: "Senioren" };
+    apiPost.mockImplementationOnce(() => {
+      groups.push(created);
+      return Promise.resolve(created);
+    });
     renderNew("?date=2026-10-14");
     await user.click(await screen.findByRole("button", { name: "Neue Gruppe anlegen" }));
-    await user.type(screen.getByLabelText("Name"), "Senioren{Enter}");
+    const input = screen.getByRole("combobox", { name: "Neue Gruppe anlegen" });
+    await user.type(input, "Senioren");
+    const options = screen.getAllByRole("option");
+    expect(options[options.length - 1]).toHaveTextContent("„Senioren“ neu anlegen");
+    await user.click(options[options.length - 1]);
     expect(apiPost).toHaveBeenCalledWith("/api/clubs/c1/target-groups", { name: "Senioren" });
+    expect(await screen.findByRole("button", { name: "Senioren" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    groups.pop();
+  });
+
+  it("highlights the first suggestion, excludes assigned ones and closes with Escape", async () => {
+    const user = userEvent.setup();
+    renderNew("?date=2026-10-14");
+    await user.click(await screen.findByRole("button", { name: "Neue Gruppe anlegen" }));
+    const input = screen.getByRole("combobox", { name: "Neue Gruppe anlegen" });
+    expect(screen.getAllByRole("option")[0]).toHaveAttribute("aria-selected", "true");
+    await user.keyboard("{Enter}");
+    const audiences = screen.getByRole("group", { name: "Gruppen" });
+    expect(within(audiences).getByRole("button", { name: "Jugend" })).toBeVisible();
+    expect(screen.queryByRole("option", { name: "Jugend" })).toBeNull();
+    await user.type(input, "{Backspace}");
+    expect(within(audiences).queryByRole("button", { name: "Jugend" })).toBeNull();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("combobox", { name: "Neue Gruppe anlegen" })).toBeNull();
   });
 
   it("asks before discarding unsaved changes", async () => {
