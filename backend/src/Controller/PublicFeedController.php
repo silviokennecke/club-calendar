@@ -58,14 +58,19 @@ class PublicFeedController extends AbstractController
     {
         $this->rateLimiter->assertFeedAllowed($request, $feedId);
         $secret = $request->query->get('secret');
-        $tgParam = $request->query->get('targetGroupIds');
-        $tgIds = $tgParam ? array_values(array_filter(array_map('trim', explode(',', $tgParam)))) : null;
-        $icsContent = $this->feedService->getFeedIcs($feedId, $secret, $tgIds ?: null);
+        $plan = $this->feedService->prepareFeedIcs($feedId, $secret, PublicFeedService::normalizeTargetGroupIds($request->query->get('targetGroupIds')));
 
-        return new Response($icsContent, 200, [
-            'Content-Type' => 'text/calendar; charset=utf-8',
-            'Content-Disposition' => "attachment; filename=\"feed-$feedId.ics\"",
-            'Cache-Control' => 'no-cache, no-store',
-        ]);
+        $response = new Response();
+        $response->setEtag($plan->etag);
+        // no-cache: always revalidate (cheap 304); private for secret feeds so shared caches never keep them
+        $response->headers->set('Cache-Control', $plan->feed->getVisibility()->requiresSecret() ? 'private, no-cache' : 'public, no-cache');
+        if ($response->isNotModified($request)) {
+            return $response;
+        }
+        $response->setContent($this->feedService->renderFeedIcs($plan));
+        $response->headers->set('Content-Type', 'text/calendar; charset=utf-8');
+        $response->headers->set('Content-Disposition', "attachment; filename=\"feed-$feedId.ics\"");
+
+        return $response;
     }
 }

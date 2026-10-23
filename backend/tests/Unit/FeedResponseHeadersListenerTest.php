@@ -43,7 +43,8 @@ class FeedResponseHeadersListenerTest extends TestCase
     public static function robotsMatrix(): iterable
     {
         yield 'indexable feed, 200' => [true, 200, null];
-        yield 'indexable feed, 304' => [true, 304, 'noindex'];
+        yield 'indexable feed, 304' => [true, 304, null];
+        yield 'non-indexable feed, 304' => [false, 304, 'noindex'];
         yield 'indexable feed, 400 (invalid range)' => [true, 400, 'noindex'];
         yield 'indexable feed, 404 (unknown event)' => [true, 404, 'noindex'];
         yield 'indexable feed, 500' => [true, 500, 'noindex'];

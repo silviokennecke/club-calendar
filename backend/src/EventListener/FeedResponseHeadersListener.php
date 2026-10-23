@@ -45,12 +45,12 @@ class FeedResponseHeadersListener
 
     /**
      * Value of `X-Robots-Tag` for a feed API response; null sends none (indexable feed). Only a
-     * successful response for a feed marked indexable goes without: errors (also a 400 after the feed
+     * successful response (or 304) for a feed marked indexable goes without: errors (also a 400 after the feed
      * was loaded) and everything without the attribute are noindex.
      */
     private function robotsTag(Request $request, Response $response): ?string
     {
-        $indexable = true === $request->attributes->get(self::INDEXABLE_ATTRIBUTE) && $response->isSuccessful();
+        $indexable = true === $request->attributes->get(self::INDEXABLE_ATTRIBUTE) && ($response->isSuccessful() || Response::HTTP_NOT_MODIFIED === $response->getStatusCode());
 
         return $indexable ? null : 'noindex';
     }

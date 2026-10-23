@@ -11,6 +11,7 @@ use App\Entity\EventTargetGroup;
 use App\Entity\HolidayEvent;
 use App\EventListener\FeedResponseHeadersListener;
 use App\Repository\HolidayEventRepository;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
@@ -184,18 +185,105 @@ class PublicFeedService
             ?? 'UTC';
     }
 
-    public function getFeedIcs(string $feedId, ?string $secret, ?array $targetGroupIds): string
+    /**
+     * Access check, window and ETag of the feed ICS without touching events: nothing but the feed, one
+     * light query on the calendar versions and the clock is needed. Access (secret, archived) is always
+     * decided here, before any ETag can be compared.
+     *
+     * @param string[]|null $targetGroupIds normalized by normalizeTargetGroupIds()
+     */
+    public function prepareFeedIcs(string $feedId, ?string $secret, ?array $targetGroupIds): FeedIcsPlan
     {
         $feed = $this->loadFeed($feedId, $secret);
         [$from, $to] = $this->icsWindow($feed);
-        $qb = $this->eventQuery($feed, $targetGroupIds, $from, $to);
+        $effective = $this->effectiveTargetGroupIds($feed, $targetGroupIds);
+
+        $versions = $this->em->getConnection()->fetchAllKeyValue(
+            'SELECT id, content_version FROM calendar WHERE id IN (?) ORDER BY id',
+            [$this->activeCalendarIds($feed)],
+            [ArrayParameterType::STRING],
+        );
+        $club = $feed->getClub();
+        // updated_at has second precision: the configuration fingerprint (name, visibility, secret hash,
+        // selected calendars and target groups) also separates two changes within one second.
+        $parts = [
+            'feed' => $feed->getId(),
+            'updatedAt' => $feed->getUpdatedAt()->format('U'),
+            'config' => hash('sha256', json_encode([
+                $feed->getName(),
+                $feed->getVisibility()->value,
+                $feed->getSharedSecret(),
+                $this->feedTargetGroupIds($feed),
+            ], JSON_THROW_ON_ERROR)),
+            'calendars' => $versions,
+            'filter' => $effective,
+            'window' => [$from?->format('Y-m-d') ?? 'none', $to?->format('Y-m-d') ?? 'none', $this->icsMaxEvents],
+            'zone' => Input::canonicalTimezone($club->getTimezone()) ?? 'UTC',
+            'format' => IcsService::FORMAT_VERSION,
+        ];
+        $etag = substr(hash('sha256', json_encode($parts, JSON_THROW_ON_ERROR)), 0, 32);
+
+        return new FeedIcsPlan($feed, $effective, $from, $to, $etag);
+    }
+
+    public function renderFeedIcs(FeedIcsPlan $plan): string
+    {
+        $qb = $this->eventQuery($plan->feed, $plan->targetGroupIds, $plan->from, $plan->to);
         if ($this->icsMaxEvents > 0) {
             // Protective cap only (first N by date, time); not a paging or sync mechanism
             $qb->setMaxResults($this->icsMaxEvents);
         }
-        $events = $this->fetchEvents($qb);
 
-        return $this->icsService->buildIcs($feed, $feed->getClub(), $events);
+        return $this->icsService->buildIcs($plan->feed, $plan->feed->getClub(), $this->fetchEvents($qb));
+    }
+
+    /**
+     * `targetGroupIds` query value: trimmed, empty entries dropped, de-duplicated, sorted; null when
+     * nothing is left (no filter).
+     *
+     * @return string[]|null
+     */
+    public static function normalizeTargetGroupIds(mixed $param): ?array
+    {
+        if (!is_string($param) || '' === $param) {
+            return null;
+        }
+        $ids = array_values(array_unique(array_filter(array_map('trim', explode(',', $param)), fn (string $id) => '' !== $id)));
+        sort($ids, SORT_STRING);
+
+        return [] === $ids ? null : $ids;
+    }
+
+    /** @return string[] sorted */
+    private function feedTargetGroupIds(CalendarFeed $feed): array
+    {
+        $ids = $feed->getTargetGroups()->map(fn ($ftg) => $ftg->getTargetGroup()->getId())->getValues();
+        sort($ids, SORT_STRING);
+
+        return $ids;
+    }
+
+    /**
+     * The target group set a query really filters by (same rule as restrictToFeed): the requested ids
+     * cut with the feed's own; null = no filter. An empty array means nothing may be shown.
+     *
+     * @param string[]|null $targetGroupIds
+     *
+     * @return string[]|null
+     */
+    private function effectiveTargetGroupIds(CalendarFeed $feed, ?array $targetGroupIds): ?array
+    {
+        $feedIds = $this->feedTargetGroupIds($feed);
+        if ([] === $feedIds) {
+            return $targetGroupIds;
+        }
+        if (null === $targetGroupIds) {
+            return $feedIds;
+        }
+        $effective = array_values(array_intersect($targetGroupIds, $feedIds));
+        sort($effective, SORT_STRING);
+
+        return $effective;
     }
 
     /**

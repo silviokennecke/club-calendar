@@ -25,6 +25,13 @@ use Eluceo\iCal\Presentation\Factory\CalendarFactory;
 class IcsService
 {
     /**
+     * Part of the ETag of the public feed ICS: increase it with every change of the ICS output
+     * (fields, formatting, VTIMEZONE handling, library upgrade that alters the text), otherwise
+     * clients keep getting 304 for the old format.
+     */
+    public const FORMAT_VERSION = 1;
+
+    /**
      * @param Event[] $events published events of the feed
      */
     public function buildIcs(CalendarFeed $feed, Club $club, array $events): string

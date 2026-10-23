@@ -3326,6 +3326,8 @@ paths:
       summary: ICS subscription of a feed
       description: >-
         Published events of all non-archived calendars of the feed. Holidays are never part of the ICS. The event `note` is the first lines of `DESCRIPTION`. Only a default time window is delivered: events overlapping `[today - FEED_ICS_PAST_DAYS days, today + FEED_ICS_FUTURE_MONTHS months]` (defaults 180 days / 24 months, days in the club's time zone); `FEED_ICS_WINDOW_ENABLED=false` delivers everything. `FEED_ICS_MAX_EVENTS` > 0 additionally caps the output to the first N events by date and start time (protection only, no error; default 0 = unlimited). Operator settings, no query parameter overrides them; the authenticated member export and the web view `/events` are unaffected.
+
+        Conditional requests: the response carries a strong `ETag` that is computed without loading events (feed, `updated_at`, feed configuration, the content versions of the active calendars, the effective target group filter, the resolved window and cap, the club time zone and the ICS format version; never the secret). `If-None-Match` (several values, `*` and `W/` prefixes accepted) answers `304 Not Modified` without body, with the same `Cache-Control`/`X-Robots-Tag`/`Referrer-Policy` headers. Access (secret, archived) is always checked first, so a 304 never happens without valid access. Because the window moves with the date, the ETag changes at midnight (club zone). `targetGroupIds` is trimmed, de-duplicated and sorted; equivalent filters (`a,b` / `b,a,a`, or ids outside the feed's own groups) give the same ETag.
       operationId: publicFeedIcs
       security: [{}, { feedSecret: [] }]
       parameters:
@@ -3333,13 +3335,20 @@ paths:
         - { $ref: '#/components/parameters/FeedTargetGroupIds' }
       responses:
         '200':
-          description: 'iCalendar (`Content-Disposition: attachment; filename="feed-<feedId>.ics"`, `Cache-Control: no-cache, no-store, private`).'
+          description: 'iCalendar (`Content-Disposition: attachment; filename="feed-<feedId>.ics"`, `ETag`; `Cache-Control: no-cache, public` for PUBLIC/CLUB feeds, `no-cache, private` for PRIVATE feeds; no `max-age`: clients always revalidate).'
           headers:
+            ETag: { description: 'Strong validator, quoted hex.', schema: { type: string } }
             Referrer-Policy: { $ref: '#/components/headers/ReferrerPolicy' }
             X-Robots-Tag: { $ref: '#/components/headers/XRobotsTag' }
           content:
             text/calendar:
               schema: { type: string }
+        '304':
+          description: '`If-None-Match` matches the current `ETag`; no body.'
+          headers:
+            ETag: { description: 'Current validator.', schema: { type: string } }
+            Referrer-Policy: { $ref: '#/components/headers/ReferrerPolicy' }
+            X-Robots-Tag: { $ref: '#/components/headers/XRobotsTag' }
         '400': { $ref: '#/components/responses/FeedBadRequest' }
         '403': { $ref: '#/components/responses/FeedForbidden' }
         '404': { $ref: '#/components/responses/FeedNotFound' }
