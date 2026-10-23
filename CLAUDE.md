@@ -135,7 +135,7 @@ Security headers (audit M4) live in both `backend/public/.htaccess` and `docker/
 - **Location** — a venue with an address and optional map position; scoped to a Club
 - **HolidayCalendar** — an external ICS source of holidays/school breaks for a Calendar (`HolidayEvent`s); shown in the calendar views and skipped in series previews
 - **McpGrant** — a user's connection of an AI client (`OAuthClient`) to the MCP server, with scopes and `McpToken`s (see "MCP server and OAuth")
-- **User** — signs in with password, Google/Microsoft SSO (`OAuthAccount`) or passkeys (`Passkey`); e-mail confirmation by 6-digit code (`EmailVerification`)
+- **User** — e-mail addresses are stored trimmed and lower-cased everywhere (`App\Service\EmailAddress::normalize`, applied by the entity setters/constructors and every lookup); code compares them exactly and does not rely on column collations (the unicode_ci columns still equate look-alikes like "é"/"e", so lookups that matter re-check with `===`); signs in with password, Google/Microsoft SSO (`OAuthAccount`) or passkeys (`Passkey`); e-mail confirmation by 6-digit code (`EmailVerification`)
 
 ## Audit fields
 
