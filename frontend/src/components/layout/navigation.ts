@@ -59,13 +59,13 @@ export function buildNavGroups(
       items: [
         { key: "calendar", labelKey: "shell.nav.calendar", href: base, icon: "calendar" },
         { key: "events", labelKey: "shell.nav.events", href: `${base}/events`, icon: "list" },
-        { key: "import", labelKey: "shell.nav.import", href: `${base}/import`, icon: "upload" },
         {
           key: "templates",
           labelKey: "shell.nav.templates",
           href: `${base}/templates`,
           icon: "layers",
         },
+        { key: "import", labelKey: "shell.nav.import", href: `${base}/import`, icon: "upload" },
       ],
     },
     {

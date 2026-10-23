@@ -29,10 +29,10 @@ export default function MorePage() {
   const rows: Row[] = [
     ...(base
       ? [
+          { labelKey: "shell.nav.templates", href: `${base}/templates`, icon: "layers" as const },
           ...(roleAtLeast(club?.role, "editor")
             ? [{ labelKey: "shell.nav.import", href: `${base}/import`, icon: "upload" as const }]
             : []),
-          { labelKey: "shell.nav.templates", href: `${base}/templates`, icon: "layers" as const },
           { labelKey: "shell.nav.settings", href: `${base}/settings`, icon: "sliders" as const },
         ]
       : []),

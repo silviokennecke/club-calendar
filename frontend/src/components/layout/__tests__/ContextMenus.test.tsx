@@ -152,8 +152,8 @@ describe("MorePage (design: Menu)", () => {
         .getAllByRole("link")
         .map((l) => l.textContent),
     ).toEqual([
-      "Termine importieren",
       "Vorlagen",
+      "Termine importieren",
       "Einstellungen",
       "Verein verwalten",
       "Orte und Gruppen",
