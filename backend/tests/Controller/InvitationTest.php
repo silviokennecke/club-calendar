@@ -283,17 +283,13 @@ class InvitationTest extends WebTestCase
         $this->assertStringNotContainsString('token', strtolower($r['content']));
     }
 
-    public function testResendIsRefusedBeforeExpiryAndWorksAfterwards(): void
+    public function testResendWorksBeforeAndAfterExpiry(): void
     {
         $c = $this->club();
         [$id, $oldToken] = $this->invite($c, 'a@example.com');
+        [$id2] = $this->invite($c, 'b@example.com');
+        $this->expire($id2);
 
-        $early = $this->req('POST', "{$c['url']}/$id/resend", $c['auth']);
-        $this->assertCode(422, 'invitation_not_expired', $early);
-        $this->assertCount(0, $this->mails());
-        $this->assertSame(0, $this->rows(['status' => 'expired']));
-
-        $this->expire($id);
         $r = $this->req('POST', "{$c['url']}/$id/resend", $c['auth']);
         $this->assertSame(204, $r['status'], $r['content']);
         $newToken = $this->mailedToken();
@@ -303,15 +299,28 @@ class InvitationTest extends WebTestCase
         $row = self::$em->find(ClubInvitation::class, $id);
         $this->assertEqualsWithDelta(time() + 7 * 86400, $row->getExpiresAt()->getTimestamp(), 30);
         $this->assertSame(hash('sha256', $newToken), $row->getTokenHash());
-        $listed = $this->req('GET', $c['url'], $c['auth'])['body'];
-        $this->assertSame('pending', $listed[0]['status']);
+
+        $r2 = $this->req('POST', "{$c['url']}/$id2/resend", $c['auth']);
+        $this->assertSame(204, $r2['status'], $r2['content']);
+        $this->assertSame(['pending', 'pending'], array_column($this->req('GET', $c['url'], $c['auth'])['body'], 'status'));
 
         // The old token is dead, the new one works
         $a = $this->auth($this->user('a@example.com'));
         $this->assertCode(404, 'invitation_not_found', $this->req('POST', '/api/invitations/accept', $a, ['token' => $oldToken]));
         $this->assertSame(200, $this->req('POST', '/api/invitations/accept', $a, ['token' => $newToken])['status']);
-        // and a renewed invitation is again too early for another re-send (it is answered now: 404)
-        $this->assertCode(404, 'invitation_not_found', $this->req('POST', "{$c['url']}/$id/resend", $c['auth']));
+    }
+
+    public function testResendHasAPerInvitationCooldown(): void
+    {
+        $c = $this->club();
+        [$id] = $this->invite($c, 'a@example.com');
+        [$other] = $this->invite($c, 'b@example.com');
+
+        $this->assertSame(204, $this->req('POST', "{$c['url']}/$id/resend", $c['auth'])['status']);
+        $r = $this->req('POST', "{$c['url']}/$id/resend", $c['auth']);
+        $this->assertCode(429, 'rate_limited', $r);
+        $this->assertNotEmpty($r['headers']['retry-after'] ?? null);
+        $this->assertSame(204, $this->req('POST', "{$c['url']}/$other/resend", $c['auth'])['status']);
     }
 
     public function testResendAndRevokeStayInsideTheClub(): void
@@ -706,5 +715,53 @@ class InvitationTest extends WebTestCase
         $left = array_map(fn (ClubInvitation $i) => $i->getEmail(), self::$em->getRepository(ClubInvitation::class)->findAll());
         sort($left);
         $this->assertSame(['declined-recent@example.com', 'expired-recent@example.com', 'fresh@example.com'], $left);
+    }
+
+    // --- public preview ---
+
+    public function testPreviewIsPublicAndShowsOnlyMailContent(): void
+    {
+        $c = $this->club('Preview Club');
+        [, $token] = $this->invite($c, 'Newbie@Example.com');
+        $r = $this->req('POST', '/api/invitations/preview', '', ['token' => $token]);
+        $this->assertSame(200, $r['status'], $r['content']);
+        $this->assertSame('newbie@example.com', $r['body']['email']);
+        $this->assertSame('Preview Club', $r['body']['clubName']);
+        $this->assertSame('Olga Owner', $r['body']['invitedByName']);
+        $this->assertArrayHasKey('expiresAt', $r['body']);
+        $this->assertCount(4, $r['body']);
+        $this->assertSame(1, $this->rows(['status' => ClubInvitation::PENDING]));
+    }
+
+    public function testPreviewUnknownTokenIs404(): void
+    {
+        $this->assertCode(404, 'invitation_not_found', $this->req('POST', '/api/invitations/preview', '', ['token' => str_repeat('a', 64)]));
+    }
+
+    public function testPreviewExpiredIs404(): void
+    {
+        $c = $this->club();
+        [$id, $token] = $this->invite($c, 'late@example.com');
+        $this->expire($id);
+        $this->assertCode(404, 'invitation_not_found', $this->req('POST', '/api/invitations/preview', '', ['token' => $token]));
+    }
+
+    public function testPreviewAnsweredIs404(): void
+    {
+        $c = $this->club();
+        [, $token] = $this->invite($c, 'done@example.com');
+        $user = $this->user('done@example.com');
+        $this->assertSame(204, $this->req('POST', '/api/invitations/decline', $this->auth($user), ['token' => $token])['status']);
+        $this->assertCode(404, 'invitation_not_found', $this->req('POST', '/api/invitations/preview', '', ['token' => $token]));
+    }
+
+    public function testPreviewIsRateLimitedPerIp(): void
+    {
+        for ($i = 1; $i <= 100; ++$i) {
+            $this->assertSame(404, $this->req('POST', '/api/invitations/preview', '', ['token' => "x$i"])['status'], "request $i");
+        }
+        $r = $this->req('POST', '/api/invitations/preview', '', ['token' => 'x101']);
+        $this->assertCode(429, 'rate_limited', $r);
+        $this->assertArrayHasKey('retry-after', $r['headers']);
     }
 }

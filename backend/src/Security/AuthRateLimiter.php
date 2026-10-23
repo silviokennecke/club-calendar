@@ -26,6 +26,10 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $loginIp,
         #[Autowire(service: 'limiter.auth_login_email')]
         private readonly RateLimiterFactory $loginEmail,
+        #[Autowire(service: 'limiter.auth_identify_ip')]
+        private readonly RateLimiterFactory $identifyIp,
+        #[Autowire(service: 'limiter.auth_identify_email')]
+        private readonly RateLimiterFactory $identifyEmail,
         #[Autowire(service: 'limiter.auth_register_ip')]
         private readonly RateLimiterFactory $registerIp,
         #[Autowire(service: 'limiter.auth_register_email')]
@@ -44,8 +48,12 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $invitationUser,
         #[Autowire(service: 'limiter.invitation_club')]
         private readonly RateLimiterFactory $invitationClub,
+        #[Autowire(service: 'limiter.invitation_resend')]
+        private readonly RateLimiterFactory $invitationResend,
         #[Autowire(service: 'limiter.invitation_email')]
         private readonly RateLimiterFactory $invitationEmail,
+        #[Autowire(service: 'limiter.invitation_preview_ip')]
+        private readonly RateLimiterFactory $invitationPreviewIp,
         #[Autowire(service: 'limiter.oauth_register_ip')]
         private readonly RateLimiterFactory $oauthRegisterIp,
         #[Autowire(service: 'limiter.oauth_token_ip')]
@@ -68,6 +76,13 @@ class AuthRateLimiter
     {
         self::assertAccepted($this->loginIp->create(self::ip($request))->consume());
         self::assertAccepted($this->loginEmail->create(self::normalize($email))->consume());
+    }
+
+    /** E-mail-first identify step: every request counts against the client IP and the address bucket. */
+    public function assertIdentifyAllowed(Request $request, string $email): void
+    {
+        self::assertAccepted($this->identifyIp->create(self::ip($request))->consume());
+        self::assertAccepted($this->identifyEmail->create(self::normalize($email))->consume());
     }
 
     /** A successful sign-in clears the failures of that address. */
@@ -126,6 +141,18 @@ class AuthRateLimiter
     {
         self::assertAccepted($this->invitationUser->create($userId)->consume());
         self::assertAccepted($this->invitationClub->create($clubId)->consume());
+    }
+
+    /** Public invitation preview by token: 30 per client IP and 15 minutes. */
+    public function assertInvitationPreviewAllowed(Request $request): void
+    {
+        self::assertAccepted($this->invitationPreviewIp->create(self::ip($request))->consume());
+    }
+
+    /** Cooldown of 60 seconds between two re-sends of the same invitation. */
+    public function assertInvitationResendAllowed(string $invitationId): void
+    {
+        self::assertAccepted($this->invitationResend->create($invitationId)->consume());
     }
 
     /**

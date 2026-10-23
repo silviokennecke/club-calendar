@@ -58,11 +58,12 @@ class ClubInvitationController extends AbstractApiController
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 
-    /** Only after the invitation expired (422 `invitation_not_expired` before). */
+    /** Pending or expired; at most once per minute per invitation. */
     #[Route('/{invitationId}/resend', methods: ['POST'])]
     public function resend(#[MapEntity(id: 'clubId')] Club $club, string $invitationId): JsonResponse
     {
         $user = $this->userResolver->resolve();
+        $this->rateLimiter->assertInvitationResendAllowed($invitationId);
         $this->rateLimiter->assertInvitationAllowed($user->getId(), $club->getId());
         $this->invitations->resend($club, $user, $invitationId);
 

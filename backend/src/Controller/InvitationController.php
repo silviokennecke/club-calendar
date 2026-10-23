@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Dto\Club\InvitationTokenDto;
+use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
 use App\Service\ClubInvitationService;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -27,6 +28,7 @@ class InvitationController extends AbstractApiController
         private readonly CurrentUserResolver $userResolver,
         private readonly ValidatorInterface $validator,
         private readonly SerializerInterface $serializer,
+        private readonly AuthRateLimiter $rateLimiter,
     ) {
     }
 
@@ -34,6 +36,15 @@ class InvitationController extends AbstractApiController
     public function list(): JsonResponse
     {
         return new JsonResponse($this->invitations->listForUser($this->userResolver->resolve()));
+    }
+
+    /** Public (no sign-in): what the mail link invites to, for the signed-out landing page. */
+    #[Route('/preview', methods: ['POST'])]
+    public function preview(Request $request): JsonResponse
+    {
+        $this->rateLimiter->assertInvitationPreviewAllowed($request);
+
+        return new JsonResponse($this->invitations->preview($this->token($request)));
     }
 
     /** Link from the mail: the SPA sends the token after sign-in. */

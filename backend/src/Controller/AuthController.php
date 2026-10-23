@@ -8,12 +8,14 @@ use App\Dto\Auth\ChangeEmailDto;
 use App\Dto\Auth\ChangePasswordDto;
 use App\Dto\Auth\DeleteAccountDto;
 use App\Dto\Auth\ForgotPasswordDto;
+use App\Dto\Auth\IdentifyDto;
 use App\Dto\Auth\LoginDto;
 use App\Dto\Auth\RegisterDto;
 use App\Dto\Auth\ResendVerificationDto;
 use App\Dto\Auth\ResetPasswordDto;
 use App\Dto\Auth\UpdateMeDto;
 use App\Dto\Auth\VerifyEmailDto;
+use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Exception\EmailNotVerifiedException;
 use App\Security\AuthRateLimiter;
@@ -25,6 +27,7 @@ use App\Service\Input;
 use App\Service\LegalConsentService;
 use App\Service\PasswordResetService;
 use App\Service\RegistrationPolicy;
+use Doctrine\ORM\EntityManagerInterface;
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -52,6 +55,7 @@ class AuthController extends AbstractApiController
         private readonly AccountDeletionService $accountDeletion,
         private readonly LegalConsentService $legal,
         private readonly RegistrationPolicy $registrationPolicy,
+        private readonly EntityManagerInterface $em,
         #[Autowire(service: 'limiter.password_reset_email')]
         private readonly RateLimiterFactory $passwordResetEmailLimiter,
         #[Autowire(service: 'limiter.password_reset_ip')]
@@ -80,6 +84,27 @@ class AuthController extends AbstractApiController
 
         // No tokens: the address is confirmed with the code from the mail first (POST /api/auth/verify-email).
         return new JsonResponse(['verificationRequired' => true, 'email' => $dto->email], Response::HTTP_CREATED);
+    }
+
+    /**
+     * First step of the e-mail-first sign-in: 200 `{email, status}` with `login` (account exists, verified or
+     * not), `register` or `registration_restricted`. Intentional account-existence oracle, limited per IP and
+     * per address (checked before any database work).
+     */
+    #[Route('/identify', methods: ['POST'])]
+    public function identify(Request $request): JsonResponse
+    {
+        $dto = $this->deserializeDto($request, IdentifyDto::class);
+        $this->validateDto($dto, $this->validator);
+        $email = AuthRateLimiter::normalize($dto->email);
+        $this->rateLimiter->assertIdentifyAllowed($request, $email);
+        if (null !== $this->em->getRepository(User::class)->findOneBy(['email' => $email])) {
+            $status = 'login';
+        } else {
+            $status = $this->registrationPolicy->mayRegister($email) ? 'register' : 'registration_restricted';
+        }
+
+        return new JsonResponse(['email' => $email, 'status' => $status]);
     }
 
     #[Route('/login', methods: ['POST'])]
