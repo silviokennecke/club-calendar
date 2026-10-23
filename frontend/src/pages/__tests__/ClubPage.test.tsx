@@ -207,7 +207,7 @@ describe("ClubPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Zu viele Einladungen");
   });
 
-  it("lists open invitations: pending with expiry, expired with 'send again'", async () => {
+  it("lists open invitations: both can be sent again", async () => {
     invitations = [
       {
         id: "i1",
@@ -231,8 +231,9 @@ describe("ClubPage", () => {
     const table = await screen.findByRole("table", { name: "Offene Einladungen (2)" });
     const pending = within(within(table).getByText("offen@beispiel.de").closest("tr")!);
     expect(pending.getByText("Offen bis 24.10.2026")).toBeInTheDocument();
-    // only expired invitations can be sent again
-    expect(pending.queryByRole("button", { name: /erneut senden/ })).not.toBeInTheDocument();
+    expect(
+      pending.getByRole("button", { name: "Einladung an offen@beispiel.de erneut senden" }),
+    ).toBeInTheDocument();
     const expired = within(within(table).getByText("alt@beispiel.de").closest("tr")!);
     expect(expired.getByText("Abgelaufen")).toBeInTheDocument();
     await user.click(
@@ -243,27 +244,25 @@ describe("ClubPage", () => {
     );
   });
 
-  it("handles invitation_not_expired when sending again", async () => {
+  it("shows a toast when sending again is rate limited", async () => {
     invitations = [
       {
-        id: "i2",
-        email: "alt@beispiel.de",
-        status: "expired",
+        id: "i1",
+        email: "offen@beispiel.de",
+        status: "pending",
         invitedByName: null,
-        createdAt: "2026-09-01T10:00:00+00:00",
-        expiresAt: "2026-09-15T10:00:00+00:00",
+        createdAt: "2026-10-10T10:00:00+00:00",
+        expiresAt: "2026-10-24T10:00:00+00:00",
       },
     ];
-    apiPost.mockRejectedValue(new ApiError("x", 422, "invitation_not_expired"));
-    const info = vi.spyOn(toast, "info");
+    apiPost.mockRejectedValue(new ApiError("x", 429, "rate_limited"));
+    const error = vi.spyOn(toast, "error");
     const user = userEvent.setup();
     renderClub();
     await user.click(
-      await screen.findByRole("button", { name: "Einladung an alt@beispiel.de erneut senden" }),
+      await screen.findByRole("button", { name: "Einladung an offen@beispiel.de erneut senden" }),
     );
-    await waitFor(() =>
-      expect(info).toHaveBeenCalledWith(expect.stringContaining("noch nicht abgelaufen")),
-    );
+    await waitFor(() => expect(error).toHaveBeenCalledWith(expect.stringContaining("Zu viele")));
   });
 
   it("revokes an invitation only after confirming", async () => {

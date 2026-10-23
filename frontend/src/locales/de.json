@@ -1806,7 +1806,6 @@
       "resend": "Erneut senden",
       "resendLabel": "Einladung an {{email}} erneut senden",
       "resent": "Die Einladung an {{email}} wurde erneut verschickt.",
-      "notExpired": "Diese Einladung ist noch nicht abgelaufen.",
       "gone": "Diese Einladung gibt es nicht mehr.",
       "resendFailed": "Die Einladung konnte nicht erneut verschickt werden. Bitte versuche es noch einmal.",
       "revoke": "Widerrufen",

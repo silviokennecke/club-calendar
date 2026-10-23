@@ -4,7 +4,6 @@ import {
   inviteFailure,
   invitationFailure,
   isInvitationGone,
-  isNotExpired,
   readInvitationToken,
   stashInvitationToken,
 } from ".";
@@ -41,9 +40,7 @@ describe("inviteFailure and friends", () => {
     expect(inviteFailure(coded("validation_failed"))).toBe("invalid");
     expect(inviteFailure(new Error("x"))).toBe("failed");
   });
-  it("recognises not-yet-expired and gone invitations", () => {
-    expect(isNotExpired(coded("invitation_not_expired"))).toBe(true);
-    expect(isNotExpired(coded("other"))).toBe(false);
+  it("recognises gone invitations", () => {
     expect(isInvitationGone(coded("invitation_not_found"))).toBe(true);
     expect(isInvitationGone(null)).toBe(false);
   });
