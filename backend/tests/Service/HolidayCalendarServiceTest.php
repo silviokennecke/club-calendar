@@ -75,7 +75,7 @@ ICS;
         });
         $em->method('createQuery')->willReturn($this->makeQueryStub());
 
-        return new HolidayCalendarService($httpClient, $em);
+        return new HolidayCalendarService($httpClient, $em, new \App\Service\CalendarVersionBumper($em->getConnection()));
     }
 
     private function makeHolidayCalendar(): HolidayCalendar
@@ -286,7 +286,7 @@ ICS;
             },
         );
 
-        new HolidayCalendarService($httpClient, $em)->fetchAndStore($hc);
+        new HolidayCalendarService($httpClient, $em, new \App\Service\CalendarVersionBumper($em->getConnection()))->fetchAndStore($hc);
 
         $this->assertStringContainsString('DELETE', $capturedDql);
         $this->assertStringContainsString('HolidayEvent', $capturedDql);
@@ -309,7 +309,7 @@ ICS;
         $em->expects($this->never())->method('persist');
         $em->expects($this->never())->method('flush');
 
-        $service = new HolidayCalendarService($httpClient, $em);
+        $service = new HolidayCalendarService($httpClient, $em, new \App\Service\CalendarVersionBumper($em->getConnection()));
 
         $this->expectException(TransportExceptionInterface::class);
         $service->fetchAndStore($this->makeHolidayCalendar());
@@ -370,7 +370,7 @@ ICS;
         });
         $em->method('createQuery')->willReturn($this->makeQueryStub());
 
-        $count = new HolidayCalendarService($httpClient, $em)->fetchAndStore($this->makeHolidayCalendar());
+        $count = new HolidayCalendarService($httpClient, $em, new \App\Service\CalendarVersionBumper($em->getConnection()))->fetchAndStore($this->makeHolidayCalendar());
 
         $this->assertSame(0, $count);
         $this->assertTrue($flushCalled, 'flush() must still be called even for an empty feed');

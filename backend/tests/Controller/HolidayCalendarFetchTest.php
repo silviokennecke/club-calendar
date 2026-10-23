@@ -43,7 +43,7 @@ class HolidayCalendarFetchTest extends WebTestCase
         $http = new MockHttpClient(function (): MockResponse {
             return new MockResponse(array_shift($this->feeds) ?? '', ['http_code' => 200]);
         });
-        $container->set(HolidayCalendarService::class, new HolidayCalendarService($http, $this->em));
+        $container->set(HolidayCalendarService::class, new HolidayCalendarService($http, $this->em, new \App\Service\CalendarVersionBumper($this->em->getConnection())));
     }
 
     private static function ics(int $holidays): string

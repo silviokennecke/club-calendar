@@ -23,6 +23,7 @@ readonly class HolidayCalendarService
     public function __construct(
         private HttpClientInterface $httpClient,
         private EntityManagerInterface $em,
+        private CalendarVersionBumper $versionBumper,
     ) {
     }
 
@@ -90,6 +91,8 @@ readonly class HolidayCalendarService
         $this->em->createQuery('DELETE FROM App\Entity\HolidayEvent he WHERE he.holidayCalendar = :hc')
             ->setParameter('hc', $holidayCalendar)
             ->execute();
+        // The bulk DELETE bypasses the unit of work (and ContentVersionListener).
+        $this->versionBumper->bumpCalendars([$holidayCalendar->getCalendar()->getId()]);
 
         $count = 0;
         /** @var VObject\Component\VEvent $vevent */

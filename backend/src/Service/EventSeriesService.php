@@ -34,6 +34,7 @@ readonly class EventSeriesService
         private HolidayEventRepository $holidays,
         private ClockInterface $clock,
         private Quota $quota,
+        private CalendarVersionBumper $versionBumper,
     ) {
     }
 
@@ -187,6 +188,7 @@ readonly class EventSeriesService
                         ->setParameter('ids', array_column($plan['delete'], 'id'))
                         ->setParameter('series', $series->getId())
                         ->execute();
+                    $this->versionBumper->bumpCalendars([$series->getCalendar()->getId()]);
                     if (in_array($prototype->getId(), array_column($plan['delete'], 'id'), true)) {
                         $this->em->detach($prototype);
                     }
