@@ -113,8 +113,10 @@ test.describe("Verein verwalten", () => {
     await expect(
       invitations.getByRole("row").filter({ hasText: "niemand@example.com" }),
     ).toContainText(/Offen bis \d{2}\.\d{2}\.\d{4}/);
-    // Noch offene Einladungen kann man nicht erneut senden, aber widerrufen
-    await expect(page.getByRole("button", { name: /erneut senden/ })).toHaveCount(0);
+    // Offene Einladungen kann man erneut senden und widerrufen
+    await expect(
+      page.getByRole("button", { name: "Einladung an niemand@example.com erneut senden" }),
+    ).toBeVisible();
     await page.getByRole("button", { name: "Einladung an niemand@example.com widerrufen" }).click();
     await page
       .getByRole("alertdialog", { name: "Einladung an niemand@example.com widerrufen?" })

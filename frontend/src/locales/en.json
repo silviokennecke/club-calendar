@@ -1806,7 +1806,6 @@
       "resend": "Send again",
       "resendLabel": "Send the invitation to {{email}} again",
       "resent": "The invitation to {{email}} was sent again.",
-      "notExpired": "This invitation has not expired yet.",
       "gone": "This invitation no longer exists.",
       "resendFailed": "The invitation could not be sent again. Please try again.",
       "revoke": "Revoke",

@@ -105,11 +105,6 @@ export function inviteFailure(error: unknown): InviteProblem {
   return "failed";
 }
 
-/** Resending refused because the invitation has not expired yet (422 `invitation_not_expired`). */
-export function isNotExpired(error: unknown): boolean {
-  return codeOf(error) === "invitation_not_expired";
-}
-
 /** The invitation is gone (answered, revoked meanwhile): 404 `invitation_not_found`. */
 export function isInvitationGone(error: unknown): boolean {
   return codeOf(error) === "invitation_not_found";

@@ -19,7 +19,6 @@ import { formatDate } from "@/lib/dateFormat";
 import {
   inviteFailure,
   isInvitationGone,
-  isNotExpired,
   type ClubInvitation,
   type InviteProblem,
 } from "@/lib/invitations";
@@ -89,8 +88,7 @@ export function InviteSection({ club, members }: { club: Club; members: Readonly
       await apiPost(`/api/clubs/${club.id}/invitations/${invitation.id}/resend`, {});
       toast.success(t("club.invite.resent", { email: invitation.email }));
     } catch (error) {
-      if (isNotExpired(error)) toast.info(t("club.invite.notExpired"));
-      else if (isInvitationGone(error)) toast.error(t("club.invite.gone"));
+      if (isInvitationGone(error)) toast.error(t("club.invite.gone"));
       else if ((error as { code?: unknown } | null)?.code === "rate_limited")
         toast.error(t("club.invite.problem.rateLimited"));
       else toast.error(t("club.invite.resendFailed"));
@@ -234,16 +232,14 @@ export function InviteSection({ club, members }: { club: Club; members: Readonly
                       </td>
                       <td className="ap-col-actions" data-label={t("club.members.colAction")}>
                         <span className="ap-row" style={{ gap: 8 }}>
-                          {expired && (
-                            <Button
-                              variant="secondary"
-                              loading={resending === inv.id}
-                              aria-label={t("club.invite.resendLabel", { email: inv.email })}
-                              onClick={() => void resend(inv)}
-                            >
-                              {t("club.invite.resend")}
-                            </Button>
-                          )}
+                          <Button
+                            variant="secondary"
+                            loading={resending === inv.id}
+                            aria-label={t("club.invite.resendLabel", { email: inv.email })}
+                            onClick={() => void resend(inv)}
+                          >
+                            {t("club.invite.resend")}
+                          </Button>
                           <Button
                             variant="secondary"
                             aria-label={t("club.invite.revokeLabel", { email: inv.email })}
