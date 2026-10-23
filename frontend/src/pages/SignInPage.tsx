@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiFetch, apiPost, BACKEND_URL } from "@/lib/api";
@@ -51,12 +51,12 @@ export default function SignInPage() {
   const { t } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
 
   // null = untouched, so an invitation can prefill without an effect
   const [typed, setTyped] = useState<string | null>(null);
   const [result, setResult] = useState<{ status: Status; email: string } | null>(null);
-  const [showResult, setShowResult] = useState(false);
   const [emailError, setEmailError] = useState<string | undefined>();
   const [submits, setSubmits] = useState(0);
   const [identifying, setIdentifying] = useState(false);
@@ -83,7 +83,9 @@ export default function SignInPage() {
   }, [inviteDead]);
 
   const email = typed ?? preview.data?.email ?? "";
-  const step: StepName = showResult && result ? result.status : "email";
+  // Step 2 is a history entry (state flag), so the browser Back/Forward buttons move between the steps.
+  const inStepTwo = (location.state as { authStep?: boolean } | null)?.authStep === true;
+  const step: StepName = inStepTwo && result ? result.status : "email";
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/api/auth/providers`)
@@ -98,7 +100,8 @@ export default function SignInPage() {
   }, [step]);
 
   function back() {
-    setShowResult(false);
+    if (inStepTwo) navigate(-1);
+    else navigate({ pathname: location.pathname, search: location.search }, { replace: true });
   }
 
   async function handleContinue(e: React.FormEvent) {
@@ -123,7 +126,10 @@ export default function SignInPage() {
       });
       setTyped(res.email);
       setResult({ status: res.status, email: res.email });
-      setShowResult(true);
+      navigate(
+        { pathname: location.pathname, search: location.search },
+        { state: { authStep: true } },
+      );
     } catch (err: unknown) {
       setIdentifyProblem(isRateLimited(err) ? rateLimitText(t, err) : t("auth.entry.failed"));
       setProblemKey((k) => k + 1);
