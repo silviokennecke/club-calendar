@@ -398,7 +398,7 @@ class AccountTest extends WebTestCase
         $this->assertSame($free['content'], $takenOtherCase['content']);
         // The pending address shows up as for a free one (else GET /me would be the oracle), but there is
         // no link that could confirm it.
-        $this->assertSame('BOB@example.com', $this->me($this->auth($user))['body']['pendingEmail']);
+        $this->assertSame('bob@example.com', $this->me($this->auth($user))['body']['pendingEmail']);
         $this->assertSame(1, self::$em->getRepository(EmailChange::class)->count([]));
     }
 
