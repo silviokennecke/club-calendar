@@ -1885,6 +1885,40 @@ paths:
                 items: { $ref: '#/components/schemas/OwnInvitation' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /api/invitations/preview:
+    post:
+      tags: [Invitations]
+      summary: Preview an invitation by the token of the mail (public)
+      description: >-
+        No sign-in needed: the SPA opens `{FRONTEND_URL}/invitations?token=…` for signed-out visitors, shows the
+        club and prefills the sign-in form with the invited address. The token is the credential and is sent in
+        the body so it stays out of URLs and logs. Unknown, answered and expired invitations are the same
+        `404 invitation_not_found`. Rate limit: 30 per client IP and 15 minutes (`429 rate_limited`,
+        `Retry-After`), checked before any lookup.
+      operationId: previewInvitation
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InvitationToken' }
+      responses:
+        '200':
+          description: The pending invitation.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [email, clubName, invitedByName, expiresAt]
+                properties:
+                  email: { type: string }
+                  clubName: { type: string }
+                  invitedByName: { type: [string, 'null'] }
+                  expiresAt: { type: string, format: date-time }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '404': { $ref: '#/components/responses/InvitationNotFound' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+
   /api/invitations/accept:
     post:
       tags: [Invitations]

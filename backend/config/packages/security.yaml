@@ -41,6 +41,8 @@ security:
     # Member routes need a signed-in user before their entity is loaded or the member check runs: without
     # a token they answer 401 `missing_token` (ExceptionListener), never 403/404 (no probing of ids).
     access_control:
+        # Invitation preview for signed-out visitors: the mail token is the credential (IP-rate-limited).
+        - { path: ^/api/invitations/preview$, roles: PUBLIC_ACCESS }
         - { path: ^/api/(clubs|calendars|invitations)(/|$), roles: IS_AUTHENTICATED }
         - { path: ^/api/map/geocode/, roles: IS_AUTHENTICATED }
         # Tile/style/font proxy: signed-in users only (the public feed uses the static images /api/map/image/*).
