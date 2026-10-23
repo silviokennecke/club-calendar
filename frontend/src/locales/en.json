@@ -646,6 +646,9 @@
       "meta": "{{from}} – {{to}}",
       "next": "Next",
       "back": "Back",
+      "searchLabel": "Search templates by name",
+      "searchPlaceholder": "Search templates…",
+      "noMatch": "No template found for “{{query}}”.",
       "loading": "Loading templates.",
       "error": "The templates could not be loaded.",
       "empty": {
