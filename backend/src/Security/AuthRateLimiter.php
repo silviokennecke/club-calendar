@@ -64,6 +64,14 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $mcpGrant,
         #[Autowire(service: 'limiter.mcp_ip')]
         private readonly RateLimiterFactory $mcpIp,
+        #[Autowire(service: 'limiter.feed_ip')]
+        private readonly RateLimiterFactory $feedIp,
+        #[Autowire(service: 'limiter.feed_id')]
+        private readonly RateLimiterFactory $feedId,
+        #[Autowire('%env(int:FEED_RATE_LIMIT_PER_IP)%')]
+        private readonly int $feedIpLimit,
+        #[Autowire('%env(int:FEED_RATE_LIMIT_PER_FEED)%')]
+        private readonly int $feedIdLimit,
     ) {
     }
 
@@ -192,6 +200,20 @@ class AuthRateLimiter
     public function assertMcpGrantAllowed(string $grantId): void
     {
         self::assertAccepted($this->mcpGrant->create($grantId)->consume());
+    }
+
+    /**
+     * Public feed endpoints, checked before the feed is looked up: per client IP and per feed id from the URL
+     * (unchecked, so unknown ids behave exactly like known ones). A limit of 0 switches that check off.
+     */
+    public function assertFeedAllowed(Request $request, string $feedId): void
+    {
+        if ($this->feedIpLimit > 0) {
+            self::assertAccepted($this->feedIp->create(self::ip($request))->consume());
+        }
+        if ($this->feedIdLimit > 0) {
+            self::assertAccepted($this->feedId->create($feedId)->consume());
+        }
     }
 
     public static function normalize(string $email): string

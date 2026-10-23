@@ -1,3 +1,8 @@
+parameters:
+    # High by default so the suite is not throttled; FeedRateLimitTest sets the env vars to small values.
+    env(FEED_RATE_LIMIT_PER_IP): '100000'
+    env(FEED_RATE_LIMIT_PER_FEED): '100000'
+
 framework:
     rate_limiter:
         # Geocoding service rate limiters (high limits for testing)
@@ -132,6 +137,16 @@ framework:
         mcp_ip:
             policy: sliding_window
             limit: 1000
+            interval: '1 minute'
+            cache_pool: app.auth_limiter_pool
+        feed_ip:
+            policy: sliding_window
+            limit: '%env(int:FEED_RATE_LIMIT_PER_IP)%'
+            interval: '1 minute'
+            cache_pool: app.auth_limiter_pool
+        feed_id:
+            policy: sliding_window
+            limit: '%env(int:FEED_RATE_LIMIT_PER_FEED)%'
             interval: '1 minute'
             cache_pool: app.auth_limiter_pool
 

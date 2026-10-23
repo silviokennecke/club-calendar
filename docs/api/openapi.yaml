@@ -3254,6 +3254,7 @@ paths:
       tags: [Public feed]
       summary: Web view of a feed (header, events, holidays)
       description: >-
+        All three feed routes are rate-limited before any lookup: `FEED_RATE_LIMIT_PER_IP` (default 120) per client IP and `FEED_RATE_LIMIT_PER_FEED` (default 600) per `feedId` of the URL (unchecked, so unknown ids behave like known ones) per minute, 0 = off; over a limit `429 rate_limited` + `Retry-After`.
         Published events of all non-archived calendars of the feed, merged and sorted by date and start time
         (optionally limited to `from`/`to` by overlap), and the holidays of those calendars in the same range.
         Holidays are de-duplicated by their `uid` (the same non-empty uid is listed once, the first in
@@ -3284,6 +3285,7 @@ paths:
         '400': { $ref: '#/components/responses/FeedBadRequest' }
         '403': { $ref: '#/components/responses/FeedForbidden' }
         '404': { $ref: '#/components/responses/FeedNotFound' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/feed/{feedId}/events/{eventId}:
     parameters:
@@ -3314,6 +3316,7 @@ paths:
         '400': { $ref: '#/components/responses/FeedBadRequest' }
         '403': { $ref: '#/components/responses/FeedForbidden' }
         '404': { $ref: '#/components/responses/FeedNotFound' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/feed/{feedId}/ics:
     parameters:
@@ -3340,6 +3343,7 @@ paths:
         '400': { $ref: '#/components/responses/FeedBadRequest' }
         '403': { $ref: '#/components/responses/FeedForbidden' }
         '404': { $ref: '#/components/responses/FeedNotFound' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   # ------------------------------------------------------------------ Holidays
   /api/calendars/{calendarId}/holiday-calendars:
