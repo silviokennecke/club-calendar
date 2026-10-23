@@ -23,8 +23,8 @@ use Psr\Clock\ClockInterface;
  * - {@see invite()} accepts any address and answers the same for unknown, registered and already-member
  *   addresses (the caller always answers 204). Only the mail goes out after the response; no lookup of the
  *   address in the user table decides anything the inviter can observe.
- * - An invitation is valid for 7 days. Expired ones stay listed to the club and can be re-sent only after
- *   the expiry (new token, new 7 days); until then 422 `invitation_not_expired`.
+ * - An invitation is valid for 7 days. Pending and expired ones stay listed to the club and can be re-sent at
+ *   any time (new token, the old link dies, new 7 days).
  * - The token is 32 random bytes (hex), stored as SHA-256 hash; it only identifies an invitation. To see,
  *   accept or decline one the signed-in user needs a VERIFIED address equal to the invited one, otherwise the
  *   answer is the generic 404 `invitation_not_found` (a stolen token is useless to another account).
@@ -37,7 +37,6 @@ readonly class ClubInvitationService
 {
     public const string NOT_FOUND_CODE = 'invitation_not_found';
     public const string EXPIRED_CODE = 'invitation_expired';
-    public const string NOT_EXPIRED_CODE = 'invitation_not_expired';
 
     /** Days after which finished (accepted, declined) and long expired invitations are deleted. */
     public const int PRUNE_AFTER_DAYS = 30;
@@ -132,9 +131,9 @@ readonly class ClubInvitationService
     }
 
     /**
-     * Re-send of an EXPIRED invitation: new token, new 7 days, new mail.
+     * Re-send of a pending or expired invitation: new token, new 7 days, new mail.
      *
-     * @throws ApiProblemException 404 `invitation_not_found` (also accepted/declined ones), 422 `invitation_not_expired`
+     * @throws ApiProblemException 404 `invitation_not_found` (also accepted/declined ones)
      */
     public function resend(Club $club, User $by, string $invitationId): void
     {
@@ -143,9 +142,6 @@ readonly class ClubInvitationService
         $renewed = $this->em->wrapInTransaction(function () use ($club, $by, $invitationId, $now): array {
             $this->em->lock($club, LockMode::PESSIMISTIC_WRITE);
             $invitation = $this->findOpenOfClub($club, $invitationId);
-            if (!$invitation->isExpired($now)) {
-                throw new ApiProblemException(422, 'The invitation is still valid and can be re-sent after it expired', self::NOT_EXPIRED_CODE);
-            }
             $token = self::newToken();
             $invitation->renew($by, PasswordResetService::hash($token), $now);
             $this->em->flush();
@@ -260,6 +256,31 @@ readonly class ClubInvitationService
             $invitation->resolve(ClubInvitation::DECLINED, $this->now());
             $this->em->flush();
         });
+    }
+
+    /**
+     * Public preview of a pending, not expired invitation by the mail token (no sign-in). Unknown, answered and
+     * expired are the same 404, so the token reveals nothing beyond what the mail already said.
+     *
+     * @return array{email: string, clubName: string, invitedByName: ?string, expiresAt: string}
+     *
+     * @throws ApiProblemException 404 `invitation_not_found`
+     */
+    public function preview(string $token): array
+    {
+        $hash = PasswordResetService::hash($token);
+        $invitation = '' === $token ? null : $this->em->getRepository(ClubInvitation::class)->findOneBy(['tokenHash' => $hash]);
+        if (null === $invitation || !hash_equals($invitation->getTokenHash(), $hash)
+            || ClubInvitation::PENDING !== $invitation->getStatus() || $invitation->isExpired($this->now())) {
+            throw self::notFound();
+        }
+
+        return [
+            'email' => $invitation->getEmail(),
+            'clubName' => $invitation->getClub()->getName(),
+            'invitedByName' => $invitation->getInvitedBy()?->getName(),
+            'expiresAt' => self::iso($invitation->getExpiresAt()),
+        ];
     }
 
     /** Deletes accepted/declined invitations answered, and open ones expired, more than 30 days ago. */

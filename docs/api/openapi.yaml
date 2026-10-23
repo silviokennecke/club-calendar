@@ -838,6 +838,43 @@ paths:
         '422': { $ref: '#/components/responses/ValidationFailed' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
 
+  /api/auth/identify:
+    post:
+      tags: [Auth]
+      summary: Identify an address (first step of the e-mail-first sign-in)
+      description: >-
+        `status` is `login` (an account with this address exists, confirmed or not: the login flow handles
+        `email_not_verified`), `register` (no account, registration allowed, incl. a restricted setup with an
+        open club invitation for the address) or `registration_restricted` (no account, `RESTRICT_REGISTRATION`
+        and no open invitation). `email` is the normalized address. Accepted trade-off: this reveals whether an
+        account exists; it is mitigated by rate limiting (30 per 15 minutes per client IP and 10 per 15 minutes
+        per normalized address, `429 rate_limited`, checked before any database work).
+      operationId: identify
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+      responses:
+        '200':
+          description: The status of the address.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [email, status]
+                properties:
+                  email: { type: string }
+                  status: { type: string, enum: [login, register, registration_restricted] }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+
   /api/auth/resend-verification:
     post:
       tags: [Auth]

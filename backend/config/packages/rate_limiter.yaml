@@ -82,6 +82,15 @@ framework:
             policy: sliding_window
             limit: 5
             interval: '15 minutes'
+        # Identify (e-mail-first sign-in; an intended account-existence oracle, hence tight limits)
+        auth_identify_ip:
+            policy: sliding_window
+            limit: 30
+            interval: '15 minutes'
+        auth_identify_email:
+            policy: sliding_window
+            limit: 10
+            interval: '15 minutes'
         auth_register_ip:
             policy: sliding_window
             limit: '%env(int:AUTH_REGISTER_IP_LIMIT)%'
