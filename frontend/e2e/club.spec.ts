@@ -24,10 +24,14 @@ async function seed(request: APIRequestContext, name: string) {
   };
 }
 
-async function openClub(page: Page, s: Awaited<ReturnType<typeof seed>>) {
+async function openClub(
+  page: Page,
+  s: Awaited<ReturnType<typeof seed>>,
+  tab: "general" | "calendars" | "members" = "general",
+) {
   await login(page, s.email);
   await page.waitForURL(/\/clubs/);
-  await page.goto(`/clubs/${s.clubId}`);
+  await page.goto(`/clubs/${s.clubId}?tab=${tab}`);
   await expect(page.getByRole("heading", { level: 1, name: "Verein verwalten" })).toBeVisible();
 }
 
@@ -79,13 +83,31 @@ test.describe("Verein verwalten", () => {
     expect(club.name).toBe("Waldblick e. V.");
   });
 
+  test("Reiter sind per URL adressierbar und trennen Allgemeines, Kalender und Mitglieder", async ({
+    page,
+    request,
+  }) => {
+    const s = await seed(request, "Club Reiter");
+    await openClub(page, s);
+    await expect(page.getByRole("tab", { name: "Allgemeines", selected: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Gefahrenbereich" })).toBeVisible();
+    await page.getByRole("tab", { name: "Mitglieder" }).click();
+    await expect(page).toHaveURL(/\?tab=members$/);
+    await expect(page.getByRole("table", { name: /Mitglieder des Vereins/ })).toBeVisible();
+    await page.getByRole("tab", { name: "Kalender" }).click();
+    await expect(page).toHaveURL(/\?tab=calendars$/);
+    await expect(page.getByRole("heading", { name: "Gefahrenbereich" })).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole("tab", { name: "Kalender", selected: true })).toBeVisible();
+  });
+
   test("Mitglieder: einladen mit Fehlern, Einladungen verwalten, entfernen mit Bestätigung", async ({
     page,
     request,
   }) => {
     const s = await seed(request, "Club Mitglieder");
     const otherEmail = await createVerifiedUser(request, "Mara Sommer");
-    await openClub(page, s);
+    await openClub(page, s, "members");
 
     const table = page.getByRole("table", { name: /Mitglieder des Vereins/ });
     await expect(table.getByRole("row")).toHaveCount(2);
@@ -178,7 +200,7 @@ test.describe("Verein verwalten", () => {
     request,
   }) => {
     const s = await seed(request, "Club Kalender");
-    await openClub(page, s);
+    await openClub(page, s, "calendars");
     const active = page.getByRole("list").filter({ hasText: s.calendarName }).first();
     await expect(active.getByRole("listitem")).toHaveCount(1);
     // Design (Club): the row names the number of events (counted by the API)
@@ -267,7 +289,7 @@ test.describe("Verein verwalten", () => {
     const otherEmail = await createVerifiedUser(request, "Bleibt Da");
     // The last admin cannot leave: the second member becomes an admin first
     await inviteAndAccept(request, s.clubId, s.headers, otherEmail, "admin");
-    await openClub(page, s);
+    await openClub(page, s, "members");
     await page.getByRole("button", { name: `Verein ${s.clubName} verlassen` }).click();
     const dialog = page.getByRole("alertdialog", { name: "Verein verlassen?" });
     await expect(dialog).toContainText("Die anderen Mitglieder behalten ihn.");

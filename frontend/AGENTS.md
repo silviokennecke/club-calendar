@@ -253,7 +253,7 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
     editor; calendar management (club page, general settings), club rename/delete and feed changes need admin; viewers get no feeds
     (`FeedsForbidden`, no request) and no import/feeds navigation entries. Create dialogs show the `forbidden` gate (`createGateState`).
     Tests: `mockApiGet` (`src/test/clubRole.ts`) answers `GET /api/clubs` with the wanted role; see `pages/__tests__/ClubRoles.test.tsx`.
-  - Club: `/clubs/:clubId` (`pages/ClubPage`, in `components/club/`: `ClubNameSection`, `MembersSection` (table with role per member,
+  - Club: `/clubs/:clubId` (`pages/ClubPage`, three tabs via `HelpTabs`, URL `?tab=general|calendars|members`, default general: general = `ClubNameSection` + delete-club card, calendars = `CalendarsSection`, members = `MembersSection`; in `components/club/`: `ClubNameSection`, `MembersSection` (table with role per member,
     remove / leave with `ConfirmDialog` (last admin guard); `InviteSection`: admins only, invite by e-mail with role (default editor), open
     invitations pending / expired with "send again" (expired only) and revoke), `CalendarsSection` (create form,
     one `CalendarRow` per calendar with open / duplicate / archive / delete, archived list with restore). Rows show "n Termine"

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
@@ -11,6 +11,7 @@ import {
   Skeleton,
   toast,
 } from "@/components/ui/shared";
+import { HelpTabs } from "@/components/help/HelpTabs";
 import { ClubNameSection } from "@/components/club/ClubNameSection";
 import { MembersSection } from "@/components/club/MembersSection";
 import { CalendarsSection } from "@/components/club/CalendarsSection";
@@ -20,9 +21,12 @@ import { clubDeleteConsequence } from "@/lib/club";
 import { permissionsFor } from "@/lib/club/permissions";
 import type { Club } from "@/lib/types";
 import { usePageTitle } from "@/lib/usePageTitle";
+const TABS = ["general", "calendars", "members"] as const;
+type ClubTab = (typeof TABS)[number];
+
 /**
- * Club management (design: Club, ClubMobile): name, members, calendars (incl. archived, with
- * duplicate / archive / delete) and the danger zone. Calendar and club deletion name their
+ * Club management (design: Club, ClubMobile) in three tabs (`?tab=`): general (name, danger zone),
+ * calendars (incl. archived, with duplicate / archive / delete) and members (with invitations). Calendar and club deletion name their
  * consequences; deleting the club also asks to type its name.
  */
 export default function ClubPage() {
@@ -33,6 +37,9 @@ export default function ClubPage() {
   const navigate = useNavigate();
   const { updateUser } = useAuth();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const requested = params.get("tab");
+  const tab: ClubTab = TABS.find((x) => x === requested) ?? "general";
 
   const query = useQuery<Club>({
     queryKey: ["club", clubId],
@@ -105,33 +112,50 @@ export default function ClubPage() {
   } else {
     body = (
       <div className="ap-stack ap-stack--lg">
-        <ClubNameSection key={club.name} club={club} />
-        <MembersSection club={club} />
-        <CalendarsSection club={club} />
-
-        {permissionsFor(club.role).isAdmin && (
-          <section className="ap-panel ap-panel--danger" aria-labelledby="cl-danger-h">
-            <div className="ap-panel-head">
-              <div>
-                <h2 className="t-h2" id="cl-danger-h">
-                  {t("club.danger.title")}
-                </h2>
-                <p>{t("club.danger.text")}</p>
-              </div>
-              <Button
-                variant="danger"
-                icon="trash"
-                onClick={() => {
-                  // Fresh counters for the consequence ("… mit 14 Terminen und 2 Feeds …")
-                  void query.refetch();
-                  setDeleteOpen(true);
-                }}
-              >
-                {t("club.danger.action")}
-              </Button>
-            </div>
-          </section>
-        )}
+        <HelpTabs
+          label={t("club.tabs.label")}
+          idPrefix="club"
+          tabs={TABS.map((id) => ({ id, label: t(`club.tabs.${id}`) }))}
+          value={tab}
+          onChange={(id) => setParams({ tab: id }, { replace: true })}
+        />
+        <div
+          className="ap-stack ap-stack--lg"
+          role="tabpanel"
+          id={`club-panel-${tab}`}
+          aria-labelledby={`club-tab-${tab}`}
+        >
+          {tab === "general" && (
+            <>
+              <ClubNameSection key={club.name} club={club} />
+              {permissionsFor(club.role).isAdmin && (
+                <section className="ap-panel ap-panel--danger" aria-labelledby="cl-danger-h">
+                  <div className="ap-panel-head">
+                    <div>
+                      <h2 className="t-h2" id="cl-danger-h">
+                        {t("club.danger.title")}
+                      </h2>
+                      <p>{t("club.danger.text")}</p>
+                    </div>
+                    <Button
+                      variant="danger"
+                      icon="trash"
+                      onClick={() => {
+                        // Fresh counters for the consequence ("… mit 14 Terminen und 2 Feeds …")
+                        void query.refetch();
+                        setDeleteOpen(true);
+                      }}
+                    >
+                      {t("club.danger.action")}
+                    </Button>
+                  </div>
+                </section>
+              )}
+            </>
+          )}
+          {tab === "calendars" && <CalendarsSection club={club} />}
+          {tab === "members" && <MembersSection club={club} />}
+        </div>
         <ConfirmDialog
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
