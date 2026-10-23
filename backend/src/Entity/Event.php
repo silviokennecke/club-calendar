@@ -12,6 +12,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Index(name: 'idx_event_calendar_external_uid', columns: ['calendar_id', 'external_uid'])]
 #[ORM\Index(name: 'idx_event_series', columns: ['series_id'])]
+#[ORM\Index(name: 'idx_event_calendar_draft_date_time', columns: ['calendar_id', 'is_draft', 'date', 'time_begin'])]
 class Event implements UpdateAudited
 {
     use Trait\HasUpdateAudit;
