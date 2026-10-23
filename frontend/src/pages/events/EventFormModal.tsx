@@ -605,7 +605,6 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
               value={values.locationId}
               onChange={(id) => set("locationId", id)}
               onCreate={res.createLocation}
-              onMove={res.moveLocation}
               readOnly={readOnly}
             />
           </section>

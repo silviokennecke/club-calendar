@@ -16,9 +16,6 @@ vi.mock("@/lib/api", async (orig) => ({
   apiGet: (...a: unknown[]) => apiGet(...a),
   apiPost: (...a: unknown[]) => apiPost(...a),
 }));
-vi.mock("@/components/events/EventLocationMap", () => ({
-  default: () => <div />,
-}));
 
 const KEY = draftKey("u1", "k1", null);
 const stored = {

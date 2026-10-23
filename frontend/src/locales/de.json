@@ -481,7 +481,22 @@
         "drafted_other": "{{count}} Termine als Entwurf markiert.",
         "undo": "Rückgängig",
         "undone": "Änderung rückgängig gemacht.",
-        "failed": "Die Termine konnten nicht geändert werden. Es wurde nichts geändert. Bitte versuche es erneut."
+        "failed": "Die Termine konnten nicht geändert werden. Es wurde nichts geändert. Bitte versuche es erneut.",
+        "visibility": "Sichtbarkeit",
+        "assigned_one": "1 Termin aktualisiert.",
+        "assigned_other": "{{count}} Termine aktualisiert.",
+        "assign": {
+          "label": "Zuordnen",
+          "search": "Zuordnungen suchen",
+          "targetGroups": "Zielgruppen",
+          "properties": "Besonderheiten",
+          "features": "Zusatzangebote",
+          "none": "Nichts gefunden.",
+          "hint": "Wird zu den Terminen hinzugefügt. Bestehende Zuordnungen bleiben erhalten.",
+          "apply_zero": "Hinzufügen",
+          "apply_one": "1 Zuordnung hinzufügen",
+          "apply_other": "{{count}} Zuordnungen hinzufügen"
+        }
       },
       "sort": {
         "asc": "{{col}}: aufsteigend sortieren",
@@ -580,20 +595,19 @@
       },
       "place": {
         "label": "Ort",
-        "none": "Kein Ort ausgewählt",
         "noAddress": "Adresse noch nicht erfasst",
-        "fix": "Position korrigieren",
-        "fixHint": "Marker auf der Karte verschieben oder in die Karte klicken.",
         "create": "Neuen Ort anlegen",
-        "newName": "Name des neuen Orts",
-        "newPlaceholder": "z. B. Gasthof Zur Linde…",
-        "createAndAssign": "Ort anlegen und zuweisen",
         "empty": "Wähle einen Ort, dann siehst du ihn hier auf der Karte.",
         "map": "Karte mit dem Ort {{name}}",
-        "noPosition": "Für diesen Ort ist noch keine Position gesetzt. Mit „Position korrigieren“ setzt du sie auf der Karte.",
-        "positionSaved": "Position gespeichert.",
-        "positionFailed": "Die Position konnte nicht gespeichert werden.",
-        "createFailed": "Der Ort konnte nicht angelegt werden."
+        "noPosition": "Für diesen Ort ist noch keine Position gesetzt. Du kannst sie unter „Orte“ in den Einstellungen ergänzen.",
+        "createFailed": "Der Ort konnte nicht angelegt werden.",
+        "placeholder": "Ort suchen…",
+        "dialog": {
+          "title": "Neuer Ort",
+          "description": "Name, Adresse und Position des neuen Orts erfassen.",
+          "save": "Ort anlegen",
+          "failedText": "Bitte prüfe deine Verbindung und versuche es erneut."
+        }
       },
       "properties": "Besonderheiten",
       "createProperty": "Neue Besonderheit anlegen",

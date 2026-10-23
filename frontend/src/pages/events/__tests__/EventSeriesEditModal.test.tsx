@@ -19,9 +19,6 @@ vi.mock("@/lib/api", async (orig) => ({
   apiPatch: (...a: unknown[]) => apiPatch(...a),
   apiDelete: vi.fn(),
 }));
-vi.mock("@/components/events/EventLocationMap", () => ({
-  default: ({ label }: { label: string }) => <div role="region" aria-label={label} />,
-}));
 
 const rule = {
   frequency: "weekly" as const,

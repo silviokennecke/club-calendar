@@ -7,6 +7,7 @@ export { Logo } from "./Logo";
 export { Button, LinkButton, IconButton } from "./Button";
 export { SplitButton } from "./SplitButton";
 export type { SplitButtonItem } from "./SplitButton";
+export { MenuButton } from "./MenuButton";
 export type { ButtonProps } from "./Button";
 export { buttonClass } from "./buttonClass";
 export type { ButtonVariant } from "./buttonClass";

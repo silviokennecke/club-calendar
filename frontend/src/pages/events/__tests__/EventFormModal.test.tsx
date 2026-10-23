@@ -18,10 +18,6 @@ vi.mock("@/lib/api", async (orig) => ({
   apiPatch: (...a: unknown[]) => apiPatch(...a),
   apiDelete: (...a: unknown[]) => apiDelete(...a),
 }));
-// mapbox-gl does not run in jsdom.
-vi.mock("@/components/events/EventLocationMap", () => ({
-  default: ({ label }: { label: string }) => <div role="region" aria-label={label} />,
-}));
 
 const locations = [
   {
@@ -232,11 +228,14 @@ describe("EventFormModal – new event", () => {
       "aria-pressed",
       "true",
     );
-    await user.selectOptions(screen.getByRole("combobox", { name: /^Ort/ }), "l1");
+    await user.type(screen.getByRole("combobox", { name: /^Ort/ }), "Schütz");
+    await user.click(await screen.findByRole("option", { name: /Schützenhaus Waldblick/ }));
+    expect(screen.getByRole("combobox", { name: /^Ort/ })).toHaveValue("Schützenhaus Waldblick");
     expect(screen.getByText("Waldstraße 12, 12345 Musterstadt")).toBeVisible();
     expect(
-      await screen.findByRole("region", { name: "Karte mit dem Ort Schützenhaus Waldblick" }),
-    ).toBeInTheDocument();
+      screen.getByRole("img", { name: "Karte mit dem Ort Schützenhaus Waldblick" }),
+    ).toHaveAttribute("src", expect.stringContaining("/api/map/image/location/l1"));
+    expect(screen.queryByRole("button", { name: "Position korrigieren" })).toBeNull();
     const audiences = screen.getByRole("group", { name: "Gruppen" });
     await user.click(within(audiences).getByRole("button", { name: "Jugend" }));
 
@@ -262,6 +261,34 @@ describe("EventFormModal – new event", () => {
     );
   });
 
+  it("offers 'create location' as the last suggestion and selects the new location", async () => {
+    const user = userEvent.setup();
+    apiPost.mockImplementation((path: string) =>
+      path === "/api/clubs/c1/locations"
+        ? Promise.resolve({ id: "l2", clubId: "c1", name: "Gasthof Linde" })
+        : Promise.resolve({ id: "new" }),
+    );
+    renderNew("?date=2026-10-14");
+    const input = await screen.findByRole("combobox", { name: /^Ort/ });
+    await user.type(input, "Gasthof");
+    const options = await screen.findAllByRole("option");
+    expect(options[options.length - 1]).toHaveTextContent("Neuen Ort anlegen");
+    await user.click(options[options.length - 1]);
+
+    const dialog = await screen.findByRole("dialog", { name: "Neuer Ort" });
+    expect(within(dialog).getByLabelText(/^Name/)).toHaveValue("Gasthof");
+    await user.click(within(dialog).getByRole("button", { name: "Ort anlegen" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith(
+        "/api/clubs/c1/locations",
+        expect.objectContaining({ name: "Gasthof", latitude: null }),
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Neuer Ort" })).toBeNull());
+    expect(screen.getByRole("combobox", { name: /^Ort/ })).toHaveValue("Gasthof Linde");
+    expect(apiPost).not.toHaveBeenCalledWith("/api/calendars/k1/events", expect.anything());
+  });
+
   it("rejects an end time before the start time on one day", async () => {
     const user = userEvent.setup();
     renderNew("?date=2026-10-14");
@@ -284,7 +311,9 @@ describe("EventFormModal – new event", () => {
     ).toBeVisible();
     expect(screen.getByLabelText(/^Startdatum/)).toHaveValue("2026-10-15");
     expect(screen.getByLabelText(/^Startzeit/)).toHaveValue("19:00");
-    expect(await screen.findByRole("combobox", { name: /^Ort/ })).toHaveValue("l1");
+    expect(await screen.findByRole("combobox", { name: /^Ort/ })).toHaveValue(
+      "Schützenhaus Waldblick",
+    );
     const feats = screen.getByRole("group", { name: "Zusatzangebote" });
     expect(within(feats).getByRole("button", { name: "Bonusschießen" })).toHaveAttribute(
       "aria-pressed",

@@ -18,7 +18,7 @@ import {
   type SortState,
   type StatusTab,
 } from "@/lib/events";
-import type { BulkAction, TargetGroup } from "@/lib/types";
+import type { BulkAction, Feature, Property, TargetGroup } from "@/lib/types";
 import { openModalState, type ModalNavState } from "@/lib/modalRoutes";
 import {
   Banner,
@@ -27,11 +27,13 @@ import {
   EmptyState,
   FilterPillGroup,
   LinkButton,
+  MenuButton,
   SearchInput,
   Skeleton,
   SplitButton,
   toast,
 } from "@/components/ui/shared";
+import { BulkAssignPanel, type BulkAssignment } from "@/components/events/BulkAssignPanel";
 import { EventsTable } from "@/components/events/EventsTable";
 import { useAllEvents, useEventPage } from "@/components/events/useEventPage";
 import { audienceTone } from "@/components/calendar/eventDisplay";
@@ -73,6 +75,16 @@ export default function EventsListPage() {
   const groups = useQuery<TargetGroup[]>({
     queryKey: ["targetGroups", page.clubId],
     queryFn: () => apiGet(`/api/clubs/${page.clubId}/target-groups`),
+  });
+  const properties = useQuery<Property[]>({
+    queryKey: ["properties", page.calendarId],
+    queryFn: () => apiGet(`/api/calendars/${page.calendarId}/properties`),
+    enabled: page.canEdit,
+  });
+  const features = useQuery<Feature[]>({
+    queryKey: ["features", page.calendarId],
+    queryFn: () => apiGet(`/api/calendars/${page.calendarId}/features`),
+    enabled: page.canEdit,
   });
   const all = useMemo(() => events.data ?? [], [events.data]);
   const filter = { tab, query, groupIds };
@@ -172,6 +184,25 @@ export default function EventsListPage() {
         },
       );
       setSelected(new Set());
+    } catch {
+      toast.error(t("events.list.bulk.failed"));
+    } finally {
+      await refresh();
+      setBusy(false);
+    }
+  }
+
+  async function bulkAssign(assignment: BulkAssignment, close: () => void) {
+    setBusy(true);
+    try {
+      await apiPost(`/api/calendars/${page.calendarId}/events/bulk`, {
+        ids: selectedEvents.map((e) => e.id),
+        action: "assign",
+        ...assignment,
+      });
+      toast.success(t("events.list.bulk.assigned", { count: selectedEvents.length }));
+      setSelected(new Set());
+      close();
     } catch {
       toast.error(t("events.list.bulk.failed"));
     } finally {
@@ -397,29 +428,66 @@ export default function EventsListPage() {
             {t("events.list.bulk.selected", { count: selectedEvents.length })}
           </span>
           <div className="ap-actions ap-grow">
-            <Button
-              variant="secondary"
-              icon="check"
-              disabled={busy || sel.drafts === 0}
-              onClick={() => bulkStatus(false)}
+            <MenuButton
+              label={t("events.list.bulk.visibility")}
+              icon="eye"
+              placement="up"
+              disabled={busy}
             >
-              {t("events.list.bulk.publish")}
-            </Button>
-            <Button
-              variant="secondary"
-              icon="edit"
-              disabled={busy || sel.published === 0}
-              onClick={() => bulkStatus(true)}
+              {(close) => (
+                <ul className="ap-menubtn-items">
+                  <li>
+                    <button
+                      type="button"
+                      disabled={sel.drafts === 0}
+                      onClick={() => {
+                        close();
+                        void bulkStatus(false);
+                      }}
+                    >
+                      {t("events.list.bulk.publish")}
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      disabled={sel.published === 0}
+                      onClick={() => {
+                        close();
+                        void bulkStatus(true);
+                      }}
+                    >
+                      {t("events.list.bulk.draft")}
+                    </button>
+                  </li>
+                </ul>
+              )}
+            </MenuButton>
+            <MenuButton
+              label={t("events.list.bulk.assign.label")}
+              icon="tag"
+              placement="up"
+              disabled={busy}
+              className="ap-menubtn--wide"
             >
-              {t("events.list.bulk.draft")}
-            </Button>
+              {(close) => (
+                <BulkAssignPanel
+                  targetGroups={groupList}
+                  features={features.data ?? []}
+                  properties={properties.data ?? []}
+                  busy={busy}
+                  onApply={(a) => void bulkAssign(a, close)}
+                />
+              )}
+            </MenuButton>
             <Button
               variant="danger"
               icon="trash"
               disabled={busy}
+              aria-label={t("events.list.bulk.delete")}
               onClick={() => setDeleteOpen(true)}
             >
-              {t("events.list.bulk.delete")}
+              <span className="ap-bulk-deltext">{t("events.list.bulk.delete")}</span>
             </Button>
           </div>
           <Button variant="secondary" onClick={() => setSelected(new Set())}>

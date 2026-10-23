@@ -58,6 +58,8 @@ beforeEach(() => {
   mockApiGet(apiGet, (path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
     if (path.endsWith("/target-groups")) return Promise.resolve(groups);
+    if (path === "/api/calendars/k1/properties")
+      return Promise.resolve([{ id: "p", calendarid: "k1", name: "Wettkampf", icon: null }]);
     if (path === "/api/calendars/k1/events")
       return events instanceof Error ? Promise.reject(events) : Promise.resolve(events);
     return Promise.resolve([]);
@@ -256,7 +258,9 @@ describe("EventsListPage", () => {
     const bar = screen.getByRole("region", { name: "Sammelaktionen" });
     expect(bar).toHaveTextContent("2 ausgewählt");
     // Nothing published selected: "Als Entwurf markieren" has nothing to do.
+    await user.click(within(bar).getByRole("button", { name: "Sichtbarkeit" }));
     expect(within(bar).getByRole("button", { name: "Als Entwurf markieren" })).toBeDisabled();
+    await user.keyboard("{Escape}");
 
     await user.click(within(bar).getByRole("button", { name: "Löschen" }));
     const dialog = await screen.findByRole("alertdialog");
@@ -279,11 +283,9 @@ describe("EventsListPage", () => {
     await user.click(
       screen.getByRole("checkbox", { name: "Alle 5 gefilterten Termine auswählen" }),
     );
-    await user.click(
-      within(screen.getByRole("region", { name: "Sammelaktionen" })).getByRole("button", {
-        name: "Veröffentlichen",
-      }),
-    );
+    const bulkBar = within(screen.getByRole("region", { name: "Sammelaktionen" }));
+    await user.click(bulkBar.getByRole("button", { name: "Sichtbarkeit" }));
+    await user.click(bulkBar.getByRole("button", { name: "Veröffentlichen" }));
     // Only the drafts change.
     await waitFor(() => expect(apiPost).toHaveBeenCalledTimes(2));
     expect(apiPost).toHaveBeenLastCalledWith("/api/calendars/k1/events/bulk", {
@@ -309,6 +311,7 @@ describe("EventsListPage", () => {
       screen.getByRole("checkbox", { name: "Vorstandssitzung am 07.10.2026 auswählen" }),
     );
     const bar = screen.getByRole("region", { name: "Sammelaktionen" });
+    await user.click(within(bar).getByRole("button", { name: "Sichtbarkeit" }));
     await user.click(within(bar).getByRole("button", { name: "Veröffentlichen" }));
     // sonner reads pointer capture, which jsdom lacks
     fireEvent.click(await screen.findByRole("button", { name: "Rückgängig" }));
@@ -336,6 +339,7 @@ describe("EventsListPage", () => {
       screen.getByRole("checkbox", { name: "Vorstandssitzung am 07.10.2026 auswählen" }),
     );
     const bar = screen.getByRole("region", { name: "Sammelaktionen" });
+    await user.click(within(bar).getByRole("button", { name: "Sichtbarkeit" }));
     await user.click(within(bar).getByRole("button", { name: "Veröffentlichen" }));
     expect(
       await screen.findByText(
@@ -354,6 +358,32 @@ describe("EventsListPage", () => {
         "Die Termine konnten nicht gelöscht werden. Es wurde nichts gelöscht. Bitte versuche es erneut.",
       ),
     ).toBeVisible();
+  });
+
+  it("assigns chosen target groups and properties to the selected events in one request", async () => {
+    const user = userEvent.setup();
+    renderList();
+    await screen.findByRole("table");
+    await user.click(
+      screen.getByRole("checkbox", { name: "Alle 5 gefilterten Termine auswählen" }),
+    );
+    const bar = within(screen.getByRole("region", { name: "Sammelaktionen" }));
+    await user.click(bar.getByRole("button", { name: "Zuordnen" }));
+    expect(bar.getByRole("button", { name: "Hinzufügen" })).toBeDisabled();
+    await user.type(bar.getByRole("searchbox"), "jug");
+    expect(bar.queryByRole("checkbox", { name: "Erwachsene" })).toBeNull();
+    await user.click(bar.getByRole("checkbox", { name: "Jugend" }));
+    await user.clear(bar.getByRole("searchbox"));
+    await user.click(await bar.findByRole("checkbox", { name: "Wettkampf" }));
+    await user.click(bar.getByRole("button", { name: "2 Zuordnungen hinzufügen" }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledTimes(1));
+    expect(apiPost).toHaveBeenCalledWith("/api/calendars/k1/events/bulk", {
+      ids: ["1", "2", "3", "5", "4"],
+      action: "assign",
+      targetGroupIds: ["g1"],
+      featureIds: [],
+      propertyIds: ["p"],
+    });
   });
 
   it("is read-only in an archived calendar", async () => {
