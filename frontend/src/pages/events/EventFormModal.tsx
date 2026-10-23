@@ -50,7 +50,7 @@ import {
   effectiveEndDate,
 } from "@/lib/events/dateSync";
 import { AssignmentFields } from "@/components/events/AssignmentFields";
-import { LocationSection } from "@/components/events/LocationSection";
+import { LocationMap, LocationSection } from "@/components/events/LocationSection";
 import { useEventPage } from "@/components/events/useEventPage";
 import { CreateGateBody, ModalSkeleton } from "@/components/events/CreateGate";
 import { createGate, gateTitle } from "@/components/events/createGateState";
@@ -617,6 +617,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
               onChange={(field, ids) => set(field, ids)}
               readOnly={readOnly}
             />
+            <LocationMap locations={res.locations} value={values.locationId} />
           </section>
 
           <section className="ap-panel ap-form-section" aria-labelledby="sec-status">
