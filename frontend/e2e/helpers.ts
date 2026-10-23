@@ -51,10 +51,16 @@ export function loginPassword(page: Page) {
   return page.getByLabel(/^Passwort \(Pflicht\)/);
 }
 
-/** Signs in through the German login form. */
+/** Step 1 of the email-first flow: enters the address and presses Continue ("Weiter" / "Continue"). */
+export async function continueWithEmail(page: Page, email: string) {
+  await page.getByLabel(/^E-Mail|^Email/).fill(email);
+  await page.getByRole("button", { name: /^(Weiter|Continue)$/ }).click();
+}
+
+/** Signs in through the German email-first form. */
 export async function login(page: Page, email: string) {
   await page.goto("/login");
-  await page.getByLabel("E-Mail").fill(email);
+  await continueWithEmail(page, email);
   await loginPassword(page).fill(PASSWORD);
   await page.getByRole("button", { name: "Anmelden", exact: true }).click();
 }

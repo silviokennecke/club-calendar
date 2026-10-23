@@ -84,8 +84,19 @@ operations), `docs/api/openapi.yaml` (API reference).
   are waiting, which `components/clubs/InvitationsSection` lists with accept / decline);
   Invitation mail link: `/invitations?token=…` (`pages/InvitationPage`, outside `ProtectedRoute`, neutral accept / decline via
   `POST /api/invitations/accept|decline`). The token moves into `sessionStorage` (`lib/invitations`: `stashInvitationToken`) and
-  out of the URL at once; a signed-out visitor goes to /login, after the sign-in `/clubs` forwards back to `/invitations`; the
+  out of the URL at once; a signed-out visitor goes to /login (the entry flow below previews the token and prefills the address), after the sign-in `/clubs` forwards back to `/invitations`; the
   token is cleared after use or when dead. Accepting switches to the club (`lib/useEnterClub`).
+  Sign-in entry (`pages/SignInPage`, routes `/login` and `/signup` render the same page): one email-first flow. Step 1 =
+  e-mail field + "Weiter" + SSO / passkey buttons; submit validates the address, then `POST /api/auth/identify`
+  decides step 2: `login` (`components/auth/LoginStep`: password, forgot link, `email_not_verified` -> `/verify-email`,
+  429 with `ApiError.retryAfter`), `register` (`components/auth/SignupStep`: the signup fields and consent checkboxes,
+  then `/verify-email`) or `registration_restricted` (banner "only with an invitation", no form). Step 2 shows the
+  address read-only, SSO / passkey are gone, "Zurück" and Escape return to step 1 with the address kept (focus: first
+  field of the new step, the email field on return; an sr-only `role=status` announces each step). Transitions: `components/auth/Collapse`
+  (grid-template-rows 0fr -> 1fr + fade, `.ap-collapse` in `index.css`, inert while closed, unmounted after the exit,
+  no motion under `prefers-reduced-motion`). The stashed invitation token (`lib/invitations`) is previewed with
+  `POST /api/invitations/preview`: banner "invited to <club>" + prefilled address (typing replaces it); 404 = neutral
+  "invalid or expired" banner and the token is dropped. The token stays stashed through registration and the code page.
   `GuestRoute` sends signed-in users from /login, /signup, /verify-email, /forgot-password, /reset-password to /clubs.
   `AuthProvider` clears the tokens only when `/me` answers 401/403; network errors, 429 and 5xx keep them, retry twice
   and then set `sessionError` (retried on `online` / tab visible), during which `GuestRoute` shows the loader, not the form.

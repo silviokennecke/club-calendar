@@ -22,7 +22,6 @@
     "signingIn": "Anmelden…",
     "createAccount": "Konto erstellen",
     "creatingAccount": "Konto wird erstellt…",
-    "noAccount": "Noch kein Konto?",
     "passkey": "Mit Passkey anmelden",
     "passkeyWaiting": "Warte auf Passkey…",
     "completingSignIn": "Anmeldung wird abgeschlossen…",
@@ -56,7 +55,6 @@
     },
     "register": {
       "name": "Name",
-      "haveAccount": "Schon ein Konto?",
       "passwordHint": "Mindestens 8 Zeichen",
       "confirmPassword": "Passwort wiederholen",
       "errorTitle": "Das Konto wurde noch nicht erstellt",
@@ -66,9 +64,7 @@
       "passwordMissing": "Bitte wähle ein Passwort.",
       "passwordShortField": "Das Passwort ist zu kurz. Bitte gib mindestens 8 Zeichen ein.",
       "confirmMismatchField": "Die Passwörter sind nicht gleich. Bitte gib dasselbe Passwort noch einmal ein.",
-      "restrictedHint": "Die Registrierung ist nur mit einer Einladung möglich. Verwende die E-Mail-Adresse, an die die Einladung gesendet wurde.",
       "emailRestrictedField": "Für diese E-Mail-Adresse liegt keine Einladung vor. Die Registrierung ist nur mit Einladung möglich.",
-      "emailExistsField": "Für diese E-Mail-Adresse gibt es schon ein Konto. Bitte melde dich an.",
       "problem": {
         "exists": "Mit dieser E-Mail-Adresse gibt es schon ein Konto. Melde dich an oder setze dein Passwort zurück.",
         "generic": "Das Konto konnte nicht erstellt werden. Bitte prüfe deine Angaben und versuche es noch einmal."
@@ -148,6 +144,38 @@
       "failedTitle": "Das Passwort konnte nicht gespeichert werden",
       "failedText": "Bitte prüfe deine Internetverbindung und versuche es noch einmal.",
       "errorTitle": "Das Passwort wurde noch nicht gespeichert"
+    },
+    "rateLimited": "Zu viele Versuche. Bitte warte kurz und versuche es dann erneut.",
+    "rateLimitedWait": "Zu viele Versuche. Bitte versuche es in etwa {{minutes}} Min. erneut.",
+    "rateLimitedTitle": "Zu viele Versuche",
+    "entry": {
+      "title": "Anmelden oder Konto erstellen",
+      "intro": "Gib deine E-Mail-Adresse ein. Wir finden heraus, ob du schon ein Konto hast.",
+      "loginIntro": "Schön, dass du wieder da bist. Gib dein Passwort ein.",
+      "registerIntro": "Für diese Adresse gibt es noch kein Konto. Lege jetzt eines an.",
+      "restrictedTitle": "Nur mit Einladung",
+      "restrictedIntro": "Neue Konten kann man hier derzeit nicht frei anlegen.",
+      "restrictedBannerTitle": "Die Registrierung ist nur mit einer Einladung möglich",
+      "restrictedText": "Für {{email}} liegt keine Einladung vor. Bitte die Verwalter deines Vereins um eine Einladung an diese Adresse. Mit einer anderen Adresse kannst du es erneut versuchen.",
+      "formLabel": "Anmeldung starten",
+      "errorTitle": "Die E-Mail-Adresse fehlt oder ist ungültig",
+      "continue": "Weiter",
+      "checking": "Wird geprüft…",
+      "back": "Zurück",
+      "otherMethodHint": "Meldest du dich sonst mit Google, Microsoft oder einem Passkey an? Gehe zurück und wähle diese Methode.",
+      "failedTitle": "Das hat nicht geklappt",
+      "failed": "Die E-Mail-Adresse konnte nicht geprüft werden. Bitte versuche es noch einmal.",
+      "invitedTitle": "Du wurdest eingeladen",
+      "invitedBy": "{{name}} hat dich zum Verein „{{club}}“ eingeladen. Melde dich an oder erstelle ein Konto, um die Einladung anzunehmen.",
+      "invited": "Du wurdest zum Verein „{{club}}“ eingeladen. Melde dich an oder erstelle ein Konto, um die Einladung anzunehmen.",
+      "inviteDeadTitle": "Einladung ungültig oder abgelaufen",
+      "inviteDeadText": "Du kannst dich trotzdem anmelden oder ein Konto erstellen. Bitte die Verwalter deines Vereins gegebenenfalls um eine neue Einladung.",
+      "announce": {
+        "email": "Gib deine E-Mail-Adresse ein.",
+        "login": "Für diese Adresse gibt es ein Konto. Gib dein Passwort ein.",
+        "register": "Für diese Adresse gibt es noch kein Konto. Lege jetzt eines an.",
+        "registration_restricted": "Die Registrierung ist nur mit einer Einladung möglich."
+      }
     }
   },
   "setup": {

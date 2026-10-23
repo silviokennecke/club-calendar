@@ -37,7 +37,7 @@ import {
   LegalModal,
   LegalPage,
   LocationsPage,
-  LoginPage,
+  SignInPage,
   MorePage,
   OAuthConsentPage,
   ProfilePage,
@@ -45,7 +45,6 @@ import {
   PublicEventModal,
   ResetPasswordPage,
   SetupPage,
-  SignupPage,
   TargetGroupsPage,
   TemplateEditPage,
   TemplatesPage,
@@ -60,8 +59,8 @@ function AppRoutes() {
         <>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route element={<GuestRoute />}>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/login" element={<SignInPage />} />
+            <Route path="/signup" element={<SignInPage />} />
             <Route path="/verify-email" element={<VerifyCodePage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />

@@ -109,3 +109,11 @@ export function inviteFailure(error: unknown): InviteProblem {
 export function isInvitationGone(error: unknown): boolean {
   return codeOf(error) === "invitation_not_found";
 }
+
+/** Public preview of an invitation (`POST /api/invitations/preview`, 404 `invitation_not_found` when dead). */
+export interface InvitationPreview {
+  email: string;
+  clubName: string;
+  invitedByName: string | null;
+  expiresAt: string;
+}

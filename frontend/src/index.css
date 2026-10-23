@@ -2129,6 +2129,39 @@
     flex: 1;
     border-top: 1px solid var(--border);
   }
+  /* Email-first sign-in flow: blocks that enter/leave without a layout jump */
+  .ap-flow {
+    display: flex;
+    flex-direction: column;
+  }
+  .ap-collapse {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition:
+      grid-template-rows var(--dur-slow) var(--ease-out),
+      opacity var(--dur-slow) var(--ease-out),
+      transform var(--dur-slow) var(--ease-out);
+  }
+  .ap-collapse[data-open="true"] {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transform: none;
+  }
+  .ap-collapse-inner {
+    min-height: 0;
+    overflow: hidden;
+    /* room for focus rings inside the clipped box, cancelled by the negative margin */
+    padding: 4px;
+    margin: -4px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ap-collapse {
+      transition: none;
+      transform: none;
+    }
+  }
   .ap-dialog-icon--neutral {
     background: var(--surface-sunken);
     color: var(--ink);

@@ -1,9 +1,16 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
-import { API, authHeaders, createVerifiedUser, login, seedClub } from "./helpers";
+import {
+  API,
+  authHeaders,
+  continueWithEmail,
+  createVerifiedUser,
+  login,
+  seedClub,
+} from "./helpers";
 
 async function loginAdmin(page: Page) {
   await page.goto("/login");
-  await page.getByLabel(/email/i).fill("admin@example.com");
+  await continueWithEmail(page, "admin@example.com");
   await page.getByLabel(/^Password \(required\)/).fill("password123");
   await page.getByRole("button", { name: /^sign in$/i }).click();
   await page.waitForURL("**/clubs**");

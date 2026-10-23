@@ -1,6 +1,6 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 import { createHash, randomBytes } from "node:crypto";
-import { API, createVerifiedUser, loginPassword, PASSWORD } from "./helpers";
+import { API, continueWithEmail, createVerifiedUser, loginPassword, PASSWORD } from "./helpers";
 
 // MCP / OAuth: consent page and "Verbundene Apps". Needs the e2e backend started with an empty
 // MCP_ALLOWED_CLIENTS (any https/loopback redirect URI; see docs/redesign/E2E.md).
@@ -42,7 +42,7 @@ async function captureCallback(page: Page) {
 }
 
 async function signIn(page: Page, email: string) {
-  await page.getByLabel("E-Mail").fill(email);
+  await continueWithEmail(page, email);
   await loginPassword(page).fill(PASSWORD);
   await page.getByRole("button", { name: "Anmelden", exact: true }).click();
 }
