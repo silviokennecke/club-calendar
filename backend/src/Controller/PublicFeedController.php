@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Security\AuthRateLimiter;
 use App\Service\PublicFeedService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -14,13 +15,14 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/feed')]
 class PublicFeedController extends AbstractController
 {
-    public function __construct(private readonly PublicFeedService $feedService)
+    public function __construct(private readonly PublicFeedService $feedService, private readonly AuthRateLimiter $rateLimiter)
     {
     }
 
     #[Route('/{feedId}/events', methods: ['GET'])]
     public function events(string $feedId, Request $request): JsonResponse
     {
+        $this->rateLimiter->assertFeedAllowed($request, $feedId);
         $secret = $request->query->get('secret');
         $tgParam = $request->query->get('targetGroupIds');
         $tgIds = $tgParam ? array_values(array_filter(array_map('trim', explode(',', $tgParam)))) : null;
@@ -38,6 +40,8 @@ class PublicFeedController extends AbstractController
     #[Route('/{feedId}/events/{eventId}', methods: ['GET'])]
     public function event(string $feedId, string $eventId, Request $request): JsonResponse
     {
+        $this->rateLimiter->assertFeedAllowed($request, $feedId);
+
         return new JsonResponse($this->feedService->getFeedEvent($feedId, $eventId, $this->queryString($request, 'secret')));
     }
 
@@ -52,6 +56,7 @@ class PublicFeedController extends AbstractController
     #[Route('/{feedId}/ics', methods: ['GET'])]
     public function ics(string $feedId, Request $request): Response
     {
+        $this->rateLimiter->assertFeedAllowed($request, $feedId);
         $secret = $request->query->get('secret');
         $tgParam = $request->query->get('targetGroupIds');
         $tgIds = $tgParam ? array_values(array_filter(array_map('trim', explode(',', $tgParam)))) : null;

@@ -5,6 +5,9 @@ parameters:
     env(AUTH_LOGIN_IP_LIMIT): '10'
     env(AUTH_REGISTER_IP_LIMIT): '5'
     env(AUTH_REFRESH_IP_LIMIT): '60'
+    # Public feed endpoints, requests per minute: per client IP and per feed id. 0 switches a limit off.
+    env(FEED_RATE_LIMIT_PER_IP): '120'
+    env(FEED_RATE_LIMIT_PER_FEED): '600'
 
 framework:
     rate_limiter:
@@ -162,4 +165,14 @@ framework:
         mcp_ip:
             policy: sliding_window
             limit: 120
+            interval: '1 minute'
+        # Public feed endpoints (FeedRateLimiter): per client IP and per feed id (taken unchecked from the URL).
+        # A configured limit of 0 disables the check in AuthRateLimiter::assertFeedAllowed (the limiter is then unused).
+        feed_ip:
+            policy: sliding_window
+            limit: '%env(int:FEED_RATE_LIMIT_PER_IP)%'
+            interval: '1 minute'
+        feed_id:
+            policy: sliding_window
+            limit: '%env(int:FEED_RATE_LIMIT_PER_FEED)%'
             interval: '1 minute'
