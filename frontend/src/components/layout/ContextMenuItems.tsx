@@ -1,7 +1,8 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Icon } from "@/components/ui/shared";
 import type { ShellData } from "./shellTypes";
+import { calendarSwitchPath } from "./calendarSwitchPath";
 
 interface ItemsProps {
   data: ShellData;
@@ -56,6 +57,7 @@ export function ClubMenuItems({
 /** Calendar entries of the context switcher (design: "Kalender wechseln"). */
 export function CalendarMenuItems({ data, onNavigate }: ItemsProps) {
   const { t } = useTranslation();
+  const { pathname } = useLocation();
   return (
     <>
       {data.calendars.map((cal) => {
@@ -65,7 +67,7 @@ export function CalendarMenuItems({ data, onNavigate }: ItemsProps) {
           <Link
             key={cal.id}
             className="ap-menuitem"
-            to={`/clubs/${data.clubId}/calendars/${cal.id}`}
+            to={calendarSwitchPath(pathname, data.clubId, cal.id)}
             aria-current={current ? "true" : undefined}
             onClick={onNavigate}
           >

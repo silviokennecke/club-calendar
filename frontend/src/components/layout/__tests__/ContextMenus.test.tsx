@@ -173,3 +173,23 @@ describe("MorePage (design: Menu)", () => {
     expect(currentData.onLogout).toHaveBeenCalled();
   });
 });
+
+describe("calendar switcher keeps the section", () => {
+  it.each([
+    ["/clubs/c1/calendars/k1", "/clubs/c1/calendars/k2"],
+    ["/clubs/c1/calendars/k1/events", "/clubs/c1/calendars/k2/events"],
+    ["/clubs/c1/calendars/k1/import", "/clubs/c1/calendars/k2/import"],
+    ["/clubs/c1/calendars/k1/templates", "/clubs/c1/calendars/k2/templates"],
+    ["/clubs/c1/calendars/k1/templates/t9", "/clubs/c1/calendars/k2/templates"],
+    ["/clubs/c1/calendars/k1/settings/features", "/clubs/c1/calendars/k2/settings/features"],
+    ["/clubs/c1/settings/locations", "/clubs/c1/calendars/k2"],
+  ])("%s -> %s", async (from, to) => {
+    render(
+      <MemoryRouter initialEntries={[from]}>
+        <Sidebar data={data()} />
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Kalender.*Schießbetrieb/ }));
+    expect(screen.getByRole("link", { name: /Saison 2025/ })).toHaveAttribute("href", to);
+  });
+});
