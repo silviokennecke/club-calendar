@@ -217,11 +217,13 @@ class TestHelper
         }
         $client->request($method, $uri, [], [], $headers, $data ? json_encode($data) : null);
         $response = $client->getResponse();
+        // streamed responses (ICS) only have their body in the internal response
+        $content = (string) $client->getInternalResponse()->getContent();
 
         return [
             'status' => $response->getStatusCode(),
-            'body' => json_decode((string) $response->getContent(), true),
-            'content' => (string) $response->getContent(),
+            'body' => json_decode($content, true),
+            'content' => $content,
             'headers' => $response->headers->all(),
         ];
     }

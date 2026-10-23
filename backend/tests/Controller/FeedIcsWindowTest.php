@@ -77,7 +77,7 @@ class FeedIcsWindowTest extends WebTestCase
         $this->client->request('GET', "/api/feed/{$this->feedId}/ics");
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
 
-        return (string) $this->client->getResponse()->getContent();
+        return (string) $this->client->getInternalResponse()->getContent();
     }
 
     private function seed(): void
@@ -147,7 +147,7 @@ class FeedIcsWindowTest extends WebTestCase
         $this->seed();
         $this->client->request('GET', "/api/calendars/{$this->calendar->getId()}/events.ics", server: ['HTTP_AUTHORIZATION' => $this->auth]);
         $this->assertSame(200, $this->client->getResponse()->getStatusCode());
-        $ics = (string) $this->client->getResponse()->getContent();
+        $ics = (string) $this->client->getInternalResponse()->getContent();
         $this->assertStringContainsString('SUMMARY:FarPast', $ics);
         $this->assertStringContainsString('SUMMARY:FarFuture', $ics);
         $this->assertSame(6, substr_count($ics, 'BEGIN:VEVENT'));

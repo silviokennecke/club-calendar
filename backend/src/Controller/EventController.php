@@ -16,6 +16,7 @@ use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -39,7 +40,7 @@ class EventController extends AbstractApiController
     public function exportIcs(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): Response
     {
         $query = $request->query->all();
-        $content = $this->exportService->export(
+        $pieces = $this->exportService->export(
             $calendar,
             $query['from'] ?? null,
             $query['to'] ?? null,
@@ -47,7 +48,7 @@ class EventController extends AbstractApiController
             $query['targetGroupIds'] ?? null,
         );
 
-        return new Response($content, 200, [
+        return new StreamedResponse($this->exportService->output($pieces), 200, [
             'Content-Type' => 'text/calendar; charset=utf-8',
             'Content-Disposition' => $this->exportService->contentDisposition($calendar),
             'Cache-Control' => 'no-cache, no-store',

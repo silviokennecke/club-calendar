@@ -42,11 +42,11 @@ class FeedIcsEtagTest extends WebTestCase
         $this->spy = new class extends IcsService {
             public int $calls = 0;
 
-            public function buildIcs(CalendarFeed $feed, Club $club, iterable $events): string
+            public function streamFeedIcs(Club $club, iterable $chunks): \Generator
             {
                 ++$this->calls;
 
-                return parent::buildIcs($feed, $club, $events);
+                return parent::streamFeedIcs($club, $chunks);
             }
         };
         $c->set(IcsService::class, $this->spy);
@@ -109,13 +109,18 @@ class FeedIcsEtagTest extends WebTestCase
         $this->assertSame(200, $status);
         $this->assertMatchesRegularExpression('/^"[0-9a-f]{32}"$/', $etag);
         $this->assertSame('no-cache, public', $r->headers->get('Cache-Control'));
-        $this->assertStringContainsString('BEGIN:VCALENDAR', (string) $r->getContent());
+        $this->assertInstanceOf(\Symfony\Component\HttpFoundation\StreamedResponse::class, $r);
+        $this->assertFalse($r->headers->has('Content-Length'));
+        $this->assertSame('text/calendar; charset=utf-8', $r->headers->get('Content-Type'));
+        $this->assertStringStartsWith('attachment; filename="feed-', (string) $r->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('BEGIN:VCALENDAR', (string) $this->client->getInternalResponse()->getContent());
         $this->assertSame(1, $this->spy->calls);
 
         foreach ([$etag, 'W/'.$etag, '"other", '.$etag, '*'] as $inm) {
             [$status, $etag304, $r] = $this->get('', ['HTTP_IF_NONE_MATCH' => $inm]);
             $this->assertSame(304, $status, $inm);
             $this->assertSame($etag, $etag304);
+            $this->assertNotInstanceOf(\Symfony\Component\HttpFoundation\StreamedResponse::class, $r);
             $this->assertSame('', (string) $r->getContent());
             $this->assertSame('no-cache, public', $r->headers->get('Cache-Control'));
             $this->assertNull($r->headers->get('X-Robots-Tag'), 'public feed is indexable');

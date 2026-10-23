@@ -245,4 +245,30 @@ class AuthTest extends WebTestCase
             $this->assertArrayHasKey('icon', $provider);
         }
     }
+
+    public function testLoginWorksWithMixedCaseAndPaddedEmail(): void
+    {
+        TestHelper::createUser(self::$em, self::$hasher, 'Carol@Example.com');
+        $this->assertSame('carol@example.com', self::$em->getConnection()->fetchOne('SELECT email FROM user'));
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', [
+            'email' => 'CAROL@example.COM', 'password' => 'password123',
+        ]);
+        $this->assertSame(200, $r['status'], $r['content']);
+    }
+
+    public function testRegisterStoresNormalizedEmailAndRejectsDuplicateWithOtherCase(): void
+    {
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
+            'name' => 'Dave', 'email' => 'Dave@Example.com', 'password' => 'password123',
+        ]);
+        $this->assertSame(201, $r['status'], $r['content']);
+        $this->assertSame('dave@example.com', self::$em->getConnection()->fetchOne('SELECT email FROM user'));
+
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
+            'name' => 'Dave 2', 'email' => 'DAVE@example.com', 'password' => 'password123',
+        ]);
+        $this->assertSame(400, $r['status']);
+        $this->assertSame('email_taken', $r['body']['code']);
+        $this->assertSame(1, (int) self::$em->getConnection()->fetchOne('SELECT COUNT(*) FROM user'));
+    }
 }

@@ -10,20 +10,29 @@ use App\Service\PublicFeedService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Uid\Uuid;
 
-/** Peak memory of the ICS read path with 5000 events and assignments (run: phpunit --group performance). */
+/**
+ * Peak memory of the streamed ICS output with 5000 and 20000 events and assignments (run: phpunit --group performance).
+ * The pieces are counted and dropped, as the response does; the peak must not grow with the number of events.
+ */
 #[Group('performance')]
 class IcsMemoryTest extends KernelTestCase
 {
-    private const EVENTS = 5000;
-
-    public function testPeakMemory(): void
+    /** @return array<string, array{int}> */
+    public static function sizes(): array
     {
-        self::bootKernel();
+        return ['5000 events' => [5000], '20000 events' => [20000]];
+    }
+
+    #[DataProvider('sizes')]
+    public function testPeakMemory(int $events): void
+    {
+        self::bootKernel(['debug' => false]); // prod-like: the debug query collector would keep every parameter list
         $c = static::getContainer();
         $em = $c->get(EntityManagerInterface::class);
         DatabaseResetter::reset($em);
@@ -38,7 +47,7 @@ class IcsMemoryTest extends KernelTestCase
 
         $conn = $em->getConnection();
         $conn->beginTransaction();
-        for ($i = 0; $i < self::EVENTS; ++$i) {
+        for ($i = 0; $i < $events; ++$i) {
             $id = Uuid::v7()->toRfc4122();
             $conn->insert('event', [
                 'id' => $id, 'calendar_id' => $calendar->getId(), 'location_id' => $loc->getId(), 'name' => "Termin $i",
@@ -62,20 +71,30 @@ class IcsMemoryTest extends KernelTestCase
         $service = $c->get(PublicFeedService::class);
         memory_reset_peak_usage();
         $base = memory_get_usage();
-        $ics = $service->renderFeedIcs($service->prepareFeedIcs($feedId, null, null));
+        $count = $this->countEvents($service->streamFeedIcs($service->prepareFeedIcs($feedId, null, null)));
         $feedPeak = memory_get_peak_usage() - $base;
-        $this->assertGreaterThan(self::EVENTS, substr_count($ics, 'BEGIN:VEVENT') + 1);
-        unset($ics);
+        $this->assertSame($events, $count);
 
         $em->clear();
         gc_collect_cycles();
         memory_reset_peak_usage();
         $base = memory_get_usage();
         $calendar = $em->find(\App\Entity\Calendar::class, $calendarId);
-        $ics = $c->get(EventExportService::class)->export($calendar, null, null, 'true', null);
+        $count = $this->countEvents($c->get(EventExportService::class)->export($calendar, null, null, 'true', null));
         $exportPeak = memory_get_peak_usage() - $base;
-        $this->assertGreaterThan(self::EVENTS, substr_count($ics, 'BEGIN:VEVENT') + 1);
+        $this->assertSame($events, $count);
 
-        fwrite(STDERR, sprintf("\nICS peak memory (%d events): feed %.1f MB, export %.1f MB\n", self::EVENTS, $feedPeak / 1048576, $exportPeak / 1048576));
+        fwrite(STDERR, sprintf("\nICS peak memory (%d events): feed %.1f MB, export %.1f MB\n", $events, $feedPeak / 1048576, $exportPeak / 1048576));
+    }
+
+    /** @param iterable<string> $pieces */
+    private function countEvents(iterable $pieces): int
+    {
+        $n = 0;
+        foreach ($pieces as $piece) {
+            $n += substr_count($piece, 'BEGIN:VEVENT');
+        }
+
+        return $n;
     }
 }

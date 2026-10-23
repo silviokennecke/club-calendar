@@ -44,7 +44,7 @@ readonly class PasswordResetService
     public function requestReset(string $email): void
     {
         $this->deferred->defer(function () use ($email): void {
-            $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
+            $user = $this->em->getRepository(User::class)->findOneBy(['email' => EmailAddress::normalize($email)]);
             if (null === $user) {
                 return;
             }

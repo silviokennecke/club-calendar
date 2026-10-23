@@ -105,10 +105,10 @@ class IcsGoldenTest extends KernelTestCase
         $service = new PublicFeedService($this->em, $c->get(IcsService::class), $c->get(\App\Ics\IcsEventReader::class), $c->get(HolidayEventRepository::class), $c->get('request_stack'), false);
         $plan = $service->prepareFeedIcs($feed->getId(), null, null);
         $outputs = [
-            'feed' => $service->renderFeedIcs($plan),
-            'export_published' => $c->get(EventExportService::class)->export($calendar, null, null, null, null),
-            'export_drafts' => $c->get(EventExportService::class)->export($calendar, null, null, 'true', null),
-            'export_filtered' => $c->get(EventExportService::class)->export($calendar, '2026-03-11', '2026-03-21', 'true', $groupId),
+            'feed' => implode('', iterator_to_array($service->streamFeedIcs($plan), false)),
+            'export_published' => implode('', iterator_to_array($c->get(EventExportService::class)->export($calendar, null, null, null, null), false)),
+            'export_drafts' => implode('', iterator_to_array($c->get(EventExportService::class)->export($calendar, null, null, 'true', null), false)),
+            'export_filtered' => implode('', iterator_to_array($c->get(EventExportService::class)->export($calendar, '2026-03-11', '2026-03-21', 'true', $groupId), false)),
         ];
 
         $actual = '';

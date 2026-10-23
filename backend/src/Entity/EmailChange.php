@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Service\EmailAddress;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
@@ -45,7 +46,7 @@ class EmailChange
     {
         $this->id = Uuid::v7()->toRfc4122();
         $this->user = $user;
-        $this->newEmail = $newEmail;
+        $this->newEmail = EmailAddress::normalize($newEmail);
         $this->tokenHash = $tokenHash;
         $this->createdAt = $now;
         $this->expiresAt = $now->modify('+'.self::TTL_SECONDS.' seconds');

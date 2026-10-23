@@ -132,7 +132,7 @@ class PublicFeedMultiCalendarTest extends WebTestCase
         self::$em->flush();
 
         self::$client->request('GET', "/api/feed/$id/ics");
-        $ics = self::$client->getResponse()->getContent();
+        $ics = self::$client->getInternalResponse()->getContent();
         $this->assertStringContainsString('Termin A', $ics);
         $this->assertStringContainsString('Termin B', $ics);
         $this->assertStringNotContainsString('Sommerferien', $ics);

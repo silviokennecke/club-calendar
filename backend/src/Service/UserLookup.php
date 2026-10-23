@@ -25,9 +25,10 @@ readonly class UserLookup
         if (Uuid::isValid($idOrEmail)) {
             return $repository->find(Uuid::fromString($idOrEmail)->toRfc4122());
         }
-        $user = $repository->findOneBy(['email' => $idOrEmail]);
-        // The column collation also matches look-alike spellings: only the exact address (any case) counts.
-        if (null === $user || 0 !== strcasecmp($user->getEmail(), $idOrEmail)) {
+        $email = EmailAddress::normalize($idOrEmail);
+        $user = $repository->findOneBy(['email' => $email]);
+        // The column collation also matches look-alike spellings ("é" = "e"): only the exact address counts.
+        if (null === $user || $user->getEmail() !== $email) {
             return null;
         }
 

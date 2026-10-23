@@ -82,8 +82,8 @@ class PublicTest extends WebTestCase
         $r = self::$client->getResponse();
         $this->assertSame(200, $r->getStatusCode());
         $this->assertStringContainsString('text/calendar', (string) $r->headers->get('Content-Type'));
-        $this->assertStringContainsString('BEGIN:VCALENDAR', (string) $r->getContent());
-        $this->assertStringContainsString('Public Event', (string) $r->getContent());
+        $this->assertStringContainsString('BEGIN:VCALENDAR', (string) self::$client->getInternalResponse()->getContent());
+        $this->assertStringContainsString('Public Event', (string) self::$client->getInternalResponse()->getContent());
     }
 
     /**
@@ -109,7 +109,7 @@ class PublicTest extends WebTestCase
         TestHelper::createEvent(self::$em, $cal, ['isDraft' => false]);
         self::$client->request('GET', "/api/feed/{$feed->getId()}/ics?secret=$secret");
         $this->assertSame(200, self::$client->getResponse()->getStatusCode());
-        $this->assertStringContainsString('BEGIN:VCALENDAR', (string) self::$client->getResponse()->getContent());
+        $this->assertStringContainsString('BEGIN:VCALENDAR', (string) self::$client->getInternalResponse()->getContent());
     }
 
     /**
@@ -122,7 +122,7 @@ class PublicTest extends WebTestCase
         TestHelper::createEvent(self::$em, $cal, ['name' => 'Draft Event',     'isDraft' => true]);
         TestHelper::createEvent(self::$em, $cal, ['name' => 'Published Event', 'isDraft' => false]);
         self::$client->request('GET', "/api/feed/{$feed->getId()}/ics");
-        $content = (string) self::$client->getResponse()->getContent();
+        $content = (string) self::$client->getInternalResponse()->getContent();
         $this->assertStringNotContainsString('Draft Event', $content);
         $this->assertStringContainsString('Published Event', $content);
     }
@@ -159,7 +159,7 @@ class PublicTest extends WebTestCase
         self::$em->flush();
 
         self::$client->request('GET', "/api/feed/{$feed->getId()}/ics");
-        $content = (string) self::$client->getResponse()->getContent();
+        $content = (string) self::$client->getInternalResponse()->getContent();
 
         // Last day Oct 30 inclusive -> DTEND Oct 31 (exclusive), not Nov 1
         $this->assertStringContainsString("DTSTART;VALUE=DATE:20261028\r\nDTEND;VALUE=DATE:20261031", $content);
@@ -201,7 +201,7 @@ class PublicTest extends WebTestCase
         $adultsId = $adults->getId();
         $names = function (string $query) use ($feedId): array {
             self::$client->request('GET', "/api/feed/{$feedId}/events{$query}");
-            $body = json_decode((string) self::$client->getResponse()->getContent(), true);
+            $body = json_decode((string) self::$client->getInternalResponse()->getContent(), true);
 
             return array_column($body['events'], 'name');
         };
@@ -212,7 +212,7 @@ class PublicTest extends WebTestCase
         $this->assertSame([], $names('?targetGroupIds='.$adultsId));
         $this->assertSame(['Jugendtraining'], $names('?targetGroupIds='.$adultsId.','.$youthId));
         self::$client->request('GET', "/api/feed/{$feedId}/ics?targetGroupIds={$adultsId}");
-        $this->assertStringNotContainsString('Erwachsenentraining', (string) self::$client->getResponse()->getContent());
+        $this->assertStringNotContainsString('Erwachsenentraining', (string) self::$client->getInternalResponse()->getContent());
     }
 
     public function testArchivedPrivateFeedRequiresSecretBeforeRevealingArchiveState(): void
@@ -247,7 +247,7 @@ class PublicTest extends WebTestCase
         self::$client->request('GET', "/api/feed/{$feed->getId()}/ics");
         $r = self::$client->getResponse();
         $this->assertSame(200, $r->getStatusCode());
-        $content = (string) $r->getContent();
+        $content = (string) self::$client->getInternalResponse()->getContent();
         $this->assertStringContainsString('Outlook', $content);
         // Falls back to the calendar time zone (before: club time zone, and the invalid zone broke the feed)
         $this->assertStringContainsString('DTSTART;TZID=America/New_York:20260701T180000', $content);

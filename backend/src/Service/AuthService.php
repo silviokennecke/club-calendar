@@ -58,6 +58,7 @@ readonly class AuthService
      */
     public function register(string $name, string $email, string $password, ?string $language = null, array $acceptedDocuments = [], ?string $ip = null, ?string $userAgent = null): void
     {
+        $email = EmailAddress::normalize($email);
         // Before the e-mail-taken check and the hashing
         $accepted = $this->legal->assertAccepted($acceptedDocuments);
         if (!$this->registrationPolicy->mayRegister($email)) {
@@ -82,6 +83,7 @@ readonly class AuthService
 
     public function login(string $email, string $password): array
     {
+        $email = EmailAddress::normalize($email);
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         if (!$user || !$user->getPassword()) {
             throw self::invalidCredentials();
@@ -132,6 +134,7 @@ readonly class AuthService
      */
     public function resendVerificationCode(string $email): void
     {
+        $email = EmailAddress::normalize($email);
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         if (!$user || $user->isEmailVerified()) {
             return;
@@ -393,6 +396,7 @@ readonly class AuthService
      */
     public function findOrCreateOAuthUser(string $provider, string $providerId, string $email, string $name, bool $providerSaysEmailVerified = false): User
     {
+        $email = EmailAddress::normalize($email);
         $existing = $this->em->getRepository(OAuthAccount::class)->findOneBy([
             'provider' => $provider,
             'providerId' => $providerId,
@@ -420,8 +424,8 @@ readonly class AuthService
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         if ($user) {
             // The column collation (utf8mb4_unicode_ci) also equates "ä" with "a", "ß" with "ss" or full-width
-            // letters: link only if the addresses are the same apart from ASCII letter case.
-            if (!$emailVerified || 0 !== strcasecmp($user->getEmail(), $email)) {
+            // letters: link only if the stored address is exactly the normalized one.
+            if (!$emailVerified || $user->getEmail() !== $email) {
                 $trustedProvider = in_array($provider, self::PROVIDERS_WITH_VERIFIED_EMAIL_CLAIM, true);
                 throw new OAuthAccountConflictException('An account with this e-mail address already exists', $trustedProvider && !$providerSaysEmailVerified);
             }

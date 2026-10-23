@@ -134,7 +134,7 @@ readonly class EmailVerificationService
      */
     public function verify(string $email, string $code): User
     {
-        $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
+        $user = $this->em->getRepository(User::class)->findOneBy(['email' => EmailAddress::normalize($email)]);
         $ev = null !== $user && !$user->isEmailVerified() && null === $this->lockedUntil($user) ? $this->activeCode($user) : null;
         $code = (string) preg_replace('/\s+/', '', $code);
         if (null === $ev || null === $user) {

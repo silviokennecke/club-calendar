@@ -170,7 +170,7 @@ class AuthController extends AbstractApiController
         $dto = $this->deserializeDto($request, ForgotPasswordDto::class);
         $this->validateDto($dto, $this->validator);
 
-        $byEmail = $this->passwordResetEmailLimiter->create(mb_strtolower(trim($dto->email)))->consume();
+        $byEmail = $this->passwordResetEmailLimiter->create(AuthRateLimiter::normalize($dto->email))->consume();
         $byIp = $this->passwordResetIpLimiter->create((string) $request->getClientIp())->consume();
         if ($byEmail->isAccepted() && $byIp->isAccepted()) {
             $this->passwordResets->requestReset($dto->email);

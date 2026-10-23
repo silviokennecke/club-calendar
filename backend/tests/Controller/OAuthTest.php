@@ -567,7 +567,7 @@ class OAuthTest extends WebTestCase
         $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
         TestHelper::createUser($this->em, $hasher, 'alice@gmail.com');
         $i = 0;
-        foreach (['alice@gmäil.com', "\u{FF41}lice@gmail.com", 'alice@gmail.com '] as $email) {
+        foreach (['alice@gmäil.com', "\u{FF41}lice@gmail.com"] as $email) {
             $result = $this->signIn('google', self::google($email, true, 'g-'.++$i));
             $this->assertArrayNotHasKey('code', $result, $email);
         }

@@ -460,6 +460,20 @@ class InvitationTest extends WebTestCase
         $this->assertCode(404, 'invitation_not_found', $this->req('POST', '/api/invitations/accept', $this->auth($user), ['token' => $token]));
     }
 
+    public function testInvitationEmailIsStoredNormalizedAndMemberCheckIgnoresCase(): void
+    {
+        $c = $this->club();
+        $member = $this->user('Member@Example.com');
+        $this->addMember($c, $member);
+        $this->assertSame('member@example.com', self::$em->getConnection()->fetchOne('SELECT email FROM user WHERE id = ?', [$member->getId()]));
+
+        $this->assertSame(204, $this->req('POST', $c['url'], $c['auth'], ['email' => 'MEMBER@example.com'])['status']);
+        $this->assertSame(0, $this->rows());
+
+        $this->assertSame(204, $this->req('POST', $c['url'], $c['auth'], ['email' => 'New.Person@Example.COM'])['status']);
+        $this->assertSame('new.person@example.com', self::$em->getConnection()->fetchOne('SELECT email FROM club_invitation'));
+    }
+
     public function testAddressesThatDifferOnlyByAccentsAreNotTheSameInSql(): void
     {
         // The validators may reject non-ASCII addresses; the rows are created directly to test the matching
@@ -479,9 +493,6 @@ class InvitationTest extends WebTestCase
         $r = $this->req('POST', $c['url'], $c['auth'], ['email' => 'jose@example.com']);
         $this->assertSame(204, $r['status'], $r['content']);
         $this->assertSame(1, $this->rows(['email' => 'jose@example.com']), 'jose is not a member just because josé is');
-
-        // the column compares binary, also for stored values
-        $this->assertSame(0, $this->rows(['email' => 'josé@example.com']));
     }
 
     public function testRevokeAndAnswerRaceAnswersNotFoundInsteadOfFailing(): void

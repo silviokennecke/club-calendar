@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Entity\User;
 use App\Service\AccountMailer;
+use App\Service\EmailAddress;
 use App\Service\PasswordResetService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\Argument;
@@ -30,8 +31,9 @@ class UserResetLinkCommand
 
     public function __invoke(OutputInterface $output, #[Argument('E-mail address of the user')] string $email): int
     {
+        $email = EmailAddress::normalize($email);
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
-        if (null === $user || 0 !== strcasecmp($user->getEmail(), $email)) {
+        if (null === $user || $user->getEmail() !== $email) {
             $error = $output instanceof ConsoleOutputInterface ? $output->getErrorOutput() : $output;
             $error->writeln('No user with this e-mail address.');
 

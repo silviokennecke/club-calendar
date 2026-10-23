@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Enum\ClubRole;
+use App\Service\EmailAddress;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
@@ -44,7 +45,7 @@ class ClubInvitation implements UpdateAudited
     private ?User $invitedBy;
 
     /** Binary collation: SQL matches are as strict as the PHP comparison (no "é" = "e"). */
-    #[ORM\Column(length: 254, options: ['collation' => 'utf8mb4_bin'])]
+    #[ORM\Column(length: 254)]
     private string $email;
 
     #[ORM\Column(length: 64)]
@@ -72,7 +73,7 @@ class ClubInvitation implements UpdateAudited
         $this->id = Uuid::v7()->toRfc4122();
         $this->club = $club;
         $this->invitedBy = $invitedBy;
-        $this->email = $email;
+        $this->email = EmailAddress::normalize($email);
         $this->tokenHash = $tokenHash;
         $this->createdAt = $now;
         $this->expiresAt = $now->modify('+'.self::TTL_DAYS.' days');
