@@ -52,13 +52,14 @@ class EventSearchTest extends WebTestCase
         return $r['body']['id'];
     }
 
-    /** @return array{names: list<string>, total: string, status: int} */
+    /** @return array{names: list<string>, total: string, status: int, body: array<string, mixed>} */
     private function search(string $base, string $auth, string $qs): array
     {
         $r = TestHelper::jsonRequest(self::$client, 'GET', "$base/events?$qs", [], $auth);
-        $names = 200 === $r['status'] ? array_column($r['body'], 'name') : [];
+        $body = \is_array($r['body']) ? $r['body'] : [];
+        $names = 200 === $r['status'] ? array_column($body, 'name') : [];
 
-        return ['names' => $names, 'total' => self::$client->getResponse()->headers->get('X-Total-Count') ?? '', 'status' => $r['status'], 'body' => $r['body']];
+        return ['names' => $names, 'total' => self::$client->getResponse()->headers->get('X-Total-Count') ?? '', 'status' => $r['status'], 'body' => $body];
     }
 
     public function testMatchesNameNoteLocationAndFeatureCaseInsensitive(): void

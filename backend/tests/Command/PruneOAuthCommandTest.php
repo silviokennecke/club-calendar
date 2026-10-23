@@ -85,7 +85,7 @@ class PruneOAuthCommandTest extends WebTestCase
         $this->assertSame(['https://claude.ai/api/mcp/auth_callback'], $loaded->getGrant()->getClient()->getRedirectUris());
         $this->assertSame(60, $code->getExpiresAt()->getTimestamp() - $code->getCreatedAt()->getTimestamp());
         $this->assertSame(600, $request->getExpiresAt()->getTimestamp() - $request->getCreatedAt()->getTimestamp());
-        $this->assertNotNull(self::$em->getRepository(OAuthAuthorizationCode::class)->findOneByHash(hash('sha256', 'c')));
+        $this->assertNotNull(self::$em->getRepository(OAuthAuthorizationCode::class)->findOneBy(['codeHash' => hash('sha256', 'c')]));
     }
 
     public function testDeletingTheUserCascadesToGrantsAndTokens(): void
