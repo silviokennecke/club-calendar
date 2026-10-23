@@ -570,7 +570,8 @@
         "basic": "Grunddaten",
         "status": "Status",
         "place": "Ort",
-        "tags": "Besonderheiten, Zusatzangebote und Gruppen"
+        "tags": "Besonderheiten, Zusatzangebote und Gruppen",
+        "note": "Notiz"
       },
       "name": "Name",
       "namePlaceholder": "z. B. Training Luftgewehr…",
@@ -580,9 +581,6 @@
       "note": "Notiz",
       "noteHint": "Optional. Alle Mitglieder des Kalenders sehen die Notiz; in veröffentlichten Kalendern (Feeds) ist sie ebenfalls sichtbar.",
       "noteCount": "{{count}} / {{max}} Zeichen",
-      "dateEndHint": "Nur für mehrtägige Termine.",
-      "dates": "Datum",
-      "times": "Uhrzeit",
       "allDay": "Ganztägig",
       "allDayHint": "Dann entfallen Start- und Endzeit.",
       "timeBegin": "Startzeit",
@@ -651,7 +649,12 @@
         "text": "Auf diesem Gerät liegt ein nicht gespeicherter Entwurf dieses Termins.",
         "restore": "Wiederherstellen",
         "discard": "Verwerfen"
-      }
+      },
+      "start": "Beginn",
+      "end": "Ende",
+      "dateEndHint": "Nur für mehrtägige Termine.",
+      "dates": "Datum",
+      "times": "Uhrzeit"
     },
     "templatePick": {
       "title": "Vorlage wählen",

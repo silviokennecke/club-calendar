@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ApiError } from "@/lib/api";
 import EventFormModal from "../EventFormModal";
@@ -208,16 +208,14 @@ describe("EventFormModal – new event", () => {
     expect(screen.getByLabelText(/^Startdatum/)).toHaveValue("2026-10-14");
 
     await user.type(screen.getByLabelText(/^Name/), "Vereinsmeisterschaft");
-    await user.type(screen.getByLabelText("Enddatum"), "2026-10-13");
-    await waitFor(() =>
-      expect(screen.getByLabelText("Enddatum")).toHaveAccessibleDescription(
-        "Nur für mehrtägige Termine. Das Enddatum liegt vor dem Startdatum.",
-      ),
-    );
-    // Also listed in the summary above the form.
-    expect(screen.getByRole("alert")).toHaveTextContent("Das Enddatum liegt vor dem Startdatum.");
-    await user.clear(screen.getByLabelText("Enddatum"));
-    await user.type(screen.getByLabelText("Enddatum"), "2026-10-15");
+    // An end before the start pulls the start back; the end stays filled.
+    fireEvent.change(screen.getByLabelText("Enddatum"), { target: { value: "2026-10-13" } });
+    await waitFor(() => expect(screen.getByLabelText(/^Startdatum/)).toHaveValue("2026-10-13"));
+    expect(screen.getByLabelText("Enddatum")).toHaveValue("2026-10-13");
+    // Changing the start moves the end along; then set the real range.
+    fireEvent.change(screen.getByLabelText(/^Startdatum/), { target: { value: "2026-10-14" } });
+    expect(screen.getByLabelText("Enddatum")).toHaveValue("2026-10-14");
+    fireEvent.change(screen.getByLabelText("Enddatum"), { target: { value: "2026-10-15" } });
 
     expect(screen.getByLabelText(/^Startzeit/)).toBeVisible();
     await user.click(screen.getByRole("checkbox", { name: /Ganztägig/ }));
