@@ -76,7 +76,8 @@ readonly class AccountService
      */
     public function requestEmailChange(User $user, string $newEmail, bool $send = true): void
     {
-        if (0 === strcasecmp($newEmail, $user->getEmail())) {
+        $newEmail = EmailAddress::normalize($newEmail);
+        if ($newEmail === $user->getEmail()) {
             throw new ApiProblemException(422, 'This is already your e-mail address', 'validation_failed', 'email');
         }
         $this->deleteOpenEmailChanges($user);

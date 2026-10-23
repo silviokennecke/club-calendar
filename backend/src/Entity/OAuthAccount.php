@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Service\EmailAddress;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
@@ -81,7 +82,7 @@ class OAuthAccount
 
     public function setEmail(?string $email): static
     {
-        $this->email = $email;
+        $this->email = null === $email ? null : EmailAddress::normalize($email);
 
         return $this;
     }

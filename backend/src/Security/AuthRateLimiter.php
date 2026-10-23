@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Security;
 
 use App\Exception\ApiProblemException;
+use App\Service\EmailAddress;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\RateLimiter\RateLimit;
@@ -218,7 +219,7 @@ class AuthRateLimiter
 
     public static function normalize(string $email): string
     {
-        return mb_strtolower(trim($email));
+        return EmailAddress::normalize($email);
     }
 
     private static function ip(Request $request): string

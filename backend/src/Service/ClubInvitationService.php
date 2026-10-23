@@ -31,7 +31,7 @@ use Psr\Clock\ClockInterface;
  * - Accepting runs in a transaction under the club row lock (like removing a member; revoking, declining and
  *   re-sending take the same lock): the invitation is claimed once, the member and club quotas are respected,
  *   the membership is created.
- * - `club_invitation.email` is utf8mb4_bin, so SQL matches are as strict as the PHP comparison in isFor().
+ * - Addresses are stored normalized (trimmed, lower case); {@see isFor()} and {@see isMember()} compare exactly.
  */
 readonly class ClubInvitationService
 {
@@ -59,7 +59,7 @@ readonly class ClubInvitationService
      */
     public function invite(Club $club, User $inviter, string $email, ClubRole $role = ClubRole::DEFAULT_INVITED): void
     {
-        $email = AuthRateLimiter::normalize($email);
+        $email = EmailAddress::normalize($email);
         $now = $this->now();
 
         /** @var array{0: ClubInvitation, 1: string}|null $created */
@@ -165,17 +165,21 @@ readonly class ClubInvitationService
     /** Whether the address has an open (pending, not expired) invitation to any club. */
     public function hasOpenInvitationFor(string $email): bool
     {
-        return (int) $this->em->createQueryBuilder()
-            ->select('COUNT(i.id)')
+        $email = EmailAddress::normalize($email);
+        // The column collation equates look-alikes ("é" = "e"): the exact match is checked on the rows.
+        $found = $this->em->createQueryBuilder()
+            ->select('i.email')
             ->from(ClubInvitation::class, 'i')
             ->where('i.email = :email')
             ->andWhere('i.status = :pending')
             ->andWhere('i.expiresAt > :now')
-            ->setParameter('email', AuthRateLimiter::normalize($email))
+            ->setParameter('email', $email)
             ->setParameter('pending', ClubInvitation::PENDING)
             ->setParameter('now', $this->now())
             ->getQuery()
-            ->getSingleScalarResult() > 0;
+            ->getSingleColumnResult();
+
+        return in_array($email, $found, true);
     }
 
     /**
@@ -199,11 +203,12 @@ readonly class ClubInvitationService
             ->andWhere('i.expiresAt > :now')
             ->orderBy('i.createdAt', 'DESC')
             ->addOrderBy('i.id', 'DESC')
-            ->setParameter('email', AuthRateLimiter::normalize($user->getEmail()))
+            ->setParameter('email', EmailAddress::normalize($user->getEmail()))
             ->setParameter('pending', ClubInvitation::PENDING)
             ->setParameter('now', $this->now())
             ->getQuery()
             ->getResult();
+        $rows = array_values(array_filter($rows, fn (ClubInvitation $i) => self::isFor($user, $i)));
 
         return array_map(fn (ClubInvitation $i) => [
             'id' => $i->getId(),
@@ -340,7 +345,7 @@ readonly class ClubInvitationService
 
     private static function isFor(User $user, ClubInvitation $invitation): bool
     {
-        return $user->isEmailVerified() && AuthRateLimiter::normalize($user->getEmail()) === $invitation->getEmail();
+        return $user->isEmailVerified() && EmailAddress::normalize($user->getEmail()) === $invitation->getEmail();
     }
 
     private function findOpenOfClub(Club $club, string $id): ClubInvitation
@@ -357,11 +362,13 @@ readonly class ClubInvitationService
 
     private function isMember(Club $club, string $email): bool
     {
-        // user.email is utf8mb4_unicode_ci (equates "é" and "e"); the match must be as strict as isFor()
-        return (int) $this->em->getConnection()->fetchOne(
-            'SELECT COUNT(*) FROM club_user cu JOIN user u ON u.id = cu.user_id WHERE cu.club_id = ? AND u.email COLLATE utf8mb4_bin = ?',
+        // user.email is utf8mb4_unicode_ci (equates "é" and "e"): the exact comparison is done here
+        $found = $this->em->getConnection()->fetchFirstColumn(
+            'SELECT u.email FROM club_user cu JOIN user u ON u.id = cu.user_id WHERE cu.club_id = ? AND u.email = ?',
             [$club->getId(), $email],
-        ) > 0;
+        );
+
+        return in_array($email, $found, true);
     }
 
     /** The mail goes out after the response, and not at all above the per-address limit (answer unchanged). */

@@ -228,15 +228,21 @@ class PublicFeedService
         return new FeedIcsPlan($feed, $effective, $from, $to, $etag);
     }
 
-    public function renderFeedIcs(FeedIcsPlan $plan): string
+    /** @return \Generator<int, string> */
+    public function streamFeedIcs(FeedIcsPlan $plan): \Generator
     {
         $qb = $this->eventQuery($plan->feed, $plan->targetGroupIds, $plan->from, $plan->to);
-        if ($this->icsMaxEvents > 0) {
-            // Protective cap only (first N by date, time); not a paging or sync mechanism
-            $qb->setMaxResults($this->icsMaxEvents);
-        }
 
-        return $this->icsService->buildIcs($plan->feed, $plan->feed->getClub(), $this->icsReader->read($qb));
+        // FEED_ICS_MAX_EVENTS: protective cap only (first N by date, time); not a paging or sync mechanism
+        return $this->icsService->streamFeedIcs(
+            $plan->feed->getClub(),
+            $this->icsReader->chunks($qb, $this->icsMaxEvents > 0 ? $this->icsMaxEvents : null),
+        );
+    }
+
+    public function icsOutput(\Generator $pieces): \Closure
+    {
+        return $this->icsService->outputCallback($pieces);
     }
 
     /**

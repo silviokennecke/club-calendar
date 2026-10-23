@@ -191,13 +191,13 @@ class EventNoteTest extends WebTestCase
         $feed = TestHelper::createFeed(self::$em, $calendar->getClub(), [$calendar], FeedVisibility::PUBLIC, 'Feed', 's');
         $feedId = $feed->getId();
         self::$client->request('GET', "/api/feed/$feedId/ics");
-        $this->assertStringContainsString($expected, preg_replace('/\r\n[ \t]/', '', (string) self::$client->getResponse()->getContent()));
+        $this->assertStringContainsString($expected, preg_replace('/\r\n[ \t]/', '', (string) self::$client->getInternalResponse()->getContent()));
 
         self::$client->request('GET', "/api/feed/$feedId/events");
-        $body = json_decode((string) self::$client->getResponse()->getContent(), true);
+        $body = json_decode((string) self::$client->getInternalResponse()->getContent(), true);
         $this->assertSame($note, $body['events'][0]['note']);
         self::$client->request('GET', "/api/feed/$feedId/events/$eventId");
-        $body = json_decode((string) self::$client->getResponse()->getContent(), true);
+        $body = json_decode((string) self::$client->getInternalResponse()->getContent(), true);
         $this->assertSame($note, $body['event']['note']);
         $this->assertSame($note, self::$em->find(Event::class, $eventId)?->getNote());
     }

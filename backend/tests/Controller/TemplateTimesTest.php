@@ -149,7 +149,7 @@ class TemplateTimesTest extends WebTestCase
         $this->assertTrue($public['body']['events'][0]['isAllDay']);
         self::$client->request('GET', "/api/feed/{$feed['id']}/ics");
         $this->assertSame(200, self::$client->getResponse()->getStatusCode());
-        $this->assertStringContainsString('DTSTART;VALUE=DATE:20261024', (string) self::$client->getResponse()->getContent());
+        $this->assertStringContainsString('DTSTART;VALUE=DATE:20261024', (string) self::$client->getInternalResponse()->getContent());
 
         $copy = $this->req('POST', "/api/clubs/$clubId/calendars/$calId/duplicate", $auth);
         $this->assertSame(201, $copy['status']);

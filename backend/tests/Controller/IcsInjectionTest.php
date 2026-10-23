@@ -79,7 +79,7 @@ class IcsInjectionTest extends WebTestCase
         self::$client->request('GET', "/api/feed/$feedId/ics");
         $this->assertSame(200, self::$client->getResponse()->getStatusCode());
 
-        return [$member['content'], (string) self::$client->getResponse()->getContent()];
+        return [$member['content'], (string) self::$client->getInternalResponse()->getContent()];
     }
 
     /** @return list<string> unfolded content lines */
@@ -155,7 +155,7 @@ class IcsInjectionTest extends WebTestCase
         $feed = TestHelper::createFeed(self::$em, $calendar->getClub(), [$calendar], FeedVisibility::PUBLIC, 'F', 's');
 
         self::$client->request('GET', "/api/feed/{$feed->getId()}/ics");
-        $content = (string) self::$client->getResponse()->getContent();
+        $content = (string) self::$client->getInternalResponse()->getContent();
         $this->assertSame(200, self::$client->getResponse()->getStatusCode());
         $this->assertStringContainsString('LOCATION:Nowhere', $content);
         $this->assertStringNotContainsString('X-APPLE-STRUCTURED-LOCATION', $content);

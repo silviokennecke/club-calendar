@@ -10,6 +10,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/feed')]
@@ -60,14 +61,20 @@ class PublicFeedController extends AbstractController
         $secret = $request->query->get('secret');
         $plan = $this->feedService->prepareFeedIcs($feedId, $secret, PublicFeedService::normalizeTargetGroupIds($request->query->get('targetGroupIds')));
 
-        $response = new Response();
-        $response->setEtag($plan->etag);
-        // no-cache: always revalidate (cheap 304); private for secret feeds so shared caches never keep them
-        $response->headers->set('Cache-Control', $plan->feed->getVisibility()->requiresSecret() ? 'private, no-cache' : 'public, no-cache');
-        if ($response->isNotModified($request)) {
-            return $response;
+        $apply = function (Response $r) use ($plan): void {
+            $r->setEtag($plan->etag);
+            // no-cache: always revalidate (cheap 304); private for secret feeds so shared caches never keep them
+            $r->headers->set('Cache-Control', $plan->feed->getVisibility()->requiresSecret() ? 'private, no-cache' : 'public, no-cache');
+        };
+        $notModified = new Response();
+        $apply($notModified);
+        if ($notModified->isNotModified($request)) {
+            return $notModified;
         }
-        $response->setContent($this->feedService->renderFeedIcs($plan));
+
+        // Access and ETag are decided; the events are read while streaming (no Content-Length)
+        $response = new StreamedResponse($this->feedService->icsOutput($this->feedService->streamFeedIcs($plan)));
+        $apply($response);
         $response->headers->set('Content-Type', 'text/calendar; charset=utf-8');
         $response->headers->set('Content-Disposition', "attachment; filename=\"feed-$feedId.ics\"");
 

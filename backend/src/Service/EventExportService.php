@@ -30,13 +30,22 @@ readonly class EventExportService
     ) {
     }
 
+    public function output(\Generator $pieces): \Closure
+    {
+        return $this->ics->outputCallback($pieces);
+    }
+
     /**
+     * Input is validated here, before the first byte; the events are read while the generator is consumed.
+     *
      * @param mixed $from           YYYY-MM-DD or null (events ending on or after it, overlap like the event list)
      * @param mixed $to             YYYY-MM-DD or null (events starting on or before it)
      * @param mixed $includeDrafts  "1"/"true" or "0"/"false" (default: published only)
      * @param mixed $targetGroupIds list of ids of this calendar (or comma-separated), events with one of them
+     *
+     * @return \Generator<int, string>
      */
-    public function export(Calendar $calendar, mixed $from, mixed $to, mixed $includeDrafts, mixed $targetGroupIds): string
+    public function export(Calendar $calendar, mixed $from, mixed $to, mixed $includeDrafts, mixed $targetGroupIds): \Generator
     {
         $fromDate = Input::optionalDate($from, 'from');
         $toDate = Input::optionalDate($to, 'to');
@@ -67,7 +76,7 @@ readonly class EventExportService
                 ->setParameter('tgIds', $groupIds);
         }
 
-        return $this->ics->buildCalendarIcs($calendar->getClub(), $this->reader->read($qb));
+        return $this->ics->streamCalendarIcs($calendar->getClub(), $this->reader->chunks($qb));
     }
 
     /** `attachment` with a file name from the calendar name ("schiessbetrieb-2026.ics", like the frontend). */

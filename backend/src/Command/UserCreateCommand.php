@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\User;
+use App\Service\EmailAddress;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -69,6 +70,7 @@ class UserCreateCommand
             return Command::FAILURE;
         }
 
+        $email = EmailAddress::normalize((string) $email);
         // Before the password prompt: no point in asking when the address is taken.
         if (null !== $this->em->getRepository(User::class)->findOneBy(['email' => $email])) {
             $io->error('A user with this e-mail address already exists.');

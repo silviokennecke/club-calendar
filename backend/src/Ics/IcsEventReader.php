@@ -7,32 +7,41 @@ namespace App\Ics;
 use App\Entity\EventFeature;
 use App\Entity\EventProperty;
 use App\Entity\EventTargetGroup;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 
 /**
  * Reads the events of an ICS output as plain rows (no entity hydration: no UnitOfWork, proxies or association
  * entities, which dominated the memory of large feeds). Location columns come from a join, the assignments from
- * one query per association and batch of events.
+ * one query per association and chunk of events.
  */
-readonly class IcsEventReader
+class IcsEventReader
 {
-    /** Events per assignment query. */
-    private const BATCH = 500;
+    public const DEFAULT_CHUNK_SIZE = 500;
 
-    public function __construct(private EntityManagerInterface $em)
+    public function __construct(private EntityManagerInterface $em, private int $chunkSize = self::DEFAULT_CHUNK_SIZE)
     {
+        if ($chunkSize < 1) {
+            throw new \InvalidArgumentException('chunkSize must be >= 1');
+        }
     }
 
     /**
-     * @param QueryBuilder $qb an event query with root alias `e` (filters, window, limit); the select and ordering
-     *                         (date, time, id) are set here
+     * Reads the events in chunks (keyset pagination over date, time_begin, id), so only one chunk of rows and
+     * assignments is in memory at a time. Each chunk is a list of events in output order; `$limit` caps the total
+     * over all chunks (null = unlimited).
      *
-     * @return list<IcsEvent>
+     * @param QueryBuilder $qb    an event query with root alias `e` (filters, window); the select and ordering
+     *                            (date, time, id) are set here, a max-results setting is ignored (use `$limit`)
+     * @param int|null     $limit maximum number of events over all chunks
+     *
+     * @return \Generator<int, list<IcsEvent>>
      */
-    public function read(QueryBuilder $qb): array
+    public function chunks(QueryBuilder $qb, ?int $limit = null): \Generator
     {
-        $qb->select(
+        $base = clone $qb;
+        $base->select(
             'e.id AS id', 'e.name AS name', 'e.timezone AS timezone', 'e.date AS date', 'e.dateEnd AS dateEnd',
             'e.timeBegin AS timeBegin', 'e.timeEnd AS timeEnd', 'e.isAllDay AS isAllDay', 'e.isDraft AS isDraft', 'e.note AS note',
             'cal.timezone AS calendarTimezone',
@@ -45,41 +54,74 @@ readonly class IcsEventReader
             ->addOrderBy('e.timeBegin', 'ASC')
             ->addOrderBy('e.id', 'ASC');
 
-        $events = [];
-        foreach (array_chunk($qb->getQuery()->getArrayResult(), self::BATCH) as $rows) {
-            $ids = array_column($rows, 'id');
-            $icons = $this->names(EventProperty::class, 'ep', 'property', 'x.icon', $ids);
-            $features = $this->names(EventFeature::class, 'ep', 'feature', 'x.name', $ids);
-            $groups = $this->names(EventTargetGroup::class, 'ep', 'targetGroup', 'x.name', $ids);
-
-            foreach ($rows as $r) {
-                $id = $r['id'];
-                $events[] = new IcsEvent(
-                    $id,
-                    $r['name'],
-                    $r['timezone'],
-                    $r['calendarTimezone'],
-                    $r['date']->format('Y-m-d'),
-                    $r['dateEnd']?->format('Y-m-d'),
-                    $r['timeBegin'],
-                    $r['timeEnd'],
-                    (bool) $r['isAllDay'],
-                    (bool) $r['isDraft'],
-                    $r['note'],
-                    null === $r['locationId'] ? null : new IcsLocation(
-                        $r['locationName'],
-                        $r['street'],
-                        $r['zip'],
-                        $r['city'],
-                        $r['country'],
-                        null === $r['latitude'] ? null : (float) $r['latitude'],
-                        null === $r['longitude'] ? null : (float) $r['longitude'],
-                    ),
-                    array_values(array_filter($icons[$id] ?? [])),
-                    $features[$id] ?? [],
-                    $groups[$id] ?? [],
-                );
+        $remaining = $limit;
+        $last = null;
+        while (null === $remaining || $remaining > 0) {
+            $size = null === $remaining ? $this->chunkSize : min($this->chunkSize, $remaining);
+            $query = clone $base;
+            if (null !== $last) {
+                $query->andWhere('(e.date > :kDate OR (e.date = :kDate AND (e.timeBegin > :kTime OR (e.timeBegin = :kTime AND e.id > :kId))))')
+                    ->setParameter('kDate', $last['date'], Types::DATE_IMMUTABLE)
+                    ->setParameter('kTime', $last['timeBegin'])
+                    ->setParameter('kId', $last['id']);
             }
+            $rows = $query->setMaxResults($size)->getQuery()->getArrayResult();
+            if ([] === $rows) {
+                return;
+            }
+            yield $this->toEvents($rows);
+
+            if (count($rows) < $size) {
+                return;
+            }
+            $last = $rows[array_key_last($rows)];
+            if (null !== $remaining) {
+                $remaining -= count($rows);
+            }
+            unset($rows);
+        }
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     *
+     * @return list<IcsEvent>
+     */
+    private function toEvents(array $rows): array
+    {
+        $ids = array_column($rows, 'id');
+        $icons = $this->names(EventProperty::class, 'ep', 'property', 'x.icon', $ids);
+        $features = $this->names(EventFeature::class, 'ep', 'feature', 'x.name', $ids);
+        $groups = $this->names(EventTargetGroup::class, 'ep', 'targetGroup', 'x.name', $ids);
+
+        $events = [];
+        foreach ($rows as $r) {
+            $id = $r['id'];
+            $events[] = new IcsEvent(
+                $id,
+                $r['name'],
+                $r['timezone'],
+                $r['calendarTimezone'],
+                $r['date']->format('Y-m-d'),
+                $r['dateEnd']?->format('Y-m-d'),
+                $r['timeBegin'],
+                $r['timeEnd'],
+                (bool) $r['isAllDay'],
+                (bool) $r['isDraft'],
+                $r['note'],
+                null === $r['locationId'] ? null : new IcsLocation(
+                    $r['locationName'],
+                    $r['street'],
+                    $r['zip'],
+                    $r['city'],
+                    $r['country'],
+                    null === $r['latitude'] ? null : (float) $r['latitude'],
+                    null === $r['longitude'] ? null : (float) $r['longitude'],
+                ),
+                array_values(array_filter($icons[$id] ?? [])),
+                $features[$id] ?? [],
+                $groups[$id] ?? [],
+            );
         }
 
         return $events;

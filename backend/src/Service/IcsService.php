@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-use App\Entity\CalendarFeed;
 use App\Entity\Club;
 use App\Ics\EventFactory;
 use App\Ics\IcsEvent;
@@ -22,6 +21,8 @@ use Eluceo\iCal\Domain\ValueObject\SingleDay;
 use Eluceo\iCal\Domain\ValueObject\TimeSpan;
 use Eluceo\iCal\Domain\ValueObject\UniqueIdentifier;
 use Eluceo\iCal\Presentation\Factory\CalendarFactory;
+use Eluceo\iCal\Presentation\Factory\TimeZoneFactory;
+use Psr\Log\LoggerInterface;
 
 class IcsService
 {
@@ -32,59 +33,114 @@ class IcsService
      */
     public const FORMAT_VERSION = 1;
 
-    /**
-     * @param iterable<IcsEvent> $events published events of the feed
-     */
-    public function buildIcs(CalendarFeed $feed, Club $club, iterable $events): string
+    private const END = "END:VCALENDAR\r\n";
+
+    public function __construct(private readonly ?LoggerInterface $logger = null)
     {
-        return $this->render($club, $events, false);
     }
 
     /**
-     * ICS file of a calendar's events (member export). Drafts are marked STATUS:TENTATIVE.
+     * Feed ICS as a stream of text pieces (envelope, VEVENT blocks per chunk, VTIMEZONE blocks, end).
      *
-     * @param iterable<IcsEvent> $events
+     * @param iterable<list<IcsEvent>> $chunks published events of the feed, in output order
+     *
+     * @return \Generator<int, string>
      */
-    public function buildCalendarIcs(Club $club, iterable $events): string
+    public function streamFeedIcs(Club $club, iterable $chunks): \Generator
     {
-        return $this->render($club, $events, true);
+        return $this->stream($this->clubTimezone($club), $chunks, false);
     }
 
     /**
-     * @param iterable<IcsEvent> $events
+     * ICS of a calendar's events (member export), as a stream. Drafts are marked STATUS:TENTATIVE.
+     *
+     * @param iterable<list<IcsEvent>> $chunks
+     *
+     * @return \Generator<int, string>
      */
-    private function render(Club $club, iterable $events, bool $markDrafts): string
+    public function streamCalendarIcs(Club $club, iterable $chunks): \Generator
     {
-        $calendar = new Calendar();
+        return $this->stream($this->clubTimezone($club), $chunks, true);
+    }
+
+    /**
+     * StreamedResponse callback: writes the pieces and flushes after each. The status is already sent when an
+     * error happens mid-stream, so it is logged and the output simply ends (no END:VCALENDAR: the file is invalid).
+     *
+     * @param iterable<string> $pieces
+     */
+    public function outputCallback(iterable $pieces): \Closure
+    {
+        return function () use ($pieces): void {
+            try {
+                foreach ($pieces as $piece) {
+                    echo $piece;
+                    flush();
+                }
+            } catch (\Throwable $e) {
+                $this->logger?->error('ICS stream aborted', ['exception' => $e]);
+            }
+        };
+    }
+
+    private function clubTimezone(Club $club): string
+    {
+        return Input::canonicalTimezone($club->getTimezone()) ?? 'UTC';
+    }
+
+    /**
+     * The library renders envelope, events and VTIMEZONEs of a Calendar in this order (events first); the
+     * pieces are rendered by the library itself and only concatenated here, one chunk at a time.
+     * RFC 5545 3.2.19: every TZID used needs a VTIMEZONE; without it strict clients (e.g. ical.js, Outlook)
+     * read the times as floating local time of the reader. The span per zone is collected while streaming.
+     *
+     * @param iterable<list<IcsEvent>> $chunks
+     *
+     * @return \Generator<int, string>
+     */
+    private function stream(string $clubTimezone, iterable $chunks, bool $markDrafts): \Generator
+    {
+        $eventFactory = new EventFactory();
+        $envelope = (string) (new CalendarFactory($eventFactory))->createCalendar(new Calendar());
+        if (!str_ends_with($envelope, self::END)) {
+            throw new \LogicException('Unexpected calendar envelope');
+        }
+        yield substr($envelope, 0, -strlen(self::END));
 
         /** @var array<string, array{\DateTimeImmutable, \DateTimeImmutable}> $zoneRanges */
         $zoneRanges = [];
-        foreach ($events as $event) {
-            $icalEvent = $this->buildEvent($event, $this->fallbackTimezone($event, $club), $zoneRanges);
-            if ($markDrafts && $event->isDraft) {
-                $icalEvent->setStatus(EventStatus::TENTATIVE());
+        foreach ($chunks as $events) {
+            $text = '';
+            foreach ($events as $event) {
+                $icalEvent = $this->buildEvent($event, $this->fallbackTimezone($event, $clubTimezone), $zoneRanges);
+                if ($markDrafts && $event->isDraft) {
+                    $icalEvent->setStatus(EventStatus::TENTATIVE());
+                }
+                $text .= (string) $eventFactory->createComponent($icalEvent);
             }
-            $calendar->addEvent($icalEvent);
+            if ('' !== $text) {
+                yield $text;
+            }
         }
 
-        // RFC 5545 3.2.19: every TZID used needs a VTIMEZONE; without it strict clients (e.g. ical.js,
-        // Outlook) read the times as floating local time of the reader.
+        $timeZones = [];
         foreach ($zoneRanges as $tz => [$from, $until]) {
-            $calendar->addTimeZone(ICalTimeZone::createFromPhpDateTimeZone(new \DateTimeZone($tz), $from->modify('-1 day'), $until->modify('+1 day')));
+            $timeZones[] = ICalTimeZone::createFromPhpDateTimeZone(new \DateTimeZone($tz), $from->modify('-1 day'), $until->modify('+1 day'));
+        }
+        foreach ((new TimeZoneFactory())->createComponents($timeZones) as $component) {
+            yield (string) $component;
         }
 
-        return (string) (new CalendarFactory(new EventFactory()))->createCalendar($calendar);
+        yield self::END;
     }
 
     /**
      * Zone for events without a (valid) own zone: calendar, then club, then UTC. Values stored before
      * time zones were validated (e.g. Windows names from an Outlook import) must not break the feed.
      */
-    private function fallbackTimezone(IcsEvent $event, Club $club): string
+    private function fallbackTimezone(IcsEvent $event, string $clubTimezone): string
     {
-        return Input::canonicalTimezone($event->calendarTimezone)
-            ?? Input::canonicalTimezone($club->getTimezone())
-            ?? 'UTC';
+        return Input::canonicalTimezone($event->calendarTimezone) ?? $clubTimezone;
     }
 
     /**
