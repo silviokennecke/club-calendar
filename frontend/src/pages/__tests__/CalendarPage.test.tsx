@@ -351,7 +351,9 @@ describe("CalendarPage – month view", () => {
 
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("heading", { level: 2, name: "Donnerstag, 8. Oktober" })).toBeNull();
-    expect(document.activeElement).toHaveAccessibleName("8. Oktober, 2 Termine");
+    await waitFor(() =>
+      expect(document.activeElement).toHaveAccessibleName("8. Oktober, 2 Termine"),
+    );
   });
 
   it("changes the month when the arrow keys leave it", async () => {
@@ -429,7 +431,10 @@ describe("CalendarPage – month view", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(screen.getByTestId("location")).toHaveTextContent(/^\/clubs\/c1\/calendars\/k1$/);
-    expect(screen.getByRole("button", { name: "Termin anlegen" })).toHaveFocus();
+    // Focus returns in an animation frame after the route change (useModalFocusReturn).
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Termin anlegen" })).toHaveFocus(),
+    );
   });
 
   it("opens the create choice from the split button", async () => {
