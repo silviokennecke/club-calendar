@@ -8,8 +8,10 @@ use App\Enum\ClubRole;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
-class ClubUser
+class ClubUser implements UpdateAudited
 {
+    use Trait\HasUpdateAudit;
+
     #[ORM\Id]
     #[ORM\ManyToOne(targetEntity: Club::class, inversedBy: 'users')]
     #[ORM\JoinColumn(name: 'club_id', onDelete: 'CASCADE')]

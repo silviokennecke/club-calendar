@@ -9,7 +9,7 @@ use App\Entity\Location;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
-class HasUpdatedAtTest extends KernelTestCase
+class UpdatedAtTest extends KernelTestCase
 {
     private EntityManagerInterface $em;
 
@@ -54,10 +54,10 @@ class HasUpdatedAtTest extends KernelTestCase
     private function makeLocation(): Location
     {
         $this->em->getConnection()->executeStatement(
-            "INSERT INTO club (id, name, timezone) VALUES ('club-1', 'Test', 'UTC')",
+            "INSERT INTO club (id, name, timezone, updated_at) VALUES ('club-1', 'Test', 'UTC', NOW())",
         );
         $this->em->getConnection()->executeStatement(
-            "INSERT INTO calendar (id, club_id, name) VALUES ('cal-1', 'club-1', 'Test')",
+            "INSERT INTO calendar (id, club_id, name, updated_at) VALUES ('cal-1', 'club-1', 'Test', NOW())",
         );
         $club = $this->em->find(Club::class, 'club-1');
         $location = new Location();

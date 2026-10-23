@@ -11,8 +11,10 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
-class CalendarFeed
+class CalendarFeed implements UpdateAudited
 {
+    use Trait\HasUpdateAudit;
+
     #[ORM\Id]
     #[ORM\Column(length: 36)]
     private string $id;

@@ -137,6 +137,10 @@ Security headers (audit M4) live in both `backend/public/.htaccess` and `docker/
 - **McpGrant** — a user's connection of an AI client (`OAuthClient`) to the MCP server, with scopes and `McpToken`s (see "MCP server and OAuth")
 - **User** — signs in with password, Google/Microsoft SSO (`OAuthAccount`) or passkeys (`Passkey`); e-mail confirmation by 6-digit code (`EmailVerification`)
 
+## Audit fields
+
+All domain entities carry `updated_at` (NOT NULL) and `updated_by_id` (nullable FK to `user`, `ON DELETE SET NULL`, so account deletion keeps working) via `Entity\Trait\HasUpdateAudit` + `UpdateAudited`: `Club`, `ClubUser`, `ClubInvitation`, `Calendar`, `CalendarFeed`, `Event`, `EventSeries`, `EventTemplate`, `Property`, `Feature`, `TargetGroup`, `Location`, `HolidayCalendar`, `HolidayEvent`. `App\Doctrine\UpdateAuditListener` (prePersist + onFlush) fills them centrally; `updated_by` is the user of the token storage (JWT and MCP firewall), null for CLI, fixtures and tests without a request user. Adding or removing rows of association entities (`EventTargetGroup|Property|Feature`, `EventTemplate*`, `CalendarFeedCalendar|TargetGroup`) stamps the owning entity, so services need no explicit touch. Not audited: `User`, auth/token/nonce/log entities (`RefreshToken`, `EmailVerification`, `PasswordReset`, `EmailChange`, `Passkey`, `OAuthAccount`, `AuthNonce`, `OAuth*`, `Mcp*`), `LegalDocument`, `UserConsent` and the join entities themselves. Not exposed in the API. A new domain entity: use the trait, implement the interface, add the migration columns. Raw SQL inserts must supply `updated_at`.
+
 ## Auth
 
 - OAuth2-compliant: short-lived access token (15 min) + refresh token (7 days, sliding), both in `sessionStorage`

@@ -111,8 +111,8 @@ class ClubScopeMigrationTest extends WebTestCase
             $tg = sprintf('00000000-0000-7000-8000-0000000004%02d', $i);
             $feed = sprintf('00000000-0000-7000-8000-0000000005%02d', $i);
             $this->conn()->insert('location', ['id' => $loc, 'calendar_id' => $cal, 'name' => "Loc$i", 'updated_at' => '2026-01-01 00:00:00']);
-            $this->conn()->insert('target_group', ['id' => $tg, 'calendar_id' => $cal, 'name' => "TG$i"]);
-            $this->conn()->insert('calendar_feed', ['id' => $feed, 'calendar_id' => $cal, 'name' => "Feed$i", 'visibility' => 'PRIVATE', 'shared_secret' => "secret-value-$i"]);
+            $this->conn()->insert('target_group', ['id' => $tg, 'calendar_id' => $cal, 'name' => "TG$i", 'updated_at' => '2026-01-01 00:00:00']);
+            $this->conn()->insert('calendar_feed', ['id' => $feed, 'calendar_id' => $cal, 'name' => "Feed$i", 'updated_at' => '2026-01-01 00:00:00', 'visibility' => 'PRIVATE', 'shared_secret' => "secret-value-$i"]);
             $this->conn()->insert('calendar_feed_target_group', ['feed_id' => $feed, 'target_group_id' => $tg]);
             foreach (['event' => 'event_id', 'event_template' => 'template_id'] as $owner => $col) {
                 $key = 'event' === $owner ? 'event' : 'template';

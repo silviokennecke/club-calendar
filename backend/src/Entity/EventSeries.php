@@ -16,8 +16,10 @@ use Symfony\Component\Uid\Uuid;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'event_series')]
-class EventSeries
+class EventSeries implements UpdateAudited
 {
+    use Trait\HasUpdateAudit;
+
     #[ORM\Id]
     #[ORM\Column(length: 36)]
     private string $id;

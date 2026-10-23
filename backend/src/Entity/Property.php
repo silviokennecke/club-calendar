@@ -10,8 +10,10 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
-class Property
+class Property implements UpdateAudited
 {
+    use Trait\HasUpdateAudit;
+
     #[ORM\Id]
     #[ORM\Column(length: 36)]
     private string $id;

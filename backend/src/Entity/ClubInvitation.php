@@ -20,8 +20,10 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\UniqueConstraint(name: 'uq_club_invitation_token_hash', columns: ['token_hash'])]
 #[ORM\Index(name: 'idx_club_invitation_club_email', columns: ['club_id', 'email'])]
 #[ORM\Index(name: 'idx_club_invitation_email_status', columns: ['email', 'status'])]
-class ClubInvitation
+class ClubInvitation implements UpdateAudited
 {
+    use Trait\HasUpdateAudit;
+
     public const string PENDING = 'pending';
     public const string ACCEPTED = 'accepted';
     public const string DECLINED = 'declined';

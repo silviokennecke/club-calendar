@@ -9,8 +9,10 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity(repositoryClass: HolidayEventRepository::class)]
-class HolidayEvent
+class HolidayEvent implements UpdateAudited
 {
+    use Trait\HasUpdateAudit;
+
     #[ORM\Id]
     #[ORM\Column(length: 36)]
     private string $id;
