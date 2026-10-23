@@ -261,6 +261,8 @@ test.describe("Termine", () => {
     await page.getByRole("link", { name: /Aus Vorlage/ }).click();
     await expect(page.getByRole("heading", { level: 2, name: "Vorlage wählen" })).toBeVisible();
     await expect(page.getByRole("radio", { name: /Training Luftgewehr/ })).toBeChecked();
+    await page.getByRole("searchbox", { name: "Vorlagen nach Namen suchen" }).fill("luftgewehr");
+    await expect(page.getByRole("radio", { name: /Training Luftgewehr/ })).toBeChecked();
     await page.getByRole("button", { name: "Weiter" }).click();
 
     // Single event

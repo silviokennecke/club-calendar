@@ -4,7 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiGet } from "@/lib/api";
 import type { EventTemplate } from "@/lib/types";
-import { Banner, Button, EmptyState, Icon, LinkButton, Modal } from "@/components/ui/shared";
+import {
+  Banner,
+  Button,
+  EmptyState,
+  Icon,
+  LinkButton,
+  Modal,
+  SearchInput,
+} from "@/components/ui/shared";
 import { useEventPage } from "@/components/events/useEventPage";
 import { useTemplateMeta } from "@/components/events/useTemplateMeta";
 import { CreateGateBody, ModalSkeleton } from "@/components/events/CreateGate";
@@ -41,13 +49,17 @@ function TemplatePick() {
   const [params] = useSearchParams();
   const date = params.get("date");
   const [picked, setPicked] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   const templates = useQuery<EventTemplate[]>({
     queryKey: ["templates", page.calendarId],
     queryFn: () => apiGet<EventTemplate[]>(`/api/calendars/${page.calendarId}/templates`),
   });
-  const list = templates.data ?? [];
-  const selected = picked ?? list[0]?.id ?? null;
+  const all = templates.data ?? [];
+  const q = query.trim().toLocaleLowerCase();
+  const list = q ? all.filter((tpl) => tpl.name.toLocaleLowerCase().includes(q)) : all;
+  const selected =
+    (picked && list.some((tpl) => tpl.id === picked) ? picked : null) ?? list[0]?.id ?? null;
 
   function next(e: FormEvent) {
     e.preventDefault();
@@ -69,7 +81,7 @@ function TemplatePick() {
         }
       />
     );
-  } else if (list.length === 0) {
+  } else if (all.length === 0) {
     body = (
       <EmptyState
         icon="layers"
@@ -84,24 +96,37 @@ function TemplatePick() {
     );
   } else {
     body = (
-      <fieldset className="ap-fieldset">
-        <legend>{t("events.templatePick.legend")}</legend>
-        {list.map((tpl) => (
-          <label key={tpl.id} className="ap-optionrow">
-            <input
-              type="radio"
-              name="tpl"
-              value={tpl.id}
-              checked={selected === tpl.id}
-              onChange={() => setPicked(tpl.id)}
-            />
-            <span className="ap-listrow-main">
-              <b>{tpl.name}</b>
-              <span>{meta(tpl)}</span>
-            </span>
-          </label>
-        ))}
-      </fieldset>
+      <>
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          label={t("events.templatePick.searchLabel")}
+          placeholder={t("events.templatePick.searchPlaceholder")}
+        />
+        <fieldset className="ap-fieldset">
+          <legend>{t("events.templatePick.legend")}</legend>
+          {list.length === 0 && (
+            <p role="status" className="ap-hint">
+              {t("events.templatePick.noMatch", { query: query.trim() })}
+            </p>
+          )}
+          {list.map((tpl) => (
+            <label key={tpl.id} className="ap-optionrow">
+              <input
+                type="radio"
+                name="tpl"
+                value={tpl.id}
+                checked={selected === tpl.id}
+                onChange={() => setPicked(tpl.id)}
+              />
+              <span className="ap-listrow-main">
+                <b>{tpl.name}</b>
+                <span>{meta(tpl)}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      </>
     );
   }
 

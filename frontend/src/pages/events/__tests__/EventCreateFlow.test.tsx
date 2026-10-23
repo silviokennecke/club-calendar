@@ -209,6 +209,25 @@ describe("template picker", () => {
       `${BASE}/events/new/template/t2`,
     );
   });
+  it("filters the templates by name while typing", async () => {
+    const user = userEvent.setup();
+    renderRoute(
+      `${PATTERN}/events/new/template`,
+      `${BASE}/events/new/template`,
+      <EventTemplatePickModal />,
+    );
+    await user.type(
+      await screen.findByRole("searchbox", { name: "Vorlagen nach Namen suchen" }),
+      "jugend",
+    );
+    const group = screen.getByRole("group", { name: "Vorlage" });
+    expect(within(group).queryByRole("radio", { name: /Training Luftgewehr/ })).toBeNull();
+    expect(within(group).getByRole("radio", { name: /Jugendtraining/ })).toBeChecked();
+    await user.clear(screen.getByRole("searchbox"));
+    await user.type(screen.getByRole("searchbox"), "zzz");
+    expect(screen.getByRole("status")).toHaveTextContent("Keine Vorlage zu „zzz“ gefunden.");
+    expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
+  });
   it("goes one step back to the choice", async () => {
     const user = userEvent.setup();
     renderRoute(

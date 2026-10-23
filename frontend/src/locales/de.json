@@ -646,6 +646,9 @@
       "meta": "{{from}} – {{to}}",
       "next": "Weiter",
       "back": "Zurück",
+      "searchLabel": "Vorlagen nach Namen suchen",
+      "searchPlaceholder": "Vorlagen suchen …",
+      "noMatch": "Keine Vorlage zu „{{query}}“ gefunden.",
       "loading": "Vorlagen werden geladen.",
       "error": "Die Vorlagen konnten nicht geladen werden.",
       "empty": {
