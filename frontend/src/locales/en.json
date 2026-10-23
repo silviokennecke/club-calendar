@@ -570,7 +570,8 @@
         "basic": "Basics",
         "status": "Status",
         "place": "Location",
-        "tags": "Properties, features and audiences"
+        "tags": "Properties, features and audiences",
+        "note": "Note"
       },
       "name": "Name",
       "namePlaceholder": "e.g. Air rifle training…",
@@ -580,9 +581,6 @@
       "note": "Note",
       "noteHint": "Optional. All members of the calendar see the note; it is also visible in published calendars (feeds).",
       "noteCount": "{{count}} / {{max}} characters",
-      "dateEndHint": "Only for events spanning several days.",
-      "dates": "Date",
-      "times": "Time",
       "allDay": "All day",
       "allDayHint": "Start and end time are then omitted.",
       "timeBegin": "Start time",
@@ -651,7 +649,12 @@
         "text": "There is an unsaved draft of this event on this device.",
         "restore": "Restore",
         "discard": "Discard"
-      }
+      },
+      "start": "Start",
+      "end": "End",
+      "dateEndHint": "Only for events spanning several days.",
+      "dates": "Date",
+      "times": "Time"
     },
     "templatePick": {
       "title": "Choose template",

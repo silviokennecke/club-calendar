@@ -43,6 +43,12 @@ import {
   useModalInitialFocus,
 } from "@/components/ui/shared";
 import { StatusSeg } from "@/components/events/StatusSeg";
+import {
+  applyEndDate,
+  applyStartDate,
+  applyTimeBegin,
+  effectiveEndDate,
+} from "@/lib/events/dateSync";
 import { AssignmentFields } from "@/components/events/AssignmentFields";
 import { LocationSection } from "@/components/events/LocationSection";
 import { useEventPage } from "@/components/events/useEventPage";
@@ -482,40 +488,6 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
                 />
               )}
             </Field>
-            <fieldset className="ap-fieldset">
-              <legend className="ap-sr">{t("events.form.dates")}</legend>
-              <div className="ap-inputrow">
-                <Field
-                  id={FIELD_IDS.date}
-                  label={t("events.form.date")}
-                  required
-                  error={errorFor("date")}
-                >
-                  <TextInput
-                    autoComplete="off"
-                    type="date"
-                    value={values.date}
-                    onChange={(e) => set("date", e.target.value)}
-                    onBlur={blur("date")}
-                  />
-                </Field>
-                <Field
-                  id={FIELD_IDS.dateEnd}
-                  label={t("events.form.dateEnd")}
-                  hint={t("events.form.dateEndHint")}
-                  error={errorFor("dateEnd")}
-                >
-                  <TextInput
-                    autoComplete="off"
-                    type="date"
-                    value={values.dateEnd}
-                    min={values.date || undefined}
-                    onChange={(e) => set("dateEnd", e.target.value)}
-                    onBlur={blur("dateEnd")}
-                  />
-                </Field>
-              </div>
-            </fieldset>
             <label className="ap-check">
               <input
                 type="checkbox"
@@ -528,10 +500,24 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
                 <small id="ev-allday-hint">{t("events.form.allDayHint")}</small>
               </span>
             </label>
-            {!values.isAllDay && (
-              <fieldset className="ap-fieldset">
-                <legend className="ap-sr">{t("events.form.times")}</legend>
-                <div className="ap-inputrow">
+            <fieldset className="ap-fieldset">
+              <legend className="ap-sr">{t("events.form.start")}</legend>
+              <div className="ap-inputrow">
+                <Field
+                  id={FIELD_IDS.date}
+                  label={t("events.form.date")}
+                  required
+                  error={errorFor("date")}
+                >
+                  <TextInput
+                    autoComplete="off"
+                    type="date"
+                    value={values.date}
+                    onChange={(e) => setValues((v) => applyStartDate(v, e.target.value))}
+                    onBlur={blur("date")}
+                  />
+                </Field>
+                {!values.isAllDay && (
                   <Field
                     id={FIELD_IDS.timeBegin}
                     label={t("events.form.timeBegin")}
@@ -542,10 +528,30 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
                       autoComplete="off"
                       type="time"
                       value={values.timeBegin}
-                      onChange={(e) => set("timeBegin", e.target.value)}
+                      onChange={(e) => setValues((v) => applyTimeBegin(v, e.target.value))}
                       onBlur={blur("timeBegin")}
                     />
                   </Field>
+                )}
+              </div>
+            </fieldset>
+            <fieldset className="ap-fieldset">
+              <legend className="ap-sr">{t("events.form.end")}</legend>
+              <div className="ap-inputrow">
+                <Field
+                  id={FIELD_IDS.dateEnd}
+                  label={t("events.form.dateEnd")}
+                  error={errorFor("dateEnd")}
+                >
+                  <TextInput
+                    autoComplete="off"
+                    type="date"
+                    value={effectiveEndDate(values)}
+                    onChange={(e) => setValues((v) => applyEndDate(v, e.target.value))}
+                    onBlur={blur("dateEnd")}
+                  />
+                </Field>
+                {!values.isAllDay && (
                   <Field
                     id={FIELD_IDS.timeEnd}
                     label={t("events.form.timeEnd")}
@@ -560,9 +566,28 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
                       onBlur={blur("timeEnd")}
                     />
                   </Field>
-                </div>
-              </fieldset>
-            )}
+                )}
+              </div>
+            </fieldset>
+          </section>
+
+          <section className="ap-panel ap-form-section" aria-labelledby="sec-place">
+            <h2 className="t-h2" id="sec-place">
+              {t("events.form.sections.place")}
+            </h2>
+            <LocationSection
+              locations={res.locations}
+              value={values.locationId}
+              onChange={(id) => set("locationId", id)}
+              onCreate={res.createLocation}
+              readOnly={readOnly}
+            />
+          </section>
+
+          <section className="ap-panel ap-form-section" aria-labelledby="sec-note">
+            <h2 className="t-h2" id="sec-note">
+              {t("events.form.sections.note")}
+            </h2>
             <Field
               id={FIELD_IDS.note}
               label={t("events.form.note")}
@@ -582,6 +607,18 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
             </Field>
           </section>
 
+          <section className="ap-panel ap-form-section" aria-labelledby="sec-tags">
+            <h2 className="t-h2" id="sec-tags">
+              {t("events.form.sections.tags")}
+            </h2>
+            <AssignmentFields
+              resources={res}
+              value={values}
+              onChange={(field, ids) => set(field, ids)}
+              readOnly={readOnly}
+            />
+          </section>
+
           <section className="ap-panel ap-form-section" aria-labelledby="sec-status">
             <h2 className="t-h2" id="sec-status">
               {t("events.form.sections.status")}
@@ -594,31 +631,6 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
             <p className="t-sm t-muted" id="ev-status-hint">
               {t("events.form.status.hint")}
             </p>
-          </section>
-
-          <section className="ap-panel ap-form-section" aria-labelledby="sec-place">
-            <h2 className="t-h2" id="sec-place">
-              {t("events.form.sections.place")}
-            </h2>
-            <LocationSection
-              locations={res.locations}
-              value={values.locationId}
-              onChange={(id) => set("locationId", id)}
-              onCreate={res.createLocation}
-              readOnly={readOnly}
-            />
-          </section>
-
-          <section className="ap-panel ap-form-section" aria-labelledby="sec-tags">
-            <h2 className="t-h2" id="sec-tags">
-              {t("events.form.sections.tags")}
-            </h2>
-            <AssignmentFields
-              resources={res}
-              value={values}
-              onChange={(field, ids) => set(field, ids)}
-              readOnly={readOnly}
-            />
           </section>
         </fieldset>
 
