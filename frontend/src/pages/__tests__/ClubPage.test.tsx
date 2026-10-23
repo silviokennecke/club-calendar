@@ -42,8 +42,8 @@ let calendars: Record<string, unknown>[];
 let clubError: Error | null;
 let clubList: unknown[];
 
-function renderClub() {
-  return renderRoute("/clubs/:clubId", "/clubs/c1", <ClubPage />);
+function renderClub(tab?: "general" | "calendars" | "members") {
+  return renderRoute("/clubs/:clubId", `/clubs/c1${tab ? `?tab=${tab}` : ""}`, <ClubPage />);
 }
 
 beforeEach(() => {
@@ -96,7 +96,7 @@ afterEach(() => {
 });
 
 describe("ClubPage", () => {
-  it("shows name, zone, members, calendars and archived calendars", async () => {
+  it("shows name and zone on the general tab; members and calendars on their own tabs", async () => {
     renderClub();
     expect(
       await screen.findByRole("heading", { level: 1, name: "Verein verwalten" }),
@@ -107,7 +107,13 @@ describe("ClubPage", () => {
     expect(await screen.findByLabelText(/^Name des Vereins/)).toHaveValue(
       "Schützenverein Waldblick",
     );
+    expect(screen.getByRole("tab", { name: "Allgemeines", selected: true })).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
 
+  it("lists members on the members tab", async () => {
+    renderClub("members");
+    expect(await screen.findByRole("tab", { name: "Mitglieder", selected: true })).toBeVisible();
     const table = await screen.findByRole("table", { name: "Mitglieder des Vereins (2)" });
     const rows = within(table).getAllByRole("row");
     expect(rows).toHaveLength(3);
@@ -119,7 +125,12 @@ describe("ClubPage", () => {
     expect(
       within(rows[2]).getByRole("button", { name: "Mara Sommer entfernen" }),
     ).toBeInTheDocument();
+  });
 
+  it("switches tabs and lists calendars incl. archived on the calendars tab", async () => {
+    renderClub();
+    await userEvent.click(await screen.findByRole("tab", { name: "Kalender" }));
+    expect(screen.queryByLabelText(/^Name des Vereins/)).not.toBeInTheDocument();
     // Rows name the number of events (design: Club "n Termine"), not the zone
     expect(await screen.findByText("12 Termine")).toBeInTheDocument();
     expect(screen.getByText("1 Termin")).toBeInTheDocument();
@@ -135,7 +146,7 @@ describe("ClubPage", () => {
 
   it("renames the club and validates an empty name", async () => {
     const user = userEvent.setup();
-    renderClub();
+    renderClub("general");
     const name = await screen.findByLabelText(/^Name des Vereins/);
     await user.clear(name);
     await user.click(screen.getByRole("button", { name: "Namen speichern" }));
@@ -152,7 +163,7 @@ describe("ClubPage", () => {
   it("invites by e-mail with a neutral message and clears the field", async () => {
     const success = vi.spyOn(toast, "success");
     const user = userEvent.setup();
-    renderClub();
+    renderClub("members");
     await user.type(await screen.findByLabelText(/^E-Mail-Adresse/), "jonas@beispiel.de");
     await user.click(screen.getByRole("button", { name: "Einladung senden" }));
     await waitFor(() =>
@@ -171,7 +182,7 @@ describe("ClubPage", () => {
 
   it("explains invalid and duplicate addresses, quota and rate limits", async () => {
     const user = userEvent.setup();
-    renderClub();
+    renderClub("members");
     const field = await screen.findByLabelText(/^E-Mail-Adresse/);
     const send = screen.getByRole("button", { name: "Einladung senden" });
 
@@ -227,7 +238,7 @@ describe("ClubPage", () => {
       },
     ];
     const user = userEvent.setup();
-    renderClub();
+    renderClub("members");
     const table = await screen.findByRole("table", { name: "Offene Einladungen (2)" });
     const pending = within(within(table).getByText("offen@beispiel.de").closest("tr")!);
     expect(pending.getByText("Offen bis 24.10.2026")).toBeInTheDocument();
@@ -258,7 +269,7 @@ describe("ClubPage", () => {
     apiPost.mockRejectedValue(new ApiError("x", 429, "rate_limited"));
     const error = vi.spyOn(toast, "error");
     const user = userEvent.setup();
-    renderClub();
+    renderClub("members");
     await user.click(
       await screen.findByRole("button", { name: "Einladung an offen@beispiel.de erneut senden" }),
     );
@@ -277,7 +288,7 @@ describe("ClubPage", () => {
       },
     ];
     const user = userEvent.setup();
-    renderClub();
+    renderClub("members");
     await user.click(
       await screen.findByRole("button", { name: "Einladung an offen@beispiel.de widerrufen" }),
     );
@@ -290,14 +301,14 @@ describe("ClubPage", () => {
   });
 
   it("shows no invitation list without open invitations", async () => {
-    renderClub();
+    renderClub("members");
     await screen.findByLabelText(/^E-Mail-Adresse/);
     expect(screen.queryByRole("heading", { name: "Offene Einladungen" })).not.toBeInTheDocument();
   });
 
   it("removes a member only after confirming and names the consequence", async () => {
     const user = userEvent.setup();
-    renderClub();
+    renderClub("members");
     await user.click(await screen.findByRole("button", { name: "Mara Sommer entfernen" }));
     const dialog = await screen.findByRole("alertdialog", { name: "Mara Sommer entfernen?" });
     expect(dialog).toHaveTextContent("Ihr Konto bleibt bestehen.");
@@ -316,7 +327,7 @@ describe("ClubPage", () => {
 
   it("disables leaving for the only member and explains why", async () => {
     members = [members[0]];
-    renderClub();
+    renderClub("members");
     expect(await screen.findByRole("button", { name: /Verein .* verlassen/ })).toBeDisabled();
     expect(screen.getByText(/Du bist das einzige Mitglied/)).toBeInTheDocument();
   });
@@ -325,7 +336,7 @@ describe("ClubPage", () => {
     apiDelete.mockRejectedValue(new ApiError("last", 422, "last_member"));
     const error = vi.spyOn(toast, "error");
     const user = userEvent.setup();
-    renderClub();
+    renderClub("members");
     await user.click(await screen.findByRole("button", { name: "Mara Sommer entfernen" }));
     await user.click(
       within(await screen.findByRole("alertdialog")).getByRole("button", {
@@ -342,7 +353,7 @@ describe("ClubPage", () => {
     const success = vi.spyOn(toast, "success");
     const error = vi.spyOn(toast, "error");
     const user = userEvent.setup();
-    renderClub();
+    renderClub("members");
     await user.click(await screen.findByRole("button", { name: "Mara Sommer entfernen" }));
     members = [members[0]];
     await user.click(
@@ -365,7 +376,7 @@ describe("ClubPage", () => {
     apiDelete.mockRejectedValue(new ApiError("Forbidden", 403));
     const error = vi.spyOn(toast, "error");
     const user = userEvent.setup();
-    renderClub();
+    renderClub("members");
     await user.click(await screen.findByRole("button", { name: "Mara Sommer entfernen" }));
     await user.click(
       within(await screen.findByRole("alertdialog")).getByRole("button", {
@@ -381,7 +392,7 @@ describe("ClubPage", () => {
 
   it("leaving the club removes yourself and goes to the club picker", async () => {
     const user = userEvent.setup();
-    renderClub();
+    renderClub("members");
     await user.click(
       await screen.findByRole("button", { name: "Verein Schützenverein Waldblick verlassen" }),
     );
@@ -394,7 +405,7 @@ describe("ClubPage", () => {
 
   it("creates a calendar from the inline form and stays on the page", async () => {
     const user = userEvent.setup();
-    renderClub();
+    renderClub("calendars");
     const toggle = await screen.findByRole("button", { name: "Kalender anlegen", expanded: false });
     await user.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "true");
@@ -419,7 +430,7 @@ describe("ClubPage", () => {
 
   it("duplicates a calendar, names the copy and stays on the page", async () => {
     const user = userEvent.setup();
-    renderClub();
+    renderClub("calendars");
     await user.click(
       await screen.findByRole("button", { name: "Kalender Schießbetrieb 2026 duplizieren" }),
     );
@@ -435,7 +446,7 @@ describe("ClubPage", () => {
 
   it("archives after confirming and restores an archived calendar", async () => {
     const user = userEvent.setup();
-    renderClub();
+    renderClub("calendars");
     await user.click(await screen.findByRole("button", { name: "Kalender Jugend archivieren" }));
     const dialog = await screen.findByRole("alertdialog", {
       name: "Kalender „Jugend“ archivieren?",
@@ -460,7 +471,7 @@ describe("ClubPage", () => {
 
   it("deletes a calendar after confirming and names what is lost", async () => {
     const user = userEvent.setup();
-    renderClub();
+    renderClub("calendars");
     await user.click(await screen.findByRole("button", { name: "Kalender Jugend löschen" }));
     const dialog = await screen.findByRole("alertdialog", { name: "Kalender „Jugend“ löschen?" });
     expect(dialog).toHaveTextContent("Der Kalender wird dauerhaft gelöscht.");
@@ -479,7 +490,7 @@ describe("ClubPage", () => {
 
   it("uses its own wording for deleting an archived calendar (no restore afterwards)", async () => {
     const user = userEvent.setup();
-    renderClub();
+    renderClub("calendars");
     await user.click(await screen.findByRole("button", { name: "Kalender Saison 2025 löschen" }));
     const dialog = await screen.findByRole("alertdialog", {
       name: "Archivierten Kalender „Saison 2025“ löschen?",
@@ -507,7 +518,7 @@ describe("ClubPage", () => {
             : Promise.resolve(path === "/api/clubs" ? clubList : calendars),
     );
     const user = userEvent.setup();
-    renderClub();
+    renderClub("general");
     await user.click(await screen.findByRole("button", { name: "Verein löschen" }));
     expect(await screen.findByRole("alertdialog")).toHaveTextContent(
       "Löscht den Verein, alle Kalender, Termine, Feeds und Vorlagen unwiderruflich. Alle Mitglieder verlieren den Zugriff.",
@@ -516,7 +527,7 @@ describe("ClubPage", () => {
 
   it("deletes the club only after typing its name", async () => {
     const user = userEvent.setup();
-    renderClub();
+    renderClub("general");
     await user.click(await screen.findByRole("button", { name: "Verein löschen" }));
     const dialog = await screen.findByRole("alertdialog", {
       name: "Verein „Schützenverein Waldblick“ löschen?",
@@ -569,22 +580,23 @@ describe("ClubPage", () => {
       if (path === "/api/clubs/c1") return Promise.resolve(club);
       return Promise.reject(new Error("API error 500"));
     });
-    renderClub();
+    renderClub("members");
     expect(
       await screen.findByText("Die Mitglieder konnten nicht geladen werden."),
     ).toBeInTheDocument();
     expect(
-      await screen.findByText("Die Kalender konnten nicht geladen werden."),
-    ).toBeInTheDocument();
-    expect(
       await screen.findByText("Die offenen Einladungen konnten nicht geladen werden."),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Erneut versuchen" })).toHaveLength(3);
+    expect(screen.getAllByRole("button", { name: "Erneut versuchen" })).toHaveLength(2);
+    await userEvent.click(screen.getByRole("tab", { name: "Kalender" }));
+    expect(
+      await screen.findByText("Die Kalender konnten nicht geladen werden."),
+    ).toBeInTheDocument();
   });
 
   it("admin sees roles as selects, changes one and invites with a role", async () => {
     const user = userEvent.setup();
-    renderClub();
+    renderClub("members");
     const select = await screen.findByLabelText("Rolle von Mara Sommer");
     expect(select).toHaveValue("editor");
     await user.selectOptions(select, "viewer");
@@ -607,7 +619,7 @@ describe("ClubPage", () => {
     const error = vi.spyOn(toast, "error");
     apiPatch.mockRejectedValue(new ApiError("x", 422, "last_admin"));
     const user = userEvent.setup();
-    renderClub();
+    renderClub("members");
     await user.selectOptions(await screen.findByLabelText("Rolle von Alex Beispiel"), "viewer");
     await waitFor(() =>
       expect(error).toHaveBeenCalledWith(expect.stringContaining("einzige Admin")),
@@ -616,7 +628,7 @@ describe("ClubPage", () => {
 
   it("non-admins see roles read-only, no invite form and cannot remove others", async () => {
     clubRole = "editor";
-    renderClub();
+    renderClub("members");
     const table = await screen.findByRole("table", { name: "Mitglieder des Vereins (2)" });
     expect(within(table).getByText("Bearbeiter")).toBeInTheDocument();
     expect(within(table).getByText("Admin")).toBeInTheDocument();

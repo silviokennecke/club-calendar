@@ -1692,6 +1692,12 @@
     "roleReadOnly": "Deine Rolle in diesem Verein erlaubt nur das Ansehen. Bearbeiter und Admins können Änderungen vornehmen."
   },
   "club": {
+    "tabs": {
+      "label": "Bereiche des Vereins",
+      "general": "Allgemeines",
+      "calendars": "Kalender",
+      "members": "Mitglieder"
+    },
     "title": "Verein verwalten",
     "subtitle": "{{name}} · Zeitzone {{zone}}",
     "allClubs": "Zu allen Vereinen",

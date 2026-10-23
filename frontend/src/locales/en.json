@@ -1692,6 +1692,12 @@
     "roleReadOnly": "Your role in this club only allows viewing. Editors and admins can make changes."
   },
   "club": {
+    "tabs": {
+      "label": "Club sections",
+      "general": "General",
+      "calendars": "Calendars",
+      "members": "Members"
+    },
     "title": "Manage club",
     "subtitle": "{{name}} · Time zone {{zone}}",
     "allClubs": "All clubs",
