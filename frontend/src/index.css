@@ -1624,6 +1624,39 @@
       }
     }
   }
+  /* Sliding underline driven by lib/tabIndicator.ts (hover / focus, back to the active tab). */
+  .ap-tabs[data-slide] {
+    position: relative;
+  }
+  .ap-tabs[data-slide] > [aria-current="page"],
+  .ap-tabs[data-slide] > [aria-selected="true"] {
+    border-bottom-color: transparent;
+  }
+  .ap-tabs[data-slide]::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    inset: auto auto 0 0;
+    width: var(--ind-w);
+    height: 3px;
+    transform: translateX(var(--ind-x));
+    background: var(--brand);
+    opacity: 1;
+  }
+  .ap-tabs[data-slide="hover"]::after {
+    background: var(--border-strong);
+  }
+  .ap-tabs[data-slide][data-anim]::after {
+    transition:
+      transform var(--dur-slow) var(--ease-out),
+      width var(--dur-slow) var(--ease-out),
+      background-color var(--dur-base) var(--ease-out);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ap-tabs[data-slide][data-anim]::after {
+      transition: none;
+    }
+  }
   .ap-count {
     display: inline-flex;
     align-items: center;

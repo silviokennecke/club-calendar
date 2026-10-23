@@ -6,6 +6,7 @@ import { AppErrorBoundary } from "./components/error/ErrorPage";
 import { handlePreloadError } from "./lib/chunkReload";
 import { i18nReady } from "./lib/i18n";
 import { purgeLegacyStorage } from "./lib/legacyStorage";
+import { initTabIndicator } from "./lib/tabIndicator";
 import "./index.css";
 
 // A chunk of an older release is gone after a deploy (open tab, lazy page or dialog): reload once
@@ -14,6 +15,7 @@ import "./index.css";
 window.addEventListener("vite:preloadError", (event) => handlePreloadError(event));
 
 purgeLegacyStorage();
+initTabIndicator();
 
 // Render once the texts of the detected language are loaded (English is a lazy chunk).
 void i18nReady
