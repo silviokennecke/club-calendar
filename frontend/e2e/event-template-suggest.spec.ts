@@ -82,10 +82,7 @@ async function expectTemplateApplied(page: Page) {
     "aria-pressed",
     "true",
   );
-  await expect(groups.getByRole("button", { name: "Erwachsene" })).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
+  await expect(groups.getByRole("button", { name: "Erwachsene" })).toHaveCount(0);
   await expect(page.getByLabel(/^Notiz/)).toHaveValue("Bitte Hausschuhe mitbringen.");
   await expect(page.getByLabel("Startdatum (Pflicht)")).toHaveValue("2026-10-24");
   await expect(options(page)).toHaveCount(0);
@@ -182,7 +179,7 @@ test.describe("Vorlagenvorschläge im Termin-Formular", () => {
       await expect(page.getByRole("textbox", { name: "Endzeit (Pflicht)" })).toHaveValue("09:45");
       await expect(
         page.getByRole("group", { name: "Gruppen" }).getByRole("button", { name: "Jugend" }),
-      ).toHaveAttribute("aria-pressed", "false");
+      ).toHaveCount(0);
     };
 
     await nameField(page).fill("training");

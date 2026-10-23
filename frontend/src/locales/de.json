@@ -1647,6 +1647,10 @@
     },
     "codeInput": {
       "digit": "Ziffer {{index}} von {{total}}"
+    },
+    "chipCombobox": {
+      "createHint": "Namen eingeben, um neu anzulegen",
+      "createNamed": "„{{name}}“ neu anlegen"
     }
   },
   "shell": {

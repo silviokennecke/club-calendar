@@ -143,10 +143,13 @@ test.describe("Termine", () => {
     await expect(page.getByLabel("Startzeit")).toHaveCount(0);
     await page.getByRole("combobox", { name: /^Ort/ }).fill("Schützen");
     await page.getByRole("option", { name: /Schützenhaus Waldblick/ }).click();
-    await page
-      .getByRole("group", { name: "Gruppen" })
-      .getByRole("button", { name: "Jugend" })
-      .click();
+    const audiences = page.getByRole("group", { name: "Gruppen" });
+    await audiences.getByRole("button", { name: "Neue Gruppe anlegen" }).click();
+    await page.getByRole("option", { name: "Jugend" }).click();
+    await expect(audiences.getByRole("button", { name: "Jugend" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     await page.getByRole("button", { name: "Termin speichern" }).click();
 
     await expect(page.getByText("Termin gespeichert.")).toBeVisible();
