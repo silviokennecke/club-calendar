@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { API, loginPassword } from "./helpers";
+import { API, continueWithEmail, loginPassword } from "./helpers";
 
 // The auth pages are tested in German (the design's source language).
 test.use({ locale: "de-DE" });
@@ -9,17 +9,29 @@ const PASSWORD = "Sicheres-Passwort-1";
 test.describe("Login", () => {
   test("login page is accessible", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.getByRole("heading", { level: 1, name: "Anmelden" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Anmelden oder Konto erstellen" }),
+    ).toBeVisible();
     await expect(page.getByLabel(/^E-Mail \(Pflicht\)/)).toBeVisible();
-    await expect(loginPassword(page)).toBeVisible();
+    await expect(loginPassword(page)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Mit Passkey anmelden" })).toBeVisible();
+
+    // an existing address leads to the password step; SSO and passkey disappear, Back returns
+    await continueWithEmail(page, "admin@example.com");
+    await expect(page.getByRole("heading", { level: 1, name: "Anmelden" })).toBeVisible();
+    await expect(loginPassword(page)).toBeFocused();
     await expect(page.getByRole("link", { name: "Passwort vergessen?" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Mit Passkey anmelden" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Zurück" }).click();
+    await expect(page.getByLabel(/^E-Mail \(Pflicht\)/)).toHaveValue("admin@example.com");
+    await expect(page.getByRole("button", { name: "Mit Passkey anmelden" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Zum Inhalt springen" })).toBeAttached();
     await expect(page.locator("main#main")).toBeVisible();
   });
 
   test("password can be shown and hidden", async ({ page }) => {
     await page.goto("/login");
+    await continueWithEmail(page, "admin@example.com");
     const input = loginPassword(page);
     const toggle = page.getByRole("button", { name: "Passwort anzeigen" });
     await input.fill("geheim");
@@ -34,12 +46,14 @@ test.describe("Login", () => {
   test("language can be switched", async ({ page }) => {
     await page.goto("/login");
     await page.getByRole("button", { name: "English" }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Sign in" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Sign in or create an account" }),
+    ).toBeVisible();
   });
 
   test("wrong credentials show an error banner with focus", async ({ page }) => {
     await page.goto("/login");
-    await page.getByLabel("E-Mail").fill("wrong@example.com");
+    await continueWithEmail(page, "admin@example.com");
     await loginPassword(page).fill("wrongpassword");
     await page.getByRole("button", { name: "Anmelden", exact: true }).click();
     const alert = page.getByRole("alert");
@@ -97,7 +111,7 @@ test.describe("Login", () => {
 
   test("login with correct credentials redirects to clubs", async ({ page }) => {
     await page.goto("/login");
-    await page.getByLabel("E-Mail").fill("admin@example.com");
+    await continueWithEmail(page, "admin@example.com");
     await loginPassword(page).fill("password123");
     await page.getByRole("button", { name: "Anmelden", exact: true }).click();
     await page.waitForURL("**/clubs**");
@@ -117,11 +131,10 @@ test.describe("Registration", () => {
   }) => {
     const email = `e2e-${Date.now()}@example.com`;
     await page.goto("/login");
-    await page.getByRole("link", { name: "Konto erstellen" }).click();
+    await continueWithEmail(page, email);
     await expect(page.getByRole("heading", { level: 1, name: "Konto erstellen" })).toBeVisible();
 
     await page.getByLabel(/^Name/).fill("Erika E2E");
-    await page.getByLabel(/^E-Mail/).fill(email);
     await page.getByLabel(/^Passwort \(Pflicht\)/).fill(PASSWORD);
     await page.getByLabel(/^Passwort wiederholen/).fill(PASSWORD);
     await page.getByRole("button", { name: "Konto erstellen", exact: true }).click();
@@ -149,8 +162,10 @@ test.describe("Registration", () => {
     ).toBeVisible();
 
     await page.getByRole("link", { name: "Zurück zur Anmeldung" }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Anmelden" })).toBeVisible();
-    await page.getByLabel("E-Mail").fill(email);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Anmelden oder Konto erstellen" }),
+    ).toBeVisible();
+    await continueWithEmail(page, email);
     await loginPassword(page).fill(PASSWORD);
     await page.getByRole("button", { name: "Anmelden", exact: true }).click();
     await expect(page).toHaveURL(/\/verify-email\?email=/);
@@ -159,8 +174,8 @@ test.describe("Registration", () => {
 
   test("mismatching passwords are reported", async ({ page }) => {
     await page.goto("/signup");
+    await continueWithEmail(page, `erika-${Date.now()}@example.com`);
     await page.getByLabel(/^Name/).fill("Erika E2E");
-    await page.getByLabel(/^E-Mail/).fill("erika@example.com");
     await page.getByLabel(/^Passwort \(Pflicht\)/).fill(PASSWORD);
     await page.getByLabel(/^Passwort wiederholen/).fill("etwas-anderes-123");
     await page.getByRole("button", { name: "Konto erstellen", exact: true }).click();
@@ -169,17 +184,14 @@ test.describe("Registration", () => {
     await expect(page).toHaveURL(/\/signup/);
   });
 
-  test("an existing email address points to the login", async ({ page }) => {
+  test("an existing email address leads to the password step instead of the signup", async ({
+    page,
+  }) => {
     await page.goto("/signup");
-    await page.getByLabel(/^Name/).fill("Admin Zwei");
-    await page.getByLabel(/^E-Mail/).fill("admin@example.com");
-    await page.getByLabel(/^Passwort \(Pflicht\)/).fill(PASSWORD);
-    await page.getByLabel(/^Passwort wiederholen/).fill(PASSWORD);
-    await page.getByRole("button", { name: "Konto erstellen", exact: true }).click();
-    const alert = page.getByRole("alert");
-    await expect(alert).toContainText("schon ein Konto");
-    await alert.getByRole("link", { name: "Zur Anmeldung" }).click();
-    await expect(page).toHaveURL(/\/login/);
+    await continueWithEmail(page, "admin@example.com");
+    await expect(page.getByRole("heading", { level: 1, name: "Anmelden" })).toBeVisible();
+    await expect(loginPassword(page)).toBeVisible();
+    await expect(page.getByLabel(/^Passwort wiederholen/)).toHaveCount(0);
   });
 });
 

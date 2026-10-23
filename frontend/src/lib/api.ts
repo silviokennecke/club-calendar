@@ -20,12 +20,14 @@ export class ApiError extends Error {
   retryAt?: string;
   /** Extra member `email` of `email_not_verified` (login 403). */
   email?: string;
+  /** `Retry-After` header in seconds (429 answers), if present. */
+  retryAfter?: number;
   constructor(
     message: string,
     status: number,
     code?: string,
     field?: string,
-    extras: { retryAt?: string; email?: string } = {},
+    extras: { retryAt?: string; email?: string; retryAfter?: number } = {},
   ) {
     super(message);
     this.name = "ApiError";
@@ -34,6 +36,7 @@ export class ApiError extends Error {
     this.field = field;
     this.retryAt = extras.retryAt;
     this.email = extras.email;
+    this.retryAfter = extras.retryAfter;
   }
 }
 
@@ -221,6 +224,11 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
   return res;
 }
 
+function retryAfterOf(res: Response): number | undefined {
+  const seconds = Number(res.headers?.get?.("Retry-After"));
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : undefined;
+}
+
 /** ApiError from a failed response (RFC 7807 body): `detail` as message, plus the stable `code`. */
 async function errorFrom(res: Response): Promise<ApiError> {
   const err = (await res.json().catch(() => null)) as {
@@ -238,6 +246,7 @@ async function errorFrom(res: Response): Promise<ApiError> {
   return new ApiError(err?.detail ?? `API error ${res.status}`, res.status, err?.code, err?.field, {
     retryAt: typeof err?.retryAt === "string" ? err.retryAt : undefined,
     email: typeof err?.email === "string" ? err.email : undefined,
+    retryAfter: retryAfterOf(res),
   });
 }
 

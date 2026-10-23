@@ -22,7 +22,6 @@
     "signingIn": "Signing in…",
     "createAccount": "Create account",
     "creatingAccount": "Creating account…",
-    "noAccount": "No account?",
     "passkey": "Sign in with passkey",
     "passkeyWaiting": "Waiting for passkey…",
     "completingSignIn": "Completing sign in…",
@@ -56,7 +55,6 @@
     },
     "register": {
       "name": "Name",
-      "haveAccount": "Already have an account?",
       "passwordHint": "At least 8 characters",
       "confirmPassword": "Repeat password",
       "errorTitle": "The account has not been created yet",
@@ -66,9 +64,7 @@
       "passwordMissing": "Please choose a password.",
       "passwordShortField": "The password is too short. Please enter at least 8 characters.",
       "confirmMismatchField": "The passwords do not match. Please enter the same password again.",
-      "restrictedHint": "Registration is only possible with an invitation. Use the email address the invitation was sent to.",
       "emailRestrictedField": "There is no invitation for this email address. Registration is only possible with an invitation.",
-      "emailExistsField": "There is already an account for this email address. Please sign in.",
       "problem": {
         "exists": "There is already an account with this email address. Sign in or reset your password.",
         "generic": "The account could not be created. Please check your details and try again."
@@ -148,6 +144,38 @@
       "failedTitle": "The password could not be saved",
       "failedText": "Please check your internet connection and try again.",
       "errorTitle": "The password has not been saved yet"
+    },
+    "rateLimited": "Too many attempts. Please wait a moment and try again.",
+    "rateLimitedWait": "Too many attempts. Please try again in about {{minutes}} min.",
+    "rateLimitedTitle": "Too many attempts",
+    "entry": {
+      "title": "Sign in or create an account",
+      "intro": "Enter your email address. We will find out whether you already have an account.",
+      "loginIntro": "Welcome back. Enter your password.",
+      "registerIntro": "There is no account for this address yet. Create one now.",
+      "restrictedTitle": "By invitation only",
+      "restrictedIntro": "New accounts cannot be created freely here at the moment.",
+      "restrictedBannerTitle": "Registration is only possible with an invitation",
+      "restrictedText": "There is no invitation for {{email}}. Please ask your club's administrators for an invitation to this address. You can try again with another address.",
+      "formLabel": "Start sign-in",
+      "errorTitle": "The email address is missing or invalid",
+      "continue": "Continue",
+      "checking": "Checking…",
+      "back": "Back",
+      "otherMethodHint": "Do you usually sign in with Google, Microsoft or a passkey? Go back and choose that method.",
+      "failedTitle": "That did not work",
+      "failed": "The email address could not be checked. Please try again.",
+      "invitedTitle": "You have been invited",
+      "invitedBy": "{{name}} invited you to the club \"{{club}}\". Sign in or create an account to accept the invitation.",
+      "invited": "You have been invited to the club \"{{club}}\". Sign in or create an account to accept the invitation.",
+      "inviteDeadTitle": "Invitation invalid or expired",
+      "inviteDeadText": "You can still sign in or create an account. If needed, ask your club's administrators for a new invitation.",
+      "announce": {
+        "email": "Enter your email address.",
+        "login": "There is an account for this address. Enter your password.",
+        "register": "There is no account for this address yet. Create one now.",
+        "registration_restricted": "Registration is only possible with an invitation."
+      }
     }
   },
   "setup": {

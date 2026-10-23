@@ -30,7 +30,7 @@ function watch(page: Page) {
 
 async function expectSettledOnLogin(page: Page, seen: { refreshes: number; dialogs: string[] }) {
   await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByRole("button", { name: "Anmelden", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Weiter", exact: true })).toBeVisible();
   const refreshes = seen.refreshes;
   // No loop: the login page stays and makes no further refresh attempts.
   await page.waitForTimeout(1500);

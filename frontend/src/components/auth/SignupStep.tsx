@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiGet, apiPost } from "@/lib/api";
@@ -10,59 +10,45 @@ import {
   type LegalOverview,
   type LegalType,
 } from "@/lib/legal";
-import { useRegistrationInfo } from "@/lib/registration";
-import { isEmailShape } from "@/lib/email";
+import { isRateLimited, rateLimitText } from "@/lib/rateLimit";
 import { passwordProblem } from "@/lib/password";
 import { useFieldTouch } from "@/lib/useFieldTouch";
 import i18n from "@/lib/i18n";
-import {
-  Banner,
-  Button,
-  ErrorSummary,
-  Field,
-  LinkButton,
-  PasswordField,
-  TextInput,
-} from "@/components/ui/shared";
-import { AuthLayout } from "@/components/auth/AuthLayout";
+import { Button, ErrorSummary, Field, PasswordField, TextInput } from "@/components/ui/shared";
 import { FocusBanner } from "@/components/auth/FocusBanner";
 import { ConsentCheckboxes } from "@/components/legal/ConsentCheckboxes";
 
 interface FieldErrors {
   name?: string;
-  email?: string;
   password?: string;
   confirm?: string;
 }
 
-type Problem = "exists" | "generic" | "consent" | "restricted";
+type Problem = "exists" | "generic" | "consent" | "restricted" | "rate";
 
 /** Documents the user has to accept at signup (when the operator provides them). */
 const CONSENT_TYPES: readonly LegalType[] = ["privacy", "terms"];
 
 const IDS = {
   name: "signup-name",
-  email: "signup-email",
   password: "signup-password",
   confirm: "signup-confirm",
 } as const;
 
-export default function SignupPage() {
+/** Step 2 for a new address: the signup form (address fixed). */
+export function SignupStep({ email, onBack }: { email: string; onBack: () => void }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const form = useFieldTouch<keyof FieldErrors>();
-  // Answers of the API (address taken / restricted); dropped as soon as the address is edited.
-  const [serverErrors, setServerErrors] = useState<FieldErrors>({});
   const [problem, setProblem] = useState<Problem | null>(null);
   const [problemKey, setProblemKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const qc = useQueryClient();
   const legal = useLegalOverview();
-  const restricted = useRegistrationInfo().data?.restricted === true;
+  const [rateText, setRateText] = useState("");
   const [accepted, setAccepted] = useState<ReadonlySet<string>>(new Set());
   const [consentErrors, setConsentErrors] = useState<Record<string, string | undefined>>({});
   const consentItems = useMemo(
@@ -74,16 +60,17 @@ export default function SignupPage() {
     [legal.data],
   );
 
-  function fail(next: Problem, fieldErrors: FieldErrors = {}) {
-    setServerErrors(fieldErrors);
+  useEffect(() => {
+    document.getElementById(IDS.name)?.focus();
+  }, []);
+
+  function fail(next: Problem) {
     setProblem(next);
     setProblemKey((k) => k + 1);
   }
 
   const found: FieldErrors = {};
   if (!name.trim()) found.name = t("auth.register.nameMissing");
-  if (!email.trim()) found.email = t("auth.register.emailMissing");
-  else if (!isEmailShape(email)) found.email = t("auth.emailInvalid");
   const pwProblem = passwordProblem(password);
   if (pwProblem === "missing") found.password = t("auth.register.passwordMissing");
   else if (pwProblem === "short") found.password = t("auth.register.passwordShortField");
@@ -91,12 +78,12 @@ export default function SignupPage() {
   if (password && confirm !== password) found.confirm = t("auth.register.confirmMismatchField");
 
   const errors: FieldErrors = {};
-  for (const k of ["name", "email", "password", "confirm"] as const) {
-    errors[k] = serverErrors[k] ?? (form.shown(k) ? found[k] : undefined);
+  for (const k of ["name", "password", "confirm"] as const) {
+    errors[k] = form.shown(k) ? found[k] : undefined;
   }
 
   const summary: { fieldId: string; message: string }[] = [
-    ...(["name", "email", "password", "confirm"] as const).flatMap((k) =>
+    ...(["name", "password", "confirm"] as const).flatMap((k) =>
       errors[k] ? [{ fieldId: IDS[k], message: errors[k] }] : [],
     ),
     ...consentItems.flatMap((i) => {
@@ -108,7 +95,6 @@ export default function SignupPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setProblem(null);
-    setServerErrors({});
     setConsentErrors({});
     form.submit();
 
@@ -135,10 +121,13 @@ export default function SignupPage() {
       navigate(`/verify-email?email=${encodeURIComponent(res?.email ?? email)}`);
     } catch (err: unknown) {
       // Stable error code of the API (RFC 7807 body), never the English `detail` text
-      if ((err as { code?: string }).code === "email_taken") {
-        fail("exists", { email: t("auth.register.emailExistsField") });
+      if (isRateLimited(err)) {
+        setRateText(rateLimitText(t, err));
+        fail("rate");
+      } else if ((err as { code?: string }).code === "email_taken") {
+        fail("exists");
       } else if ((err as { code?: string }).code === "registration_restricted") {
-        fail("restricted", { email: t("auth.register.emailRestrictedField") });
+        fail("restricted");
       } else if (
         ["consent_outdated", "consent_required"].includes((err as { code?: string }).code ?? "")
       ) {
@@ -167,123 +156,111 @@ export default function SignupPage() {
   }
 
   return (
-    <AuthLayout
-      title={t("auth.createAccount")}
-      footer={
-        <>
-          {t("auth.register.haveAccount")}{" "}
-          <Link to="/login" className="ap-link">
-            {t("auth.signIn")}
-          </Link>
-        </>
-      }
+    <form
+      className="ap-form"
+      aria-label={t("auth.createAccount")}
+      onSubmit={handleSubmit}
+      noValidate
     >
-      {restricted && <Banner tone="info">{t("auth.register.restrictedHint")}</Banner>}
       {problem && (
         <FocusBanner
           key={problemKey}
           tone="danger"
-          title={t("auth.register.errorTitle")}
+          title={t(problem === "rate" ? "auth.rateLimitedTitle" : "auth.register.errorTitle")}
           action={
             problem === "exists" ? (
-              <LinkButton to="/login" variant="secondary">
+              <Button variant="secondary" onClick={onBack}>
                 {t("auth.register.toLogin")}
-              </LinkButton>
+              </Button>
             ) : undefined
           }
         >
-          {t(
-            problem === "exists"
-              ? "auth.register.problem.exists"
-              : problem === "consent"
-                ? "consent.outdated"
-                : problem === "restricted"
-                  ? "auth.register.emailRestrictedField"
-                  : "auth.register.problem.generic",
-          )}
+          {problem === "rate"
+            ? rateText
+            : t(
+                problem === "exists"
+                  ? "auth.register.problem.exists"
+                  : problem === "consent"
+                    ? "consent.outdated"
+                    : problem === "restricted"
+                      ? "auth.register.emailRestrictedField"
+                      : "auth.register.problem.generic",
+              )}
         </FocusBanner>
       )}
-      <form
-        className="ap-form"
-        aria-label={t("auth.createAccount")}
-        onSubmit={handleSubmit}
-        noValidate
+      <ErrorSummary
+        title={t("auth.register.errorTitle")}
+        errors={problem ? [] : summary}
+        focusSignal={form.submits}
+      />
+      <Field id={IDS.name} label={t("auth.register.name")} required error={errors.name}>
+        <TextInput
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={() => form.touch("name")}
+          autoComplete="name"
+        />
+      </Field>
+      <Field id="signup-email" label={t("auth.email")}>
+        <TextInput
+          type="email"
+          value={email}
+          readOnly
+          autoComplete="email"
+          inputMode="email"
+          spellCheck={false}
+        />
+      </Field>
+      <PasswordField
+        id={IDS.password}
+        label={t("auth.password")}
+        requiredLabel
+        hint={t("auth.register.passwordHint")}
+        error={errors.password}
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        onBlur={() => form.touch("password")}
+        autoComplete="new-password"
+      />
+      <PasswordField
+        id={IDS.confirm}
+        label={t("auth.register.confirmPassword")}
+        requiredLabel
+        error={errors.confirm}
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+        onBlur={() => form.touch("confirm")}
+        autoComplete="new-password"
+      />
+      {consentItems.length > 0 && (
+        <ConsentCheckboxes
+          items={consentItems}
+          idPrefix="signup-consent"
+          checked={accepted}
+          errors={consentErrors}
+          onToggle={(id, on) => {
+            setAccepted((prev) => {
+              const next = new Set(prev);
+              if (on) next.add(id);
+              else next.delete(id);
+              return next;
+            });
+            setConsentErrors((prev) => ({ ...prev, [id]: undefined }));
+          }}
+        />
+      )}
+      <Button
+        type="submit"
+        block
+        loading={loading}
+        disabled={legal.isPending}
+        loadingLabel={t("auth.creatingAccount")}
       >
-        <ErrorSummary
-          title={t("auth.register.errorTitle")}
-          errors={problem ? [] : summary}
-          focusSignal={form.submits}
-        />
-        <Field id={IDS.name} label={t("auth.register.name")} required error={errors.name}>
-          <TextInput
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => form.touch("name")}
-            autoComplete="name"
-          />
-        </Field>
-        <Field id={IDS.email} label={t("auth.email")} required error={errors.email}>
-          <TextInput
-            type="email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setServerErrors((prev) => (prev.email ? { ...prev, email: undefined } : prev));
-            }}
-            onBlur={() => form.touch("email")}
-            autoComplete="email"
-            inputMode="email"
-            spellCheck={false}
-          />
-        </Field>
-        <PasswordField
-          id={IDS.password}
-          label={t("auth.password")}
-          requiredLabel
-          hint={t("auth.register.passwordHint")}
-          error={errors.password}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onBlur={() => form.touch("password")}
-          autoComplete="new-password"
-        />
-        <PasswordField
-          id={IDS.confirm}
-          label={t("auth.register.confirmPassword")}
-          requiredLabel
-          error={errors.confirm}
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          onBlur={() => form.touch("confirm")}
-          autoComplete="new-password"
-        />
-        {consentItems.length > 0 && (
-          <ConsentCheckboxes
-            items={consentItems}
-            idPrefix="signup-consent"
-            checked={accepted}
-            errors={consentErrors}
-            onToggle={(id, on) => {
-              setAccepted((prev) => {
-                const next = new Set(prev);
-                if (on) next.add(id);
-                else next.delete(id);
-                return next;
-              });
-              setConsentErrors((prev) => ({ ...prev, [id]: undefined }));
-            }}
-          />
-        )}
-        <Button
-          type="submit"
-          block
-          loading={loading}
-          disabled={legal.isPending}
-          loadingLabel={t("auth.creatingAccount")}
-        >
-          {t("auth.createAccount")}
-        </Button>
-      </form>
-    </AuthLayout>
+        {t("auth.createAccount")}
+      </Button>
+      <Button variant="ghost" block icon="arrow-left" onClick={onBack}>
+        {t("auth.entry.back")}
+      </Button>
+    </form>
   );
 }
