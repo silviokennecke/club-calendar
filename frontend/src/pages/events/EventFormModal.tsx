@@ -13,6 +13,7 @@ import {
   dropUnknownReferences,
   emptyEventValues,
   formatWeekdayDate,
+  isEventValid,
   isFormDirty,
   toEventPayload,
   validateEvent,
@@ -71,6 +72,8 @@ const FIELD_IDS: Record<EventField, string> = {
   timeEnd: "ev-et",
   note: "ev-note",
 };
+
+const SAVE_HINT_ID = "ev-save-hint";
 
 /** Scope of saving / deleting an event of a series (`scope` of the API). */
 type SeriesScope = "this" | "all";
@@ -243,6 +246,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   useModalInitialFocus(FIELD_IDS.name, !readOnly);
 
   const errors = useMemo(() => validateEvent(values), [values]);
+  const valid = isEventValid(values);
   // Inline errors appear once a field was left or after "save"; an end before the start at once.
   const visible = errors.filter(
     (e) => shown(e.field) || e.code === "dateEndBeforeStart" || e.code === "timeEndBeforeStart",
@@ -636,6 +640,13 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
           </section>
         </fieldset>
 
+        {!readOnly && !valid && (
+          <p className="t-sm t-muted" id={SAVE_HINT_ID}>
+            {t("events.form.saveDisabled", {
+              reasons: errors.map((e) => t(`events.form.errors.${e.code}`)).join(" "),
+            })}
+          </p>
+        )}
         <div className="ap-dialog-foot ap-dialog-foot--split">
           {readOnly ? (
             <Button variant="secondary" onClick={leave}>
@@ -666,6 +677,8 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
             <Button
               type="submit"
               icon="check"
+              disabled={!valid}
+              aria-describedby={valid ? undefined : SAVE_HINT_ID}
               loading={saving}
               loadingLabel={t("events.form.saving")}
             >

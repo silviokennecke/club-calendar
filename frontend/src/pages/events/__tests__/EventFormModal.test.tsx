@@ -176,26 +176,32 @@ describe("EventFormModal – new event", () => {
     expect(screen.queryByLabelText(/^Name/)).toBeNull();
   });
 
-  it("validates on save, lists the errors with links and focuses the summary", async () => {
+  it("keeps save disabled while invalid, with a reason, and shows field errors after leaving", async () => {
     const user = userEvent.setup();
     renderNew();
     await screen.findByLabelText(/^Name/);
-    expect(screen.getByRole("heading", { level: 2, name: "Neuer Termin" })).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Termin speichern" }));
+    const save = screen.getByRole("button", { name: "Termin speichern" });
+    expect(save).toBeDisabled();
+    expect(save).toHaveAccessibleDescription(expect.stringContaining("Bitte gib einen Namen ein."));
+    expect(screen.queryByRole("alert")).toBeNull();
 
-    const summary = await screen.findByRole("alert");
-    expect(summary).toHaveTextContent("Der Termin ist noch nicht vollständig.");
-    await waitFor(() => expect(summary).toHaveFocus());
-    const links = within(summary).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual([
-      "Bitte gib einen Namen ein.",
-      "Bitte wähle ein Startdatum.",
-    ]);
     const name = screen.getByLabelText(/^Name/);
-    expect(name).toHaveAttribute("aria-invalid", "true");
-    expect(name).toHaveAccessibleDescription(expect.stringContaining("Bitte gib einen Namen ein."));
-    await user.click(links[1]);
-    expect(screen.getByLabelText(/^Startdatum/)).toHaveFocus();
+    await user.type(name, "Training");
+    await user.tab();
+    expect(name).not.toHaveAttribute("aria-invalid", "true");
+    expect(save).toBeDisabled();
+    expect(save).toHaveAccessibleDescription(
+      expect.stringContaining("Bitte wähle ein Startdatum."),
+    );
+    fireEvent.change(screen.getByLabelText(/^Startdatum/), { target: { value: "2026-10-14" } });
+    fireEvent.change(screen.getByLabelText(/^Startzeit/), { target: { value: "19:00" } });
+    fireEvent.change(screen.getByLabelText(/^Endzeit/), { target: { value: "18:00" } });
+    expect(save).toBeDisabled();
+    fireEvent.change(screen.getByLabelText(/^Endzeit/), { target: { value: "20:00" } });
+    await waitFor(() => expect(save).toBeEnabled());
+    expect(save).not.toHaveAttribute("aria-describedby");
+    await user.clear(name);
+    expect(save).toBeDisabled();
     expect(apiPost).not.toHaveBeenCalled();
   });
 

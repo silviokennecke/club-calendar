@@ -575,6 +575,7 @@
       },
       "name": "Name",
       "namePlaceholder": "e.g. Air rifle training…",
+      "saveDisabled": "Saving is possible once the details are correct: {{reasons}}",
       "nameTemplateHint": "From 3 letters on, matching templates are suggested and their settings are applied.",
       "date": "Start date",
       "dateEnd": "End date",
