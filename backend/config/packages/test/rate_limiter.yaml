@@ -109,6 +109,11 @@ framework:
             limit: 5
             interval: '24 hours'
             cache_pool: app.auth_limiter_pool
+        invitation_preview_ip:
+            policy: sliding_window
+            limit: 100
+            interval: '15 minutes'
+            cache_pool: app.auth_limiter_pool
         oauth_register_ip:
             policy: sliding_window
             limit: 10

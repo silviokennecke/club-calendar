@@ -134,6 +134,11 @@ framework:
             policy: sliding_window
             limit: 5
             interval: '24 hours'
+        # Public invitation preview (token lookup, unauthenticated): per client IP.
+        invitation_preview_ip:
+            policy: sliding_window
+            limit: 30
+            interval: '15 minutes'
         # OAuth dynamic client registration (unauthenticated): per client IP.
         oauth_register_ip:
             policy: sliding_window
