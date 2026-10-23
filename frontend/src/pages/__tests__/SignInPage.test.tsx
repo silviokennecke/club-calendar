@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import SignInPage from "../SignInPage";
@@ -24,6 +25,16 @@ vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ login }) }));
 vi.mock("@simplewebauthn/browser", () => ({
   startAuthentication: (...a: unknown[]) => startAuthentication(...a),
 }));
+
+function HistoryButtons() {
+  const navigate = useNavigate();
+  return (
+    <>
+      <button onClick={() => navigate(-1)}>history-back</button>
+      <button onClick={() => navigate(1)}>history-forward</button>
+    </>
+  );
+}
 
 const providers = [
   { id: "google", name: "Google", icon: "google" },
@@ -280,6 +291,38 @@ describe("identify: login", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "Anmelden oder Konto erstellen",
     );
+  });
+
+  it("browser Back returns to step 1 (address kept), Forward shows step 2 again", async () => {
+    mockApi("login");
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <MemoryRouter initialEntries={["/login"]}>
+        <HistoryButtons />
+        <Routes>
+          <Route
+            path="/login"
+            element={
+              <QueryClientProvider client={qc}>
+                <SignInPage />
+              </QueryClientProvider>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    const user = await continueWith();
+    await screen.findByLabelText(/^Passwort \(Pflicht\)/);
+    await user.click(screen.getByRole("button", { name: "history-back" }));
+    expect(await screen.findByRole("button", { name: "Weiter" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /^E-Mail/ })).toHaveValue("alex@beispiel.de");
+    await user.click(screen.getByRole("button", { name: "history-forward" }));
+    await screen.findByLabelText(/^Passwort \(Pflicht\)/);
+    // the in-page Back button uses the same history: one more Back would leave the page, not loop
+    await user.click(screen.getByRole("button", { name: "Zurück" }));
+    expect(await screen.findByRole("button", { name: "Weiter" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "history-forward" }));
+    await screen.findByLabelText(/^Passwort \(Pflicht\)/);
   });
 
   it("goes back with Escape", async () => {
