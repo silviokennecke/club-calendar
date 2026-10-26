@@ -419,6 +419,10 @@ test.describe("Termin-Dialoge", () => {
     }
 
     // Escape without changes closes; focus returns to the trigger, the calendar is usable again.
+    // A chip combobox with an open list swallows the first Escape (it closes only the list).
+    if ((await dialog.locator('[aria-expanded="true"]').count()) > 0) {
+      await page.keyboard.press("Escape");
+    }
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
     await expect(page).toHaveURL(/\/calendars\/[^/]+\?date=2026-10-14$/);
