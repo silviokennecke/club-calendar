@@ -138,7 +138,9 @@ test.describe("Termine", () => {
     await page.getByLabel("Name (Pflicht)").fill("Herbstfest");
     await page.getByLabel("Startdatum (Pflicht)").fill("2026-10-24");
     await page.getByLabel("Enddatum").fill("2026-10-25");
-    await page.getByLabel(/^Notiz/).fill("Bitte Hausschuhe mitbringen.\nBeginn 15 Uhr.");
+    await page
+      .getByRole("textbox", { name: /^Notiz/ })
+      .fill("Bitte Hausschuhe mitbringen.\nBeginn 15 Uhr.");
     await page.getByRole("checkbox", { name: /Ganztägig/ }).check();
     await expect(page.getByLabel("Startzeit")).toHaveCount(0);
     await page.getByRole("combobox", { name: /^Ort/ }).fill("Schützen");
