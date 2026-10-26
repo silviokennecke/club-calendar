@@ -396,6 +396,7 @@ test.describe("Einstellungen", () => {
     }
     await page.getByRole("link", { name: "Verein verwalten" }).last().click();
     await expect(page).toHaveURL(new RegExp(`/clubs/${s.clubId}$`));
+    await page.getByRole("tab", { name: "Kalender" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Verein verwalten" })).toBeVisible();
     await expect(
       page.getByRole("button", { name: `Kalender ${s.calendarName} duplizieren` }),
