@@ -83,7 +83,9 @@ async function expectTemplateApplied(page: Page) {
     "true",
   );
   await expect(groups.getByRole("button", { name: "Erwachsene" })).toHaveCount(0);
-  await expect(page.getByLabel(/^Notiz/)).toHaveValue("Bitte Hausschuhe mitbringen.");
+  await expect(page.getByRole("textbox", { name: /^Notiz/ })).toHaveValue(
+    "Bitte Hausschuhe mitbringen.",
+  );
   await expect(page.getByLabel("Startdatum (Pflicht)")).toHaveValue("2026-10-24");
   await expect(options(page)).toHaveCount(0);
 }
@@ -148,33 +150,35 @@ test.describe("Vorlagenvorschläge im Termin-Formular", () => {
   });
 
   test("Überschreiben: Vorlagenwerte ersetzen, fehlende Werte bleiben", async ({ page }) => {
-    await page.getByLabel(/^Notiz/).fill("Eigene Notiz");
+    await page.getByRole("textbox", { name: /^Notiz/ }).fill("Eigene Notiz");
     await page.getByRole("textbox", { name: "Startzeit (Pflicht)" }).fill("08:15");
     await page.getByRole("textbox", { name: "Endzeit (Pflicht)" }).fill("09:45");
 
     await nameField(page).fill("luftge");
     await luftgewehr(page).click();
-    await expect(page.getByLabel(/^Notiz/)).toHaveValue("Bitte Hausschuhe mitbringen.");
+    await expect(page.getByRole("textbox", { name: /^Notiz/ })).toHaveValue(
+      "Bitte Hausschuhe mitbringen.",
+    );
     await expect(page.getByRole("textbox", { name: "Startzeit (Pflicht)" })).toHaveValue("19:00");
     await expect(page.getByRole("textbox", { name: "Endzeit (Pflicht)" })).toHaveValue("21:00");
 
-    await page.getByLabel(/^Notiz/).fill("Zweite Notiz");
+    await page.getByRole("textbox", { name: /^Notiz/ }).fill("Zweite Notiz");
     await page.getByRole("textbox", { name: "Startzeit (Pflicht)" }).fill("10:00");
     await page.getByRole("textbox", { name: "Endzeit (Pflicht)" }).fill("11:00");
     await nameField(page).fill("pistol");
     await options(page).filter({ hasText: "Training Pistole" }).click();
     await expect(nameField(page)).toHaveValue("Training Pistole");
-    await expect(page.getByLabel(/^Notiz/)).toHaveValue("Zweite Notiz");
+    await expect(page.getByRole("textbox", { name: /^Notiz/ })).toHaveValue("Zweite Notiz");
     await expect(page.getByRole("textbox", { name: "Startzeit (Pflicht)" })).toHaveValue("10:00");
     await expect(page.getByRole("textbox", { name: "Endzeit (Pflicht)" })).toHaveValue("11:00");
   });
 
   test("Tab ohne Auswahl, Klick daneben und Escape ändern nichts", async ({ page }) => {
-    await page.getByLabel(/^Notiz/).fill("Eigene Notiz");
+    await page.getByRole("textbox", { name: /^Notiz/ }).fill("Eigene Notiz");
     await page.getByRole("textbox", { name: "Startzeit (Pflicht)" }).fill("08:15");
     await page.getByRole("textbox", { name: "Endzeit (Pflicht)" }).fill("09:45");
     const unchanged = async () => {
-      await expect(page.getByLabel(/^Notiz/)).toHaveValue("Eigene Notiz");
+      await expect(page.getByRole("textbox", { name: /^Notiz/ })).toHaveValue("Eigene Notiz");
       await expect(page.getByRole("textbox", { name: "Startzeit (Pflicht)" })).toHaveValue("08:15");
       await expect(page.getByRole("textbox", { name: "Endzeit (Pflicht)" })).toHaveValue("09:45");
       await expect(
@@ -235,7 +239,9 @@ test.describe("Vorlagenvorschläge im Termin-Formular", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Termin bearbeiten" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Startzeit (Pflicht)" })).toHaveValue("19:00");
     await expect(page.getByRole("textbox", { name: "Endzeit (Pflicht)" })).toHaveValue("21:00");
-    await expect(page.getByLabel(/^Notiz/)).toHaveValue("Bitte Hausschuhe mitbringen.");
+    await expect(page.getByRole("textbox", { name: /^Notiz/ })).toHaveValue(
+      "Bitte Hausschuhe mitbringen.",
+    );
     await expect(page.getByRole("combobox", { name: /^Ort/ })).toHaveValue(
       "Schützenhaus Waldblick",
     );
