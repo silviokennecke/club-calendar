@@ -586,6 +586,20 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
               onCreate={res.createLocation}
               readOnly={readOnly}
             />
+            <LocationMap locations={res.locations} value={values.locationId} />
+          </section>
+
+          <section className="ap-panel ap-form-section" aria-labelledby="sec-tags">
+            <h2 className="t-h2" id="sec-tags">
+              {t("events.form.sections.tags")}
+            </h2>
+            <AssignmentFields
+              resources={res}
+              value={values}
+              onChange={(field, ids) => set(field, ids)}
+              readOnly={readOnly}
+              variant="combobox"
+            />
           </section>
 
           <section className="ap-panel ap-form-section" aria-labelledby="sec-note">
@@ -609,20 +623,6 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
                 onBlur={blur("note")}
               />
             </Field>
-          </section>
-
-          <section className="ap-panel ap-form-section" aria-labelledby="sec-tags">
-            <h2 className="t-h2" id="sec-tags">
-              {t("events.form.sections.tags")}
-            </h2>
-            <AssignmentFields
-              resources={res}
-              value={values}
-              onChange={(field, ids) => set(field, ids)}
-              readOnly={readOnly}
-              variant="combobox"
-            />
-            <LocationMap locations={res.locations} value={values.locationId} />
           </section>
 
           <section className="ap-panel ap-form-section" aria-labelledby="sec-status">
