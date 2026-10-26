@@ -168,6 +168,11 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(page.getByText("Zeige 3 von 3 Terminen")).toBeVisible();
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
     await page.getByRole("button", { name: "Weitere Wege, den Kalender zu abonnieren" }).click();
+    await page
+      .context()
+      .route("https://calendar.google.com/**", (route) =>
+        route.fulfill({ contentType: "text/html", body: "" }),
+      );
     const popup = page.waitForEvent("popup");
     await page.getByRole("button", { name: "Zu Google Kalender hinzufügen" }).click();
     expect(decodeURIComponent((await popup).url())).toMatch(/\/api\/feed\/.*\/ics/);
@@ -260,6 +265,11 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(page.getByText("Zeige 2 von 3 Terminen")).toBeVisible();
     await expect(page.getByText("Dein Abo übernimmt diese Auswahl.")).toBeVisible();
     await page.getByRole("button", { name: "Weitere Wege, den Kalender zu abonnieren" }).click();
+    await page
+      .context()
+      .route("https://calendar.google.com/**", (route) =>
+        route.fulfill({ contentType: "text/html", body: "" }),
+      );
     const popup = page.waitForEvent("popup");
     await page.getByRole("button", { name: "Zu Google Kalender hinzufügen" }).click();
     expect(decodeURIComponent((await popup).url())).toMatch(/targetGroupIds=/);
@@ -277,7 +287,7 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(
       page.getByText("In diesem Monat gibt es keine veröffentlichten Termine."),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Heute" }).click();
+    await page.getByRole("button", { name: "Heute", exact: true }).click();
     await expect(page).toHaveURL(/date=/);
     await page.goto(`/feed/${seed.publicFeedId}?date=2026-10-08`);
     // Enter auf dem Tag öffnet die Tagesliste mit beiden Terminen
@@ -461,6 +471,11 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Vorstand intern" })).toBeVisible();
     await expect(page.getByRole("grid")).toBeVisible();
     await page.getByRole("button", { name: "Weitere Wege, den Kalender zu abonnieren" }).click();
+    await page
+      .context()
+      .route("https://calendar.google.com/**", (route) =>
+        route.fulfill({ contentType: "text/html", body: "" }),
+      );
     const popup = page.waitForEvent("popup");
     await page.getByRole("button", { name: "Zu Google Kalender hinzufügen" }).click();
     expect(decodeURIComponent((await popup).url())).toMatch(new RegExp(`secret=${seed.secret}`));
