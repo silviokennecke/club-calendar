@@ -194,7 +194,7 @@ export default function HelpPage() {
       <a className="ap-skip cc-btn cc-btn--primary" href="#main">
         {t("shell.skipToContent")}
       </a>
-      <header className="border-border bg-surface sticky top-0 z-10 border-b">
+      <header className="border-border bg-surface top-0 z-10 border-b md:sticky">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
           <IconButton
             className="md:hidden"

@@ -59,7 +59,7 @@ function Callout({ kind, children }: { kind: string; children: ReactNode }) {
       className={cn("text-ink my-5 flex gap-3 rounded-lg border-l-4 p-4", c.box)}
     >
       <Icon glyph={c.icon} size={20} className="mt-0.5 shrink-0" />
-      <div className="min-w-0 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+      <div className="min-w-0 [&>*:last-child]:mb-0 [&>:nth-child(2)]:mt-0">
         <span className="ap-sr">{t(`docs.callout.${kind in CALLOUTS ? kind : "note"}`)}: </span>
         {children}
       </div>
