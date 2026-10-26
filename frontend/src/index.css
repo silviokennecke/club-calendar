@@ -1186,6 +1186,10 @@
     padding-left: 44px;
     padding-right: 48px;
   }
+  .ap-search .cc-input::-webkit-search-cancel-button {
+    appearance: none;
+    display: none;
+  }
   .ap-search .ap-search-clear {
     position: absolute;
     right: 0;
