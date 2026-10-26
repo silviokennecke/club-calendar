@@ -201,6 +201,7 @@ test.describe("Termine", () => {
       if (/\/events\/[0-9a-f-]{36}$/.test(r.url()) && ["PATCH", "DELETE"].includes(r.method()))
         single.push(r.url());
     });
+    await bar.getByRole("button", { name: "Sichtbarkeit" }).click();
     const [bulk] = await Promise.all([
       page.waitForResponse((r) => r.url().endsWith("/events/bulk")),
       bar.getByRole("button", { name: "Veröffentlichen" }).click(),
@@ -240,10 +241,9 @@ test.describe("Termine", () => {
       }),
     );
     await page.getByRole("checkbox", { name: "Vorstandssitzung am 07.10.2026 auswählen" }).check();
-    await page
-      .getByRole("region", { name: "Sammelaktionen" })
-      .getByRole("button", { name: "Veröffentlichen" })
-      .click();
+    const failBar = page.getByRole("region", { name: "Sammelaktionen" });
+    await failBar.getByRole("button", { name: "Sichtbarkeit" }).click();
+    await failBar.getByRole("button", { name: "Veröffentlichen" }).click();
     await expect(
       page.getByText(
         "Die Termine konnten nicht geändert werden. Es wurde nichts geändert. Bitte versuche es erneut.",

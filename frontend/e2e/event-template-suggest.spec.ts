@@ -54,6 +54,15 @@ const suggestions = (page: Page) => page.getByRole("listbox");
 const options = (page: Page) => suggestions(page).getByRole("option");
 const luftgewehr = (page: Page) => options(page).filter({ hasText: "Training Luftgewehr" });
 
+// The templates load asynchronously; retype until the suggestions show up (slow CI).
+async function typeQuery(page: Page, query: string) {
+  await expect(async () => {
+    await nameField(page).fill("");
+    await nameField(page).fill(query);
+    await expect(luftgewehr(page)).toBeVisible({ timeout: 1500 });
+  }).toPass({ timeout: 15000 });
+}
+
 async function openForm(page: Page, seeded: Seeded) {
   await login(page, seeded.email);
   await page.waitForURL(/\/clubs/);
@@ -119,8 +128,7 @@ test.describe("Vorlagenvorschläge im Termin-Formular", () => {
   });
 
   test("Pfeil runter + Enter übernimmt die Vorlage, ohne zu speichern", async ({ page }) => {
-    await nameField(page).fill("luftge");
-    await expect(luftgewehr(page)).toBeVisible();
+    await typeQuery(page, "luftge");
     await page.keyboard.press("ArrowDown");
     await expect(luftgewehr(page)).toHaveAttribute("aria-selected", "true");
     await page.keyboard.press("Enter");
@@ -132,14 +140,14 @@ test.describe("Vorlagenvorschläge im Termin-Formular", () => {
   });
 
   test("Pfeil runter + Tab übernimmt die Vorlage, der Fokus wandert weiter", async ({ page }) => {
-    await nameField(page).fill("luftge");
-    await expect(luftgewehr(page)).toBeVisible();
+    await typeQuery(page, "luftge");
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Tab");
 
     await expectTemplateApplied(page);
     await expect(nameField(page)).not.toBeFocused();
-    await expect(page.getByLabel("Startdatum (Pflicht)")).toBeFocused();
+    // The all-day checkbox sits between the name and the start date
+    await expect(page.getByRole("checkbox", { name: /^Ganztägig/ })).toBeFocused();
   });
 
   test("Mausklick auf einen Vorschlag übernimmt die Vorlage", async ({ page }) => {
