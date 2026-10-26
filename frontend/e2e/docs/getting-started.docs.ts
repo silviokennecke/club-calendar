@@ -13,7 +13,8 @@ for (const lang of LANGS) {
     });
 
     test("calendar-month", async ({ page }) => {
-      await prepare(page, lang);
+      // Tall enough for all six week rows of the month grid.
+      await prepare(page, lang, 1000);
       const seed = await seedDocs(page, lang);
       await signIn(page, lang, seed.email);
       await page.goto(seed.url);

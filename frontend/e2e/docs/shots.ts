@@ -31,6 +31,8 @@ export interface ShotOptions {
 
 /** Waits for network and fonts, hides volatile UI and writes docs/screenshots/<lang>/<id>.png. */
 export async function shot(page: Page, lang: Lang, id: string, opts: ShotOptions = {}) {
+  // The pointer stays where the last click was and would show a hover state (e.g. a day circle).
+  await page.mouse.move(VIEWPORT.width - 2, 2);
   await page.addStyleTag({ content: HIDE_VOLATILE });
   await page.waitForLoadState("networkidle");
   await page.evaluate(() => document.fonts.ready);
@@ -45,8 +47,8 @@ export async function shot(page: Page, lang: Lang, id: string, opts: ShotOptions
 }
 
 /** Fixed clock, German or English UI, light theme. Call before the first navigation. */
-export async function prepare(page: Page, lang: Lang) {
-  await page.setViewportSize(VIEWPORT);
+export async function prepare(page: Page, lang: Lang, height = VIEWPORT.height) {
+  await page.setViewportSize({ width: VIEWPORT.width, height });
   await page.clock.setFixedTime(FIXED_NOW);
   await page.addInitScript((l) => {
     localStorage.setItem("language", l);
