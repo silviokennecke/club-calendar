@@ -5,6 +5,8 @@ parameters:
     env(AUTH_LOGIN_IP_LIMIT): '10'
     env(AUTH_REGISTER_IP_LIMIT): '5'
     env(AUTH_REFRESH_IP_LIMIT): '60'
+    env(AUTH_IDENTIFY_IP_LIMIT): '30'
+    env(AUTH_IDENTIFY_EMAIL_LIMIT): '10'
     # Public feed endpoints, requests per minute: per client IP and per feed id. 0 switches a limit off.
     env(FEED_RATE_LIMIT_PER_IP): '120'
     env(FEED_RATE_LIMIT_PER_FEED): '600'
@@ -88,11 +90,11 @@ framework:
         # Identify (e-mail-first sign-in; an intended account-existence oracle, hence tight limits)
         auth_identify_ip:
             policy: sliding_window
-            limit: 30
+            limit: '%env(int:AUTH_IDENTIFY_IP_LIMIT)%'
             interval: '15 minutes'
         auth_identify_email:
             policy: sliding_window
-            limit: 10
+            limit: '%env(int:AUTH_IDENTIFY_EMAIL_LIMIT)%'
             interval: '15 minutes'
         auth_register_ip:
             policy: sliding_window
