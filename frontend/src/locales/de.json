@@ -2464,5 +2464,33 @@
       "read": "Vereine, Kalender, Termine, Vorlagen und Feeds ansehen",
       "write": "Terminentwürfe, Zielgruppen, Eigenschaften, Merkmale, Orte und nicht öffentliche Feeds anlegen sowie Terminvorlagen bearbeiten"
     }
+  },
+  "docs": {
+    "title": "Hilfe",
+    "footerLink": "Hilfe",
+    "navLabel": "Hilfe-Navigation",
+    "tocLabel": "Inhaltsverzeichnis",
+    "onThisPage": "Auf dieser Seite",
+    "pagerLabel": "Weitere Hilfeseiten",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "backToApp": "Zurück zur App",
+    "openMenu": "Menü öffnen",
+    "closeMenu": "Menü schließen",
+    "anchorLabel": "Link zu diesem Abschnitt",
+    "callout": {
+      "note": "Hinweis",
+      "tip": "Tipp",
+      "warning": "Achtung"
+    },
+    "searchPlaceholder": "Hilfe durchsuchen",
+    "searchLabel": "Hilfe durchsuchen (Taste /)",
+    "searchResults": "Suchergebnisse",
+    "noResults": "Keine Treffer für „{{query}}“",
+    "notFoundTitle": "Seite nicht gefunden",
+    "notFoundText": "Diese Hilfeseite gibt es nicht (mehr).",
+    "toIndex": "Zur Hilfe-Übersicht",
+    "loadError": "Die Hilfeseite konnte nicht geladen werden.",
+    "retry": "Erneut versuchen"
   }
 }

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/lib/usePageTitle";
 import { LegalLinks } from "@/components/legal/LegalLinks";
+import { HelpCenterLink } from "@/docs/HelpCenterLink";
 import { HelpFooterLink } from "@/components/help/HelpFooterLink";
 import { Icon, LangSwitch, Logo, type Glyph } from "@/components/ui/shared";
 
@@ -73,6 +74,7 @@ export function AuthLayout({
   const footerLinks = legalLinks && (
     <div className="legal-links">
       <LegalLinks />
+      <HelpCenterLink />
       <HelpFooterLink />
     </div>
   );

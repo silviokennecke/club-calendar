@@ -44,6 +44,7 @@ export default function MorePage() {
     },
     { labelKey: "shell.more.allClubs", href: "/clubs?select=1", icon: "list" },
     { labelKey: "shell.profile", href: "/profile", icon: "user" },
+    { labelKey: "docs.footerLink", href: "/help", icon: "info" },
   ];
 
   return (

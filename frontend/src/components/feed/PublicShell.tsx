@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { LangSwitch, Logo } from "@/components/ui/shared";
 import { LegalLinks } from "@/components/legal/LegalLinks";
+import { HelpCenterLink } from "@/docs/HelpCenterLink";
 import { HelpFooterLink } from "@/components/help/HelpFooterLink";
 import { usePublicHead } from "./usePublicHead";
 
@@ -67,6 +68,7 @@ export function PublicShell({
         </div>
         <div className="legal-links legal-links--public">
           <LegalLinks />
+          <HelpCenterLink />
           {helpLink && <HelpFooterLink />}
         </div>
       </footer>

@@ -28,6 +28,7 @@ import {
   FeaturesPage,
   FeedEditPage,
   FeedPage,
+  HelpPage,
   HelpSubscribePage,
   FeedsPage,
   ForgotPasswordPage,
@@ -73,6 +74,8 @@ function AppRoutes() {
           <Route path="/auth/verify-email" element={<EmailVerifyPage />} />
           <Route path="/feed/:feedId" element={<FeedPage />} />
           <Route path="/help/subscribe" element={<HelpSubscribePage />} />
+          <Route path="/help" element={<HelpPage />} />
+          <Route path="/help/*" element={<HelpPage />} />
           {/* Handles the signed-out case itself: the token survives the login (sessionStorage). */}
           <Route path="/invitations" element={<InvitationPage />} />
 
