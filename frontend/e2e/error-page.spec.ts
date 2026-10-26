@@ -33,13 +33,13 @@ test("die 404-Seite ist auch auf Englisch da und bietet Reload und Zurück", asy
 });
 
 // A blocked page module must end on the error page and "Seite neu laden" must recover. Dev server:
-// native module import (`src/pages/LoginPage.tsx`), rejects without reload. Production build
-// (`vite preview`, CI): hashed chunk `assets/LoginPage-*.js`, one automatic reload, then the error
+// native module import (`src/pages/SignInPage.tsx`), rejects without reload. Production build
+// (`vite preview`, CI): hashed chunk `assets/SignInPage-*.js`, one automatic reload, then the error
 // page. Both URLs are blocked, whichever one the running server uses.
 test("fehlgeschlagener Seiten-Import zeigt die Fehlerseite, 'Seite neu laden' stellt die Seite her", async ({
   page,
 }) => {
-  const patterns = ["**/src/pages/LoginPage.tsx*", "**/assets/LoginPage-*.js"];
+  const patterns = ["**/src/pages/SignInPage.tsx*", "**/assets/SignInPage-*.js"];
   for (const pattern of patterns) await page.route(pattern, (route) => route.abort());
   const consoleErrors: string[] = [];
   page.on("pageerror", (error) => consoleErrors.push(error.message));
@@ -72,7 +72,7 @@ test.describe("fehlender Chunk im Produktions-Build", () => {
   test("ein Reload, dann Fehlerseite ohne Schleife; Reload-Aktion stellt die Seite her", async ({
     page,
   }) => {
-    const pattern = "**/assets/LoginPage-*.js";
+    const pattern = "**/assets/SignInPage-*.js";
     await page.route(pattern, (route) => route.abort());
     let documents = 0;
     page.on("request", (request) => {

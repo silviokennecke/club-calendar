@@ -410,6 +410,8 @@ jobs:
           AUTH_REFRESH_IP_LIMIT: "100000"
           AUTH_IDENTIFY_IP_LIMIT: "100000"
           AUTH_IDENTIFY_EMAIL_LIMIT: "100000"
+          # empty allow-list: mcp-consent.spec registers a loopback client that must stay "unverified"
+          MCP_ALLOWED_CLIENTS: ""
           MAILER_DSN: null://null
           APP_SECRET: ci-app-secret-for-testing-only
           DATABASE_URL: mysql://root:root@127.0.0.1:3306/club_calendar
