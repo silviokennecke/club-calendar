@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, type InputHTMLAttributes, type Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Icon } from "./Icon";
@@ -11,9 +11,24 @@ interface Props {
   /** Accessible label (visually hidden); defaults to the placeholder. */
   label?: string;
   className?: string;
+  /** Ref of the input element (focus handling). */
+  inputRef?: Ref<HTMLInputElement>;
+  /** Extra input attributes (keyboard handlers, combobox ARIA). */
+  inputProps?: Omit<
+    InputHTMLAttributes<HTMLInputElement>,
+    "value" | "onChange" | "placeholder" | "id" | "type"
+  >;
 }
 
-export function SearchInput({ value, onChange, placeholder, label, className }: Props) {
+export function SearchInput({
+  value,
+  onChange,
+  placeholder,
+  label,
+  className,
+  inputRef,
+  inputProps,
+}: Props) {
   const { t } = useTranslation();
   const id = `search-${useId().replace(/:/g, "")}`;
   const ph = placeholder ?? t("common.search");
@@ -26,6 +41,8 @@ export function SearchInput({ value, onChange, placeholder, label, className }: 
         {label ?? ph}
       </label>
       <input
+        {...inputProps}
+        ref={inputRef}
         id={id}
         type="search"
         name="search"

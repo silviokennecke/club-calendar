@@ -103,6 +103,10 @@ export function Sidebar({ data }: { data: ShellData }) {
             <span className="ap-sr">, {t("shell.profile")}</span>
           </span>
         </Link>
+        <Link className="ap-navlink" to="/help">
+          <Icon glyph="info" size={20} />
+          {t("docs.footerLink")}
+        </Link>
         <button type="button" className="ap-navlink" onClick={data.onLogout}>
           <Icon glyph="log-out" size={20} />
           {t("shell.signOut")}

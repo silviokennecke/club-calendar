@@ -20,3 +20,31 @@ test("die Hilfeseite lädt ohne Anmeldung und wechselt die Anleitung per Tab", a
   await expect(page.getByRole("tabpanel")).toContainText("Per URL");
   await expect(page.getByRole("tabpanel")).not.toContainText("Kalenderabo hinzufügen");
 });
+
+// ——— Help center /help: public, searchable, linked from the footer ———
+
+test("das Hilfezentrum ist ohne Anmeldung erreichbar und durchsuchbar", async ({ page }) => {
+  await page.goto("/help");
+  await expect(page.getByRole("navigation", { name: "Hilfe-Navigation" })).toBeVisible();
+
+  await page.keyboard.press("/");
+  const search = page.getByRole("combobox", { name: /Hilfe durchsuchen/ });
+  await expect(search).toBeFocused();
+  await search.fill("Verein");
+  await page
+    .getByRole("option", { name: /Erste Schritte/ })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/\/help\/getting-started\/first-steps/);
+  await expect(page.getByRole("heading", { level: 1, name: /Erste Schritte/ })).toBeVisible();
+
+  await page.goto("/help/does-not-exist");
+  await expect(page.getByRole("heading", { level: 1, name: "Seite nicht gefunden" })).toBeVisible();
+});
+
+test("der Hilfe-Link im Footer der Anmeldeseite führt ins Hilfezentrum", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByRole("link", { name: "Hilfe", exact: true }).click();
+  await expect(page).toHaveURL(/\/help$/);
+  await expect(page.getByRole("navigation", { name: "Hilfe-Navigation" })).toBeVisible();
+});

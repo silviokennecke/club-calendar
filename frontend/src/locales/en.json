@@ -2464,5 +2464,33 @@
       "read": "View clubs, calendars, events, templates and feeds",
       "write": "Create draft events, target groups, properties, features, locations and non-public feeds, and edit event templates"
     }
+  },
+  "docs": {
+    "title": "Help",
+    "footerLink": "Help",
+    "navLabel": "Help navigation",
+    "tocLabel": "Table of contents",
+    "onThisPage": "On this page",
+    "pagerLabel": "More help pages",
+    "previous": "Previous",
+    "next": "Next",
+    "backToApp": "Back to the app",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "anchorLabel": "Link to this section",
+    "callout": {
+      "note": "Note",
+      "tip": "Tip",
+      "warning": "Warning"
+    },
+    "searchPlaceholder": "Search help",
+    "searchLabel": "Search help (press /)",
+    "searchResults": "Search results",
+    "noResults": "No results for “{{query}}”",
+    "notFoundTitle": "Page not found",
+    "notFoundText": "This help page does not exist (any more).",
+    "toIndex": "Go to the help overview",
+    "loadError": "The help page could not be loaded.",
+    "retry": "Try again"
   }
 }
