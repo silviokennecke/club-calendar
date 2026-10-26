@@ -17,6 +17,7 @@
     "test:frontend": "npm run test --workspace=frontend",
     "migrate": "npm run migrate --workspace=backend",
     "fixtures": "npm run fixtures --workspace=backend",
+    "docs:screenshots": "npm run docs:screenshots --workspace=frontend",
     "prepare": "husky"
   },
   "lint-staged": {

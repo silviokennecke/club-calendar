@@ -10,7 +10,9 @@ Lege zuerst einen Verein und einen Kalender an.
 
 ## Verein anlegen
 
-![Platzhalter](shot:placeholder)
+![Anmeldeseite: E-Mail-Adresse eingeben](shot:sign-in)
+
+![Monatsansicht des Kalenders mit Terminen](shot:calendar-month)
 
 :::tip
 Du kannst jederzeit weitere Mitglieder einladen.
