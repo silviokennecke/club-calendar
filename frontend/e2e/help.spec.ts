@@ -42,6 +42,29 @@ test("das Hilfezentrum ist ohne Anmeldung erreichbar und durchsuchbar", async ({
   await expect(page.getByRole("heading", { level: 1, name: "Seite nicht gefunden" })).toBeVisible();
 });
 
+test("/help/ und Ordner-URLs lösen auf: Startseite bzw. Standard-Inhaltsverzeichnis", async ({
+  page,
+}) => {
+  for (const url of ["/help", "/help/", "/help/index"]) {
+    await page.goto(url);
+    await expect(page.getByRole("heading", { level: 1, name: "Willkommen" })).toBeVisible();
+  }
+
+  for (const url of ["/help/getting-started", "/help/getting-started/"]) {
+    await page.goto(url);
+    await expect(page.getByRole("heading", { level: 1, name: "Getting started" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Hilfe-Navigation" })).toBeVisible();
+    await page
+      .getByRole("main")
+      .getByRole("link", { name: /Erste Schritte/ })
+      .click();
+    await expect(page).toHaveURL(/\/help\/getting-started\/first-steps$/);
+  }
+
+  await page.goto("/help/getting-started/first-steps/");
+  await expect(page.getByRole("heading", { level: 1, name: /Erste Schritte/ })).toBeVisible();
+});
+
 test("der Hilfe-Link im Footer der Anmeldeseite führt ins Hilfezentrum", async ({ page }) => {
   await page.goto("/login");
   await page.getByRole("link", { name: "Hilfe", exact: true }).click();
