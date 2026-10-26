@@ -113,7 +113,7 @@ export function LoginStep({ email, onBack }: { email: string; onBack: () => void
         error={error}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        onBlur={() => form.touch("password")}
+        onBlur={(e) => form.touch("password", e)}
         autoComplete="current-password"
       />
       <Link

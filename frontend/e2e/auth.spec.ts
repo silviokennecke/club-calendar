@@ -200,6 +200,7 @@ test.describe("Forgot password and email confirmation", () => {
     page,
   }) => {
     await page.goto("/login");
+    await continueWithEmail(page, "admin@example.com");
     await page.getByRole("link", { name: "Passwort vergessen?" }).click();
     await expect(page).toHaveURL(/\/forgot-password/);
     await expect(

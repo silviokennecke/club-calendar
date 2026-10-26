@@ -11,6 +11,11 @@ export function useFieldTouch<K extends string>() {
   const [submits, setSubmits] = useState(0);
   const touch = useCallback((key: K, e?: FocusEvent<HTMLElement>) => {
     if (e && isInitialFocusSteal(e.currentTarget)) return;
+    // focus moving to a plain button or link (Back, Cancel, "Forgot password"): a new error would shift
+    // the layout under the pointer and swallow the click
+    const next = e?.relatedTarget;
+    if (next instanceof HTMLAnchorElement) return;
+    if (next instanceof HTMLButtonElement && next.type === "button") return;
     setTouched((prev) => (prev.has(key) ? prev : new Set(prev).add(key)));
   }, []);
   const submit = useCallback(() => setSubmits((n) => n + 1), []);
