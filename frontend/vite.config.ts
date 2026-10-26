@@ -3,6 +3,7 @@ import type { Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import fs from "fs";
+import docsPlugin from "./vite/docs-plugin";
 
 // The SPA is served by the backend: build straight into backend/public, next to
 // index.php and .htaccess (which must survive, so no emptyOutDir).
@@ -18,7 +19,7 @@ const cleanPreviousBuild: Plugin = {
 };
 
 export default defineConfig({
-  plugins: [react(), cleanPreviousBuild],
+  plugins: [react(), docsPlugin(), cleanPreviousBuild],
   build: {
     outDir,
     emptyOutDir: false,
