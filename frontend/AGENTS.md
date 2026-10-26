@@ -359,6 +359,15 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
 - Contrast: tags carry a 3:1 outline (`--border-strong`), skeletons use `--skeleton` / `--skeleton-pulse` plus the
   same outline; `src/lib/__tests__/contrast.test.ts` computes the ratios of the tokens for both themes.
 
+## End-user help (`/help`, `frontend/docs/`, `src/docs/`)
+
+Overview and syntax: "End-user documentation (/help)" in the root `CLAUDE.md`.
+
+- **Add a page:** create `frontend/docs/de/<section>/<name>.md` and the same file under `en/` (frontmatter `title`, `order`, `description`); `npm run dev`/`build` regenerates `src/docs/slugs.generated.ts` (commit it). Do not use the slug `subscribe`.
+- **Add a screenshot:** reference `![alt](shot:<id>)`, add a spec `e2e/docs/<name>.docs.ts` that writes `docs/screenshots/<lang>/<id>.png`, run `npm run docs:screenshots` (E2E environment below) and commit the PNGs.
+- **Link from a screen:** `<HelpLink page="getting-started/first-steps" anchor="...">label</HelpLink>` (`newTab` inside forms/dialogs); texts via i18n.
+- **Files in `src/docs/`:** `types.ts` (languages, page types), `slugs.generated.ts` (generated slugs), `paths.ts` (`helpPath`, `useHelpUrl`), `HelpLink.tsx`, `HelpCenterLink.tsx` (footer link), `DocRenderer.tsx` (hast tree to React), `HelpSearch.tsx` + `searchConfig.ts` (MiniSearch), `nav.ts` (navigation tree), `virtual-docs.d.ts` (types of `virtual:docs`); page `src/pages/HelpPage.tsx`; compiler in `vite/docs-compiler.ts` and `vite/docs-plugin.ts`; tests in `src/docs/__tests__/`.
+
 ## E2E (Playwright, `frontend/e2e/`)
 
 The suite registers users and writes data, so it only runs against an isolated local environment, never the dev
