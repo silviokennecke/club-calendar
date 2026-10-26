@@ -58,7 +58,7 @@ test.describe("Verein verwalten", () => {
       .getByRole("navigation", { name: "Bereiche" })
       .getByRole("link", { name: "Verein verwalten" })
       .click();
-    await expect(page).toHaveURL(new RegExp(`/clubs/${s.clubId}$`));
+    await expect(page).toHaveURL(new RegExp(`/clubs/${s.clubId}(\\?tab=calendars)?$`));
     await expect(page.getByText(`${s.clubName} · Zeitzone Europe/Berlin`)).toBeVisible();
     await expect(page.getByLabel(/^Name des Vereins/)).toHaveValue(s.clubName);
     await expect(page.getByRole("link", { name: "Zu allen Vereinen" })).toHaveAttribute(
@@ -221,7 +221,7 @@ test.describe("Verein verwalten", () => {
       page.getByText("Kalender „Jugend und Vereinsleben“ wurde angelegt."),
     ).toBeVisible();
     await expect(form).toHaveCount(0);
-    await expect(page).toHaveURL(new RegExp(`/clubs/${s.clubId}$`));
+    await expect(page).toHaveURL(new RegExp(`/clubs/${s.clubId}(\\?tab=calendars)?$`));
     await expect(
       page.getByRole("button", { name: "Kalender anlegen", expanded: false }),
     ).toBeFocused();
@@ -232,7 +232,7 @@ test.describe("Verein verwalten", () => {
     await expect(
       page.getByText(`Kalender „Kopie von ${s.calendarName}“ wurde angelegt.`),
     ).toBeVisible();
-    await expect(page).toHaveURL(new RegExp(`/clubs/${s.clubId}$`));
+    await expect(page).toHaveURL(new RegExp(`/clubs/${s.clubId}(\\?tab=calendars)?$`));
     await expect(page.getByText(`Kopie von ${s.calendarName}`, { exact: true })).toBeVisible();
     expect(await calendars(request, s)).toHaveLength(3);
 

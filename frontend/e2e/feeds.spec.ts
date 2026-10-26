@@ -362,7 +362,7 @@ test.describe("Veröffentlichen", () => {
     const [after] = await listFeeds(request, s);
     expect(after.sharedSecret).not.toBe(created.sharedSecret);
     // Die angezeigte Adresse gehört zum neuen Geheimnis, die alte ist ungültig
-    await expect(page.getByLabel("ICS-Adresse")).toHaveValue(
+    await expect(page.getByLabel("Adresse der Webansicht")).toHaveValue(
       new RegExp(`secret=${after.sharedSecret}$`),
     );
     expect((await request.get(oldIcs)).status()).not.toBe(200);
@@ -496,7 +496,7 @@ test.describe("Veröffentlichen", () => {
     await expect(page.getByRole("link", { name: "Feed anlegen" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /löschen/ })).toHaveCount(0);
     await expect(page.getByRole("link", { name: /bearbeiten/ })).toHaveCount(0);
-    await expect(page.getByLabel("ICS-Adresse")).toBeVisible();
+    await expect(page.getByLabel("Adresse der Webansicht")).toBeVisible();
 
     const viewer = await createVerifiedUser(request, "Feeds Betrachter");
     await inviteAndAccept(request, s.clubId, s.headers, viewer, "viewer");
