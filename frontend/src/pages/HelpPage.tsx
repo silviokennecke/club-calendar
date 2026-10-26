@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { loadDocPage } from "virtual:docs";
@@ -16,7 +16,7 @@ import { LegalLinks } from "@/components/legal/LegalLinks";
 import { DocRenderer } from "@/docs/DocRenderer";
 import { HelpSearch } from "@/docs/HelpSearch";
 import { docPath } from "@/docs/paths";
-import { groupNav, navFor, resolveDoc, sectionTitles, useDocLang } from "@/docs/nav";
+import { groupNav, navFor, resolveHelpPath, sectionTitles, useDocLang } from "@/docs/nav";
 import { usePageTitle } from "@/lib/usePageTitle";
 import { cn } from "@/lib/utils";
 
@@ -35,12 +35,15 @@ export default function HelpPage() {
   const { t } = useTranslation();
   const uiLang = useDocLang();
   const { pathname, hash } = useLocation();
-  const slug = (useParams()["*"] ?? "").replace(/\/+$/, "") || "index";
   const [menuOpen, setMenuOpen] = useState(false);
 
   const nav = navFor(uiLang);
-  const resolved = resolveDoc(uiLang, slug);
-  const lang = resolved?.lang ?? uiLang;
+  // Not useParams: the router's outer splat route leaks its "*" param into `/help` itself.
+  const target = resolveHelpPath(uiLang, pathname);
+  const resolved = target?.kind === "page" ? target : null;
+  const section = target?.kind === "section" ? target : null;
+  const lang = target?.lang ?? uiLang;
+  const slug = resolved?.meta.slug ?? "";
 
   const q = useQuery({
     queryKey: ["doc", lang, slug],
@@ -51,7 +54,9 @@ export default function HelpPage() {
   });
   const page = q.data;
 
-  usePageTitle(page?.meta.title ?? (resolved ? t("docs.title") : t("docs.notFoundTitle")));
+  usePageTitle(
+    page?.meta.title ?? section?.title ?? (resolved ? t("docs.title") : t("docs.notFoundTitle")),
+  );
 
   useEffect(() => setMenuOpen(false), [pathname]);
 
@@ -98,7 +103,31 @@ export default function HelpPage() {
   );
 
   let content;
-  if (!resolved) {
+  if (section) {
+    content = (
+      <article>
+        <h1 className="t-h1 mb-6">{section.title}</h1>
+        <ul className="m-0 list-none space-y-3 p-0">
+          {section.entries.map((e) => (
+            <li key={e.slug}>
+              <Link
+                to={docPath(e.slug)}
+                className="border-border hover:bg-surface-sunken block rounded-lg border p-4 no-underline"
+              >
+                <span className="text-ink flex items-center gap-2 font-bold">
+                  {e.kind === "folder" && <Icon glyph="arrow-right" size={16} />}
+                  {e.title}
+                </span>
+                {e.description && (
+                  <span className="text-ink-muted mt-1 block text-sm">{e.description}</span>
+                )}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </article>
+    );
+  } else if (!resolved) {
     content = (
       <EmptyState
         headingLevel="h1"

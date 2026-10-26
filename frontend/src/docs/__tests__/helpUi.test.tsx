@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
@@ -95,9 +95,17 @@ function renderAt(path: string) {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
+        {/* Like the app: the routes sit below an outer splat route (its "*" param leaks into /help). */}
         <Routes>
-          <Route path="/help" element={<HelpPage />} />
-          <Route path="/help/*" element={<HelpPage />} />
+          <Route
+            path="*"
+            element={
+              <Routes>
+                <Route path="/help" element={<HelpPage />} />
+                <Route path="/help/*" element={<HelpPage />} />
+              </Routes>
+            }
+          />
         </Routes>
         <Where />
       </MemoryRouter>
@@ -214,6 +222,32 @@ describe("HelpPage", () => {
     );
     await waitFor(() => expect(document.title).toContain("Hilfe"));
   });
+
+  it.each(["/help/", "/help/index"])("renders the index at %s", async (path) => {
+    renderAt(path);
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /Hilfe Start/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders a nested slug with a trailing slash", async () => {
+    renderAt("/help/getting-started/first-steps/");
+    expect(await screen.findByText(/Erste Schritte Inhalt/)).toBeInTheDocument();
+  });
+
+  it.each(["/help/getting-started", "/help/getting-started/"])(
+    "shows a default table of contents at %s",
+    async (path) => {
+      renderAt(path);
+      expect(
+        await screen.findByRole("heading", { level: 1, name: "Getting started" }),
+      ).toBeInTheDocument();
+      const link = within(screen.getByRole("main")).getByRole("link", { name: /Erste Schritte/ });
+      expect(link).toHaveAttribute("href", "/help/getting-started/first-steps");
+      expect(screen.getByRole("navigation", { name: "Hilfe-Navigation" })).toBeInTheDocument();
+      expect(screen.getByRole("combobox")).toBeInTheDocument();
+    },
+  );
 
   it("renders a nested slug", async () => {
     renderAt("/help/getting-started/first-steps");
