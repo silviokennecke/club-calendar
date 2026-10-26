@@ -10,7 +10,9 @@ Start by creating a club and a calendar.
 
 ## Create a club
 
-![Placeholder](shot:placeholder)
+![Sign-in page: enter your email address](shot:sign-in)
+
+![Month view of the calendar with events](shot:calendar-month)
 
 :::tip
 You can invite more members at any time.

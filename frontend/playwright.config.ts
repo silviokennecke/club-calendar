@@ -14,6 +14,18 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
     trace: "on-first-retry",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    // Docs screenshots are not tests: only run on demand (`npm run docs:screenshots`).
+    { name: "chromium", testIgnore: "docs/**", use: { ...devices["Desktop Chrome"] } },
+    ...(process.env.DOCS_SCREENSHOTS
+      ? [
+          {
+            name: "docs",
+            testMatch: "docs/*.docs.ts",
+            use: { ...devices["Desktop Chrome"], deviceScaleFactor: 1 },
+          },
+        ]
+      : []),
+  ],
   // Don't start dev server automatically — run it separately
 });
