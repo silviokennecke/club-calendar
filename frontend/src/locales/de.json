@@ -331,7 +331,7 @@
       "more": "{{shown}} von {{total}} Treffern angezeigt. Präzisiere die Suche.",
       "results_one": "1 Treffer",
       "results_other": "{{count}} Treffer",
-      "placeholderAll": "Name, Notiz, Ort oder Besonderheit…"
+      "placeholderAll": "Name, Notiz, Ort oder Zusatzangebot…"
     },
     "filter": {
       "label": "Nach Gruppe filtern",
