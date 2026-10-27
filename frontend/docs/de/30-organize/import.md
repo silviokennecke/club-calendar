@@ -35,7 +35,7 @@ Jeder Termin hat ein Häkchen. Nur angehakte Termine werden importiert.
 
 Über das Bearbeiten-Symbol änderst du einen einzelnen Termin oder, mit **Gruppe bearbeiten**, alle Termine einer Gruppe. Das Datum bleibt dabei wie in der Datei. Die Änderungen gelten nur für den Import, deine Datei bleibt unverändert.
 
-Oben unter **Für alle ausgewählten Termine setzen** legst du Angaben für alle angehakten Termine fest, zum Beispiel Status, Besonderheiten, Zusatzangebote und Zielgruppen.
+Oben unter **Für alle ausgewählten Termine setzen** legst du Angaben für alle angehakten Termine fest, zum Beispiel Status, Besonderheiten, Zusatzangebote und Gruppen.
 
 ## Orte
 

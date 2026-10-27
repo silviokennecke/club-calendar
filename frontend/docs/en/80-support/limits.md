@@ -18,10 +18,10 @@ To keep everything fast there are generous upper limits. In everyday club life y
 | Open invitations per club      | 200    |
 | Events per calendar            | 20,000 |
 | Locations per club             | 2,000  |
-| Target groups per club         | 500    |
+| Audiences per club             | 500    |
 | Feeds per club                 | 50     |
-| Properties per calendar        | 500    |
-| Features per calendar          | 500    |
+| Badges per calendar            | 500    |
+| Extras per calendar            | 500    |
 | Holiday calendars per calendar | 20     |
 | Connected AI apps per account  | 20     |
 

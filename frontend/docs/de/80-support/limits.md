@@ -18,7 +18,7 @@ Damit alles schnell bleibt, gibt es großzügige Obergrenzen. Im normalen Verein
 | Offene Einladungen pro Verein  | 200    |
 | Termine pro Kalender           | 20.000 |
 | Orte pro Verein                | 2.000  |
-| Zielgruppen pro Verein         | 500    |
+| Gruppen pro Verein             | 500    |
 | Feeds pro Verein               | 50     |
 | Besonderheiten pro Kalender    | 500    |
 | Zusatzangebote pro Kalender    | 500    |

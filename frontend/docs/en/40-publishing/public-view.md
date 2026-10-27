@@ -17,7 +17,7 @@ Every feed has a web page that works without signing in. It shows the club and f
 
 ## Open an event
 
-Clicking an event shows date, time, place with a map, properties, features, audiences and the note. With **Add to calendar** visitors download an ICS file for this event only.
+Clicking an event shows date, time, place with a map, badges, extras, audiences and the note. With **Add to calendar** visitors download an ICS file for this event only.
 
 ## Subscribe to the calendar
 

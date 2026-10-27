@@ -1,16 +1,16 @@
 ---
-title: Zielgruppen
+title: Gruppen
 order: 50
 description: Festlegen, für wen ein Termin gedacht ist, zum Beispiel Jugend.
 ---
 
-# Zielgruppen
+# Gruppen
 
 :::note
-Zielgruppen anlegen, ändern und löschen dürfen Bearbeiter und Admins. Betrachter sehen sie nur.
+Gruppen anlegen, ändern und löschen dürfen Bearbeiter und Admins. Betrachter sehen sie nur.
 :::
 
-Zielgruppen (in der Oberfläche oft „Gruppen“) sagen, für wen ein Termin gedacht ist, z. B. „Jugend“. Besucher können den Kalender danach filtern, und Abos lassen sich auf Gruppen beschränken. Zielgruppen gehören zum ganzen Verein und gelten in allen Kalendern.
+Gruppen sagen, für wen ein Termin gedacht ist, z. B. „Jugend“. Besucher können den Kalender danach filtern, und Abos lassen sich auf Gruppen beschränken. Gruppen gehören zum ganzen Verein und gelten in allen Kalendern.
 
 ## Wo finde ich sie?
 

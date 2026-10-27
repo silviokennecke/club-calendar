@@ -14,7 +14,7 @@ With the permission **Read only** the assistant can view:
 
 - your clubs and calendars,
 - events (including drafts if you are an editor or admin) and single event details,
-- target groups, properties, features and locations,
+- audiences, badges, extras and locations,
 - event templates,
 - feeds (as editor or admin, including the secret link of private feeds).
 
@@ -23,7 +23,7 @@ With the permission **Read only** the assistant can view:
 With **Read and drafts** it can additionally, if you are at least an editor:
 
 - create event drafts and change drafts that are not yet published,
-- create target groups, properties, features and locations,
+- create audiences, badges, extras and locations,
 - create, change and delete event templates,
 - as admin, create feeds, but only with visibility "Link only" or "Private".
 
@@ -31,7 +31,7 @@ With **Read and drafts** it can additionally, if you are at least an editor:
 
 - Publishing or deleting events
 - Event series, import and bulk actions
-- Changing or deleting existing target groups, properties, features and locations
+- Changing or deleting existing audiences, badges, extras and locations
 - Changing or deleting feeds, creating public feeds
 - Managing members, invitations and accounts
 

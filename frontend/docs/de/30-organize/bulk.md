@@ -25,7 +25,7 @@ Dafür brauchst du die Rolle Bearbeiter oder Admin. Betrachter sehen keine Auswa
 
 - **Veröffentlichen**: Die Termine werden sofort in den Feeds sichtbar.
 - **Als Entwurf markieren**: Die Termine verschwinden aus den Feeds und sind nur noch für deinen Verein sichtbar.
-- **Zuordnen**: Wähle Zielgruppen, Besonderheiten und Zusatzangebote und klicke auf **Zuordnung hinzufügen**. Sie werden zu den Terminen hinzugefügt, bestehende Zuordnungen bleiben erhalten. Entfernen geht so nicht, dafür bearbeitest du den einzelnen Termin.
+- **Zuordnen**: Wähle Gruppen, Besonderheiten und Zusatzangebote und klicke auf **Zuordnung hinzufügen**. Sie werden zu den Terminen hinzugefügt, bestehende Zuordnungen bleiben erhalten. Entfernen geht so nicht, dafür bearbeitest du den einzelnen Termin.
 - **Löschen**: Die Termine werden nach einer Bestätigung dauerhaft gelöscht. Sie verschwinden auch aus allen Feeds, und das lässt sich nicht rückgängig machen.
 - **Auswahl aufheben**: Setzt die Auswahl zurück, ohne etwas zu ändern.
 
@@ -40,4 +40,4 @@ Bei einer [Terminserie](help:organize/series) betrifft eine Sammelaktion genau d
 ## Siehe auch
 
 - [Termine veröffentlichen](help:publishing/index)
-- [Besonderheiten](help:organize/properties), [Zusatzangebote](help:organize/features), [Zielgruppen](help:organize/target-groups)
+- [Besonderheiten](help:organize/properties), [Zusatzangebote](help:organize/features), [Gruppen](help:organize/target-groups)

@@ -21,7 +21,7 @@ In the sidebar under **Set up calendar**, choose **Templates**. On a phone it is
 1. Choose **Create template**.
 2. Enter a **Name**, e.g. "Air rifle training".
 3. Optionally set a **Start time** and **End time**. Without both times, events are all-day. By default the club's time zone applies.
-4. Optionally choose a **Default place**, properties, features and audiences. Without an audience, events apply to everyone.
+4. Optionally choose a **Default place**, badges, extras and audiences. Without an audience, events apply to everyone.
 5. Optionally add a **Note**. Events take it over, and you can change it per event.
 6. Choose **Save template**.
 

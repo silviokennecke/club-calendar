@@ -21,7 +21,7 @@ In der Seitenleiste unter **Kalender einrichten** den Punkt **Vorlagen** wählen
 1. Wähle **Vorlage anlegen**.
 2. Gib einen **Namen** ein, z. B. „Training Luftgewehr“.
 3. Setze optional **Startzeit** und **Endzeit**. Ohne beide Zeiten werden die Termine ganztägig. Standardmäßig gilt die Zeitzone des Vereins.
-4. Wähle optional einen **Standardort**, Besonderheiten, Zusatzangebote und Zielgruppen. Ohne Zielgruppe gelten die Termine für alle.
+4. Wähle optional einen **Standardort**, Besonderheiten, Zusatzangebote und Gruppen. Ohne Gruppe gelten die Termine für alle.
 5. Schreibe optional eine **Notiz**. Termine übernehmen sie, du kannst sie pro Termin ändern.
 6. Wähle **Vorlage speichern**.
 

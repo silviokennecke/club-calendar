@@ -15,7 +15,7 @@ A feed publishes one or more calendars of your club. It has a web page for every
 - Only **published** events. Drafts stay internal.
 - The events of all calendars you select for the feed. Archived calendars deliver no events.
 - Holidays appear only in the web view, not in the calendar subscription.
-- Optionally only certain audiences (target groups). Without a selection the feed contains all audiences.
+- Optionally only certain audiences. Without a selection the feed contains all audiences.
 
 ## The three visibilities
 

@@ -68,7 +68,7 @@ test.describe("Calendar", () => {
       .getByRole("link", { name: /^(settings|einstellungen)$/i })
       .click();
     await page.waitForURL("**/settings");
-    await page.getByRole("link", { name: /^(properties|besonderheiten)$/i }).click();
+    await page.getByRole("link", { name: /^besonderheiten$/i }).click();
     await page.waitForURL("**/settings/properties");
   });
 

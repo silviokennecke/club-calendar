@@ -38,4 +38,4 @@ Wähle im Termin das Feld **Ort**. Mit **Neuen Ort anlegen** kannst du direkt do
 ## Siehe auch
 
 - [Vorlagen](help:organize/templates)
-- [Zielgruppen](help:organize/target-groups)
+- [Gruppen](help:organize/target-groups)

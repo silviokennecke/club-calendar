@@ -15,7 +15,7 @@ Ein Feed ist die Veröffentlichung eines oder mehrerer Kalender deines Vereins. 
 - Nur **veröffentlichte** Termine. Entwürfe bleiben intern.
 - Die Termine aller Kalender, die du für den Feed auswählst. Archivierte Kalender liefern keine Termine.
 - Feiertage und Ferien erscheinen nur in der Webansicht, nicht im Kalender-Abo.
-- Optional nur bestimmte Gruppen (Zielgruppen). Ohne Auswahl enthält der Feed alle Gruppen.
+- Optional nur bestimmte Gruppen. Ohne Auswahl enthält der Feed alle Gruppen.
 
 ## Die drei Sichtbarkeiten
 

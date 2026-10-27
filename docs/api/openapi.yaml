@@ -49,16 +49,16 @@ info:
     - Authorization: club routes require club membership, calendar routes membership in the calendar's club
       (403 otherwise). Members have one of three **roles** (`viewer` < `editor` < `admin`, each includes the
       lower ones): *viewer* reads (club, calendars, events, reference data, members, `events.ics`); *editor* also
-      creates, changes and deletes events, series, templates, locations, properties, features, target groups and
+      creates, changes and deletes events, series, templates, locations, badges (properties), extras (features), audiences (target groups) and
       holiday calendars (import, bulk and series included) and reads the feeds of the club (their addresses
       and secrets); *admin* also changes and deletes the club, creates/changes/archives/duplicates/deletes
       calendars, manages feeds, invitations, members and roles. A role too low is 403 (`Forbidden`). Anyone may
       leave a club (`DELETE …/members/{ownId}`). A club never has zero members or zero admins: the last admin can
       neither be demoted, removed nor leave (`422 last_admin`) and cannot delete the account
       (`422 last_admin_of_club`) while other members remain. Writes to an **archived** calendar are 403 (reads
-      stay possible). Locations and target groups belong to the club
+      stay possible). Locations and audiences (target groups) belong to the club
       (`/api/clubs/{clubId}/…`, shared by all its calendars): reads need membership, writes the editor role, and
-      archiving a calendar does not block them. Their names are unique per club. Properties and features stay
+      archiving a calendar does not block them. Their names are unique per club. Badges (properties) and extras (features) stay
       per calendar (`/api/calendars/{calendarId}/…`, names unique per calendar; writes to an archived calendar are 403).
     - **401** is always an RFC 7807 problem with `WWW-Authenticate: Bearer`. For the access token the code is
       `missing_token` (no `Authorization` header on a route that needs a user), `invalid_token` (malformed,
@@ -150,7 +150,7 @@ info:
       drops out; when none is left (all archived) the feed is 404 (for `PRIVATE` only after a valid secret).
       Unknown feed: 404.
     - Switching a feed from `PUBLIC`/`CLUB` back to `PRIVATE` always generates a new secret.
-    - Feeds only show published events (`isDraft: false`) and, if the feed has target groups, only events
+    - Feeds only show published events (`isDraft: false`) and, if the feed has audiences (target groups), only events
       with one of them (the `targetGroupIds` query can narrow, never widen, that selection).
 
     ## Event series
@@ -330,11 +330,11 @@ tags:
   - name: Event templates
     description: Reusable event definitions.
   - name: Properties
-    description: Event tags with an emoji icon.
+    description: Badges (properties) of events, with an emoji icon.
   - name: Features
-    description: Optional add-ons of events.
+    description: Extras (features), optional add-ons of events.
   - name: Target groups
-    description: Audience filters of events and feeds.
+    description: Audiences (target groups), audience filters of events and feeds.
   - name: Locations
     description: Venues with address and map position.
   - name: Feeds
@@ -2211,8 +2211,8 @@ paths:
       tags: [Calendars]
       summary: Duplicate a calendar
       description: >-
-        Copies the properties, features and templates (the copied templates reference the copy's own properties and
-        features, but keep the same club-level locations and target groups), but no events, series or feeds. The body is optional. Also allowed for archived calendars (deliberate).
+        Copies the badges (properties), extras (features) and templates (the copied templates reference the copy's own badges and
+        extras, but keep the same club-level locations and audiences (target groups)), but no events, series or feeds. The body is optional. Also allowed for archived calendars (deliberate).
       operationId: duplicateCalendar
       requestBody:
         required: false
@@ -2255,8 +2255,8 @@ paths:
         - { name: to, in: query, schema: { type: string, format: date } }
         - { name: limit, in: query, description: 'Page size, 1..5000 (default 5000); outside → 400 `validation_failed` field `limit`.', schema: { type: integer, minimum: 1, maximum: 5000, default: 5000 } }
         - { name: offset, in: query, description: 'Events to skip (default 0).', schema: { type: integer, minimum: 0, default: 0 } }
-        - { name: targetGroupIds, in: query, description: Comma-separated target group ids (events with at least one)., schema: { type: string } }
-        - { name: q, in: query, description: 'Text search (trimmed, empty = no filter, at most 100 characters, else 400 `validation_failed` field `q`): case-insensitive substring of the event name, note, location name or the name of one of its features. Combines with the other filters; without `from`/`to` the whole calendar is searched.', schema: { type: string, maxLength: 100 } }
+        - { name: targetGroupIds, in: query, description: Comma-separated audience (target group) ids (events with at least one)., schema: { type: string } }
+        - { name: q, in: query, description: 'Text search (trimmed, empty = no filter, at most 100 characters, else 400 `validation_failed` field `q`): case-insensitive substring of the event name, note, location name or the name of one of its extras (features). Combines with the other filters; without `from`/`to` the whole calendar is searched.', schema: { type: string, maxLength: 100 } }
       responses:
         '200':
           description: Events.
@@ -2416,8 +2416,8 @@ paths:
       description: >-
         All or nothing in one transaction. Every id must belong to the calendar (unknown and foreign ids alike → 422
         `unknown_reference` field `ids`, nothing happens); duplicate ids count once. At most 5000 ids (413
-        `too_many_events`). Series left without events are removed. Action `assign` adds the given target groups
-        (club-scoped), features and properties (calendar-scoped) to every event and keeps existing assignments
+        `too_many_events`). Series left without events are removed. Action `assign` adds the given audiences (target groups)
+        (club-scoped), extras (features) and badges (properties) (calendar-scoped) to every event and keeps existing assignments
         (duplicates are ignored); at least one of the three lists is required (400 otherwise), unknown or foreign
         ids are 422 `unknown_reference` with the list's field.
       operationId: bulkEvents
@@ -2687,7 +2687,7 @@ paths:
         - { name: includeDrafts, in: query, schema: { type: string, enum: ['true', 'false', '1', '0'], default: 'false' } }
         - name: 'targetGroupIds[]'
           in: query
-          description: Ids of target groups of this calendar (at most 100); a comma-separated `targetGroupIds` is accepted too.
+          description: Ids of audiences (target groups) of this calendar (at most 100); a comma-separated `targetGroupIds` is accepted too.
           schema: { type: array, items: { type: string } }
           style: form
           explode: true
@@ -2802,11 +2802,11 @@ paths:
       - { $ref: '#/components/parameters/CalendarId' }
     get:
       tags: [Properties]
-      summary: Properties of a calendar
+      summary: Badges (properties) of a calendar
       operationId: listProperties
       responses:
         '200':
-          description: Properties with `usage`.
+          description: Badges (properties) with `usage`.
           content:
             application/json:
               schema:
@@ -2823,7 +2823,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
     post:
       tags: [Properties]
-      summary: Create a property
+      summary: Create a badge (property)
       operationId: createProperty
       requestBody:
         required: true
@@ -2851,7 +2851,7 @@ paths:
       - { $ref: '#/components/parameters/Id' }
     patch:
       tags: [Properties]
-      summary: Update a property
+      summary: Update a badge (property)
       operationId: updateProperty
       requestBody:
         required: true
@@ -2860,7 +2860,7 @@ paths:
             schema: { $ref: '#/components/schemas/PropertyInput' }
       responses:
         '200':
-          description: The updated property.
+          description: The updated badge (property).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Property' }
@@ -2871,7 +2871,7 @@ paths:
         '422': { $ref: '#/components/responses/DuplicateName' }
     delete:
       tags: [Properties]
-      summary: Delete a property (detached from events and templates)
+      summary: Delete a badge (property; detached from events and templates)
       operationId: deleteProperty
       responses:
         '200': { $ref: '#/components/responses/Ok' }
@@ -2885,11 +2885,11 @@ paths:
       - { $ref: '#/components/parameters/CalendarId' }
     get:
       tags: [Features]
-      summary: Features of a calendar
+      summary: Extras (features) of a calendar
       operationId: listFeatures
       responses:
         '200':
-          description: Features with `usage`.
+          description: Extras (features) with `usage`.
           content:
             application/json:
               schema:
@@ -2906,7 +2906,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
     post:
       tags: [Features]
-      summary: Create a feature
+      summary: Create an extra (feature)
       operationId: createFeature
       requestBody:
         required: true
@@ -2931,7 +2931,7 @@ paths:
       - { $ref: '#/components/parameters/Id' }
     patch:
       tags: [Features]
-      summary: Rename a feature
+      summary: Rename an extra (feature)
       operationId: updateFeature
       requestBody:
         required: true
@@ -2940,7 +2940,7 @@ paths:
             schema: { $ref: '#/components/schemas/NamePatch' }
       responses:
         '200':
-          description: The updated feature.
+          description: The updated extra (feature).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Feature' }
@@ -2951,7 +2951,7 @@ paths:
         '422': { $ref: '#/components/responses/DuplicateName' }
     delete:
       tags: [Features]
-      summary: Delete a feature (detached from events and templates)
+      summary: Delete an extra (feature; detached from events and templates)
       operationId: deleteFeature
       responses:
         '200': { $ref: '#/components/responses/Ok' }
@@ -2965,11 +2965,11 @@ paths:
       - { $ref: '#/components/parameters/ClubId' }
     get:
       tags: [Target groups]
-      summary: Target groups of a club
+      summary: Audiences (target groups) of a club
       operationId: listTargetGroups
       responses:
         '200':
-          description: Target groups with `usage` (incl. feeds that selected them).
+          description: Audiences (target groups) with `usage` (incl. feeds that selected them).
           content:
             application/json:
               schema:
@@ -2986,7 +2986,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
     post:
       tags: [Target groups]
-      summary: Create a target group
+      summary: Create an audience (target group)
       operationId: createTargetGroup
       requestBody:
         required: true
@@ -3011,7 +3011,7 @@ paths:
       - { $ref: '#/components/parameters/Id' }
     patch:
       tags: [Target groups]
-      summary: Rename a target group
+      summary: Rename an audience (target group)
       operationId: updateTargetGroup
       requestBody:
         required: true
@@ -3020,7 +3020,7 @@ paths:
             schema: { $ref: '#/components/schemas/NamePatch' }
       responses:
         '200':
-          description: The updated target group.
+          description: The updated audience (target group).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/TargetGroup' }
@@ -3031,7 +3031,7 @@ paths:
         '422': { $ref: '#/components/responses/DuplicateName' }
     delete:
       tags: [Target groups]
-      summary: Delete a target group (detached from events, templates and feeds)
+      summary: Delete an audience (target group; detached from events, templates and feeds)
       operationId: deleteTargetGroup
       responses:
         '200': { $ref: '#/components/responses/Ok' }
@@ -3300,7 +3300,7 @@ paths:
     get:
       tags: [Public feed]
       summary: One published event of a feed
-      description: Drafts, events of calendars that are not (or no longer, archived) part of the feed or outside the feed's target groups and unknown ids are all 404. The secret is checked first.
+      description: Drafts, events of calendars that are not (or no longer, archived) part of the feed or outside the feed's audiences (target groups) and unknown ids are all 404. The secret is checked first.
       operationId: publicFeedEvent
       security: [{}, { feedSecret: [] }]
       parameters:
@@ -3711,7 +3711,7 @@ components:
     FeedTargetGroupIds:
       name: targetGroupIds
       in: query
-      description: Comma-separated target group ids; narrows the feed's own selection (intersection), never widens it.
+      description: Comma-separated audience (target group) ids; narrows the feed's own selection (intersection), never widens it.
       schema: { type: string }
 
   headers:
@@ -3834,7 +3834,7 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     FeedInputRejected:
-      description: '`validation_failed` field `calendarIds` (empty), `unknown_reference` field `targetGroupIds` or `calendarIds` (not a calendar / target group of this club), `quota_exceeded` (`feedsPerClub`).'
+      description: '`validation_failed` field `calendarIds` (empty), `unknown_reference` field `targetGroupIds` or `calendarIds` (not a calendar / audience of this club), `quota_exceeded` (`feedsPerClub`).'
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
@@ -3998,7 +3998,7 @@ components:
         | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After`; club invitations (create, re-send): 20 per user and 50 per club and day; account deletion (`DELETE /api/auth/me`, `POST /api/auth/delete-account/code`): per user and per IP |
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
         | `event_not_draft` | 409 | MCP tool `update_event_draft` only: the event is published (not a draft) and stays unchanged |
-        | `duplicate_name` | 422 | Name of a property/feature already used in the calendar, or of a target group in the club |
+        | `duplicate_name` | 422 | Name of a badge (property) or extra (feature) already used in the calendar, or of an audience (target group) in the club |
         | `too_many_events` | 413 / 422 | 413: import > 5000 events/locations, bulk > 5000 ids; 422: series > 366 events (preview, create, rule change) |
         | `quota_exceeded` | 422 | A create/import would exceed a quota (clubs per user, calendars/members/open invitations per club, events/templates/properties/features/holiday calendars per calendar, locations/target groups/feeds per club); extra members `resource`, `limit`. List: "Quotas and input limits" |
         | `series_empty` | 409 | Rule change preview/PATCH: the series has no events |
@@ -4758,7 +4758,7 @@ components:
         sharedSecret: { type: string, description: '32 hex characters; only `PRIVATE` feeds require it. Present only when the request sets `includeSecret` (omitted by default).' }
         targetGroups:
           type: array
-          description: Selected target groups (empty = all events).
+          description: Selected audiences (target groups) (empty = all events).
           items:
             type: object
             required: [feedId, targetGroupId]
@@ -4787,7 +4787,7 @@ components:
         eventCount: { type: integer, description: All published events of the feed (not only the range). }
         audiences:
           type: array
-          description: Target groups used by the feed's published events.
+          description: Audiences (target groups) used by the feed's published events.
           items:
             type: object
             required: [id, name]

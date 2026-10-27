@@ -38,9 +38,9 @@ final class CreateEventDraftTool
         #[Schema(description: 'Plain-text note, max 2000 characters.')] ?string $note = null,
         #[Schema(description: 'UUID of a location of the club (from list_locations).')] ?string $locationId = null,
         #[Schema(description: 'UUID of an event template of this calendar (from list_event_templates).')] ?string $eventTemplateId = null,
-        #[Schema(description: 'List of target group UUIDs (from list_target_groups).')] ?array $targetGroupIds = null,
-        #[Schema(description: 'List of property UUIDs of this calendar (from list_properties).')] ?array $propertyIds = null,
-        #[Schema(description: 'List of feature UUIDs of this calendar (from list_features).')] ?array $featureIds = null,
+        #[Schema(description: 'List of audience (target group) UUIDs (from list_target_groups).')] ?array $targetGroupIds = null,
+        #[Schema(description: 'List of badge (property) UUIDs of this calendar (from list_properties).')] ?array $propertyIds = null,
+        #[Schema(description: 'List of extra (feature) UUIDs of this calendar (from list_features).')] ?array $featureIds = null,
     ): array {
         $this->context->requireScope(McpScope::Write);
         $calendar = $this->context->writableCalendar($calendarId, ClubRole::EDITOR);

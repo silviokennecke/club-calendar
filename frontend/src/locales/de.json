@@ -488,7 +488,7 @@
         "assign": {
           "label": "Zuordnen",
           "search": "Zuordnungen suchen",
-          "targetGroups": "Zielgruppen",
+          "targetGroups": "Gruppen",
           "properties": "Besonderheiten",
           "features": "Zusatzangebote",
           "none": "Nichts gefunden.",
@@ -1283,7 +1283,7 @@
         "duplicate": "Diesen Namen gibt es schon. Bitte einen anderen wählen."
       },
       "properties": {
-        "description": "Besonderheiten sind Merkmale mit Symbol, z. B. Schützentracht. Sie erscheinen am Termin im Kalender.",
+        "description": "Besonderheiten sind Kennzeichen mit Symbol, z. B. Schützentracht. Sie erscheinen am Termin im Kalender.",
         "addTitle": "Neue Besonderheit hinzufügen",
         "create": "Besonderheit anlegen",
         "placeholder": "z. B. Schützentracht…",
@@ -1321,7 +1321,7 @@
         "create": "Zusatzangebot anlegen",
         "placeholder": "z. B. Bonusschießen…",
         "emptyTitle": "Noch keine Zusatzangebote",
-        "emptyText": "Lege das erste Zusatzangebot an, zum Beispiel „Bonusschießen“. Sie erscheinen danach am Termin.",
+        "emptyText": "Lege das erste Zusatzangebot an, zum Beispiel „Bonusschießen“. Es erscheint danach am Termin.",
         "emptyReadOnly": "In diesem Kalender gibt es keine Zusatzangebote.",
         "listTitle": "Vorhandene Zusatzangebote ({{count}})",
         "created": "Zusatzangebot „{{name}}“ angelegt",
@@ -2324,7 +2324,7 @@
     },
     "scope": {
       "read": "Vereine, Kalender, Termine, Vorlagen und Feeds ansehen",
-      "write": "Terminentwürfe, Zielgruppen, Eigenschaften, Merkmale, Orte und nicht öffentliche Feeds anlegen sowie Terminvorlagen bearbeiten"
+      "write": "Terminentwürfe, Gruppen, Besonderheiten, Zusatzangebote, Orte und nicht öffentliche Feeds anlegen sowie Terminvorlagen bearbeiten"
     }
   },
   "docs": {
