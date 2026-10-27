@@ -1,0 +1,18 @@
+{
+    "title": "Event calendar",
+    "draft": "Draft",
+    "legend": "Legend",
+    "more": "+{count} more",
+    "generated_on": "Generated on {date}",
+    "period": "Period {from} – {to}",
+    "col": {
+        "date": "Date",
+        "time": "Time",
+        "name": "Name",
+        "location": "Location",
+        "tags": "Tags"
+    },
+    "all_day": "all day",
+    "page": "Page {page} of {total}",
+    "continued": "continued"
+}
