@@ -2,6 +2,7 @@
     "title": "Terminkalender",
     "draft": "Entwurf",
     "legend": "Legende",
+    "events": "Termine",
     "more": "+{count} weitere",
     "generated_on": "Erstellt am {date}",
     "period": "Zeitraum {from} – {to}",

@@ -2,6 +2,7 @@
     "title": "Event calendar",
     "draft": "Draft",
     "legend": "Legend",
+    "events": "Events",
     "more": "+{count} more",
     "generated_on": "Generated on {date}",
     "period": "Period {from} – {to}",

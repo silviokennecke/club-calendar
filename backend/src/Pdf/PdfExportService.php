@@ -121,6 +121,12 @@ class PdfExportService
                 'pages' => PdfQuarterOverview::build($from, $to, $firstDayOfWeek, $entries, $locale),
                 'weekdays' => PdfMonthGrid::weekdayHeader($firstDayOfWeek, $locale),
             ],
+            PdfLayout::AnnualOverview => [
+                'year' => (int) $from->format('Y'),
+                'months' => PdfAnnualOverview::build((int) $from->format('Y'), $firstDayOfWeek, $entries, $locale),
+                'weekdays' => PdfMonthGrid::weekdayHeader($firstDayOfWeek, $locale),
+                'events' => PdfAnnualOverview::eventList($entries, $locale),
+            ],
             default => throw new \LogicException(sprintf('Layout "%s" is not implemented yet.', $options->layout->value)),
         };
     }
