@@ -5,13 +5,11 @@
     "more": "+{count} more",
     "generated_on": "Generated on {date}",
     "period": "Period {from} – {to}",
-    "col": {
-        "date": "Date",
-        "time": "Time",
-        "name": "Name",
-        "location": "Location",
-        "tags": "Tags"
-    },
+    "col.date": "Date",
+    "col.time": "Time",
+    "col.name": "Name",
+    "col.location": "Location",
+    "col.tags": "Tags",
     "all_day": "all day",
     "page": "Page {page} of {total}",
     "continued": "continued"

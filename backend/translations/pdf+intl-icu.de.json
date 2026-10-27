@@ -5,13 +5,11 @@
     "more": "+{count} weitere",
     "generated_on": "Erstellt am {date}",
     "period": "Zeitraum {from} – {to}",
-    "col": {
-        "date": "Datum",
-        "time": "Uhrzeit",
-        "name": "Name",
-        "location": "Ort",
-        "tags": "Merkmale"
-    },
+    "col.date": "Datum",
+    "col.time": "Uhrzeit",
+    "col.name": "Name",
+    "col.location": "Ort",
+    "col.tags": "Merkmale",
     "all_day": "ganztägig",
     "page": "Seite {page} von {total}",
     "continued": "Fortsetzung"
