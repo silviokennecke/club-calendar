@@ -10,6 +10,7 @@ use App\Entity\TargetGroup;
 use App\Ics\IcsEventReader;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
 use Symfony\Component\HttpFoundation\HeaderUtils;
 
 /**
@@ -47,6 +48,14 @@ readonly class EventExportService
      */
     public function export(Calendar $calendar, mixed $from, mixed $to, mixed $includeDrafts, mixed $targetGroupIds): \Generator
     {
+        $filter = $this->filter($calendar, $from, $to, $includeDrafts, $targetGroupIds);
+
+        return $this->ics->streamCalendarIcs($calendar->getClub(), $this->reader->chunks($this->buildQuery($calendar, $filter)));
+    }
+
+    /** Validates the raw request values (same rules as the parameters of `export()`). */
+    public function filter(Calendar $calendar, mixed $from, mixed $to, mixed $includeDrafts, mixed $targetGroupIds): ExportFilter
+    {
         $fromDate = Input::optionalDate($from, 'from');
         $toDate = Input::optionalDate($to, 'to');
         Input::assertDateRange($fromDate, $toDate);
@@ -55,28 +64,33 @@ readonly class EventExportService
             '1', 'true' => true,
             default => throw Input::invalid('includeDrafts', 'includeDrafts must be true or false'),
         };
-        $groupIds = $this->targetGroupIds($calendar, $targetGroupIds);
 
+        return new ExportFilter($fromDate, $toDate, $drafts, $this->targetGroupIds($calendar, $targetGroupIds));
+    }
+
+    /** Event query (root alias `e`, unsorted) shared by the ICS and PDF export. */
+    public function buildQuery(Calendar $calendar, ExportFilter $filter): QueryBuilder
+    {
         $qb = $this->em->createQueryBuilder()
             ->select('e')
             ->from(Event::class, 'e')
             ->where('e.calendar = :calendar')
             ->setParameter('calendar', $calendar);
-        if (!$drafts) {
+        if (!$filter->drafts) {
             $qb->andWhere('e.isDraft = false');
         }
-        if (null !== $fromDate) {
-            $qb->andWhere('COALESCE(e.dateEnd, e.date) >= :from')->setParameter('from', $fromDate, Types::DATE_IMMUTABLE);
+        if (null !== $filter->fromDate) {
+            $qb->andWhere('COALESCE(e.dateEnd, e.date) >= :from')->setParameter('from', $filter->fromDate, Types::DATE_IMMUTABLE);
         }
-        if (null !== $toDate) {
-            $qb->andWhere('e.date <= :to')->setParameter('to', $toDate, Types::DATE_IMMUTABLE);
+        if (null !== $filter->toDate) {
+            $qb->andWhere('e.date <= :to')->setParameter('to', $filter->toDate, Types::DATE_IMMUTABLE);
         }
-        if ([] !== $groupIds) {
+        if ([] !== $filter->groupIds) {
             $qb->andWhere('EXISTS (SELECT etg FROM App\Entity\EventTargetGroup etg WHERE etg.event = e AND etg.targetGroup IN (:tgIds))')
-                ->setParameter('tgIds', $groupIds);
+                ->setParameter('tgIds', $filter->groupIds);
         }
 
-        return $this->ics->streamCalendarIcs($calendar->getClub(), $this->reader->chunks($qb));
+        return $qb;
     }
 
     /** `attachment` with a file name from the calendar name ("schiessbetrieb-2026.ics", like the frontend). */
