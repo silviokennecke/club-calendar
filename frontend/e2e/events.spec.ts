@@ -432,6 +432,69 @@ test.describe("Termine", () => {
     await expect(page.getByText("Datei wurde erstellt.")).toBeVisible();
   });
 
+  test("PDF-Export: Layout, Papier, Download und Zeitraum-Grenzen", async ({ page, request }) => {
+    const seeded = await seedEvents(request, "Export Pdf");
+    await login(page, seeded.email);
+    await page.waitForURL(/\/clubs/);
+    await page.goto(`${seeded.base}/events/export`);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Termine exportieren" }),
+    ).toBeVisible();
+
+    // ICS offers the whole calendar, PDF needs a bounded period.
+    await expect(page.getByRole("radio", { name: /Ganzer Kalender/ })).toBeVisible();
+    await page.getByRole("radio", { name: /^PDF/ }).check();
+    await expect(page.getByRole("radio", { name: /Ganzer Kalender/ })).toHaveCount(0);
+    await expect(page.getByRole("radio", { name: /Dieser Monat/ })).toBeChecked();
+
+    // A one-month range: month grid and list are available, annual and quarter are not.
+    await page.getByRole("radio", { name: /Von – bis/ }).check();
+    await page.getByRole("textbox", { name: "Von" }).fill("2026-10-01");
+    await page.getByRole("textbox", { name: "Bis" }).fill("2026-10-31");
+    await expect(page.getByText("2 Termine werden exportiert")).toBeVisible();
+    await expect(page.getByRole("radio", { name: /^Jahresübersicht/ })).toBeDisabled();
+    await expect(page.getByRole("radio", { name: /^Quartalsübersicht/ })).toBeDisabled();
+    await expect(page.getByText("Für diesen Zeitraum nicht verfügbar.")).toHaveCount(2);
+    await expect(page.getByRole("radio", { name: /^Monatsraster/ })).toBeEnabled();
+
+    // Agenda, A3, landscape: the backend answers with a PDF.
+    await page.getByRole("radio", { name: /^Terminliste/ }).check();
+    await page.getByLabel("Papierformat").selectOption("a3");
+    await page.getByLabel("Ausrichtung").selectOption("landscape");
+    const [download, response] = await Promise.all([
+      page.waitForEvent("download"),
+      page.waitForResponse((r) => /\/events\.pdf(\?|$)/.test(r.url())),
+      page.getByRole("button", { name: "PDF-Datei laden" }).click(),
+    ]);
+    expect(response.status()).toBe(200);
+    const q = new URL(response.url()).searchParams;
+    expect(q.get("layout")).toBe("agenda");
+    expect(q.get("paper")).toBe("a3");
+    expect(q.get("orientation")).toBe("landscape");
+    expect(download.suggestedFilename()).toBe("export-pdf-verein-termine.pdf");
+    const pdf = readFileSync((await download.path())!);
+    expect(pdf.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+    await expect(page.getByText("Datei wurde erstellt.")).toBeVisible();
+
+    // A full calendar year enables the annual overview.
+    await page.getByRole("textbox", { name: "Von" }).fill("2026-01-01");
+    await page.getByRole("textbox", { name: "Bis" }).fill("2026-12-31");
+    await expect(page.getByRole("radio", { name: /^Jahresübersicht/ })).toBeEnabled();
+    await expect(page.getByRole("radio", { name: /^Quartalsübersicht/ })).toBeEnabled();
+    await page.getByRole("radio", { name: /^Jahresübersicht/ }).check();
+    const [annual] = await Promise.all([
+      page.waitForResponse((r) => /\/events\.pdf(\?|$)/.test(r.url())),
+      page.getByRole("button", { name: "PDF-Datei laden" }).click(),
+    ]);
+    expect(annual.status()).toBe(200);
+    expect(new URL(annual.url()).searchParams.get("layout")).toBe("annual-overview");
+
+    // More than 366 days: the page warns and blocks the download.
+    await page.getByRole("textbox", { name: "Bis" }).fill("2027-06-30");
+    await expect(page.getByText(/Ein PDF umfasst höchstens 366 Tage/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "PDF-Datei laden" })).toBeDisabled();
+  });
+
   test("Mobile Breite: Karten, FAB und Formular", async ({ page, request }) => {
     const seeded = await seedEvents(request, "Mobil Termine");
     await page.setViewportSize({ width: 390, height: 900 });
