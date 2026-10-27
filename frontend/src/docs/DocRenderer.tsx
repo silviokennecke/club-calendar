@@ -1,8 +1,10 @@
-import { Children, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Children, useId, type ReactNode } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Icon, type Glyph } from "@/components/ui/shared";
+import { HelpTabs } from "@/components/help/HelpTabs";
+import { detectPlatform, type Platform } from "@/lib/platform";
 import { docPath } from "./paths";
 import type { DocNode } from "./types";
 
@@ -67,11 +69,73 @@ function Callout({ kind, children }: { kind: string; children: ReactNode }) {
   );
 }
 
+const PLATFORM_TAB: Record<Platform, string> = {
+  ios: "ios",
+  macos: "macos",
+  windows: "outlook",
+  android: "google",
+  other: "google",
+};
+
+/** `:::tabs` group: active tab mirrored into `?<key>=`; URL wins over platform preselect, then first tab. */
+function DocTabs({ node }: { node: El }) {
+  const [params, setParams] = useSearchParams();
+  const prefix = useId();
+  const key = String(node.props["data-tabs"]);
+  const panels = node.children.filter(
+    (c): c is El => c.type === "element" && str(c.props["data-tab"]) !== undefined,
+  );
+  const tabs = panels.map((p) => ({
+    id: String(p.props["data-tab"]),
+    label: str(p.props["data-label"]) ?? "",
+  }));
+  const has = (id: string | null | undefined): id is string =>
+    !!id && tabs.some((t) => t.id === id);
+  const fromUrl = params.get(key);
+  const preselect = node.props["data-platform"] ? PLATFORM_TAB[detectPlatform()] : undefined;
+  const value = has(fromUrl) ? fromUrl : has(preselect) ? preselect : tabs[0]?.id;
+  if (value === undefined) return null;
+
+  return (
+    <div className="my-5">
+      <HelpTabs
+        idPrefix={prefix}
+        label={tabs.map((t) => t.label).join(", ")}
+        tabs={tabs}
+        value={value}
+        onChange={(id) =>
+          setParams(
+            (prev) => {
+              const next = new URLSearchParams(prev);
+              next.set(key, id);
+              return next;
+            },
+            { replace: true },
+          )
+        }
+      />
+      {panels.map((p, i) => (
+        <div
+          key={tabs[i].id}
+          role="tabpanel"
+          id={`${prefix}-panel-${tabs[i].id}`}
+          aria-labelledby={`${prefix}-tab-${tabs[i].id}`}
+          hidden={tabs[i].id !== value}
+          className="pt-2"
+        >
+          {p.children.map(renderNode)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function renderEl(node: El, key: number): ReactNode {
   const p = node.props;
   const kids = node.children.map(renderNode);
   switch (node.tag) {
     case "div":
+      if (p["data-tabs"] !== undefined) return <DocTabs key={key} node={node} />;
       return p["data-callout"] !== undefined ? (
         <Callout key={key} kind={String(p["data-callout"])}>
           {kids}
