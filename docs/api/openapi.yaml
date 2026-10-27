@@ -48,7 +48,7 @@ info:
       still rejects an *invalid* `Authorization` header with 401 (send none instead).
     - Authorization: club routes require club membership, calendar routes membership in the calendar's club
       (403 otherwise). Members have one of three **roles** (`viewer` < `editor` < `admin`, each includes the
-      lower ones): *viewer* reads (club, calendars, events, reference data, members, `events.ics`); *editor* also
+      lower ones): *viewer* reads (club, calendars, events, reference data, members, `events.ics`, `events.pdf`); *editor* also
       creates, changes and deletes events, series, templates, locations, badges (properties), extras (features), audiences (target groups) and
       holiday calendars (import, bulk and series included) and reads the feeds of the club (their addresses
       and secrets); *admin* also changes and deletes the club, creates/changes/archives/duplicates/deletes
@@ -182,6 +182,7 @@ info:
     - Unknown time zones in an import fall back to the calendar's (else the club's) zone and are reported in
       `warnings` (`code: timezone_replaced`).
     - Member ICS export: `GET /api/calendars/{calendarId}/events.ics`, at most 100 `targetGroupIds`.
+    - Member PDF export: `GET /api/calendars/{calendarId}/events.pdf`, `from`/`to` at most 366 days apart (400 on `to`), at most 2000 events (422 `too_many_events`, field `to`), 10 per user and 30 per client IP in 10 minutes (429 `rate_limited` + `Retry-After`).
 
     ## MCP server and OAuth
 
@@ -2712,7 +2713,16 @@ paths:
       tags: [Import & export]
       summary: PDF download of a calendar's events (members)
       description: >-
-        `from`, `to` (YYYY-MM-DD) and `layout` are required. Rate limited per user and client IP.
+        `from`, `to` (YYYY-MM-DD, at most 366 days apart) and `layout` are required. Same event filter as
+        `events.ics` (drafts only with `includeDrafts`, `targetGroupIds[]` must be audiences of this club; allowed for
+        archived calendars and for viewers). Layouts: `month-grid` (one page per month), `quarter-overview` (needs a
+        period of at least 3 calendar months), `annual-overview` (only a full calendar year, 1 Jan to 31 Dec) and
+        `agenda` (list). `orientation=auto` is portrait for `month-grid`/`agenda`, landscape for the overviews.
+        The output language (`de`/`en`) and the first weekday come from the signed-in user's stored preferences
+        (`language`, `firstDayOfWeek`), not from a parameter. Property icons are printed as bundled emoji images
+        and explained in a legend; unknown icons are omitted. At most 2000 events per PDF (422 `too_many_events`,
+        field `to`). Rate limited: 10 per user and 30 per client IP in 10 minutes (checked first, before any
+        validation). The response is built in memory (no streaming) with a raised memory and time limit for this route.
       operationId: exportPdf
       parameters:
         - { name: from, in: query, required: true, schema: { type: string, format: date } }
@@ -2731,14 +2741,29 @@ paths:
           description: 'PDF file (`Content-Disposition: attachment; filename="<calendar-slug>.pdf"`).'
           headers:
             Content-Disposition: { schema: { type: string } }
+            Content-Length: { schema: { type: integer } }
+            Cache-Control: { schema: { type: string, example: 'no-cache, no-store' } }
+            X-Content-Type-Options: { schema: { type: string, example: nosniff } }
           content:
             application/pdf:
               schema: { type: string, format: binary }
-        '400': { $ref: '#/components/responses/InvalidInput' }
+        '400':
+          description: >-
+            `validation_failed` with `field`: `from`/`to` (missing or not a real day, `from` after `to`, `to` more than
+            366 days after `from`, `targetGroupIds` malformed), `layout` (missing, unknown, `quarter-overview` for
+            less than 3 months, `annual-overview` for anything but a full calendar year), `paper` (not `a4`/`a3`),
+            `orientation` (not `auto`/`portrait`/`landscape`).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
-        '422': { $ref: '#/components/responses/UnknownReference' }
+        '422':
+          description: '`unknown_reference` (field `targetGroupIds`: not an audience of this club) or `too_many_events` (field `to`: more than 2000 events in the selection).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   # ------------------------------------------------------------------ Templates
@@ -4031,7 +4056,7 @@ components:
         | `authorization_request_not_found` | 404 | `GET /api/oauth/authorization-request/{id}`, `POST /api/oauth/authorize/decision`: unknown, expired (10 min) or already answered request |
         | `mcp_grant_not_found` | 404 | `DELETE /api/auth/mcp-grants/{id}`: unknown id or a grant of another user |
         | `ics_fetch_failed` | 422 | Holiday calendar create/refresh: the ICS URL could not be fetched or parsed (field `url`) |
-        | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After`; club invitations (create, re-send): 20 per user and 50 per club and day; account deletion (`DELETE /api/auth/me`, `POST /api/auth/delete-account/code`): per user and per IP |
+        | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After`; club invitations (create, re-send): 20 per user and 50 per club and day; account deletion (`DELETE /api/auth/me`, `POST /api/auth/delete-account/code`): per user and per IP; `GET …/events.pdf`: 10 per user and 30 per IP in 10 minutes |
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
         | `event_not_draft` | 409 | MCP tool `update_event_draft` only: the event is published (not a draft) and stays unchanged |
         | `duplicate_name` | 422 | Name of a badge (property) or extra (feature) already used in the calendar, or of an audience (target group) in the club |

@@ -12,6 +12,7 @@ A web app for clubs to manage and publish event calendars.
 - **OAuth SSO:** `knpuniversity/oauth2-client-bundle` + league providers
 - **WebAuthn:** `web-auth/webauthn-lib`
 - **ICS generation:** `eluceo/ical`
+- **PDF export:** `dompdf/dompdf` (needs `ext-gd`, `ext-intl`; the Docker image installs both)
 - **Validation:** `symfony/validator` (DTO constraints)
 - **Tests:** PHPUnit 11 + `symfony/test-pack`
 - **Runtime (frontend):** Node.js v22, TypeScript
@@ -252,6 +253,14 @@ PATCH|DELETE /api/calendars/:id/events/:eventId # scope this (default) | all (PA
 ```
 
 Duplicates: same `externalUid` (ICS UID, stored on `Event`) or same name + start date. Unknown time zones in the import fall back to the calendar zone with a `warnings` entry. Limits: 5000 events per import/preview and 5000 ids per bulk request (413 `too_many_events`), 366 events per series (422 `too_many_events`). Series dates are computed only by the backend (`App\Service\SeriesRule`); `scope: "all"` never changes an event's date; empty series are removed. Details: `docs/api/openapi.yaml`.
+
+## PDF Export
+
+```
+GET /api/calendars/:id/events.pdf?from&to&layout&paper&orientation&includeDrafts&targetGroupIds[]   # member download (viewer+, archived allowed)
+```
+
+`layout`: `month-grid`, `quarter-overview` (>= 3 months), `annual-overview` (full calendar year only), `agenda`; `paper` a4|a3, `orientation` auto|portrait|landscape. Same filter as `events.ics` (`EventExportService`). Caps: 366 days (400 on `to`), 2000 events (422 `too_many_events`, field `to`; `PdfExportService::MAX_*`). Rate limit `AuthRateLimiter::assertPdfExportAllowed`: 10/user and 30/IP per 10 min (`pdf_export_*` in `rate_limiter.yaml`), checked first. Language (`de`/`en`) and first weekday come from the signed-in user's stored preferences, not from parameters. Code: `App\Pdf\` (`PdfExportService` builds the view model and renders Twig `templates/pdf/*.html.twig`; `PdfOptions`, `PdfLayout`, `PdfMonthGrid`/`PdfQuarterOverview`/`PdfAnnualOverview`, `PdfText`, `PdfDates`), route `EventController::exportPdf`, events read through `IcsEventReader`. Hardening (`DompdfFactory`): remote, PHP and JavaScript off, chroot `backend/assets/pdf`, only `file://` allowed, cache in `var/cache/<env>/pdf`; user text is escaped by Twig, emoji are stripped from names. Property icons are shown only as PNGs from the allow-list `backend/assets/pdf/emoji/` (Noto Emoji, Apache-2.0, `manifest.json`, resolved by `EmojiImages` through a strict key regex, never a path from input; unknown icons omitted) and explained in a legend of the used properties. The route raises `memory_limit` to 512M and the time limit to 60 s and restores them afterwards; the response is built in memory (`Content-Length`, `Cache-Control: no-store`). Details: `docs/api/openapi.yaml`, `docs/redesign/BACKEND-GAPS.md` ("Betrieb").
 
 ## ICS Feed Endpoint
 
