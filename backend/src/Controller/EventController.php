@@ -86,9 +86,17 @@ class EventController extends AbstractApiController
         $options = PdfOptions::fromRequest($query['layout'] ?? null, $query['paper'] ?? null, $query['orientation'] ?? null);
 
         // Raised for this route only: dompdf needs far more than the global limit
+        $memoryLimit = ini_get('memory_limit');
+        $timeLimit = (int) ini_get('max_execution_time');
         ini_set('memory_limit', '512M');
         set_time_limit(60);
-        $pdf = $this->pdfService->render($calendar, $filter, $options, $user);
+        try {
+            $pdf = $this->pdfService->render($calendar, $filter, $options, $user);
+        } finally {
+            // restored so a long-lived process (test runner, worker) keeps no 60 s limit after the export
+            ini_set('memory_limit', false === $memoryLimit ? '-1' : $memoryLimit);
+            set_time_limit($timeLimit);
+        }
 
         return new Response($pdf, 200, [
             'Content-Type' => 'application/pdf',
