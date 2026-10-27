@@ -78,3 +78,12 @@ test("der Hilfe-Link im Footer der Anmeldeseite führt ins Hilfezentrum", async 
   await expect(page).toHaveURL(/\/help$/);
   await expect(page.getByRole("navigation", { name: "Hilfe-Navigation" })).toBeVisible();
 });
+
+test("das Hilfezentrum zeigt keinen Hilfe-Link im Footer (nur rechtliche Links)", async ({
+  page,
+}) => {
+  await page.goto("/help");
+  const footer = page.getByRole("contentinfo");
+  await expect(footer).toBeVisible();
+  await expect(footer.getByRole("link", { name: "Hilfe", exact: true })).toHaveCount(0);
+});

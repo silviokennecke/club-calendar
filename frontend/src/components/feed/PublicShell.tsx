@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { LangSwitch, Logo } from "@/components/ui/shared";
 import { LegalLinks } from "@/components/legal/LegalLinks";
 import { HelpCenterLink } from "@/docs/HelpCenterLink";
-import { HelpFooterLink } from "@/components/help/HelpFooterLink";
 import { usePublicHead } from "./usePublicHead";
 
 interface PublicShellProps {
@@ -17,8 +16,8 @@ interface PublicShellProps {
   footerNote?: ReactNode;
   /** Content of the page header below the brand row (title, actions). */
   hero?: ReactNode;
-  /** Footer link to the subscribe help; off on that page itself. */
-  helpLink?: boolean;
+  /** Target and label of the single footer help link; default is the help center (`/help`). */
+  helpLink?: { to: string; label: string };
   children: ReactNode;
 }
 
@@ -32,7 +31,7 @@ export function PublicShell({
   brand,
   footerNote,
   hero,
-  helpLink = true,
+  helpLink,
   children,
 }: PublicShellProps) {
   const { t } = useTranslation();
@@ -68,8 +67,7 @@ export function PublicShell({
         </div>
         <div className="legal-links legal-links--public">
           <LegalLinks />
-          <HelpCenterLink />
-          {helpLink && <HelpFooterLink />}
+          <HelpCenterLink to={helpLink?.to} label={helpLink?.label} />
         </div>
       </footer>
     </div>
