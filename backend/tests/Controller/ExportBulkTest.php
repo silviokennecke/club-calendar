@@ -96,6 +96,22 @@ class ExportBulkTest extends WebTestCase
         $this->assertStringNotContainsString('Vorstandssitzung', $r['content']);
     }
 
+    public function testPdfExportSmoke(): void
+    {
+        ['auth' => $auth, 'base' => $base] = $this->setupCalendar();
+        $this->create($base, $auth, ['name' => 'Vereinsmeisterschaft']);
+
+        $r = $this->get("$base/events.pdf?from=2026-10-01&to=2026-10-31&layout=agenda", $auth);
+        $this->assertSame(200, $r['status'], $r['content']);
+        $this->assertSame('application/pdf', $r['headers']['content-type'][0]);
+        $this->assertSame('attachment; filename=schiessbetrieb-2026.pdf', $r['headers']['content-disposition'][0]);
+        $this->assertStringContainsString('no-store', $r['headers']['cache-control'][0]);
+        $this->assertStringStartsWith('%PDF', $r['content']);
+
+        $this->assertSame(400, $this->get("$base/events.pdf?from=2026-10-01&to=2026-10-31", $auth)['status']);
+        $this->assertSame(401, $this->get("$base/events.pdf?from=2026-10-01&to=2026-10-31&layout=agenda", '')['status']);
+    }
+
     public function testExportFiltersByOverlappingRangeAndTargetGroups(): void
     {
         ['auth' => $auth, 'base' => $base, 'calendar' => $cal] = $this->setupCalendar();

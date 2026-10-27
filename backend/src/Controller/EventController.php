@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\Calendar;
+use App\Pdf\PdfExportService;
+use App\Pdf\PdfOptions;
 use App\Security\ArchivedCalendarVoter;
+use App\Security\AuthRateLimiter;
 use App\Security\CalendarMemberVoter;
+use App\Security\CurrentUserResolver;
 use App\Service\EventExportService;
 use App\Service\EventImportService;
 use App\Service\EventSeriesService;
@@ -28,6 +32,9 @@ class EventController extends AbstractApiController
         private readonly EventImportService $importService,
         private readonly EventExportService $exportService,
         private readonly EventSeriesService $seriesService,
+        private readonly PdfExportService $pdfService,
+        private readonly AuthRateLimiter $rateLimiter,
+        private readonly CurrentUserResolver $userResolver,
     ) {
     }
 
@@ -51,6 +58,42 @@ class EventController extends AbstractApiController
         return new StreamedResponse($this->exportService->output($pieces), 200, [
             'Content-Type' => 'text/calendar; charset=utf-8',
             'Content-Disposition' => $this->exportService->contentDisposition($calendar),
+            'Cache-Control' => 'no-cache, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /**
+     * PDF download for members: `from` and `to` (YYYY-MM-DD) required, `layout` (month-grid|quarter-overview|
+     * annual-overview|agenda) required, `paper` (a4|a3), `orientation` (auto|portrait|landscape),
+     * `includeDrafts`, `targetGroupIds[]`.
+     */
+    #[Route('.pdf', methods: ['GET'])]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
+    public function exportPdf(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): Response
+    {
+        $user = $this->userResolver->resolve();
+        $this->rateLimiter->assertPdfExportAllowed($request, $user->getId());
+
+        $query = $request->query->all();
+        $filter = $this->exportService->filter(
+            $calendar,
+            $query['from'] ?? null,
+            $query['to'] ?? null,
+            $query['includeDrafts'] ?? null,
+            $query['targetGroupIds'] ?? null,
+        );
+        $options = PdfOptions::fromRequest($query['layout'] ?? null, $query['paper'] ?? null, $query['orientation'] ?? null);
+
+        // Raised for this route only: dompdf needs far more than the global limit
+        ini_set('memory_limit', '512M');
+        set_time_limit(60);
+        $pdf = $this->pdfService->render($calendar, $filter, $options, $user);
+
+        return new Response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => $this->exportService->contentDisposition($calendar, 'pdf'),
+            'Content-Length' => (string) strlen($pdf),
             'Cache-Control' => 'no-cache, no-store',
             'X-Content-Type-Options' => 'nosniff',
         ]);

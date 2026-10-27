@@ -69,6 +69,10 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $feedIp,
         #[Autowire(service: 'limiter.feed_id')]
         private readonly RateLimiterFactory $feedId,
+        #[Autowire(service: 'limiter.pdf_export_user')]
+        private readonly RateLimiterFactory $pdfExportUser,
+        #[Autowire(service: 'limiter.pdf_export_ip')]
+        private readonly RateLimiterFactory $pdfExportIp,
         #[Autowire('%env(int:FEED_RATE_LIMIT_PER_IP)%')]
         private readonly int $feedIpLimit,
         #[Autowire('%env(int:FEED_RATE_LIMIT_PER_FEED)%')]
@@ -215,6 +219,13 @@ class AuthRateLimiter
         if ($this->feedIdLimit > 0) {
             self::assertAccepted($this->feedId->create($feedId)->consume());
         }
+    }
+
+    /** PDF export (expensive to render): 10 per user and 30 per client IP in 10 minutes. */
+    public function assertPdfExportAllowed(Request $request, string $userId): void
+    {
+        self::assertAccepted($this->pdfExportUser->create($userId)->consume());
+        self::assertAccepted($this->pdfExportIp->create(self::ip($request))->consume());
     }
 
     public static function normalize(string $email): string

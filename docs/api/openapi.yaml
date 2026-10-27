@@ -2705,6 +2705,42 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/UnknownReference' }
 
+  /api/calendars/{calendarId}/events.pdf:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    get:
+      tags: [Import & export]
+      summary: PDF download of a calendar's events (members)
+      description: >-
+        `from`, `to` (YYYY-MM-DD) and `layout` are required. Rate limited per user and client IP.
+      operationId: exportPdf
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+        - { name: layout, in: query, required: true, schema: { type: string, enum: [month-grid, quarter-overview, annual-overview, agenda] } }
+        - { name: paper, in: query, schema: { type: string, enum: [a4, a3], default: a4 } }
+        - { name: orientation, in: query, schema: { type: string, enum: [auto, portrait, landscape], default: auto } }
+        - { name: includeDrafts, in: query, schema: { type: string, enum: ['true', 'false', '1', '0'], default: 'false' } }
+        - name: 'targetGroupIds[]'
+          in: query
+          schema: { type: array, items: { type: string } }
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: 'PDF file (`Content-Disposition: attachment; filename="<calendar-slug>.pdf"`).'
+          headers:
+            Content-Disposition: { schema: { type: string } }
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnknownReference' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+
   # ------------------------------------------------------------------ Templates
   /api/calendars/{calendarId}/templates:
     parameters:
