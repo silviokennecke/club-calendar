@@ -40,6 +40,7 @@ class PdfExportService
         private readonly EntityManagerInterface $em,
         private readonly Environment $twig,
         private readonly DompdfFactory $dompdf,
+        private readonly int $maxEvents = self::MAX_EVENTS,
     ) {
     }
 
@@ -75,8 +76,8 @@ class PdfExportService
 
         $qb = $this->export->buildQuery($calendar, $filter);
         $count = (int) (clone $qb)->select('COUNT(e.id)')->getQuery()->getSingleScalarResult();
-        if ($count > self::MAX_EVENTS) {
-            throw new ApiProblemException(422, sprintf('A PDF contains at most %d events', self::MAX_EVENTS), EventImportService::TOO_MANY_CODE, 'to');
+        if ($count > $this->maxEvents) {
+            throw new ApiProblemException(422, sprintf('A PDF contains at most %d events', $this->maxEvents), EventImportService::TOO_MANY_CODE, 'to');
         }
 
         $locale = 'de' === $user->getLanguage() ? 'de' : 'en';
@@ -85,7 +86,7 @@ class PdfExportService
 
         $entries = [];
         $iconEventIds = [];
-        foreach ($this->reader->chunks($qb, self::MAX_EVENTS) as $chunk) {
+        foreach ($this->reader->chunks($qb, $this->maxEvents) as $chunk) {
             foreach ($chunk as $event) {
                 $paths = $this->emojiPaths($event->propertyIcons);
                 if ([] !== $event->propertyIcons) {
