@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/shared";
 import { LegalLinks } from "@/components/legal/LegalLinks";
 import { DocRenderer } from "@/docs/DocRenderer";
+import { HelpNav } from "@/docs/HelpNav";
 import { HelpSearch } from "@/docs/HelpSearch";
 import { docPath } from "@/docs/paths";
 import { groupNav, navFor, resolveHelpPath, sectionTitles, useDocLang } from "@/docs/nav";
@@ -77,29 +78,12 @@ export default function HelpPage() {
   const next = at >= 0 ? nav[at + 1] : undefined;
 
   const sidebar = (
-    <nav aria-label={t("docs.navLabel")} className="space-y-5">
-      {groups.map((g) => (
-        <div key={g.section || "root"}>
-          {g.section && <div className="t-label mb-1 px-3">{g.title}</div>}
-          <ul className="m-0 list-none space-y-0.5 p-0">
-            {g.pages.map((m) => (
-              <li key={m.slug}>
-                <Link
-                  to={docPath(m.slug)}
-                  aria-current={m.slug === slug ? "page" : undefined}
-                  className={cn(
-                    "text-ink hover:bg-surface-sunken block rounded-md px-3 py-2 no-underline",
-                    m.slug === slug && "bg-brand-soft font-bold",
-                  )}
-                >
-                  {m.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </nav>
+    <HelpNav
+      label={t("docs.navLabel")}
+      groups={groups}
+      slug={slug}
+      activeSection={resolved?.meta.section ?? section?.folder ?? ""}
+    />
   );
 
   let content;
@@ -252,7 +236,7 @@ export default function HelpPage() {
         <aside
           id="help-sidebar"
           className={cn(
-            "w-full shrink-0 md:sticky md:top-24 md:block md:w-60 md:self-start",
+            "w-full shrink-0 md:sticky md:top-24 md:-m-1 md:block md:max-h-[calc(100vh-7rem)] md:w-60 md:self-start md:overflow-y-auto md:p-1",
             menuOpen ? "block" : "hidden",
           )}
         >
