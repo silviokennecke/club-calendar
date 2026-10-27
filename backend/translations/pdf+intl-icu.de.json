@@ -1,0 +1,18 @@
+{
+    "title": "Terminkalender",
+    "draft": "Entwurf",
+    "legend": "Legende",
+    "more": "+{count} weitere",
+    "generated_on": "Erstellt am {date}",
+    "period": "Zeitraum {from} – {to}",
+    "col": {
+        "date": "Datum",
+        "time": "Uhrzeit",
+        "name": "Name",
+        "location": "Ort",
+        "tags": "Merkmale"
+    },
+    "all_day": "ganztägig",
+    "page": "Seite {page} von {total}",
+    "continued": "Fortsetzung"
+}
