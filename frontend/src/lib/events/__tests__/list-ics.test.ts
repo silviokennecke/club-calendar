@@ -11,6 +11,8 @@ import {
 import {
   buildIcs,
   escapeText,
+  exportFileName,
+  exportRange,
   foldLine,
   icsFileName,
   monthBounds,
@@ -234,5 +236,19 @@ describe("ICS", () => {
   it("derives a file name", () => {
     expect(icsFileName("Schießbetrieb 2026")).toBe("schiessbetrieb-2026.ics");
     expect(icsFileName("!!!")).toBe("termine.ics");
+  });
+});
+
+describe("export file name and year range", () => {
+  it("slugifies the calendar name for both formats", () => {
+    expect(exportFileName("Schießbetrieb 2026", "pdf")).toBe("schiessbetrieb-2026.pdf");
+    expect(exportFileName("", "ics")).toBe("termine.ics");
+    expect(icsFileName("Schießbetrieb 2026")).toBe("schiessbetrieb-2026.ics");
+  });
+
+  it("covers the calendar year of today for range year", () => {
+    expect(
+      exportRange({ range: "year", today: "2026-10-27", includeDrafts: false, groupIds: [] }),
+    ).toEqual({ from: "2026-01-01", to: "2026-12-31" });
   });
 });

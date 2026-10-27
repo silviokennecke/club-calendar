@@ -748,13 +748,24 @@
     "export": {
       "title": "Termine exportieren",
       "back": "Zu den Terminen",
-      "intro": "Du bekommst eine ICS-Datei, die du in andere Kalender-Apps importieren kannst. Sie ändert sich danach nicht mehr. Für laufend aktuelle Termine abonnierst du besser einen Feed.",
+      "intro": {
+        "ics": "Du bekommst eine ICS-Datei, die du in andere Kalender-Apps importieren kannst. Sie ändert sich danach nicht mehr. Für laufend aktuelle Termine abonnierst du besser einen Feed.",
+        "pdf": "Du bekommst ein PDF zum Drucken oder Weitergeben. Es ändert sich danach nicht mehr. Für laufend aktuelle Termine abonnierst du besser einen Feed."
+      },
+      "format": {
+        "title": "Dateiformat",
+        "ics": "ICS",
+        "icsHint": "Für Kalender-Apps; zum Import in andere Kalender.",
+        "pdf": "PDF",
+        "pdfHint": "Zum Drucken oder Weitergeben, als Monatsraster, Übersicht oder Liste."
+      },
       "feeds": "Zu den Feeds",
       "range": {
         "title": "Zeitraum",
         "all": "Ganzer Kalender",
         "allHint": "Alle Termine von {{calendar}}",
         "month": "Dieser Monat",
+        "year": "Dieses Jahr",
         "custom": "Von – bis",
         "customHint": "Eigenen Zeitraum festlegen",
         "from": "Von",
@@ -783,13 +794,43 @@
         "none": "Keine Termine werden exportiert",
         "noneHint": "Ändere den Zeitraum oder die Auswahl, damit Termine in der Datei landen."
       },
-      "download": "ICS-Datei laden",
+      "downloadIcs": "ICS-Datei laden",
+      "downloadPdf": "PDF-Datei laden",
+      "pdf": {
+        "layout": {
+          "title": "Layout",
+          "month": "Monatsraster",
+          "monthHint": "Eine Seite pro Monat",
+          "annual": "Jahresübersicht",
+          "annualHint": "Ein ganzes Kalenderjahr, 1. Jan. bis 31. Dez.",
+          "quarter": "Quartalsübersicht",
+          "quarterHint": "Ein Zeitraum von mindestens 3 Monaten",
+          "agenda": "Terminliste",
+          "agendaHint": "Alle Termine als Liste",
+          "unavailable": "Für diesen Zeitraum nicht verfügbar."
+        },
+        "paper": {
+          "label": "Papierformat",
+          "a4": "A4",
+          "a3": "A3"
+        },
+        "orientation": {
+          "label": "Ausrichtung",
+          "auto": "Automatisch (Standard des Layouts)",
+          "portrait": "Hochformat",
+          "landscape": "Querformat"
+        }
+      },
       "downloading": "Datei wird erstellt …",
       "cancel": "Abbrechen",
       "done": "Datei wurde erstellt.",
       "failed": {
         "title": "Die Datei konnte nicht erstellt werden",
-        "text": "Bitte prüfe deine Verbindung und versuche es erneut."
+        "text": "Bitte prüfe deine Verbindung und versuche es erneut.",
+        "tooMany": "Ein PDF fasst höchstens {{max}} Termine. Verkürze den Zeitraum oder schränke die Auswahl ein.",
+        "rangeTooLong": "Ein PDF umfasst höchstens {{max}} Tage. Verkürze den Zeitraum.",
+        "rateLimited": "Zu viele PDF-Exporte in kurzer Zeit. Bitte versuche es später erneut.",
+        "rateLimitedIn": "Zu viele PDF-Exporte in kurzer Zeit. Bitte versuche es in {{minutes}} Min. erneut."
       },
       "ics": {
         "features": "Zusatzangebote",

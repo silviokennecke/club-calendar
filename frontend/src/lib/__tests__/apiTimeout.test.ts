@@ -48,6 +48,15 @@ describe("request timeout", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it("gives the PDF export 120 s too", async () => {
+    const { apiFetch } = await import("../api");
+    const result = apiFetch("/api/calendars/k1/events.pdf?layout=agenda").catch((e: unknown) => e);
+    await vi.advanceTimersByTimeAsync(119_999);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await result).toMatchObject({ code: "request_timeout" });
+  });
+
   it("does not report a timeout when the caller's signal aborts", async () => {
     const controller = new AbortController();
     const { apiFetch } = await import("../api");
