@@ -63,7 +63,6 @@ export const EmailVerifyPage = lazyPage(() => import("./EmailVerifyPage"));
 export const FeedPage = lazyPage(() => import("./FeedPage"));
 export const PublicEventModal = lazyPage(modalImports.PublicEventModal);
 export const HelpPage = lazyPage(() => import("./HelpPage"));
-export const HelpSubscribePage = lazyPage(() => import("./HelpSubscribePage"));
 export const InvitationPage = lazyPage(() => import("./InvitationPage"));
 export const ClubsPage = lazyPage(() => import("./ClubsPage"));
 export const SetupPage = lazyPage(() => import("./SetupPage"));

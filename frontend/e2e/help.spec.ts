@@ -1,11 +1,14 @@
 import { test, expect } from "@playwright/test";
 
-// ——— Public help page "So abonnierst du den Kalender": no sign-in, tab switch changes the guide ———
+// ——— Subscribe guide (old URL redirects): no sign-in, tab switch changes the guide ———
 
 test.use({ locale: "de-DE", timezoneId: "Europe/Berlin" });
 
-test("die Hilfeseite lädt ohne Anmeldung und wechselt die Anleitung per Tab", async ({ page }) => {
+test("die alte Abo-Adresse leitet auf die Hilfeseite um und wechselt die Anleitung per Tab", async ({
+  page,
+}) => {
   await page.goto("/help/subscribe?app=ios");
+  await expect(page).toHaveURL(/\/help\/publishing\/subscribe\?app=ios/);
   await expect(
     page.getByRole("heading", { level: 1, name: "So abonnierst du den Kalender" }),
   ).toBeVisible();
@@ -32,11 +35,13 @@ test("das Hilfezentrum ist ohne Anmeldung erreichbar und durchsuchbar", async ({
   await expect(search).toBeFocused();
   await search.fill("Verein");
   await page
-    .getByRole("option", { name: /Erste Schritte/ })
+    .getByRole("option", { name: /Verein und Kalender einrichten/ })
     .first()
     .click();
-  await expect(page).toHaveURL(/\/help\/getting-started\/first-steps/);
-  await expect(page.getByRole("heading", { level: 1, name: /Erste Schritte/ })).toBeVisible();
+  await expect(page).toHaveURL(/\/help\/getting-started\/set-up/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: /Verein und Kalender einrichten/ }),
+  ).toBeVisible();
 
   await page.goto("/help/does-not-exist");
   await expect(page.getByRole("heading", { level: 1, name: "Seite nicht gefunden" })).toBeVisible();
@@ -52,17 +57,19 @@ test("/help/ und Ordner-URLs lösen auf: Startseite bzw. Standard-Inhaltsverzeic
 
   for (const url of ["/help/getting-started", "/help/getting-started/"]) {
     await page.goto(url);
-    await expect(page.getByRole("heading", { level: 1, name: "Getting started" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Erste Schritte" })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Hilfe-Navigation" })).toBeVisible();
     await page
       .getByRole("main")
-      .getByRole("link", { name: /Erste Schritte/ })
+      .getByRole("link", { name: /Konto erstellen/ })
       .click();
-    await expect(page).toHaveURL(/\/help\/getting-started\/first-steps$/);
+    await expect(page).toHaveURL(/\/help\/getting-started\/sign-up$/);
   }
 
-  await page.goto("/help/getting-started/first-steps/");
-  await expect(page.getByRole("heading", { level: 1, name: /Erste Schritte/ })).toBeVisible();
+  await page.goto("/help/getting-started/set-up/");
+  await expect(
+    page.getByRole("heading", { level: 1, name: /Verein und Kalender einrichten/ }),
+  ).toBeVisible();
 });
 
 test("der Hilfe-Link im Footer der Anmeldeseite führt ins Hilfezentrum", async ({ page }) => {

@@ -221,7 +221,7 @@ describe("FeedPage", () => {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Hilfe: So klappt's" })).toHaveAttribute(
       "href",
-      "/help/subscribe",
+      "/help/publishing/subscribe",
     );
     expect(document.title).toBe(`${FEED_NAME} – Öffentlicher Kalender`);
   });
