@@ -97,8 +97,8 @@ function endSession() {
 
 const REQUEST_TIMEOUT_MS = 30_000;
 const LONG_REQUEST_TIMEOUT_MS = 120_000;
-/** Import, import preview and ICS export can legitimately take longer. */
-const LONG_REQUEST_PATH = /\/events\/import(\/preview)?(\?|$)|\/events\.ics(\?|$)/;
+/** Import, import preview and ICS/PDF export can legitimately take longer. */
+const LONG_REQUEST_PATH = /\/events\/import(\/preview)?(\?|$)|\/events\.(ics|pdf)(\?|$)/;
 
 /**
  * fetch with a timeout. A timeout rejects with ApiError `request_timeout` (status 0, like a network error:
@@ -230,7 +230,7 @@ function retryAfterOf(res: Response): number | undefined {
 }
 
 /** ApiError from a failed response (RFC 7807 body): `detail` as message, plus the stable `code`. */
-async function errorFrom(res: Response): Promise<ApiError> {
+export async function errorFrom(res: Response): Promise<ApiError> {
   const err = (await res.json().catch(() => null)) as {
     detail?: string;
     code?: string;

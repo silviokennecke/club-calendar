@@ -169,14 +169,16 @@ operations), `docs/api/openapi.yaml` (API reference).
   `…/events/:eventId/series` "Reihe ändern" (`EventSeriesEditModal`, own addition: rule form `SeriesRuleFields` shared
   with "Termin aus Vorlage", `useSeriesUpdatePreview` = `POST …/event-series/{id}/preview-update` debounced; lists
   new / deleted / unchanged / past events in a live region, `ConfirmDialog` "Löscht n künftige Termine, legt m neue
-  an. Vergangene Termine bleiben.", then `PATCH …/event-series/{id}`; 409 / 422 / 403 / network as banners); `…/events/export` stays a page (downloads `GET …/events.ics` with the JWT via `apiFetch` + Blob + `a[download]`,
-  error banner; the count preview uses `selectForExport`/`exportQuery` with the same rule). The list's bulk actions
+  an. Vergangene Termine bleiben.", then `PATCH …/event-series/{id}`; 409 / 422 / 403 / network as banners); `…/events/export` stays a page with a format choice ICS | PDF (downloads `GET …/events.ics` or `…/events.pdf` with the JWT via `apiFetch` + `errorFrom` + Blob + `a[download]`;
+  the count preview uses `selectForExport`/`exportQuery` with the same rule). PDF-only options: layout radios (month grid, annual, quarter, agenda; unavailable ones are disabled by
+  `availableLayouts`: quarter needs 3 touched months, annual exactly 1 Jan to 31 Dec, an unavailable chosen layout falls back to month grid), paper A4/A3, orientation; "Whole calendar" is ICS-only (switching to PDF falls back to "This month"),
+  PDF adds the range "This year"; the button is disabled with a banner above 2000 events or 366 days (backend stays authoritative). Failures are mapped by `code` in `pdfFailure` (`too_many_events`, `validation_failed` on `to`, `rate_limited` with `Retry-After`, else generic). The list's bulk actions
   (publish / draft / delete) are one atomic `POST …/events/bulk` (fails as a whole, selection stays). Create dialogs of archived calendars show
   the archive notice instead of the form (`CreateGateBody`, `createGateState.ts`). Save / delete invalidate
   `["events", calendarId]`, toast, `unsaved.allow()`, close; save failures are also shown in the dialog (toasts sit
   behind the modal for screen readers). Pure logic in `src/lib/events/` (`form.ts` values/validation/payload,
   `list.ts` tabs/search/groups, `series.ts` series types, preview rows, rule text (`describeSeriesRule`) and the
-  changed-fields diff for "all", `ics.ts` export query/selection + the one-event ICS writer `buildEventIcs` of the public event, `format.ts`), with Vitest tests.
+  changed-fields diff for "all", `ics.ts` export query/selection/`exportFileName` + the one-event ICS writer `buildEventIcs` of the public event, `pdf.ts` PDF query, layout availability, caps, error mapping, `format.ts`), with Vitest tests.
   Note (`note`, plain text, max `NOTE_MAX` = 2000, newlines kept, "" = none): `TextArea` in the event and template
   forms (with a character counter in the hint), prefilled from the template (`valuesFromTemplate`, shown in the
   "Termin aus Vorlage" step), shown read-only in `PublicEventModal` (`white-space: pre-line`, rendered as text, URLs
@@ -334,7 +336,7 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
   `docs/api/openapi.yaml`, `ErrorCode`). SSO callback errors (`?error=`) map to their own texts via
   `lib/ssoError.ts` (`auth.login.ssoError.<code>`, unknown codes → `generic`). The react-query
   default `retry` (`lib/queryRetry.ts`) does not retry 4xx (401/403/404 show their error state at once), 5xx and
-  network errors get 2 retries. Every request times out (`fetchWithTimeout` in `lib/api.ts`: 30 s, 120 s for import, import preview and ICS export) with `ApiError` `code: "request_timeout"`, `status` 0 (shown like a network error; a refresh timeout does not end the session; the caller's own `signal` still aborts as a plain AbortError). Auth: `lib/auth-context.ts` (context + `useAuth`), `lib/AuthProvider.tsx` (provider);
+  network errors get 2 retries. Every request times out (`fetchWithTimeout` in `lib/api.ts`: 30 s, 120 s for import, import preview and ICS/PDF export) with `ApiError` `code: "request_timeout"`, `status` 0 (shown like a network error; a refresh timeout does not end the session; the caller's own `signal` still aborts as a plain AbortError). Auth: `lib/auth-context.ts` (context + `useAuth`), `lib/AuthProvider.tsx` (provider);
   button styling is `buttonClass()` in `ui/shared/` (the old shadcn component files in `components/ui/` are gone;
   only the shadcn CSS variables and `tw-animate-css` remain as a base in `index.css`). Lint: `--max-warnings 0`.
 - Club / calendar switch: the last calendar per club is stored at the membership on the server (`PATCH

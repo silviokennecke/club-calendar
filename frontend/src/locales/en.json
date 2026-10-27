@@ -748,13 +748,24 @@
     "export": {
       "title": "Export events",
       "back": "To the events",
-      "intro": "You get an ICS file that you can import into other calendar apps. It does not change afterwards. For events that stay up to date, subscribe to a feed instead.",
+      "intro": {
+        "ics": "You get an ICS file that you can import into other calendar apps. It does not change afterwards. For events that stay up to date, subscribe to a feed instead.",
+        "pdf": "You get a PDF you can print or share. It does not change afterwards. For events that stay up to date, subscribe to a feed instead."
+      },
+      "format": {
+        "title": "File format",
+        "ics": "ICS",
+        "icsHint": "For calendar apps; import it into other calendars.",
+        "pdf": "PDF",
+        "pdfHint": "To print or share, as a month grid, overview or list."
+      },
       "feeds": "To the feeds",
       "range": {
         "title": "Period",
         "all": "Whole calendar",
         "allHint": "All events of {{calendar}}",
         "month": "This month",
+        "year": "This year",
         "custom": "From – to",
         "customHint": "Set your own period",
         "from": "From",
@@ -783,13 +794,43 @@
         "none": "No events will be exported",
         "noneHint": "Change the period or the selection so that events end up in the file."
       },
-      "download": "Download ICS file",
+      "downloadIcs": "Download ICS file",
+      "downloadPdf": "Download PDF file",
+      "pdf": {
+        "layout": {
+          "title": "Layout",
+          "month": "Month grid",
+          "monthHint": "One page per month",
+          "annual": "Annual overview",
+          "annualHint": "A full calendar year, 1 Jan to 31 Dec",
+          "quarter": "Quarter overview",
+          "quarterHint": "A period of at least 3 months",
+          "agenda": "Agenda",
+          "agendaHint": "All events as a list",
+          "unavailable": "Not available for this period."
+        },
+        "paper": {
+          "label": "Paper size",
+          "a4": "A4",
+          "a3": "A3"
+        },
+        "orientation": {
+          "label": "Orientation",
+          "auto": "Automatic (layout default)",
+          "portrait": "Portrait",
+          "landscape": "Landscape"
+        }
+      },
       "downloading": "Creating file …",
       "cancel": "Cancel",
       "done": "File was created.",
       "failed": {
         "title": "The file could not be created",
-        "text": "Please check your connection and try again."
+        "text": "Please check your connection and try again.",
+        "tooMany": "A PDF holds at most {{max}} events. Shorten the period or narrow the selection.",
+        "rangeTooLong": "A PDF covers at most {{max}} days. Shorten the period.",
+        "rateLimited": "Too many PDF exports in a short time. Please try again later.",
+        "rateLimitedIn": "Too many PDF exports in a short time. Please try again in {{minutes}} min."
       },
       "ics": {
         "features": "Extras",

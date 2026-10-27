@@ -10,7 +10,7 @@ import type { CalendarEvent, Location } from "@/lib/types";
 import { formatAddress } from "@/lib/types";
 import { matchesGroups } from "./list";
 
-export type ExportRange = "all" | "month" | "custom";
+export type ExportRange = "all" | "month" | "year" | "custom";
 
 export interface ExportOptions {
   range: ExportRange;
@@ -35,6 +35,10 @@ export function exportRange(opts: ExportOptions): { from?: IsoDate; to?: IsoDate
   if (opts.range === "month") {
     const [from, to] = monthBounds(opts.today);
     return { from, to };
+  }
+  if (opts.range === "year") {
+    const year = opts.today.slice(0, 4);
+    return { from: `${year}-01-01`, to: `${year}-12-31` };
   }
   if (opts.range === "custom") {
     return {
@@ -273,8 +277,8 @@ export function buildEventIcs(event: IcsEvent, opts: IcsOptions): string {
   return buildIcs([event], opts);
 }
 
-/** File name like "schiessbetrieb-2026.ics". */
-export function icsFileName(name: string): string {
+/** File name like "schiessbetrieb-2026.pdf". */
+export function exportFileName(name: string, ext: "ics" | "pdf"): string {
   const slug = name
     .normalize("NFKD")
     .replace(/ß/g, "ss")
@@ -282,7 +286,12 @@ export function icsFileName(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  return `${slug || "termine"}.ics`;
+  return `${slug || "termine"}.${ext}`;
+}
+
+/** File name like "schiessbetrieb-2026.ics". */
+export function icsFileName(name: string): string {
+  return exportFileName(name, "ics");
 }
 
 /** Triggers a browser download of a text file. */

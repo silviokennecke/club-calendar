@@ -2,15 +2,27 @@ import { useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { apiFetch, apiGet } from "@/lib/api";
+import { apiFetch, apiGet, errorFrom } from "@/lib/api";
 import { formatMonthTitle, yearMonthOf } from "@/lib/calendar";
 import {
+  PDF_LAYOUTS,
+  PDF_MAX_EVENTS,
+  PDF_MAX_DAYS,
+  availableLayouts,
   downloadBlob,
+  exportFileName,
   exportQuery,
-  icsFileName,
+  exportRange,
   monthBounds,
+  pdfExportQuery,
+  pdfFailure,
+  pdfRangeTooLong,
   selectForExport,
   type ExportRange,
+  type PdfFailure,
+  type PdfLayout,
+  type PdfOrientation,
+  type PdfPaper,
 } from "@/lib/events";
 import type { TargetGroup } from "@/lib/types";
 import {
@@ -20,6 +32,7 @@ import {
   FilterPillGroup,
   Icon,
   LinkButton,
+  NativeSelect,
   TextInput,
   toast,
 } from "@/components/ui/shared";
@@ -28,10 +41,20 @@ import { useLocale } from "@/components/calendar/useLocale";
 import { usePageTitle } from "@/lib/usePageTitle";
 
 /**
- * Export (design: Export, route …/events/export). The ICS file comes from the backend
- * (`GET …/events.ics`, same output as the feeds, drafts as TENTATIVE), downloaded with the JWT
- * (fetch + Blob + `a[download]`). The count preview uses the loaded event list with the same rule.
+ * Export (design: Export, route …/events/export). The file comes from the backend: ICS
+ * (`GET …/events.ics`, same output as the feeds, drafts as TENTATIVE) or PDF (`GET …/events.pdf`,
+ * layout/paper/orientation; needs a bounded period), downloaded with the JWT (fetch + Blob +
+ * `a[download]`). The count preview uses the loaded event list with the same rule.
  */
+type Format = "ics" | "pdf";
+
+const LAYOUT_KEYS: Record<PdfLayout, string> = {
+  "month-grid": "month",
+  "annual-overview": "annual",
+  "quarter-overview": "quarter",
+  agenda: "agenda",
+};
+
 export default function EventsExportPage() {
   const page = useEventPage();
   const { t } = useTranslation();
@@ -44,13 +67,17 @@ export default function EventsExportPage() {
   });
 
   const [first, last] = monthBounds(page.today);
+  const [format, setFormat] = useState<Format>("ics");
+  const [layout, setLayout] = useState<PdfLayout>("month-grid");
+  const [paper, setPaper] = useState<PdfPaper>("a4");
+  const [orientation, setOrientation] = useState<PdfOrientation>("auto");
   const [range, setRange] = useState<ExportRange>("all");
   const [from, setFrom] = useState(first);
   const [to, setTo] = useState(last);
   const [includeDrafts, setIncludeDrafts] = useState(false);
   const [groupIds, setGroupIds] = useState<string[]>([]);
   const [downloading, setDownloading] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<{ kind: PdfFailure; retryAfter?: number } | null>(null);
 
   const selected = useMemo(
     () =>
@@ -64,47 +91,93 @@ export default function EventsExportPage() {
       }),
     [events.data, range, page.today, from, to, includeDrafts, groupIds],
   );
+  const isPdf = format === "pdf";
   const customInvalid = range === "custom" && !!from && !!to && to < from;
-  const n = customInvalid ? 0 : selected.length;
+  const period = exportRange({ range, today: page.today, from, to, includeDrafts, groupIds });
+  const available = availableLayouts(period.from, period.to);
+  const activeLayout = available[layout] ? layout : "month-grid";
+  const periodMissing = isPdf && (!period.from || !period.to);
+  const tooLong = isPdf && pdfRangeTooLong(period.from, period.to);
+  const n = customInvalid || periodMissing ? 0 : selected.length;
+  const tooMany = isPdf && n > PDF_MAX_EVENTS;
+  const pdfBlocked = tooLong || tooMany;
   const calendarName = page.calendar?.name ?? "";
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (n === 0 || downloading) return;
+    if (n === 0 || downloading || pdfBlocked) return;
     setDownloading(true);
-    setFailed(false);
+    setFailed(null);
     try {
-      const query = exportQuery({ range, today: page.today, from, to, includeDrafts, groupIds });
-      const res = await apiFetch(`/api/calendars/${page.calendarId}/events.ics${query}`, {
-        headers: { Accept: "text/calendar" },
+      const opts = { range, today: page.today, from, to, includeDrafts, groupIds };
+      const base = `/api/calendars/${page.calendarId}/events`;
+      const path = isPdf
+        ? `${base}.pdf${pdfExportQuery({ ...opts, layout: activeLayout, paper, orientation })}`
+        : `${base}.ics${exportQuery(opts)}`;
+      const res = await apiFetch(path, {
+        headers: { Accept: isPdf ? "application/pdf" : "text/calendar" },
       });
-      if (!res.ok) throw new Error(`API error ${res.status}`);
-      downloadBlob(await res.blob(), icsFileName(calendarName));
+      if (!res.ok) throw await errorFrom(res);
+      const blob = await res.blob();
+      downloadBlob(blob, exportFileName(calendarName, format));
       toast.success(t("events.export.done"));
-    } catch {
-      setFailed(true);
+    } catch (err) {
+      setFailed(isPdf ? pdfFailure(err) : { kind: "generic" });
     } finally {
       setDownloading(false);
     }
   }
 
+  function chooseFormat(next: Format) {
+    setFormat(next);
+    if (next === "pdf" && range === "all") setRange("month");
+  }
+
   const ranges: { key: ExportRange; label: string; hint: string }[] = [
-    {
-      key: "all",
-      label: t("events.export.range.all"),
-      hint: t("events.export.range.allHint", { calendar: calendarName }),
-    },
+    ...(isPdf
+      ? []
+      : [
+          {
+            key: "all" as const,
+            label: t("events.export.range.all"),
+            hint: t("events.export.range.allHint", { calendar: calendarName }),
+          },
+        ]),
     {
       key: "month",
       label: t("events.export.range.month"),
       hint: formatMonthTitle(yearMonthOf(page.today), locale),
     },
+    ...(isPdf
+      ? [
+          {
+            key: "year" as const,
+            label: t("events.export.range.year"),
+            hint: page.today.slice(0, 4),
+          },
+        ]
+      : []),
     {
       key: "custom",
       label: t("events.export.range.custom"),
       hint: t("events.export.range.customHint"),
     },
   ];
+
+  function failedText(f: { kind: PdfFailure; retryAfter?: number }): string {
+    switch (f.kind) {
+      case "tooMany":
+        return t("events.export.failed.tooMany", { max: PDF_MAX_EVENTS });
+      case "rangeTooLong":
+        return t("events.export.failed.rangeTooLong", { max: PDF_MAX_DAYS });
+      case "rateLimited":
+        return f.retryAfter
+          ? t("events.export.failed.rateLimitedIn", { minutes: Math.ceil(f.retryAfter / 60) })
+          : t("events.export.failed.rateLimited");
+      default:
+        return t("events.export.failed.text");
+    }
+  }
 
   return (
     <div className="ap-wrap--narrow ap-stack ap-stack--lg">
@@ -117,7 +190,9 @@ export default function EventsExportPage() {
       <header className="ap-pagehead" style={{ marginBottom: 0 }}>
         <div>
           <h1 className="t-h1">{t("events.export.title")}</h1>
-          <p className="t-body t-prose">{t("events.export.intro")}</p>
+          <p className="t-body t-prose">
+            {t(isPdf ? "events.export.intro.pdf" : "events.export.intro.ics")}
+          </p>
           <p className="t-sm" style={{ marginTop: "var(--space-2)" }}>
             <Link className="ap-link ap-link--standalone" to={page.routes.feeds}>
               {t("events.export.feeds")}
@@ -141,6 +216,29 @@ export default function EventsExportPage() {
       )}
 
       <form className="ap-form" noValidate onSubmit={onSubmit}>
+        <section className="ap-panel ap-form-section" aria-labelledby="x-format">
+          <h2 className="t-h2" id="x-format">
+            {t("events.export.format.title")}
+          </h2>
+          <fieldset className="ap-fieldset">
+            <legend className="ap-sr">{t("events.export.format.title")}</legend>
+            {(["ics", "pdf"] as const).map((f) => (
+              <label key={f} className="ap-check">
+                <input
+                  type="radio"
+                  name="format"
+                  checked={format === f}
+                  onChange={() => chooseFormat(f)}
+                />
+                <span>
+                  {t(`events.export.format.${f}`)}
+                  <small>{t(`events.export.format.${f}Hint`)}</small>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        </section>
+
         <section className="ap-panel ap-form-section" aria-labelledby="x-range">
           <h2 className="t-h2" id="x-range">
             {t("events.export.range.title")}
@@ -188,6 +286,55 @@ export default function EventsExportPage() {
             </div>
           )}
         </section>
+
+        {isPdf && (
+          <section className="ap-panel ap-form-section" aria-labelledby="x-layout">
+            <h2 className="t-h2" id="x-layout">
+              {t("events.export.pdf.layout.title")}
+            </h2>
+            <fieldset className="ap-fieldset">
+              <legend className="ap-sr">{t("events.export.pdf.layout.title")}</legend>
+              {PDF_LAYOUTS.map((l) => (
+                <label key={l} className="ap-check">
+                  <input
+                    type="radio"
+                    name="layout"
+                    disabled={!available[l]}
+                    checked={activeLayout === l}
+                    onChange={() => setLayout(l)}
+                  />
+                  <span>
+                    {t(`events.export.pdf.layout.${LAYOUT_KEYS[l]}`)}
+                    <small>
+                      {t(`events.export.pdf.layout.${LAYOUT_KEYS[l]}Hint`)}
+                      {!available[l] && ` ${t("events.export.pdf.layout.unavailable")}`}
+                    </small>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+            <div className="ap-inputrow">
+              <Field id="x-paper" label={t("events.export.pdf.paper.label")}>
+                <NativeSelect value={paper} onChange={(e) => setPaper(e.target.value as PdfPaper)}>
+                  <option value="a4">{t("events.export.pdf.paper.a4")}</option>
+                  <option value="a3">{t("events.export.pdf.paper.a3")}</option>
+                </NativeSelect>
+              </Field>
+              <Field id="x-orientation" label={t("events.export.pdf.orientation.label")}>
+                <NativeSelect
+                  value={orientation}
+                  onChange={(e) => setOrientation(e.target.value as PdfOrientation)}
+                >
+                  {(["auto", "portrait", "landscape"] as const).map((o) => (
+                    <option key={o} value={o}>
+                      {t(`events.export.pdf.orientation.${o}`)}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+            </div>
+          </section>
+        )}
 
         <section className="ap-panel ap-form-section" aria-labelledby="x-status">
           <h2 className="t-h2" id="x-status">
@@ -265,9 +412,17 @@ export default function EventsExportPage() {
           )}
         </section>
 
+        {(tooLong || tooMany) && (
+          <Banner tone="warning">
+            {tooLong
+              ? t("events.export.failed.rangeTooLong", { max: PDF_MAX_DAYS })
+              : t("events.export.failed.tooMany", { max: PDF_MAX_EVENTS })}
+          </Banner>
+        )}
+
         {failed && (
           <Banner tone="danger" title={t("events.export.failed.title")}>
-            {t("events.export.failed.text")}
+            {failedText(failed)}
           </Banner>
         )}
 
@@ -275,11 +430,11 @@ export default function EventsExportPage() {
           <Button
             type="submit"
             icon="download"
-            disabled={n === 0 || events.isLoading}
+            disabled={n === 0 || events.isLoading || pdfBlocked}
             loading={downloading}
             loadingLabel={t("events.export.downloading")}
           >
-            {t("events.export.download")}
+            {t(isPdf ? "events.export.downloadPdf" : "events.export.downloadIcs")}
           </Button>
           <LinkButton variant="secondary" to={page.routes.list}>
             {t("events.export.cancel")}
