@@ -67,6 +67,9 @@ vi.mock("virtual:docs", () => ({
         section: "getting-started",
         order: 10,
       },
+      { slug: "events/index", title: "Termine", section: "events", order: 0 },
+      { slug: "events/series", title: "Terminreihen", section: "events", order: 10 },
+      { slug: "publishing/feeds", title: "Feeds", section: "publishing", order: 10 },
     ],
     en: [],
   },
@@ -86,6 +89,18 @@ vi.mock("virtual:docs", () => ({
     return JSON.stringify(ms);
   },
 }));
+
+for (const [slug, title, section] of [
+  ["events/index", "Termine", "events"],
+  ["events/series", "Terminreihen", "events"],
+  ["publishing/feeds", "Feeds", "publishing"],
+] as const) {
+  pages[slug] = {
+    meta: { slug, title, section, order: 0 },
+    toc: [],
+    tree: el("div", {}, el("h1", { id: slug }, `${title} Inhalt`)),
+  };
+}
 
 const { default: HelpPage } = await import("@/pages/HelpPage");
 
@@ -368,5 +383,98 @@ describe("HelpPage", () => {
     await screen.findByRole("heading", { level: 1, name: /Hilfe Start/ });
     await user.keyboard("/");
     expect(screen.getByRole("combobox")).toHaveFocus();
+  });
+
+  describe("collapsible sections", () => {
+    const toggle = (name: string) => screen.getByRole("button", { name });
+    const nav = () => screen.getByRole("navigation", { name: "Hilfe-Navigation" });
+
+    it("collapses every section except the one of the current page", async () => {
+      renderAt("/help/getting-started/first-steps");
+      await screen.findByText(/Erste Schritte Inhalt/);
+      expect(toggle("Getting started")).toHaveAttribute("aria-expanded", "true");
+      expect(toggle("Publishing")).toHaveAttribute("aria-expanded", "false");
+      expect(toggle("Termine")).toHaveAttribute("aria-expanded", "false");
+      const list = document.getElementById(toggle("Publishing").getAttribute("aria-controls")!)!;
+      expect(list).toHaveAttribute("inert");
+      expect(within(nav()).getByRole("link", { name: "Erste Schritte" })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+    });
+
+    it("keeps root pages as plain links", async () => {
+      renderAt("/help");
+      await screen.findByRole("heading", { level: 1, name: /Hilfe Start/ });
+      expect(within(nav()).getByRole("link", { name: "Hilfe" })).toBeInTheDocument();
+      expect(within(nav()).queryByRole("button", { name: "Hilfe" })).not.toBeInTheDocument();
+      expect(toggle("Getting started")).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("expands the section of a generated table of contents", async () => {
+      renderAt("/help/getting-started");
+      await screen.findByRole("heading", { level: 1, name: "Getting started" });
+      expect(toggle("Getting started")).toHaveAttribute("aria-expanded", "true");
+    });
+
+    it("toggles by click and keyboard", async () => {
+      const user = userEvent.setup();
+      renderAt("/help");
+      await screen.findByRole("heading", { level: 1, name: /Hilfe Start/ });
+      const btn = toggle("Getting started");
+      await user.click(btn);
+      expect(btn).toHaveAttribute("aria-expanded", "true");
+      const region = document.getElementById(btn.getAttribute("aria-controls")!)!;
+      expect(region).not.toHaveAttribute("inert");
+      btn.focus();
+      await user.keyboard("{Enter}");
+      expect(btn).toHaveAttribute("aria-expanded", "false");
+      expect(region).toHaveAttribute("inert");
+      await user.keyboard(" ");
+      expect(btn).toHaveAttribute("aria-expanded", "true");
+    });
+
+    it("expands the target section on navigation and keeps opened sections open", async () => {
+      const user = userEvent.setup();
+      renderAt("/help/getting-started/first-steps");
+      await screen.findByText(/Erste Schritte Inhalt/);
+      await user.click(toggle("Publishing"));
+      await user.click(screen.getByRole("link", { name: /^Weiter\s*Termine/ }));
+      await screen.findByText(/Termine Inhalt/);
+      expect(toggle("Termine")).toHaveAttribute("aria-expanded", "true");
+      expect(toggle("Publishing")).toHaveAttribute("aria-expanded", "true");
+      expect(toggle("Getting started")).toHaveAttribute("aria-expanded", "true");
+    });
+
+    it("expands the section of a search result", async () => {
+      const user = userEvent.setup();
+      renderAt("/help/publishing/feeds");
+      await screen.findByText(/Feeds Inhalt/);
+      expect(toggle("Getting started")).toHaveAttribute("aria-expanded", "false");
+      await user.click(screen.getByRole("combobox"));
+      await user.keyboard("verein");
+      await screen.findByRole("option", { name: /Erste Schritte/ });
+      await user.keyboard("{Enter}");
+      await screen.findByText(/Erste Schritte Inhalt/);
+      expect(toggle("Getting started")).toHaveAttribute("aria-expanded", "true");
+    });
+
+    it("gives a section with an index page a title link and a separate toggle", async () => {
+      const user = userEvent.setup();
+      renderAt("/help/events/series");
+      await screen.findByText(/Terminreihen Inhalt/);
+      const link = within(nav()).getByRole("link", { name: "Termine" });
+      expect(link).toHaveAttribute("href", "/help/events");
+      expect(link).not.toHaveAttribute("aria-current");
+      const btn = toggle("Termine");
+      expect(btn).toHaveAttribute("aria-expanded", "true");
+      await user.click(btn);
+      expect(btn).toHaveAttribute("aria-expanded", "false");
+      expect(screen.getByTestId("where")).toHaveTextContent("/help/events/series");
+      await user.click(link);
+      await screen.findByText(/Termine Inhalt/);
+      expect(screen.getByRole("link", { name: "Termine" })).toHaveAttribute("aria-current", "page");
+      expect(toggle("Termine")).toHaveAttribute("aria-expanded", "true");
+    });
   });
 });

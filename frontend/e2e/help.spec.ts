@@ -87,3 +87,27 @@ test("das Hilfezentrum zeigt keinen Hilfe-Link im Footer (nur rechtliche Links)"
   await expect(footer).toBeVisible();
   await expect(footer.getByRole("link", { name: "Hilfe", exact: true })).toHaveCount(0);
 });
+
+test("die Abschnitte der Hilfe-Navigation lassen sich auf- und zuklappen", async ({ page }) => {
+  await page.goto("/help/getting-started/set-up");
+  const nav = page.getByRole("navigation", { name: "Hilfe-Navigation" });
+  const open = nav.locator("button[aria-expanded='true']");
+  const closed = nav.locator("button[aria-expanded='false']");
+  await expect(open).toHaveCount(1);
+  expect(await closed.count()).toBeGreaterThan(1);
+  await expect(nav.getByRole("link", { name: "Verein und Kalender einrichten" })).toBeVisible();
+  await expect(nav.locator("a[aria-current='page']")).toHaveCount(1);
+
+  const other = nav.getByRole("button", { name: "Termine" });
+  await other.focus();
+  await page.keyboard.press("Enter");
+  await expect(other).toHaveAttribute("aria-expanded", "true");
+  await expect(open).toHaveCount(2);
+  await page.keyboard.press("Space");
+  await expect(other).toHaveAttribute("aria-expanded", "false");
+
+  // Navigating to a root page keeps the opened section open.
+  await nav.getByRole("link", { name: "Hilfe", exact: true }).click();
+  await expect(page).toHaveURL(/\/help$/);
+  await expect(open).toHaveCount(1);
+});
