@@ -18,7 +18,9 @@ FROM --platform=$BUILDPLATFORM composer:2 AS backend-vendor
 WORKDIR /app/backend
 COPY backend/composer.json backend/composer.lock ./
 # Scripts (cache:clear, assets:install) need the full app and run in the final stage instead
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-progress --no-interaction
+# ext-gd/ext-intl: the composer image lacks them; the runtime stage installs them
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-progress --no-interaction \
+    --ignore-platform-req=ext-gd --ignore-platform-req=ext-intl
 COPY backend/ ./
 # fixtures need a dev-only bundle and are not meant for production
 RUN rm -rf src/DataFixtures \
@@ -47,7 +49,7 @@ FROM php:${PHP_VERSION}-fpm-alpine AS runtime
 
 COPY --from=ghcr.io/mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 RUN apk add --no-cache bash tini \
-    && install-php-extensions pdo_mysql intl opcache \
+    && install-php-extensions pdo_mysql intl gd opcache \
     && rm -f /usr/local/bin/install-php-extensions \
     && mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
     # own pool config, runs unprivileged (no user/group directive)
