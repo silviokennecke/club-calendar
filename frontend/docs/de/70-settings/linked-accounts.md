@@ -1,0 +1,30 @@
+---
+title: Verknüpfte Anmeldungen
+order: 40
+description: Dein Google- oder Microsoft-Konto mit Club Calendar verbinden.
+---
+
+# Verknüpfte Anmeldungen
+
+Wenn du dein Google- oder Microsoft-Konto verknüpfst, meldest du dich damit ohne Passwort an.
+
+## Konto verknüpfen
+
+1. Öffne dein [Profil](help:settings/profile) und gehe zu **Verknüpfte Anmeldungen**.
+2. Klicke beim Anbieter auf **Konto verknüpfen**.
+3. Melde dich beim Anbieter an und bestätige. Du landest wieder im Profil, dort steht **Verbunden**.
+
+Ein Anbieterkonto kann nur mit einem Club-Calendar-Konto verknüpft sein, und pro Anbieter ist ein Konto möglich.
+
+## Verknüpfung trennen
+
+Klicke beim Anbieter auf **Verknüpfung trennen** und bestätige. Danach kannst du dich nicht mehr damit anmelden. Deine anderen Anmeldewege bleiben.
+
+:::warning
+Mindestens eine Anmeldemethode muss bleiben. Richte zuerst ein [Passwort](help:settings/password) oder einen [Passkey](help:settings/passkeys) ein, bevor du die letzte Verknüpfung trennst.
+:::
+
+## Siehe auch
+
+- [Passwort](help:settings/password)
+- [Passkeys](help:settings/passkeys)

@@ -164,6 +164,65 @@ describe("DocRenderer", () => {
     expect(img).toHaveAttribute("decoding", "async");
   });
 
+  describe("tabs", () => {
+    const tabsTree = (platform: boolean) =>
+      el(
+        "div",
+        {},
+        el(
+          "div",
+          { "data-tabs": "app", ...(platform ? { "data-platform": true } : {}) },
+          el("div", { "data-tab": "ios", "data-label": "iPhone" }, el("p", {}, "iOS Text")),
+          el("div", { "data-tab": "google", "data-label": "Google" }, el("p", {}, "Google Text")),
+        ),
+      );
+    const renderTabs = (tree: DocNode, at = "/help") =>
+      render(
+        <MemoryRouter initialEntries={[at]}>
+          <DocRenderer tree={tree} />
+          <Where />
+        </MemoryRouter>,
+      );
+
+    it("defaults to the first tab and switches with click and arrow keys, mirrored into the URL", async () => {
+      const user = userEvent.setup();
+      renderTabs(tabsTree(false));
+      const ios = screen.getByRole("tab", { name: "iPhone" });
+      expect(ios).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("tabpanel")).toHaveTextContent("iOS Text");
+      await user.click(screen.getByRole("tab", { name: "Google" }));
+      expect(screen.getByRole("tab", { name: "Google" })).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("tabpanel")).toHaveTextContent("Google Text");
+      await user.keyboard("{ArrowLeft}");
+      expect(screen.getByRole("tab", { name: "iPhone" })).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("lets the query param win over the platform preselect, which wins over the first tab", () => {
+      vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Linux; Android 14)");
+      const { unmount } = renderTabs(tabsTree(true));
+      expect(screen.getByRole("tab", { name: "Google" })).toHaveAttribute("aria-selected", "true");
+      unmount();
+      renderTabs(tabsTree(true), "/help?app=ios");
+      expect(screen.getByRole("tab", { name: "iPhone" })).toHaveAttribute("aria-selected", "true");
+      vi.restoreAllMocks();
+    });
+
+    it("writes the active tab into the URL query", async () => {
+      const user = userEvent.setup();
+      function Search() {
+        return <output data-testid="search">{useLocation().search}</output>;
+      }
+      render(
+        <MemoryRouter initialEntries={["/help?x=1"]}>
+          <DocRenderer tree={tabsTree(false)} />
+          <Search />
+        </MemoryRouter>,
+      );
+      await user.click(screen.getByRole("tab", { name: "Google" }));
+      expect(screen.getByTestId("search")).toHaveTextContent("?x=1&app=google");
+    });
+  });
+
   it("maps help:index to /help", () => {
     renderTree(el("p", {}, el("a", { "data-help": "index" }, "start")));
     expect(screen.getByRole("link", { name: "start" })).toHaveAttribute("href", "/help");
@@ -178,24 +237,24 @@ describe("DocRenderer", () => {
 describe("HelpLink", () => {
   it("builds paths and renders a router link", () => {
     expect(helpPath("index")).toBe("/help");
-    expect(helpPath("getting-started/first-steps", "verein-anlegen")).toBe(
-      "/help/getting-started/first-steps#verein-anlegen",
+    expect(helpPath("getting-started/set-up", "verein-anlegen")).toBe(
+      "/help/getting-started/set-up#verein-anlegen",
     );
     function Probe() {
-      return <span data-testid="url">{useHelpUrl("getting-started/first-steps")}</span>;
+      return <span data-testid="url">{useHelpUrl("getting-started/set-up")}</span>;
     }
     render(
       <MemoryRouter>
-        <HelpLink page="getting-started/first-steps" anchor="verein-anlegen" newTab>
+        <HelpLink page="getting-started/set-up" anchor="verein-anlegen" newTab>
           Mehr
         </HelpLink>
         <Probe />
       </MemoryRouter>,
     );
     const a = screen.getByRole("link", { name: "Mehr" });
-    expect(a).toHaveAttribute("href", "/help/getting-started/first-steps#verein-anlegen");
+    expect(a).toHaveAttribute("href", "/help/getting-started/set-up#verein-anlegen");
     expect(a).toHaveAttribute("target", "_blank");
-    expect(screen.getByTestId("url")).toHaveTextContent("/help/getting-started/first-steps");
+    expect(screen.getByTestId("url")).toHaveTextContent("/help/getting-started/set-up");
   });
 
   it("rejects unknown slugs at compile time", () => {
