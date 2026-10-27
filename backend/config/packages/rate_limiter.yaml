@@ -178,3 +178,12 @@ framework:
             policy: sliding_window
             limit: '%env(int:FEED_RATE_LIMIT_PER_FEED)%'
             interval: '1 minute'
+        # PDF export (expensive to render): per user and per client IP.
+        pdf_export_user:
+            policy: sliding_window
+            limit: 10
+            interval: '10 minutes'
+        pdf_export_ip:
+            policy: sliding_window
+            limit: 30
+            interval: '10 minutes'

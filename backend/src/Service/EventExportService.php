@@ -94,7 +94,7 @@ readonly class EventExportService
     }
 
     /** `attachment` with a file name from the calendar name ("schiessbetrieb-2026.ics", like the frontend). */
-    public function contentDisposition(Calendar $calendar): string
+    public function contentDisposition(Calendar $calendar, string $extension = 'ics'): string
     {
         $name = $calendar->getName();
         if (class_exists(\Normalizer::class)) {
@@ -103,7 +103,7 @@ readonly class EventExportService
         $slug = strtolower((string) preg_replace('/\p{Mn}+/u', '', str_replace('ß', 'ss', $name)));
         $slug = trim((string) preg_replace('/[^a-z0-9]+/', '-', $slug), '-');
 
-        return HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, ('' !== $slug ? substr($slug, 0, 100) : 'termine').'.ics');
+        return HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, ('' !== $slug ? substr($slug, 0, 100) : 'termine').'.'.$extension);
     }
 
     /**
