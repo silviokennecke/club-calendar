@@ -20,6 +20,11 @@
   - Property emoji are shown on each event item, plus an emoji legend at the end of the document (only properties used in the export); emoji are drawn as bundled local PNG files (allow-list lookup by codepoints), replacing the former "strip emoji" rule. Property names come from a separate lookup query, `IcsEventReader` and the ICS output stay untouched.
   - v1 scope explicit: no holidays, no event notes. Caps (366 days / 2000 events / 10 per 10 min) accepted as starting values, the benchmark may adjust them.
   - Verified: `ext-dom`/`ext-mbstring` ship with the base image, `ext-intl` is installed in `docker/Dockerfile`, `ext-gd` is NOT (needed for PNG, must be added); there is no dedicated ICS export controller test file (see Testing).
+- **2026-10-27** — open points settled:
+  - Emoji set: Noto Emoji PNGs; Twemoji dropped as an option. Licence and bundle size are verified when the PNGs are added, with the licence file and attribution shipped alongside.
+  - dompdf is accepted as the PDF library, including its PNG/emoji handling; the benchmark remains the release check.
+  - First weekday confirmed: `0` = Sunday, every other value = Monday (as in `CalendarPage` and the PDF).
+  - Open questions list resolved and removed.
 
 ---
 
@@ -187,7 +192,7 @@ Each event item shows the emoji of its properties (`IcsEvent::propertyIcons`); t
 | Local PNG images keyed by codepoint sequence | **Chosen.** Sequences are exactly one file, colour, no shaping needed, deterministic output. Needs `ext-gd` (dompdf embeds PNG through GD) and ~2-5 MB of bundled assets. |
 | SVG images | Not recommended: dompdf renders SVG via php-svg-lib, and recent dompdf advisories concern untrusted SVG; avoid SVG parsing on the server. |
 
-**Chosen approach:** bundled emoji PNGs (suggested set: Noto Emoji colour PNGs, 72 px, from `googlefonts/noto-emoji`, licence Apache-2.0, file names `emoji_u<hex>[_<hex>...].png`; alternative Twemoji, CC-BY-4.0 graphics, needs attribution). The licence and a NOTICE/attribution file are stored next to the images; **licence and file naming must be re-verified when the set is added** (not verified against upstream during this revision). Only the emoji the frontend picker (emoji-mart) can produce need to be bundled.
+**Chosen approach:** bundled Noto Emoji colour PNGs (72 px, from `googlefonts/noto-emoji`, file names `emoji_u<hex>[_<hex>...].png`). Licence: Apache-2.0 per our notes. When the PNGs are added, the licence and the bundle size (repository and Docker image) must be verified, and the licence file and attribution (NOTICE) are shipped next to the images. Only the emoji the frontend picker (emoji-mart) can produce need to be bundled.
 
 Lookup (`App\Pdf\EmojiImages`):
 1. Take the icon string (NFC), split it into codepoints, lower-case hex joined with `_`. Try the key as is, then without `U+FE0F`. The key must match `^[0-9a-f]{2,6}(_[0-9a-f]{2,6}){0,9}$` before any lookup.
@@ -263,6 +268,4 @@ Each template receives:
 
 ## Open questions
 
-- Emoji set and licence: choose and add the PNG set (Noto Emoji vs Twemoji), confirm the licence/attribution terms upstream, and check the size of the bundled assets (repository and Docker image).
-- `ext-gd` must be added to `docker/Dockerfile` (and `composer.json` `require`); confirm dompdf renders the chosen PNGs (alpha) in the `php:8.4-fpm-alpine` image during the benchmark.
-- First weekday: the UI only offers Monday or Sunday although the API accepts 0-6; the PDF treats `0` as Sunday and everything else as Monday, like `CalendarPage`. Confirm this is wanted (alternatively support all values 0-6 in the PDF).
+None.
