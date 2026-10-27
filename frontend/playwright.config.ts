@@ -9,6 +9,9 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: "list",
+  expect: {
+    toHaveScreenshot: { pathTemplate: "{testDir}/../docs/screenshots/{projectName}/{arg}{ext}" },
+  },
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
     ignoreHTTPSErrors: true,
@@ -19,11 +22,25 @@ export default defineConfig({
     { name: "chromium", testIgnore: "docs/**", use: { ...devices["Desktop Chrome"] } },
     ...(process.env.DOCS_SCREENSHOTS
       ? [
-          {
-            name: "docs",
+          // One project per language (project name = screenshot folder): --lang makes native date/time inputs follow the locale.
+          ...(["de-DE", "en-US"] as const).map((lang) => ({
+            name: lang.slice(0, 2),
             testMatch: "docs/*.docs.ts",
-            use: { ...devices["Desktop Chrome"], deviceScaleFactor: 1 },
-          },
+            grep: new RegExp(`\\(${lang.slice(0, 2)}\\)`),
+            use: {
+              ...devices["Desktop Chrome"],
+              deviceScaleFactor: 1,
+              launchOptions: {
+                args: [
+                  `--lang=${lang}`,
+                  "--disable-gpu",
+                  "--disable-lcd-text",
+                  "--font-render-hinting=none",
+                  "--force-color-profile=srgb",
+                ],
+              },
+            },
+          })),
         ]
       : []),
   ],
