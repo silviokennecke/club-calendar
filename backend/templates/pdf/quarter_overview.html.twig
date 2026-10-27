@@ -1,0 +1,65 @@
+{% extends 'pdf/base.html.twig' %}
+
+{% block content %}
+    <style>
+        table.quarter { width: 100%; border-collapse: separate; border-spacing: 0; }
+        td.qm { width: 33.3333%; padding: 0 4pt; border: 0; vertical-align: top; }
+        table.grid { table-layout: fixed; width: 100%; border-collapse: collapse; }
+        table.grid th { text-align: center; font-size: 6pt; padding: 1.5pt 0; border: 0.5pt solid #888888; }
+        table.grid td { height: 19mm; border: 0.5pt solid #999999; padding: 1pt; vertical-align: top; overflow: hidden; }
+        table.grid td.pad { background-color: #ffffff; border-color: #dddddd; }
+        table.grid td.out { background-color: #eeeeee; color: #999999; }
+        .num { font-weight: bold; font-size: 6.5pt; margin: 0 0 1pt 0; }
+        .ev { font-size: 5.5pt; margin: 0 0 1pt 0; padding: 0 0 0 1.5pt; border-left: 1.2pt solid #4a6fa5; }
+        .more { font-size: 5.5pt; color: #555555; font-weight: bold; }
+        table.grid img.emoji { width: 6pt; height: 6pt; margin: 0 1pt; }
+        h3 { font-size: 9pt; margin: 0 0 3pt 0; }
+        .quarter-page { page-break-before: always; }
+        .quarter-first { page-break-before: avoid; }
+    </style>
+    {% for page in pages %}
+        <div class="{{ loop.first ? 'quarter-first' : 'quarter-page' }}">
+            <table class="quarter">
+                <colgroup><col style="width: 33.3333%"><col style="width: 33.3333%"><col style="width: 33.3333%"></colgroup>
+                <tbody>
+                    <tr>
+                    {% for month in page %}
+                        <td class="qm">
+                            <h3>{{ month.label }}</h3>
+                            <table class="grid">
+                                <colgroup>{% for wd in weekdays %}<col style="width: 14.2857%">{% endfor %}</colgroup>
+                                <thead>
+                                    <tr>{% for wd in weekdays %}<th>{{ wd }}</th>{% endfor %}</tr>
+                                </thead>
+                                <tbody>
+                                {% for week in month.weeks %}
+                                    <tr>
+                                    {% for cell in week %}
+                                        {% if cell is null %}
+                                            <td class="pad">&nbsp;</td>
+                                        {% else %}
+                                            <td class="{{ cell.inRange ? 'in' : 'out' }}">
+                                                <div class="num">{{ cell.number }}</div>
+                                                {% for e in cell.events %}
+                                                    <div class="ev">
+                                                        {%- for path in e.emojiPaths %}<img class="emoji" src="{{ path }}">{% endfor -%}
+                                                        {{ e.cellName }}{% if e.draft %} <span class="draft">({{ 'draft'|trans({}, 'pdf', locale) }})</span>{% endif %}
+                                                    </div>
+                                                {% endfor %}
+                                                {% if cell.more > 0 %}<div class="more">{{ 'more'|trans({'count': cell.more}, 'pdf', locale) }}</div>{% endif %}
+                                            </td>
+                                        {% endif %}
+                                    {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </td>
+                    {% endfor %}
+                    {% if page|length < 3 %}{% for i in range(page|length, 2) %}<td class="qm">&nbsp;</td>{% endfor %}{% endif %}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    {% endfor %}
+{% endblock %}

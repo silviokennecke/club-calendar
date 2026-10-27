@@ -117,6 +117,10 @@ class PdfExportService
                 'months' => PdfMonthGrid::build($from, $to, $firstDayOfWeek, $entries, $locale),
                 'weekdays' => PdfMonthGrid::weekdayHeader($firstDayOfWeek, $locale),
             ],
+            PdfLayout::QuarterOverview => [
+                'pages' => PdfQuarterOverview::build($from, $to, $firstDayOfWeek, $entries, $locale),
+                'weekdays' => PdfMonthGrid::weekdayHeader($firstDayOfWeek, $locale),
+            ],
             default => throw new \LogicException(sprintf('Layout "%s" is not implemented yet.', $options->layout->value)),
         };
     }
