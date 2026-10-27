@@ -301,4 +301,58 @@ class PdfExportServiceTest extends KernelTestCase
         $this->expectException(ApiProblemException::class);
         $this->service->buildViewModel($this->calendar, $this->filter('2026-07-01', '2026-08-31'), new PdfOptions(PdfLayout::QuarterOverview), $this->user);
     }
+
+    public function testAnnualOverviewHtmlWeekdayOrderAndMarkedDays(): void
+    {
+        $this->event('Sommerfest', '2026-07-04');
+        $annual = new PdfOptions(PdfLayout::AnnualOverview);
+        $filter = $this->filter('2026-01-01', '2026-12-31');
+
+        $model = $this->service->buildViewModel($this->calendar, $filter, $annual, $this->user);
+        self::assertCount(12, $model['months']);
+
+        $html = $this->service->renderHtml($this->calendar, $filter, $annual, $this->user);
+        self::assertStringContainsString('Juli', $html);
+        self::assertStringContainsString('Sommerfest', $html);
+        self::assertStringContainsString('Termine', $html);
+        self::assertStringContainsString('A4 landscape', $html);
+        self::assertSame(1, substr_count($html, '<td class="has">'));
+        self::assertMatchesRegularExpression('/<th>Mo<\/th>\s*<th>Di<\/th>/', $html);
+
+        $this->user->setFirstDayOfWeek(0);
+        self::assertMatchesRegularExpression('/<th>So<\/th>\s*<th>Mo<\/th>/', $this->service->renderHtml($this->calendar, $filter, $annual, $this->user));
+    }
+
+    public function testAnnualOverviewPdfGermanEnglishAndPapers(): void
+    {
+        $p = TestHelper::createProperty($this->em, $this->calendar, 'Fest', "\u{1F389}");
+        $this->event('Mit Emoji', '2026-07-05', [$p]);
+        $filter = $this->filter('2026-01-01', '2026-12-31');
+
+        foreach (['de', 'en'] as $lang) {
+            $this->user->setLanguage($lang);
+            foreach (['a4', 'a3'] as $paper) {
+                $options = new PdfOptions(PdfLayout::AnnualOverview, $paper);
+                self::assertStringStartsWith('%PDF', $this->service->render($this->calendar, $filter, $options, $this->user));
+            }
+        }
+        $html = $this->service->renderHtml($this->calendar, $filter, new PdfOptions(PdfLayout::AnnualOverview, 'a3'), $this->user);
+        self::assertStringContainsString('Legend', $html);
+        self::assertStringContainsString('A3 landscape', $html);
+        if (false !== ($out = getenv('PDF_OUT_ANNUAL'))) {
+            file_put_contents($out, $this->service->render($this->calendar, $filter, new PdfOptions(PdfLayout::AnnualOverview), $this->user));
+        }
+    }
+
+    public function testAnnualOverviewRejectedForPartialYear(): void
+    {
+        foreach ([['2026-01-01', '2026-12-30'], ['2026-02-01', '2027-01-31'], ['2026-01-01', '2026-06-30']] as [$from, $to]) {
+            try {
+                $this->service->buildViewModel($this->calendar, $this->filter($from, $to), new PdfOptions(PdfLayout::AnnualOverview), $this->user);
+                self::fail("$from..$to must be rejected");
+            } catch (ApiProblemException $e) {
+                self::assertSame(400, $e->getStatusCode());
+            }
+        }
+    }
 }
