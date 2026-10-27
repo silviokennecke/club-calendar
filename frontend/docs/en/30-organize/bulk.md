@@ -25,7 +25,7 @@ You need the Editor or Admin role for this. Viewers don't see the checkboxes.
 
 - **Publish**: the events become visible in the feeds right away.
 - **Mark as draft**: the events disappear from the feeds and are visible only to your club.
-- **Assign**: pick target groups, properties and features and click **Add … assignments**. They are added to the events; existing assignments are kept. You can't remove assignments this way; edit the single event for that.
+- **Assign**: pick audiences, badges and extras and click **Add … assignments**. They are added to the events; existing assignments are kept. You can't remove assignments this way; edit the single event for that.
 - **Delete**: after a confirmation the events are deleted permanently. They also disappear from all feeds, and this cannot be undone.
 - **Clear selection**: resets the selection without changing anything.
 
@@ -40,4 +40,4 @@ For an [event series](help:organize/series), a bulk action affects exactly the e
 ## See also
 
 - [Publishing events](help:publishing/index)
-- [Properties](help:organize/properties), [Features](help:organize/features), [Target groups](help:organize/target-groups)
+- [Badges](help:organize/properties), [Extras](help:organize/features), [Audiences](help:organize/target-groups)

@@ -29,7 +29,7 @@ Pro Verein sind bis zu 100 Kalender möglich (archivierte zählen mit). Die Zeit
 **Duplizieren** legt eine Kopie unter dem Namen „Kopie von …“ an. Das ist praktisch für die nächste Saison.
 
 - Kopiert werden Besonderheiten, Zusatzangebote und Vorlagen.
-- Orte und Zielgruppen gehören zum Verein und stehen sowieso in allen Kalendern zur Verfügung.
+- Orte und Gruppen gehören zum Verein und stehen sowieso in allen Kalendern zur Verfügung.
 
 ## Kalender archivieren
 

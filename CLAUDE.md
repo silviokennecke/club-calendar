@@ -130,13 +130,25 @@ Security headers (audit M4) live in both `backend/public/.htaccess` and `docker/
 - **Event** — a single occurrence on a Calendar; optional plain-text `note` (max 2000 chars, trimmed, empty = null; copied from the template; ICS `DESCRIPTION`, shown in the public feed); may be based on an EventTemplate; may belong to an EventSeries
 - **EventSeries** — a recurrence rule (weekly, every two weeks, monthly on the n-th weekday; until a date or a count; skip holidays) with the events created from it; edit/delete "only this event" or "all events of the series" (`scope`); the rule can be changed later ("Reihe ändern", `PATCH …/event-series/{id}`: only future events change, past ones stay). ICS imports with RRULE create single events, not series
 - **EventTemplate** — reusable event definition (name, time, location, properties, optional `note`)
-- **Property** — a tag/attribute for events (e.g. "Schützentracht"); can have an emoji icon
-- **Feature** — an optional add-on for events (e.g. "Bonusschießen")
-- **TargetGroup** — audience filter for events (e.g. "Schüler", "Jugend", "Erwachsene"); scoped to a Club
+- **Property** — a badge on events (e.g. "Schützentracht"); can have an emoji icon
+- **Feature** — an extra (optional add-on) of events (e.g. "Bonusschießen")
+- **TargetGroup** — an audience (group) of events (e.g. "Schüler", "Jugend", "Erwachsene"); scoped to a Club
 - **Location** — a venue with an address and optional map position; scoped to a Club
 - **HolidayCalendar** — an external ICS source of holidays/school breaks for a Calendar (`HolidayEvent`s); shown in the calendar views and skipped in series previews
 - **McpGrant** — a user's connection of an AI client (`OAuthClient`) to the MCP server, with scopes and `McpToken`s (see "MCP server and OAuth")
 - **User** — e-mail addresses are stored trimmed and lower-cased everywhere (`App\Service\EmailAddress::normalize`, applied by the entity setters/constructors and every lookup); code compares them exactly and does not rely on column collations (the unicode_ci columns still equate look-alikes like "é"/"e", so lookups that matter re-check with `===`); signs in with password, Google/Microsoft SSO (`OAuthAccount`) or passkeys (`Passkey`); e-mail confirmation by 6-digit code (`EmailVerification`)
+
+## Terminology
+
+Technical names (code, routes, tables, JSON fields, MCP tool names) differ from the terms users see:
+
+| Technical name | API route / MCP tool | DE (UI) | EN (UI) |
+|---|---|---|---|
+| TargetGroup | `/target-groups`, `*_target_group(s)` | Gruppe / Gruppen | Audience / Audiences |
+| Feature | `/features`, `*_feature(s)` | Zusatzangebot / Zusatzangebote | Extra / Extras |
+| Property | `/properties`, `*_property`, `*_properties` | Besonderheit / Besonderheiten | Badge / Badges |
+
+Rule: UI texts, help pages, docs and descriptions (OpenAPI, MCP tool descriptions) use the UI term only (technical name in parentheses once where it helps); code identifiers keep the technical name; new texts must follow this table.
 
 ## Audit fields
 

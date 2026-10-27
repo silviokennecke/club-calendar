@@ -38,4 +38,4 @@ Choose the **Location** field in the event. With **Create new location** you can
 ## See also
 
 - [Templates](help:organize/templates)
-- [Target groups](help:organize/target-groups)
+- [Audiences](help:organize/target-groups)

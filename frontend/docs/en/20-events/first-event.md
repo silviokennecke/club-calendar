@@ -39,9 +39,9 @@ A new event starts as a **draft** that only your club can see. It appears in the
 
 Pick an existing location. If it is missing, use **Create new location** to add one right away. If the location has a position, you see it on the map. More under [Locations](help:organize/locations).
 
-**Properties, features and audiences**
+**Badges, extras and audiences**
 
-Here you assign [properties](help:organize/properties), [features](help:organize/features) and [target groups](help:organize/target-groups) to the event. If you pick no audience, the event applies to everyone. If something is missing, you can create it right here.
+Here you assign [badges](help:organize/properties), [extras](help:organize/features) and [audiences](help:organize/target-groups) to the event. If you pick no audience, the event applies to everyone. If something is missing, you can create it right here.
 
 **Note**
 

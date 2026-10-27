@@ -8,16 +8,16 @@ description: What viewers, editors and admins can do in a club.
 
 Every member has one of three roles in a club: **Viewer**, **Editor** or **Admin**. The roles build on each other: an admin can do everything an editor can, and an editor everything a viewer can.
 
-| Task                                                            | Viewer | Editor | Admin |
-| --------------------------------------------------------------- | :----: | :----: | :---: |
-| View calendar and events                                        |  yes   |  yes   |  yes  |
-| Create, change and delete events, series, templates, import     |   no   |  yes   |  yes  |
-| Manage locations, properties, features, target groups, holidays |   no   |  yes   |  yes  |
-| View feeds                                                      |   no   |  yes   |  yes  |
-| Create, change and delete feeds                                 |   no   |   no   |  yes  |
-| Create, archive and duplicate calendars                         |   no   |   no   |  yes  |
-| Manage members and invitations, change roles                    |   no   |   no   |  yes  |
-| Change club settings, delete the club                           |   no   |   no   |  yes  |
+| Task                                                        | Viewer | Editor | Admin |
+| ----------------------------------------------------------- | :----: | :----: | :---: |
+| View calendar and events                                    |  yes   |  yes   |  yes  |
+| Create, change and delete events, series, templates, import |   no   |  yes   |  yes  |
+| Manage locations, badges, extras, audiences, holidays       |   no   |  yes   |  yes  |
+| View feeds                                                  |   no   |  yes   |  yes  |
+| Create, change and delete feeds                             |   no   |   no   |  yes  |
+| Create, archive and duplicate calendars                     |   no   |   no   |  yes  |
+| Manage members and invitations, change roles                |   no   |   no   |  yes  |
+| Change club settings, delete the club                       |   no   |   no   |  yes  |
 
 :::note
 You can tell you are a viewer by a notice: "Your role in this club only allows viewing." Viewers also do not see **Import events** and **Publish**.

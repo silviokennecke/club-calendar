@@ -32,7 +32,7 @@ final class CreateFeedTool
         #[Schema(description: 'Feed name.')] string $name,
         #[Schema(description: 'List of calendar UUIDs of this club (from list_calendars), at least one.')] array $calendarIds,
         #[Schema(description: 'CLUB (default) or PRIVATE.')] ?string $visibility = null,
-        #[Schema(description: 'Optional list of target group UUIDs (from list_target_groups) to restrict the feed to.')] ?array $targetGroupIds = null,
+        #[Schema(description: 'Optional list of audience (target group) UUIDs (from list_target_groups) to restrict the feed to.')] ?array $targetGroupIds = null,
     ): array {
         $this->context->requireScope(McpScope::Write);
         $club = $this->context->club($clubId, ClubRole::ADMIN);

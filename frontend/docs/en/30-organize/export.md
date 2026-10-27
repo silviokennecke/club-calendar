@@ -32,7 +32,7 @@ Import the ICS file into another calendar app, such as Apple Calendar, Google Ca
 The file is a snapshot and does not change afterwards. If you want events to stay up to date in a calendar app, subscribe to a [feed](help:publishing/subscribe) instead.
 :::
 
-The file contains events with times, location, note, plus properties, features and audiences, but no holidays.
+The file contains events with times, location, note, plus badges, extras and audiences, but no holidays.
 
 ## See also
 

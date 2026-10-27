@@ -35,9 +35,9 @@ final class UpdateEventTemplateTool
         #[Schema(description: 'End time HH:MM; give together with timeBegin. Empty string clears it.')] ?string $timeEnd = null,
         #[Schema(description: 'Plain-text note, max 2000 characters; empty string clears it.')] ?string $note = null,
         #[Schema(description: 'UUID of a location of the club (from list_locations); empty string clears it.')] ?string $locationId = null,
-        #[Schema(description: 'List of target group UUIDs (from list_target_groups).')] ?array $targetGroupIds = null,
-        #[Schema(description: 'List of property UUIDs of this calendar (from list_properties).')] ?array $propertyIds = null,
-        #[Schema(description: 'List of feature UUIDs of this calendar (from list_features).')] ?array $featureIds = null,
+        #[Schema(description: 'List of audience (target group) UUIDs (from list_target_groups).')] ?array $targetGroupIds = null,
+        #[Schema(description: 'List of badge (property) UUIDs of this calendar (from list_properties).')] ?array $propertyIds = null,
+        #[Schema(description: 'List of extra (feature) UUIDs of this calendar (from list_features).')] ?array $featureIds = null,
     ): array {
         $this->context->requireScope(McpScope::Write);
         $calendar = $this->context->writableCalendar($calendarId, ClubRole::EDITOR);

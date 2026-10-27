@@ -14,7 +14,7 @@ Mit der Berechtigung **Nur lesen** kann der Assistent ansehen:
 
 - deine Vereine und Kalender,
 - Termine (auch Entwürfe, wenn du Bearbeiter oder Admin bist) und einzelne Termindetails,
-- Zielgruppen, Besonderheiten, Zusatzangebote und Orte,
+- Gruppen, Besonderheiten, Zusatzangebote und Orte,
 - Terminvorlagen,
 - Feeds (als Bearbeiter oder Admin, mit dem geheimen Link bei privaten Feeds).
 
@@ -23,7 +23,7 @@ Mit der Berechtigung **Nur lesen** kann der Assistent ansehen:
 Mit **Lesen und Entwürfe** kann er zusätzlich, wenn du mindestens Bearbeiter bist:
 
 - Terminentwürfe anlegen und noch nicht veröffentlichte Entwürfe ändern,
-- Zielgruppen, Besonderheiten, Zusatzangebote und Orte anlegen,
+- Gruppen, Besonderheiten, Zusatzangebote und Orte anlegen,
 - Terminvorlagen anlegen, ändern und löschen,
 - als Admin Feeds anlegen, aber nur mit Sichtbarkeit „Nur per Link“ oder „Privat“.
 
@@ -31,7 +31,7 @@ Mit **Lesen und Entwürfe** kann er zusätzlich, wenn du mindestens Bearbeiter b
 
 - Termine veröffentlichen oder löschen
 - Terminreihen, Import und Sammelaktionen
-- vorhandene Zielgruppen, Besonderheiten, Zusatzangebote und Orte ändern oder löschen
+- vorhandene Gruppen, Besonderheiten, Zusatzangebote und Orte ändern oder löschen
 - Feeds ändern oder löschen, öffentliche Feeds anlegen
 - Mitglieder, Einladungen und Konten verwalten
 

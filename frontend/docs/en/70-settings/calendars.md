@@ -28,7 +28,7 @@ A club can have up to 100 calendars (archived ones count). You change the time z
 
 **Duplicate** creates a copy named "Copy of …". This is handy for the next season.
 
-- Properties, features and templates are copied.
+- Badges, extras and templates are copied.
 - Locations and audiences belong to the club and are available in every calendar anyway.
 
 ## Archive a calendar

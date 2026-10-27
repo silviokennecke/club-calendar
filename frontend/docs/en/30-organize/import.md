@@ -35,7 +35,7 @@ Every event has a checkbox. Only ticked events are imported.
 
 Use the edit icon to change a single event or, with **Edit group**, all events of a group. The date stays as in the file. Changes apply to the import only; your file is not modified.
 
-At the top, **Set for all selected events** lets you set details for all ticked events, such as status, properties, features and target groups.
+At the top, **Set for all selected events** lets you set details for all ticked events, such as status, badges, extras and audiences.
 
 ## Locations
 

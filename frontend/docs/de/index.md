@@ -13,7 +13,7 @@ Hier erfährst du Schritt für Schritt, wie du den Vereinskalender nutzt. Neu hi
 - **loslegen**: [Konto erstellen](help:getting-started/sign-up), [Verein und Kalender einrichten](help:getting-started/set-up) und die [Oberfläche kennenlernen](help:getting-started/tour).
 - **Termine eintragen und finden**: [Der erste Termin](help:events/first-event), [Termine ändern](help:events/edit), [Ansichten](help:events/views) und [Suchen und Filtern](help:events/search-filter).
 - **Arbeit sparen**: mit [Vorlagen](help:organize/templates), [Terminserien](help:organize/series), [Import](help:organize/import) und [Sammelaktionen](help:organize/bulk).
-- **Orte, Besonderheiten und Zielgruppen pflegen**: siehe [Termine organisieren](help:organize/index).
+- **Orte, Besonderheiten und Gruppen pflegen**: siehe [Termine organisieren](help:organize/index).
 - **den Kalender veröffentlichen oder abonnieren**: siehe [Veröffentlichen](help:publishing/index) und [Kalender abonnieren](help:publishing/subscribe).
 - **Mitglieder einladen**: siehe [Team](help:team/index) und [Einladungen](help:team/invitations).
 - **einen KI-Assistenten verbinden**: siehe [KI-Assistenten](help:ai-assistants/index).

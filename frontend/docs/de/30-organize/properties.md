@@ -1,7 +1,7 @@
 ---
 title: Besonderheiten
 order: 30
-description: Merkmale mit Symbol, die am Termin im Kalender erscheinen.
+description: Besonderheiten mit Symbol, die am Termin im Kalender erscheinen.
 ---
 
 # Besonderheiten
@@ -10,7 +10,7 @@ description: Merkmale mit Symbol, die am Termin im Kalender erscheinen.
 Besonderheiten anlegen, ändern und löschen dürfen Bearbeiter und Admins. Betrachter sehen sie nur.
 :::
 
-Besonderheiten sind Merkmale mit einem Symbol (Emoji), z. B. „Schützentracht“. Sie erscheinen am Termin im Kalender. Sie gehören zu einem einzelnen Kalender.
+Besonderheiten haben ein Symbol (Emoji), z. B. „Schützentracht“. Sie erscheinen am Termin im Kalender. Sie gehören zu einem einzelnen Kalender.
 
 ## Wo finde ich sie?
 

@@ -10,7 +10,7 @@ The event list shows all events of the calendar at a glance, including far-away 
 
 ## What you see
 
-Events are grouped by month in a table with the columns **Name**, **Date**, **Time**, **Location**, **Audiences**, **Features** and **Status**. An icon after the name shows properties that have an emoji; “Recurring” marks events of a series. Below the title you see how many events the calendar holds. At first 100 events are shown; use **show more** to load more.
+Events are grouped by month in a table with the columns **Name**, **Date**, **Time**, **Location**, **Audiences**, **Extras** and **Status**. An icon after the name shows badges that have an emoji; “Recurring” marks events of a series. Below the title you see how many events the calendar holds. At first 100 events are shown; use **show more** to load more.
 
 Click **Name**, **Date**, **Location** or **Status** to sort the list.
 
@@ -31,7 +31,7 @@ Click an event in the **Name** column. It opens above the list; search, tab and 
 
 ## Search and filter
 
-Above the table you search the name with **Search events…** and filter by target group. **Reset filters** clears the target group filters. More under [Search and filter](help:events/search-filter).
+Above the table you search the name with **Search events…** and filter by audience. **Reset filters** clears the audience filters. More under [Search and filter](help:events/search-filter).
 
 ## Create new events
 

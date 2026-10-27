@@ -2,7 +2,7 @@
 
 A web app for clubs to manage and publish event calendars.
 
-A **Club** has one or more **Calendars** containing events, event templates, locations, and reference data (properties, features, target groups). Calendars can be published as **feeds** (ICS + web), either public or protected by a shared secret. Users sign in with email/password, Google/Microsoft SSO, or WebAuthn passkeys; email addresses are verified via double opt-in.
+A **Club** has one or more **Calendars** containing events, event templates, locations, and reference data (badges (properties), extras (features), audiences (target groups)). Calendars can be published as **feeds** (ICS + web), either public or protected by a shared secret. Users sign in with email/password, Google/Microsoft SSO, or WebAuthn passkeys; email addresses are verified via double opt-in.
 
 ## Tech Stack
 

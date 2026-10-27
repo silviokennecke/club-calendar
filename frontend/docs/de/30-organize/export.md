@@ -18,7 +18,7 @@ Du kannst Termine als ICS-Datei herunterladen, zum Beispiel als Sicherung oder u
 3. Wähle beim **Status**, welche Termine in die Datei sollen:
    - **Nur veröffentlichte Termine**: genau das, was auch Gäste sehen
    - **Auch Entwürfe**: zusätzlich die Entwürfe deines Vereins
-4. Optional filterst du unter **Gruppen** nach Zielgruppen. Ohne Auswahl werden alle exportiert.
+4. Optional filterst du unter **Gruppen** nach Gruppen. Ohne Auswahl werden alle exportiert.
 5. Die **Vorschau** nennt die Zahl der Termine. Sind es null, ändere Zeitraum oder Auswahl.
 6. Klicke auf **ICS-Datei laden**.
 

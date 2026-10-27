@@ -290,8 +290,8 @@
       "mapLabel": "Map with a marker for {{place}}",
       "mapUnavailable": "The map is not available right now. The address is shown above.",
       "openMap": "Open in maps app",
-      "properties": "Properties",
-      "features": "Features",
+      "properties": "Badges",
+      "features": "Extras",
       "audiences": "Audiences",
       "note": "Note",
       "addToCalendar": "Add to calendar",
@@ -331,10 +331,10 @@
       "more": "Showing {{shown}} of {{total}} matches. Refine your search.",
       "results_one": "1 result",
       "results_other": "{{count}} results",
-      "placeholderAll": "Name, note, place or feature…"
+      "placeholderAll": "Name, note, place or extra…"
     },
     "filter": {
-      "label": "Filter by target group",
+      "label": "Filter by audience",
       "reset": "Reset filters"
     },
     "cell": {
@@ -422,7 +422,7 @@
         "time": "Time",
         "place": "Location",
         "audiences": "Audiences",
-        "features": "Features",
+        "features": "Extras",
         "status": "Status"
       },
       "selectOne": "Select {{name}} on {{date}}",
@@ -488,9 +488,9 @@
         "assign": {
           "label": "Assign",
           "search": "Search assignments",
-          "targetGroups": "Target groups",
-          "properties": "Properties",
-          "features": "Features",
+          "targetGroups": "Audiences",
+          "properties": "Badges",
+          "features": "Extras",
           "none": "Nothing found.",
           "hint": "Added to the events. Existing assignments are kept.",
           "apply_zero": "Add",
@@ -570,7 +570,7 @@
         "basic": "Basics",
         "status": "Status",
         "place": "Location",
-        "tags": "Properties, features and audiences",
+        "tags": "Badges, extras and audiences",
         "note": "Note"
       },
       "name": "Name",
@@ -608,10 +608,10 @@
           "failedText": "Check your connection and try again."
         }
       },
-      "properties": "Properties",
-      "createProperty": "Create new property",
-      "features": "Features",
-      "createFeature": "Create new feature",
+      "properties": "Badges",
+      "createProperty": "Create new badge",
+      "features": "Extras",
+      "createFeature": "Create new extra",
       "targetGroups": "Audiences",
       "createTargetGroup": "Create new audience",
       "targetGroupsHint": "Without a selection the event is for everyone.",
@@ -792,7 +792,7 @@
         "text": "Please check your connection and try again."
       },
       "ics": {
-        "features": "Features",
+        "features": "Extras",
         "targetGroups": "Audiences"
       }
     },
@@ -1029,7 +1029,7 @@
       "checking": "Checking events …",
       "summaryLabel": "Summary and import",
       "loadError": {
-        "title": "Places, properties or audiences could not be loaded",
+        "title": "Places, badges or audiences could not be loaded",
         "text": "Without them the import cannot be started safely.",
         "retry": "Reload"
       },
@@ -1124,7 +1124,7 @@
     "noPlace": "No default place",
     "audiences": "Audiences",
     "everyone": "Everyone",
-    "extras": "Properties and features",
+    "extras": "Badges and extras",
     "noExtras": "None",
     "deleteLabel": "Delete template {{name}}",
     "useTemplate": "Event from template",
@@ -1218,9 +1218,9 @@
     },
     "duplicate": {
       "copyName": "Copy of {{name}}",
-      "done": "Calendar duplicated. You are now in the copy. Locations and audiences belong to the club and are not copied; properties, features and templates are.",
+      "done": "Calendar duplicated. You are now in the copy. Locations and audiences belong to the club and are not copied; badges, extras and templates are.",
       "failed": "The calendar could not be duplicated. Please try again.",
-      "doneStay": "Calendar “{{name}}” was created. Locations and audiences belong to the club and are not copied; properties, features and templates are."
+      "doneStay": "Calendar “{{name}}” was created. Locations and audiences belong to the club and are not copied; badges, extras and templates are."
     },
     "delete": {
       "confirmTitle": "Delete calendar “{{name}}”?",
@@ -1283,25 +1283,25 @@
         "duplicate": "This name already exists. Please choose another."
       },
       "properties": {
-        "description": "Properties are characteristics with a symbol, e.g. costume. They appear on the event in the calendar.",
-        "addTitle": "Add a new property",
-        "create": "Create property",
+        "description": "Badges are labels with a symbol, e.g. costume. They appear on the event in the calendar.",
+        "addTitle": "Add a new badge",
+        "create": "Create badge",
         "placeholder": "e.g. Costume…",
-        "emptyTitle": "No properties yet",
-        "emptyText": "Create the first property, for example “Costume”. It then appears on the event in the calendar.",
-        "emptyReadOnly": "This calendar has no properties.",
-        "listTitle": "Existing properties ({{count}})",
-        "created": "Property “{{name}}” created",
+        "emptyTitle": "No badges yet",
+        "emptyText": "Create the first badge, for example “Costume”. It then appears on the event in the calendar.",
+        "emptyReadOnly": "This calendar has no badges.",
+        "listTitle": "Existing badges ({{count}})",
+        "created": "Badge “{{name}}” created",
         "deleted": "“{{name}}” deleted",
-        "deleteFailed": "The property “{{name}}” could not be deleted.",
-        "createFailed": "The property could not be created. Please try again.",
-        "loadError": "The properties could not be loaded.",
+        "deleteFailed": "The badge “{{name}}” could not be deleted.",
+        "createFailed": "The badge could not be created. Please try again.",
+        "loadError": "The badges could not be loaded.",
         "editLabel": "Edit {{name}}",
         "deleteLabel": "Delete {{name}}",
-        "editTitle": "Edit property",
-        "deleteTitle": "Delete property “{{name}}”?",
-        "deleteText": "The property is removed from the list.",
-        "deleteConfirm": "Delete property",
+        "editTitle": "Edit badge",
+        "deleteTitle": "Delete badge “{{name}}”?",
+        "deleteText": "The badge is removed from the list.",
+        "deleteConfirm": "Delete badge",
         "consequence": {
           "loading": "Working out the affected events …",
           "unknown": "The link is removed from all events and templates with “{{name}}”. The events themselves stay.",
@@ -1316,25 +1316,25 @@
         "editText": "Change the name and symbol of “{{name}}”."
       },
       "features": {
-        "description": "Features are extras at an event, e.g. bonus shooting. You pick them when creating an event.",
-        "addTitle": "Add a new feature",
-        "create": "Create feature",
+        "description": "Extras are optional add-ons at an event, e.g. bonus shooting. You pick them when creating an event.",
+        "addTitle": "Add a new extra",
+        "create": "Create extra",
         "placeholder": "e.g. Bonus shooting…",
-        "emptyTitle": "No features yet",
-        "emptyText": "Create the first feature, for example “Bonus shooting”. Features show extras at an event.",
-        "emptyReadOnly": "This calendar has no features.",
-        "listTitle": "Existing features ({{count}})",
-        "created": "Feature “{{name}}” created",
+        "emptyTitle": "No extras yet",
+        "emptyText": "Create the first extra, for example “Bonus shooting”. It then appears on the event.",
+        "emptyReadOnly": "This calendar has no extras.",
+        "listTitle": "Existing extras ({{count}})",
+        "created": "Extra “{{name}}” created",
         "deleted": "“{{name}}” deleted",
-        "deleteFailed": "The feature “{{name}}” could not be deleted.",
-        "createFailed": "The feature could not be created. Please try again.",
-        "loadError": "The features could not be loaded.",
+        "deleteFailed": "The extra “{{name}}” could not be deleted.",
+        "createFailed": "The extra could not be created. Please try again.",
+        "loadError": "The extras could not be loaded.",
         "editLabel": "Edit {{name}}",
         "deleteLabel": "Delete {{name}}",
-        "editTitle": "Edit feature",
-        "deleteTitle": "Delete feature “{{name}}”?",
-        "deleteText": "The feature is removed from the list.",
-        "deleteConfirm": "Delete feature",
+        "editTitle": "Edit extra",
+        "deleteTitle": "Delete extra “{{name}}”?",
+        "deleteText": "The extra is removed from the list.",
+        "deleteConfirm": "Delete extra",
         "consequence": {
           "loading": "Working out the affected events …",
           "unknown": "The link is removed from all events and templates with “{{name}}”. The events themselves stay.",
@@ -1704,9 +1704,9 @@
     "settingsTabs": {
       "label": "Calendar settings",
       "general": "General",
-      "properties": "Properties",
-      "features": "Features",
-      "targetGroups": "Target groups",
+      "properties": "Badges",
+      "features": "Extras",
+      "targetGroups": "Audiences",
       "locations": "Locations",
       "holidays": "Holidays",
       "clubLabel": "Club settings",
@@ -2324,7 +2324,7 @@
     },
     "scope": {
       "read": "View clubs, calendars, events, templates and feeds",
-      "write": "Create draft events, target groups, properties, features, locations and non-public feeds, and edit event templates"
+      "write": "Create draft events, audiences, badges, extras, locations and non-public feeds, and edit event templates"
     }
   },
   "docs": {

@@ -23,7 +23,7 @@ Jeder Termin hat einen Status:
 - **Entwurf**: nur dein Verein sieht ihn.
 - **Veröffentlicht**: er erscheint in den [Feeds](help:publishing/feeds).
 
-Die Reiter **Alle**, **Veröffentlicht** und **Entwurf** filtern danach. Die Zahl am Reiter sagt, wie viele Termine dort liegen. Suche und Zielgruppenfilter wirken auf die Zahlen mit.
+Die Reiter **Alle**, **Veröffentlicht** und **Entwurf** filtern danach. Die Zahl am Reiter sagt, wie viele Termine dort liegen. Suche und Gruppenfilter wirken auf die Zahlen mit.
 
 ## Termin öffnen
 
@@ -31,7 +31,7 @@ Klicke in der Spalte **Name** auf einen Termin. Er öffnet sich über der Liste,
 
 ## Suchen und filtern
 
-Über der Tabelle suchst du mit **Termine suchen…** im Namen und filterst nach Zielgruppen. **Filter zurücksetzen** hebt die Zielgruppenfilter auf. Mehr dazu unter [Suchen und filtern](help:events/search-filter).
+Über der Tabelle suchst du mit **Termine suchen…** im Namen und filterst nach Gruppen. **Filter zurücksetzen** hebt die Gruppenfilter auf. Mehr dazu unter [Suchen und filtern](help:events/search-filter).
 
 ## Neue Termine anlegen
 
