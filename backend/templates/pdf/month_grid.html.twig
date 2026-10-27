@@ -1,0 +1,50 @@
+{% extends 'pdf/base.html.twig' %}
+
+{% block content %}
+    <style>
+        table.grid { table-layout: fixed; width: 100%; border-collapse: collapse; }
+        table.grid th { text-align: center; width: 14.2857%; border: 0.5pt solid #888888; }
+        table.grid td { height: 29mm; border: 0.5pt solid #999999; padding: 2pt; vertical-align: top; overflow: hidden; }
+        table.grid td.pad { background-color: #ffffff; border-color: #dddddd; }
+        table.grid td.out { background-color: #eeeeee; color: #999999; }
+        .num { font-weight: bold; font-size: 8pt; margin: 0 0 2pt 0; }
+        .ev { font-size: 6.5pt; margin: 0 0 1.5pt 0; padding: 0 0 0 2pt; border-left: 1.5pt solid #4a6fa5; }
+        .ev .t { color: #555555; }
+        .more { font-size: 6.5pt; color: #555555; font-weight: bold; }
+        .month-page { page-break-before: always; }
+        .month-first { page-break-before: avoid; }
+    </style>
+    {% for month in months %}
+        <div class="{{ loop.first ? 'month-first' : 'month-page' }}">
+            <h2>{{ month.label }}</h2>
+            <table class="grid">
+                <thead>
+                    <tr>{% for wd in weekdays %}<th>{{ wd }}</th>{% endfor %}</tr>
+                </thead>
+                <tbody>
+                {% for week in month.weeks %}
+                    <tr>
+                    {% for cell in week %}
+                        {% if cell is null %}
+                            <td class="pad">&nbsp;</td>
+                        {% else %}
+                            <td class="{{ cell.inRange ? 'in' : 'out' }}">
+                                <div class="num">{{ cell.number }}</div>
+                                {% for e in cell.events %}
+                                    <div class="ev">
+                                        {%- if e.begin is not null %}<span class="t">{{ e.begin }}</span> {% endif -%}
+                                        {%- for path in e.emojiPaths %}<img class="emoji" src="{{ path }}">{% endfor -%}
+                                        {{ e.cellName }}{% if e.draft %} <span class="draft">({{ 'draft'|trans({}, 'pdf', locale) }})</span>{% endif %}
+                                    </div>
+                                {% endfor %}
+                                {% if cell.more > 0 %}<div class="more">{{ 'more'|trans({'count': cell.more}, 'pdf', locale) }}</div>{% endif %}
+                            </td>
+                        {% endif %}
+                    {% endfor %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endfor %}
+{% endblock %}

@@ -192,4 +192,64 @@ class PdfExportServiceTest extends KernelTestCase
         $this->expectException(ApiProblemException::class);
         $this->service->render($this->calendar, $filter, $this->agenda(), $this->user);
     }
+
+    private function month(): PdfOptions
+    {
+        return new PdfOptions(PdfLayout::MonthGrid);
+    }
+
+    public function testMonthGridWeekdayOrderForBothFirstDays(): void
+    {
+        $mon = $this->service->renderHtml($this->calendar, $this->filter(), $this->month(), $this->user);
+        self::assertMatchesRegularExpression('/<th>Mo\.<\/th>\s*<th>Di\.<\/th>.*<th>So\.<\/th>/s', $mon);
+        self::assertStringContainsString('Juli 2026', $mon);
+        self::assertStringContainsString('table-layout: fixed', $mon);
+
+        $this->user->setFirstDayOfWeek(0);
+        $sun = $this->service->renderHtml($this->calendar, $this->filter(), $this->month(), $this->user);
+        self::assertMatchesRegularExpression('/<th>So\.<\/th>\s*<th>Mo\.<\/th>/s', $sun);
+    }
+
+    public function testMonthGridPlacesEventsInCellsAndMultiDay(): void
+    {
+        $this->event('Training', '2026-07-04');
+        $e = $this->event('Lager', '2026-07-30');
+        $e->setDateEnd(new \DateTimeImmutable('2026-08-02'));
+        $e->setIsAllDay(true);
+        $this->em->flush();
+
+        $model = $this->service->buildViewModel($this->calendar, $this->filter('2026-07-01', '2026-08-31'), $this->month(), $this->user);
+        $cells = [];
+        foreach ($model['months'] as $m) {
+            foreach (array_filter(array_merge(...$m['weeks'])) as $c) {
+                $cells[$c['date']] = $c;
+            }
+        }
+        self::assertSame('Training', $cells['2026-07-04']['events'][0]['name']);
+        self::assertSame([], $cells['2026-07-05']['events']);
+        foreach (['2026-07-30', '2026-07-31', '2026-08-01', '2026-08-02'] as $day) {
+            self::assertSame('Lager', $cells[$day]['events'][0]['name'], $day);
+        }
+        self::assertSame([], $cells['2026-08-03']['events']);
+        self::assertCount(2, $model['months']);
+    }
+
+    public function testMonthGridOverflowAndPdf(): void
+    {
+        foreach (range(1, 7) as $i) {
+            $this->event("Termin $i", '2026-07-04');
+        }
+        $p = TestHelper::createProperty($this->em, $this->calendar, 'Fest', "\u{1F389}");
+        $this->event('Mit Emoji', '2026-07-05', [$p]);
+
+        $html = $this->service->renderHtml($this->calendar, $this->filter(), $this->month(), $this->user);
+        self::assertStringContainsString('+3 weitere', $html);
+        self::assertStringContainsString('Legende', $html);
+
+        $pdf = $this->service->render($this->calendar, $this->filter(), $this->month(), $this->user);
+        self::assertStringStartsWith('%PDF', $pdf);
+        if (false !== ($out = getenv('PDF_OUT_MONTH'))) {
+            file_put_contents($out, $this->service->render($this->calendar, $this->filter('2026-07-01', '2026-08-31'), $this->month(), $this->user));
+        }
+    }
 }

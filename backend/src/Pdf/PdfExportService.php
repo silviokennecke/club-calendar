@@ -113,6 +113,10 @@ class PdfExportService
 
         return $model + match ($options->layout) {
             PdfLayout::Agenda => ['rows' => $this->agendaRows($entries, $locale)],
+            PdfLayout::MonthGrid => [
+                'months' => PdfMonthGrid::build($from, $to, $firstDayOfWeek, $entries, $locale),
+                'weekdays' => PdfMonthGrid::weekdayHeader($firstDayOfWeek, $locale),
+            ],
             default => throw new \LogicException(sprintf('Layout "%s" is not implemented yet.', $options->layout->value)),
         };
     }
