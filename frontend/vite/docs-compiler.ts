@@ -40,6 +40,8 @@ interface Source {
   slug: string;
   meta: DocMeta;
   body: string;
+  /** Numeric folder prefix of the section (`10-name`), null without prefix; -1 for root pages. */
+  rank: number | null;
 }
 
 const fail = (file: string, msg: string): never => {
@@ -56,11 +58,25 @@ function listMarkdown(dir: string): string[] {
 
 function readSources(root: string, lang: Lang): Source[] {
   const langDir = path.join(root, lang);
-  return listMarkdown(langDir)
+  const sources = listMarkdown(langDir)
     .sort()
     .map((file) => {
       const rel = path.relative(root, file).split(path.sep).join("/");
-      const slug = path.relative(langDir, file).split(path.sep).join("/").replace(/\.md$/, "");
+      const parts = path
+        .relative(langDir, file)
+        .split(path.sep)
+        .join("/")
+        .replace(/\.md$/, "")
+        .split("/");
+      let rank: number | null = parts.length > 1 ? null : -1;
+      if (parts.length > 1) {
+        const pre = /^(\d{2})-(.+)$/.exec(parts[0]);
+        if (pre) {
+          rank = Number(pre[1]);
+          parts[0] = pre[2];
+        }
+      }
+      const slug = parts.join("/");
       if (!SLUG_RE.test(slug))
         fail(rel, `invalid slug "${slug}" (lower-case a-z, 0-9, "-" and "/")`);
       const { data, content } = matter(fs.readFileSync(file, "utf8"));
@@ -77,16 +93,62 @@ function readSources(root: string, lang: Lang): Source[] {
         order: data.order ?? 100,
         ...(data.description ? { description: data.description } : {}),
       };
-      return { file, rel, slug, meta, body: content };
+      return { file, rel, slug, meta, body: content, rank };
     });
+  const seen = new Map<string, string>();
+  const prefixes = new Map<number, string>();
+  for (const src of sources) {
+    const prev = seen.get(src.slug);
+    if (prev) fail(src.rel, `duplicate slug "${src.slug}" (also ${prev})`);
+    seen.set(src.slug, src.rel);
+    if (src.rank !== null && src.rank >= 0) {
+      const other = prefixes.get(src.rank);
+      if (other !== undefined && other !== src.meta.section)
+        fail(
+          src.rel,
+          `duplicate section prefix ${src.rank} ("${other}" and "${src.meta.section}")`,
+        );
+      prefixes.set(src.rank, src.meta.section);
+    }
+  }
+  return sources;
 }
 
-// Callouts (`:::note` ... `:::`) are cut out of the source line-wise (fenced code is skipped) and
-// parsed on their own; a dedicated micro-syntax avoids remark-directive eating text like "10:30".
-type Segment = { callout?: string; text: string };
-function splitCallouts(rel: string, body: string): Segment[] {
+// Callouts and tabs are cut out of the source line-wise (fenced code is skipped) and parsed on their
+// own; a dedicated micro-syntax avoids remark-directive eating text like "10:30".
+//   :::note|tip|warning            ... :::
+//   :::tabs [key=<param>] [platform]
+//   :::tab <id> <label>            ... :::      (repeat; only whitespace between tabs)
+//   :::                                         (closes the group)
+// Nothing nests: callouts and tab groups are not allowed inside a tab or each other.
+interface TabSrc {
+  id: string;
+  label: string;
+  text: string;
+}
+interface TabsSrc {
+  key: string;
+  platform: boolean;
+  tabs: TabSrc[];
+}
+type Segment = { callout?: string; tabs?: TabsSrc; text: string };
+
+function parseTabsAttrs(rel: string, rest: string): Omit<TabsSrc, "tabs"> {
+  const out = { key: "tab", platform: false };
+  for (const tok of rest.split(/\s+/).filter(Boolean)) {
+    const kv = /^key=([a-z][\w-]*)$/i.exec(tok);
+    if (kv) out.key = kv[1];
+    else if (tok === "platform") out.platform = true;
+    else fail(rel, `unknown attribute "${tok}" on ":::tabs" (key=<name>, platform)`);
+  }
+  return out;
+}
+
+function splitSegments(rel: string, body: string): Segment[] {
   const segments: Segment[] = [];
   let cur: Segment = { text: "" };
+  let group: TabsSrc | null = null;
+  let tab: TabSrc | null = null;
   let fence: string | null = null;
   const push = () => {
     if (cur.callout || cur.text.trim()) segments.push(cur);
@@ -97,20 +159,50 @@ function splitCallouts(rel: string, body: string): Segment[] {
       if (fence === null) fence = fenceMatch[1][0];
       else if (fenceMatch[1][0] === fence) fence = null;
     }
-    const open = fence === null ? /^:::(\w+)\s*$/.exec(line) : null;
+    const open = fence === null ? /^:::(\w+)(?:[ \t]+(.*?))?\s*$/.exec(line) : null;
     if (open) {
-      if (cur.callout) fail(rel, "callouts cannot be nested");
-      if (!CALLOUTS.has(open[1])) fail(rel, `unknown callout ":::${open[1]}" (note, tip, warning)`);
-      push();
-      cur = { callout: open[1], text: "" };
+      const [, name, rest = ""] = open;
+      if (name === "tabs") {
+        if (group || cur.callout) fail(rel, "tab groups cannot be nested");
+        push();
+        group = { ...parseTabsAttrs(rel, rest), tabs: [] };
+      } else if (name === "tab") {
+        if (!group) fail(rel, '":::tab" outside of a ":::tabs" group');
+        if (tab) fail(rel, 'tabs cannot be nested (close ":::tab" with ":::" first)');
+        const m = /^([\w-]+)\s+(\S.*)$/.exec(rest);
+        if (!m) fail(rel, 'tab needs an id and a label: ":::tab <id> <label>"');
+        if (group!.tabs.some((t) => t.id === m![1]))
+          fail(rel, `duplicate tab id "${m![1]}" in ":::tabs"`);
+        tab = { id: m![1], label: m![2], text: "" };
+      } else {
+        if (group || cur.callout) fail(rel, "callouts cannot be nested or used inside tabs");
+        if (!CALLOUTS.has(name)) fail(rel, `unknown callout ":::${name}" (note, tip, warning)`);
+        push();
+        cur = { callout: name, text: "" };
+      }
     } else if (fence === null && /^:::\s*$/.test(line)) {
-      if (!cur.callout) fail(rel, 'closing ":::" without an opening callout');
-      push();
-      cur = { text: "" };
+      if (tab) {
+        group!.tabs.push(tab);
+        tab = null;
+      } else if (group) {
+        if (group.tabs.length === 0) fail(rel, 'empty ":::tabs" group');
+        segments.push({ tabs: group, text: "" });
+        group = null;
+        cur = { text: "" };
+      } else if (cur.callout) {
+        push();
+        cur = { text: "" };
+      } else fail(rel, 'closing ":::" without an opening callout or tab group');
+    } else if (tab) {
+      tab.text += line + "\n";
+    } else if (group) {
+      if (line.trim()) fail(rel, 'content between tabs: put it inside a ":::tab" block');
     } else {
       cur.text += line + "\n";
     }
   }
+  if (tab) fail(rel, `tab ":::tab ${tab.id}" is not closed`);
+  if (group) fail(rel, '":::tabs" group is not closed');
   if (cur.callout) fail(rel, `callout ":::${cur.callout}" is not closed`);
   push();
   return segments;
@@ -150,7 +242,30 @@ async function compilePage(
   const shots: string[] = [];
   const children: MdContent[] = [];
 
-  for (const seg of splitCallouts(src.rel, src.body)) {
+  const tabKeys = new Set<string>();
+  for (const seg of splitSegments(src.rel, src.body)) {
+    if (seg.tabs) {
+      if (tabKeys.has(seg.tabs.key))
+        fail(src.rel, `duplicate tabs key "${seg.tabs.key}" (use key=<name> to tell groups apart)`);
+      tabKeys.add(seg.tabs.key);
+      const panels: Blockquote[] = seg.tabs.tabs.map((t) => ({
+        type: "blockquote",
+        children: (mdProcessor.parse(t.text) as MdRoot).children as Blockquote["children"],
+        data: { hName: "div", hProperties: { "data-tab": t.id, "data-label": t.label } },
+      }));
+      children.push({
+        type: "blockquote",
+        children: panels,
+        data: {
+          hName: "div",
+          hProperties: {
+            "data-tabs": seg.tabs.key,
+            ...(seg.tabs.platform ? { "data-platform": true } : {}),
+          },
+        },
+      });
+      continue;
+    }
     const parsed = mdProcessor.parse(seg.text) as MdRoot;
     if (seg.callout) {
       const box: Blockquote = {
@@ -251,8 +366,17 @@ function buildSearch(pages: CompiledPage[], hastByPage: Map<string, HastRoot>): 
   return JSON.stringify(ms);
 }
 
-const byNav = (a: DocMeta, b: DocMeta) =>
-  a.section.localeCompare(b.section) || a.order - b.order || a.title.localeCompare(b.title);
+/** Root pages first, then sections by folder prefix (unprefixed last, alphabetical), pages by order, title. */
+function sortSources(list: Source[]): Source[] {
+  const rank = (s: Source) => s.rank ?? Infinity;
+  return [...list].sort(
+    (a, b) =>
+      (rank(a) === rank(b) ? 0 : rank(a) < rank(b) ? -1 : 1) ||
+      a.meta.section.localeCompare(b.meta.section) ||
+      a.meta.order - b.meta.order ||
+      a.meta.title.localeCompare(b.meta.title),
+  );
+}
 
 export async function compileDocs(root: string): Promise<CompiledDocs> {
   const sources = Object.fromEntries(LANGS.map((l) => [l, readSources(root, l)])) as Record<
@@ -283,10 +407,9 @@ export async function compileDocs(root: string): Promise<CompiledDocs> {
       const { page, hast } = await compilePage(src, lang, root, slugSets[lang]);
       pages[lang][src.slug] = page;
       page.files.forEach((f) => files.add(f));
-      nav[lang].push(src.meta);
       hasts.set(src.slug, hast);
     }
-    nav[lang].sort(byNav);
+    nav[lang] = sortSources(sources[lang]).map((x) => x.meta);
     searchIndex[lang] = buildSearch(Object.values(pages[lang]), hasts);
   }
 
