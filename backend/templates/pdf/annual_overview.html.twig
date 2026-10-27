@@ -51,9 +51,10 @@
     {% if events|length > 0 %}
         <div class="evpage">
             <h2>{{ 'events'|trans({}, 'pdf', locale) }}</h2>
+            {% for chunk in events|batch(30) %}
             <table class="evlist">
                 <tbody>
-                {% for e in events %}
+                {% for e in chunk %}
                     <tr>
                         <td class="c1">{{ e.dateLabel }}</td>
                         <td class="c2">
@@ -73,6 +74,7 @@
                 {% endfor %}
                 </tbody>
             </table>
+            {% endfor %}
         </div>
     {% endif %}
 {% endblock %}
