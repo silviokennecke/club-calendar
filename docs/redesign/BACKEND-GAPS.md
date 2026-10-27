@@ -59,7 +59,6 @@ E2E-Umgebung: `E2E.md`.
   RRULE/Serienkennung (bewusst: Abos sehen so auch einzeln geänderte oder gelöschte Termine richtig). **Kein
   `X-CC-SERIES-ID`** (bewusste Entscheidung, Paket 5): eine Serienkennung im ICS würde Serien-Interna im öffentlichen
   Feed preisgeben; ein Wiederimport erkennt Termine über die UID des Exports.
-- **CSV-Export** ist weder im Design noch gebaut.
 
 ### Listen und Mitglieder
 
