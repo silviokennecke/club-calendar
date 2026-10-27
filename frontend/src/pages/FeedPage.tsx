@@ -16,6 +16,7 @@ import {
   type CalItem,
   type IsoDate,
 } from "@/lib/calendar";
+import { helpPath } from "@/docs/paths";
 import { monthBounds } from "@/lib/events/ics";
 import {
   eventsInRange,
@@ -194,7 +195,7 @@ function FeedHero({
               key: "help",
               icon: "info",
               label: t("feed.subscribeMenu.help"),
-              to: "/help/subscribe",
+              to: helpPath("publishing/subscribe"),
             },
           ]}
         />

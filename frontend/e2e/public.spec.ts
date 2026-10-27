@@ -147,7 +147,7 @@ test.describe("Öffentlicher Kalender", () => {
     await expect(page.getByRole("button", { name: "ICS herunterladen" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Hilfe: So klappt's" })).toHaveAttribute(
       "href",
-      "/help/subscribe",
+      "/help/publishing/subscribe",
     );
     await expect(page.getByText("Bereitgestellt mit Club Calendar")).toBeVisible();
     await expect(page.getByRole("grid")).toBeVisible();

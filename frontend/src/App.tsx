@@ -9,6 +9,7 @@ import GuestRoute from "./components/layout/GuestRoute";
 import { BackgroundRoutes } from "./components/layout/BackgroundRoutes";
 import { LegacyClubSettingsRedirect } from "./components/layout/LegacyClubSettingsRedirect";
 import { NotFoundPage, RouteErrorPage } from "./components/error/ErrorPage";
+import { SubscribeRedirect } from "./components/help/SubscribeRedirect";
 
 import {
   AuthCallbackPage,
@@ -29,7 +30,6 @@ import {
   FeedEditPage,
   FeedPage,
   HelpPage,
-  HelpSubscribePage,
   FeedsPage,
   ForgotPasswordPage,
   HolidayCalendarsPage,
@@ -73,7 +73,7 @@ function AppRoutes() {
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/auth/verify-email" element={<EmailVerifyPage />} />
           <Route path="/feed/:feedId" element={<FeedPage />} />
-          <Route path="/help/subscribe" element={<HelpSubscribePage />} />
+          <Route path="/help/subscribe" element={<SubscribeRedirect />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="/help/*" element={<HelpPage />} />
           {/* Handles the signed-out case itself: the token survives the login (sessionStorage). */}
