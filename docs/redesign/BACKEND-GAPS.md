@@ -160,3 +160,4 @@ Nicht im Audit, gering:
   Offen: `style-src 'unsafe-inline'` bleibt (React-`style=`-Attribute, emoji-mart und mapbox-gl injizieren Styles).
 - **Nach einem Deploy** fehlen die Chunks des vorigen Releases; das Frontend lädt bei einem fehlgeschlagenen
   Chunk-Import einmal neu (`vite:preloadError` in `frontend/src/main.tsx`).
+- **PDF-Export:** `GET /api/calendars/{id}/events.pdf` (dompdf) braucht `ext-gd` und `ext-intl` (das Docker-Image installiert beide). Die Route hebt `memory_limit` auf 512M und die Ausführungszeit auf 60 s an (nur für sich, danach zurückgesetzt); Proxy-Timeouts auf `/api/*` müssen mindestens 60 s erlauben. dompdf schreibt Fonts/Temp nach `var/cache/<env>/pdf` (für den PHP-Nutzer beschreibbar). Rate-Limit 10/Nutzer und 30/IP je 10 Minuten.

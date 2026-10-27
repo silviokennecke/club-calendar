@@ -21,7 +21,7 @@ A **Club** has one or more **Calendars** containing events, event templates, loc
 
 ### Prerequisites
 
-- PHP 8.4 with Composer
+- PHP 8.4 with Composer (extensions `gd` and `intl` are required for the PDF export)
 - [Symfony CLI](https://symfony.com/download)
 - Node.js 22 (see `.nvmrc`) and npm
 - MySQL 8 — either your own instance or the optional `docker-compose.yml` (Docker is not required by any npm/composer script)
