@@ -252,4 +252,53 @@ class PdfExportServiceTest extends KernelTestCase
             file_put_contents($out, $this->service->render($this->calendar, $this->filter('2026-07-01', '2026-08-31'), $this->month(), $this->user));
         }
     }
+
+    public function testQuarterOverviewHtmlPagesAndWeekdayOrder(): void
+    {
+        $this->event('Training', '2026-08-04');
+        $quarter = new PdfOptions(PdfLayout::QuarterOverview);
+        $filter = $this->filter('2026-07-01', '2026-11-30');
+
+        $model = $this->service->buildViewModel($this->calendar, $filter, $quarter, $this->user);
+        self::assertSame([3, 2], array_map('count', $model['pages']));
+
+        $html = $this->service->renderHtml($this->calendar, $filter, $quarter, $this->user);
+        self::assertStringContainsString('Juli 2026', $html);
+        self::assertStringContainsString('November 2026', $html);
+        self::assertStringContainsString('Training', $html);
+        self::assertMatchesRegularExpression('/<th>Mo\.<\/th>\s*<th>Di\.<\/th>/', $html);
+        self::assertStringContainsString('A4 landscape', $html);
+        self::assertSame(3 + 3, substr_count($html, '<td class="qm">'), 'one cell per column, last page padded to three');
+
+        $this->user->setFirstDayOfWeek(0);
+        self::assertMatchesRegularExpression('/<th>So\.<\/th>\s*<th>Mo\.<\/th>/', $this->service->renderHtml($this->calendar, $filter, $quarter, $this->user));
+    }
+
+    public function testQuarterOverviewPdfGermanAndEnglishWithLegend(): void
+    {
+        $p = TestHelper::createProperty($this->em, $this->calendar, 'Fest', "\u{1F389}");
+        $this->event('Mit Emoji', '2026-07-05', [$p]);
+        $quarter = new PdfOptions(PdfLayout::QuarterOverview);
+        $filter = $this->filter('2026-07-01', '2026-09-30');
+
+        $de = $this->service->renderHtml($this->calendar, $filter, $quarter, $this->user);
+        self::assertStringContainsString('Legende', $de);
+        self::assertStringStartsWith('%PDF', $this->service->render($this->calendar, $filter, $quarter, $this->user));
+
+        $this->user->setLanguage('en');
+        $en = $this->service->renderHtml($this->calendar, $filter, $quarter, $this->user);
+        self::assertStringContainsString('July 2026', $en);
+        self::assertStringContainsString('Legend', $en);
+        $pdf = $this->service->render($this->calendar, $filter, $quarter, $this->user);
+        self::assertStringStartsWith('%PDF', $pdf);
+        if (false !== ($out = getenv('PDF_OUT_QUARTER'))) {
+            file_put_contents($out, $pdf);
+        }
+    }
+
+    public function testQuarterOverviewRejectedForTwoMonths(): void
+    {
+        $this->expectException(ApiProblemException::class);
+        $this->service->buildViewModel($this->calendar, $this->filter('2026-07-01', '2026-08-31'), new PdfOptions(PdfLayout::QuarterOverview), $this->user);
+    }
 }
