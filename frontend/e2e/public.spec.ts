@@ -149,6 +149,12 @@ test.describe("Öffentlicher Kalender", () => {
       "href",
       "/help/publishing/subscribe",
     );
+    const footer = page.getByRole("contentinfo");
+    await expect(footer.getByRole("link", { name: "Kalender abonnieren – Hilfe" })).toHaveAttribute(
+      "href",
+      "/help/publishing/subscribe",
+    );
+    await expect(footer.getByRole("link", { name: "Hilfe", exact: true })).toHaveCount(0);
     await expect(page.getByText("Bereitgestellt mit Club Calendar")).toBeVisible();
     await expect(page.getByRole("grid")).toBeVisible();
     await expect(page.getByText("Zeige 3 von 3 Terminen")).toBeVisible();

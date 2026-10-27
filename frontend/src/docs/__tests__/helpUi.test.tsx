@@ -53,6 +53,10 @@ const pages: Record<string, DocPage> = {
   },
 };
 
+vi.mock("@/components/legal/LegalLinks", () => ({
+  LegalLinks: () => <span data-testid="legal-links" />,
+}));
+
 vi.mock("virtual:docs", () => ({
   docNav: {
     de: [
@@ -280,6 +284,14 @@ describe("HelpPage", () => {
       "/help/getting-started/first-steps",
     );
     await waitFor(() => expect(document.title).toContain("Hilfe"));
+  });
+
+  it("shows the legal footer and no help link in it", async () => {
+    renderAt("/help");
+    await screen.findByRole("heading", { level: 1, name: /Hilfe Start/ });
+    const footer = screen.getByRole("contentinfo");
+    expect(within(footer).getByTestId("legal-links")).toBeInTheDocument();
+    expect(within(footer).queryByRole("link")).not.toBeInTheDocument();
   });
 
   it.each(["/help/", "/help/index"])("renders the index at %s", async (path) => {

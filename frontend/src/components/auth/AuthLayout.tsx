@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/lib/usePageTitle";
 import { LegalLinks } from "@/components/legal/LegalLinks";
 import { HelpCenterLink } from "@/docs/HelpCenterLink";
-import { HelpFooterLink } from "@/components/help/HelpFooterLink";
 import { Icon, LangSwitch, Logo, type Glyph } from "@/components/ui/shared";
 
 interface AuthLayoutProps {
@@ -75,7 +74,6 @@ export function AuthLayout({
     <div className="legal-links">
       <LegalLinks />
       <HelpCenterLink />
-      <HelpFooterLink />
     </div>
   );
   return (

@@ -92,6 +92,7 @@ export default function FeedPage() {
       footerNote={
         feed.data.feed.timezone && t("feed.timeZoneNote", { zone: feed.data.feed.timezone })
       }
+      helpLink={{ to: helpPath("publishing/subscribe"), label: t("shell.helpSubscribe") }}
       hero={<FeedHero data={feed.data} secret={secret} feedId={feedId!} />}
     >
       <FeedCalendar

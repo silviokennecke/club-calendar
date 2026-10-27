@@ -223,6 +223,12 @@ describe("FeedPage", () => {
       "href",
       "/help/publishing/subscribe",
     );
+    // footer: exactly one help link, straight to the subscribe article
+    const footer = screen.getByRole("contentinfo");
+    expect(
+      within(footer).getByRole("link", { name: "Kalender abonnieren – Hilfe" }),
+    ).toHaveAttribute("href", "/help/publishing/subscribe");
+    expect(within(footer).queryByRole("link", { name: "Hilfe" })).not.toBeInTheDocument();
     expect(document.title).toBe(`${FEED_NAME} – Öffentlicher Kalender`);
   });
 
