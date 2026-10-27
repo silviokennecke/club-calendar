@@ -1,7 +1,7 @@
 # PDF Export — Design Spec
 
 **Date:** 2026-06-27
-**Status:** Approved — revised 2026-10-26 (not implemented)
+**Status:** Implemented 2026-10-27 (benchmark in the `php:8.4-fpm-alpine` image: all four layouts, A4/A3, 1000 and 2000 events, peak 64-246 MB, 0.4-6.4 s; caps 366 days / 2000 events, 512M and 60 s unchanged; agenda and annual event lists are split into tables of 30 rows because one huge dompdf table exhausted 512M at 1500 events)
 
 ---
 

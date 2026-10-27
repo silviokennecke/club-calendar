@@ -1,11 +1,16 @@
 {% extends 'pdf/base.html.twig' %}
 
 {% block content %}
-    <table>
-        <colgroup>
-            <col style="width: 17%"><col style="width: 12%"><col style="width: 31%"><col style="width: 20%"><col style="width: 20%">
-        </colgroup>
-        <thead>
+    <style>h3.month { font-size: 10pt; margin: 8pt 0 2pt 0; page-break-after: avoid; }</style>
+    {# Several short tables instead of one huge one: dompdf's table layout grows much faster than linearly #}
+    {% for month in rows %}
+        <h3 class="month">{{ month.label }}</h3>
+        {% for chunk in month.entries|batch(30) %}
+        <table>
+            <colgroup>
+                <col style="width: 17%"><col style="width: 12%"><col style="width: 31%"><col style="width: 20%"><col style="width: 20%">
+            </colgroup>
+            <thead>
             <tr>
                 <th>{{ 'col.date'|trans({}, 'pdf', locale) }}</th>
                 <th>{{ 'col.time'|trans({}, 'pdf', locale) }}</th>
@@ -14,12 +19,8 @@
                 <th>{{ 'col.tags'|trans({}, 'pdf', locale) }}</th>
             </tr>
         </thead>
-        <tbody>
-        {% for month in rows %}
-            <tr>
-                <td colspan="5" style="background-color: #f3f3f3; font-weight: bold;">{{ month.label }}</td>
-            </tr>
-            {% for e in month.entries %}
+            <tbody>
+            {% for e in chunk %}
                 <tr>
                     <td>{{ e.dateLabel }}</td>
                     <td>
@@ -39,7 +40,8 @@
                     </td>
                 </tr>
             {% endfor %}
+            </tbody>
+        </table>
         {% endfor %}
-        </tbody>
-    </table>
+    {% endfor %}
 {% endblock %}
