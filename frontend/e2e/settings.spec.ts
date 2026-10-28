@@ -361,17 +361,23 @@ test.describe("Einstellungen", () => {
     const s = await seed(request, "Settings Feiertage");
     await openSettings(page, s.email, `${s.base}/settings/holiday-calendars`);
     await expect(page.getByRole("heading", { name: "Noch keine Feiertagskalender" })).toBeVisible();
+    // Default source is the predefined OpenHolidays import; the ICS form needs the radio
+    await page.getByRole("radio", { name: "ICS-Adresse" }).check();
     await page.getByRole("button", { name: "Hinzufügen und abrufen" }).click();
     await expect(page.getByRole("alert")).toContainText("Bitte eine ICS-Adresse eingeben.");
     await page.getByLabel(/^Name/).fill("Feiertage Test");
-    await page.getByLabel(/^ICS-Adresse/).fill("https://127.0.0.1:9/nicht-erreichbar.ics");
+    await page
+      .getByRole("textbox", { name: /^ICS-Adresse/ })
+      .fill("https://127.0.0.1:9/nicht-erreichbar.ics");
     await page.getByRole("button", { name: "Hinzufügen und abrufen" }).click();
     await expect(page.getByRole("alert")).toContainText(
       "Die Adresse konnte nicht abgerufen werden.",
     );
     await expect(page.getByLabel(/^Name/)).toHaveValue("Feiertage Test");
     // An address the server accepts but cannot fetch (422 ics_fetch_failed), not only one it rejects
-    await page.getByLabel(/^ICS-Adresse/).fill("https://nicht-erreichbar.invalid/feiertage.ics");
+    await page
+      .getByRole("textbox", { name: /^ICS-Adresse/ })
+      .fill("https://nicht-erreichbar.invalid/feiertage.ics");
     const failed = page.waitForResponse(
       (r) => r.url().endsWith("/holiday-calendars") && r.request().method() === "POST",
     );
