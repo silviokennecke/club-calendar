@@ -61,7 +61,7 @@ test("/help/ und Ordner-URLs lösen auf: Startseite bzw. Standard-Inhaltsverzeic
     await expect(page.getByRole("navigation", { name: "Hilfe-Navigation" })).toBeVisible();
     await page
       .getByRole("main")
-      .getByRole("link", { name: /Konto erstellen/ })
+      .getByRole("link", { name: "Konto erstellen", exact: true })
       .click();
     await expect(page).toHaveURL(/\/help\/getting-started\/sign-up$/);
   }

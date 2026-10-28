@@ -4,6 +4,8 @@ order: 10
 description: Ein Feed macht Termine für Mitglieder und Gäste sichtbar, als Webseite und als Kalender-Abo.
 ---
 
+# Was ist ein Feed?
+
 :::note
 Feeds sehen Bearbeiter und Admins. Anlegen und ändern dürfen nur Admins.
 :::

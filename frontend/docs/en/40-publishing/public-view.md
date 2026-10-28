@@ -4,6 +4,8 @@ order: 30
 description: What visitors see when they open the link to a feed.
 ---
 
+# The public view
+
 Every feed has a web page that works without signing in. It shows the club and feed name and all published events. All times are in the club's time zone.
 
 ## What visitors see

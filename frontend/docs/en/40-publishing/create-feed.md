@@ -4,6 +4,8 @@ order: 20
 description: How to create a feed, change it, copy its address and delete it.
 ---
 
+# Create and manage a feed
+
 :::note
 You need the admin role for this. Editors can only view feeds, viewers do not see them.
 :::

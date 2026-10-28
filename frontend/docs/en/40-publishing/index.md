@@ -4,6 +4,8 @@ order: 0
 description: How to make your club's calendar visible to members and guests.
 ---
 
+# Publish
+
 A feed publishes events as a web page and as a subscription for calendar apps. The pages in this section:
 
 - [What is a feed?](help:publishing/feeds) – basics, visibility and contents

@@ -4,6 +4,8 @@ order: 30
 description: Das sehen Besucher, wenn sie den Link zu einem Feed öffnen.
 ---
 
+# Die öffentliche Ansicht
+
 Jeder Feed hat eine Webseite, die ohne Anmeldung funktioniert. Sie zeigt Verein und Feed-Namen sowie alle veröffentlichten Termine. Alle Uhrzeiten gelten in der Zeitzone des Vereins.
 
 ## Was Besucher sehen
