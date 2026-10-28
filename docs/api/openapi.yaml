@@ -1247,8 +1247,9 @@ paths:
       tags: [Auth]
       summary: Update name and preferences
       description: >-
-        `lastCalendarId` is also remembered at the membership of the calendar's club (ignored without error when the
-        calendar is unknown, belongs to another club than `lastClubId` or the user is no member). A field of the wrong
+        `lastClubId` must be a club the user is a member of; `lastCalendarId` must belong to such a club (and to
+        `lastClubId` when both are sent); otherwise `422 unknown_reference` with the `field` and nothing is stored.
+        `lastCalendarId` is also remembered at the membership of the calendar's club. A field of the wrong
         JSON type (`dateFormat: 5`, `firstDayOfWeek: "1"` / `1.5` / `true`, `language: null`, `lastClubId: 5`,
         `lastCalendarId: ["x"]`, …) is a 400 `validation_failed` with the `field`; `null` is accepted only for
         `lastClubId` / `lastCalendarId` (clears them). `name` of the wrong type stays a 422.

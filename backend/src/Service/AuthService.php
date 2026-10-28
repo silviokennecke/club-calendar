@@ -320,6 +320,7 @@ readonly class AuthService
 
     public function updateMe(User $user, array $data, bool $sessionConsentOk): array
     {
+        $this->assertLastIdsAllowed($user, $data);
         if (array_key_exists('name', $data)) {
             $user->setName($data['name']);
         }
@@ -344,10 +345,28 @@ readonly class AuthService
         return $this->getMe($user, $sessionConsentOk);
     }
 
+    /** Rejects (422 unknown_reference) a lastClubId/lastCalendarId the user has no membership for; nothing is stored. */
+    private function assertLastIdsAllowed(User $user, array $data): void
+    {
+        $clubId = $data['lastClubId'] ?? null;
+        $calendarId = $data['lastCalendarId'] ?? null;
+        $memberOf = fn (string $id): bool => null !== $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $id, 'user' => $user]);
+        if (is_string($clubId) && '' !== $clubId && !$memberOf($clubId)) {
+            throw new ApiProblemException(422, 'lastClubId: unknown club', 'unknown_reference', 'lastClubId');
+        }
+        if (is_string($calendarId) && '' !== $calendarId) {
+            $calendar = $this->em->getRepository(Calendar::class)->find($calendarId);
+            $calendarClubId = $calendar?->getClub()->getId();
+            if (null === $calendarClubId || !$memberOf($calendarClubId)
+                || (is_string($clubId) && '' !== $clubId && $clubId !== $calendarClubId)) {
+                throw new ApiProblemException(422, 'lastCalendarId: unknown calendar', 'unknown_reference', 'lastCalendarId');
+            }
+        }
+    }
+
     /**
      * Stores the last opened calendar at the user's membership of the calendar's club (per club, across
-     * devices). Ignored, without an error, when the calendar is unknown, belongs to another club than the
-     * given lastClubId, or the user is not a member of its club.
+     * devices). Inputs are validated beforehand by assertLastIdsAllowed.
      */
     private function rememberCalendarInMembership(User $user, mixed $calendarId, mixed $clubId): void
     {

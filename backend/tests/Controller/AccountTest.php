@@ -644,7 +644,7 @@ class AccountTest extends WebTestCase
         $this->assertSame($calB->getId(), $this->me($auth)['body']['lastCalendarId']);
     }
 
-    public function testForeignOrUnknownCalendarsAreIgnoredWithoutError(): void
+    public function testForeignOrUnknownLastIdsAreRejected(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher);
         $club = TestHelper::createClub(self::$em, $user, 'Mine');
@@ -654,18 +654,27 @@ class AccountTest extends WebTestCase
         $foreign = TestHelper::createCalendar(self::$em, $foreignClub, 'Foreign');
         $auth = $this->auth($user);
 
-        TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', ['lastClubId' => $club->getId(), 'lastCalendarId' => $mine->getId()], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', ['lastClubId' => $club->getId(), 'lastCalendarId' => $mine->getId()], $auth);
+        $this->assertSame(200, $r['status'], $r['content']);
         foreach ([
-            ['lastClubId' => $foreignClub->getId(), 'lastCalendarId' => $foreign->getId()],
-            ['lastClubId' => $club->getId(), 'lastCalendarId' => $foreign->getId()],
-            ['lastClubId' => $foreignClub->getId(), 'lastCalendarId' => $mine->getId()],
-            ['lastClubId' => $club->getId(), 'lastCalendarId' => 'no-such-calendar'],
-        ] as $body) {
-            $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', $body, $auth)['status']);
+            [['lastClubId' => $foreignClub->getId()], 'lastClubId'],
+            [['lastClubId' => 'no-such-club'], 'lastClubId'],
+            [['lastCalendarId' => $foreign->getId()], 'lastCalendarId'],
+            [['lastClubId' => $foreignClub->getId(), 'lastCalendarId' => $foreign->getId()], 'lastClubId'],
+            [['lastClubId' => $club->getId(), 'lastCalendarId' => $foreign->getId()], 'lastCalendarId'],
+            [['lastClubId' => $foreignClub->getId(), 'lastCalendarId' => $mine->getId()], 'lastClubId'],
+            [['lastClubId' => $club->getId(), 'lastCalendarId' => 'no-such-calendar'], 'lastCalendarId'],
+        ] as [$body, $field]) {
+            $r = TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', $body + ['name' => 'Changed'], $auth);
+            $this->assertSame(422, $r['status'], $r['content']);
+            $this->assertSame('unknown_reference', $r['body']['code']);
+            $this->assertSame($field, $r['body']['field']);
         }
 
-        $clubs = TestHelper::jsonRequest(self::$client, 'GET', '/api/clubs', [], $auth)['body'];
-        $this->assertSame([$mine->getId()], array_column($clubs, 'lastCalendarId'));
+        $me = $this->me($auth)['body'];
+        $this->assertSame($club->getId(), $me['lastClubId']);
+        $this->assertSame($mine->getId(), $me['lastCalendarId']);
+        $this->assertNotSame('Changed', $me['name']);
         $foreignClubs = TestHelper::jsonRequest(self::$client, 'GET', '/api/clubs', [], $this->auth($stranger))['body'];
         $this->assertSame([null], array_column($foreignClubs, 'lastCalendarId'));
     }
@@ -680,7 +689,8 @@ class AccountTest extends WebTestCase
         $calB = TestHelper::createCalendar(self::$em, $clubB, 'B1');
         $auth = $this->auth($user);
 
-        TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', ['lastClubId' => $clubA->getId(), 'lastCalendarId' => $calB->getId()], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', ['lastClubId' => $clubA->getId(), 'lastCalendarId' => $calB->getId()], $auth);
+        $this->assertSame(422, $r['status']);
         $clubs = TestHelper::jsonRequest(self::$client, 'GET', '/api/clubs', [], $auth)['body'];
         $this->assertSame(['A' => null, 'B' => null], array_column($clubs, 'lastCalendarId', 'name'));
 
