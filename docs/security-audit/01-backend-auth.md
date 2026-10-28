@@ -28,22 +28,6 @@ Static, read-only code review: full reads of every in-scope file plus targeted r
 **Fix recommendation:** Log `$e->getMessage()` plus sanitized context, or add a Monolog processor that strips paths from traces.
 **Notes:** HTTP responses are properly masked by ExceptionListener (RFC 7807, no traces to clients) — this is log-side only.
 
-### AUTH-06 — Register: check-then-insert race on email
-**Severity:** Informational
-**Attack scope:** Concurrent duplicate registration of the same email
-**Description:** `register()` checks for an existing email and then inserts without a lock; concurrent duplicates hit the unique index and surface as an unhandled 500 instead of a clean 409.
-**Affected parts:** `AuthService.php:30-32`; unique index `users.email` (`migrations/Version20260625000000.php:28`)
-**Fix recommendation:** Catch `UniqueConstraintViolationException` on insert and return 400/409.
-**Notes:** The unique index is the real guarantee — duplicate accounts are impossible; this is a robustness/UX issue.
-
-### AUTH-07 — Email-verification error redirect leaks the failure reason
-**Severity:** Informational
-**Attack scope:** Anyone who can observe the user's post-verification redirect
-**Description:** On failed verification the client is redirected to `?status=error&reason={result}`, exposing the server's failure classification (invalid / expired / already used) to the client.
-**Affected parts:** `AuthController.php:111` (verify call), `:117-119` (error redirect)
-**Fix recommendation:** Redirect to a generic `?status=error`; keep the specific reason server-side only.
-**Notes:** No state change on failure; link tokens are single-use, so the leak is informational.
-
 ### AUTH-08 — WEBAUTHN_USER_VERIFICATION missing from .env.example
 **Severity:** Informational
 **Attack scope:** Fresh deployments (passkey ceremonies with weaker user verification)

@@ -14,49 +14,6 @@ install/audit/build was run. Secret values found in this audit are redacted (`pk
 
 ## Findings
 
-### FE-04 · CLI-only `shadcn` package listed as a runtime dependency
-
-- **Severity:** Low
-- **Attack scope:** Supply-chain / maintenance surface; no direct browser exploit.
-- **Description:** `shadcn` `^4.11.0` is a code-generation CLI, not an importable library; it
-  is referenced nowhere in the `frontend/src` code (verified by grep). As a production
-  dependency it is unnecessarily installed into the runtime dependency tree of the SPA.
-- **Affected parts:** `frontend/package.json:39`
-- **Fix recommendation:** Move `shadcn` to `devDependencies` (or drop it; the CLI reads the
-  project at invocation time and does not need to be a dep).
-- **Notes:** Low exploitability, but it widens the audited dependency surface and is trivially
-  wrong placement.
-
----
-
-### FE-05 · Type-only `@types/mapbox-gl` listed as a runtime dependency
-
-- **Severity:** Low
-- **Attack scope:** None directly (types are erased at build time); supply-chain surface.
-- **Description:** `@types/mapbox-gl` `^3.4.1` contains only TypeScript declarations and is
-  never shipped to the browser. It is in `dependencies`, inflating the production install.
-- **Affected parts:** `frontend/package.json:26`
-- **Fix recommendation:** Move to `devDependencies` alongside the other `@types/*` entries.
-- **Notes:** Same category as FE-04 — placement, not a live vulnerability.
-
----
-
-### FE-06 · Silent fallback to `http://localhost:3001` when `VITE_API_URL` is unset
-
-- **Severity:** Informational
-- **Attack scope:** Misconfigured deployments; developer ergonomics.
-- **Description:** `BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001"`
-  (`frontend/src/lib/api.ts:4`, mirrored in `mapboxProxy.ts:1`). A build produced without the
-  env var compiles fine and then silently points all API traffic at `http://localhost:3001` —
-  on a real host that is a dead/misrouted endpoint rather than a loud failure, which can mask
-  deployment errors and confuse support.
-- **Affected parts:** `frontend/src/lib/api.ts:4`, `frontend/src/lib/mapboxProxy.ts:1`
-- **Fix recommendation:** Either fail fast at startup (throw when `VITE_API_URL` is absent in
-  a non-dev build) or log a prominent warning. The fallback is harmless for local dev.
-- **Notes:** No secret or security value is involved; pure operational hardening.
-
----
-
 ### FE-07 · Several dev/build deps lag the current major (no known vulnerable major)
 
 - **Severity:** Informational

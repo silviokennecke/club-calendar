@@ -1,13 +1,13 @@
 # Dependencies, Secrets & Config Security Audit
 
 ## Scope
-Secrets and credentials in the working tree and git history, third-party dependency vulnerabilities (JS + PHP), and the security posture of local/CI configuration: `docker-compose.yml`, the GitHub Actions workflow, deploy helpers, and `.env*` files. Stack: Symfony 8.1 backend, React SPA frontend, single root `package-lock.json`.
+Secrets and credentials in the working tree and git history, third-party dependency vulnerabilities (JS + PHP), and the security posture of local/CI configuration: `docker-compose.yml`, the GitHub Actions workflow, and `.env*` files. Stack: Symfony 8.1 backend, React SPA frontend, single root `package-lock.json`.
 
 ## Method
 - Gitleaks full-history scan (284 commits) using the repo's `.gitleaks.toml` allowlist; raw output in `.security-audit/gitleaks.json`
 - Trivy `fs` scan via Docker (`--scanners vuln,secret`, skipping `vendor`, `node_modules`, `dist`, `.git`)
 - `composer audit` for the PHP backend
-- Manual review of `docker-compose.yml`, `.github/workflows/ci.yml`, `.deploy/askpass.sh`, all `.env*` files, and the JWT key wiring
+- Manual review of `docker-compose.yml`, `.github/workflows/ci.yml`, all `.env*` files, and the JWT key wiring
 - Pattern greps across the repo (AWS `AKIA…`, OpenAI `sk-…`, GitHub `ghp_…`, Slack `xox…`, PEM private-key blocks, `DEPLOY_PASSWORD`/`DEPLOY_KEY`)
 - CVE findings cross-checked against the resolved versions and dependency chains in the root `package-lock.json`
 - Audit made no repo modifications; note `.security-audit/` is not gitignored — do not commit its artifacts
@@ -47,14 +47,6 @@ Secrets and credentials in the working tree and git history, third-party depende
 **Fix recommendation:** Bind ports to loopback only (`127.0.0.1:3306:3306`, `127.0.0.1:3360:3306`), set a non-default root password via an env file, and/or create a dedicated app user and drop the root publish.
 **Notes:** Dev-only file, no production exposure; LOW.
 
-### SCAN-11 — Plaintext deploy password in local, untracked `.env` + askpass helper
-**Severity:** LOW
-**Attack scope:** Local machine only — both the root `.env` and `.deploy/` are untracked and gitignored, so there is no repo/history exposure. Risk is local: any process or user on the machine can read the live `DEPLOY_PASSWORD`, and the password is handed to `git` in plaintext via the askpass helper.
-**Description:** Root `.env:5` holds a live plaintext `DEPLOY_PASSWORD` (lines 3–6 also carry `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_PATH`), consumed by `.deploy/askpass.sh:2` (`printf '%s\n' "$DEPLOY_PASSWORD"`) and wired up as `GIT_ASKPASS` by a deploy helper script that is not in the repo.
-**Affected parts:** `.env:5` (untracked, ignored via `.gitignore:6`), `.deploy/askpass.sh:2` (untracked, ignored via `.gitignore:16`)
-**Fix recommendation:** Rotate the deploy password; prefer SSH-key-based deploys over password askpass; at minimum `chmod 600 .env`. (The askpass pattern itself avoids shell history, which is good.)
-**Notes:** No repo exposure found; the finding is local credential hygiene.
-
 ### SCAN-12 — CI workflow grants `contents: write` to all jobs
 **Severity:** LOW
 **Attack scope:** Repo supply chain — workflow-level `permissions: contents: write` applies to every job in `ci.yml`, including read-only scan jobs; a compromised job (e.g. via a malicious dependency running at build time) could push commits/tags, enabling self-escalation through the autofix job.
@@ -67,7 +59,7 @@ Secrets and credentials in the working tree and git history, third-party depende
 - `composer audit` — no vulnerabilities in the backend PHP dependencies.
 - Gitleaks full history (284 commits, `.gitleaks.toml` allowlist) — no genuine secrets in current findings; the allowlist itself is narrowly scoped.
 - Trivy `fs` (vuln + secret, vendor/node_modules/dist/.git excluded) — all findings covered by SCAN-04…SCAN-09.
-- Pattern greps across the repo (AWS `AKIA…`, OpenAI `sk-…`, GitHub `ghp_…`, Slack `xox…`, PEM private-key blocks, `DEPLOY_PASSWORD`/`DEPLOY_KEY`) — no matches beyond the documented Mapbox tokens and the local deploy password.
+- Pattern greps across the repo (AWS `AKIA…`, OpenAI `sk-…`, GitHub `ghp_…`, Slack `xox…`, PEM private-key blocks, `DEPLOY_PASSWORD`/`DEPLOY_KEY`) — no matches beyond the documented Mapbox tokens.
 - `backend/.env.example` and other example env files — placeholders only, no live values.
 - JWT key wiring (`lexik_jwt_authentication.yaml`) — env-driven paths, no key material or passphrase hardcoded in the repo (passphrase derives from `APP_SECRET`, line 2; use an independent secret in production).
 - Auth configuration (`security.yaml`, `TokenService`) — stateless JWT + HMAC refresh tokens, no auth cookies; the OAuth state nonce cookie is short-lived by design.
