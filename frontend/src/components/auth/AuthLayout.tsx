@@ -72,8 +72,7 @@ export function AuthLayout({
   );
   const footerLinks = legalLinks && (
     <div className="legal-links">
-      <LegalLinks />
-      <HelpCenterLink />
+      <LegalLinks trailing={<HelpCenterLink />} />
     </div>
   );
   return (

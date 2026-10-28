@@ -66,8 +66,7 @@ export function PublicShell({
           <Logo variant="mark" size={24} />
         </div>
         <div className="legal-links legal-links--public">
-          <LegalLinks />
-          <HelpCenterLink to={helpLink?.to} label={helpLink?.label} />
+          <LegalLinks trailing={<HelpCenterLink to={helpLink?.to} label={helpLink?.label} />} />
         </div>
       </footer>
     </div>
