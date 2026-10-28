@@ -17,11 +17,12 @@ final class PdfMonthGrid
     private const float CELL_INSET_PT = 7.0;
 
     /**
-     * @param list<array<string, mixed>> $entries per-day entries (key "day" = \DateTimeImmutable), sorted
+     * @param list<array<string, mixed>>                        $entries  per-day entries (key "day" = \DateTimeImmutable), sorted
+     * @param array<string, array{kind: string, name: ?string}> $holidays see PdfHolidays::days()
      *
      * @return list<array{year: int, month: int, label: string, weeks: list<list<array<string, mixed>|null>>}>
      */
-    public static function build(\DateTimeImmutable $from, \DateTimeImmutable $to, ?int $firstDayOfWeek, array $entries, string $locale, int $cap = self::CELL_CAP, float $contentWidthPt = 527.0): array
+    public static function build(\DateTimeImmutable $from, \DateTimeImmutable $to, ?int $firstDayOfWeek, array $entries, string $locale, int $cap = self::CELL_CAP, float $contentWidthPt = 527.0, array $holidays = []): array
     {
         $cellEm = ($contentWidthPt / 7 - self::CELL_INSET_PT) / self::FONT_PT;
         $byDay = [];
@@ -50,8 +51,11 @@ final class PdfMonthGrid
                 $inRange = $ymd >= $fromYmd && $ymd <= $toYmd;
                 $dayEvents = $inRange ? ($byDay[$ymd] ?? []) : [];
                 $shown = array_slice($dayEvents, 0, $cap);
+                $holiday = $inRange ? ($holidays[$ymd] ?? null) : null;
                 $cells[] = [
                     'date' => $ymd,
+                    'shade' => $inRange ? PdfHolidays::shade($holiday, PdfDates::isWeekend($ymd)) : 'out',
+                    'holidayName' => $holiday['name'] ?? null,
                     'inRange' => $inRange,
                     'number' => $d,
                     'weekend' => PdfDates::isWeekend($ymd),

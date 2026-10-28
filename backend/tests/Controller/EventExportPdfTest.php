@@ -6,9 +6,13 @@ namespace App\Tests\Controller;
 
 use App\Entity\Calendar;
 use App\Entity\Club;
+use App\Entity\HolidayCalendar;
+use App\Entity\HolidayEvent;
 use App\Entity\User;
 use App\Enum\ClubRole;
+use App\Enum\HolidayType;
 use App\Pdf\PdfExportService;
+use App\Pdf\PdfHolidaySelection;
 use App\Pdf\PdfLayout;
 use App\Pdf\PdfOptions;
 use App\Service\EventExportService;
@@ -498,5 +502,131 @@ class EventExportPdfTest extends WebTestCase
 
         $this->assertSame([], $this->model('agenda', '2026-10-01', '2026-10-31')['legend']);
         $this->assertStringNotContainsString('Legende', $this->html('agenda', '2026-10-01', '2026-10-31'));
+    }
+
+    // --- holidays ---
+
+    /** @param list<array{0: string, 1: string, 2: ?string}> $events name, date, inclusive end */
+    private function holidayCalendar(HolidayType $type, array $events, ?Calendar $calendar = null): string
+    {
+        $calendar ??= self::$em->find(Calendar::class, $this->calendar->getId());
+        $hc = new HolidayCalendar($calendar, 'Ferien', 'https://example.org/h.ics');
+        $hc->setType($type);
+        self::$em->persist($hc);
+        foreach ($events as $i => [$name, $date, $end]) {
+            self::$em->persist(new HolidayEvent($hc, 'uid-'.$i.'-'.$hc->getId(), $name, new \DateTimeImmutable($date), null !== $end ? new \DateTimeImmutable($end) : null));
+        }
+        self::$em->flush();
+
+        return $hc->getId();
+    }
+
+    /** @param list<string> $ids */
+    private function holidayHtml(string $layout, string $from, string $to, array $ids): string
+    {
+        $c = static::getContainer();
+        $calendar = self::$em->find(Calendar::class, $this->calendar->getId());
+        $filter = $c->get(EventExportService::class)->filter($calendar, $from, $to, '0', null);
+        $rows = $c->get(PdfHolidaySelection::class)->load($calendar, $ids, $filter);
+
+        return $c->get(PdfExportService::class)->renderHtml($calendar, $filter, new PdfOptions(PdfLayout::from($layout)), self::$em->find(User::class, $this->owner->getId()), $rows);
+    }
+
+    public function testNoHolidaysByDefault(): void
+    {
+        $this->holidayCalendar(HolidayType::PUBLIC, [['Tag der Einheit', '2026-10-03', null]]);
+        $html = $this->html('month-grid', '2026-10-01', '2026-10-31');
+        $this->assertStringNotContainsString('Tag der Einheit', $html);
+        $this->assertStringNotContainsString('in pub', $html);
+    }
+
+    public function testMonthGridPublicHolidayHasColourAndName(): void
+    {
+        // 2026-10-03 is a Saturday: the public holiday colour wins over the weekend
+        $id = $this->holidayCalendar(HolidayType::PUBLIC, [['Tag der Einheit', '2026-10-03', null]]);
+        $html = $this->holidayHtml('month-grid', '2026-10-01', '2026-10-31', [$id]);
+        $this->assertMatchesRegularExpression('~<td class="in pub">\s*<div class="num">3</div>\s*<div class="hn">Tag der Einheit</div>~', $html);
+        $this->assertStringContainsString('Feiertag', $html);
+        $this->assertStringNotContainsString('Schulferien', $html);
+    }
+
+    public function testSchoolHolidayNameOnlyOnFirstVisibleDayAndWeekendWins(): void
+    {
+        // starts before the exported range: the first visible day (Thu 2026-10-01) carries the name
+        $id = $this->holidayCalendar(HolidayType::SCHOOL, [['Herbstferien', '2026-09-28', '2026-10-05']]);
+        $html = $this->holidayHtml('month-grid', '2026-10-01', '2026-10-31', [$id]);
+        $this->assertSame(1, substr_count($html, 'Herbstferien'));
+        $this->assertMatchesRegularExpression('~<td class="in sch">\s*<div class="num">1</div>\s*<div class="hn">Herbstferien</div>~', $html);
+        $this->assertMatchesRegularExpression('~<td class="in sch">\s*<div class="num">2</div>~', $html);
+        $this->assertMatchesRegularExpression('~<td class="in we">\s*<div class="num">3</div>~', $html);
+        $this->assertMatchesRegularExpression('~<td class="in">\s*<div class="num">6</div>~', $html);
+        $this->assertStringContainsString('Schulferien', $html);
+    }
+
+    public function testOutOfRangeStaysGrey(): void
+    {
+        $id = $this->holidayCalendar(HolidayType::PUBLIC, [['Tag der Einheit', '2026-10-03', null]]);
+        $html = $this->holidayHtml('month-grid', '2026-10-05', '2026-10-31', [$id]);
+        $this->assertMatchesRegularExpression('~<td class="out">\s*<div class="num">3</div>~', $html);
+        $this->assertStringNotContainsString('Tag der Einheit', $html);
+        $this->assertStringNotContainsString('Feiertag', $html);
+    }
+
+    public function testQuarterAnnualAndAgendaShowHolidays(): void
+    {
+        $pub = $this->holidayCalendar(HolidayType::PUBLIC, [['Neujahr', '2026-01-01', null]]);
+        $sch = $this->holidayCalendar(HolidayType::SCHOOL, [['Winterferien', '2026-02-02', '2026-02-06']]);
+        $this->create(['name' => 'Training', 'date' => '2026-01-01']);
+
+        $quarter = $this->holidayHtml('quarter-overview', '2026-01-01', '2026-03-31', [$pub, $sch]);
+        $this->assertStringContainsString('<tr class="pub">', $quarter);
+        $this->assertStringContainsString('<tr class="sch">', $quarter);
+        $this->assertSame(1, substr_count($quarter, 'Winterferien'));
+        // the name only takes a free line: one event + name still fits the two-line minimum
+        $this->assertStringContainsString('<div class="ln hn">Neujahr</div>', $quarter);
+        $this->assertStringContainsString('Schulferien', $quarter);
+
+        $annual = $this->holidayHtml('annual-overview', '2026-01-01', '2026-12-31', [$pub, $sch]);
+        $this->assertStringContainsString('<td class="sch">3</td>', $annual);
+        $this->assertStringContainsString('Feiertag', $annual);
+
+        $agenda = $this->holidayHtml('agenda', '2026-01-01', '2026-03-31', [$pub, $sch]);
+        $this->assertStringContainsString('<b>Neujahr</b>', $agenda);
+        $this->assertSame(1, substr_count($agenda, '<b>Winterferien</b>'));
+        $this->assertLessThan(strpos($agenda, 'Training'), strpos($agenda, 'Neujahr'));
+    }
+
+    public function testRequestWithHolidayCalendarsReturnsAPdfForEveryLayout(): void
+    {
+        $id = $this->holidayCalendar(HolidayType::PUBLIC, [['Tag der Einheit', '2026-10-03', null]]);
+        foreach (['month-grid', 'agenda'] as $layout) {
+            $r = $this->pdf(self::RANGE.'&layout='.$layout.'&holidayCalendarIds[]='.$id);
+            $this->assertSame(200, $r['status'], $r['content']);
+            $this->assertStringStartsWith('%PDF', $r['content']);
+        }
+        $r = $this->pdf('from=2026-01-01&to=2026-12-31&layout=annual-overview&holidayCalendarIds[]='.$id);
+        $this->assertSame(200, $r['status']);
+        $r = $this->pdf('from=2026-10-01&to=2026-12-31&layout=quarter-overview&holidayCalendarIds[]='.$id);
+        $this->assertSame(200, $r['status']);
+    }
+
+    public function testUnknownOrForeignHolidayCalendarIs422(): void
+    {
+        $other = TestHelper::createCalendar(self::$em, $this->club, 'Andere');
+        $foreign = $this->holidayCalendar(HolidayType::PUBLIC, [], $other);
+        foreach ([$foreign, '00000000-0000-7000-8000-000000000000'] as $id) {
+            $r = $this->pdf(self::RANGE.'&layout=agenda&holidayCalendarIds[]='.$id);
+            $this->assertSame(422, $r['status']);
+            $this->assertSame('unknown_reference', $r['body']['code']);
+            $this->assertSame('holidayCalendarIds', $r['body']['field']);
+        }
+    }
+
+    public function testMoreThan20HolidayCalendarsIs400(): void
+    {
+        $query = implode('&', array_map(static fn (int $i): string => 'holidayCalendarIds[]=id'.$i, range(1, 21)));
+        $r = $this->pdf(self::RANGE.'&layout=agenda&'.$query);
+        $this->assertSame(400, $r['status']);
+        $this->assertSame('holidayCalendarIds', $r['body']['field']);
     }
 }

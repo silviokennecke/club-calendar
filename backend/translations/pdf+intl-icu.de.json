@@ -13,5 +13,7 @@
     "col.tags": "Merkmale",
     "all_day": "ganztägig",
     "page": "Seite {page} von {total}",
-    "continued": "Fortsetzung"
+    "continued": "Fortsetzung",
+    "holiday_pub": "Feiertag",
+    "holiday_sch": "Schulferien"
 }

@@ -25,6 +25,8 @@ export interface SeriesRule {
   /** … or by number of created events. */
   count: number | null;
   skipHolidays: boolean;
+  /** Holiday calendars that count; absent/null = all, [] = none. */
+  holidayCalendarIds?: string[] | null;
   /** Extra days of each event (0 = one-day events). */
   durationDays?: number;
 }
@@ -62,6 +64,8 @@ export interface SeriesFormRule {
   from: string;
   to: string;
   skipHolidays: boolean;
+  /** null = all holiday calendars. */
+  holidayCalendarIds: string[] | null;
 }
 
 /** The API rule for the form (design: "Von" / "Bis"), or null while the range is incomplete or reversed. */
@@ -75,6 +79,9 @@ export function toSeriesRule(form: SeriesFormRule): SeriesRule | null {
     until: form.to,
     count: null,
     skipHolidays: form.skipHolidays,
+    ...(form.skipHolidays && form.holidayCalendarIds
+      ? { holidayCalendarIds: form.holidayCalendarIds }
+      : {}),
   };
 }
 
@@ -109,7 +116,13 @@ export function formFromRule(rule: SeriesRule, fallbackTo = ""): SeriesFormRule 
     from: rule.startDate,
     to: rule.until ?? fallbackTo,
     skipHolidays: rule.skipHolidays,
+    holidayCalendarIds: rule.holidayCalendarIds ?? null,
   };
+}
+
+function sameIds(a?: string[] | null, b?: string[] | null): boolean {
+  if (!a || !b) return !a && !b;
+  return a.length === b.length && a.every((x) => b.includes(x));
 }
 
 /** Whether the form describes the stored rule (nothing to change). */
@@ -121,7 +134,8 @@ export function sameSeriesRule(stored: SeriesRule, next: SeriesRule): boolean {
     stored.startDate === next.startDate &&
     stored.until === next.until &&
     stored.count === next.count &&
-    stored.skipHolidays === next.skipHolidays
+    stored.skipHolidays === next.skipHolidays &&
+    (!stored.skipHolidays || sameIds(stored.holidayCalendarIds, next.holidayCalendarIds))
   );
 }
 

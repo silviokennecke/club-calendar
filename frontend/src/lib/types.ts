@@ -244,9 +244,27 @@ export interface ImportResponse {
 export interface HolidayCalendar {
   id: string;
   name: string;
-  url: string;
+  url: string | null;
+  type: HolidayType;
+  source: "ics" | "openholidays";
+  sourceCountry: string | null;
+  sourceSubdivision: string | null;
+  sourceLanguage: "de" | "en" | null;
   lastFetchedAt: string | null;
   eventCount: number;
+}
+
+export type HolidayType = "public" | "school" | "other";
+
+export interface HolidayCountry {
+  isoCode: string;
+  name: string;
+}
+
+export interface HolidaySubdivision {
+  code: string;
+  name: string;
+  children: HolidaySubdivision[];
 }
 
 export interface HolidayEvent {

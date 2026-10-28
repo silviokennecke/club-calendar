@@ -1,7 +1,7 @@
 ---
 title: Export events
 order: 110
-description: Download events as an ICS file for other calendar apps.
+description: Download events as an ICS file or as a printable PDF.
 ---
 
 # Export events
@@ -24,6 +24,17 @@ You can download events as an ICS file, for example as a backup or to bring them
 
 ![Export events page with period and status](shot:export-options)
 
+## Export as PDF
+
+Under **File format** at the top, choose **PDF** if you want to print or share the calendar.
+
+1. Choose the **Layout**: **Month grid**, **Quarter overview** (at least 3 months), **Annual overview** (a full calendar year) or **Agenda**.
+2. Set **Paper size** (A4 or A3) and **Orientation**.
+3. Under **Show holidays**, select the **Holiday calendars to print**. Without a selection no holidays are printed.
+4. Click **Download PDF file**.
+
+Public holidays are highlighted in colour with their name. School holidays are coloured too, with their name shown on the first day only. When colours overlap, this priority applies: disabled days, holidays, weekends, school holidays. How to set up holiday calendars is described under [Holidays and school breaks](help:organize/holidays).
+
 ## What do I do with the file?
 
 Import the ICS file into another calendar app, such as Apple Calendar, Google Calendar or Outlook (usually under "File" or "Import"). You can also load it into another calendar of this app with [Import events](help:organize/import).
@@ -37,4 +48,5 @@ The file contains events with times, location, note, plus badges, extras and aud
 ## See also
 
 - [Import events](help:organize/import)
+- [Holidays and school breaks](help:organize/holidays)
 - [Feeds to subscribe to](help:publishing/feeds)

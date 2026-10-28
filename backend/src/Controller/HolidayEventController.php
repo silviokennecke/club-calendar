@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\Calendar;
+use App\Repository\HolidayCalendarRepository;
 use App\Repository\HolidayEventRepository;
 use App\Security\CalendarMemberVoter;
+use App\Service\HolidayCalendarService;
 use App\Service\Input;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -19,6 +21,8 @@ class HolidayEventController extends AbstractApiController
 {
     public function __construct(
         private readonly HolidayEventRepository $holidayEventRepo,
+        private readonly HolidayCalendarRepository $holidayCalendarRepo,
+        private readonly HolidayCalendarService $holidayCalendarService,
     ) {
     }
 
@@ -33,6 +37,10 @@ class HolidayEventController extends AbstractApiController
         $fromDate = Input::date($query, 'from');
         $toDate = Input::date($query, 'to');
         Input::assertDateRange($fromDate, $toDate);
+
+        foreach ($this->holidayCalendarRepo->findByCalendarId($calendar->getId()) as $hc) {
+            $this->holidayCalendarService->refreshIfStale($hc);
+        }
 
         $events = $this->holidayEventRepo->findByCalendarAndDateRange(
             $calendar->getId(),

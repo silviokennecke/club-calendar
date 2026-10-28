@@ -6,7 +6,10 @@
         table.grid th { text-align: center; width: 14.2857%; border: 0.5pt solid #cfd7d2; border-bottom: 1pt solid #0b6b58; }
         table.grid td { height: 29mm; border: 0.5pt solid #cfd7d2; padding: 2pt; vertical-align: top; overflow: hidden; }
         table.grid td.pad { background-color: #ffffff; }
+        table.grid td.sch { background-color: #f7e7b4; }
         table.grid td.we { background-color: #dcefe9; }
+        table.grid td.pub { background-color: #f6cfd3; }
+        .hn { font-size: 6.5pt; line-height: 8.5pt; height: 8.5pt; font-weight: bold; color: #8a1c2b; white-space: nowrap; overflow: hidden; margin: 0 0 1pt 0; }
         table.grid td.out { background-color: #e6e6e6; color: #4a5b55; }
         .num { font-weight: bold; font-size: 8pt; margin: 0 0 2pt 0; }
         .ev { border-left: 1.5pt solid #0b6b58; font-size: 6.5pt; line-height: 8.5pt; height: 8.5pt; margin: 0 0 1pt 0; padding: 0 0 0 2pt; white-space: nowrap; }
@@ -30,8 +33,9 @@
                         {% if cell is null %}
                             <td class="pad">&nbsp;</td>
                         {% else %}
-                            <td class="{{ not cell.inRange ? 'out' : (cell.weekend ? 'in we' : 'in') }}">
+                            <td class="{{ not cell.inRange ? 'out' : (cell.shade == 'wd' ? 'in' : 'in ' ~ cell.shade) }}">
                                 <div class="num">{{ cell.number }}</div>
+                                {% if cell.holidayName is not null %}<div class="hn">{{ cell.holidayName }}</div>{% endif %}
                                 {% for e in cell.events %}
                                     <div class="ev{{ e.draft ? ' dr' : '' }}">
                                         {%- if e.time is not null %}{{ e.time }} {% endif -%}

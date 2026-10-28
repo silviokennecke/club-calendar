@@ -206,6 +206,48 @@ class EventSeriesTest extends WebTestCase
         $this->assertSame([], $r['body']['dates']);
     }
 
+    public function testHolidayCalendarSelection(): void
+    {
+        [$auth, $base, $cal] = $this->setupCalendar();
+        $a = new HolidayCalendar($cal, 'A', 'https://example.com/a.ics');
+        $b = new HolidayCalendar($cal, 'B', 'https://example.com/b.ics');
+        self::$em->persist($a);
+        self::$em->persist($b);
+        self::$em->persist(new HolidayEvent($a, 'a1', 'Fest A', new \DateTimeImmutable('2026-10-10')));
+        self::$em->persist(new HolidayEvent($b, 'b1', 'Fest B', new \DateTimeImmutable('2026-10-17')));
+        self::$em->flush();
+        [, , $other] = $this->setupCalendar();
+        $foreign = new HolidayCalendar($other, 'X', 'https://example.com/x.ics');
+        self::$em->persist($foreign);
+        self::$em->flush();
+
+        $rule = $this->rule(['weekday' => 6, 'skipHolidays' => true]);
+        $dates = fn (array $extra) => $this->req('POST', "$base/events/series/preview", $auth, ['rule' => $rule + $extra]);
+
+        $all = $dates([]);
+        $this->assertSame(['2026-10-03', '2026-10-24', '2026-10-31'], $all['body']['dates']);
+        $onlyA = $dates(['holidayCalendarIds' => [$a->getId()]]);
+        $this->assertSame(['2026-10-03', '2026-10-17', '2026-10-24', '2026-10-31'], $onlyA['body']['dates']);
+        $this->assertCount(1, $onlyA['body']['holidays']);
+        $none = $dates(['holidayCalendarIds' => []]);
+        $this->assertCount(5, $none['body']['dates']);
+        $this->assertSame([], $none['body']['skippedHolidays']);
+
+        $bad = $dates(['holidayCalendarIds' => [$foreign->getId()]]);
+        $this->assertSame(422, $bad['status']);
+        $this->assertSame('unknown_reference', $bad['body']['code']);
+        $this->assertSame(400, $dates(['holidayCalendarIds' => 'x'])['status']);
+        $this->assertSame(400, $dates(['holidayCalendarIds' => array_map(fn ($i) => "id$i", range(1, 21))])['status']);
+
+        $created = $this->req('POST', "$base/events/series", $auth, ['rule' => $rule + ['holidayCalendarIds' => [$b->getId()]], 'event' => ['name' => 'Training', 'isAllDay' => true]]);
+        $this->assertSame(201, $created['status'], $created['content']);
+        $this->assertSame([$b->getId()], $created['body']['series']['rule']['holidayCalendarIds']);
+        $this->assertSame(4, $created['body']['series']['eventCount']);
+        $sid = $created['body']['series']['id'];
+        $got = $this->req('GET', "$base/event-series/$sid", $auth);
+        $this->assertSame([$b->getId()], $got['body']['rule']['holidayCalendarIds']);
+    }
+
     public function testHolidaysOfTheCalendarAreSkipped(): void
     {
         [$auth, $base, $cal] = $this->setupCalendar();
@@ -332,7 +374,7 @@ class EventSeriesTest extends WebTestCase
         $this->assertMatchesRegularExpression('/^[0-9a-f-]{36}$/', $seriesId);
         $this->assertSame($tpl, $r['body']['series']['templateId']);
         $this->assertSame(4, $r['body']['series']['eventCount']);
-        $this->assertSame(['frequency' => 'weekly', 'weekday' => 4, 'nth' => null, 'startDate' => '2026-10-03', 'until' => '2026-10-31', 'count' => null, 'skipHolidays' => true, 'durationDays' => 0], $r['body']['series']['rule']);
+        $this->assertSame(['frequency' => 'weekly', 'weekday' => 4, 'nth' => null, 'startDate' => '2026-10-03', 'until' => '2026-10-31', 'count' => null, 'skipHolidays' => true, 'durationDays' => 0, 'holidayCalendarIds' => null], $r['body']['series']['rule']);
         $this->assertSame(['2026-10-08', '2026-10-15', '2026-10-22', '2026-10-29'], array_column($r['body']['events'], 'date'));
         foreach ($r['body']['events'] as $event) {
             $this->assertSame($seriesId, $event['seriesId']);

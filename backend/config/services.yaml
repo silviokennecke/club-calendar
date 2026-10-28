@@ -91,6 +91,12 @@ services:
     App\Service\HolidayCalendarService:
         arguments:
             $httpClient: '@holiday_calendar.http_client'
+            $refreshAttemptsCache: '@holiday_refresh_attempts'
+
+    App\Service\OpenHolidaysClient:
+        arguments:
+            $httpClient: '@holiday_calendar.http_client'
+            $cache: '@holiday_sources'
 
     geocoder.mapbox_de:
         class: Geocoder\StatefulGeocoder

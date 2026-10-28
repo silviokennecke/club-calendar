@@ -24,7 +24,7 @@ A series is always created from a [template](help:organize/templates). Create a 
    - **Every two weeks**
    - **Monthly on the n-th weekday** (for example every 2nd Thursday or the last Friday of the month)
 5. Choose the **Weekday** and the period with **From** and **To**. The series ends on the date you enter under **To**.
-6. Turn on **Skip holidays** if no event should take place on public holidays.
+6. Turn on **Skip holidays** if no event should take place on public holidays. Under **Holiday calendars** you choose which calendars count (all by default).
 7. Check the **Preview**. It lists every event that will be created. Skipped days are marked.
 8. Click **Create … events as drafts**. With **Adjust first** you can change times, location or groups of the events beforehand.
 
@@ -36,7 +36,7 @@ The series starts as a draft. You can publish it right away under **Status of th
 
 A series has at most 366 events. If the period is too long you get a notice and shorten it.
 
-Which days are skipped depends on your [holiday calendars](help:organize/holidays). Without a holiday calendar there are no holidays that could be skipped.
+Which days are skipped depends on the selected [holiday calendars](help:organize/holidays). Without a holiday calendar there are no holidays that could be skipped. The same selection is available under **Change series**.
 
 ## Change or delete one event of a series
 

@@ -82,4 +82,30 @@ class HolidayEventRepository extends ServiceEntityRepository
 
         return $qb->getQuery()->getResult();
     }
+
+    /**
+     * Holidays of the given holiday calendars; with from/to only those overlapping the range.
+     *
+     * @param string[] $holidayCalendarIds
+     *
+     * @return HolidayEvent[]
+     */
+    public function findByHolidayCalendars(array $holidayCalendarIds, ?\DateTimeImmutable $from, ?\DateTimeImmutable $to): array
+    {
+        if ([] === $holidayCalendarIds) {
+            return [];
+        }
+        $qb = $this->createQueryBuilder('he')
+            ->where('he.holidayCalendar IN (:ids)')
+            ->setParameter('ids', $holidayCalendarIds)
+            ->orderBy('he.date', 'ASC');
+        if (null !== $to) {
+            $qb->andWhere('he.date <= :to')->setParameter('to', $to, Types::DATE_IMMUTABLE);
+        }
+        if (null !== $from) {
+            $qb->andWhere('COALESCE(he.dateEnd, he.date) >= :from')->setParameter('from', $from, Types::DATE_IMMUTABLE);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
 }

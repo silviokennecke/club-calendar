@@ -21,6 +21,14 @@ describe("pdfExportQuery", () => {
     );
   });
 
+  it("appends the chosen holiday calendars", () => {
+    const p = new URLSearchParams(
+      pdfExportQuery({ ...base, holidayCalendarIds: ["h1", "h2"] }).slice(1),
+    );
+    expect(p.getAll("holidayCalendarIds[]")).toEqual(["h1", "h2"]);
+    expect(pdfExportQuery(base)).not.toContain("holidayCalendarIds");
+  });
+
   it("keeps drafts and audiences and handles the year range", () => {
     const q = pdfExportQuery({
       ...base,

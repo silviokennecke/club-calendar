@@ -11,6 +11,7 @@ use App\Entity\EventProperty;
 use App\Entity\EventSeries;
 use App\Entity\EventTargetGroup;
 use App\Entity\EventTemplate;
+use App\Entity\HolidayCalendar;
 use App\Exception\ApiProblemException;
 use App\Repository\HolidayEventRepository;
 use Doctrine\DBAL\Exception\DeadlockException;
@@ -35,6 +36,7 @@ readonly class EventSeriesService
         private ClockInterface $clock,
         private Quota $quota,
         private CalendarVersionBumper $versionBumper,
+        private HolidayCalendarService $holidayCalendars,
     ) {
     }
 
@@ -370,15 +372,19 @@ readonly class EventSeriesService
      */
     private function compute(Calendar $calendar, SeriesRule $rule): array
     {
+        $selected = $this->selectedHolidayCalendars($calendar, $rule);
+        foreach ($selected ?? [] as $hc) {
+            $this->holidayCalendars->refreshIfStale($hc);
+        }
+        $to = null === $rule->until ? null : $rule->endOf($rule->lastDay());
+        $found = null === $selected
+            ? $this->holidays->findByCalendar($calendar->getId(), $rule->startDate, $to)
+            : $this->holidays->findByHolidayCalendars(array_map(fn ($hc) => $hc->getId(), $selected), $rule->startDate, $to);
         $holidays = array_map(fn ($h) => [
             'name' => $h->getName(),
             'from' => $h->getDate()->format('Y-m-d'),
             'to' => ($h->getDateEnd() ?? $h->getDate())->format('Y-m-d'),
-        ], $this->holidays->findByCalendar(
-            $calendar->getId(),
-            $rule->startDate,
-            null === $rule->until ? null : $rule->endOf($rule->lastDay()),
-        ));
+        ], $found);
 
         $dates = [];
         $skipped = [];
@@ -414,5 +420,28 @@ readonly class EventSeriesService
         }
 
         return ['dates' => $dates, 'skipped' => $skipped, 'holidays' => $onHoliday];
+    }
+
+    /**
+     * The holiday calendars named by the rule (null = no restriction). A foreign or unknown id is
+     * 422 `unknown_reference` (field `rule.holidayCalendarIds`).
+     *
+     * @return list<HolidayCalendar>|null
+     */
+    private function selectedHolidayCalendars(Calendar $calendar, SeriesRule $rule): ?array
+    {
+        if (null === $rule->holidayCalendarIds) {
+            return null;
+        }
+        $selected = [];
+        foreach ($rule->holidayCalendarIds as $id) {
+            $hc = $this->em->getRepository(HolidayCalendar::class)->find($id);
+            if (null === $hc || $hc->getCalendar()->getId() !== $calendar->getId()) {
+                throw CalendarReferences::unknown('rule.holidayCalendarIds', $id, $calendar);
+            }
+            $selected[$hc->getId()] = $hc;
+        }
+
+        return array_values($selected);
     }
 }

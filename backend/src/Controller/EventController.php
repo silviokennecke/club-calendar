@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Entity\Calendar;
 use App\Pdf\PdfExportService;
+use App\Pdf\PdfHolidaySelection;
 use App\Pdf\PdfOptions;
 use App\Security\ArchivedCalendarVoter;
 use App\Security\AuthRateLimiter;
@@ -33,6 +34,7 @@ class EventController extends AbstractApiController
         private readonly EventExportService $exportService,
         private readonly EventSeriesService $seriesService,
         private readonly PdfExportService $pdfService,
+        private readonly PdfHolidaySelection $pdfHolidays,
         private readonly AuthRateLimiter $rateLimiter,
         private readonly CurrentUserResolver $userResolver,
     ) {
@@ -66,7 +68,7 @@ class EventController extends AbstractApiController
     /**
      * PDF download for members: `from` and `to` (YYYY-MM-DD) required, `layout` (month-grid|quarter-overview|
      * annual-overview|agenda) required, `paper` (a4|a3), `orientation` (auto|portrait|landscape),
-     * `includeDrafts`, `targetGroupIds[]`.
+     * `includeDrafts`, `targetGroupIds[]`, `holidayCalendarIds[]` (holiday calendars of this calendar, default none).
      */
     #[Route('.pdf', methods: ['GET'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_MEMBER, subject: 'calendar')]
@@ -84,6 +86,7 @@ class EventController extends AbstractApiController
             $query['targetGroupIds'] ?? null,
         );
         $options = PdfOptions::fromRequest($query['layout'] ?? null, $query['paper'] ?? null, $query['orientation'] ?? null);
+        $holidays = $this->pdfHolidays->load($calendar, $query['holidayCalendarIds'] ?? null, $filter);
 
         // Raised for this route only: dompdf needs far more than the global limit
         $memoryLimit = ini_get('memory_limit');
@@ -91,7 +94,7 @@ class EventController extends AbstractApiController
         ini_set('memory_limit', '512M');
         set_time_limit(60);
         try {
-            $pdf = $this->pdfService->render($calendar, $filter, $options, $user);
+            $pdf = $this->pdfService->render($calendar, $filter, $options, $user, $holidays);
         } finally {
             // restored so a long-lived process (test runner, worker) keeps no 60 s limit after the export
             ini_set('memory_limit', false === $memoryLimit ? '-1' : $memoryLimit);

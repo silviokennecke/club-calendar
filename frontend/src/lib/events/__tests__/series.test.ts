@@ -157,11 +157,26 @@ describe("rule change (Reihe ändern)", () => {
       from: "2026-10-01",
       to: "2026-12-31",
       skipHolidays: true,
+      holidayCalendarIds: null,
     });
     expect(sameSeriesRule(stored, toSeriesRule(f)!)).toBe(true);
     expect(sameSeriesRule(stored, toSeriesRule({ ...f, to: "2027-01-31" })!)).toBe(false);
     expect(sameSeriesRule(stored, toSeriesRule({ ...f, nth: 1 })!)).toBe(false);
     expect(sameSeriesRule(stored, toSeriesRule({ ...f, skipHolidays: false })!)).toBe(false);
+  });
+
+  it("carries the chosen holiday calendars through the rule", () => {
+    const f = formFromRule({ ...stored, holidayCalendarIds: ["a", "b"] });
+    expect(f.holidayCalendarIds).toEqual(["a", "b"]);
+    expect(toSeriesRule(f)!.holidayCalendarIds).toEqual(["a", "b"]);
+    expect("holidayCalendarIds" in toSeriesRule({ ...f, holidayCalendarIds: null })!).toBe(false);
+    expect("holidayCalendarIds" in toSeriesRule({ ...f, skipHolidays: false })!).toBe(false);
+    const stored2 = { ...stored, holidayCalendarIds: ["a", "b"] };
+    expect(sameSeriesRule(stored2, toSeriesRule({ ...f, holidayCalendarIds: ["b", "a"] })!)).toBe(
+      true,
+    );
+    expect(sameSeriesRule(stored2, toSeriesRule({ ...f, holidayCalendarIds: ["a"] })!)).toBe(false);
+    expect(sameSeriesRule(stored2, toSeriesRule({ ...f, holidayCalendarIds: null })!)).toBe(false);
   });
 
   it("asks for an end date when the series ended by count", () => {

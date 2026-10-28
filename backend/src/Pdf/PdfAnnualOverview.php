@@ -11,11 +11,12 @@ namespace App\Pdf;
 final class PdfAnnualOverview
 {
     /**
-     * @param list<array<string, mixed>> $entries per-day entries (key "day" = \DateTimeImmutable), sorted
+     * @param list<array<string, mixed>>                        $entries  per-day entries (key "day" = \DateTimeImmutable), sorted
+     * @param array<string, array{kind: string, name: ?string}> $holidays see PdfHolidays::days()
      *
-     * @return list<array{month: int, label: string, weeks: list<list<array{number: int, hasEvents: bool, weekend: bool}|null>>}>
+     * @return list<array{month: int, label: string, weeks: list<list<array{number: int, hasEvents: bool, weekend: bool, shade: string}|null>>}>
      */
-    public static function build(int $year, ?int $firstDayOfWeek, array $entries, string $locale): array
+    public static function build(int $year, ?int $firstDayOfWeek, array $entries, string $locale, array $holidays = []): array
     {
         $withEvents = [];
         foreach ($entries as $entry) {
@@ -31,7 +32,7 @@ final class PdfAnnualOverview
             $cells = array_fill(0, (int) array_search((int) $first->format('w'), $order, true), null);
             for ($d = 1, $n = (int) $first->format('t'); $d <= $n; ++$d) {
                 $ymd = sprintf('%04d-%02d-%02d', $year, $month, $d);
-                $cells[] = ['number' => $d, 'hasEvents' => isset($withEvents[$ymd]), 'weekend' => PdfDates::isWeekend($ymd)];
+                $cells[] = ['number' => $d, 'hasEvents' => isset($withEvents[$ymd]), 'weekend' => PdfDates::isWeekend($ymd), 'shade' => PdfHolidays::shade($holidays[$ymd] ?? null, PdfDates::isWeekend($ymd))];
             }
             while (0 !== count($cells) % 7) {
                 $cells[] = null;

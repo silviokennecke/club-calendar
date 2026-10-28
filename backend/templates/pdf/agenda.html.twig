@@ -1,7 +1,7 @@
 {% extends 'pdf/base.html.twig' %}
 
 {% block content %}
-    <style>div.month { margin: 8pt 0 2pt 0; page-break-after: avoid; }</style>
+    <style>div.month { margin: 8pt 0 2pt 0; page-break-after: avoid; } tr.sch td { background-color: #f7e7b4; } tr.pub td { background-color: #f6cfd3; } tr.pub td.dc { font-weight: bold; }</style>
     {# Several short tables instead of one huge one: dompdf's table layout grows much faster than linearly #}
     {% for month in rows %}
         <div class="bar month">{{ month.label }}</div>
@@ -21,7 +21,13 @@
         </thead>
             <tbody>
             {% for e in chunk %}
-                <tr class="{{ e.weekend ? 'we' : 'wd' }}">
+                {% if e.holidayName is defined %}
+                <tr class="{{ e.shade }}">
+                    <td class="dc">{{ e.dateLabel }}</td>
+                    <td colspan="4"><b>{{ e.holidayName }}</b></td>
+                </tr>
+                {% else %}
+                <tr class="{{ e.shade }}">
                     <td class="dc">{{ e.dateLabel }}</td>
                     <td>
                         {%- if e.allDay -%}
@@ -39,6 +45,7 @@
                         {{- e.tags|join(', ') -}}
                     </td>
                 </tr>
+                {% endif %}
             {% endfor %}
             </tbody>
         </table>

@@ -11,6 +11,9 @@ const createHolidayCalendar = vi.fn();
 const refreshHolidayCalendar = vi.fn();
 const deleteHolidayCalendar = vi.fn();
 const getHolidayEvents = vi.fn();
+const getHolidayCountries = vi.fn();
+const getHolidaySubdivisions = vi.fn();
+const createPredefinedHolidayCalendars = vi.fn();
 
 vi.mock("@/lib/api", () => ({
   apiGet: (...a: unknown[]) => apiGet(...a),
@@ -19,10 +22,18 @@ vi.mock("@/lib/api", () => ({
   refreshHolidayCalendar: (...a: unknown[]) => refreshHolidayCalendar(...a),
   deleteHolidayCalendar: (...a: unknown[]) => deleteHolidayCalendar(...a),
   getHolidayEvents: (...a: unknown[]) => getHolidayEvents(...a),
+  getHolidayCountries: (...a: unknown[]) => getHolidayCountries(...a),
+  getHolidaySubdivisions: (...a: unknown[]) => getHolidaySubdivisions(...a),
+  createPredefinedHolidayCalendars: (...a: unknown[]) => createPredefinedHolidayCalendars(...a),
 }));
 
 const de = {
   id: "h1",
+  type: "public",
+  source: "ics",
+  sourceCountry: null,
+  sourceSubdivision: null,
+  sourceLanguage: null,
   name: "Feiertage Deutschland",
   url: "https://feiertage.example/de.ics",
   lastFetchedAt: "2026-10-01T04:12:00+00:00",
@@ -30,6 +41,11 @@ const de = {
 };
 const ferien = {
   id: "h2",
+  type: "school",
+  source: "ics",
+  sourceCountry: null,
+  sourceSubdivision: null,
+  sourceLanguage: null,
   name: "Schulferien",
   url: "https://x.example/f.ics",
   lastFetchedAt: null,
@@ -52,6 +68,9 @@ beforeEach(() => {
     refreshHolidayCalendar,
     deleteHolidayCalendar,
     getHolidayEvents,
+    getHolidayCountries,
+    getHolidaySubdivisions,
+    createPredefinedHolidayCalendars,
   ])
     fn.mockReset();
   mockApiGet(apiGet, (path: string) =>
@@ -61,6 +80,15 @@ beforeEach(() => {
   createHolidayCalendar.mockResolvedValue({ ...de, id: "h3", eventCount: 14 });
   refreshHolidayCalendar.mockResolvedValue(de);
   deleteHolidayCalendar.mockResolvedValue(undefined);
+  getHolidayCountries.mockResolvedValue([
+    { isoCode: "AT", name: "Österreich" },
+    { isoCode: "DE", name: "Deutschland" },
+  ]);
+  getHolidaySubdivisions.mockResolvedValue([
+    { code: "DE-BY", name: "Bayern", children: [] },
+    { code: "DE-BE", name: "Berlin", children: [] },
+  ]);
+  createPredefinedHolidayCalendars.mockResolvedValue([{ ...de, id: "p1" }]);
   getHolidayEvents.mockResolvedValue([
     {
       id: "e1",
@@ -74,6 +102,54 @@ beforeEach(() => {
 });
 
 describe("HolidayCalendarsPage", () => {
+  it("imports predefined calendars with Germany preselected", async () => {
+    const user = userEvent.setup();
+    renderRoute(route, url, <HolidayCalendarsPage />);
+    await screen.findByRole("list");
+    const country = screen.getByLabelText(/^Land/);
+    await waitFor(() => expect(country).toHaveValue("DE"));
+    await user.selectOptions(await screen.findByLabelText(/^Bundesland/), "DE-BY");
+    await user.click(screen.getByRole("checkbox", { name: "Schulferien" }));
+    await user.click(screen.getByRole("button", { name: "Importieren" }));
+    await waitFor(() =>
+      expect(createPredefinedHolidayCalendars).toHaveBeenCalledWith("k1", {
+        country: "DE",
+        subdivision: "DE-BY",
+        kinds: ["public"],
+        regionName: "Bayern",
+      }),
+    );
+  });
+
+  it("requires at least one kind", async () => {
+    const user = userEvent.setup();
+    renderRoute(route, url, <HolidayCalendarsPage />);
+    await screen.findByRole("list");
+    await user.click(screen.getByRole("checkbox", { name: "Feiertage" }));
+    await user.click(screen.getByRole("checkbox", { name: "Schulferien" }));
+    await user.click(screen.getByRole("button", { name: "Importieren" }));
+    expect(await screen.findByText("Bitte mindestens eine Art auswählen.")).toBeInTheDocument();
+    expect(createPredefinedHolidayCalendars).not.toHaveBeenCalled();
+  });
+
+  it("shows type and source for predefined calendars without url", async () => {
+    holidays = [
+      {
+        ...de,
+        id: "p1",
+        url: null,
+        source: "openholidays",
+        sourceCountry: "DE",
+        sourceSubdivision: "DE-BY",
+      },
+    ];
+    renderRoute(route, url, <HolidayCalendarsPage />);
+    const list = await screen.findByRole("list", { name: "Eingebundene Kalender (1)" });
+    expect(list).toHaveTextContent("OpenHolidays · DE-BY");
+    expect(list).toHaveTextContent("Feiertage");
+    expect(list).not.toHaveTextContent("null");
+  });
+
   it("lists the holiday calendars with count and last fetch", async () => {
     renderRoute(route, url, <HolidayCalendarsPage />);
     const list = await screen.findByRole("list", { name: "Eingebundene Kalender (2)" });
@@ -100,14 +176,15 @@ describe("HolidayCalendarsPage", () => {
     const user = userEvent.setup();
     renderRoute(route, url, <HolidayCalendarsPage />);
     await screen.findByRole("list");
+    await user.click(screen.getByRole("radio", { name: "ICS-Adresse" }));
     await user.click(screen.getByRole("button", { name: "Hinzufügen und abrufen" }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Bitte einen Namen eingeben.");
     expect(alert).toHaveTextContent("Bitte eine ICS-Adresse eingeben.");
     await user.click(within(alert).getByRole("link", { name: "Bitte eine ICS-Adresse eingeben." }));
-    expect(screen.getByLabelText(/^ICS-Adresse/)).toHaveFocus();
+    expect(screen.getByRole("textbox", { name: /^ICS-Adresse/ })).toHaveFocus();
     await user.type(screen.getByLabelText(/^Name/), "Feiertage AT");
-    await user.type(screen.getByLabelText(/^ICS-Adresse/), "keine-url");
+    await user.type(screen.getByRole("textbox", { name: /^ICS-Adresse/ }), "keine-url");
     await user.click(screen.getByRole("button", { name: "Hinzufügen und abrufen" }));
     expect(
       await screen.findByText("Bitte eine Adresse eingeben, die mit https:// beginnt.", {
@@ -121,13 +198,18 @@ describe("HolidayCalendarsPage", () => {
     const user = userEvent.setup();
     renderRoute(route, url, <HolidayCalendarsPage />);
     await screen.findByRole("list");
+    await user.click(screen.getByRole("radio", { name: "ICS-Adresse" }));
     await user.type(screen.getByLabelText(/^Name/), " Feiertage AT ");
-    await user.type(screen.getByLabelText(/^ICS-Adresse/), "https://feiertage.example/at.ics");
+    await user.type(
+      screen.getByRole("textbox", { name: /^ICS-Adresse/ }),
+      "https://feiertage.example/at.ics",
+    );
     await user.click(screen.getByRole("button", { name: "Hinzufügen und abrufen" }));
     await waitFor(() =>
       expect(createHolidayCalendar).toHaveBeenCalledWith("k1", {
         name: "Feiertage AT",
         url: "https://feiertage.example/at.ics",
+        type: "other",
       }),
     );
     await waitFor(() => expect(screen.getByLabelText(/^Name/)).toHaveValue(""));
@@ -140,8 +222,12 @@ describe("HolidayCalendarsPage", () => {
     const user = userEvent.setup();
     renderRoute(route, url, <HolidayCalendarsPage />);
     await screen.findByRole("list");
+    await user.click(screen.getByRole("radio", { name: "ICS-Adresse" }));
     await user.type(screen.getByLabelText(/^Name/), "Feiertage AT");
-    await user.type(screen.getByLabelText(/^ICS-Adresse/), "https://feiertage.example/at.ics");
+    await user.type(
+      screen.getByRole("textbox", { name: /^ICS-Adresse/ }),
+      "https://feiertage.example/at.ics",
+    );
     await user.click(screen.getByRole("button", { name: "Hinzufügen und abrufen" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Die Adresse konnte nicht abgerufen werden. Prüfe die URL und versuche es erneut.",
@@ -160,8 +246,12 @@ describe("HolidayCalendarsPage", () => {
     const user = userEvent.setup();
     renderRoute(route, url, <HolidayCalendarsPage />);
     await screen.findByRole("list");
+    await user.click(screen.getByRole("radio", { name: "ICS-Adresse" }));
     await user.type(screen.getByLabelText(/^Name/), "Feiertage AT");
-    await user.type(screen.getByLabelText(/^ICS-Adresse/), "https://127.0.0.1/at.ics");
+    await user.type(
+      screen.getByRole("textbox", { name: /^ICS-Adresse/ }),
+      "https://127.0.0.1/at.ics",
+    );
     await user.click(screen.getByRole("button", { name: "Hinzufügen und abrufen" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Die Adresse konnte nicht abgerufen werden. Prüfe die URL und versuche es erneut.",
@@ -179,8 +269,12 @@ describe("HolidayCalendarsPage", () => {
     const user = userEvent.setup();
     renderRoute(route, url, <HolidayCalendarsPage />);
     await screen.findByRole("list");
+    await user.click(screen.getByRole("radio", { name: "ICS-Adresse" }));
     await user.type(screen.getByLabelText(/^Name/), "Feiertage AT");
-    await user.type(screen.getByLabelText(/^ICS-Adresse/), "https://feiertage.example/at.ics");
+    await user.type(
+      screen.getByRole("textbox", { name: /^ICS-Adresse/ }),
+      "https://feiertage.example/at.ics",
+    );
     await user.click(screen.getByRole("button", { name: "Hinzufügen und abrufen" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Der Feiertagskalender konnte nicht hinzugefügt werden. Bitte versuche es erneut.",

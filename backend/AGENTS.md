@@ -26,7 +26,7 @@ the router, so a new or changed route needs a matching operation there).
 | Locations | `/api/clubs/{clubId}/locations` | `LocationController` | `LocationService` |
 | Feeds | `/api/clubs/{clubId}/feeds` (incl. single GET `…/{feedId}`) | `FeedController` | `FeedService` |
 | Public Feed | `/api/feed/{id}/events` (`?from&to`, header + holidays), `/api/feed/{id}/events/{eventId}`, `/api/feed/{id}/ics` | `PublicFeedController` | `PublicFeedService`, `IcsService` |
-| Holiday Calendars | `/api/calendars/{calendarId}/holiday-calendars`, `…/holiday-events` | `HolidayCalendarController`, `HolidayEventController` | `HolidayCalendarService` |
+| Holiday Calendars | `/api/calendars/{calendarId}/holiday-calendars` (incl. `POST …/predefined`), `…/holiday-events`, `/api/holiday-sources/countries[/{iso}/subdivisions]` | `HolidayCalendarController`, `HolidayEventController`, `HolidaySourceController` | `HolidayCalendarService`, `OpenHolidaysClient` (openholidaysapi.org, lists cached 7 days in pool `holiday_sources`; `type` public\|school\|other, `source` ics\|openholidays; stale (> 3 months) predefined calendars are refreshed on `holiday-events` reads, once per hour per calendar; console `app:holidays:refresh [--all] [--calendar=id]`) |
 | Mapbox Proxy | `/api/mapbox` (GET only) | `MapboxController` | `Map\MapboxProxyService` |
 | Map images / geocoding | `/api/map` | `MapController` | `Map\*` (cached, rate-limited providers); without `MAPBOX_TOKEN` (`Map\MapAvailability`) images answer 503 with `backend/assets/map-unavailable.png` (after the 404 checks), geocoding and the Mapbox proxy 503 `map_unavailable` |
 | Club invitations | `/api/clubs/{clubId}/invitations` (admin), `/api/invitations` (invitee) | `ClubInvitationController`, `InvitationController` | `ClubInvitationService`, `ClubInvitationMailer` (see `../CLAUDE.md` "Club invitations") |
@@ -57,7 +57,7 @@ the router, so a new or changed route needs a matching operation there).
 | `src/Security/OneTimeTokenService.php` | Purpose-bound single-use login tokens (e-mail confirmation, SSO code exchange) |
 | `src/Service/EmailVerificationService.php` | 6-digit e-mail confirmation codes (hashed, attempts and resend limits) |
 | `src/Service/RegistrationPolicy.php` | `RESTRICT_REGISTRATION` check (open club invitation required) |
-| `src/Pdf/` | PDF export: `PdfExportService` (view model + Twig `templates/pdf/`), `DompdfFactory` (hardened), `EmojiImages` (allow-list), layout/option classes |
+| `src/Pdf/` | PDF export: `PdfExportService` (view model + Twig `templates/pdf/`), `PdfHolidaySelection`/`PdfHolidays` (optional holiday shading), `DompdfFactory` (hardened), `EmojiImages` (allow-list), layout/option classes |
 | `src/Ics/IcsEventReader.php`, `src/Service/IcsService.php` | Array-row ICS read path and streamed ICS output; ICS output changes raise `IcsService::FORMAT_VERSION` |
 | `src/EventListener/FeedResponseHeadersListener.php` | `Referrer-Policy: no-referrer` + `X-Robots-Tag: noindex` on `/api/feed/*`, except successful responses of an indexable feed (`robotsTag()` reads the request attribute `feed_indexable` set by `PublicFeedService` after the access checks; missing → noindex) |
 | `src/Controller/AbstractApiController.php` | Base controller with `validateDto()` and `decodeJson()` helpers (no JSON object → 400 `invalid_request`) |

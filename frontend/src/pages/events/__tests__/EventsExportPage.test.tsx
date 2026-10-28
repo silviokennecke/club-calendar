@@ -8,12 +8,14 @@ import { mockApiGet } from "@/test/clubRole";
 
 const apiGet = vi.fn();
 const apiFetch = vi.fn();
+const getHolidayCalendars = vi.fn();
 const downloadBlob = vi.fn();
 
 vi.mock("@/lib/api", async (orig) => ({
   ...(await orig<typeof import("@/lib/api")>()),
   apiGet: (...a: unknown[]) => apiGet(...a),
   apiFetch: (...a: unknown[]) => apiFetch(...a),
+  getHolidayCalendars: (...a: unknown[]) => getHolidayCalendars(...a),
 }));
 vi.mock("@/lib/events/ics", async (orig) => ({
   ...(await orig<typeof import("@/lib/events/ics")>()),
@@ -27,7 +29,8 @@ function problem(status: number, body: object, headers: Record<string, string> =
 let events: ReturnType<typeof makeEvent>[];
 
 beforeEach(() => {
-  for (const fn of [apiGet, apiFetch, downloadBlob]) fn.mockReset();
+  for (const fn of [apiGet, apiFetch, downloadBlob, getHolidayCalendars]) fn.mockReset();
+  getHolidayCalendars.mockResolvedValue([]);
   events = [makeEvent({ id: "1", name: "Training", date: new Date().toISOString().slice(0, 10) })];
   mockApiGet(apiGet, (path: string) => {
     if (path === "/api/clubs/c1/calendars/k1")
@@ -141,6 +144,26 @@ describe("EventsExportPage", () => {
     expect(url).toContain("paper=a3");
     expect(url).toContain("orientation=landscape");
     expect(downloadBlob).toHaveBeenCalledWith(expect.anything(), "schiessbetrieb-2026.pdf");
+  });
+
+  it("sends the chosen holiday calendars of the PDF and hides the section without any", async () => {
+    const user = userEvent.setup();
+    getHolidayCalendars.mockResolvedValue([
+      { id: "h1", name: "Feiertage BY", type: "public" },
+      { id: "h2", name: "Ferien BY", type: "school" },
+    ]);
+    renderExport();
+    expect(screen.queryByRole("group", { name: "Feiertagskalender im PDF" })).toBeNull();
+    await user.click(screen.getByRole("radio", { name: /^PDF/ }));
+    const box = await screen.findByRole("checkbox", { name: /Ferien BY/ });
+    expect(box).not.toBeChecked();
+    await user.click(box);
+    const button = await screen.findByRole("button", { name: "PDF-Datei laden" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+    await waitFor(() => expect(apiFetch).toHaveBeenCalled());
+    const [url] = apiFetch.mock.calls[0] as [string];
+    expect(new URLSearchParams(url.split("?")[1]).getAll("holidayCalendarIds[]")).toEqual(["h2"]);
   });
 
   it("maps PDF errors by code", async () => {

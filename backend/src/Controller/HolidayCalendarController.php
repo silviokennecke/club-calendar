@@ -8,10 +8,13 @@ use App\Dto\Holiday\CreateHolidayCalendarDto;
 use App\Dto\Holiday\UpdateHolidayCalendarDto;
 use App\Entity\Calendar;
 use App\Entity\HolidayCalendar;
+use App\Enum\HolidaySource;
+use App\Enum\HolidayType;
 use App\Exception\ApiProblemException;
 use App\Repository\HolidayCalendarRepository;
 use App\Security\ArchivedCalendarVoter;
 use App\Security\CalendarMemberVoter;
+use App\Security\CurrentUserResolver;
 use App\Service\HolidayCalendarService;
 use App\Service\Input;
 use App\Service\Quota;
@@ -33,6 +36,7 @@ class HolidayCalendarController extends AbstractApiController
         private readonly HolidayCalendarRepository $holidayCalendarRepo,
         private readonly HolidayCalendarService $holidayCalendarService,
         private readonly Quota $quota,
+        private readonly CurrentUserResolver $userResolver,
     ) {
     }
 
@@ -57,10 +61,12 @@ class HolidayCalendarController extends AbstractApiController
         $dto = new CreateHolidayCalendarDto();
         $dto->name = self::stringValue($data, 'name') ?? '';
         $dto->url = self::stringValue($data, 'url') ?? '';
+        $dto->type = self::stringValue($data, 'type') ?? 'other';
         $this->validateDto($dto, $validator);
         $this->quota->assertRoom(Quota::HOLIDAY_CALENDARS_PER_CALENDAR, $calendar);
 
         $hc = new HolidayCalendar($calendar, $dto->name, $dto->url);
+        $hc->setType(HolidayType::from($dto->type));
         try {
             // The stored holidays are not in $hc->getEvents() (new entity, collection not reloaded):
             // the response carries the number fetchAndStore() stored.
@@ -77,6 +83,49 @@ class HolidayCalendarController extends AbstractApiController
         return new JsonResponse($this->serialize($hc, $eventCount), Response::HTTP_CREATED);
     }
 
+    #[Route('/predefined', methods: ['POST'])]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
+    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
+    public function createPredefined(
+        #[MapEntity(id: 'calendarId')] Calendar $calendar,
+        Request $request,
+    ): JsonResponse {
+        $data = $this->decodeJson($request);
+        $country = self::stringValue($data, 'country') ?? '';
+        if (1 !== preg_match('/^[A-Za-z]{2}$/', $country)) {
+            throw new ApiProblemException(Response::HTTP_UNPROCESSABLE_ENTITY, 'country must be an ISO 3166-1 alpha-2 code', Input::CODE, 'country');
+        }
+        $subdivision = self::stringValue($data, 'subdivision');
+        if (null !== $subdivision && '' !== $subdivision && 1 !== preg_match('/^[A-Za-z0-9-]{2,16}$/', $subdivision)) {
+            throw new ApiProblemException(Response::HTTP_UNPROCESSABLE_ENTITY, 'subdivision is not a valid code', Input::CODE, 'subdivision');
+        }
+        $subdivision = '' === $subdivision ? null : $subdivision;
+        $regionName = trim(self::stringValue($data, 'regionName') ?? '');
+        if (mb_strlen($regionName) > 150) {
+            throw new ApiProblemException(Response::HTTP_UNPROCESSABLE_ENTITY, 'regionName is too long', Input::CODE, 'regionName');
+        }
+        $kinds = $data['kinds'] ?? null;
+        if (!is_array($kinds) || [] === $kinds || [] !== array_diff($kinds, ['public', 'school'])) {
+            throw new ApiProblemException(Response::HTTP_UNPROCESSABLE_ENTITY, 'kinds must be a non-empty list of public|school', Input::CODE, 'kinds');
+        }
+        $kinds = array_values(array_unique($kinds));
+        $this->quota->assertRoom(Quota::HOLIDAY_CALENDARS_PER_CALENDAR, $calendar, count($kinds));
+
+        $user = $this->userResolver->resolve();
+        $language = 'de' === $user->getLanguage() ? 'de' : 'en';
+        if ('' === $regionName) {
+            $regionName = strtoupper($subdivision ?? $country);
+        }
+
+        try {
+            $created = $this->holidayCalendarService->createPredefined($calendar, $country, $subdivision, $kinds, $language, $regionName);
+        } catch (\Throwable) {
+            throw self::sourceFailed();
+        }
+
+        return new JsonResponse(array_map(fn (array $c) => $this->serialize($c['calendar'], $c['eventCount']), $created), Response::HTTP_CREATED);
+    }
+
     #[Route('/{hcId}', methods: ['PATCH'])]
     #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
@@ -90,14 +139,21 @@ class HolidayCalendarController extends AbstractApiController
 
         // Partial: only the sent keys change; at least one of them. Values are checked like on create (422).
         $data = $this->decodeJson($request);
-        if (!array_key_exists('name', $data) && !array_key_exists('url', $data)) {
-            throw new ApiProblemException(Response::HTTP_UNPROCESSABLE_ENTITY, 'name or url is required', Input::CODE, 'name');
+        if (!array_key_exists('name', $data) && !array_key_exists('url', $data) && !array_key_exists('type', $data)) {
+            throw new ApiProblemException(Response::HTTP_UNPROCESSABLE_ENTITY, 'name, url or type is required', Input::CODE, 'name');
         }
         $dto = new UpdateHolidayCalendarDto();
         $dto->name = self::stringValue($data, 'name');
         $dto->url = self::stringValue($data, 'url');
+        $dto->type = self::stringValue($data, 'type');
         $this->validateDto($dto, $validator);
 
+        if (HolidaySource::OPENHOLIDAYS === $hc->getSource() && (null !== $dto->url || null !== $dto->type)) {
+            throw new ApiProblemException(Response::HTTP_UNPROCESSABLE_ENTITY, 'url and type of a predefined holiday calendar cannot be changed', Input::CODE, null !== $dto->type ? 'type' : 'url');
+        }
+        if (null !== $dto->type) {
+            $hc->setType(HolidayType::from($dto->type));
+        }
         if (null !== $dto->name) {
             $hc->setName($dto->name);
         }
@@ -136,7 +192,7 @@ class HolidayCalendarController extends AbstractApiController
         try {
             $eventCount = $this->holidayCalendarService->fetchAndStore($hc);
         } catch (\Throwable) {
-            throw self::fetchFailed();
+            throw HolidaySource::OPENHOLIDAYS === $hc->getSource() ? self::sourceFailed() : self::fetchFailed();
         }
 
         return new JsonResponse($this->serialize($hc, $eventCount));
@@ -175,12 +231,22 @@ class HolidayCalendarController extends AbstractApiController
         return new ApiProblemException(Response::HTTP_UNPROCESSABLE_ENTITY, 'Failed to fetch ICS feed. Please check the URL and try again.', 'ics_fetch_failed', 'url');
     }
 
+    private static function sourceFailed(): ApiProblemException
+    {
+        return new ApiProblemException(Response::HTTP_UNPROCESSABLE_ENTITY, 'Failed to fetch holidays from the holiday source. Please try again later.', 'holiday_source_failed');
+    }
+
     private function serialize(HolidayCalendar $hc, ?int $eventCount = null): array
     {
         return [
             'id' => $hc->getId(),
             'name' => $hc->getName(),
             'url' => $hc->getUrl(),
+            'type' => $hc->getType()->value,
+            'source' => $hc->getSource()->value,
+            'sourceCountry' => $hc->getSourceCountry(),
+            'sourceSubdivision' => $hc->getSourceSubdivision(),
+            'sourceLanguage' => $hc->getSourceLanguage(),
             'lastFetchedAt' => $hc->getLastFetchedAt()?->format(\DateTimeInterface::ATOM),
             'eventCount' => $eventCount ?? $hc->getEvents()->count(),
         ];

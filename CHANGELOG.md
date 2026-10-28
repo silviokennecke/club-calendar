@@ -7,6 +7,9 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Added
 
+- Holiday calendars have a type (public holidays, school holidays, other) and can be imported as predefined calendars from OpenHolidays (country preselected Germany, optional state, kinds public/school holidays); the data is stored in the database, refreshed automatically when older than 3 months and manually on demand. New console command `app:holidays:refresh`; the server must reach `openholidaysapi.org`.
+- Event series: choose which holiday calendars apply to "skip holidays" (default all), on create and when changing the series.
+- PDF export: optional "Show holidays" selection of holiday calendars (default none); public holidays are coloured with their name, school holidays coloured with the name on the first day only.
 - PDF export of a calendar (`GET /api/calendars/{id}/events.pdf`): month grid, quarter overview, annual overview and agenda, A4/A3, portrait/landscape, with a legend for property icons; output language and first weekday follow the profile. At most 366 days and 2000 events per PDF. Requires the PHP extensions `gd` and `intl`.
 - User documentation for all features in `/help`, including the subscribe guide with app tabs (iPhone/iPad, Mac, Outlook, Google Calendar) at `/help/publishing/subscribe`; the old `/help/subscribe` URL (with `?app=`) redirects there.
 - In-app help at `/help` (German and English) with full-text search and contextual `HelpLink`s, compiled from Markdown at build time; screenshots are generated with Playwright (`npm run docs:screenshots`).

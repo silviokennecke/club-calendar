@@ -13,5 +13,7 @@
     "col.tags": "Tags",
     "all_day": "all day",
     "page": "Page {page} of {total}",
-    "continued": "continued"
+    "continued": "continued",
+    "holiday_pub": "Public holiday",
+    "holiday_sch": "School holidays"
 }

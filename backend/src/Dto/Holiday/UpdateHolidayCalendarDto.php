@@ -17,4 +17,7 @@ class UpdateHolidayCalendarDto
     #[Assert\Url]
     #[Assert\Length(max: 2048)]
     public ?string $url = null;
+
+    #[Assert\Choice(choices: ['public', 'school', 'other'])]
+    public ?string $type = null;
 }

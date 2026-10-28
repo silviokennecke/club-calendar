@@ -35,9 +35,9 @@ final class PdfQuarterOverview
      * @param float                      $contentHeightPt printable page height in points
      * @param float                      $contentWidthPt  printable page width in points
      *
-     * @return list<array{months: list<array{label: string, rows: list<array<string, mixed>>}>, fontPt: float, lineHeightPt: float, rowHeightPt: float, emojiPt: float, eventIds: list<string>}>
+     * @return list<array{months: list<array{label: string, rows: list<array<string, mixed>>}>, fontPt: float, lineHeightPt: float, rowHeightPt: float, emojiPt: float, eventIds: list<string>, holidayKinds: list<string>}>
      */
-    public static function build(\DateTimeImmutable $from, \DateTimeImmutable $to, array $entries, string $locale, float $contentHeightPt, float $contentWidthPt): array
+    public static function build(\DateTimeImmutable $from, \DateTimeImmutable $to, array $entries, string $locale, float $contentHeightPt, float $contentWidthPt, array $holidays = []): array
     {
         $byDay = [];
         foreach ($entries as $entry) {
@@ -50,7 +50,7 @@ final class PdfQuarterOverview
         $cursor = new \DateTimeImmutable($from->format('Y-m-01'));
         $lastMonth = new \DateTimeImmutable($to->format('Y-m-01'));
         for (; $cursor <= $lastMonth; $cursor = $cursor->modify('+1 month')) {
-            $months[] = self::month($cursor, $from->format('Y-m-d'), $to->format('Y-m-d'), $byDay, $locale);
+            $months[] = self::month($cursor, $from->format('Y-m-d'), $to->format('Y-m-d'), $byDay, $locale, $holidays);
         }
 
         $capacity = self::capacity($contentHeightPt);
@@ -73,7 +73,7 @@ final class PdfQuarterOverview
     /**
      * @param list<array{label: string, rows: list<array<string, mixed>>, lines: int}> $months
      *
-     * @return array{months: list<array{label: string, rows: list<array<string, mixed>>}>, fontPt: float, lineHeightPt: float, rowHeightPt: float, emojiPt: float, eventIds: list<string>}
+     * @return array{months: list<array{label: string, rows: list<array<string, mixed>>}>, fontPt: float, lineHeightPt: float, rowHeightPt: float, emojiPt: float, eventIds: list<string>, holidayKinds: list<string>}
      */
     private static function page(array $months, float $contentHeightPt, float $contentWidthPt): array
     {
@@ -81,9 +81,16 @@ final class PdfQuarterOverview
         $font = self::fontFor($maxLines, $contentHeightPt);
         $lineHeight = round($font * self::LINE_FACTOR, 2);
         $ids = [];
+        $kinds = [];
         $textWidthEm = ($contentWidthPt * self::COLUMN_SHARE * self::EVENT_CELL_SHARE - self::CELL_PADDING_PT) / $font;
         foreach ($months as &$month) {
             foreach ($month['rows'] as &$row) {
+                if (in_array($row['shade'] ?? null, [PdfHolidays::PUBLIC, PdfHolidays::SCHOOL], true)) {
+                    $kinds[$row['shade']] = true;
+                }
+                if (null !== ($row['holidayName'] ?? null)) {
+                    $row['holidayText'] = PdfEventLine::text(['time' => null, 'emojiPaths' => [], 'title' => $row['holidayName'], 'features' => []], $textWidthEm, $font);
+                }
                 foreach ($row['events'] ?? [] as $i => $event) {
                     $row['events'][$i]['text'] = PdfEventLine::text($event, $textWidthEm, $font);
                     if ([] !== $event['emojiPaths']) {
@@ -105,6 +112,7 @@ final class PdfQuarterOverview
             'rowHeightPt' => round(self::MIN_DAY_LINES * $lineHeight, 2),
             'emojiPt' => round($font * 1.1, 2),
             'eventIds' => array_values($ids),
+            'holidayKinds' => array_values(array_filter([PdfHolidays::PUBLIC, PdfHolidays::SCHOOL], static fn (string $k): bool => isset($kinds[$k]))),
         ];
     }
 
@@ -159,7 +167,7 @@ final class PdfQuarterOverview
      *
      * @return array{label: string, rows: list<array<string, mixed>>, lines: int}
      */
-    private static function month(\DateTimeImmutable $first, string $fromYmd, string $toYmd, array $byDay, string $locale): array
+    private static function month(\DateTimeImmutable $first, string $fromYmd, string $toYmd, array $byDay, string $locale, array $holidays = []): array
     {
         $year = (int) $first->format('Y');
         $month = (int) $first->format('n');
@@ -194,8 +202,13 @@ final class PdfQuarterOverview
             }
             $rowLines = max(self::MIN_DAY_LINES, count($events));
             $lines += $rowLines;
+            $holiday = $holidays[$ymd] ?? null;
+            $weekend = 0 === $weekday || 6 === $weekday;
             $rows[] = [
                 'kind' => 'day',
+                'shade' => PdfHolidays::shade($holiday, $weekend),
+                // the name takes a free line only: the font scaling counts lines, so it never adds one
+                'holidayName' => count($events) < self::MIN_DAY_LINES ? ($holiday['name'] ?? null) : null,
                 'number' => $d,
                 'weekday' => PdfDates::weekdayShort($weekday, $locale),
                 'weekend' => 0 === $weekday || 6 === $weekday,
