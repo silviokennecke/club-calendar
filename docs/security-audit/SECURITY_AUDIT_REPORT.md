@@ -27,7 +27,7 @@
 ## Executive Summary
 
 - **No Critical findings** in the completed areas.
-- Counts: **0 High, 1 Medium, 3 Low, 6 Informational** — 10 findings.
+- Counts: **0 High, 1 Medium, 3 Low, 4 Informational** — 8 findings.
 - **Top gap:** Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
 - **Positives:** no IDOR/cross-tenant gaps in the API surface; no live Mapbox token in the frontend (fully proxied through the backend); WebAuthn ceremonies, OAuth state handling, and exception → RFC 7807 response masking are sound; feed-secret checks are constant-time and the Mapbox proxy is SSRF-safe (fixed upstream host, strict path allowlist, caller token stripped).
 
@@ -99,41 +99,6 @@
 **Notes:** `required` breaks some platform authenticators; `preferred` is a reasonable floor but should be an explicit choice.
 **Source:** `01-backend-auth.md` (AUTH-08).
 
-#### AUTH-09 — Login timing side-channel (user enumeration)
-**Severity:** Informational
-**Attack scope:** Network attacker performing timing measurements.
-**Description:** Login looks up the user by email and only runs password verification for existing users; the not-found path is measurably faster, enabling timing-based enumeration.
-**Affected parts:** `AuthService.php:48-54`.
-**Fix recommendation:** Always run a dummy credential check on the not-found path (near-constant-time behavior) and/or store a dummy hash per user.
-**Notes:** Exploitability is low (network jitter).
-**Source:** `01-backend-auth.md` (AUTH-09).
-
-#### AUTH-10 — updateMe accepts unvalidated lastClubId / lastCalendarId
-
-> **Status (git-log check 2026-10-15): PARTIALLY FIXED** — `9451045` validates the types in `PATCH /auth/me`; `223a8d1` moves the last calendar to the membership. Membership of the stored club/calendar is still not verified from the audit's point of view; unverified in code, please re-check.**
-**Severity:** Informational
-**Attack scope:** Authenticated user (self).
-**Description:** `PATCH /api/auth/me` stores `lastClubId` / `lastCalendarId` exactly as sent, without validating that the caller is a member of that club/calendar. They are cosmetic last-visit pointers; no authorization impact found.
-**Affected parts:** `AuthController.php:163-164`.
-**Fix recommendation:** Validate membership via the existing voters before persisting, or treat the values strictly as untrusted UI hints.
-**Source:** `01-backend-auth.md` (AUTH-10).
-
-#### AUTH-11 — UserProvider is an unused stub
-**Severity:** Informational
-**Attack scope:** None (dead code).
-**Description:** `src/Security/UserProvider.php` (33 lines) is not referenced from `security.yaml` or any service wiring; authentication flows through `CurrentUserResolver` instead.
-**Affected parts:** `src/Security/UserProvider.php`.
-**Fix recommendation:** Remove the stub, or wire it up if intended for future use.
-**Source:** `01-backend-auth.md` (AUTH-11).
-
-#### AUTH-12 — JWT signing passphrase equals APP_SECRET
-**Severity:** Informational
-**Attack scope:** Attacker who obtains the application secret (e.g. env leak).
-**Description:** The Lexik JWT passphrase is wired directly to `APP_SECRET`, so one leaked value forges access tokens and compromises everything else the application secret protects.
-**Affected parts:** `config/packages/lexik_jwt_authentication.yaml:2, :9`.
-**Fix recommendation:** Use a dedicated `JWT_SECRET` env var with independent rotation; do not share secrets across signing domains.
-**Source:** `01-backend-auth.md` (AUTH-12).
-
 #### FE-07 — Dev/build deps lag current major (no vulnerable major in use)
 **Severity:** Informational
 **Attack scope:** None demonstrated; standard "keep tooling current" hygiene.
@@ -190,19 +155,15 @@
 | AUTH-06 | Register: check-then-insert race on the email | Informational |
 | AUTH-07 | Email verification error redirect leaks the failure reason | Informational |
 | AUTH-08 | `WEBAUTHN_USER_VERIFICATION` missing from `backend/.env.example` | Informational |
-| AUTH-09 | Login timing side-channel (user enumeration) | Informational |
-| AUTH-10 | `updateMe` accepts unvalidated `lastClubId` / `lastCalendarId` | Informational |
-| AUTH-11 | `UserProvider` is an unused stub | Informational |
-| AUTH-12 | JWT signing passphrase equals `APP_SECRET` | Informational |
 | FE-07 | Dev/build deps lag current major (no vulnerable major in use) | Informational |
 
 ## Appendix B — Per-Area Reports
 
 | Area | Report | Findings | Status |
 |---|---|---|---|
-| Backend auth | `01-backend-auth.md` | AUTH-05, AUTH-08 … AUTH-13 (7) | Complete |
+| Backend auth | `01-backend-auth.md` | AUTH-05 … AUTH-08, AUTH-13 (5) | Complete |
 | Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-53 (2) | Complete |
 | Frontend | `03-frontend.md` | FE-07 (1) | Complete |
-| Scans & config | `04-scans-config.md` | SCAN-04, SCAN-07, SCAN-09, SCAN-10, SCAN-12 (5) | Complete |
+| Scans & config | `04-scans-config.md` | SCAN-07, SCAN-09, SCAN-12 (3) | Complete |
 
 These reports live in `docs/security-audit/`.

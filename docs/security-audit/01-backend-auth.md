@@ -36,40 +36,6 @@ Static, read-only code review: full reads of every in-scope file plus targeted r
 **Fix recommendation:** Set/document the variable in `.env.example` (e.g. `required` for production) or fail fast on missing configuration.
 **Notes:** `required` breaks some platform authenticators; `preferred` is a reasonable floor but should be an explicit choice.
 
-### AUTH-09 — Login timing side-channel and collation-normalized email lookup
-**Severity:** Informational
-**Attack scope:** Network attacker performing timing measurements; user enumeration
-**Description:** Login looks the user up by email (collation-normalized) and runs password verification only for existing users; the not-found path is measurably faster, enabling timing-based enumeration.
-**Affected parts:** `AuthService.php:48-54`
-**Fix recommendation:** Always run a dummy credential check on the not-found path (constant-time-ish behavior) and/or store a per-user dummy hash.
-**Notes:** Exploitability is low (network jitter).
-
-### AUTH-10 — updateMe accepts unvalidated lastClubId / lastCalendarId
-
-> **Status (git-log check 2026-10-15): PARTIALLY FIXED** — `9451045` validates the types in `PATCH /auth/me`; `223a8d1` moves the last calendar to the membership. Membership of the stored club/calendar is still not verified from the audit's point of view; unverified in code, please re-check.**
-**Severity:** Informational
-**Attack scope:** Authenticated user (self)
-**Description:** `PATCH /api/auth/me` stores `lastClubId` / `lastCalendarId` exactly as sent, without validating that the caller is a member of that club/calendar.
-**Affected parts:** `AuthController.php:163-164`
-**Fix recommendation:** Validate membership via the existing voters before persisting, or treat the values strictly as untrusted UI hints.
-**Notes:** Cosmetic last-visit pointers; no authorization impact found.
-
-### AUTH-11 — UserProvider is an unused stub
-**Severity:** Informational
-**Attack scope:** None (dead code)
-**Description:** `src/Security/UserProvider.php` (33 lines) is not referenced from `security.yaml` or any service wiring; authentication flows through `CurrentUserResolver` instead.
-**Affected parts:** `src/Security/UserProvider.php`
-**Fix recommendation:** Remove the stub, or wire it up if intended for future use.
-**Notes:** Dead security-adjacent code is a maintenance/confusion risk, not a vulnerability.
-
-### AUTH-12 — JWT signing passphrase equals APP_SECRET
-**Severity:** Informational
-**Attack scope:** Attacker who obtains the application secret (e.g. environment leak)
-**Description:** The Lexik JWT passphrase is wired directly to `APP_SECRET`, so one leaked value forges access tokens and compromises everything else the application secret protects.
-**Affected parts:** `config/packages/lexik_jwt_authentication.yaml:2, :9`
-**Fix recommendation:** Use a dedicated `JWT_SECRET` environment variable with independent rotation; do not share secrets across signing domains.
-**Notes:** Not exploitable on its own; a defense-in-depth / key-management issue.
-
 ## Reviewed & OK
 
 - **Email verification:** register sends the initial verification email (`AuthService.php:43`); login blocks unverified users (`AuthService.php:55-57`, `EmailNotVerifiedException`); the public resend endpoint is rate-limited (`email_verification_resend`) and answers with a uniform 204 regardless of email existence (no enumeration) (`AuthController.php:90-103`); the stored token is bcrypt-hashed, link tokens are single-use.
