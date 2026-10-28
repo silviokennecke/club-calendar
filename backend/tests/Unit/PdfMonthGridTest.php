@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
+use App\Pdf\PdfEventLine;
 use App\Pdf\PdfMonthGrid;
 use PHPUnit\Framework\TestCase;
 
@@ -66,6 +67,55 @@ class PdfMonthGridTest extends TestCase
         $cell = array_column(array_filter(array_merge(...$m['weeks'])), null, 'number')[4];
         self::assertCount(4, $cell['events']);
         self::assertSame(3, $cell['more']);
-        self::assertSame('E1', $cell['events'][0]['name']);
+        self::assertSame('E1', $cell['events'][0]['title']);
+    }
+
+    public function testEventLineHasTimeEmojiTitleAndFeatures(): void
+    {
+        $entry = $this->entry('2026-07-04', 'Pokal') + ['allDay' => false, 'begin' => '19:00', 'emojiPaths' => ['/a.png'], 'features' => ['Bonus', 'Wertung'], 'draft' => true];
+        $e = $this->cell([$entry], 1000.0)['events'][0];
+        self::assertSame('19:00', $e['time']);
+        self::assertSame(['/a.png'], $e['emojiPaths']);
+        self::assertSame('Pokal (Bonus, Wertung)', $e['text']);
+        self::assertTrue($e['draft']);
+    }
+
+    public function testAllDayAndMissingTimeHaveNoTime(): void
+    {
+        $allDay = $this->entry('2026-07-04', 'A') + ['allDay' => true, 'begin' => '10:00'];
+        $none = $this->entry('2026-07-04', 'B') + ['allDay' => false, 'begin' => null];
+        $events = $this->cell([$allDay, $none])['events'];
+        self::assertNull($events[0]['time']);
+        self::assertNull($events[1]['time']);
+        self::assertFalse($events[1]['draft']);
+        self::assertSame([], $events[1]['features']);
+    }
+
+    public function testLongLinesAreCutWithinTheCellBudget(): void
+    {
+        $entry = $this->entry('2026-07-04', str_repeat('Mitgliederversammlung ', 6)) + ['allDay' => false, 'begin' => '19:00', 'emojiPaths' => ['/a.png', '/b.png'], 'features' => ['Bonusschießen']];
+        foreach ([527.0, 842.0 - 68.0] as $width) {
+            $e = $this->cell([$entry], $width)['events'][0];
+            self::assertStringEndsWith('…', $e['text']);
+            $cellEm = ($width / 7 - 7.0) / PdfMonthGrid::FONT_PT;
+            $used = PdfEventLine::emWidth('19:00 ') + 2 * (1.1 + 1.0 / PdfMonthGrid::FONT_PT) + PdfEventLine::emWidth(' '.$e['text']);
+            self::assertLessThanOrEqual($cellEm, $used);
+        }
+        $wide = $this->cell([$entry], 842.0 - 68.0)['events'][0]['text'];
+        $narrow = $this->cell([$entry], 527.0)['events'][0]['text'];
+        self::assertGreaterThan(mb_strlen($narrow), mb_strlen($wide));
+    }
+
+    public function testShortLineIsNotCut(): void
+    {
+        self::assertSame('Training', $this->cell([$this->entry('2026-07-04', 'Training')])['events'][0]['text']);
+    }
+
+    /** @param list<array<string, mixed>> $entries */
+    private function cell(array $entries, float $width = 527.0): array
+    {
+        $m = PdfMonthGrid::build($this->d('2026-07-01'), $this->d('2026-07-31'), 1, $entries, 'en', 4, $width)[0];
+
+        return array_column(array_filter(array_merge(...$m['weeks'])), null, 'number')[4];
     }
 }
