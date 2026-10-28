@@ -22,7 +22,9 @@ export function Topbar({ data }: { data: ShellData }) {
 
   return (
     <header className="ap-topbar">
-      <Logo variant="mark" size={32} />
+      <Link to="/" className="no-underline">
+        <Logo variant="mark" size={32} />
+      </Link>
       <ContextMenu
         caption={club?.name ?? fallback}
         value={calendar?.name ?? fallback}
