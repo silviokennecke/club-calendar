@@ -16,11 +16,11 @@ class RateLimitedMapImageProviderTest extends TestCase
 {
     private function makeFactory(bool $accepted): RateLimiterFactoryInterface
     {
-        $limit = $this->createMock(RateLimit::class);
+        $limit = $this->createStub(RateLimit::class);
         $limit->method('isAccepted')->willReturn($accepted);
-        $limiter = $this->createMock(LimiterInterface::class);
+        $limiter = $this->createStub(LimiterInterface::class);
         $limiter->method('consume')->willReturn($limit);
-        $factory = $this->createMock(RateLimiterFactoryInterface::class);
+        $factory = $this->createStub(RateLimiterFactoryInterface::class);
         $factory->method('create')->willReturn($limiter);
 
         return $factory;
@@ -28,7 +28,7 @@ class RateLimitedMapImageProviderTest extends TestCase
 
     public function testPassesThroughWhenLimiterAccepts(): void
     {
-        $inner = $this->createMock(MapImageProviderInterface::class);
+        $inner = $this->createStub(MapImageProviderInterface::class);
         $inner->method('getImage')->willReturn('JPEG');
 
         $result = new RateLimitedMapImageProvider($inner, $this->makeFactory(true))
@@ -39,7 +39,7 @@ class RateLimitedMapImageProviderTest extends TestCase
 
     public function testThrowsWhenLimiterExhausted(): void
     {
-        $inner = $this->createMock(MapImageProviderInterface::class);
+        $inner = $this->createStub(MapImageProviderInterface::class);
 
         $this->expectException(RateLimitExceededException::class);
         new RateLimitedMapImageProvider($inner, $this->makeFactory(false))

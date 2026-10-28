@@ -82,7 +82,7 @@ class PdfExportServiceTest extends KernelTestCase
     /** dompdf writes info strings as UTF-16BE with BOM. */
     private function info(string $pdf, string $key): string
     {
-        self::assertSame(1, preg_match('~/'.$key.' \(\xFE\xFF((?:[^\\)]|\\.)*)\)~s', $pdf, $m));
+        self::assertSame(1, preg_match('~/'.$key.' \(\xFE\xFF((?:[^\\\\)]|\\\\.)*)\)~s', $pdf, $m));
 
         return mb_convert_encoding(stripcslashes($m[1]), 'UTF-8', 'UTF-16BE');
     }

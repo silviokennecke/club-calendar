@@ -27,7 +27,7 @@ class LocationMapCacheInvalidatorTest extends TestCase
 
     private function preArgs(bool $latChanged, bool $lngChanged): PreUpdateEventArgs
     {
-        $args = $this->createMock(PreUpdateEventArgs::class);
+        $args = $this->createStub(PreUpdateEventArgs::class);
         $args->method('hasChangedField')->willReturnCallback(
             fn (string $f) => ('latitude' === $f && $latChanged) || ('longitude' === $f && $lngChanged),
         );
