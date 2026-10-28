@@ -20,14 +20,6 @@ Static, read-only code review: full reads of every in-scope file plus targeted r
 
 2026-10-05
 
-### AUTH-05 — Raw exception objects logged with full stack traces
-**Severity:** Low
-**Attack scope:** Anyone with access to logs / log aggregation; internal structure disclosure
-**Description:** OAuth and WebAuthn error paths log raw exception objects; Monolog renders full stack traces including internal file paths, class names, and framework internals.
-**Affected parts:** `OAuthController.php:79, :101`; `WebAuthnService.php:167, :232, :267`
-**Fix recommendation:** Log `$e->getMessage()` plus sanitized context, or add a Monolog processor that strips paths from traces.
-**Notes:** HTTP responses are properly masked by ExceptionListener (RFC 7807, no traces to clients) — this is log-side only.
-
 ### AUTH-08 — WEBAUTHN_USER_VERIFICATION missing from .env.example
 **Severity:** Informational
 **Attack scope:** Fresh deployments (passkey ceremonies with weaker user verification)
