@@ -56,7 +56,7 @@ class SessionInvalidationTest extends WebTestCase
     // --- helpers ---
 
     /** @return array{token: string, refresh_token: string} */
-    private function signIn(string $provider, array $claims, bool $expectVerificationRequired = false): array
+    private function signIn(string $provider, array $claims): array
     {
         self::$client->request('GET', self::API."/api/auth/oauth/$provider");
         parse_str((string) parse_url((string) self::$client->getResponse()->headers->get('Location'), \PHP_URL_QUERY), $start);
@@ -66,11 +66,6 @@ class SessionInvalidationTest extends WebTestCase
         ]));
         $location = (string) self::$client->getResponse()->headers->get('Location');
         parse_str((string) parse_url($location, \PHP_URL_QUERY), $result);
-        if ($expectVerificationRequired) {
-            $this->assertSame('email_verification_required', $result['error'] ?? null, $location);
-
-            return $result;
-        }
         $this->assertArrayNotHasKey('error', $result, $location);
         $this->assertArrayNotHasKey('token', $result, 'no token in the redirect URL');
         $this->assertNotEmpty($result['code'] ?? null, $location);
@@ -83,17 +78,13 @@ class SessionInvalidationTest extends WebTestCase
     }
 
     /**
-     * An unverified account created by a Microsoft login (no session is issued by the login itself, so the
-     * tokens that someone could have held, e.g. from before this rule, are issued directly).
+     * An unverified account created by a Microsoft login: the sign-in yields a restricted session.
      *
      * @return array{token: string, refresh_token: string}
      */
     private function unverifiedMicrosoftSession(string $email): array
     {
-        $this->signIn('microsoft', self::microsoft($email), true);
-        $tokens = $this->tokens()->tokenResponse($this->user($email));
-
-        return ['token' => $tokens['access_token'], 'refresh_token' => $tokens['refresh_token']];
+        return $this->signIn('microsoft', self::microsoft($email));
     }
 
     private static function google(string $email, string $sub = 'google-owner'): array
@@ -127,7 +118,8 @@ class SessionInvalidationTest extends WebTestCase
     private function confirm(string $email): void
     {
         $service = static::getContainer()->get(EmailVerificationService::class);
-        $service->verify($email, $service->issueCode($this->user($email)));
+        $user = $this->user($email);
+        $service->verify($user, $service->issueCode($user));
     }
 
     private function user(string $email): User
@@ -157,8 +149,7 @@ class SessionInvalidationTest extends WebTestCase
     {
         $attacker = $this->unverifiedMicrosoftSession('owner@example.com');
         $this->assertSame(200, $this->me($attacker['token']));
-        // Tokens of an unconfirmed account (data from before the rule) cannot be refreshed any more.
-        $this->assertSame(401, $this->refresh($attacker['refresh_token'])[0]);
+        $this->assertSame(200, $this->refresh($attacker['refresh_token'])[0], 'restricted sessions can be refreshed');
 
         $owner = $this->signIn('google', self::google('owner@example.com'));
 
@@ -255,9 +246,6 @@ class SessionInvalidationTest extends WebTestCase
         $refresh = "$header.$body.".base64_encode(hash_hmac('sha256', "$header.$body", (string) $_ENV['JWT_REFRESH_SECRET'], true));
 
         $this->assertSame(200, $this->me($access));
-        // Refreshing is refused while the address is unconfirmed.
-        $this->assertSame(401, $this->refresh($refresh)[0]);
-
         $this->signIn('google', self::google('legacy@example.com'));
         $this->assertSame(401, $this->me($access));
         $this->assertSame(401, $this->refresh($refresh)[0]);
@@ -326,34 +314,29 @@ class SessionInvalidationTest extends WebTestCase
     }
 
     /**
-     * Known residual risk (security audit, pre-hijacking): someone registers locally with the
-     * owner's address and an own password; the owner clicks the confirmation link. The confirmation ends
-     * sessions, but the registrant never had one (password login needs a confirmed address) and still knows
-     * the password afterwards; a later Google login of the owner does not remove it (address is confirmed).
-     * Fixing this needs a feature (password reset / set password on confirmation), not part of this fix.
+     * Pre-hijacking: someone registers locally with the owner's address and an own password. Their session is
+     * restricted (the mailed code is useless without it, so the owner cannot confirm it either), and a
+     * trusted Google login of the owner removes the password and ends the registrant's sessions.
      */
-    public function testPreRegisteredPasswordStillWorksAfterTheOwnerConfirms(): void
+    public function testPreRegisteredPasswordIsRemovedWhenTheOwnerSignsInWithAVerifiedProvider(): void
     {
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
             'name' => 'Squatter', 'email' => 'owner@example.com', 'password' => 'squatter-pass',
         ]);
         $this->assertSame(201, $r['status'], $r['content']);
-        $before = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', [
-            'email' => 'owner@example.com', 'password' => 'squatter-pass',
-        ]);
-        $this->assertSame(403, $before['status'], 'no session before the confirmation');
+        $squatter = $r['body'];
+        $this->assertSame(403, TestHelper::jsonRequest(self::$client, 'GET', '/api/clubs', [], 'Bearer '.$squatter['access_token'])['status']);
+        $this->assertSame(200, $this->me($squatter['access_token']));
 
-        $this->confirm('owner@example.com');
         $owner = $this->signIn('google', self::google('owner@example.com'));
         $this->assertSame(200, $this->me($owner['token']));
+        $this->assertSame(401, $this->me($squatter['access_token']));
+        $this->assertSame(401, $this->refresh($squatter['refresh_token'])[0]);
 
         $after = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', [
             'email' => 'owner@example.com', 'password' => 'squatter-pass',
         ]);
-        $this->assertSame(200, $after['status'], 'residual risk: the registrant password stays valid');
-        // Both sessions are valid at the same time: nothing was invalidated after the confirmation.
-        $this->assertSame(200, $this->me($owner['token']));
-        $this->assertSame(200, $this->me($after['body']['access_token']));
+        $this->assertSame(401, $after['status'], 'the registrant password is gone');
     }
 
     public function testParallelSessionsOfTheSameUserStayValid(): void

@@ -10,9 +10,7 @@ use App\Entity\EmailVerification;
 use App\Entity\OAuthAccount;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
-use App\Exception\EmailNotVerifiedException;
 use App\Exception\OAuthAccountConflictException;
-use App\Exception\OAuthEmailVerificationRequiredException;
 use App\Exception\OAuthRegistrationRestrictedException;
 use App\Repository\RefreshTokenRepository;
 use App\Security\NonceStore;
@@ -44,9 +42,6 @@ readonly class AuthService
         /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
         #[Autowire(env: 'int:REFRESH_TOKEN_REUSE_GRACE')]
         private int $refreshReuseGrace,
-        /** Lifetime in seconds of the login token that confirming the e-mail code returns. */
-        #[Autowire(env: 'int:EMAIL_VERIFICATION_LOGIN_TOKEN_TTL')]
-        private int $verificationLoginTokenTtl,
         /** Lifetime in seconds of the one-time code the SSO callback puts into the redirect URL. */
         #[Autowire(env: 'int:OAUTH_LOGIN_CODE_TTL')]
         private int $oauthLoginCodeTtl,
@@ -56,7 +51,7 @@ readonly class AuthService
     /**
      * @param array<mixed> $acceptedDocuments ids of the accepted legal documents (all current ones are required)
      */
-    public function register(string $name, string $email, string $password, ?string $language = null, array $acceptedDocuments = [], ?string $ip = null, ?string $userAgent = null): void
+    public function register(string $name, string $email, string $password, ?string $language = null, array $acceptedDocuments = [], ?string $ip = null, ?string $userAgent = null): array
     {
         $email = EmailAddress::normalize($email);
         // Before the e-mail-taken check and the hashing
@@ -79,6 +74,9 @@ readonly class AuthService
         $this->em->flush();
         $this->legal->record($user, $accepted, $ip, $userAgent);
         $this->verificationMailer->send($user);
+
+        // Restricted session: only the e-mail confirmation (and the account itself) is reachable until the code was entered.
+        return $this->tokens->tokenResponse($user);
     }
 
     public function login(string $email, string $password): array
@@ -92,9 +90,8 @@ readonly class AuthService
             throw self::invalidCredentials();
         }
         if (!$user->isEmailVerified()) {
-            // Right password, no confirmed address: make sure the user has a code to enter.
+            // Right password, no confirmed address: restricted session; make sure the user has a code to enter.
             $this->sendCodeIfDue($user);
-            throw new EmailNotVerifiedException();
         }
 
         return $this->tokens->tokenResponse($user);
@@ -129,14 +126,12 @@ readonly class AuthService
     }
 
     /**
-     * Resend action: nothing for unknown or verified addresses (the caller answers 204 like on success);
-     * 429 `verification_resend_too_early` with `retryAt` within the cooldown of the account.
+     * Resend action of the signed-in user: nothing when the address is already verified (the caller answers
+     * 204 like on success); 429 `verification_resend_too_early` with `retryAt` within the cooldown of the account.
      */
-    public function resendVerificationCode(string $email): void
+    public function resendVerificationCode(User $user): void
     {
-        $email = EmailAddress::normalize($email);
-        $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
-        if (!$user || $user->isEmailVerified()) {
+        if ($user->isEmailVerified()) {
             return;
         }
         $locked = $this->verificationService->lockedUntil($user);
@@ -156,18 +151,15 @@ readonly class AuthService
     }
 
     /**
-     * Confirms the address with the code and returns a one-time login token for the token endpoint.
-     *
-     * @return array{loginToken: string, expiresIn: int}
+     * Confirms the signed-in user's address with the code. The restricted session ends (token version) and a
+     * new session (family) is returned.
      */
-    public function verifyEmailCode(string $email, string $code): array
+    public function verifyEmailCode(User $user, string $code): array
     {
-        $user = $this->verificationService->verify($email, $code);
+        $this->verificationService->verify($user, $code);
+        $this->tokens->revokeAllRefreshTokens($user);
 
-        return [
-            'loginToken' => $this->oneTimeTokens->issue($user, OneTimeTokenService::PURPOSE_EMAIL_VERIFIED, $this->verificationLoginTokenTtl),
-            'expiresIn' => $this->verificationLoginTokenTtl,
-        ];
+        return $this->tokens->tokenResponse($user);
     }
 
     /** One-time code for the SSO redirect; redeemed at the token endpoint like the e-mail login token. */
@@ -177,16 +169,13 @@ readonly class AuthService
     }
 
     /**
-     * Token endpoint, grant `one_time_token`: the same token response as login. Both purposes (confirmed
-     * e-mail code, finished SSO sign-in) stand for "this verified user may get a session now"; no other
-     * signed token (state, link ticket, challenge ...) is accepted.
+     * Token endpoint, grant `one_time_token`: the same token response as login (a restricted session for a user
+     * who has not confirmed the address yet). Only the finished SSO sign-in is accepted; no other signed
+     * token (state, link ticket, challenge ...).
      */
     public function redeemOneTimeToken(string $token): array
     {
-        $user = $this->oneTimeTokens->redeem($token, [
-            OneTimeTokenService::PURPOSE_EMAIL_VERIFIED,
-            OneTimeTokenService::PURPOSE_OAUTH_LOGIN,
-        ]);
+        $user = $this->oneTimeTokens->redeem($token, [OneTimeTokenService::PURPOSE_OAUTH_LOGIN]);
         if (null === $user) {
             throw new ApiProblemException(400, 'The token is invalid, expired or was used before', 'invalid_grant');
         }
@@ -211,7 +200,7 @@ readonly class AuthService
             throw self::invalidRefreshToken($e->getMessage());
         }
         $user = is_string($payload['sub'] ?? null) ? $this->em->getRepository(User::class)->find($payload['sub']) : null;
-        if (!$user || !$user->isEmailVerified()) {
+        if (!$user) {
             throw self::invalidRefreshToken('User not found');
         }
         // Sessions end when the account's credentials were revoked (e.g. SSO takeover of an unconfirmed account).
@@ -304,6 +293,7 @@ readonly class AuthService
             'hasPassword' => null !== $user->getPassword(),
             'pendingConsents' => LegalPresenter::pending($pending),
             'consentRequired' => !$sessionConsentOk && [] !== $pending,
+            'emailVerificationRequired' => !$user->isEmailVerified(),
             'pendingEmail' => $this->accounts->pendingEmail($user),
             'passkeys' => array_values($user->getPasskeys()->map(fn ($p) => [
                 'id' => $p->getId(),
@@ -407,11 +397,10 @@ readonly class AuthService
      *   prove ownership (password, passkeys, other SSO links, pending confirmations) are removed first.
      * - Without a verified address an existing user is never linked ({@see OAuthAccountConflictException}).
      * - A new user is marked e-mail-verified only if the provider confirms the address. Otherwise (Microsoft)
-     *   the user is created unverified, the confirmation code is mailed and no tokens are issued; the sign-in
-     *   works after the code was entered (login token of the code endpoint, or this login again) ({@see OAuthEmailVerificationRequiredException}).
+     *   the user is created unverified and the confirmation code is mailed; the caller signs them in with a
+     *   restricted session that only reaches the e-mail confirmation.
      *
      * @throws OAuthAccountConflictException
-     * @throws OAuthEmailVerificationRequiredException
      */
     public function findOrCreateOAuthUser(string $provider, string $providerId, string $email, string $name, bool $providerSaysEmailVerified = false): User
     {
@@ -428,10 +417,8 @@ readonly class AuthService
                 $this->em->flush();
             } else {
                 if (!$oauthUser->isEmailVerified()) {
-                    // Created by a provider that does not prove the address: no session before the mailbox
-                    // owner entered the code (the login token of the code endpoint then signs them in).
+                    // Created by a provider that does not prove the address: restricted session until the code was entered.
                     $this->sendCodeIfDue($oauthUser);
-                    throw new OAuthEmailVerificationRequiredException($oauthUser->getEmail());
                 }
 
                 return $oauthUser;
@@ -472,7 +459,6 @@ readonly class AuthService
 
         if (!$user->isEmailVerified()) {
             $this->sendCodeIfDue($user);
-            throw new OAuthEmailVerificationRequiredException($user->getEmail());
         }
 
         return $user;

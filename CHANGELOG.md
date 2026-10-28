@@ -13,4 +13,9 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Changed
 
+- E-mail confirmation now needs a signed-in, restricted session: registration, password login, refresh and SSO of an unconfirmed account return tokens (`emailVerificationRequired`), but every route except the own profile, consent, sign-out and the confirmation itself answers `403 email_verification_required`. `POST /api/auth/verify-email` takes only `{code}` with that session and returns a fresh token pair; `POST /api/auth/resend-verification` needs the session and no body. Login of an unconfirmed account no longer answers `403 email_not_verified`, the SSO callback no longer redirects with `error=email_verification_required`, and the `loginToken` / `EMAIL_VERIFICATION_LOGIN_TOKEN_TTL` are gone.
 - Page footers show a single help link: the help center (`/help`), on public calendar pages the subscribe guide; the help pages show only the legal links.
+
+### Security
+
+- Pre-hijacking of accounts is closed: someone who registers a stranger's address with an own password can no longer be confirmed by the mailbox owner's code. Only the session that proved the password (or SSO login) and holds the mailed code can confirm the address.

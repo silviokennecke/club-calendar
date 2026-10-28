@@ -372,7 +372,7 @@ class PasswordResetTest extends WebTestCase
     public function testResetConfirmsTheAddressAndRemovesPendingConfirmationLinks(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, self::uniqueEmail(), isEmailVerified: false);
-        TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/resend-verification', ['email' => $user->getEmail()]);
+        TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/resend-verification', [], TestHelper::authHeader($user, self::getContainer()->get(TokenService::class)));
         $this->assertSame(1, self::$em->getRepository(EmailVerification::class)->count([]));
 
         $this->forgot($user->getEmail());
@@ -488,9 +488,11 @@ class PasswordResetTest extends WebTestCase
     public function testVerifyCommandConfirmsTheAddress(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, self::uniqueEmail(), 'password123', false);
-        $this->assertSame(403, $this->login($user->getEmail(), 'password123'));
+        $before = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', ['email' => $user->getEmail(), 'password' => 'password123']);
+        $this->assertTrue($before['body']['emailVerificationRequired']);
         $this->assertSame(0, $this->command('app:user:verify')->execute(['user' => $user->getEmail()]));
-        $this->assertSame(200, $this->login($user->getEmail(), 'password123'));
+        $after = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', ['email' => $user->getEmail(), 'password' => 'password123']);
+        $this->assertFalse($after['body']['emailVerificationRequired']);
 
         $this->assertSame(1, $this->command('app:user:verify')->execute(['user' => 'nobody@example.com']));
     }

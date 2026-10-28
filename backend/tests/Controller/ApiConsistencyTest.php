@@ -122,13 +122,14 @@ class ApiConsistencyTest extends WebTestCase
         $this->assertProblem(401, ['code' => 'invalid_token'], $this->req('GET', '/api/auth/me', $auth));
     }
 
-    public function testLoginWithUnconfirmedAddressIsAProblem(): void
+    public function testRestrictedSessionRoutesAreProblems(): void
     {
-        TestHelper::createUser($this->em, $this->hasher, 'new@example.com', 'password123', false);
+        $user = TestHelper::createUser($this->em, $this->hasher, 'new@example.com', 'password123', false);
 
-        $r = $this->req('POST', '/api/auth/login', '', ['email' => 'new@example.com', 'password' => 'password123']);
-        $this->assertProblem(403, ['code' => 'email_not_verified'], $r);
+        $r = $this->req('GET', '/api/clubs', TestHelper::authHeader($user, $this->tokens));
+        $this->assertProblem(403, ['code' => 'email_verification_required', 'email' => 'new@example.com'], $r);
         $this->assertArrayNotHasKey('error', $r['body']);
+        $this->assertProblem(401, ['code' => 'missing_token'], $this->req('POST', '/api/auth/verify-email', '', ['code' => '123456']));
     }
 
     public function testUnknownOAuthProviderOnTheBrowserRoutesIsA404Problem(): void

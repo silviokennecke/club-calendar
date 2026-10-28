@@ -18,8 +18,8 @@ use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
- * E-mail confirmation by a 6-digit code: lifecycle of the code, resend cooldown and limits, login of an
- * unconfirmed user, and the one-time login token redeemed at the token endpoint.
+ * E-mail confirmation by a 6-digit code: lifecycle of the code, resend cooldown and limits, and the restricted
+ * session of an unconfirmed user (registration, login, refresh, SSO code) that alone may confirm the address.
  */
 class EmailVerificationCodeTest extends WebTestCase
 {
@@ -28,6 +28,8 @@ class EmailVerificationCodeTest extends WebTestCase
     private static KernelBrowser $client;
     private EntityManagerInterface $em;
     private UserPasswordHasherInterface $hasher;
+    /** @var array<string, string> access token of the restricted session per address */
+    private array $bearer = [];
 
     public static function setUpBeforeClass(): void
     {
@@ -40,6 +42,7 @@ class EmailVerificationCodeTest extends WebTestCase
         $this->em = $container->get(EntityManagerInterface::class);
         $this->hasher = $container->get(UserPasswordHasherInterface::class);
         DatabaseResetter::reset($this->em);
+        $this->bearer = [];
         self::mockTime('2026-10-16 10:00:00 UTC');
     }
 
@@ -50,9 +53,26 @@ class EmailVerificationCodeTest extends WebTestCase
 
     // --- helpers ---
 
-    private function post(string $uri, array $body): array
+    private function post(string $uri, array $body, string $auth = ''): array
     {
-        return TestHelper::jsonRequest(self::$client, 'POST', $uri, $body);
+        return TestHelper::jsonRequest(self::$client, 'POST', $uri, $body, $auth);
+    }
+
+    /** POST with the restricted session of the address (signs in with the default password when there is none yet). */
+    private function postAs(string $email, string $uri, array $body = []): array
+    {
+        if (!isset($this->bearer[$email])) {
+            $login = $this->post('/api/auth/login', ['email' => $email, 'password' => 'password123']);
+            $this->assertSame(200, $login['status'], $login['content']);
+            $this->bearer[$email] = $login['body']['access_token'];
+        }
+
+        return $this->post($uri, $body, 'Bearer '.$this->bearer[$email]);
+    }
+
+    private function resend(string $email): array
+    {
+        return $this->postAs($email, '/api/auth/resend-verification');
     }
 
     /** Registers and returns the code from the mail. */
@@ -60,6 +80,7 @@ class EmailVerificationCodeTest extends WebTestCase
     {
         $r = $this->post('/api/auth/register', ['name' => 'New', 'email' => $email, 'password' => 'password123']);
         $this->assertSame(201, $r['status'], $r['content']);
+        $this->bearer[$email] = $r['body']['access_token'];
 
         return $this->codeFromLastMail($email);
     }
@@ -78,7 +99,7 @@ class EmailVerificationCodeTest extends WebTestCase
 
     private function verify(string $email, string $code): array
     {
-        return $this->post('/api/auth/verify-email', ['email' => $email, 'code' => $code]);
+        return $this->postAs($email, '/api/auth/verify-email', ['code' => $code]);
     }
 
     private function grant(string $token): array
@@ -108,11 +129,15 @@ class EmailVerificationCodeTest extends WebTestCase
 
     // --- register ---
 
-    public function testRegisterRequiresTheCodeAndIssuesNoTokens(): void
+    public function testRegisterIssuesARestrictedSessionAndRequiresTheCode(): void
     {
         $r = $this->post('/api/auth/register', ['name' => 'New', 'email' => 'new@example.com', 'password' => 'password123']);
         $this->assertSame(201, $r['status']);
-        $this->assertSame(['verificationRequired' => true, 'email' => 'new@example.com'], $r['body']);
+        $this->assertTrue($r['body']['verificationRequired']);
+        $this->assertSame('new@example.com', $r['body']['email']);
+        $this->assertTrue($r['body']['emailVerificationRequired']);
+        $this->assertNotEmpty($r['body']['access_token']);
+        $this->assertNotEmpty($r['body']['refresh_token']);
         $this->assertEmailCount(1);
         $mail = $this->getMailerMessage();
         $this->assertInstanceOf(Email::class, $mail);
@@ -140,36 +165,46 @@ class EmailVerificationCodeTest extends WebTestCase
 
     // --- code lifecycle ---
 
-    public function testValidCodeVerifiesAndReturnsALoginTokenThatSignsIn(): void
+    public function testValidCodeVerifiesAndReturnsANewSession(): void
     {
         $code = $this->register();
+        $old = $this->bearer['new@example.com'];
 
         $r = $this->verify('new@example.com', $code);
         $this->assertSame(200, $r['status'], $r['content']);
-        $this->assertSame(30, $r['body']['expiresIn']);
-        $this->assertNotEmpty($r['body']['loginToken']);
+        $this->assertFalse($r['body']['emailVerificationRequired']);
+        $this->assertNotEmpty($r['body']['access_token']);
+        $this->assertNotEmpty($r['body']['refresh_token']);
+        $this->assertArrayNotHasKey('loginToken', $r['body']);
         $this->assertTrue($this->user('new@example.com')->isEmailVerified());
 
-        $session = $this->grant($r['body']['loginToken']);
-        $this->assertSame(200, $session['status']);
-        $this->assertNotEmpty($session['body']['access_token']);
-        $this->assertNotEmpty($session['body']['refresh_token']);
-        $me = TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], 'Bearer '.$session['body']['access_token']);
+        // The restricted session ended, the new one is a full session.
+        $this->assertSame(401, TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], 'Bearer '.$old)['status']);
+        $me = TestHelper::jsonRequest(self::$client, 'GET', '/api/clubs', [], 'Bearer '.$r['body']['access_token']);
         $this->assertSame(200, $me['status']);
         $this->assertSame(200, $this->post('/api/auth/login', ['email' => 'new@example.com', 'password' => 'password123'])['status']);
     }
 
-    public function testWrongCodeAndUnknownAddressGiveTheSameAnswer(): void
+    public function testWrongCodeIsInvalidAndWithoutSessionIs401(): void
     {
         $code = $this->register();
 
         $wrong = $this->verify('new@example.com', $this->wrongCode($code));
-        $unknown = $this->verify('nobody@example.com', '123456');
         $this->assertSame(422, $wrong['status']);
         $this->assertSame('invalid_verification_code', $wrong['body']['code']);
-        $this->assertSame($wrong['body'], $unknown['body']);
-        $this->assertSame(422, $unknown['status']);
         $this->assertFalse($this->user('new@example.com')->isEmailVerified());
+
+        $anonymous = $this->post('/api/auth/verify-email', ['code' => $code]);
+        $this->assertSame(401, $anonymous['status']);
+        $this->assertFalse($this->user('new@example.com')->isEmailVerified());
+    }
+
+    public function testVerifyingAnAlreadyVerifiedAccountIsTheSameInvalidCode(): void
+    {
+        TestHelper::createUser($this->em, $this->hasher, 'ok@example.com');
+        $r = $this->verify('ok@example.com', '123456');
+        $this->assertSame(422, $r['status']);
+        $this->assertSame('invalid_verification_code', $r['body']['code']);
     }
 
     public function testCodeExpiresAfter15Minutes(): void
@@ -189,8 +224,12 @@ class EmailVerificationCodeTest extends WebTestCase
     public function testCodeIsSingleUse(): void
     {
         $code = $this->register();
-        $this->assertSame(200, $this->verify('new@example.com', $code)['status']);
-        $this->assertSame('invalid_verification_code', $this->verify('new@example.com', $code)['body']['code']);
+        $session = $this->verify('new@example.com', $code);
+        $this->assertSame(200, $session['status']);
+        // The restricted session ended with the confirmation; a full session cannot reuse the code either.
+        $this->assertSame('invalid_token', $this->verify('new@example.com', $code)['body']['code']);
+        $r = $this->post('/api/auth/verify-email', ['code' => $code], 'Bearer '.$session['body']['access_token']);
+        $this->assertSame('invalid_verification_code', $r['body']['code']);
     }
 
     public function testFiveWrongAttemptsKillTheCode(): void
@@ -204,7 +243,7 @@ class EmailVerificationCodeTest extends WebTestCase
         $this->assertFalse($this->user('new@example.com')->isEmailVerified());
 
         self::mockTime('+5 minutes');
-        $this->assertSame(204, $this->post('/api/auth/resend-verification', ['email' => 'new@example.com'])['status']);
+        $this->assertSame(204, $this->resend('new@example.com')['status']);
         $fresh = $this->codeFromLastMail('new@example.com');
         $this->assertSame(200, $this->verify('new@example.com', $fresh)['status']);
     }
@@ -222,7 +261,7 @@ class EmailVerificationCodeTest extends WebTestCase
     {
         $old = $this->register();
         self::mockTime('+5 minutes');
-        $this->assertSame(204, $this->post('/api/auth/resend-verification', ['email' => 'new@example.com'])['status']);
+        $this->assertSame(204, $this->resend('new@example.com')['status']);
         $new = $this->codeFromLastMail('new@example.com');
 
         if ($old !== $new) {
@@ -245,31 +284,39 @@ class EmailVerificationCodeTest extends WebTestCase
         $this->register();
         self::mockTime('+2 minutes');
 
-        $r = $this->post('/api/auth/resend-verification', ['email' => 'new@example.com']);
+        $r = $this->resend('new@example.com');
         $this->assertSame(429, $r['status']);
         $this->assertSame('verification_resend_too_early', $r['body']['code']);
         $this->assertSame('2026-10-16T10:05:00Z', $r['body']['retryAt']);
         $this->assertSame('180', self::$client->getResponse()->headers->get('Retry-After'));
 
         self::mockTime('+3 minutes');
-        $this->assertSame(204, $this->post('/api/auth/resend-verification', ['email' => 'new@example.com'])['status']);
+        $this->assertSame(204, $this->resend('new@example.com')['status']);
     }
 
-    public function testResendForUnknownOrVerifiedAddressesIs204WithoutMail(): void
+    public function testResendForAVerifiedAccountIs204WithoutMail(): void
     {
         TestHelper::createUser($this->em, $this->hasher, 'ok@example.com');
-        foreach (['nobody@example.com', 'ok@example.com'] as $email) {
-            $this->assertSame(204, $this->post('/api/auth/resend-verification', ['email' => $email])['status']);
-            $this->assertEmailCount(0);
-        }
+        $this->assertSame(204, $this->resend('ok@example.com')['status']);
+        $this->assertEmailCount(0);
+    }
+
+    public function testResendAndVerifyNeedASession(): void
+    {
+        $this->register();
+        $r = $this->post('/api/auth/resend-verification', []);
+        $this->assertSame(401, $r['status']);
+        $this->assertSame('missing_token', $r['body']['code']);
+        $this->assertSame(401, $this->post('/api/auth/verify-email', ['code' => '123456'])['status']);
     }
 
     public function testResendIsLimitedTo25PerIpAndDay(): void
     {
+        TestHelper::createUser($this->em, $this->hasher, 'ok@example.com');
         for ($i = 0; $i < 25; ++$i) {
-            $this->assertSame(204, $this->post('/api/auth/resend-verification', ['email' => "nobody$i@example.com"])['status']);
+            $this->assertSame(204, $this->resend('ok@example.com')['status']);
         }
-        $r = $this->post('/api/auth/resend-verification', ['email' => 'nobody@example.com']);
+        $r = $this->resend('ok@example.com');
         $this->assertSame(429, $r['status']);
         $this->assertSame('rate_limited', $r['body']['code']);
     }
@@ -291,23 +338,20 @@ class EmailVerificationCodeTest extends WebTestCase
         $this->register();
         for ($i = 0; $i < 9; ++$i) {
             self::mockTime('+5 minutes');
-            $this->assertSame(204, $this->post('/api/auth/resend-verification', ['email' => 'new@example.com'])['status']);
+            $this->assertSame(204, $this->resend('new@example.com')['status']);
         }
         $this->assertSame(10, $this->em->getRepository(EmailVerification::class)->count([]));
 
         self::mockTime('+5 minutes');
-        $r = $this->post('/api/auth/resend-verification', ['email' => 'new@example.com']);
+        $r = $this->resend('new@example.com');
         $this->assertSame(429, $r['status']);
         $this->assertSame('rate_limited', $r['body']['code']);
         $this->assertGreaterThan(0, (int) self::$client->getResponse()->headers->get('Retry-After'));
         $this->assertSame(10, $this->em->getRepository(EmailVerification::class)->count([]));
 
-        // Unknown addresses stay a plain 204.
-        $this->assertSame(204, $this->post('/api/auth/resend-verification', ['email' => 'nobody@example.com'])['status']);
-
         // 24 hours after the first code the window has moved on.
         self::mockTime('+23 hours +30 minutes');
-        $this->assertSame(204, $this->post('/api/auth/resend-verification', ['email' => 'new@example.com'])['status']);
+        $this->assertSame(204, $this->resend('new@example.com')['status']);
         $this->assertSame(11, $this->em->getRepository(EmailVerification::class)->count([]));
     }
 
@@ -338,20 +382,21 @@ class EmailVerificationCodeTest extends WebTestCase
         $this->seedRows($this->user('new@example.com'), 4, 5);
         $this->assertSame('invalid_verification_code', $this->verify('new@example.com', $code)['body']['code']);
         self::mockTime('+6 minutes');
-        $this->assertSame(429, $this->post('/api/auth/resend-verification', ['email' => 'new@example.com'])['status']);
+        $this->assertSame(429, $this->resend('new@example.com')['status']);
         $this->assertFalse($this->user('new@example.com')->isEmailVerified());
     }
 
     // --- login ---
 
-    public function testLoginOfAnUnverifiedUserIs403AndSendsACodeOnce(): void
+    public function testLoginOfAnUnverifiedUserIsRestrictedAndSendsACodeOnce(): void
     {
         $this->unverifiedUser();
 
         $r = $this->post('/api/auth/login', ['email' => 'u@example.com', 'password' => 'password123']);
-        $this->assertSame(403, $r['status']);
-        $this->assertSame('email_not_verified', $r['body']['code']);
-        $this->assertSame('u@example.com', $r['body']['email']);
+        $this->assertSame(200, $r['status']);
+        $this->assertTrue($r['body']['emailVerificationRequired']);
+        $this->assertNotEmpty($r['body']['access_token']);
+        $this->bearer['u@example.com'] = $r['body']['access_token'];
         $this->assertEmailCount(1);
         $code = $this->codeFromLastMail('u@example.com');
 
@@ -359,9 +404,11 @@ class EmailVerificationCodeTest extends WebTestCase
         $this->post('/api/auth/login', ['email' => 'u@example.com', 'password' => 'password123']);
         $this->assertSame(1, $this->em->getRepository(EmailVerification::class)->count([]));
 
-        // Entering it verifies; login works.
+        // Entering it verifies; login is a full session from then on.
         $this->assertSame(200, $this->verify('u@example.com', $code)['status']);
-        $this->assertSame(200, $this->post('/api/auth/login', ['email' => 'u@example.com', 'password' => 'password123'])['status']);
+        $login = $this->post('/api/auth/login', ['email' => 'u@example.com', 'password' => 'password123']);
+        $this->assertSame(200, $login['status']);
+        $this->assertFalse($login['body']['emailVerificationRequired']);
     }
 
     public function testLoginSendsANewCodeOnlyAfterTheOldOneIsGoneAndTheCooldownPassed(): void
@@ -399,66 +446,65 @@ class EmailVerificationCodeTest extends WebTestCase
 
     // --- refresh / one-time token ---
 
-    public function testRefreshRefusesUnverifiedUsers(): void
+    public function testRefreshKeepsTheRestrictedSession(): void
     {
         $user = $this->unverifiedUser();
         $refresh = static::getContainer()->get(TokenService::class)->createRefreshToken($user);
         self::$client->request('POST', '/api/auth/token', ['grant_type' => 'refresh_token', 'refresh_token' => $refresh]);
+        $this->assertSame(200, self::$client->getResponse()->getStatusCode());
+        $body = json_decode((string) self::$client->getResponse()->getContent(), true);
+        $this->assertTrue($body['emailVerificationRequired']);
+        $this->assertSame(403, TestHelper::jsonRequest(self::$client, 'GET', '/api/clubs', [], 'Bearer '.$body['access_token'])['status']);
+    }
+
+    public function testConfirmingEndsTheRefreshTokensOfTheRestrictedSession(): void
+    {
+        $this->unverifiedUser();
+        $login = $this->post('/api/auth/login', ['email' => 'u@example.com', 'password' => 'password123']);
+        $this->bearer['u@example.com'] = $login['body']['access_token'];
+        $this->assertSame(200, $this->verify('u@example.com', $this->codeFromLastMail('u@example.com'))['status']);
+
+        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'refresh_token', 'refresh_token' => $login['body']['refresh_token']]);
         $this->assertSame(401, self::$client->getResponse()->getStatusCode());
-        $this->assertSame('invalid_refresh_token', json_decode((string) self::$client->getResponse()->getContent(), true)['code']);
     }
 
-    public function testLoginTokenIsSingleUse(): void
+    public function testOneTimeTokenOfAnotherPurposeOrTamperedIsRefused(): void
     {
-        $token = $this->verify('new@example.com', $this->register())['body']['loginToken'];
-        $this->assertSame(200, $this->grant($token)['status']);
-        $second = $this->grant($token);
-        $this->assertSame(400, $second['status']);
-        $this->assertSame('invalid_grant', $second['body']['code']);
-    }
-
-    public function testLoginTokenExpiresAfter30Seconds(): void
-    {
-        $token = $this->verify('new@example.com', $this->register())['body']['loginToken'];
-        self::mockTime('+29 seconds');
-        $this->assertSame(200, $this->grant($token)['status']);
-
-        DatabaseResetter::reset($this->em);
-        $token = $this->verify('new@example.com', $this->register())['body']['loginToken'];
-        self::mockTime('+31 seconds');
-        $this->assertSame('invalid_grant', $this->grant($token)['body']['code']);
-    }
-
-    public function testLoginTokenOfAnotherPurposeOrTamperedIsRefused(): void
-    {
-        $this->register();
-        $this->verify('new@example.com', $this->codeFromLastMail('new@example.com'));
-        $user = $this->user('new@example.com');
+        $user = $this->unverifiedUser();
         $service = static::getContainer()->get(OneTimeTokenService::class);
 
         $foreign = $service->issue($user, 'some.other.purpose', 30);
         $this->assertSame('invalid_grant', $this->grant($foreign)['body']['code']);
 
-        $good = $service->issue($user, OneTimeTokenService::PURPOSE_EMAIL_VERIFIED, 30);
+        $good = $service->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30);
         $tampered = substr($good, 0, -2).('AA' === substr($good, -2) ? 'BB' : 'AA');
         $this->assertSame('invalid_grant', $this->grant($tampered)['body']['code']);
         $this->assertSame('invalid_grant', $this->grant('garbage')['body']['code']);
-        $this->assertSame(200, $this->grant($good)['status']);
+        // An unverified user gets the restricted session.
+        $session = $this->grant($good);
+        $this->assertSame(200, $session['status']);
+        $this->assertTrue($session['body']['emailVerificationRequired']);
     }
 
-    public function testLoginTokenDiesWhenTheSessionsEnd(): void
+    public function testOneTimeTokenIsSingleUseAndExpires(): void
     {
-        $token = $this->verify('new@example.com', $this->register())['body']['loginToken'];
-        $user = $this->user('new@example.com');
-        $user->invalidateTokens();
-        $this->em->flush();
+        $user = $this->unverifiedUser();
+        $service = static::getContainer()->get(OneTimeTokenService::class);
+        $token = $service->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30);
+        $this->assertSame(200, $this->grant($token)['status']);
+        $this->assertSame('invalid_grant', $this->grant($token)['body']['code']);
+
+        $token = $service->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30);
+        self::mockTime('+31 seconds');
         $this->assertSame('invalid_grant', $this->grant($token)['body']['code']);
     }
 
-    public function testLoginTokenOfAnUnverifiedUserIsRefused(): void
+    public function testOneTimeTokenDiesWhenTheSessionsEnd(): void
     {
         $user = $this->unverifiedUser();
-        $token = static::getContainer()->get(OneTimeTokenService::class)->issue($user, OneTimeTokenService::PURPOSE_EMAIL_VERIFIED, 30);
+        $token = static::getContainer()->get(OneTimeTokenService::class)->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30);
+        $user->invalidateTokens();
+        $this->em->flush();
         $this->assertSame('invalid_grant', $this->grant($token)['body']['code']);
     }
 
@@ -466,5 +512,57 @@ class EmailVerificationCodeTest extends WebTestCase
     {
         self::$client->request('POST', '/api/auth/token', ['grant_type' => 'one_time_token']);
         $this->assertSame(400, self::$client->getResponse()->getStatusCode());
+    }
+
+    // --- gate ---
+
+    public function testRestrictedSessionReachesOnlyTheAllowList(): void
+    {
+        $this->register();
+        $auth = 'Bearer '.$this->bearer['new@example.com'];
+        $get = fn (string $uri) => TestHelper::jsonRequest(self::$client, 'GET', $uri, [], $auth);
+
+        foreach (['/api/clubs', '/api/invitations', '/api/auth/mcp-grants'] as $uri) {
+            $r = $get($uri);
+            $this->assertSame(403, $r['status'], $uri);
+            $this->assertSame('email_verification_required', $r['body']['code'], $uri);
+            $this->assertSame('new@example.com', $r['body']['email']);
+        }
+        $this->assertSame('email_verification_required', $this->post('/api/auth/change-password', ['currentPassword' => 'password123', 'newPassword' => 'password456'], $auth)['body']['code']);
+        $this->assertSame('email_verification_required', $this->post('/api/auth/logout-all', [], $auth)['body']['code']);
+
+        $me = $get('/api/auth/me');
+        $this->assertSame(200, $me['status']);
+        $this->assertTrue($me['body']['emailVerificationRequired']);
+        $this->assertSame(200, $get('/api/auth/consents')['status']);
+        $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'PATCH', '/api/auth/me', ['name' => 'Renamed'], $auth)['status']);
+        $this->assertSame(200, $get('/api/legal')['status']);
+    }
+
+    public function testVerifiedSessionIsNotGated(): void
+    {
+        $this->register();
+        $r = $this->verify('new@example.com', $this->codeFromLastMail('new@example.com'));
+        $auth = 'Bearer '.$r['body']['access_token'];
+        $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'GET', '/api/clubs', [], $auth)['status']);
+        $this->assertFalse(TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], $auth)['body']['emailVerificationRequired']);
+    }
+
+    // --- pre-hijack ---
+
+    public function testTheMailboxOwnerWithoutASessionCannotConfirmAnAccountSomeoneElseRegistered(): void
+    {
+        // The attacker registers the victim's address with their own password and holds the restricted session.
+        $code = $this->register('victim@example.com');
+        TestHelper::createUser($this->em, $this->hasher, 'other@example.com');
+        $otherLogin = $this->post('/api/auth/login', ['email' => 'other@example.com', 'password' => 'password123']);
+
+        // The victim only has the mailed code and no session.
+        $this->assertSame(401, $this->post('/api/auth/verify-email', ['email' => 'victim@example.com', 'code' => $code])['status']);
+        // Another user's session does not confirm the victim's account with the victim's code.
+        $r = $this->post('/api/auth/verify-email', ['email' => 'victim@example.com', 'code' => $code], 'Bearer '.$otherLogin['body']['access_token']);
+        $this->assertSame(422, $r['status']);
+        $this->assertSame('invalid_verification_code', $r['body']['code']);
+        $this->assertFalse($this->user('victim@example.com')->isEmailVerified());
     }
 }
