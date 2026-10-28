@@ -17,10 +17,10 @@ class CachingGeocoderDecoratorTest extends TestCase
     private function makeCache(): CacheInterface
     {
         $store = [];
-        $cache = $this->createMock(CacheInterface::class);
+        $cache = $this->createStub(CacheInterface::class);
         $cache->method('get')->willReturnCallback(function (string $key, callable $cb) use (&$store) {
             if (!array_key_exists($key, $store)) {
-                $store[$key] = $cb($this->createMock(ItemInterface::class));
+                $store[$key] = $cb($this->createStub(ItemInterface::class));
             }
 
             return $store[$key];

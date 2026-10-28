@@ -38,11 +38,11 @@ class MapboxProxyServiceTest extends TestCase
 
     private function makeDenyingFactory(): RateLimiterFactoryInterface
     {
-        $limit = $this->createMock(RateLimit::class);
+        $limit = $this->createStub(RateLimit::class);
         $limit->method('isAccepted')->willReturn(false);
-        $limiter = $this->createMock(LimiterInterface::class);
+        $limiter = $this->createStub(LimiterInterface::class);
         $limiter->method('consume')->willReturn($limit);
-        $factory = $this->createMock(RateLimiterFactoryInterface::class);
+        $factory = $this->createStub(RateLimiterFactoryInterface::class);
         $factory->method('create')->willReturn($limiter);
 
         return $factory;

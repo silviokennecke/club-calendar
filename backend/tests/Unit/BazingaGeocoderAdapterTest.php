@@ -29,7 +29,7 @@ class BazingaGeocoderAdapterTest extends TestCase
             return new MockResponse(json_encode(['features' => $features]), ['response_headers' => ['content-type: application/json']]);
         });
 
-        return new BazingaGeocoderAdapter($this->createMock(Geocoder::class), $client, 'tok');
+        return new BazingaGeocoderAdapter($this->createStub(Geocoder::class), $client, 'tok');
     }
 
     public function testSuggestReturnsAddressResult(): void
@@ -96,7 +96,7 @@ class BazingaGeocoderAdapterTest extends TestCase
 
     public function testReverseReturnsGeocodedAddress(): void
     {
-        $geocoder = $this->createMock(Geocoder::class);
+        $geocoder = $this->createStub(Geocoder::class);
         $address = $this->makeAddress([
             'latitude' => 48.137,
             'longitude' => 11.575,
@@ -116,7 +116,7 @@ class BazingaGeocoderAdapterTest extends TestCase
 
     public function testReverseReturnsNullWhenNoResults(): void
     {
-        $geocoder = $this->createMock(Geocoder::class);
+        $geocoder = $this->createStub(Geocoder::class);
         $geocoder->method('reverseQuery')->willReturn(new AddressCollection([]));
 
         $adapter = new BazingaGeocoderAdapter($geocoder, new MockHttpClient(), 'tok');
