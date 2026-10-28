@@ -7,7 +7,6 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Exception\OAuthAccountConflictException;
-use App\Exception\OAuthEmailVerificationRequiredException;
 use App\Exception\OAuthRegistrationRestrictedException;
 use App\OAuth\OidcResourceOwner;
 use App\Security\AuthRateLimiter;
@@ -44,11 +43,10 @@ use Symfony\Component\Routing\Attribute\Route;
  * Errors go to FRONTEND_URL/auth/callback?error=<code>: invalid_state, provider_denied (user cancelled at
  * the provider), provider_error (other error from the provider), oauth_failed (code exchange / profile
  * failed), email_missing, account_exists, email_unverified_at_provider (Google/Apple say the address is
- * not verified there, so an existing account is not linked), email_verification_required (the provider does not
- * prove the address, e.g. Microsoft: no session before the address is confirmed; the confirmation code was mailed
- * and the redirect carries `&email=<address>`; after `POST /api/auth/verify-email` the frontend signs in with the
- * returned login token), registration_restricted (RESTRICT_REGISTRATION: a new account needs an open club
+ * not verified there, so an existing account is not linked), registration_restricted (RESTRICT_REGISTRATION: a new account needs an open club
  * invitation for the address; existing accounts and linking are not affected).
+ * A provider that does not prove the address (Microsoft) gets the normal code too: the confirmation code is
+ * mailed and the redeemed session is restricted until `POST /api/auth/verify-email`.
  *
  * Linking (signed in, profile): POST /{provider}/link-start (JWT) returns {url}, a one-time ticket URL on
  * this API (60 s, bound to user and session version). Opening it in the browser sets the state cookie and
@@ -239,8 +237,6 @@ class OAuthController extends AbstractController
             );
         } catch (OAuthAccountConflictException $e) {
             return $this->fail($e->unverifiedAtProvider ? 'email_unverified_at_provider' : 'account_exists');
-        } catch (OAuthEmailVerificationRequiredException $e) {
-            return $this->fail('email_verification_required', ['email' => $e->email]);
         } catch (OAuthRegistrationRestrictedException) {
             return $this->fail('registration_restricted');
         } catch (\Throwable $e) {

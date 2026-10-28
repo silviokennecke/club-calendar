@@ -44,14 +44,17 @@ class AuthTest extends WebTestCase
 
     // --- Register ---
 
-    public function testRegisterReturns201AndAsksForTheCode(): void
+    public function testRegisterReturns201WithARestrictedSession(): void
     {
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
             'name' => 'Alice', 'email' => 'alice@example.com', 'password' => 'password123',
         ]);
         $this->assertSame(201, $r['status']);
-        $this->assertSame(['verificationRequired' => true, 'email' => 'alice@example.com'], $r['body']);
-        $this->assertArrayNotHasKey('access_token', $r['body']);
+        $this->assertTrue($r['body']['verificationRequired']);
+        $this->assertSame('alice@example.com', $r['body']['email']);
+        $this->assertTrue($r['body']['emailVerificationRequired']);
+        $this->assertNotEmpty($r['body']['access_token']);
+        $this->assertNotEmpty($r['body']['refresh_token']);
     }
 
     public function testRegisterSendsVerificationEmail(): void
@@ -91,14 +94,18 @@ class AuthTest extends WebTestCase
         $this->assertSame(401, $r['status']);
     }
 
-    public function testLoginReturns403ForUnverifiedUser(): void
+    public function testLoginReturnsARestrictedSessionForUnverifiedUser(): void
     {
         TestHelper::createUser(self::$em, self::$hasher, 'unverified@example.com', 'password123', false);
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', [
             'email' => 'unverified@example.com', 'password' => 'password123',
         ]);
-        $this->assertSame(403, $r['status']);
-        $this->assertSame('email_not_verified', $r['body']['code']);
+        $this->assertSame(200, $r['status']);
+        $this->assertTrue($r['body']['emailVerificationRequired']);
+        $this->assertNotEmpty($r['body']['access_token']);
+        $me = TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], 'Bearer '.$r['body']['access_token']);
+        $this->assertSame(200, $me['status']);
+        $this->assertTrue($me['body']['emailVerificationRequired']);
     }
 
     public function testLoginReturnsTokensForVerifiedUser(): void
@@ -111,35 +118,30 @@ class AuthTest extends WebTestCase
         $this->assertNotEmpty($r['body']['access_token']);
         $this->assertNotEmpty($r['body']['refresh_token']);
         $this->assertSame('Bearer', $r['body']['token_type']);
+        $this->assertFalse($r['body']['emailVerificationRequired']);
     }
 
     // --- Resend verification ---
 
-    public function testResendVerificationReturns204ForUnknownEmail(): void
+    public function testResendVerificationNeedsASession(): void
     {
-        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/resend-verification', [
-            'email' => 'nobody@example.com',
-        ]);
-        $this->assertSame(204, $r['status']);
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/resend-verification', []);
+        $this->assertSame(401, $r['status']);
         $this->assertEmailCount(0);
     }
 
     public function testResendVerificationReturns204ForAlreadyVerifiedEmail(): void
     {
-        TestHelper::createUser(self::$em, self::$hasher, 'verified@example.com');
-        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/resend-verification', [
-            'email' => 'verified@example.com',
-        ]);
+        $user = TestHelper::createUser(self::$em, self::$hasher, 'verified@example.com');
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/resend-verification', [], TestHelper::authHeader($user, self::getContainer()->get(TokenService::class)));
         $this->assertSame(204, $r['status']);
         $this->assertEmailCount(0);
     }
 
     public function testResendVerificationSendsEmailForUnverifiedUser(): void
     {
-        TestHelper::createUser(self::$em, self::$hasher, 'unverified@example.com', 'password123', false);
-        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/resend-verification', [
-            'email' => 'unverified@example.com',
-        ]);
+        $user = TestHelper::createUser(self::$em, self::$hasher, 'unverified@example.com', 'password123', false);
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/resend-verification', [], TestHelper::authHeader($user, self::getContainer()->get(TokenService::class)));
         $this->assertSame(204, $r['status']);
         $this->assertEmailCount(1);
         $this->assertEmailAddressContains($this->getMailerMessage(), 'to', 'unverified@example.com');

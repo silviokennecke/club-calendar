@@ -11,13 +11,11 @@ use App\Dto\Auth\ForgotPasswordDto;
 use App\Dto\Auth\IdentifyDto;
 use App\Dto\Auth\LoginDto;
 use App\Dto\Auth\RegisterDto;
-use App\Dto\Auth\ResendVerificationDto;
 use App\Dto\Auth\ResetPasswordDto;
 use App\Dto\Auth\UpdateMeDto;
 use App\Dto\Auth\VerifyEmailDto;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
-use App\Exception\EmailNotVerifiedException;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
 use App\Service\AccountDeletionService;
@@ -80,10 +78,10 @@ class AuthController extends AbstractApiController
         }
         $this->validateDto($dto, $this->validator);
         $this->rateLimiter->assertRegisterEmailAllowed($dto->email);
-        $this->auth->register($dto->name, $dto->email, $dto->password, $dto->language, $dto->acceptedDocuments, $request->getClientIp(), $request->headers->get('User-Agent'));
+        $tokens = $this->auth->register($dto->name, $dto->email, $dto->password, $dto->language, $dto->acceptedDocuments, $request->getClientIp(), $request->headers->get('User-Agent'));
 
-        // No tokens: the address is confirmed with the code from the mail first (POST /api/auth/verify-email).
-        return new JsonResponse(['verificationRequired' => true, 'email' => $dto->email], Response::HTTP_CREATED);
+        // A restricted session: the address is confirmed with the code from the mail (POST /api/auth/verify-email).
+        return new JsonResponse(['verificationRequired' => true, 'email' => $dto->email] + $tokens, Response::HTTP_CREATED);
     }
 
     /**
@@ -117,46 +115,40 @@ class AuthController extends AbstractApiController
         }
         $this->validateDto($dto, $this->validator);
         $this->rateLimiter->assertLoginAllowed($request, $dto->email);
-        try {
-            $tokens = $this->auth->login($dto->email, $dto->password);
-        } catch (EmailNotVerifiedException) {
-            throw new ApiProblemException(Response::HTTP_FORBIDDEN, 'Email address not verified', 'email_not_verified', null, [], null, ['email' => $dto->email]);
-        }
+        $tokens = $this->auth->login($dto->email, $dto->password);
         $this->rateLimiter->recordLoginSuccess($dto->email);
 
         return new JsonResponse($tokens);
     }
 
     /**
-     * Mails a new confirmation code. 204 for every address that is unknown or already verified and when a code
-     * went out; 429 `verification_resend_too_early` (+ `retryAt`) when the account got a code mail less than 5
-     * minutes ago; 429 `rate_limited` over 25 requests per client IP and day. The too-early answer shows that an
-     * unconfirmed account exists (accepted: the user must learn when to retry).
+     * Mails a new confirmation code to the signed-in user (no body; 401 without a token). 204 when the address
+     * is already verified and when a code went out; 429 `verification_resend_too_early` (+ `retryAt`) when the
+     * account got a code mail less than 5 minutes ago; 429 `rate_limited` over 25 requests per client IP and day.
      */
     #[Route('/resend-verification', methods: ['POST'])]
     public function resendVerification(Request $request): JsonResponse
     {
-        $dto = $this->deserializeDto($request, ResendVerificationDto::class);
-        $this->validateDto($dto, $this->validator);
+        $user = $this->userResolver->resolve();
         $this->rateLimiter->assertResendVerificationAllowed($request);
-        $this->auth->resendVerificationCode($dto->email);
+        $this->auth->resendVerificationCode($user);
 
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 
     /**
-     * Confirms the address with the 6-digit code. 200 `{loginToken, expiresIn}` (one-time token, redeemed at
-     * `POST /api/auth/token` with `grant_type=one_time_token`); 422 `invalid_verification_code` for every
-     * failure (also unknown address).
+     * Confirms the signed-in user's address with the 6-digit code `{code}` (401 without a token). 200 with a
+     * fresh token pair in a new session (the restricted one ends); 422 `invalid_verification_code` for every failure.
      */
     #[Route('/verify-email', methods: ['POST'])]
     public function verifyEmail(Request $request): JsonResponse
     {
+        $user = $this->userResolver->resolve();
         $this->rateLimiter->assertOtherAllowed($request);
         $dto = $this->deserializeDto($request, VerifyEmailDto::class);
         $this->validateDto($dto, $this->validator);
 
-        return new JsonResponse($this->auth->verifyEmailCode($dto->email, $dto->code));
+        return new JsonResponse($this->auth->verifyEmailCode($user, $dto->code));
     }
 
     /**

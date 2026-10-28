@@ -152,6 +152,8 @@ class TokenService
             'token_type' => 'Bearer',
             'expires_in' => 900,
             'refresh_token' => $this->createRefreshToken($user, $familyId, $familyExpiresAt, $consentOk),
+            // A restricted session: only the e-mail confirmation is reachable (see EmailVerificationGateListener).
+            'emailVerificationRequired' => !$user->isEmailVerified(),
             'user' => [
                 'id' => $user->getId(),
                 'name' => $user->getName(),

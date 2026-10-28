@@ -241,7 +241,7 @@ class OAuthAuthorizeTest extends WebTestCase
         $this->em->getConnection()->executeStatement('UPDATE user SET is_email_verified = 0 WHERE id = ?', [$this->user->getId()]);
         $d = $this->json('POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => true]);
         $this->assertSame(403, $d['status']);
-        $this->assertSame('email_not_verified', $d['body']['code']);
+        $this->assertSame('email_verification_required', $d['body']['code']);
     }
 
     public function testQuotaAndReplacementOfTheSameClient(): void

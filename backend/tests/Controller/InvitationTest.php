@@ -402,15 +402,16 @@ class InvitationTest extends WebTestCase
         $claimed = $this->user('claimed@example.com', false);
         $auth = $this->auth($claimed);
 
+        // The restricted session does not reach the invitation routes at all.
         $r = $this->req('GET', '/api/invitations', $auth);
-        $this->assertSame([], $r['body']);
+        $this->assertCode(403, 'email_verification_required', $r);
         foreach ([
             ['POST', "/api/invitations/$id/accept", []],
             ['POST', "/api/invitations/$id/decline", []],
             ['POST', '/api/invitations/accept', ['token' => $token]],
             ['POST', '/api/invitations/decline', ['token' => $token]],
         ] as [$method, $uri, $body]) {
-            $this->assertCode(404, 'invitation_not_found', $this->req($method, $uri, $auth, $body));
+            $this->assertCode(403, 'email_verification_required', $this->req($method, $uri, $auth, $body));
         }
         self::$em->clear();
         $this->assertSame(1, self::$em->getRepository(ClubUser::class)->count([]));

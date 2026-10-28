@@ -26,7 +26,8 @@ use Symfony\Component\PasswordHasher\PasswordHasherInterface;
  * must be requested. Per account, within 24 hours, at most {@see MAX_CODES_PER_DAY} codes are issued and
  * {@see MAX_ATTEMPTS_PER_DAY} guesses count in total ({@see lockedUntil()}): forcing new codes does not
  * widen the guessing budget. Every failure is the same `invalid_verification_code` (wrong, expired, used up,
- * unknown address, already verified): no oracle for accounts.
+ * already verified). The caller is the signed-in (restricted) user the code belongs to, so the mailbox
+ * owner without a session cannot confirm an account that someone else registered.
  */
 readonly class EmailVerificationService
 {
@@ -127,18 +128,17 @@ readonly class EmailVerificationService
     }
 
     /**
-     * Checks the code of the address and marks the user verified. Sessions issued earlier end (an unverified
-     * account has none; this covers data from before the rule).
+     * Checks the code of the address and marks the user verified. Sessions issued earlier end, including
+     * the restricted session of the caller (the controller issues a new one).
      *
      * @throws ApiProblemException 422 invalid_verification_code for every kind of failure
      */
-    public function verify(string $email, string $code): User
+    public function verify(User $user, string $code): void
     {
-        $user = $this->em->getRepository(User::class)->findOneBy(['email' => EmailAddress::normalize($email)]);
-        $ev = null !== $user && !$user->isEmailVerified() && null === $this->lockedUntil($user) ? $this->activeCode($user) : null;
+        $ev = !$user->isEmailVerified() && null === $this->lockedUntil($user) ? $this->activeCode($user) : null;
         $code = (string) preg_replace('/\s+/', '', $code);
-        if (null === $ev || null === $user) {
-            $this->hasher()->hash($this->pepper('0', $code)); // similar work for unknown addresses
+        if (null === $ev) {
+            $this->hasher()->hash($this->pepper('0', $code)); // similar work whether or not a code is waiting
             throw self::invalid();
         }
 
@@ -161,8 +161,6 @@ readonly class EmailVerificationService
         $user->setIsEmailVerified(true);
         $user->invalidateTokens();
         $this->em->flush();
-
-        return $user;
     }
 
     /**

@@ -200,8 +200,8 @@ class UserAdminCommandsTest extends WebTestCase
 
         $this->assertSame(Command::SUCCESS, $code, $t->getDisplay());
         $this->assertFalse($this->user($user->getId())->isEmailVerified());
-        // Unverified: the login answers 403 with the right password (not 401)
-        $this->assertSame(403, $this->login('unv@example.com', 'new-password-1'));
+        // Unverified: a restricted session with the right password (not 401)
+        $this->assertSame(200, $this->login('unv@example.com', 'new-password-1'));
         $this->assertSame(401, $this->login('unv@example.com', 'old-password-1'));
     }
 

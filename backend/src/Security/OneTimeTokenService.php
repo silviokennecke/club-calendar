@@ -14,13 +14,10 @@ use Doctrine\ORM\EntityManagerInterface;
  * Built on {@see SignedTokenService} (HMAC, key per purpose: a token of one purpose never verifies for
  * another) and {@see NonceStore} (single use, also across processes). The token names the user and the
  * user's session version (`tv`): ending the sessions (password change, takeover revocation) kills pending
- * tokens, and the TTL is the one the token was issued with. The user must be e-mail-verified at redemption.
+ * tokens, and the TTL is the one the token was issued with.
  */
 final readonly class OneTimeTokenService
 {
-    /** Purpose of the token issued when an e-mail code was confirmed. */
-    public const string PURPOSE_EMAIL_VERIFIED = 'login.email_verified';
-
     /** Purpose of the code the SSO callback hands to the frontend (instead of the tokens themselves). */
     public const string PURPOSE_OAUTH_LOGIN = 'login.oauth';
 
@@ -42,7 +39,7 @@ final readonly class OneTimeTokenService
 
     /**
      * The user the token was issued for, or null (malformed, forged, expired, other purpose, used before,
-     * user gone, sessions ended since, address not verified). The token is consumed only by a successful
+     * user gone, sessions ended since). The token is consumed only by a successful
      * redemption.
      *
      * @param list<string> $purposes purposes accepted by the caller
@@ -58,7 +55,7 @@ final readonly class OneTimeTokenService
                 return null;
             }
             $user = $this->em->getRepository(User::class)->find($claims['uid']);
-            if (null === $user || $user->getTokenVersion() !== $claims['tv'] || !$user->isEmailVerified()) {
+            if (null === $user || $user->getTokenVersion() !== $claims['tv']) {
                 return null;
             }
 

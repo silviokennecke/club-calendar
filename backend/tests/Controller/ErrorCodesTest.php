@@ -65,10 +65,10 @@ class ErrorCodesTest extends WebTestCase
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', ['email' => 'nobody@example.com', 'password' => 'password123']);
         $this->assertProblem(401, ['code' => 'invalid_credentials'], $r);
 
-        // Unconfirmed address: an RFC 7807 problem like every other error (no legacy `error` member)
+        // Unconfirmed address: a restricted session, no error
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', ['email' => 'new@example.com', 'password' => 'password123']);
-        $this->assertProblem(403, ['code' => 'email_not_verified'], $r);
-        $this->assertArrayNotHasKey('error', $r['body']);
+        $this->assertSame(200, $r['status']);
+        $this->assertTrue($r['body']['emailVerificationRequired']);
     }
 
     public function testRefreshTokens(): void
@@ -134,7 +134,7 @@ class ErrorCodesTest extends WebTestCase
         $base = "/api/calendars/{$cal->getId()}/events";
         $clubs = "/api/clubs/{$club->getId()}";
 
-        foreach (['/api/auth/register', '/api/auth/login', '/api/auth/resend-verification'] as $path) {
+        foreach (['/api/auth/register', '/api/auth/login'] as $path) {
             self::$client->request('POST', $path, [], [], ['CONTENT_TYPE' => 'application/json'], '{kaputt');
             $body = json_decode((string) self::$client->getResponse()->getContent(), true);
             $this->assertSame(400, self::$client->getResponse()->getStatusCode(), $path);

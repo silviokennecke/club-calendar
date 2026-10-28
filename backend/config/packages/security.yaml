@@ -44,6 +44,8 @@ security:
         # Invitation preview for signed-out visitors: the mail token is the credential (IP-rate-limited).
         - { path: ^/api/invitations/preview$, roles: PUBLIC_ACCESS }
         - { path: ^/api/(clubs|calendars|invitations)(/|$), roles: IS_AUTHENTICATED }
+        # E-mail confirmation belongs to the restricted session of the signed-in user (EmailVerificationGateListener).
+        - { path: ^/api/auth/(verify-email|resend-verification)$, roles: IS_AUTHENTICATED }
         - { path: ^/api/map/geocode/, roles: IS_AUTHENTICATED }
         # Tile/style/font proxy: signed-in users only (the public feed uses the static images /api/map/image/*).
         - { path: ^/api/mapbox/, roles: IS_AUTHENTICATED }

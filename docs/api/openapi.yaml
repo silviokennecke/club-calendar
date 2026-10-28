@@ -38,12 +38,21 @@ info:
       exactly once (a replay is `401`) and replaced by a token of a new session; they are not tracked, so logout does not revoke them. `POST /api/auth/logout` revokes the session of one refresh token,
       `POST /api/auth/logout-all` all sessions of the user.
     - Both tokens die when the account's session version changes (password reset/change, e-mail change, passkey
-      deletion, sign out everywhere, SSO takeover of an unconfirmed account): `401` on the next request / refresh. Refresh and passkey sign-in
-      refuse accounts whose e-mail address is not confirmed.
+      deletion, sign out everywhere, SSO takeover of an unconfirmed account): `401` on the next request / refresh. Passkey
+      sign-in refuses accounts whose e-mail address is not confirmed; password login, registration, refresh and SSO
+      give them a **restricted session** (see the e-mail verification gate).
     - **One-time login token**: `POST /api/auth/token` with `grant_type=one_time_token&token=<token>` returns the
-      usual token pair. The token comes from `POST /api/auth/verify-email` (TTL 30 s) or is the `code` of the SSO
-      redirect (TTL env `OAUTH_LOGIN_CODE_TTL`, default 180 s); it is opaque, single use and bound to the user
-      and the session version. The purposes are not interchangeable with any other signed token.
+      usual token pair. The token is the `code` of the SSO redirect (TTL env `OAUTH_LOGIN_CODE_TTL`, default 180 s);
+      it is opaque, single use and bound to the user and the session version. The purposes are not interchangeable
+      with any other signed token.
+    - **E-mail verification gate**: a signed-in user whose address is not confirmed has a restricted session
+      (`emailVerificationRequired: true` in every token response and in `GET /api/auth/me`) and gets
+      `403 email_verification_required` (member `email`) on every `/api/*` route except `GET|PATCH|DELETE /api/auth/me`,
+      `POST /api/auth/verify-email`, `POST /api/auth/resend-verification`, `GET|POST /api/auth/consents`,
+      `/api/legal*`, `POST /api/auth/logout`, `/token`, `/delete-account/code`, `GET /api/auth/providers`,
+      `GET /api/auth/registration`, `GET /api/health` and `/api/feed/*`. Only this session can confirm the address
+      (it needs the JWT and the mailed code), so the mailbox owner cannot confirm an account someone else registered.
+      The gate runs before the consent gate.
     - Every `/api/*` route except `/api/feed/*` passes the JWT firewall. A route marked "no authentication"
       still rejects an *invalid* `Authorization` header with 401 (send none instead).
     - Authorization: club routes require club membership, calendar routes membership in the calendar's club
@@ -89,11 +98,9 @@ info:
        `{FRONTEND_URL}/auth/callback?code=<one-time code>` (redeemed at `POST /api/auth/token`, `grant_type=one_time_token`; no token in the URL) or `?error=<code>` with one of
        `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`,
        `email_unverified_at_provider`, `registration_restricted` (`RESTRICT_REGISTRATION`: a new account needs an open club
-       invitation for the address; existing accounts and linking are not affected), `email_verification_required` (the provider does not prove the address, Microsoft:
-       no tokens are issued, the account is created unverified, the 6-digit code is mailed and the redirect is
-       `…/auth/callback?error=email_verification_required&email=<address>`; the frontend asks for the code at
-       `POST /api/auth/verify-email` and signs in with the returned login token at `POST /api/auth/token`, or
-       signs in with the provider again afterwards). An existing account is linked by e-mail only when the provider vouches
+       invitation for the address; existing accounts and linking are not affected). A provider that does not prove the
+       address (Microsoft) creates the account unverified and mails the 6-digit code; the redirect is the normal one
+       (`?code=`), and the redeemed session is restricted until `POST /api/auth/verify-email`. An existing account is linked by e-mail only when the provider vouches
        for the address (`email_verified`, trusted for Google and Apple, never Microsoft).
     3. Linking while signed in: `POST …/{provider}/link-start` (JWT) → `{url}` (one-time ticket, 60 s) → the
        browser opens it (`GET …/{provider}/link?ticket=`) → provider → callback → redirect to
@@ -125,7 +132,7 @@ info:
       unknown IANA time zone, location coordinates (type, range, only one of both), times as half a pair. These
       are the typed input checks of all routes that read the body as a map and of all query parameters.
     - **422**: constraint violations of a request DTO (routes that map the body onto a DTO: register, login,
-      resend-verification, forgot/reset password, change-password, change-email, create club, add member, create
+      forgot/reset password, change-password, change-email, create club, add member, create
       calendar, holiday calendar create/update), and well-formed values that conflict with stored state
       (a series rule without events, an e-mail change to the current
       address). Other 422 codes (`unknown_reference`, `duplicate_name`, `too_many_events`, `quota_exceeded`, `ics_fetch_failed`)
@@ -746,8 +753,9 @@ paths:
       tags: [Auth]
       summary: Register with e-mail and password
       description: >-
-        Creates an unconfirmed account and mails a 6-digit confirmation code (no link, valid 15 minutes). No tokens:
-        the client sends the code to `POST /api/auth/verify-email` and signs in with the returned login token.
+        Creates an unconfirmed account and mails a 6-digit confirmation code (no link, valid 15 minutes). The response
+        carries the usual token pair of a restricted session (`emailVerificationRequired: true`): only
+        `POST /api/auth/verify-email` with that session confirms the address.
       operationId: register
       security: []
       requestBody:
@@ -775,11 +783,13 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required: [verificationRequired, email]
-                properties:
-                  verificationRequired: { type: boolean, const: true }
-                  email: { type: string, format: email }
+                allOf:
+                  - { $ref: '#/components/schemas/TokenResponse' }
+                  - type: object
+                    required: [verificationRequired, email]
+                    properties:
+                      verificationRequired: { type: boolean, const: true }
+                      email: { type: string, format: email }
         '403':
           description: >-
             `registration_restricted` (field `email`): `RESTRICT_REGISTRATION` is set and the address has no open
@@ -808,6 +818,9 @@ paths:
     post:
       tags: [Auth]
       summary: Sign in with e-mail and password
+      description: >-
+        An account whose address is not confirmed gets a restricted session (`emailVerificationRequired: true`). If
+        no valid code is waiting and the resend cooldown allows, a fresh code is mailed.
       operationId: login
       security: []
       requestBody:
@@ -828,14 +841,6 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
-        '403':
-          description: >-
-            `email_not_verified` (extra member `email`): right password, but the address is not confirmed. If no
-            valid code is waiting and the resend cooldown allows, a fresh code was mailed. A wrong password stays
-            `401 invalid_credentials`.
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
 
@@ -844,8 +849,8 @@ paths:
       tags: [Auth]
       summary: Identify an address (first step of the e-mail-first sign-in)
       description: >-
-        `status` is `login` (an account with this address exists, confirmed or not: the login flow handles
-        `email_not_verified`), `register` (no account, registration allowed, incl. a restricted setup with an
+        `status` is `login` (an account with this address exists, confirmed or not: the login flow gives an
+        unconfirmed account a restricted session), `register` (no account, registration allowed, incl. a restricted setup with an
         open club invitation for the address) or `registration_restricted` (no account, `RESTRICT_REGISTRATION`
         and no open invitation). `email` is the normalized address. Accepted trade-off: this reveals whether an
         account exists; it is mitigated by rate limiting (30 per 15 minutes per client IP and 10 per 15 minutes
@@ -881,35 +886,20 @@ paths:
       tags: [Auth]
       summary: Send a new confirmation code
       description: >-
-        Mails a new code (the earlier ones die). Allowed when the last code mail of the ACCOUNT is at least 5
-        minutes old, else `429 verification_resend_too_early` with `retryAt` (ISO-8601 UTC) and `Retry-After`.
-        Also limited to 25 requests per client IP and day (`429 rate_limited`), and per account to 10 codes and 20 wrong guesses per rolling 24 hours (`429 rate_limited` with `Retry-After`, no mail on any path, verify keeps answering `invalid_verification_code`). Unknown and already confirmed
-        addresses answer 204 like success. Accepted trade-off: the too-early answer reveals that an unconfirmed
-        account exists.
+        For the signed-in user (the restricted session; no body). Mails a new code (the earlier ones die). Allowed
+        when the last code mail of the ACCOUNT is at least 5 minutes old, else `429 verification_resend_too_early`
+        with `retryAt` (ISO-8601 UTC) and `Retry-After`. Also limited to 25 requests per client IP and day
+        (`429 rate_limited`), and per account to 10 codes and 20 wrong guesses per rolling 24 hours (`429 rate_limited`
+        with `Retry-After`, no mail on any path, verify keeps answering `invalid_verification_code`). An already
+        confirmed account answers 204 like success.
       operationId: resendVerification
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [email]
-              properties:
-                email: { type: string, format: email, maxLength: 254 }
-                role:
-                  type: string
-                  enum: [viewer, editor, admin]
-                  default: editor
-                  description: The role the invitee gets on accepting. Inviting an address with an open invitation sets the role of that invitation (no second mail).
       responses:
-        '204': { description: 'Accepted: a code was mailed, or nothing to do for this address.' }
-        '400': { $ref: '#/components/responses/InvalidRequest' }
-        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '204': { description: 'Accepted: a code was mailed, or the address is already confirmed.' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '429':
           description: >-
             `verification_resend_too_early` (body member `retryAt`, header `Retry-After` in seconds) or
-            `rate_limited` (per IP and day).
+            `rate_limited` (per IP and day, or the account's daily caps).
           headers:
             Retry-After: { schema: { type: integer } }
           content:
@@ -926,36 +916,30 @@ paths:
       tags: [Auth]
       summary: Confirm the e-mail address with the 6-digit code
       description: >-
-        Marks the address confirmed and returns a one-time login token (valid `expiresIn` seconds, default 30,
-        env `EMAIL_VERIFICATION_LOGIN_TOKEN_TTL`) that is redeemed once at `POST /api/auth/token` with
-        `grant_type=one_time_token`. The code is valid 15 minutes, works once, a newer code invalidates it, and
-        after 5 wrong attempts it is dead (request a new one). Every failure is the same
-        `422 invalid_verification_code` (wrong, expired, used up, unknown or already confirmed address): no
-        account oracle. Whitespace in the code is ignored. Rate limited per client IP.
+        Needs the JWT of the user (the restricted session is allowed) and confirms THAT user's address with the code
+        from the mail; the mailbox owner without a session cannot confirm an account that someone else registered.
+        Marks the address confirmed and returns a fresh token pair in a new session (the restricted one ends). The
+        code is valid 15 minutes, works once, a newer code invalidates it, and after 5 wrong attempts it is dead
+        (request a new one). Every failure is the same `422 invalid_verification_code` (wrong, expired, used up or
+        already confirmed). Whitespace in the code is ignored. Rate limited per client IP.
       operationId: verifyEmail
-      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [email, code]
+              required: [code]
               properties:
-                email: { type: string, format: email, maxLength: 254 }
                 code: { type: string, examples: ['048213'] }
       responses:
         '200':
-          description: Confirmed.
+          description: Confirmed; the new session.
           content:
             application/json:
-              schema:
-                type: object
-                required: [loginToken, expiresIn]
-                properties:
-                  loginToken: { type: string, description: 'Opaque; single use, bound to the user and the session version.' }
-                  expiresIn: { type: integer, examples: [30] }
+              schema: { $ref: '#/components/schemas/TokenResponse' }
         '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '422':
           description: '`invalid_verification_code` (field `code`), or `validation_failed` for a malformed body.'
           content:
@@ -1128,7 +1112,7 @@ paths:
                     refresh_token: { type: string }
                 - type: object
                   description: >-
-                    One-time login token (from `POST /api/auth/verify-email`, or the `code` of the SSO redirect): single use, expires after its own
+                    One-time login token (the `code` of the SSO redirect): single use, expires after its own
                     TTL, bound to the user's session version; answers like a login.
                   required: [grant_type, token]
                   properties:
@@ -1139,12 +1123,12 @@ paths:
         '400':
           description: >-
             `invalid_grant`: unknown `grant_type`, token missing, or (`one_time_token`) the token is invalid,
-            expired, used before or for a user whose sessions ended or whose address is not confirmed.
+            expired, used before or for a user whose sessions ended.
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '401':
-          description: '`invalid_refresh_token`: invalid, expired, unknown, revoked (logout, reuse), session lifetime over, user gone, sessions ended or the address is not confirmed.'
+          description: '`invalid_refresh_token`: invalid, expired, unknown, revoked (logout, reuse), session lifetime over, user gone or sessions ended.'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -4017,7 +4001,7 @@ components:
             properties:
               type: { type: string, enum: [privacy, terms] }
               id: { type: string }
-        email: { type: string, description: 'Only `email_not_verified`.' }
+        email: { type: string, description: 'Only `email_not_verified` and `email_verification_required`.' }
         resource: { type: string, description: 'Only `quota_exceeded`: the quota that is used up.' }
         limit: { type: integer, description: 'Only `quota_exceeded`: its limit.' }
         field:
@@ -4078,8 +4062,9 @@ components:
         | `invalid_state` | 400 | `POST …/oauth/{provider}/link-complete`: proof invalid |
         | `account_in_use` | 409 | `link-complete`: provider account belongs to another user |
         | `already_linked` | 409 | `link-complete`: another account of this provider is linked |
-        | `email_not_verified` | 403 | Login with an unconfirmed address (extra member `email`) |
-        | `invalid_verification_code` | 422 | `POST /api/auth/verify-email`: wrong, expired, used up or unknown (same answer), field `code` |
+        | `email_not_verified` | 403 | OAuth consent decision / MCP token of an unconfirmed address (extra member `email`) |
+        | `email_verification_required` | 403 | **Any gated `/api/*` route** (see the e-mail verification gate in the overview): the session belongs to a user whose address is not confirmed; extra member `email` |
+        | `invalid_verification_code` | 422 | `POST /api/auth/verify-email`: wrong, expired, used up or already confirmed (same answer), field `code` |
         | `verification_resend_too_early` | 429 | `POST /api/auth/resend-verification` less than 5 minutes after the last code mail of the account; extra member `retryAt` (ISO-8601 UTC), header `Retry-After` |
         | `invalid_grant` | 400 | `POST /api/auth/token` with an unknown `grant_type`, a missing token or an unusable one-time token |
         | `invalid_refresh_token` | 401 | Refresh token invalid, expired, unknown, revoked, reused after rotation (revokes the session), session lifetime over, user gone or sessions ended |
@@ -4115,6 +4100,7 @@ components:
         - account_in_use
         - already_linked
         - email_not_verified
+        - email_verification_required
         - invalid_verification_code
         - verification_resend_too_early
         - invalid_grant
@@ -4189,12 +4175,13 @@ components:
         language: { type: string, examples: [de] }
     TokenResponse:
       type: object
-      required: [access_token, token_type, expires_in, refresh_token, user]
+      required: [access_token, token_type, expires_in, refresh_token, emailVerificationRequired, user]
       properties:
         access_token: { type: string, description: 'JWT, 15 minutes.' }
         token_type: { type: string, const: Bearer }
         expires_in: { type: integer, const: 900 }
         refresh_token: { type: string, description: 'Single-use, 7 days (never past the session''s absolute end); exchange at `POST /api/auth/token`, which rotates it.' }
+        emailVerificationRequired: { type: boolean, description: 'True for a restricted session: the e-mail address is not confirmed yet (see the e-mail verification gate).' }
         user: { $ref: '#/components/schemas/UserSummary' }
     LegalDocumentSummary:
       type: object
@@ -4232,7 +4219,7 @@ components:
       allOf:
         - { $ref: '#/components/schemas/UserSummary' }
         - type: object
-          required: [hasPassword, pendingConsents, consentRequired, pendingEmail, passkeys, oauthAccounts]
+          required: [hasPassword, pendingConsents, consentRequired, emailVerificationRequired, pendingEmail, passkeys, oauthAccounts]
           properties:
             hasPassword: { type: boolean }
             pendingConsents:
@@ -4248,6 +4235,7 @@ components:
                   url: { type: [string, 'null'], description: 'External address for a link document, else null.' }
                   publishedAt: { type: string, format: date-time }
             consentRequired: { type: boolean, description: 'True only if the consent gate blocks THIS session: `pendingConsents` is not empty AND the session started without up-to-date consents. A session that was compliant when it started sees `pendingConsents` but `consentRequired` false.' }
+            emailVerificationRequired: { type: boolean, description: 'True while the e-mail address is not confirmed (the user has a restricted session).' }
             pendingEmail: { type: [string, 'null'], description: New address of a waiting e-mail change. }
             passkeys:
               type: array
