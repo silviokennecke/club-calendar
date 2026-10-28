@@ -58,6 +58,12 @@ final class PdfDates
         return self::format(self::formatter($locale, null, \IntlDateFormatter::NONE, \IntlDateFormatter::SHORT, $timeZone), $time);
     }
 
+    /** @param string $ymd Y-m-d */
+    public static function isWeekend(string $ymd): bool
+    {
+        return (int) date('N', (int) strtotime($ymd.' 12:00:00 UTC')) >= 6;
+    }
+
     private static function formatter(string $locale, ?string $pattern, int $dateType, int $timeType, string $timeZone): \IntlDateFormatter
     {
         return new \IntlDateFormatter($locale, $dateType, $timeType, $timeZone, \IntlDateFormatter::GREGORIAN, $pattern);

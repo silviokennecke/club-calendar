@@ -3,21 +3,22 @@
 {% block content %}
     <style>
         table.grid { table-layout: fixed; width: 100%; border-collapse: collapse; }
-        table.grid th { text-align: center; width: 14.2857%; border: 0.5pt solid #888888; }
-        table.grid td { height: 29mm; border: 0.5pt solid #999999; padding: 2pt; vertical-align: top; overflow: hidden; }
-        table.grid td.pad { background-color: #ffffff; border-color: #dddddd; }
-        table.grid td.out { background-color: #eeeeee; color: #999999; }
+        table.grid th { text-align: center; width: 14.2857%; border: 0.5pt solid #cfd7d2; border-bottom: 1pt solid #0b6b58; }
+        table.grid td { height: 29mm; border: 0.5pt solid #cfd7d2; padding: 2pt; vertical-align: top; overflow: hidden; }
+        table.grid td.pad { background-color: #ffffff; }
+        table.grid td.we { background-color: #dcefe9; }
+        table.grid td.out { background-color: #e6e6e6; color: #4a5b55; }
         .num { font-weight: bold; font-size: 8pt; margin: 0 0 2pt 0; }
-        .ev { font-size: 6.5pt; line-height: 8.5pt; height: 8.5pt; margin: 0 0 1pt 0; padding: 0; white-space: nowrap; }
-        .ev.dr { color: #b45309; font-style: italic; }
+        .ev { border-left: 1.5pt solid #0b6b58; font-size: 6.5pt; line-height: 8.5pt; height: 8.5pt; margin: 0 0 1pt 0; padding: 0 0 0 2pt; white-space: nowrap; }
+        .ev.dr { color: #b45309; font-style: italic; border-left-color: #b45309; }
         table.grid img.emoji { width: 7.15pt; height: 7.15pt; }
-        .more { font-size: 6.5pt; color: #555555; font-weight: bold; }
+        .more { font-size: 6.5pt; color: #4a5b55; font-weight: bold; }
         .month-page { page-break-before: always; }
         .month-first { page-break-before: avoid; }
     </style>
     {% for month in months %}
         <div class="{{ loop.first ? 'month-first' : 'month-page' }}">
-            <h2>{{ month.label }}</h2>
+            <div class="bar">{{ month.label }}</div>
             <table class="grid">
                 <thead>
                     <tr>{% for wd in weekdays %}<th>{{ wd }}</th>{% endfor %}</tr>
@@ -29,7 +30,7 @@
                         {% if cell is null %}
                             <td class="pad">&nbsp;</td>
                         {% else %}
-                            <td class="{{ cell.inRange ? 'in' : 'out' }}">
+                            <td class="{{ not cell.inRange ? 'out' : (cell.weekend ? 'in we' : 'in') }}">
                                 <div class="num">{{ cell.number }}</div>
                                 {% for e in cell.events %}
                                     <div class="ev{{ e.draft ? ' dr' : '' }}">

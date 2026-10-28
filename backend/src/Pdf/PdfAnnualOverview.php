@@ -13,7 +13,7 @@ final class PdfAnnualOverview
     /**
      * @param list<array<string, mixed>> $entries per-day entries (key "day" = \DateTimeImmutable), sorted
      *
-     * @return list<array{month: int, label: string, weeks: list<list<array{number: int, hasEvents: bool}|null>>}>
+     * @return list<array{month: int, label: string, weeks: list<list<array{number: int, hasEvents: bool, weekend: bool}|null>>}>
      */
     public static function build(int $year, ?int $firstDayOfWeek, array $entries, string $locale): array
     {
@@ -30,7 +30,8 @@ final class PdfAnnualOverview
             $first = new \DateTimeImmutable(sprintf('%04d-%02d-01', $year, $month));
             $cells = array_fill(0, (int) array_search((int) $first->format('w'), $order, true), null);
             for ($d = 1, $n = (int) $first->format('t'); $d <= $n; ++$d) {
-                $cells[] = ['number' => $d, 'hasEvents' => isset($withEvents[sprintf('%04d-%02d-%02d', $year, $month, $d)])];
+                $ymd = sprintf('%04d-%02d-%02d', $year, $month, $d);
+                $cells[] = ['number' => $d, 'hasEvents' => isset($withEvents[$ymd]), 'weekend' => PdfDates::isWeekend($ymd)];
             }
             while (0 !== count($cells) % 7) {
                 $cells[] = null;
@@ -56,7 +57,7 @@ final class PdfAnnualOverview
             /** @var \DateTimeImmutable $day */
             $day = $entry['day'];
 
-            return $entry + ['dateLabel' => PdfDates::weekdayShort((int) $day->format('w'), $locale).', '.PdfDates::formatDate($day, $locale)];
+            return $entry + ['dateLabel' => PdfDates::weekdayShort((int) $day->format('w'), $locale).', '.PdfDates::formatDate($day, $locale), 'weekend' => PdfDates::isWeekend($day->format('Y-m-d'))];
         }, $entries);
     }
 }

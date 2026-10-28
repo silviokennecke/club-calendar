@@ -5,26 +5,46 @@
     <title>{{ calendarName }}</title>
     <style>
         @page { size: {{ pageSize }}; margin: 15mm 12mm 18mm 12mm; }
-        body { font-family: "DejaVu Sans", sans-serif; font-size: 8pt; color: #1a1a1a; }
-        h1 { font-size: 14pt; margin: 0 0 2pt 0; }
-        h2 { font-size: 10pt; margin: 14pt 0 4pt 0; }
-        .sub { color: #555555; margin: 0 0 10pt 0; }
+        body { font-family: "DejaVu Sans", sans-serif; font-size: 8pt; color: #14221e; }
+        h2 { font-size: 10pt; margin: 14pt 0 4pt 0; color: #0b6b58; }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        th { text-align: left; background-color: #e8e8e8; padding: 3pt 4pt; border-bottom: 1pt solid #888888; }
-        td { padding: 3pt 4pt; border-bottom: 0.5pt solid #cccccc; vertical-align: top; }
+        th { text-align: left; background-color: #dcefe9; color: #0b6b58; padding: 3pt 4pt; border-bottom: 1pt solid #0b6b58; }
+        td { padding: 3pt 4pt; border-bottom: 0.5pt solid #cfd7d2; vertical-align: top; }
+        tr.we td { background-color: #dcefe9; }
+        tr.we td.dc { font-weight: bold; }
         thead { display: table-header-group; }
         tr { page-break-inside: avoid; }
         img.emoji { width: 9pt; height: 9pt; }
         img.emoji-lg { width: 11pt; height: 11pt; }
         .draft { color: #b45309; font-size: 7pt; }
-        #footer { position: fixed; left: 0; right: 0; bottom: -12mm; font-size: 7pt; color: #777777; }
+        /* shared CI building blocks (quarter, month grid, annual, agenda) */
+        .club { color: #0b6b58; font-weight: bold; font-style: italic; font-size: 9pt; }
+        .cal { text-align: center; }
+        .cal .t, .club .t { height: 12pt; line-height: 11pt; overflow: hidden; white-space: nowrap; font-weight: bold; font-size: 9pt; }
+        .cal .t { text-decoration: underline; }
+        .cal .s { height: 9pt; line-height: 8pt; overflow: hidden; white-space: nowrap; font-size: 7pt; color: #4a5b55; }
+        div.bar { background-color: #0b6b58; color: #ffffff; font-weight: bold; text-align: center; font-size: 10pt; height: 14pt; line-height: 12pt; border: 0.5pt solid #0b6b58; }
+        table.hdr { table-layout: fixed; width: 100%; border-collapse: separate; border-spacing: 0; }
+        table.hdr td { width: 33%; padding: 0; border: 0; vertical-align: bottom; }
+        #pagehead { position: fixed; left: 0; right: 0; top: -31pt; height: 21pt; }
+        #footer { position: fixed; left: 0; right: 0; bottom: -12mm; font-size: 7pt; color: #4a5b55; }
     </style>
 </head>
 <body>
     <div id="footer">{{ 'generated_on'|trans({'date': generatedAt}, 'pdf', locale) }} &middot; {{ clubName }}</div>
+    {# Fixed elements repeat on every page; the quarter prints its own header per page instead #}
     {% block header %}
-    <h1>{{ calendarName }}</h1>
-    <p class="sub">{{ clubName }} &middot; {{ 'period'|trans({'from': from, 'to': to}, 'pdf', locale) }}</p>
+    <div id="pagehead">
+        <table class="hdr">
+            <tbody>
+                <tr>
+                    <td class="club"><div class="t">{{ clubName }}</div></td>
+                    <td class="cal"><div class="t">{{ calendarName }}</div><div class="s">{{ 'period'|trans({'from': from, 'to': to}, 'pdf', locale) }}</div></td>
+                    <td>&nbsp;</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
     {% endblock %}
     {% block content %}{% endblock %}
     {% if legend|length > 0 %}
