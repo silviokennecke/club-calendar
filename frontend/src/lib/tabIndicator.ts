@@ -1,4 +1,5 @@
-const TAB_SELECTOR = ".ap-tabs > a, .ap-tabs > button";
+const BAR_SELECTOR = ".ap-tabs, .ap-seg";
+const TAB_SELECTOR = ".ap-tabs > a, .ap-tabs > button, .ap-seg > a, .ap-seg > button";
 const ACTIVE = '[aria-current="page"], [aria-selected="true"], [aria-pressed="true"]';
 
 const hovered = new WeakMap<HTMLElement, HTMLElement>();
@@ -22,6 +23,8 @@ function update(bar: HTMLElement) {
   const first = !bar.hasAttribute("data-slide");
   bar.style.setProperty("--ind-x", `${target.el.offsetLeft}px`);
   bar.style.setProperty("--ind-w", `${target.el.offsetWidth}px`);
+  bar.style.setProperty("--ind-y", `${target.el.offsetTop}px`);
+  bar.style.setProperty("--ind-h", `${target.el.offsetHeight}px`);
   bar.setAttribute("data-slide", target.hover ? "hover" : "active");
   if (first) {
     // First placement must not slide in from the left.
@@ -31,7 +34,7 @@ function update(bar: HTMLElement) {
 }
 
 function updateAll() {
-  document.querySelectorAll<HTMLElement>(".ap-tabs").forEach((bar) => {
+  document.querySelectorAll<HTMLElement>(BAR_SELECTOR).forEach((bar) => {
     tracked.add(bar);
     update(bar);
   });
@@ -46,8 +49,8 @@ function barOf(target: EventTarget | null) {
 }
 
 /**
- * Slides the underline of `.ap-tabs` to the hovered / focused tab and back to the active one
- * (CSS: `.ap-tabs[data-slide]`). Event delegation: works for every tab bar, no component changes.
+ * Slides the underline of `.ap-tabs` and the pill of `.ap-seg` to the hovered / focused tab and back to the active one
+ * (CSS: `[data-slide]`). Event delegation: works for every tab bar, no component changes.
  */
 export function initTabIndicator(): () => void {
   const enter = (e: Event) => {

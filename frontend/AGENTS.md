@@ -66,8 +66,7 @@ Background: `docs/ops/BACKLOG.md` (open backend gaps and operations), `docs/api/
   `bg-tag-youth|adult|senior`, `min-h-tap`/`size-tap` (44px). Tailwind `accent` stays the shadcn hover surface.
 - Motion tokens on `:root` in `index.css`: durations `--dur-fast` (100ms), `--dur-base` (160ms), `--dur-slow` (240ms);
   easings `--ease-out` (enter, default), `--ease-in` (exit), `--ease-in-out`, `--ease-spring` (critically damped,
-  no overshoot). Use them for every new `transition`/`animation` instead of literal times; the `.ap-seg`
-  indicator (anchor positioning, instant geometry, opacity fade only) and the `.ap-skel` pulse (overlay opacity) are compositor-only; the `.ap-tabs` underline slides (`lib/tabIndicator.ts` sets `--ind-x`/`--ind-w` on the bar, CSS `.ap-tabs[data-slide]::after` in `index.css`; reduced motion disables it).
+  no overshoot). Use them for every new `transition`/`animation` instead of literal times; the `.ap-skel` pulse (overlay opacity) is compositor-only; the `.ap-tabs` underline and the `.ap-seg` pill slide (`lib/tabIndicator.ts` sets `--ind-x`/`--ind-w` (+ `--ind-y`/`--ind-h` for the pill) on the bar, CSS `[data-slide]::after` in `index.css`; reduced motion disables it).
 - Pressed state: one shared `:active` block at the end of `index.css` (`scale` 0.97, 0.985 for rows/cards/day cells; reduced motion keeps only an opacity change). New interactive classes go into that block.
 - shadcn variables (`--primary`, `--background`, ...) point at the design tokens.
 - Font: Figtree via `@fontsource-variable/figtree` (self-hosted, imported in `main.tsx`).
