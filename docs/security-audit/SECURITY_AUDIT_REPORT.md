@@ -27,7 +27,7 @@
 ## Executive Summary
 
 - **No Critical findings** in the completed areas.
-- Counts: **0 High, 1 Medium, 3 Low, 4 Informational** — 8 findings.
+- Counts: **0 High, 1 Medium, 2 Low, 4 Informational** — 7 findings.
 - **Top gap:** Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
 - **Positives:** no IDOR/cross-tenant gaps in the API surface; no live Mapbox token in the frontend (fully proxied through the backend); WebAuthn ceremonies, OAuth state handling, and exception → RFC 7807 response masking are sound; feed-secret checks are constant-time and the Mapbox proxy is SSRF-safe (fixed upstream host, strict path allowlist, caller token stripped).
 
@@ -45,15 +45,6 @@
 **Source:** `02b-backend-services.md` (API-52).
 
 ### Low
-
-#### AUTH-05 — Raw exception objects logged with full stack traces
-**Severity:** Low
-**Attack scope:** Anyone with access to logs / log aggregation; internal structure disclosure.
-**Description:** OAuth and WebAuthn error paths log raw exception objects; Monolog renders full stack traces including internal file paths, class names, and framework internals.
-**Affected parts:** `OAuthController.php:79, :101`; `WebAuthnService.php:167, :232, :267`.
-**Fix recommendation:** Log `$e->getMessage()` plus sanitized context, or add a Monolog processor that strips paths from traces.
-**Notes:** HTTP responses are properly masked by `ExceptionListener` (RFC 7807, no traces to clients) — this is a log-side issue only.
-**Source:** `01-backend-auth.md` (AUTH-05).
 
 #### API-53 — Static map image endpoints expose coordinates of calendars the user does not belong to
 **Severity:** Low
@@ -112,7 +103,7 @@
 ## Areas Reviewed — no additional findings
 
 **Backend authentication (01)**
-- Token flow: 15-min JWT access tokens with a `tv` token-version kill switch; HMAC-signed refresh tokens bound to `uid`, 7-day TTL — sound design (documented gap: AUTH-05).
+- Token flow: 15-min JWT access tokens with a `tv` token-version kill switch; HMAC-signed refresh tokens bound to `uid`, 7-day TTL — sound design.
 - OAuth SSO: `state` bound to the browser via short-lived one-time `oauth_state_nonce` cookie + PKCE (`code_verifier`/`code_challenge`); the provider response is never sent back to the browser as JSON.
 - WebAuthn registration/authentication ceremony follows the spec (challenge binding, `authenticatorAttachment` handling, user verification per `WEBAUTHN_USER_VERIFICATION`).
 - `ExceptionListener` masks all exceptions as RFC 7807 `application/problem+json` — no stack traces or entity details reach the client.
@@ -149,7 +140,6 @@
 | ID | Title | Severity |
 |---|---|---|
 | API-52 | Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation | Medium |
-| AUTH-05 | Raw exception objects logged with full stack traces | Low |
 | API-53 | Static map image endpoints expose coordinates of calendars the user does not belong to | Low |
 | AUTH-13 | SSO login code is not bound to the browser that started the flow (login CSRF) | Low |
 | AUTH-06 | Register: check-then-insert race on the email | Informational |
@@ -161,7 +151,7 @@
 
 | Area | Report | Findings | Status |
 |---|---|---|---|
-| Backend auth | `01-backend-auth.md` | AUTH-05 … AUTH-08, AUTH-13 (5) | Complete |
+| Backend auth | `01-backend-auth.md` | AUTH-06 … AUTH-08, AUTH-13 (4) | Complete |
 | Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-53 (2) | Complete |
 | Frontend | `03-frontend.md` | FE-07 (1) | Complete |
 | Scans & config | `04-scans-config.md` | SCAN-07, SCAN-09, SCAN-12 (3) | Complete |
