@@ -398,4 +398,22 @@ class PdfExportServiceTest extends KernelTestCase
             }
         }
     }
+
+    public function testQuarterOverviewWithOverfullMonthHasNoBlankPage(): void
+    {
+        foreach (range(1, 30) as $i) {
+            $this->event("Training $i", '2026-11-17');
+        }
+        foreach (range(1, 30) as $i) {
+            $this->event("Probe $i", '2026-11-24');
+        }
+        $quarter = new PdfOptions(PdfLayout::QuarterOverview);
+        $filter = $this->filter('2026-10-01', '2026-12-31', true);
+
+        $pages = count($this->service->buildViewModel($this->calendar, $filter, $quarter, $this->user)['pages']);
+        $pdf = $this->service->render($this->calendar, $filter, $quarter, $this->user);
+
+        self::assertSame(2, $pages);
+        self::assertSame($pages, preg_match_all('#/Type\s*/Page\b#', $pdf), 'dompdf must not push the whole table to an extra page');
+    }
 }

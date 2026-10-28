@@ -150,7 +150,7 @@ class PdfQuarterOverviewTest extends TestCase
     {
         $empty = $this->pages('2026-07-01', '2026-09-30')[0];
         $entries = [];
-        foreach (range(1, 40) as $i) {
+        foreach (range(1, 20) as $i) {
             $entries[] = $this->entry('2026-08-10', "E$i");
         }
         $busy = $this->pages('2026-07-01', '2026-09-30', $entries)[0];
@@ -160,7 +160,7 @@ class PdfQuarterOverviewTest extends TestCase
         self::assertEqualsWithDelta(2 * $busy['lineHeightPt'], $busy['rowHeightPt'], 0.01);
         $totals = array_map(static fn (array $m): int => array_sum(array_column($m['rows'], 'lines')), $busy['months']);
         self::assertCount(1, array_unique($totals), 'filler rows make all columns equally tall');
-        self::assertSame(31 * 2 + 38, $totals[0]);
+        self::assertSame(31 * 2 + 18, $totals[0]);
     }
 
     public function testEventIdsOfThePageOnlyListEventsWithIcons(): void
@@ -173,5 +173,46 @@ class PdfQuarterOverviewTest extends TestCase
         $pages = $this->pages('2026-07-01', '2026-12-31', $entries);
         self::assertSame(['Mit2026-07-04'], $pages[0]['eventIds']);
         self::assertSame(['Naechste Seite2026-10-05'], $pages[1]['eventIds']);
+    }
+
+    public function testOverfullMonthContinuesOnFurtherPagesInsteadOfOverflowing(): void
+    {
+        $entries = [];
+        foreach (range(1, 70) as $i) {
+            $entries[] = $this->entry('2026-11-17', "Termin $i");
+        }
+        $pages = $this->pages('2026-10-01', '2026-12-31', $entries);
+        self::assertCount(3, $pages);
+        $capacity = 81;
+        foreach ($pages as $page) {
+            foreach ($page['months'] as $month) {
+                $lines = array_sum(array_column($month['rows'], 'lines'));
+                self::assertLessThanOrEqual($capacity, $lines);
+            }
+        }
+        $drawn = 0;
+        foreach ($pages as $page) {
+            foreach ($page['months'][1]['rows'] as $row) {
+                $drawn += count($row['events'] ?? []);
+            }
+        }
+        self::assertSame(70, $drawn, 'no event lost');
+        self::assertSame('November 2026', $pages[1]['months'][1]['label']);
+    }
+
+    public function testSingleDayBeyondOnePageIsCutWithMoreLine(): void
+    {
+        $entries = [];
+        foreach (range(1, 300) as $i) {
+            $entries[] = $this->entry('2026-11-17', "Termin $i");
+        }
+        $events = [];
+        foreach ($this->pages('2026-10-01', '2026-12-31', $entries) as $page) {
+            foreach ($page['months'][1]['rows'] as $row) {
+                $events = array_merge($events, $row['events'] ?? []);
+            }
+        }
+        self::assertStringStartsWith('… +', end($events)['text']);
+        self::assertLessThan(300, count($events));
     }
 }
