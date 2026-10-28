@@ -27,7 +27,7 @@ class DompdfFactory
     public function creator(): string
     {
         $url = trim($this->appUrl);
-        $clean = preg_match('~^https?://[A-Za-z0-9.\-:\[\]]+(/[A-Za-z0-9._~/\-]*)?$~', $url) ? rtrim($url, '/') : '';
+        $clean = preg_match('~^https?://[A-Za-z0-9.\-:\[\]]+(/[A-Za-z0-9._\~/\-]*)?$~', $url) ? rtrim($url, '/') : '';
 
         return '' === $clean ? 'Club Calendar' : sprintf('Club Calendar (%s)', $clean);
     }
