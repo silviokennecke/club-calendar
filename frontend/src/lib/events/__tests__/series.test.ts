@@ -25,6 +25,7 @@ const form = (partial: Partial<SeriesFormRule> = {}): SeriesFormRule => ({
   to: "2026-10-31",
   skipHolidays: true,
   ...partial,
+  holidayCalendarIds: partial.holidayCalendarIds ?? null,
 });
 
 describe("toSeriesRule", () => {
