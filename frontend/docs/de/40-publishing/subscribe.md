@@ -4,6 +4,8 @@ order: 40
 description: "Schritt für Schritt: So erscheint der Vereinskalender in deiner Kalender-App und aktualisiert sich von selbst."
 ---
 
+# So abonnierst du den Kalender
+
 Wenn du den Kalender abonnierst, erscheinen alle Termine des Vereins in deiner eigenen Kalender-App. Neue und geänderte Termine kommen von selbst dazu. Du musst nichts mehr tun. Du kannst dabei nichts kaputt machen: Du kannst das Abo jederzeit wieder löschen.
 
 Den Kalender-Link findest du auf der Kalenderseite des Vereins: Tippe auf **Kalender abonnieren** und dann auf **Link kopieren**. Danach geht es hier weiter. Das Menü bietet dir außerdem Abkürzungen: Mit **Zu Google Kalender hinzufügen** und **Zu Outlook hinzufügen** geht es direkt dorthin.

@@ -4,6 +4,8 @@ order: 20
 description: So legst du einen Feed an, änderst ihn, kopierst die Adresse und löschst ihn wieder.
 ---
 
+# Feed anlegen und verwalten
+
 :::note
 Dafür brauchst du die Rolle Admin. Bearbeiter können Feeds nur ansehen, Betrachter sehen sie nicht.
 :::

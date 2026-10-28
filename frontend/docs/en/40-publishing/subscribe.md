@@ -4,6 +4,8 @@ order: 40
 description: "Step by step: how the club calendar shows up in your own calendar app and updates itself."
 ---
 
+# How to subscribe to the calendar
+
 When you subscribe to the calendar, all events of the club appear in your own calendar app. New and changed events show up by themselves, so you do not have to do anything. You cannot break anything: you can delete the subscription at any time.
 
 You find the calendar link on the club's calendar page: tap **Subscribe to calendar** and then **Copy link**. Then continue here. The menu also offers shortcuts: **Add to Google Calendar** and **Add to Outlook** take you straight there.

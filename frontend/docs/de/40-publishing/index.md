@@ -4,6 +4,8 @@ order: 0
 description: So machst du den Kalender deines Vereins für Mitglieder und Gäste sichtbar.
 ---
 
+# Veröffentlichen
+
 Mit einem Feed veröffentlichst du Termine als Webseite und als Abo für Kalender-Apps. Die Seiten dieses Bereichs:
 
 - [Was ist ein Feed?](help:publishing/feeds) – Grundbegriffe, Sichtbarkeit und Inhalt

@@ -4,6 +4,8 @@ order: 10
 description: A feed makes events visible to members and guests, as a web page and as a calendar subscription.
 ---
 
+# What is a feed?
+
 :::note
 Editors and admins can see feeds. Only admins can create and change them.
 :::
