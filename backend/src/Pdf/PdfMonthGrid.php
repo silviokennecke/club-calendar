@@ -6,20 +6,24 @@ namespace App\Pdf;
 
 /**
  * Builds the month pages of the month-grid layout: one entry per month touched by from..to, each with weeks of
- * seven cells in the user's weekday order. Days outside from..to stay greyed and without events.
+ * seven cells in the user's weekday order. Days outside from..to stay greyed and without events. Each event is one line in the
+ * quarter layout's format (`time emoji title (features)`), cut by estimated width to the cell (`PdfEventLine`).
  */
 final class PdfMonthGrid
 {
     public const int CELL_CAP = 4;
-    private const int CELL_NAME = 40;
+    public const float FONT_PT = 6.5;
+    /** Horizontal space of a cell that is not text: cell padding (2 x 2 pt), event left padding (2 pt) and borders. */
+    private const float CELL_INSET_PT = 7.0;
 
     /**
      * @param list<array<string, mixed>> $entries per-day entries (key "day" = \DateTimeImmutable), sorted
      *
      * @return list<array{year: int, month: int, label: string, weeks: list<list<array<string, mixed>|null>>}>
      */
-    public static function build(\DateTimeImmutable $from, \DateTimeImmutable $to, ?int $firstDayOfWeek, array $entries, string $locale, int $cap = self::CELL_CAP): array
+    public static function build(\DateTimeImmutable $from, \DateTimeImmutable $to, ?int $firstDayOfWeek, array $entries, string $locale, int $cap = self::CELL_CAP, float $contentWidthPt = 527.0): array
     {
+        $cellEm = ($contentWidthPt / 7 - self::CELL_INSET_PT) / self::FONT_PT;
         $byDay = [];
         foreach ($entries as $entry) {
             /** @var \DateTimeImmutable $day */
@@ -50,7 +54,7 @@ final class PdfMonthGrid
                     'date' => $ymd,
                     'inRange' => $inRange,
                     'number' => $d,
-                    'events' => array_map(static fn (array $e): array => $e + ['cellName' => PdfText::truncate((string) $e['name'], self::CELL_NAME)], $shown),
+                    'events' => array_map(static fn (array $e): array => self::line($e, $cellEm), $shown),
                     'more' => max(0, count($dayEvents) - $cap),
                 ];
             }
@@ -67,6 +71,25 @@ final class PdfMonthGrid
         }
 
         return $months;
+    }
+
+    /**
+     * @param array<string, mixed> $e per-day entry
+     *
+     * @return array{id: string, time: ?string, emojiPaths: list<string>, title: string, features: list<string>, draft: bool, text: string}
+     */
+    private static function line(array $e, float $cellEm): array
+    {
+        $event = [
+            'id' => (string) ($e['id'] ?? ''),
+            'time' => !($e['allDay'] ?? true) && null !== ($e['begin'] ?? null) ? (string) $e['begin'] : null,
+            'emojiPaths' => $e['emojiPaths'] ?? [],
+            'title' => (string) $e['name'],
+            'features' => $e['features'] ?? [],
+            'draft' => (bool) ($e['draft'] ?? false),
+        ];
+
+        return $event + ['text' => PdfEventLine::text($event, $cellEm, self::FONT_PT)];
     }
 
     /**

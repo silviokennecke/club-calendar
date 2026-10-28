@@ -225,10 +225,10 @@ class PdfExportServiceTest extends KernelTestCase
                 $cells[$c['date']] = $c;
             }
         }
-        self::assertSame('Training', $cells['2026-07-04']['events'][0]['name']);
+        self::assertSame('Training', $cells['2026-07-04']['events'][0]['title']);
         self::assertSame([], $cells['2026-07-05']['events']);
         foreach (['2026-07-30', '2026-07-31', '2026-08-01', '2026-08-02'] as $day) {
-            self::assertSame('Lager', $cells[$day]['events'][0]['name'], $day);
+            self::assertSame('Lager', $cells[$day]['events'][0]['title'], $day);
         }
         self::assertSame([], $cells['2026-08-03']['events']);
         self::assertCount(2, $model['months']);

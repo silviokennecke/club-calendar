@@ -362,8 +362,13 @@ class EventExportPdfTest extends WebTestCase
 
         foreach (['agenda', 'month-grid'] as $layout) {
             $html = $this->html($layout, '2026-10-01', '2026-10-31');
-            $this->assertStringContainsString('&lt;img src=&quot;file:///etc/passwd&quot;&gt;', $html, $layout);
-            $this->assertStringContainsString('&lt;link rel=', $html, $layout);
+            if ('month-grid' === $layout) {
+                // event lines are cut to the cell width, so only the escaped start of the name survives
+                $this->assertStringContainsString('&lt;', $html, $layout);
+            } else {
+                $this->assertStringContainsString('&lt;img src=&quot;file:///etc/passwd&quot;&gt;', $html, $layout);
+                $this->assertStringContainsString('&lt;link rel=', $html, $layout);
+            }
             $this->assertStringNotContainsString('<img src="file:///etc/passwd"', $html, $layout);
             $this->assertStringNotContainsString('<link rel="stylesheet"', $html, $layout);
             $this->assertStringNotContainsString('<svg', $html, $layout);
@@ -407,15 +412,15 @@ class EventExportPdfTest extends WebTestCase
 
     // --- language and week start ---
 
-    /** @return iterable<string, array{string, int, string, string, string}> */
+    /** @return iterable<string, array{string, int, string, string}> */
     public static function preferences(): iterable
     {
-        yield 'de, Monday' => ['de', 1, 'Mo', 'Entwurf', 'Oktober'];
-        yield 'en, Sunday' => ['en', 0, 'Su', 'Draft', 'October'];
+        yield 'de, Monday' => ['de', 1, 'Mo', 'Oktober'];
+        yield 'en, Sunday' => ['en', 0, 'Su', 'October'];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('preferences')]
-    public function testLanguageAndFirstWeekdayFollowTheUser(string $language, int $firstDay, string $firstWeekday, string $draftLabel, string $month): void
+    public function testLanguageAndFirstWeekdayFollowTheUser(string $language, int $firstDay, string $firstWeekday, string $month): void
     {
         $owner = self::$em->find(User::class, $this->owner->getId());
         $owner->setLanguage($language)->setFirstDayOfWeek($firstDay);
@@ -429,7 +434,23 @@ class EventExportPdfTest extends WebTestCase
 
         $html = $this->html('month-grid', '2026-10-01', '2026-10-31', drafts: true);
         $this->assertStringContainsString($month, $html);
-        $this->assertStringContainsString($draftLabel, $html);
+        $this->assertStringContainsString('class="ev dr"', $html);
+        $this->assertSame(200, $this->pdf(self::RANGE.'&layout=month-grid&includeDrafts=1')['status']);
+    }
+
+    public function testMonthGridLineHasTimeEmojiTitleAndFeatures(): void
+    {
+        $trophy = TestHelper::createProperty(self::$em, $this->calendar, 'Wettkampf', '🏆')->getId();
+        $feature = TestHelper::createFeature(self::$em, $this->calendar, 'Bo')->getId();
+        $this->create(['name' => 'Pokal', 'propertyIds' => [$trophy], 'featureIds' => [$feature]]);
+        $this->create(['name' => 'Ganztägig', 'isAllDay' => true, 'timeBegin' => '00:00', 'timeEnd' => '23:59', 'date' => '2026-10-02']);
+        $this->create(['name' => 'Entwurf', 'isDraft' => true, 'date' => '2026-10-03']);
+
+        $html = $this->html('month-grid', '2026-10-01', '2026-10-31', drafts: true);
+        $this->assertMatchesRegularExpression('~<div class="ev">19:00 <img class="emoji" src="[^"]+"> Pokal \(Bo\)</div>~', $html);
+        $this->assertMatchesRegularExpression('~<div class="ev">Ganztägig</div>~', $html);
+        $this->assertMatchesRegularExpression('~<div class="ev dr">19:00 Entwurf</div>~', $html);
+        $this->assertStringNotContainsString('(Entwurf)', $html);
         $this->assertSame(200, $this->pdf(self::RANGE.'&layout=month-grid&includeDrafts=1')['status']);
     }
 

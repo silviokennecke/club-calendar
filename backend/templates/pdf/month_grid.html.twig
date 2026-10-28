@@ -8,9 +8,9 @@
         table.grid td.pad { background-color: #ffffff; border-color: #dddddd; }
         table.grid td.out { background-color: #eeeeee; color: #999999; }
         .num { font-weight: bold; font-size: 8pt; margin: 0 0 2pt 0; }
-        .ev { font-size: 6.5pt; margin: 0 0 1.5pt 0; padding: 0 0 0 2pt; border-left: 1.5pt solid #4a6fa5; }
-        .ev .t { color: #555555; }
-        table.grid img.emoji { margin: 0 1.5pt; }
+        .ev { font-size: 6.5pt; line-height: 8.5pt; height: 8.5pt; margin: 0 0 1pt 0; padding: 0; white-space: nowrap; }
+        .ev.dr { color: #b45309; font-style: italic; }
+        table.grid img.emoji { width: 7.15pt; height: 7.15pt; }
         .more { font-size: 6.5pt; color: #555555; font-weight: bold; }
         .month-page { page-break-before: always; }
         .month-first { page-break-before: avoid; }
@@ -32,10 +32,11 @@
                             <td class="{{ cell.inRange ? 'in' : 'out' }}">
                                 <div class="num">{{ cell.number }}</div>
                                 {% for e in cell.events %}
-                                    <div class="ev">
-                                        {%- if e.begin is not null %}<span class="t">{{ e.begin }}</span> {% endif -%}
+                                    <div class="ev{{ e.draft ? ' dr' : '' }}">
+                                        {%- if e.time is not null %}{{ e.time }} {% endif -%}
                                         {%- for path in e.emojiPaths %}<img class="emoji" src="{{ path }}">{% endfor -%}
-                                        {{ e.cellName }}{% if e.draft %} <span class="draft">({{ 'draft'|trans({}, 'pdf', locale) }})</span>{% endif %}
+                                        {%- if e.emojiPaths|length > 0 %} {% endif -%}
+                                        {{- e.text -}}
                                     </div>
                                 {% endfor %}
                                 {% if cell.more > 0 %}<div class="more">{{ 'more'|trans({'count': cell.more}, 'pdf', locale) }}</div>{% endif %}

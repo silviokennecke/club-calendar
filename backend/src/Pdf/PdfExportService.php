@@ -116,7 +116,7 @@ class PdfExportService
         return $model + match ($options->layout) {
             PdfLayout::Agenda => ['rows' => $this->agendaRows($entries, $locale)],
             PdfLayout::MonthGrid => [
-                'months' => PdfMonthGrid::build($from, $to, $firstDayOfWeek, $entries, $locale),
+                'months' => PdfMonthGrid::build($from, $to, $firstDayOfWeek, $entries, $locale, contentWidthPt: $options->contentWidthPt()),
                 'weekdays' => PdfMonthGrid::weekdayHeader($firstDayOfWeek, $locale),
             ],
             PdfLayout::QuarterOverview => ['pages' => $this->quarterPages($from, $to, $entries, $locale, $options)],
