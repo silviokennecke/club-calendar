@@ -13,6 +13,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Changed
 
+- PDF quarter overview is now a day list (one column per month, one row per day, one line per event with time, icons, name and features, weekends tinted) with a per-page icon legend instead of three small month grids.
 - E-mail confirmation now needs a signed-in, restricted session: registration, password login, refresh and SSO of an unconfirmed account return tokens (`emailVerificationRequired`), but every route except the own profile, consent, sign-out and the confirmation itself answers `403 email_verification_required`. `POST /api/auth/verify-email` takes only `{code}` with that session and returns a fresh token pair; `POST /api/auth/resend-verification` needs the session and no body. Login of an unconfirmed account no longer answers `403 email_not_verified`, the SSO callback no longer redirects with `error=email_verification_required`, and the `loginToken` / `EMAIL_VERIFICATION_LOGIN_TOKEN_TTL` are gone.
 - Page footers show a single help link: the help center (`/help`), on public calendar pages the subscribe guide; the help pages show only the legal links.
 

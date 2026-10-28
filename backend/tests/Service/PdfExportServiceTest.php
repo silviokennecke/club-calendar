@@ -253,25 +253,66 @@ class PdfExportServiceTest extends KernelTestCase
         }
     }
 
-    public function testQuarterOverviewHtmlPagesAndWeekdayOrder(): void
+    public function testQuarterOverviewHtmlDayRowsHeaderOnEveryPageAndLandscape(): void
     {
         $this->event('Training', '2026-08-04');
         $quarter = new PdfOptions(PdfLayout::QuarterOverview);
         $filter = $this->filter('2026-07-01', '2026-11-30');
 
         $model = $this->service->buildViewModel($this->calendar, $filter, $quarter, $this->user);
-        self::assertSame([3, 2], array_map('count', $model['pages']));
+        self::assertSame([3, 2], array_map(static fn (array $p): int => count($p['months']), $model['pages']));
 
         $html = $this->service->renderHtml($this->calendar, $filter, $quarter, $this->user);
         self::assertStringContainsString('Juli 2026', $html);
         self::assertStringContainsString('November 2026', $html);
         self::assertStringContainsString('Training', $html);
-        self::assertMatchesRegularExpression('/<th>Mo\.<\/th>\s*<th>Di\.<\/th>/', $html);
         self::assertStringContainsString('A4 landscape', $html);
-        self::assertSame(3 + 3, substr_count($html, '<td class="qm">'), 'one cell per column, last page padded to three');
+        self::assertStringNotContainsString('<h1>', $html, 'the first-page header of the base is replaced');
+        self::assertSame(2, substr_count($html, 'class="col hd club"'), 'club header on every page');
+        self::assertSame(2, substr_count($html, 'class="col hd cal"'));
+        self::assertSame(3 + 2, substr_count($html, 'class="bar"'));
+        self::assertSame(5 * 31, substr_count($html, '<tr class="we"') + substr_count($html, '<tr class="wd"') + substr_count($html, '<tr class="grey"'), 'one row per grid day');
+        self::assertStringContainsString('<tr class="we">', $html);
+        self::assertStringContainsString('18:00', $html);
+    }
 
-        $this->user->setFirstDayOfWeek(0);
-        self::assertMatchesRegularExpression('/<th>So\.<\/th>\s*<th>Mo\.<\/th>/', $this->service->renderHtml($this->calendar, $filter, $quarter, $this->user));
+    public function testQuarterOverviewLineHasTimeEmojiTitleAndFeatures(): void
+    {
+        $p = TestHelper::createProperty($this->em, $this->calendar, 'Fest', "\u{1F389}");
+        $f = TestHelper::createFeature($this->em, $this->calendar, 'Bonusschießen');
+        $e = $this->event('Schützenfest', '2026-07-04', [$p]);
+        $this->em->persist((new \App\Entity\EventFeature())->setEvent($e)->setFeature($f));
+        $this->em->flush();
+
+        $html = $this->service->renderHtml($this->calendar, $this->filter('2026-07-01', '2026-09-30'), new PdfOptions(PdfLayout::QuarterOverview), $this->user);
+        self::assertMatchesRegularExpression('/18:00 <img class="emoji" src="[^"]+emoji_u1f389\.png"> Schützenfest \(Bonusschießen\)/u', $html);
+    }
+
+    public function testQuarterOverviewLegendPerPageOnlyForThatPage(): void
+    {
+        $fest = TestHelper::createProperty($this->em, $this->calendar, 'Fest', "\u{1F389}");
+        $ziel = TestHelper::createProperty($this->em, $this->calendar, 'Schießen', "\u{1F3AF}");
+        $this->event('Julifest', '2026-07-05', [$fest]);
+        $this->event('Oktoberschießen', '2026-10-05', [$ziel]);
+
+        $quarter = new PdfOptions(PdfLayout::QuarterOverview);
+        $filter = $this->filter('2026-07-01', '2026-12-31');
+        $model = $this->service->buildViewModel($this->calendar, $filter, $quarter, $this->user);
+        self::assertSame([], $model['legend'], 'no global legend for this layout');
+        self::assertSame([['Fest']], array_column($model['pages'][0]['legend'], 'names'));
+        self::assertSame([['Schießen']], array_column($model['pages'][1]['legend'], 'names'));
+
+        $html = $this->service->renderHtml($this->calendar, $filter, $quarter, $this->user);
+        self::assertSame(2, substr_count($html, 'class="legend"'));
+        self::assertStringNotContainsString('<h2>', $html);
+    }
+
+    public function testQuarterOverviewPdfGermanAndEnglishWithoutLegendWhenNoIcons(): void
+    {
+        $this->event('Ohne Icon', '2026-07-05');
+        $quarter = new PdfOptions(PdfLayout::QuarterOverview);
+        $html = $this->service->renderHtml($this->calendar, $this->filter('2026-07-01', '2026-09-30'), $quarter, $this->user);
+        self::assertStringNotContainsString('class="legend"', $html);
     }
 
     public function testQuarterOverviewPdfGermanAndEnglishWithLegend(): void
@@ -282,13 +323,15 @@ class PdfExportServiceTest extends KernelTestCase
         $filter = $this->filter('2026-07-01', '2026-09-30');
 
         $de = $this->service->renderHtml($this->calendar, $filter, $quarter, $this->user);
-        self::assertStringContainsString('Legende', $de);
+        self::assertStringContainsString('class="legend"', $de);
+        self::assertStringContainsString('Zeitraum', $de);
         self::assertStringStartsWith('%PDF', $this->service->render($this->calendar, $filter, $quarter, $this->user));
 
         $this->user->setLanguage('en');
         $en = $this->service->renderHtml($this->calendar, $filter, $quarter, $this->user);
         self::assertStringContainsString('July 2026', $en);
-        self::assertStringContainsString('Legend', $en);
+        self::assertStringContainsString('Period', $en);
+        self::assertStringContainsString('>We<', $en);
         $pdf = $this->service->render($this->calendar, $filter, $quarter, $this->user);
         self::assertStringStartsWith('%PDF', $pdf);
         if (false !== ($out = getenv('PDF_OUT_QUARTER'))) {

@@ -1,65 +1,95 @@
 {% extends 'pdf/base.html.twig' %}
 
+{# Printed per page inside the content block instead #}
+{% block header %}{% endblock %}
+
 {% block content %}
     <style>
-        table.quarter { width: 100%; border-collapse: separate; border-spacing: 0; }
-        td.qm { width: 33.3333%; padding: 0 4pt; border: 0; vertical-align: top; }
-        table.grid { table-layout: fixed; width: 100%; border-collapse: collapse; }
-        table.grid th { text-align: center; font-size: 6pt; padding: 1.5pt 0; border: 0.5pt solid #888888; }
-        table.grid td { height: 19mm; border: 0.5pt solid #999999; padding: 1pt; vertical-align: top; overflow: hidden; }
-        table.grid td.pad { background-color: #ffffff; border-color: #dddddd; }
-        table.grid td.out { background-color: #eeeeee; color: #999999; }
-        .num { font-weight: bold; font-size: 6.5pt; margin: 0 0 1pt 0; }
-        .ev { font-size: 5.5pt; margin: 0 0 1pt 0; padding: 0 0 0 1.5pt; border-left: 1.2pt solid #4a6fa5; }
-        .more { font-size: 5.5pt; color: #555555; font-weight: bold; }
-        table.grid img.emoji { width: 6pt; height: 6pt; margin: 0 1pt; }
-        h3 { font-size: 9pt; margin: 0 0 3pt 0; }
-        .quarter-page { page-break-before: always; }
-        .quarter-first { page-break-before: avoid; }
+        table.q { table-layout: fixed; width: 100%; border-collapse: separate; border-spacing: 0; }
+        table.q td { padding: 0; border: 0; vertical-align: top; }
+        table.q td.col { width: 32%; }
+        table.q td.gap { width: 2%; }
+        table.q td.hd { height: 21pt; padding: 0 0 3pt 0; font-size: 8pt; vertical-align: bottom; }
+        .club { color: #0b6b58; font-weight: bold; font-style: italic; font-size: 9pt; }
+        .cal { text-align: center; }
+        .cal .t, .club .t { height: 12pt; line-height: 11pt; overflow: hidden; white-space: nowrap; font-weight: bold; font-size: 9pt; }
+        .cal .t { text-decoration: underline; }
+        .cal .s { height: 9pt; line-height: 8pt; overflow: hidden; white-space: nowrap; font-size: 7pt; color: #333333; }
+        table.m { table-layout: fixed; width: 100%; border-collapse: separate; border-spacing: 0; border: 0.5pt solid #555555; border-top: 0; }
+        table.m td { padding: 0; border: 0; border-bottom: 0.5pt solid #cfd7d2; vertical-align: top; overflow: hidden; }
+        div.bar { background-color: #0b6b58; color: #ffffff; font-weight: bold; text-align: center; font-size: 10pt; height: 14pt; line-height: 12pt; border: 0.5pt solid #0b6b58; }
+        table.m td.n { width: 9%; text-align: right; padding-right: 2pt; }
+        table.m td.w { width: 12%; padding-left: 1pt; }
+        table.m td.ev { width: 79%; padding-right: 1pt; }
+        table.m tr.we td { background-color: #dcefe9; }
+        table.m tr.we td.n, table.m tr.we td.w { font-weight: bold; }
+        table.m tr.grey td { background-color: #e6e6e6; }
+        .ln { height: 1pt; overflow: hidden; white-space: nowrap; }
+        .ln.dr { color: #b45309; font-style: italic; }
+        .legend { margin: 4pt 0 0 0; font-size: 7pt; color: #333333; }
+        .qp { page-break-before: always; }
+        .qp-first { page-break-before: avoid; }
     </style>
     {% for page in pages %}
-        <div class="{{ loop.first ? 'quarter-first' : 'quarter-page' }}">
-            <table class="quarter">
-                <colgroup><col style="width: 33.3333%"><col style="width: 33.3333%"><col style="width: 33.3333%"></colgroup>
+        {% set lh = page.lineHeightPt|number_format(2, '.', '') %}
+        <style>
+            .p{{ loop.index }} { font-size: {{ page.fontPt|number_format(2, '.', '') }}pt; line-height: {{ lh }}pt; }
+            .p{{ loop.index }} table.m td.r { height: {{ page.rowHeightPt|number_format(2, '.', '') }}pt; }
+            .p{{ loop.index }} .ln { height: {{ lh }}pt; line-height: {{ page.fontPt|number_format(2, '.', '') }}pt; }
+            .p{{ loop.index }} img.emoji { width: {{ page.emojiPt|number_format(2, '.', '') }}pt; height: {{ page.emojiPt|number_format(2, '.', '') }}pt; }
+        </style>
+        <div class="p{{ loop.index }} {{ loop.first ? 'qp-first' : 'qp' }}">
+            <table class="q">
                 <tbody>
                     <tr>
-                    {% for month in page %}
-                        <td class="qm">
-                            <h3>{{ month.label }}</h3>
-                            <table class="grid">
-                                <colgroup>{% for wd in weekdays %}<col style="width: 14.2857%">{% endfor %}</colgroup>
-                                <thead>
-                                    <tr>{% for wd in weekdays %}<th>{{ wd }}</th>{% endfor %}</tr>
-                                </thead>
+                        <td class="col hd club"><div class="t">{{ clubName }}</div></td>
+                        <td class="gap hd">&nbsp;</td>
+                        <td class="col hd cal"><div class="t">{{ calendarName }}</div><div class="s">{{ 'period'|trans({'from': from, 'to': to}, 'pdf', locale) }}</div></td>
+                        <td class="gap hd">&nbsp;</td>
+                        <td class="col hd">&nbsp;</td>
+                    </tr>
+                    <tr>
+                    {% for month in page.months %}
+                        {% if not loop.first %}<td class="gap">&nbsp;</td>{% endif %}
+                        <td class="col">
+                            <div class="bar">{{ month.label }}</div>
+                            <table class="m">
                                 <tbody>
-                                {% for week in month.weeks %}
-                                    <tr>
-                                    {% for cell in week %}
-                                        {% if cell is null %}
-                                            <td class="pad">&nbsp;</td>
-                                        {% else %}
-                                            <td class="{{ cell.inRange ? 'in' : 'out' }}">
-                                                <div class="num">{{ cell.number }}</div>
-                                                {% for e in cell.events %}
-                                                    <div class="ev">
-                                                        {%- for path in e.emojiPaths %}<img class="emoji" src="{{ path }}">{% endfor -%}
-                                                        {{ e.cellName }}{% if e.draft %} <span class="draft">({{ 'draft'|trans({}, 'pdf', locale) }})</span>{% endif %}
-                                                    </div>
-                                                {% endfor %}
-                                                {% if cell.more > 0 %}<div class="more">{{ 'more'|trans({'count': cell.more}, 'pdf', locale) }}</div>{% endif %}
-                                            </td>
-                                        {% endif %}
-                                    {% endfor %}
+                                {% for row in month.rows %}
+                                    {% if row.kind == 'day' %}
+                                    <tr class="{{ row.weekend ? 'we' : 'wd' }}">
+                                        <td class="r n">{{ row.number }}</td>
+                                        <td class="r w">{{ row.weekday }}</td>
+                                        <td class="r ev">
+                                            {%- for e in row.events -%}
+                                                <div class="ln{{ e.draft ? ' dr' : '' }}">
+                                                    {%- if e.time is not null %}{{ e.time }} {% endif -%}
+                                                    {%- for path in e.emojiPaths %}<img class="emoji" src="{{ path }}">{% endfor -%}
+                                                    {%- if e.emojiPaths|length > 0 %} {% endif -%}
+                                                    {{- e.text -}}
+                                                </div>
+                                            {%- endfor -%}
+                                        </td>
                                     </tr>
+                                    {% else %}
+                                    <tr class="grey"><td colspan="3" style="height: {{ (row.lines * page.lineHeightPt)|number_format(2, '.', '') }}pt">&nbsp;</td></tr>
+                                    {% endif %}
                                 {% endfor %}
                                 </tbody>
                             </table>
                         </td>
                     {% endfor %}
-                    {% if page|length < 3 %}{% for i in range(page|length, 2) %}<td class="qm">&nbsp;</td>{% endfor %}{% endif %}
+                    {% if page.months|length < 3 %}{% for i in range(page.months|length, 2) %}<td class="gap">&nbsp;</td><td class="col">&nbsp;</td>{% endfor %}{% endif %}
                     </tr>
                 </tbody>
             </table>
+            {% if page.legend|length > 0 %}
+                <div class="legend">
+                    {%- for item in page.legend -%}
+                        <img class="emoji" src="{{ item.emojiPath }}"> {{ item.names|join(', ') }}{% if not loop.last %}; {% endif %}
+                    {%- endfor -%}
+                </div>
+            {% endif %}
         </div>
     {% endfor %}
 {% endblock %}

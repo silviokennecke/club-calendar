@@ -2701,7 +2701,9 @@ paths:
         `from`, `to` (YYYY-MM-DD, at most 366 days apart) and `layout` are required. Same event filter as
         `events.ics` (drafts only with `includeDrafts`, `targetGroupIds[]` must be audiences of this club; allowed for
         archived calendars and for viewers). Layouts: `month-grid` (one page per month), `quarter-overview` (needs a
-        period of at least 3 calendar months), `annual-overview` (only a full calendar year, 1 Jan to 31 Dec) and
+        period of at least 3 calendar months; one page per three months, one column per month with one row per
+        day and one line per event: time, icons, name, features in parentheses; weekends tinted, days outside
+        the period grey; the icon legend is printed per page), `annual-overview` (only a full calendar year, 1 Jan to 31 Dec) and
         `agenda` (list). `orientation=auto` is portrait for `month-grid`/`agenda`, landscape for the overviews.
         The output language (`de`/`en`) and the first weekday come from the signed-in user's stored preferences
         (`language`, `firstDayOfWeek`), not from a parameter. Property icons are printed as bundled emoji images
