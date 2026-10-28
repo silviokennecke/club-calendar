@@ -31,13 +31,6 @@ describe("EmailVerifyPage", () => {
 
   it("sends visitors of the old confirmation page to the code page", () => {
     renderVerify("?email=alex%40beispiel.de");
-    expect(screen.getByTestId("location")).toHaveTextContent(
-      "/verify-email?email=alex%40beispiel.de",
-    );
-  });
-
-  it("sends visitors without an address to the login", () => {
-    renderVerify("?status=error&reason=expired");
-    expect(screen.getByTestId("location")).toHaveTextContent("/login");
+    expect(screen.getByTestId("location")).toHaveTextContent("/verify-email");
   });
 });

@@ -18,7 +18,7 @@ export class ApiError extends Error {
   field?: string;
   /** Extra member `retryAt` (ISO-8601 UTC) of `verification_resend_too_early`. */
   retryAt?: string;
-  /** Extra member `email` of `email_not_verified` (login 403). */
+  /** Extra member `email` of `email_verification_required` (403 of the verify gate). */
   email?: string;
   /** `Retry-After` header in seconds (429 answers), if present. */
   retryAfter?: number;
@@ -42,6 +42,8 @@ export class ApiError extends Error {
 
 /** Fired on a 403 `consent_required`: the AuthProvider reloads the user so the consent gate appears. */
 export const CONSENT_REQUIRED_EVENT = "cc:consent-required";
+/** Fired on a 403 `email_verification_required`: the session is restricted until the address is confirmed. */
+export const EMAIL_VERIFICATION_REQUIRED_EVENT = "cc:email-verification-required";
 
 /** Whether a request failed because the name already exists in the calendar (422 duplicate_name). */
 export function isDuplicateNameError(error: unknown): boolean {
@@ -243,6 +245,13 @@ export async function errorFrom(res: Response): Promise<ApiError> {
   if (res.status === 403 && err?.code === "consent_required" && typeof window !== "undefined") {
     window.dispatchEvent(new Event(CONSENT_REQUIRED_EVENT));
   }
+  if (
+    res.status === 403 &&
+    err?.code === "email_verification_required" &&
+    typeof window !== "undefined"
+  ) {
+    window.dispatchEvent(new Event(EMAIL_VERIFICATION_REQUIRED_EVENT));
+  }
   return new ApiError(err?.detail ?? `API error ${res.status}`, res.status, err?.code, err?.field, {
     retryAt: typeof err?.retryAt === "string" ? err.retryAt : undefined,
     email: typeof err?.email === "string" ? err.email : undefined,
@@ -261,11 +270,34 @@ export interface TokenResponse {
   access_token: string;
   refresh_token: string;
   user: User;
+  /** True for a restricted session: the e-mail address still has to be confirmed. */
+  emailVerificationRequired?: boolean;
+}
+
+/** The signed-in user of a token response, with the top-level verification flag merged in. */
+export function sessionUser(tokens: { user: User; emailVerificationRequired?: boolean }): User {
+  return tokens.emailVerificationRequired
+    ? { ...tokens.user, emailVerificationRequired: true }
+    : tokens.user;
 }
 
 /**
- * Exchanges the one-time `loginToken` (from `POST /api/auth/verify-email`, valid for seconds) for the
- * normal token pair (`grant_type=one_time_token`, form-encoded like the refresh grant). Failure: 400 `invalid_grant`.
+ * Confirms the address of the signed-in (restricted) session with the mailed code. The answer is a new
+ * token pair in a new session family: the old tokens are dead, the caller must store the new ones.
+ * Wrong, expired or used up code: 422 `invalid_verification_code`.
+ */
+export async function verifyEmail(code: string): Promise<TokenResponse> {
+  return apiPost<TokenResponse>("/api/auth/verify-email", { code });
+}
+
+/** Mails a new confirmation code to the signed-in user (204; 429 `verification_resend_too_early` / `rate_limited`). */
+export async function resendVerification(): Promise<void> {
+  await apiPost("/api/auth/resend-verification", undefined);
+}
+
+/**
+ * Exchanges a one-time code (SSO redirect `?code=`) for the normal token pair
+ * (`grant_type=one_time_token`, form-encoded like the refresh grant). Failure: 400 `invalid_grant`.
  */
 export async function exchangeOneTimeToken(token: string): Promise<TokenResponse> {
   const res = await fetchWithTimeout(

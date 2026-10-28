@@ -44,7 +44,6 @@
         "account_exists": "There already is an account for this email address. Sign in the way you did before.",
         "email_unverified_at_provider": "Your email address is not confirmed at the provider yet. Confirm it there and try again, or sign in with email and password.",
         "invalid_login_code": "Your sign-in has expired or was already used. Please sign in again.",
-        "email_verification_required": "We need to confirm your email address first. Sign in with your email address and password, or register again.",
         "registration_restricted": "No account was created. Registration is only possible with an invitation. Ask your club admin to invite this email address."
       },
       "forgot": "Forgot password?",
@@ -104,8 +103,7 @@
       "tooManyRequests": "Too many requests. Please try again later.",
       "resendFailed": "The code could not be sent. Please try again later.",
       "genericError": "The code could not be checked. Please try again.",
-      "sessionError": "Signing in after the confirmation did not work. Please sign in with your email address and password.",
-      "backToLogin": "Back to sign in"
+      "signOut": "Sign out"
     },
     "forgot": {
       "title": "Forgot your password?",

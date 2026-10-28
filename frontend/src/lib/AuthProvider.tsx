@@ -8,6 +8,7 @@ import {
   revokeRefreshToken,
   storeTokens,
   CONSENT_REQUIRED_EVENT,
+  EMAIL_VERIFICATION_REQUIRED_EVENT,
   getAccessToken,
 } from "./api";
 import { AuthContext, type AuthContextValue } from "./auth-context";
@@ -134,7 +135,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (getAccessToken()) void refreshUser();
     };
     window.addEventListener(CONSENT_REQUIRED_EVENT, onRequired);
-    return () => window.removeEventListener(CONSENT_REQUIRED_EVENT, onRequired);
+    // likewise a 403 `email_verification_required`: /me then carries the flag that shows the verify page
+    window.addEventListener(EMAIL_VERIFICATION_REQUIRED_EVENT, onRequired);
+    return () => {
+      window.removeEventListener(CONSENT_REQUIRED_EVENT, onRequired);
+      window.removeEventListener(EMAIL_VERIFICATION_REQUIRED_EVENT, onRequired);
+    };
   }, []);
 
   /** Saves profile settings on the account; resolves to false when the request failed. */

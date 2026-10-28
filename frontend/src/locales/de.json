@@ -44,7 +44,6 @@
         "account_exists": "Zu dieser E-Mail-Adresse gibt es schon ein Konto. Melde dich so an, wie du es bisher getan hast.",
         "email_unverified_at_provider": "Deine E-Mail-Adresse ist beim Anbieter noch nicht bestätigt. Bestätige sie dort und versuche es erneut, oder melde dich mit E-Mail und Passwort an.",
         "invalid_login_code": "Die Anmeldung ist abgelaufen oder wurde bereits verwendet. Bitte melde dich erneut an.",
-        "email_verification_required": "Wir müssen zuerst deine E-Mail-Adresse bestätigen. Melde dich mit E-Mail-Adresse und Passwort an oder registriere dich erneut.",
         "registration_restricted": "Es wurde kein Konto erstellt. Die Registrierung ist nur mit einer Einladung möglich. Bitte die Verwalter deines Vereins um eine Einladung an diese E-Mail-Adresse."
       },
       "forgot": "Passwort vergessen?",
@@ -104,8 +103,7 @@
       "tooManyRequests": "Zu viele Anfragen. Bitte versuche es später erneut.",
       "resendFailed": "Der Code konnte nicht gesendet werden. Bitte versuche es später erneut.",
       "genericError": "Der Code konnte nicht geprüft werden. Bitte versuche es erneut.",
-      "sessionError": "Die Anmeldung nach der Bestätigung hat nicht geklappt. Bitte melde dich mit E-Mail-Adresse und Passwort an.",
-      "backToLogin": "Zurück zur Anmeldung"
+      "signOut": "Abmelden"
     },
     "forgot": {
       "title": "Passwort vergessen?",

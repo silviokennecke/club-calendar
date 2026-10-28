@@ -10,7 +10,7 @@ import type { User } from "@/lib/types";
 /**
  * SSO return point: the redirect carries a single-use one-time code (never the tokens). The code leaves the
  * address bar first, is then exchanged for the token pair (`POST /api/auth/token`), the user is loaded and
- * the app continues at /clubs. Any failure goes back to /login?error=..., where the login page explains it.
+ * the app continues at /clubs (or at /verify-email for a restricted session). Any failure goes back to /login?error=..., where the login page explains it.
  */
 export default function AuthCallbackPage() {
   const { t } = useTranslation();
@@ -24,13 +24,6 @@ export default function AuthCallbackPage() {
     const code = searchParams.get("code");
     const error = searchParams.get("error");
 
-    if (error === "email_verification_required" && searchParams.get("email")) {
-      // untrusted provider: no session, the address is confirmed with a code first
-      navigate(`/verify-email?email=${encodeURIComponent(searchParams.get("email") ?? "")}`, {
-        replace: true,
-      });
-      return;
-    }
     if (error) {
       navigate(`/login?error=${encodeURIComponent(error)}`, { replace: true });
       return;
@@ -50,7 +43,8 @@ export default function AuthCallbackPage() {
         storeTokens(tokens.access_token, tokens.refresh_token);
         const user = await apiGet<User>("/api/auth/me");
         login(tokens.access_token, tokens.refresh_token, user);
-        navigate("/clubs", { replace: true });
+        // a provider that does not prove the address (Microsoft) gives a restricted session
+        navigate(user.emailVerificationRequired ? "/verify-email" : "/clubs", { replace: true });
       } catch (e) {
         const invalid = e instanceof ApiError && e.code === "invalid_grant";
         navigate(`/login?error=${invalid ? "invalid_login_code" : "oauth_failed"}`, {

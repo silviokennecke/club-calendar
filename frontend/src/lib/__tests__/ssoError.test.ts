@@ -10,9 +10,6 @@ describe("ssoErrorKey", () => {
       expect(texts[key], code).toBeTruthy();
     }
     expect(ssoErrorKey("provider_denied")).toBe("auth.login.ssoError.provider_denied");
-    expect(ssoErrorKey("email_verification_required")).toBe(
-      "auth.login.ssoError.email_verification_required",
-    );
     expect(ssoErrorKey("email_unverified_at_provider")).toBe(
       "auth.login.ssoError.email_unverified_at_provider",
     );

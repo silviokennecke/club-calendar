@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { stashReturnTo } from "@/lib/mcp";
 import { FullPageLoader } from "@/components/ui/shared";
@@ -36,6 +36,13 @@ export default function ProtectedRoute() {
   }, [user, loading, navigate, pathname, search]);
 
   if (loading || !user) return <FullPageLoader />;
+
+  // Verify gate (first, like on the server): the address must be confirmed with the mailed code. The
+  // API answers 403 `email_verification_required` for everything else.
+  if (user.emailVerificationRequired) {
+    if (pathname === "/oauth/consent") stashReturnTo(pathname + search);
+    return <Navigate to="/verify-email" replace />;
+  }
 
   // Consent gate: pending legal documents lock the app (the API answers 403 `consent_required` anyway).
   if (user.consentRequired) return <ConsentPage />;

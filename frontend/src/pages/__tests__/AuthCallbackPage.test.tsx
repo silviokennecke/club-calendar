@@ -27,23 +27,9 @@ function renderCallback(search: string) {
 }
 
 describe("AuthCallbackPage", () => {
-  it("sends email_verification_required with an address to the code page", async () => {
-    renderCallback("?error=email_verification_required&email=alex%40beispiel.de");
-    expect(await screen.findByTestId("location")).toHaveTextContent(
-      "/verify-email?email=alex%40beispiel.de",
-    );
-  });
-
   it("sends other errors to the login with the code", async () => {
     renderCallback("?error=provider_denied");
     expect(await screen.findByTestId("location")).toHaveTextContent("/login?error=provider_denied");
-  });
-
-  it("keeps email_verification_required without an address on the login", async () => {
-    renderCallback("?error=email_verification_required");
-    expect(await screen.findByTestId("location")).toHaveTextContent(
-      "/login?error=email_verification_required",
-    );
   });
 
   it("exchanges the code, stores the tokens and continues to /clubs", async () => {
@@ -59,6 +45,20 @@ describe("AuthCallbackPage", () => {
     expect(exchangeOneTimeToken).toHaveBeenCalledWith("abc");
     expect(storeTokens).toHaveBeenCalledWith("acc", "ref");
     expect(login).toHaveBeenCalledWith("acc", "ref", user);
+  });
+
+  it("continues at the verify page for a restricted session", async () => {
+    const restricted = { ...user, emailVerificationRequired: true };
+    vi.mocked(exchangeOneTimeToken).mockResolvedValue({
+      access_token: "acc",
+      refresh_token: "ref",
+      user: restricted,
+      emailVerificationRequired: true,
+    } as never);
+    vi.mocked(apiGet).mockResolvedValue(restricted);
+    renderCallback("?code=abc");
+    expect(await screen.findByTestId("location")).toHaveTextContent("/verify-email");
+    expect(login).toHaveBeenCalledWith("acc", "ref", restricted);
   });
 
   it("removes the code from the address bar before the exchange", async () => {
