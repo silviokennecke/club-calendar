@@ -253,6 +253,36 @@ class PdfExportServiceTest extends KernelTestCase
         }
     }
 
+    public function testCiHeaderBarAndWeekendClassesInMonthAnnualAndAgenda(): void
+    {
+        // 2026-07-04 is a Saturday, 2026-07-06 a Monday
+        $this->event('Samstag', '2026-07-04');
+        $this->event('Montag', '2026-07-06');
+
+        $month = $this->service->renderHtml($this->calendar, $this->filter(), $this->month(), $this->user);
+        self::assertSame(1, substr_count($month, 'id="pagehead"'), 'fixed header repeats on every page');
+        self::assertStringNotContainsString('<h1>', $month);
+        self::assertStringContainsString('<div class="bar">Juli 2026</div>', $month);
+        self::assertSame(8, substr_count($month, 'class="in we"'), '4 Saturdays and 4 Sundays in July 2026');
+        self::assertMatchesRegularExpression('/<td class="in we">\s*<div class="num">4<\/div>/', $month);
+        self::assertMatchesRegularExpression('/<td class="in">\s*<div class="num">6<\/div>/', $month);
+
+        $annual = $this->service->renderHtml($this->calendar, $this->filter('2026-01-01', '2026-12-31'), new PdfOptions(PdfLayout::AnnualOverview), $this->user);
+        self::assertSame(1, substr_count($annual, 'id="pagehead"'));
+        self::assertSame(13, substr_count($annual, 'class="bar'), '12 month headings and the event list heading');
+        self::assertStringContainsString('<div class="bar mname">Januar</div>', $annual);
+        self::assertStringContainsString('<td class="we">3</td>', $annual);
+        self::assertStringContainsString('<td class="no">2</td>', $annual);
+        self::assertStringContainsString('<tr class="we">', $annual);
+
+        $agenda = $this->service->renderHtml($this->calendar, $this->filter(), $this->agenda(), $this->user);
+        self::assertSame(1, substr_count($agenda, 'id="pagehead"'));
+        self::assertStringNotContainsString('<h1>', $agenda);
+        self::assertStringContainsString('<div class="bar month">Juli 2026</div>', $agenda);
+        self::assertMatchesRegularExpression('/<tr class="we">\s*<td class="dc">Sa\., 04\.07\.2026/', $agenda);
+        self::assertMatchesRegularExpression('/<tr class="wd">\s*<td class="dc">Mo\., 06\.07\.2026/', $agenda);
+    }
+
     public function testQuarterOverviewHtmlDayRowsHeaderOnEveryPageAndLandscape(): void
     {
         $this->event('Training', '2026-08-04');

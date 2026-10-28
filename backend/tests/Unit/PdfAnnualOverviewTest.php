@@ -83,4 +83,15 @@ class PdfAnnualOverviewTest extends TestCase
         self::assertFalse(PdfLayout::AnnualOverview->available($this->d('2026-01-01'), $this->d('2026-12-30')));
         self::assertFalse(PdfLayout::AnnualOverview->available($this->d('2026-07-01'), $this->d('2027-06-30')));
     }
+
+    public function testWeekendFlagsOnCellsAndEventList(): void
+    {
+        $months = PdfAnnualOverview::build(2026, 1, [], 'en');
+        $byNumber = array_column(array_filter(array_merge(...$months[6]['weeks'])), null, 'number');
+        self::assertTrue($byNumber[4]['weekend']);
+        self::assertFalse($byNumber[6]['weekend']);
+
+        $list = PdfAnnualOverview::eventList([['day' => new \DateTimeImmutable('2026-07-05')], ['day' => new \DateTimeImmutable('2026-07-06')]], 'en');
+        self::assertSame([true, false], array_column($list, 'weekend'));
+    }
 }

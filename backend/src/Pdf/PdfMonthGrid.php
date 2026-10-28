@@ -54,6 +54,7 @@ final class PdfMonthGrid
                     'date' => $ymd,
                     'inRange' => $inRange,
                     'number' => $d,
+                    'weekend' => PdfDates::isWeekend($ymd),
                     'events' => array_map(static fn (array $e): array => self::line($e, $cellEm), $shown),
                     'more' => max(0, count($dayEvents) - $cap),
                 ];

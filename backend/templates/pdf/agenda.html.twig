@@ -1,10 +1,10 @@
 {% extends 'pdf/base.html.twig' %}
 
 {% block content %}
-    <style>h3.month { font-size: 10pt; margin: 8pt 0 2pt 0; page-break-after: avoid; }</style>
+    <style>div.month { margin: 8pt 0 2pt 0; page-break-after: avoid; }</style>
     {# Several short tables instead of one huge one: dompdf's table layout grows much faster than linearly #}
     {% for month in rows %}
-        <h3 class="month">{{ month.label }}</h3>
+        <div class="bar month">{{ month.label }}</div>
         {% for chunk in month.entries|batch(30) %}
         <table>
             <colgroup>
@@ -21,8 +21,8 @@
         </thead>
             <tbody>
             {% for e in chunk %}
-                <tr>
-                    <td>{{ e.dateLabel }}</td>
+                <tr class="{{ e.weekend ? 'we' : 'wd' }}">
+                    <td class="dc">{{ e.dateLabel }}</td>
                     <td>
                         {%- if e.allDay -%}
                             {{ 'all_day'|trans({}, 'pdf', locale) }}

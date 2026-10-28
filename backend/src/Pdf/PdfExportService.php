@@ -259,6 +259,7 @@ class PdfExportService
                     'entries' => [],
                 ];
             }
+            $entry['weekend'] = PdfDates::isWeekend($day->format('Y-m-d'));
             $entry['dateLabel'] = PdfDates::weekdayShort((int) $day->format('w'), $locale).', '.PdfDates::formatDate($day, $locale);
             $groups[$key]['entries'][] = $entry;
         }

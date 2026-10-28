@@ -5,10 +5,11 @@
         table.year { width: 100%; border-collapse: separate; border-spacing: 0; }
         td.ym { width: 25%; padding: 0 5pt 8pt 5pt; border: 0; vertical-align: top; }
         table.mini { table-layout: fixed; width: 100%; border-collapse: collapse; }
-        table.mini th { text-align: center; font-size: 6pt; padding: 1pt 0; border: 0; border-bottom: 0.5pt solid #888888; background-color: #ffffff; }
+        table.mini th { text-align: center; font-size: 6pt; padding: 1pt 0; border: 0; border-bottom: 0.5pt solid #0b6b58; background-color: #ffffff; color: #0b6b58; }
         table.mini td { text-align: center; font-size: 7pt; padding: 2pt 0; border: 0; }
-        table.mini td.has { font-weight: bold; background-color: #bcd0ec; color: #0b2a55; }
-        h3.mname { font-size: 9pt; margin: 0 0 2pt 0; }
+        table.mini td.we { background-color: #dcefe9; font-weight: bold; }
+        table.mini td.has { font-weight: bold; background-color: #0b6b58; color: #ffffff; }
+        div.mname { margin: 0 0 2pt 0; }
         table.evlist { margin-top: 4pt; }
         table.evlist td { font-size: 7pt; padding: 2pt 4pt; }
         table.evlist td.c1 { width: 20%; }
@@ -22,7 +23,7 @@
             <tr>
             {% for month in row %}
                 <td class="ym">
-                    <h3 class="mname">{{ month.label }}</h3>
+                    <div class="bar mname">{{ month.label }}</div>
                     <table class="mini">
                         <colgroup>{% for wd in weekdays %}<col style="width: 14.2857%">{% endfor %}</colgroup>
                         <thead>
@@ -35,7 +36,7 @@
                                 {% if cell is null %}
                                     <td>&nbsp;</td>
                                 {% else %}
-                                    <td class="{{ cell.hasEvents ? 'has' : 'no' }}">{{ cell.number }}</td>
+                                    <td class="{{ cell.hasEvents ? 'has' : (cell.weekend ? 'we' : 'no') }}">{{ cell.number }}</td>
                                 {% endif %}
                             {% endfor %}
                             </tr>
@@ -50,13 +51,13 @@
     </table>
     {% if events|length > 0 %}
         <div class="evpage">
-            <h2>{{ 'events'|trans({}, 'pdf', locale) }}</h2>
+            <div class="bar">{{ 'events'|trans({}, 'pdf', locale) }}</div>
             {% for chunk in events|batch(30) %}
             <table class="evlist">
                 <tbody>
                 {% for e in chunk %}
-                    <tr>
-                        <td class="c1">{{ e.dateLabel }}</td>
+                    <tr class="{{ e.weekend ? 'we' : 'wd' }}">
+                        <td class="c1 dc">{{ e.dateLabel }}</td>
                         <td class="c2">
                             {%- if e.allDay -%}
                                 {{ 'all_day'|trans({}, 'pdf', locale) }}

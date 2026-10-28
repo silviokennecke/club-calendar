@@ -51,6 +51,16 @@ class PdfMonthGridTest extends TestCase
         self::assertCount(1, $byNumber[12]['events']);
     }
 
+    public function testWeekendFlagOnSaturdayAndSunday(): void
+    {
+        // 2026-07-04 Sat, 05 Sun, 06 Mon
+        $m = PdfMonthGrid::build($this->d('2026-07-01'), $this->d('2026-07-31'), 1, [], 'en')[0];
+        $byNumber = array_column(array_filter(array_merge(...$m['weeks'])), null, 'number');
+        self::assertTrue($byNumber[4]['weekend']);
+        self::assertTrue($byNumber[5]['weekend']);
+        self::assertFalse($byNumber[6]['weekend']);
+    }
+
     public function testRangeSpanningYearBoundary(): void
     {
         $months = PdfMonthGrid::build($this->d('2026-12-20'), $this->d('2027-01-10'), 1, [], 'de');
