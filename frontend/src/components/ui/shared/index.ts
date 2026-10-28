@@ -1,4 +1,4 @@
-// Shared design-system building blocks (see docs/redesign/PLAN.md). Import from "@/components/ui/shared".
+// Shared design-system building blocks (see frontend/AGENTS.md). Import from "@/components/ui/shared".
 export { Icon, GLYPHS } from "./Icon";
 export type { Glyph } from "./Icon";
 export { Disclosure } from "./Disclosure";

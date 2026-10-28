@@ -1,6 +1,6 @@
 parameters:
     # Per-IP limits of the sign-in, registration and token refresh endpoints. The defaults are the production
-    # values; only the Playwright suite (docs/redesign/E2E.md, CI) raises them, because it registers and signs in
+    # values; only the Playwright suite (docs/ops/E2E.md, CI) raises them, because it registers and signs in
     # far more often than that from one IP. The test environment has its own limits (config/packages/test).
     env(AUTH_LOGIN_IP_LIMIT): '10'
     env(AUTH_REGISTER_IP_LIMIT): '5'

@@ -3,7 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { API, continueWithEmail, createVerifiedUser, loginPassword, PASSWORD } from "./helpers";
 
 // MCP / OAuth: consent page and "Verbundene Apps". Needs the e2e backend started with an empty
-// MCP_ALLOWED_CLIENTS (any https/loopback redirect URI; see docs/redesign/E2E.md).
+// MCP_ALLOWED_CLIENTS (any https/loopback redirect URI; see docs/ops/E2E.md).
 
 const REDIRECT = "http://127.0.0.1/callback";
 

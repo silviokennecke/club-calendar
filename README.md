@@ -14,7 +14,7 @@ A **Club** has one or more **Calendars** containing events, event templates, loc
 
 - `backend/` — Symfony API server (port 3001)
 - `frontend/` — Vite/React single-page app (dev server port 5173; the build goes into `backend/public/`)
-- `docs/redesign/` — redesign plan, design coverage, open backend gaps, E2E setup
+- `docs/ops/` — E2E setup, operations, open backlog
 - `docker-compose.yml` — optional MySQL dev/test databases (any MySQL 8 instance works)
 
 ## Development Setup
@@ -28,7 +28,7 @@ A **Club** has one or more **Calendars** containing events, event templates, loc
 
 ### 1. Provide the databases
 
-Use any MySQL 8 server and set `DATABASE_URL` / `TEST_DATABASE_URL` in `backend/.env.local` (defaults: dev on port `3306`, tests on `3360`). With Docker, start the dev database with the first command; the tests use a throwaway container (the tests wipe all tables, see `docs/redesign/E2E.md`):
+Use any MySQL 8 server and set `DATABASE_URL` / `TEST_DATABASE_URL` in `backend/.env.local` (defaults: dev on port `3306`, tests on `3360`). With Docker, start the dev database with the first command; the tests use a throwaway container (the tests wipe all tables, see `docs/ops/E2E.md`):
 
 ```bash
 docker compose up mysql -d
@@ -107,7 +107,7 @@ npm run test:watch -w frontend
 
 E2E tests (Playwright) register users and write data, so they only run against an isolated local environment
 (own database on the test MySQL, backend on port 3001, Vite on port 5199; `frontend/e2e/global-setup.ts` refuses
-non-local URLs). Setup and cleanup: [`docs/redesign/E2E.md`](docs/redesign/E2E.md).
+non-local URLs). Setup and cleanup: [`docs/ops/E2E.md`](docs/ops/E2E.md).
 
 ```bash
 PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend

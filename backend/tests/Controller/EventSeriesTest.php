@@ -17,7 +17,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
- * Event series (package 4 of BACKEND-PLAN.md): rule, preview, atomic creation, scope "this" / "all"
+ * Event series: rule, preview, atomic creation, scope "this" / "all"
  * when editing and deleting, clean-up of series without events. The date vectors are the former
  * client-side cases of frontend/src/lib/events/series.ts (the server is now the only source of truth).
  */

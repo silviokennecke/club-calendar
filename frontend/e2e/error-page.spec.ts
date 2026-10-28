@@ -63,7 +63,7 @@ test("fehlgeschlagener Seiten-Import zeigt die Fehlerseite, 'Seite neu laden' st
   ).toHaveCount(0);
 });
 
-// Production build (`vite build` + `vite preview`, see docs/redesign/E2E.md): a missing page chunk
+// Production build (`vite build` + `vite preview`, see docs/ops/E2E.md): a missing page chunk
 // triggers exactly one automatic reload per session, then the error page, never a loop.
 test.describe("fehlender Chunk im Produktions-Build", () => {
   test.skip(!process.env.E2E_PREVIEW_URL, "Needs a production build: set E2E_PREVIEW_URL");
