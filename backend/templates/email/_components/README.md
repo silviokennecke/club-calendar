@@ -264,8 +264,6 @@ To refactor an existing template to use components:
 ## Reference Files
 
 - **`USAGE.md`** — Detailed usage guide with code examples
-- **`example-reset-password.mjml`** — Example with CTA button
-- **`example-verify-email.mjml`** — Example without button
 - **`header.mjml`** — Brand header component
 - **`button.mjml`** — CTA button component with fallback
 - **`footer.mjml`** — Footer (hairline + brand line + legal links)
