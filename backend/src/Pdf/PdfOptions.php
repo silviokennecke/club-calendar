@@ -41,6 +41,24 @@ final readonly class PdfOptions
         return new self($layoutEnum, $paper, $orientation);
     }
 
+    /** Printable page height in points: paper height minus the vertical `@page` margins of base.html.twig (15 + 18 mm). */
+    public function contentHeightPt(): float
+    {
+        $sides = 'a4' === $this->paper ? [210.0, 297.0] : [297.0, 420.0];
+        $heightMm = 'landscape' === $this->resolvedOrientation() ? $sides[0] : $sides[1];
+
+        return ($heightMm - 33.0) * 72.0 / 25.4;
+    }
+
+    /** Printable page width in points: paper width minus the horizontal `@page` margins of base.html.twig (2 x 12 mm). */
+    public function contentWidthPt(): float
+    {
+        $sides = 'a4' === $this->paper ? [210.0, 297.0] : [297.0, 420.0];
+        $widthMm = 'landscape' === $this->resolvedOrientation() ? $sides[1] : $sides[0];
+
+        return ($widthMm - 24.0) * 72.0 / 25.4;
+    }
+
     /** `portrait` or `landscape` (auto = layout default). */
     public function resolvedOrientation(): string
     {

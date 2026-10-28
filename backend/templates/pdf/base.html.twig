@@ -22,8 +22,10 @@
 </head>
 <body>
     <div id="footer">{{ 'generated_on'|trans({'date': generatedAt}, 'pdf', locale) }} &middot; {{ clubName }}</div>
+    {% block header %}
     <h1>{{ calendarName }}</h1>
     <p class="sub">{{ clubName }} &middot; {{ 'period'|trans({'from': from, 'to': to}, 'pdf', locale) }}</p>
+    {% endblock %}
     {% block content %}{% endblock %}
     {% if legend|length > 0 %}
         <h2>{{ 'legend'|trans({}, 'pdf', locale) }}</h2>

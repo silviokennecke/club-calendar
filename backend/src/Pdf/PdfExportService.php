@@ -109,7 +109,8 @@ class PdfExportService
             'to' => PdfDates::formatDate($to, $locale),
             'generatedAt' => PdfDates::formatDate(new \DateTimeImmutable('now', $zone), $locale),
             'pageSize' => strtoupper($options->paper).' '.$options->resolvedOrientation(),
-            'legend' => $this->legend($iconEventIds, $locale),
+            // the quarter layout prints a legend per page instead
+            'legend' => PdfLayout::QuarterOverview === $options->layout ? [] : $this->legend($iconEventIds, $locale),
         ];
 
         return $model + match ($options->layout) {
@@ -118,10 +119,7 @@ class PdfExportService
                 'months' => PdfMonthGrid::build($from, $to, $firstDayOfWeek, $entries, $locale),
                 'weekdays' => PdfMonthGrid::weekdayHeader($firstDayOfWeek, $locale),
             ],
-            PdfLayout::QuarterOverview => [
-                'pages' => PdfQuarterOverview::build($from, $to, $firstDayOfWeek, $entries, $locale),
-                'weekdays' => PdfMonthGrid::weekdayHeader($firstDayOfWeek, $locale),
-            ],
+            PdfLayout::QuarterOverview => ['pages' => $this->quarterPages($from, $to, $entries, $locale, $options)],
             PdfLayout::AnnualOverview => [
                 'year' => (int) $from->format('Y'),
                 'months' => PdfAnnualOverview::build((int) $from->format('Y'), $firstDayOfWeek, $entries, $locale),
@@ -191,6 +189,10 @@ class PdfExportService
             static fn (string $name): string => PdfText::truncate(PdfText::stripEmoji($name), self::MAX_TAG),
             array_merge($event->featureNames, $event->targetGroupNames),
         );
+        $features = array_map(
+            static fn (string $name): string => PdfText::truncate(PdfText::stripEmoji($name), self::MAX_TAG),
+            $event->featureNames,
+        );
 
         $entries = [];
         $day = new \DateTimeImmutable($startDate, $clubZone);
@@ -214,6 +216,7 @@ class PdfExportService
                 'name' => PdfText::truncate(PdfText::stripEmoji($event->name), self::MAX_NAME),
                 'location' => $locationText,
                 'tags' => $tags,
+                'features' => $features,
                 'emojiPaths' => $emojiPaths,
                 'draft' => $event->isDraft,
             ];
@@ -221,6 +224,21 @@ class PdfExportService
         }
 
         return $entries;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $entries
+     *
+     * @return list<array<string, mixed>> pages with their own legend of the properties used on that page
+     */
+    private function quarterPages(\DateTimeImmutable $from, \DateTimeImmutable $to, array $entries, string $locale, PdfOptions $options): array
+    {
+        $pages = PdfQuarterOverview::build($from, $to, $entries, $locale, $options->contentHeightPt(), $options->contentWidthPt());
+        foreach ($pages as &$page) {
+            $page['legend'] = $this->legend($page['eventIds'], $locale);
+        }
+
+        return $pages;
     }
 
     /**
