@@ -1,4 +1,4 @@
-import { Fragment, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { openModalState } from "@/lib/modalRoutes";
@@ -30,15 +30,9 @@ function LocalLegalModal({ type, onClose }: { type: LegalType; onClose: () => vo
   );
 }
 
-const separator = (
-  <span aria-hidden="true" className="legal-links-sep">
-    ·
-  </span>
-);
-
 /**
  * Imprint · Privacy · Terms. An externally linked document is a plain link (same tab); other links open the document as a routed modal above the current page.
- * Only renders types that have a published document. `trailing` (e.g. the help link) follows them after a separator; without any document it renders alone.
+ * Only renders types that have a published document. `trailing` (e.g. the help link) follows them in the same list; without any document it renders alone.
  * Returns null when there is nothing to render (while loading, on error, or none published).
  */
 export function LegalLinks({ className, trailing }: { className?: string; trailing?: ReactNode }) {
@@ -63,30 +57,27 @@ export function LegalLinks({ className, trailing }: { className?: string; traili
       className={className ? `legal-links ${className}` : "legal-links"}
       aria-label={t("legal.nav")}
     >
-      {availableTypes.map((type, i) => (
-        <Fragment key={type}>
-          {i > 0 && separator}
-          {data[type]?.url ? (
-            <a {...externalLinkProps(data[type].url, false)} className="legal-link">
-              {t(`legal.${type}`)}
-            </a>
-          ) : secretFeed ? (
-            <button type="button" className="legal-link" onClick={() => setOpen(type)}>
-              {t(`legal.${type}`)}
-            </button>
-          ) : (
-            <Link to={legalPath(type)} state={openModalState(location)} className="legal-link">
-              {t(`legal.${type}`)}
-            </Link>
-          )}
-        </Fragment>
-      ))}
-      {trailing && (
-        <>
-          {separator}
-          {trailing}
-        </>
+      {availableTypes.map((type) =>
+        data[type]?.url ? (
+          <a key={type} {...externalLinkProps(data[type].url, false)} className="legal-link">
+            {t(`legal.${type}`)}
+          </a>
+        ) : secretFeed ? (
+          <button key={type} type="button" className="legal-link" onClick={() => setOpen(type)}>
+            {t(`legal.${type}`)}
+          </button>
+        ) : (
+          <Link
+            key={type}
+            to={legalPath(type)}
+            state={openModalState(location)}
+            className="legal-link"
+          >
+            {t(`legal.${type}`)}
+          </Link>
+        ),
       )}
+      {trailing}
       {open && <LocalLegalModal type={open} onClose={() => setOpen(null)} />}
     </nav>
   );
