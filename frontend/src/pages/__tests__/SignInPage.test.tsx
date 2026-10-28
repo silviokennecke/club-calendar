@@ -269,16 +269,20 @@ describe("identify: login", () => {
     expect(alert).not.toHaveTextContent("stimmt nicht");
   });
 
-  it("goes to the code page on 403 email_not_verified", async () => {
+  it("stores the restricted session and goes to the code page when the address is unconfirmed", async () => {
     const user = await loginStep();
-    apiPost.mockRejectedValue(
-      new ApiError("x", 403, "email_not_verified", undefined, { email: "alex@beispiel.de" }),
-    );
+    apiPost.mockResolvedValue({
+      access_token: "a",
+      refresh_token: "r",
+      user: { id: "u1" },
+      emailVerificationRequired: true,
+    });
     await user.type(screen.getByLabelText(/^Passwort \(Pflicht\)/), "geheim123");
     await user.click(screen.getByRole("button", { name: "Anmelden" }));
-    expect(await screen.findByTestId("location")).toHaveTextContent(
-      "/verify-email?email=alex%40beispiel.de",
+    await waitFor(() =>
+      expect(login).toHaveBeenCalledWith("a", "r", { id: "u1", emailVerificationRequired: true }),
     );
+    expect(await screen.findByTestId("location")).toHaveTextContent("/verify-email");
   });
 
   it("goes back with the Back button: address kept, SSO and passkey return, email focused", async () => {
@@ -392,8 +396,16 @@ describe("identify: register", () => {
     expect(apiPost).not.toHaveBeenCalled();
   });
 
-  it("registers and continues to the confirmation page", async () => {
+  it("registers, stores the restricted session and continues to the confirmation page", async () => {
     const user = await registerStep();
+    apiPost.mockResolvedValue({
+      access_token: "a",
+      refresh_token: "r",
+      user: { id: "u1" },
+      emailVerificationRequired: true,
+      verificationRequired: true,
+      email: "alex@beispiel.de",
+    });
     await fill(user);
     await waitFor(() =>
       expect(apiPost).toHaveBeenCalledWith("/api/auth/register", {
@@ -404,9 +416,8 @@ describe("identify: register", () => {
         acceptedDocuments: [],
       }),
     );
-    expect(await screen.findByTestId("location")).toHaveTextContent(
-      "/verify-email?email=alex%40beispiel.de",
-    );
+    expect(login).toHaveBeenCalledWith("a", "r", { id: "u1", emailVerificationRequired: true });
+    expect(await screen.findByTestId("location")).toHaveTextContent("/verify-email");
   });
 
   it("sends the ids of the accepted consent documents and requires them", async () => {

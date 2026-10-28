@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ApiError, apiPost } from "@/lib/api";
+import { apiPost, sessionUser, type TokenResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { isRateLimited, rateLimitText } from "@/lib/rateLimit";
 import { useFieldTouch } from "@/lib/useFieldTouch";
-import type { User } from "@/lib/types";
 import {
   Button,
   ErrorSummary,
@@ -44,18 +43,11 @@ export function LoginStep({ email, onBack }: { email: string; onBack: () => void
 
     setLoading(true);
     try {
-      const data = await apiPost<{ access_token: string; refresh_token: string; user: User }>(
-        "/api/auth/login",
-        { email, password },
-      );
-      login(data.access_token, data.refresh_token, data.user);
-      navigate("/clubs");
+      const data = await apiPost<TokenResponse>("/api/auth/login", { email, password });
+      login(data.access_token, data.refresh_token, sessionUser(data));
+      // an unconfirmed address is a restricted session: confirm it with the mailed code first
+      navigate(data.emailVerificationRequired ? "/verify-email" : "/clubs");
     } catch (err: unknown) {
-      if (err instanceof ApiError && err.code === "email_not_verified") {
-        // the backend has sent a fresh code if needed: confirm the address with it
-        navigate(`/verify-email?email=${encodeURIComponent(err.email ?? email)}`);
-        return;
-      }
       setProblem(
         isRateLimited(err) ? { kind: "rate", text: rateLimitText(t, err) } : { kind: "wrong" },
       );

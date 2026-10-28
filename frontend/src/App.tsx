@@ -61,7 +61,6 @@ function AppRoutes() {
           <Route element={<GuestRoute />}>
             <Route path="/login" element={<SignInPage />} />
             <Route path="/signup" element={<SignInPage />} />
-            <Route path="/verify-email" element={<VerifyCodePage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
           </Route>
@@ -69,6 +68,8 @@ function AppRoutes() {
           <Route path="/imprint" element={<LegalPage />} />
           <Route path="/privacy" element={<LegalPage />} />
           <Route path="/terms" element={<LegalPage />} />
+          {/* Needs the signed-in restricted session; handles the guest and verified cases itself. */}
+          <Route path="/verify-email" element={<VerifyCodePage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/auth/verify-email" element={<EmailVerifyPage />} />
           <Route path="/feed/:feedId" element={<FeedPage />} />

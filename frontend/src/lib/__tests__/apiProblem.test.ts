@@ -33,9 +33,9 @@ describe("ApiError extra problem members", () => {
     });
   });
 
-  it("exposes email of email_not_verified and ignores non-string members", async () => {
+  it("exposes email of email_verification_required and ignores non-string members", async () => {
     fetchMock.mockResolvedValueOnce(
-      problem(403, { code: "email_not_verified", email: "a@b.de", retryAt: 5 }),
+      problem(403, { code: "email_verification_required", email: "a@b.de", retryAt: 5 }),
     );
     const err = (await apiPost("/api/auth/login", {}).catch((e) => e)) as ApiError;
     expect(err.email).toBe("a@b.de");

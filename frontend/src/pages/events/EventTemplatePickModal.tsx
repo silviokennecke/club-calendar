@@ -4,7 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiGet } from "@/lib/api";
 import type { EventTemplate } from "@/lib/types";
-import { Banner, Button, EmptyState, Icon, Modal, SearchInput } from "@/components/ui/shared";
+import {
+  Banner,
+  Button,
+  EmptyState,
+  Icon,
+  LinkButton,
+  Modal,
+  SearchInput,
+} from "@/components/ui/shared";
 import { useEventPage } from "@/components/events/useEventPage";
 import { useTemplateMeta } from "@/components/events/useTemplateMeta";
 import { CreateGateBody, ModalSkeleton } from "@/components/events/CreateGate";

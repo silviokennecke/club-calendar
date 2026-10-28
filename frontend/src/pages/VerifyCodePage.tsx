@@ -1,9 +1,17 @@
 import { useState } from "react";
-import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Trans, useTranslation } from "react-i18next";
-import { ApiError, apiErrorCode, apiPost, exchangeOneTimeToken } from "@/lib/api";
+import { ApiError, apiErrorCode, resendVerification, sessionUser, verifyEmail } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { CodeInput, ErrorSummary, Field, Button, toast } from "@/components/ui/shared";
+import {
+  CodeInput,
+  ErrorSummary,
+  Field,
+  Button,
+  FullPageLoader,
+  toast,
+} from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { FocusBanner } from "@/components/auth/FocusBanner";
 
@@ -18,16 +26,16 @@ function formatTime(retryAt: string | undefined, locale: string): string | undef
 }
 
 /**
- * /verify-email?email=… : confirms a new account with the 6-digit code from the e-mail. The e-mail
- * address travels in the query (survives a reload). A correct code returns a one-time login token that
- * is exchanged for the tokens right away, then the user lands where a normal login ends.
+ * /verify-email : confirms the address of the signed-in, restricted session (`emailVerificationRequired`)
+ * with the 6-digit code from the e-mail. ProtectedRoute sends gated users here. A correct code returns a
+ * new token pair (new session family), which replaces the old one; then the user lands in the app.
  */
 export default function VerifyCodePage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { login } = useAuth();
-  const [params] = useSearchParams();
-  const email = params.get("email")?.trim() ?? "";
+  const queryClient = useQueryClient();
+  const { user, loading, login, logout } = useAuth();
+  const email = user?.email ?? "";
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [fieldError, setFieldError] = useState("");
@@ -35,7 +43,9 @@ export default function VerifyCodePage() {
   const [resendBusy, setResendBusy] = useState(false);
   const [notice, setNotice] = useState<{ key: number; text: string } | null>(null);
 
-  if (!email) return <Navigate to="/login" replace />;
+  if (loading) return <FullPageLoader />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!user.emailVerificationRequired) return <Navigate to="/clubs" replace />;
 
   function focusFirst() {
     document.getElementById(CODE_ID)?.focus();
@@ -47,12 +57,13 @@ export default function VerifyCodePage() {
     setFieldError("");
     setNotice(null);
     try {
-      const { loginToken } = await apiPost<{ loginToken: string }>("/api/auth/verify-email", {
-        email,
-        code: full,
+      const data = await verifyEmail(full);
+      login(data.access_token, data.refresh_token, {
+        ...sessionUser({ ...data, user: { ...user, ...data.user } }),
+        emailVerificationRequired: false,
       });
-      const data = await exchangeOneTimeToken(loginToken);
-      login(data.access_token, data.refresh_token, data.user);
+      // data of the restricted session (and requests that were refused meanwhile) must be loaded again
+      void queryClient.invalidateQueries();
       navigate("/clubs", { replace: true });
     } catch (err: unknown) {
       const errCode = apiErrorCode(err);
@@ -63,11 +74,6 @@ export default function VerifyCodePage() {
         setBusy(false);
         // the fields are disabled while busy: focus after they are enabled again
         setTimeout(focusFirst, 0);
-        return;
-      }
-      if (errCode === "invalid_grant") {
-        toast.error(t("auth.verify.sessionError"));
-        navigate("/login", { replace: true });
         return;
       }
       setCode("");
@@ -86,7 +92,7 @@ export default function VerifyCodePage() {
     setResendBusy(true);
     setNotice(null);
     try {
-      await apiPost("/api/auth/resend-verification", { email });
+      await resendVerification();
       setFieldError("");
       setCode("");
       toast.success(t("auth.verify.resendSent"));
@@ -122,9 +128,16 @@ export default function VerifyCodePage() {
         <Trans i18nKey="auth.verify.intro" values={{ email }} components={{ strong: <strong /> }} />
       }
       footer={
-        <Link to="/login" className="ap-link">
-          {t("auth.verify.backToLogin")}
-        </Link>
+        <Button
+          variant="ghost"
+          disabled={busy}
+          onClick={() => {
+            logout();
+            navigate("/login", { replace: true });
+          }}
+        >
+          {t("auth.verify.signOut")}
+        </Button>
       }
     >
       <div className="ap-stack">

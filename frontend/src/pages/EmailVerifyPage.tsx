@@ -15,8 +15,8 @@ const OUTCOME_ICON: Record<Outcome, { glyph: Glyph; tone: "brand" | "neutral" | 
 /**
  * /auth/verify-email is the redirect target of the backend's e-mail CHANGE link
  * (`?status=email_changed`, or `?status=error&reason=…&flow=email_change`). After an address change all
- * sessions have ended: sign in again. Confirming a new account works with a code at /verify-email;
- * everything else sent here goes there.
+ * sessions have ended: sign in again. Confirming a new account works with a code at /verify-email (signed-in
+ * restricted session); everything else sent here goes there.
  */
 export default function EmailVerifyPage() {
   const [params] = useSearchParams();
@@ -33,13 +33,7 @@ export default function EmailVerifyPage() {
           ? "changeExpired"
           : "changeInvalid";
   } else {
-    const email = params.get("email");
-    return (
-      <Navigate
-        to={email ? `/verify-email?email=${encodeURIComponent(email)}` : "/login"}
-        replace
-      />
-    );
+    return <Navigate to="/verify-email" replace />;
   }
   return <Result outcome={outcome} />;
 }

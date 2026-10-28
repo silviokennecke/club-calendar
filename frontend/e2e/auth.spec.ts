@@ -126,7 +126,7 @@ test.describe("Login", () => {
 });
 
 test.describe("Registration", () => {
-  test("registers, asks to confirm the email and blocks login until confirmed", async ({
+  test("registers into a restricted session, asks to confirm the email and gates the app until confirmed", async ({
     page,
   }) => {
     const email = `e2e-${Date.now()}@example.com`;
@@ -140,7 +140,7 @@ test.describe("Registration", () => {
     await page.getByRole("button", { name: "Konto erstellen", exact: true }).click();
 
     // No mail is sent in e2e (the code cannot be read): check the page and the failure paths
-    await expect(page).toHaveURL(/\/verify-email\?email=/);
+    await expect(page).toHaveURL(/\/verify-email$/);
     await expect(
       page.getByRole("heading", { level: 1, name: "E-Mail-Adresse bestätigen" }),
     ).toBeVisible();
@@ -161,14 +161,18 @@ test.describe("Registration", () => {
       ),
     ).toBeVisible();
 
-    await page.getByRole("link", { name: "Zurück zur Anmeldung" }).click();
+    // the session is restricted: every app page leads back to the code page
+    await page.goto("/clubs");
+    await expect(page).toHaveURL(/\/verify-email$/);
+
+    await page.getByRole("button", { name: "Abmelden" }).click();
     await expect(
       page.getByRole("heading", { level: 1, name: "Anmelden oder Konto erstellen" }),
     ).toBeVisible();
     await continueWithEmail(page, email);
     await loginPassword(page).fill(PASSWORD);
     await page.getByRole("button", { name: "Anmelden", exact: true }).click();
-    await expect(page).toHaveURL(/\/verify-email\?email=/);
+    await expect(page).toHaveURL(/\/verify-email$/);
     await expect(page.getByText(email)).toBeVisible();
   });
 
@@ -217,7 +221,7 @@ test.describe("Forgot password and email confirmation", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("the code page without an address leads to the login", async ({ page }) => {
+  test("the code page without a session leads to the login", async ({ page }) => {
     await page.goto("/verify-email");
     await expect(page).toHaveURL(/\/login/);
   });

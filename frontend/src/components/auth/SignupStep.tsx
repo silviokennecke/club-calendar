@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, sessionUser, type TokenResponse } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import {
   consentCheckboxId,
   legalKeys,
@@ -39,6 +40,7 @@ const IDS = {
 export function SignupStep({ email, onBack }: { email: string; onBack: () => void }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -110,15 +112,19 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
 
     setLoading(true);
     try {
-      const res = await apiPost<{ email?: string } | undefined>("/api/auth/register", {
+      const res = await apiPost<TokenResponse>("/api/auth/register", {
         name,
         email,
         password,
         language: i18n.resolvedLanguage ?? "en",
         acceptedDocuments: consentItems.map((i) => i.id),
       });
-      // no tokens yet: the address is confirmed with the code from the e-mail
-      navigate(`/verify-email?email=${encodeURIComponent(res?.email ?? email)}`);
+      // restricted session: the address is confirmed with the code from the e-mail
+      login(res.access_token, res.refresh_token, {
+        ...sessionUser(res),
+        emailVerificationRequired: true,
+      });
+      navigate("/verify-email");
     } catch (err: unknown) {
       // Stable error code of the API (RFC 7807 body), never the English `detail` text
       if (isRateLimited(err)) {

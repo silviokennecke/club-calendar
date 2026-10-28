@@ -16,6 +16,8 @@ export interface User {
   pendingConsents?: PendingConsent[];
   /** Consent gate: the app is locked until `pendingConsents` are accepted. */
   consentRequired?: boolean;
+  /** Restricted session: the e-mail address is not confirmed yet (verify gate). */
+  emailVerificationRequired?: boolean;
 }
 
 export interface PendingConsent {

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { apiFetch, apiPost, BACKEND_URL } from "@/lib/api";
+import { apiFetch, apiPost, BACKEND_URL, sessionUser, type TokenResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { isEmailShape } from "@/lib/email";
 import { isRateLimited, rateLimitText } from "@/lib/rateLimit";
@@ -12,7 +12,6 @@ import {
   readInvitationToken,
   type InvitationPreview,
 } from "@/lib/invitations";
-import type { User } from "@/lib/types";
 import {
   Banner,
   Button,
@@ -160,13 +159,9 @@ export default function SignInPage() {
         setProblemKey((k) => k + 1);
         return;
       }
-      const data = (await verifyRes.json()) as {
-        access_token: string;
-        refresh_token: string;
-        user: User;
-      };
-      login(data.access_token, data.refresh_token, data.user);
-      navigate("/clubs");
+      const data = (await verifyRes.json()) as TokenResponse;
+      login(data.access_token, data.refresh_token, sessionUser(data));
+      navigate(data.emailVerificationRequired ? "/verify-email" : "/clubs");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "";
       if (!msg.includes("cancel") && !msg.includes("abort")) {
