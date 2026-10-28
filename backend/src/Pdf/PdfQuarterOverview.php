@@ -10,7 +10,8 @@ namespace App\Pdf;
  *
  * All sizes are computed here and handed to the template as numbers: the font size scales per page so that the
  * fullest of the page's months fits the page height (same scale for every column of a page). If even the minimum
- * font cannot fit, the content flows onto a second page instead of clipping events.
+ * font cannot fit, the months continue on further pages (cut at day boundaries): dompdf cannot split the nested month
+ * tables, it would push the whole table to the next page and leave the first one empty.
  */
 final class PdfQuarterOverview
 {
@@ -63,40 +64,97 @@ final class PdfQuarterOverview
             $months[] = self::month($cursor, $from->format('Y-m-d'), $to->format('Y-m-d'), $byDay, $locale);
         }
 
+        $capacity = self::capacity($contentHeightPt);
         $pages = [];
         foreach (array_chunk($months, self::MONTHS_PER_PAGE) as $chunk) {
-            $maxLines = max(array_column($chunk, 'lines'));
-            $font = self::fontFor($maxLines, $contentHeightPt);
-            $lineHeight = round($font * self::LINE_FACTOR, 2);
-            $ids = [];
-            $textWidthEm = ($contentWidthPt * self::COLUMN_SHARE * self::EVENT_CELL_SHARE - self::CELL_PADDING_PT) / $font;
-            foreach ($chunk as &$month) {
-                foreach ($month['rows'] as &$row) {
-                    foreach ($row['events'] ?? [] as $i => $event) {
-                        $row['events'][$i]['text'] = self::lineText($event, $textWidthEm, $font);
-                    }
+            $segments = array_map(static fn (array $m): array => self::segments($m['rows'], $capacity), $chunk);
+            for ($s = 0, $count = max(array_map('count', $segments)); $s < $count; ++$s) {
+                $pageMonths = [];
+                foreach ($chunk as $i => $month) {
+                    $seg = $segments[$i][$s] ?? ['rows' => [], 'lines' => 0];
+                    $pageMonths[] = ['label' => $month['label'], 'rows' => $seg['rows'], 'lines' => $seg['lines']];
                 }
-                unset($row);
-                if ($month['lines'] < $maxLines) {
-                    $month['rows'][] = ['kind' => 'grey', 'lines' => $maxLines - $month['lines']];
-                }
-                foreach ($month['ids'] as $id) {
-                    $ids[$id] = $id;
-                }
+                $pages[] = self::page($pageMonths, $contentHeightPt, $contentWidthPt);
             }
-            unset($month);
-
-            $pages[] = [
-                'months' => array_map(static fn (array $m): array => ['label' => $m['label'], 'rows' => $m['rows']], $chunk),
-                'fontPt' => $font,
-                'lineHeightPt' => $lineHeight,
-                'rowHeightPt' => round(self::MIN_DAY_LINES * $lineHeight, 2),
-                'emojiPt' => round($font * 1.1, 2),
-                'eventIds' => array_values($ids),
-            ];
         }
 
         return $pages;
+    }
+
+    /**
+     * @param list<array{label: string, rows: list<array<string, mixed>>, lines: int}> $months
+     *
+     * @return array{months: list<array{label: string, rows: list<array<string, mixed>>}>, fontPt: float, lineHeightPt: float, rowHeightPt: float, emojiPt: float, eventIds: list<string>}
+     */
+    private static function page(array $months, float $contentHeightPt, float $contentWidthPt): array
+    {
+        $maxLines = max(array_column($months, 'lines'));
+        $font = self::fontFor($maxLines, $contentHeightPt);
+        $lineHeight = round($font * self::LINE_FACTOR, 2);
+        $ids = [];
+        $textWidthEm = ($contentWidthPt * self::COLUMN_SHARE * self::EVENT_CELL_SHARE - self::CELL_PADDING_PT) / $font;
+        foreach ($months as &$month) {
+            foreach ($month['rows'] as &$row) {
+                foreach ($row['events'] ?? [] as $i => $event) {
+                    $row['events'][$i]['text'] = self::lineText($event, $textWidthEm, $font);
+                    if ([] !== $event['emojiPaths']) {
+                        $ids[(string) $event['id']] = (string) $event['id'];
+                    }
+                }
+            }
+            unset($row);
+            if ($month['lines'] < $maxLines) {
+                $month['rows'][] = ['kind' => 'grey', 'lines' => $maxLines - $month['lines']];
+            }
+        }
+        unset($month);
+
+        return [
+            'months' => array_map(static fn (array $m): array => ['label' => $m['label'], 'rows' => $m['rows']], $months),
+            'fontPt' => $font,
+            'lineHeightPt' => $lineHeight,
+            'rowHeightPt' => round(self::MIN_DAY_LINES * $lineHeight, 2),
+            'emojiPt' => round($font * 1.1, 2),
+            'eventIds' => array_values($ids),
+        ];
+    }
+
+    /** Lines that fit one column at the minimum font. */
+    private static function capacity(float $contentHeightPt): int
+    {
+        $lines = (int) floor(($contentHeightPt - self::FIXED_HEIGHT_PT - (self::GRID_DAYS + 1) * self::ROW_BORDER_PT) / (self::MIN_FONT_PT * self::LINE_FACTOR));
+
+        return max(self::MIN_DAY_LINES + 1, $lines);
+    }
+
+    /**
+     * Rows cut at day boundaries into pieces of at most $capacity lines.
+     *
+     * @param list<array<string, mixed>> $rows
+     *
+     * @return list<array{rows: list<array<string, mixed>>, lines: int}>
+     */
+    private static function segments(array $rows, int $capacity): array
+    {
+        $segments = [];
+        $current = ['rows' => [], 'lines' => 0];
+        foreach ($rows as $row) {
+            if ($row['lines'] > $capacity) {
+                $hidden = count($row['events']) - ($capacity - 1);
+                $row['events'] = array_slice($row['events'], 0, $capacity - 1);
+                $row['events'][] = ['id' => '', 'time' => null, 'emojiPaths' => [], 'title' => '… +'.$hidden, 'features' => [], 'draft' => false];
+                $row['lines'] = $capacity;
+            }
+            if ([] !== $current['rows'] && $current['lines'] + $row['lines'] > $capacity) {
+                $segments[] = $current;
+                $current = ['rows' => [], 'lines' => 0];
+            }
+            $current['rows'][] = $row;
+            $current['lines'] += $row['lines'];
+        }
+        $segments[] = $current;
+
+        return $segments;
     }
 
     /** Font size in points for a page whose fullest column has $lines lines; line height is proportional. */
@@ -155,7 +213,7 @@ final class PdfQuarterOverview
     /**
      * @param array<string, list<array<string, mixed>>> $byDay
      *
-     * @return array{label: string, rows: list<array<string, mixed>>, lines: int, ids: list<string>}
+     * @return array{label: string, rows: list<array<string, mixed>>, lines: int}
      */
     private static function month(\DateTimeImmutable $first, string $fromYmd, string $toYmd, array $byDay, string $locale): array
     {
@@ -164,7 +222,6 @@ final class PdfQuarterOverview
         $daysInMonth = (int) $first->format('t');
         $rows = [];
         $lines = 0;
-        $ids = [];
 
         for ($d = 1; $d <= self::GRID_DAYS; ++$d) {
             if ($d > $daysInMonth) {
@@ -183,15 +240,13 @@ final class PdfQuarterOverview
             $events = [];
             foreach ($byDay[$ymd] ?? [] as $entry) {
                 $events[] = [
+                    'id' => (string) $entry['id'],
                     'time' => !$entry['allDay'] && null !== ($entry['begin'] ?? null) ? $entry['begin'] : null,
                     'emojiPaths' => $entry['emojiPaths'] ?? [],
                     'title' => (string) $entry['name'],
                     'features' => $entry['features'] ?? [],
                     'draft' => (bool) ($entry['draft'] ?? false),
                 ];
-                if ([] !== ($entry['emojiPaths'] ?? [])) {
-                    $ids[(string) $entry['id']] = (string) $entry['id'];
-                }
             }
             $rowLines = max(self::MIN_DAY_LINES, count($events));
             $lines += $rowLines;
@@ -209,7 +264,6 @@ final class PdfQuarterOverview
             'label' => PdfDates::monthName($year, $month, $locale).' '.$year,
             'rows' => $rows,
             'lines' => $lines,
-            'ids' => array_values($ids),
         ];
     }
 }
