@@ -68,7 +68,7 @@ test.describe("Calendar", () => {
       .getByRole("link", { name: /^(settings|einstellungen)$/i })
       .click();
     await page.waitForURL("**/settings");
-    await page.getByRole("link", { name: /^besonderheiten$/i }).click();
+    await page.getByRole("link", { name: /^(badges|besonderheiten)$/i }).click();
     await page.waitForURL("**/settings/properties");
   });
 
@@ -401,14 +401,15 @@ test.describe("Termin-Dialoge", () => {
       ),
     ).toBe(true);
 
-    // Focus trap: Tab and Shift+Tab stay in the dialog.
+    // Focus trap: Tab and Shift+Tab stay in the dialog. Base UI's focus guards hold focus for a moment
+    // before handing it back, so poll instead of reading it right after the key press.
     for (let i = 0; i < 25; i++) {
       await page.keyboard.press("Tab");
-      expect(await focusInDialog(page)).toBe(true);
+      await expect.poll(() => focusInDialog(page)).toBe(true);
     }
     for (let i = 0; i < 5; i++) {
       await page.keyboard.press("Shift+Tab");
-      expect(await focusInDialog(page)).toBe(true);
+      await expect.poll(() => focusInDialog(page)).toBe(true);
     }
 
     // Escape without changes closes; focus returns to the trigger, the calendar is usable again.
