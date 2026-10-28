@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { openModalState } from "@/lib/modalRoutes";
@@ -30,11 +30,18 @@ function LocalLegalModal({ type, onClose }: { type: LegalType; onClose: () => vo
   );
 }
 
+const separator = (
+  <span aria-hidden="true" className="legal-links-sep">
+    ·
+  </span>
+);
+
 /**
  * Imprint · Privacy · Terms. An externally linked document is a plain link (same tab); other links open the document as a routed modal above the current page.
- * Only renders types that have a published document. Returns null when no types are available (while loading, on error, or none published).
+ * Only renders types that have a published document. `trailing` (e.g. the help link) follows them after a separator; without any document it renders alone.
+ * Returns null when there is nothing to render (while loading, on error, or none published).
  */
-export function LegalLinks({ className }: { className?: string }) {
+export function LegalLinks({ className, trailing }: { className?: string; trailing?: ReactNode }) {
   const { t } = useTranslation();
   const location = useLocation();
   const { data } = useLegalOverview();
@@ -48,7 +55,7 @@ export function LegalLinks({ className }: { className?: string }) {
 
   // Return nothing while loading, on error, or when no types are available
   if (!data || availableTypes.length === 0) {
-    return null;
+    return trailing ?? null;
   }
 
   return (
@@ -58,11 +65,7 @@ export function LegalLinks({ className }: { className?: string }) {
     >
       {availableTypes.map((type, i) => (
         <Fragment key={type}>
-          {i > 0 && (
-            <span aria-hidden="true" className="legal-links-sep">
-              ·
-            </span>
-          )}
+          {i > 0 && separator}
           {data[type]?.url ? (
             <a {...externalLinkProps(data[type].url, false)} className="legal-link">
               {t(`legal.${type}`)}
@@ -78,6 +81,12 @@ export function LegalLinks({ className }: { className?: string }) {
           )}
         </Fragment>
       ))}
+      {trailing && (
+        <>
+          {separator}
+          {trailing}
+        </>
+      )}
       {open && <LocalLegalModal type={open} onClose={() => setOpen(null)} />}
     </nav>
   );

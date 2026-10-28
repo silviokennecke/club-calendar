@@ -5,7 +5,9 @@ import i18n, { i18nReady } from "@/lib/i18n";
 
 // The legal footer links fetch `/api/legal` (needs router + query client); suites that render
 // AuthLayout / PublicShell do not provide them. Its own test uses `vi.importActual`.
-vi.mock("@/components/legal/LegalLinks", () => ({ LegalLinks: () => null }));
+vi.mock("@/components/legal/LegalLinks", () => ({
+  LegalLinks: ({ trailing }: { trailing?: unknown }) => trailing ?? null,
+}));
 
 // Tests run in German (the design's source language). Wait for the initial language detection
 // (jsdom reports English, which loads lazily) so it cannot switch back afterwards.
