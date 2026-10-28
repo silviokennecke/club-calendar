@@ -16,7 +16,7 @@ Dafür brauchst du die Rolle Bearbeiter oder Admin.
 
 Eine Serie entsteht immer aus einer [Vorlage](help:organize/templates). Lege also zuerst eine Vorlage an, falls du noch keine hast.
 
-1. Öffne **Alle Termine** und klicke auf **Termin anlegen**.
+1. Öffne **Alle Termine** und öffne das Menü neben **Termin anlegen**.
 2. Wähle **Aus Vorlage** und dann die gewünschte Vorlage. Klicke auf **Weiter**.
 3. Wähle bei **Art** den Eintrag **Terminserie**.
 4. Wähle den **Rhythmus**:

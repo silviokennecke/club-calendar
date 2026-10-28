@@ -34,7 +34,7 @@ In the template list choose **Edit**. Changes apply to new events only; events a
 ## Use a template for an event
 
 - In the list, choose **Event from template** next to a template.
-- Or choose **From template** when creating an event, then pick the template. It takes over times, location and audiences and can also create series.
+- Or open the menu next to **Create event**, choose **From template**, then pick the template. It takes over times, location and audiences and can also create series.
 - Or type the name of a new event: from 3 letters on, the app suggests matching templates and applies their settings.
 
 You can still adjust everything in the event. New events start as drafts.

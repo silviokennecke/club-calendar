@@ -20,7 +20,7 @@ Ein neuer Termin bleibt zunächst ein **Entwurf**, den nur dein Verein sieht. Er
    - Doppelklicke auf einen Tag im Monatsraster. Das Datum ist dann schon eingetragen.
    - Klicke auf einen Tag und dann im Tagesbereich auf **Termin an diesem Tag anlegen**.
    - Auf dem Smartphone tippst du auf den runden Button **Termin anlegen**.
-3. Wähle **Neuer Termin**. Mit **Aus Vorlage** startest du stattdessen von einer [Vorlage](help:organize/templates), auch für ganze Terminreihen.
+3. Das Formular für den neuen Termin öffnet sich. Über das Menü neben **Termin anlegen** startest du stattdessen mit **Aus Vorlage** von einer [Vorlage](help:organize/templates), auch für ganze Terminreihen.
 4. Fülle das Formular aus und klicke auf **Termin speichern**.
 
 ![Formular Neuer Termin mit ausgefüllten Grunddaten](shot:first-event-form)

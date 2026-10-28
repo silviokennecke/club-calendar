@@ -34,7 +34,7 @@ Auf der Vorlagenliste wählst du **Bearbeiten**. Änderungen gelten nur für neu
 ## Vorlage beim Termin nutzen
 
 - Wähle in der Liste bei einer Vorlage **Termin aus Vorlage**.
-- Oder wähle beim Anlegen eines Termins **Aus Vorlage** und dann die Vorlage. Sie übernimmt Zeiten, Ort und Gruppen und kann auch Terminreihen anlegen.
+- Oder öffne das Menü neben **Termin anlegen**, wähle **Aus Vorlage** und dann die Vorlage. Sie übernimmt Zeiten, Ort und Gruppen und kann auch Terminreihen anlegen.
 - Oder tippe beim neuen Termin den Namen: Ab 3 Buchstaben schlägt die App passende Vorlagen vor und übernimmt deren Einstellungen.
 
 Alle Angaben kannst du im Termin noch anpassen. Neue Termine sind zunächst Entwürfe.

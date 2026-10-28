@@ -16,7 +16,7 @@ You need the Editor or Admin role for this.
 
 A series is always created from a [template](help:organize/templates). Create a template first if you don't have one yet.
 
-1. Open **All events** and click **Create event**.
+1. Open **All events** and open the menu next to **Create event**.
 2. Choose **From template**, then pick the template. Click **Next**.
 3. Under **Kind**, choose **Event series**.
 4. Choose the **Rhythm**:

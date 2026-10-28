@@ -20,7 +20,7 @@ A new event starts as a **draft** that only your club can see. It appears in the
    - Double-click a day in the month grid. The date is already filled in.
    - Click a day, then click **Create event on this day** in the day panel.
    - On a smartphone, tap the round **Create event** button.
-3. Choose **New event**. With **From template** you start from a [template](help:organize/templates) instead, also for whole event series.
+3. The form for the new event opens. With the menu next to **Create event** you can instead choose **From template** to start from a [template](help:organize/templates), also for whole event series.
 4. Fill in the form and click **Save event**.
 
 ![New event form with the basic data filled in](shot:first-event-form)
