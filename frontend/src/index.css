@@ -2847,7 +2847,7 @@
   }
 }
 
-/* Events (design cc-app.css: .ap-table, .ap-bulkbar, .ap-tiles, .ap-optionrow, .ap-form-section,
+/* Events (design cc-app.css: .ap-table, .ap-bulkbar, .ap-optionrow, .ap-form-section,
    .ap-inputrow, .ap-back, .ap-cols-2, .ap-map, dialog-like pages) */
 @layer components {
   .ap-back {
@@ -3092,41 +3092,6 @@
     min-height: var(--tap-min);
     font: 500 1rem/1.5rem var(--font-sans);
   }
-  .ap-tiles {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-4);
-  }
-  .ap-tile {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-2);
-    min-height: 200px;
-    padding: var(--space-6);
-    border: 2px solid var(--border-strong);
-    border-radius: var(--radius-lg);
-    background: var(--surface-raised);
-    color: var(--ink);
-    text-decoration: none;
-  }
-  @media (hover: hover) {
-    .ap-tile:hover {
-      border-color: var(--brand);
-      background: var(--brand-soft);
-    }
-  }
-  .ap-tile-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 56px;
-    height: 56px;
-    border-radius: var(--radius-md);
-    background: var(--brand-soft);
-    color: var(--brand);
-    margin-bottom: var(--space-2);
-  }
   .ap-optionrow {
     display: flex;
     align-items: center;
@@ -3222,12 +3187,8 @@
   }
   @media (max-width: 720px) {
     .ap-cols-2,
-    .ap-inputrow,
-    .ap-tiles {
+    .ap-inputrow {
       grid-template-columns: minmax(0, 1fr);
-    }
-    .ap-tile {
-      min-height: 0;
     }
     .ap-dialog-foot--split .cc-btn {
       flex: 1 1 auto;
