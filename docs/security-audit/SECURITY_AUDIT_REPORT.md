@@ -1,14 +1,13 @@
 # Club Calendar — Security Audit Report
 
 **Date:** 2026-10-05
-**Status:** 4 of 5 areas complete (backend auth, backend API, feeds/ICS/Map services, frontend); area `04` (dependencies, secrets, deployment config) is pending and marked below.
+**Status:** Resolved findings have been removed; only open findings remain.
 
 ## Scope & Method
 
 | Area | What was reviewed | Report |
 |---|---|---|
 | Backend auth | `AuthController`, `OAuthController`, `WebAuthnController`; `AuthService`, `TokenService`, `WebAuthnService`, email-verification services; security voters, JWT/security config; auth entities; migrations; `backend/.env.example` | `01-backend-auth.md` |
-| Backend API (authorization & CRUD) | `Club/Calendar/Event/EventTemplate/Property/Feature/TargetGroup/Location/Feed/PublicFeed` controllers + services, security voters, DTOs, `security.yaml` | `02-backend-api.md` |
 | Backend feeds/ICS/map services | `FeedService`, `PublicFeedService`, `IcsService`, `src/Service/Map/` (Mapbox proxy, map images, geocoding), `Feed` entity | `02b-backend-services.md` |
 | Frontend | React SPA (Vite, React 19, TanStack Query), auth storage, OAuth callback, Mapbox proxy client, dependency spot-check | `03-frontend.md` |
 | Scans & config | gitleaks (git history, project `.gitleaks.toml`), Trivy (Docker), dependency spot-checks (npm/composer), `../../docker-compose.yml`, service/env wiring | `04-scans-config.md` (pending) |
@@ -28,22 +27,11 @@
 ## Executive Summary
 
 - **No Critical findings** in the completed areas.
-- Counts so far (4 of 5 areas complete): **1 High, 0 Medium, 5 Low, 9 Informational** — 15 findings; AUTH-03 (account deletion without re-authentication) removed after implementation; API-02, API-03, API-54 and the OAuth token-in-URL finding removed after implementation (AUTH-13 added for the residual risk of the fix).
-- **Top design gaps:** club membership equals full admin with no role model (API-01); Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
+- Counts: **0 High, 1 Medium, 3 Low, 6 Informational** — 10 findings.
+- **Top gap:** Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
 - **Positives:** no IDOR/cross-tenant gaps in the API surface; no live Mapbox token in the frontend (fully proxied through the backend); WebAuthn ceremonies, OAuth state handling, and exception → RFC 7807 response masking are sound; feed-secret checks are constant-time and the Mapbox proxy is SSRF-safe (fixed upstream host, strict path allowlist, caller token stripped).
 
 ## Findings
-
-### High
-
-#### API-01 — Club membership grants full administrative control (no roles, no last-admin guard)
-**Severity:** High
-**Attack scope:** Any authenticated member of a club — including a single compromised or malicious account.
-**Description:** The club data model has no role, owner, or last-admin concept — `ClubUser` is a plain club+user join with no role column, and `ClubService` performs no privilege checks of any kind. As a result every club member can: delete the entire club, remove **any** member including themselves (which can orphan a club with zero members), invite **any** e-mail address (invitations need the invitee's consent since the former M8 was fixed), and rename the club or change its timezone. A single low-privilege member account is equivalent to full club admin, and a departing user can self-remove and leave the club unmanageable.
-**Affected parts:** `ClubController.php` (all 8 routes guarded only by `CLUB_MEMBER`, lines 64–110); `ClubService.php:56` (updateClub), `:69` (deleteClub), `:105` (removeMember); `ClubUser` entity (composite `clubId`+`userId` IDs, no role).
-**Fix recommendation:** Introduce a role/owner concept (e.g. a `role` column on `ClubUser`); gate club deletion, member removal, member addition, and club metadata changes on club admin/owner; block removal of the last remaining admin (and consider self-removal that orphans the club); consider re-authentication or a confirmation step for club deletion.
-**Notes:** The membership voter itself works as designed — the gap is the missing privilege layer above it. Member self-removal and club deletion by any member are the two most dangerous sub-cases.
-**Source:** `02-backend-api.md` (API-01).
 
 ### Medium
 
@@ -66,22 +54,6 @@
 **Fix recommendation:** Log `$e->getMessage()` plus sanitized context, or add a Monolog processor that strips paths from traces.
 **Notes:** HTTP responses are properly masked by `ExceptionListener` (RFC 7807, no traces to clients) — this is a log-side issue only.
 **Source:** `01-backend-auth.md` (AUTH-05).
-
-#### FE-04 — CLI-only `shadcn` package listed as a runtime dependency
-**Severity:** Low
-**Attack scope:** Supply-chain / maintenance surface; no direct browser exploit.
-**Description:** `shadcn ^4.11.0` is a code-generation CLI, not an importable library, and is referenced nowhere in `../../frontend/src`. As a production dependency it is unnecessarily installed into the runtime dependency tree of the SPA.
-**Affected parts:** `frontend/package.json:39`.
-**Fix recommendation:** Move `shadcn` to `devDependencies` (or drop it).
-**Source:** `03-frontend.md` (FE-04).
-
-#### FE-05 — Type-only `@types/mapbox-gl` listed as a runtime dependency
-**Severity:** Low
-**Attack scope:** None directly (types are erased at build time); supply-chain surface.
-**Description:** `@types/mapbox-gl ^3.4.1` contains only TypeScript declarations, is never shipped to the browser, yet sits in `dependencies`, inflating the production install.
-**Affected parts:** `frontend/package.json:26`.
-**Fix recommendation:** Move to `devDependencies` alongside the other `@types/*` entries.
-**Source:** `03-frontend.md` (FE-05).
 
 #### API-53 — Static map image endpoints expose coordinates of calendars the user does not belong to
 **Severity:** Low
@@ -162,14 +134,6 @@
 **Fix recommendation:** Use a dedicated `JWT_SECRET` env var with independent rotation; do not share secrets across signing domains.
 **Source:** `01-backend-auth.md` (AUTH-12).
 
-#### FE-06 — Silent fallback to `http://localhost:3001` when `VITE_API_URL` is unset
-**Severity:** Informational
-**Attack scope:** Misconfigured deployments; developer ergonomics.
-**Description:** `BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001"` — a build produced without the env var compiles fine and silently points all API traffic at localhost instead of failing loudly.
-**Affected parts:** `frontend/src/lib/api.ts:4`; `frontend/src/lib/mapboxProxy.ts:1`.
-**Fix recommendation:** Fail fast at startup (throw when `VITE_API_URL` is absent in a non-dev build), or log a prominent warning.
-**Source:** `03-frontend.md` (FE-06).
-
 #### FE-07 — Dev/build deps lag current major (no vulnerable major in use)
 **Severity:** Informational
 **Attack scope:** None demonstrated; standard "keep tooling current" hygiene.
@@ -189,7 +153,7 @@
 - `ExceptionListener` masks all exceptions as RFC 7807 `application/problem+json` — no stack traces or entity details reach the client.
 - Public route allow-listing in `security.yaml` is explicit and matches the controller mapping.
 
-**Backend API (02)**
+**Backend API**
 - No IDOR or cross-tenant gaps found: every CRUD endpoint resolves entities by UUID and enforces `CALENDAR_MEMBER` / `CLUB_MEMBER` voter checks; nested resources (templates, properties, locations, target groups, features) are scoped to the parent calendar's membership for both reads and writes.
 - Nested and calendar-level write endpoints enforce `NOT_ARCHIVED`, and calendar DELETE and duplicate routes enforce it too (archive is now read-only across all write paths).
 - Consistent DTO validation via `validateDto()` on all write endpoints; no unvalidated mass assignment observed.
@@ -219,11 +183,8 @@
 
 | ID | Title | Severity |
 |---|---|---|
-| API-01 | Club membership grants full administrative control (no roles, no last-admin guard) | High |
 | API-52 | Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation | Medium |
 | AUTH-05 | Raw exception objects logged with full stack traces | Low |
-| FE-04 | CLI-only `shadcn` package listed as a runtime dependency | Low |
-| FE-05 | Type-only `@types/mapbox-gl` listed as a runtime dependency | Low |
 | API-53 | Static map image endpoints expose coordinates of calendars the user does not belong to | Low |
 | AUTH-13 | SSO login code is not bound to the browser that started the flow (login CSRF) | Low |
 | AUTH-06 | Register: check-then-insert race on the email | Informational |
@@ -233,17 +194,15 @@
 | AUTH-10 | `updateMe` accepts unvalidated `lastClubId` / `lastCalendarId` | Informational |
 | AUTH-11 | `UserProvider` is an unused stub | Informational |
 | AUTH-12 | JWT signing passphrase equals `APP_SECRET` | Informational |
-| FE-06 | Silent fallback to `http://localhost:3001` when `VITE_API_URL` is unset | Informational |
 | FE-07 | Dev/build deps lag current major (no vulnerable major in use) | Informational |
 
 ## Appendix B — Per-Area Reports
 
 | Area | Report | Findings | Status |
 |---|---|---|---|
-| Backend auth | `01-backend-auth.md` | AUTH-05 … AUTH-13 (9) | Complete |
-| Backend API (authorization & CRUD) | `02-backend-api.md` | API-01 (1) | Complete |
+| Backend auth | `01-backend-auth.md` | AUTH-05, AUTH-08 … AUTH-13 (7) | Complete |
 | Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-53 (2) | Complete |
-| Frontend | `03-frontend.md` | FE-04 … FE-07 (4) | Complete |
-| Scans & config | `04-scans-config.md` | SCAN-04, SCAN-07, SCAN-09 … SCAN-12 (5) | Complete |
+| Frontend | `03-frontend.md` | FE-07 (1) | Complete |
+| Scans & config | `04-scans-config.md` | SCAN-04, SCAN-07, SCAN-09, SCAN-10, SCAN-12 (5) | Complete |
 
 These reports live in `docs/security-audit/`.
