@@ -53,6 +53,12 @@ class PdfExportService
         $pdf->setPaper($options->paper, $options->resolvedOrientation());
         $pdf->loadHtml($html, 'UTF-8');
         $pdf->render();
+        $pdf->addInfo('Creator', $this->dompdf->creator());
+        $author = trim((string) preg_replace('/[\p{Cc}\p{Cf}]+/u', ' ', $calendar->getClub()->getName()));
+        $author = PdfText::truncate(PdfText::stripEmoji($author), self::MAX_NAME);
+        if ('' !== $author) {
+            $pdf->addInfo('Author', $author);
+        }
 
         return (string) $pdf->output();
     }

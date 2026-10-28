@@ -79,6 +79,26 @@ class PdfExportServiceTest extends KernelTestCase
         }
     }
 
+    /** dompdf writes info strings as UTF-16BE with BOM. */
+    private function info(string $pdf, string $key): string
+    {
+        self::assertSame(1, preg_match('~/'.$key.' \(\xFE\xFF((?:[^\\)]|\\.)*)\)~s', $pdf, $m));
+
+        return mb_convert_encoding(stripcslashes($m[1]), 'UTF-8', 'UTF-16BE');
+    }
+
+    public function testAuthorAndCreatorMetadata(): void
+    {
+        $this->calendar->getClub()->setName("Schuetzen\x07verein Test");
+        $this->em->flush();
+
+        $pdf = $this->service->render($this->calendar, $this->filter(), $this->agenda(), $this->user);
+
+        self::assertSame('Schuetzen verein Test', $this->info($pdf, 'Author'));
+        self::assertMatchesRegularExpression('~^Club Calendar( \(http[^)]*\))?$~', $this->info($pdf, 'Creator'));
+        self::assertStringContainsString('/Producer', $pdf);
+    }
+
     public function testGermanAndEnglishLabelsAndMonthHeading(): void
     {
         $this->event('Training', '2026-07-04');

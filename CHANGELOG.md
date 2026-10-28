@@ -7,6 +7,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Added
 
+- PDF export: the document metadata now carry the club name as author and the app (with its address) as creator.
 - Holiday calendars have a type (public holidays, school holidays, other) and can be imported as predefined calendars from OpenHolidays (country preselected Germany, optional state, kinds public/school holidays); the data is stored in the database, refreshed automatically when older than 3 months and manually on demand. New console command `app:holidays:refresh`; the server must reach `openholidaysapi.org`.
 - Event series: choose which holiday calendars apply to "skip holidays" (default all), on create and when changing the series.
 - PDF export: optional "Show holidays" selection of holiday calendars (default none); public holidays are coloured with their name, school holidays coloured with the name on the first day only.

@@ -18,7 +18,18 @@ class DompdfFactory
         private readonly string $chroot,
         #[Autowire('%kernel.cache_dir%/pdf')]
         private readonly string $cacheDir,
+        #[Autowire('%env(APP_URL)%')]
+        private readonly string $appUrl = '',
     ) {
+    }
+
+    /** Value of the PDF Creator entry: the app, with its public address when it is a clean http(s) URL. */
+    public function creator(): string
+    {
+        $url = trim($this->appUrl);
+        $clean = preg_match('~^https?://[A-Za-z0-9.\-:\[\]]+(/[A-Za-z0-9._~/\-]*)?$~', $url) ? rtrim($url, '/') : '';
+
+        return '' === $clean ? 'Club Calendar' : sprintf('Club Calendar (%s)', $clean);
     }
 
     public function create(): Dompdf
