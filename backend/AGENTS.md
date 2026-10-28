@@ -1,12 +1,13 @@
-# Club Calendar — Agent Guide
+# Club Calendar — Backend Guide
 
-Project overview, stack, scripts and working rules: `CLAUDE.md`. Frontend conventions (Vite SPA, design system,
-routed modals, E2E): `frontend/AGENTS.md`. E2E setup, operations and open backlog: `docs/ops/`.
+Developer reference for `backend/` (Symfony 8.1, paths below are relative to it). Project overview, stack, scripts,
+working rules and the detailed behaviour of auth, MCP, quotas, feeds etc.: `../CLAUDE.md`. Frontend conventions:
+`../frontend/AGENTS.md`. E2E setup, operations and open backlog: `../docs/ops/`.
 
 ## Backend Module Structure
 
-The backend (`backend/`) uses Symfony 8.1 with attribute routing. Controllers are thin; business logic lives in Services.
-API reference: `docs/api/openapi.yaml` (OpenAPI 3.1, hand-written; `tests/Unit/OpenApiSpecTest.php` checks it against
+Attribute routing; controllers are thin, business logic lives in Services.
+API reference: `../docs/api/openapi.yaml` (OpenAPI 3.1, hand-written; `tests/Unit/OpenApiSpecTest.php` checks it against
 the router, so a new or changed route needs a matching operation there).
 
 | Module | URL prefix | Controller | Service |
@@ -16,18 +17,23 @@ the router, so a new or changed route needs a matching operation there).
 | OAuth | `/api/auth/oauth` (sign-in; link `/{provider}/link-start` → `/{provider}/link?ticket=` → callback → `/profile?link_proof=` → `/{provider}/link-complete` (JWT); unlink `DELETE /{provider}`) | `OAuthController` | `AuthService`, `AccountService` |
 | Clubs | `/api/clubs` | `ClubController` | `ClubService` |
 | Calendars | `/api/clubs/{clubId}/calendars` | `CalendarController` | `CalendarService` |
-| Events | `/api/calendars/{calendarId}/events` (incl. `…/import/preview`, `…/import`, `…/bulk`, `…/series/preview`, `…/series`, PATCH/DELETE with `scope=this\|all`, export `/api/calendars/{calendarId}/events.ics`) | `EventController` | `EventService`, `EventSeriesService`, `EventImportService`, `EventExportService` |
+| Events | `/api/calendars/{calendarId}/events` (incl. `…/import/preview`, `…/import`, `…/bulk`, `…/series/preview`, `…/series`, PATCH/DELETE with `scope=this\|all`, exports `/api/calendars/{calendarId}/events.ics` and `events.pdf`) | `EventController` | `EventService`, `EventSeriesService`, `EventImportService`, `EventExportService`, `Pdf\PdfExportService` (see `../CLAUDE.md` "PDF Export") |
 | Event Series | `/api/calendars/{calendarId}/event-series/{seriesId}` (GET rule + `eventCount`; `POST …/preview-update {rule}`, `PATCH {rule}` change the rule for future events) | `EventSeriesController` | `EventSeriesService`, `SeriesRule` |
 | Event Templates | `/api/calendars/{calendarId}/templates` | `EventTemplateController` | `EventTemplateService` |
 | Properties | `/api/calendars/{calendarId}/properties` | `PropertyController` | `PropertyService` |
 | Features | `/api/calendars/{calendarId}/features` | `FeatureController` | `FeatureService` |
-| Target Groups | `/api/calendars/{calendarId}/target-groups` | `TargetGroupController` | `TargetGroupService` |
-| Locations | `/api/calendars/{calendarId}/locations` | `LocationController` | `LocationService` |
-| Feeds | `/api/calendars/{calendarId}/feeds` (incl. single GET `…/{feedId}`) | `FeedController` | `FeedService` |
+| Target Groups | `/api/clubs/{clubId}/target-groups` | `TargetGroupController` | `TargetGroupService` |
+| Locations | `/api/clubs/{clubId}/locations` | `LocationController` | `LocationService` |
+| Feeds | `/api/clubs/{clubId}/feeds` (incl. single GET `…/{feedId}`) | `FeedController` | `FeedService` |
 | Public Feed | `/api/feed/{id}/events` (`?from&to`, header + holidays), `/api/feed/{id}/events/{eventId}`, `/api/feed/{id}/ics` | `PublicFeedController` | `PublicFeedService`, `IcsService` |
 | Holiday Calendars | `/api/calendars/{calendarId}/holiday-calendars`, `…/holiday-events` | `HolidayCalendarController`, `HolidayEventController` | `HolidayCalendarService` |
 | Mapbox Proxy | `/api/mapbox` (GET only) | `MapboxController` | `Map\MapboxProxyService` |
 | Map images / geocoding | `/api/map` | `MapController` | `Map\*` (cached, rate-limited providers); without `MAPBOX_TOKEN` (`Map\MapAvailability`) images answer 503 with `backend/assets/map-unavailable.png` (after the 404 checks), geocoding and the Mapbox proxy 503 `map_unavailable` |
+| Club invitations | `/api/clubs/{clubId}/invitations` (admin), `/api/invitations` (invitee) | `ClubInvitationController`, `InvitationController` | `ClubInvitationService`, `ClubInvitationMailer` (see `../CLAUDE.md` "Club invitations") |
+| Legal | `/api/legal` | `LegalController` | `LegalDocumentService`, `LegalConsentService`, `LegalPresenter` (see `../CLAUDE.md` "Legal documents and consent") |
+| MCP grants | `/api/auth/mcp-grants` | `McpGrantController` | `OAuth\OAuthServerService` |
+| OAuth server | `/api/oauth/{authorize,authorization-request,authorize/decision,register,token,revoke}`, `/.well-known/oauth-*` | `OAuth\OAuthAuthorizeController`, `OAuthTokenController`, `OAuthRegistrationController`, `OAuthMetadataController` | `OAuth\OAuthServerService`, `OAuthConsentService`, `RedirectUriPolicy` |
+| MCP server | `/api/mcp` (bundle route, firewall `mcp`) | — | tools in `Mcp\Tool\`, `Mcp\McpContext`, `Mcp\Security\McpAuthenticator` (see `../CLAUDE.md` "MCP server and OAuth") |
 | Health | `/api/health` | `HealthController` | — |
 
 ## Common Infrastructure
@@ -40,6 +46,19 @@ the router, so a new or changed route needs a matching operation there).
 | `src/Security/ArchivedCalendarVoter.php` | Blocks writes to archived calendars (`NOT_ARCHIVED`) |
 | `src/EventListener/ExceptionListener.php` | Converts all exceptions to RFC 7807 `application/problem+json` (`src/Http/ProblemResponse.php`); access denied without a signed-in user → 401 `missing_token`; every 400 gets a code (framework 400s `invalid_request`, array query parameters `validation_failed` + `field`) |
 | `src/Security/JwtProblemListener.php` | 401 problems of the JWT bundle: `missing_token`, `invalid_token`, `token_expired` (`WWW-Authenticate: Bearer`) |
+| `src/EventListener/ConsentGateListener.php`, `src/Security/SessionConsentListener.php` | 403 `consent_required` gate for sessions without current legal consent (allow-list; claim `lc` from the access token) |
+| `src/EventListener/EmailVerificationGateListener.php` | Restricted-session gate for unverified e-mail addresses (see `../CLAUDE.md` "Auth") |
+| `src/EventListener/RequestContextListener.php`, `src/Security/TrustedHostsEnvVarProcessor.php` | Router context pinned to `BACKEND_URL`; `trusted_hosts` built from `APP_URL`/`FRONTEND_URL`/`BACKEND_URL`/`TRUSTED_HOSTS` |
+| `src/EventListener/RevokeMcpGrantsOnSessionEnd.php` | Revokes MCP grants on every `User.tokenVersion` bump |
+| `src/Service/Quota.php` | Per-resource limits, `assertRoom()` before every create (422 `quota_exceeded`); see `../CLAUDE.md` "Limits and Quotas" |
+| `src/Doctrine/UpdateAuditListener.php` | Fills `updated_at`/`updated_by` of domain entities (`Entity\Trait\HasUpdateAudit`) |
+| `src/Doctrine/ContentVersionListener.php`, `src/Service/CalendarVersionBumper.php` | `calendar.content_version` bump for the feed ETag; bulk statements call the bumper themselves (see `../CLAUDE.md` "Content version") |
+| `src/Security/AuthRateLimiter.php` | All rate limits (limiters in `config/packages/rate_limiter.yaml`), 429 `rate_limited` |
+| `src/Security/OneTimeTokenService.php` | Purpose-bound single-use login tokens (e-mail confirmation, SSO code exchange) |
+| `src/Service/EmailVerificationService.php` | 6-digit e-mail confirmation codes (hashed, attempts and resend limits) |
+| `src/Service/RegistrationPolicy.php` | `RESTRICT_REGISTRATION` check (open club invitation required) |
+| `src/Pdf/` | PDF export: `PdfExportService` (view model + Twig `templates/pdf/`), `DompdfFactory` (hardened), `EmojiImages` (allow-list), layout/option classes |
+| `src/Ics/IcsEventReader.php`, `src/Service/IcsService.php` | Array-row ICS read path and streamed ICS output; ICS output changes raise `IcsService::FORMAT_VERSION` |
 | `src/EventListener/FeedResponseHeadersListener.php` | `Referrer-Policy: no-referrer` + `X-Robots-Tag: noindex` on `/api/feed/*`, except successful responses of an indexable feed (`robotsTag()` reads the request attribute `feed_indexable` set by `PublicFeedService` after the access checks; missing → noindex) |
 | `src/Controller/AbstractApiController.php` | Base controller with `validateDto()` and `decodeJson()` helpers (no JSON object → 400 `invalid_request`) |
 | `src/Service/TokenService.php` | Creates JWT access tokens (lexik) and HMAC refresh tokens (claims `uid`, `tv` = `user.token_version`) |
@@ -60,10 +79,10 @@ the router, so a new or changed route needs a matching operation there).
 | `src/Service/EventSeriesService.php` | Series preview (dates, skipped holidays of the calendar's holiday calendars) and atomic creation of series + events (template values like `from-template`); rule change (`previewUpdate` / `update`: future events only, today in the calendar's zone via `ClockInterface`, prototype = earliest future event, series row locked, max. 366 events afterwards, 409 `series_empty` / `series_changed`); scope `this`/`all` of PATCH/DELETE and the clean-up of empty series live in `EventService` |
 | `src/Service/UsageCounts.php` | Counters for lists and delete dialogs (clubs, calendars, usage of properties/features/target groups/locations, events per template): one grouped query per counter, never one per row |
 | `src/Service/UniqueNames.php` | Names of properties/features/target groups unique per calendar (trim, case-insensitive, compared in PHP; no unique index, old duplicates stay) |
-| `src/Exception/ApiProblemException.php` | HTTP error with a stable `code` (+ optional `field`) in the RFC 7807 body, e.g. 422 `duplicate_name`; code list: `ErrorCode` in `docs/api/openapi.yaml` |
+| `src/Exception/ApiProblemException.php` | HTTP error with a stable `code` (+ optional `field`) in the RFC 7807 body, e.g. 422 `duplicate_name`; code list: `ErrorCode` in `../docs/api/openapi.yaml` |
 | `config/services.yaml` | Parameters and env defaults: `APP_URL` drives `FRONTEND_URL`, `BACKEND_URL` and `WEBAUTHN_RP_ID`; optional `MAPBOX_TOKEN`, cache TTLs, `WEBAUTHN_USER_VERIFICATION` |
 | `config/packages/security.yaml` | Stateless JWT firewall; `access_control` requires authentication for `/api/clubs*`, `/api/calendars*`, `/api/map/geocode/*` (401 before the entity lookup) |
-| `migrations/` | Doctrine migrations (initial schema `Version20260625000000`, all tables in snake_case; then `Version20261004120000` `auth_nonce`, `Version20261004130000` `user.token_version`, `Version20261009120000` nullable template times, `Version20261010120000` `event.external_uid`, `Version20261013120000` `password_reset`, `email_change`, `passkey.last_used_at`, `club_user.last_calendar_id`, latest `Version20261014120000` `event_series` + `event.series_id`) |
+| `migrations/` | Doctrine migrations; do not list versions here |
 
 ## Security Pattern
 
@@ -76,14 +95,9 @@ $this->denyAccessUnlessGranted(CalendarMemberVoter::CALENDAR_MEMBER, $calendar);
 $this->denyAccessUnlessGranted(ArchivedCalendarVoter::NOT_ARCHIVED, $calendar); // only on writes
 ```
 
-## Auth Flow
+## Auth
 
-- **Access token**: short-lived JWT (15 min), `Authorization: Bearer <token>` header
-- **Refresh token**: HMAC-SHA256 signed JWT (7 days), client-managed in `sessionStorage`
-- **Refresh grant**: `POST /api/auth/token` with `application/x-www-form-urlencoded` body
-- **No auth cookies** — the backend sets no session/auth cookies (only the short-lived OAuth `oauth_state_nonce` cookie that binds the SSO `state` to the browser)
-- **Passkeys** — verified with `web-auth/webauthn-lib` (`WebAuthnService`), see `CLAUDE.md` (Auth) and `docs/api/openapi.yaml`
-- **Password reset / account changes / SSO linking** — see `CLAUDE.md` (Auth) and `docs/api/openapi.yaml`; `user.token_version` ends all sessions on reset, password change (the caller gets new tokens) and e-mail change
+See `../CLAUDE.md` "Auth" and `../docs/api/openapi.yaml`.
 
 ## Entity Conventions
 
@@ -91,8 +105,7 @@ $this->denyAccessUnlessGranted(ArchivedCalendarVoter::NOT_ARCHIVED, $calendar); 
 - All relations use cascade delete (carried over from the original Prisma schema)
 - Join table entities (e.g. `EventProperty`, `ClubUser`) use composite `#[ORM\Id]`
 - `FeedVisibility` is a PHP 8.1 backed enum mapped via `enumType` (VARCHAR column): `PUBLIC`, `CLUB` (default for new feeds), `PRIVATE`. `PUBLIC` and `CLUB` are reachable without the secret and differ only in indexing; `PRIVATE` requires the secret (`requiresSecret()`); switching from `PUBLIC`/`CLUB` to `PRIVATE` always generates a new secret (`FeedService::update()`). `isIndexable()` = `PUBLIC` (CLUB and PRIVATE are never indexed; no separate setting since `Version20261021120000`). Feed responses carry `indexable`, the public feed header `visibility` and `indexable`
-- **Entity IDs are always UUIDs** — use `#[ORM\Column(length: 36)]` with `Uuid::v7()->toRfc4122()` assigned in the constructor. Never use `#[ORM\GeneratedValue]` or `int` IDs. `getId()` returns `string`.
-- **Frontend types for entity IDs are always `string`** — never `number`
+- IDs are UUID v7 strings, audit fields on domain entities: `../CLAUDE.md` working rule 4 and "Audit fields"
 
 ## Testing
 
@@ -104,7 +117,7 @@ list endpoints are tested to run the same number of queries for more rows (no N+
 The KernelBrowser reboots the kernel between requests: re-fetch entities (`$em->find(...)`) before changing them
 after a request.
 
-Run: `cd backend && composer test` (requires a MySQL test DB on port 3360). `TEST_DATABASE_URL` falls back to `DATABASE_URL` in the `test` env; the tests wipe all tables, so never leave it unset next to a real database. There is no `mysql_test` compose service: automated runs use a throwaway container (`docker run -d --name cc-verify-mysql -p 3360:3306 …`, see `docs/ops/E2E.md`) and set `TEST_DATABASE_URL` in the shell.
+Run and DB setup: `../CLAUDE.md` "Tests".
 
 ## Calendar Archive & Duplicate
 
@@ -113,7 +126,7 @@ Run: `cd backend && composer test` (requires a MySQL test DB on port 3360). `TES
 - `POST /api/clubs/{clubId}/calendars/{calendarId}/unarchive` — clears `archivedAt`
 - `POST /api/clubs/{clubId}/calendars/{calendarId}/duplicate` (201) — deep-copies calendar + properties/features/target-groups/locations/templates/feeds (new feed secrets, same visibility); events (and therefore event series) not copied; optional body `{name}` (default "Copy of …", the frontend sends the localized name)
 - Calendar responses carry `eventCount`, `templateCount`, `feedCount`; club responses `calendarCount`, `archivedCalendarCount`, `memberCount` (single club also `eventCount`, `feedCount`); `GET /api/clubs` also the caller's `lastCalendarId` per club (`club_user.last_calendar_id`, set by `PATCH /api/auth/me`)
-- Event templates: `timezone`, `timeBegin`, `timeEnd` are optional (times only as a pair); without times in the template and in the request, `from-template` creates all-day events (`docs/api/openapi.yaml`)
+- Event templates: `timezone`, `timeBegin`, `timeEnd` are optional (times only as a pair); without times in the template and in the request, `from-template` creates all-day events (`../docs/api/openapi.yaml`)
 - Archived calendar public feeds → 404; nested write endpoints → 403 (via `ArchivedCalendarVoter`)
 
 ## Event Series
@@ -121,4 +134,4 @@ Run: `cd backend && composer test` (requires a MySQL test DB on port 3360). `TES
 - `EventSeries` (`event_series`: rule + optional template, FK calendar CASCADE, template SET NULL) and `Event.series` (`series_id`, SET NULL). The events are normal rows; the rule is re-evaluated only when it is changed.
 - `POST …/event-series/{id}/preview-update {rule}` → `{toCreate, toDelete, kept, past, skippedHolidays}`; `PATCH …/event-series/{id} {rule}` → `{series, created, deleted, kept}`: future events (date ≥ today in the calendar's zone) on dates of the new rule stay, missing dates are created from the prototype (earliest future event), other future events are deleted; past events never change (`EventSeriesRuleChangeTest`).
 - `POST …/events/series/preview {rule}` → `{dates, count, skippedHolidays, holidays}`; `POST …/events/series {rule, templateId?, event?, isDraft?}` → 201 `{series, events}` (one flush); lists carry `seriesId`, the single event GET also `series {id, rule, eventCount, …}`.
-- `PATCH …/events/{id}` `scope: "all"` applies the sent fields to every event of the series except `date`/`dateEnd`/template (each event keeps its day); `this` (default) changes one event, which stays in the series. `DELETE …?scope=all` deletes the series with its events; a series without events is removed (also after bulk delete). Details: `docs/api/openapi.yaml`.
+- `PATCH …/events/{id}` `scope: "all"` applies the sent fields to every event of the series except `date`/`dateEnd`/template (each event keeps its day); `this` (default) changes one event, which stays in the series. `DELETE …?scope=all` deletes the series with its events; a series without events is removed (also after bulk delete). Details: `../docs/api/openapi.yaml`.

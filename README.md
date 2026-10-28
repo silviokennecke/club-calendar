@@ -132,4 +132,4 @@ GET /api/feed/:feedId/ics?secret=<token>   # private feeds
 
 ## Further Reading
 
-See `CLAUDE.md` / `AGENTS.md` for architecture notes and project conventions.
+See `CLAUDE.md`, `backend/AGENTS.md` and `frontend/AGENTS.md` for architecture notes and project conventions.
