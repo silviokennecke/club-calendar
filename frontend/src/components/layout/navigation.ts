@@ -71,25 +71,25 @@ export function buildNavGroups(
     {
       titleKey: "shell.groups.setup",
       items: [
+        { key: "feeds", labelKey: "shell.nav.feeds", href: clubSettings.feeds, icon: "rss" },
         {
           key: "settings",
           labelKey: "shell.nav.settings",
           href: `${base}/settings`,
           icon: "sliders",
         },
-        { key: "feeds", labelKey: "shell.nav.feeds", href: clubSettings.feeds, icon: "rss" },
       ],
     },
     {
       titleKey: "shell.groups.club",
       items: [
-        { key: "club", labelKey: "shell.nav.club", href: `/clubs/${clubId}`, icon: "building" },
         {
           key: "clubSettings",
           labelKey: "shell.nav.clubSettings",
           href: clubSettings.locations,
           icon: "map-pin",
         },
+        { key: "club", labelKey: "shell.nav.club", href: `/clubs/${clubId}`, icon: "building" },
       ],
     },
   ];
