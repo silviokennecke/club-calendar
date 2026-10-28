@@ -42,7 +42,7 @@ Du brauchst den kopierten Kalender-Link und die App **Kalender** auf deinem Mac.
 3. Füge den Kalender-Link ein (mit den Tasten **Cmd** + **V**) und klicke auf **Abonnieren**.
    <!-- SHOT: subscribe-macos-3 | Subscribe window with the pasted link -->
 4. Gib dem Kalender einen Namen und such dir eine Farbe aus. Das ist nur für dich.
-5. Wähle bei **Automatisch aktualisieren** zum Beispiel **Alle 15 Minuten** oder **Stündlich**.
+5. Wähle bei **Automatisch aktualisieren** zum Beispiel **Täglich** oder **Wöchentlich**.
 6. Klicke auf **OK**.
 
 Fertig! Der Kalender steht jetzt links in deiner Liste. Haken setzen bedeutet: Die Termine werden angezeigt.
