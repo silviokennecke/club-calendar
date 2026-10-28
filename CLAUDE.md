@@ -26,7 +26,8 @@ A web app for clubs to manage and publish event calendars.
 
 ## Monorepo Structure
 
-- `backend/` — Symfony API server (port 3001); also serves the built SPA from `backend/public/`
+- `backend/` — Symfony API server (port 3001); also serves the built SPA from `backend/public/`; module and
+  infrastructure reference in `backend/AGENTS.md`
 - `frontend/` — Vite/React single-page app (dev server port 5173, `npm run dev:frontend`); conventions in
   `frontend/AGENTS.md`
 - `docs/ops/` — `E2E.md` (setup/run of the isolated Playwright environment), `OPERATIONS.md` (deployment and
@@ -101,7 +102,7 @@ Tests run against a real MySQL instance on port 3360 (`club_calendar_test` datab
 ## Working Rules
 
 1. **Commit after every feature or fix** — create a git commit as soon as an implementation task is complete, before moving to the next task.
-2. **Keep CLAUDE.md and AGENTS.md up to date** — update these files whenever the stack, architecture, or module structure changes.
+2. **Keep CLAUDE.md, backend/AGENTS.md and frontend/AGENTS.md up to date** — update these files whenever the stack, architecture, or module structure changes.
 3. **Write tests** — add PHPUnit integration tests for every backend feature (`tests/Controller/*.php`). E2E tests use Playwright (`frontend/e2e/`).
 4. **Always use UUIDs for entity IDs** — never use auto-increment integers. Use `Uuid::v7()->toRfc4122()` assigned in the constructor, with `#[ORM\Column(length: 36)]` (no `#[ORM\GeneratedValue]`). The `getId()` return type must be `string`, not `?int`.
 5. **Use shared UI components** — Before adding structural JSX or Tailwind layout patterns to a frontend page, check `frontend/src/components/ui/shared/` (exports in `index.ts`, table in `frontend/AGENTS.md`), e.g. `Button`/`LinkButton`/`IconButton`, `SplitButton`, `Field` + `TextInput`/`TextArea`/`NativeSelect`, `PasswordField`, `Toggle`, `Tag`, `StatusBadge`, `Banner`, `toast`, `EmptyState`, `ConfirmDialog`, `FormDialog`, `Modal`/`ModalFrame`/`DialogFrame`, `CopyField`, `Chip`/`ChipSelect`, `FilterPillGroup`, `SearchInput`, `AutocompleteInput`, `EmojiPicker`, `Stepper`, `LangSwitch`, `ThemeSwitch`, `Skeleton`, `FullPageLoader`, `ErrorSummary`, `UnsavedChangesDialog`, `Logo`, `Icon`. Import from `@/components/ui/shared`. For Mapbox maps, use `useMapbox` from `frontend/src/components/locations/useMapbox.ts` instead of duplicating the initialization boilerplate.
