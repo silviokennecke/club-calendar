@@ -4,7 +4,8 @@ This is a **Vite + React + React Router** SPA (not Next.js).
 
 Contents: [Key conventions](#key-conventions) · [Design system and areas](#design-system-and-areas) (tokens, theme,
 shell, calendar, routed modals, events, import, templates, settings, publish / club / profile, public access,
-unsaved changes, i18n, API errors, history focus, contrast) · [E2E](#e2e-playwright-frontende2e) ·
+unsaved changes, i18n, API errors, history focus, contrast) · [Accessibility and structure
+rules](#accessibility-and-structure-rules) · [E2E](#e2e-playwright-frontende2e) ·
 [Shared UI components](#shared-ui-components) · [Build](#build)
 
 ## Key conventions
@@ -47,18 +48,16 @@ unsaved changes, i18n, API errors, history focus, contrast) · [E2E](#e2e-playwr
   After `preventDefault()` Vite's preload helper resolves the import with `undefined` (React.lazy would log
   "Cannot read properties of undefined (reading 'default')"): `lazyPage` keeps such an import pending
   (`untilReload`) while the page reloads. E2E: `e2e/error-page.spec.ts` (404, blocked page module on the dev server;
-  the production flow runs with `E2E_PREVIEW_URL`, see `docs/redesign/E2E.md`).
+  the production flow runs with `E2E_PREVIEW_URL`, see `docs/ops/E2E.md`).
 - i18n: German is bundled, English (`locales/en.json`) is a lazy chunk loaded by an inline i18next backend
   (`src/lib/i18n.ts`); `main.tsx` renders after `i18nReady`. A failed chunk import after a deploy reloads the page
   once (`vite:preloadError` in `main.tsx`, guard and error page: see "Error page and reload guard").
 
 ## Design system and areas
 
-Background: `docs/redesign/PLAN.md` (plan, all phases done), `docs/redesign/BACKEND-GAPS.md` (open backend gaps and
-operations), `docs/api/openapi.yaml` (API reference).
+Background: `docs/ops/BACKLOG.md` (open backend gaps and operations), `docs/api/openapi.yaml` (API reference).
 
-- Artboard-by-artboard mapping, deliberate deviations and open gaps: `docs/redesign/COVERAGE.md`. Confirmation
-  dialogs follow the wording of the design's `Dialogs.dc.html` (see the table there).
+- Confirmation dialogs follow the wording of the design's `Dialogs.dc.html` (see the table there).
 
 - Tokens + component classes live in `src/index.css` (design `cc-tokens.css`, `.cc-*`, `.ap-*`, `.t-*`).
   Tailwind utilities map to tokens: `bg-surface`, `bg-surface-raised`, `bg-surface-sunken`, `text-ink`,
@@ -361,6 +360,20 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
 - Contrast: tags carry a 3:1 outline (`--border-strong`), skeletons use `--skeleton` / `--skeleton-pulse` plus the
   same outline; `src/lib/__tests__/contrast.test.ts` computes the ratios of the tokens for both themes.
 
+## Accessibility and structure rules
+
+- Semantics first: real `button` / `a` / `label` elements, `aria-current` for the active navigation item,
+  `aria-pressed` for toggle buttons, a skip link in every frame, a visible focus indicator, tap targets of at least
+  44px (`min-h-tap` / `size-tap`).
+- Status is never conveyed by color alone: always icon + word (`StatusBadge`, `Tag`); colors come from the tokens
+  (contrast checked per theme, see "Contrast").
+- Both languages (de + en) for every new text; the theme is `light|dark|system`, the choice lives in the profile.
+- Reusable building blocks go into `components/ui/shared/` (export via `index.ts`), page-specific ones into
+  `components/<area>/`; check for an existing component before building a new one, no duplicates.
+- Existing routes and URLs stay stable unless a new step requires a new one.
+- Update or add Vitest / Playwright tests with every change (adjust outdated tests, do not delete them to get green);
+  before handing over run `npm run build -w frontend`, `npm test -w frontend` and `npm run lint -w frontend`.
+
 ## End-user help (`/help`, `frontend/docs/`, `src/docs/`)
 
 Overview and syntax: "End-user documentation (/help)" in the root `CLAUDE.md`.
@@ -402,7 +415,7 @@ docker rm -f cc-verify-mysql
 `e2e/helpers.ts` runs backend console commands against the e2e database (`backendConsole`, default
 `DATABASE_URL` of `club_calendar_e2e`, override `E2E_DATABASE_URL`): `app:user:verify` confirms registered users
 (`createVerifiedUser`), `app:user:reset-link` gives reset links (`resetLinkFor`). Clean up afterwards also
-`frontend/test-results` and `backend/var/cache/prod` (rate limiter state). Details: `docs/redesign/E2E.md`.
+`frontend/test-results` and `backend/var/cache/prod` (rate limiter state). Details: `docs/ops/E2E.md`.
 `frontend/test-results/` and `playwright-report/` are git-ignored. Key presses that open a file chooser go through
 `pressForFileChooser` (`e2e/helpers.ts`; a plain `Promise.all([waitForEvent, press])` races the interception).
 

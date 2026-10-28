@@ -11,4 +11,4 @@ npm run lint -w frontend      # ESLint (0 warnings) + Prettier check
 ```
 
 Copy `.env.local.example` to `.env.local` (`VITE_API_URL`, the backend URL). Conventions, design system and the
-isolated E2E setup: [`AGENTS.md`](AGENTS.md) and `../docs/redesign/E2E.md`.
+isolated E2E setup: [`AGENTS.md`](AGENTS.md) and `../docs/ops/E2E.md`.

@@ -1,7 +1,7 @@
 # Club Calendar — Agent Guide
 
 Project overview, stack, scripts and working rules: `CLAUDE.md`. Frontend conventions (Vite SPA, design system,
-routed modals, E2E): `frontend/AGENTS.md`. Redesign final state and open backend gaps: `docs/redesign/`.
+routed modals, E2E): `frontend/AGENTS.md`. E2E setup, operations and open backlog: `docs/ops/`.
 
 ## Backend Module Structure
 
@@ -104,7 +104,7 @@ list endpoints are tested to run the same number of queries for more rows (no N+
 The KernelBrowser reboots the kernel between requests: re-fetch entities (`$em->find(...)`) before changing them
 after a request.
 
-Run: `cd backend && composer test` (requires a MySQL test DB on port 3360). `TEST_DATABASE_URL` falls back to `DATABASE_URL` in the `test` env; the tests wipe all tables, so never leave it unset next to a real database. There is no `mysql_test` compose service: automated runs use a throwaway container (`docker run -d --name cc-verify-mysql -p 3360:3306 …`, see `docs/redesign/E2E.md`) and set `TEST_DATABASE_URL` in the shell.
+Run: `cd backend && composer test` (requires a MySQL test DB on port 3360). `TEST_DATABASE_URL` falls back to `DATABASE_URL` in the `test` env; the tests wipe all tables, so never leave it unset next to a real database. There is no `mysql_test` compose service: automated runs use a throwaway container (`docker run -d --name cc-verify-mysql -p 3360:3306 …`, see `docs/ops/E2E.md`) and set `TEST_DATABASE_URL` in the shell.
 
 ## Calendar Archive & Duplicate
 

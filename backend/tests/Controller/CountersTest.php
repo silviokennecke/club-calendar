@@ -18,7 +18,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
- * Counters of clubs, calendars, reference data and templates (package 1 of BACKEND-PLAN.md),
+ * Counters of clubs, calendars, reference data and templates,
  * the single feed GET and the optional name of a calendar copy.
  */
 class CountersTest extends WebTestCase

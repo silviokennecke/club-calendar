@@ -57,8 +57,7 @@ async function completeLink(provider: string, proof: string): Promise<LinkOutcom
 /**
  * Profile (design: Profile, ProfileMobile): account (name, e-mail with confirmation link), password
  * (change, or set by e-mail for SSO-only accounts), linked sign-ins (link / unlink), passkeys, personal
- * settings (incl. theme) and account deletion. Name / e-mail / password editing extends the design
- * (COVERAGE.md, Profile).
+ * settings (incl. theme) and account deletion. Name / e-mail / password editing extends the design.
  */
 export default function ProfilePage() {
   const { t } = useTranslation();

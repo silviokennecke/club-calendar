@@ -25,7 +25,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
  * Public feed: header (feed, club, club zone, visibility), effective event zone, from/to, holidays
- * and the single-event endpoint (package 1 of BACKEND-PLAN.md).
+ * and the single-event endpoint.
  */
 class PublicFeedDetailsTest extends WebTestCase
 {
