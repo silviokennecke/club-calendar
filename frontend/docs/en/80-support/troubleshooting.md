@@ -26,11 +26,11 @@ For every situation you find the **symptom** (what you see), the **cause** and t
 
 ## E-mail not confirmed, code expired
 
-**Symptom:** "The code is wrong, expired or used up." or sign-in asks you to confirm first.
+**Symptom:** "The code is wrong, expired or used up." or after signing in you land on the "Confirm your email address" page and cannot go further.
 
 **Cause:** The 6-digit code is valid for 15 minutes only, can be used once and is blocked after several wrong entries.
 
-**Solution:** Click **Send again**. Check your spam folder too. Do not request codes too quickly: if the app says you can request a new code at a given time, wait until then. See [Sign up](help:getting-started/sign-up).
+**Solution:** On the confirmation page click **Send again**. Check your spam folder too. Do not request codes too quickly: if the app says you can request a new code at a given time, wait until then. See [Sign up](help:getting-started/sign-up).
 
 ## Invitation invalid or expired
 

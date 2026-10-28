@@ -26,11 +26,11 @@ Zu jeder Situation findest du das **Symptom** (was du siehst), die **Ursache** u
 
 ## E-Mail nicht bestätigt, Code abgelaufen
 
-**Symptom:** „Der Code ist falsch, abgelaufen oder aufgebraucht.“ oder die Anmeldung verlangt zuerst die Bestätigung.
+**Symptom:** „Der Code ist falsch, abgelaufen oder aufgebraucht.“ oder du landest nach der Anmeldung auf der Seite „E-Mail-Adresse bestätigen“ und kommst nicht weiter.
 
 **Ursache:** Der 6-stellige Code ist nur 15 Minuten gültig, nur einmal verwendbar und nach mehreren falschen Eingaben gesperrt.
 
-**Lösung:** Klicke auf **Erneut senden**. Schau auch im Spam-Ordner nach. Fordere Codes nicht zu schnell hintereinander an: Meldet die App „Du kannst um … Uhr einen neuen Code anfordern“, warte bis dahin. Siehe [Konto erstellen](help:getting-started/sign-up).
+**Lösung:** Klicke auf der Bestätigungsseite auf **Erneut senden**. Schau auch im Spam-Ordner nach. Fordere Codes nicht zu schnell hintereinander an: Meldet die App „Du kannst um … Uhr einen neuen Code anfordern“, warte bis dahin. Siehe [Konto erstellen](help:getting-started/sign-up).
 
 ## Einladung ungültig oder abgelaufen
 

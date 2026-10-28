@@ -25,13 +25,17 @@ Below **or** on the first step you find more ways: **Sign in with Google**, **Si
 
 ## Confirm your e-mail address
 
-After signing up we send a 6-digit code to your address.
+After signing up you are signed in right away and see the **Confirm your email address** page. We send a 6-digit code to your address.
 
 1. Open the e-mail and enter the code under **Confirmation code**.
-2. You are then signed in automatically.
+2. You then continue straight into the app.
+
+Until the address is confirmed, the rest of the app is locked: any other page sends you back to this page. You can only enter the code while signed in. Use **Sign out** on the page to leave it at any time.
+
+The same applies if you sign in with the right password of an account that is not yet confirmed: you are signed in and land on this page. If no code is waiting, we send you a new one. Signing in with Microsoft also leads here, because Microsoft does not prove the address. With Google or Apple the code is skipped.
 
 :::tip
-Nothing arrived? Check your spam folder. **Send again** gets you a new code after a wait of a few minutes. The code is valid for 15 minutes. After five wrong entries you need a new one.
+Nothing arrived? Check your spam folder. **Send again** on the same page gets you a new code after a wait of a few minutes. The code is valid for 15 minutes. After five wrong entries you need a new one.
 :::
 
 ## Forgot your password?

@@ -25,13 +25,17 @@ Auf dem ersten Schritt findest du unter **oder** weitere Wege: **Mit Google anme
 
 ## E-Mail-Adresse bestätigen
 
-Nach dem Registrieren schicken wir einen 6-stelligen Code an deine Adresse.
+Nach dem Registrieren bist du sofort angemeldet und siehst die Seite **E-Mail-Adresse bestätigen**. Wir schicken einen 6-stelligen Code an deine Adresse.
 
 1. Öffne die Mail und gib den Code unter **Bestätigungscode** ein.
-2. Danach bist du automatisch angemeldet.
+2. Danach geht es direkt in die App.
+
+Bis die Adresse bestätigt ist, ist der Rest der App gesperrt: Jede andere Seite führt dich zurück zu dieser Seite. Den Code kannst du nur eingeben, solange du angemeldet bist. Über **Abmelden** auf der Seite verlässt du sie jederzeit.
+
+Dasselbe gilt, wenn du dich mit dem richtigen Passwort eines noch unbestätigten Kontos anmeldest: Du bist angemeldet und landest auf dieser Seite. Ist gerade kein Code unterwegs, schicken wir dir einen neuen. Auch die Anmeldung mit Microsoft führt hierher, weil Microsoft die Adresse nicht belegt. Mit Google oder Apple entfällt der Code.
 
 :::tip
-Nichts angekommen? Sieh im Spam-Ordner nach. Über **Erneut senden** bekommst du einen neuen Code, nach einer Wartezeit von einigen Minuten. Der Code gilt 15 Minuten. Nach fünf falschen Eingaben brauchst du einen neuen.
+Nichts angekommen? Sieh im Spam-Ordner nach. Über **Erneut senden** auf derselben Seite bekommst du einen neuen Code, nach einer Wartezeit von einigen Minuten. Der Code gilt 15 Minuten. Nach fünf falschen Eingaben brauchst du einen neuen.
 :::
 
 ## Passwort vergessen?
