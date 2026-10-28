@@ -1241,6 +1241,7 @@
 
   /* Segments, tabs, chips */
   .ap-seg {
+    position: relative;
     display: inline-flex;
     padding: 4px;
     gap: var(--space-2);
@@ -1276,156 +1277,53 @@
     border-color: var(--brand);
     color: var(--brand);
   }
-  /*
-   * Indicator (CSS anchor positioning): one pill (::after) is anchored to the current item
-   * and jumps to the hovered / focused one (geometry is not animated, only opacity fades). Items 1-5 get an anchor name; the active
-   * anchor is picked through the custom property --seg-a. Without anchor support the static
-   * styles above stay in place.
-   */
-  @supports (anchor-name: --a) and (position-anchor: --a) {
-    .ap-seg {
-      position: relative;
-      anchor-scope: all;
-      --seg-a: --seg-1;
-      --seg-o: 0;
-      --seg-bg: transparent;
-      --seg-bd: transparent;
-    }
-    .ap-seg > :nth-child(1) {
-      anchor-name: --seg-1;
-    }
-    .ap-seg > :nth-child(2) {
-      anchor-name: --seg-2;
-    }
-    .ap-seg > :nth-child(3) {
-      anchor-name: --seg-3;
-    }
-    .ap-seg > :nth-child(4) {
-      anchor-name: --seg-4;
-    }
-    .ap-seg > :nth-child(5) {
-      anchor-name: --seg-5;
-    }
-    .ap-seg > a,
-    .ap-seg > button {
-      position: relative;
-      z-index: 1;
-      transition: color var(--dur-base) var(--ease-out);
-    }
-    .ap-seg > a:hover,
-    .ap-seg > button:hover,
-    .ap-seg > [aria-current="page"],
-    .ap-seg > [aria-pressed="true"] {
-      background: transparent;
-      border-color: transparent;
-    }
-    .ap-seg::after {
-      content: "";
-      position: absolute;
-      z-index: 0;
-      pointer-events: none;
-      position-anchor: var(--seg-a);
-      top: anchor(top);
-      right: anchor(right);
-      bottom: anchor(bottom);
-      left: anchor(left);
-      border: 2px solid var(--seg-bd);
-      border-radius: var(--radius-pill);
-      background: var(--seg-bg);
-      opacity: var(--seg-o);
-      /* Geometry (anchor offsets) changes instantly: only opacity is animated (compositor). */
-      transition: opacity var(--dur-base) var(--ease-out);
-    }
-    .ap-seg:has(> :nth-child(1):is([aria-current="page"], [aria-pressed="true"])) {
-      --seg-a: --seg-1;
-    }
-    .ap-seg:has(> :nth-child(2):is([aria-current="page"], [aria-pressed="true"])) {
-      --seg-a: --seg-2;
-    }
-    .ap-seg:has(> :nth-child(3):is([aria-current="page"], [aria-pressed="true"])) {
-      --seg-a: --seg-3;
-    }
-    .ap-seg:has(> :nth-child(4):is([aria-current="page"], [aria-pressed="true"])) {
-      --seg-a: --seg-4;
-    }
-    .ap-seg:has(> :nth-child(5):is([aria-current="page"], [aria-pressed="true"])) {
-      --seg-a: --seg-5;
-    }
-    .ap-seg:has(> :is([aria-current="page"], [aria-pressed="true"])) {
-      --seg-o: 1;
-      --seg-bg: var(--brand-soft);
-      --seg-bd: var(--brand);
-    }
-    .ap-seg > :is([aria-current="page"], [aria-pressed="true"]) {
-      color: var(--brand);
-    }
-    /* Hover / keyboard focus on an item that is not current: the pill moves there as a neutral highlight. */
-    .ap-seg:has(
-      > :nth-child(1):is(:hover, :focus-visible):not(
-          :disabled,
-          [aria-current="page"],
-          [aria-pressed="true"]
-        )
-    ) {
-      --seg-a: --seg-1;
-      --seg-o: 1;
-      --seg-bg: var(--surface-raised);
-      --seg-bd: transparent;
-    }
-    .ap-seg:has(
-      > :nth-child(2):is(:hover, :focus-visible):not(
-          :disabled,
-          [aria-current="page"],
-          [aria-pressed="true"]
-        )
-    ) {
-      --seg-a: --seg-2;
-      --seg-o: 1;
-      --seg-bg: var(--surface-raised);
-      --seg-bd: transparent;
-    }
-    .ap-seg:has(
-      > :nth-child(3):is(:hover, :focus-visible):not(
-          :disabled,
-          [aria-current="page"],
-          [aria-pressed="true"]
-        )
-    ) {
-      --seg-a: --seg-3;
-      --seg-o: 1;
-      --seg-bg: var(--surface-raised);
-      --seg-bd: transparent;
-    }
-    .ap-seg:has(
-      > :nth-child(4):is(:hover, :focus-visible):not(
-          :disabled,
-          [aria-current="page"],
-          [aria-pressed="true"]
-        )
-    ) {
-      --seg-a: --seg-4;
-      --seg-o: 1;
-      --seg-bg: var(--surface-raised);
-      --seg-bd: transparent;
-    }
-    .ap-seg:has(
-      > :nth-child(5):is(:hover, :focus-visible):not(
-          :disabled,
-          [aria-current="page"],
-          [aria-pressed="true"]
-        )
-    ) {
-      --seg-a: --seg-5;
-      --seg-o: 1;
-      --seg-bg: var(--surface-raised);
-      --seg-bd: transparent;
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .ap-seg::after,
-      .ap-seg > a,
-      .ap-seg > button {
-        transition: none;
-      }
+  /* Sliding pill driven by lib/tabIndicator.ts (hover / focus, back to the current item). */
+  .ap-seg[data-slide] > a,
+  .ap-seg[data-slide] > button {
+    position: relative;
+    z-index: 1;
+    transition: color var(--dur-base) var(--ease-out);
+  }
+  .ap-seg[data-slide] > a:hover,
+  .ap-seg[data-slide] > button:hover,
+  .ap-seg[data-slide] > [aria-current="page"],
+  .ap-seg[data-slide] > [aria-pressed="true"] {
+    background: transparent;
+    border-color: transparent;
+  }
+  .ap-seg[data-slide] > :is([aria-current="page"], [aria-pressed="true"]) {
+    color: var(--brand);
+  }
+  .ap-seg[data-slide]::after {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    inset: 0 auto auto 0;
+    width: var(--ind-w);
+    height: var(--ind-h);
+    transform: translate(var(--ind-x), var(--ind-y));
+    border: 2px solid var(--brand);
+    border-radius: var(--radius-pill);
+    background: var(--brand-soft);
+  }
+  .ap-seg[data-slide="hover"]::after {
+    border-color: transparent;
+    background: var(--surface-raised);
+  }
+  .ap-seg[data-slide][data-anim]::after {
+    transition:
+      transform var(--dur-slow) var(--ease-out),
+      width var(--dur-slow) var(--ease-out),
+      height var(--dur-slow) var(--ease-out),
+      background-color var(--dur-base) var(--ease-out),
+      border-color var(--dur-base) var(--ease-out);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ap-seg[data-slide] > a,
+    .ap-seg[data-slide] > button,
+    .ap-seg[data-slide][data-anim]::after {
+      transition: none;
     }
   }
   .ap-tabs {
@@ -2717,7 +2615,10 @@
   .cc-day--today {
     border-color: var(--ink);
   }
-  .cc-day--selected,
+  .cc-day--selected {
+    background: var(--brand);
+    color: var(--on-brand);
+  }
   @media (hover: hover) {
     .cc-day--selected:hover {
       background: var(--brand);
