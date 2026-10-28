@@ -159,14 +159,10 @@ describe("EventFormModal – new event", () => {
     expect(await screen.findByTestId("location")).toHaveTextContent(`${BASE}?date=2026-10-14`);
   });
 
-  it("goes one step back to the choice and keeps the date", async () => {
-    const user = userEvent.setup();
+  it("has no back button without a template", async () => {
     renderNew("?date=2026-10-14");
     await screen.findByLabelText(/^Name/);
-    await user.click(screen.getByRole("button", { name: "Zurück" }));
-    expect(await screen.findByTestId("location")).toHaveTextContent(
-      `${BASE}/events/new?date=2026-10-14`,
-    );
+    expect(screen.queryByRole("button", { name: "Zurück" })).toBeNull();
   });
 
   it("shows the archive notice instead of the form in an archived calendar", async () => {

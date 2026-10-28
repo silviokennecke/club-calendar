@@ -13,7 +13,6 @@ function lazyPage(load: () => Promise<{ default: ComponentType }>) {
 }
 
 const modalImports = {
-  EventNewModal: () => import("./events/EventNewModal"),
   EventFormModal: () => import("./events/EventFormModal"),
   EventTemplatePickModal: () => import("./events/EventTemplatePickModal"),
   EventFromTemplateModal: () => import("./events/EventFromTemplateModal"),
@@ -41,12 +40,7 @@ function preload(names: (keyof typeof modalImports)[]): () => void {
  * the network. For pages that open them (calendar, event list, templates): `useEffect(preloadEventModals, [])`.
  */
 export function preloadEventModals(): () => void {
-  return preload([
-    "EventNewModal",
-    "EventFormModal",
-    "EventTemplatePickModal",
-    "EventFromTemplateModal",
-  ]);
+  return preload(["EventFormModal", "EventTemplatePickModal", "EventFromTemplateModal"]);
 }
 
 /** Same for the public event dialog above the public feed. */
@@ -70,7 +64,6 @@ export const ProfilePage = lazyPage(() => import("./ProfilePage"));
 export const ClubPage = lazyPage(() => import("./ClubPage"));
 export const CalendarPage = lazyPage(() => import("./CalendarPage"));
 export const EventsListPage = lazyPage(() => import("./events/EventsListPage"));
-export const EventNewModal = lazyPage(modalImports.EventNewModal);
 export const EventFormModal = lazyPage(modalImports.EventFormModal);
 export const EventTemplatePickModal = lazyPage(modalImports.EventTemplatePickModal);
 export const EventFromTemplateModal = lazyPage(modalImports.EventFromTemplateModal);

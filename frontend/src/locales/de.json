@@ -531,18 +531,6 @@
       "manyFailed": "Die Termine konnten nicht gelöscht werden. Es wurde nichts gelöscht. Bitte versuche es erneut."
     },
     "new": {
-      "title": "Termin anlegen",
-      "subtitle": "Wie möchtest du starten?",
-      "close": "Schließen",
-      "blank": {
-        "title": "Neuer Termin",
-        "text": "Beginne leer und trage alle Angaben selbst ein."
-      },
-      "template": {
-        "title": "Aus Vorlage",
-        "text": "Übernimm Zeiten, Ort und Gruppen und lege auch Terminreihen an."
-      },
-      "import": "Oder Termine aus einer ICS-Datei importieren",
       "archived": {
         "title": "Kalender archiviert",
         "text": "In einem archivierten Kalender lassen sich keine Termine anlegen. Termine ansehen und exportieren geht weiterhin.",
@@ -663,7 +651,6 @@
       "legend": "Vorlage",
       "meta": "{{from}} – {{to}}",
       "next": "Weiter",
-      "back": "Zurück",
       "searchLabel": "Vorlagen nach Namen suchen",
       "searchPlaceholder": "Vorlagen suchen …",
       "noMatch": "Keine Vorlage zu „{{query}}“ gefunden.",

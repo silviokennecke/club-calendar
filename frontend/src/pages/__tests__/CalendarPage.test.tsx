@@ -384,7 +384,7 @@ describe("CalendarPage – month view", () => {
     await user.click(screen.getByRole("button", { name: "Termin an diesem Tag anlegen" }));
     // The start screen (blank / template / import) with the day preset.
     expect(await screen.findByTestId("modal-location")).toHaveTextContent(
-      "/clubs/c1/calendars/k1/events/new?date=2026-10-14",
+      "/clubs/c1/calendars/k1/events/new/form?date=2026-10-14",
     );
   });
 
@@ -394,7 +394,7 @@ describe("CalendarPage – month view", () => {
     const g = await grid();
     await user.dblClick(within(g).getByRole("button", { name: /^14\. Oktober/ }));
     expect(await screen.findByTestId("modal-location")).toHaveTextContent(
-      "/clubs/c1/calendars/k1/events/new?date=2026-10-14",
+      "/clubs/c1/calendars/k1/events/new/form?date=2026-10-14",
     );
   });
 
@@ -437,13 +437,13 @@ describe("CalendarPage – month view", () => {
     );
   });
 
-  it("opens the create choice from the split button", async () => {
+  it("opens the new-event form from the split button", async () => {
     const user = userEvent.setup();
     renderPage();
     await grid();
     await user.click(screen.getByRole("button", { name: "Termin anlegen" }));
     expect(await screen.findByTestId("modal-location")).toHaveTextContent(
-      /^\/clubs\/c1\/calendars\/k1\/events\/new$/,
+      /^\/clubs\/c1\/calendars\/k1\/events\/new\/form$/,
     );
   });
 });
@@ -710,7 +710,7 @@ describe("CalendarPage – phone width", () => {
       expect(fab).toBeDefined();
       await user.click(fab!);
       expect(await screen.findByTestId("modal-location")).toHaveTextContent(
-        "/clubs/c1/calendars/k1/events/new?date=2026-10-08",
+        "/clubs/c1/calendars/k1/events/new/form?date=2026-10-08",
       );
     } finally {
       window.matchMedia = original;

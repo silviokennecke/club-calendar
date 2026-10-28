@@ -12,8 +12,6 @@ export function eventRoutes(base: string) {
   };
   return {
     list: `${base}/events`,
-    /** Choice: blank / from template / import (design: EventNew). */
-    create: (date?: string | null) => withDate(`${base}/events/new`, date),
     /** Blank form (design: EventNewForm); `templateId` pre-fills it from a template. */
     form: (date?: string | null, templateId?: string) =>
       withDate(`${base}/events/new/form`, date, templateId ? { templateId } : undefined),
