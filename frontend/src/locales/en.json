@@ -751,6 +751,7 @@
         "allHint": "All events of {{calendar}}",
         "month": "This month",
         "year": "This year",
+        "nextYear": "Next year",
         "custom": "From – to",
         "customHint": "Set your own period",
         "from": "From",

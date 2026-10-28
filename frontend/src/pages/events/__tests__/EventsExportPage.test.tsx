@@ -66,6 +66,43 @@ describe("EventsExportPage", () => {
     expect(downloadBlob).toHaveBeenCalledWith(expect.anything(), "schiessbetrieb-2026.ics");
   });
 
+  it("offers the ranges in order with year hints for ICS and PDF and downloads next year", async () => {
+    const user = userEvent.setup();
+    const year = Number(new Date().toISOString().slice(0, 4));
+    events.push(makeEvent({ id: "2", name: "Neujahr", date: `${year + 1}-03-01` }));
+    renderExport();
+    const labels = () =>
+      Array.from(document.querySelectorAll('input[name="range"]')).map(
+        (r) => r.closest("label")!.textContent ?? "",
+      );
+    expect(labels()).toHaveLength(5);
+    expect(labels()[0]).toMatch(/^Ganzer Kalender/);
+    expect(labels()[2]).toContain(`Dieses Jahr${year}`);
+    expect(labels()[3]).toContain(`Nächstes Jahr${year + 1}`);
+    expect(labels()[4]).toMatch(/^Von – bis/);
+    await user.click(screen.getByRole("radio", { name: /Nächstes Jahr/ }));
+    const button = await screen.findByRole("button", { name: "ICS-Datei laden" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+    await waitFor(() => expect(apiFetch).toHaveBeenCalled());
+    expect(apiFetch.mock.calls[0][0]).toBe(
+      `/api/calendars/k1/events.ics?from=${year + 1}-01-01&to=${year + 1}-12-31`,
+    );
+
+    await user.click(screen.getByRole("radio", { name: /^PDF/ }));
+    expect(labels()).toHaveLength(4);
+    expect(labels()[1]).toContain("Dieses Jahr");
+    expect(labels()[2]).toContain(`Nächstes Jahr${year + 1}`);
+    await user.click(screen.getByRole("radio", { name: /Nächstes Jahr/ }));
+    expect(screen.getByRole("radio", { name: /Jahresübersicht/ })).toBeEnabled();
+    const pdfButton = screen.getByRole("button", { name: "PDF-Datei laden" });
+    await waitFor(() => expect(pdfButton).toBeEnabled());
+    apiFetch.mockClear();
+    await user.click(pdfButton);
+    await waitFor(() => expect(apiFetch).toHaveBeenCalled());
+    expect(apiFetch.mock.calls[0][0]).toContain(`from=${year + 1}-01-01&to=${year + 1}-12-31`);
+  });
+
   it("switches to PDF: hides whole calendar, shows options, disables unavailable layouts", async () => {
     const user = userEvent.setup();
     renderExport();

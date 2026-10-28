@@ -73,6 +73,24 @@ describe("availableLayouts", () => {
   });
 });
 
+describe("year ranges for PDF", () => {
+  it("builds nextYear query and enables annual layout, also for the leap year 2028", () => {
+    for (const [today, year] of [
+      ["2026-12-31", "2027"],
+      ["2027-01-01", "2028"],
+    ] as const) {
+      const q = new URLSearchParams(
+        pdfExportQuery({ ...base, range: "nextYear", today, layout: "annual-overview" }).slice(1),
+      );
+      expect(q.get("from")).toBe(`${year}-01-01`);
+      expect(q.get("to")).toBe(`${year}-12-31`);
+      expect(availableLayouts(q.get("from")!, q.get("to")!)["annual-overview"]).toBe(true);
+      expect(pdfRangeTooLong(q.get("from")!, q.get("to")!)).toBe(false);
+    }
+    expect(pdfRangeTooLong("2028-01-01", "2028-12-31")).toBe(false);
+  });
+});
+
 describe("pdfRangeTooLong", () => {
   it("allows 366 days between from and to, not more", () => {
     expect(pdfRangeTooLong("2026-01-01", "2027-01-03")).toBe(true);
