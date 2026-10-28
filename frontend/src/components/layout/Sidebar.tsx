@@ -26,7 +26,9 @@ export function Sidebar({ data }: { data: ShellData }) {
   return (
     <aside className="ap-side" aria-label={t("shell.sidebarLabel")}>
       <div className="ap-side-logo">
-        <Logo />
+        <Link to="/" className="no-underline">
+          <Logo />
+        </Link>
       </div>
 
       <div className="ap-ctx">

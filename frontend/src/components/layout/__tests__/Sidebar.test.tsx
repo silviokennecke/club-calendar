@@ -78,6 +78,11 @@ describe("Sidebar navigation", () => {
     );
   });
 
+  it("links the logo to the home page", () => {
+    renderAt(base);
+    expect(screen.getByRole("link", { name: "Club Calendar" })).toHaveAttribute("href", "/");
+  });
+
   it("marks the profile link as current on /profile", () => {
     renderAt("/profile");
     expect(screen.getByRole("link", { name: /Alex Beispiel/ })).toHaveAttribute(
