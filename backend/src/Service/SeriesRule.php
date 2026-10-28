@@ -26,6 +26,8 @@ final readonly class SeriesRule
     /** Longest event of a series in extra days (`durationDays`). */
     public const MAX_DURATION_DAYS = 31;
 
+    public const MAX_HOLIDAY_CALENDARS = 20;
+
     public function __construct(
         public string $frequency,
         public int $weekday,
@@ -35,6 +37,8 @@ final readonly class SeriesRule
         public ?int $count,
         public bool $skipHolidays,
         public int $durationDays = 0,
+        /** @var list<string>|null holiday calendars considered (null = all of the calendar) */
+        public ?array $holidayCalendarIds = null,
     ) {
     }
 
@@ -91,12 +95,29 @@ final readonly class SeriesRule
             throw Input::invalid('rule.skipHolidays', 'rule.skipHolidays must be a boolean');
         }
 
+        $holidayCalendarIds = null;
+        if (null !== ($rule['holidayCalendarIds'] ?? null)) {
+            $raw = $rule['holidayCalendarIds'];
+            if (!is_array($raw) || !array_is_list($raw)) {
+                throw Input::invalid('rule.holidayCalendarIds', 'rule.holidayCalendarIds must be a list of ids');
+            }
+            foreach ($raw as $id) {
+                if (!is_string($id) || '' === $id) {
+                    throw Input::invalid('rule.holidayCalendarIds', 'rule.holidayCalendarIds must be a list of ids');
+                }
+            }
+            $holidayCalendarIds = array_values(array_unique(array_map('strtolower', $raw)));
+            if (count($holidayCalendarIds) > self::MAX_HOLIDAY_CALENDARS) {
+                throw Input::invalid('rule.holidayCalendarIds', sprintf('rule.holidayCalendarIds must not have more than %d ids', self::MAX_HOLIDAY_CALENDARS));
+            }
+        }
+
         $durationDays ??= 0;
         if (!is_int($durationDays) || $durationDays < 0 || $durationDays > self::MAX_DURATION_DAYS) {
             throw Input::invalid('event.durationDays', sprintf('event.durationDays must be 0–%d', self::MAX_DURATION_DAYS));
         }
 
-        return new self($frequency, $weekday, $nth, $start, $until, $count, $skip, $durationDays);
+        return new self($frequency, $weekday, $nth, $start, $until, $count, $skip, $durationDays, $holidayCalendarIds);
     }
 
     public static function tooMany(string $field = 'rule'): ApiProblemException
@@ -164,7 +185,7 @@ final readonly class SeriesRule
         return 0 === $this->durationDays ? $date : $date->modify("+{$this->durationDays} days");
     }
 
-    /** @return array{frequency: string, weekday: int, nth: int|null, startDate: string, until: string|null, count: int|null, skipHolidays: bool, durationDays: int} */
+    /** @return array{frequency: string, weekday: int, nth: int|null, startDate: string, until: string|null, count: int|null, skipHolidays: bool, durationDays: int, holidayCalendarIds: list<string>|null} */
     public function toArray(): array
     {
         return [
@@ -176,6 +197,7 @@ final readonly class SeriesRule
             'count' => $this->count,
             'skipHolidays' => $this->skipHolidays,
             'durationDays' => $this->durationDays,
+            'holidayCalendarIds' => $this->holidayCalendarIds,
         ];
     }
 

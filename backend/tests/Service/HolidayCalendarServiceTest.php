@@ -75,7 +75,7 @@ ICS;
         });
         $em->method('createQuery')->willReturn($this->makeQueryStub());
 
-        return new HolidayCalendarService($httpClient, $em, new \App\Service\CalendarVersionBumper($em->getConnection()));
+        return new HolidayCalendarService($httpClient, $em, new \App\Service\CalendarVersionBumper($em->getConnection()), new \App\Service\OpenHolidaysClient($httpClient, new \Symfony\Component\Cache\Adapter\ArrayAdapter()), new \Symfony\Component\Clock\NativeClock(), new \Symfony\Component\Cache\Adapter\ArrayAdapter(), new \Psr\Log\NullLogger());
     }
 
     private function makeHolidayCalendar(): HolidayCalendar
@@ -286,7 +286,7 @@ ICS;
             },
         );
 
-        new HolidayCalendarService($httpClient, $em, new \App\Service\CalendarVersionBumper($em->getConnection()))->fetchAndStore($hc);
+        new HolidayCalendarService($httpClient, $em, new \App\Service\CalendarVersionBumper($em->getConnection()), new \App\Service\OpenHolidaysClient($httpClient, new \Symfony\Component\Cache\Adapter\ArrayAdapter()), new \Symfony\Component\Clock\NativeClock(), new \Symfony\Component\Cache\Adapter\ArrayAdapter(), new \Psr\Log\NullLogger())->fetchAndStore($hc);
 
         $this->assertStringContainsString('DELETE', $capturedDql);
         $this->assertStringContainsString('HolidayEvent', $capturedDql);
@@ -309,7 +309,7 @@ ICS;
         $em->expects($this->never())->method('persist');
         $em->expects($this->never())->method('flush');
 
-        $service = new HolidayCalendarService($httpClient, $em, new \App\Service\CalendarVersionBumper($em->getConnection()));
+        $service = new HolidayCalendarService($httpClient, $em, new \App\Service\CalendarVersionBumper($em->getConnection()), new \App\Service\OpenHolidaysClient($httpClient, new \Symfony\Component\Cache\Adapter\ArrayAdapter()), new \Symfony\Component\Clock\NativeClock(), new \Symfony\Component\Cache\Adapter\ArrayAdapter(), new \Psr\Log\NullLogger());
 
         $this->expectException(TransportExceptionInterface::class);
         $service->fetchAndStore($this->makeHolidayCalendar());
@@ -370,7 +370,7 @@ ICS;
         });
         $em->method('createQuery')->willReturn($this->makeQueryStub());
 
-        $count = new HolidayCalendarService($httpClient, $em, new \App\Service\CalendarVersionBumper($em->getConnection()))->fetchAndStore($this->makeHolidayCalendar());
+        $count = new HolidayCalendarService($httpClient, $em, new \App\Service\CalendarVersionBumper($em->getConnection()), new \App\Service\OpenHolidaysClient($httpClient, new \Symfony\Component\Cache\Adapter\ArrayAdapter()), new \Symfony\Component\Clock\NativeClock(), new \Symfony\Component\Cache\Adapter\ArrayAdapter(), new \Psr\Log\NullLogger())->fetchAndStore($this->makeHolidayCalendar());
 
         $this->assertSame(0, $count);
         $this->assertTrue($flushCalled, 'flush() must still be called even for an empty feed');

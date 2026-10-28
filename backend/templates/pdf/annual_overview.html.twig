@@ -8,6 +8,8 @@
         table.mini th { text-align: center; font-size: 6pt; padding: 1pt 0; border: 0; border-bottom: 0.5pt solid #0b6b58; background-color: #ffffff; color: #0b6b58; }
         table.mini td { text-align: center; font-size: 7pt; padding: 2pt 0; border: 0; }
         table.mini td.we { background-color: #dcefe9; font-weight: bold; }
+        table.mini td.sch { background-color: #f7e7b4; }
+        table.mini td.pub { background-color: #f6cfd3; font-weight: bold; }
         table.mini td.has { font-weight: bold; background-color: #0b6b58; color: #ffffff; }
         div.mname { margin: 0 0 2pt 0; }
         table.evlist { margin-top: 4pt; }
@@ -36,7 +38,7 @@
                                 {% if cell is null %}
                                     <td>&nbsp;</td>
                                 {% else %}
-                                    <td class="{{ cell.hasEvents ? 'has' : (cell.weekend ? 'we' : 'no') }}">{{ cell.number }}</td>
+                                    <td class="{{ cell.hasEvents ? 'has' : (cell.shade == 'wd' ? 'no' : cell.shade) }}">{{ cell.number }}</td>
                                 {% endif %}
                             {% endfor %}
                             </tr>

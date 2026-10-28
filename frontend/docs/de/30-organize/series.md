@@ -24,7 +24,7 @@ Eine Serie entsteht immer aus einer [Vorlage](help:organize/templates). Lege als
    - **Zweiwöchentlich**
    - **Monatlich am n-ten Wochentag** (zum Beispiel jeden 2. Donnerstag oder den letzten Freitag im Monat)
 5. Wähle den **Wochentag** und den Zeitraum mit **Von** und **Bis**. Die Serie endet an dem Datum, das du bei **Bis** einträgst.
-6. Schalte **Feiertage auslassen** ein, wenn an Feiertagen kein Termin stattfinden soll.
+6. Schalte **Feiertage auslassen** ein, wenn an Feiertagen kein Termin stattfinden soll. Unter **Feiertagskalender** wählst du, welche Kalender zählen (standardmäßig alle).
 7. Prüfe die **Vorschau**. Dort siehst du jeden Termin, der entsteht. Ausgelassene Tage sind markiert.
 8. Klicke auf **… Termine als Entwurf anlegen**. Mit **Vorher anpassen** kannst du zuerst Zeiten, Ort oder Gruppen der Termine ändern.
 
@@ -36,7 +36,7 @@ Die Serie startet als Entwurf. Du kannst sie unter **Status der Serie** gleich v
 
 Eine Serie hat höchstens 366 Termine. Ist der Zeitraum zu lang, bekommst du einen Hinweis und verkürzt ihn.
 
-Welche Tage ausgelassen werden, hängt von deinen [Feiertagskalendern](help:organize/holidays) ab. Ohne eingebundenen Feiertagskalender gibt es keine Feiertage, die entfallen können.
+Welche Tage ausgelassen werden, hängt von den gewählten [Feiertagskalendern](help:organize/holidays) ab. Ohne eingebundenen Feiertagskalender gibt es keine Feiertage, die entfallen können. Dieselbe Auswahl gibt es auch bei **Reihe ändern**.
 
 ## Einen Termin der Serie ändern oder löschen
 

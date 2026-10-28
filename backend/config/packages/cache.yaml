@@ -5,6 +5,7 @@ parameters:
     cache_adapter_map: '%default_cache_adapter%'
     cache_adapter_geocoder: '%default_cache_adapter%'
     cache_adapter_mapbox_proxy: '%default_cache_adapter%'
+    cache_adapter_holiday_sources: '%default_cache_adapter%'
 
 framework:
     cache:
@@ -20,3 +21,9 @@ framework:
             mapbox_proxy:
                 adapter: '%cache_adapter_mapbox_proxy%'
                 default_lifetime: '%env(int:MAPBOX_PROXY_CACHE_TTL)%'
+            holiday_sources:
+                adapter: '%cache_adapter_holiday_sources%'
+                default_lifetime: 604800
+            holiday_refresh_attempts:
+                adapter: '%cache_adapter_holiday_sources%'
+                default_lifetime: 3600

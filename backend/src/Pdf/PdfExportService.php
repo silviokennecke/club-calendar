@@ -45,9 +45,9 @@ class PdfExportService
     }
 
     /** The PDF document (binary). */
-    public function render(Calendar $calendar, ExportFilter $filter, PdfOptions $options, User $user): string
+    public function render(Calendar $calendar, ExportFilter $filter, PdfOptions $options, User $user, array $holidays = []): string
     {
-        $html = $this->renderHtml($calendar, $filter, $options, $user);
+        $html = $this->renderHtml($calendar, $filter, $options, $user, $holidays);
 
         $pdf = $this->dompdf->create();
         $pdf->setPaper($options->paper, $options->resolvedOrientation());
@@ -57,15 +57,18 @@ class PdfExportService
         return (string) $pdf->output();
     }
 
-    public function renderHtml(Calendar $calendar, ExportFilter $filter, PdfOptions $options, User $user): string
+    /** @param list<array{type: string, name: string, date: string, dateEnd: string}> $holidays see PdfHolidaySelection::load() */
+    public function renderHtml(Calendar $calendar, ExportFilter $filter, PdfOptions $options, User $user, array $holidays = []): string
     {
-        return $this->twig->render($options->layout->template(), $this->buildViewModel($calendar, $filter, $options, $user));
+        return $this->twig->render($options->layout->template(), $this->buildViewModel($calendar, $filter, $options, $user, $holidays));
     }
 
     /**
+     * @param list<array{type: string, name: string, date: string, dateEnd: string}> $holidays see PdfHolidaySelection::load()
+     *
      * @return array<string, mixed>
      */
-    public function buildViewModel(Calendar $calendar, ExportFilter $filter, PdfOptions $options, User $user): array
+    public function buildViewModel(Calendar $calendar, ExportFilter $filter, PdfOptions $options, User $user, array $holidays = []): array
     {
         $from = $filter->fromDate ?? throw Input::invalid('from', 'from is required for the PDF export');
         $to = $filter->toDate ?? throw Input::invalid('to', 'to is required for the PDF export');
@@ -99,7 +102,15 @@ class PdfExportService
         }
         usort($entries, static fn (array $a, array $b): int => [$a['sortDate'], $a['sortTime'], $a['id']] <=> [$b['sortDate'], $b['sortTime'], $b['id']]);
 
+        $holidayDays = PdfHolidays::days($holidays, $from, $to);
+        $usedKinds = [];
+        foreach ($holidayDays as $ymd => $h) {
+            $usedKinds[$h['kind']] = true;
+        }
+
         $model = [
+            // the quarter layout prints its legend per page
+            'holidayLegend' => PdfLayout::QuarterOverview === $options->layout ? [] : array_values(array_filter([PdfHolidays::PUBLIC, PdfHolidays::SCHOOL], static fn (string $k): bool => isset($usedKinds[$k]))),
             'locale' => $locale,
             'firstDayOfWeek' => $firstDayOfWeek,
             'calendarName' => PdfText::truncate(PdfText::stripEmoji($calendar->getName()), self::MAX_NAME),
@@ -114,15 +125,15 @@ class PdfExportService
         ];
 
         return $model + match ($options->layout) {
-            PdfLayout::Agenda => ['rows' => $this->agendaRows($entries, $locale)],
+            PdfLayout::Agenda => ['rows' => $this->agendaRows($entries, $locale, $holidayDays)],
             PdfLayout::MonthGrid => [
-                'months' => PdfMonthGrid::build($from, $to, $firstDayOfWeek, $entries, $locale, contentWidthPt: $options->contentWidthPt()),
+                'months' => PdfMonthGrid::build($from, $to, $firstDayOfWeek, $entries, $locale, contentWidthPt: $options->contentWidthPt(), holidays: $holidayDays),
                 'weekdays' => PdfMonthGrid::weekdayHeader($firstDayOfWeek, $locale),
             ],
-            PdfLayout::QuarterOverview => ['pages' => $this->quarterPages($from, $to, $entries, $locale, $options)],
+            PdfLayout::QuarterOverview => ['pages' => $this->quarterPages($from, $to, $entries, $locale, $options, $holidayDays)],
             PdfLayout::AnnualOverview => [
                 'year' => (int) $from->format('Y'),
-                'months' => PdfAnnualOverview::build((int) $from->format('Y'), $firstDayOfWeek, $entries, $locale),
+                'months' => PdfAnnualOverview::build((int) $from->format('Y'), $firstDayOfWeek, $entries, $locale, $holidayDays),
                 'weekdays' => PdfMonthGrid::weekdayHeader($firstDayOfWeek, $locale),
                 'events' => PdfAnnualOverview::eventList($entries, $locale),
             ],
@@ -231,9 +242,9 @@ class PdfExportService
      *
      * @return list<array<string, mixed>> pages with their own legend of the properties used on that page
      */
-    private function quarterPages(\DateTimeImmutable $from, \DateTimeImmutable $to, array $entries, string $locale, PdfOptions $options): array
+    private function quarterPages(\DateTimeImmutable $from, \DateTimeImmutable $to, array $entries, string $locale, PdfOptions $options, array $holidays): array
     {
-        $pages = PdfQuarterOverview::build($from, $to, $entries, $locale, $options->contentHeightPt(), $options->contentWidthPt());
+        $pages = PdfQuarterOverview::build($from, $to, $entries, $locale, $options->contentHeightPt(), $options->contentWidthPt(), $holidays);
         foreach ($pages as &$page) {
             $page['legend'] = $this->legend($page['eventIds'], $locale);
         }
@@ -242,12 +253,21 @@ class PdfExportService
     }
 
     /**
-     * @param list<array<string, mixed>> $entries
+     * @param list<array<string, mixed>>                        $entries
+     * @param array<string, array{kind: string, name: ?string}> $holidays
      *
      * @return list<array{label: string, entries: list<array<string, mixed>>}> entries grouped by month
      */
-    private function agendaRows(array $entries, string $locale): array
+    private function agendaRows(array $entries, string $locale, array $holidays = []): array
     {
+        // holiday label rows (public: every day, school: first visible day) sort before the events of their day
+        foreach ($holidays as $ymd => $h) {
+            if (null !== $h['name']) {
+                $entries[] = ['sortDate' => $ymd, 'sortTime' => '', 'id' => '', 'day' => new \DateTimeImmutable($ymd), 'holidayName' => $h['name']];
+            }
+        }
+        usort($entries, static fn (array $a, array $b): int => [$a['sortDate'], isset($a['holidayName']) ? 0 : 1, $a['sortTime'], $a['id']] <=> [$b['sortDate'], isset($b['holidayName']) ? 0 : 1, $b['sortTime'], $b['id']]);
+
         $groups = [];
         foreach ($entries as $entry) {
             /** @var \DateTimeImmutable $day */
@@ -260,6 +280,7 @@ class PdfExportService
                 ];
             }
             $entry['weekend'] = PdfDates::isWeekend($day->format('Y-m-d'));
+            $entry['shade'] = PdfHolidays::shade($holidays[$day->format('Y-m-d')] ?? null, $entry['weekend']);
             $entry['dateLabel'] = PdfDates::weekdayShort((int) $day->format('w'), $locale).', '.PdfDates::formatDate($day, $locale);
             $groups[$key]['entries'][] = $entry;
         }

@@ -37,6 +37,8 @@ import {
   toast,
 } from "@/components/ui/shared";
 import { useAllEvents, useEventPage } from "@/components/events/useEventPage";
+import { HolidayCalendarChecklist } from "@/components/events/HolidayCalendarChecklist";
+import { useHolidayCalendars } from "@/components/events/useHolidayCalendars";
 import { useLocale } from "@/components/calendar/useLocale";
 import { usePageTitle } from "@/lib/usePageTitle";
 
@@ -76,6 +78,8 @@ export default function EventsExportPage() {
   const [to, setTo] = useState(last);
   const [includeDrafts, setIncludeDrafts] = useState(false);
   const [groupIds, setGroupIds] = useState<string[]>([]);
+  const [holidayIds, setHolidayIds] = useState<string[]>([]);
+  const holidayCalendars = useHolidayCalendars(page.calendarId).data ?? [];
   const [downloading, setDownloading] = useState(false);
   const [failed, setFailed] = useState<{ kind: PdfFailure; retryAfter?: number } | null>(null);
 
@@ -112,7 +116,15 @@ export default function EventsExportPage() {
       const opts = { range, today: page.today, from, to, includeDrafts, groupIds };
       const base = `/api/calendars/${page.calendarId}/events`;
       const path = isPdf
-        ? `${base}.pdf${pdfExportQuery({ ...opts, layout: activeLayout, paper, orientation })}`
+        ? `${base}.pdf${pdfExportQuery({
+            ...opts,
+            layout: activeLayout,
+            paper,
+            orientation,
+            holidayCalendarIds: holidayIds.filter((id) =>
+              holidayCalendars.some((h) => h.id === id),
+            ),
+          })}`
         : `${base}.ics${exportQuery(opts)}`;
       const res = await apiFetch(path, {
         headers: { Accept: isPdf ? "application/pdf" : "text/calendar" },
@@ -395,6 +407,22 @@ export default function EventsExportPage() {
             <p className="t-sm t-muted">{t("events.export.audiences.none")}</p>
           )}
         </section>
+
+        {isPdf && holidayCalendars.length > 0 && (
+          <section className="ap-panel ap-form-section" aria-labelledby="x-hol">
+            <h2 className="t-h2" id="x-hol">
+              {t("events.export.holidays.title")}
+            </h2>
+            <HolidayCalendarChecklist
+              items={holidayCalendars}
+              selected={holidayIds}
+              onChange={setHolidayIds}
+              legend={t("events.export.holidays.legend")}
+              idPrefix="x-hol"
+            />
+            <p className="t-sm t-muted">{t("events.export.holidays.hint")}</p>
+          </section>
+        )}
 
         <section className="ap-panel ap-panel--sunken ap-form-section" aria-labelledby="x-prev">
           <h2 className="t-h3" id="x-prev">

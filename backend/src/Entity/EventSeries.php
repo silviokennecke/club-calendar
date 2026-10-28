@@ -62,6 +62,10 @@ class EventSeries implements UpdateAudited
     #[ORM\Column(type: 'smallint')]
     private int $durationDays = 0;
 
+    /** @var list<string>|null holiday calendars considered for skipHolidays; null = all of the calendar */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $holidayCalendarIds = null;
+
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
@@ -78,6 +82,7 @@ class EventSeries implements UpdateAudited
         $this->occurrences = $rule->count;
         $this->skipHolidays = $rule->skipHolidays;
         $this->durationDays = $rule->durationDays;
+        $this->holidayCalendarIds = $rule->holidayCalendarIds;
         $this->createdAt = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
     }
 
@@ -107,6 +112,7 @@ class EventSeries implements UpdateAudited
             $this->occurrences,
             $this->skipHolidays,
             $this->durationDays,
+            $this->holidayCalendarIds,
         );
     }
 
@@ -121,6 +127,7 @@ class EventSeries implements UpdateAudited
         $this->occurrences = $rule->count;
         $this->skipHolidays = $rule->skipHolidays;
         $this->durationDays = $rule->durationDays;
+        $this->holidayCalendarIds = $rule->holidayCalendarIds;
 
         return $this;
     }

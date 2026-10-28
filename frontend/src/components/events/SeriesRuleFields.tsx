@@ -3,6 +3,8 @@ import { isValidIso, weekdayNames } from "@/lib/calendar";
 import type { SeriesFormRule, SeriesFrequency, SeriesNth } from "@/lib/events";
 import { Field, NativeSelect, TextInput } from "@/components/ui/shared";
 import { useLocale } from "@/components/calendar/useLocale";
+import { HolidayCalendarChecklist } from "./HolidayCalendarChecklist";
+import { useHolidayCalendars } from "./useHolidayCalendars";
 
 const RHYTHMS: SeriesFrequency[] = ["weekly", "biweekly", "monthly"];
 const NTHS: SeriesNth[] = [1, 2, 3, 4, 5];
@@ -10,6 +12,8 @@ const NTHS: SeriesNth[] = [1, 2, 3, 4, 5];
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 interface SeriesRuleFieldsProps {
+  /** Calendar whose holiday calendars can be chosen. */
+  calendarId: string;
   value: SeriesFormRule;
   onChange: (next: SeriesFormRule) => void;
   /** Prefix of the field ids (several forms may exist on one page). */
@@ -26,6 +30,7 @@ interface SeriesRuleFieldsProps {
  * "Reihe ändern". The dates themselves always come from the server preview.
  */
 export function SeriesRuleFields({
+  calendarId,
   value,
   onChange,
   idPrefix,
@@ -34,6 +39,8 @@ export function SeriesRuleFields({
 }: SeriesRuleFieldsProps) {
   const { t } = useTranslation();
   const locale = useLocale();
+  const holidays = useHolidayCalendars(calendarId).data ?? [];
+  const allIds = holidays.map((h) => h.id);
   const names = weekdayNames(locale, 0, "long");
   const set = <K extends keyof SeriesFormRule>(key: K, v: SeriesFormRule[K]) =>
     onChange({ ...value, [key]: v });
@@ -134,6 +141,17 @@ export function SeriesRuleFields({
           </span>
         </label>
       </div>
+      {value.skipHolidays && holidays.length > 0 && (
+        <HolidayCalendarChecklist
+          items={holidays}
+          selected={value.holidayCalendarIds ?? allIds}
+          onChange={(ids) =>
+            set("holidayCalendarIds", allIds.every((id) => ids.includes(id)) ? null : ids)
+          }
+          legend={t("events.series.holidayCalendars")}
+          idPrefix={`${idPrefix}-hc`}
+        />
+      )}
     </>
   );
 }

@@ -152,6 +152,7 @@ function SeriesForm({
     from: start,
     to: addDays(start, 8 * 7),
     skipHolidays: true,
+    holidayCalendarIds: null,
   }));
   const [ruleForm, setRuleForm] = useState<SeriesFormRule>(initialRule);
   const skip = ruleForm.skipHolidays;
@@ -363,6 +364,7 @@ function SeriesForm({
           </Field>
         ) : (
           <SeriesRuleFields
+            calendarId={page.calendarId}
             value={ruleForm}
             onChange={setRuleForm}
             idPrefix="ser"

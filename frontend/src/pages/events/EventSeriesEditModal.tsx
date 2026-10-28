@@ -276,6 +276,7 @@ function SeriesEditor({
           {t("events.seriesEdit.ruleTitle")}
         </h2>
         <SeriesRuleFields
+          calendarId={page.calendarId}
           value={form}
           onChange={setForm}
           idPrefix="sre"

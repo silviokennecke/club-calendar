@@ -15,6 +15,10 @@
         table.m td.n { width: 9%; text-align: right; padding-right: 2pt; }
         table.m td.w { width: 12%; padding-left: 1pt; }
         table.m td.ev { width: 79%; padding-right: 1pt; }
+        table.m tr.sch td { background-color: #f7e7b4; }
+        table.m tr.pub td { background-color: #f6cfd3; }
+        table.m tr.pub td.n, table.m tr.pub td.w { font-weight: bold; }
+        .ln.hn { font-weight: bold; color: #8a1c2b; }
         table.m tr.we td { background-color: #dcefe9; }
         table.m tr.we td.n, table.m tr.we td.w { font-weight: bold; }
         table.m tr.grey td { background-color: #e6e6e6; }
@@ -51,10 +55,11 @@
                                 <tbody>
                                 {% for row in month.rows %}
                                     {% if row.kind == 'day' %}
-                                    <tr class="{{ row.weekend ? 'we' : 'wd' }}">
+                                    <tr class="{{ row.shade }}">
                                         <td class="r n">{{ row.number }}</td>
                                         <td class="r w">{{ row.weekday }}</td>
                                         <td class="r ev">
+                                            {%- if row.holidayText is defined %}<div class="ln hn">{{ row.holidayText }}</div>{% endif -%}
                                             {%- for e in row.events -%}
                                                 <div class="ln{{ e.draft ? ' dr' : '' }}">
                                                     {%- if e.time is not null %}{{ e.time }} {% endif -%}
@@ -77,8 +82,11 @@
                     </tr>
                 </tbody>
             </table>
-            {% if page.legend|length > 0 %}
+            {% if page.legend|length > 0 or page.holidayKinds|length > 0 %}
                 <div class="legend">
+                    {%- for kind in page.holidayKinds -%}
+                        <span class="sw {{ kind }}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> {{ ('holiday_' ~ kind)|trans({}, 'pdf', locale) }}{% if not loop.last or page.legend|length > 0 %}; {% endif %}
+                    {%- endfor -%}
                     {%- for item in page.legend -%}
                         <img class="emoji" src="{{ item.emojiPath }}"> {{ item.names|join(', ') }}{% if not loop.last %}; {% endif %}
                     {%- endfor -%}

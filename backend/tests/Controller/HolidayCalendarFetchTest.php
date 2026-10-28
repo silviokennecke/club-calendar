@@ -43,7 +43,15 @@ class HolidayCalendarFetchTest extends WebTestCase
         $http = new MockHttpClient(function (): MockResponse {
             return new MockResponse(array_shift($this->feeds) ?? '', ['http_code' => 200]);
         });
-        $container->set(HolidayCalendarService::class, new HolidayCalendarService($http, $this->em, new \App\Service\CalendarVersionBumper($this->em->getConnection())));
+        $container->set(HolidayCalendarService::class, new HolidayCalendarService(
+            $http,
+            $this->em,
+            new \App\Service\CalendarVersionBumper($this->em->getConnection()),
+            new \App\Service\OpenHolidaysClient($http, new \Symfony\Component\Cache\Adapter\ArrayAdapter()),
+            new \Symfony\Component\Clock\NativeClock(),
+            new \Symfony\Component\Cache\Adapter\ArrayAdapter(),
+            new \Psr\Log\NullLogger(),
+        ));
     }
 
     private static function ics(int $holidays): string

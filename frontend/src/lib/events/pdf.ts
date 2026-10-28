@@ -21,6 +21,8 @@ export interface PdfOptions extends ExportOptions {
   layout: PdfLayout;
   paper: PdfPaper;
   orientation: PdfOrientation;
+  /** Holiday calendars to print (none = no holidays). */
+  holidayCalendarIds?: string[];
 }
 
 /** Query string of `GET /api/calendars/{id}/events.pdf`: the export query plus layout, paper, orientation. */
@@ -30,8 +32,10 @@ export function pdfExportQuery(opts: PdfOptions): string {
     layout: opts.layout,
     paper: opts.paper,
     orientation: opts.orientation,
-  }).toString();
-  return `${base || "?"}${base ? "&" : ""}${extra}`;
+  });
+  for (const id of opts.holidayCalendarIds ?? []) extra.append("holidayCalendarIds[]", id);
+  const extraQuery = extra.toString();
+  return `${base || "?"}${base ? "&" : ""}${extraQuery}`;
 }
 
 function touchedMonths(from: string, to: string): number {

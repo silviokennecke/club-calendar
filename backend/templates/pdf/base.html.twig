@@ -26,6 +26,10 @@
         div.bar { background-color: #0b6b58; color: #ffffff; font-weight: bold; text-align: center; font-size: 10pt; height: 14pt; line-height: 12pt; border: 0.5pt solid #0b6b58; }
         table.hdr { table-layout: fixed; width: 100%; border-collapse: separate; border-spacing: 0; }
         table.hdr td { width: 33%; padding: 0; border: 0; vertical-align: bottom; }
+        /* holiday shading: public holidays (rose), school holidays (sand); weekend green stays between them in priority */
+        .sw { border: 0.5pt solid #9aa5a0; }
+        .sw.pub { background-color: #f6cfd3; }
+        .sw.sch { background-color: #f7e7b4; }
         #pagehead { position: fixed; left: 0; right: 0; top: -31pt; height: 21pt; }
         #footer { position: fixed; left: 0; right: 0; bottom: -12mm; font-size: 7pt; color: #4a5b55; }
     </style>
@@ -47,8 +51,15 @@
     </div>
     {% endblock %}
     {% block content %}{% endblock %}
-    {% if legend|length > 0 %}
+    {% if legend|length > 0 or (holidayLegend|length > 0) %}
         <h2>{{ 'legend'|trans({}, 'pdf', locale) }}</h2>
+        {% if holidayLegend|length > 0 %}
+            <div style="font-size: 7pt; margin: 0 0 4pt 0;">
+                {%- for kind in holidayLegend -%}
+                    <span class="sw {{ kind }}">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> {{ ('holiday_' ~ kind)|trans({}, 'pdf', locale) }}&nbsp;&nbsp;&nbsp;
+                {%- endfor -%}
+            </div>
+        {% endif %}
         <table>
             <tbody>
             {% for item in legend %}

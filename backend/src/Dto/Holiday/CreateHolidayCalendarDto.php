@@ -16,4 +16,7 @@ class CreateHolidayCalendarDto
     #[Assert\Url]
     #[Assert\Length(max: 2048)]
     public string $url = '';
+
+    #[Assert\Choice(choices: ['public', 'school', 'other'])]
+    public string $type = 'other';
 }

@@ -3,7 +3,14 @@ import { toast } from "sonner";
 import { API_URL } from "./apiUrl";
 import { clearInvitationToken } from "./invitations";
 import { markSessionEnded } from "./sessionEnd";
-import type { HolidayCalendar, HolidayEvent, User } from "./types";
+import type {
+  HolidayCalendar,
+  HolidayCountry,
+  HolidayEvent,
+  HolidaySubdivision,
+  HolidayType,
+  User,
+} from "./types";
 
 const BASE_URL = API_URL;
 
@@ -384,9 +391,32 @@ export function getHolidayCalendars(calendarId: string): Promise<HolidayCalendar
 
 export function createHolidayCalendar(
   calendarId: string,
-  data: { name: string; url: string },
+  data: { name: string; url: string; type?: HolidayType },
 ): Promise<HolidayCalendar> {
   return apiPost<HolidayCalendar>(`/api/calendars/${calendarId}/holiday-calendars`, data);
+}
+
+export function getHolidayCountries(): Promise<HolidayCountry[]> {
+  return apiGet<HolidayCountry[]>("/api/holiday-sources/countries");
+}
+
+export function getHolidaySubdivisions(iso: string): Promise<HolidaySubdivision[]> {
+  return apiGet<HolidaySubdivision[]>(`/api/holiday-sources/countries/${iso}/subdivisions`);
+}
+
+export function createPredefinedHolidayCalendars(
+  calendarId: string,
+  data: {
+    country: string;
+    subdivision?: string;
+    kinds: ("public" | "school")[];
+    regionName?: string;
+  },
+): Promise<HolidayCalendar[]> {
+  return apiPost<HolidayCalendar[]>(
+    `/api/calendars/${calendarId}/holiday-calendars/predefined`,
+    data,
+  );
 }
 
 export function deleteHolidayCalendar(calendarId: string, id: string): Promise<void> {
