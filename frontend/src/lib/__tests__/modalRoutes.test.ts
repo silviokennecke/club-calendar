@@ -6,7 +6,6 @@ const BASE = "/clubs/c1/calendars/k1";
 describe("matchModal", () => {
   it("knows the event dialogs and the public event", () => {
     for (const path of [
-      `${BASE}/events/new`,
       `${BASE}/events/new/form`,
       `${BASE}/events/new/template`,
       `${BASE}/events/new/template/t1`,
@@ -54,11 +53,13 @@ describe("modalBackground", () => {
   });
 
   it("falls back to the calendar (with the dialog's date) for deep links", () => {
-    expect(modalBackground({ pathname: `${BASE}/events/new`, search: "?date=2026-10-14" })).toBe(
-      `${BASE}?date=2026-10-14`,
-    );
+    expect(
+      modalBackground({ pathname: `${BASE}/events/new/form`, search: "?date=2026-10-14" }),
+    ).toBe(`${BASE}?date=2026-10-14`);
     expect(modalBackground({ pathname: `${BASE}/events/e1`, search: "", state: null })).toBe(BASE);
-    expect(modalBackground({ pathname: `${BASE}/events/new`, search: "?date=quatsch" })).toBe(BASE);
+    expect(modalBackground({ pathname: `${BASE}/events/new/form`, search: "?date=quatsch" })).toBe(
+      BASE,
+    );
   });
 
   it("never uses another dialog or a foreign address as background", () => {
@@ -66,7 +67,7 @@ describe("modalBackground", () => {
       modalBackground({
         pathname: `${BASE}/events/e1`,
         search: "",
-        state: { background: `${BASE}/events/new` },
+        state: { background: `${BASE}/events/new/form` },
       }),
     ).toBe(BASE);
     expect(

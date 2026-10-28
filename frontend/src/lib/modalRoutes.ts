@@ -25,7 +25,6 @@ export type ModalMatch =
 
 const CAL = "/clubs/:clubId/calendars/:calendarId";
 const EVENT_PATTERNS = [
-  `${CAL}/events/new`,
   `${CAL}/events/new/form`,
   `${CAL}/events/new/template`,
   `${CAL}/events/new/template/:templateId`,

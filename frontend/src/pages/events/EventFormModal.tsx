@@ -653,21 +653,19 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
               {t("events.form.close")}
             </Button>
           ) : isNew ? (
-            <Button
-              variant="secondary"
-              icon="arrow-left"
-              onClick={() =>
-                unsaved.guard(() =>
-                  nav.step(
-                    template
-                      ? page.routes.fromTemplate(template.id, presetDate)
-                      : page.routes.create(presetDate),
-                  ),
-                )
-              }
-            >
-              {t("events.form.back")}
-            </Button>
+            template ? (
+              <Button
+                variant="secondary"
+                icon="arrow-left"
+                onClick={() =>
+                  unsaved.guard(() => nav.step(page.routes.fromTemplate(template.id, presetDate)))
+                }
+              >
+                {t("events.form.back")}
+              </Button>
+            ) : (
+              <span />
+            )
           ) : (
             <Button variant="ghost-danger" icon="trash" onClick={() => setDeleteOpen(true)}>
               {t("events.form.delete")}

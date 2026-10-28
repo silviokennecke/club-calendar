@@ -4,15 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiGet } from "@/lib/api";
 import type { EventTemplate } from "@/lib/types";
-import {
-  Banner,
-  Button,
-  EmptyState,
-  Icon,
-  LinkButton,
-  Modal,
-  SearchInput,
-} from "@/components/ui/shared";
+import { Banner, Button, EmptyState, Icon, Modal, SearchInput } from "@/components/ui/shared";
 import { useEventPage } from "@/components/events/useEventPage";
 import { useTemplateMeta } from "@/components/events/useTemplateMeta";
 import { CreateGateBody, ModalSkeleton } from "@/components/events/CreateGate";
@@ -20,8 +12,7 @@ import { createGate, gateTitle } from "@/components/events/createGateState";
 import { useModalNav } from "@/lib/useModalNav";
 
 /**
- * "Vorlage wählen" (design: EventNewTemplate; step of the create dialog,
- * route …/events/new/template?date=).
+ * "Vorlage wählen" (design: EventNewTemplate; route …/events/new/template?date=).
  */
 export default function EventTemplatePickModal() {
   const page = useEventPage();
@@ -134,13 +125,9 @@ function TemplatePick() {
     <form className="ap-stack ap-stack--lg" onSubmit={next}>
       {body}
       <div className="ap-dialog-foot ap-dialog-foot--split">
-        <LinkButton
-          variant="secondary"
-          icon="arrow-left"
-          {...nav.stepLink(page.routes.create(date))}
-        >
-          {t("events.templatePick.back")}
-        </LinkButton>
+        <Button variant="secondary" onClick={nav.close}>
+          {t("common.cancel")}
+        </Button>
         <button type="submit" className="cc-btn cc-btn--primary" disabled={!selected}>
           {t("events.templatePick.next")}
           <Icon glyph="arrow-right" size={18} />

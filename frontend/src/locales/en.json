@@ -531,18 +531,6 @@
       "manyFailed": "The events could not be deleted. Nothing was deleted. Please try again."
     },
     "new": {
-      "title": "Create event",
-      "subtitle": "How would you like to start?",
-      "close": "Close",
-      "blank": {
-        "title": "New event",
-        "text": "Start empty and enter all details yourself."
-      },
-      "template": {
-        "title": "From template",
-        "text": "Take over times, location and audiences, and create event series too."
-      },
-      "import": "Or import events from an ICS file",
       "archived": {
         "title": "Calendar archived",
         "text": "You can't create events in an archived calendar. Viewing and exporting events still works.",
@@ -663,7 +651,6 @@
       "legend": "Template",
       "meta": "{{from}} – {{to}}",
       "next": "Next",
-      "back": "Back",
       "searchLabel": "Search templates by name",
       "searchPlaceholder": "Search templates…",
       "noMatch": "No template found for “{{query}}”.",

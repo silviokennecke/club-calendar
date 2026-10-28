@@ -312,7 +312,7 @@ export default function EventsListPage() {
               className="ap-hide-m"
               icon="plus"
               label={t("events.list.create")}
-              onClick={() => navigate(page.routes.create(), { state: modalState })}
+              onClick={() => navigate(page.routes.form(), { state: modalState })}
               menuLabel={t("calendar.createMore")}
               items={[
                 {
@@ -497,7 +497,7 @@ export default function EventsListPage() {
       )}
 
       {canEdit && (
-        <LinkButton className="ap-fab" icon="plus" to={page.routes.create()} state={modalState}>
+        <LinkButton className="ap-fab" icon="plus" to={page.routes.form()} state={modalState}>
           {t("events.list.create")}
         </LinkButton>
       )}
@@ -538,7 +538,7 @@ function ListEmpty({ kind, query, canEdit, routes, modalState, onReset, onTab }:
     <LinkButton
       icon="plus"
       variant={kind === "noPublished" ? "secondary" : "primary"}
-      to={routes.create()}
+      to={routes.form()}
       state={modalState}
     >
       {t("events.list.create")}

@@ -22,7 +22,6 @@ import {
   EventFormModal,
   EventFromTemplateModal,
   EventSeriesEditModal,
-  EventNewModal,
   EventsExportPage,
   EventsListPage,
   EventTemplatePickModal,
@@ -151,7 +150,6 @@ function AppRoutes() {
         <>
           <Route element={<SignedIn />}>
             <Route element={<ModalFrame />}>
-              <Route path={`${CAL}/events/new`} element={<EventNewModal />} />
               <Route path={`${CAL}/events/new/form`} element={<EventFormModal />} />
               <Route path={`${CAL}/events/new/template`} element={<EventTemplatePickModal />} />
               <Route

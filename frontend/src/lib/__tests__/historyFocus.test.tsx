@@ -15,7 +15,7 @@ describe("shouldFocusPageStart", () => {
   });
 
   it("not when a routed dialog opens or closes", () => {
-    expect(shouldFocusPageStart(CAL, `${CAL}/events/new`)).toBe(false);
+    expect(shouldFocusPageStart(CAL, `${CAL}/events/new/form`)).toBe(false);
     expect(shouldFocusPageStart(`${CAL}/events/e1`, CAL)).toBe(false);
     expect(shouldFocusPageStart("/feed/f1", "/feed/f1/events/e1")).toBe(false);
   });

@@ -72,17 +72,15 @@ test.describe("Calendar", () => {
     await page.waitForURL("**/settings/properties");
   });
 
-  test("clicking Create event opens the create choice", async ({ page }) => {
+  test("clicking Create event opens the event form", async ({ page }) => {
     await goToCalendar(page);
     // Split button in the page head (the empty state may offer the same action).
     await page
       .getByRole("button", { name: /^create event$/i })
       .first()
       .click();
-    await page.waitForURL("**/events/new");
-    await expect(page.getByRole("heading", { level: 2, name: "Create event" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /New event/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: /From template/ })).toBeVisible();
+    await page.waitForURL("**/events/new/form");
+    await expect(page.getByRole("heading", { level: 2, name: "New event" })).toBeVisible();
   });
 
   test("can create and see a new event", async ({ page }) => {
@@ -93,7 +91,6 @@ test.describe("Calendar", () => {
       .first()
       .click();
 
-    await page.getByRole("link", { name: /New event/ }).click();
     await page.getByLabel(/^Name/).fill("E2E Test Event");
     await page.getByLabel(/^Start date/).fill("2026-09-15");
     await page.getByRole("button", { name: "Published", exact: true }).click();
@@ -280,8 +277,6 @@ test.describe("Kalender (Redesign)", () => {
     await openCalendar(page, seeded);
 
     await page.getByRole("button", { name: "Termin anlegen", exact: true }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "Termin anlegen" })).toBeVisible();
-    await page.getByRole("link", { name: /Neuer Termin/ }).click();
     await expect(page.getByRole("heading", { level: 2, name: "Neuer Termin" })).toBeVisible();
     await page.getByLabel("Name (Pflicht)").fill("E2E Herbstfest");
     await page.getByLabel("Startdatum (Pflicht)").fill("2026-10-24");
@@ -354,7 +349,6 @@ test.describe("Kalender (Redesign)", () => {
     const fab = page.locator(".ap-fab");
     await expect(fab).toBeVisible();
     await fab.click();
-    await page.getByRole("link", { name: /Neuer Termin/ }).click();
     await expect(page.getByLabel("Startdatum (Pflicht)")).toHaveValue("2026-10-08");
   });
 });
@@ -384,7 +378,6 @@ test.describe("Termin-Dialoge", () => {
     await grid.getByRole("button", { name: /^14\. Oktober/ }).click();
     const create = page.getByRole("button", { name: "Termin an diesem Tag anlegen" });
     await create.click();
-    await page.getByRole("link", { name: /Neuer Termin/ }).click();
 
     const dialog = page.getByRole("dialog", { name: "Neuer Termin" });
     await expect(dialog).toBeVisible();
@@ -441,7 +434,6 @@ test.describe("Termin-Dialoge", () => {
       .getByRole("button", { name: /^14\. Oktober/ })
       .click();
     await page.getByRole("button", { name: "Termin an diesem Tag anlegen" }).click();
-    await page.getByRole("link", { name: /Neuer Termin/ }).click();
     await page.getByLabel("Name (Pflicht)").fill("Dialog Herbstfest");
     await page.getByRole("button", { name: "Veröffentlicht", exact: true }).click();
     await page.getByRole("button", { name: "Termin speichern" }).click();
@@ -473,14 +465,9 @@ test.describe("Termin-Dialoge", () => {
     await expect(edit).toHaveCount(0);
     await expect(page).toHaveURL(new RegExp(`${seeded.url}$`));
 
-    // Steps replace each other: choice -> template picker -> back -> choice; back closes.
+    // Create form -> back closes.
     await page.getByRole("button", { name: "Termin anlegen", exact: true }).click();
-    const create = page.getByRole("dialog", { name: "Termin anlegen" });
-    await create.getByRole("link", { name: /Aus Vorlage/ }).click();
-    await expect(page.getByRole("dialog", { name: "Vorlage wählen" })).toBeVisible();
-    await page.getByRole("link", { name: "Zurück" }).click();
-    await expect(create).toBeVisible();
-    await expect(create.getByRole("heading", { level: 2 })).toBeFocused();
+    await expect(page.getByRole("dialog", { name: "Neuer Termin" })).toBeVisible();
     await page.goBack();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page).toHaveURL(new RegExp(`${seeded.url}$`));
@@ -532,7 +519,7 @@ test.describe("Termin-Dialoge", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await openCalendar(page, seeded);
     await page.locator(".ap-fab").click();
-    const sheet = page.getByRole("dialog", { name: "Termin anlegen" });
+    const sheet = page.getByRole("dialog", { name: "Neuer Termin" });
     await expect(sheet).toBeVisible();
     const box = (await sheet.boundingBox())!;
     expect(Math.round(box.width)).toBe(390);
@@ -544,8 +531,7 @@ test.describe("Termin-Dialoge", () => {
     expect(close.height).toBeGreaterThanOrEqual(44);
     expect(close.width).toBeGreaterThanOrEqual(44);
 
-    await sheet.getByRole("link", { name: /Neuer Termin/ }).click();
-    const form = page.getByRole("dialog", { name: "Neuer Termin" });
+    const form = sheet;
     // Long form: the dialog scrolls, head reachable, footer sticks to the bottom.
     const scrolls = await form.evaluate((el) => el.scrollHeight > el.clientHeight);
     expect(scrolls).toBe(true);

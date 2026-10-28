@@ -143,7 +143,7 @@ operations), `docs/api/openapi.yaml` (API reference).
   `focusAfterModalClose(eventSelector(id))` focuses the saved event via `data-event-id`, else the opener, else the
   page heading (`h1`, e.g. the month title: deep links have no opener and a new series may start outside the visible
   month), else `#main`). Openers pass `state={openModalState(location)}` (calendar: create, split button, day panel
-  "Termin am … anlegen" (leads to the start screen choice; a double click on a day does the same), FAB, chips / items; list: rows, create, FAB, empty states; templates: "Termin aus
+  "Termin am … anlegen" (opens the new-event form; a double click on a day does the same), FAB, chips / items; list: rows, create, FAB, empty states; templates: "Termin aus
   Vorlage"). Inside a modal `useModalNav()` (`lib/useModalNav.ts`): `step(to)` / `stepLink(to)` replace the
   history entry (one entry per dialog, so the browser's back button closes it), `close()` = history back (or
   replace to the background for deep links / `direct`), `setBackground(path)` lets a deep link show the event's
@@ -155,8 +155,7 @@ operations), `docs/api/openapi.yaml` (API reference).
   `/privacy`, `/terms` are a routed modal (`pages/LegalModal`) only with a stored `background` (`openModalState`),
   else the standalone `pages/LegalPage`. Texts: `legal.*`. `ConsentChangeBanner` (rendered by `ProtectedRoute`: top of `AppShell`'s `<main>` or above the standalone `/clubs` and `/setup`) is a dismissible banner (sessionStorage, keyed by the pending document ids) for `pendingConsents` without `consentRequired`; its dialog opens documents inline via `ConsentCheckboxes` `onOpenDocument` (no routed modal on a dialog). External links: a type with a `url` (`LegalSummary`/`LegalDocument`/`PendingConsent`/`ConsentRecord.documentUrl`) never opens a modal: `LegalLinks` renders a plain same-tab `<a>`, `/imprint` etc. redirect via `useExternalRedirect` (`window.location.replace`, loader meanwhile), and in state-bearing contexts (`ConsentCheckboxes` via `ConsentItem.url`, consent history) it opens in a new tab (`externalLinkProps`). The test setup mocks `LegalLinks` (needs router + query client).
 - Events (create / edit are routed dialogs; URL helpers in `components/events/routes.ts`):
-  `…/events` list page (`?status=draft&q=`); dialogs (`pages/events/*Modal.tsx`): `…/events/new` choice
-  (`?date=`, design EventNew), `…/events/new/form` form (`?date=`, `?templateId=` pre-fills from a template,
+  `…/events` list page (`?status=draft&q=`); dialogs (`pages/events/*Modal.tsx`): `…/events/new/form` form (`?date=`, `?templateId=` pre-fills from a template,
   EventNewForm), `…/events/new/template` picker (EventNewTemplate), `…/events/new/template/:templateId` single event
   (`POST …/events/from-template`) or series (EventSeries: the dates of the rule come from the backend,
   `components/events/useSeriesPreview.ts` = `POST …/events/series/preview` debounced with loading / error / limit

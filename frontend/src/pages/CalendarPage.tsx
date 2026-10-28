@@ -209,9 +209,8 @@ export default function CalendarPage() {
   const routes = eventRoutes(base);
   const navState = openModalState(location);
 
-  /** "Termin anlegen": choice blank / template / import (design: EventNew). */
   function openCreate(date?: string) {
-    routerNavigate(routes.create(date), { state: navState });
+    routerNavigate(routes.form(date), { state: navState });
   }
 
   function openItem(item: CalItem) {

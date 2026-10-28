@@ -117,11 +117,7 @@ test.describe("Termine", () => {
     await openList(page, seeded);
 
     await page.getByRole("button", { name: "Termin anlegen", exact: true }).click();
-    const choice = page.getByRole("dialog", { name: "Termin anlegen" });
-    await expect(choice).toBeVisible();
-    await expect(choice.getByRole("heading", { level: 2 })).toBeFocused();
-    await choice.getByRole("link", { name: /Neuer Termin/ }).click();
-    // Same dialog, next step: the form starts in its first field.
+    // The form starts in its first field.
     const dialog = page.getByRole("dialog", { name: "Neuer Termin" });
     await expect(dialog).toHaveAttribute("aria-modal", "true");
     await expect(page.getByLabel("Name (Pflicht)")).toBeFocused();
@@ -261,8 +257,8 @@ test.describe("Termine", () => {
     const seeded = await seedEvents(request, "Vorlage Serie");
     await openList(page, seeded);
 
-    await page.getByRole("button", { name: "Termin anlegen", exact: true }).click();
-    await page.getByRole("link", { name: /Aus Vorlage/ }).click();
+    await page.getByRole("button", { name: "Weitere Wege, Termine anzulegen" }).click();
+    await page.getByRole("button", { name: /Aus Vorlage/ }).click();
     await expect(page.getByRole("heading", { level: 2, name: "Vorlage wählen" })).toBeVisible();
     await expect(page.getByRole("radio", { name: /Training Luftgewehr/ })).toBeChecked();
     await page.getByRole("searchbox", { name: "Vorlagen nach Namen suchen" }).fill("luftgewehr");
@@ -283,8 +279,8 @@ test.describe("Termine", () => {
     await expect(created).not.toContainText("Wiederkehrend");
 
     // Series: the preview comes from the backend
-    await page.getByRole("button", { name: "Termin anlegen", exact: true }).click();
-    await page.getByRole("link", { name: /Aus Vorlage/ }).click();
+    await page.getByRole("button", { name: "Weitere Wege, Termine anzulegen" }).click();
+    await page.getByRole("button", { name: /Aus Vorlage/ }).click();
     await page.getByRole("button", { name: "Weiter" }).click();
     await page.getByRole("button", { name: "Terminserie" }).click();
     await expect(page.getByText("Bald verfügbar", { exact: true })).toHaveCount(0);
@@ -512,7 +508,6 @@ test.describe("Termine", () => {
     const fab = page.locator(".ap-fab");
     await expect(fab).toBeVisible();
     await fab.click();
-    await page.getByRole("link", { name: /Neuer Termin/ }).click();
     // Bottom sheet: full width, anchored at the bottom, no horizontal scrolling.
     const sheet = await page.getByRole("dialog", { name: "Neuer Termin" }).boundingBox();
     expect(sheet!.width).toBeCloseTo(390, 0);
