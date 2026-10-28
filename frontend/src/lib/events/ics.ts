@@ -10,7 +10,7 @@ import type { CalendarEvent, Location } from "@/lib/types";
 import { formatAddress } from "@/lib/types";
 import { matchesGroups } from "./list";
 
-export type ExportRange = "all" | "month" | "year" | "custom";
+export type ExportRange = "all" | "month" | "year" | "nextYear" | "custom";
 
 export interface ExportOptions {
   range: ExportRange;
@@ -36,8 +36,10 @@ export function exportRange(opts: ExportOptions): { from?: IsoDate; to?: IsoDate
     const [from, to] = monthBounds(opts.today);
     return { from, to };
   }
-  if (opts.range === "year") {
-    const year = opts.today.slice(0, 4);
+  if (opts.range === "year" || opts.range === "nextYear") {
+    const year = String(
+      Number(opts.today.slice(0, 4)) + (opts.range === "nextYear" ? 1 : 0),
+    ).padStart(4, "0");
     return { from: `${year}-01-01`, to: `${year}-12-31` };
   }
   if (opts.range === "custom") {

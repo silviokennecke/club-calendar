@@ -12,6 +12,7 @@ import {
   buildIcs,
   escapeText,
   exportFileName,
+  exportQuery,
   exportRange,
   foldLine,
   icsFileName,
@@ -250,5 +251,31 @@ describe("export file name and year range", () => {
     expect(
       exportRange({ range: "year", today: "2026-10-27", includeDrafts: false, groupIds: [] }),
     ).toEqual({ from: "2026-01-01", to: "2026-12-31" });
+  });
+
+  it("covers next calendar year across the year boundary", () => {
+    const next = (today: string) =>
+      exportRange({ range: "nextYear", today, includeDrafts: false, groupIds: [] });
+    expect(next("2026-12-31")).toEqual({ from: "2027-01-01", to: "2027-12-31" });
+    expect(next("2027-01-01")).toEqual({ from: "2028-01-01", to: "2028-12-31" });
+    const year = (today: string) =>
+      exportRange({ range: "year", today, includeDrafts: false, groupIds: [] });
+    expect(year("2026-12-31")).toEqual({ from: "2026-01-01", to: "2026-12-31" });
+    expect(year("2027-01-01")).toEqual({ from: "2027-01-01", to: "2027-12-31" });
+  });
+
+  it("sends from/to for both year ranges and counts overlapping events", () => {
+    const o = { today: "2026-12-31", includeDrafts: false, groupIds: [] };
+    expect(exportQuery({ ...o, range: "year" })).toBe("?from=2026-01-01&to=2026-12-31");
+    expect(exportQuery({ ...o, range: "nextYear" })).toBe("?from=2027-01-01&to=2027-12-31");
+    const evs = [
+      ev({ id: "a", name: "A", date: "2026-12-30", dateEnd: "2027-01-02" }),
+      ev({ id: "b", name: "B", date: "2027-06-01" }),
+      ev({ id: "c", name: "C", date: "2028-01-01" }),
+    ];
+    const ids = (range: "year" | "nextYear") =>
+      selectForExport(evs, { ...o, range }).map((e) => e.id);
+    expect(ids("year")).toEqual(["a"]);
+    expect(ids("nextYear")).toEqual(["a", "b"]);
   });
 });

@@ -133,6 +133,7 @@ export default function EventsExportPage() {
     if (next === "pdf" && range === "all") setRange("month");
   }
 
+  const thisYear = Number(page.today.slice(0, 4));
   const ranges: { key: ExportRange; label: string; hint: string }[] = [
     ...(isPdf
       ? []
@@ -148,15 +149,16 @@ export default function EventsExportPage() {
       label: t("events.export.range.month"),
       hint: formatMonthTitle(yearMonthOf(page.today), locale),
     },
-    ...(isPdf
-      ? [
-          {
-            key: "year" as const,
-            label: t("events.export.range.year"),
-            hint: page.today.slice(0, 4),
-          },
-        ]
-      : []),
+    {
+      key: "year",
+      label: t("events.export.range.year"),
+      hint: String(thisYear),
+    },
+    {
+      key: "nextYear",
+      label: t("events.export.range.nextYear"),
+      hint: String(thisYear + 1),
+    },
     {
       key: "custom",
       label: t("events.export.range.custom"),

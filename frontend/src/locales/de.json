@@ -751,6 +751,7 @@
         "allHint": "Alle Termine von {{calendar}}",
         "month": "Dieser Monat",
         "year": "Dieses Jahr",
+        "nextYear": "Nächstes Jahr",
         "custom": "Von – bis",
         "customHint": "Eigenen Zeitraum festlegen",
         "from": "Von",
