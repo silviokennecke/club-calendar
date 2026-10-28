@@ -4003,6 +4003,13 @@
   .legal-link:hover {
     color: var(--ink);
   }
+  .legal-link + .legal-link::before {
+    content: "·";
+    content: "·" / "";
+    display: inline-block;
+    color: var(--ink-muted);
+    margin-inline-end: var(--space-3);
+  }
   .legal-prose {
     color: var(--ink);
     font: 400 1rem/1.65 var(--font-sans);
