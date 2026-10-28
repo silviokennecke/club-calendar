@@ -42,7 +42,7 @@ You need the copied calendar link and the **Calendar** app on your Mac.
 3. Paste the calendar link (press **Cmd** + **V**) and click **Subscribe**.
    <!-- SHOT: subscribe-macos-3 | Subscribe window with the pasted link -->
 4. Give the calendar a name and pick a color. This is just for you.
-5. Under **Auto-refresh** choose for example **Every 15 minutes** or **Every hour**.
+5. Under **Auto-refresh** choose for example **Daily** or **Weekly**.
 6. Click **OK**.
 
 Done! The calendar is now in the list on the left. A tick means its events are shown.
