@@ -380,6 +380,76 @@
       background: var(--surface-sunken);
     }
   }
+  /* Identity provider brand buttons: colors are the providers' own and independent of the app brand. */
+  .cc-sso {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 41px;
+    padding: 0 12px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .cc-sso:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+  .cc-sso--google {
+    background: #ffffff;
+    border-color: #747775;
+    color: #1f1f1f;
+    font:
+      500 14px/20px Roboto,
+      "Helvetica Neue",
+      Arial,
+      sans-serif;
+  }
+  .cc-sso--microsoft {
+    background: #ffffff;
+    border-color: #8c8c8c;
+    color: #5e5e5e;
+    font:
+      600 15px/20px "Segoe UI",
+      -apple-system,
+      "Helvetica Neue",
+      Arial,
+      sans-serif;
+  }
+  .cc-sso--apple {
+    background: #000000;
+    border-color: #000000;
+    color: #ffffff;
+    border-radius: 6px;
+    font:
+      500 15px/20px -apple-system,
+      "SF Pro Text",
+      "Helvetica Neue",
+      Arial,
+      sans-serif;
+  }
+  [data-theme="dark"] .cc-sso--google {
+    background: #131314;
+    border-color: #8e918f;
+    color: #e3e3e3;
+  }
+  [data-theme="dark"] .cc-sso--microsoft {
+    background: #2f2f2f;
+    border-color: #2f2f2f;
+    color: #ffffff;
+  }
+  [data-theme="dark"] .cc-sso--apple {
+    background: #ffffff;
+    border-color: #ffffff;
+    color: #000000;
+  }
+  .cc-sso svg {
+    flex: none;
+  }
   .cc-btn--block {
     width: 100%;
   }

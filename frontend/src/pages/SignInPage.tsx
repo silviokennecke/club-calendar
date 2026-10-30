@@ -12,16 +12,7 @@ import {
   readInvitationToken,
   type InvitationPreview,
 } from "@/lib/invitations";
-import {
-  Banner,
-  Button,
-  ErrorSummary,
-  Field,
-  Icon,
-  TextInput,
-  buttonClass,
-  type Glyph,
-} from "@/components/ui/shared";
+import { Banner, Button, ErrorSummary, Field, SsoButton, TextInput } from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Collapse } from "@/components/auth/Collapse";
 import { FocusBanner } from "@/components/auth/FocusBanner";
@@ -37,7 +28,6 @@ interface SsoProvider {
 type Status = "login" | "register" | "registration_restricted";
 type StepName = "email" | Status;
 
-const PROVIDER_GLYPH: Record<string, Glyph> = { microsoft: "building" };
 const EMAIL_ID = "entry-email";
 const RESTRICTED_BACK_ID = "entry-restricted-back";
 
@@ -284,14 +274,12 @@ export default function SignInPage() {
                 {t("auth.passkey")}
               </Button>
               {providers.map((provider) => (
-                <a
+                <SsoButton
                   key={provider.id}
+                  provider={provider.id}
+                  name={provider.name}
                   href={`${BACKEND_URL}/api/auth/oauth/${provider.id}`}
-                  className={buttonClass("sso")}
-                >
-                  <Icon glyph={PROVIDER_GLYPH[provider.id] ?? "globe"} size={20} />
-                  {t("auth.login.signInWith", { provider: provider.name })}
-                </a>
+                />
               ))}
             </div>
           </div>

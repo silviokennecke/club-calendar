@@ -5,6 +5,10 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ## [Unreleased]
 
+### Changed
+
+- Sign-in page: the Google, Microsoft and Apple buttons now follow the providers' brand guidelines (official logos, fixed brand colors with light and dark variants, fixed wording).
+
 ### Fixed
 
 - Apple sign-in: the authorize request now sends `response_mode=form_post`, which Apple requires for the name and email scopes.
