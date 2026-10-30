@@ -5,6 +5,10 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ## [Unreleased]
 
+### Fixed
+
+- Apple sign-in: the authorize request now sends `response_mode=form_post`, which Apple requires for the name and email scopes.
+
 ### Added
 
 - PDF export: the document metadata now carry the club name as author and the app (with its address) as creator.
