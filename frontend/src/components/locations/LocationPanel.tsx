@@ -2,7 +2,7 @@ import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { Banner, Button, ErrorSummary, type ErrorSummaryItem } from "@/components/ui/shared";
 import type { AddressField, LocationForm } from "@/lib/settings";
-import type { AddressSuggestion } from "./AddressSearch";
+import type { AddressSuggestion } from "./addressSuggest";
 import { LocationFields } from "./LocationFields";
 
 interface LocationPanelProps {

@@ -101,7 +101,6 @@ beforeEach(() => {
         suggestions: [
           {
             label: "Schützenhaus, Waldweg 1, 12347 Musterdorf, Deutschland",
-            name: "Schützenhaus",
             lat: 48.4,
             lng: 11.4,
             street: "Waldweg 1",
@@ -146,6 +145,13 @@ beforeEach(() => {
   });
 });
 
+function noSuggestions() {
+  const original = apiFetch.getMockImplementation()!;
+  apiFetch.mockImplementation((path: string, ...rest: unknown[]) =>
+    path.includes("geocode/suggest") ? json({ suggestions: [] }) : original(path, ...rest),
+  );
+}
+
 describe("LocationsPage", () => {
   it("is fully usable as a list without the map and gives the map a text alternative", async () => {
     renderRoute(route, url, <LocationsPage />);
@@ -184,6 +190,7 @@ describe("LocationsPage", () => {
   });
 
   it("creates a place from typed address fields", async () => {
+    noSuggestions();
     const user = userEvent.setup();
     renderRoute(route, url, <LocationsPage />);
     await screen.findByRole("heading", { name: "Alle Orte (2)" });
@@ -219,58 +226,67 @@ describe("LocationsPage", () => {
     expect(apiPost).not.toHaveBeenCalled();
   });
 
-  it("searches an address and takes over fields and position from a suggestion", async () => {
+  it("autocompletes the street and takes over fields and position from a suggestion", async () => {
     const user = userEvent.setup();
     renderRoute(route, url, <LocationsPage />);
     await screen.findByRole("heading", { name: "Alle Orte (2)" });
-    await user.type(screen.getByLabelText("Adresse suchen"), "Waldstr");
-    const results = await screen.findByRole("list", { name: "Adressvorschläge" });
-    expect(screen.getByText("2 Vorschläge gefunden")).toBeInTheDocument();
-    await user.click(within(results).getByRole("button", { name: "Waldweg 12, 12347 Musterdorf" }));
+    await user.type(screen.getByLabelText("Straße"), "Waldstr");
+    await user.click(await screen.findByRole("option", { name: "Waldweg 12, 12347 Musterdorf" }));
     expect(screen.getByLabelText("Straße")).toHaveValue("Waldweg 12");
     expect(screen.getByLabelText("PLZ")).toHaveValue("12347");
     expect(screen.getByLabelText("Stadt")).toHaveValue("Musterdorf");
+    expect(screen.getByLabelText("Land")).toHaveValue("Deutschland");
     expect(screen.getByTestId("position")).toHaveTextContent("48.3,11.3");
-    expect(screen.queryByRole("list", { name: "Adressvorschläge" })).not.toBeInTheDocument();
   });
 
-  it("shows a place name and fills an empty name field from it", async () => {
-    const user = userEvent.setup();
-    renderRoute(route, url, <LocationsPage />);
-    await screen.findByRole("heading", { name: "Alle Orte (2)" });
-    await user.type(screen.getByLabelText("Adresse suchen"), "Schuetz");
-    const results = await screen.findByRole("list", { name: "Adressvorschläge" });
-    expect(within(results).getByText("Schützenhaus").tagName).toBe("STRONG");
-    expect(within(results).getByText("Waldweg 1, 12347 Musterdorf, Deutschland")).toBeVisible();
-    await user.click(within(results).getByRole("button", { name: /Schützenhaus/ }));
-    expect(screen.getByLabelText(/^Name/)).toHaveValue("Schützenhaus");
-    expect(screen.getByLabelText("Straße")).toHaveValue("Waldweg 1");
-  });
-
-  it("keeps a typed name when a place suggestion is picked", async () => {
+  it("never touches the name when a suggestion is picked", async () => {
     const user = userEvent.setup();
     renderRoute(route, url, <LocationsPage />);
     await screen.findByRole("heading", { name: "Alle Orte (2)" });
     await user.type(screen.getByLabelText(/^Name/), "Mein Name");
-    await user.type(screen.getByLabelText("Adresse suchen"), "Schuetz");
-    const results = await screen.findByRole("list", { name: "Adressvorschläge" });
-    await user.click(within(results).getByRole("button", { name: /Schützenhaus/ }));
+    await user.type(screen.getByLabelText("Straße"), "Waldstr");
+    await user.click(await screen.findByRole("option", { name: "Waldweg 12, 12347 Musterdorf" }));
     expect(screen.getByLabelText(/^Name/)).toHaveValue("Mein Name");
-    expect(screen.getByLabelText("Straße")).toHaveValue("Waldweg 1");
   });
 
-  it("clears the address search input when switching to another place", async () => {
+  it("fills empty zip, city and country when the street field is left with a single hit", async () => {
     const user = userEvent.setup();
     renderRoute(route, url, <LocationsPage />);
     await screen.findByRole("heading", { name: "Alle Orte (2)" });
-    const searchInput = screen.getByLabelText("Adresse suchen") as HTMLInputElement;
-    await user.type(searchInput, "Waldstr");
-    expect(searchInput.value).toBe("Waldstr");
-    // Switch to editing another place
-    await user.click(screen.getByRole("button", { name: "Schützenhaus Waldblick bearbeiten" }));
-    await screen.findByRole("heading", { name: "Ort bearbeiten" });
-    // The search field should now be empty after remounting
-    expect((screen.getByLabelText("Adresse suchen") as HTMLInputElement).value).toBe("");
+    await user.type(screen.getByLabelText("Straße"), "Schuetz");
+    await user.tab();
+    await waitFor(() => expect(screen.getByLabelText("Stadt")).toHaveValue("Musterdorf"));
+    expect(screen.getByLabelText("Straße")).toHaveValue("Schuetz");
+    expect(screen.getByLabelText("PLZ")).toHaveValue("12347");
+    expect(screen.getByLabelText("Land")).toHaveValue("Deutschland");
+    expect(screen.getByTestId("position")).toHaveTextContent("48.4,11.4");
+  });
+
+  it("fills only the shared fields when the street field is left with several hits", async () => {
+    const user = userEvent.setup();
+    renderRoute(route, url, <LocationsPage />);
+    await screen.findByRole("heading", { name: "Alle Orte (2)" });
+    await user.type(screen.getByLabelText("Straße"), "Waldstr");
+    await user.tab();
+    await waitFor(() => expect(screen.getByLabelText("Land")).toHaveValue("Deutschland"));
+    expect(screen.getByLabelText("PLZ")).toHaveValue("");
+    expect(screen.getByLabelText("Stadt")).toHaveValue("");
+  });
+
+  it("does not auto-fill on blur when an address field is already filled", async () => {
+    const user = userEvent.setup();
+    renderRoute(route, url, <LocationsPage />);
+    await screen.findByRole("heading", { name: "Alle Orte (2)" });
+    await user.type(screen.getByLabelText("Stadt"), "Eigene Stadt");
+    apiFetch.mockClear();
+    await user.type(screen.getByLabelText("Straße"), "Schuetz");
+    await user.tab();
+    expect(apiFetch).not.toHaveBeenCalledWith(
+      expect.stringContaining("q=Schuetz"),
+      expect.anything(),
+    );
+    expect(screen.getByLabelText("Stadt")).toHaveValue("Eigene Stadt");
+    expect(screen.getByLabelText("PLZ")).toHaveValue("");
   });
 
   it("explains when the address search is unavailable", async () => {
@@ -278,13 +294,14 @@ describe("LocationsPage", () => {
     const user = userEvent.setup();
     renderRoute(route, url, <LocationsPage />);
     await screen.findByRole("heading", { name: "Alle Orte (2)" });
-    await user.type(screen.getByLabelText("Adresse suchen"), "Wald");
+    await user.type(screen.getByLabelText("Straße"), "Wald");
     expect(
       await screen.findByText(/Die Adresssuche ist gerade nicht verfügbar/),
     ).toBeInTheDocument();
   });
 
   it("sets the position on the map and fills only empty address fields", async () => {
+    noSuggestions();
     const user = userEvent.setup();
     renderRoute(route, url, <LocationsPage />);
     await screen.findByRole("heading", { name: "Alle Orte (2)" });
@@ -435,7 +452,6 @@ describe("LocationsPage", () => {
     expect(
       screen.queryByRole("button", { name: /Ort anlegen|bearbeiten/ }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Adresse suchen")).not.toBeInTheDocument();
     expect(screen.getByText("Vereinsheim Mitte")).toBeInTheDocument();
   });
 });

@@ -229,8 +229,7 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
     endpoint (`usage: {events, templates, feeds?, eventNames}`; the list is refetched when the dialog opens, no event
     or template lists). The backend rejects duplicate names with 422 `code: "duplicate_name"` (`isDuplicateNameError`
     in `lib/api.ts`, `ApiError.code`); the form shows it at the field.
-  - Places: `components/locations/` – `LocationPanel` (form), `AddressSearch` (geocoding via the backend, live
-    hit count), `CoordinateFields` (keyboard alternative to the map), `PositionMap` (click / drag, lazy),
+  - Places: `components/locations/` – `LocationPanel` (form), the street field is an `AutocompleteInput` (address suggestions via the backend, `addressSuggest.ts`; on blur it fills empty zip/city/country from a complete result list), `CoordinateFields` (keyboard alternative to the map), `PositionMap` (click / drag, lazy),
     `LocationsOverviewMap` (pins are buttons, the list is the alternative), `MapBoundary` (a failing map never
     takes the page down), `useMapbox` / `mapboxProxy`. `HolidayPreview` (next twelve months, loaded on open).
   - `useCalendarActions(clubId, calendarId, name, { stay })` = archive / unarchive / duplicate / delete with toasts;

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/shared";
 import { LocationPanel } from "@/components/locations/LocationPanel";
 import { MapBoundary } from "@/components/locations/MapBoundary";
-import type { AddressSuggestion } from "@/components/locations/AddressSearch";
+import type { AddressSuggestion } from "@/components/locations/addressSuggest";
 import { ClubSettingsLayout } from "@/components/settings/ClubSettingsLayout";
 import { useClubSettingsPage } from "@/components/settings/useClubSettingsPage";
 import { apiDelete, apiFetch, apiGet, apiPatch, apiPost } from "@/lib/api";

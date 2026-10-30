@@ -8,7 +8,7 @@ import {
   type ErrorSummaryItem,
 } from "@/components/ui/shared";
 import { LocationFields } from "@/components/locations/LocationFields";
-import type { AddressSuggestion } from "@/components/locations/AddressSearch";
+import type { AddressSuggestion } from "@/components/locations/addressSuggest";
 import { apiFetch } from "@/lib/api";
 import type { Location } from "@/lib/types";
 import {
