@@ -19,14 +19,12 @@ export type SuggestOutcome =
 /** Address-only geocoding through the backend; never throws (aborts count as "error"). */
 export async function fetchAddressSuggestions(
   query: string,
-  proximity: { lat: number; lng: number } | null,
   limit = SUGGEST_LIMIT,
   signal?: AbortSignal,
 ): Promise<SuggestOutcome> {
   try {
-    const near = proximity ? `&lat=${proximity.lat}&lng=${proximity.lng}` : "";
     const res = await apiFetch(
-      `/api/map/geocode/suggest?q=${encodeURIComponent(query)}${near}&limit=${limit}`,
+      `/api/map/geocode/suggest?q=${encodeURIComponent(query)}&limit=${limit}`,
       { signal },
     );
     if (res.status === 429) return { status: "limit" };

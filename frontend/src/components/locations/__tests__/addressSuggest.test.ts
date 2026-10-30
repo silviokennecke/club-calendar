@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { apiFetch } from "@/lib/api";
 import { EMPTY_LOCATION_FORM } from "@/lib/settings";
-import { blurFillPatch, type AddressSuggestion } from "../addressSuggest";
+import { blurFillPatch, fetchAddressSuggestions, type AddressSuggestion } from "../addressSuggest";
+
+vi.mock("@/lib/api", () => ({ apiFetch: vi.fn() }));
 
 const hit = (over: Partial<AddressSuggestion> = {}): AddressSuggestion => ({
   label: "x",
@@ -44,5 +47,16 @@ describe("blurFillPatch", () => {
 
   it("fills nothing when an address field is already set", () => {
     expect(blurFillPatch({ ...EMPTY_LOCATION_FORM, city: "A" }, [hit()])).toEqual({});
+  });
+});
+
+describe("fetchAddressSuggestions", () => {
+  it("requests suggestions by query and limit only", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(new Response(JSON.stringify({ suggestions: [] })));
+    const out = await fetchAddressSuggestions("Marienplatz 1");
+    expect(apiFetch).toHaveBeenCalledWith("/api/map/geocode/suggest?q=Marienplatz%201&limit=6", {
+      signal: undefined,
+    });
+    expect(out).toEqual({ status: "ok", suggestions: [] });
   });
 });
