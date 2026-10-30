@@ -6,75 +6,43 @@ namespace App\Service\Map;
 
 use Geocoder\Geocoder;
 use Geocoder\Location;
+use Geocoder\Query\GeocodeQuery;
 use Geocoder\Query\ReverseQuery;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class BazingaGeocoderAdapter implements GeocoderInterface
 {
-    private const string SUGGEST_URL = 'https://api.mapbox.com/geocoding/v5/mapbox.places/%s.json';
-
-    public function __construct(
-        private readonly Geocoder $geocoder,
-        private readonly HttpClientInterface $httpClient,
-        private readonly string $mapboxToken,
-    ) {
+    public function __construct(private readonly Geocoder $geocoder)
+    {
     }
 
-    /**
-     * Forward search over addresses and POIs. Calls Mapbox directly instead of the Bazinga provider: the
-     * provider cuts the result list at the first feature without `context` and fills the street from the
-     * feature `text` (the POI name for a POI) without the street number from `properties.address`.
-     */
+    /** Address search; the Bazinga Mapbox provider has no proximity option, so the hint is ignored. */
     public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
     {
-        $params = [
-            'types' => 'poi,address',
-            'language' => 'de',
-            'limit' => $limit,
-            'access_token' => $this->mapboxToken,
-        ];
-        if (null !== $proximityLat && null !== $proximityLng) {
-            $params['proximity'] = sprintf('%f,%f', $proximityLng, $proximityLat);
-        }
-
-        $response = $this->httpClient->request('GET', sprintf(self::SUGGEST_URL, rawurlencode($query)), ['query' => $params]);
-        $features = $response->toArray()['features'] ?? [];
+        $collection = $this->geocoder->geocodeQuery(GeocodeQuery::create($query)->withLimit($limit));
 
         $results = [];
-        foreach ($features as $feature) {
-            $center = $feature['center'] ?? null;
-            if (!is_array($center) || !isset($center[0], $center[1])) {
+        foreach ($collection as $location) {
+            $coordinates = $location->getCoordinates();
+            if (null === $coordinates) {
                 continue;
             }
 
-            $context = [];
-            foreach ($feature['context'] ?? [] as $component) {
-                $type = explode('.', (string) ($component['id'] ?? ''))[0];
-                $context[$type] ??= $component['text'] ?? null;
-            }
+            $street = $this->buildStreet($location);
+            $zip = $location->getPostalCode();
+            $city = $location->getLocality();
+            $country = $location->getCountry()?->getName();
+            $zipCity = trim(($zip ?? '').' '.($city ?? ''));
 
-            $isPoi = in_array('poi', $feature['place_type'] ?? [], true);
-            $text = isset($feature['text']) ? (string) $feature['text'] : null;
-            if ($isPoi) {
-                $name = $text;
-                $street = $feature['properties']['address'] ?? null;
-            } else {
-                $name = null;
-                $street = null !== $text && isset($feature['address']) ? "$text {$feature['address']}" : $text;
-            }
-            $city = $context['place'] ?? $context['locality'] ?? null;
-            $country = $context['country'] ?? null;
+            $label = implode(', ', array_filter([$street, $zipCity, $country], static fn ($p) => null !== $p && '' !== $p));
 
-            $parts = array_filter([$name, $street, $city, $country], static fn ($p) => null !== $p && '' !== $p);
             $results[] = new SuggestionResult(
-                label: implode(', ', $parts),
-                lat: (float) $center[1],
-                lng: (float) $center[0],
+                label: $label,
+                lat: $coordinates->getLatitude(),
+                lng: $coordinates->getLongitude(),
                 street: $street,
-                zip: $context['postcode'] ?? null,
+                zip: $zip,
                 city: $city,
                 country: $country,
-                name: $name,
             );
         }
 

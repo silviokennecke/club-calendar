@@ -14,7 +14,6 @@ readonly class SuggestionResult
         public ?string $zip = null,
         public ?string $city = null,
         public ?string $country = null,
-        public ?string $name = null,
     ) {
     }
 }
