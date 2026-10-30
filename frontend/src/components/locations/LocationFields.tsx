@@ -9,7 +9,12 @@ import {
   type ErrorSummaryItem,
 } from "@/components/ui/shared";
 import type { AddressField, LocationForm } from "@/lib/settings";
-import { blurFillPatch, fetchAddressSuggestions, type AddressSuggestion } from "./addressSuggest";
+import {
+  blurFillPatch,
+  fetchAddressSuggestions,
+  SUGGEST_LIMIT,
+  type AddressSuggestion,
+} from "./addressSuggest";
 import { CoordinateFields } from "./CoordinateFields";
 import { MapBoundary } from "./MapBoundary";
 
@@ -47,15 +52,10 @@ export function LocationFields({
   const [suggestStatus, setSuggestStatus] = useState<"ok" | "limit" | "error">("ok");
   useEffect(() => () => void blurSeq.current++, []);
 
-  const proximity = () => {
-    const f = formRef.current;
-    return f.latitude != null && f.longitude != null ? { lat: f.latitude, lng: f.longitude } : null;
-  };
-
   async function searchStreet(street: string, signal: AbortSignal) {
     const f = formRef.current;
     const q = [street, f.zip.trim(), f.city.trim()].filter(Boolean).join(" ");
-    const out = await fetchAddressSuggestions(q, proximity(), undefined, signal);
+    const out = await fetchAddressSuggestions(q, SUGGEST_LIMIT, signal);
     if (signal.aborted) return [];
     if (out.status !== "ok") {
       setSuggestStatus(out.status);
@@ -71,7 +71,7 @@ export function LocationFields({
     if (pickedRef.current || street.length < 2) return;
     if (f.zip.trim() || f.city.trim() || f.country.trim()) return;
     const mine = ++blurSeq.current;
-    const out = await fetchAddressSuggestions(street, proximity());
+    const out = await fetchAddressSuggestions(street);
     if (out.status !== "ok" || mine !== blurSeq.current) return;
     if (formRef.current.street.trim() !== street) return;
     const patch = blurFillPatch(formRef.current, out.suggestions);
