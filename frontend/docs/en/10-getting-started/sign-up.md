@@ -21,7 +21,7 @@ If the address already has an account, the page asks for your password instead, 
 
 ## With Google, Microsoft or a passkey
 
-Below **or** on the first step you find more ways: **Sign in with Google**, **Sign in with Microsoft** and **Sign in with passkey**. A passkey signs you in with a fingerprint, face recognition or your device PIN. It works once you have set it up in your [profile](help:settings/passkeys).
+Below **or** on the first step you find more ways: **Sign in with Google**, **Sign in with Microsoft**, **Sign in with Apple** (if enabled) and **Sign in with passkey**. A passkey signs you in with a fingerprint, face recognition or your device PIN. It works once you have set it up in your [profile](help:settings/passkeys).
 
 ## Confirm your e-mail address
 

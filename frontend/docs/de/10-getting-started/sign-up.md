@@ -21,7 +21,7 @@ Hat die Adresse schon ein Konto, fragt dich die Seite stattdessen nach dem Passw
 
 ## Mit Google, Microsoft oder Passkey
 
-Auf dem ersten Schritt findest du unter **oder** weitere Wege: **Mit Google anmelden**, **Mit Microsoft anmelden** und **Mit Passkey anmelden**. Ein Passkey meldet dich per Fingerabdruck, Gesichtserkennung oder Geräte-PIN an. Er funktioniert, sobald du ihn in deinem [Profil](help:settings/passkeys) eingerichtet hast.
+Auf dem ersten Schritt findest du unter **oder** weitere Wege: **Mit Google anmelden**, **Mit Microsoft anmelden**, **Mit Apple anmelden** (sofern aktiviert) und **Mit Passkey anmelden**. Ein Passkey meldet dich per Fingerabdruck, Gesichtserkennung oder Geräte-PIN an. Er funktioniert, sobald du ihn in deinem [Profil](help:settings/passkeys) eingerichtet hast.
 
 ## E-Mail-Adresse bestätigen
 

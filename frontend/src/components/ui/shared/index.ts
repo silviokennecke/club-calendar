@@ -5,6 +5,8 @@ export { Disclosure } from "./Disclosure";
 export type { DisclosureProps } from "./Disclosure";
 export { Logo } from "./Logo";
 export { Button, LinkButton, IconButton } from "./Button";
+export { SsoButton } from "./SsoButton";
+export type { SsoButtonProps } from "./SsoButton";
 export { SplitButton } from "./SplitButton";
 export type { SplitButtonItem } from "./SplitButton";
 export { MenuButton } from "./MenuButton";

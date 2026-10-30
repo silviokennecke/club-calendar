@@ -1608,6 +1608,11 @@
     "name": "Club Calendar"
   },
   "ui": {
+    "sso": {
+      "google": "Mit Google anmelden",
+      "microsoft": "Mit Microsoft anmelden",
+      "apple": "Mit Apple anmelden"
+    },
     "autocomplete": {
       "results_one": "{{count}} Vorschlag verfügbar",
       "results_other": "{{count}} Vorschläge verfügbar"
