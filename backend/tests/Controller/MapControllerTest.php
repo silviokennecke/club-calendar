@@ -43,7 +43,7 @@ class MapControllerTest extends WebTestCase
         $fakeGeocoder = new class implements \App\Service\Map\GeocoderInterface {
             public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
             {
-                return [new \App\Service\Map\SuggestionResult('München Hbf', 48.14, 11.56, 'Bahnhofplatz', '80335', 'München', 'Germany', 'Hauptbahnhof')];
+                return [new \App\Service\Map\SuggestionResult('München Hbf', 48.14, 11.56, 'Bahnhofplatz', '80335', 'München', 'Germany')];
             }
 
             public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress
@@ -60,7 +60,7 @@ class MapControllerTest extends WebTestCase
         $this->assertCount(1, $r['body']['suggestions']);
         $this->assertSame('München Hbf', $r['body']['suggestions'][0]['label']);
         $this->assertSame(48.14, $r['body']['suggestions'][0]['lat']);
-        $this->assertSame('Hauptbahnhof', $r['body']['suggestions'][0]['name']);
+        $this->assertArrayNotHasKey('name', $r['body']['suggestions'][0]);
     }
 
     public function testSuggestRequiresAuth(): void

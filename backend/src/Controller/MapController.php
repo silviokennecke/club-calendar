@@ -68,7 +68,6 @@ class MapController extends AbstractController
                 'zip' => $r->zip,
                 'city' => $r->city,
                 'country' => $r->country,
-                'name' => $r->name,
             ], $results),
         ]);
     }
