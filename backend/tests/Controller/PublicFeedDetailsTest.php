@@ -377,8 +377,8 @@ class PublicFeedDetailsTest extends WebTestCase
             $this->assertStringContainsString('SUMMARY:Herbstfest', $body);
             $this->assertStringContainsString('X-APPLE-STRUCTURED-LOCATION', $body);
             $unfolded = str_replace("\r\n ", '', $body);
-            $this->assertStringContainsString('LOCATION:Schützenhaus\\nHauptstr. 1\\, Berlin', $unfolded);
-            $this->assertStringContainsString('X-ADDRESS="Schützenhaus\\nHauptstr. 1, Berlin"', $unfolded);
+            $this->assertStringContainsString('LOCATION:Schützenhaus\\nHauptstr. 1\\nBerlin', $unfolded);
+            $this->assertStringContainsString('X-ADDRESS="Schützenhaus\\nHauptstr. 1\\nBerlin"', $unfolded);
             $this->assertStringContainsString('BEGIN:VTIMEZONE', $body);
             $this->assertStringContainsString('END:VCALENDAR', $body);
 
