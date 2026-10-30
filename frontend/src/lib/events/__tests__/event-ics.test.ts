@@ -15,7 +15,7 @@ function ev(partial: Partial<IcsEvent> = {}): IcsEvent {
     date: "2026-10-24",
     timeBegin: "15:00",
     timeEnd: "22:00",
-    properties: [{ property: { icon: "🌳" } }],
+    properties: [{ property: { icon: "🌳", name: "Freiluft" } }],
     features: [{ feature: { name: "Getränkeverkauf" } }],
     targetGroups: [{ targetGroup: { name: "Jugend" } }, { targetGroup: { name: "Senioren" } }],
     location: {
@@ -32,19 +32,24 @@ function ev(partial: Partial<IcsEvent> = {}): IcsEvent {
 
 describe("buildEventIcs", () => {
   it("writes exactly one event with the feed's UID, zone-correct UTC times and place", () => {
-    const ics = buildEventIcs(ev(), opts);
+    const raw = buildEventIcs(ev(), opts);
+    const ics = raw.replace(/\r\n /g, "");
     expect(ics.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
     expect(ics.endsWith("END:VCALENDAR\r\n")).toBe(true);
     expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(1);
     expect(ics).toContain("UID:event-e-1@club-calendar");
-    expect(ics).toContain("SUMMARY:🌳 Herbstfest");
+    expect(ics).toContain("SUMMARY:🌳 Herbstfest (Getränkeverkauf)");
     // 24.10.2026 is still summer time in Berlin (UTC+2)
     expect(ics).toContain("DTSTART:20261024T130000Z");
     expect(ics).toContain("DTEND:20261024T200000Z");
     expect(ics).toContain("LOCATION:Vereinsheim Mitte\\, Marktplatz 5\\, 12345 Musterstadt");
-    expect(ics).toContain("GEO:50.5;8.25");
+    expect(ics).toContain("GEO:50.500000;8.250000");
     expect(ics).toContain(
-      "DESCRIPTION:Zusatzangebote: Getränkeverkauf\\nGruppen: Jugend\\, Senioren",
+      'X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-ADDRESS="Vereinsheim Mitte, Marktplatz 5, 12345 Musterstadt"',
+    );
+    expect(ics).toContain(';X-APPLE-RADIUS=100;X-TITLE="Vereinsheim Mitte":geo:50.500000,8.250000');
+    expect(ics).toContain(
+      "DESCRIPTION:Zusatzangebote: Getränkeverkauf\\nGruppen: Jugend\\, Senioren\\nBesonderheiten:\\n🌳 Freiluft",
     );
     expect(ics).toContain("STATUS:CONFIRMED");
   });

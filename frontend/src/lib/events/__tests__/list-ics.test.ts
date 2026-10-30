@@ -218,16 +218,18 @@ describe("ICS", () => {
         now: new Date("2026-10-02T08:00:00Z"),
       },
     );
-    const lines = ics.split("\r\n");
+    const lines = ics.replace(/\r\n /g, "").split("\r\n");
     expect(lines[0]).toBe("BEGIN:VCALENDAR");
     expect(ics.endsWith("END:VCALENDAR\r\n")).toBe(true);
     expect(lines).toContain("UID:event-1@club-calendar");
-    expect(lines).toContain("SUMMARY:🏆 Training\\, Luftgewehr");
+    expect(lines).toContain("SUMMARY:🏆 Training\\, Luftgewehr (Bonusschießen)");
     expect(lines).toContain("DTSTART:20261001T170000Z");
     expect(lines).toContain("DTEND:20261001T190000Z");
-    expect(lines).toContain("DESCRIPTION:Zusatzangebote: Bonusschießen\\nGruppen: Erwachsene");
+    expect(lines).toContain(
+      "DESCRIPTION:Zusatzangebote: Bonusschießen\\nGruppen: Erwachsene\\nBesonderheiten:\\n🏆 Wettkampf",
+    );
     expect(lines).toContain("LOCATION:Schützenhaus\\, Musterstadt");
-    expect(lines).toContain("GEO:51.5;7.25");
+    expect(lines).toContain("GEO:51.500000;7.250000");
     expect(lines).toContain("DTSTART;VALUE=DATE:20261010");
     expect(lines).toContain("DTEND;VALUE=DATE:20261012");
     expect(lines).toContain("STATUS:TENTATIVE");

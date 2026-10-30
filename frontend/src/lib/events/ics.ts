@@ -188,9 +188,16 @@ export interface IcsEvent {
     Location,
     "name" | "street" | "zip" | "city" | "country" | "latitude" | "longitude"
   > | null;
-  properties: { property: { icon: string | null } }[];
+  properties: { property: { icon: string | null; name?: string } }[];
   features: { feature: { name: string } }[];
   targetGroups: { targetGroup: { name: string } }[];
+}
+
+/** Quoted parameter value: control characters become spaces, `"` becomes `'`. */
+function quoted(value: string): string {
+  // eslint-disable-next-line no-control-regex
+  const clean = value.replace(/[\x00-\x1F\x7F]+/g, " ").trim();
+  return `"${clean.replace(/"/g, "'")}"`;
 }
 
 function locationText(loc: NonNullable<IcsEvent["location"]>): string {
@@ -213,11 +220,18 @@ function eventLines(ev: IcsEvent, opts: IcsOptions, stamp: string): string[] {
     .map((p) => p.property.icon)
     .filter(Boolean)
     .join(" ");
+  const featureNames = ev.features.map((f) => f.feature.name);
+  const summary =
+    (icons ? `${icons} ${ev.name}` : ev.name) +
+    (featureNames.length > 0 ? ` (${featureNames.join(", ")})` : "");
+  const legend = ev.properties
+    .filter((p) => p.property.icon && p.property.name)
+    .map((p) => `${p.property.icon} ${p.property.name}`);
   const lines = [
     "BEGIN:VEVENT",
     `UID:event-${ev.id}@club-calendar`,
     `DTSTAMP:${stamp}`,
-    `SUMMARY:${escapeText(icons ? `${icons} ${ev.name}` : ev.name)}`,
+    `SUMMARY:${escapeText(summary)}`,
   ];
   if (ev.isAllDay) {
     lines.push(`DTSTART;VALUE=DATE:${dateValue(start)}`);
@@ -241,13 +255,23 @@ function eventLines(ev: IcsEvent, opts: IcsOptions, stamp: string): string[] {
     ev.targetGroups.length > 0
       ? `${opts.labels.targetGroups}: ${ev.targetGroups.map((g) => g.targetGroup.name).join(", ")}`
       : null,
+    legend.length > 0 ? `Besonderheiten:\n${legend.join("\n")}` : null,
   ].filter(Boolean);
   if (description.length > 0) lines.push(`DESCRIPTION:${escapeText(description.join("\n"))}`);
   if (ev.location) {
     const text = locationText(ev.location);
     if (text) lines.push(`LOCATION:${escapeText(text)}`);
-    if (ev.location.latitude != null && ev.location.longitude != null)
-      lines.push(`GEO:${ev.location.latitude};${ev.location.longitude}`);
+    const { latitude, longitude } = ev.location;
+    if (text && latitude != null && longitude != null) {
+      const lat = latitude.toFixed(6);
+      const lon = longitude.toFixed(6);
+      lines.push(`GEO:${lat};${lon}`);
+      // Same as the feed: Apple Calendar shows a map for this property
+      const title = ev.location.name || ev.location.street || text;
+      lines.push(
+        `X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-ADDRESS=${quoted(text)};X-APPLE-RADIUS=100;X-TITLE=${quoted(title)}:geo:${lat},${lon}`,
+      );
+    }
   }
   lines.push(`STATUS:${ev.isDraft ? "TENTATIVE" : "CONFIRMED"}`);
   lines.push("END:VEVENT");
