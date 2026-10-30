@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Service\Map\CachingGeocoderDecorator;
-use App\Service\Map\GeocodedAddress;
-use App\Service\Map\GeocoderInterface;
-use App\Service\Map\SuggestionResult;
+use App\Tests\Helper\FakeGeocoder;
+use Geocoder\Provider\Provider;
+use Geocoder\Query\GeocodeQuery;
+use Geocoder\Query\ReverseQuery;
 use PHPUnit\Framework\TestCase;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -29,52 +30,62 @@ class CachingGeocoderDecoratorTest extends TestCase
         return $cache;
     }
 
-    public function testSuggestCallsInnerOnCacheMiss(): void
+    public function testGeocodeCallsInnerOnCacheMiss(): void
     {
-        $suggestion = new SuggestionResult('München', 48.1, 11.5);
-        $inner = $this->createMock(GeocoderInterface::class);
-        $inner->expects($this->once())->method('suggest')->willReturn([$suggestion]);
+        $inner = $this->createMock(Provider::class);
+        $inner->expects($this->once())->method('geocodeQuery')
+            ->willReturn(FakeGeocoder::collection(['latitude' => 48.1, 'longitude' => 11.5, 'locality' => 'München']));
 
-        $result = new CachingGeocoderDecorator($inner, $this->makeCache())->suggest('München');
+        $result = new CachingGeocoderDecorator($inner, $this->makeCache())->geocodeQuery(GeocodeQuery::create('München'));
 
         $this->assertCount(1, $result);
-        $this->assertSame('München', $result[0]->label);
+        $this->assertSame('München', $result->first()->getLocality());
     }
 
-    public function testSuggestReturnsCachedResultWithoutCallingInner(): void
+    public function testGeocodeReturnsCachedResultWithoutCallingInner(): void
     {
-        $suggestion = new SuggestionResult('München', 48.1, 11.5);
-        $inner = $this->createMock(GeocoderInterface::class);
-        $inner->expects($this->once())->method('suggest')->willReturn([$suggestion]);
+        $inner = $this->createMock(Provider::class);
+        $inner->expects($this->once())->method('geocodeQuery')
+            ->willReturn(FakeGeocoder::collection(['locality' => 'München']));
 
         $decorator = new CachingGeocoderDecorator($inner, $this->makeCache());
-        $decorator->suggest('München');
-        $result = $decorator->suggest('München');
+        $decorator->geocodeQuery(GeocodeQuery::create('München'));
+        $result = $decorator->geocodeQuery(GeocodeQuery::create('München'));
 
         $this->assertCount(1, $result);
+    }
+
+    public function testGeocodeLimitIsPartOfTheKey(): void
+    {
+        $inner = $this->createMock(Provider::class);
+        $inner->expects($this->exactly(2))->method('geocodeQuery')->willReturn(FakeGeocoder::collection());
+
+        $decorator = new CachingGeocoderDecorator($inner, $this->makeCache());
+        $decorator->geocodeQuery(GeocodeQuery::create('München')->withLimit(3));
+        $decorator->geocodeQuery(GeocodeQuery::create('München')->withLimit(6));
     }
 
     public function testReverseCallsInnerOnCacheMiss(): void
     {
-        $address = new GeocodedAddress('Marienplatz', 'Marienplatz', '80331', 'München', 'Germany');
-        $inner = $this->createMock(GeocoderInterface::class);
-        $inner->expects($this->once())->method('reverse')->willReturn($address);
+        $inner = $this->createMock(Provider::class);
+        $inner->expects($this->once())->method('reverseQuery')
+            ->willReturn(FakeGeocoder::collection(['streetName' => 'Marienplatz']));
 
-        $result = new CachingGeocoderDecorator($inner, $this->makeCache())->reverse(11.575, 48.137);
+        $result = new CachingGeocoderDecorator($inner, $this->makeCache())->reverseQuery(ReverseQuery::fromCoordinates(48.137, 11.575));
 
-        $this->assertSame('Marienplatz', $result?->label);
+        $this->assertSame('Marienplatz', $result->first()->getStreetName());
     }
 
     public function testReverseReturnsCachedResultWithoutCallingInner(): void
     {
-        $address = new GeocodedAddress('Marienplatz', 'Marienplatz', '80331', 'München', 'Germany');
-        $inner = $this->createMock(GeocoderInterface::class);
-        $inner->expects($this->once())->method('reverse')->willReturn($address);
+        $inner = $this->createMock(Provider::class);
+        $inner->expects($this->once())->method('reverseQuery')
+            ->willReturn(FakeGeocoder::collection(['streetName' => 'Marienplatz']));
 
         $decorator = new CachingGeocoderDecorator($inner, $this->makeCache());
-        $decorator->reverse(11.575, 48.137);
-        $result = $decorator->reverse(11.575, 48.137);
+        $decorator->reverseQuery(ReverseQuery::fromCoordinates(48.137, 11.575));
+        $result = $decorator->reverseQuery(ReverseQuery::fromCoordinates(48.137, 11.575));
 
-        $this->assertSame('Marienplatz', $result?->label);
+        $this->assertSame('Marienplatz', $result->first()->getStreetName());
     }
 }

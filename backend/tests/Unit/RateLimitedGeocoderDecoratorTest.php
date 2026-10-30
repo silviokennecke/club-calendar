@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Exception\RateLimitExceededException;
-use App\Service\Map\GeocoderInterface;
 use App\Service\Map\RateLimitedGeocoderDecorator;
 use App\Service\Map\RequestUserContext;
+use App\Tests\Helper\FakeGeocoder;
+use Geocoder\Query\GeocodeQuery;
+use Geocoder\Query\ReverseQuery;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\RateLimiter\LimiterInterface;
 use Symfony\Component\RateLimiter\RateLimit;
@@ -29,9 +31,7 @@ class RateLimitedGeocoderDecoratorTest extends TestCase
 
     private function makeDecorator(bool $systemAccepted, bool $userAccepted): RateLimitedGeocoderDecorator
     {
-        $inner = $this->createStub(GeocoderInterface::class);
-        $inner->method('suggest')->willReturn([]);
-        $inner->method('reverse')->willReturn(null);
+        $inner = new FakeGeocoder();
         $userContext = $this->createStub(RequestUserContext::class);
         $userContext->method('getUserIdentifier')->willReturn('user-1');
 
@@ -45,31 +45,31 @@ class RateLimitedGeocoderDecoratorTest extends TestCase
 
     public function testSuggestPassesThroughWhenLimitersAccept(): void
     {
-        $result = $this->makeDecorator(true, true)->suggest('test');
-        $this->assertSame([], $result);
+        $result = $this->makeDecorator(true, true)->geocodeQuery(GeocodeQuery::create('test'));
+        $this->assertCount(0, $result);
     }
 
     public function testSuggestThrowsWhenSystemLimitExceeded(): void
     {
         $this->expectException(RateLimitExceededException::class);
-        $this->makeDecorator(false, true)->suggest('test');
+        $this->makeDecorator(false, true)->geocodeQuery(GeocodeQuery::create('test'));
     }
 
     public function testSuggestThrowsWhenUserLimitExceeded(): void
     {
         $this->expectException(RateLimitExceededException::class);
-        $this->makeDecorator(true, false)->suggest('test');
+        $this->makeDecorator(true, false)->geocodeQuery(GeocodeQuery::create('test'));
     }
 
     public function testReversePassesThroughWhenLimitersAccept(): void
     {
-        $result = $this->makeDecorator(true, true)->reverse(11.5, 48.1);
-        $this->assertNull($result);
+        $result = $this->makeDecorator(true, true)->reverseQuery(ReverseQuery::fromCoordinates(48.1, 11.5));
+        $this->assertCount(0, $result);
     }
 
     public function testReverseThrowsWhenSystemLimitExceeded(): void
     {
         $this->expectException(RateLimitExceededException::class);
-        $this->makeDecorator(false, true)->reverse(11.5, 48.1);
+        $this->makeDecorator(false, true)->reverseQuery(ReverseQuery::fromCoordinates(48.1, 11.5));
     }
 }

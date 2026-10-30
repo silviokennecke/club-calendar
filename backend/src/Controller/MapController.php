@@ -8,10 +8,13 @@ use App\Entity\Event;
 use App\Entity\Location;
 use App\Exception\ApiProblemException;
 use App\Exception\RateLimitExceededException;
-use App\Service\Map\GeocoderInterface;
 use App\Service\Map\MapAvailability;
 use App\Service\Map\MapImageProviderInterface;
 use Doctrine\ORM\EntityManagerInterface;
+use Geocoder\Location as GeocodedLocation;
+use Geocoder\Provider\Provider;
+use Geocoder\Query\GeocodeQuery;
+use Geocoder\Query\ReverseQuery;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -25,7 +28,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class MapController extends AbstractController
 {
     public function __construct(
-        private readonly GeocoderInterface $geocoder,
+        private readonly Provider $geocoder,
         private readonly MapImageProviderInterface $mapImageProvider,
         private readonly EntityManagerInterface $em,
         private readonly LoggerInterface $logger,
@@ -46,12 +49,10 @@ class MapController extends AbstractController
             return $this->json(['suggestions' => []]);
         }
 
-        $lat = $request->query->has('lat') ? (float) $request->query->get('lat') : null;
-        $lng = $request->query->has('lng') ? (float) $request->query->get('lng') : null;
         $limit = max(1, min(10, (int) $request->query->get('limit', 6)));
 
         try {
-            $results = $this->geocoder->suggest($query, $lat, $lng, $limit);
+            $results = $this->geocoder->geocodeQuery(GeocodeQuery::create($query)->withLimit($limit));
         } catch (RateLimitExceededException) {
             throw self::rateLimited();
         } catch (\Throwable $e) {
@@ -59,17 +60,21 @@ class MapController extends AbstractController
             throw new ServiceUnavailableHttpException(null, 'Geocoding service unavailable', $e);
         }
 
-        return $this->json([
-            'suggestions' => array_map(fn ($r) => [
-                'label' => $r->label,
-                'lat' => $r->lat,
-                'lng' => $r->lng,
-                'street' => $r->street,
-                'zip' => $r->zip,
-                'city' => $r->city,
-                'country' => $r->country,
-            ], $results),
-        ]);
+        $suggestions = [];
+        foreach ($results as $location) {
+            $coordinates = $location->getCoordinates();
+            if (null === $coordinates) {
+                continue;
+            }
+            $address = self::address($location);
+            $suggestions[] = [
+                'label' => $address['label'],
+                'lat' => $coordinates->getLatitude(),
+                'lng' => $coordinates->getLongitude(),
+            ] + $address;
+        }
+
+        return $this->json(['suggestions' => $suggestions]);
     }
 
     #[Route('/geocode/reverse', methods: ['GET'])]
@@ -81,7 +86,7 @@ class MapController extends AbstractController
         $lng = (float) $request->query->get('lng', 0);
 
         try {
-            $address = $this->geocoder->reverse($lng, $lat);
+            $results = $this->geocoder->reverseQuery(ReverseQuery::fromCoordinates($lat, $lng));
         } catch (RateLimitExceededException) {
             throw self::rateLimited();
         } catch (\Throwable $e) {
@@ -89,17 +94,11 @@ class MapController extends AbstractController
             throw new ServiceUnavailableHttpException(null, 'Geocoding service unavailable', $e);
         }
 
-        if (null === $address) {
+        if ($results->isEmpty()) {
             throw new NotFoundHttpException('No address found for the given coordinates');
         }
 
-        return $this->json([
-            'label' => $address->label,
-            'street' => $address->street,
-            'zip' => $address->zip,
-            'city' => $address->city,
-            'country' => $address->country,
-        ]);
+        return $this->json(self::address($results->first()));
     }
 
     #[Route('/image/location/{id}', methods: ['GET'])]
@@ -124,6 +123,22 @@ class MapController extends AbstractController
         }
 
         return $this->buildImageResponse($request, $location->getLongitude(), $location->getLatitude(), false);
+    }
+
+    /** @return array{label: string, street: ?string, zip: ?string, city: ?string, country: ?string} */
+    private static function address(GeocodedLocation $location): array
+    {
+        $name = $location->getStreetName();
+        $street = null === $name ? null : trim($name.' '.$location->getStreetNumber());
+        $zip = $location->getPostalCode();
+        $city = $location->getLocality();
+        $country = $location->getCountry()?->getName();
+        $label = implode(', ', array_filter(
+            [$street, trim(($zip ?? '').' '.($city ?? '')), $country],
+            static fn (?string $p): bool => null !== $p && '' !== $p,
+        ));
+
+        return ['label' => $label, 'street' => $street, 'zip' => $zip, 'city' => $city, 'country' => $country];
     }
 
     /** 429 `rate_limited` (RFC 7807) of the JSON routes (geocoding, Mapbox proxy); map images answer an empty 429. */

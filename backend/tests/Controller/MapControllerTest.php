@@ -8,6 +8,7 @@ use App\Exception\RateLimitExceededException;
 use App\Service\Map\MapAvailability;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
+use App\Tests\Helper\FakeGeocoder;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -40,25 +41,16 @@ class MapControllerTest extends WebTestCase
         ['user' => $user] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
         $auth = TestHelper::authHeader($user, $this->tokens);
 
-        $fakeGeocoder = new class implements \App\Service\Map\GeocoderInterface {
-            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
-            {
-                return [new \App\Service\Map\SuggestionResult('München Hbf', 48.14, 11.56, 'Bahnhofplatz', '80335', 'München', 'Germany')];
-            }
-
-            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress
-            {
-                return null;
-            }
-        };
-        static::getContainer()->set(\App\Service\Map\GeocoderInterface::class, $fakeGeocoder);
+        $fakeGeocoder = new FakeGeocoder(fn () => FakeGeocoder::collection(['latitude' => 48.14, 'longitude' => 11.56, 'streetName' => 'Bahnhofplatz', 'streetNumber' => '1', 'postalCode' => '80335', 'locality' => 'München', 'country' => 'Germany'], ['streetName' => 'ohne Position']));
+        static::getContainer()->set(\App\Service\Map\CachingGeocoderDecorator::class, $fakeGeocoder);
 
         $r = TestHelper::jsonRequest($this->client, 'GET', '/api/map/geocode/suggest?q=München+Hbf', [], $auth);
 
         $this->assertSame(200, $r['status']);
         $this->assertArrayHasKey('suggestions', $r['body']);
         $this->assertCount(1, $r['body']['suggestions']);
-        $this->assertSame('München Hbf', $r['body']['suggestions'][0]['label']);
+        $this->assertSame('Bahnhofplatz 1, 80335 München, Germany', $r['body']['suggestions'][0]['label']);
+        $this->assertSame('Bahnhofplatz 1', $r['body']['suggestions'][0]['street']);
         $this->assertSame(48.14, $r['body']['suggestions'][0]['lat']);
         $this->assertArrayNotHasKey('name', $r['body']['suggestions'][0]);
     }
@@ -85,23 +77,13 @@ class MapControllerTest extends WebTestCase
         ['user' => $user] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
         $auth = TestHelper::authHeader($user, $this->tokens);
 
-        $fakeGeocoder = new class implements \App\Service\Map\GeocoderInterface {
-            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
-            {
-                return [];
-            }
-
-            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress
-            {
-                return new \App\Service\Map\GeocodedAddress('Marienplatz, München', 'Marienplatz', '80331', 'München', 'Germany');
-            }
-        };
-        static::getContainer()->set(\App\Service\Map\GeocoderInterface::class, $fakeGeocoder);
+        $fakeGeocoder = new FakeGeocoder(reverse: fn () => FakeGeocoder::collection(['streetName' => 'Marienplatz', 'postalCode' => '80331', 'locality' => 'München', 'country' => 'Germany']));
+        static::getContainer()->set(\App\Service\Map\CachingGeocoderDecorator::class, $fakeGeocoder);
 
         $r = TestHelper::jsonRequest($this->client, 'GET', '/api/map/geocode/reverse?lat=48.137&lng=11.575', [], $auth);
 
         $this->assertSame(200, $r['status']);
-        $this->assertSame('Marienplatz, München', $r['body']['label']);
+        $this->assertSame('Marienplatz, 80331 München, Germany', $r['body']['label']);
         $this->assertSame('München', $r['body']['city']);
     }
 
@@ -110,18 +92,8 @@ class MapControllerTest extends WebTestCase
         ['user' => $user] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
         $auth = TestHelper::authHeader($user, $this->tokens);
 
-        $fakeGeocoder = new class implements \App\Service\Map\GeocoderInterface {
-            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
-            {
-                return [];
-            }
-
-            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress
-            {
-                return null;
-            }
-        };
-        static::getContainer()->set(\App\Service\Map\GeocoderInterface::class, $fakeGeocoder);
+        $fakeGeocoder = new FakeGeocoder();
+        static::getContainer()->set(\App\Service\Map\CachingGeocoderDecorator::class, $fakeGeocoder);
 
         $r = TestHelper::jsonRequest($this->client, 'GET', '/api/map/geocode/reverse?lat=0&lng=0', [], $auth);
         $this->assertSame(404, $r['status']);
@@ -265,17 +237,7 @@ class MapControllerTest extends WebTestCase
         ['user' => $user] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
         $auth = TestHelper::authHeader($user, $this->tokens);
 
-        static::getContainer()->set(\App\Service\Map\GeocoderInterface::class, new class implements \App\Service\Map\GeocoderInterface {
-            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
-            {
-                throw new RateLimitExceededException();
-            }
-
-            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress
-            {
-                return null;
-            }
-        });
+        static::getContainer()->set(\App\Service\Map\CachingGeocoderDecorator::class, new FakeGeocoder(fn () => throw new RateLimitExceededException()));
 
         $r = TestHelper::jsonRequest($this->client, 'GET', '/api/map/geocode/suggest?q=München', [], $auth);
         $this->assertSame(429, $r['status']);
@@ -286,17 +248,7 @@ class MapControllerTest extends WebTestCase
         ['user' => $user] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
         $auth = TestHelper::authHeader($user, $this->tokens);
 
-        static::getContainer()->set(\App\Service\Map\GeocoderInterface::class, new class implements \App\Service\Map\GeocoderInterface {
-            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
-            {
-                return [];
-            }
-
-            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress
-            {
-                throw new RateLimitExceededException();
-            }
-        });
+        static::getContainer()->set(\App\Service\Map\CachingGeocoderDecorator::class, new FakeGeocoder(reverse: fn () => throw new RateLimitExceededException()));
 
         $r = TestHelper::jsonRequest($this->client, 'GET', '/api/map/geocode/reverse?lat=48.137&lng=11.575', [], $auth);
         $this->assertSame(429, $r['status']);
@@ -333,24 +285,18 @@ class MapControllerTest extends WebTestCase
         $this->client->disableReboot();
         $this->em = static::getContainer()->get(EntityManagerInterface::class);
         static::getContainer()->set(MapAvailability::class, new MapAvailability(''));
-        $failing = new class implements \App\Service\Map\MapImageProviderInterface, \App\Service\Map\GeocoderInterface {
+        $failing = new class implements \App\Service\Map\MapImageProviderInterface {
             public function getImage(float $lng, float $lat, int $zoom, int $width, int $height): string
             {
                 throw new \LogicException('map provider must not be called without a token');
             }
-
-            public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
-            {
-                throw new \LogicException('geocoder must not be called without a token');
-            }
-
-            public function reverse(float $lng, float $lat): ?\App\Service\Map\GeocodedAddress
-            {
-                throw new \LogicException('geocoder must not be called without a token');
-            }
         };
+        $failingGeocoder = new FakeGeocoder(
+            fn () => throw new \LogicException('geocoder must not be called without a token'),
+            fn () => throw new \LogicException('geocoder must not be called without a token'),
+        );
         static::getContainer()->set(\App\Service\Map\MapImageProviderInterface::class, $failing);
-        static::getContainer()->set(\App\Service\Map\GeocoderInterface::class, $failing);
+        static::getContainer()->set(\App\Service\Map\CachingGeocoderDecorator::class, $failingGeocoder);
     }
 
     private function assertPlaceholderImage(): void

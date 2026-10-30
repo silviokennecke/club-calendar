@@ -5,30 +5,39 @@ declare(strict_types=1);
 namespace App\Service\Map;
 
 use App\Exception\RateLimitExceededException;
+use Geocoder\Collection;
+use Geocoder\Provider\Provider;
+use Geocoder\Query\GeocodeQuery;
+use Geocoder\Query\ReverseQuery;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
-readonly class RateLimitedGeocoderDecorator implements GeocoderInterface
+readonly class RateLimitedGeocoderDecorator implements Provider
 {
     public function __construct(
-        private GeocoderInterface $inner,
+        private Provider $inner,
         private RateLimiterFactoryInterface $geocoderSystemLimiter,
         private RateLimiterFactoryInterface $geocoderUserLimiter,
         private RequestUserContext $userContext,
     ) {
     }
 
-    public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
+    public function geocodeQuery(GeocodeQuery $query): Collection
     {
         $this->consume();
 
-        return $this->inner->suggest($query, $proximityLat, $proximityLng, $limit);
+        return $this->inner->geocodeQuery($query);
     }
 
-    public function reverse(float $lng, float $lat): ?GeocodedAddress
+    public function reverseQuery(ReverseQuery $query): Collection
     {
         $this->consume();
 
-        return $this->inner->reverse($lng, $lat);
+        return $this->inner->reverseQuery($query);
+    }
+
+    public function getName(): string
+    {
+        return $this->inner->getName();
     }
 
     private function consume(): void

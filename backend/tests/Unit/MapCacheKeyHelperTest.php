@@ -11,29 +11,29 @@ class MapCacheKeyHelperTest extends TestCase
 {
     public function testForGeocoderSuggestReturnsSha256(): void
     {
-        $key = MapCacheKeyHelper::forGeocoderSuggest('München', 48.1, 11.5, 6);
+        $key = MapCacheKeyHelper::forGeocoderSuggest('München', 6);
         $this->assertSame(64, strlen($key));
         $this->assertMatchesRegularExpression('/^[a-f0-9]+$/', $key);
     }
 
     public function testForGeocoderSuggestDiffersOnQuery(): void
     {
-        $a = MapCacheKeyHelper::forGeocoderSuggest('Berlin', 48.1, 11.5, 6);
-        $b = MapCacheKeyHelper::forGeocoderSuggest('München', 48.1, 11.5, 6);
+        $a = MapCacheKeyHelper::forGeocoderSuggest('Berlin', 6);
+        $b = MapCacheKeyHelper::forGeocoderSuggest('München', 6);
         $this->assertNotSame($a, $b);
     }
 
     public function testForGeocoderSuggestDiffersOnLimit(): void
     {
-        $a = MapCacheKeyHelper::forGeocoderSuggest('München', 48.1, 11.5, 6);
-        $b = MapCacheKeyHelper::forGeocoderSuggest('München', 48.1, 11.5, 10);
+        $a = MapCacheKeyHelper::forGeocoderSuggest('München', 6);
+        $b = MapCacheKeyHelper::forGeocoderSuggest('München', 10);
         $this->assertNotSame($a, $b);
     }
 
     public function testForGeocoderSuggestIsDeterministic(): void
     {
-        $a = MapCacheKeyHelper::forGeocoderSuggest('München', 48.1, 11.5, 6);
-        $b = MapCacheKeyHelper::forGeocoderSuggest('München', 48.1, 11.5, 6);
+        $a = MapCacheKeyHelper::forGeocoderSuggest('München', 6);
+        $b = MapCacheKeyHelper::forGeocoderSuggest('München', 6);
         $this->assertSame($a, $b);
     }
 
