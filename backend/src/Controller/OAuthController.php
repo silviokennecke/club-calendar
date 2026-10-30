@@ -132,7 +132,7 @@ class OAuthController extends AbstractController
             'uid' => $claims['uid'],
             'tv' => $claims['tv'],
         ], self::STATE_TTL);
-        $response = $client->redirect([], ['state' => $state]);
+        $response = $client->redirect([], $this->authorizeOptions($provider, $state));
         $response->headers->setCookie($this->stateCookie($nonce, self::STATE_TTL));
 
         return $response;
@@ -184,7 +184,7 @@ class OAuthController extends AbstractController
 
         $nonce = SignedTokenService::b64(random_bytes(32));
         $state = $this->signedTokens->issue(self::STATE_PURPOSE, ['n' => $nonce, 'prov' => $provider], self::STATE_TTL);
-        $response = $client->redirect([], ['state' => $state]);
+        $response = $client->redirect([], $this->authorizeOptions($provider, $state));
         $response->headers->setCookie($this->stateCookie($nonce, self::STATE_TTL));
 
         return $response;
@@ -366,6 +366,13 @@ class OAuthController extends AbstractController
         $response->headers->setCookie($this->stateCookie('', -1));
 
         return $response;
+    }
+
+    /** @return array<string, string> */
+    private function authorizeOptions(string $provider, string $state): array
+    {
+        // Apple refuses the name/email scopes without form_post; the callback then arrives as a cross-site POST.
+        return 'apple' === $provider ? ['state' => $state, 'response_mode' => 'form_post'] : ['state' => $state];
     }
 
     private function stateCookie(string $value, int $ttl): Cookie

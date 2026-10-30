@@ -135,6 +135,33 @@ class OAuthTest extends WebTestCase
 
     // --- state / CSRF ---
 
+    public function testAppleAuthorizeRequestUsesFormPostOthersDoNot(): void
+    {
+        foreach (['apple' => true, 'google' => false, 'microsoft' => false] as $provider => $formPost) {
+            self::$client->request('GET', self::API."/api/auth/oauth/$provider");
+            parse_str((string) parse_url((string) self::$client->getResponse()->headers->get('Location'), \PHP_URL_QUERY), $query);
+            $this->assertSame($formPost ? 'form_post' : null, $query['response_mode'] ?? null, $provider);
+        }
+    }
+
+    public function testAppleFormPostCallbackSignsIn(): void
+    {
+        $state = $this->start('apple');
+        self::$providers['apple']->claims = ['sub' => 'apple-9', 'email' => 'post@example.com', 'email_verified' => 'true'];
+        self::$client->request('POST', self::API.'/api/auth/oauth/apple/callback', ['code' => 'c', 'state' => $state]);
+        $response = self::$client->getResponse();
+        $this->assertSame(302, $response->getStatusCode());
+        $location = (string) $response->headers->get('Location');
+        $this->assertStringStartsWith(self::$frontendUrl.'/auth/callback?code=', $location);
+    }
+
+    public function testAppleFormPostCallbackRejectsForeignState(): void
+    {
+        $this->start('apple');
+        self::$client->request('POST', self::API.'/api/auth/oauth/apple/callback', ['code' => 'c', 'state' => 'forged']);
+        $this->assertStringContainsString('error=invalid_state', (string) self::$client->getResponse()->headers->get('Location'));
+    }
+
     public function testStartIssuesStateAndBindsItToTheBrowser(): void
     {
         $state = $this->start('google');
