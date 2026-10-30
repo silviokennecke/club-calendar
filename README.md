@@ -130,6 +130,11 @@ GET /api/feed/:feedId/ics
 GET /api/feed/:feedId/ics?secret=<token>   # private feeds
 ```
 
+## AI-Generated Content
+
+Large parts of the code in this repository were generated with AI assistance.
+Although code is mostly reviewed by a human the code might contain unexpected behavior, bugs or inconsistencies.
+
 ## Further Reading
 
 See `CLAUDE.md`, `backend/AGENTS.md` and `frontend/AGENTS.md` for architecture notes and project conventions.
