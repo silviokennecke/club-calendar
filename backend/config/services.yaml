@@ -104,22 +104,19 @@ services:
             $provider: '@bazinga_geocoder.provider.mapbox'
             $locale: 'de'
 
-    App\Service\Map\BazingaGeocoderAdapter:
-        arguments:
-            $geocoder: '@geocoder.mapbox_de'
-
     App\Service\Map\MapboxMapImageProvider:
         arguments:
             $mapboxToken: '%env(MAPBOX_TOKEN)%'
 
     App\Service\Map\CachingGeocoderDecorator:
+        public: true
         arguments:
             $inner: '@App\Service\Map\RateLimitedGeocoderDecorator'
             $geocoderResponsesCache: '@geocoder_responses'
 
     App\Service\Map\RateLimitedGeocoderDecorator:
         arguments:
-            $inner: '@App\Service\Map\BazingaGeocoderAdapter'
+            $inner: '@geocoder.mapbox_de'
 
     App\Service\Map\CachingMapImageProvider:
         arguments:
@@ -145,17 +142,10 @@ services:
 
     App\Controller\MapController:
         arguments:
+            $geocoder: '@App\Service\Map\CachingGeocoderDecorator'
             $imageZoom: '%map.image.zoom%'
             $imageWidth: '%map.image.width%'
             $imageHeight: '%map.image.height%'
-
-    GeocoderInterface:
-        alias: App\Service\Map\CachingGeocoderDecorator
-        public: true
-
-    App\Service\Map\GeocoderInterface:
-        alias: App\Service\Map\CachingGeocoderDecorator
-        public: true
 
     MapImageProviderInterface:
         alias: App\Service\Map\CachingMapImageProvider

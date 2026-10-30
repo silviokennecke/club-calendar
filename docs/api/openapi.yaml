@@ -3663,8 +3663,6 @@ paths:
       operationId: geocodeSuggest
       parameters:
         - { name: q, in: query, schema: { type: string }, description: 'Search text: a street address (no places or POIs); empty → no suggestions.' }
-        - { name: lat, in: query, schema: { type: number }, description: 'Accepted for compatibility; currently has no effect on the result order.' }
-        - { name: lng, in: query, schema: { type: number } }
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 10, default: 6 } }
       responses:
         '200':

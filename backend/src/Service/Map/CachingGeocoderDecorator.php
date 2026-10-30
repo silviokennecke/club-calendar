@@ -4,32 +4,38 @@ declare(strict_types=1);
 
 namespace App\Service\Map;
 
+use Geocoder\Collection;
+use Geocoder\Provider\Provider;
+use Geocoder\Query\GeocodeQuery;
+use Geocoder\Query\ReverseQuery;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
-readonly class CachingGeocoderDecorator implements GeocoderInterface
+readonly class CachingGeocoderDecorator implements Provider
 {
     public function __construct(
-        private GeocoderInterface $inner,
+        private Provider $inner,
         private CacheInterface $geocoderResponsesCache,
     ) {
     }
 
-    public function suggest(string $query, ?float $proximityLat = null, ?float $proximityLng = null, int $limit = 6): array
+    public function geocodeQuery(GeocodeQuery $query): Collection
     {
-        $key = MapCacheKeyHelper::forGeocoderSuggest($query, $proximityLat, $proximityLng, $limit);
+        $key = MapCacheKeyHelper::forGeocoderSuggest($query->getText(), $query->getLimit());
 
-        return $this->geocoderResponsesCache->get($key, function (ItemInterface $item) use ($query, $proximityLat, $proximityLng, $limit): array {
-            return $this->inner->suggest($query, $proximityLat, $proximityLng, $limit);
-        });
+        return $this->geocoderResponsesCache->get($key, fn (ItemInterface $item): Collection => $this->inner->geocodeQuery($query));
     }
 
-    public function reverse(float $lng, float $lat): ?GeocodedAddress
+    public function reverseQuery(ReverseQuery $query): Collection
     {
-        $key = MapCacheKeyHelper::forGeocoderReverse($lng, $lat);
+        $coordinates = $query->getCoordinates();
+        $key = MapCacheKeyHelper::forGeocoderReverse($coordinates->getLongitude(), $coordinates->getLatitude());
 
-        return $this->geocoderResponsesCache->get($key, function (ItemInterface $item) use ($lng, $lat): ?GeocodedAddress {
-            return $this->inner->reverse($lng, $lat);
-        });
+        return $this->geocoderResponsesCache->get($key, fn (ItemInterface $item): Collection => $this->inner->reverseQuery($query));
+    }
+
+    public function getName(): string
+    {
+        return $this->inner->getName();
     }
 }

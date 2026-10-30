@@ -6,9 +6,9 @@ namespace App\Service\Map;
 
 class MapCacheKeyHelper
 {
-    public static function forGeocoderSuggest(string $query, ?float $lat, ?float $lng, int $limit): string
+    public static function forGeocoderSuggest(string $query, int $limit): string
     {
-        return hash('sha256', "suggest:v3:$query:$lat:$lng:$limit");
+        return hash('sha256', "suggest:v4:$query:$limit");
     }
 
     public static function forGeocoderReverse(float $lng, float $lat): string
