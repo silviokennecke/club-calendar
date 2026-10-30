@@ -55,7 +55,7 @@ class FeedRateLimitTest extends WebTestCase
         $c = $this->client(3, 1000);
         $this->assertSame(404, $this->get($c, '/api/feed/a/ics')[0]);
         $this->assertSame(404, $this->get($c, '/api/feed/b/events')[0]);
-        $this->assertSame(404, $this->get($c, '/api/feed/c/events/e1')[0]);
+        $this->assertSame(404, $this->get($c, '/api/feed/c/events/e1/ics')[0]);
 
         [$status, $retry, $code] = $this->get($c, '/api/feed/d/ics');
         $this->assertSame(429, $status);

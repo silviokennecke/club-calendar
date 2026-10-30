@@ -37,7 +37,7 @@ final class EventFactory extends BaseEventFactory
                 new AppleLocationGeoValue($location->getGeographicPosition()),
                 [
                     new Parameter('VALUE', new TextValue('URI')),
-                    new Parameter('X-ADDRESS', new QuotedParameterValue((string) $location)),
+                    new Parameter('X-ADDRESS', new QuotedParameterValue(str_replace("\n", '\\n', (string) $location))),
                     new Parameter('X-APPLE-RADIUS', new IntegerValue(100)),
                     new Parameter('X-TITLE', new QuotedParameterValue($location->getTitle())),
                 ],

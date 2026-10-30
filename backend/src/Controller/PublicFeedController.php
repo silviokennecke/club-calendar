@@ -46,6 +46,20 @@ class PublicFeedController extends AbstractController
         return new JsonResponse($this->feedService->getFeedEvent($feedId, $eventId, $this->queryString($request, 'secret')));
     }
 
+    #[Route('/{feedId}/events/{eventId}/ics', methods: ['GET'])]
+    public function eventIcs(string $feedId, string $eventId, Request $request): Response
+    {
+        $this->rateLimiter->assertFeedAllowed($request, $feedId);
+        [$filename, $pieces] = $this->feedService->streamFeedEventIcs($feedId, $eventId, $this->queryString($request, 'secret'));
+
+        $response = new StreamedResponse($this->feedService->icsOutput($pieces));
+        $response->headers->set('Content-Type', 'text/calendar; charset=utf-8');
+        $response->headers->set('Content-Disposition', "attachment; filename=\"$filename\"");
+        $response->headers->set('Cache-Control', 'private, no-store');
+
+        return $response;
+    }
+
     /** A scalar query parameter (an array such as ?from[]= is a 400 from InputBag). */
     private function queryString(Request $request, string $key): ?string
     {

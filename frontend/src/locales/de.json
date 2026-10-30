@@ -294,6 +294,7 @@
       "note": "Notiz",
       "addToCalendar": "Zum Kalender hinzufügen",
       "addToCalendarHint": "Lädt eine ICS-Datei nur für diesen Termin.",
+      "downloadFailed": "Der Termin konnte nicht heruntergeladen werden. Bitte versuche es erneut.",
       "notFound": {
         "title": "Termin nicht gefunden",
         "text": "Diesen Termin gibt es nicht mehr oder er ist nicht veröffentlicht."

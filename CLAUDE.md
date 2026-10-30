@@ -270,9 +270,10 @@ GET /api/feed/:feedId/ics
 GET /api/feed/:feedId/ics?secret=<token>   # for private feeds
 GET /api/feed/:feedId/events[?from=YYYY-MM-DD&to=YYYY-MM-DD]   # web view: header (club, feed name, zone, visibility, eventCount), events and holidays of all selected calendars merged, holidays de-duplicated by uid
 GET /api/feed/:feedId/events/:eventId                          # one published event (secret checked first)
+GET /api/feed/:feedId/events/:eventId/ics                      # that event as a one-event ICS download ("Add to calendar"); same access rules
 ```
 
-Feed ICS contains events only (no holidays) and only a default window (env `FEED_ICS_WINDOW_ENABLED` default true, `FEED_ICS_PAST_DAYS` 180, `FEED_ICS_FUTURE_MONTHS` 24, overlap rule, days in the club zone; `FEED_ICS_MAX_EVENTS` default 0 = unlimited, otherwise the first N by date/time as protection, no error; invalid values fail; no query override; member export and web view unaffected).
+The one-event ICS (`PublicFeedService::streamFeedEventIcs`) goes through the same `IcsService::streamFeedIcs` with a single chunk, so its VEVENT/VTIMEZONE equals the feed's (no ETag, `no-store`); the frontend has no ICS writer. Feed ICS contains events only (no holidays) and only a default window (env `FEED_ICS_WINDOW_ENABLED` default true, `FEED_ICS_PAST_DAYS` 180, `FEED_ICS_FUTURE_MONTHS` 24, overlap rule, days in the club zone; `FEED_ICS_MAX_EVENTS` default 0 = unlimited, otherwise the first N by date/time as protection, no error; invalid values fail; no query override; member export and web view unaffected).
 
 **ICS event text:** `SUMMARY` = `<badge emojis joined by space> <name> (<extras, comma-separated>)` (emojis/parentheses omitted when empty); `DESCRIPTION` = note, `Zusatzangebote: …`, `Gruppen: …` and a legend `Besonderheiten:` with one `<emoji> <badge name>` line per used icon (German labels, as before). `IcsEvent::propertyNames` parallels `propertyIcons`.
 

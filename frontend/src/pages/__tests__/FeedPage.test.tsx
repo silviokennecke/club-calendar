@@ -533,15 +533,17 @@ describe("PublicEventModal", () => {
     expect(within(aud).getByText("Jugend")).toBeInTheDocument();
     expect(within(aud).getByText("Erwachsene")).toBeInTheDocument();
 
+    const base = respond;
+    respond = (u) =>
+      u.includes("/api/feed/f1/events/e3/ics")
+        ? new Response("BEGIN:VCALENDAR\r\nUID:event-e3@club-calendar\r\nEND:VCALENDAR\r\n", {
+            headers: { "Content-Type": "text/calendar" },
+          })
+        : base(u);
     await user.click(screen.getByRole("button", { name: "Zum Kalender hinzufügen" }));
-    expect(created).toHaveLength(1);
-    const text = await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.readAsText(created[0]);
-    });
+    await waitFor(() => expect(created).toHaveLength(1));
+    const text = await created[0].text();
     expect(text).toContain("UID:event-e3@club-calendar");
-    expect(text).toContain("SUMMARY:🌳 Herbstfest");
     click.mockRestore();
   });
 

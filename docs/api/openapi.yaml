@@ -3383,6 +3383,31 @@ paths:
         '404': { $ref: '#/components/responses/FeedNotFound' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
 
+  /api/feed/{feedId}/events/{eventId}/ics:
+    parameters:
+      - { $ref: '#/components/parameters/FeedId' }
+      - { name: eventId, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Public feed]
+      summary: ICS download of one published event of a feed
+      description: Same access and 404 rules as `/api/feed/{feedId}/events/{eventId}` (secret first). The VEVENT and VTIMEZONE are rendered exactly like in the feed ICS (summary, description, location, geo). No ETag; `Cache-Control` is `private, no-store`.
+      operationId: publicFeedEventIcs
+      security: [{}, { feedSecret: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/FeedSecret' }
+      responses:
+        '200':
+          description: 'iCalendar with one event (`Content-Disposition: attachment; filename="event-<name>.ics"`).'
+          headers:
+            Referrer-Policy: { $ref: '#/components/headers/ReferrerPolicy' }
+            X-Robots-Tag: { $ref: '#/components/headers/XRobotsTag' }
+          content:
+            text/calendar:
+              schema: { type: string }
+        '403': { $ref: '#/components/responses/FeedForbidden' }
+        '404': { $ref: '#/components/responses/FeedNotFound' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+
   /api/feed/{feedId}/ics:
     parameters:
       - { $ref: '#/components/parameters/FeedId' }

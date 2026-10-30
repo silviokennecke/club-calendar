@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { formatWeekdayDate } from "@/lib/events/format";
-import { buildEventIcs, downloadTextFile, icsFileName } from "@/lib/events/ics";
+import { downloadBlob, icsFileName } from "@/lib/events/ics";
 import { todayIn } from "@/lib/calendar";
 import {
+  fetchPublicEventIcs,
   mapLinkFor,
   publicFeedPath,
   type PublicFeedEvent,
@@ -18,7 +19,7 @@ import { useLocale } from "@/components/calendar/useLocale";
 import { ModalSkeleton } from "@/components/events/CreateGate";
 import { usePublicEvent, usePublicFeed } from "@/components/feed/usePublicFeed";
 import { usePublicHead } from "@/components/feed/usePublicHead";
-import { Button, Icon, Modal, Tag, buttonClass } from "@/components/ui/shared";
+import { Button, Icon, Modal, Tag, buttonClass, toast } from "@/components/ui/shared";
 
 /**
  * Static map image of a location from the backend (`/api/map/image/location/{id}`, fixed 800x288,
@@ -57,7 +58,7 @@ function PublicLocationImage({
  * Public event details (design: PublicEvent, PublicEventMobile) as a dialog above the public feed;
  * the URL /feed/:feedId/events/:eventId stays shareable (a direct call shows the feed below, at the
  * event's month). Date and time, place with map and text alternative, properties, features and
- * audiences, "Zum Kalender hinzufügen" (one-event ICS file made in the browser). The event comes from
+ * audiences, "Zum Kalender hinzufügen" (one-event ICS file from the backend). The event comes from
  * the single-event endpoint (the background feed loads its month on its own). A 404 there is an
  * unknown feed or an unknown event: a small feed request tells them apart. The router state keeps the
  * way back without the secret; the secret comes from the address.
@@ -156,19 +157,27 @@ export default function PublicEventModal() {
     );
   }
 
-  return <EventDetail event={event} feed={one.data.feed} onClose={nav.close} />;
+  return (
+    <EventDetail
+      event={event}
+      feed={one.data.feed}
+      feedId={feedId}
+      secret={secret}
+      onClose={nav.close}
+    />
+  );
 }
 
 interface EventDetailProps {
   event: PublicFeedEvent;
   feed: PublicFeedHeader;
+  feedId: string;
+  secret?: string;
   onClose: () => void;
 }
 
-function EventDetail({ event, feed, onClose }: EventDetailProps) {
+function EventDetail({ event, feed, feedId, secret, onClose }: EventDetailProps) {
   const audiences = feed.audiences;
-  // Effective zone of the event (the API sends event, else calendar, else club zone)
-  const zone = event.timezone ?? feed.timezone;
   const { t } = useTranslation();
   const locale = useLocale();
   const start = event.date.slice(0, 10);
@@ -192,16 +201,12 @@ function EventDetail({ event, feed, onClose }: EventDetailProps) {
   const mapHref = loc ? mapLinkFor(loc, address) : null;
   const icons = event.properties.filter((p) => p.property.icon);
 
-  function addToCalendar() {
-    const ics = buildEventIcs(event, {
-      name: feed.name,
-      timeZone: zone,
-      labels: {
-        features: t("events.export.ics.features"),
-        targetGroups: t("events.export.ics.targetGroups"),
-      },
-    });
-    downloadTextFile(ics, icsFileName(event.name));
+  async function addToCalendar() {
+    try {
+      downloadBlob(await fetchPublicEventIcs(feedId, event.id, secret), icsFileName(event.name));
+    } catch {
+      toast.error(t("feed.event.downloadFailed"));
+    }
   }
 
   return (

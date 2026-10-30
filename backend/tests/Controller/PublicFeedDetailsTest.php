@@ -342,4 +342,83 @@ class PublicFeedDetailsTest extends WebTestCase
         $this->assertSame(404, $this->get("$uri/{$forAdults->getId()}")['status']);
         $this->assertSame(404, $this->get("$uri/{$foreign->getId()}")['status']);
     }
+
+    // --- Single event ICS ---
+
+    /** @return array{int, string, \Symfony\Component\HttpFoundation\Response} */
+    private function icsGet(string $uri): array
+    {
+        self::$client->request('GET', $uri);
+        $r = self::$client->getResponse();
+        $body = $r instanceof \Symfony\Component\HttpFoundation\StreamedResponse
+            ? (string) self::$client->getInternalResponse()->getContent()
+            : (string) $r->getContent();
+
+        return [$r->getStatusCode(), $body, $r];
+    }
+
+    public function testSingleEventIcsOfPublicAndClubFeedsMatchesTheFeedOutput(): void
+    {
+        $cal = $this->calendar('Europe/Berlin');
+        $loc = TestHelper::createLocation(self::$em, $cal->getClub(), 'Schützenhaus');
+        $loc->setStreet('Hauptstr. 1')->setCity('Berlin')->setLatitude(52.52)->setLongitude(13.4);
+        $event = $this->event($cal, ['name' => 'Herbstfest']);
+        $event->setLocation($loc);
+        $this->event($cal, ['name' => 'Anderer Termin']);
+        self::$em->flush();
+
+        foreach ([FeedVisibility::PUBLIC, FeedVisibility::CLUB] as $visibility) {
+            $feed = TestHelper::createFeed(self::$em, $cal->getClub(), [$cal], $visibility, 'F', 'sec-'.$visibility->value);
+            [$status, $body, $r] = $this->icsGet("/api/feed/{$feed->getId()}/events/{$event->getId()}/ics");
+            $this->assertSame(200, $status);
+            $this->assertStringStartsWith('text/calendar; charset=utf-8', (string) $r->headers->get('Content-Type'));
+            $this->assertSame('attachment; filename="event-herbstfest.ics"', $r->headers->get('Content-Disposition'));
+            $this->assertSame(1, substr_count($body, 'BEGIN:VEVENT'));
+            $this->assertStringContainsString('SUMMARY:Herbstfest', $body);
+            $this->assertStringContainsString('X-APPLE-STRUCTURED-LOCATION', $body);
+            $unfolded = str_replace("\r\n ", '', $body);
+            $this->assertStringContainsString('LOCATION:Schützenhaus\\nHauptstr. 1\\, Berlin', $unfolded);
+            $this->assertStringContainsString('X-ADDRESS="Schützenhaus\\nHauptstr. 1, Berlin"', $unfolded);
+            $this->assertStringContainsString('BEGIN:VTIMEZONE', $body);
+            $this->assertStringContainsString('END:VCALENDAR', $body);
+
+            // The VEVENT block equals the one in the feed ICS
+            [, $feedIcs] = $this->icsGet("/api/feed/{$feed->getId()}/ics");
+            preg_match('/BEGIN:VEVENT.*?END:VEVENT\r\n/s', $body, $mine);
+            $this->assertStringContainsString($mine[0], $feedIcs);
+        }
+    }
+
+    public function testSingleEventIcsOfPrivateFeedNeedsTheSecret(): void
+    {
+        $cal = $this->calendar();
+        $feed = $this->feed($cal, FeedVisibility::PRIVATE);
+        $event = $this->event($cal);
+        $uri = "/api/feed/{$feed->getId()}/events/{$event->getId()}/ics";
+
+        $this->assertSame(403, $this->icsGet($uri)[0]);
+        $this->assertSame(403, $this->icsGet("$uri?secret=wrong")[0]);
+        [$status, $body, $r] = $this->icsGet("$uri?secret=".self::SECRET);
+        $this->assertSame(200, $status);
+        $this->assertStringContainsString('BEGIN:VEVENT', $body);
+        $this->assertStringContainsString('no-store', (string) $r->headers->get('Cache-Control'));
+        $this->assertSame('noindex', $r->headers->get('X-Robots-Tag'));
+    }
+
+    public function testSingleEventIcsDraftOtherFeedAndUnknownAre404(): void
+    {
+        $cal = $this->calendar();
+        $youth = $this->group($cal, 'Jugend');
+        $adults = $this->group($cal, 'Erwachsene');
+        $feed = $this->feed($cal, FeedVisibility::PUBLIC, $youth);
+        $draft = $this->event($cal, ['isDraft' => true, 'group' => $youth]);
+        $forAdults = $this->event($cal, ['group' => $adults]);
+        $foreign = $this->event($this->calendar());
+        $uri = "/api/feed/{$feed->getId()}/events";
+
+        foreach ([$draft->getId(), $forAdults->getId(), $foreign->getId(), 'unknown'] as $id) {
+            $this->assertSame(404, $this->icsGet("$uri/$id/ics")[0]);
+        }
+        $this->assertSame(404, $this->icsGet("/api/feed/unknown/events/{$foreign->getId()}/ics")[0]);
+    }
 }
