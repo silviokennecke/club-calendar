@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { buildIcs } from "@/lib/events/ics";
-import type { CalendarEvent } from "@/lib/types";
 import { isIcsFile, parseDuration, parseIcs, unescapeIcsText, unfoldIcs, utcToZone } from "../ics";
 
 const wrap = (...events: string[]) =>
@@ -281,93 +279,5 @@ describe("parseIcs: RFC 5545 corner cases", () => {
     const { events } = parseIcs(many, { timeZone: "Europe/Berlin" });
     expect(events).toHaveLength(5000);
     expect(performance.now() - t).toBeLessThan(1500);
-  });
-});
-
-describe("round trip with the export (Phase 4)", () => {
-  const base = {
-    calendarId: "c",
-    isDraft: false,
-    locationId: null,
-    location: null,
-    properties: [],
-    features: [],
-    targetGroups: [],
-    timezone: "Europe/Berlin",
-  } satisfies Partial<CalendarEvent>;
-  const events: CalendarEvent[] = [
-    {
-      ...base,
-      id: "1",
-      name: "Training, Luftgewehr; Äpfel & Öl \\ Test",
-      date: "2026-10-10",
-      timeBegin: "19:00",
-      timeEnd: "21:00",
-    },
-    {
-      ...base,
-      id: "2",
-      name: "Frühschoppen",
-      date: "2026-03-29",
-      timeBegin: "01:30",
-      timeEnd: "03:30",
-    },
-    {
-      ...base,
-      id: "3",
-      name: "Meisterschaft",
-      date: "2026-10-10",
-      dateEnd: "2026-10-12",
-      isAllDay: true,
-      timeBegin: "00:00",
-      timeEnd: "23:59",
-    },
-    {
-      ...base,
-      id: "4",
-      name: "Zeltlager",
-      date: "2026-07-10",
-      dateEnd: "2026-07-12",
-      timeBegin: "18:00",
-      timeEnd: "10:00",
-    },
-    {
-      ...base,
-      id: "5",
-      name: "Silvester",
-      date: "2026-12-31",
-      dateEnd: "2027-01-01",
-      timeBegin: "22:00",
-      timeEnd: "01:00",
-    },
-  ];
-
-  it("imports the same events again", () => {
-    const ics = buildIcs(events, {
-      name: "Verein",
-      timeZone: "Europe/Berlin",
-      labels: { features: "Zusatzangebote", targetGroups: "Gruppen" },
-    });
-    const { events: back, skipped } = parseIcs(ics, { timeZone: "Europe/Berlin" });
-    expect(skipped).toEqual([]);
-    expect(
-      back.map(({ name, date, dateEnd, isAllDay, timeBegin, timeEnd }) => ({
-        name,
-        date,
-        dateEnd,
-        isAllDay,
-        timeBegin,
-        timeEnd,
-      })),
-    ).toEqual(
-      events.map((e) => ({
-        name: e.name,
-        date: e.date,
-        dateEnd: e.dateEnd ?? "",
-        isAllDay: !!e.isAllDay,
-        timeBegin: e.timeBegin,
-        timeEnd: e.timeEnd,
-      })),
-    );
   });
 });

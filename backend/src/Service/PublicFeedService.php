@@ -240,6 +240,32 @@ class PublicFeedService
         );
     }
 
+    /**
+     * ICS of one published event of the feed, rendered exactly like the feed ICS. Access and 404 rules as
+     * getFeedEvent(); the event is read before streaming so a missing event stays a JSON problem.
+     *
+     * @return array{string, \Generator<int, string>} suggested file name and the pieces
+     */
+    public function streamFeedEventIcs(string $feedId, string $eventId, ?string $secret): array
+    {
+        $feed = $this->loadFeed($feedId, $secret);
+        $qb = $this->eventQuery($feed, null, null, null)
+            ->andWhere('e.id = :eventId')
+            ->setParameter('eventId', $eventId);
+        $events = [];
+        foreach ($this->icsReader->chunks($qb, 1) as $chunk) {
+            $events = $chunk;
+            break;
+        }
+        if ([] === $events) {
+            throw new NotFoundHttpException('Event not found');
+        }
+        $slug = trim((string) preg_replace('/[^a-z0-9]+/', '-', strtr(mb_strtolower($events[0]->name), ['ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue', 'ß' => 'ss'])), '-');
+        $filename = 'event-'.('' !== $slug ? substr($slug, 0, 60) : 'termin').'.ics';
+
+        return [$filename, $this->icsService->streamFeedIcs($feed->getClub(), [$events])];
+    }
+
     public function icsOutput(\Generator $pieces): \Closure
     {
         return $this->icsService->outputCallback($pieces);

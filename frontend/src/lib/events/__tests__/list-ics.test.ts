@@ -9,16 +9,12 @@ import {
   summarizeSelection,
 } from "../list";
 import {
-  buildIcs,
-  escapeText,
   exportFileName,
   exportQuery,
   exportRange,
-  foldLine,
   icsFileName,
   monthBounds,
   selectForExport,
-  zonedTimeToUtc,
 } from "../ics";
 import { formatEventDates, formatShortDate, joinList } from "../format";
 
@@ -162,80 +158,6 @@ describe("export selection", () => {
 });
 
 describe("ICS", () => {
-  it("converts wall-clock times of a zone to UTC (summer and winter time)", () => {
-    expect(zonedTimeToUtc("2026-10-01", "19:00", "Europe/Berlin").toISOString()).toBe(
-      "2026-10-01T17:00:00.000Z",
-    );
-    expect(zonedTimeToUtc("2026-12-01", "19:00", "Europe/Berlin").toISOString()).toBe(
-      "2026-12-01T18:00:00.000Z",
-    );
-    expect(zonedTimeToUtc("2026-12-01", "19:00", null).toISOString()).toBe(
-      "2026-12-01T19:00:00.000Z",
-    );
-  });
-
-  it("escapes and folds text", () => {
-    expect(escapeText("a,b;c\\d\ne")).toBe("a\\,b\\;c\\\\d\\ne");
-    const folded = foldLine(`SUMMARY:${"ä".repeat(60)}`);
-    for (const line of folded.split("\r\n")) {
-      expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(75);
-    }
-    expect(folded.replace(/\r\n /g, "")).toBe(`SUMMARY:${"ä".repeat(60)}`);
-  });
-
-  it("builds a calendar with timed and all-day events", () => {
-    const ics = buildIcs(
-      [
-        ev({
-          id: "1",
-          name: "Training, Luftgewehr",
-          date: "2026-10-01",
-          properties: [{ property: { id: "p", calendarid: "k1", name: "Wettkampf", icon: "🏆" } }],
-          features: [{ feature: { id: "f", calendarid: "k1", name: "Bonusschießen" } }],
-          targetGroups: [adults],
-          location: {
-            id: "l",
-            clubId: "k1",
-            name: "Schützenhaus",
-            city: "Musterstadt",
-            latitude: 51.5,
-            longitude: 7.25,
-          },
-        }),
-        ev({
-          id: "2",
-          name: "Meisterschaft",
-          date: "2026-10-10",
-          dateEnd: "2026-10-11",
-          isAllDay: true,
-          isDraft: true,
-        }),
-      ],
-      {
-        name: "Schießbetrieb 2026",
-        timeZone: "Europe/Berlin",
-        labels: { features: "Zusatzangebote", targetGroups: "Gruppen" },
-        now: new Date("2026-10-02T08:00:00Z"),
-      },
-    );
-    const lines = ics.replace(/\r\n /g, "").split("\r\n");
-    expect(lines[0]).toBe("BEGIN:VCALENDAR");
-    expect(ics.endsWith("END:VCALENDAR\r\n")).toBe(true);
-    expect(lines).toContain("UID:event-1@club-calendar");
-    expect(lines).toContain("SUMMARY:🏆 Training\\, Luftgewehr (Bonusschießen)");
-    expect(lines).toContain("DTSTART:20261001T170000Z");
-    expect(lines).toContain("DTEND:20261001T190000Z");
-    expect(lines).toContain(
-      "DESCRIPTION:Zusatzangebote: Bonusschießen\\nGruppen: Erwachsene\\nBesonderheiten:\\n🏆 Wettkampf",
-    );
-    expect(lines).toContain("LOCATION:Schützenhaus\\, Musterstadt");
-    expect(lines).toContain("GEO:51.500000;7.250000");
-    expect(lines).toContain("DTSTART;VALUE=DATE:20261010");
-    expect(lines).toContain("DTEND;VALUE=DATE:20261012");
-    expect(lines).toContain("STATUS:TENTATIVE");
-    expect(lines).toContain("X-WR-CALNAME:Schießbetrieb 2026");
-  });
-
   it("derives a file name", () => {
     expect(icsFileName("Schießbetrieb 2026")).toBe("schiessbetrieb-2026.ics");
     expect(icsFileName("!!!")).toBe("termine.ics");

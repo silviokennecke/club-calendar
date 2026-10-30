@@ -350,7 +350,7 @@ test.describe("Öffentlicher Kalender", () => {
     const path = await file.path();
     const text = (await import("node:fs")).readFileSync(path, "utf8");
     expect(text).toContain(`UID:event-${seed.herbstfestId}@club-calendar`);
-    expect(text).toContain("DTSTART:20261024T130000Z");
+    expect(text).toContain("DTSTART;TZID=Europe/Berlin:20261024T150000");
     expect(text.match(/BEGIN:VEVENT/g)).toHaveLength(1);
     // Schließen: Monat, Ansicht und Filter bleiben, Fokus zurück auf den Termin in der Liste
     await dialog.getByRole("button", { name: "Schließen" }).last().click();

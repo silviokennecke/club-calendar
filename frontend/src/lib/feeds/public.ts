@@ -144,6 +144,28 @@ export async function fetchPublicEvent(
   return { feed: { ...data.feed, audiences: data.feed?.audiences ?? [] }, event: data.event };
 }
 
+/** The one-event ICS file rendered by the backend (same output as the feed). */
+export async function fetchPublicEventIcs(
+  feedId: string,
+  eventId: string,
+  secret: string | undefined,
+): Promise<Blob> {
+  const url = new URL(
+    `${API_BASE.replace(/\/+$/, "")}/api/feed/${encodeURIComponent(feedId)}/events/${encodeURIComponent(eventId)}/ics`,
+  );
+  if (secret) url.searchParams.set("secret", secret);
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), { referrerPolicy: "no-referrer" });
+  } catch {
+    throw new PublicFeedError("error");
+  }
+  if (res.status === 403) throw new PublicFeedError("private");
+  if (res.status === 404) throw new PublicFeedError("notFound");
+  if (!res.ok) throw new PublicFeedError("error");
+  return res.blob();
+}
+
 export interface AudienceOption {
   id: string;
   name: string;

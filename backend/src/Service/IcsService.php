@@ -31,7 +31,7 @@ class IcsService
      * (fields, formatting, VTIMEZONE handling, library upgrade that alters the text), otherwise
      * clients keep getting 304 for the old format.
      */
-    public const FORMAT_VERSION = 2;
+    public const FORMAT_VERSION = 3;
 
     private const END = "END:VCALENDAR\r\n";
 
@@ -243,23 +243,30 @@ class IcsService
         return $icalEvent;
     }
 
+    /** "Name\nStreet, ZIP City, Country" (Apple's format); one line when a part is empty. */
     private function buildLocationStr(IcsLocation $loc): string
     {
-        $parts = [];
-        if ($loc->name) {
-            $parts[] = $loc->name;
+        $name = $this->oneLine($loc->name);
+        $address = [];
+        if ('' !== ($street = $this->oneLine($loc->street))) {
+            $address[] = $street;
         }
-        if ($loc->street) {
-            $parts[] = $loc->street;
+        $city = trim($this->oneLine($loc->zip).' '.$this->oneLine($loc->city));
+        if ('' !== $city) {
+            $address[] = $city;
         }
-        $city = array_filter([$loc->zip, $loc->city]);
-        if ($city) {
-            $parts[] = implode(' ', $city);
-        }
-        if ($loc->country) {
-            $parts[] = $loc->country;
+        if ('' !== ($country = $this->oneLine($loc->country))) {
+            $address[] = $country;
         }
 
-        return implode(', ', $parts);
+        return implode("\n", array_filter([$name, implode(', ', $address)], fn (string $p) => '' !== $p));
+    }
+
+    /** User text without line breaks or control characters: only our own separator newline remains. */
+    private function oneLine(?string $value): string
+    {
+        $clean = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string) $value) ?? preg_replace('/[\x00-\x1F\x7F]+/', ' ', (string) $value) ?? '';
+
+        return trim($clean);
     }
 }

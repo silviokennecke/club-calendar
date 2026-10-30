@@ -294,6 +294,7 @@
       "note": "Note",
       "addToCalendar": "Add to calendar",
       "addToCalendarHint": "Downloads an ICS file for this event only.",
+      "downloadFailed": "The event could not be downloaded. Please try again.",
       "notFound": {
         "title": "Event not found",
         "text": "This event no longer exists or is not published."
