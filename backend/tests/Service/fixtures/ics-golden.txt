@@ -18,11 +18,11 @@ DESCRIPTION:Zeile eins\nZeile zwei\, mit Komma\; und Semikolon\nLange Zeile
  esonderheiten:\n🎯 Tracht\n🎉 Fest
 DTSTART;TZID=America/New_York:20260310T180000
 DTEND;TZID=America/New_York:20260310T200000
-LOCATION:Schützenhaus\; "Süd": Halle\nHauptstr. 1\, Hinterhof\, 12345 Kö
- ln\, DE
+LOCATION:Schützenhaus\; "Süd": Halle\nHauptstr. 1\, Hinterhof\n12345 Köl
+ n\nDE
 GEO:50.937500;6.960300
 X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-ADDRESS="Schützenhaus; 'Süd': Hal
- le\nHauptstr. 1, Hinterhof, 12345 Köln, DE";X-APPLE-RADIUS=100;X-TITLE="S
+ le\nHauptstr. 1, Hinterhof\n12345 Köln\nDE";X-APPLE-RADIUS=100;X-TITLE="S
  chützenhaus; 'Süd': Halle":geo:50.937500,6.960300
 END:VEVENT
 BEGIN:VEVENT
@@ -160,11 +160,11 @@ DESCRIPTION:Zeile eins\nZeile zwei\, mit Komma\; und Semikolon\nLange Zeile
  esonderheiten:\n🎯 Tracht\n🎉 Fest
 DTSTART;TZID=America/New_York:20260310T180000
 DTEND;TZID=America/New_York:20260310T200000
-LOCATION:Schützenhaus\; "Süd": Halle\nHauptstr. 1\, Hinterhof\, 12345 Kö
- ln\, DE
+LOCATION:Schützenhaus\; "Süd": Halle\nHauptstr. 1\, Hinterhof\n12345 Köl
+ n\nDE
 GEO:50.937500;6.960300
 X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-ADDRESS="Schützenhaus; 'Süd': Hal
- le\nHauptstr. 1, Hinterhof, 12345 Köln, DE";X-APPLE-RADIUS=100;X-TITLE="S
+ le\nHauptstr. 1, Hinterhof\n12345 Köln\nDE";X-APPLE-RADIUS=100;X-TITLE="S
  chützenhaus; 'Süd': Halle":geo:50.937500,6.960300
 END:VEVENT
 BEGIN:VEVENT
@@ -302,11 +302,11 @@ DESCRIPTION:Zeile eins\nZeile zwei\, mit Komma\; und Semikolon\nLange Zeile
  esonderheiten:\n🎯 Tracht\n🎉 Fest
 DTSTART;TZID=America/New_York:20260310T180000
 DTEND;TZID=America/New_York:20260310T200000
-LOCATION:Schützenhaus\; "Süd": Halle\nHauptstr. 1\, Hinterhof\, 12345 Kö
- ln\, DE
+LOCATION:Schützenhaus\; "Süd": Halle\nHauptstr. 1\, Hinterhof\n12345 Köl
+ n\nDE
 GEO:50.937500;6.960300
 X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-ADDRESS="Schützenhaus; 'Süd': Hal
- le\nHauptstr. 1, Hinterhof, 12345 Köln, DE";X-APPLE-RADIUS=100;X-TITLE="S
+ le\nHauptstr. 1, Hinterhof\n12345 Köln\nDE";X-APPLE-RADIUS=100;X-TITLE="S
  chützenhaus; 'Süd': Halle":geo:50.937500,6.960300
 END:VEVENT
 BEGIN:VEVENT
@@ -372,11 +372,11 @@ DESCRIPTION:geheim\nZusatzangebote: Bonusschießen\nGruppen: Erwachsene\nBe
  sonderheiten:\n🎯 Tracht
 DTSTART;TZID=America/New_York:20260325T180000
 DTEND;TZID=America/New_York:20260325T200000
-LOCATION:Schützenhaus\; "Süd": Halle\nHauptstr. 1\, Hinterhof\, 12345 Kö
- ln\, DE
+LOCATION:Schützenhaus\; "Süd": Halle\nHauptstr. 1\, Hinterhof\n12345 Köl
+ n\nDE
 GEO:50.937500;6.960300
 X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-ADDRESS="Schützenhaus; 'Süd': Hal
- le\nHauptstr. 1, Hinterhof, 12345 Köln, DE";X-APPLE-RADIUS=100;X-TITLE="S
+ le\nHauptstr. 1, Hinterhof\n12345 Köln\nDE";X-APPLE-RADIUS=100;X-TITLE="S
  chützenhaus; 'Süd': Halle":geo:50.937500,6.960300
 STATUS:TENTATIVE
 END:VEVENT

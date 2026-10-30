@@ -31,7 +31,7 @@ class IcsService
      * (fields, formatting, VTIMEZONE handling, library upgrade that alters the text), otherwise
      * clients keep getting 304 for the old format.
      */
-    public const FORMAT_VERSION = 3;
+    public const FORMAT_VERSION = 4;
 
     private const END = "END:VCALENDAR\r\n";
 
@@ -243,23 +243,17 @@ class IcsService
         return $icalEvent;
     }
 
-    /** "Name\nStreet, ZIP City, Country" (Apple's format); one line when a part is empty. */
+    /** One part per line, as Apple writes it: "Name\nStreet\nZIP City\nCountry"; empty parts are skipped. */
     private function buildLocationStr(IcsLocation $loc): string
     {
-        $name = $this->oneLine($loc->name);
-        $address = [];
-        if ('' !== ($street = $this->oneLine($loc->street))) {
-            $address[] = $street;
-        }
-        $city = trim($this->oneLine($loc->zip).' '.$this->oneLine($loc->city));
-        if ('' !== $city) {
-            $address[] = $city;
-        }
-        if ('' !== ($country = $this->oneLine($loc->country))) {
-            $address[] = $country;
-        }
+        $parts = [
+            $this->oneLine($loc->name),
+            $this->oneLine($loc->street),
+            trim($this->oneLine($loc->zip).' '.$this->oneLine($loc->city)),
+            $this->oneLine($loc->country),
+        ];
 
-        return implode("\n", array_filter([$name, implode(', ', $address)], fn (string $p) => '' !== $p));
+        return implode("\n", array_filter($parts, fn (string $p) => '' !== $p));
     }
 
     /** User text without line breaks or control characters: only our own separator newline remains. */
