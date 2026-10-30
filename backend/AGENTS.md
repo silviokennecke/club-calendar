@@ -58,7 +58,7 @@ the router, so a new or changed route needs a matching operation there).
 | `src/Service/EmailVerificationService.php` | 6-digit e-mail confirmation codes (hashed, attempts and resend limits) |
 | `src/Service/RegistrationPolicy.php` | `RESTRICT_REGISTRATION` check (open club invitation required) |
 | `src/Pdf/` | PDF export: `PdfExportService` (view model + Twig `templates/pdf/`), `PdfHolidaySelection`/`PdfHolidays` (optional holiday shading), `DompdfFactory` (hardened), `EmojiImages` (allow-list), layout/option classes |
-| `src/Ics/IcsEventReader.php`, `src/Service/IcsService.php` | Array-row ICS read path and streamed ICS output; ICS output changes raise `IcsService::FORMAT_VERSION` |
+| `src/Ics/IcsEventReader.php`, `src/Service/IcsService.php` | Array-row ICS read path and streamed ICS output; ICS output changes raise `IcsService::FORMAT_VERSION`; event `SUMMARY` is `emojis name (extras)`, `DESCRIPTION` carries a badge legend (see `../CLAUDE.md` "ICS Feed Endpoint") |
 | `src/EventListener/FeedResponseHeadersListener.php` | `Referrer-Policy: no-referrer` + `X-Robots-Tag: noindex` on `/api/feed/*`, except successful responses of an indexable feed (`robotsTag()` reads the request attribute `feed_indexable` set by `PublicFeedService` after the access checks; missing → noindex) |
 | `src/Controller/AbstractApiController.php` | Base controller with `validateDto()` and `decodeJson()` helpers (no JSON object → 400 `invalid_request`) |
 | `src/Service/TokenService.php` | Creates JWT access tokens (lexik) and HMAC refresh tokens (claims `uid`, `tv` = `user.token_version`) |

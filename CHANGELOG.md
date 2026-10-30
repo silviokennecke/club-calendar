@@ -7,6 +7,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Changed
 
+- ICS export (feed and member download): the event title is now `emoji title (extras)`, and the description additionally explains the emojis used (`emoji badge name`).
 - Sign-in page: the Google, Microsoft and Apple buttons now follow the providers' brand guidelines (official logos, fixed brand colors with light and dark variants, fixed wording).
 
 ### Fixed
