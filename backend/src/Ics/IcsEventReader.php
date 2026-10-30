@@ -91,12 +91,14 @@ class IcsEventReader
     {
         $ids = array_column($rows, 'id');
         $icons = $this->names(EventProperty::class, 'ep', 'property', 'x.icon', $ids);
+        $propNames = $this->names(EventProperty::class, 'ep', 'property', 'x.name', $ids);
         $features = $this->names(EventFeature::class, 'ep', 'feature', 'x.name', $ids);
         $groups = $this->names(EventTargetGroup::class, 'ep', 'targetGroup', 'x.name', $ids);
 
         $events = [];
         foreach ($rows as $r) {
             $id = $r['id'];
+            [$propIcons, $propLabels] = $this->iconsWithNames($icons[$id] ?? [], $propNames[$id] ?? []);
             $events[] = new IcsEvent(
                 $id,
                 $r['name'],
@@ -118,13 +120,33 @@ class IcsEventReader
                     null === $r['latitude'] ? null : (float) $r['latitude'],
                     null === $r['longitude'] ? null : (float) $r['longitude'],
                 ),
-                array_values(array_filter($icons[$id] ?? [])),
+                $propIcons,
+                $propLabels,
                 $features[$id] ?? [],
                 $groups[$id] ?? [],
             );
         }
 
         return $events;
+    }
+
+    /**
+     * @param list<?string> $icons
+     * @param list<?string> $names same order as $icons
+     *
+     * @return array{list<string>, list<string>} icons and names of the properties that have an icon
+     */
+    private function iconsWithNames(array $icons, array $names): array
+    {
+        $outIcons = $outNames = [];
+        foreach ($icons as $i => $icon) {
+            if (null !== $icon && '' !== $icon) {
+                $outIcons[] = $icon;
+                $outNames[] = (string) ($names[$i] ?? '');
+            }
+        }
+
+        return [$outIcons, $outNames];
     }
 
     /**

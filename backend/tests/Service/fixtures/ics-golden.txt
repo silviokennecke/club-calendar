@@ -6,14 +6,16 @@ CALSCALE:GREGORIAN
 BEGIN:VEVENT
 UID:event-N1@club-calendar
 DTSTAMP:X
-SUMMARY:🎯 🎉 Training Ä/Ö/ü ß\, mit\; Sonderzeichen: \\ "x"
+SUMMARY:🎯 🎉 Training Ä/Ö/ü ß\, mit\; Sonderzeichen: \\ "x" (Bonus
+ schießen\, Grillen\, Bier)
 DESCRIPTION:Zeile eins\nZeile zwei\, mit Komma\; und Semikolon\nLange Zeile
   äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort 
  äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort ä
  öü Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort äö
  ü Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü
   Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort \nZusatz
- angebote: Bonusschießen\, Grillen\, Bier\nGruppen: Jugend\, Erwachsene
+ angebote: Bonusschießen\, Grillen\, Bier\nGruppen: Jugend\, Erwachsene\nB
+ esonderheiten:\n🎯 Tracht\n🎉 Fest
 DTSTART;TZID=America/New_York:20260310T180000
 DTEND;TZID=America/New_York:20260310T200000
 LOCATION:Schützenhaus\; "Süd": Halle\, Hauptstr. 1\, Hinterhof\, 12345 K
@@ -27,6 +29,7 @@ BEGIN:VEVENT
 UID:event-N2@club-calendar
 DTSTAMP:X
 SUMMARY:🎉 Zwei-Tages Lager
+DESCRIPTION:Besonderheiten:\n🎉 Fest
 DTSTART;TZID=Europe/London:20260312T180000
 DTEND;TZID=Europe/London:20260314T200000
 LOCATION:Vereinsheim
@@ -41,7 +44,7 @@ END:VEVENT
 BEGIN:VEVENT
 UID:event-N4@club-calendar
 DTSTAMP:X
-SUMMARY:Ganztägig mehrtägig
+SUMMARY:Ganztägig mehrtägig (Grillen\, Bier)
 DESCRIPTION:Zusatzangebote: Grillen\, Bier
 DTSTART;VALUE=DATE:20260316
 DTEND;VALUE=DATE:20260319
@@ -73,6 +76,7 @@ BEGIN:VEVENT
 UID:event-N8@club-calendar
 DTSTAMP:X
 SUMMARY:🎯 Über Mitternacht
+DESCRIPTION:Besonderheiten:\n🎯 Tracht
 DTSTART:20260322T220000Z
 DTEND:20260323T020000Z
 END:VEVENT
@@ -144,14 +148,16 @@ CALSCALE:GREGORIAN
 BEGIN:VEVENT
 UID:event-N1@club-calendar
 DTSTAMP:X
-SUMMARY:🎯 🎉 Training Ä/Ö/ü ß\, mit\; Sonderzeichen: \\ "x"
+SUMMARY:🎯 🎉 Training Ä/Ö/ü ß\, mit\; Sonderzeichen: \\ "x" (Bonus
+ schießen\, Grillen\, Bier)
 DESCRIPTION:Zeile eins\nZeile zwei\, mit Komma\; und Semikolon\nLange Zeile
   äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort 
  äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort ä
  öü Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort äö
  ü Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü
   Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort \nZusatz
- angebote: Bonusschießen\, Grillen\, Bier\nGruppen: Jugend\, Erwachsene
+ angebote: Bonusschießen\, Grillen\, Bier\nGruppen: Jugend\, Erwachsene\nB
+ esonderheiten:\n🎯 Tracht\n🎉 Fest
 DTSTART;TZID=America/New_York:20260310T180000
 DTEND;TZID=America/New_York:20260310T200000
 LOCATION:Schützenhaus\; "Süd": Halle\, Hauptstr. 1\, Hinterhof\, 12345 K
@@ -165,6 +171,7 @@ BEGIN:VEVENT
 UID:event-N2@club-calendar
 DTSTAMP:X
 SUMMARY:🎉 Zwei-Tages Lager
+DESCRIPTION:Besonderheiten:\n🎉 Fest
 DTSTART;TZID=Europe/London:20260312T180000
 DTEND;TZID=Europe/London:20260314T200000
 LOCATION:Vereinsheim
@@ -179,7 +186,7 @@ END:VEVENT
 BEGIN:VEVENT
 UID:event-N4@club-calendar
 DTSTAMP:X
-SUMMARY:Ganztägig mehrtägig
+SUMMARY:Ganztägig mehrtägig (Grillen\, Bier)
 DESCRIPTION:Zusatzangebote: Grillen\, Bier
 DTSTART;VALUE=DATE:20260316
 DTEND;VALUE=DATE:20260319
@@ -211,6 +218,7 @@ BEGIN:VEVENT
 UID:event-N8@club-calendar
 DTSTAMP:X
 SUMMARY:🎯 Über Mitternacht
+DESCRIPTION:Besonderheiten:\n🎯 Tracht
 DTSTART:20260322T220000Z
 DTEND:20260323T020000Z
 END:VEVENT
@@ -282,14 +290,16 @@ CALSCALE:GREGORIAN
 BEGIN:VEVENT
 UID:event-N1@club-calendar
 DTSTAMP:X
-SUMMARY:🎯 🎉 Training Ä/Ö/ü ß\, mit\; Sonderzeichen: \\ "x"
+SUMMARY:🎯 🎉 Training Ä/Ö/ü ß\, mit\; Sonderzeichen: \\ "x" (Bonus
+ schießen\, Grillen\, Bier)
 DESCRIPTION:Zeile eins\nZeile zwei\, mit Komma\; und Semikolon\nLange Zeile
   äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort 
  äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort ä
  öü Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort äö
  ü Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü
   Wort äöü Wort äöü Wort äöü Wort äöü Wort äöü Wort \nZusatz
- angebote: Bonusschießen\, Grillen\, Bier\nGruppen: Jugend\, Erwachsene
+ angebote: Bonusschießen\, Grillen\, Bier\nGruppen: Jugend\, Erwachsene\nB
+ esonderheiten:\n🎯 Tracht\n🎉 Fest
 DTSTART;TZID=America/New_York:20260310T180000
 DTEND;TZID=America/New_York:20260310T200000
 LOCATION:Schützenhaus\; "Süd": Halle\, Hauptstr. 1\, Hinterhof\, 12345 K
@@ -303,6 +313,7 @@ BEGIN:VEVENT
 UID:event-N2@club-calendar
 DTSTAMP:X
 SUMMARY:🎉 Zwei-Tages Lager
+DESCRIPTION:Besonderheiten:\n🎉 Fest
 DTSTART;TZID=Europe/London:20260312T180000
 DTEND;TZID=Europe/London:20260314T200000
 LOCATION:Vereinsheim
@@ -317,7 +328,7 @@ END:VEVENT
 BEGIN:VEVENT
 UID:event-N4@club-calendar
 DTSTAMP:X
-SUMMARY:Ganztägig mehrtägig
+SUMMARY:Ganztägig mehrtägig (Grillen\, Bier)
 DESCRIPTION:Zusatzangebote: Grillen\, Bier
 DTSTART;VALUE=DATE:20260316
 DTEND;VALUE=DATE:20260319
@@ -349,14 +360,16 @@ BEGIN:VEVENT
 UID:event-N8@club-calendar
 DTSTAMP:X
 SUMMARY:🎯 Über Mitternacht
+DESCRIPTION:Besonderheiten:\n🎯 Tracht
 DTSTART:20260322T220000Z
 DTEND:20260323T020000Z
 END:VEVENT
 BEGIN:VEVENT
 UID:event-N9@club-calendar
 DTSTAMP:X
-SUMMARY:🎯 Entwurf
-DESCRIPTION:geheim\nZusatzangebote: Bonusschießen\nGruppen: Erwachsene
+SUMMARY:🎯 Entwurf (Bonusschießen)
+DESCRIPTION:geheim\nZusatzangebote: Bonusschießen\nGruppen: Erwachsene\nBe
+ sonderheiten:\n🎯 Tracht
 DTSTART;TZID=America/New_York:20260325T180000
 DTEND;TZID=America/New_York:20260325T200000
 LOCATION:Schützenhaus\; "Süd": Halle\, Hauptstr. 1\, Hinterhof\, 12345 K

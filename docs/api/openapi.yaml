@@ -2665,7 +2665,7 @@ paths:
       summary: ICS download of a calendar's events (members)
       description: >-
         Built like the feeds (VTIMEZONE, property icons, Apple location); series events are single VEVENTs. Drafts
-        only with `includeDrafts` (as `STATUS:TENTATIVE`). The event `note` is the first lines of `DESCRIPTION`. Allowed for archived calendars.
+        only with `includeDrafts` (as `STATUS:TENTATIVE`). The event `note` is the first lines of `DESCRIPTION`. The `SUMMARY` is `<badge emojis> <name> (<extras>)` (emojis and parentheses omitted when there are none); `DESCRIPTION` holds the `note`, the extras, the audiences and a legend `<emoji> <badge name>` of the emojis used. Allowed for archived calendars.
       operationId: exportIcs
       parameters:
         - { name: from, in: query, description: Events ending on or after this day., schema: { type: string, format: date } }
@@ -3390,7 +3390,7 @@ paths:
       tags: [Public feed]
       summary: ICS subscription of a feed
       description: >-
-        Published events of all non-archived calendars of the feed. Holidays are never part of the ICS. The event `note` is the first lines of `DESCRIPTION`. Only a default time window is delivered: events overlapping `[today - FEED_ICS_PAST_DAYS days, today + FEED_ICS_FUTURE_MONTHS months]` (defaults 180 days / 24 months, days in the club's time zone); `FEED_ICS_WINDOW_ENABLED=false` delivers everything. `FEED_ICS_MAX_EVENTS` > 0 additionally caps the output to the first N events by date and start time (protection only, no error; default 0 = unlimited). Operator settings, no query parameter overrides them; the authenticated member export and the web view `/events` are unaffected.
+        Published events of all non-archived calendars of the feed. Holidays are never part of the ICS. The event `note` is the first lines of `DESCRIPTION`. The `SUMMARY` is `<badge emojis> <name> (<extras>)` (emojis and parentheses omitted when there are none); `DESCRIPTION` holds the `note`, the extras, the audiences and a legend `<emoji> <badge name>` of the emojis used. Only a default time window is delivered: events overlapping `[today - FEED_ICS_PAST_DAYS days, today + FEED_ICS_FUTURE_MONTHS months]` (defaults 180 days / 24 months, days in the club's time zone); `FEED_ICS_WINDOW_ENABLED=false` delivers everything. `FEED_ICS_MAX_EVENTS` > 0 additionally caps the output to the first N events by date and start time (protection only, no error; default 0 = unlimited). Operator settings, no query parameter overrides them; the authenticated member export and the web view `/events` are unaffected.
 
         Conditional requests: the response carries a strong `ETag` that is computed without loading events (feed, `updated_at`, feed configuration, the content versions of the active calendars, the effective target group filter, the resolved window and cap, the club time zone and the ICS format version; never the secret). `If-None-Match` (several values, `*` and `W/` prefixes accepted) answers `304 Not Modified` without body, with the same `Cache-Control`/`X-Robots-Tag`/`Referrer-Policy` headers. Access (secret, archived) is always checked first, so a 304 never happens without valid access. Because the window moves with the date, the ETag changes at midnight (club zone). `targetGroupIds` is trimmed, de-duplicated and sorted; equivalent filters (`a,b` / `b,a,a`, or ids outside the feed's own groups) give the same ETag.
       operationId: publicFeedIcs

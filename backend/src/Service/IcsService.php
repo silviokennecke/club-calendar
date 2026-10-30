@@ -31,7 +31,7 @@ class IcsService
      * (fields, formatting, VTIMEZONE handling, library upgrade that alters the text), otherwise
      * clients keep getting 304 for the old format.
      */
-    public const FORMAT_VERSION = 1;
+    public const FORMAT_VERSION = 2;
 
     private const END = "END:VCALENDAR\r\n";
 
@@ -152,7 +152,10 @@ class IcsService
         $uid = new UniqueIdentifier('event-'.$event->id.'@club-calendar');
 
         $iconStr = implode(' ', $event->propertyIcons);
-        $summary = $iconStr ? "$iconStr {$event->name}" : $event->name;
+        $summary = ('' !== $iconStr ? "$iconStr " : '').$event->name;
+        if ([] !== $event->featureNames) {
+            $summary .= ' ('.implode(', ', $event->featureNames).')';
+        }
 
         $parts = [];
         if ([] !== $event->featureNames) {
@@ -163,6 +166,17 @@ class IcsService
         }
         if (null !== $event->note && '' !== $event->note) {
             array_unshift($parts, $event->note);
+        }
+        // Legend for the emoji in the title (one line per distinct icon)
+        $legend = [];
+        foreach ($event->propertyIcons as $i => $icon) {
+            $name = $event->propertyNames[$i] ?? '';
+            if ('' !== $name) {
+                $legend[] = "$icon $name";
+            }
+        }
+        if ([] !== $legend) {
+            $parts[] = "Besonderheiten:\n".implode("\n", $legend);
         }
         $description = implode("\n", $parts);
 

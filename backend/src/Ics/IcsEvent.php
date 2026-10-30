@@ -11,6 +11,7 @@ final readonly class IcsEvent
      * @param string       $date             Y-m-d
      * @param string|null  $dateEnd          Y-m-d
      * @param list<string> $propertyIcons    non-empty icons, in assignment order
+     * @param list<string> $propertyNames    names of the properties behind $propertyIcons (same order and length)
      * @param list<string> $featureNames
      * @param list<string> $targetGroupNames
      */
@@ -28,6 +29,7 @@ final readonly class IcsEvent
         public ?string $note,
         public ?IcsLocation $location,
         public array $propertyIcons,
+        public array $propertyNames,
         public array $featureNames,
         public array $targetGroupNames,
     ) {
