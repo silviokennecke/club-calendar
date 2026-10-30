@@ -283,6 +283,13 @@ describe("HelpLink", () => {
 });
 
 describe("HelpPage", () => {
+  it("shows the AI notice above the legal links", async () => {
+    renderAt("/help");
+    const note = await screen.findByText(i18n.t("docs.aiNotice"));
+    const links = screen.getByTestId("legal-links");
+    expect(note.compareDocumentPosition(links) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("renders the index with navigation, toc and pager", async () => {
     renderAt("/help");
     expect(

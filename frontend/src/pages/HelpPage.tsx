@@ -251,6 +251,9 @@ export default function HelpPage() {
         </main>
       </div>
       <footer className="pb-10">
+        <p className="text-ink-muted mx-auto mb-3 max-w-6xl px-4 text-center text-xs">
+          {t("docs.aiNotice")}
+        </p>
         <LegalLinks />
       </footer>
     </div>
