@@ -19,13 +19,19 @@ In der Seitenleiste unter **Verein** den Punkt **Orte und Gruppen** öffnen, dor
 ## Ort anlegen
 
 1. Wähle **Ort anlegen**.
-2. Suche unter **Adresse suchen** nach einem Namen oder einer Adresse und wähle einen Vorschlag. Name, Adresse und Position werden ausgefüllt. Oder trage **Name**, **Straße**, **PLZ**, **Stadt** und **Land** von Hand ein.
+2. Trage den **Namen** ein und beginne im Feld **Straße** zu tippen (ab 2 Zeichen). Wähle einen Vorschlag: **Straße**, **PLZ**, **Stadt**, **Land** und die Position auf der Karte werden ausgefüllt, der Name bleibt unverändert. Du kannst alle Felder auch von Hand eintragen.
 3. Setze die Position optional: in die Karte klicken oder die Markierung verschieben. Ohne Karte nutzt du **Koordinaten von Hand eingeben** (Breitengrad und Längengrad).
 4. Wähle **Ort speichern**.
 
 Mindestens ein Name oder eine Straße ist nötig.
 
-![Formular „Neuen Ort anlegen“ mit Adresssuche und Karte](shot:locations-form)
+:::tip
+Verlässt du das Feld **Straße**, während **PLZ**, **Stadt** und **Land** noch leer sind, werden sie automatisch ergänzt, wenn die Adresse eindeutig ist. Bereits eingetragene Werte werden nie überschrieben.
+:::
+
+Gesucht werden nur Adressen, keine Sehenswürdigkeiten oder Lokale. Für ein Vereinsheim gibst du daher den Namen selbst ein und suchst die Straße.
+
+![Formular „Neuen Ort anlegen“ mit Straßenvorschlägen und Karte](shot:locations-form)
 
 ## Bearbeiten und löschen
 

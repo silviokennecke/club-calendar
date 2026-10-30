@@ -19,13 +19,19 @@ In the sidebar under **Club**, open **Places and audiences**, then the **Locatio
 ## Create a location
 
 1. Choose **Create place**.
-2. Under **Search address**, search for a name or address and pick a suggestion. Name, address and position are filled in. Or enter **Name**, **Street**, **ZIP**, **City** and **Country** by hand.
+2. Enter the **Name** and start typing in the **Street** field (from 2 characters). Pick a suggestion: **Street**, **ZIP**, **City**, **Country** and the map position are filled in, the name stays as it is. You can also enter all fields by hand.
 3. Optionally set the position: click the map or drag the marker. Without the map, use **Enter coordinates by hand** (latitude and longitude).
 4. Choose **Save place**.
 
 At least a name or a street is required.
 
-![The "Create new place" form with address search and map](shot:locations-form)
+:::tip
+If you leave the **Street** field while **ZIP**, **City** and **Country** are still empty, they are filled in automatically when the address is unambiguous. Values you already entered are never overwritten.
+:::
+
+Only addresses are searched, not points of interest or venues. For a clubhouse, enter the name yourself and search for the street.
+
+![The "Create new place" form with street suggestions and map](shot:locations-form)
 
 ## Edit and delete
 
