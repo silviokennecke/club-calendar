@@ -1452,7 +1452,7 @@
       "editLabel": "Edit {{name}}",
       "newTitle": "Create new place",
       "editTitle": "Edit place",
-      "newSub": "Search for an address or enter it by hand.",
+      "newSub": "Start typing the street and pick a suggestion, or enter the address by hand.",
       "errorSummary": "The place is not complete yet.",
       "nameOrStreet": "Please enter at least a name or a street.",
       "saveFailed": {
@@ -1497,17 +1497,9 @@
           "templateNamed": "The template “{{name}}” loses its default place."
         }
       },
-      "search": {
-        "label": "Search address",
-        "hint": "Search by place name or address. Pick a suggestion to set the fields and the position.",
-        "placeholder": "Enter name, street or town…",
-        "loading": "Searching …",
-        "found_one": "{{count}} suggestion found",
-        "found_other": "{{count}} suggestions found",
-        "none": "No suggestions found. You can also enter the address by hand.",
-        "error": "Address search is not available right now. Enter the address by hand.",
-        "limit": "Too many searches. Please wait a moment and try again.",
-        "results": "Address suggestions"
+      "suggest": {
+        "limit": "Too many address requests. Please wait a moment; you can also enter the address by hand.",
+        "error": "Address search is currently unavailable. Enter the address by hand."
       },
       "coordinates": {
         "summary": "Enter coordinates by hand",

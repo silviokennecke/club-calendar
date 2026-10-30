@@ -1452,7 +1452,7 @@
       "editLabel": "{{name}} bearbeiten",
       "newTitle": "Neuen Ort anlegen",
       "editTitle": "Ort bearbeiten",
-      "newSub": "Suche eine Adresse oder trage sie von Hand ein.",
+      "newSub": "Beginne mit der Straße und wähle einen Vorschlag, oder trage die Adresse von Hand ein.",
       "errorSummary": "Der Ort ist noch nicht vollständig.",
       "nameOrStreet": "Bitte mindestens einen Namen oder eine Straße eingeben.",
       "saveFailed": {
@@ -1497,17 +1497,9 @@
           "templateNamed": "Die Vorlage „{{name}}“ verliert ihren Standardort."
         }
       },
-      "search": {
-        "label": "Adresse suchen",
-        "hint": "Suche nach dem Namen eines Orts oder nach einer Adresse. Wähle einen Vorschlag, um die Felder und die Position zu setzen.",
-        "placeholder": "Name, Straße oder Ort eingeben…",
-        "loading": "Suche läuft …",
-        "found_one": "{{count}} Vorschlag gefunden",
-        "found_other": "{{count}} Vorschläge gefunden",
-        "none": "Keine Vorschläge gefunden. Du kannst die Adresse auch von Hand eintragen.",
-        "error": "Die Adresssuche ist gerade nicht verfügbar. Trage die Adresse von Hand ein.",
-        "limit": "Zu viele Suchanfragen. Bitte warte einen Moment und versuche es erneut.",
-        "results": "Adressvorschläge"
+      "suggest": {
+        "limit": "Zu viele Adressanfragen. Bitte warte einen Moment; du kannst die Adresse auch von Hand eintragen.",
+        "error": "Die Adresssuche ist gerade nicht verfügbar. Trage die Adresse von Hand ein."
       },
       "coordinates": {
         "summary": "Koordinaten von Hand eingeben",
