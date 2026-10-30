@@ -34,6 +34,8 @@ interface LocationFieldsProps {
 }
 
 /** Fields of the place form (search, name, address, position map and coordinates), shared by the places page and the event form's "new place" dialog. */
+type SuggestionItem = AddressSuggestion & { id: string };
+
 export function LocationFields({
   form,
   onChange,
@@ -125,9 +127,9 @@ export function LocationFields({
             onChange({ street });
           }}
           onSearch={searchStreet}
-          getLabel={(s: AddressSuggestion) => s.street || s.label}
-          renderItem={(s: AddressSuggestion) => s.label}
-          onSelect={pick}
+          getLabel={(s: SuggestionItem) => s.street || s.label}
+          renderItem={(s: SuggestionItem) => s.label}
+          onSelect={(s: SuggestionItem) => pick(s)}
           onBlur={() => void onStreetBlur()}
         />
       </Field>

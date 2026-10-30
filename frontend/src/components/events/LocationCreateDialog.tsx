@@ -64,7 +64,6 @@ export function LocationCreateDialog({
     setInvalid(false);
     setForm((f) => ({
       ...f,
-      name: f.name || s.name || "",
       street: s.street ?? "",
       zip: s.zip ?? "",
       city: s.city ?? "",
