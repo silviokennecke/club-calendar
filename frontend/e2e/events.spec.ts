@@ -281,7 +281,8 @@ test.describe("Termine", () => {
     // Series: the preview comes from the backend
     await page.getByRole("button", { name: "Weitere Wege, Termine anzulegen" }).click();
     await page.getByRole("button", { name: /Aus Vorlage/ }).click();
-    await page.getByRole("button", { name: "Weiter" }).click();
+    await expect(page.getByRole("heading", { level: 2, name: "Vorlage wählen" })).toBeVisible();
+    await page.getByRole("button", { name: "Weiter", exact: true }).click();
     await page.getByRole("button", { name: "Terminserie" }).click();
     await expect(page.getByText("Bald verfügbar", { exact: true })).toHaveCount(0);
     await page.getByLabel("Wochentag").selectOption({ label: "Donnerstag" });

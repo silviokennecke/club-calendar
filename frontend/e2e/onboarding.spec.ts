@@ -159,8 +159,12 @@ test.describe("Vereinswechsel", () => {
     const sidebar = page.getByRole("complementary", { name: "Seitenleiste" });
 
     // "Neuen Verein anlegen" from the switcher starts the onboarding at step 1, even with a club.
-    await sidebar.getByRole("button", { name: /Verein.*Club Alpha E2E/ }).click();
-    await page.getByRole("link", { name: "Neuen Verein anlegen" }).click();
+    // The switcher closes on a route change, so retry if a late redirect closes it mid-click.
+    await expect(async () => {
+      const trigger = sidebar.getByRole("button", { name: /Verein.*Club Alpha E2E/ });
+      if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
+      await page.getByRole("link", { name: "Neuen Verein anlegen" }).click({ timeout: 2000 });
+    }).toPass({ timeout: 20_000 });
     await expect(
       page.getByRole("heading", { level: 1, name: "Willkommen bei Club Calendar" }),
     ).toBeVisible();

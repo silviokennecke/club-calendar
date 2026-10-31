@@ -29,7 +29,8 @@ Migrationen gehören nicht ungeprüft auf die Dev-DB).
    und 60 Token-Erneuerungen/min je IP, die Suite läuft sonst nach wenigen Tests in 429 `rate_limited`
    (`AUTH_LOGIN_IP_LIMIT`, `AUTH_REGISTER_IP_LIMIT`, `AUTH_REFRESH_IP_LIMIT`, `AUTH_IDENTIFY_IP_LIMIT`, `AUTH_IDENTIFY_EMAIL_LIMIT`). Die Umgebung `test` taugt nicht: dort
    speichert der Hasher Passwörter im Klartext, die Fixture-Anmeldung `admin@example.com` schlüge fehl:
-   `AUTH_LOGIN_IP_LIMIT=100000 AUTH_REGISTER_IP_LIMIT=100000 AUTH_REFRESH_IP_LIMIT=100000 AUTH_IDENTIFY_IP_LIMIT=100000 AUTH_IDENTIFY_EMAIL_LIMIT=100000 MCP_ALLOWED_CLIENTS= FRONTEND_URL=http://localhost:5199 BACKEND_URL=http://localhost:3001 MAILER_DSN=null://null php -S 127.0.0.1:3001 -t backend/public`.
+   `AUTH_LOGIN_IP_LIMIT=100000 AUTH_REGISTER_IP_LIMIT=100000 AUTH_REFRESH_IP_LIMIT=100000 AUTH_IDENTIFY_IP_LIMIT=100000 AUTH_IDENTIFY_EMAIL_LIMIT=100000 MCP_ALLOWED_CLIENTS= WEBAUTHN_RP_ID=localhost FRONTEND_URL=http://localhost:5199 BACKEND_URL=http://localhost:3001 MAILER_DSN=null://null php -S 127.0.0.1:3001 -t backend/public`.
+   `WEBAUTHN_RP_ID=localhost` ist nötig, wenn `backend/.env.local` eine andere `APP_URL` setzt (der Standard ist deren Host), sonst scheitern die Passkey-Tests in `profile.spec.ts`.
    `FRONTEND_URL`/`BACKEND_URL` stehen nicht mehr in `.env` (sie folgen `APP_URL`, siehe `config/services.yaml`) und
    müssen hier gesetzt werden: Passkey-Origin, Links der neuen E-Mail-Adresse und der SSO-Verknüpfung bauen darauf
    auf (für PHPUnit setzt sie `phpunit.dist.xml`).
