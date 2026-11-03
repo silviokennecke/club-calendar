@@ -81,7 +81,7 @@ the router, so a new or changed route needs a matching operation there).
 | `src/Service/UniqueNames.php` | Names of properties/features/target groups unique per calendar (trim, case-insensitive, compared in PHP; no unique index, old duplicates stay) |
 | `src/Exception/ApiProblemException.php` | HTTP error with a stable `code` (+ optional `field`) in the RFC 7807 body, e.g. 422 `duplicate_name`; code list: `ErrorCode` in `../docs/api/openapi.yaml` |
 | `config/services.yaml` | Parameters and env defaults: `APP_URL` drives `FRONTEND_URL`, `BACKEND_URL` and `WEBAUTHN_RP_ID`; optional `MAPBOX_TOKEN`, cache TTLs, `WEBAUTHN_USER_VERIFICATION` |
-| `config/packages/security.yaml` | Stateless JWT firewall; `access_control` requires authentication for `/api/clubs*`, `/api/calendars*`, `/api/map/geocode/*` (401 before the entity lookup) |
+| `config/packages/security.yaml` | Stateless JWT firewall; `access_control` is deny-by-default: an explicit `PUBLIC_ACCESS` allow-list, then a final `^/api` `IS_AUTHENTICATED` rule (401 before the entity lookup). A new public route needs its own rule there and an entry in `PUBLIC_PATTERNS` of `tests/Unit/AccessControlCoverageTest.php` (L11) |
 | `migrations/` | Doctrine migrations; do not list versions here |
 
 ## Security Pattern
