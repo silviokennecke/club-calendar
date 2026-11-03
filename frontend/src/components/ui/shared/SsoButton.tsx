@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Icon } from "./Icon";
 import { buttonClass } from "./buttonClass";
@@ -53,22 +54,23 @@ export interface SsoButtonProps {
   provider: string;
   name: string;
   href: string;
+  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
 }
 
 /** Sign-in link in the identity provider's brand style (colors fixed, only light/dark variants). */
-export function SsoButton({ provider, name, href }: SsoButtonProps) {
+export function SsoButton({ provider, name, href, onClick }: SsoButtonProps) {
   const { t } = useTranslation();
   const brand = provider in BRANDS ? BRANDS[provider as BrandId] : null;
   if (!brand) {
     return (
-      <a href={href} className={buttonClass("sso")}>
+      <a href={href} onClick={onClick} className={buttonClass("sso")}>
         <Icon glyph="globe" size={20} />
         {t("auth.login.signInWith", { provider: name })}
       </a>
     );
   }
   return (
-    <a href={href} className={`cc-sso cc-sso--${provider}`}>
+    <a href={href} onClick={onClick} className={`cc-sso cc-sso--${provider}`}>
       {brand.logo}
       <span>{t(brand.labelKey)}</span>
     </a>

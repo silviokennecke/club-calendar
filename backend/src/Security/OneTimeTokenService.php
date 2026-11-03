@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Security;
 
 use App\Entity\User;
+use App\Exception\ApiProblemException;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -15,6 +16,9 @@ use Doctrine\ORM\EntityManagerInterface;
  * another) and {@see NonceStore} (single use, also across processes). The token names the user and the
  * user's session version (`tv`): ending the sessions (password change, takeover revocation) kills pending
  * tokens, and the TTL is the one the token was issued with.
+ *
+ * A token issued with a challenge (`cc`, PKCE S256) is redeemed only with the matching verifier, which binds
+ * the SSO login code to the browser that started the flow (login CSRF).
  */
 final readonly class OneTimeTokenService
 {
@@ -28,13 +32,25 @@ final readonly class OneTimeTokenService
     ) {
     }
 
-    public function issue(User $user, string $purpose, int $ttlSeconds): string
+    /** @param string|null $challenge S256 challenge (base64url) the redeemer must prove with the verifier */
+    public function issue(User $user, string $purpose, int $ttlSeconds, ?string $challenge = null): string
     {
         return $this->signedTokens->issue($purpose, [
             'n' => SignedTokenService::b64(random_bytes(32)),
             'uid' => $user->getId(),
             'tv' => $user->getTokenVersion(),
-        ], $ttlSeconds);
+        ] + (null === $challenge ? [] : ['cc' => $challenge]), $ttlSeconds);
+    }
+
+    /** Challenge a start request must send: S256 of a 32-byte verifier, base64url without padding. */
+    public static function isWellFormedChallenge(mixed $challenge): bool
+    {
+        return is_string($challenge) && 1 === preg_match('/^[A-Za-z0-9_-]{43}$/', $challenge);
+    }
+
+    public static function challengeFor(string $verifier): string
+    {
+        return SignedTokenService::b64(hash('sha256', $verifier, true));
     }
 
     /**
@@ -43,8 +59,11 @@ final readonly class OneTimeTokenService
      * redemption.
      *
      * @param list<string> $purposes purposes accepted by the caller
+     *
+     * @throws ApiProblemException 400 invalid_code_verifier: the token requires a verifier that is missing or
+     *                             wrong. The token is consumed first, so a wrong guess burns it (the user signs in again).
      */
-    public function redeem(string $token, array $purposes): ?User
+    public function redeem(string $token, array $purposes, ?string $verifier = null): ?User
     {
         foreach ($purposes as $purpose) {
             $claims = $this->signedTokens->verify($purpose, $token);
@@ -59,7 +78,19 @@ final readonly class OneTimeTokenService
                 return null;
             }
 
-            return $this->nonces->consume($purpose, $claims['n'], $claims['exp']) ? $user : null;
+            // The SSO code always needs a challenge; a code without one never redeems.
+            $challenge = $claims['cc'] ?? null;
+            if (self::PURPOSE_OAUTH_LOGIN === $purpose && !self::isWellFormedChallenge($challenge)) {
+                return null;
+            }
+            if (!$this->nonces->consume($purpose, $claims['n'], $claims['exp'])) {
+                return null;
+            }
+            if (null !== $challenge && (!is_string($verifier) || !hash_equals((string) $challenge, self::challengeFor($verifier)))) {
+                throw new ApiProblemException(400, 'The sign-in was not started in this browser', 'invalid_code_verifier');
+            }
+
+            return $user;
         }
 
         return null;

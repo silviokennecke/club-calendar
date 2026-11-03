@@ -163,9 +163,9 @@ readonly class AuthService
     }
 
     /** One-time code for the SSO redirect; redeemed at the token endpoint like the e-mail login token. */
-    public function issueOAuthLoginCode(User $user): string
+    public function issueOAuthLoginCode(User $user, string $challenge): string
     {
-        return $this->oneTimeTokens->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, $this->oauthLoginCodeTtl);
+        return $this->oneTimeTokens->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, $this->oauthLoginCodeTtl, $challenge);
     }
 
     /**
@@ -173,9 +173,9 @@ readonly class AuthService
      * who has not confirmed the address yet). Only the finished SSO sign-in is accepted; no other signed
      * token (state, link ticket, challenge ...).
      */
-    public function redeemOneTimeToken(string $token): array
+    public function redeemOneTimeToken(string $token, ?string $verifier = null): array
     {
-        $user = $this->oneTimeTokens->redeem($token, [OneTimeTokenService::PURPOSE_OAUTH_LOGIN]);
+        $user = $this->oneTimeTokens->redeem($token, [OneTimeTokenService::PURPOSE_OAUTH_LOGIN], $verifier);
         if (null === $user) {
             throw new ApiProblemException(400, 'The token is invalid, expired or was used before', 'invalid_grant');
         }

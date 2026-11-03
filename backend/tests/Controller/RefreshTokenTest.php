@@ -257,8 +257,8 @@ class RefreshTokenTest extends WebTestCase
         $this->assertSame(200, $r['status']);
         $this->assertNotEmpty(self::payload($r['body']['refresh_token'])['fam']);
 
-        $code = static::getContainer()->get(OneTimeTokenService::class)->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30);
-        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'one_time_token', 'token' => $code]);
+        $code = static::getContainer()->get(OneTimeTokenService::class)->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30, OneTimeTokenService::challengeFor(str_repeat('v', 43)));
+        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'one_time_token', 'token' => $code, 'code_verifier' => str_repeat('v', 43)]);
         $sso = json_decode((string) self::$client->getResponse()->getContent(), true);
         $this->assertNotEmpty(self::payload($sso['refresh_token'])['fam']);
 

@@ -7,6 +7,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Changed
 
+- Security (audit L13): the SSO login code is now bound to the browser tab that started the sign-in (PKCE S256), so a callback link produced in someone else's flow cannot sign a victim into the attacker's account. `GET /api/auth/oauth/{provider}` requires `code_challenge`; `POST /api/auth/token` (`one_time_token`) requires `code_verifier` (400 `invalid_code_verifier`). Opening the callback link in another tab or browser shows a message to start the sign-in again.
 - Security (audit L7): adding a passkey now requires proof of the account holder: the password, or for accounts without one a 6-digit code mailed to the address (own purpose, a deletion code is not valid). `GET /api/auth/webauthn/register/options` became `POST` with `{password}` or `{code}`; new `POST /api/auth/webauthn/register/code`.
 - Help pages show a small note above the footer links that the help texts were created with the help of AI.
 - Address search (geocoding suggestions) uses the standard Mapbox geocoder again and finds street addresses only; places (POIs) are no longer suggested and the `name` field is removed from `GET /api/map/geocode/suggest`.

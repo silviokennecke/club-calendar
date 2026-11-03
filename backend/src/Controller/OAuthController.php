@@ -12,6 +12,7 @@ use App\OAuth\OidcResourceOwner;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
 use App\Security\NonceStore;
+use App\Security\OneTimeTokenService;
 use App\Security\SignedTokenService;
 use App\Service\AccountService;
 use App\Service\AuthService;
@@ -39,6 +40,11 @@ use Symfony\Component\Routing\Attribute\Route;
  * credentials. A successful sign-in redirects to FRONTEND_URL/auth/callback?code=<one-time code> (OAUTH_LOGIN_CODE_TTL,
  * single use, bound to user and session version); the frontend redeems it with POST /api/auth/token
  * (grant_type=one_time_token). No access or refresh token ever appears in a URL.
+ *
+ * The state cookie only covers the provider callback. The login code is bound to the browser that started
+ * the flow separately (PKCE style, S256): the start request must carry `code_challenge` (else
+ * FRONTEND_URL/auth/callback?error=invalid_request), the signed state carries it into the code, and the
+ * redemption needs the matching `code_verifier`, which only the starting tab holds in its sessionStorage.
  *
  * Errors go to FRONTEND_URL/auth/callback?error=<code>: invalid_state, provider_denied (user cancelled at
  * the provider), provider_error (other error from the provider), oauth_failed (code exchange / profile
@@ -182,8 +188,14 @@ class OAuthController extends AbstractController
         $this->rateLimiter->assertOtherAllowed($request);
         $client = $this->knownClient($provider);
 
+        // PKCE-style binding of the login code to this browser: without a challenge nothing starts.
+        $challenge = $request->query->all()['code_challenge'] ?? null;
+        if (!OneTimeTokenService::isWellFormedChallenge($challenge)) {
+            return $this->fail('invalid_request');
+        }
+
         $nonce = SignedTokenService::b64(random_bytes(32));
-        $state = $this->signedTokens->issue(self::STATE_PURPOSE, ['n' => $nonce, 'prov' => $provider], self::STATE_TTL);
+        $state = $this->signedTokens->issue(self::STATE_PURPOSE, ['n' => $nonce, 'prov' => $provider, 'cc' => $challenge], self::STATE_TTL);
         $response = $client->redirect([], $this->authorizeOptions($provider, $state));
         $response->headers->setCookie($this->stateCookie($nonce, self::STATE_TTL));
 
@@ -194,7 +206,8 @@ class OAuthController extends AbstractController
     public function callback(string $provider, Request $request): Response
     {
         $this->rateLimiter->assertOtherAllowed($request);
-        if (null === $this->validState(self::STATE_PURPOSE, $provider, $request)) {
+        $claims = $this->validState(self::STATE_PURPOSE, $provider, $request);
+        if (null === $claims) {
             $linkClaims = $this->validState(self::LINK_STATE_PURPOSE, $provider, $request);
 
             return null === $linkClaims ? $this->fail('invalid_state') : $this->linkCallback($provider, $request, $linkClaims);
@@ -245,8 +258,12 @@ class OAuthController extends AbstractController
             return $this->fail('oauth_failed');
         }
 
+        if (!OneTimeTokenService::isWellFormedChallenge($claims['cc'] ?? null)) {
+            return $this->fail('invalid_state');
+        }
+
         $response = new RedirectResponse($this->frontendUrl.'/auth/callback?'.http_build_query([
-            'code' => $this->authService->issueOAuthLoginCode($user),
+            'code' => $this->authService->issueOAuthLoginCode($user, $claims['cc']),
         ]));
         $response->headers->setCookie($this->stateCookie('', -1));
 

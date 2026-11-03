@@ -44,7 +44,8 @@ info:
     - **One-time login token**: `POST /api/auth/token` with `grant_type=one_time_token&token=<token>` returns the
       usual token pair. The token is the `code` of the SSO redirect (TTL env `OAUTH_LOGIN_CODE_TTL`, default 180 s);
       it is opaque, single use and bound to the user and the session version. The purposes are not interchangeable
-      with any other signed token.
+      with any other signed token. The SSO code is also bound to the browser that started the flow (PKCE S256):
+      the start request carries `code_challenge`, the redemption must send the matching `code_verifier`.
     - **E-mail verification gate**: a signed-in user whose address is not confirmed has a restricted session
       (`emailVerificationRequired: true` in every token response and in `GET /api/auth/me`) and gets
       `403 email_verification_required` (member `email`) on every `/api/*` route except `GET|PATCH|DELETE /api/auth/me`,
@@ -91,12 +92,14 @@ info:
 
     ### SSO (Google, Microsoft, Apple) - brief
 
-    1. Sign-in: the browser navigates to `GET /api/auth/oauth/{provider}`. The API sets a short-lived HttpOnly
+    1. Sign-in: the browser navigates to `GET /api/auth/oauth/{provider}?code_challenge=<base64url SHA-256 of a
+       random 32-byte verifier, 43 chars>` (the SPA keeps the verifier in `sessionStorage`; a missing or malformed
+       challenge redirects to `?error=invalid_request`). The API sets a short-lived HttpOnly
        cookie `oauth_state_nonce` (path `/api/auth/oauth`, `Secure; SameSite=None`) and redirects to the
        provider with a signed, single-use `state`.
     2. The provider calls back `GET|POST /api/auth/oauth/{provider}/callback`; the API redirects to
        `{FRONTEND_URL}/auth/callback?code=<one-time code>` (redeemed at `POST /api/auth/token`, `grant_type=one_time_token`; no token in the URL) or `?error=<code>` with one of
-       `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`,
+       `invalid_request`, `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`,
        `email_unverified_at_provider`, `registration_restricted` (`RESTRICT_REGISTRATION`: a new account needs an open club
        invitation for the address; existing accounts and linking are not affected). A provider that does not prove the
        address (Microsoft) creates the account unverified and mails the 6-digit code; the redirect is the normal one
@@ -1119,12 +1122,19 @@ paths:
                   properties:
                     grant_type: { type: string, const: one_time_token }
                     token: { type: string }
+                    code_verifier:
+                      type: string
+                      description: >-
+                        Verifier whose S256 hash is the `code_challenge` of the start request. Required for the
+                        SSO code; a missing or wrong one consumes the code (`invalid_code_verifier`).
       responses:
         '200': { $ref: '#/components/responses/Tokens' }
         '400':
           description: >-
             `invalid_grant`: unknown `grant_type`, token missing, or (`one_time_token`) the token is invalid,
-            expired, used before or for a user whose sessions ended.
+            expired, used before or for a user whose sessions ended. `invalid_code_verifier`: (`one_time_token`)
+            the `code_verifier` is missing or does not match the challenge of the flow (login started in another
+            browser); the code is consumed.
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -1527,9 +1537,16 @@ paths:
       security: []
       parameters:
         - { $ref: '#/components/parameters/Provider' }
+        - name: code_challenge
+          in: query
+          required: true
+          description: Base64url (no padding) SHA-256 of the browser's random verifier, 43 characters.
+          schema: { type: string, pattern: '^[A-Za-z0-9_-]{43}$' }
       responses:
         '302':
-          description: Redirect to the provider; sets the `oauth_state_nonce` cookie.
+          description: >-
+            Redirect to the provider; sets the `oauth_state_nonce` cookie. A missing or malformed
+            `code_challenge` redirects to `{FRONTEND_URL}/auth/callback?error=invalid_request` instead.
           headers:
             Location: { $ref: '#/components/headers/Location' }
             Set-Cookie: { $ref: '#/components/headers/StateCookie' }
@@ -4241,6 +4258,7 @@ components:
         | `email_verification_required` | 403 | **Any gated `/api/*` route** (see the e-mail verification gate in the overview): the session belongs to a user whose address is not confirmed; extra member `email` |
         | `invalid_verification_code` | 422 | `POST /api/auth/verify-email`: wrong, expired, used up or already confirmed (same answer), field `code` |
         | `verification_resend_too_early` | 429 | `POST /api/auth/resend-verification` less than 5 minutes after the last code mail of the account; extra member `retryAt` (ISO-8601 UTC), header `Retry-After` |
+        | `invalid_code_verifier` | 400 | `POST /api/auth/token` `one_time_token`: `code_verifier` missing or wrong (the code is consumed) |
         | `invalid_grant` | 400 | `POST /api/auth/token` with an unknown `grant_type`, a missing token or an unusable one-time token |
         | `invalid_refresh_token` | 401 | Refresh token invalid, expired, unknown, revoked, reused after rotation (revokes the session), session lifetime over, user gone or sessions ended |
         | `invalid_passkey` | 401 | Passkey sign-in failed |
@@ -4279,6 +4297,7 @@ components:
         - invalid_verification_code
         - verification_resend_too_early
         - invalid_grant
+        - invalid_code_verifier
         - invalid_refresh_token
         - invalid_passkey
         - invalid_passkey_registration

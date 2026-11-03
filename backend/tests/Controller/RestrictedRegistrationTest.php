@@ -86,7 +86,7 @@ class RestrictedRegistrationTest extends WebTestCase
     private function sso(string $email, string $sub = 'google-1'): array
     {
         $this->client->getCookieJar()->clear();
-        $this->client->request('GET', 'https://localhost/api/auth/oauth/google');
+        $this->client->request('GET', 'https://localhost/api/auth/oauth/google?'.http_build_query(['code_challenge' => \App\Security\OneTimeTokenService::challengeFor(str_repeat('v', 43))]));
         parse_str((string) parse_url((string) $this->client->getResponse()->headers->get('Location'), \PHP_URL_QUERY), $q);
         $this->google->claims = ['sub' => $sub, 'email' => $email, 'email_verified' => true, 'name' => 'Google User'];
         $this->client->request('GET', 'https://localhost/api/auth/oauth/google/callback?'.http_build_query(['code' => 'c', 'state' => $q['state'] ?? '']));

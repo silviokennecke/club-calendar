@@ -58,7 +58,8 @@ class SessionInvalidationTest extends WebTestCase
     /** @return array{token: string, refresh_token: string} */
     private function signIn(string $provider, array $claims): array
     {
-        self::$client->request('GET', self::API."/api/auth/oauth/$provider");
+        $verifier = str_repeat('v', 43);
+        self::$client->request('GET', self::API."/api/auth/oauth/$provider?".http_build_query(['code_challenge' => \App\Security\OneTimeTokenService::challengeFor($verifier)]));
         parse_str((string) parse_url((string) self::$client->getResponse()->headers->get('Location'), \PHP_URL_QUERY), $start);
         self::$providers[$provider]->claims = $claims;
         self::$client->request('GET', self::API."/api/auth/oauth/$provider/callback?".http_build_query([
@@ -70,7 +71,7 @@ class SessionInvalidationTest extends WebTestCase
         $this->assertArrayNotHasKey('token', $result, 'no token in the redirect URL');
         $this->assertNotEmpty($result['code'] ?? null, $location);
         // The frontend redeems the one-time code for the session.
-        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'one_time_token', 'token' => $result['code']]);
+        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'one_time_token', 'token' => $result['code'], 'code_verifier' => $verifier]);
         $this->assertSame(200, self::$client->getResponse()->getStatusCode(), (string) self::$client->getResponse()->getContent());
         $tokens = json_decode((string) self::$client->getResponse()->getContent(), true);
 

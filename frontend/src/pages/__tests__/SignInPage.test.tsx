@@ -111,6 +111,21 @@ describe("step 1: email", () => {
     expect(screen.getByRole("link", { name: "Mit Microsoft anmelden" })).toBeInTheDocument();
   });
 
+  it("starts SSO with a code challenge and keeps the verifier in this tab", async () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    sessionStorage.clear();
+    renderFlow();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("link", { name: "Mit Google anmelden" }));
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledTimes(1));
+    const url = new URL(assign.mock.calls[0][0] as string);
+    expect(url.origin + url.pathname).toBe("http://api.test/api/auth/oauth/google");
+    expect(url.searchParams.get("code_challenge")).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(sessionStorage.getItem("sso_code_verifier")).not.toBeNull();
+    vi.unstubAllGlobals();
+  });
+
   it("validates on submit, not while typing", async () => {
     renderFlow();
     const user = userEvent.setup();

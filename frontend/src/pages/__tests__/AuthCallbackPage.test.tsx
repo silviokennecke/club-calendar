@@ -20,6 +20,8 @@ const user = { id: "u1", email: "a@b.de" };
 beforeEach(() => {
   vi.clearAllMocks();
   window.history.replaceState(null, "", "/");
+  sessionStorage.clear();
+  sessionStorage.setItem("sso_code_verifier", "verifier-1");
 });
 
 function renderCallback(search: string) {
@@ -42,7 +44,8 @@ describe("AuthCallbackPage", () => {
     renderCallback("?code=abc");
     expect(await screen.findByTestId("location")).toHaveTextContent("/clubs");
     expect(exchangeOneTimeToken).toHaveBeenCalledTimes(1);
-    expect(exchangeOneTimeToken).toHaveBeenCalledWith("abc");
+    expect(exchangeOneTimeToken).toHaveBeenCalledWith("abc", "verifier-1");
+    expect(sessionStorage.getItem("sso_code_verifier")).toBeNull();
     expect(storeTokens).toHaveBeenCalledWith("acc", "ref");
     expect(login).toHaveBeenCalledWith("acc", "ref", user);
   });
@@ -101,6 +104,27 @@ describe("AuthCallbackPage", () => {
       "/login?error=invalid_login_code",
     );
     expect(storeTokens).not.toHaveBeenCalled();
+  });
+
+  it("does not redeem without the verifier of this tab (another tab or browser)", async () => {
+    sessionStorage.clear();
+    renderCallback("?code=abc");
+    expect(await screen.findByTestId("location")).toHaveTextContent(
+      "/login?error=invalid_code_verifier",
+    );
+    expect(exchangeOneTimeToken).not.toHaveBeenCalled();
+    expect(storeTokens).not.toHaveBeenCalled();
+  });
+
+  it("shows the browser-binding error when the backend rejects the verifier", async () => {
+    vi.mocked(exchangeOneTimeToken).mockRejectedValue(
+      new ApiError("x", 400, "invalid_code_verifier"),
+    );
+    renderCallback("?code=abc");
+    expect(await screen.findByTestId("location")).toHaveTextContent(
+      "/login?error=invalid_code_verifier",
+    );
+    expect(sessionStorage.getItem("sso_code_verifier")).toBeNull();
   });
 
   it("reports other failures as oauth_failed", async () => {

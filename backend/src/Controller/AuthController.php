@@ -258,7 +258,9 @@ class AuthController extends AbstractApiController
                 throw new ApiProblemException(400, 'Missing token', 'invalid_grant');
             }
 
-            return new JsonResponse($this->auth->redeemOneTimeToken($token));
+            $verifier = $request->request->get('code_verifier');
+
+            return new JsonResponse($this->auth->redeemOneTimeToken($token, is_string($verifier) ? $verifier : null));
         }
         $refreshToken = $request->request->get('refresh_token');
         if ('refresh_token' !== $grantType || empty($refreshToken)) {
