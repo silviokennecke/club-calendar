@@ -20,13 +20,7 @@ Static, read-only code review: full reads of every in-scope file plus targeted r
 
 2026-10-05
 
-### AUTH-08 — WEBAUTHN_USER_VERIFICATION missing from .env.example
-**Severity:** Informational
-**Attack scope:** Fresh deployments (passkey ceremonies with weaker user verification)
-**Description:** `services.yaml` wires `WEBAUTHN_USER_VERIFICATION`, but it is commented out in `.env.example`; the code default `preferred` is weaker than `required`.
-**Affected parts:** `config/services.yaml:127`; `.env.example:14`; `WebAuthnService.php:71`
-**Fix recommendation:** Set/document the variable in `.env.example` (e.g. `required` for production) or fail fast on missing configuration.
-**Notes:** `required` breaks some platform authenticators; `preferred` is a reasonable floor but should be an explicit choice.
+No open findings.
 
 ## Reviewed & OK
 

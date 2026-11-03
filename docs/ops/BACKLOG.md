@@ -76,18 +76,12 @@ Der Security-Audit (Bericht des Auftraggebers, nicht im Repository) ist umgesetz
 | --- | --- | --- |
 | mittel | **MCP: Clientnamen ungeprüft** | Per Dynamic Client Registration kann sich jeder Client mit beliebigem `client_name` registrieren (nur die Redirect-URI-Familie in `MCP_ALLOWED_CLIENTS` wird geprüft); die Zustimmungsseite zeigt deshalb den Redirect-Host und "nicht verifizierte App". Mit leerem `MCP_ALLOWED_CLIENTS` sind alle Clients erlaubt. |
 | niedrig | **MCP: Request-ID nicht an Nutzer gebunden** | `OAuthAuthorizationRequest` (10 Minuten, einmalig) wird erst bei der Entscheidung an den angemeldeten Nutzer gebunden; wer die Request-ID kennt, könnte als angemeldeter Nutzer zustimmen. Die ID ist zufällig und steht nur in der Zustimmungs-URL. |
-| niedrig | **MCP: Grok-Callback unbekannt** | Für die Familie `grok` ist keine offizielle Callback-URL bekannt, sie akzeptiert nichts (`RedirectUriPolicy`); Regeln nachtragen, sobald sie feststehen. Die Regeln der übrigen Familien vor dem Go-live erneut prüfen. |
 | niedrig | **MCP: Bundle vor 1.0** | `symfony/mcp-bundle` ist auf `~0.14.1` gepinnt (mcp/sdk 0.8.1); API und Verhalten können sich bei Updates ändern, Updates nur mit laufender `McpEndpointTest`/Tool-Tests. |
-| niedrig | **ID-Token-Claims ungeprüft** | `OidcProvider` prüft beim ID-Token weder Signatur noch `aud`/`iss`/`exp`. Das Token kommt direkt vom Token-Endpoint über TLS (nach OIDC zulässig), im Code-Flow mit Client-Secret nicht ausnutzbar; `iss` ist bei Microsoft `common` mandantenabhängig. |
-| niedrig | **Passwort-Hashing** | `App\Entity\User` nutzt explizit `bcrypt` (Kosten 13) statt `auto`; 8–128 Zeichen (`PasswordPolicy`), Symfony hasht Passwörter über 72 Bytes vorab. Umstellung auf `auto` (argon2id) mit Rehash bei Anmeldung möglich. |
-| niedrig | **User-Verification optional** | `WEBAUTHN_USER_VERIFICATION=preferred` (Standard) lässt Passkeys ohne PIN/Biometrie zu; `required` ist strenger, schließt aber Sicherheitsschlüssel ohne PIN aus. |
-| niedrig | **CSP `style-src 'unsafe-inline'`** | Bleibt nötig (React-`style=`-Attribute, emoji-mart und mapbox-gl injizieren Styles). |
 
 ## Offene Betriebspunkte
 
 - **HSTS im Container:** Caddy setzt `Strict-Transport-Security` nicht; der TLS-Terminator davor muss es senden (siehe `OPERATIONS.md`).
 - **Safari und SSO:** das State-Cookie ist `Secure; SameSite=None`; Safari verhält sich dabei nicht zuverlässig, SSO dort prüfen und ggf. Cookie-Strategie anpassen.
-- **Grok-Callback:** Redirect-Regeln der MCP-Familie `grok` nachtragen, sobald die offizielle URL feststeht (siehe Risiken).
 
 ## Offene Design-Punkte
 
