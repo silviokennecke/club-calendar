@@ -12,6 +12,8 @@ use Psr\Http\Message\ResponseInterface;
 
 class OidcProvider extends GenericProvider implements CachePoolAwareInterface
 {
+    private const int CLOCK_LEEWAY = 120;
+
     private readonly string $issuer;
     private ?CacheItemPoolInterface $cache = null;
     private ?array $discovery = null;
@@ -56,9 +58,9 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
     public function getResourceOwner(AccessToken $token): OidcResourceOwner
     {
         $claims = $this->parseIdToken($token);
+        $this->validateIdTokenClaims($claims);
 
-        $userInfoUrl = $this->getResourceOwnerDetailsUrl($token);
-        if (empty($claims['email']) && !empty($userInfoUrl)) {
+        if (empty($claims['email']) && !empty($userInfoUrl = $this->getResourceOwnerDetailsUrl($token))) {
             try {
                 $response = $this->fetchResourceOwnerDetails($token);
                 $claims = array_merge($claims, $response);
@@ -129,6 +131,77 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
         }
 
         return 0;
+    }
+
+    /**
+     * OIDC Core 3.1.3.7 claim checks. The signature is not verified: the token comes straight from the token
+     * endpoint over TLS (3.1.3.7 step 6 allows that). No nonce is sent in the flow, so none is checked.
+     * Messages never contain the token; the callers answer with oauth_failed.
+     *
+     * @param array<string, mixed> $claims
+     */
+    private function validateIdTokenClaims(array $claims): void
+    {
+        $now = time();
+
+        if ([] === $claims) {
+            throw new \UnexpectedValueException('ID token missing or malformed');
+        }
+
+        $iss = $claims['iss'] ?? null;
+        if (!is_string($iss) || !in_array($iss, $this->expectedIssuers($claims), true)) {
+            throw new \UnexpectedValueException('ID token issuer mismatch');
+        }
+
+        $aud = $claims['aud'] ?? null;
+        $audiences = is_string($aud) ? [$aud] : (is_array($aud) ? $aud : []);
+        if ('' === $this->clientId || !in_array($this->clientId, $audiences, true)) {
+            throw new \UnexpectedValueException('ID token audience mismatch');
+        }
+        if (count($audiences) > 1 && ($claims['azp'] ?? null) !== $this->clientId) {
+            throw new \UnexpectedValueException('ID token authorized party mismatch');
+        }
+
+        $exp = $claims['exp'] ?? null;
+        if (!is_int($exp) && !is_float($exp)) {
+            throw new \UnexpectedValueException('ID token has no expiry');
+        }
+        if ($exp + self::CLOCK_LEEWAY < $now) {
+            throw new \UnexpectedValueException('ID token expired');
+        }
+
+        $iat = $claims['iat'] ?? null;
+        if (null !== $iat && (!(is_int($iat) || is_float($iat)) || $iat - self::CLOCK_LEEWAY > $now)) {
+            throw new \UnexpectedValueException('ID token issued in the future');
+        }
+
+        if (!is_string($claims['sub'] ?? null) || '' === $claims['sub']) {
+            throw new \UnexpectedValueException('ID token has no subject');
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $claims
+     *
+     * @return list<string>
+     */
+    private function expectedIssuers(array $claims): array
+    {
+        // Multi-tenant Microsoft endpoints: the token carries the issuing tenant's id
+        if (1 === preg_match('#^(https://login\.microsoftonline\.com)/(?:common|organizations|consumers)/v2\.0$#', $this->issuer, $m)) {
+            $tid = $claims['tid'] ?? null;
+            if (!is_string($tid) || 1 !== preg_match('/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i', $tid)) {
+                return [];
+            }
+
+            return [$m[1].'/'.$tid.'/v2.0'];
+        }
+
+        if ('https://accounts.google.com' === $this->issuer) {
+            return ['https://accounts.google.com', 'accounts.google.com'];
+        }
+
+        return [$this->issuer];
     }
 
     private function parseIdToken(AccessToken $token): array
