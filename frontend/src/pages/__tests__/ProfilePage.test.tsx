@@ -492,48 +492,118 @@ describe("ProfilePage", () => {
     await waitFor(() => expect(login).toHaveBeenCalledWith("a2", "r2", authUser));
   });
 
-  it("sets up a passkey with the device name and refreshes the list", async () => {
+  it("sets up a passkey after the password was confirmed and refreshes the list", async () => {
     const user = userEvent.setup();
-    apiFetch.mockImplementation((path: string) =>
-      path.endsWith("/register/options")
-        ? Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ options: { challenge: "x" }, challengeToken: "t" }),
-          })
-        : Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) }),
-    );
+    apiPost.mockResolvedValue({ options: { challenge: "x" }, challengeToken: "t" });
+    apiFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ ok: true }) });
     startRegistration.mockResolvedValue({ id: "cred" });
     renderProfile();
     await user.type(await screen.findByLabelText(/^Gerätename/), "Büro-PC");
     await user.click(screen.getByRole("button", { name: "Passkey auf diesem Gerät einrichten" }));
+    const dialog = await screen.findByRole("dialog", { name: "Bestätige, dass du es bist" });
+    await user.type(within(dialog).getByLabelText(/Dein Passwort/), "geheim123");
+    await user.click(within(dialog).getByRole("button", { name: "Weiter" }));
     expect(await screen.findByText("Passkey „Büro-PC“ wurde hinzugefügt.")).toBeInTheDocument();
+    expect(apiPost).toHaveBeenCalledWith("/api/auth/webauthn/register/options", {
+      password: "geheim123",
+    });
     const verify = apiFetch.mock.calls.find(([p]) => String(p).endsWith("/register/verify"))!;
     expect(JSON.parse(verify[1].body)).toEqual({
       challengeToken: "t",
       response: { id: "cred" },
       deviceName: "Büro-PC",
     });
-    // The list was reloaded.
     expect(apiGet.mock.calls.filter(([p]) => p === "/api/auth/me").length).toBeGreaterThanOrEqual(
       2,
     );
   });
 
+  it("starts nothing when the password is wrong", async () => {
+    const user = userEvent.setup();
+    apiPost.mockRejectedValue(new ApiError("x", 400, "invalid_credentials"));
+    renderProfile();
+    await user.click(
+      await screen.findByRole("button", { name: "Passkey auf diesem Gerät einrichten" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Bestätige, dass du es bist" });
+    await user.type(within(dialog).getByLabelText(/Dein Passwort/), "falsch");
+    await user.click(within(dialog).getByRole("button", { name: "Weiter" }));
+    expect(
+      await within(dialog).findByText(/Passwort ist nicht korrekt|Passwort stimmt nicht/),
+    ).toBeInTheDocument();
+    expect(startRegistration).not.toHaveBeenCalled();
+    expect(apiFetch).not.toHaveBeenCalled();
+  });
+
+  it("confirms an account without a password with the mailed code before the passkey", async () => {
+    profile = { ...profile, hasPassword: false };
+    const user = userEvent.setup();
+    apiPost.mockResolvedValue({ options: { challenge: "x" }, challengeToken: "t" });
+    apiFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    startRegistration.mockResolvedValue({ id: "cred" });
+    renderProfile();
+    await user.click(
+      await screen.findByRole("button", { name: "Passkey auf diesem Gerät einrichten" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Bestätige, dass du es bist" });
+    await user.click(within(dialog).getByRole("button", { name: "Code senden" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith("/api/auth/webauthn/register/code", {}),
+    );
+    // An incomplete code is not sent
+    await user.click(within(dialog).getByRole("button", { name: "Weiter" }));
+    expect(apiPost).not.toHaveBeenCalledWith(
+      "/api/auth/webauthn/register/options",
+      expect.anything(),
+    );
+    await user.click(within(dialog).getAllByRole("textbox")[0]);
+    await user.paste("123456");
+    await user.click(within(dialog).getByRole("button", { name: "Weiter" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith("/api/auth/webauthn/register/options", {
+        code: "123456",
+      }),
+    );
+    expect(await screen.findByText(/wurde hinzugefügt/)).toBeInTheDocument();
+  });
+
+  it("shows a wrong passkey code at the field", async () => {
+    profile = { ...profile, hasPassword: false };
+    apiPost.mockRejectedValue(new ApiError("x", 400, "invalid_confirmation_code"));
+    const user = userEvent.setup();
+    renderProfile();
+    await user.click(
+      await screen.findByRole("button", { name: "Passkey auf diesem Gerät einrichten" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Bestätige, dass du es bist" });
+    await user.click(within(dialog).getAllByRole("textbox")[0]);
+    await user.paste("123456");
+    await user.click(within(dialog).getByRole("button", { name: "Weiter" }));
+    expect(
+      await within(dialog).findByText("Der Code ist nicht korrekt oder abgelaufen."),
+    ).toBeInTheDocument();
+    expect(startRegistration).not.toHaveBeenCalled();
+  });
+
   it("explains a failed passkey setup and a cancelled one differently", async () => {
     const user = userEvent.setup();
-    apiFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ options: { challenge: "x" }, challengeToken: "t" }),
-    });
+    apiPost.mockResolvedValue({ options: { challenge: "x" }, challengeToken: "t" });
+    apiFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    const confirm = async () => {
+      await user.click(add);
+      const dialog = await screen.findByRole("dialog", { name: "Bestätige, dass du es bist" });
+      await user.type(within(dialog).getByLabelText(/Dein Passwort/), "geheim123");
+      await user.click(within(dialog).getByRole("button", { name: "Weiter" }));
+    };
     renderProfile();
     const add = await screen.findByRole("button", { name: "Passkey auf diesem Gerät einrichten" });
     startRegistration.mockRejectedValue(
       Object.assign(new Error("denied"), { name: "NotAllowedError" }),
     );
-    await user.click(add);
+    await confirm();
     expect(await screen.findByText(/Das Einrichten wurde abgebrochen/)).toBeInTheDocument();
     startRegistration.mockRejectedValue(new Error("boom"));
-    await user.click(add);
+    await confirm();
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Der Passkey konnte nicht eingerichtet werden.",
     );

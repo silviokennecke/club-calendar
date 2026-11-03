@@ -101,6 +101,17 @@ readonly class AccountMailer
         ));
     }
 
+    public function sendPasskeyCode(User $user, string $code, int $validMinutes): void
+    {
+        $this->mailer->queue($this->email(
+            $user,
+            $user->getEmail(),
+            'email.passkey_code.subject',
+            'email/passkey_code.html.twig',
+            ['code' => $code, 'validMinutes' => (string) $validMinutes],
+        ));
+    }
+
     /** @return array<string, string> when (UTC and, if known, the user's calendar zone) and the forgot-password page */
     private function noticeContext(User $user): array
     {

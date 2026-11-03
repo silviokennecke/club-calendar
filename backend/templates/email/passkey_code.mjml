@@ -1,0 +1,35 @@
+<mjml>
+  <mj-head>
+    <mj-title>{{ 'email.passkey_code.subject'|trans }}</mj-title>
+    <mj-preview>{{ 'email.passkey_code.subject'|trans }}</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="{{ THEME.fonts.family }}" />
+      <mj-text font-size="{{ THEME.fonts.size.body }}" color="{{ THEME.colors.text }}" line-height="{{ THEME.fonts.lineHeight.normal }}" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="{{ THEME.colors.background }}">
+    <mj-section background-color="{{ THEME.colors.surface }}" padding="{{ THEME.spacing.xxl }} {{ THEME.spacing.xl }}">
+      <mj-column>
+        <mj-include path="./_components/header.mjml" />
+
+        <mj-text font-size="{{ THEME.fonts.size.heading }}" font-weight="bold" padding-bottom="8px">
+          {{ 'email.passkey_code.greeting'|trans({name: userName}) }}
+        </mj-text>
+        <mj-text padding-bottom="16px">
+          {{ 'email.passkey_code.body'|trans }}
+        </mj-text>
+
+        <mj-include path="./_components/code.mjml" />
+
+        {% set noticeText = 'email.passkey_code.expiry_note'|trans({minutes: validMinutes}) %}
+        <mj-include path="./_components/notice.mjml" />
+
+        {% set noticeText = 'email.passkey_code.ignore_note'|trans %}
+        <mj-include path="./_components/notice-warning.mjml" />
+
+
+        <mj-include path="./_components/footer.mjml" />
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

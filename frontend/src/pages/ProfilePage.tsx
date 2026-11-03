@@ -151,7 +151,12 @@ export default function ProfilePage() {
           <AccountSection key={data.name} profile={data} />
           <PasswordSection profile={data} />
           <LinkedLoginsSection profile={data} outcome={linkOutcome} />
-          <PasskeysSection passkeys={data.passkeys} refresh={() => profile.refetch()} />
+          <PasskeysSection
+            passkeys={data.passkeys}
+            hasPassword={data.hasPassword}
+            email={data.email}
+            refresh={() => profile.refetch()}
+          />
         </>
       ) : (
         <Banner

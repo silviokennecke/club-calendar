@@ -59,6 +59,13 @@
             "expiry_note": "The code is valid for at least {minutes} minutes and works only for this account.",
             "ignore_note": "If this was not you, do not enter the code and ignore this email. Your account stays as it is."
         },
+        "passkey_code": {
+            "subject": "Confirm adding a passkey",
+            "greeting": "Hello {name},",
+            "body": "You asked to add a passkey to your Club Calendar account. Enter this code in the app to confirm.",
+            "expiry_note": "The code is valid for at least {minutes} minutes and works only for this account.",
+            "ignore_note": "If this was not you, do not enter the code and ignore this email. No passkey is added. Consider changing your password."
+        },
         "invitation": {
             "subject": "Invitation to join {club} on Club Calendar",
             "greeting": "Hello,",

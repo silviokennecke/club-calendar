@@ -28,6 +28,14 @@ async function openProfile(
   await expect(page.getByRole("heading", { level: 1, name: "Profil" })).toBeVisible();
 }
 
+/** Passkey setup first asks for the password (L7); clicks the button, then confirms in the dialog. */
+async function startPasskeySetup(page: Page) {
+  await page.getByRole("button", { name: "Passkey auf diesem Gerät einrichten" }).click();
+  const dialog = page.getByRole("dialog", { name: "Bestätige, dass du es bist" });
+  await dialog.getByLabel(/Dein Passwort/).fill(PASSWORD);
+  await dialog.getByRole("button", { name: "Weiter" }).click();
+}
+
 const me = async (request: APIRequestContext, headers: Record<string, string>) =>
   (await request.get(`${API}/api/auth/me`, { headers })).json();
 
@@ -165,9 +173,8 @@ test.describe("Profil", () => {
       navigator.credentials.create = () =>
         Promise.reject(new DOMException("The operation was cancelled", "NotAllowedError"));
     });
-    const add = page.getByRole("button", { name: "Passkey auf diesem Gerät einrichten" });
     await page.getByLabel(/^Gerätename/).fill("Büro-PC");
-    await add.click();
+    await startPasskeySetup(page);
     await expect(page.getByText(/Das Einrichten wurde abgebrochen/)).toBeVisible();
     await expect(page.getByLabel(/^Gerätename/)).toHaveValue("Büro-PC");
     // Ein anderer Fehler: eigene Meldung als Alarm
@@ -175,7 +182,7 @@ test.describe("Profil", () => {
       navigator.credentials.create = () =>
         Promise.reject(new DOMException("Device not supported", "NotSupportedError"));
     });
-    await add.click();
+    await startPasskeySetup(page);
     await expect(page.getByRole("alert")).toContainText(
       "Der Passkey konnte nicht eingerichtet werden.",
     );
@@ -202,7 +209,7 @@ test.describe("Profil", () => {
     });
 
     await page.getByLabel(/^Gerätename/).fill("Test-Laptop");
-    await page.getByRole("button", { name: "Passkey auf diesem Gerät einrichten" }).click();
+    await startPasskeySetup(page);
     await expect(page.getByText("Passkey „Test-Laptop“ wurde hinzugefügt.")).toBeVisible();
     const list = page.getByRole("list", { name: "Deine Passkeys (1)" });
     await expect(list).toContainText("Test-Laptop");
