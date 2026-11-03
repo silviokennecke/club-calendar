@@ -58,10 +58,10 @@ describe("exchangeOneTimeToken", () => {
   it("posts the one_time_token grant form-encoded and returns the tokens", async () => {
     const tokens = { access_token: "a", refresh_token: "r", user: { id: "u" } };
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(tokens), { status: 200 }));
-    await expect(exchangeOneTimeToken("tok en")).resolves.toEqual(tokens);
+    await expect(exchangeOneTimeToken("tok en", "ver ifier")).resolves.toEqual(tokens);
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toMatch(/\/api\/auth\/token$/);
-    expect(init?.body).toBe("grant_type=one_time_token&token=tok+en");
+    expect(init?.body).toBe("grant_type=one_time_token&token=tok+en&code_verifier=ver+ifier");
     expect((init?.headers as Record<string, string>)["Content-Type"]).toBe(
       "application/x-www-form-urlencoded",
     );
@@ -69,7 +69,7 @@ describe("exchangeOneTimeToken", () => {
 
   it("throws an ApiError with the code on failure", async () => {
     fetchMock.mockResolvedValueOnce(problem(400, { code: "invalid_grant" }));
-    await expect(exchangeOneTimeToken("x")).rejects.toMatchObject({
+    await expect(exchangeOneTimeToken("x", "v")).rejects.toMatchObject({
       status: 400,
       code: "invalid_grant",
     });

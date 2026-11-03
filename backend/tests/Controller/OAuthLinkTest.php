@@ -285,7 +285,7 @@ class OAuthLinkTest extends WebTestCase
         $user = $this->createUser('alice@example.com');
         $linkState = $this->startLink($user, 'google');
 
-        self::$client->request('GET', self::API.'/api/auth/oauth/google');
+        self::$client->request('GET', self::API.'/api/auth/oauth/google?code_challenge='.\App\Security\OneTimeTokenService::challengeFor('x'));
         parse_str((string) parse_url((string) self::$client->getResponse()->headers->get('Location'), \PHP_URL_QUERY), $query);
         $loginState = (string) $query['state'];
 
@@ -312,7 +312,7 @@ class OAuthLinkTest extends WebTestCase
         // The sign-in state carries no user: a signed-in browser that runs the sign-in flow gets the
         // sign-in policy (here: Microsoft never links an existing address), not a link.
         $user = $this->createUser('alice@example.com');
-        self::$client->request('GET', self::API.'/api/auth/oauth/microsoft', [], [], ['HTTP_AUTHORIZATION' => $this->auth($user)]);
+        self::$client->request('GET', self::API.'/api/auth/oauth/microsoft?code_challenge='.\App\Security\OneTimeTokenService::challengeFor('x'), [], [], ['HTTP_AUTHORIZATION' => $this->auth($user)]);
         parse_str((string) parse_url((string) self::$client->getResponse()->headers->get('Location'), \PHP_URL_QUERY), $query);
         $location = $this->returnFrom('microsoft', (string) $query['state'], ['sub' => 'ms-1', 'email' => 'alice@example.com']);
         $this->assertSame(self::$frontendUrl.'/auth/callback?error=account_exists', $location);

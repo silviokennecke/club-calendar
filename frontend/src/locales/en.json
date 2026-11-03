@@ -44,6 +44,8 @@
         "account_exists": "There already is an account for this email address. Sign in the way you did before.",
         "email_unverified_at_provider": "Your email address is not confirmed at the provider yet. Confirm it there and try again, or sign in with email and password.",
         "invalid_login_code": "Your sign-in has expired or was already used. Please sign in again.",
+        "invalid_code_verifier": "You started signing in in another browser or tab, or the sign-in was interrupted. Please start it again here.",
+        "invalid_request": "The sign-in could not be started. Please try again.",
         "registration_restricted": "No account was created. Registration is only possible with an invitation. Ask your club admin to invite this email address."
       },
       "forgot": "Forgot password?",

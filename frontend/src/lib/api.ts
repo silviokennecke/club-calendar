@@ -304,15 +304,22 @@ export async function resendVerification(): Promise<void> {
 
 /**
  * Exchanges a one-time code (SSO redirect `?code=`) for the normal token pair
- * (`grant_type=one_time_token`, form-encoded like the refresh grant). Failure: 400 `invalid_grant`.
+ * (`grant_type=one_time_token`, form-encoded like the refresh grant). Failure: 400 `invalid_grant` or `invalid_code_verifier`.
  */
-export async function exchangeOneTimeToken(token: string): Promise<TokenResponse> {
+export async function exchangeOneTimeToken(
+  token: string,
+  codeVerifier: string,
+): Promise<TokenResponse> {
   const res = await fetchWithTimeout(
     BASE_URL + "/api/auth/token",
     {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ grant_type: "one_time_token", token }).toString(),
+      body: new URLSearchParams({
+        grant_type: "one_time_token",
+        token,
+        code_verifier: codeVerifier,
+      }).toString(),
     },
     REQUEST_TIMEOUT_MS,
   );

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 import { isEmailShape } from "@/lib/email";
 import { isRateLimited, rateLimitText } from "@/lib/rateLimit";
 import { ssoErrorKey } from "@/lib/ssoError";
+import { createSsoChallenge } from "@/lib/ssoBinding";
 import {
   clearInvitationToken,
   readInvitationToken,
@@ -124,6 +125,20 @@ export default function SignInPage() {
       setProblemKey((k) => k + 1);
     } finally {
       setIdentifying(false);
+    }
+  }
+
+  // The login code is bound to this tab: the challenge goes to the start route, the verifier stays here.
+  async function startSso(event: MouseEvent<HTMLAnchorElement>, provider: string) {
+    event.preventDefault();
+    setSsoError(null);
+    try {
+      const challenge = await createSsoChallenge();
+      window.location.assign(
+        `${BACKEND_URL}/api/auth/oauth/${provider}?${new URLSearchParams({ code_challenge: challenge })}`,
+      );
+    } catch {
+      setSsoError("oauth_failed");
     }
   }
 
@@ -279,6 +294,7 @@ export default function SignInPage() {
                   provider={provider.id}
                   name={provider.name}
                   href={`${BACKEND_URL}/api/auth/oauth/${provider.id}`}
+                  onClick={(event) => startSso(event, provider.id)}
                 />
               ))}
             </div>

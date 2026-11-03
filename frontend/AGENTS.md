@@ -330,7 +330,7 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
   a 401 (`invalid_token` / `token_expired` / `missing_token`) of a request with a token triggers the refresh in
   `apiFetch` (by status, not code); list in
   `docs/api/openapi.yaml`, `ErrorCode`). SSO callback errors (`?error=`) map to their own texts via
-  `lib/ssoError.ts` (`auth.login.ssoError.<code>`, unknown codes → `generic`). The react-query
+  `lib/ssoError.ts` (`auth.login.ssoError.<code>`, unknown codes → `generic`). SSO sign-in is bound to the tab (PKCE, `lib/ssoBinding.ts`): `SignInPage` sends `code_challenge` to the start route and keeps the verifier in `sessionStorage`; `AuthCallbackPage` takes it (single use) and sends it as `code_verifier`, without it the page goes to `/login?error=invalid_code_verifier` without a request. The react-query
   default `retry` (`lib/queryRetry.ts`) does not retry 4xx (401/403/404 show their error state at once), 5xx and
   network errors get 2 retries. Every request times out (`fetchWithTimeout` in `lib/api.ts`: 30 s, 120 s for import, import preview and ICS/PDF export) with `ApiError` `code: "request_timeout"`, `status` 0 (shown like a network error; a refresh timeout does not end the session; the caller's own `signal` still aborts as a plain AbortError). Auth: `lib/auth-context.ts` (context + `useAuth`), `lib/AuthProvider.tsx` (provider);
   button styling is `buttonClass()` in `ui/shared/` (the old shadcn component files in `components/ui/` are gone;

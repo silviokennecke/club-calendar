@@ -13,6 +13,9 @@ export const SSO_ERROR_CODES = [
   "registration_restricted",
   // set by the SPA itself when the one-time code of the redirect was rejected
   "invalid_login_code",
+  // set by the SPA when this tab did not start the flow; invalid_request also by the backend start route
+  "invalid_code_verifier",
+  "invalid_request",
 ] as const;
 
 export type SsoErrorCode = (typeof SSO_ERROR_CODES)[number];

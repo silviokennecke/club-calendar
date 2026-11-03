@@ -7,6 +7,8 @@ namespace App\Tests\Controller;
 use App\Entity\OAuthAccount;
 use App\Entity\Passkey;
 use App\Entity\User;
+use App\Security\OneTimeTokenService;
+use App\Security\SignedTokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\FakeOAuth2Client;
 use App\Tests\Helper\TestHelper;
@@ -33,6 +35,8 @@ class OAuthTest extends WebTestCase
     private EntityManagerInterface $em;
     /** @var array<string, FakeOAuth2Client> */
     private static array $providers = [];
+    /** Verifier of the last started flow (the SPA keeps it in sessionStorage). */
+    private static string $verifier = '';
 
     public static function setUpBeforeClass(): void
     {
@@ -67,7 +71,10 @@ class OAuthTest extends WebTestCase
     /** Starts the flow in the test browser (stores the state cookie) and returns the state. */
     private function start(string $provider): string
     {
-        self::$client->request('GET', self::API."/api/auth/oauth/$provider");
+        self::$verifier = SignedTokenService::b64(random_bytes(32));
+        self::$client->request('GET', self::API."/api/auth/oauth/$provider?".http_build_query([
+            'code_challenge' => OneTimeTokenService::challengeFor(self::$verifier),
+        ]));
         $response = self::$client->getResponse();
         $this->assertSame(302, $response->getStatusCode());
         parse_str((string) parse_url((string) $response->headers->get('Location'), \PHP_URL_QUERY), $query);
@@ -120,9 +127,9 @@ class OAuthTest extends WebTestCase
     }
 
     /** @return array{int, array} status and body of the token endpoint */
-    private function redeem(string $code): array
+    private function redeem(string $code, ?string $verifier = null): array
     {
-        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'one_time_token', 'token' => $code]);
+        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'one_time_token', 'token' => $code] + ['code_verifier' => $verifier ?? self::$verifier]);
         $response = self::$client->getResponse();
 
         return [$response->getStatusCode(), json_decode((string) $response->getContent(), true)];
@@ -138,7 +145,7 @@ class OAuthTest extends WebTestCase
     public function testAppleAuthorizeRequestUsesFormPostOthersDoNot(): void
     {
         foreach (['apple' => true, 'google' => false, 'microsoft' => false] as $provider => $formPost) {
-            self::$client->request('GET', self::API."/api/auth/oauth/$provider");
+            self::$client->request('GET', self::API."/api/auth/oauth/$provider?code_challenge=".OneTimeTokenService::challengeFor('x'));
             parse_str((string) parse_url((string) self::$client->getResponse()->headers->get('Location'), \PHP_URL_QUERY), $query);
             $this->assertSame($formPost ? 'form_post' : null, $query['response_mode'] ?? null, $provider);
         }
@@ -193,6 +200,43 @@ class OAuthTest extends WebTestCase
         $this->assertSame('invalid_grant', $body['code']);
     }
 
+    public function testStartWithoutAWellFormedChallengeIsRefused(): void
+    {
+        foreach (['', '?code_challenge=', '?code_challenge=short', '?code_challenge='.str_repeat('a', 44), '?code_challenge[]=x', '?code_challenge='.str_repeat('+', 43)] as $query) {
+            self::$client->request('GET', self::API.'/api/auth/oauth/google'.$query);
+            $response = self::$client->getResponse();
+            $this->assertSame(302, $response->getStatusCode(), $query);
+            $this->assertSame(self::$frontendUrl.'/auth/callback?error=invalid_request', $response->headers->get('Location'), $query);
+        }
+    }
+
+    public function testCodeNeedsTheVerifierOfTheBrowserThatStartedTheFlow(): void
+    {
+        $code = $this->signIn('google', self::google('new@example.com'))['code'];
+        // The attacker's code redeemed in the victim's browser: no verifier, or the victim's own one.
+        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'one_time_token', 'token' => $code]);
+        $this->assertSame(400, self::$client->getResponse()->getStatusCode());
+        $this->assertSame('invalid_code_verifier', json_decode((string) self::$client->getResponse()->getContent(), true)['code']);
+        // A failed attempt burns the code: even the right verifier is too late.
+        $this->assertSame('invalid_grant', $this->redeem($code)[1]['code']);
+
+        $code = $this->signIn('google', self::google('new@example.com'))['code'];
+        [$status, $body] = $this->redeem($code, SignedTokenService::b64(random_bytes(32)));
+        $this->assertSame([400, 'invalid_code_verifier'], [$status, $body['code']]);
+        $this->assertSame('invalid_grant', $this->redeem($code)[1]['code']);
+
+        $code = $this->signIn('google', self::google('new@example.com'))['code'];
+        $this->assertSame(200, $this->redeem($code)[0]);
+    }
+
+    public function testCodeWithoutChallengeNeverRedeems(): void
+    {
+        $this->signIn('google', self::google('new@example.com'));
+        $user = $this->user('new@example.com');
+        $code = static::getContainer()->get(OneTimeTokenService::class)->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30);
+        $this->assertSame('invalid_grant', $this->redeem($code, 'anything')[1]['code']);
+    }
+
     public function testCodeExpiresAfterItsTtl(): void
     {
         self::mockTime();
@@ -218,10 +262,10 @@ class OAuthTest extends WebTestCase
     {
         $this->signIn('google', self::google('new@example.com'));
         $user = $this->user('new@example.com');
-        $signed = static::getContainer()->get(\App\Security\SignedTokenService::class);
+        $signed = static::getContainer()->get(SignedTokenService::class);
         foreach (['oauth.state', 'oauth.link_ticket', 'oauth.link_proof', 'login.other'] as $purpose) {
             $token = $signed->issue($purpose, [
-                'n' => \App\Security\SignedTokenService::b64(random_bytes(32)),
+                'n' => SignedTokenService::b64(random_bytes(32)),
                 'uid' => $user->getId(),
                 'tv' => $user->getTokenVersion(),
             ], 180);
@@ -509,7 +553,7 @@ class OAuthTest extends WebTestCase
 
     public function testStateCookieAttributes(): void
     {
-        self::$client->request('GET', self::API.'/api/auth/oauth/google');
+        self::$client->request('GET', self::API.'/api/auth/oauth/google?code_challenge='.OneTimeTokenService::challengeFor('x'));
         $cookies = self::$client->getResponse()->headers->getCookies();
         $this->assertCount(1, $cookies);
         $cookie = $cookies[0];

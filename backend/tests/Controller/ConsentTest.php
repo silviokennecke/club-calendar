@@ -337,8 +337,8 @@ class ConsentTest extends WebTestCase
         $sso->setIsEmailVerified(true);
         self::$em->persist($sso);
         self::$em->flush();
-        $token = static::getContainer()->get(OneTimeTokenService::class)->issue($sso, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30);
-        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'one_time_token', 'token' => $token]);
+        $token = static::getContainer()->get(OneTimeTokenService::class)->issue($sso, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30, OneTimeTokenService::challengeFor(str_repeat('v', 43)));
+        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'one_time_token', 'token' => $token, 'code_verifier' => str_repeat('v', 43)]);
         $this->assertSame(200, self::$client->getResponse()->getStatusCode(), 'login itself still returns tokens');
         $access = json_decode(self::$client->getResponse()->getContent(), true)['access_token'];
         $r = TestHelper::jsonRequest(self::$client, 'GET', '/api/clubs', [], 'Bearer '.$access);

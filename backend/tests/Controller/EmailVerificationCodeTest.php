@@ -104,7 +104,7 @@ class EmailVerificationCodeTest extends WebTestCase
 
     private function grant(string $token): array
     {
-        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'one_time_token', 'token' => $token]);
+        self::$client->request('POST', '/api/auth/token', ['grant_type' => 'one_time_token', 'token' => $token, 'code_verifier' => str_repeat('v', 43)]);
         $response = self::$client->getResponse();
 
         return ['status' => $response->getStatusCode(), 'body' => json_decode((string) $response->getContent(), true)];
@@ -476,7 +476,7 @@ class EmailVerificationCodeTest extends WebTestCase
         $foreign = $service->issue($user, 'some.other.purpose', 30);
         $this->assertSame('invalid_grant', $this->grant($foreign)['body']['code']);
 
-        $good = $service->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30);
+        $good = $service->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30, OneTimeTokenService::challengeFor(str_repeat('v', 43)));
         $tampered = substr($good, 0, -2).('AA' === substr($good, -2) ? 'BB' : 'AA');
         $this->assertSame('invalid_grant', $this->grant($tampered)['body']['code']);
         $this->assertSame('invalid_grant', $this->grant('garbage')['body']['code']);
@@ -490,11 +490,11 @@ class EmailVerificationCodeTest extends WebTestCase
     {
         $user = $this->unverifiedUser();
         $service = static::getContainer()->get(OneTimeTokenService::class);
-        $token = $service->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30);
+        $token = $service->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30, OneTimeTokenService::challengeFor(str_repeat('v', 43)));
         $this->assertSame(200, $this->grant($token)['status']);
         $this->assertSame('invalid_grant', $this->grant($token)['body']['code']);
 
-        $token = $service->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30);
+        $token = $service->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30, OneTimeTokenService::challengeFor(str_repeat('v', 43)));
         self::mockTime('+31 seconds');
         $this->assertSame('invalid_grant', $this->grant($token)['body']['code']);
     }
@@ -502,7 +502,7 @@ class EmailVerificationCodeTest extends WebTestCase
     public function testOneTimeTokenDiesWhenTheSessionsEnd(): void
     {
         $user = $this->unverifiedUser();
-        $token = static::getContainer()->get(OneTimeTokenService::class)->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30);
+        $token = static::getContainer()->get(OneTimeTokenService::class)->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, 30, OneTimeTokenService::challengeFor(str_repeat('v', 43)));
         $user->invalidateTokens();
         $this->em->flush();
         $this->assertSame('invalid_grant', $this->grant($token)['body']['code']);
