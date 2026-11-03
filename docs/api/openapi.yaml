@@ -110,7 +110,8 @@ info:
 
     ### Passkeys (WebAuthn) - brief
 
-    `GET …/webauthn/register/options` (JWT) or `GET …/webauthn/authenticate/options` returns
+    `POST …/webauthn/register/options` (JWT, re-authentication: `{password}` or, for accounts without a
+    password, `{code}` mailed by `POST …/register/code`) or `GET …/webauthn/authenticate/options` returns
     `{options, challengeToken}`; the browser runs `navigator.credentials.create/get` with `options`; the result
     goes to `POST …/register/verify` or `POST …/authenticate/verify` together with the signed, single-use
     `challengeToken`. Allowed origin is `FRONTEND_URL`, RP ID `WEBAUTHN_RP_ID`.
@@ -1369,18 +1370,58 @@ paths:
 
   # ------------------------------------------------------------------ Passkeys
   /api/auth/webauthn/register/options:
-    get:
+    post:
       tags: [Passkeys]
-      summary: Options to register a passkey
+      summary: Options to register a passkey (needs re-authentication)
+      description: >-
+        The account proves itself first: `{password}` for an account with a password, `{code}` (6 digits, mailed by
+        `POST …/register/code`) for one without. Only then the options and the signed, single-use challenge token
+        are issued; `…/register/verify` is impossible without that token. A deletion code is not valid here (the
+        code is bound to its purpose). Every attempt counts: 5 per 15 minutes per user, plus the per-IP limit.
       operationId: passkeyRegistrationOptions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password: { type: string, maxLength: 4096 }
+                code: { type: string, maxLength: 32 }
       responses:
         '200':
           description: '`PublicKeyCredentialCreationOptions` (JSON, base64url) and the signed challenge token.'
           content:
             application/json:
               schema: { $ref: '#/components/schemas/WebAuthnOptions' }
+        '400':
+          description: '`invalid_credentials` (password missing or wrong, field `password`), `invalid_confirmation_code` (field `code`), `invalid_request`.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
+
+  /api/auth/webauthn/register/code:
+    post:
+      tags: [Passkeys]
+      summary: Mail the confirmation code for passkey registration
+      description: >-
+        Only for accounts without a password. Same derived, stateless code as for the account deletion but bound to
+        the passkey purpose (10 to 20 minutes). At most 5 mails per user and hour.
+      operationId: sendPasskeyRegistrationCode
+      responses:
+        '204': { description: The code went to the account's address. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: '`has_password`: the account has a password, confirm with it.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429':
+          description: '`rate_limited` (header `Retry-After`).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
 
   /api/auth/webauthn/register/verify:
     post:

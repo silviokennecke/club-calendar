@@ -61,11 +61,12 @@ class WebAuthnTest extends WebTestCase
     /** @return array{challenge: string, token: string} */
     private function options(string $kind, ?User $user = null): array
     {
+        $register = 'register' === $kind;
         $r = TestHelper::jsonRequest(
             self::$client,
-            'GET',
+            $register ? 'POST' : 'GET',
             "/api/auth/webauthn/$kind/options",
-            [],
+            $register ? ['password' => 'password123'] : [],
             $user ? $this->auth($user) : '',
         );
         $this->assertSame(200, $r['status'], $r['content']);
@@ -440,7 +441,9 @@ class WebAuthnTest extends WebTestCase
 
     public function testRegistrationRequiresSignIn(): void
     {
-        $r = TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/webauthn/register/options');
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/options', ['password' => 'password123']);
+        $this->assertSame(401, $r['status']);
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/code');
         $this->assertSame(401, $r['status']);
     }
 

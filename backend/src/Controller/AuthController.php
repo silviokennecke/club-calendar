@@ -18,12 +18,12 @@ use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
-use App\Service\AccountDeletionService;
 use App\Service\AccountService;
 use App\Service\AuthService;
 use App\Service\Input;
 use App\Service\LegalConsentService;
 use App\Service\PasswordResetService;
+use App\Service\ReauthenticationService;
 use App\Service\RegistrationPolicy;
 use Doctrine\ORM\EntityManagerInterface;
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
@@ -50,7 +50,7 @@ class AuthController extends AbstractApiController
         private readonly ClientRegistry $clientRegistry,
         private readonly PasswordResetService $passwordResets,
         private readonly AccountService $accounts,
-        private readonly AccountDeletionService $accountDeletion,
+        private readonly ReauthenticationService $reauth,
         private readonly LegalConsentService $legal,
         private readonly RegistrationPolicy $registrationPolicy,
         private readonly EntityManagerInterface $em,
@@ -397,7 +397,7 @@ class AuthController extends AbstractApiController
             ? new DeleteAccountDto()
             : $this->deserializeDto($request, DeleteAccountDto::class);
         $this->validateDto($dto, $this->validator);
-        $this->accountDeletion->assertConfirmed($user, $dto->password, $dto->code);
+        $this->reauth->assertConfirmed($user, ReauthenticationService::PURPOSE_DELETE_ACCOUNT, $dto->password, $dto->code);
         $this->auth->deleteMe($user);
 
         return new JsonResponse(['ok' => true]);
@@ -409,7 +409,7 @@ class AuthController extends AbstractApiController
     {
         $user = $this->userResolver->resolve();
         $this->rateLimiter->assertAccountDeleteCodeAllowed($request, $user->getId());
-        $this->accountDeletion->sendCode($user);
+        $this->reauth->sendCode($user, ReauthenticationService::PURPOSE_DELETE_ACCOUNT);
 
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }

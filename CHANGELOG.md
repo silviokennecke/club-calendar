@@ -7,6 +7,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Changed
 
+- Security (audit L7): adding a passkey now requires proof of the account holder: the password, or for accounts without one a 6-digit code mailed to the address (own purpose, a deletion code is not valid). `GET /api/auth/webauthn/register/options` became `POST` with `{password}` or `{code}`; new `POST /api/auth/webauthn/register/code`.
 - Help pages show a small note above the footer links that the help texts were created with the help of AI.
 - Address search (geocoding suggestions) uses the standard Mapbox geocoder again and finds street addresses only; places (POIs) are no longer suggested and the `name` field is removed from `GET /api/map/geocode/suggest`.
 - ICS export (feed, member download, single event): `LOCATION` and the Apple map address are now one part per line, "name, street, ZIP city, country" (empty parts skipped), like Apple Calendar's own export, so Apple Calendar shows the map.

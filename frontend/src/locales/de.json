@@ -2129,7 +2129,23 @@
       "unsupported": "Dieser Browser unterstützt keine Passkeys.",
       "unnamed": "Passkey ohne Namen",
       "lastUsed": "zuletzt benutzt am {{date}}",
-      "neverUsed": "noch nicht benutzt"
+      "neverUsed": "noch nicht benutzt",
+      "reauth": {
+        "title": "Bestätige, dass du es bist",
+        "text": "Bevor ein Passkey zu deinem Konto hinzugefügt wird, bestätige bitte deine Identität.",
+        "confirm": "Weiter",
+        "passwordLabel": "Dein Passwort",
+        "codeText": "Dein Konto hat kein Passwort. Zur Bestätigung schicken wir einen 6-stelligen Code an {{email}}.",
+        "codeSend": "Code senden",
+        "codeResend": "Code erneut senden",
+        "codeSent": "Der Code wurde an {{email}} gesendet. Er ist mindestens 10 Minuten gültig.",
+        "codeLabel": "Bestätigungscode",
+        "codeMissing": "Bitte gib den 6-stelligen Code aus der E-Mail ein.",
+        "wrongCode": "Der Code ist nicht korrekt oder abgelaufen.",
+        "codeFailed": "Der Code konnte nicht gesendet werden. Bitte versuche es erneut.",
+        "rateLimited": "Zu viele Versuche. Bitte warte eine Weile und versuche es erneut.",
+        "failed": "Die Bestätigung hat nicht geklappt. Bitte versuche es erneut."
+      }
     },
     "prefs": {
       "title": "Persönliche Einstellungen",

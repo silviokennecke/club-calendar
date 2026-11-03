@@ -2129,7 +2129,23 @@
       "unsupported": "This browser does not support passkeys.",
       "unnamed": "Unnamed passkey",
       "lastUsed": "last used on {{date}}",
-      "neverUsed": "not used yet"
+      "neverUsed": "not used yet",
+      "reauth": {
+        "title": "Confirm it is you",
+        "text": "Before a passkey is added to your account, please confirm your identity.",
+        "confirm": "Continue",
+        "passwordLabel": "Your password",
+        "codeText": "Your account has no password. We send a 6-digit code to {{email}} to confirm.",
+        "codeSend": "Send code",
+        "codeResend": "Send code again",
+        "codeSent": "The code was sent to {{email}}. It is valid for at least 10 minutes.",
+        "codeLabel": "Confirmation code",
+        "codeMissing": "Please enter the 6-digit code from the email.",
+        "wrongCode": "The code is not correct or has expired.",
+        "codeFailed": "The code could not be sent. Please try again.",
+        "rateLimited": "Too many attempts. Please wait a while and try again.",
+        "failed": "The confirmation did not work. Please try again."
+      }
     },
     "prefs": {
       "title": "Personal settings",

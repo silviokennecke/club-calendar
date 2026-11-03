@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth-context";
 import { formatDate } from "@/lib/dateFormat";
 import { focusAfterDialog } from "@/lib/focus";
 import { localDay } from "@/lib/profile";
+import { PasskeyReauthDialog, type PasskeyRegistrationStart } from "./PasskeyReauthDialog";
 import type { PasskeyInfo } from "./profileTypes";
 
 type Result = { kind: "success"; name: string } | { kind: "error" } | { kind: "cancelled" } | null;
@@ -30,9 +31,13 @@ function passkeysSupported() {
  */
 export function PasskeysSection({
   passkeys,
+  hasPassword,
+  email,
   refresh,
 }: {
   passkeys: PasskeyInfo[];
+  hasPassword: boolean | undefined;
+  email: string;
   refresh: () => Promise<unknown>;
 }) {
   const { t } = useTranslation();
@@ -41,24 +46,22 @@ export function PasskeysSection({
   const [deviceName, setDeviceName] = useState("");
   const [registering, setRegistering] = useState(false);
   const [result, setResult] = useState<Result>(null);
+  const [reauthOpen, setReauthOpen] = useState(false);
   const [removing, setRemoving] = useState<PasskeyInfo | null>(null);
   const supported = passkeysSupported();
   const dateFormat = user?.dateFormat ?? "dd.MM.yyyy";
   const nameOf = (key: PasskeyInfo) => key.deviceName || t("profile.passkeys.unnamed");
 
-  async function register() {
+  // The server issues the options only after the proof of the account holder (dialog).
+  async function register({ options, challengeToken }: PasskeyRegistrationStart) {
     setRegistering(true);
     setResult(null);
     const name = deviceName.trim() || t("profile.passkeys.thisDevice");
     try {
       const { startRegistration } = await import("@simplewebauthn/browser");
-      const optRes = await apiFetch("/api/auth/webauthn/register/options");
-      if (!optRes.ok) throw new Error("options");
-      const { options, challengeToken } = (await optRes.json()) as {
-        options: Parameters<typeof startRegistration>[0]["optionsJSON"];
-        challengeToken: string;
-      };
-      const response = await startRegistration({ optionsJSON: options });
+      const response = await startRegistration({
+        optionsJSON: options as Parameters<typeof startRegistration>[0]["optionsJSON"],
+      });
       const verifyRes = await apiFetch("/api/auth/webauthn/register/verify", {
         method: "POST",
         body: JSON.stringify({ challengeToken, response, deviceName: name }),
@@ -171,7 +174,7 @@ export function PasskeysSection({
               onKeyDown={(e) => {
                 if (e.key === "Enter" && supported && !registering) {
                   e.preventDefault();
-                  void register();
+                  setReauthOpen(true);
                 }
               }}
             />
@@ -182,13 +185,21 @@ export function PasskeysSection({
               loading={registering}
               loadingLabel={t("profile.passkeys.waiting")}
               disabled={!supported}
-              onClick={() => void register()}
+              onClick={() => setReauthOpen(true)}
             >
               {t("profile.passkeys.add")}
             </Button>
           </div>
         </div>
       </div>
+
+      <PasskeyReauthDialog
+        open={reauthOpen}
+        onOpenChange={setReauthOpen}
+        hasPassword={hasPassword}
+        email={email}
+        onConfirmed={(start) => void register(start)}
+      />
 
       {removing && (
         <ConfirmDialog

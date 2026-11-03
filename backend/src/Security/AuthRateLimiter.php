@@ -45,6 +45,10 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $accountDeleteAttempt,
         #[Autowire(service: 'limiter.account_delete_code')]
         private readonly RateLimiterFactory $accountDeleteCode,
+        #[Autowire(service: 'limiter.passkey_register_attempt')]
+        private readonly RateLimiterFactory $passkeyRegisterAttempt,
+        #[Autowire(service: 'limiter.passkey_register_code')]
+        private readonly RateLimiterFactory $passkeyRegisterCode,
         #[Autowire(service: 'limiter.invitation_user')]
         private readonly RateLimiterFactory $invitationUser,
         #[Autowire(service: 'limiter.invitation_club')]
@@ -147,6 +151,20 @@ class AuthRateLimiter
     {
         self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
         self::assertAccepted($this->accountDeleteCode->create($userId)->consume());
+    }
+
+    /** Re-authentication attempts for passkey registration (password or mailed code): per client IP and user. */
+    public function assertPasskeyRegisterAllowed(Request $request, string $userId): void
+    {
+        self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
+        self::assertAccepted($this->passkeyRegisterAttempt->create($userId)->consume());
+    }
+
+    /** Mails of the passkey registration code: 5 per user and hour. */
+    public function assertPasskeyRegisterCodeAllowed(Request $request, string $userId): void
+    {
+        self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
+        self::assertAccepted($this->passkeyRegisterCode->create($userId)->consume());
     }
 
     /** Creating or re-sending a club invitation: 20 per user and day and 50 per club and day (M8). */
