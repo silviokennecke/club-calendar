@@ -27,7 +27,7 @@
 ## Executive Summary
 
 - **No Critical findings** in the completed areas.
-- Counts: **0 High, 1 Medium, 2 Low, 4 Informational** — 7 findings.
+- Counts: **0 High, 1 Medium, 1 Low, 2 Informational** — 4 findings.
 - **Top gap:** Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
 - **Positives:** no IDOR/cross-tenant gaps in the API surface; no live Mapbox token in the frontend (fully proxied through the backend); WebAuthn ceremonies, OAuth state handling, and exception → RFC 7807 response masking are sound; feed-secret checks are constant-time and the Mapbox proxy is SSRF-safe (fixed upstream host, strict path allowlist, caller token stripped).
 
@@ -55,14 +55,6 @@
 **Notes:** The geocode routes in the same controller correctly enforce `ROLE_USER` and per-user rate limiting, so the gap is limited to the two image actions. The image response itself exposes no secret — the finding is coordinate leakage.
 **Source:** `02b-backend-services.md` (API-53).
 
-#### AUTH-13 — SSO login code is not bound to the browser that started the flow (login CSRF)
-**Severity:** Low
-**Attack scope:** Attacker who can make a victim open a crafted link within the code lifetime (default 180 s, env `OAUTH_LOGIN_CODE_TTL`).
-**Description:** The one-time code at `/auth/callback?code=…` is minted after the provider callback (the OAuth `state` is bound to the browser by the `oauth_state_nonce` cookie), but the code itself is not bound to that browser: an attacker completes their own SSO flow, stops at the callback URL and sends the link to the victim, whose SPA then signs in as the attacker. This is the same exposure as the former token URLs, not a regression.
-**Affected parts:** `backend/src/Controller/OAuthController.php` (callback redirect); `backend/src/Security/OneTimeTokenService.php`; `frontend/src/pages/AuthCallbackPage.tsx`.
-**Fix recommendation:** Include a hash of the state nonce in the code's claims and require a matching short-lived HttpOnly cookie at `POST /api/auth/token`. The cookie path must cover `/api/auth/token`; the current nonce cookie path is `/api/auth/oauth` and the callback deletes it.
-**Notes:** Residual risk found while verifying the one-time-code hand-over that replaced the token redirect.
-
 ### Informational
 
 #### AUTH-06 — Register: check-then-insert race on the email
@@ -80,23 +72,6 @@
 **Affected parts:** `AuthController.php:111` (verification call), `:117-119` (error redirect).
 **Fix recommendation:** Redirect to a generic `?status=error`; keep the specific reason server-side only.
 **Source:** `01-backend-auth.md` (AUTH-07).
-
-#### AUTH-08 — WEBAUTHN_USER_VERIFICATION missing from .env.example
-**Severity:** Informational
-**Attack scope:** Fresh deployments (passkey ceremony with weaker user verification).
-**Description:** `services.yaml` wires `WEBAUTHN_USER_VERIFICATION`, but it is commented out in `backend/.env.example`. The code default `preferred` is weaker than `required`.
-**Affected parts:** `config/services.yaml:127`; `.env.example:14`; `WebAuthnService.php:71`.
-**Fix recommendation:** Set/document the variable in `backend/.env.example` (e.g. `required` for production), or fail fast on missing config.
-**Notes:** `required` breaks some platform authenticators; `preferred` is a reasonable floor but should be an explicit choice.
-**Source:** `01-backend-auth.md` (AUTH-08).
-
-#### FE-07 — Dev/build deps lag current major (no vulnerable major in use)
-**Severity:** Informational
-**Attack scope:** None demonstrated; standard "keep tooling current" hygiene.
-**Description:** `vite` is pinned `^6.4.3` (registry latest is 8.x — two majors behind) and `@simplewebauthn/browser` is `^13.3.0` (registry is 14.x). A spot-check of 10 direct dependencies found all *runtime* deps on current majors with only minor bumps. No vulnerable major in use. `vite` is dev-only (build-time), so this is tooling currency, not a runtime risk.
-**Affected parts:** `frontend/package.json:65` (`vite`), `:24` (`@simplewebauthn/browser`).
-**Fix recommendation:** Bump in a regular maintenance pass; re-run the build and the WebAuthn flow after the WebAuthn bump.
-**Source:** `03-frontend.md` (FE-07).
 
 > ⏳ **Pending:** Findings from `04-scans-config.md` (dependencies, secrets, deployment config — numbering `SCAN-xx`) will be inserted into the appropriate sections above when that scan completes.
 
@@ -141,19 +116,16 @@
 |---|---|---|
 | API-52 | Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation | Medium |
 | API-53 | Static map image endpoints expose coordinates of calendars the user does not belong to | Low |
-| AUTH-13 | SSO login code is not bound to the browser that started the flow (login CSRF) | Low |
 | AUTH-06 | Register: check-then-insert race on the email | Informational |
 | AUTH-07 | Email verification error redirect leaks the failure reason | Informational |
-| AUTH-08 | `WEBAUTHN_USER_VERIFICATION` missing from `backend/.env.example` | Informational |
-| FE-07 | Dev/build deps lag current major (no vulnerable major in use) | Informational |
 
 ## Appendix B — Per-Area Reports
 
 | Area | Report | Findings | Status |
 |---|---|---|---|
-| Backend auth | `01-backend-auth.md` | AUTH-06 … AUTH-08, AUTH-13 (4) | Complete |
+| Backend auth | `01-backend-auth.md` | AUTH-06 … AUTH-07 (2) | Complete |
 | Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-53 (2) | Complete |
-| Frontend | `03-frontend.md` | FE-07 (1) | Complete |
+| Frontend | `03-frontend.md` | None (0) | Complete |
 | Scans & config | `04-scans-config.md` | SCAN-07, SCAN-09, SCAN-12 (3) | Complete |
 
 These reports live in `docs/security-audit/`.

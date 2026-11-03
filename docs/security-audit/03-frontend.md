@@ -14,20 +14,7 @@ install/audit/build was run. Secret values found in this audit are redacted (`pk
 
 ## Findings
 
-### FE-07 · Several dev/build deps lag the current major (no known vulnerable major)
-
-- **Severity:** Informational
-- **Attack scope:** None demonstrated; standard "keep tooling current" hygiene.
-- **Description:** `vite` is pinned `^6.4.3` while the registry latest is `8.3.2` (two majors
-  behind), and `@simplewebauthn/browser` is `^13.3.0` vs registry `14.0.0`. The 10-dep
-  spot-check found all *runtime* deps on current majors with only minor bumps (react 19.2.4
-  vs 19.3.0, react-router-dom 7.18.x, @tanstack/react-query 5.101 vs 5.104, i18next 26.3.3 vs
-  26.4.2, sonner 2.0.7 vs 2.0.8, lucide-react 1.17 vs 1.52, mapbox-gl 3.24 vs 3.32). No
-  vulnerable major is in use.
-- **Affected parts:** `frontend/package.json:65` (`vite`), `:24` (`@simplewebauthn/browser`)
-- **Fix recommendation:** Bump `vite` toward 8.x and `@simplewebauthn/browser` to 14.x in a
-  regular maintenance pass; re-run the build and the WebAuthn flow after the WebAuthn bump.
-- **Notes:** `vite` is dev-only (build time), so this is tooling currency, not a runtime risk.
+No open findings.
 
 ---
 
