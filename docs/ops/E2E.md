@@ -43,6 +43,12 @@ Migrationen gehören nicht ungeprüft auf die Dev-DB).
    `npx vite preview --outDir /tmp/e2e-dist --port 5198`, dann
    `E2E_PREVIEW_URL=http://localhost:5198 PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend -- error-page`.
    Ohne `E2E_PREVIEW_URL` wird dieser Test übersprungen.
+7. CSP-Regression (optional): `e2e/csp.spec.ts` setzt die Policy aus `docker/Caddyfile` auf jede Dokumentantwort und
+   schlägt bei jedem `securitypolicyviolation` fehl. Es braucht einen Produktions-Build statt des Vite-Dev-Servers
+   (der Dev-Server injiziert Styles); Port 5199 muss frei sein (Dev-Server vorher beenden), damit `FRONTEND_URL` (CORS) passt:
+   `VITE_API_URL=http://localhost:3001 npx vite build --outDir /tmp/e2e-dist` und
+   `npx vite preview --outDir /tmp/e2e-dist --port 5199 --strictPort` (in `frontend/`), dann
+   `E2E_CSP=1 PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend -- csp`. Nicht prüfbar ohne `MAPBOX_TOKEN`: die echte Mapbox-Karte (ohne Token zeigen die Seiten nur den Fehlerzustand).
 
 `MCP_ALLOWED_CLIENTS=` (leer) erlaubt für `e2e/mcp-consent.spec.ts` jeden OAuth-Client, auch die Loopback-Weiterleitung `http://127.0.0.1/callback`; ohne die Variable gilt die Standardliste (claude, openai, gemini) und die Registrierung schlägt mit 400 `invalid_redirect_uri` fehl. Liegt auf Port 3001 schon ein anderer Server, den E2E-Backend-Port wechseln (`php -S 127.0.0.1:3011`, `BACKEND_URL`, `VITE_API_URL` und `E2E_API_URL=http://localhost:3011` anpassen).
 

@@ -1,4 +1,5 @@
 import { Toaster as Sonner, type ToasterProps } from "sonner";
+import "sonner/dist/styles.css";
 import { useTranslation } from "react-i18next";
 import { Icon } from "./Icon";
 
