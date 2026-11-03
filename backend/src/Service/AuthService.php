@@ -89,6 +89,11 @@ readonly class AuthService
         if (!$this->hasher->isPasswordValid($user, $password)) {
             throw self::invalidCredentials();
         }
+        if ($this->hasher->needsRehash($user)) {
+            // Transparent upgrade; deliberately no token version bump, running sessions stay valid.
+            $user->setPassword($this->hasher->hashPassword($user, $password));
+            $this->em->flush();
+        }
         if (!$user->isEmailVerified()) {
             // Right password, no confirmed address: restricted session; make sure the user has a code to enter.
             $this->sendCodeIfDue($user);
