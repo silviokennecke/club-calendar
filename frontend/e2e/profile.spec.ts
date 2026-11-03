@@ -249,7 +249,7 @@ test.describe("Profil", () => {
       },
     });
     await page.getByLabel(/^Gerätename/).fill("Login-Laptop");
-    await page.getByRole("button", { name: "Passkey auf diesem Gerät einrichten" }).click();
+    await startPasskeySetup(page);
     await expect(page.getByText("Passkey „Login-Laptop“ wurde hinzugefügt.")).toBeVisible();
 
     await page.getByRole("main").getByRole("button", { name: "Abmelden", exact: true }).click();

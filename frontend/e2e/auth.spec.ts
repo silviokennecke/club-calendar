@@ -72,7 +72,16 @@ test.describe("Login", () => {
     );
   });
 
+  test("an SSO login code without a verifier from this tab is rejected", async ({ page }) => {
+    await page.goto("/auth/callback?code=invalid");
+    await expect(page).toHaveURL(/\/login\?error=invalid_code_verifier/);
+    expect(page.url()).not.toContain("code=invalid");
+    await expect(page.getByRole("alert")).toContainText("in einem anderen Browser oder Tab");
+  });
+
   test("an invalid SSO login code is explained and never stays in the URL", async ({ page }) => {
+    await page.goto("/login");
+    await page.evaluate(() => sessionStorage.setItem("sso_code_verifier", "x".repeat(64)));
     await page.goto("/auth/callback?code=invalid");
     await expect(page).toHaveURL(/\/login\?error=invalid_login_code/);
     expect(page.url()).not.toContain("code=invalid");
