@@ -61,6 +61,12 @@ class SecurityHeadersConfigTest extends TestCase
 
         self::assertSame("'self'", $d['default-src']);
         self::assertSame("'self'", $d['script-src'], 'no inline/eval scripts, no third-party script hosts');
+        self::assertStringNotContainsString("'unsafe-inline'", implode(' ', $d), 'no inline styles or scripts');
+        self::assertMatchesRegularExpression(
+            "/^'self'( 'sha256-[A-Za-z0-9+\\/]{43}=')*$/",
+            $d['style-src'],
+            'style-src: own files plus exact hashes of fixed library stylesheets only',
+        );
         self::assertSame("'none'", $d['frame-ancestors']);
         self::assertSame("'none'", $d['object-src']);
         self::assertSame("'self'", $d['base-uri']);
@@ -109,6 +115,14 @@ class SecurityHeadersConfigTest extends TestCase
         $htaccess = self::read(self::HTACCESS);
 
         self::assertStringContainsString('(env|pem|log)', $htaccess);
+    }
+
+    public function testSpaShellHasNoInlineStyle(): void
+    {
+        $html = self::read(self::INDEX_HTML);
+
+        self::assertDoesNotMatchRegularExpression('/<style\b/i', $html);
+        self::assertDoesNotMatchRegularExpression('/\sstyle\s*=/i', $html, 'style attributes are blocked by style-src');
     }
 
     public function testSpaShellHasNoInlineScript(): void

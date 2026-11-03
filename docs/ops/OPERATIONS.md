@@ -53,7 +53,7 @@
   Origin): API-Origin in `connect-src` der CSP aufnehmen. nginx, im `server`-Block (nicht vergessen: `add_header` wird in
   verschachtelten `location`-Blöcken nicht geerbt, also auch im Feed-Block wiederholen, dort mit `no-referrer`):
   ```nginx
-  add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
+  add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'sha256-+A14ONesVdzkn6nr37Osn+rUqNz4oFGZFDbLXrlae04='; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
   add_header X-Content-Type-Options "nosniff" always;
   add_header X-Frame-Options "DENY" always;
   add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), midi=(), accelerometer=(), gyroscope=(), magnetometer=(), interest-cohort=()" always;
@@ -62,7 +62,9 @@
   add_header Strict-Transport-Security "max-age=31536000" always;
   location ~ /\.(?!well-known)|\.(env|pem|log)$ { deny all; }
   ```
-  Offen: `style-src 'unsafe-inline'` bleibt (React-`style=`-Attribute, emoji-mart und mapbox-gl injizieren Styles).
+  `style-src` kennt kein `'unsafe-inline'`: React setzt `style=` über das CSSOM (nicht blockiert), sonner liefert sein CSS als Datei,
+  nur das feste Stylesheet des emoji-mart-Pickers (Shadow DOM) ist per Hash erlaubt (`sha256-+A14ONesVdzkn6nr37Osn+rUqNz4oFGZFDbLXrlae04=`, Drift-Test in
+  `frontend/src/lib/__tests__/cspStyleHash.test.ts`). Ein eigener nginx-Header muss denselben Hash tragen.
 - **Nach einem Deploy** fehlen die Chunks des vorigen Releases; das Frontend lädt bei einem fehlgeschlagenen
   Chunk-Import einmal neu (`vite:preloadError` in `frontend/src/main.tsx`).
 - **PDF-Export:** `GET /api/calendars/{id}/events.pdf` (dompdf) braucht `ext-gd` und `ext-intl` (das Docker-Image installiert beide). Die Route hebt `memory_limit` auf 512M und die Ausführungszeit auf 60 s an (nur für sich, danach zurückgesetzt); Proxy-Timeouts auf `/api/*` müssen mindestens 60 s erlauben. dompdf schreibt Fonts/Temp nach `var/cache/<env>/pdf` (für den PHP-Nutzer beschreibbar). Rate-Limit 10/Nutzer und 30/IP je 10 Minuten.

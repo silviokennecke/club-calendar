@@ -11,7 +11,7 @@ rules](#accessibility-and-structure-rules) · [E2E](#e2e-playwright-frontende2e)
 ## Key conventions
 
 - **Terminology:** UI terms for target groups, features and properties (Audience, Extra, Badge) are defined in CLAUDE.md "Terminology"; UI texts must use them.
-- **CSP:** the app is served with `script-src 'self'`: no inline `<script>`, no `eval`/`new Function`, no third-party script/connect hosts (new hosts go into the CSP in `backend/public/.htaccess` AND `docker/Caddyfile`, see CLAUDE.md "Deployment"). Early boot code belongs in `public/*.js`.
+- **CSP:** the app is served with `script-src 'self'` and `style-src 'self'` plus the hash of emoji-mart's shadow-DOM stylesheet (no `'unsafe-inline'`): no inline `<script>`, no `<style>` element, no `style="…"` in HTML strings or `setAttribute('style', …)` (React `style={{}}` and `el.style.x = …` are CSSOM and fine); a library that injects a `<style>` needs its CSS shipped as a file (see `vite/sonner-css.ts`); no `eval`/`new Function`, no third-party script/connect hosts (new hosts go into the CSP in `backend/public/.htaccess` AND `docker/Caddyfile`, see CLAUDE.md "Deployment"). Early boot code belongs in `public/*.js`.
 
 - Routing: React Router v7 (`react-router-dom`), data router (`createBrowserRouter` with one splat route; needed
   for `useBlocker`); the routes stay declarative `<Route>`s in `AppRoutes`

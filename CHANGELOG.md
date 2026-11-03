@@ -39,4 +39,5 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Security
 
+- Content-Security-Policy: `style-src` no longer allows `'unsafe-inline'`; only own files and the hash of emoji-mart's fixed stylesheet. Custom web server configs (nginx) must take the new header from `docs/ops/OPERATIONS.md`.
 - Pre-hijacking of accounts is closed: someone who registers a stranger's address with an own password can no longer be confirmed by the mailbox owner's code. Only the session that proved the password (or SSO login) and holds the mailed code can confirm the address.
