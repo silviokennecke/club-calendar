@@ -170,12 +170,12 @@ describe("EventsListPage", () => {
     renderList();
     await screen.findByRole("table");
     const tabs = screen.getByRole("group", { name: "Nach Status filtern" });
-    const draft = within(tabs).getByRole("button", { name: "Entwurf 2" });
-    expect(within(tabs).getByRole("button", { name: "Alle 5" })).toHaveAttribute(
+    const draft = within(tabs).getByRole("button", { name: /^Entwurf\s?2$/ });
+    expect(within(tabs).getByRole("button", { name: /^Alle\s?5$/ })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
-    expect(within(tabs).getByRole("button", { name: "Veröffentlicht 3" })).toBeVisible();
+    expect(within(tabs).getByRole("button", { name: /^Veröffentlicht\s?3$/ })).toBeVisible();
     await user.click(draft);
     expect(draft).toHaveAttribute("aria-pressed", "true");
     expect(rows()).toEqual(["Vorstandssitzung", "Arbeitsdienst"]);
@@ -190,7 +190,7 @@ describe("EventsListPage", () => {
     expect(rows()).toEqual(["Training Luftgewehr", "Jugendtraining"]);
     expect(
       within(screen.getByRole("group", { name: "Nach Status filtern" })).getByRole("button", {
-        name: "Alle 2",
+        name: /^Alle\s?2$/,
       }),
     ).toBeVisible();
     await user.clear(screen.getByRole("searchbox"));

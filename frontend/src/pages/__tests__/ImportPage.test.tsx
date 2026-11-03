@@ -114,12 +114,9 @@ async function openReview(user: ReturnType<typeof userEvent.setup>, content = ic
   renderRoute(route, url, <ImportPage />);
   await screen.findByRole("heading", { name: "Termine importieren", level: 1 });
   await user.upload(fileInput(), icsFile(content));
-  await user.click(
-    await screen.findByRole("button", { name: /Datei prüfen/ }).then((b) => {
-      expect(b).toBeEnabled();
-      return b;
-    }),
-  );
+  const check = await screen.findByRole("button", { name: /Datei prüfen/ });
+  await waitFor(() => expect(check).toBeEnabled());
+  await user.click(check);
   return screen.findByRole("heading", { level: 1, name: /Termine erkannt|Termin erkannt/ });
 }
 
