@@ -44,7 +44,7 @@ Migrationen gehören nicht ungeprüft auf die Dev-DB).
    `E2E_PREVIEW_URL=http://localhost:5198 PLAYWRIGHT_BASE_URL=http://localhost:5199 npm run e2e -w frontend -- error-page`.
    Ohne `E2E_PREVIEW_URL` wird dieser Test übersprungen.
 
-`MCP_ALLOWED_CLIENTS=` (leer) erlaubt für `e2e/mcp-consent.spec.ts` jeden OAuth-Client, auch die Loopback-Weiterleitung `http://127.0.0.1/callback`; ohne die Variable gilt die Standardliste (claude, grok, openai, gemini) und die Registrierung schlägt mit 400 `invalid_redirect_uri` fehl. Liegt auf Port 3001 schon ein anderer Server, den E2E-Backend-Port wechseln (`php -S 127.0.0.1:3011`, `BACKEND_URL`, `VITE_API_URL` und `E2E_API_URL=http://localhost:3011` anpassen).
+`MCP_ALLOWED_CLIENTS=` (leer) erlaubt für `e2e/mcp-consent.spec.ts` jeden OAuth-Client, auch die Loopback-Weiterleitung `http://127.0.0.1/callback`; ohne die Variable gilt die Standardliste (claude, openai, gemini) und die Registrierung schlägt mit 400 `invalid_redirect_uri` fehl. Liegt auf Port 3001 schon ein anderer Server, den E2E-Backend-Port wechseln (`php -S 127.0.0.1:3011`, `BACKEND_URL`, `VITE_API_URL` und `E2E_API_URL=http://localhost:3011` anpassen).
 
 Xdebug: Läuft PhpStorm (oder eine andere IDE) mit Debug-Listener auf Port 9003, warten PHP-Prozesse dort auf den
 Debugger und hängen. Dann `XDEBUG_MODE=off` setzen, für den PHP-Server (Schritt 3), für Konsolenbefehle (Schritte 1–2)
