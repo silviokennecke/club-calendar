@@ -42,15 +42,7 @@ class RedirectUriPolicyTest extends TestCase
     #[DataProvider('defaultPolicyCases')]
     public function testDefaultPolicy(string $uri, ?string $family): void
     {
-        $this->assertSame($family, (new RedirectUriPolicy('claude,openai,gemini,grok'))->match($uri));
-    }
-
-    public function testGrokAcceptsNothing(): void
-    {
-        $policy = new RedirectUriPolicy('grok');
-        $this->assertFalse($policy->allowsAnyClient());
-        $this->assertNull($policy->match('https://claude.ai/api/mcp/auth_callback'));
-        $this->assertNull($policy->match('http://localhost:1/callback'));
+        $this->assertSame($family, (new RedirectUriPolicy('claude,openai,gemini'))->match($uri));
     }
 
     public function testOnlyListedFamiliesMatch(): void
@@ -77,6 +69,6 @@ class RedirectUriPolicyTest extends TestCase
     public function testUnknownTokenFailsFast(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        new RedirectUriPolicy('claude,bing');
+        new RedirectUriPolicy('claude,grok');
     }
 }

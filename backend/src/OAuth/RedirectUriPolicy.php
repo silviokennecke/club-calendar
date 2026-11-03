@@ -14,7 +14,6 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * - claude: https://claude.ai/api/mcp/auth_callback; loopback /callback (Claude Code, any port)
  * - openai: https://chatgpt.com/connector_platform_oauth_redirect and https://chatgpt.com/connector/oauth/<id>
  * - gemini: loopback /oauth/callback (Gemini CLI, any port)
- * - grok: NO verified callback URL exists yet, so it accepts nothing until rules are added here
  *
  * Loopback ports are ignored when matching a family (RFC 8252 7.3).
  */
@@ -25,7 +24,7 @@ class RedirectUriPolicy
 
     private const int MAX_LENGTH = 2048;
     private const array LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
-    private const array FAMILIES = ['claude', 'openai', 'gemini', 'grok'];
+    private const array FAMILIES = ['claude', 'openai', 'gemini'];
 
     /** @var list<string> */
     private readonly array $allowed;

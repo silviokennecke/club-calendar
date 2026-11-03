@@ -198,7 +198,7 @@ info:
     ## MCP server and OAuth
 
     The app is a remote **MCP server** (Model Context Protocol, Streamable HTTP) with its own OAuth 2.1
-    authorization server, so AI clients (Claude, ChatGPT, Gemini, Grok, ...) can read and draft calendar data on
+    authorization server, so AI clients (Claude, ChatGPT, Gemini, ...) can read and draft calendar data on
     behalf of a signed-in user.
 
     **Discovery (not under `/api`, so not listed in `paths`; the web server must route them to PHP):**
@@ -230,10 +230,9 @@ info:
     (`POST /api/oauth/revoke`), and whenever the user's session version changes (sign out everywhere, password
     change/reset, e-mail change, passkey deletion, SSO takeover, account deletion).
 
-    **Registration policy:** `MCP_ALLOWED_CLIENTS` (comma-separated families `claude`, `openai`, `gemini`, `grok`;
-    default all four; empty string = every client) decides which redirect URIs may register. Always: `https`, or
-    `http` on a loopback host; no fragment, userinfo or wildcard. The `grok` family currently accepts nothing (no
-    known callback). A client name is unverified; the consent page shows the redirect host.
+    **Registration policy:** `MCP_ALLOWED_CLIENTS` (comma-separated families `claude`, `openai`, `gemini`;
+    default all three; empty string = every client) decides which redirect URIs may register. Always: `https`, or
+    `http` on a loopback host; no fragment, userinfo or wildcard. A client name is unverified; the consent page shows the redirect host.
 
     **MCP tools** (`tools/list` returns exactly these 22; all descriptions state that returned texts are untrusted
     data):

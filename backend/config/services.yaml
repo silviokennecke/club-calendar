@@ -37,7 +37,7 @@ parameters:
     env(MCP_REFRESH_TOKEN_LIFETIME): '604800' # 7 days
     env(MCP_REFRESH_TOKEN_ABSOLUTE_LIFETIME): '2592000' # 30 days
     env(MCP_REFRESH_TOKEN_REUSE_GRACE): '10'
-    env(MCP_ALLOWED_CLIENTS): 'claude,grok,openai,gemini'
+    env(MCP_ALLOWED_CLIENTS): 'claude,openai,gemini'
 
     # Only addresses with an open (pending, not expired) club invitation may create an account
     env(RESTRICT_REGISTRATION): 'false'
