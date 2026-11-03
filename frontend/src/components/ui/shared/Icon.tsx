@@ -64,6 +64,7 @@ import {
 } from "lucide-react";
 
 /** Design glyph names (Icon.dc.html / IconSheet.dc.html) mapped to lucide-react icons. */
+// eslint-disable-next-line react-refresh/only-export-components
 export const GLYPHS = {
   calendar: Calendar,
   "calendar-days": CalendarDays,

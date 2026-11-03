@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const SUPPORTED_LANGUAGES = ["de", "en"] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number];
 

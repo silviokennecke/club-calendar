@@ -193,7 +193,7 @@ function SeriesForm({
   const time = times ? t("events.series.timeRange", times) : t("events.series.allDay");
   const place = template.location ? locationName(template.location) : null;
 
-  let countText = "";
+  let countText: string;
   if (series && preview.pending && !preview.data) countText = t("events.series.previewLoading");
   else if (n === 0) countText = t("events.series.countNone");
   else {
