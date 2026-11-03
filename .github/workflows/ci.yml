@@ -204,6 +204,9 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      - name: npm audit (production dependencies)
+        run: npm audit --omit=dev
+
       - name: Compile mail templates (gitignored build artifacts)
         run: npm run build:mail -w backend
 
