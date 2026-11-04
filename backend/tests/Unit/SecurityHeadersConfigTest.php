@@ -114,7 +114,19 @@ class SecurityHeadersConfigTest extends TestCase
     {
         $htaccess = self::read(self::HTACCESS);
 
-        self::assertStringContainsString('(env|pem|log)', $htaccess);
+        self::assertStringContainsString('(env|pem|log|map)', $htaccess);
+    }
+
+    public function testNoDirectoryListings(): void
+    {
+        $htaccess = self::read(self::HTACCESS);
+        $caddy = self::read(self::CADDYFILE);
+
+        self::assertDoesNotMatchRegularExpression('/^\s*Options\b/m', $htaccess, 'Options is a 500 under a restrictive AllowOverride (audit I2)');
+        self::assertMatchesRegularExpression('/^\s*RewriteRule \^ index\.html \[L\]/m', $htaccess, 'directories fall through to the SPA');
+        self::assertMatchesRegularExpression('/RedirectMatch 403 \^\/\(\?!index\\\.php\/\)\.\+\/\$/', $htaccess, 'no listing without mod_rewrite');
+        self::assertStringContainsString('*.map', $caddy);
+        self::assertDoesNotMatchRegularExpression('/\bbrowse\b/', $caddy, 'file_server must not browse');
     }
 
     public function testSpaShellHasNoInlineStyle(): void

@@ -24,6 +24,7 @@ export default defineConfig({
   build: {
     outDir,
     emptyOutDir: false,
+    sourcemap: false,
     rollupOptions: {
       output: {
         // Long-lived vendor chunks (cached across app releases). Pages and dialogs are split per
