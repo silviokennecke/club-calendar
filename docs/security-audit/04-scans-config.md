@@ -1,48 +1,37 @@
 # Dependencies, Secrets & Config Security Audit
 
 ## Scope
-Secrets and credentials in the working tree and git history, third-party dependency vulnerabilities (JS + PHP), and the security posture of local/CI configuration: `docker-compose.yml`, the GitHub Actions workflow, and `.env*` files. Stack: Symfony 8.1 backend, React SPA frontend, single root `package-lock.json`.
+Secrets and credentials in the working tree and git history, third-party dependency vulnerabilities (JS + PHP), and the security posture of local/CI configuration: `docker-compose.yml`, the GitHub Actions workflow, and `.env*` files. Stack: Symfony 8.1 backend, React SPA frontend, single root `package-lock.json`. The shipped app has no Node server: Node packages are build and test tooling only.
 
 ## Method
-- Gitleaks full-history scan (284 commits) using the repo's `.gitleaks.toml` allowlist; raw output in `.security-audit/gitleaks.json`
+- Gitleaks full-history scan using the repo's `.gitleaks.toml` allowlist
 - Trivy `fs` scan via Docker (`--scanners vuln,secret`, skipping `vendor`, `node_modules`, `dist`, `.git`)
 - `composer audit` for the PHP backend
 - Manual review of `docker-compose.yml`, `.github/workflows/ci.yml`, all `.env*` files, and the JWT key wiring
 - Pattern greps across the repo (AWS `AKIA…`, OpenAI `sk-…`, GitHub `ghp_…`, Slack `xox…`, PEM private-key blocks, `DEPLOY_PASSWORD`/`DEPLOY_KEY`)
 - CVE findings cross-checked against the resolved versions and dependency chains in the root `package-lock.json`
-- Audit made no repo modifications; note `.security-audit/` is not gitignored — do not commit its artifacts
+- Audit made no repo modifications
 
 ## Date
-2026-10-05
+2026-10-05; scanner results re-run on 2026-11-05 (branch `security/audit-followup`).
 
-### SCAN-07 — `qs@6.15.2` — DoS CVEs (via express / body-parser)
-**Severity:** LOW
-**Attack scope:** Backend API request path — `qs` parses query strings and form/JSON bodies (express, body-parser); both CVEs are availability issues (crafted input), not data exposure.
-**Description:** Resolved `qs` 6.15.2 (chains: `body-parser` ^6.14.1, `express` ^6.14.0) carries `CVE-2026-82417` and `CVE-2026-82562` (DoS).
-**Affected parts:** `package-lock.json` (resolved `qs` 6.15.2)
-**Fix recommendation:** Bump the express/body-parser chain to a patched `qs`.
-**Notes:** LOW — DoS only; fix by update.
+### SCAN-12 (residual) — release workflow keeps `contents: write` for the reusable CI call
+**Severity:** Informational
+**Attack scope:** Repo supply chain on tag builds only. The workflow-level default is now `contents: read` (`ci.yml`, `release.yml`); `contents: write` is declared only for `autofix` in `ci.yml` (skipped on tags), `release` in `release.yml`, and `packages: write` for the image job.
+**Description:** `release.yml` job `ci` (`uses: ./.github/workflows/ci.yml`) must grant `contents: write` because the called workflow's `autofix` job declares it, although `autofix` does not run on tags (`if: github.ref_type == 'branch'`). All CI jobs therefore have a write-capable token available during a release run.
+**Affected parts:** `.github/workflows/release.yml` (job `ci`, `permissions`), `.github/workflows/ci.yml` (job `autofix`)
+**Fix recommendation:** Move the autofix job out of the reusable workflow, or call it only for branch pushes.
+**Notes:** The main part of SCAN-12 (workflow-wide `contents: write`) was fixed in `c1bcc7a`.
 
-### SCAN-09 — `react-router@7.18.0` — GHSA-qwww-vcr4-c8h2 RSC-mode CSRF (not applicable)
-**Severity:** Informational (N/A)
-**Attack scope:** None in this app — the advisory applies to React Server Components (RSC) streaming mode; the frontend is a classic SPA without RSC.
-**Description:** Trivy flags `react-router` 7.18.0 for `GHSA-qwww-vcr4-c8h2` (CSRF in RSC mode). Usage was reviewed: no RSC/streaming endpoints exist, so the vulnerable code path is not exercised.
-**Affected parts:** `package-lock.json` (resolved `react-router` 7.18.0)
-**Fix recommendation:** No action required; revisit if RSC/SSR is ever introduced, and track the advisory through upgrades.
-**Notes:** Documented for completeness of the Trivy output.
+## Scanner results (2026-11-05)
 
-### SCAN-12 — CI workflow grants `contents: write` to all jobs
-**Severity:** LOW
-**Attack scope:** Repo supply chain — workflow-level `permissions: contents: write` applies to every job in `ci.yml`, including read-only scan jobs; a compromised job (e.g. via a malicious dependency running at build time) could push commits/tags, enabling self-escalation through the autofix job.
-**Description:** `.github/workflows/ci.yml:10-11` sets `permissions: contents: write` at workflow level; the rationale comment (line 9) says it is needed for the autofix job.
-**Affected parts:** `.github/workflows/ci.yml:9-11`
-**Fix recommendation:** Drop the workflow-level `permissions:` block and add a job-level `permissions: { contents: write }` to the autofix job only; all other jobs stay at the read-only default.
-**Notes:** Standard GitHub least-privilege hardening.
+- **`npm audit`** (root lockfile): 53 advisories (1 low, 45 moderate, 7 high, 0 critical). **`npm audit --omit=dev`: 0**, so none of them is in a dependency of the shipped app. High: `shadcn` (direct devDependency of `frontend`), `@shadcn/registry`, `zod`, `body-parser`, `follow-redirects`, `joi`, `undici`. The earlier critical `vitest`/`tinypool`/`proxy-addr` entries no longer appear (vitest 5.1.0, proxy-addr 2.0.8). `qs` is 6.16.1 and reached only through the dev-only chain `shadcn` -> `@modelcontextprotocol/sdk` -> `express` -> `body-parser`; the former SCAN-07 advisories do not apply to it and the chain is not on any backend request path. `react-router` is 7.18.4 and not reported (the former SCAN-09 advisory concerned RSC mode, which the app does not use).
+- **`composer audit` (backend): 18 advisories in 11 `symfony/*` packages at 8.1.9** (config, filesystem, framework-bundle, http-client, http-foundation, http-kernel, routing, security-http, serializer, validator, yaml), all reported 2026-11-04 and fixed in 8.1.11; not yet triaged for exploitability in this app.
+- **gitleaks** (665 commits, `.gitleaks.toml`): 1 finding, a Mapbox public-token-shaped value in history (commit `e0bbc0a`, a file since deleted); none in the working tree.
+- Trivy and semgrep were not re-run (not installed). Their earlier results are in `AUDIT-2026-10-06.md`.
 
 ## Reviewed & OK
-- `composer audit` — no vulnerabilities in the backend PHP dependencies.
-- Gitleaks full history (284 commits, `.gitleaks.toml` allowlist) — no genuine secrets in current findings; the allowlist itself is narrowly scoped.
-- Trivy `fs` (vuln + secret, vendor/node_modules/dist/.git excluded) — all findings covered by SCAN-07, SCAN-09 and SCAN-12.
+- The gitleaks allowlist (`.gitleaks.toml`) is limited to placeholder and CI-only fake values.
 - Pattern greps across the repo (AWS `AKIA…`, OpenAI `sk-…`, GitHub `ghp_…`, Slack `xox…`, PEM private-key blocks, `DEPLOY_PASSWORD`/`DEPLOY_KEY`) — no matches beyond the documented Mapbox tokens.
 - `backend/.env.example` and other example env files — placeholders only, no live values.
 - JWT key wiring (`lexik_jwt_authentication.yaml`) — env-driven paths, no key material or passphrase hardcoded in the repo.
