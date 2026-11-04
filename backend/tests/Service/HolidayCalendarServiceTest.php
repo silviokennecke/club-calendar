@@ -68,6 +68,7 @@ ICS;
         $httpClient->method('request')->willReturn($response);
 
         $em = $this->createStub(EntityManagerInterface::class);
+        $em->method('wrapInTransaction')->willReturnCallback(static fn (callable $f) => $f());
         $em->method('persist')->willReturnCallback(function (object $e) use (&$captured): void {
             if ($e instanceof HolidayEvent) {
                 $captured[] = $e;
@@ -272,6 +273,7 @@ ICS;
         );
 
         $em = $this->createStub(EntityManagerInterface::class);
+        $em->method('wrapInTransaction')->willReturnCallback(static fn (callable $f) => $f());
         $em->method('persist')->willReturnCallback(function (object $e) use (&$persistCallCount): void {
             if ($e instanceof HolidayEvent) {
                 ++$persistCallCount;
@@ -306,6 +308,7 @@ ICS;
         $httpClient->method('request')->willThrowException($transportException);
 
         $em = $this->createMock(EntityManagerInterface::class);
+        $em->method('wrapInTransaction')->willReturnCallback(static fn (callable $f) => $f());
         $em->expects($this->never())->method('persist');
         $em->expects($this->never())->method('flush');
 
@@ -365,6 +368,7 @@ ICS;
         $httpClient->method('request')->willReturn($response);
 
         $em = $this->createStub(EntityManagerInterface::class);
+        $em->method('wrapInTransaction')->willReturnCallback(static fn (callable $f) => $f());
         $em->method('flush')->willReturnCallback(function () use (&$flushCalled): void {
             $flushCalled = true;
         });

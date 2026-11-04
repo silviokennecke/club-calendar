@@ -77,6 +77,8 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $pdfExportUser,
         #[Autowire(service: 'limiter.pdf_export_ip')]
         private readonly RateLimiterFactory $pdfExportIp,
+        #[Autowire(service: 'limiter.holiday_fetch_user')]
+        private readonly RateLimiterFactory $holidayFetchUser,
         #[Autowire(service: 'limiter.mapbox_tiles_user')]
         private readonly RateLimiterFactory $mapboxTilesUser,
         #[Autowire(service: 'limiter.mapbox_tiles_ip')]
@@ -254,6 +256,12 @@ class AuthRateLimiter
     {
         self::assertAccepted($this->pdfExportUser->create($userId)->consume());
         self::assertAccepted($this->pdfExportIp->create(self::ip($request))->consume());
+    }
+
+    /** User-initiated holiday feed fetch (create, refresh; outbound HTTP request): 20 per user per hour. */
+    public function assertHolidayFetchAllowed(string $userId): void
+    {
+        self::assertAccepted($this->holidayFetchUser->create($userId)->consume());
     }
 
     /** Mapbox vector tiles (billed per request, cache hits count too): 1800 per user and 3600 per client IP per hour. */

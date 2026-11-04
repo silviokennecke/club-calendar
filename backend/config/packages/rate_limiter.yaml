@@ -195,6 +195,10 @@ framework:
             policy: sliding_window
             limit: 30
             interval: '10 minutes'
+        holiday_fetch_user:
+            policy: sliding_window
+            limit: 20
+            interval: '1 hour'
         # Mapbox spending paths (per user / IP, outer cap stays mapbox_proxy_* / mapbox_image_*). Cache hits count too.
         mapbox_tiles_user:
             policy: sliding_window

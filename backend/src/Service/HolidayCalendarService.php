@@ -25,6 +25,7 @@ readonly class HolidayCalendarService
     /** Largest ICS body accepted from a holiday URL (bytes) and most events stored per fetch (M7). */
     public const MAX_BYTES = 1_048_576;
     public const MAX_EVENTS = 5000;
+    public const MAX_REDIRECTS = 3;
 
     public function __construct(
         private HttpClientInterface $httpClient,
@@ -52,15 +53,19 @@ readonly class HolidayCalendarService
     {
         $country = strtoupper($country);
         $label = ['public' => 'de' === $language ? 'Feiertage' : 'Public holidays', 'school' => 'de' === $language ? 'Schulferien' : 'School holidays'];
+        $built = [];
+        foreach ($kinds as $kind) {
+            $hc = new HolidayCalendar($calendar, sprintf('%s – %s', $regionName, $label[$kind]), null);
+            $hc->setType('school' === $kind ? HolidayType::SCHOOL : HolidayType::PUBLIC);
+            $hc->useOpenHolidays($country, $subdivision, $language);
+            $built[] = ['calendar' => $hc, 'rows' => $this->fetchOpenHolidaysRows($hc)];
+        }
         $created = [];
-        $this->em->wrapInTransaction(function () use ($calendar, $country, $subdivision, $kinds, $language, $regionName, $label, &$created): void {
-            foreach ($kinds as $kind) {
-                $hc = new HolidayCalendar($calendar, sprintf('%s – %s', $regionName, $label[$kind]), null);
-                $hc->setType('school' === $kind ? HolidayType::SCHOOL : HolidayType::PUBLIC);
-                $hc->useOpenHolidays($country, $subdivision, $language);
-                $this->em->persist($hc);
+        $this->em->wrapInTransaction(function () use ($built, &$created): void {
+            foreach ($built as $item) {
+                $this->em->persist($item['calendar']);
                 $this->em->flush();
-                $created[] = ['calendar' => $hc, 'eventCount' => $this->fetchAndStore($hc)];
+                $created[] = ['calendar' => $item['calendar'], 'eventCount' => $this->storeRows($item['calendar'], $item['rows'])];
             }
         });
 
@@ -122,8 +127,25 @@ readonly class HolidayCalendarService
     }
 
     /**
-     * Fetches the ICS feed for the given HolidayCalendar, replaces all stored events,
-     * updates lastFetchedAt, and returns the number of events stored.
+     * Fetches the feed of a new (not yet persisted) calendar, then persists it with its holidays in one short
+     * transaction. Nothing is stored when the fetch fails. Returns the number of holidays stored.
+     */
+    public function createAndStore(HolidayCalendar $holidayCalendar): int
+    {
+        $rows = $this->fetchRows($holidayCalendar);
+
+        return $this->em->wrapInTransaction(function () use ($holidayCalendar, $rows): int {
+            $this->em->persist($holidayCalendar);
+            $this->em->flush();
+
+            return $this->storeRows($holidayCalendar, $rows);
+        });
+    }
+
+    /**
+     * Fetches the feed for the given HolidayCalendar (no DB access, no transaction open), then replaces all stored
+     * events and updates lastFetchedAt in one short transaction. A failed fetch leaves the stored events untouched.
+     * Returns the number of events stored.
      *
      * @throws \InvalidArgumentException     if the URL fails SSRF safety checks
      * @throws TransportExceptionInterface   if the HTTP request fails at the transport level
@@ -135,8 +157,16 @@ readonly class HolidayCalendarService
      */
     public function fetchAndStore(HolidayCalendar $holidayCalendar): int
     {
+        $rows = $this->fetchRows($holidayCalendar);
+
+        return $this->em->wrapInTransaction(fn (): int => $this->storeRows($holidayCalendar, $rows));
+    }
+
+    /** @return list<array{id: string, name: string, date: \DateTimeImmutable, end: ?\DateTimeImmutable}> */
+    private function fetchRows(HolidayCalendar $holidayCalendar): array
+    {
         if (HolidaySource::OPENHOLIDAYS === $holidayCalendar->getSource()) {
-            return $this->fetchOpenHolidays($holidayCalendar);
+            return $this->fetchOpenHolidaysRows($holidayCalendar);
         }
         $url = $holidayCalendar->getUrl();
         if (null === $url || '' === $url) {
@@ -146,6 +176,8 @@ readonly class HolidayCalendarService
 
         $response = $this->httpClient->request('GET', $url, [
             'max_duration' => 10,
+            // Every redirect target is re-checked by NoPrivateNetworkHttpClient (services.yaml)
+            'max_redirects' => self::MAX_REDIRECTS,
             // Abort the download as soon as more than MAX_BYTES arrived (also without a Content-Length)
             'on_progress' => static function (int $downloaded): void {
                 if ($downloaded > self::MAX_BYTES) {
@@ -160,9 +192,7 @@ readonly class HolidayCalendarService
 
         $vcalendar = VObject\Reader::read($icsContent);
 
-        $this->clearEvents($holidayCalendar);
-
-        $count = 0;
+        $rows = [];
         /** @var VObject\Component\VEvent $vevent */
         foreach ($vcalendar->VEVENT ?? [] as $vevent) {
             $uid = null !== $vevent->UID ? (string) $vevent->UID : '';
@@ -191,21 +221,33 @@ readonly class HolidayCalendarService
                 }
             }
 
-            if ($count >= self::MAX_EVENTS) {
+            if (count($rows) >= self::MAX_EVENTS) {
                 throw new \RuntimeException(sprintf('ICS feed has more than %d events', self::MAX_EVENTS));
             }
-            $this->em->persist(new HolidayEvent($holidayCalendar, $uid, $summary, $date, $dateEnd));
-            ++$count;
+            $rows[] = ['id' => $uid, 'name' => $summary, 'date' => $date, 'end' => $dateEnd];
         }
 
-        $holidayCalendar->setLastFetchedAt(new \DateTimeImmutable());
-        $this->em->persist($holidayCalendar);
-        $this->em->flush();
-
-        return $count;
+        return $rows;
     }
 
-    private function fetchOpenHolidays(HolidayCalendar $hc): int
+    /**
+     * @param list<array{id: string, name: string, date: \DateTimeImmutable, end: ?\DateTimeImmutable}> $rows
+     */
+    private function storeRows(HolidayCalendar $hc, array $rows): int
+    {
+        $this->clearEvents($hc);
+        foreach ($rows as $row) {
+            $this->em->persist(new HolidayEvent($hc, $row['id'], $row['name'], $row['date'], $row['end']));
+        }
+        $hc->setLastFetchedAt(HolidaySource::OPENHOLIDAYS === $hc->getSource() ? $this->clock->now() : new \DateTimeImmutable());
+        $this->em->persist($hc);
+        $this->em->flush();
+
+        return count($rows);
+    }
+
+    /** @return list<array{id: string, name: string, date: \DateTimeImmutable, end: ?\DateTimeImmutable}> */
+    private function fetchOpenHolidaysRows(HolidayCalendar $hc): array
     {
         $country = $hc->getSourceCountry();
         if (null === $country) {
@@ -224,17 +266,14 @@ readonly class HolidayCalendarService
             throw new \RuntimeException(sprintf('Holiday source has more than %d events', self::MAX_EVENTS));
         }
 
-        $this->clearEvents($hc);
+        $out = [];
         foreach ($rows as $row) {
             $date = new \DateTimeImmutable($row['start']);
             $end = new \DateTimeImmutable($row['end']);
-            $this->em->persist(new HolidayEvent($hc, $row['id'], $row['name'], $date, $end > $date ? $end : null));
+            $out[] = ['id' => $row['id'], 'name' => $row['name'], 'date' => $date, 'end' => $end > $date ? $end : null];
         }
-        $hc->setLastFetchedAt($this->clock->now());
-        $this->em->persist($hc);
-        $this->em->flush();
 
-        return count($rows);
+        return $out;
     }
 
     /** Deletes all stored events before re-importing (handles removals at the source). */
