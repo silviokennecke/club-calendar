@@ -3,7 +3,9 @@
 #   /.well-known/oauth-authorization-server, /.well-known/oauth-protected-resource[/api/mcp]
 #                 -> Symfony (OAuth/MCP discovery documents, RFC 8414 / 9728); other /.well-known paths -> SPA
 #   existing file -> served as is
-#   anything else -> SPA (index.html), so client-side routes survive a reload
+#   anything else -> SPA (index.html), so client-side routes survive a reload (directories too: /assets/ is never listed)
+# No "Options -Indexes": under a restrictive AllowOverride it is a 500 for the whole site (audit I2); directory listings
+# are prevented by the rewrite catch-all below and, without mod_rewrite, by a 403 on directory URLs.
 DirectoryIndex index.html index.php
 
 <IfModule mod_rewrite.c>
@@ -33,6 +35,8 @@ DirectoryIndex index.html index.php
 <IfModule !mod_rewrite.c>
     <IfModule mod_alias.c>
         RedirectMatch 307 ^/$ /index.php/
+        # No directory listings without mod_rewrite (index.php/ is the front controller's path info)
+        RedirectMatch 403 ^/(?!index\.php/).+/$
     </IfModule>
 </IfModule>
 
@@ -69,8 +73,8 @@ DirectoryIndex index.html index.php
     Header always set Strict-Transport-Security "max-age=31536000" "expr=%{HTTPS} == 'on' || %{HTTP:X-Forwarded-Proto} == 'https'"
 </IfModule>
 
-# Never serve secrets or logs
-<FilesMatch "\.(env|pem|log)$">
+# Never serve secrets, logs or sourcemaps (none are built)
+<FilesMatch "\.(env|pem|log|map)$">
     Require all denied
 </FilesMatch>
 

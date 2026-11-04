@@ -80,7 +80,7 @@
 	handle {
 		# explicit order: block first, then the fallback and file server
 		route {
-			@private path /index.php /.htaccess *.env *.pem *.log
+			@private path /index.php /.htaccess *.env *.pem *.log *.map
 			respond @private 404
 
 			@assets path /assets/*
