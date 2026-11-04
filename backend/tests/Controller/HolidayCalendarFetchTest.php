@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller;
 
+use App\Entity\HolidayCalendar;
 use App\Service\HolidayCalendarService;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
@@ -29,6 +30,9 @@ class HolidayCalendarFetchTest extends WebTestCase
     /** @var list<string> ICS bodies served one after the other */
     private array $feeds = [];
 
+    /** @var (callable(string, string, array<string, mixed>): MockResponse)|null */
+    private $handler;
+
     protected function setUp(): void
     {
         self::ensureKernelShutdown();
@@ -40,9 +44,11 @@ class HolidayCalendarFetchTest extends WebTestCase
         $this->tokens = $container->get(TokenService::class);
         DatabaseResetter::reset($this->em);
 
-        $http = new MockHttpClient(function (): MockResponse {
-            return new MockResponse(array_shift($this->feeds) ?? '', ['http_code' => 200]);
-        });
+        $http = new MockHttpClient(
+            fn (string $method, string $url, array $options): MockResponse => null !== $this->handler
+                ? ($this->handler)($method, $url, $options)
+                : new MockResponse(array_shift($this->feeds) ?? '', ['http_code' => 200]),
+        );
         $container->set(HolidayCalendarService::class, new HolidayCalendarService(
             $http,
             $this->em,
@@ -120,5 +126,115 @@ class HolidayCalendarFetchTest extends WebTestCase
         ], $auth);
         $this->assertSame(422, $r['status'], $r['content']);
         $this->assertSame('ics_fetch_failed', $r['body']['code']);
+    }
+
+    public function testRequestCapsRedirectsAndFetchRunsOutsideATransaction(): void
+    {
+        ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $auth = TestHelper::authHeader($user, $this->tokens);
+        $seen = [];
+        $conn = $this->em->getConnection();
+        $this->handler = function (string $method, string $url, array $options) use (&$seen, $conn): MockResponse {
+            $seen[] = ['max_redirects' => $options['max_redirects'] ?? null, 'tx' => $conn->isTransactionActive()];
+
+            return new MockResponse(self::ics(1), ['http_code' => 200]);
+        };
+
+        $r = TestHelper::jsonRequest($this->client, 'POST', "/api/calendars/{$cal->getId()}/holiday-calendars", [
+            'name' => 'F', 'url' => 'https://holidays.invalid/f.ics',
+        ], $auth);
+        $this->assertSame(201, $r['status'], $r['content']);
+        $this->assertSame([['max_redirects' => 3, 'tx' => false]], $seen);
+    }
+
+    /** Service wired like production: the mock sits behind the private-network guard (IP-literal URLs: no DNS). */
+    private function guardedService(callable $handler): HolidayCalendarService
+    {
+        $http = new \Symfony\Component\HttpClient\NoPrivateNetworkHttpClient(new MockHttpClient($handler));
+
+        return new HolidayCalendarService(
+            $http,
+            $this->em,
+            new \App\Service\CalendarVersionBumper($this->em->getConnection()),
+            new \App\Service\OpenHolidaysClient($http, new \Symfony\Component\Cache\Adapter\ArrayAdapter()),
+            new \Symfony\Component\Clock\NativeClock(),
+            new \Symfony\Component\Cache\Adapter\ArrayAdapter(),
+            new \Psr\Log\NullLogger(),
+        );
+    }
+
+    public function testTooManyRedirectsAreRefused(): void
+    {
+        ['calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $hops = 0;
+        $service = $this->guardedService(function () use (&$hops): MockResponse {
+            ++$hops;
+
+            return new MockResponse('', ['http_code' => 302, 'redirect_url' => 'https://93.184.216.34/next'.$hops]);
+        });
+
+        try {
+            $service->createAndStore(new HolidayCalendar($cal, 'F', 'https://93.184.216.34/f.ics'));
+            $this->fail('Expected the redirect chain to be refused');
+        } catch (\Symfony\Contracts\HttpClient\Exception\ExceptionInterface) {
+        }
+        $this->assertSame(HolidayCalendarService::MAX_REDIRECTS + 1, $hops);
+        $this->assertSame(0, (int) $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM holiday_calendar'));
+    }
+
+    public function testRedirectToInternalAddressIsRefused(): void
+    {
+        ['calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $requested = [];
+        $service = $this->guardedService(function (string $m, string $url) use (&$requested): MockResponse {
+            $requested[] = $url;
+
+            return 'https://93.184.216.34/f.ics' === $url
+                ? new MockResponse('', ['http_code' => 302, 'redirect_url' => 'http://169.254.169.254/latest/meta-data'])
+                : new MockResponse(self::ics(1), ['http_code' => 200]);
+        });
+
+        try {
+            $service->createAndStore(new HolidayCalendar($cal, 'F', 'https://93.184.216.34/f.ics'));
+            $this->fail('Expected the redirect to the internal address to be refused');
+        } catch (\Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface) {
+        }
+        $this->assertSame(['https://93.184.216.34/f.ics'], $requested);
+        $this->assertSame(0, (int) $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM holiday_calendar'));
+    }
+
+    public function testFailedRefreshKeepsStoredHolidays(): void
+    {
+        ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $auth = TestHelper::authHeader($user, $this->tokens);
+        $base = "/api/calendars/{$cal->getId()}/holiday-calendars";
+        $this->feeds = [self::ics(3)];
+        $created = TestHelper::jsonRequest($this->client, 'POST', $base, ['name' => 'F', 'url' => 'https://holidays.invalid/f.ics'], $auth);
+        $this->assertSame(201, $created['status'], $created['content']);
+
+        $this->handler = static fn (): MockResponse => new MockResponse('nope', ['http_code' => 500]);
+        $r = TestHelper::jsonRequest($this->client, 'POST', "$base/{$created['body']['id']}/refresh", [], $auth);
+        $this->assertSame(422, $r['status'], $r['content']);
+        $this->assertSame('ics_fetch_failed', $r['body']['code']);
+        $this->assertSame(3, (int) $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM holiday_event'));
+    }
+
+    public function testUserFetchIsThrottled(): void
+    {
+        ['user' => $user, 'calendar' => $cal] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $auth = TestHelper::authHeader($user, $this->tokens);
+        $base = "/api/calendars/{$cal->getId()}/holiday-calendars";
+        $this->feeds = [self::ics(1)];
+        $created = TestHelper::jsonRequest($this->client, 'POST', $base, ['name' => 'F', 'url' => 'https://holidays.invalid/f.ics'], $auth);
+        $this->assertSame(201, $created['status'], $created['content']);
+
+        static::getContainer()->get('limiter.holiday_fetch_user')->create($user->getId())->consume(999);
+
+        $r = TestHelper::jsonRequest($this->client, 'POST', "$base/{$created['body']['id']}/refresh", [], $auth);
+        $this->assertSame(429, $r['status'], $r['content']);
+        $this->assertSame('rate_limited', $r['body']['code']);
+        $this->assertNotEmpty($r['headers']['retry-after'][0]);
+        $r = TestHelper::jsonRequest($this->client, 'POST', $base, ['name' => 'G', 'url' => 'https://holidays.invalid/g.ics'], $auth);
+        $this->assertSame(429, $r['status'], $r['content']);
     }
 }

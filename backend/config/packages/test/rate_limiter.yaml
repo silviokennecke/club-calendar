@@ -169,6 +169,11 @@ framework:
             limit: 1000
             interval: '10 minutes'
             cache_pool: app.auth_limiter_pool
+        holiday_fetch_user:
+            policy: sliding_window
+            limit: 1000
+            interval: '1 hour'
+            cache_pool: app.auth_limiter_pool
         mapbox_tiles_user:
             policy: sliding_window
             limit: 100000

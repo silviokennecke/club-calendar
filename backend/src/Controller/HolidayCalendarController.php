@@ -13,6 +13,7 @@ use App\Enum\HolidayType;
 use App\Exception\ApiProblemException;
 use App\Repository\HolidayCalendarRepository;
 use App\Security\ArchivedCalendarVoter;
+use App\Security\AuthRateLimiter;
 use App\Security\CalendarMemberVoter;
 use App\Security\CurrentUserResolver;
 use App\Service\HolidayCalendarService;
@@ -37,6 +38,7 @@ class HolidayCalendarController extends AbstractApiController
         private readonly HolidayCalendarService $holidayCalendarService,
         private readonly Quota $quota,
         private readonly CurrentUserResolver $userResolver,
+        private readonly AuthRateLimiter $rateLimiter,
     ) {
     }
 
@@ -57,6 +59,7 @@ class HolidayCalendarController extends AbstractApiController
         Request $request,
         ValidatorInterface $validator,
     ): JsonResponse {
+        $this->rateLimiter->assertHolidayFetchAllowed($this->userResolver->resolve()->getId());
         $data = $this->decodeJson($request);
         $dto = new CreateHolidayCalendarDto();
         $dto->name = self::stringValue($data, 'name') ?? '';
@@ -68,14 +71,7 @@ class HolidayCalendarController extends AbstractApiController
         $hc = new HolidayCalendar($calendar, $dto->name, $dto->url);
         $hc->setType(HolidayType::from($dto->type));
         try {
-            // The stored holidays are not in $hc->getEvents() (new entity, collection not reloaded):
-            // the response carries the number fetchAndStore() stored.
-            $eventCount = $this->em->wrapInTransaction(function () use ($hc): int {
-                $this->em->persist($hc);
-                $this->em->flush();
-
-                return $this->holidayCalendarService->fetchAndStore($hc);
-            });
+            $eventCount = $this->holidayCalendarService->createAndStore($hc);
         } catch (\Throwable) {
             throw self::fetchFailed();
         }
@@ -188,6 +184,7 @@ class HolidayCalendarController extends AbstractApiController
         string $hcId,
     ): JsonResponse {
         $hc = $this->find($calendar, $hcId);
+        $this->rateLimiter->assertHolidayFetchAllowed($this->userResolver->resolve()->getId());
 
         try {
             $eventCount = $this->holidayCalendarService->fetchAndStore($hc);

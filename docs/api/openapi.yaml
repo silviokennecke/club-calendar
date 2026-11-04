@@ -194,6 +194,7 @@ info:
       `warnings` (`code: timezone_replaced`).
     - Member ICS export: `GET /api/calendars/{calendarId}/events.ics`, at most 100 `targetGroupIds`.
     - Member PDF export: `GET /api/calendars/{calendarId}/events.pdf`, `from`/`to` at most 366 days apart (400 on `to`), at most 2000 events (422 `too_many_events`, field `to`), 10 per user and 30 per client IP in 10 minutes (429 `rate_limited` + `Retry-After`).
+    - Holiday feed fetch (`POST …/holiday-calendars`, `POST …/holiday-calendars/{hcId}/refresh`): 20 per user and hour (429 `rate_limited` + `Retry-After`), at most 3 redirects.
 
     ## MCP server and OAuth
 
@@ -3531,7 +3532,10 @@ paths:
     post:
       tags: [Holidays]
       summary: Add a holiday calendar and fetch it
-      description: The ICS URL is fetched immediately (no private networks); a failing fetch stores nothing.
+      description: >-
+        The ICS URL is fetched immediately, before anything is written (no private networks; at most 3 redirects,
+        each target is checked the same way); a failing fetch stores nothing. 20 fetches (create and refresh together)
+        per user and hour: 429 `rate_limited` + `Retry-After`.
       operationId: createHolidayCalendar
       requestBody:
         required: true
@@ -3549,6 +3553,7 @@ paths:
         '403': { $ref: '#/components/responses/ForbiddenWrite' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/HolidayFetchFailed' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/calendars/{calendarId}/holiday-calendars/predefined:
     parameters:
@@ -3681,7 +3686,9 @@ paths:
         Re-fetches the ICS URL, or for `openholidays` calendars the holiday source (failure: 422
         `holiday_source_failed`). Predefined calendars are also refreshed automatically when `GET …/holiday-events`
         finds the last fetch older than 3 months (non-fatal, at most one attempt per hour per calendar), and by the
-        console command `app:holidays:refresh [--all] [--calendar=id]`.
+        console command `app:holidays:refresh [--all] [--calendar=id]`. The fetch happens before the stored holidays are
+        replaced (a failure keeps them); at most 3 redirects. 20 fetches per user and hour (shared with creating a holiday
+        calendar by URL; 429 `rate_limited` + `Retry-After`); the automatic refresh and the console command are not throttled.
       operationId: refreshHolidayCalendar
       responses:
         '200':
@@ -3693,6 +3700,7 @@ paths:
         '403': { $ref: '#/components/responses/ForbiddenWrite' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/HolidaySourceOrFetchFailed' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/calendars/{calendarId}/holiday-events:
     parameters:
