@@ -7,9 +7,8 @@ on:
     branches: [main]
   workflow_call:
 
-# Allow autofix job to push commits back to the branch
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   # ────────────────────────────────────────────────────────────────────────────
@@ -37,6 +36,9 @@ jobs:
     name: Auto-fix (PHP CS Fixer + ESLint + Prettier)
     runs-on: ubuntu-latest
     needs: secret-scan
+    # Only job that pushes commits back to the branch
+    permissions:
+      contents: write
     # Tags (release) cannot take pushed fixes
     if: github.ref_type == 'branch'
 
