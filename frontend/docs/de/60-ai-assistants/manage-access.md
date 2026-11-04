@@ -13,7 +13,7 @@ Alle KI-Apps, denen du den Zugriff erlaubt hast, findest du in deinem Profil.
 1. Öffne dein **Profil**.
 2. Suche den Abschnitt **Verbundene Apps**.
 
-Pro App siehst du, ob sie **Nur lesen** oder **Lesen und Entwürfe** darf, wann sie verbunden wurde und wann sie zuletzt genutzt wurde. Ist die Liste leer, hast du noch keine App verbunden.
+Pro App siehst du den Namen (Claude, ChatGPT, Gemini oder „Unbekannte App“ mit der Weiterleitungsadresse; ein selbst angegebener Name steht nur als „Nennt sich …“ darunter) und ob sie **Nur lesen** oder **Lesen und Entwürfe** darf, wann sie verbunden wurde und wann sie zuletzt genutzt wurde. Ist die Liste leer, hast du noch keine App verbunden.
 
 ## Eine App trennen
 

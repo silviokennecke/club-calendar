@@ -29,7 +29,7 @@ class OAuthClient
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
-    /** The matched `MCP_ALLOWED_CLIENTS` family (claude, openai, ...); null when every client was allowed. */
+    /** The matched `MCP_ALLOWED_CLIENTS` family (claude, openai, ...); null when registered under `*` (every client allowed). */
     #[ORM\Column(length: 20, nullable: true)]
     private ?string $family = null;
 

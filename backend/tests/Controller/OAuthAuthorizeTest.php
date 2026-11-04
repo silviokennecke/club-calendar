@@ -154,7 +154,10 @@ class OAuthAuthorizeTest extends WebTestCase
 
         $info = $this->json('GET', '/api/oauth/authorization-request/'.$requestId);
         $this->assertSame(200, $info['status']);
-        $this->assertSame('Claude', $info['body']['clientName']);
+        $this->assertSame('Claude', $info['body']['label']);
+        $this->assertSame('Claude', $info['body']['claimedName']);
+        $this->assertArrayNotHasKey('clientName', $info['body']);
+        $this->assertNull($info['body']['callbackRisk']);
         $this->assertSame('claude.ai', $info['body']['redirectHost']);
         $this->assertSame('claude', $info['body']['family']);
         $this->assertSame(['mcp:read', 'mcp:write'], $info['body']['scopes']);
@@ -278,6 +281,43 @@ class OAuthAuthorizeTest extends WebTestCase
         $this->assertSame(200, $d['status'], $d['content']);
     }
 
+    public function testSpoofedNameIsNotTheLabel(): void
+    {
+        $uri = 'https://chatgpt.com/connector/oauth/abc123';
+        $r = TestHelper::jsonRequest($this->client, 'POST', '/api/oauth/register', ['client_name' => 'Claude', 'redirect_uris' => [$uri]]);
+        $this->assertSame(201, $r['status']);
+        $q = $this->query($r['body']['client_id'], ['redirect_uri' => $uri]);
+        $this->client->request('GET', '/api/oauth/authorize?'.http_build_query($q));
+        $this->assertSame(302, $this->client->getResponse()->getStatusCode());
+        $id = self::locationQuery((string) $this->client->getResponse()->headers->get('Location'))['request'];
+
+        $info = $this->json('GET', '/api/oauth/authorization-request/'.$id);
+        $this->assertSame('ChatGPT', $info['body']['label']);
+        $this->assertSame('Claude', $info['body']['claimedName']);
+        $this->assertSame('connector', $info['body']['callbackRisk']);
+    }
+
+    public function testNullFamilyClientIsRejectedAtAuthorizeWithoutStar(): void
+    {
+        $client = new OAuthClient('Old', ['https://app.example.org/cb'], new \DateTimeImmutable(), null);
+        $this->em->persist($client);
+        $this->em->flush();
+        $q = $this->query($client->getId(), ['redirect_uri' => 'https://app.example.org/cb']);
+        $this->client->request('GET', '/api/oauth/authorize?'.http_build_query($q));
+        $this->assertSame(400, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testNullFamilyClientPassesAuthorizeWithStar(): void
+    {
+        static::getContainer()->set(\App\OAuth\RedirectUriPolicy::class, new \App\OAuth\RedirectUriPolicy('*'));
+        $client = new OAuthClient('Old', ['https://app.example.org/cb'], new \DateTimeImmutable(), null);
+        $this->em->persist($client);
+        $this->em->flush();
+        $q = $this->query($client->getId(), ['redirect_uri' => 'https://app.example.org/cb']);
+        $this->client->request('GET', '/api/oauth/authorize?'.http_build_query($q));
+        $this->assertSame(302, $this->client->getResponse()->getStatusCode());
+    }
+
     public function testGrantsListAndRevoke(): void
     {
         $clientId = $this->registerClient();
@@ -293,7 +333,10 @@ class OAuthAuthorizeTest extends WebTestCase
         $this->assertSame(200, $list['status']);
         $this->assertCount(1, $list['body']);
         $grant = $list['body'][0];
-        $this->assertSame('Claude', $grant['clientName']);
+        $this->assertSame('Claude', $grant['label']);
+        $this->assertSame('Claude', $grant['claimedName']);
+        $this->assertSame('claude.ai', $grant['redirectHost']);
+        $this->assertArrayNotHasKey('clientName', $grant);
         $this->assertSame('claude', $grant['family']);
         $this->assertSame(['mcp:read', 'mcp:write'], $grant['scopes']);
         $this->assertNull($grant['lastUsedAt']);

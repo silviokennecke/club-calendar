@@ -31,9 +31,11 @@ Du brauchst ein bestätigtes Konto: Bestätige zuerst deine E-Mail-Adresse und s
 
 ## Was du auf der Seite „App verbinden?“ prüfst
 
-- **App**: Der Name, den sich die App selbst gibt. Dieser Name wird nicht überprüft.
+- **App**: Claude, ChatGPT oder Gemini, wenn die Weiterleitungsadresse zu diesem Anbieter passt, sonst „Unbekannte App“. Das wird nur an der Adresse erkannt und ist keine Bestätigung des Anbieters.
+- **Angabe der App**: Der Name, den sich die App selbst gibt („Nennt sich …“). Er wird nicht überprüft und kann beliebig gewählt sein.
 - **Weiterleitung nach**: Die Adresse, zu der du danach zurückgeschickt wirst. Sie sollte zu der App passen, die du gerade verbindest.
 - **Nicht verifizierte App**: Siehst du diesen Hinweis, gehört die App nicht zu den bekannten Anbietern. Erlaube den Zugriff nur, wenn du ihr vertraust und die Weiterleitungsadresse erwartest.
+- **Programm auf einem Computer / Eigener ChatGPT-Konnektor**: Diese Hinweise erscheinen, wenn die Weiterleitung an ein lokales Programm geht oder an einen ChatGPT-Konnektor, den jeder selbst anlegen kann. Erlaube den Zugriff nur, wenn du die Verbindung selbst gestartet bzw. den Konnektor selbst eingerichtet hast.
 - **Das darf die App**: Entweder nur ansehen (Vereine, Kalender, Termine, Vorlagen und Feeds) oder zusätzlich Entwürfe und Stammdaten anlegen. Im zweiten Fall steht dort auch: Die App kann nichts veröffentlichen und keine Termine löschen, neue Termine bleiben Entwürfe.
 
 :::warning

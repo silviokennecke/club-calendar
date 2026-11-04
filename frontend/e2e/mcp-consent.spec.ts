@@ -3,7 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { API, continueWithEmail, createVerifiedUser, loginPassword, PASSWORD } from "./helpers";
 
 // MCP / OAuth: consent page and "Verbundene Apps". Needs the e2e backend started with an empty
-// MCP_ALLOWED_CLIENTS (any https/loopback redirect URI; see docs/ops/E2E.md).
+// MCP_ALLOWED_CLIENTS=* (any https/loopback redirect URI; see docs/ops/E2E.md).
 
 const REDIRECT = "http://127.0.0.1/callback";
 
@@ -61,7 +61,9 @@ test("Anmeldung, Zustimmung, Weiterleitung mit Code, Trennen im Profil", async (
   await signIn(page, email);
 
   await expect(page.getByRole("heading", { level: 1, name: "App verbinden?" })).toBeVisible();
-  await expect(page.getByText("E2E Assistent", { exact: true })).toBeVisible();
+  // A self-declared name is only a claim; the identity is the redirect host plus the unverified notice.
+  await expect(page.getByText("Unbekannte App", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Nennt sich „E2E Assistent“/)).toBeVisible();
   await expect(page.getByText("127.0.0.1", { exact: true })).toBeVisible();
   await expect(page.getByText("Nicht verifizierte App")).toBeVisible();
   await expect(page.getByText(/Terminentwürfe/)).toBeVisible();
@@ -73,10 +75,11 @@ test("Anmeldung, Zustimmung, Weiterleitung mit Code, Trennen im Profil", async (
 
   await page.goto("/profile");
   const apps = page.getByRole("region", { name: "Verbundene Apps" });
-  await expect(apps.getByText("E2E Assistent")).toBeVisible();
+  await expect(apps.getByText("Unbekannte App (127.0.0.1)")).toBeVisible();
+  await expect(apps.getByText(/Nennt sich „E2E Assistent“/)).toBeVisible();
   await expect(apps.getByText("Noch nie genutzt")).toBeVisible();
 
-  await apps.getByRole("button", { name: "E2E Assistent trennen" }).click();
+  await apps.getByRole("button", { name: "Unbekannte App (127.0.0.1) trennen" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Trennen" }).click();
   await expect(apps.getByText("Keine verbundenen Apps")).toBeVisible();
 });

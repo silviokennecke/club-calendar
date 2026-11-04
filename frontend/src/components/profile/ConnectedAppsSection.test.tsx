@@ -18,7 +18,9 @@ vi.mock("@/lib/auth-context", () => ({
 const grants = [
   {
     id: "g1",
-    clientName: "Claude",
+    label: "Claude",
+    claimedName: "Claude",
+    redirectHost: "claude.ai",
     family: "claude",
     scopes: ["mcp:read", "mcp:write"],
     createdAt: "2026-10-01T10:00:00Z",
@@ -26,7 +28,9 @@ const grants = [
   },
   {
     id: "g2",
-    clientName: "Skript",
+    label: null,
+    claimedName: "Claude",
+    redirectHost: "127.0.0.1",
     family: null,
     scopes: ["mcp:read"],
     createdAt: "2026-10-02T10:00:00Z",
@@ -58,6 +62,13 @@ describe("ConnectedAppsSection", () => {
     expect(screen.getByText("Nur lesen")).toBeInTheDocument();
     expect(screen.getByText(/Zuletzt genutzt am 20\.10\.2026/)).toBeInTheDocument();
     expect(screen.getByText(/Noch nie genutzt/)).toBeInTheDocument();
+  });
+
+  it("shows a self-declared name only as a claim", async () => {
+    renderSection();
+    expect(await screen.findByText("Unbekannte App (127.0.0.1)")).toBeInTheDocument();
+    expect(screen.getAllByText(/Nennt sich „Claude“/)).toHaveLength(1);
+    expect(screen.getByText("Claude", { selector: "strong" })).toBeInTheDocument();
   });
 
   it("shows an empty state", async () => {

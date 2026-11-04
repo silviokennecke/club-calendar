@@ -29,6 +29,7 @@ class OAuthAuthorizeController
         private readonly OAuthServerService $oauth,
         private readonly OAuthConsentService $consent,
         private readonly OAuthClientRepository $clients,
+        private readonly RedirectUriPolicy $policy,
         private readonly AuthRateLimiter $limiter,
         private readonly CurrentUserResolver $userResolver,
         #[Autowire(env: 'FRONTEND_URL')]
@@ -50,6 +51,9 @@ class OAuthAuthorizeController
         $redirectUri = self::param($q, 'redirect_uri');
         if (null === $redirectUri || !$this->oauth->redirectUriRegistered($client, $redirectUri)) {
             throw new ApiProblemException(400, 'redirect_uri is missing or not registered for this client', 'invalid_request', 'redirect_uri');
+        }
+        if (!$this->policy->permits($client->getFamily(), $redirectUri)) {
+            throw new ApiProblemException(400, 'This client is not allowed on this server', 'invalid_request', 'client_id');
         }
         $state = self::param($q, 'state');
 

@@ -22,9 +22,11 @@ vi.mock("@/components/legal/LegalLinks", () => ({ LegalLinks: () => null }));
 
 const base = {
   id: "r1",
-  clientName: "Mein Assistent",
+  label: "Claude",
+  claimedName: "Mein Assistent",
   redirectHost: "claude.ai",
   family: "claude",
+  callbackRisk: null,
   scopes: ["mcp:read"],
   createdAt: "2026-10-22T10:00:00Z",
   expiresAt: "2999-01-01T00:00:00Z",
@@ -49,7 +51,8 @@ beforeEach(() => {
 describe("OAuthConsentPage", () => {
   it("shows client, redirect host and read scope without an unverified notice", async () => {
     await renderPage();
-    expect(await screen.findByText("Mein Assistent", { selector: "dd" })).toBeInTheDocument();
+    expect(await screen.findByText("Claude", { selector: "dd" })).toBeInTheDocument();
+    expect(screen.getByText(/Nennt sich „Mein Assistent“/)).toBeInTheDocument();
     expect(screen.getByText("claude.ai")).toBeInTheDocument();
     expect(
       screen.getByText(/Vereine, Kalender, Termine, Vorlagen und Feeds ansehen/),
@@ -59,10 +62,35 @@ describe("OAuthConsentPage", () => {
     expect(apiGet).toHaveBeenCalledWith("/api/oauth/authorization-request/r1");
   });
 
+  it("never shows a claimed name as the identity and hides a claim equal to the label", async () => {
+    apiGet.mockResolvedValue({ ...base, claimedName: "Claude", label: "ChatGPT" });
+    await renderPage();
+    expect(await screen.findByText("ChatGPT", { selector: "dd" })).toBeInTheDocument();
+    expect(screen.queryByText("Claude", { selector: "dd" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Nennt sich „Claude“/)).toBeInTheDocument();
+    apiGet.mockResolvedValue({ ...base, claimedName: "Claude" });
+    await renderPage();
+    expect(screen.getAllByText(/Nennt sich/)).toHaveLength(1);
+  });
+
+  it("warns about loopback and connector callbacks", async () => {
+    apiGet.mockResolvedValue({ ...base, callbackRisk: "loopback" });
+    await renderPage();
+    expect(await screen.findByText("Programm auf einem Computer")).toBeInTheDocument();
+  });
+
   it("warns about unverified apps and lists write rights", async () => {
-    apiGet.mockResolvedValue({ ...base, family: null, scopes: ["mcp:read", "mcp:write"] });
+    apiGet.mockResolvedValue({
+      ...base,
+      label: null,
+      claimedName: "Claude",
+      family: null,
+      scopes: ["mcp:read", "mcp:write"],
+    });
     await renderPage();
     expect(await screen.findByText("Nicht verifizierte App")).toBeInTheDocument();
+    expect(screen.getByText("Unbekannte App", { selector: "dd" })).toBeInTheDocument();
+    expect(screen.getByText(/Nennt sich „Claude“/)).toBeInTheDocument();
     expect(screen.getByText(/Terminentwürfe/)).toBeInTheDocument();
   });
 
@@ -125,6 +153,6 @@ describe("OAuthConsentPage", () => {
     apiGet.mockRejectedValueOnce(new Error("network"));
     await renderPage();
     await userEvent.click(await screen.findByRole("button", { name: "Erneut versuchen" }));
-    expect(await screen.findByText("Mein Assistent", { selector: "dd" })).toBeInTheDocument();
+    expect(await screen.findByText("Claude", { selector: "dd" })).toBeInTheDocument();
   });
 });
