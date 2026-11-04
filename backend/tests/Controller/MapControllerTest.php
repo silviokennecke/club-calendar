@@ -14,6 +14,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 
 class MapControllerTest extends WebTestCase
 {
@@ -404,5 +405,76 @@ class MapControllerTest extends WebTestCase
         $auth = TestHelper::authHeader($user, $this->tokens);
         $r = TestHelper::jsonRequest($this->client, 'GET', '/api/mapbox/evil.example.com/styles/v1/x', [], $auth);
         $this->assertSame(400, $r['status'], $r['content']);
+    }
+
+    private function exhaust(string $service, string $key): void
+    {
+        $limiter = static::getContainer()->get($service);
+        $this->assertInstanceOf(RateLimiterFactory::class, $limiter);
+        $limiter->create($key)->consume(100000);
+    }
+
+    private function assertRateLimited(array $r): void
+    {
+        $this->assertSame(429, $r['status'], $r['content']);
+        $this->assertSame('rate_limited', $r['body']['code']);
+        $this->assertNotEmpty($this->client->getResponse()->headers->get('Retry-After'));
+    }
+
+    public function testMapboxTilesUserLimit(): void
+    {
+        ['user' => $user] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $other = TestHelper::createUser($this->em, $this->hasher, 'other@example.com');
+        $this->exhaust('limiter.mapbox_tiles_user', $user->getId());
+        $url = '/api/mapbox/api.mapbox.com/v4/x/1/2/3.vector.pbf';
+
+        $this->assertRateLimited(TestHelper::jsonRequest($this->client, 'GET', $url, [], TestHelper::authHeader($user, $this->tokens)));
+        // another user passes the limit (and stops at the domain check, no upstream call)
+        $r = TestHelper::jsonRequest($this->client, 'GET', '/api/mapbox/evil.example.com/v4/x/1/2/3.vector.pbf', [], TestHelper::authHeader($other, $this->tokens));
+        $this->assertSame(400, $r['status'], $r['content']);
+    }
+
+    public function testMapboxTilesIpLimit(): void
+    {
+        ['user' => $user] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $this->exhaust('limiter.mapbox_tiles_ip', '127.0.0.1');
+        $url = '/api/mapbox/api.mapbox.com/v4/x/1/2/3.vector.pbf';
+        $auth = TestHelper::authHeader($user, $this->tokens);
+
+        $this->assertRateLimited(TestHelper::jsonRequest($this->client, 'GET', $url, [], $auth));
+        // styles are not affected by the tile IP limit (no network: proxy denied path stays 403)
+        $r = TestHelper::jsonRequest($this->client, 'GET', '/api/mapbox/api.mapbox.com/not/allowed', [], $auth);
+        $this->assertSame(403, $r['status'], $r['content']);
+    }
+
+    public function testMapboxStyleUserLimit(): void
+    {
+        ['user' => $user] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $other = TestHelper::createUser($this->em, $this->hasher, 'other@example.com');
+        $this->exhaust('limiter.mapbox_style_user', $user->getId());
+
+        foreach (['styles/v1/mapbox/streets-v12', 'fonts/v1/mapbox/Open%20Sans/0-255.pbf'] as $path) {
+            $this->assertRateLimited(TestHelper::jsonRequest($this->client, 'GET', "/api/mapbox/api.mapbox.com/$path", [], TestHelper::authHeader($user, $this->tokens)));
+        }
+        $r = TestHelper::jsonRequest($this->client, 'GET', '/api/mapbox/evil.example.com/styles/v1/x', [], TestHelper::authHeader($other, $this->tokens));
+        $this->assertSame(400, $r['status'], $r['content']);
+    }
+
+    public function testMapboxStyleGlobalLimit(): void
+    {
+        ['user' => $user] = TestHelper::createCalendarWithClub($this->em, $this->hasher);
+        $this->exhaust('limiter.mapbox_style_global', 'global');
+
+        $this->assertRateLimited(TestHelper::jsonRequest($this->client, 'GET', '/api/mapbox/api.mapbox.com/styles/v1/mapbox/streets-v12', [], TestHelper::authHeader($user, $this->tokens)));
+    }
+
+    public function testMapImageIpLimit(): void
+    {
+        $this->exhaust('limiter.map_image_ip', '127.0.0.1');
+        $r = TestHelper::jsonRequest($this->client, 'GET', '/api/map/image/location/unknown');
+        $this->assertRateLimited($r);
+
+        $this->client->request('GET', '/api/map/image/event/unknown', [], [], ['REMOTE_ADDR' => '10.9.8.7']);
+        $this->assertSame(404, $this->client->getResponse()->getStatusCode());
     }
 }

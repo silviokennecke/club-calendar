@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Exception\ProxyDeniedException;
 use App\Exception\RateLimitExceededException;
+use App\Security\AuthRateLimiter;
 use App\Service\Map\MapAvailability;
 use App\Service\Map\MapboxProxyService;
 use Psr\Log\LoggerInterface;
@@ -26,6 +28,7 @@ class MapboxController extends AbstractController
     public function __construct(
         private readonly MapboxProxyService $proxyService,
         private readonly MapAvailability $mapAvailability,
+        private readonly AuthRateLimiter $rateLimiter,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -39,6 +42,14 @@ class MapboxController extends AbstractController
 
         if (!in_array($domain, self::ALLOWED_DOMAINS, true)) {
             throw new ApiProblemException(400, 'Domain not allowed', 'invalid_request', 'domain');
+        }
+
+        $user = $this->getUser();
+        $kind = $this->proxyService->classify($path);
+        if ($user instanceof User && 'tile' === $kind) {
+            $this->rateLimiter->assertMapboxTilesAllowed($request, $user->getId());
+        } elseif ($user instanceof User && 'style' === $kind) {
+            $this->rateLimiter->assertMapboxStyleAllowed($user->getId());
         }
 
         $queryParams = $request->query->all();

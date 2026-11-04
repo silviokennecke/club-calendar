@@ -55,6 +55,16 @@ class MapboxProxyService
         return $response;
     }
 
+    /** @return 'tile'|'style'|null null: path is not allowed (the proxy denies it) */
+    public function classify(string $path): ?string
+    {
+        try {
+            return $this->matchPattern($path, 'GET')['rate_limited'] ? 'tile' : 'style';
+        } catch (ProxyDeniedException) {
+            return null;
+        }
+    }
+
     private function matchPattern(string $path, string $method): array
     {
         // The HTTP client removes dot segments ("styles/../geocoding" -> "geocoding"): they would lead
