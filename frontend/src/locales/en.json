@@ -2393,7 +2393,7 @@
       "retry": "Try again",
       "errorTitle": "That did not work",
       "expiredTitle": "Request expired",
-      "expiredText": "This request has expired or was already answered. Start the connection in the app again.",
+      "expiredText": "This request has expired, was already answered or was started in another browser. Start the connection in the app again and open the link in the same browser you sign in with.",
       "toApp": "Go to Club Calendar",
       "toProfile": "Go to profile",
       "risk": {

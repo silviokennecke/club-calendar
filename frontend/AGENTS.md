@@ -103,7 +103,7 @@ Background: `docs/ops/BACKLOG.md` (open backend gaps and operations), `docs/api/
   `/clubs`): an AI client sent the browser here from `GET /api/oauth/authorize`. Shows the server-derived `label` (never the self-declared `claimedName`, which appears only as "calls itself ..." when it differs), redirect host,
   a warning for `callbackRisk` (loopback / ChatGPT connector), an "unverified app" banner when `family` is null and the scopes as words; Allow / Deny post
   `POST /api/oauth/authorize/decision` and the browser follows `redirectUrl` (`navigateAway`, replaceable in tests).
-  Unknown / expired / answered requests (404 `authorization_request_not_found`, expired `expiresAt`) show the expired
+  Unknown / expired / answered requests and requests started in another browser (404 `authorization_request_not_found`: the backend binds the request to the browser by the cookie `oauth_consent_<id>`, which `apiFetch` sends with `credentials: include` for `/api/oauth/*`; expired `expiresAt`) show the expired
   state; codes map in `decisionFailure` (`lib/mcp`). A signed-out visitor: `ProtectedRoute` stashes the consent URL
   (`stashReturnTo`, sessionStorage, 10 min, only this path shape) and `/clubs` forwards back to it after any sign-in
   (`takeReturnTo`). Profile: `components/profile/ConnectedAppsSection` ("Verbundene Apps": `GET /api/auth/mcp-grants`,

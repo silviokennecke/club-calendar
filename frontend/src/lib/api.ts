@@ -209,7 +209,13 @@ export async function logoutEverywhere(): Promise<void> {
   if (!res.ok) throw await errorFrom(res);
 }
 
+/** The MCP consent API is bound to the browser by an HttpOnly cookie, which a split-origin fetch only sends with credentials. */
+const CREDENTIALED_PATH = /^\/api\/oauth\//;
+
 export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
+  if (CREDENTIALED_PATH.test(path) && options.credentials === undefined) {
+    options = { ...options, credentials: "include" };
+  }
   const token = getAccessToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",

@@ -55,6 +55,14 @@ afterEach(() => {
 const authOf = (call: number) => sentAuth[call];
 
 describe("apiFetch session handling", () => {
+  it("sends credentials only for the MCP consent API", async () => {
+    fetchMock.mockImplementation(async () => ok({}));
+    await apiGet("/api/oauth/authorization-request/r1");
+    await apiGet("/api/clubs");
+    expect(fetchMock.mock.calls[0][1]?.credentials).toBe("include");
+    expect(fetchMock.mock.calls[1][1]?.credentials).toBeUndefined();
+  });
+
   it("refreshes silently on 401 token_expired and retries with the new token", async () => {
     storeTokens("old-access", "refresh-1");
     fetchMock

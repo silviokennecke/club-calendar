@@ -107,3 +107,34 @@ test("Ablehnen leitet mit access_denied zurück, die Anfrage ist danach verbrauc
   await page.goto(consentUrl);
   await expect(page.getByRole("heading", { level: 1, name: "Anfrage abgelaufen" })).toBeVisible();
 });
+
+test("Zustimmungslink in einem anderen Browser zeigt „Anfrage abgelaufen“", async ({
+  page,
+  request,
+  browser,
+}) => {
+  const email = await createVerifiedUser(request, "MCP Fremder Browser");
+  const clientId = await registerClient(request, "E2E Fremd");
+
+  await page.goto("/login");
+  await signIn(page, email);
+  await expect(page).toHaveURL(/\/clubs|\/setup/);
+  await page.goto(authorizeUrl(clientId, "st-foreign", "mcp:read"));
+  await expect(page.getByRole("button", { name: "Erlauben" })).toBeVisible();
+  const consentUrl = page.url();
+
+  const other = await browser.newContext({ locale: "de-DE" });
+  const otherPage = await other.newPage();
+  await otherPage.goto("/login");
+  await signIn(otherPage, email);
+  await expect(otherPage).toHaveURL(/\/clubs|\/setup/);
+  await otherPage.goto(consentUrl);
+  await expect(
+    otherPage.getByRole("heading", { level: 1, name: "Anfrage abgelaufen" }),
+  ).toBeVisible();
+  await other.close();
+
+  // The real browser is unaffected.
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Erlauben" })).toBeVisible();
+});
