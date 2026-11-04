@@ -5,8 +5,7 @@ on:
     tags: ["v[0-9]*"]
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 jobs:
   validate:
@@ -26,17 +25,25 @@ jobs:
 
   ci:
     needs: validate
+    # Caller must grant what the called workflow's autofix job declares (skipped on tags)
+    permissions:
+      contents: write
     uses: ./.github/workflows/ci.yml
     secrets: inherit
 
   image:
     needs: ci
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/docker.yml
 
   release:
     name: GitHub Release
     needs: image
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
