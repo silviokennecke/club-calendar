@@ -18,6 +18,7 @@ use App\Security\OneTimeTokenService;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
+use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
@@ -27,6 +28,7 @@ readonly class AuthService
 {
     public function __construct(
         private EntityManagerInterface $em,
+        private ManagerRegistry $doctrine,
         private UserPasswordHasherInterface $hasher,
         private TokenService $tokens,
         private EmailVerificationMailer $verificationMailer,
@@ -71,7 +73,13 @@ readonly class AuthService
             $user->setLanguage($language);
         }
         $this->em->persist($user);
-        $this->em->flush();
+        try {
+            $this->em->flush();
+        } catch (UniqueConstraintViolationException) {
+            // Lost the race against a concurrent registration: the unique index decides. The EM is closed now.
+            $this->doctrine->resetManager();
+            throw new ApiProblemException(400, 'Email already in use', 'email_taken', 'email');
+        }
         $this->legal->record($user, $accepted, $ip, $userAgent);
         $this->verificationMailer->send($user);
 
@@ -407,7 +415,7 @@ readonly class AuthService
      *
      * @throws OAuthAccountConflictException
      */
-    public function findOrCreateOAuthUser(string $provider, string $providerId, string $email, string $name, bool $providerSaysEmailVerified = false): User
+    public function findOrCreateOAuthUser(string $provider, string $providerId, string $email, string $name, bool $providerSaysEmailVerified = false, bool $retryOnRace = true): User
     {
         $email = EmailAddress::normalize($email);
         $existing = $this->em->getRepository(OAuthAccount::class)->findOneBy([
@@ -460,7 +468,17 @@ readonly class AuthService
         $account->setProviderId($providerId);
         $account->setEmail($email);
         $this->em->persist($account);
-        $this->em->flush();
+        try {
+            $this->em->flush();
+        } catch (UniqueConstraintViolationException) {
+            // Concurrent sign-in created the user or link first; the EM is closed, so start over once on a fresh one.
+            $this->doctrine->resetManager();
+            if (!$retryOnRace) {
+                throw new OAuthAccountConflictException('An account with this e-mail address already exists', false);
+            }
+
+            return $this->findOrCreateOAuthUser($provider, $providerId, $email, $name, $providerSaysEmailVerified, false);
+        }
 
         if (!$user->isEmailVerified()) {
             $this->sendCodeIfDue($user);
