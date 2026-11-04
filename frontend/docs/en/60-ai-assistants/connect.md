@@ -31,9 +31,11 @@ You need a confirmed account: confirm your e-mail address and accept the current
 
 ## What to check on the "Connect app?" page
 
-- **App**: The name the app gives itself. This name is not verified.
+- **App**: Claude, ChatGPT or Gemini when the redirect address belongs to that provider, otherwise "Unknown app". This is recognized from the address only and is not a confirmation by the provider.
+- **App's own statement**: The name the app gives itself ("Calls itself ..."). It is not verified and can be anything.
 - **Redirects to**: The address you are sent back to afterwards. It should match the app you are connecting.
 - **Unverified app**: If you see this notice, the app does not belong to a known provider. Only allow access if you trust it and expect the redirect address.
+- **Program on a computer / Custom ChatGPT connector**: These notices appear when the redirect goes to a local program or to a ChatGPT connector that anyone can create. Only allow access if you started the connection yourself or set up the connector yourself.
 - **What the app may do**: Either only view (clubs, calendars, events, templates and feeds) or additionally create drafts and reference data. In the second case the page also says: the app cannot publish anything or delete events, new events stay drafts.
 
 :::warning

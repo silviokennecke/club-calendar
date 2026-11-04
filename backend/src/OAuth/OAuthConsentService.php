@@ -41,9 +41,11 @@ class OAuthConsentService
 
         return [
             'id' => $request->getId(),
-            'clientName' => $client->getClientName(),
+            'label' => RedirectUriPolicy::label($client->getFamily()),
+            'claimedName' => $client->getClientName(),
             'redirectHost' => self::redirectHost($request->getRedirectUri()),
             'family' => $client->getFamily(),
+            'callbackRisk' => RedirectUriPolicy::callbackRisk($request->getRedirectUri()),
             'scopes' => explode(' ', $request->getScopes()),
             'createdAt' => $request->getCreatedAt()->format(DATE_ATOM),
             'expiresAt' => $request->getExpiresAt()->format(DATE_ATOM),
@@ -90,7 +92,9 @@ class OAuthConsentService
     {
         return array_map(static fn (McpGrant $g) => [
             'id' => $g->getId(),
-            'clientName' => $g->getClient()->getClientName(),
+            'label' => RedirectUriPolicy::label($g->getClient()->getFamily()),
+            'claimedName' => $g->getClient()->getClientName(),
+            'redirectHost' => self::redirectHost($g->getClient()->getRedirectUris()[0] ?? ''),
             'family' => $g->getClient()->getFamily(),
             'scopes' => explode(' ', $g->getScopes()),
             'createdAt' => $g->getCreatedAt()->format(DATE_ATOM),

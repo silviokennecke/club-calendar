@@ -2169,6 +2169,8 @@
       "retry": "Erneut versuchen",
       "emptyTitle": "Keine verbundenen Apps",
       "emptyText": "Sobald du einer App den Zugriff erlaubst, erscheint sie hier.",
+      "unknownApp": "Unbekannte App ({{host}})",
+      "claimed": "Nennt sich „{{name}}“ (nicht geprüft)",
       "scopeRead": "Nur lesen",
       "scopeWrite": "Lesen und Entwürfe",
       "connectedAt": "Verbunden am {{date}}",
@@ -2372,8 +2374,13 @@
     "consent": {
       "title": "App verbinden?",
       "intro": "{{name}} möchte auf dein Konto zugreifen.",
+      "introUnknown": "Eine App über {{host}} möchte auf dein Konto zugreifen.",
       "app": "App",
       "redirectHost": "Weiterleitung nach",
+      "unknownApp": "Unbekannte App",
+      "labelNote": "Anhand der Weiterleitungsadresse erkannt, nicht vom Anbieter bestätigt.",
+      "claimLabel": "Angabe der App",
+      "claimed": "Nennt sich „{{name}}“ (nicht geprüft)",
       "unverifiedTitle": "Nicht verifizierte App",
       "unverifiedText": "Diese App gehört nicht zu den bekannten Anbietern. Erlaube den Zugriff nur, wenn du ihr vertraust und die Adresse oben erwartest.",
       "scopesTitle": "Das darf die App",
@@ -2389,6 +2396,16 @@
       "expiredText": "Diese Anfrage ist abgelaufen oder wurde schon beantwortet. Starte die Verbindung in der App noch einmal.",
       "toApp": "Zu Club Calendar",
       "toProfile": "Zum Profil",
+      "risk": {
+        "loopback": {
+          "title": "Programm auf einem Computer",
+          "text": "Die Weiterleitung geht an ein Programm auf einem Computer (localhost). Jedes Programm dort kann diese Adresse nutzen. Erlaube den Zugriff nur, wenn du die Verbindung gerade selbst gestartet hast."
+        },
+        "connector": {
+          "title": "Eigener ChatGPT-Konnektor",
+          "text": "Jeder kann in ChatGPT einen eigenen Konnektor anlegen und so diese Weiterleitung nutzen. Erlaube den Zugriff nur, wenn du diesen Konnektor selbst eingerichtet hast."
+        }
+      },
       "problem": {
         "consent": "Bitte stimme zuerst den aktuellen Dokumenten zu und versuche es dann erneut.",
         "emailUnverified": "Bestätige zuerst deine E-Mail-Adresse, um Apps zu verbinden.",

@@ -100,8 +100,8 @@ Background: `docs/ops/BACKLOG.md` (open backend gaps and operations), `docs/api/
   `AuthProvider` clears the tokens only when `/me` answers 401/403; network errors, 429 and 5xx keep them, retry twice
   and then set `sessionError` (retried on `online` / tab visible), during which `GuestRoute` shows the loader, not the form.
 - MCP consent (`/oauth/consent?request=<id>`, `pages/OAuthConsentPage`, inside `ProtectedRoute` as a standalone page like
-  `/clubs`): an AI client sent the browser here from `GET /api/oauth/authorize`. Shows client name, redirect host,
-  an "unverified app" banner when `family` is null and the scopes as words; Allow / Deny post
+  `/clubs`): an AI client sent the browser here from `GET /api/oauth/authorize`. Shows the server-derived `label` (never the self-declared `claimedName`, which appears only as "calls itself ..." when it differs), redirect host,
+  a warning for `callbackRisk` (loopback / ChatGPT connector), an "unverified app" banner when `family` is null and the scopes as words; Allow / Deny post
   `POST /api/oauth/authorize/decision` and the browser follows `redirectUrl` (`navigateAway`, replaceable in tests).
   Unknown / expired / answered requests (404 `authorization_request_not_found`, expired `expiresAt`) show the expired
   state; codes map in `decisionFailure` (`lib/mcp`). A signed-out visitor: `ProtectedRoute` stashes the consent URL

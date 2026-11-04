@@ -13,7 +13,7 @@ You find all AI apps you allowed access in your profile.
 1. Open your **Profile**.
 2. Find the section **Connected apps**.
 
-For each app you see whether it may **Read only** or **Read and drafts**, when it was connected and when it was last used. An empty list means you have not connected any app yet.
+For each app you see its name (Claude, ChatGPT, Gemini or "Unknown app" with its redirect address; a self-declared name appears only as "Calls itself ..." below it) and whether it may **Read only** or **Read and drafts**, when it was connected and when it was last used. An empty list means you have not connected any app yet.
 
 ## Disconnect an app
 

@@ -95,6 +95,7 @@ export default function OAuthConsentPage() {
   }
 
   const data = request.data;
+  const claimShown = data.claimedName !== "" && data.claimedName !== data.label;
   const write = data.scopes.includes("mcp:write");
   const locked = busy !== null || leaving;
 
@@ -102,16 +103,29 @@ export default function OAuthConsentPage() {
     <AuthLayout
       icon="lock"
       title={t("oauth.consent.title")}
-      intro={t("oauth.consent.intro", { name: data.clientName })}
+      intro={
+        data.label
+          ? t("oauth.consent.intro", { name: data.label })
+          : t("oauth.consent.introUnknown", { host: data.redirectHost })
+      }
     >
       <div className="ap-stack">
         <dl className="ap-stack ap-stack--sm">
           <div>
             <dt className="t-sm t-muted">{t("oauth.consent.app")}</dt>
             <dd className="t-h3" style={{ overflowWrap: "anywhere" }}>
-              {data.clientName}
+              {data.label ?? t("oauth.consent.unknownApp")}
             </dd>
+            {data.label && <dd className="t-sm t-muted">{t("oauth.consent.labelNote")}</dd>}
           </div>
+          {claimShown && (
+            <div>
+              <dt className="t-sm t-muted">{t("oauth.consent.claimLabel")}</dt>
+              <dd style={{ overflowWrap: "anywhere" }}>
+                {t("oauth.consent.claimed", { name: data.claimedName })}
+              </dd>
+            </div>
+          )}
           <div>
             <dt className="t-sm t-muted">{t("oauth.consent.redirectHost")}</dt>
             <dd>
@@ -119,6 +133,12 @@ export default function OAuthConsentPage() {
             </dd>
           </div>
         </dl>
+
+        {data.callbackRisk && (
+          <Banner tone="warning" title={t(`oauth.consent.risk.${data.callbackRisk}.title`)}>
+            {t(`oauth.consent.risk.${data.callbackRisk}.text`)}
+          </Banner>
+        )}
 
         {data.family === null && (
           <Banner tone="warning" title={t("oauth.consent.unverifiedTitle")}>

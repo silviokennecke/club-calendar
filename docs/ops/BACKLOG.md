@@ -74,7 +74,7 @@ Der Security-Audit (Bericht des Auftraggebers, nicht im Repository) ist umgesetz
 
 | Schweregrad | Risiko | Details / mögliche Behebung |
 | --- | --- | --- |
-| mittel | **MCP: Clientnamen ungeprüft** | Per Dynamic Client Registration kann sich jeder Client mit beliebigem `client_name` registrieren (nur die Redirect-URI-Familie in `MCP_ALLOWED_CLIENTS` wird geprüft); die Zustimmungsseite zeigt deshalb den Redirect-Host und "nicht verifizierte App". Mit leerem `MCP_ALLOWED_CLIENTS` sind alle Clients erlaubt. |
+| niedrig | **MCP: Familien-Treffer beweist nicht den Betreiber** | Die Bezeichnung (Claude, ChatGPT, Gemini) kommt aus der Redirect-URI-Familie, der selbst angegebene `client_name` gilt nur als Behauptung. Ein eigener ChatGPT-Konnektor (`chatgpt.com/connector/oauth/<id>`) oder ein lokales Programm (Loopback) trifft trotzdem eine Familie; akzeptiert, die Zustimmungsseite warnt dafür gesondert. Ein leeres `MCP_ALLOWED_CLIENTS` erlaubt keinen Client mehr, alle nur mit `*`. |
 | niedrig | **MCP: Request-ID nicht an Nutzer gebunden** | `OAuthAuthorizationRequest` (10 Minuten, einmalig) wird erst bei der Entscheidung an den angemeldeten Nutzer gebunden; wer die Request-ID kennt, könnte als angemeldeter Nutzer zustimmen. Die ID ist zufällig und steht nur in der Zustimmungs-URL. |
 | niedrig | **MCP: Bundle vor 1.0** | `symfony/mcp-bundle` ist auf `~0.14.1` gepinnt (mcp/sdk 0.8.1); API und Verhalten können sich bei Updates ändern, Updates nur mit laufender `McpEndpointTest`/Tool-Tests. |
 

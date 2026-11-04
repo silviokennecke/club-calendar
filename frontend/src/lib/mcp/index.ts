@@ -8,10 +8,15 @@ export type McpScope = "mcp:read" | "mcp:write";
 /** `GET /api/oauth/authorization-request/:id` */
 export interface AuthorizationRequest {
   id: string;
-  clientName: string;
+  /** Server-derived from the matched family (Claude, ChatGPT, Gemini); null = no known family. */
+  label: string | null;
+  /** Name the client declared about itself at registration: a claim, never an identity. */
+  claimedName: string;
   redirectHost: string;
   /** Matched client family (claude, openai, ...); null = unverified app. */
   family: string | null;
+  /** Callback a third party can own: a local program or a ChatGPT connector id. */
+  callbackRisk: "loopback" | "connector" | null;
   scopes: McpScope[];
   createdAt: string;
   expiresAt: string;
@@ -20,7 +25,9 @@ export interface AuthorizationRequest {
 /** `GET /api/auth/mcp-grants` */
 export interface McpGrant {
   id: string;
-  clientName: string;
+  label: string | null;
+  claimedName: string;
+  redirectHost: string;
   family: string | null;
   scopes: McpScope[];
   createdAt: string;

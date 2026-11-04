@@ -2169,6 +2169,8 @@
       "retry": "Try again",
       "emptyTitle": "No connected apps",
       "emptyText": "Once you allow an app to access your account, it appears here.",
+      "unknownApp": "Unknown app ({{host}})",
+      "claimed": "Calls itself “{{name}}” (not verified)",
       "scopeRead": "Read only",
       "scopeWrite": "Read and drafts",
       "connectedAt": "Connected on {{date}}",
@@ -2372,8 +2374,13 @@
     "consent": {
       "title": "Connect app?",
       "intro": "{{name}} wants to access your account.",
+      "introUnknown": "An app at {{host}} wants to access your account.",
       "app": "App",
       "redirectHost": "Redirects to",
+      "unknownApp": "Unknown app",
+      "labelNote": "Recognized by its redirect address, not confirmed by the provider.",
+      "claimLabel": "App's own statement",
+      "claimed": "Calls itself “{{name}}” (not verified)",
       "unverifiedTitle": "Unverified app",
       "unverifiedText": "This app does not belong to a known provider. Only allow access if you trust it and expect the address above.",
       "scopesTitle": "What the app may do",
@@ -2389,6 +2396,16 @@
       "expiredText": "This request has expired or was already answered. Start the connection in the app again.",
       "toApp": "Go to Club Calendar",
       "toProfile": "Go to profile",
+      "risk": {
+        "loopback": {
+          "title": "Program on a computer",
+          "text": "The redirect goes to a program on a computer (localhost). Any program there can use this address. Only allow access if you just started this connection yourself."
+        },
+        "connector": {
+          "title": "Custom ChatGPT connector",
+          "text": "Anyone can create their own connector in ChatGPT and use this redirect. Only allow access if you set up this connector yourself."
+        }
+      },
       "problem": {
         "consent": "Please accept the current documents first and then try again.",
         "emailUnverified": "Confirm your e-mail address first to connect apps.",

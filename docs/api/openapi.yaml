@@ -231,8 +231,8 @@ info:
     change/reset, e-mail change, passkey deletion, SSO takeover, account deletion).
 
     **Registration policy:** `MCP_ALLOWED_CLIENTS` (comma-separated families `claude`, `openai`, `gemini`;
-    default all three; empty string = every client) decides which redirect URIs may register. Always: `https`, or
-    `http` on a loopback host; no fragment, userinfo or wildcard. A client name is unverified; the consent page shows the redirect host.
+    default all three; `*` alone = every client; empty = no client; `*` with other entries or unknown entries fail at boot) decides which redirect URIs may register and, re-checked on every authorization, which stored clients may start one. Always: `https`, or
+    `http` on a loopback host; no fragment, userinfo or wildcard. The `client_name` is a self-declared claim: the consent page and the connected apps use a `label` derived from the stored family (claude: Claude, openai: ChatGPT, gemini: Gemini) and show the redirect host. A family match proves only the shape of the callback, not who runs the client.
 
     **MCP tools** (`tools/list` returns exactly these 22; all descriptions state that returned texts are untrusted
     data):
@@ -385,7 +385,7 @@ paths:
       summary: Register an OAuth client (RFC 7591)
       description: >-
         Public clients only (`token_endpoint_auth_method` none). Redirect URIs must match an allowed client family
-        (`MCP_ALLOWED_CLIENTS`; empty = any https/loopback URI). At most 5 redirect URIs, `client_name` at most 100
+        (`MCP_ALLOWED_CLIENTS`; `*` = any https/loopback URI, empty = nothing). At most 5 redirect URIs, `client_name` at most 100
         characters. 10 registrations per client IP and hour. Errors are RFC 7591 bodies
         (`error`, `error_description`) with `Cache-Control: no-store`.
       operationId: registerOAuthClient
@@ -545,12 +545,14 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [id, clientName, redirectHost, family, scopes, createdAt, expiresAt]
+                required: [id, label, claimedName, redirectHost, family, callbackRisk, scopes, createdAt, expiresAt]
                 properties:
                   id: { type: string }
-                  clientName: { type: string }
+                  label: { type: [string, 'null'], description: 'Derived from the family (Claude, ChatGPT, Gemini); null = unverified app.' }
+                  claimedName: { type: string, description: 'Self-declared client name: an unverified claim, never an identity.' }
                   redirectHost: { type: string }
                   family: { type: [string, 'null'], description: 'Matched client family (claude, openai, ...); null = unverified.' }
+                  callbackRisk: { type: [string, 'null'], enum: [loopback, connector, null], description: 'Callback a third party can own: loopback or a chatgpt.com connector id.' }
                   scopes: { type: array, items: { type: string, enum: ['mcp:read', 'mcp:write'] } }
                   createdAt: { type: string, format: date-time }
                   expiresAt: { type: string, format: date-time }
@@ -671,10 +673,12 @@ paths:
                 type: array
                 items:
                   type: object
-                  required: [id, clientName, family, scopes, createdAt, lastUsedAt]
+                  required: [id, label, claimedName, redirectHost, family, scopes, createdAt, lastUsedAt]
                   properties:
                     id: { type: string }
-                    clientName: { type: string }
+                    label: { type: [string, 'null'] }
+                    claimedName: { type: string }
+                    redirectHost: { type: string }
                     family: { type: [string, 'null'] }
                     scopes: { type: array, items: { type: string } }
                     createdAt: { type: string, format: date-time }

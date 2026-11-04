@@ -23,12 +23,14 @@ export function ConnectedAppsSection() {
   const grants = useMcpGrants();
   const revoke = useRevokeMcpGrant();
   const [target, setTarget] = useState<McpGrant | null>(null);
+  const displayName = (g: McpGrant) =>
+    g.label ?? t("profile.apps.unknownApp", { host: g.redirectHost });
 
   async function confirmRevoke() {
     if (!target) return;
     try {
       await revoke.mutateAsync(target.id);
-      toast.success(t("profile.apps.revoked", { name: target.clientName }));
+      toast.success(t("profile.apps.revoked", { name: displayName(target) }));
     } catch {
       toast.error(t("profile.apps.revokeFailed"));
     }
@@ -82,7 +84,7 @@ export function ConnectedAppsSection() {
             >
               <div className="ap-stack ap-stack--sm" style={{ minWidth: 0 }}>
                 <p style={{ overflowWrap: "anywhere" }}>
-                  <strong>{g.clientName}</strong>{" "}
+                  <strong>{displayName(g)}</strong>{" "}
                   <StatusBadge
                     status={g.scopes.includes("mcp:write") ? "draft" : "published"}
                     label={t(
@@ -92,6 +94,11 @@ export function ConnectedAppsSection() {
                     )}
                   />
                 </p>
+                {g.claimedName !== "" && g.claimedName !== g.label && (
+                  <p className="t-sm t-muted" style={{ overflowWrap: "anywhere" }}>
+                    {t("profile.apps.claimed", { name: g.claimedName })}
+                  </p>
+                )}
                 <p className="t-sm t-muted">
                   {t("profile.apps.connectedAt", { date: formatDate(g.createdAt, dateFormat) })}
                   {" · "}
@@ -103,7 +110,7 @@ export function ConnectedAppsSection() {
               <Button
                 variant="secondary"
                 icon="unlink"
-                aria-label={t("profile.apps.revokeLabel", { name: g.clientName })}
+                aria-label={t("profile.apps.revokeLabel", { name: displayName(g) })}
                 onClick={() => setTarget(g)}
               >
                 {t("profile.apps.revoke")}
@@ -118,7 +125,7 @@ export function ConnectedAppsSection() {
           if (!open) setTarget(null);
         }}
         icon="unlink"
-        title={t("profile.apps.confirmTitle", { name: target?.clientName ?? "" })}
+        title={t("profile.apps.confirmTitle", { name: target ? displayName(target) : "" })}
         description={t("profile.apps.confirmText")}
         consequence={t("profile.apps.consequence")}
         confirmLabel={t("profile.apps.confirm")}

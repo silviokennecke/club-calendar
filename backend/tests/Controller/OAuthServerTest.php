@@ -192,14 +192,24 @@ class OAuthServerTest extends WebTestCase
         }
     }
 
-    public function testEmptyAllowListAcceptsAnyHttpsClient(): void
+    public function testStarAllowListAcceptsAnyHttpsClient(): void
     {
-        static::getContainer()->set(RedirectUriPolicy::class, new RedirectUriPolicy(''));
+        static::getContainer()->set(RedirectUriPolicy::class, new RedirectUriPolicy('*'));
         $r = $this->json('POST', '/api/oauth/register', ['redirect_uris' => ['https://app.example.org/cb']]);
         $this->assertSame(201, $r['status'], $r['content']);
         $this->assertNull($this->em->find(OAuthClient::class, $r['body']['client_id'])->getFamily());
         $bad = $this->json('POST', '/api/oauth/register', ['redirect_uris' => ['http://app.example.org/cb']]);
         $this->assertSame(400, $bad['status']);
+    }
+
+    public function testEmptyAllowListRegistersNobody(): void
+    {
+        static::getContainer()->set(RedirectUriPolicy::class, new RedirectUriPolicy(''));
+        foreach (['https://app.example.org/cb', self::REDIRECT, 'http://127.0.0.1/callback'] as $uri) {
+            $r = $this->json('POST', '/api/oauth/register', ['redirect_uris' => [$uri]]);
+            $this->assertSame(400, $r['status'], $uri);
+            $this->assertSame('invalid_redirect_uri', $r['body']['error']);
+        }
     }
 
     public function testCodeTokenRefreshRevokeFlow(): void

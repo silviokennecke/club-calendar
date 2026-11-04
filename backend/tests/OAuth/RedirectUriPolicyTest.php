@@ -53,9 +53,18 @@ class RedirectUriPolicyTest extends TestCase
         $this->assertNull($policy->match('http://localhost:1/oauth/callback'));
     }
 
-    public function testEmptyListAllowsAnyClientButStaysStrict(): void
+    public function testEmptyListAllowsNoClient(): void
     {
         $policy = new RedirectUriPolicy('');
+        $this->assertFalse($policy->allowsAnyClient());
+        $this->assertNull($policy->match('https://claude.ai/api/mcp/auth_callback'));
+        $this->assertNull($policy->match('https://example.org/cb'));
+        $this->assertNull($policy->match('http://localhost:8123/callback'));
+    }
+
+    public function testStarAllowsAnyClientButStaysStrict(): void
+    {
+        $policy = new RedirectUriPolicy(' * ');
         $this->assertTrue($policy->allowsAnyClient());
         $this->assertSame('*', $policy->match('https://example.org/any/path?x=1'));
         $this->assertSame('*', $policy->match('http://localhost:8123/whatever'));
@@ -66,9 +75,42 @@ class RedirectUriPolicyTest extends TestCase
         $this->assertNull($policy->match('javascript:alert(1)'));
     }
 
+    public function testStarWithOtherEntriesFailsFast(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new RedirectUriPolicy('claude,*');
+    }
+
     public function testUnknownTokenFailsFast(): void
     {
         $this->expectException(\InvalidArgumentException::class);
         new RedirectUriPolicy('claude,grok');
+    }
+
+    public function testLabelComesFromFamilyOnly(): void
+    {
+        $this->assertSame('Claude', RedirectUriPolicy::label('claude'));
+        $this->assertSame('ChatGPT', RedirectUriPolicy::label('openai'));
+        $this->assertSame('Gemini', RedirectUriPolicy::label('gemini'));
+        $this->assertNull(RedirectUriPolicy::label(null));
+    }
+
+    public function testCallbackRisk(): void
+    {
+        $this->assertSame('loopback', RedirectUriPolicy::callbackRisk('http://127.0.0.1:5555/callback'));
+        $this->assertSame('connector', RedirectUriPolicy::callbackRisk('https://chatgpt.com/connector/oauth/abc_1'));
+        $this->assertNull(RedirectUriPolicy::callbackRisk('https://chatgpt.com/connector_platform_oauth_redirect'));
+        $this->assertNull(RedirectUriPolicy::callbackRisk('https://claude.ai/api/mcp/auth_callback'));
+    }
+
+    public function testPermitsRechecksStoredFamily(): void
+    {
+        $claude = new RedirectUriPolicy('claude');
+        $this->assertTrue($claude->permits('claude', 'https://claude.ai/api/mcp/auth_callback'));
+        $this->assertFalse($claude->permits(null, 'https://claude.ai/api/mcp/auth_callback'));
+        $this->assertFalse($claude->permits('openai', 'https://claude.ai/api/mcp/auth_callback'));
+        $this->assertFalse((new RedirectUriPolicy(''))->permits(null, 'https://example.org/cb'));
+        $this->assertTrue((new RedirectUriPolicy('*'))->permits(null, 'https://example.org/cb'));
+        $this->assertTrue((new RedirectUriPolicy('*'))->permits('claude', 'https://claude.ai/api/mcp/auth_callback'));
     }
 }
