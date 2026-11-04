@@ -393,4 +393,146 @@ class OAuthAuthorizeTest extends WebTestCase
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertNull(static::getContainer()->get(OAuthServerService::class)->resolveAccessToken($tokens['access_token']));
     }
+
+    /** @return list<\Symfony\Component\BrowserKit\Cookie> */
+    private function leaveBrowser(): array
+    {
+        $saved = $this->client->getCookieJar()->all();
+        $this->client->getCookieJar()->clear();
+
+        return $saved;
+    }
+
+    /** @param list<\Symfony\Component\BrowserKit\Cookie> $cookies */
+    private function returnToBrowser(array $cookies): void
+    {
+        foreach ($cookies as $c) {
+            $this->client->getCookieJar()->set($c);
+        }
+    }
+
+    private function otherUserAuth(): string
+    {
+        $c = static::getContainer();
+        $other = TestHelper::createUser($this->em, $c->get(UserPasswordHasherInterface::class), 'other@example.com');
+
+        return TestHelper::authHeader($other, $c->get(TokenService::class));
+    }
+
+    public function testAuthorizeSetsAScopedHttpOnlyLaxCookieWithOnlyTheHashStored(): void
+    {
+        $res = $this->authorize($this->query($this->registerClient()));
+        parse_str((string) parse_url((string) $res->headers->get('Location'), PHP_URL_QUERY), $q);
+        $cookies = $res->headers->getCookies();
+        $this->assertCount(1, $cookies);
+        $cookie = $cookies[0];
+        $this->assertSame('oauth_consent_'.$q['request'], $cookie->getName());
+        $this->assertSame('/api/oauth', $cookie->getPath());
+        $this->assertTrue($cookie->isHttpOnly());
+        $this->assertSame('lax', $cookie->getSameSite());
+        $this->assertFalse($cookie->isSecure());
+        $this->assertEqualsWithDelta(time() + 600, $cookie->getExpiresTime(), 5);
+        $stored = $this->em->getConnection()->fetchOne('SELECT browser_binding_hash FROM oauth_authorization_request WHERE id = ?', [$q['request']]);
+        $this->assertSame(hash('sha256', $cookie->getValue()), $stored);
+        $this->assertNotSame($cookie->getValue(), $stored);
+    }
+
+    public function testSecureCookieOnHttps(): void
+    {
+        $clientId = $this->registerClient();
+        $this->client->request('GET', 'https://localhost/api/oauth/authorize?'.http_build_query($this->query($clientId)));
+        $this->assertTrue($this->client->getResponse()->headers->getCookies()[0]->isSecure());
+    }
+
+    public function testAnotherSignedInUserWithoutTheCookieGets404AndTheRequestSurvives(): void
+    {
+        $requestId = $this->startRequest($this->registerClient());
+        $saved = $this->leaveBrowser();
+        $other = $this->otherUserAuth();
+
+        $get = $this->json('GET', '/api/oauth/authorization-request/'.$requestId, [], $other);
+        $this->assertSame(404, $get['status']);
+        $this->assertSame('authorization_request_not_found', $get['body']['code']);
+        foreach ([true, false] as $approve) {
+            $d = $this->json('POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => $approve], $other);
+            $this->assertSame(404, $d['status']);
+            $this->assertSame('authorization_request_not_found', $d['body']['code']);
+        }
+        $this->assertSame(1, $this->em->getRepository(OAuthAuthorizationRequest::class)->count([]));
+        $this->assertSame(0, $this->em->getRepository(McpGrant::class)->count([]));
+
+        $this->returnToBrowser($saved);
+        $this->assertSame(200, $this->json('GET', '/api/oauth/authorization-request/'.$requestId)['status']);
+        $this->assertSame(200, $this->json('POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => true])['status']);
+    }
+
+    public function testWrongCookieValueIsRejected(): void
+    {
+        $requestId = $this->startRequest($this->registerClient());
+        $saved = $this->leaveBrowser();
+        $this->client->getCookieJar()->set(new \Symfony\Component\BrowserKit\Cookie('oauth_consent_'.$requestId, 'forged', null, '/api/oauth', 'localhost'));
+        $this->assertSame(404, $this->json('GET', '/api/oauth/authorization-request/'.$requestId)['status']);
+        $this->assertSame(404, $this->json('POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => true])['status']);
+        $this->assertSame(1, $this->em->getRepository(OAuthAuthorizationRequest::class)->count([]));
+    }
+
+    public function testCookieOfAnotherRequestDoesNotOpenThisOne(): void
+    {
+        $clientId = $this->registerClient();
+        $a = $this->startRequest($clientId);
+        $b = $this->startRequest($clientId);
+        $jar = $this->client->getCookieJar();
+        $cookieA = $jar->get('oauth_consent_'.$a, '/api/oauth', 'localhost');
+        $jar->clear();
+        $jar->set(new \Symfony\Component\BrowserKit\Cookie('oauth_consent_'.$b, $cookieA->getValue(), null, '/api/oauth', 'localhost'));
+        $this->assertSame(404, $this->json('GET', '/api/oauth/authorization-request/'.$b)['status']);
+    }
+
+    public function testTwoParallelRequestsInOneBrowser(): void
+    {
+        $clientId = $this->registerClient();
+        $a = $this->startRequest($clientId);
+        $b = $this->startRequest($clientId);
+        $this->assertNotSame($a, $b);
+        $this->assertSame(200, $this->json('GET', '/api/oauth/authorization-request/'.$a)['status']);
+        $this->assertSame(200, $this->json('GET', '/api/oauth/authorization-request/'.$b)['status']);
+
+        $this->assertSame(200, $this->json('POST', '/api/oauth/authorize/decision', ['requestId' => $a, 'approve' => false])['status']);
+        $this->assertSame(200, $this->json('GET', '/api/oauth/authorization-request/'.$b)['status']);
+        $this->assertSame(200, $this->json('POST', '/api/oauth/authorize/decision', ['requestId' => $b, 'approve' => true])['status']);
+    }
+
+    public function testLegacyRequestWithoutHashIsRefused(): void
+    {
+        $requestId = $this->startRequest($this->registerClient());
+        $this->em->getConnection()->executeStatement('UPDATE oauth_authorization_request SET browser_binding_hash = NULL WHERE id = ?', [$requestId]);
+        $this->assertSame(404, $this->json('GET', '/api/oauth/authorization-request/'.$requestId)['status']);
+        $this->assertSame(404, $this->json('POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => true])['status']);
+    }
+
+    public function testDecisionClearsTheCookie(): void
+    {
+        $requestId = $this->startRequest($this->registerClient());
+        foreach ([true, false] as $approve) {
+            if (!$approve) {
+                $requestId = $this->startRequest($this->registerClient());
+            }
+            $this->json('POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => $approve]);
+            $cleared = $this->client->getResponse()->headers->getCookies();
+            $this->assertCount(1, $cleared);
+            $this->assertSame('oauth_consent_'.$requestId, $cleared[0]->getName());
+            $this->assertSame('/api/oauth', $cleared[0]->getPath());
+            $this->assertLessThan(time(), $cleared[0]->getExpiresTime());
+            $this->assertNull($this->client->getCookieJar()->get('oauth_consent_'.$requestId, '/api/oauth', 'localhost'));
+        }
+    }
+
+    public function testFailedDecisionKeepsTheCookie(): void
+    {
+        $requestId = $this->startRequest($this->registerClient());
+        LegalTestHelper::publish($this->em, LegalDocumentType::PRIVACY);
+        $this->assertSame(403, $this->json('POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => true])['status']);
+        $this->assertSame([], $this->client->getResponse()->headers->getCookies());
+        $this->assertSame(1, $this->em->getRepository(OAuthAuthorizationRequest::class)->count([]));
+    }
 }

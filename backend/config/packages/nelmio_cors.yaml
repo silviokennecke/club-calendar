@@ -6,4 +6,11 @@ nelmio_cors:
         expose_headers: ['Link']
         max_age: 3600
     paths:
+        # Consent API of the MCP flow: the binding cookie must travel with the SPA call (exact origin, credentials).
+        '^/api/oauth/(authorization-request/|authorize/decision$)':
+            allow_origin: ['%env(FRONTEND_URL)%']
+            allow_credentials: true
+            allow_methods: ['GET', 'POST', 'OPTIONS']
+            allow_headers: ['Content-Type', 'Authorization']
+            max_age: 3600
         '^/': null

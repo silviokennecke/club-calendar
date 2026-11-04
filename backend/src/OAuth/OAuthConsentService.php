@@ -34,9 +34,9 @@ class OAuthConsentService
     }
 
     /** @return array<string, mixed> */
-    public function describeRequest(string $id): array
+    public function describeRequest(string $id, ?string $browserNonce): array
     {
-        $request = $this->openRequest($id);
+        $request = $this->openRequest($id, $browserNonce);
         $client = $request->getClient();
 
         return [
@@ -53,10 +53,10 @@ class OAuthConsentService
     }
 
     /** @return string the URL to send the browser to (the client's redirect URI with code or error) */
-    public function decide(User $user, string $requestId, bool $approve): string
+    public function decide(User $user, string $requestId, bool $approve, ?string $browserNonce): string
     {
         $this->limiter->assertOAuthDecisionAllowed($user->getId());
-        $request = $this->openRequest($requestId);
+        $request = $this->openRequest($requestId, $browserNonce);
 
         if (!$approve) {
             $this->oauth->deny($request);
@@ -113,10 +113,15 @@ class OAuthConsentService
         $this->em->flush();
     }
 
-    private function openRequest(string $id): OAuthAuthorizationRequest
+    /** Unknown, expired, legacy (no binding) and foreign-browser requests are indistinguishable (404). */
+    private function openRequest(string $id, ?string $browserNonce): OAuthAuthorizationRequest
     {
         $request = Uuid::isValid($id) ? $this->requests->find($id) : null;
         if (null === $request || $request->getExpiresAt() <= $this->now()) {
+            throw self::notFound();
+        }
+        $hash = $request->getBrowserBindingHash();
+        if (null === $hash || null === $browserNonce || '' === $browserNonce || !hash_equals($hash, hash('sha256', $browserNonce))) {
             throw self::notFound();
         }
 

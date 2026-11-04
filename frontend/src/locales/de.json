@@ -2393,7 +2393,7 @@
       "retry": "Erneut versuchen",
       "errorTitle": "Das hat nicht geklappt",
       "expiredTitle": "Anfrage abgelaufen",
-      "expiredText": "Diese Anfrage ist abgelaufen oder wurde schon beantwortet. Starte die Verbindung in der App noch einmal.",
+      "expiredText": "Diese Anfrage ist abgelaufen, wurde schon beantwortet oder wurde in einem anderen Browser gestartet. Starte die Verbindung in der App noch einmal und öffne den Link im selben Browser, in dem du dich anmeldest.",
       "toApp": "Zu Club Calendar",
       "toProfile": "Zum Profil",
       "risk": {

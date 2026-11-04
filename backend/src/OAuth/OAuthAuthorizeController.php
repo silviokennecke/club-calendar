@@ -9,6 +9,7 @@ use App\Repository\OAuthClientRepository;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -25,6 +26,8 @@ use Symfony\Component\Uid\Uuid;
 #[AsController]
 class OAuthAuthorizeController
 {
+    private const string COOKIE_PATH = '/api/oauth';
+
     public function __construct(
         private readonly OAuthServerService $oauth,
         private readonly OAuthConsentService $consent,
@@ -56,6 +59,7 @@ class OAuthAuthorizeController
             throw new ApiProblemException(400, 'This client is not allowed on this server', 'invalid_request', 'client_id');
         }
         $state = self::param($q, 'state');
+        $nonce = bin2hex(random_bytes(32));
 
         try {
             if ('code' !== self::param($q, 'response_type')) {
@@ -69,20 +73,38 @@ class OAuthAuthorizeController
                 self::param($q, 'code_challenge_method'),
                 $state,
                 self::param($q, 'resource'),
+                hash('sha256', $nonce),
             );
         } catch (OAuthException $e) {
             return new RedirectResponse(self::redirectUrl($redirectUri, ['error' => $e->getError(), 'error_description' => $e->getDescription(), 'state' => $state]));
         }
 
-        return new RedirectResponse(rtrim($this->frontendUrl, '/').'/oauth/consent?request='.$authRequest->getId());
+        $response = new RedirectResponse(rtrim($this->frontendUrl, '/').'/oauth/consent?request='.$authRequest->getId());
+        $response->headers->setCookie(
+            Cookie::create(self::cookieName($authRequest->getId()))
+                ->withValue($nonce)
+                ->withExpires($authRequest->getExpiresAt())
+                ->withPath(self::COOKIE_PATH)
+                ->withSecure($request->isSecure())
+                ->withHttpOnly(true)
+                ->withSameSite(Cookie::SAMESITE_LAX),
+        );
+
+        return $response;
+    }
+
+    /** One cookie per request: parallel consent flows in one browser do not overwrite each other. */
+    public static function cookieName(string $requestId): string
+    {
+        return 'oauth_consent_'.$requestId;
     }
 
     #[Route('/api/oauth/authorization-request/{id}', methods: ['GET'])]
-    public function describe(string $id): JsonResponse
+    public function describe(string $id, Request $request): JsonResponse
     {
         $this->userResolver->resolve();
 
-        return new JsonResponse($this->consent->describeRequest($id));
+        return new JsonResponse($this->consent->describeRequest($id, self::nonce($request, $id)));
     }
 
     #[Route('/api/oauth/authorize/decision', methods: ['POST'])]
@@ -94,7 +116,17 @@ class OAuthAuthorizeController
             throw new ApiProblemException(400, 'requestId (string) and approve (boolean) are required', 'invalid_request');
         }
 
-        return new JsonResponse(['redirectUrl' => $this->consent->decide($user, $data['requestId'], $data['approve'])]);
+        $response = new JsonResponse(['redirectUrl' => $this->consent->decide($user, $data['requestId'], $data['approve'], self::nonce($request, $data['requestId']))]);
+        $response->headers->clearCookie(self::cookieName($data['requestId']), self::COOKIE_PATH, null, $request->isSecure(), true, Cookie::SAMESITE_LAX);
+
+        return $response;
+    }
+
+    private static function nonce(Request $request, string $requestId): ?string
+    {
+        $v = $request->cookies->get(self::cookieName($requestId));
+
+        return is_string($v) ? $v : null;
     }
 
     /** @param array<string, string|null> $params null values are left out */

@@ -69,6 +69,7 @@ class OAuthServerService
         ?string $codeChallengeMethod,
         ?string $state,
         ?string $resource,
+        ?string $browserBindingHash = null,
     ): OAuthAuthorizationRequest {
         if (!$this->redirectUriRegistered($client, $redirectUri)) {
             throw new OAuthException(OAuthException::INVALID_REQUEST, 'redirect_uri is not registered for this client');
@@ -94,6 +95,7 @@ class OAuthServerService
             $state,
             $this->checkResource($resource),
             $this->now(),
+            $browserBindingHash,
         );
         $this->em->persist($request);
         $this->em->flush();

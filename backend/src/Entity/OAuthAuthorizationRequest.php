@@ -42,13 +42,17 @@ class OAuthAuthorizationRequest
     #[ORM\Column(length: 2048)]
     private string $resource;
 
+    /** SHA-256 (hex) of the browser nonce in the consent cookie; null = legacy request, never answerable. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $browserBindingHash;
+
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
     #[ORM\Column]
     private \DateTimeImmutable $expiresAt;
 
-    public function __construct(OAuthClient $client, string $redirectUri, string $scopes, string $codeChallenge, ?string $state, string $resource, \DateTimeImmutable $createdAt)
+    public function __construct(OAuthClient $client, string $redirectUri, string $scopes, string $codeChallenge, ?string $state, string $resource, \DateTimeImmutable $createdAt, ?string $browserBindingHash = null)
     {
         $this->id = Uuid::v7()->toRfc4122();
         $this->client = $client;
@@ -58,6 +62,7 @@ class OAuthAuthorizationRequest
         $this->state = $state;
         $this->resource = $resource;
         $this->createdAt = $createdAt;
+        $this->browserBindingHash = $browserBindingHash;
         $this->expiresAt = $createdAt->modify(sprintf('+%d seconds', self::TTL_SECONDS));
     }
 
@@ -94,6 +99,11 @@ class OAuthAuthorizationRequest
     public function getResource(): string
     {
         return $this->resource;
+    }
+
+    public function getBrowserBindingHash(): ?string
+    {
+        return $this->browserBindingHash;
     }
 
     public function getCreatedAt(): \DateTimeImmutable
