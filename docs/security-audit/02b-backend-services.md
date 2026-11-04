@@ -16,33 +16,6 @@ Documentation-only audit. Source was inspected via targeted `grep` and narrow li
 
 Date: 2026-10-05
 
-### API-52 — Mapbox budget exhausted by a single user; static map images and styles/fonts have no per-user isolation
-
-**Severity:** Medium
-
-**Attack scope:** Any authenticated user with a valid JWT (all map endpoints sit behind the `api` firewall; the geocode sub-routes additionally require `ROLE_USER`). One user's traffic can degrade service for all users of the club calendar.
-
-**Description:**
-All Mapbox egress is guarded only by *system-wide* rate-limit buckets, not per-user ones:
-
-1. **Proxy:** `MapboxProxyService::callUpstream()` checks `mapbox_proxy_system` (2,500/24h, 13,000/7d, 45,000/30d) **only** for patterns flagged `rate_limited: true` (the tile pattern `^/v4/...`), and **only on a cache miss**. The `^/styles/` and `^/fonts/` patterns are flagged `rate_limited: false` and are therefore completely unlimited, both in traffic volume and upstream cost.
-2. **Static map images:** `RateLimitedMapImageProvider` checks only `mapboxImageSystemLimiter` (bucket `image-system`, same 2,500/24h shape) — there is no per-user limiter, so one user can consume the entire image budget for every other user.
-3. **Geocoding** is properly scoped (per-user 50/1h plus a 3,000/24h system cap), which makes the map endpoints above the inconsistent outlier.
-
-Consequences: a single authenticated user (or an automated frontend with a map component that refetches on every pan/zoom, or a scripted loop) can (a) exhaust the shared 24h tile/image budget and return 429s to all users, and (b) generate unbounded upstream Mapbox spend via `/styles/` and `/fonts/` paths and uncached image parameters (static images are cached per parameter string, but the parameter space is large: coordinates, zoom, width/height, marker styles, labels). This is a self-inflicted DoS plus an abuse vector for billing the organization's Mapbox account.
-
-**Affected parts:**
-- `backend/src/Service/Map/MapboxProxyService.php:43-45` — system limiter only, only for `rate_limited: true` patterns
-- `backend/config/services.yaml:12-21` — `^/styles/` and `^/fonts/` patterns have `rate_limited: false`
-- `backend/src/Service/Map/RateLimitedMapImageProvider.php:18-26` — system-only limiter, no per-user bucket
-- `backend/config/packages/rate_limiter.yaml:1-23` — no per-user map/image buckets defined
-
-**Fix recommendation:**
-Add per-user buckets keyed on the authenticated user ID (same pattern as `geocode_user`: ~100-200/24h for tiles, ~50/24h for static images) and check them in addition to the system buckets. Change `rate_limited: false` on `^/styles/` and `^/fonts/` to `true` — style sheets are large, are cached, and are still an unbounded upstream cost source if a client polls them. Keep the system buckets as the outer envelope.
-
-**Notes:**
-The 30-day cache TTLs for tiles and static images (`MAPBOX_PROXY_CACHE_TTL`, `MAP_IMAGE_CACHE_TTL`) mitigate most repeated traffic; the risk concentrates on cache misses, cache-busting parameter values, and the two unbounded patterns. The SSRF surface of the proxy itself is sound (see "Reviewed & OK").
-
 ### API-53 — Static map image endpoints expose coordinates of calendars a user is not a member of
 
 **Severity:** Low

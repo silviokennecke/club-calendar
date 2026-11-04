@@ -77,6 +77,16 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $pdfExportUser,
         #[Autowire(service: 'limiter.pdf_export_ip')]
         private readonly RateLimiterFactory $pdfExportIp,
+        #[Autowire(service: 'limiter.mapbox_tiles_user')]
+        private readonly RateLimiterFactory $mapboxTilesUser,
+        #[Autowire(service: 'limiter.mapbox_tiles_ip')]
+        private readonly RateLimiterFactory $mapboxTilesIp,
+        #[Autowire(service: 'limiter.mapbox_style_user')]
+        private readonly RateLimiterFactory $mapboxStyleUser,
+        #[Autowire(service: 'limiter.mapbox_style_global')]
+        private readonly RateLimiterFactory $mapboxStyleGlobal,
+        #[Autowire(service: 'limiter.map_image_ip')]
+        private readonly RateLimiterFactory $mapImageIp,
         #[Autowire('%env(int:FEED_RATE_LIMIT_PER_IP)%')]
         private readonly int $feedIpLimit,
         #[Autowire('%env(int:FEED_RATE_LIMIT_PER_FEED)%')]
@@ -244,6 +254,26 @@ class AuthRateLimiter
     {
         self::assertAccepted($this->pdfExportUser->create($userId)->consume());
         self::assertAccepted($this->pdfExportIp->create(self::ip($request))->consume());
+    }
+
+    /** Mapbox vector tiles (billed per request, cache hits count too): 1800 per user and 3600 per client IP per hour. */
+    public function assertMapboxTilesAllowed(Request $request, string $userId): void
+    {
+        self::assertAccepted($this->mapboxTilesUser->create($userId)->consume());
+        self::assertAccepted($this->mapboxTilesIp->create(self::ip($request))->consume());
+    }
+
+    /** Mapbox styles and fonts: 900 per user per hour and 60000 per day for the whole instance. */
+    public function assertMapboxStyleAllowed(string $userId): void
+    {
+        self::assertAccepted($this->mapboxStyleUser->create($userId)->consume());
+        self::assertAccepted($this->mapboxStyleGlobal->create('global')->consume());
+    }
+
+    /** Anonymous static map images: 360 per client IP per hour. */
+    public function assertMapImageAllowed(Request $request): void
+    {
+        self::assertAccepted($this->mapImageIp->create(self::ip($request))->consume());
     }
 
     public static function normalize(string $email): string

@@ -8,6 +8,7 @@ use App\Entity\Event;
 use App\Entity\Location;
 use App\Exception\ApiProblemException;
 use App\Exception\RateLimitExceededException;
+use App\Security\AuthRateLimiter;
 use App\Service\Map\MapAvailability;
 use App\Service\Map\MapImageProviderInterface;
 use Doctrine\ORM\EntityManagerInterface;
@@ -33,6 +34,7 @@ class MapController extends AbstractController
         private readonly EntityManagerInterface $em,
         private readonly LoggerInterface $logger,
         private readonly MapAvailability $mapAvailability,
+        private readonly AuthRateLimiter $rateLimiter,
         private readonly int $imageZoom,
         private readonly int $imageWidth,
         private readonly int $imageHeight,
@@ -104,6 +106,7 @@ class MapController extends AbstractController
     #[Route('/image/location/{id}', methods: ['GET'])]
     public function locationImage(string $id, Request $request): Response
     {
+        $this->rateLimiter->assertMapImageAllowed($request);
         $location = $this->em->find(Location::class, $id);
         if (null === $location || null === $location->getLatitude() || null === $location->getLongitude()) {
             throw new NotFoundHttpException('Location not found or has no coordinates');
@@ -115,6 +118,7 @@ class MapController extends AbstractController
     #[Route('/image/event/{id}', methods: ['GET'])]
     public function eventImage(string $id, Request $request): Response
     {
+        $this->rateLimiter->assertMapImageAllowed($request);
         $event = $this->em->find(Event::class, $id);
         // Public endpoint: drafts are not published anywhere, so their location is not either
         $location = null !== $event && !$event->isDraft() ? $event->getLocation() : null;

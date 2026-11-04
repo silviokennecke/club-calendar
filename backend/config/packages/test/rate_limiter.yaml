@@ -169,6 +169,31 @@ framework:
             limit: 1000
             interval: '10 minutes'
             cache_pool: app.auth_limiter_pool
+        mapbox_tiles_user:
+            policy: sliding_window
+            limit: 100000
+            interval: '1 hour'
+            cache_pool: app.auth_limiter_pool
+        mapbox_tiles_ip:
+            policy: sliding_window
+            limit: 100000
+            interval: '1 hour'
+            cache_pool: app.auth_limiter_pool
+        mapbox_style_user:
+            policy: sliding_window
+            limit: 100000
+            interval: '1 hour'
+            cache_pool: app.auth_limiter_pool
+        mapbox_style_global:
+            policy: sliding_window
+            limit: 100000
+            interval: '1 day'
+            cache_pool: app.auth_limiter_pool
+        map_image_ip:
+            policy: sliding_window
+            limit: 100000
+            interval: '1 hour'
+            cache_pool: app.auth_limiter_pool
 
 services:
     app.auth_limiter_pool:

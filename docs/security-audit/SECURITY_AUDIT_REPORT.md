@@ -27,22 +27,10 @@
 ## Executive Summary
 
 - **No Critical findings** in the completed areas.
-- Counts: **0 High, 1 Medium, 1 Low, 2 Informational** — 4 findings.
-- **Top gap:** Mapbox egress is system-rate-limited only, with styles/fonts unlimited (API-52).
+- Counts: **0 High, 0 Medium, 1 Low, 2 Informational** — 3 findings.
 - **Positives:** no IDOR/cross-tenant gaps in the API surface; no live Mapbox token in the frontend (fully proxied through the backend); WebAuthn ceremonies, OAuth state handling, and exception → RFC 7807 response masking are sound; feed-secret checks are constant-time and the Mapbox proxy is SSRF-safe (fixed upstream host, strict path allowlist, caller token stripped).
 
 ## Findings
-
-### Medium
-
-#### API-52 — Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation
-**Severity:** Medium
-**Attack scope:** Any authenticated user with a valid JWT (all map endpoints sit behind the `api` firewall). One user's traffic can degrade service for all users.
-**Description:** All Mapbox egress is guarded only by *system-wide* rate-limit buckets, not per-user ones. (1) The proxy `MapboxProxyService::callUpstream()` checks `mapbox_proxy_system` (2,500/24h, 13,000/7d, 45,000/30d) **only** for `rate_limited: true` patterns (the tile pattern `^/v4/...`) and **only on a cache miss**; the `^/styles/` and `^/fonts/` patterns are `rate_limited: false` and therefore completely unlimited. (2) Static map images check only the system bucket `mapboxImageSystemLimiter` — there is no per-user limiter. (3) Geocoding is properly scoped (per-user 50/1h plus a 3,000/24h system cap), which makes these endpoints the inconsistent outlier. Consequence: a single authenticated user (or an automated frontend / scripted loop) can exhaust the shared 24h tile/image budget (429s for everyone) and generate unbounded upstream Mapbox spend via `/styles/` and `/fonts/` paths and uncached image parameters — a self-inflicted DoS plus an abuse vector against the organization's Mapbox billing.
-**Affected parts:** `backend/src/Service/Map/MapboxProxyService.php:43-45`; `backend/config/services.yaml:12-21` (styles/fonts patterns `rate_limited: false`); `backend/src/Service/Map/RateLimitedMapImageProvider.php:18-26`; `backend/config/packages/rate_limiter.yaml:1-23` (no per-user map/image buckets defined).
-**Fix recommendation:** Add per-user buckets keyed on the authenticated user ID (same pattern as `geocode_user`: ~100–200/24h for tiles, ~50/24h for static images), checked in addition to the system buckets. Change `rate_limited: false` to `true` for `^/styles/` and `^/fonts/` — style sheets are large, cached, and still an unbounded upstream cost source if polled. Keep the system buckets as the outer envelope.
-**Notes:** 30-day cache TTLs for tiles and static images mitigate most repeated traffic; the risk concentrates on cache misses, cache-busting parameter values, and the two unbounded patterns. The SSRF surface of the proxy itself is sound (see Reviewed & OK).
-**Source:** `02b-backend-services.md` (API-52).
 
 ### Low
 
@@ -107,14 +95,12 @@
 - Static, read-only code review: no dynamic testing, no load/rate-limit verification, no WebAuthn attack simulation; line numbers refer to the working tree as of 2026-10-05.
 - No nginx/reverse-proxy configuration in the repository → server-side CSP, HSTS, and other transport hardening could not be verified.
 - Trivy scanned the Docker image only; the full transitive dependency audit (npm + composer lockfile resolution) is covered by area `04` (pending).
-- The Mapbox billing exposure (API-52) is inferred from the API design and rate-limit configuration, not from observed abuse.
 - Out of scope: hosting/infrastructure, CI/CD pipelines, secret management outside the repo, and social-engineering/physical threats.
 
 ## Appendix A — Findings Index
 
 | ID | Title | Severity |
 |---|---|---|
-| API-52 | Mapbox budget exhausable by one user; static images and styles/fonts have no per-user isolation | Medium |
 | API-53 | Static map image endpoints expose coordinates of calendars the user does not belong to | Low |
 | AUTH-06 | Register: check-then-insert race on the email | Informational |
 | AUTH-07 | Email verification error redirect leaks the failure reason | Informational |
@@ -124,7 +110,7 @@
 | Area | Report | Findings | Status |
 |---|---|---|---|
 | Backend auth | `01-backend-auth.md` | AUTH-06 … AUTH-07 (2) | Complete |
-| Backend feeds / ICS / map services | `02b-backend-services.md` | API-52 … API-53 (2) | Complete |
+| Backend feeds / ICS / map services | `02b-backend-services.md` | API-53 (1) | Complete |
 | Frontend | `03-frontend.md` | None (0) | Complete |
 | Scans & config | `04-scans-config.md` | SCAN-07, SCAN-09, SCAN-12 (3) | Complete |
 

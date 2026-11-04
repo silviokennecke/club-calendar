@@ -3829,6 +3829,7 @@ paths:
         description: >-
           Upstream path, may contain slashes (route requirement `.+`). Allowed: `v4/<tileset>/<z>/<x>/<y>…`
           (rate-limited), `styles/…`, `fonts/…`. Dot segments are rejected.
+          Limits per hour: tiles 1800 per user and 3600 per client IP, styles and fonts 900 per user and 60000 per day for the whole instance (cache hits count; 429 `rate_limited` with `Retry-After`).
         schema: { type: string }
     get:
       tags: [Maps]
@@ -4112,7 +4113,9 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     RateLimited:
-      description: Rate limit of the map provider reached (empty body; map images).
+      description: >-
+        Map images: per-IP limit (360 per hour, `rate_limited` problem body with `Retry-After`) or the provider's
+        budget reached (empty body).
     AuthRateLimited:
       description: >-
         `rate_limited`: too many requests from this client IP (all routes of this kind) or, for login and
@@ -4232,7 +4235,7 @@ components:
         | `mcp_grant_not_found` | 404 | `DELETE /api/auth/mcp-grants/{id}`: unknown id or a grant of another user |
         | `ics_fetch_failed` | 422 | Holiday calendar create/refresh: the ICS URL could not be fetched or parsed (field `url`) |
         | `holiday_source_failed` | 422 | Predefined holiday calendars / source lists / refresh: the holiday source (openholidaysapi.org) failed |
-        | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider (map images answer an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After`; club invitations (create, re-send): 20 per user and 50 per club and day; account deletion (`DELETE /api/auth/me`, `POST /api/auth/delete-account/code`): per user and per IP; `GET …/events.pdf`: 10 per user and 30 per IP in 10 minutes |
+        | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider, plus per-user/IP Mapbox limits (tiles 1800 per user and 3600 per IP per hour, styles/fonts 900 per user per hour, anonymous `/api/map/image/*` 360 per IP per hour, with `Retry-After`; an exhausted provider budget on map images answers an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After`; club invitations (create, re-send): 20 per user and 50 per club and day; account deletion (`DELETE /api/auth/me`, `POST /api/auth/delete-account/code`): per user and per IP; `GET …/events.pdf`: 10 per user and 30 per IP in 10 minutes |
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
         | `event_not_draft` | 409 | MCP tool `update_event_draft` only: the event is published (not a draft) and stays unchanged |
         | `duplicate_name` | 422 | Name of a badge (property) or extra (feature) already used in the calendar, or of an audience (target group) in the club |
