@@ -70,7 +70,7 @@ Offene Backend-Features, Sicherheitsrisiken, Betriebspunkte und Design-Entscheid
 
 ## Offene Sicherheitsrisiken
 
-Hier steht die einzige maßgebliche Liste der offenen Sicherheitspunkte. Die Audit-Berichte liegen unter [`../security-audit/`](../security-audit/) (`SECURITY_AUDIT_REPORT.md`, `AUDIT-2026-10-06.md`, Bereichsberichte `01` bis `04`) und enthalten die Details zu den Audit-IDs. Stand: Prüfung gegen den Code am 2026-11-05.
+Hier steht die einzige maßgebliche Liste der offenen Sicherheitspunkte. Die Audit-Berichte liegen unter [`../security-audit/`](../security-audit/) (`SECURITY_AUDIT_REPORT.md`, `AUDIT-2026-10-06.md`, Bereichsberichte `01` bis `04`) und enthalten die Details zu den Audit-IDs. Stand: Prüfung gegen den Code am 2026-11-06.
 
 | Schweregrad | Risiko | Details / mögliche Behebung |
 | --- | --- | --- |
