@@ -49,7 +49,7 @@
   `Permissions-Policy`, `Cross-Origin-Opener-Policy` und das Standard-`Referrer-Policy` (`strict-origin-when-cross-origin`)
   stehen in `backend/public/.htaccess` und `docker/Caddyfile` (identisch, geprüft von `SecurityHeadersConfigTest`).
   `Strict-Transport-Security` setzt `.htaccess` nur bei HTTPS (auch `X-Forwarded-Proto: https`); der Caddy-Container
-  läuft hinter einem TLS-Terminator und setzt es nicht: **dort `Strict-Transport-Security: max-age=31536000` ergänzen** (offen, siehe `BACKLOG.md`)
+  läuft hinter einem TLS-Terminator und setzt es nicht: **dort `Strict-Transport-Security: max-age=31536000` ergänzen** (Betreiberaufgabe, so entschieden; siehe `BACKLOG.md`)
   (erst `includeSubDomains`/`preload`, wenn alle Subdomains HTTPS können). Getrennte Hosts (`VITE_API_URL` auf anderer
   Origin): API-Origin in `connect-src` der CSP aufnehmen. nginx, im `server`-Block (nicht vergessen: `add_header` wird in
   verschachtelten `location`-Blöcken nicht geerbt, also auch im Feed-Block wiederholen, dort mit `no-referrer`):

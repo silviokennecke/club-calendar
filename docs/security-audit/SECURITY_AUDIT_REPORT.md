@@ -1,7 +1,7 @@
 # Club Calendar — Security Audit Report
 
 **Date:** 2026-10-05
-**Status:** Resolved findings have been removed; only open findings remain. Re-verified against the code on branch `security/audit-followup` on 2026-11-05. The open items are listed in `docs/ops/BACKLOG.md` ("Offene Sicherheitsrisiken"); this report and `AUDIT-2026-10-06.md` hold the details.
+**Status:** Resolved findings have been removed; only open findings remain. Re-verified against the code on branch `security/audit-followup` on 2026-11-06. The open items are listed in `docs/ops/BACKLOG.md` ("Offene Sicherheitsrisiken"); this report and `AUDIT-2026-10-06.md` hold the details.
 
 ## Scope & Method
 
