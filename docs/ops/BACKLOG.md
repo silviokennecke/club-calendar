@@ -75,22 +75,21 @@ Hier steht die einzige maßgebliche Liste der offenen Sicherheitspunkte. Die Aud
 | Schweregrad | Risiko | Details / mögliche Behebung |
 | --- | --- | --- |
 | niedrig | **API-53 (ehemals L5): öffentliche statische Kartenbilder** | `/api/map/image/location/{id}` und `/event/{id}` sind ohne Anmeldung erreichbar (für anonyme Feed-Seiten) und prüfen nicht, ob Ort/Termin in einem Feed veröffentlicht ist; Ausgabe ist nur ein Kartenbild mit der Position. IP-Limit 360/h; das gemeinsame Mapbox-Bildbudget bleibt von vielen IPs erschöpfbar. Behebung: feed-gebundene/signierte URLs bzw. Mitgliedsprüfung in der App. |
-| niedrig | **L10: Mapbox-Token kann in Logs gelangen** | `MapboxMapImageProvider` ruft `getContent()` auf eine URL mit `access_token`; die Ausnahmemeldung des HTTP-Clients enthält die URL und wird geloggt. Behebung: abfangen und `access_token` schwärzen, URL-beschränktes Token. Fix vorgeschlagen, noch nicht freigegeben. |
 | info | **I3: Backend-Hinweise** | Fixtures-Passwort `password123` (nur Dev/CI); `app:prune-unverified-users` steht als Cron in `OPERATIONS.md`, nichts im Repo plant es ein; Refresh-Token ist ein selbst gebauter HS256-Token mit Standard-Base64; `OidcProvider` ohne PKCE zum Identity Provider; lokale `config/jwt/public.pem` mit 0666 (Umask des Entwicklerrechners, öffentlicher Schlüssel); 404-vs-403-Orakel auf Verein-/Kalender-IDs. |
 | info | **I4: Frontend-Hinweise** | Routen-Guards nur clientseitig (Backend erzwingt); IDs in API-Pfaden meist ohne `encodeURIComponent` (serverseitige UUIDs); OAuth-Provider-ID unkodiert im `href`; alter `accessToken`-Storage-Key wird noch gelesen. |
 | info | **SCAN-12 (Rest): Release-`ci`-Aufruf mit `contents: write`** | `release.yml` muss `contents: write` an `ci.yml` geben, weil dort `autofix` es deklariert (läuft auf Tags nicht). |
-| offen, nicht bewertet | **Scan: `composer audit` meldet 18 Symfony-Advisories** | 11 `symfony/*`-Pakete auf 8.1.9, behoben in 8.1.11 (gemeldet 2026-11-04); noch nicht auf Ausnutzbarkeit geprüft. Siehe `docs/security-audit/04-scans-config.md`. |
 | niedrig | **MCP: Familien-Treffer beweist nicht den Betreiber** | Die Bezeichnung (Claude, ChatGPT, Gemini) kommt aus der Redirect-URI-Familie, der selbst angegebene `client_name` gilt nur als Behauptung. Ein eigener ChatGPT-Konnektor (`chatgpt.com/connector/oauth/<id>`) oder ein lokales Programm (Loopback) trifft trotzdem eine Familie; akzeptiert, die Zustimmungsseite warnt dafür gesondert. Ein leeres `MCP_ALLOWED_CLIENTS` erlaubt keinen Client mehr, alle nur mit `*`. |
 | niedrig | **MCP: Bundle vor 1.0** | `symfony/mcp-bundle` ist auf `~0.14.1` gepinnt (mcp/sdk 0.8.1); API und Verhalten können sich bei Updates ändern, Updates nur mit laufender `McpEndpointTest`/Tool-Tests. |
 
 ## Offene Betriebspunkte
 
-- **HSTS im Container:** Caddy setzt `Strict-Transport-Security` nicht; der TLS-Terminator davor muss es senden (siehe `OPERATIONS.md`).
 - **Safari und SSO:** das State-Cookie ist `Secure; HttpOnly; SameSite=None` (Pfad `/api/auth/oauth`); `None` ist nötig, weil Apple per `form_post` zurückspringt (cross-site POST, Lax-Cookies fallen weg). Safari verhält sich dabei nicht zuverlässig, SSO dort prüfen und ggf. Cookie-Strategie anpassen. Kein Codefehler gefunden, die Cookie-Logik wurde mit Playwright WebKit bestätigt (nicht mit echtem Safari); der Lauf in echtem Safari steht aus.
 
 ## Akzeptierte Abweichungen
 
 - **AUTH-07: Fehlergrund im Weiterleitungslink der Adressänderung.** `GET /api/auth/verify-new-email` leitet bei einem Fehler auf `/auth/verify-email?status=error&reason=…&flow=email_change` (`invalid`, `expired`, `already_used`, `email_taken`); die Seite `EmailVerifyPage` zeigt je Grund eine passende Meldung. Vom Auftraggeber als gewolltes Verhalten bestätigt. Die Registrierungs-Bestätigung per Link (ursprünglicher Ort des Befunds) gibt es nicht mehr, sie läuft per 6-stelligem Code.
+- **HSTS (Betrieb):** Entscheidung des Eigentümers: `Strict-Transport-Security` setzt der TLS-Terminator vor dem Container, nicht der Container (Betreiberaufgabe, siehe `OPERATIONS.md`).
+- **Mapbox-Token in Logs (ehem. L10):** Der Eigentümer hat bestätigt, dass das Mapbox-Token bereits so eingeschränkt ist, wie es möglich ist. Die Log-Redaktion ist umgesetzt (`63e3547`).
 
 ## Offene Design-Punkte
 

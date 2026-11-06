@@ -25,7 +25,7 @@ No open findings in this area report. Hardening notes for the frontend: I4 in `A
   web server configs in this repository, `backend/public/.htaccess` and `docker/Caddyfile`
   (CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Permissions-Policy`, COOP,
   `Referrer-Policy`; identical in both, enforced by `SecurityHeadersConfigTest`). What a
-  deployment actually sends was not verified; HSTS is not set by Caddy (`docs/ops/BACKLOG.md`).
+  deployment actually sends was not verified; HSTS is not set by Caddy; by decision the TLS terminator sends it (`docs/ops/BACKLOG.md`).
 - Dependency check was a 10-package `npm view` spot-check, not a full `npm audit`; transitive
   dependencies were not inspected.
 - No build was run; behavior was inferred from source.
