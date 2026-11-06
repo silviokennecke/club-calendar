@@ -68,7 +68,7 @@ the router, so a new or changed route needs a matching operation there).
 | `src/Service/AccountService.php` | Change password (new tokens), e-mail change with confirmation link (table `email_change`, no oracle), unlink SSO (last sign-in method stays) |
 | `src/Service/DeferredMailer.php`, `AccountMailer.php` | Mails (and `defer()`red work such as the forgot-password lookup and token) after the response (`kernel.terminate`, no timing oracle; transport errors are logged, never raised); links only from `FRONTEND_URL` / `BACKEND_URL`; notices (password changed, e-mail change requested / done) carry no token and no link but `/forgot-password`, the new address masked (`maskEmail`) |
 | `src/Validator/PasswordPolicy.php` | The one password policy (8–128 characters) for registration, reset and change |
-| `src/Logging/RedactTokensProcessor.php` | Monolog processor: `token`/`ticket`/`secret`/… query values in log records → `[redacted]` |
+| `src/Logging/RedactTokensProcessor.php` | Monolog processor: `token`/`ticket`/`secret`/`access_token`/… query values in log records (exceptions carrying them become redacted arrays) → `[redacted]` |
 | `src/Command/` | `app:prune-unverified-users`, `app:prune-password-resets` (cron), `app:user:verify <email>`, `app:user:reset-link <email>` (support / dev / E2E) |
 | `src/Service/CalendarReferences.php` | Resolves location/template/property/feature/target-group IDs within one calendar (unknown or foreign → 422) |
 | `src/Service/LinkCollectionSync.php` | Syncs join-table collections by diff (deduplicated IDs, no identity collisions) |

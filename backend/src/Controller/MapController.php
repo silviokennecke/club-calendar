@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\Event;
 use App\Entity\Location;
 use App\Exception\ApiProblemException;
+use App\Exception\MapImageUnavailableException;
 use App\Exception\RateLimitExceededException;
 use App\Security\AuthRateLimiter;
 use App\Service\Map\MapAvailability;
@@ -172,6 +173,10 @@ class MapController extends AbstractController
             $bytes = $this->mapImageProvider->getImage($lng, $lat, $this->imageZoom, $this->imageWidth, $this->imageHeight);
         } catch (RateLimitExceededException) {
             return new Response(null, 429, ['Cache-Control' => 'no-store']);
+        } catch (MapImageUnavailableException $e) {
+            $this->logger->error('Map image provider failed', ['exception' => $e]);
+
+            return new Response(null, 502, ['Cache-Control' => 'no-store']);
         }
 
         $response = new Response($bytes, 200, [
