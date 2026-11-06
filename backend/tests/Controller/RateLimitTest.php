@@ -58,7 +58,7 @@ class RateLimitTest extends WebTestCase
         $this->assertSame('rate_limited', $r['body']['code']);
         $this->assertNotNull($r['retryAfter']);
         $this->assertGreaterThanOrEqual(1, (int) $r['retryAfter']);
-        $this->assertLessThanOrEqual(3600, (int) $r['retryAfter']);
+        $this->assertLessThanOrEqual(3601, (int) $r['retryAfter']); // rate-limiter 8.1.11 rounds the remaining time up
     }
 
     private static function email(): string
