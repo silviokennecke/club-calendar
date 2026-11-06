@@ -27,7 +27,7 @@
 ## Executive Summary
 
 - **No Critical findings.**
-- Counts (open, both audit documents together): **0 High, 0 Medium, 2 Low, 3 Informational** — 5 findings. Detailed here: API-53. Detailed in `AUDIT-2026-10-06.md`: L10, I3, I4, SCAN-12 (residual).
+- Counts (open, both audit documents together): **0 High, 0 Medium, 1 Low, 3 Informational** — 4 findings. Detailed here: API-53. Detailed in `AUDIT-2026-10-06.md`: I3, I4, SCAN-12 (residual).
 - **Positives:** club- and calendar-scoped CRUD controllers carry voter checks and body-supplied reference ids are scope-checked (`CalendarReferences`); the one gap in the id-in-path surface is API-53; no Mapbox token in the frontend working tree (fully proxied through the backend; a token-shaped value remains in git history, see Secrets scan); WebAuthn ceremonies, OAuth state handling, and exception → RFC 7807 response masking are sound; feed-secret checks are constant-time and the Mapbox proxy is SSRF-safe (fixed upstream host, strict path allowlist, caller token replaced).
 
 ## Findings
@@ -74,8 +74,8 @@
 ## Limitations
 
 - Static, read-only code review: no dynamic testing, no load/rate-limit verification, no WebAuthn attack simulation; line numbers refer to the working tree as of 2026-10-05.
-- The security headers (CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Permissions-Policy`, COOP, `Referrer-Policy`) are set in `backend/public/.htaccess` and `docker/Caddyfile`; the two are checked for identity by `SecurityHeadersConfigTest`. What a given deployment actually sends was not verified. HSTS is conditional in `.htaccess` and not set by Caddy (open point in `docs/ops/BACKLOG.md`); an nginx configuration is only documented in `docs/ops/OPERATIONS.md`.
-- Dependency audits (`npm audit`, `composer audit`) were re-run on 2026-11-05, see `04-scans-config.md`. Trivy and semgrep were not re-run (not installed).
+- The security headers (CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Permissions-Policy`, COOP, `Referrer-Policy`) are set in `backend/public/.htaccess` and `docker/Caddyfile`; the two are checked for identity by `SecurityHeadersConfigTest`. What a given deployment actually sends was not verified. HSTS is conditional in `.htaccess` and not set by Caddy; by decision the TLS terminator in front of it sends it (`docs/ops/BACKLOG.md`); an nginx configuration is only documented in `docs/ops/OPERATIONS.md`.
+- Dependency audits: `npm audit` was re-run on 2026-11-05, `composer audit` is clean on 2026-11-06 after the update to 8.1.11, see `04-scans-config.md`. Trivy and semgrep were not re-run (not installed).
 - Out of scope: hosting/infrastructure, CI/CD pipelines, secret management outside the repo, and social-engineering/physical threats.
 
 ## Appendix A — Findings Index
@@ -83,7 +83,6 @@
 | ID | Title | Severity | Detail |
 |---|---|---|---|
 | API-53 | Static map image endpoints are public and not bound to feed access (former L5) | Low | this report |
-| L10 | Mapbox token can reach logs via exception messages | Low | `AUDIT-2026-10-06.md` |
 | I3 | Misc backend hardening notes | Informational | `AUDIT-2026-10-06.md` |
 | I4 | Frontend hardening notes | Informational | `AUDIT-2026-10-06.md` |
 | SCAN-12 | CI: release `ci` call keeps `contents: write` (residual) | Informational | `04-scans-config.md`, `AUDIT-2026-10-06.md` |
