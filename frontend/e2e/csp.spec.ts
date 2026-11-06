@@ -6,7 +6,7 @@ import { API, createVerifiedUser, login, resourceUrl, seedClub } from "./helpers
 // Regression guard for the Content-Security-Policy (see CLAUDE.md "Deployment"). Needs a PRODUCTION build
 // served at PLAYWRIGHT_BASE_URL (the dev server injects inline styles by design). The policy under test is read
 // from docker/Caddyfile and set on every document response; the build's API origin is appended to
-// `connect-src` when the API is not same-origin. Any `securitypolicyviolation` fails the test.
+// `connect-src` and `img-src` (static map images) when the API is not same-origin, as a split deployment must. Any `securitypolicyviolation` fails the test.
 //
 //   (cd frontend && VITE_API_URL=http://localhost:3001 npx vite build --outDir /tmp/e2e-dist && \
 //    npx vite preview --outDir /tmp/e2e-dist --port 5199 --strictPort)
@@ -30,7 +30,9 @@ function policy(): string {
   const csp = /Content-Security-Policy "([^"]+)"/.exec(caddy)?.[1];
   if (!csp) throw new Error("Content-Security-Policy not found in docker/Caddyfile");
   const apiOrigin = new URL(API).origin;
-  return csp.replace(/connect-src ([^;]*)/, `connect-src $1 ${apiOrigin}`);
+  return csp
+    .replace(/connect-src ([^;]*)/, `connect-src $1 ${apiOrigin}`)
+    .replace(/img-src ([^;]*)/, `img-src $1 ${apiOrigin}`);
 }
 
 async function enforce(page: Page) {

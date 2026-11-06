@@ -325,6 +325,8 @@ test.describe("Termine", () => {
       .filter({ hasText: "19.11.2026" })
       .getByRole("link", { name: "Training Donnerstag" })
       .click();
+    // The event detail (with its series) replaces the list data in the form: typing earlier is overwritten
+    await expect(page.getByText("Teil einer Terminreihe (4 Termine)")).toBeVisible();
     await page.getByLabel("Name (Pflicht)").fill("Sondertraining");
     await page.getByRole("button", { name: "Termin speichern" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Nur diesen Termin" }).click();
