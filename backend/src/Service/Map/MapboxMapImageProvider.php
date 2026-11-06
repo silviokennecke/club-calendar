@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Service\Map;
 
+use App\Exception\MapImageUnavailableException;
+use Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class MapboxMapImageProvider implements MapImageProviderInterface
@@ -21,6 +24,13 @@ class MapboxMapImageProvider implements MapImageProviderInterface
             $lng, $lat, $lng, $lat, $zoom, $width, $height, $this->mapboxToken,
         );
 
-        return $this->httpClient->request('GET', $url)->getContent();
+        // The client exceptions carry the request URL, i.e. the access token, in their message.
+        try {
+            return $this->httpClient->request('GET', $url)->getContent();
+        } catch (HttpExceptionInterface $e) {
+            throw new MapImageUnavailableException(sprintf('Mapbox static image request failed: HTTP %d', $e->getResponse()->getStatusCode()));
+        } catch (TransportExceptionInterface) {
+            throw new MapImageUnavailableException('Mapbox static image request failed: transport error');
+        }
     }
 }

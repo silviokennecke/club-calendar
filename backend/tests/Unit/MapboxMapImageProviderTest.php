@@ -40,4 +40,36 @@ class MapboxMapImageProviderTest extends TestCase
         $this->assertStringContainsString('800x288', $capturedUrl);
         $this->assertStringContainsString('pk.mytoken', $capturedUrl);
     }
+
+    public function testHttpErrorThrowsWithoutTokenInMessageOrChain(): void
+    {
+        $client = new MockHttpClient(new MockResponse('nope', ['http_code' => 401]));
+        $provider = new MapboxMapImageProvider($client, 'pk.secrettoken');
+
+        try {
+            $provider->getImage(11.5, 48.1, 14, 800, 288);
+            $this->fail('expected exception');
+        } catch (\Throwable $e) {
+            $this->assertInstanceOf(\App\Exception\MapImageUnavailableException::class, $e);
+            $this->assertStringContainsString('HTTP 401', $e->getMessage());
+            $this->assertNull($e->getPrevious());
+            $this->assertStringNotContainsString('pk.secrettoken', $e->getMessage());
+        }
+    }
+
+    public function testTransportErrorThrowsWithoutTokenInMessageOrChain(): void
+    {
+        $client = new MockHttpClient(static fn () => throw new \Symfony\Component\HttpClient\Exception\TransportException('Could not resolve host for "https://api.mapbox.com/x?access_token=pk.secrettoken"'));
+        $provider = new MapboxMapImageProvider($client, 'pk.secrettoken');
+
+        try {
+            $provider->getImage(11.5, 48.1, 14, 800, 288);
+            $this->fail('expected exception');
+        } catch (\Throwable $e) {
+            $this->assertInstanceOf(\App\Exception\MapImageUnavailableException::class, $e);
+            $this->assertStringContainsString('transport error', $e->getMessage());
+            $this->assertNull($e->getPrevious());
+            $this->assertStringNotContainsString('pk.secrettoken', $e->getMessage());
+        }
+    }
 }
