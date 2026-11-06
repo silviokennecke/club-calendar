@@ -61,7 +61,7 @@ class FeedRateLimitTest extends WebTestCase
         $this->assertSame(429, $status);
         $this->assertSame('rate_limited', $code);
         $this->assertGreaterThanOrEqual(1, (int) $retry);
-        $this->assertLessThanOrEqual(60, (int) $retry);
+        $this->assertLessThanOrEqual(61, (int) $retry); // rounded up since rate-limiter 8.1.11
 
         $this->assertSame(429, $this->get($c, '/api/feed/e/events')[0]);
         $this->assertSame(404, $this->get($c, '/api/feed/a/ics', '198.51.100.9')[0]);
