@@ -5,6 +5,10 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ## [Unreleased]
 
+### Security
+
+- SSO (Google, Microsoft, Apple): the signature of the ID token is now verified against the provider's JWKS (RS256 only; keys cached for 1 hour, at most one refetch per minute on an unknown key id). A failed fetch or invalid signature ends the sign-in with `oauth_failed`. The backend must reach `www.googleapis.com`, `login.microsoftonline.com` and `appleid.apple.com` over HTTPS. `lcobucci/jwt` is now a direct dependency.
+
 ### Changed
 
 - Security (audit L10): the Mapbox token (`access_token`, which Mapbox accepts only as a query parameter) no longer reaches the logs. `RedactTokensProcessor` also masks `access_token` values (query string and JSON form) and replaces exceptions whose message or trace carries a secret by a redacted array; `MapboxMapImageProvider` throws a `MapImageUnavailableException` with only the HTTP status or "transport error" (no URL, no previous), and `/api/map/image/*` answers 502 (`no-store`) instead of a generic 500 when Mapbox fails.

@@ -9,6 +9,7 @@ use League\OAuth2\Client\Provider\GenericProvider;
 use League\OAuth2\Client\Token\AccessToken;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Http\Message\ResponseInterface;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
 class OidcProvider extends GenericProvider implements CachePoolAwareInterface
 {
@@ -17,6 +18,8 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
     private readonly string $issuer;
     private ?CacheItemPoolInterface $cache = null;
     private ?array $discovery = null;
+    private readonly ?string $jwksUri;
+    private ?IdTokenSignatureVerifier $verifier = null;
 
     public function __construct(array $options = [], array $collaborators = [])
     {
@@ -25,7 +28,8 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
         }
 
         $this->issuer = rtrim($options['issuer'] ?? '', '/');
-        unset($options['issuer']);
+        $this->jwksUri = $options['jwksUri'] ?? null;
+        unset($options['issuer'], $options['jwksUri']);
 
         // GenericProvider requires these three; we override the methods so the stored values are never used
         $options['urlAuthorize'] ??= '';
@@ -134,8 +138,8 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
     }
 
     /**
-     * OIDC Core 3.1.3.7 claim checks. The signature is not verified: the token comes straight from the token
-     * endpoint over TLS (3.1.3.7 step 6 allows that). No nonce is sent in the flow, so none is checked.
+     * OIDC Core 3.1.3.7 claim checks (the signature is verified before, see verifySignature()).
+     * No nonce is sent in the flow, so none is checked.
      * Messages never contain the token; the callers answer with oauth_failed.
      *
      * @param array<string, mixed> $claims
@@ -216,9 +220,24 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
             return [];
         }
 
+        $this->verifySignature($idToken);
+
         $padded = str_pad(strtr($parts[1], '-_', '+/'), (int) ceil(strlen($parts[1]) / 4) * 4, '=');
         $payload = base64_decode($padded, true);
 
         return false !== $payload ? (json_decode($payload, true) ?? []) : [];
+    }
+
+    private function verifySignature(string $idToken): void
+    {
+        if (null === $this->verifier) {
+            $uri = $this->jwksUri ?? ($this->discover()['jwks_uri'] ?? null);
+            if (!is_string($uri) || '' === $uri) {
+                throw new \UnexpectedValueException('JWKS URI unknown');
+            }
+            $this->verifier = new IdTokenSignatureVerifier($this->getHttpClient(), $this->cache ?? new ArrayAdapter(), $uri);
+        }
+
+        $this->verifier->verify($idToken);
     }
 }
