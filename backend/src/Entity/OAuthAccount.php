@@ -10,6 +10,7 @@ use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
 #[ORM\UniqueConstraint(name: 'uq_oauth_provider_provider_id', columns: ['provider', 'provider_id'])]
+#[ORM\UniqueConstraint(name: 'uq_oauth_provider_tenant_object', columns: ['provider', 'tenant_id', 'object_id'])]
 class OAuthAccount
 {
     #[ORM\Id]
@@ -28,6 +29,14 @@ class OAuthAccount
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $email = null;
+
+    /** Microsoft "tid" claim (immutable, unlike the per-app-registration "sub"). */
+    #[ORM\Column(length: 36, nullable: true)]
+    private ?string $tenantId = null;
+
+    /** Microsoft "oid" claim. */
+    #[ORM\Column(length: 36, nullable: true)]
+    private ?string $objectId = null;
 
     public function __construct()
     {
@@ -83,6 +92,24 @@ class OAuthAccount
     public function setEmail(?string $email): static
     {
         $this->email = null === $email ? null : EmailAddress::normalize($email);
+
+        return $this;
+    }
+
+    public function getTenantId(): ?string
+    {
+        return $this->tenantId;
+    }
+
+    public function getObjectId(): ?string
+    {
+        return $this->objectId;
+    }
+
+    public function setDirectoryIdentity(?string $tenantId, ?string $objectId): static
+    {
+        $this->tenantId = $tenantId;
+        $this->objectId = $objectId;
 
         return $this;
     }

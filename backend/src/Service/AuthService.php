@@ -11,6 +11,7 @@ use App\Entity\OAuthAccount;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Exception\OAuthAccountConflictException;
+use App\Exception\OAuthIdentityMismatchException;
 use App\Exception\OAuthRegistrationRestrictedException;
 use App\Repository\RefreshTokenRepository;
 use App\Security\NonceStore;
@@ -20,6 +21,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -41,6 +43,7 @@ readonly class AuthService
         private ClubService $clubs,
         private LegalConsentService $legal,
         private RegistrationPolicy $registrationPolicy,
+        private LoggerInterface $logger,
         /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
         #[Autowire(env: 'int:REFRESH_TOKEN_REUSE_GRACE')]
         private int $refreshReuseGrace,
@@ -413,15 +416,20 @@ readonly class AuthService
      *   the user is created unverified and the confirmation code is mailed; the caller signs them in with a
      *   restricted session that only reaches the e-mail confirmation.
      *
+     * Microsoft: `$tenantId`/`$objectId` (tid/oid) are the stable key. A provider account is found by `sub`
+     * first, then by (tid, oid) (the `sub` is per app registration and then moves to the new value); they are
+     * backfilled when missing and a differing stored pair fails closed.
+     *
      * @throws OAuthAccountConflictException
+     * @throws OAuthIdentityMismatchException
      */
-    public function findOrCreateOAuthUser(string $provider, string $providerId, string $email, string $name, bool $providerSaysEmailVerified = false, bool $retryOnRace = true): User
+    public function findOrCreateOAuthUser(string $provider, string $providerId, string $email, string $name, bool $providerSaysEmailVerified = false, bool $retryOnRace = true, ?string $tenantId = null, ?string $objectId = null): User
     {
         $email = EmailAddress::normalize($email);
-        $existing = $this->em->getRepository(OAuthAccount::class)->findOneBy([
-            'provider' => $provider,
-            'providerId' => $providerId,
-        ]);
+        if (null === $tenantId || null === $objectId) {
+            $tenantId = $objectId = null;
+        }
+        $existing = $this->findAccount($provider, $providerId, $tenantId, $objectId);
         if ($existing) {
             $oauthUser = $existing->getUser();
             // Only remove orphaned accounts (where getUser() is null)
@@ -429,6 +437,7 @@ readonly class AuthService
                 $this->em->remove($existing);
                 $this->em->flush();
             } else {
+                $this->syncDirectoryIdentity($existing, $providerId, $tenantId, $objectId);
                 if (!$oauthUser->isEmailVerified()) {
                     // Created by a provider that does not prove the address: restricted session until the code was entered.
                     $this->sendCodeIfDue($oauthUser);
@@ -466,6 +475,7 @@ readonly class AuthService
         $account->setUser($user);
         $account->setProvider($provider);
         $account->setProviderId($providerId);
+        $account->setDirectoryIdentity($tenantId, $objectId);
         $account->setEmail($email);
         $this->em->persist($account);
         try {
@@ -477,7 +487,7 @@ readonly class AuthService
                 throw new OAuthAccountConflictException('An account with this e-mail address already exists', false);
             }
 
-            return $this->findOrCreateOAuthUser($provider, $providerId, $email, $name, $providerSaysEmailVerified, false);
+            return $this->findOrCreateOAuthUser($provider, $providerId, $email, $name, $providerSaysEmailVerified, false, $tenantId, $objectId);
         }
 
         if (!$user->isEmailVerified()) {
@@ -493,12 +503,24 @@ readonly class AuthService
      * provider account belongs to another user), already_linked (the user has another account of this
      * provider). The provider's e-mail claim is not needed: the user is signed in and controls both.
      */
-    public function linkOAuthAccount(User $user, string $provider, string $providerId, ?string $email): ?string
+    public function linkOAuthAccount(User $user, string $provider, string $providerId, ?string $email, ?string $tenantId = null, ?string $objectId = null): ?string
     {
         $repository = $this->em->getRepository(OAuthAccount::class);
-        $existing = $repository->findOneBy(['provider' => $provider, 'providerId' => $providerId]);
+        if (null === $tenantId || null === $objectId) {
+            $tenantId = $objectId = null;
+        }
+        $existing = $this->findAccount($provider, $providerId, $tenantId, $objectId);
         if (null !== $existing) {
-            return $existing->getUser()->getId() === $user->getId() ? null : 'account_in_use';
+            if ($existing->getUser()->getId() !== $user->getId()) {
+                return 'account_in_use';
+            }
+            try {
+                $this->syncDirectoryIdentity($existing, $providerId, $tenantId, $objectId);
+            } catch (OAuthIdentityMismatchException) {
+                return 'account_in_use';
+            }
+
+            return null;
         }
         if (null !== $repository->findOneBy(['provider' => $provider, 'user' => $user])) {
             return 'already_linked';
@@ -507,6 +529,7 @@ readonly class AuthService
         $account->setUser($user);
         $account->setProvider($provider);
         $account->setProviderId($providerId);
+        $account->setDirectoryIdentity($tenantId, $objectId);
         $account->setEmail($email);
         $this->em->persist($account);
         try {
@@ -517,6 +540,49 @@ readonly class AuthService
         }
 
         return null;
+    }
+
+    private function findAccount(string $provider, string $providerId, ?string $tenantId, ?string $objectId): ?OAuthAccount
+    {
+        $repository = $this->em->getRepository(OAuthAccount::class);
+        $account = $repository->findOneBy(['provider' => $provider, 'providerId' => $providerId]);
+        if (null === $account && null !== $tenantId && null !== $objectId) {
+            $account = $repository->findOneBy(['provider' => $provider, 'tenantId' => $tenantId, 'objectId' => $objectId]);
+        }
+
+        return $account;
+    }
+
+    /**
+     * Keeps the stored sub and tenant/object id in step with the verified ID token: fails closed when the
+     * stored tid/oid differ, backfills missing ones, follows a changed sub (found by tid/oid).
+     *
+     * @throws OAuthIdentityMismatchException
+     */
+    private function syncDirectoryIdentity(OAuthAccount $account, string $providerId, ?string $tenantId, ?string $objectId): void
+    {
+        if (null === $tenantId || null === $objectId) {
+            return;
+        }
+        $storedTenant = $account->getTenantId();
+        $storedObject = $account->getObjectId();
+        if ((null !== $storedTenant && $storedTenant !== $tenantId) || (null !== $storedObject && $storedObject !== $objectId)) {
+            $this->logger->warning('OAuth account directory identity mismatch', ['provider' => $account->getProvider(), 'account' => $account->getId()]);
+            throw new OAuthIdentityMismatchException('Directory identity mismatch');
+        }
+        $changed = false;
+        if ($account->getProviderId() !== $providerId) {
+            $this->logger->info('OAuth subject changed, account found by tenant/object id', ['provider' => $account->getProvider(), 'account' => $account->getId()]);
+            $account->setProviderId($providerId);
+            $changed = true;
+        }
+        if (null === $storedTenant || null === $storedObject) {
+            $account->setDirectoryIdentity($tenantId, $objectId);
+            $changed = true;
+        }
+        if ($changed) {
+            $this->em->flush();
+        }
     }
 
     /**

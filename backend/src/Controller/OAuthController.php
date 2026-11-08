@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Exception\OAuthAccountConflictException;
+use App\Exception\OAuthIdentityMismatchException;
 use App\Exception\OAuthRegistrationRestrictedException;
 use App\OAuth\OidcProvider;
 use App\OAuth\OidcResourceOwner;
@@ -174,7 +175,7 @@ class OAuthController extends AbstractController
             throw new ApiProblemException(400, 'The link could not be completed', 'invalid_state');
         }
         $email = is_string($claims['email'] ?? null) ? $claims['email'] : null;
-        $error = $this->authService->linkOAuthAccount($user, $provider, $claims['sub'], $email);
+        $error = $this->authService->linkOAuthAccount($user, $provider, $claims['sub'], $email, is_string($claims['tid'] ?? null) ? $claims['tid'] : null, is_string($claims['oid'] ?? null) ? $claims['oid'] : null);
         if (null !== $error) {
             throw new ApiProblemException(409, 'The account could not be linked', $error);
         }
@@ -255,7 +256,12 @@ class OAuthController extends AbstractController
                 $email,
                 $resourceOwner->getName() ?? $email,
                 $resourceOwner->isEmailVerified(),
+                true,
+                'microsoft' === $provider ? $resourceOwner->getTenantId() : null,
+                'microsoft' === $provider ? $resourceOwner->getObjectId() : null,
             );
+        } catch (OAuthIdentityMismatchException) {
+            return $this->fail('oauth_failed');
         } catch (OAuthAccountConflictException $e) {
             return $this->fail($e->unverifiedAtProvider ? 'email_unverified_at_provider' : 'account_exists');
         } catch (OAuthRegistrationRestrictedException) {
@@ -315,6 +321,8 @@ class OAuthController extends AbstractController
             'tv' => $user->getTokenVersion(),
             'sub' => $resourceOwner->getId(),
             'email' => $resourceOwner->getEmail(),
+            'tid' => 'microsoft' === $provider ? $resourceOwner->getTenantId() : null,
+            'oid' => 'microsoft' === $provider ? $resourceOwner->getObjectId() : null,
         ], self::LINK_PROOF_TTL);
         $response = new RedirectResponse($this->frontendUrl.'/profile?'.http_build_query(['link_provider' => $provider, 'link_proof' => $proof]));
         $response->headers->setCookie($this->stateCookie('', -1));

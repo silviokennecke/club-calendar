@@ -17,6 +17,25 @@ class OidcResourceOwner implements ResourceOwnerInterface
         return (string) ($this->data['sub'] ?? $this->data['id'] ?? '');
     }
 
+    /** Microsoft tenant id ("tid"); null when absent or not a UUID. */
+    public function getTenantId(): ?string
+    {
+        return $this->uuidClaim('tid');
+    }
+
+    /** Microsoft object id ("oid"); null when absent or not a UUID. */
+    public function getObjectId(): ?string
+    {
+        return $this->uuidClaim('oid');
+    }
+
+    private function uuidClaim(string $name): ?string
+    {
+        $value = $this->data[$name] ?? null;
+
+        return is_string($value) && 1 === preg_match('/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i', $value) ? strtolower($value) : null;
+    }
+
     public function getEmail(): ?string
     {
         return isset($this->data['email']) ? (string) $this->data['email'] : null;

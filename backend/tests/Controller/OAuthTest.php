@@ -752,4 +752,81 @@ class OAuthTest extends WebTestCase
         $this->assertNotNull($this->user('fresh@example.com'));
         $this->assertNull($this->user('old@example.com'));
     }
+
+    // --- Microsoft tid/oid as stable account key ---
+
+    private const string TID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    private const string OID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+
+    private function msAccount(): ?OAuthAccount
+    {
+        $this->em->clear();
+
+        return $this->em->getRepository(OAuthAccount::class)->findOneBy(['provider' => 'microsoft']);
+    }
+
+    private static function msWithIds(string $email, string $sub = 'ms-1', string $tid = self::TID, string $oid = self::OID): array
+    {
+        return self::microsoft($email, $sub) + ['tid' => $tid, 'oid' => $oid];
+    }
+
+    public function testNewMicrosoftLoginStoresTenantAndObjectId(): void
+    {
+        $this->assertSignedIn($this->signIn('microsoft', self::msWithIds('ms@example.com')));
+        $account = $this->msAccount();
+        $this->assertSame(self::TID, $account->getTenantId());
+        $this->assertSame(self::OID, $account->getObjectId());
+    }
+
+    public function testMalformedTenantOrObjectIdIsIgnored(): void
+    {
+        $this->assertSignedIn($this->signIn('microsoft', self::msWithIds('ms@example.com', 'ms-1', 'not-a-uuid', self::OID)));
+        $account = $this->msAccount();
+        $this->assertNull($account->getTenantId());
+        $this->assertNull($account->getObjectId());
+    }
+
+    public function testExistingMicrosoftAccountIsBackfilled(): void
+    {
+        $this->assertSignedIn($this->signIn('microsoft', self::microsoft('ms@example.com')));
+        $this->assertNull($this->msAccount()->getObjectId());
+        $this->assertSignedIn($this->signIn('microsoft', self::msWithIds('ms@example.com')));
+        $account = $this->msAccount();
+        $this->assertSame(self::TID, $account->getTenantId());
+        $this->assertSame(self::OID, $account->getObjectId());
+        $this->assertSame(1, $this->em->getRepository(OAuthAccount::class)->count([]));
+    }
+
+    public function testChangedSubWithSameTenantAndObjectIdFindsTheAccountAndFollowsTheSub(): void
+    {
+        $this->assertSignedIn($this->signIn('microsoft', self::msWithIds('ms@example.com', 'ms-old')));
+        $this->assertSignedIn($this->signIn('microsoft', self::msWithIds('ms@example.com', 'ms-new')));
+        $this->em->clear();
+        $this->assertSame(1, $this->em->getRepository(User::class)->count([]));
+        $this->assertSame(1, $this->em->getRepository(OAuthAccount::class)->count([]));
+        $this->assertSame('ms-new', $this->msAccount()->getProviderId());
+    }
+
+    public function testChangedSubWithoutTenantAndObjectIdIsAnotherAccount(): void
+    {
+        $this->assertSignedIn($this->signIn('microsoft', self::msWithIds('ms@example.com', 'ms-old')));
+        $this->assertFailed('account_exists', $this->signIn('microsoft', self::microsoft('ms@example.com', 'ms-new')));
+    }
+
+    public function testDifferingStoredIdentityForTheSameSubFailsClosed(): void
+    {
+        $this->assertSignedIn($this->signIn('microsoft', self::msWithIds('ms@example.com')));
+        $this->assertFailed('oauth_failed', $this->signIn('microsoft', self::msWithIds('ms@example.com', 'ms-1', self::TID, 'cccccccc-cccc-4ccc-8ccc-cccccccccccc')));
+        $this->assertFailed('oauth_failed', $this->signIn('microsoft', self::msWithIds('ms@example.com', 'ms-1', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', self::OID)));
+        $this->assertSame(self::OID, $this->msAccount()->getObjectId());
+    }
+
+    public function testGoogleIgnoresTenantAndObjectIdClaims(): void
+    {
+        $this->assertSignedIn($this->signIn('google', self::google('alice@example.com') + ['tid' => self::TID, 'oid' => self::OID]));
+        $this->em->clear();
+        $account = $this->em->getRepository(OAuthAccount::class)->findOneBy(['provider' => 'google']);
+        $this->assertNull($account->getTenantId());
+        $this->assertNull($account->getObjectId());
+    }
 }
