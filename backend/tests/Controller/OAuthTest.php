@@ -58,6 +58,8 @@ class OAuthTest extends WebTestCase
         foreach (self::$providers as $fake) {
             $fake->claims = [];
             $fake->fetchUserCalls = 0;
+            $fake->tokenNonce = null;
+            $fake->omitNonce = false;
         }
     }
 
@@ -160,6 +162,59 @@ class OAuthTest extends WebTestCase
         $this->assertSame(302, $response->getStatusCode());
         $location = (string) $response->headers->get('Location');
         $this->assertStringStartsWith(self::$frontendUrl.'/auth/callback?code=', $location);
+    }
+
+    public function testAuthorizeUrlCarriesAFreshNonceForEveryProvider(): void
+    {
+        $seen = [];
+        foreach (['google', 'microsoft', 'apple', 'google'] as $provider) {
+            $this->start($provider);
+            $nonce = (string) self::$providers[$provider]->lastNonce;
+            $this->assertGreaterThanOrEqual(43, strlen($nonce), 'at least 256 bit, base64url');
+            $this->assertMatchesRegularExpression('/^[A-Za-z0-9_-]+$/', $nonce);
+            $seen[] = $nonce;
+        }
+        $this->assertCount(4, array_unique($seen));
+    }
+
+    public function testNonceIsNotTheStateCookieValue(): void
+    {
+        $this->start('google');
+        $cookie = self::$client->getCookieJar()->get('oauth_state_nonce', '/api/auth/oauth', 'localhost');
+        $this->assertNotSame(self::$providers['google']->lastNonce, $cookie->getValue());
+    }
+
+    public function testMissingIdTokenNonceFailsTheSignIn(): void
+    {
+        self::$providers['google']->omitNonce = true;
+        $this->assertFailed('oauth_failed', $this->signIn('google', self::google('new@example.com')));
+        $this->assertNull($this->user('new@example.com'));
+    }
+
+    public function testWrongIdTokenNonceFailsTheSignIn(): void
+    {
+        self::$providers['google']->tokenNonce = 'not-the-one';
+        $this->assertFailed('oauth_failed', $this->signIn('google', self::google('new@example.com')));
+        $this->assertNull($this->user('new@example.com'));
+    }
+
+    public function testIdTokenNonceOfAnotherFlowFailsTheSignIn(): void
+    {
+        $this->start('google');
+        $nonceOfFlowA = (string) self::$providers['google']->lastNonce;
+        $stateB = $this->start('google');
+        self::$providers['google']->tokenNonce = $nonceOfFlowA;
+        $this->assertFailed('oauth_failed', $this->returnFrom('google', $stateB, self::google('new@example.com')));
+        $this->assertNull($this->user('new@example.com'));
+    }
+
+    public function testAppleFormPostCallbackWithWrongNonceFails(): void
+    {
+        $state = $this->start('apple');
+        self::$providers['apple']->claims = ['sub' => 'apple-9', 'email' => 'post@example.com', 'email_verified' => 'true'];
+        self::$providers['apple']->tokenNonce = 'other';
+        self::$client->request('POST', self::API.'/api/auth/oauth/apple/callback', ['code' => 'c', 'state' => $state]);
+        $this->assertStringContainsString('error=oauth_failed', (string) self::$client->getResponse()->headers->get('Location'));
     }
 
     public function testAppleFormPostCallbackRejectsForeignState(): void

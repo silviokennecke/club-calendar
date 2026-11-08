@@ -57,6 +57,8 @@ class OAuthLinkTest extends WebTestCase
         self::$client->getCookieJar()->clear();
         foreach (self::$providers as $fake) {
             $fake->claims = [];
+            $fake->tokenNonce = null;
+            $fake->omitNonce = false;
             $fake->fetchUserCalls = 0;
         }
     }
@@ -230,6 +232,38 @@ class OAuthLinkTest extends WebTestCase
         // The linked account signs in to this user afterwards.
         $me = TestHelper::jsonRequest(self::$client, 'GET', self::API.'/api/auth/me', [], $this->auth($user));
         $this->assertSame([['provider' => 'google']], $me['body']['oauthAccounts']);
+    }
+
+    public function testLinkAuthorizeUrlCarriesTheNonce(): void
+    {
+        $user = $this->createUser('alice@example.com');
+        foreach (['google', 'microsoft', 'apple'] as $provider) {
+            $this->startLink($user, $provider);
+            $this->assertGreaterThanOrEqual(43, strlen((string) self::$providers[$provider]->lastNonce));
+        }
+    }
+
+    public function testLinkFailsWithoutOrWithAWrongIdTokenNonce(): void
+    {
+        $user = $this->createUser('alice@example.com');
+        self::$providers['google']->omitNonce = true;
+        $this->assertSame(self::profile(['link_error' => 'oauth_failed']), $this->returnFrom('google', $this->startLink($user, 'google'), ['sub' => 'g-1']));
+
+        self::$providers['google']->omitNonce = false;
+        self::$providers['google']->tokenNonce = 'wrong';
+        $this->assertSame(self::profile(['link_error' => 'oauth_failed']), $this->returnFrom('google', $this->startLink($user, 'google'), ['sub' => 'g-1']));
+        $this->assertSame([], $this->accounts());
+    }
+
+    public function testLinkFailsWithTheNonceOfAnotherFlow(): void
+    {
+        $user = $this->createUser('alice@example.com');
+        $this->startLink($user, 'google');
+        $nonceOfFlowA = (string) self::$providers['google']->lastNonce;
+        $stateB = $this->startLink($user, 'google');
+        self::$providers['google']->tokenNonce = $nonceOfFlowA;
+        $this->assertSame(self::profile(['link_error' => 'oauth_failed']), $this->returnFrom('google', $stateB, ['sub' => 'g-1']));
+        $this->assertSame([], $this->accounts());
     }
 
     public function testMicrosoftCanBeLinkedWhileSignedIn(): void

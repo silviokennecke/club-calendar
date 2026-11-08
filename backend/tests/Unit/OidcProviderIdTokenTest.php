@@ -17,6 +17,7 @@ use PHPUnit\Framework\TestCase;
 final class OidcProviderIdTokenTest extends TestCase
 {
     private const string CLIENT = 'client-123';
+    private const string NONCE = 'nonce-abc';
     private const string TID = '11111111-2222-3333-4444-555555555555';
 
     /** @return iterable<string, array{string, array<string, mixed>}> */
@@ -43,7 +44,9 @@ final class OidcProviderIdTokenTest extends TestCase
     #[DataProvider('validTokens')]
     public function testValidToken(string $issuer, array $overrides): void
     {
-        $owner = $this->provider($issuer)->getResourceOwner($this->token($overrides));
+        $provider = $this->provider($issuer);
+        $provider->expectNonce(self::NONCE);
+        $owner = $provider->getResourceOwner($this->token($overrides));
 
         self::assertSame('sub-1', $owner->getId());
         self::assertSame('a@example.com', $owner->getEmail());
@@ -82,7 +85,41 @@ final class OidcProviderIdTokenTest extends TestCase
     public function testInvalidTokenIsRejected(string $issuer, array $overrides): void
     {
         $this->expectException(\UnexpectedValueException::class);
-        $this->provider($issuer)->getResourceOwner($this->token($overrides));
+        $provider = $this->provider($issuer);
+        $provider->expectNonce(self::NONCE);
+        $provider->getResourceOwner($this->token($overrides));
+    }
+
+    /** @return iterable<string, array{string|null, array<string, mixed>}> */
+    public static function nonceCases(): iterable
+    {
+        yield 'missing claim' => [self::NONCE, ['nonce' => null]];
+        yield 'wrong claim' => [self::NONCE, ['nonce' => 'other']];
+        yield 'non-string claim' => [self::NONCE, ['nonce' => 123]];
+        yield 'nothing expected' => [null, []];
+        yield 'empty expected' => ['', ['nonce' => '']];
+    }
+
+    /** @param array<string, mixed> $overrides */
+    #[DataProvider('nonceCases')]
+    public function testNonceIsRequiredAndMustMatch(?string $expected, array $overrides): void
+    {
+        $provider = $this->provider('https://accounts.google.com');
+        if (null !== $expected) {
+            $provider->expectNonce($expected);
+        }
+        $this->expectException(\UnexpectedValueException::class);
+        $this->expectExceptionMessage('nonce');
+        $provider->getResourceOwner($this->token($overrides));
+    }
+
+    public function testExpectedNonceIsSingleUse(): void
+    {
+        $provider = $this->provider('https://accounts.google.com');
+        $provider->expectNonce(self::NONCE);
+        $provider->getResourceOwner($this->token([]));
+        $this->expectException(\UnexpectedValueException::class);
+        $provider->getResourceOwner($this->token([]));
     }
 
     public function testMissingIdTokenIsRejected(): void
@@ -122,6 +159,7 @@ final class OidcProviderIdTokenTest extends TestCase
             'email' => 'a@example.com',
             'exp' => time() + 3600,
             'iat' => time(),
+            'nonce' => self::NONCE,
         ], $overrides), static fn ($v) => null !== $v);
 
         return new AccessToken(['access_token' => 'x', 'id_token' => TestJwks::sign($claims)]);
