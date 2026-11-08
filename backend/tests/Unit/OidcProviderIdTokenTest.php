@@ -5,6 +5,11 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\OAuth\OidcProvider;
+use App\Tests\Helper\TestJwks;
+use GuzzleHttp\Client;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Response;
 use League\OAuth2\Client\Token\AccessToken;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -99,7 +104,12 @@ final class OidcProviderIdTokenTest extends TestCase
 
     private function provider(string $issuer): OidcProvider
     {
-        return new OidcProvider(['issuer' => $issuer, 'clientId' => self::CLIENT, 'clientSecret' => 's']);
+        $mock = new MockHandler([new Response(200, [], json_encode(TestJwks::document(), JSON_THROW_ON_ERROR))]);
+
+        return new OidcProvider(
+            ['issuer' => $issuer, 'clientId' => self::CLIENT, 'clientSecret' => 's', 'jwksUri' => 'https://keys.example/jwks'],
+            ['httpClient' => new Client(['handler' => HandlerStack::create($mock)])],
+        );
     }
 
     /** @param array<string, mixed> $overrides null removes a claim */
@@ -114,9 +124,6 @@ final class OidcProviderIdTokenTest extends TestCase
             'iat' => time(),
         ], $overrides), static fn ($v) => null !== $v);
 
-        $b64 = static fn (string $s): string => rtrim(strtr(base64_encode($s), '+/', '-_'), '=');
-        $jwt = $b64('{"alg":"RS256"}').'.'.$b64(json_encode($claims, JSON_THROW_ON_ERROR)).'.sig';
-
-        return new AccessToken(['access_token' => 'x', 'id_token' => $jwt]);
+        return new AccessToken(['access_token' => 'x', 'id_token' => TestJwks::sign($claims)]);
     }
 }

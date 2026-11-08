@@ -16,6 +16,7 @@ knpu_oauth2_client:
             use_state: false
             provider_options:
                 issuer: 'https://accounts.google.com'
+                jwksUri: 'https://www.googleapis.com/oauth2/v3/certs'
                 scopes: ['openid', 'email', 'profile']
                 scopeSeparator: ' '
         microsoft:
@@ -28,6 +29,7 @@ knpu_oauth2_client:
             use_state: false
             provider_options:
                 issuer: '%microsoft_oidc_issuer%'
+                jwksUri: 'https://login.microsoftonline.com/common/discovery/v2.0/keys'
                 scopes: ['openid', 'email', 'profile']
                 scopeSeparator: ' '
         apple:
@@ -40,5 +42,6 @@ knpu_oauth2_client:
             use_state: false
             provider_options:
                 issuer: 'https://appleid.apple.com'
+                jwksUri: 'https://appleid.apple.com/auth/keys'
                 scopes: ['openid', 'email', 'name']
                 scopeSeparator: ' '
