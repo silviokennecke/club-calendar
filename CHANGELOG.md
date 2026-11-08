@@ -9,6 +9,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 - SSO (Google, Microsoft, Apple; sign-in and account linking): every flow now sends an OIDC `nonce`, kept in the signed `state`, and the ID token must carry exactly that nonce, so an ID token issued for another flow is refused (`oauth_failed`).
 - SSO (Google, Microsoft, Apple): the signature of the ID token is now verified against the provider's JWKS (RS256 only; keys cached for 1 hour, at most one refetch per minute on an unknown key id). A failed fetch or invalid signature ends the sign-in with `oauth_failed`. The backend must reach `www.googleapis.com`, `login.microsoftonline.com` and `appleid.apple.com` over HTTPS. `lcobucci/jwt` is now a direct dependency.
+- SSO (Microsoft): the immutable tenant and object id (`tid`/`oid`) of the verified ID token are stored on the linked account (migration adds `oauth_account.tenant_id`/`object_id`, backfilled at the next sign-in) and used as fallback key, so a changed per-app `sub` still finds the account; differing stored ids fail closed (`oauth_failed`).
 
 ### Changed
 

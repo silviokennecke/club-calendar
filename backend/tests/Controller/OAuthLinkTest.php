@@ -521,4 +521,47 @@ class OAuthLinkTest extends WebTestCase
 
         $this->assertSame(401, TestHelper::jsonRequest(self::$client, 'DELETE', self::API.'/api/auth/oauth/google')['status']);
     }
+
+    // --- Microsoft tid/oid ---
+
+    private const string TID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    private const string OID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+
+    public function testMicrosoftLinkStoresTenantAndObjectId(): void
+    {
+        $user = $this->createUser('alice@example.com');
+        $this->assertSame(self::profile(['linked' => 'microsoft']), $this->link($user, 'microsoft', ['sub' => 'ms-1', 'email' => 'alice@example.com', 'tid' => self::TID, 'oid' => self::OID]));
+        $this->em->clear();
+        $account = $this->em->getRepository(OAuthAccount::class)->findOneBy(['provider' => 'microsoft']);
+        $this->assertSame(self::TID, $account->getTenantId());
+        $this->assertSame(self::OID, $account->getObjectId());
+    }
+
+    public function testMicrosoftAccountOfAnotherUserIsInUseEvenWithAChangedSub(): void
+    {
+        $owner = $this->createUser('owner@example.com');
+        $this->assertSame(self::profile(['linked' => 'microsoft']), $this->link($owner, 'microsoft', ['sub' => 'ms-old', 'tid' => self::TID, 'oid' => self::OID]));
+        $user = $this->createUser('alice@example.com');
+        $this->assertSame(self::profile(['link_error' => 'account_in_use']), $this->link($user, 'microsoft', ['sub' => 'ms-new', 'tid' => self::TID, 'oid' => self::OID]));
+        $this->assertCount(1, $this->accounts());
+    }
+
+    public function testRelinkWithChangedSubUpdatesTheSubAndBackfills(): void
+    {
+        $user = $this->createUser('alice@example.com');
+        $this->addAccount($user, 'microsoft', 'ms-old');
+        $this->assertSame(self::profile(['linked' => 'microsoft']), $this->link($user, 'microsoft', ['sub' => 'ms-old', 'tid' => self::TID, 'oid' => self::OID]));
+        $this->assertSame(self::profile(['linked' => 'microsoft']), $this->link($user, 'microsoft', ['sub' => 'ms-new', 'tid' => self::TID, 'oid' => self::OID]));
+        $this->assertSame('ms-new', $this->accounts()[0]['providerId']);
+        $this->assertCount(1, $this->accounts());
+    }
+
+    public function testGoogleLinkIgnoresTenantAndObjectIdClaims(): void
+    {
+        $user = $this->createUser('alice@example.com');
+        $this->link($user, 'google', ['sub' => 'g-1', 'email' => 'a@gmail.example', 'tid' => self::TID, 'oid' => self::OID]);
+        $this->em->clear();
+        $account = $this->em->getRepository(OAuthAccount::class)->findOneBy(['provider' => 'google']);
+        $this->assertNull($account->getTenantId());
+    }
 }
