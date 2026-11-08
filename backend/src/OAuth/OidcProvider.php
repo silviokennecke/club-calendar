@@ -20,6 +20,7 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
     private ?array $discovery = null;
     private readonly ?string $jwksUri;
     private ?IdTokenSignatureVerifier $verifier = null;
+    private ?string $expectedNonce = null;
 
     public function __construct(array $options = [], array $collaborators = [])
     {
@@ -44,6 +45,12 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
         $this->cache = $cache;
     }
 
+    /** The nonce sent at flow start; the ID token must carry exactly it (set per callback). */
+    public function expectNonce(string $nonce): void
+    {
+        $this->expectedNonce = $nonce;
+    }
+
     public function getBaseAuthorizationUrl(): string
     {
         return $this->discover()['authorization_endpoint'];
@@ -62,7 +69,9 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
     public function getResourceOwner(AccessToken $token): OidcResourceOwner
     {
         $claims = $this->parseIdToken($token);
-        $this->validateIdTokenClaims($claims);
+        $expectedNonce = $this->expectedNonce;
+        $this->expectedNonce = null;
+        $this->validateIdTokenClaims($claims, $expectedNonce);
 
         if (empty($claims['email']) && !empty($userInfoUrl = $this->getResourceOwnerDetailsUrl($token))) {
             try {
@@ -139,12 +148,12 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
 
     /**
      * OIDC Core 3.1.3.7 claim checks (the signature is verified before, see verifySignature()).
-     * No nonce is sent in the flow, so none is checked.
+     * The nonce claim is required and must equal the one sent at flow start (step 11).
      * Messages never contain the token; the callers answer with oauth_failed.
      *
      * @param array<string, mixed> $claims
      */
-    private function validateIdTokenClaims(array $claims): void
+    private function validateIdTokenClaims(array $claims, ?string $expectedNonce): void
     {
         $now = time();
 
@@ -181,6 +190,11 @@ class OidcProvider extends GenericProvider implements CachePoolAwareInterface
 
         if (!is_string($claims['sub'] ?? null) || '' === $claims['sub']) {
             throw new \UnexpectedValueException('ID token has no subject');
+        }
+
+        $nonce = $claims['nonce'] ?? null;
+        if (null === $expectedNonce || '' === $expectedNonce || !is_string($nonce) || !hash_equals($expectedNonce, $nonce)) {
+            throw new \UnexpectedValueException('ID token nonce mismatch');
         }
     }
 

@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Exception\OAuthAccountConflictException;
 use App\Exception\OAuthRegistrationRestrictedException;
+use App\OAuth\OidcProvider;
 use App\OAuth\OidcResourceOwner;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
@@ -40,6 +41,11 @@ use Symfony\Component\Routing\Attribute\Route;
  * credentials. A successful sign-in redirects to FRONTEND_URL/auth/callback?code=<one-time code> (OAUTH_LOGIN_CODE_TTL,
  * single use, bound to user and session version); the frontend redeems it with POST /api/auth/token
  * (grant_type=one_time_token). No access or refresh token ever appears in a URL.
+ *
+ * OIDC nonce: every start (sign-in and link) also draws a fresh random `nonce`, sends it to the provider and
+ * keeps it in the signed state (`on`). The callback tells the provider object to expect exactly that value
+ * and the ID token's `nonce` claim must match (OidcProvider), so an ID token minted for another flow is
+ * refused even if its code were injected here.
  *
  * The state cookie only covers the provider callback. The login code is bound to the browser that started
  * the flow separately (PKCE style, S256): the start request must carry `code_challenge` (else
@@ -132,13 +138,15 @@ class OAuthController extends AbstractController
         }
 
         $nonce = SignedTokenService::b64(random_bytes(32));
+        $oidcNonce = SignedTokenService::b64(random_bytes(32));
         $state = $this->signedTokens->issue(self::LINK_STATE_PURPOSE, [
             'n' => $nonce,
+            'on' => $oidcNonce,
             'prov' => $provider,
             'uid' => $claims['uid'],
             'tv' => $claims['tv'],
         ], self::STATE_TTL);
-        $response = $client->redirect([], $this->authorizeOptions($provider, $state));
+        $response = $client->redirect([], $this->authorizeOptions($provider, $state, $oidcNonce));
         $response->headers->setCookie($this->stateCookie($nonce, self::STATE_TTL));
 
         return $response;
@@ -195,8 +203,9 @@ class OAuthController extends AbstractController
         }
 
         $nonce = SignedTokenService::b64(random_bytes(32));
-        $state = $this->signedTokens->issue(self::STATE_PURPOSE, ['n' => $nonce, 'prov' => $provider, 'cc' => $challenge], self::STATE_TTL);
-        $response = $client->redirect([], $this->authorizeOptions($provider, $state));
+        $oidcNonce = SignedTokenService::b64(random_bytes(32));
+        $state = $this->signedTokens->issue(self::STATE_PURPOSE, ['n' => $nonce, 'on' => $oidcNonce, 'prov' => $provider, 'cc' => $challenge], self::STATE_TTL);
+        $response = $client->redirect([], $this->authorizeOptions($provider, $state, $oidcNonce));
         $response->headers->setCookie($this->stateCookie($nonce, self::STATE_TTL));
 
         return $response;
@@ -223,8 +232,7 @@ class OAuthController extends AbstractController
         }
 
         try {
-            $client = $this->clientRegistry->getClient($provider);
-            $resourceOwner = $client->fetchUser();
+            $resourceOwner = $this->fetchOwner($provider, $claims);
             if (!$resourceOwner instanceof OidcResourceOwner) {
                 throw new \UnexpectedValueException('Unexpected resource owner');
             }
@@ -290,7 +298,7 @@ class OAuthController extends AbstractController
             return $this->failLink('invalid_state');
         }
         try {
-            $resourceOwner = $this->clientRegistry->getClient($provider)->fetchUser();
+            $resourceOwner = $this->fetchOwner($provider, $claims);
             if (!$resourceOwner instanceof OidcResourceOwner || '' === $resourceOwner->getId()) {
                 throw new \UnexpectedValueException('Unexpected resource owner');
             }
@@ -312,6 +320,28 @@ class OAuthController extends AbstractController
         $response->headers->setCookie($this->stateCookie('', -1));
 
         return $response;
+    }
+
+    /**
+     * Code exchange and profile with the nonce of this flow (from the signed state) as the only one the
+     * ID token may carry.
+     *
+     * @param array<string, mixed> $stateClaims
+     */
+    private function fetchOwner(string $provider, array $stateClaims): mixed
+    {
+        $oidcNonce = $stateClaims['on'] ?? null;
+        if (!is_string($oidcNonce) || '' === $oidcNonce) {
+            throw new \UnexpectedValueException('State carries no nonce');
+        }
+        $client = $this->clientRegistry->getClient($provider);
+        $oidc = $client->getOAuth2Provider();
+        if (!$oidc instanceof OidcProvider) {
+            throw new \UnexpectedValueException('Unexpected provider');
+        }
+        $oidc->expectNonce($oidcNonce);
+
+        return $client->fetchUser();
     }
 
     /** @param array<string, mixed> $claims */
@@ -386,10 +416,12 @@ class OAuthController extends AbstractController
     }
 
     /** @return array<string, string> */
-    private function authorizeOptions(string $provider, string $state): array
+    private function authorizeOptions(string $provider, string $state, string $oidcNonce): array
     {
+        $options = ['state' => $state, 'nonce' => $oidcNonce];
+
         // Apple refuses the name/email scopes without form_post; the callback then arrives as a cross-site POST.
-        return 'apple' === $provider ? ['state' => $state, 'response_mode' => 'form_post'] : ['state' => $state];
+        return 'apple' === $provider ? $options + ['response_mode' => 'form_post'] : $options;
     }
 
     private function stateCookie(string $value, int $ttl): Cookie
