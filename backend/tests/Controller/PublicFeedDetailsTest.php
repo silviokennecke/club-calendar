@@ -385,7 +385,9 @@ class PublicFeedDetailsTest extends WebTestCase
             // The VEVENT block equals the one in the feed ICS
             [, $feedIcs] = $this->icsGet("/api/feed/{$feed->getId()}/ics");
             preg_match('/BEGIN:VEVENT.*?END:VEVENT\r\n/s', $body, $mine);
-            $this->assertStringContainsString($mine[0], $feedIcs);
+            // DTSTAMP is the render time and may differ between the two requests
+            $noStamp = static fn (string $s): string => preg_replace('/^DTSTAMP[^\r\n]*\r\n/m', '', $s) ?? $s;
+            $this->assertStringContainsString($noStamp($mine[0]), $noStamp($feedIcs));
         }
     }
 
