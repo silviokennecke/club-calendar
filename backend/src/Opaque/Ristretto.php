@@ -10,7 +10,7 @@ final class Ristretto
     public const int ELEMENT_LENGTH = 32;
     public const int SCALAR_LENGTH = 32;
 
-    public static function assertElement(string $point): void
+    public static function assertElement(#[\SensitiveParameter] string $point): void
     {
         if (self::ELEMENT_LENGTH !== strlen($point)
             || !sodium_crypto_core_ristretto255_is_valid_point($point)

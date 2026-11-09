@@ -22,7 +22,7 @@ final class Oprf
         return Ristretto::fromHash(ExpandMessageXmd::expand($input, $dst, 64));
     }
 
-    public static function hashToScalar(string $input, ?string $dst = null): string
+    public static function hashToScalar(#[\SensitiveParameter] string $input, ?string $dst = null): string
     {
         $dst ??= 'HashToScalar-'.self::contextString();
 

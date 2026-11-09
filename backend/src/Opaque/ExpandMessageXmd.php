@@ -11,7 +11,7 @@ final class ExpandMessageXmd
     private const int S_IN_BYTES = 128;
     private const int MAX_DST = 255;
 
-    public static function expand(string $msg, string $dst, int $lenInBytes): string
+    public static function expand(#[\SensitiveParameter] string $msg, string $dst, int $lenInBytes): string
     {
         $ell = intdiv($lenInBytes + self::B_IN_BYTES - 1, self::B_IN_BYTES);
         if ($lenInBytes < 1 || $ell > 255 || $lenInBytes > 65535) {

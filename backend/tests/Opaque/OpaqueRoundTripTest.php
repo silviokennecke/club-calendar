@@ -76,11 +76,7 @@ final class OpaqueRoundTripTest extends TestCase
         foreach ([[new OpaqueTestClient('other', 'alice', 'calendar.example.org'), 'alice'], [$client, 'mallory']] as [$c, $id]) {
             $l = $c->startLogin('pw');
             $k = $server->generateKE2($l['ke1'], $record, self::CRED, $id);
-            $r = $c->finishLogin('pw', $l, $k->ke2);
-            if (null !== $r) {
-                $this->expectException(AuthenticationFailedException::class);
-                $server->serverFinish($k->state, $r['ke3']);
-            }
+            self::assertNull($c->finishLogin('pw', $l, $k->ke2));
         }
     }
 
@@ -209,7 +205,7 @@ final class OpaqueRoundTripTest extends TestCase
             try {
                 RegistrationRecord::fromBytes($bad);
                 self::fail('Accepted invalid record');
-            } catch (InvalidMessageException) {
+            } catch (\App\Opaque\CorruptRecordException) {
                 $this->addToAssertionCount(1);
             }
         }

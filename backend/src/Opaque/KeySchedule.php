@@ -45,11 +45,11 @@ final class KeySchedule
 
     public static function serverMac(DerivedKeys $keys): string
     {
-        return Mac::compute($keys->serverMacKey, $keys->transcriptHash);
+        return Mac::compute($keys->serverMacKey(), $keys->transcriptHash());
     }
 
     public static function clientMac(DerivedKeys $keys, string $preamble, string $serverMac): string
     {
-        return Mac::compute($keys->clientMacKey, hash('sha512', $preamble.$serverMac, true));
+        return Mac::compute($keys->clientMacKey(), hash('sha512', $preamble.$serverMac, true));
     }
 }

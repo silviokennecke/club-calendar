@@ -112,7 +112,7 @@ final class OpaqueTestClient
             return null;
         }
 
-        return ['ke3' => KeySchedule::clientMac($keys, $preamble, $serverMac), 'sessionKey' => $keys->sessionKey, 'exportKey' => $exportKey];
+        return ['ke3' => KeySchedule::clientMac($keys, $preamble, $serverMac), 'sessionKey' => $keys->sessionKey(), 'exportKey' => $exportKey];
     }
 
     private function randomizedPassword(string $password, string $blind, string $evaluated): string
