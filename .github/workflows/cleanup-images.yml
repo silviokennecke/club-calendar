@@ -32,3 +32,24 @@ jobs:
           tag-selection: untagged
           cut-off: 1w
           dry-run: ${{ inputs.dry-run || false }}
+
+  closed-prs:
+    name: Delete images of closed pull requests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      pull-requests: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Only pr-<N> tags are considered; main, version tags and latest are never matched
+      - name: Delete pr-<N> versions closed for more than 30 days
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.repository }}
+          PACKAGE: club-calendar
+          DRY_RUN: ${{ inputs.dry-run || false }}
+        run: .github/scripts/cleanup-pr-images.sh
