@@ -38,6 +38,8 @@ the router, so a new or changed route needs a matching operation there).
 
 ## Common Infrastructure
 
+**Operator docs:** a change to environment variables, console commands, cron jobs, config files, rate limits, sign-in/SSO/OPAQUE behaviour or legal documents also updates `../docs/admin/` (CLAUDE.md working rule 10): settings in `docs/admin/docs/configuration/reference.md`, operations (commands, cron, upgrades) in `docs/admin/docs/operations.md`, examples in `docs/admin/docs/examples/`. Write those pages for operators, without class or file names.
+
 | File | Purpose |
 |------|---------|
 | `src/Security/CurrentUserResolver.php` | Resolves authenticated `User` entity from JWT token |

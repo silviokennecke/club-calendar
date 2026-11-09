@@ -1,0 +1,66 @@
+[project]
+site_name = "Club Calendar – Admin Guide"
+site_description = "Installation and operation guide for Club Calendar administrators"
+site_url = "https://silviokennecke.github.io/club-calendar/"
+repo_url = "https://github.com/silviokennecke/club-calendar"
+repo_name = "silviokennecke/club-calendar"
+docs_dir = "docs"
+site_dir = "site"
+strict = true
+
+nav = [
+  { "Overview" = "index.md" },
+  { "Installation" = [
+    { "Quick start (Docker Compose)" = "quick-start.md" },
+    { "Hosting without Docker" = "hosting-without-docker.md" },
+  ] },
+  { "Configuration" = [
+    { "How configuration works" = "configuration/index.md" },
+    { "Reference" = "configuration/reference.md" },
+    { "Single sign-on" = "configuration/sso.md" },
+    { "Mail and maps" = "configuration/mail-and-maps.md" },
+  ] },
+  { "Security" = [
+    { "Protection mechanisms" = "security.md" },
+    { "Password protection" = "password-protection.md" },
+  ] },
+  { "Legal documents" = "legal.md" },
+  { "Operations" = "operations.md" },
+  { "Examples" = "examples/index.md" },
+]
+
+[project.theme]
+features = [
+  "content.code.copy",
+  "content.tabs.link",
+  "navigation.sections",
+  "navigation.instant",
+  "search.highlight",
+]
+
+[[project.theme.palette]]
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+[project.markdown_extensions.admonition]
+[project.markdown_extensions.pymdownx.details]
+[project.markdown_extensions.pymdownx.superfences]
+[project.markdown_extensions.pymdownx.highlight]
+[project.markdown_extensions.attr_list]
+[project.markdown_extensions.tables]
+
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+
+[project.markdown_extensions.toc]
+permalink = true
+
+[project.markdown_extensions.pymdownx.snippets]
+base_path = ["docs/examples"]
+check_paths = true

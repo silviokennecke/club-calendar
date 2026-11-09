@@ -4,6 +4,10 @@ A web app for clubs to manage and publish event calendars.
 
 A **Club** has one or more **Calendars** containing events, event templates, locations, and reference data (badges (properties), extras (features), audiences (target groups)). Calendars can be published as **feeds** (ICS + web), either public or protected by a shared secret. Users sign in with email/password, Google/Microsoft SSO, or WebAuthn passkeys; email addresses are verified via double opt-in.
 
+## Documentation
+
+Running your own instance? See the admin guide: <https://silviokennecke.github.io/club-calendar/> (sources in `docs/admin/`).
+
 ## Tech Stack
 
 - **Backend:** PHP 8.4, Symfony 8.1, Doctrine ORM + Migrations, JWT auth (`lexik/jwt-authentication-bundle`), MySQL 8
@@ -14,7 +18,8 @@ A **Club** has one or more **Calendars** containing events, event templates, loc
 
 - `backend/` — Symfony API server (port 3001)
 - `frontend/` — Vite/React single-page app (dev server port 5173; the build goes into `backend/public/`)
-- `docs/ops/` — E2E setup, operations, open backlog
+- `docs/admin/` — admin guide for operators (published on GitHub Pages)
+- `docs/ops/` — E2E setup, maintainer notes, open backlog
 - `docker-compose.yml` — optional MySQL dev/test databases (any MySQL 8 instance works)
 
 ## Development Setup

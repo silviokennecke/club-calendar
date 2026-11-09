@@ -52,6 +52,7 @@ rules](#accessibility-and-structure-rules) · [E2E](#e2e-playwright-frontende2e)
 - i18n: German is bundled, English (`locales/en.json`) is a lazy chunk loaded by an inline i18next backend
   (`src/lib/i18n.ts`); `main.tsx` renders after `i18nReady`. A failed chunk import after a deploy reloads the page
   once (`vite:preloadError` in `main.tsx`, guard and error page: see "Error page and reload guard").
+- **Operator docs:** a change to the build output, CSP or other security headers, or a user-facing setting operators control (sign-in, SSO, languages) also updates `../docs/admin/` (CLAUDE.md working rule 10), in plain English for operators (headers and CSP go to the protection page `docs/admin/docs/security.md`, settings to `docs/admin/docs/configuration/reference.md`).
 
 ## OPAQUE client layer (`src/lib/opaque/`)
 

@@ -1,0 +1,41 @@
+# Club Calendar: app + MySQL. Put this file next to your .env (see example.env).
+services:
+  app:
+    image: ghcr.io/silviokennecke/club-calendar:${APP_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: mysql://${DB_USER:-club_calendar}:${DB_PASSWORD}@db:3306/${DB_NAME:-club_calendar}?charset=utf8mb4
+    ports:
+      # Local only: put a TLS reverse proxy in front (see docker-compose.override.yml)
+      - "127.0.0.1:8080:8080"
+    volumes:
+      # Login keys: keep them, or every restart signs everybody out
+      - jwt:/data/config
+      # Your imprint, privacy policy and terms (imprint.md, privacy.md, terms.md)
+      - ./legal:/data/legal:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-club_calendar}
+      MYSQL_USER: ${DB_USER:-club_calendar}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      # Uses the container's own environment, no password in this file
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  jwt:
+  db_data:

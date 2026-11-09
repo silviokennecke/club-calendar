@@ -1,80 +1,47 @@
-# Betrieb
+# Operations (maintainer notes)
 
-- **Migrationen** auf Dev und Prod ausführen (`npm run migrate`; Deploy und Container-Entrypoint machen es
-  automatisch): `Version20261004120000` (`auth_nonce`), `Version20261004130000` (`user.token_version`),
-  `Version20261009120000` (Vorlagen-Zeiten nullable), `Version20261010120000` (`event.external_uid`),
-  `Version20261013120000` (`password_reset`, `email_change`, `passkey.last_used_at`, `club_user.last_calendar_id`),
-  `Version20261014120000` (`event_series`, `event.series_id`), `Version20261015120000` (Feed-Status: `PUBLIC` →
-  `CLUB`, `PRIVATE` bleibt, `calendar_feed.searchable`), `Version20261019120000` (Club roles: `club_user.role` mit Enum viewer|editor|admin, alle bestehenden Mitglieder werden admin, Einladungen tragen eine `role` mit default editor), `Version20261020120000` (Club-Scoping: `calendar_feed` + `calendar_feed_calendar` (join-Tabelle für N:M), `location` + `target_group` auf Club-Ebene statt Calendar; bestehende Feeds auf den einen Kalender begrenzt, keine Zusammenfassung; Backup empfohlen, auf Testumgebung ausprobieren). Nach der Feed-Status-Migration sind bisher öffentliche Feeds
-  nur per Link (nicht indexiert); wer einen Feed in Suchmaschinen haben will, stellt ihn auf "Öffentlich" und
-  schaltet "Für Suchmaschinen auffindbar" ein.
-- **Umgebungsvariablen (Produktion):** `APP_SECRET` (signiert Passkey-Challenges, OAuth-State und SSO-Tickets; ein
-  Wechsel macht laufende Anmeldevorgänge ungültig) und `JWT_REFRESH_SECRET` müssen gesetzt sein (Platzhalter in
-  `.env`). `APP_URL` = öffentliche Adresse; `FRONTEND_URL`, `BACKEND_URL` und `WEBAUTHN_RP_ID` leiten sich daraus ab
-  (`config/services.yaml`) und werden nur bei getrennten Hosts gesetzt (für Tests setzt sie `phpunit.dist.xml`).
-  `BACKEND_URL` muss die öffentliche API-Adresse sein (Link der neuen E-Mail-Adresse, SSO-Link-Start).
-  `WEBAUTHN_RP_NAME`, optional `WEBAUTHN_USER_VERIFICATION` (`preferred`/`required`); erlaubte Passkey-Origin ist
-  `FRONTEND_URL` (exakt).
-- **Cron:** `php bin/console app:prune-unverified-users` und `php bin/console app:prune-password-resets` (z. B.
-  täglich; abgelaufene Reset-Links und E-Mail-Wechsel) sowie `php bin/console app:prune-refresh-tokens` (beendete
-  Refresh-Token-Sitzungen; Lebensdauer `REFRESH_TOKEN_ABSOLUTE_LIFETIME`, Wiederholungsfenster `REFRESH_TOKEN_REUSE_GRACE`) und `php bin/console app:prune-oauth` (abgelaufene OAuth-/MCP-Anfragen, Codes, Tokens, beendete
-  Grants, ungenutzte Clients).
-- **SSO (ID-Token-Signatur):** Das Backend ruft die öffentlichen Schlüssel (JWKS) der aktivierten Anbieter per HTTPS ab: `www.googleapis.com` (Google), `login.microsoftonline.com` (Microsoft), `appleid.apple.com` (Apple), zusätzlich deren OIDC-Discovery-Hosts (`accounts.google.com`, `login.microsoftonline.com`, `appleid.apple.com`). Sind sie nicht erreichbar und die Schlüssel nicht im Cache (1 Stunde), schlägt die SSO-Anmeldung mit `oauth_failed` fehl.
-- **Feiertage (OpenHolidays):** vordefinierte Feiertags-/Ferienkalender lädt das Backend von `openholidaysapi.org` (ausgehend HTTPS, der Host muss erreichbar sein; Auswahllisten 7 Tage gecacht). Die Daten liegen in der DB; veraltete (> 3 Monate) Kalender aktualisiert die App beim Lesen, zusätzlich Cron `php bin/console app:holidays:refresh --all` (optional `--calendar=<id>`, z. B. wöchentlich). Fällt die Quelle aus, bleiben die gespeicherten Daten erhalten. ICS-Adressen eigener Feiertagskalender folgen höchstens 3 Weiterleitungen (jedes Ziel wird gegen private Netze geprüft); Anlegen per URL und manuelles Aktualisieren sind auf 20 pro Nutzer und Stunde begrenzt (Cron und automatisches Aktualisieren nicht).
-- **Verzeichnislisten (Audit I2):** `.htaccess` setzt bewusst kein `Options -Indexes -MultiViews` (ein `Options` ohne `AllowOverride Options` ist ein 500 für die ganze Seite, `<IfModule>` schützt nicht davor). Mit `mod_rewrite` landen Verzeichnis-URLs (`/assets/`) beim SPA, ohne `mod_rewrite` antwortet `.htaccess` mit 403; Caddy hat kein `browse`. Eigene Server (nginx): `autoindex off` (Standard). Sourcemaps werden nicht gebaut (`build.sourcemap: false`), `*.map` ist zusätzlich gesperrt.
-- **MCP / OAuth:** `/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource` (und `…/api/mcp`) sowie `/api/mcp` müssen zu PHP geroutet werden (`.htaccess`, `docker/Caddyfile` tun das; nginx: eigene `location`-Blöcke auf `index.php`, `/.well-known` nicht per Dotfile-Regel sperren, für `/api/mcp` `fastcgi_buffering off`). Hinter einem Proxy `/api/mcp` nicht puffern und lange Verbindungen (SSE) erlauben. Env: `MCP_ACCESS_TOKEN_TTL`, `MCP_REFRESH_TOKEN_LIFETIME`, `MCP_REFRESH_TOKEN_ABSOLUTE_LIFETIME`, `MCP_REFRESH_TOKEN_REUSE_GRACE`, `MCP_ALLOWED_CLIENTS` (`backend/.env.example`; Standard `claude,openai,gemini`; `*` allein = alle Clients, leer = keiner; ein früher leerer Wert muss auf `*` gesetzt werden, sonst können sich Clients nicht mehr verbinden). Migration `Version20261025120000` (OAuth-/MCP-Tabellen) und `Version20261026120000`. Cron `app:prune-oauth` (täglich). Nutzer sehen und widerrufen Verbindungen im Profil; Passwortänderung und "Überall abmelden" beenden alle MCP-Zugänge. Browser-Clients auf fremder Origin scheitern an CORS (nur `FRONTEND_URL`).
-- **OPAQUE-Schlüssel (Vorbereitung, Flag standardmäßig aus):** `OPAQUE_ENABLED` (Standard `false`), `OPAQUE_OPRF_SEED` (64 Byte) und `OPAQUE_SERVER_PRIVATE_KEY` (32 Byte, kanonischer ristretto255-Skalar), beide als Base64url ohne Padding. Erzeugen mit `php bin/console app:opaque:generate-keys` (gibt nur auf stdout aus, speichert nichts; im Container `docker exec <container> php bin/console app:opaque:generate-keys`). Die Werte dauerhaft als Secret ablegen und **sichern**: Der Entrypoint erzeugt sie bewusst nicht automatisch, und gehen Seed oder Schlüssel verloren (oder werden sie ersetzt), sind alle OPAQUE-Passwort-Records wertlos und jedes betroffene Konto muss sein Passwort zurücksetzen. Bei `OPAQUE_ENABLED=true` und fehlenden oder ungültigen Werten bricht der Container-Start ab: `docker/entrypoint.sh` ruft `php bin/console app:opaque:check` auf (Exit 1 mit Fehlermeldung bei aktivem Flag und fehlenden/ungültigen Werten, vor den Migrationen; ohne Entrypoint, z. B. Apache/FPM, den Befehl selbst im Deploy aufrufen, sonst scheitert erst die erste OPAQUE-Anfrage); bei `false` werden sie nicht gelesen. `ext-sodium` ist Pflicht (das Docker-Image prüft es im Build).
-- **OPAQUE-Schlüsselrotation (AP 15):** Schlüsselmengen mit Id: `OPAQUE_KEYS=<id>:<seed>:<privateKey>,...` (Id 1-16 Zeichen `[A-Za-z0-9_.-]`, eindeutig; Seed und Schlüssel wie oben, Erzeugen mit `app:opaque:generate-keys`) plus `OPAQUE_ACTIVE_KEY_ID`. Das alte Paar `OPAQUE_OPRF_SEED`/`OPAQUE_SERVER_PRIVATE_KEY` ist weiterhin Schlüssel-Id `1` (Einzelschlüssel-Betrieb ohne Änderung; `OPAQUE_ACTIVE_KEY_ID` leer = `1`). Neue Registrationen (Signup, Reset, Passwortänderung, Upgrade) nutzen den aktiven Schlüssel und speichern die Id in `user.opaque_key_id`; Login und Reauth verwenden den Schlüssel der gespeicherten Id; Fake-Antworten für unbekannte Adressen laufen unter dem aktiven Schlüssel. **Ablauf:** (1) `app:opaque:generate-keys`, neuen Satz als `OPAQUE_KEYS=2:...` ergänzen (altes Paar bleibt Id 1), (2) `app:opaque:check` (alle Sätze gültig, Ids eindeutig, aktive Id vorhanden), (3) `OPAQUE_ACTIVE_KEY_ID=2` setzen und deployen, (4) Konten wechseln erst bei der nächsten Passwortänderung oder dem nächsten Reset: OPAQUE kann ohne das Passwort nicht neu verschlüsseln, ein Re-Key beim Login ist deshalb nicht möglich (auch kein Server-Signal, siehe Plan 2.3; spätere Option wäre eine clientgetriebene Re-Registrierung nach dem Login wie beim Upgrade), (5) `app:opaque:status` zeigt `recordsByKeyId`; einen Schlüssel erst entfernen, wenn kein Record mehr auf ihn zeigt (`app:opaque:check` warnt vor konfigurierten, nicht mehr referenzierten Schlüsseln und vor Records mit nicht konfigurierter Id). Ein Record mit unbekannter Id wird wie ein defekter behandelt (Fehler-Log mit User-Id, Fake-Antwort, `identify` meldet `reset_required`, Konto muss "Passwort vergessen" nutzen). **Kompromittierung eines Schlüssels:** Schlüssel nicht nur ersetzen, sondern alle Konten unter dieser Id durch Entfernen der Id aus der Konfiguration zu `reset_required` machen. Beobachtbarkeit: Die Serverschlüssel-Id und der öffentliche Schlüssel stecken in KE2 nur maskiert (Maskierungsschlüssel aus dem Passwort); ohne das Passwort ist ein Konto unter altem Schlüssel von einer Fake-Antwort nicht zu unterscheiden. Der öffentliche Schlüssel eines Satzes ist ohnehin nicht geheim (Registrierungsantwort). Wird `OPAQUE_ACTIVE_KEY_ID` zwischen `register/start` und `register/finish` geändert, ist das Konto danach nicht anmeldbar (Reset); Rotation daher nicht während laufender Registrierungen umschalten.
-- **OPAQUE-Rollout und Rollback:** `OPAQUE_ROLLOUT_PERCENT` (0-100, Standard 0) bestimmt per stabilem Konto-Bucket (HMAC der User-ID mit aus `APP_SECRET` abgeleitetem Schlüssel), wie viele Legacy-Konten (bcrypt) das Upgrade angeboten bekommen; Erhöhen nimmt nie Konten wieder heraus. Signup und Passwort-Reset sind OPAQUE, sobald `OPAQUE_ENABLED=true` (unabhängig vom Prozentsatz). `OPAQUE_LEGACY_CUTOFF` (leer oder `YYYY-MM-DD`, UTC) ist der Stichtag der Phase 2: danach meldet `POST /api/auth/identify` `auth: reset_required` für Konten ohne Record (bei Flag an); die Hashes entfernt `app:opaque:retire-legacy` (siehe unten). Ungültige Werte lassen `app:opaque:check` (und damit den Container-Start) scheitern. Reihenfolge: Deploy mit Flag aus, Flag in Staging, Flag in Produktion mit Prozentsatz 10, dann 50, dann 100, jeweils `php bin/console app:opaque:status` (`--json` für Skripte) prüfen: Zahlen je Kontotyp und "migrated %" (Konten mit Record unter allen Konten mit Passwort), ohne personenbezogene Daten. **Flag nie zurückschalten, sobald Konten ohne bcrypt-Hash (nur Record) existieren:** sie können sich mit `OPAQUE_ENABLED=false` nicht mehr anmelden (Legacy-Login lehnt sie ab, `login/*` antwortet 503 `opaque_unavailable`); `identify` meldet ihnen `reset_required`, sie müssen "Passwort vergessen" nutzen (der Legacy-Reset setzt ein bcrypt-Passwort und entfernt den Record; ebenso `app:user:set-password`). Konten, die per Upgrade beide Credentials haben (Hash bleibt bis Phase 2), bleiben mit Flag aus über bcrypt nutzbar. Vor einem Rollback `app:opaque:status` prüfen (`withRecord` minus `both` = betroffene Konten) und ein Backup anlegen. Logzeilen (Monolog, nur User-ID, nie Adresse/Token): `opaque.login.success|failure` (Grund `invalid_state`/`authentication_failed`), `opaque.legacy_login.success` (mit `upgradeOffered`) / `.failure` (`wrong_password`/`no_password_hash`), `opaque.upgrade.success`, `opaque.identify.reset_required` (Grund `cutoff`/`flag_off`/`corrupt_record`); Alarm auf Fehlschlag-/Erfolgsverhältnis von `opaque.login.*`. **Falsche Passwörter sind serverseitig nicht sichtbar:** der Client prüft das Passwort lokal gegen KE2 und bricht bei einem Fehler vor `login/finish` ab, `opaque.login.failure` zählt also nur manipulierte, abgelaufene oder wiederverwendete Zustände. Für die Fehlerrate die Anzahl der `login/start`-Anfragen (Access-Log oder 429-Rate) mit `opaque.login.success` vergleichen; ein Anstieg von `start` ohne `success` bei gleichbleibender Kontenzahl deutet auf Raten oder Fehlbedienung hin. **Solange das Flag an ist, verweigern die Klartext-Endpunkte:** `register` und `reset-password` mit 409 `opaque_required`, `login`, `change-password` und die Klartext-`password`-Beweise von `DELETE /api/auth/me`, `change-email` und Passkey-Optionen für Konten mit nutzbarem Record ebenfalls (der behaltene bcrypt-Hash zählt dann nicht; Rollback mit Flag aus bleibt möglich). **Mit gesetztem `OPAQUE_LEGACY_CUTOFF` ist `OPAQUE_ROLLOUT_PERCENT=100` Pflicht** (`app:opaque:check` scheitert sonst; `notify-legacy` und `retire-legacy` verweigern; ab gesetztem Stichtag wird allen Legacy-Konten das Upgrade angeboten).
-- **OPAQUE-Übergang und Stichtag (AP 14):** Ist das Flag an und das Konto vom Prozentsatz erfasst, enthält die Antwort des Legacy-Logins `opaqueUpgrade: {ticket, expiresIn}`; die SPA stellt das Konto danach unsichtbar im Hintergrund um (bcrypt-Hash bleibt bis Phase 2). Übergangsphase laut Plan: 30 Tage ab Rollout 100 %, dann `OPAQUE_LEGACY_CUTOFF` auf diesen Tag setzen (UTC). **Cron täglich** `php bin/console app:opaque:notify-legacy` (Optionen `--dry-run`, `--limit=500`): schickt 14 und 3 Tage vor dem Stichtag je eine Erinnerung (Anmelden oder "Passwort vergessen", keine Token) an bestätigte Konten mit nur bcrypt-Hash; entscheidet nach Datum (UTC), speichert die zuletzt gesendete Stufe in `user.opaque_reminder_days` (je Stufe einmal, eine verpasste Stufe wird übersprungen, Mails nach `--limit` folgen beim nächsten Lauf; ein fehlgeschlagener Versand wird nicht wiederholt) und tut ohne Flag, ohne Stichtag, mehr als 14 Tage davor oder ab dem Stichtag nichts. **Ab dem Stichtag** antwortet `POST /api/auth/login` für Konten ohne Record mit 409 `reset_required` (ohne das Passwort zu prüfen); danach **einmalig** `php bin/console app:opaque:retire-legacy` (ohne `--force` nur Zählung, mit `--force` setzt es jeden verbleibenden bcrypt-Hash auf NULL, also auch den Restbestand bei Konten mit Record; Sessions bleiben gültig; verweigert vor dem Stichtag und bei Flag aus). Davor Backup; ab da ist ein Rollback auf Legacy nicht mehr verlustfrei. Migration `Version20261109140000` (Spalte `user.opaque_reminder_days`).
-- **Mail-Templates:** nach Änderungen an `templates/email/*.mjml` `npm run build:mail -w backend` (die kompilierten
-  `*.html.twig` sind eingecheckt; `npm run build` baut sie ebenfalls). Dazu `password_changed`,
-  `email_change_requested`, `email_changed` (Hinweis-Mails ohne Links außer `/forgot-password`).
-- **Reverse Proxy:** der IP-Limiter von "Passwort vergessen" nutzt `Request::getClientIp()`; hinter einem Proxy, der
-  die Client-Adresse nicht als `REMOTE_ADDR` weitergibt, `framework.trusted_proxies` setzen (sonst teilen sich alle
-  Nutzer einen Zähler).
-- **Rechtstexte:** `imprint.md`, `privacy.md`, `terms.md` (siehe `backend/legal/README.md`) in ein Verzeichnis legen und es im Container nach `/var/www/html/legal` mounten (oder `LEGAL_DOCUMENTS_PATH` setzen); `app:legal:sync` läuft beim Start und bei Cache-Warmup, fehlende Dokumente erscheinen als Warnung im Log. Neue Datei-Inhalte erzeugen eine neue Version und fordern erneute Zustimmung.
-- **Support:** `app:user:create` (Nutzer mit verifizierten Adressen anlegen, für den ersten Admin bei `RESTRICT_REGISTRATION=true`) (bei `OPAQUE_ENABLED=true` oder mit `--link` ohne Passwort angelegt; der Befehl gibt einen einmaligen Link `…/reset-password?token=…` aus (60 Minuten), über den der Nutzer sein Passwort per OPAQUE setzt: so läuft auch der Erstnutzer-Setup; `--password` erzeugt ein Legacy-Konto (bcrypt) und warnt, nach `OPAQUE_LEGACY_CUTOFF` nur mit `--force-legacy`), `app:user:set-password` (setzt ein neues Passwort, bei OPAQUE an oder mit `--link` stattdessen entfernt es Hash und OPAQUE-Record und gibt einen einmaligen Link aus, gleiche `--password`-Regeln wie oben; beendet alle Sitzungen, löscht Passwort-Reset-Links und wartende E-Mail-Wechsel), `app:user:verify` / `app:user:activate` (`<id|email>` bestätigt eine Adresse und entfernt ausstehende Bestätigungscodes), `app:user:reset-link <email>` gibt einen Reset-Link aus (60 Minuten gültig, gewährt Zugang zum Konto: nur an den Eigentümer).
-- **HTTPS für SSO:** das State-Cookie ist `Secure; SameSite=None`; lokal Chrome/Firefox oder HTTPS (Safari nicht
-  zuverlässig).
-- **PHP-Limits:** Import von 5000 Terminen braucht rund 130 MB zusätzlich (`memory_limit`, Container 256M) und
-  2–3 MB Body (`post_max_size` großzügig, Container 16M); `display_errors` aus.
-- **Webserver:** nichts mehr manuell nötig: `Referrer-Policy: no-referrer` für `/feed/*` und `/api/feed/*` steht in
-  `backend/public/.htaccess` (Apache, braucht `mod_headers`) und `docker/Caddyfile`. Wer nginx nutzt, ergänzt im
-  `server`-Block (`always` gilt auch für Fehlerantworten):
-  ```nginx
-  location ~ ^/(api/)?feed/ {
-      add_header Referrer-Policy "no-referrer" always;
-      # ... gleiche try_files/fastcgi-Regeln wie der allgemeine location-Block (add_header wird in
-      # verschachtelten Blöcken nicht geerbt: die allgemeinen Header dort wiederholen)
-  }
-  ```
-  `X-Robots-Tag` setzt das Backend (nur Feed-API, je Feed: noindex außer öffentlich + auffindbar), nicht der Webserver.
-- **Security-Header (Audit M4):** `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`,
-  `Permissions-Policy`, `Cross-Origin-Opener-Policy` und das Standard-`Referrer-Policy` (`strict-origin-when-cross-origin`)
-  stehen in `backend/public/.htaccess` und `docker/Caddyfile` (identisch, geprüft von `SecurityHeadersConfigTest`).
-  `Strict-Transport-Security` setzt `.htaccess` nur bei HTTPS (auch `X-Forwarded-Proto: https`); der Caddy-Container
-  läuft hinter einem TLS-Terminator und setzt es nicht: **dort `Strict-Transport-Security: max-age=31536000` ergänzen** (Betreiberaufgabe, so entschieden; siehe `BACKLOG.md`)
-  (erst `includeSubDomains`/`preload`, wenn alle Subdomains HTTPS können). Getrennte Hosts (`VITE_API_URL` auf anderer
-  Origin): API-Origin in `connect-src` und `img-src` (statische Kartenbilder `/api/map/image/*`) der CSP aufnehmen. nginx (gleicher Policy-String wie `.htaccess`/Caddy, inkl. `'wasm-unsafe-eval'` für den OPAQUE-Client; im `server`-Block, nicht vergessen: `add_header` wird in
-  verschachtelten `location`-Blöcken nicht geerbt, also auch im Feed-Block wiederholen, dort mit `no-referrer`):
-  ```nginx
-  add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'sha256-+A14ONesVdzkn6nr37Osn+rUqNz4oFGZFDbLXrlae04='; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
-  add_header X-Content-Type-Options "nosniff" always;
-  add_header X-Frame-Options "DENY" always;
-  add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), midi=(), accelerometer=(), gyroscope=(), magnetometer=(), interest-cohort=()" always;
-  add_header Cross-Origin-Opener-Policy "same-origin" always;
-  add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-  add_header Strict-Transport-Security "max-age=31536000" always;
-  location ~ /\.(?!well-known)|\.(env|pem|log)$ { deny all; }
-  ```
-  `style-src` kennt kein `'unsafe-inline'`: React setzt `style=` über das CSSOM (nicht blockiert), sonner liefert sein CSS als Datei,
-  nur das feste Stylesheet des emoji-mart-Pickers (Shadow DOM) ist per Hash erlaubt (`sha256-+A14ONesVdzkn6nr37Osn+rUqNz4oFGZFDbLXrlae04=`, Drift-Test in
-  `frontend/src/lib/__tests__/cspStyleHash.test.ts`). Ein eigener nginx-Header muss denselben Hash tragen.
-- **Nach einem Deploy** fehlen die Chunks des vorigen Releases; das Frontend lädt bei einem fehlgeschlagenen
-  Chunk-Import einmal neu (`vite:preloadError` in `frontend/src/main.tsx`).
-- **MCP-Zustimmung und Ursprung:** Die Zustimmungsanfrage ist per Cookie `oauth_consent_<id>` (HttpOnly, SameSite=Lax, Pfad `/api/oauth`) an den Browser gebunden, der `GET /api/oauth/authorize` aufgerufen hat. Standard (SPA und API unter einem Ursprung) braucht nichts. Bei getrennten Ursprüngen (`VITE_API_URL`) muss die SPA auf derselben Site (gleiche registrierbare Domain, z. B. `app.example.com` und `api.example.com`) liegen, sonst sendet der Browser das Cookie nicht und die Zustimmung zeigt „Anfrage abgelaufen“; CORS erlaubt Credentials nur für den exakten `FRONTEND_URL` und nur auf `/api/oauth/authorization-request/*` und `/api/oauth/authorize/decision`.
-- **Mapbox-Limits:** Pro Stunde: Tiles (`/api/mapbox/…/v4/…`) 1800 je Nutzer und 3600 je IP, Styles/Fonts 900 je Nutzer (zusätzlich 60000 je Tag für die gesamte Instanz), anonyme statische Karten (`/api/map/image/*`) 360 je IP; Cache-Treffer zählen mit, Überschreitung ist 429 `rate_limited` mit `Retry-After`. Die globalen Budgets (`mapbox_proxy_*`, `mapbox_image_*`) bleiben als äußere Grenze. Hinter einem Reverse Proxy muss `SYMFONY_TRUSTED_PROXIES` gesetzt sein, sonst teilen sich alle Clients die Proxy-IP und damit die IP-Limits.
-- **PDF-Export:** `GET /api/calendars/{id}/events.pdf` (dompdf) braucht `ext-gd` und `ext-intl` (das Docker-Image installiert beide). Die Route hebt `memory_limit` auf 512M und die Ausführungszeit auf 60 s an (nur für sich, danach zurückgesetzt); Proxy-Timeouts auf `/api/*` müssen mindestens 60 s erlauben. dompdf schreibt Fonts/Temp nach `var/cache/<env>/pdf` (für den PHP-Nutzer beschreibbar). Rate-Limit 10/Nutzer und 30/IP je 10 Minuten.
+Operator documentation (installation, configuration, hosting, security, password protection, legal texts,
+operations) lives in the **admin guide**: <https://silviokennecke.github.io/club-calendar/>, sources in
+[`../admin/docs/`](../admin/docs/). This file keeps only notes for developers and maintainers.
 
-API-Referenz: [`../api/openapi.yaml`](../api/openapi.yaml). Offene Punkte: [`BACKLOG.md`](BACKLOG.md). E2E-Umgebung: [`E2E.md`](E2E.md).
+API reference: [`../api/openapi.yaml`](../api/openapi.yaml). Open items: [`BACKLOG.md`](BACKLOG.md). E2E environment:
+[`E2E.md`](E2E.md).
+
+## Migration history
+
+Run with `npm run migrate`; the container entrypoint does it automatically. Notable versions: `Version20261004120000`
+(`auth_nonce`), `Version20261004130000` (`user.token_version`), `Version20261009120000` (template times nullable),
+`Version20261010120000` (`event.external_uid`), `Version20261013120000` (`password_reset`, `email_change`,
+`passkey.last_used_at`, `club_user.last_calendar_id`), `Version20261014120000` (`event_series`, `event.series_id`),
+`Version20261015120000` (feed status: `PUBLIC` to `CLUB`, `PRIVATE` stays, `calendar_feed.searchable`; formerly
+public feeds are link-only and not indexed afterwards, to be indexed a feed must be set to "Public" with "Findable
+by search engines"), `Version20261019120000` (club roles: `club_user.role` viewer|editor|admin, all existing members
+become admin, invitations carry a `role`, default editor), `Version20261020120000` (club scoping: `calendar_feed` +
+`calendar_feed_calendar` join table, `location` + `target_group` at club level; existing feeds limited to their one
+calendar; back up and try on a test environment first), `Version20261025120000` and `Version20261026120000`
+(OAuth/MCP tables), `Version20261109140000` (`user.opaque_reminder_days`).
+
+## Drift tests and build notes
+
+- Security headers live identically in `backend/public/.htaccess` and `docker/Caddyfile`
+  (`backend/tests/Unit/SecurityHeadersConfigTest.php`). The only allowed inline stylesheet is emoji-mart's fixed one
+  in its shadow DOM, by hash `sha256-+A14ONesVdzkn6nr37Osn+rUqNz4oFGZFDbLXrlae04=`; drift test
+  `frontend/src/lib/__tests__/cspStyleHash.test.ts`. A changed hash must also be changed in the nginx example in
+  `docs/admin/docs/hosting-without-docker.md`.
+- Mail templates: after changing `backend/templates/email/*.mjml` run `npm run build:mail -w backend`. The compiled
+  `*.html.twig` are gitignored (`npm run build` builds them as well).
+- After a deploy the chunks of the previous release are gone; the frontend reloads once on a failed chunk import
+  (`vite:preloadError` in `frontend/src/main.tsx`).
+
+## OPAQUE observability (kept here, operator-relevant, to move to the admin guide)
+
+Log lines (Monolog, user id only, never address or token): `opaque.login.success|failure` (reason
+`invalid_state`/`authentication_failed`), `opaque.legacy_login.success` (with `upgradeOffered`) / `.failure`
+(`wrong_password`/`no_password_hash`), `opaque.upgrade.success`, `opaque.identify.reset_required` (reason
+`cutoff`/`flag_off`/`corrupt_record`). Wrong passwords are not visible server-side: the client checks the password
+locally against KE2 and aborts before `login/finish`, so `opaque.login.failure` counts only tampered, expired or
+reused states. For an error rate compare the number of `login/start` requests with `opaque.login.success`.
+Observability of key ids: the server key id and public key are only masked in KE2 (masking key derived from the
+password); without the password an account under an old key cannot be told from a fake response. A record with an
+unknown key id is treated like a broken one (error log with user id, fake response, `identify` reports
+`reset_required`).
