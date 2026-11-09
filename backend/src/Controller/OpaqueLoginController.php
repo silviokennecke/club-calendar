@@ -17,6 +17,7 @@ use App\Security\AuthRateLimiter;
 use App\Service\AuthService;
 use App\Service\EmailAddress;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -37,6 +38,7 @@ class OpaqueLoginController extends AbstractApiController
         private readonly ValidatorInterface $validator,
         private readonly SerializerInterface $serializer,
         private readonly EntityManagerInterface $em,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -83,9 +85,11 @@ class OpaqueLoginController extends AbstractApiController
         try {
             $user = $this->opaque->finishLogin($dto->loginState, $ke3);
         } catch (InvalidMessageException|AuthenticationFailedException $e) {
+            $this->logger->info('opaque.login.failure', ['reason' => $e instanceof InvalidMessageException ? 'invalid_state' : 'authentication_failed']);
             throw new ApiProblemException(401, 'Invalid credentials', 'invalid_credentials', null, ['WWW-Authenticate' => 'Bearer'], $e);
         }
         $this->rateLimiter->recordLoginSuccess($user->getEmail());
+        $this->logger->info('opaque.login.success', ['userId' => $user->getId()]);
 
         return new JsonResponse($this->auth->completeLogin($user));
     }

@@ -22,6 +22,7 @@ use App\Service\AuthService;
 use App\Service\EmailAddress;
 use App\Service\PasswordResetService;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -61,6 +62,7 @@ class OpaqueRegisterController extends AbstractApiController
         private readonly ValidatorInterface $validator,
         private readonly SerializerInterface $serializer,
         private readonly EntityManagerInterface $em,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -187,6 +189,7 @@ class OpaqueRegisterController extends AbstractApiController
         }
         $this->opaque->storeRecord($user, $record);
         $this->em->flush();
+        $this->logger->info('opaque.upgrade.success', ['userId' => $user->getId()]);
 
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }

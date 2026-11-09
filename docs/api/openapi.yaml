@@ -867,6 +867,16 @@ paths:
         and no open invitation). `email` is the normalized address. Accepted trade-off: this reveals whether an
         account exists; it is mitigated by rate limiting (30 per 15 minutes per client IP and 10 per 15 minutes
         per normalized address, `429 rate_limited`, checked before any database work).
+
+
+        `auth` names the credential protocol to use next. For `login`: `opaque` (the account has an OPAQUE record and
+        `OPAQUE_ENABLED` is on: `/api/auth/opaque/login/*`), `legacy` (bcrypt password, or the flag is off: `POST
+        /api/auth/login`), `none` (no password credential, SSO/passkey only; adds "has no password" to the existence
+        oracle above, accepted because the UI needs it to pick the sign-in method) or `reset_required` (the password
+        cannot be used any more: `OPAQUE_LEGACY_CUTOFF` has passed for an account without a record, or the account has
+        only an OPAQUE record while the flag is off; use the "forgot password" flow). For `register` and
+        `registration_restricted`: `opaque` when the flag is on (signup via `/api/auth/opaque/register/*`), else
+        `legacy` (`POST /api/auth/register`).
       operationId: identify
       security: []
       requestBody:
@@ -885,10 +895,11 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [email, status]
+                required: [email, status, auth]
                 properties:
                   email: { type: string }
                   status: { type: string, enum: [login, register, registration_restricted] }
+                  auth: { type: string, enum: [opaque, legacy, none, reset_required] }
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
