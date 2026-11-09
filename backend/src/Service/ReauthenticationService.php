@@ -37,7 +37,7 @@ readonly class ReauthenticationService
     /** Mails the current code (the same one within a window, so repeated requests do not invalidate it). */
     public function sendCode(User $user, string $purpose): void
     {
-        if (null !== $user->getPassword()) {
+        if ($user->hasPasswordCredential()) {
             throw new ApiProblemException(409, 'This account has a password: confirm with it', 'has_password');
         }
         $code = $this->code($user, $purpose, $this->window());
@@ -55,8 +55,9 @@ readonly class ReauthenticationService
      */
     public function assertConfirmed(User $user, string $purpose, ?string $password, ?string $code): void
     {
-        if (null !== $user->getPassword()) {
-            if (null === $password || '' === $password || !$this->hasher->isPasswordValid($user, $password)) {
+        if ($user->hasPasswordCredential()) {
+            // OPAQUE-only accounts (no bcrypt hash) confirm through reauth tickets (AP 8): never the mailed code.
+            if (null === $user->getPassword() || null === $password || '' === $password || !$this->hasher->isPasswordValid($user, $password)) {
                 throw new ApiProblemException(400, 'The password is not correct', 'invalid_credentials', 'password');
             }
 

@@ -72,18 +72,34 @@ final class OpaqueService
     /** evaluated_element | server_public_key for a registration (signup, reset, change, upgrade). */
     public function registrationResponse(User $user, string $request): string
     {
-        return $this->server()->createRegistrationResponse($request, $user->getId());
+        return $this->registrationResponseFor($user->getId(), $request);
+    }
+
+    /**
+     * Same, for a credential id that is not a stored user yet (signup). The id comes from server-side binding only.
+     *
+     * @throws InvalidMessageException on a malformed blinded element
+     */
+    public function registrationResponseFor(string $credentialId, string $request): string
+    {
+        return $this->server()->createRegistrationResponse($request, $credentialId);
     }
 
     /** Stores a client record on the entity (192 B, validated); the caller flushes and ends sessions where required. */
     public function storeRecord(User $user, #[\SensitiveParameter] string $record): void
+    {
+        $this->assertValidRecord($record);
+        $user->setOpaque($record, self::CURRENT_VERSION, self::CURRENT_KEY_ID);
+    }
+
+    /** @throws InvalidMessageException unless the bytes are a well-formed record (length, public key point) */
+    public function assertValidRecord(#[\SensitiveParameter] string $record): void
     {
         try {
             RegistrationRecord::fromBytes($record);
         } catch (CorruptRecordException $e) {
             throw new InvalidMessageException('Invalid registration record.', 0, $e);
         }
-        $user->setOpaque($record, self::CURRENT_VERSION, self::CURRENT_KEY_ID);
     }
 
     /** @throws InvalidMessageException on a malformed KE1 */

@@ -13,6 +13,8 @@ use App\Exception\ApiProblemException;
 use App\Exception\OAuthAccountConflictException;
 use App\Exception\OAuthIdentityMismatchException;
 use App\Exception\OAuthRegistrationRestrictedException;
+use App\Opaque\InvalidMessageException;
+use App\Opaque\OpaqueService;
 use App\Repository\RefreshTokenRepository;
 use App\Security\NonceStore;
 use App\Security\OneTimeTokenService;
@@ -44,6 +46,7 @@ readonly class AuthService
         private LegalConsentService $legal,
         private RegistrationPolicy $registrationPolicy,
         private LoggerInterface $logger,
+        private OpaqueService $opaque,
         /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
         #[Autowire(env: 'int:REFRESH_TOKEN_REUSE_GRACE')]
         private int $refreshReuseGrace,
@@ -58,6 +61,46 @@ readonly class AuthService
      */
     public function register(string $name, string $email, string $password, ?string $language = null, array $acceptedDocuments = [], ?string $ip = null, ?string $userAgent = null): array
     {
+        return $this->createAccount(
+            $name,
+            $email,
+            fn (User $user) => $user->setPassword($this->hasher->hashPassword($user, $password)),
+            $language,
+            $acceptedDocuments,
+            $ip,
+            $userAgent,
+        );
+    }
+
+    /**
+     * Signup with an OPAQUE record (no password hash). `$userId` is the id the record was registered under (from the
+     * signed signup state); `$claimState` consumes that state and runs after every check, right before the insert.
+     *
+     * @param array<mixed> $acceptedDocuments
+     *
+     * @throws InvalidMessageException on a malformed record
+     */
+    public function registerOpaque(string $userId, string $name, string $email, string $record, ?string $language, array $acceptedDocuments, callable $claimState, ?string $ip = null, ?string $userAgent = null): array
+    {
+        return $this->createAccount(
+            $name,
+            $email,
+            fn (User $user) => $this->opaque->storeRecord($user, $record),
+            $language,
+            $acceptedDocuments,
+            $ip,
+            $userAgent,
+            $userId,
+            $claimState,
+        );
+    }
+
+    /**
+     * @param callable(User): mixed $credentials       sets the password credential on the new user
+     * @param array<mixed>          $acceptedDocuments
+     */
+    private function createAccount(string $name, string $email, callable $credentials, ?string $language, array $acceptedDocuments, ?string $ip, ?string $userAgent, ?string $presetId = null, ?callable $claimState = null): array
+    {
         $email = EmailAddress::normalize($email);
         // Before the e-mail-taken check and the hashing
         $accepted = $this->legal->assertAccepted($acceptedDocuments);
@@ -68,12 +111,15 @@ readonly class AuthService
         if ($existing) {
             throw new ApiProblemException(400, 'Email already in use', 'email_taken', 'email');
         }
-        $user = new User();
+        $user = null === $presetId ? new User() : User::withPresetId($presetId);
         $user->setName($name);
         $user->setEmail($email);
-        $user->setPassword($this->hasher->hashPassword($user, $password));
+        $credentials($user);
         if (null !== $language && '' !== $language) {
             $user->setLanguage($language);
+        }
+        if (null !== $claimState) {
+            $claimState();
         }
         $this->em->persist($user);
         try {
@@ -315,7 +361,7 @@ readonly class AuthService
             'lastClubId' => $user->getLastClubId(),
             'lastCalendarId' => $user->getLastCalendarId(),
             'language' => $user->getLanguage(),
-            'hasPassword' => null !== $user->getPassword(),
+            'hasPassword' => $user->hasPasswordCredential(),
             'pendingConsents' => LegalPresenter::pending($pending),
             'consentRequired' => !$sessionConsentOk && [] !== $pending,
             'emailVerificationRequired' => !$user->isEmailVerified(),
