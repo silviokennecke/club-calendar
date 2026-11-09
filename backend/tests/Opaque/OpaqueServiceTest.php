@@ -176,7 +176,7 @@ class OpaqueServiceTest extends KernelTestCase
 
     public function testServiceServerUsesSystemRandom(): void
     {
-        $server = (new \ReflectionMethod($this->service, 'server'))->invoke($this->service);
+        $server = (new \ReflectionMethod($this->service, 'server'))->invoke($this->service, '1');
         self::assertInstanceOf(\App\Opaque\SystemRandom::class, (new \ReflectionProperty($server, 'random'))->getValue($server));
     }
 

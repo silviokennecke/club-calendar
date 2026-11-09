@@ -13,7 +13,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 class OpaqueStatusCommandTest extends KernelTestCase
 {
-    private function add(string $email, bool $bcrypt, bool $record): void
+    private function add(string $email, bool $bcrypt, bool $record, string $keyId = '1'): void
     {
         $em = static::getContainer()->get(EntityManagerInterface::class);
         $user = (new User())->setName('U')->setEmail($email)->setIsEmailVerified(true);
@@ -21,7 +21,7 @@ class OpaqueStatusCommandTest extends KernelTestCase
             $user->setPassword('$2y$04$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234');
         }
         if ($record) {
-            $user->setOpaque(str_repeat("\x01", 192), 1, '1');
+            $user->setOpaque(str_repeat("\x01", 192), 1, $keyId);
         }
         $em->persist($user);
         $em->flush();
@@ -53,6 +53,22 @@ class OpaqueStatusCommandTest extends KernelTestCase
         $tester->execute([]);
         self::assertStringContainsString('Migrated: 50 %', $tester->getDisplay());
         self::assertStringContainsString('OPAQUE_ROLLOUT_PERCENT', $tester->getDisplay());
+    }
+
+    public function testCountsRecordsPerKeyId(): void
+    {
+        self::bootKernel();
+        DatabaseResetter::reset(static::getContainer()->get(EntityManagerInterface::class));
+        $this->add('a@example.com', false, true, '1');
+        $this->add('b@example.com', false, true, '2');
+        $this->add('c@example.com', false, true, '2');
+        $this->add('d@example.com', true, false);
+
+        $tester = new CommandTester((new Application(self::$kernel))->find('app:opaque:status'));
+        $tester->execute(['--json' => true]);
+
+        $data = json_decode($tester->getDisplay(), true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame(['1' => 1, '2' => 2], $data['recordsByKeyId']);
     }
 
     public function testEmptyDatabase(): void

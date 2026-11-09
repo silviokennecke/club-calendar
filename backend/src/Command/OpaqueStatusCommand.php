@@ -31,6 +31,12 @@ class OpaqueStatusCommand
             .' COALESCE(SUM(opaque_record IS NULL AND password IS NULL), 0) AS no_password'
             .' FROM `user`',
         ) ?: [];
+        /** @var array<string, int|string> $byKey */
+        $byKey = $this->connection->fetchAllKeyValue('SELECT COALESCE(opaque_key_id, \'\'), COUNT(*) FROM `user` WHERE opaque_record IS NOT NULL GROUP BY opaque_key_id ORDER BY 1');
+        $recordsByKeyId = [];
+        foreach ($byKey as $id => $count) {
+            $recordsByKeyId[(string) $id] = (int) $count;
+        }
         $total = (int) ($row['total'] ?? 0);
         $withRecord = (int) ($row['with_record'] ?? 0);
         $bcryptOnly = (int) ($row['bcrypt_only'] ?? 0);
@@ -47,6 +53,7 @@ class OpaqueStatusCommand
             'both' => (int) ($row['both_credentials'] ?? 0),
             'noPassword' => (int) ($row['no_password'] ?? 0),
             'migratedPercent' => $migrated,
+            'recordsByKeyId' => (object) $recordsByKeyId,
         ];
         if ($json) {
             $io->writeln(json_encode($data, \JSON_THROW_ON_ERROR));
@@ -66,6 +73,7 @@ class OpaqueStatusCommand
             ['both (upgraded, hash kept until phase 2)', $data['both']],
             ['no password (SSO/passkey only)', $data['noPassword']],
         ]);
+        $io->table(['Key id', 'Records'], array_map(static fn (string $id, int $n): array => ['' === $id ? '(none)' : $id, $n], array_keys($recordsByKeyId), $recordsByKeyId));
         $io->writeln(sprintf('Migrated: %s %% of accounts with a password', $migrated));
 
         return Command::SUCCESS;

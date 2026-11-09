@@ -44,9 +44,9 @@ final class OpaqueServer
         sodium_memzero($fakeInput);
     }
 
-    public static function fromKeys(OpaqueKeys $keys, string $context = '', ?string $serverIdentity = null, RandomSource $random = new SystemRandom()): self
+    public static function fromKeys(OpaqueKeys $keys, string $context = '', ?string $serverIdentity = null, RandomSource $random = new SystemRandom(), ?string $keyId = null): self
     {
-        return new self($keys->serverPrivateKey(), $keys->oprfSeed(), $context, $serverIdentity, $random);
+        return new self($keys->serverPrivateKey($keyId), $keys->oprfSeed($keyId), $context, $serverIdentity, $random);
     }
 
     public function serverPublicKey(): string
