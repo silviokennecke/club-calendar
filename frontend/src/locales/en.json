@@ -176,7 +176,8 @@
         "login": "There is an account for this address. Enter your password.",
         "register": "There is no account for this address yet. Create one now.",
         "registration_restricted": "Registration is only possible with an invitation."
-      }
+      },
+      "feedProofNote": "After signing in you continue with the calendar you want to add to your account."
     }
   },
   "setup": {
@@ -309,6 +310,17 @@
       "close": "Close",
       "loadingTitle": "Loading event",
       "backToFeed": "Back to the calendar"
+    },
+    "accountBar": {
+      "label": "Account",
+      "signedInAs": "Signed in as",
+      "toAccount": "Go to my account",
+      "signOut": "Sign out"
+    },
+    "account": {
+      "add": "Add to my account",
+      "show": "Show in my account",
+      "added": "The calendar is now in your account."
     }
   },
   "calendar": {
@@ -2355,6 +2367,28 @@
       "declinedText": "You declined the invitation. Nothing changed in your account."
     },
     "role": "Role: {{role}}"
+  },
+  "feedJoin": {
+    "title": "Join the club",
+    "intro": "You will become a member of the club \"{{club}}\".",
+    "addTitle": "Add calendar to my account",
+    "addIntro": "You are already a member of the club \"{{club}}\".",
+    "feedNamed": "The calendar \"{{name}}\" of the club \"{{club}}\" will be added to your account. You will find its events under \"My club\" afterwards.",
+    "feedUnnamed": "The calendar of the club \"{{club}}\" will be added to your account. You will find its events under \"My club\" afterwards.",
+    "confirm": "Join",
+    "confirmAdd": "Add",
+    "backToFeed": "Back to the calendar",
+    "retry": "Try again",
+    "errorTitle": "That did not work",
+    "joined": "You are now a member of the club \"{{club}}\".",
+    "added": "The calendar is now in your account.",
+    "problem": {
+      "signupDisabled": "This club does not accept new members through this calendar. Please ask the club for an invitation.",
+      "notFound": "This calendar was not found or the link is no longer valid. Please ask the club for the current link.",
+      "quota": "Limit reached: you cannot join another club right now, or the club is full.",
+      "rateLimited": "Too many attempts. Please try again later.",
+      "failed": "Something went wrong. Please try again."
+    }
   },
   "legal": {
     "nav": "Legal",

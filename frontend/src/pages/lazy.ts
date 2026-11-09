@@ -64,6 +64,7 @@ export const FeedPage = lazyPage(() => import("./FeedPage"));
 export const PublicEventModal = lazyPage(modalImports.PublicEventModal);
 export const MyEventModal = lazyPage(modalImports.MyEventModal);
 export const HelpPage = lazyPage(() => import("./HelpPage"));
+export const FeedJoinPage = lazyPage(() => import("./FeedJoinPage"));
 export const InvitationPage = lazyPage(() => import("./InvitationPage"));
 export const ClubsPage = lazyPage(() => import("./ClubsPage"));
 export const SetupPage = lazyPage(() => import("./SetupPage"));

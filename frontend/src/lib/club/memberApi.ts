@@ -151,6 +151,7 @@ export function useClaimFeed() {
       // A new membership changes the club list; new access changes the selectable feeds.
       await qc.invalidateQueries({ queryKey: ["clubs"] });
       await qc.invalidateQueries({ queryKey: myFeedsKey(result.clubId) });
+      await qc.invalidateQueries({ queryKey: ["feed-membership"] });
     },
   });
 }

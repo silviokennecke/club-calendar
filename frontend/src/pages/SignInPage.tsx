@@ -13,6 +13,7 @@ import {
   readInvitationToken,
   type InvitationPreview,
 } from "@/lib/invitations";
+import { feedProofBody, readFeedProof } from "@/lib/feeds/feedProof";
 import { Banner, Button, ErrorSummary, Field, SsoButton, TextInput } from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Collapse } from "@/components/auth/Collapse";
@@ -58,6 +59,7 @@ export default function SignInPage() {
   const [ssoError, setSsoError] = useState<string | null>(searchParams.get("error"));
   const [providers, setProviders] = useState<SsoProvider[]>([]);
   const [token] = useState(readInvitationToken);
+  const [feedProof] = useState(readFeedProof);
   const leftEmailStep = useRef(false);
 
   const preview = useQuery({
@@ -113,6 +115,7 @@ export default function SignInPage() {
     try {
       const res = await apiPost<{ email: string; status: Status }>("/api/auth/identify", {
         email: trimmed,
+        ...feedProofBody(),
       });
       setTyped(res.email);
       setResult({ status: res.status, email: res.email });
@@ -134,9 +137,13 @@ export default function SignInPage() {
     setSsoError(null);
     try {
       const challenge = await createSsoChallenge();
-      window.location.assign(
-        `${BACKEND_URL}/api/auth/oauth/${provider}?${new URLSearchParams({ code_challenge: challenge })}`,
-      );
+      const query = new URLSearchParams({ code_challenge: challenge });
+      const proof = readFeedProof();
+      if (proof) {
+        query.set("feed_id", proof.feedId);
+        if (proof.secret) query.set("secret", proof.secret);
+      }
+      window.location.assign(`${BACKEND_URL}/api/auth/oauth/${provider}?${query}`);
     } catch {
       setSsoError("oauth_failed");
     }
@@ -220,6 +227,12 @@ export default function SignInPage() {
             {t("auth.entry.inviteDeadText")}
           </Banner>
         )}
+      </Collapse>
+
+      <Collapse open={feedProof !== null}>
+        <Banner tone="info" icon="calendar">
+          {t("auth.entry.feedProofNote")}
+        </Banner>
       </Collapse>
 
       <div className="ap-flow" onKeyDown={onKeyDown}>

@@ -27,6 +27,7 @@ import {
   EventTemplatePickModal,
   FeaturesPage,
   FeedEditPage,
+  FeedJoinPage,
   FeedPage,
   HelpPage,
   FeedsPage,
@@ -75,6 +76,7 @@ function AppRoutes() {
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/auth/verify-email" element={<EmailVerifyPage />} />
           <Route path="/feed/:feedId" element={<FeedPage />} />
+          <Route path="/feed/:feedId/join" element={<FeedJoinPage />} />
           <Route path="/help/subscribe" element={<SubscribeRedirect />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="/help/*" element={<HelpPage />} />

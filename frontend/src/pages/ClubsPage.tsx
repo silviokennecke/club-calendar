@@ -16,6 +16,7 @@ import { AuthLayout } from "@/components/auth/AuthLayout";
 import { ClubCard } from "@/components/clubs/ClubCard";
 import { InvitationsSection } from "@/components/clubs/InvitationsSection";
 import { readInvitationToken, takeInvitationRedirect, type MyInvitation } from "@/lib/invitations";
+import { feedJoinPath, readFeedProof, takeFeedJoinRedirect } from "@/lib/feeds/feedProof";
 import { initials } from "@/components/layout/navigation";
 import { isPlainMember } from "@/lib/club/permissions";
 import { myClubPath } from "@/lib/club/myClub";
@@ -59,6 +60,13 @@ export default function ClubsPage() {
     if (readInvitationToken() && takeInvitationRedirect()) {
       setRedirected(true);
       navigate("/invitations", { replace: true });
+      return;
+    }
+    // Back from the sign-in of a public feed page ("add to my account"): continue at the join page.
+    const feedProof = readFeedProof();
+    if (feedProof && takeFeedJoinRedirect()) {
+      setRedirected(true);
+      navigate(feedJoinPath(feedProof.feedId), { replace: true });
       return;
     }
     const returnTo = takeReturnTo();

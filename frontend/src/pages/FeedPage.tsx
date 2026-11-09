@@ -15,6 +15,7 @@ import { PublicCalendarView } from "@/components/feed/PublicCalendarView";
 import { PublicShell } from "@/components/feed/PublicShell";
 import { PublicError, PublicLoading } from "@/components/feed/PublicStates";
 import { SubscribeButton } from "@/components/feed/SubscribeButton";
+import { useFeedAccount } from "@/components/feed/useFeedAccount";
 import { usePublicFeed } from "@/components/feed/usePublicFeed";
 import { EmptyState } from "@/components/ui/shared";
 import { preloadPublicEventModal } from "./lazy";
@@ -95,6 +96,7 @@ function FeedHero({
   const [params] = useSearchParams();
   const groupIds = parseGroupIds(params.get("groups"), data.feed.audiences);
   const addresses = publicFeedAddresses(feedId, secret, groupIds);
+  const account = useFeedAccount(feedId, secret);
 
   return (
     <div className="pub-hero">
@@ -102,7 +104,7 @@ function FeedHero({
         <h1 className="t-display">{data.feed.name}</h1>
       </div>
       <div className="ap-actions" style={{ flex: "0 1 auto" }}>
-        <SubscribeButton addresses={addresses} name={data.feed.name} />
+        <SubscribeButton addresses={addresses} name={data.feed.name} account={account} />
       </div>
     </div>
   );

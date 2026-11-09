@@ -12,6 +12,7 @@ import {
   type LegalType,
 } from "@/lib/legal";
 import { isRateLimited, rateLimitText } from "@/lib/rateLimit";
+import { feedProofBody } from "@/lib/feeds/feedProof";
 import { passwordProblem } from "@/lib/password";
 import { useFieldTouch } from "@/lib/useFieldTouch";
 import i18n from "@/lib/i18n";
@@ -118,6 +119,7 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
         password,
         language: i18n.resolvedLanguage ?? "en",
         acceptedDocuments: consentItems.map((i) => i.id),
+        ...feedProofBody(),
       });
       // restricted session: the address is confirmed with the code from the e-mail
       login(res.access_token, res.refresh_token, {

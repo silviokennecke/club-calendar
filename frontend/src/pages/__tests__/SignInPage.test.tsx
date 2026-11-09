@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import SignInPage from "../SignInPage";
 import { ApiError } from "@/lib/api";
+import { clearFeedProof, stashFeedProof } from "@/lib/feeds/feedProof";
 import { clearInvitationToken, stashInvitationToken } from "@/lib/invitations";
 import { renderAt } from "./authTestUtils";
 
@@ -89,6 +90,7 @@ async function loginStep() {
 beforeEach(() => {
   vi.clearAllMocks();
   clearInvitationToken();
+  clearFeedProof();
   mockApi();
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ json: () => Promise.resolve(providers) }));
 });
@@ -551,5 +553,65 @@ describe("invitation link", () => {
   it("makes no preview call without a token", () => {
     renderFlow();
     expect(apiPost).not.toHaveBeenCalled();
+  });
+});
+
+describe("feed proof", () => {
+  it("sends the stashed proof with identify and shows a note", async () => {
+    stashFeedProof({ feedId: "f1", secret: "s3cret" });
+    renderFlow();
+    expect(
+      screen.getByText(/Nach der Anmeldung geht es mit dem Kalender weiter/),
+    ).toBeInTheDocument();
+    await continueWith();
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith("/api/auth/identify", {
+        email: "Alex@beispiel.de",
+        feedProof: { feedId: "f1", secret: "s3cret" },
+      }),
+    );
+  });
+
+  it("sends no feedProof without a stash", async () => {
+    renderFlow();
+    await continueWith();
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith("/api/auth/identify", { email: "Alex@beispiel.de" }),
+    );
+  });
+
+  it("passes the proof to the SSO start route", async () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    stashFeedProof({ feedId: "f1", secret: "s3cret" });
+    renderFlow();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("link", { name: "Mit Google anmelden" }));
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledTimes(1));
+    const url = new URL(assign.mock.calls[0][0] as string);
+    expect(url.searchParams.get("feed_id")).toBe("f1");
+    expect(url.searchParams.get("secret")).toBe("s3cret");
+    vi.unstubAllGlobals();
+  });
+
+  it("sends the proof with the registration (restricted registration)", async () => {
+    stashFeedProof({ feedId: "f1" });
+    mockApi("register");
+    renderFlow("/signup");
+    const user = await continueWith();
+    await screen.findByLabelText(/^Name/);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Konto erstellen" })).toBeEnabled(),
+    );
+    await user.type(screen.getByLabelText(/^Name/), "Alex Beispiel");
+    await user.type(screen.getByLabelText(/^Passwort \(Pflicht\)/), "sicheres-passwort");
+    await user.type(screen.getByLabelText(/^Passwort wiederholen/), "sicheres-passwort");
+    await user.click(screen.getByRole("button", { name: "Konto erstellen" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith(
+        "/api/auth/register",
+        expect.objectContaining({ feedProof: { feedId: "f1" } }),
+      ),
+    );
   });
 });

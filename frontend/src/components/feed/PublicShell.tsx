@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { LangSwitch, Logo } from "@/components/ui/shared";
 import { LegalLinks } from "@/components/legal/LegalLinks";
 import { HelpCenterLink } from "@/docs/HelpCenterLink";
+import { SignedInBar } from "./SignedInBar";
 import { usePublicHead } from "./usePublicHead";
 
 interface PublicShellProps {
@@ -42,6 +43,7 @@ export function PublicShell({
       <a className="ap-skip cc-btn cc-btn--primary" href="#main">
         {t("shell.skipToContent")}
       </a>
+      <SignedInBar />
       <header className="pub-head">
         <div className="pub-wrap">
           <div className="pub-topbar">

@@ -176,7 +176,8 @@
         "login": "Für diese Adresse gibt es ein Konto. Gib dein Passwort ein.",
         "register": "Für diese Adresse gibt es noch kein Konto. Lege jetzt eines an.",
         "registration_restricted": "Die Registrierung ist nur mit einer Einladung möglich."
-      }
+      },
+      "feedProofNote": "Nach der Anmeldung geht es mit dem Kalender weiter, den du zu deinem Konto hinzufügen möchtest."
     }
   },
   "setup": {
@@ -309,6 +310,17 @@
       "close": "Schließen",
       "loadingTitle": "Termin wird geladen",
       "backToFeed": "Zum Kalender"
+    },
+    "accountBar": {
+      "label": "Konto",
+      "signedInAs": "Angemeldet als",
+      "toAccount": "Zu meinem Konto",
+      "signOut": "Abmelden"
+    },
+    "account": {
+      "add": "Zu meinem Konto hinzufügen",
+      "show": "In meinem Konto anzeigen",
+      "added": "Der Kalender ist jetzt in deinem Konto."
     }
   },
   "calendar": {
@@ -2355,6 +2367,28 @@
       "declinedText": "Du hast die Einladung abgelehnt. Es wurde nichts an deinem Konto geändert."
     },
     "role": "Rolle: {{role}}"
+  },
+  "feedJoin": {
+    "title": "Dem Verein beitreten",
+    "intro": "Du wirst Mitglied im Verein „{{club}}“.",
+    "addTitle": "Kalender zu meinem Konto hinzufügen",
+    "addIntro": "Du bist bereits Mitglied im Verein „{{club}}“.",
+    "feedNamed": "Der Kalender „{{name}}“ des Vereins „{{club}}“ wird deinem Konto hinzugefügt. Deine Termine findest du danach unter „Mein Verein“.",
+    "feedUnnamed": "Der Kalender des Vereins „{{club}}“ wird deinem Konto hinzugefügt. Deine Termine findest du danach unter „Mein Verein“.",
+    "confirm": "Beitreten",
+    "confirmAdd": "Hinzufügen",
+    "backToFeed": "Zurück zum Kalender",
+    "retry": "Erneut versuchen",
+    "errorTitle": "Das hat nicht geklappt",
+    "joined": "Du bist jetzt Mitglied im Verein „{{club}}“.",
+    "added": "Der Kalender ist jetzt in deinem Konto.",
+    "problem": {
+      "signupDisabled": "Dieser Verein nimmt über diesen Kalender keine neuen Mitglieder auf. Bitte frage beim Verein nach einer Einladung.",
+      "notFound": "Dieser Kalender wurde nicht gefunden oder der Link ist nicht mehr gültig. Bitte frage beim Verein nach dem aktuellen Link.",
+      "quota": "Limit erreicht: Du kannst gerade keinem weiteren Verein beitreten oder der Verein ist voll.",
+      "rateLimited": "Zu viele Versuche. Bitte versuche es später noch einmal.",
+      "failed": "Es ist ein Fehler aufgetreten. Bitte versuche es noch einmal."
+    }
   },
   "legal": {
     "nav": "Rechtliches",

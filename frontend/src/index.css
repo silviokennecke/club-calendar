@@ -3718,6 +3718,40 @@
     min-height: 100vh;
     min-height: 100dvh;
   }
+  .pub-accountbar {
+    background: var(--surface-sunken, var(--surface));
+    border-bottom: 1px solid var(--border);
+    min-height: 40px;
+    font-size: var(--text-sm, 0.875rem);
+  }
+  .pub-accountbar-in {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0 var(--space-4);
+    min-height: 40px;
+  }
+  .pub-accountbar-who {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .pub-accountbar-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--space-4);
+  }
+  .pub-accountbar-links .ap-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+  }
   .pub-head {
     background: var(--surface-raised);
     border-bottom: 1px solid var(--border);
