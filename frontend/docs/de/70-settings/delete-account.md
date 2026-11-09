@@ -13,7 +13,7 @@ Du kannst dein Konto jederzeit löschen. Das geht nicht rückgängig.
 1. Öffne dein [Profil](help:settings/profile) und gehe zum **Gefahrenbereich**.
 2. Klicke auf **Konto löschen**.
 3. Bestätige:
-   - Mit Passwort: gib bei **Zur Bestätigung dein Passwort** dein Passwort ein. Es wird auf deinem Gerät geprüft und nie an den Server gesendet, siehe [Passwort](help:settings/password#so-sicher-ist-dein-passwort).
+   - Mit Passwort: gib bei **Zur Bestätigung dein Passwort** dein Passwort ein.
    - Ohne Passwort (nur Anbieter oder Passkey): klicke auf **Code senden**. Du bekommst einen 6-stelligen Code per E-Mail und gibst ihn bei **Bestätigungscode** ein. Er ist mindestens 10 Minuten gültig.
 4. Klicke auf **Konto löschen**.
 

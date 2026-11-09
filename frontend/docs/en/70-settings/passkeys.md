@@ -13,7 +13,7 @@ With a passkey you sign in by fingerprint, face recognition or device PIN, witho
 1. Open your [profile](help:settings/profile) and go to **Passkeys**.
 2. Enter a name under **Device name**, for example "Office PC". It helps you recognize the device in the list.
 3. Click **Set up a passkey on this device**.
-4. Confirm that it is you: enter your password (it does not leave your device, see [Password](help:settings/password#how-your-password-is-protected)). If your account has no password (provider or passkey only), click **Send code** and enter the 6-digit code from the email under **Confirmation code** (valid for at least 10 minutes).
+4. Confirm that it is you: enter your password. If your account has no password (provider or passkey only), click **Send code** and enter the 6-digit code from the email under **Confirmation code** (valid for at least 10 minutes).
 5. Click **Continue** and confirm on the device.
 
 You set up one passkey per device. If your browser does not support passkeys, you see a notice.

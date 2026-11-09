@@ -13,7 +13,7 @@ You can delete your account at any time. This cannot be undone.
 1. Open your [profile](help:settings/profile) and go to the **Danger zone**.
 2. Click **Delete account**.
 3. Confirm:
-   - With a password: enter it under **Your password to confirm**. It is checked on your device and never sent to the server, see [Password](help:settings/password#how-your-password-is-protected).
+   - With a password: enter it under **Your password to confirm**.
    - Without a password (provider or passkey only): click **Send code**. You get a 6-digit code by e-mail and enter it under **Confirmation code**. It is valid for at least 10 minutes.
 4. Click **Delete account**.
 

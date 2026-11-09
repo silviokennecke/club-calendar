@@ -15,7 +15,7 @@ Dafür brauchst du ein Passwort. Wenn du dich nur über einen Anbieter anmeldest
 ## So geht's
 
 1. Öffne dein [Profil](help:settings/profile), Bereich **Name und E-Mail-Adresse**.
-2. Gib die **Neue E-Mail-Adresse** und dein **Aktuelles Passwort** ein. Das Passwort wird auf deinem Gerät geprüft und nie an den Server gesendet.
+2. Gib die **Neue E-Mail-Adresse** und dein **Aktuelles Passwort** ein.
 3. Klicke auf **Bestätigungslink senden**.
 4. Öffne den Link in der E-Mail, die an die **neue** Adresse geht. Er ist 24 Stunden gültig.
 
