@@ -110,6 +110,7 @@ See `../CLAUDE.md` "Auth" and `../docs/api/openapi.yaml`.
 ## Testing
 
 OPAQUE live interop (pinned `@serenity-kit/opaque` client vs. `App\Opaque\OpaqueServer`): `npm run test:opaque-interop -w frontend` (~5 s, needs `composer install` + `npm ci`; CI step in the backend job; harness `tests/Opaque/bin/interop-server.php`). `phpunit --group interop` wraps it (excluded from the default run).
+The Playwright suite (`frontend/e2e`) runs against a backend with OPAQUE enabled and throwaway keys (`../docs/ops/E2E.md`); its helpers use a Node OPAQUE client, so a backend change to the OPAQUE routes or the legacy `register`/`login` contract can break `frontend/e2e/helpers.ts` and `opaque.spec.ts`.
 Tests are in `tests/Controller/` using `Symfony\Bundle\FrameworkBundle\Test\WebTestCase`.
 `tests/Helper/DatabaseResetter::reset($em)` truncates all tables before each test class.
 `tests/Helper/TestHelper` provides factory helpers: `createUser`, `createClub`, `createCalendar`, `createEvent`, `createTemplate`.
