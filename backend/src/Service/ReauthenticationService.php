@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\User;
 use App\Exception\ApiProblemException;
+use App\Opaque\OpaqueReauthTickets;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -17,18 +18,22 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
  * code is derived (HMAC of APP_SECRET over user, session version, address and a 10-minute window), so nothing
  * is stored; it is valid for the window it was issued in and the next one (10 to 20 minutes), ends with the
  * sessions (password set, takeover revocation) and with an address change. Attempts are limited per user and
- * client IP by the caller (`AuthRateLimiter`); a guess has a chance of 1 in 10^6 per try.
+ * client IP by the caller (`AuthRateLimiter`); a guess has a chance of 1 in 10^6 per try. An OPAQUE reauth ticket
+ * (`POST /api/auth/opaque/reauth/*`, same purpose) is accepted instead of password or code; accounts with a record
+ * and no bcrypt hash can prove themselves only that way.
  */
 readonly class ReauthenticationService
 {
     public const int CODE_WINDOW = 600;
     public const string PURPOSE_DELETE_ACCOUNT = 'delete-account';
     public const string PURPOSE_PASSKEY = 'passkey-register';
+    public const string PURPOSE_CHANGE_EMAIL = 'change-email';
 
     public function __construct(
         private UserPasswordHasherInterface $hasher,
         private AccountMailer $mailer,
         private ClockInterface $clock,
+        private OpaqueReauthTickets $tickets,
         #[Autowire(env: 'APP_SECRET')]
         private string $secret,
     ) {
@@ -51,10 +56,16 @@ readonly class ReauthenticationService
 
     /**
      * @throws ApiProblemException 400 `invalid_credentials` (password missing or wrong, field `password`),
-     *                             400 `invalid_confirmation_code` (code missing, wrong or expired, field `code`)
+     *                             400 `invalid_confirmation_code` (code missing, wrong or expired, field `code`),
+     *                             403 `reauth_required` (ticket invalid; consumed on success only)
      */
-    public function assertConfirmed(User $user, string $purpose, ?string $password, ?string $code): void
+    public function assertConfirmed(User $user, string $purpose, ?string $password, ?string $code, ?string $ticket = null): void
     {
+        if (null !== $ticket && '' !== $ticket) {
+            $this->assertTicket($user, $purpose, $ticket);
+
+            return;
+        }
         if ($user->hasPasswordCredential()) {
             // OPAQUE-only accounts (no bcrypt hash) confirm through reauth tickets (AP 8): never the mailed code.
             if (null === $user->getPassword() || null === $password || '' === $password || !$this->hasher->isPasswordValid($user, $password)) {
@@ -71,6 +82,14 @@ readonly class ReauthenticationService
         }
         if (!$valid) {
             throw new ApiProblemException(400, 'The confirmation code is not correct or expired', 'invalid_confirmation_code', 'code');
+        }
+    }
+
+    /** Redeems an OPAQUE reauth ticket of exactly this purpose (single use; any failure is the same 403). */
+    public function assertTicket(User $user, string $purpose, string $ticket): void
+    {
+        if (!$this->tickets->consume($user, $purpose, $ticket)) {
+            throw new ApiProblemException(403, 'Re-authentication is required', 'reauth_required');
         }
     }
 

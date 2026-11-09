@@ -205,7 +205,11 @@ class AuthController extends AbstractApiController
         $this->validateDto($dto, $this->validator);
         $dto->email = trim($dto->email);
 
-        $this->accounts->assertPassword($user, (string) $dto->password, 'password');
+        if (null !== $dto->reauthTicket && '' !== $dto->reauthTicket) {
+            $this->reauth->assertTicket($user, ReauthenticationService::PURPOSE_CHANGE_EMAIL, $dto->reauthTicket);
+        } else {
+            $this->accounts->assertPassword($user, (string) $dto->password, 'password');
+        }
         $send = $this->emailChangeLimiter->create($user->getId())->consume()->isAccepted();
         $this->accounts->requestEmailChange($user, $dto->email, $send);
 
@@ -386,8 +390,10 @@ class AuthController extends AbstractApiController
     }
 
     /**
-     * Deletes the account after re-authentication: `{password}` for an account with a password, `{code}`
-     * (mailed by `POST /delete-account/code`) for one without. 400 `invalid_credentials` /
+     * Deletes the account after re-authentication: `{password}` for an account with a password, `{reauthTicket}`
+     * (OPAQUE, purpose delete-account; the only proof of an account with a record and no bcrypt hash), `{code}`
+     * (mailed by `POST /delete-account/code`) for one without any password. The ticket is consumed by the proof,
+     * before the last-member guard, so a refused deletion burns it. 400 `invalid_credentials` /
      * `invalid_confirmation_code`, 429 `rate_limited`; nothing is deleted before the proof is valid.
      */
     #[Route('/me', methods: ['DELETE'])]
@@ -399,7 +405,7 @@ class AuthController extends AbstractApiController
             ? new DeleteAccountDto()
             : $this->deserializeDto($request, DeleteAccountDto::class);
         $this->validateDto($dto, $this->validator);
-        $this->reauth->assertConfirmed($user, ReauthenticationService::PURPOSE_DELETE_ACCOUNT, $dto->password, $dto->code);
+        $this->reauth->assertConfirmed($user, ReauthenticationService::PURPOSE_DELETE_ACCOUNT, $dto->password, $dto->code, $dto->reauthTicket);
         $this->auth->deleteMe($user);
 
         return new JsonResponse(['ok' => true]);
