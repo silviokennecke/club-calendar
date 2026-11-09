@@ -31,3 +31,5 @@ backend/templates/email/*.html.twig
 # Admin docs build output
 docs/admin/site/
 docs/admin/.cache/
+docs/admin/docs/assets/logo.svg
+docs/admin/docs/assets/favicon.svg

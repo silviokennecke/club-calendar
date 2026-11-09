@@ -18,7 +18,7 @@ Running your own instance? See the admin guide: <https://silviokennecke.github.i
 
 - `backend/` — Symfony API server (port 3001)
 - `frontend/` — Vite/React single-page app (dev server port 5173; the build goes into `backend/public/`)
-- `docs/admin/` — admin guide for operators (published on GitHub Pages)
+- `docs/admin/` — admin guide for operators (published on GitHub Pages; preview: `docs/admin/copy-assets.sh`, then `zensical serve` in `docs/admin/`)
 - `docs/ops/` — E2E setup, maintainer notes, open backlog
 - `docker-compose.yml` — optional MySQL dev/test databases (any MySQL 8 instance works)
 

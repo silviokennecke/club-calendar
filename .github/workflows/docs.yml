@@ -5,10 +5,14 @@ on:
     branches: [main]
     paths:
       - "docs/admin/**"
+      - "frontend/public/logo.svg"
+      - "frontend/public/favicon.svg"
       - ".github/workflows/docs.yml"
   pull_request:
     paths:
       - "docs/admin/**"
+      - "frontend/public/logo.svg"
+      - "frontend/public/favicon.svg"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
@@ -33,6 +37,9 @@ jobs:
 
       - name: Install Zensical
         run: pip install -r docs/admin/requirements.txt
+
+      - name: Copy app logo and favicon
+        run: docs/admin/copy-assets.sh
 
       - name: Build site
         working-directory: docs/admin
