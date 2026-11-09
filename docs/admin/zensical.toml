@@ -31,6 +31,8 @@ nav = [
 ]
 
 [project.theme]
+logo = "assets/logo.svg"
+favicon = "assets/favicon.svg"
 features = [
   "content.code.copy",
   "content.tabs.link",
