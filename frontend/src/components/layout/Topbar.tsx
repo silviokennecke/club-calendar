@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Logo } from "@/components/ui/shared";
+import { isPlainMember } from "@/lib/club/permissions";
 import { ContextMenu } from "./ContextMenu";
 import { CalendarMenuItems, ClubMenuItems } from "./ContextMenuItems";
 import { initials } from "./navigation";
@@ -18,6 +19,7 @@ export function Topbar({ data }: { data: ShellData }) {
   const calendar = data.calendars.find((c) => c.id === data.calendarId);
   const close = () => setOpen(false);
   const unavailable = data.contextState === "unavailable";
+  const member = isPlainMember(club?.role);
   const fallback = unavailable ? t("shell.unavailable") : t("common.loading");
 
   return (
@@ -26,17 +28,21 @@ export function Topbar({ data }: { data: ShellData }) {
         <Logo variant="mark" size={32} />
       </Link>
       <ContextMenu
-        caption={club?.name ?? fallback}
-        value={calendar?.name ?? fallback}
-        menuLabel={t("shell.switchContext")}
+        caption={member ? t("shell.club") : (club?.name ?? fallback)}
+        value={member ? (club?.name ?? fallback) : (calendar?.name ?? fallback)}
+        menuLabel={member ? t("shell.switchClub") : t("shell.switchContext")}
         open={open}
         onOpenChange={setOpen}
       >
         <div className="ap-menu-title">{t("shell.club")}</div>
         <ClubMenuItems data={data} onNavigate={close} withAllClubs={unavailable} />
-        <hr />
-        <div className="ap-menu-title">{t("shell.calendar")}</div>
-        <CalendarMenuItems data={data} onNavigate={close} />
+        {!member && (
+          <>
+            <hr />
+            <div className="ap-menu-title">{t("shell.calendar")}</div>
+            <CalendarMenuItems data={data} onNavigate={close} />
+          </>
+        )}
       </ContextMenu>
       {/* The initials are the link's visible text, so the name starts with them (WCAG 2.5.3 label in name). */}
       <Link className="ap-iconbtn" to="/profile">

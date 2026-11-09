@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
@@ -22,6 +21,7 @@ import { isInvalidRole, isLastAdmin, isLastMember, isMemberGone } from "@/lib/cl
 import { CLUB_ROLES, permissionsFor } from "@/lib/club/permissions";
 import type { Club, ClubMember, ClubRole } from "@/lib/types";
 import { InviteSection } from "./InviteSection";
+import { LeaveClubDialog } from "./LeaveClubDialog";
 
 const PER_PAGE = 10;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -34,8 +34,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 export function MembersSection({ club }: { club: Club }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
-  const navigate = useNavigate();
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   const [removing, setRemoving] = useState<ClubMember | null>(null);
   const { isAdmin } = permissionsFor(club.role);
   const queryKey = ["members", club.id];
@@ -96,31 +95,21 @@ export function MembersSection({ club }: { club: Club }) {
   }
 
   async function remove(member: ClubMember) {
-    const self = member.id === user?.id;
     try {
       await apiDelete(`/api/clubs/${club.id}/members/${member.id}`);
     } catch (error) {
       // 404 member_not_found: someone else removed the member meanwhile; the goal is reached
       if (!isMemberGone(error)) {
-        // 422 last_member: the others left meanwhile; the club keeps at least one member
         toast.error(
           isLastAdmin(error)
             ? t("club.members.lastAdmin")
             : isLastMember(error)
               ? t("club.members.lastMember")
-              : t(self ? "club.members.leaveFailed" : "club.members.removeFailed"),
+              : t("club.members.removeFailed"),
         );
         if (isLastMember(error) || isLastAdmin(error)) void qc.invalidateQueries({ queryKey });
         return;
       }
-    }
-    if (self) {
-      // The user no longer belongs to the club: forget it as "last used" and leave the page.
-      toast.success(t("club.members.left", { club: club.name }));
-      await qc.invalidateQueries({ queryKey: ["clubs"] });
-      void updateUser({ lastClubId: null, lastCalendarId: null });
-      navigate("/clubs?select=1", { replace: true });
-      return;
     }
     await qc.invalidateQueries({ queryKey });
     toast.success(t("club.members.removed", { name: member.name }));
@@ -293,27 +282,22 @@ export function MembersSection({ club }: { club: Club }) {
       />
       {isAdmin && <InviteSection club={club} members={list} />}
 
-      {removing && (
+      {removing && removingSelf && (
+        <LeaveClubDialog
+          club={club}
+          onClose={() => setRemoving(null)}
+          onRefused={() => void qc.invalidateQueries({ queryKey })}
+        />
+      )}
+      {removing && !removingSelf && (
         <ConfirmDialog
           open
           onOpenChange={(open) => !open && setRemoving(null)}
-          icon={removingSelf ? "log-out" : "user"}
-          title={
-            removingSelf
-              ? t("club.members.leaveTitle")
-              : t("club.members.removeTitle", { name: removing.name })
-          }
-          description={
-            removingSelf
-              ? t("club.members.leaveText", { club: club.name })
-              : t("club.members.removeText", { name: removing.name, club: club.name })
-          }
-          consequence={
-            removingSelf ? t("club.members.leaveConsequence") : t("club.members.removeConsequence")
-          }
-          confirmLabel={
-            removingSelf ? t("club.members.leaveConfirm") : t("club.members.removeConfirm")
-          }
+          icon="user"
+          title={t("club.members.removeTitle", { name: removing.name })}
+          description={t("club.members.removeText", { name: removing.name, club: club.name })}
+          consequence={t("club.members.removeConsequence")}
+          confirmLabel={t("club.members.removeConfirm")}
           onConfirm={() => remove(removing)}
         />
       )}

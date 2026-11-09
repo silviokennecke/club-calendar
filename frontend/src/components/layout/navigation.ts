@@ -1,5 +1,6 @@
 import type { Glyph } from "@/components/ui/shared";
-import { roleAtLeast } from "@/lib/club/permissions";
+import { isPlainMember, roleAtLeast } from "@/lib/club/permissions";
+import { myClubPath } from "@/lib/club/myClub";
 import type { ClubRole } from "@/lib/types";
 import { clubSettingsRoutes } from "@/components/settings/clubSettingsRoutes";
 
@@ -13,10 +14,11 @@ export type NavKey =
   | "feeds"
   | "clubSettings"
   | "club"
+  | "me"
   | "profile"
   | "more";
 
-export type TabKey = "calendar" | "events" | "feeds" | "more";
+export type TabKey = "calendar" | "events" | "feeds" | "me" | "more";
 
 export interface NavItem {
   key: NavKey;
@@ -46,10 +48,19 @@ export function calendarBase(clubId: string, calendarId: string) {
 /** Sidebar navigation mapped onto the existing routes. */
 export function buildNavGroups(
   clubId: string,
-  calendarId: string,
-  /** Role of the signed-in user: viewers (and an unknown role) get no import and no feeds. */
+  calendarId: string | null,
+  /** Role of the signed-in user: viewers (and an unknown role) get no import and no feeds; a member only "Mein Verein". */
   role?: ClubRole,
 ): NavGroup[] {
+  const myClub: NavItem = {
+    key: "me",
+    labelKey: "shell.nav.myClub",
+    href: myClubPath(clubId),
+    icon: "user",
+  };
+  if (isPlainMember(role) || !calendarId) {
+    return [{ titleKey: "shell.groups.club", items: [myClub] }];
+  }
   const base = calendarBase(clubId, calendarId);
   const clubSettings = clubSettingsRoutes(clubId);
   const canEdit = roleAtLeast(role, "editor");
@@ -83,6 +94,7 @@ export function buildNavGroups(
     {
       titleKey: "shell.groups.club",
       items: [
+        myClub,
         {
           key: "clubSettings",
           labelKey: "shell.nav.clubSettings",
@@ -97,7 +109,10 @@ export function buildNavGroups(
   return groups.map((g) => ({ ...g, items: g.items.filter((i) => !hidden.includes(i.key)) }));
 }
 
-export function buildTabs(clubId: string, calendarId: string, role?: ClubRole): TabItem[] {
+export function buildTabs(clubId: string, calendarId: string | null, role?: ClubRole): TabItem[] {
+  if (isPlainMember(role) || !calendarId) {
+    return [{ key: "me", labelKey: "shell.nav.myClub", href: myClubPath(clubId), icon: "user" }];
+  }
   const base = calendarBase(clubId, calendarId);
   const tabs: TabItem[] = [
     { key: "calendar", labelKey: "shell.tabs.calendar", href: base, icon: "calendar" },
@@ -123,6 +138,7 @@ export function activeNavKey(
   const path = pathname.replace(/\/+$/, "") || "/";
   if (path === "/profile") return "profile";
   if (path === `/clubs/${clubId}`) return "club";
+  if (path === `/clubs/${clubId}/me`) return "me";
   // Club settings (locations, target groups, feeds) have no calendar in the URL.
   const clubSettings = clubSettingsRoutes(clubId);
   if (path.startsWith(clubSettings.feeds)) return "feeds";
@@ -151,6 +167,8 @@ export function tabForNavKey(key: NavKey | null): TabKey | null {
       return "events";
     case "feeds":
       return "feeds";
+    case "me":
+      return "me";
     case null:
       return null;
     default:

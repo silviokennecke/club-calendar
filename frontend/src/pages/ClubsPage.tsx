@@ -17,6 +17,8 @@ import { ClubCard } from "@/components/clubs/ClubCard";
 import { InvitationsSection } from "@/components/clubs/InvitationsSection";
 import { readInvitationToken, takeInvitationRedirect, type MyInvitation } from "@/lib/invitations";
 import { initials } from "@/components/layout/navigation";
+import { isPlainMember } from "@/lib/club/permissions";
+import { myClubPath } from "@/lib/club/myClub";
 import { takeReturnTo } from "@/lib/mcp";
 import { useClubCreationAllowed } from "@/lib/registration";
 import type { Club } from "@/lib/types";
@@ -66,6 +68,12 @@ export default function ClubsPage() {
       return;
     }
     if (isLoading || isError || invitationsLoading || registrationLoading) return;
+    const lastClub = user?.lastClubId ? clubs.find((c) => c.id === user.lastClubId) : undefined;
+    if (!explicitSelect && lastClub && isPlainMember(lastClub.role)) {
+      setRedirected(true);
+      navigate(myClubPath(lastClub.id), { replace: true });
+      return;
+    }
     if (!explicitSelect && user?.lastClubId && user?.lastCalendarId) {
       const clubExists = clubs.some((c) => c.id === user.lastClubId);
       if (clubs.length > 0 && clubExists) {

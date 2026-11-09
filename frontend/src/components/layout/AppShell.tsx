@@ -1,10 +1,12 @@
 import { Fragment, Suspense, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiGet } from "@/lib/api";
 import { pickCalendar } from "@/lib/pickCalendar";
 import { useAuth } from "@/lib/auth-context";
+import { isPlainMember } from "@/lib/club/permissions";
+import { memberMayOpen, myClubPath } from "@/lib/club/myClub";
 import type { Calendar, Club } from "@/lib/types";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
@@ -44,6 +46,10 @@ export function AppShell({
   });
 
   const clubs = useMemo(() => clubsData ?? [], [clubsData]);
+  const { pathname } = useLocation();
+  const role = clubs.find((c) => c.id === clubId)?.role;
+  // A plain member has no access to calendars and settings: nothing of that is requested or shown.
+  const isMember = isPlainMember(role);
   const {
     data: calendarsData,
     isLoading: calendarsLoading,
@@ -52,19 +58,24 @@ export function AppShell({
     // Same query as the club page: archived calendars are listed in the switcher, too.
     queryKey: ["calendars", clubId, "all"],
     queryFn: () => apiGet(`/api/clubs/${clubId}/calendars?includeArchived=true`),
+    // The role comes with the club list; until then nothing is requested that a member may not read.
+    enabled: !clubsLoading && !isMember,
   });
 
   const calendars = useMemo(() => calendarsData ?? [], [calendarsData]);
+  const calendarsPending = !isMember && (clubsLoading || calendarsLoading);
   // A club that is not in the user's list (foreign / deleted) or whose calendars cannot be loaded.
   const contextState: ShellData["contextState"] =
     calendarsFailed || (!!clubsData && !clubs.some((c) => c.id === clubId))
       ? "unavailable"
-      : clubsLoading || calendarsLoading
+      : clubsLoading || calendarsPending
         ? "loading"
         : "ready";
 
-  const calendarId =
-    requestedCalendarId && (calendarsLoading || calendars.some((c) => c.id === requestedCalendarId))
+  const calendarId = isMember
+    ? null
+    : requestedCalendarId &&
+        (calendarsPending || calendars.some((c) => c.id === requestedCalendarId))
       ? requestedCalendarId
       : ((calendars.find((c) => !c.archivedAt) ?? calendars[0])?.id ?? null);
 
@@ -89,13 +100,24 @@ export function AppShell({
 
   // A club without calendars goes to setup to create one (not when loading them failed).
   useEffect(() => {
-    if (calendarsLoading || calendarsFailed || calendars.length > 0) return;
+    if (isMember || calendarsPending || calendarsFailed || calendars.length > 0) return;
     navigate(`/setup?clubId=${clubId}`, { replace: true });
-  }, [calendars, calendarsLoading, calendarsFailed, navigate, clubId]);
+  }, [isMember, calendars, calendarsPending, calendarsFailed, navigate, clubId]);
+
+  // A plain member reopens their club at "Mein Verein" (there is no calendar to remember).
+  useEffect(() => {
+    if (!isMember || trackedRef.current === clubId || String(user?.lastClubId) === clubId) return;
+    trackedRef.current = clubId;
+    void updateUser({ lastClubId: clubId, lastCalendarId: null });
+  }, [isMember, clubId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onSelectClub = useCallback(
     async (newClubId: string) => {
       if (newClubId === clubId) return;
+      if (isPlainMember(clubs.find((c) => c.id === newClubId)?.role)) {
+        navigate(myClubPath(newClubId));
+        return;
+      }
       const cals = await apiGet<Calendar[]>(`/api/clubs/${newClubId}/calendars`);
       // The calendar last used in that club (stored at the membership), not simply the first one.
       const target = pickCalendar(
@@ -118,12 +140,18 @@ export function AppShell({
       clubId,
       calendarId,
       contextState,
+      role,
       userName: user?.name || user?.email || "",
       onSelectClub: (id) => void onSelectClub(id),
       onLogout: logout,
     }),
-    [clubs, calendars, clubId, calendarId, contextState, user, onSelectClub, logout],
+    [clubs, calendars, clubId, calendarId, contextState, role, user, onSelectClub, logout],
   );
+
+  // A plain member only gets Mein Verein and the profile; everything else goes back to Mein Verein.
+  const redirectMember = isMember && !memberMayOpen(pathname, clubId);
+  // The role is unknown until the club list is loaded: do not start pages that would get a 403.
+  const roleUnknown = clubsLoading && !memberMayOpen(pathname, clubId);
 
   return (
     <div className="ap ap-page">
@@ -138,17 +166,17 @@ export function AppShell({
         <Suspense fallback={<FullPageLoader className="min-h-[50vh]" />}>
           {/* Keyed: switching the calendar on the same route resets page-local state. */}
           <Fragment key={calendarId ?? ""}>
-            <Outlet context={data} />
+            {redirectMember ? (
+              <Navigate to={myClubPath(clubId)} replace />
+            ) : roleUnknown ? (
+              <FullPageLoader className="min-h-[50vh]" />
+            ) : (
+              <Outlet context={data} />
+            )}
           </Fragment>
         </Suspense>
       </main>
-      {calendarId && (
-        <Tabbar
-          clubId={clubId}
-          calendarId={calendarId}
-          role={clubs.find((c) => c.id === clubId)?.role}
-        />
-      )}
+      {(calendarId || isMember) && <Tabbar clubId={clubId} calendarId={calendarId} role={role} />}
     </div>
   );
 }

@@ -61,6 +61,7 @@ export const InvitationPage = lazyPage(() => import("./InvitationPage"));
 export const ClubsPage = lazyPage(() => import("./ClubsPage"));
 export const SetupPage = lazyPage(() => import("./SetupPage"));
 export const ProfilePage = lazyPage(() => import("./ProfilePage"));
+export const MyClubPage = lazyPage(() => import("./MyClubPage"));
 export const ClubPage = lazyPage(() => import("./ClubPage"));
 export const CalendarPage = lazyPage(() => import("./CalendarPage"));
 export const EventsListPage = lazyPage(() => import("./events/EventsListPage"));

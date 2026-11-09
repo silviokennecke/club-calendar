@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Icon, Logo, StatusBadge } from "@/components/ui/shared";
+import { isPlainMember } from "@/lib/club/permissions";
 import { ContextMenu } from "./ContextMenu";
 import { CalendarMenuItems, ClubMenuItems } from "./ContextMenuItems";
 import { activeNavKey, buildNavGroups, initials } from "./navigation";
@@ -21,6 +22,7 @@ export function Sidebar({ data }: { data: ShellData }) {
   const calendar = data.calendars.find((c) => c.id === data.calendarId);
   const close = () => setMenu(null);
   const unavailable = data.contextState === "unavailable";
+  const member = isPlainMember(club?.role);
   const fallback = unavailable ? t("shell.unavailable") : t("common.loading");
 
   return (
@@ -44,17 +46,19 @@ export function Sidebar({ data }: { data: ShellData }) {
           <ClubMenuItems data={data} onNavigate={close} />
         </ContextMenu>
 
-        <ContextMenu
-          caption={t("shell.calendar")}
-          value={calendar?.name ?? fallback}
-          icon="calendar"
-          menuLabel={t("shell.switchCalendar")}
-          open={menu === "calendar"}
-          onOpenChange={(o) => setMenu(o ? "calendar" : null)}
-        >
-          <div className="ap-menu-title">{t("shell.switchCalendar")}</div>
-          <CalendarMenuItems data={data} onNavigate={close} />
-        </ContextMenu>
+        {!member && (
+          <ContextMenu
+            caption={t("shell.calendar")}
+            value={calendar?.name ?? fallback}
+            icon="calendar"
+            menuLabel={t("shell.switchCalendar")}
+            open={menu === "calendar"}
+            onOpenChange={(o) => setMenu(o ? "calendar" : null)}
+          >
+            <div className="ap-menu-title">{t("shell.switchCalendar")}</div>
+            <CalendarMenuItems data={data} onNavigate={close} />
+          </ContextMenu>
+        )}
 
         {unavailable && (
           <Link className="ap-navlink" to="/clubs?select=1">
@@ -70,7 +74,7 @@ export function Sidebar({ data }: { data: ShellData }) {
         )}
       </div>
 
-      {data.calendarId && (
+      {(data.calendarId || member) && (
         <nav className="ap-navgroup" aria-label={t("shell.navLabel")}>
           {buildNavGroups(data.clubId, data.calendarId, club?.role).map((group) => (
             <div key={group.titleKey} className="ap-navgroup">

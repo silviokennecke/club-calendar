@@ -1753,7 +1753,8 @@
       "settings": "Settings",
       "feeds": "Publish",
       "club": "Manage club",
-      "clubSettings": "Places and audiences"
+      "clubSettings": "Places and audiences",
+      "myClub": "My club"
     },
     "profile": "My profile",
     "signOut": "Sign out",
@@ -2466,5 +2467,23 @@
     "toIndex": "Go to the help overview",
     "loadError": "The help page could not be loaded.",
     "retry": "Try again"
+  },
+  "myClub": {
+    "title": "My club",
+    "subtitle": "{{name}} · Your role: {{role}}",
+    "leave": "Leave club",
+    "tabs": {
+      "label": "Sections of My club",
+      "calendar": "Calendar",
+      "subscription": "Subscription"
+    },
+    "calendar": {
+      "emptyTitle": "No events yet",
+      "emptyText": "Once you have chosen feeds on the “Subscription” tab, their events appear here."
+    },
+    "subscription": {
+      "emptyTitle": "No subscription set up yet",
+      "emptyText": "Here you choose the feeds for your personal calendar."
+    }
   }
 }

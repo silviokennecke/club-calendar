@@ -1,4 +1,4 @@
-import type { Calendar, Club } from "@/lib/types";
+import type { Calendar, Club, ClubRole } from "@/lib/types";
 
 /** Data the presentational shell parts (Sidebar, Topbar, Tabbar, MorePage) need. */
 export interface ShellData {
@@ -13,6 +13,8 @@ export interface ShellData {
    * Missing = ready.
    */
   contextState?: "loading" | "ready" | "unavailable";
+  /** Role in the active club (undefined while the club list loads). A plain `member` has no calendars. */
+  role?: ClubRole;
   userName: string;
   onSelectClub: (clubId: string) => void;
   onLogout: () => void;

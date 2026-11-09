@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { apiGet } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { pickCalendar } from "@/lib/pickCalendar";
-import type { Calendar } from "@/lib/types";
+import { isPlainMember } from "@/lib/club/permissions";
+import { myClubPath } from "@/lib/club/myClub";
+import type { Calendar, Club } from "@/lib/types";
 
 /**
  * Switches to a club the user has just joined (accepted invitation): refreshes the club list, remembers the
@@ -16,6 +18,14 @@ export function useEnterClub() {
 
   return async function enterClub(clubId: string): Promise<void> {
     await qc.invalidateQueries({ queryKey: ["clubs"] });
+    const clubs = await qc
+      .fetchQuery({ queryKey: ["clubs"], queryFn: () => apiGet<Club[]>("/api/clubs") })
+      .catch(() => undefined);
+    if (isPlainMember(clubs?.find((c) => c.id === clubId)?.role)) {
+      void updateUser({ lastClubId: clubId, lastCalendarId: null });
+      navigate(myClubPath(clubId), { replace: true });
+      return;
+    }
     let calendar: Calendar | undefined;
     try {
       // Same query key as the club picker and the shell: the list is shared.

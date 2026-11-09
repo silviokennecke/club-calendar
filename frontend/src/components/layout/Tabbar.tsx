@@ -8,18 +8,22 @@ interface TabbarProps {
   clubId: string;
   /** Role of the signed-in user (viewers get no feeds tab). */
   role?: ClubRole;
-  calendarId: string;
+  /** Null for a plain member (no calendars): the bar then holds only "Mein Verein". */
+  calendarId: string | null;
 }
 
 /** Mobile bottom tabs: Kalender, Termine, Veröffentlichen, Mehr. */
 export function Tabbar({ clubId, calendarId, role }: TabbarProps) {
   const { t } = useTranslation();
   const { pathname } = useLocation();
-  const activeTab = tabForNavKey(activeNavKey(pathname, clubId, calendarId));
+  const tabs = buildTabs(clubId, calendarId, role);
+  const navTab = tabForNavKey(activeNavKey(pathname, clubId, calendarId));
+  // Staff reach "Mein Verein" through "Mehr".
+  const activeTab = navTab === "me" && !tabs.some((tab) => tab.key === "me") ? "more" : navTab;
 
   return (
     <nav className="ap-tabbar" aria-label={t("shell.tabsLabel")}>
-      {buildTabs(clubId, calendarId, role).map((tab) => (
+      {tabs.map((tab) => (
         <Link
           key={tab.key}
           className="ap-tab"

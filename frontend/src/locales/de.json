@@ -1753,7 +1753,8 @@
       "settings": "Einstellungen",
       "feeds": "Veröffentlichen",
       "club": "Verein verwalten",
-      "clubSettings": "Orte und Gruppen"
+      "clubSettings": "Orte und Gruppen",
+      "myClub": "Mein Verein"
     },
     "profile": "Mein Profil",
     "signOut": "Abmelden",
@@ -2466,5 +2467,23 @@
     "toIndex": "Zur Hilfe-Übersicht",
     "loadError": "Die Hilfeseite konnte nicht geladen werden.",
     "retry": "Erneut versuchen"
+  },
+  "myClub": {
+    "title": "Mein Verein",
+    "subtitle": "{{name}} · Deine Rolle: {{role}}",
+    "leave": "Verein verlassen",
+    "tabs": {
+      "label": "Bereiche von Mein Verein",
+      "calendar": "Kalender",
+      "subscription": "Abo"
+    },
+    "calendar": {
+      "emptyTitle": "Noch keine Termine",
+      "emptyText": "Sobald du im Reiter „Abo“ Feeds ausgewählt hast, erscheinen ihre Termine hier."
+    },
+    "subscription": {
+      "emptyTitle": "Noch kein Abo eingerichtet",
+      "emptyText": "Hier wählst du die Feeds für deinen persönlichen Kalender aus."
+    }
   }
 }

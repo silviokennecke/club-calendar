@@ -5,6 +5,7 @@ import { Icon, LangSwitch, type Glyph } from "@/components/ui/shared";
 import { calendarBase } from "@/components/layout/navigation";
 import { clubSettingsRoutes } from "@/components/settings/clubSettingsRoutes";
 import { roleAtLeast } from "@/lib/club/permissions";
+import { myClubPath } from "@/lib/club/myClub";
 import type { ShellData } from "@/components/layout/shellTypes";
 import { usePageTitle } from "@/lib/usePageTitle";
 
@@ -36,6 +37,7 @@ export default function MorePage() {
           { labelKey: "shell.nav.settings", href: `${base}/settings`, icon: "sliders" as const },
         ]
       : []),
+    { labelKey: "shell.nav.myClub", href: myClubPath(data.clubId), icon: "user" },
     { labelKey: "shell.nav.club", href: `/clubs/${data.clubId}`, icon: "building" },
     {
       labelKey: "shell.nav.clubSettings",

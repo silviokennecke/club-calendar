@@ -17,8 +17,19 @@ export function roleAtLeast(role: ClubRole | undefined | null, required: ClubRol
   return role != null && RANK[role] >= RANK[required];
 }
 
+/** Staff = viewer or above; a plain `member` only reaches their own club area ("Mein Verein"). */
+export function isStaff(role: ClubRole | undefined | null): boolean {
+  return roleAtLeast(role, "viewer");
+}
+
+/** Role `member`: reads nothing of the club's calendars and settings (the API answers 403). */
+export function isPlainMember(role: ClubRole | undefined | null): boolean {
+  return role === "member";
+}
+
 export interface ClubPermissions {
   role: ClubRole | undefined;
+  isStaff: boolean;
   canEdit: boolean;
   isAdmin: boolean;
 }
@@ -26,6 +37,7 @@ export interface ClubPermissions {
 export function permissionsFor(role: ClubRole | undefined | null): ClubPermissions {
   return {
     role: role ?? undefined,
+    isStaff: isStaff(role),
     canEdit: roleAtLeast(role, "editor"),
     isAdmin: roleAtLeast(role, "admin"),
   };

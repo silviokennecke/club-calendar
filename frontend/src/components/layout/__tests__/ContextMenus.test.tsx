@@ -172,6 +172,7 @@ describe("MorePage (design: Menu)", () => {
       "Vorlagen",
       "Termine importieren",
       "Einstellungen",
+      "Mein Verein",
       "Verein verwalten",
       "Orte und Gruppen",
       "Alle Vereine",

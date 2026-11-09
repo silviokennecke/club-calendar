@@ -39,6 +39,7 @@ import {
   LocationsPage,
   SignInPage,
   MorePage,
+  MyClubPage,
   OAuthConsentPage,
   ProfilePage,
   PropertiesPage,
@@ -85,6 +86,7 @@ function AppRoutes() {
             <Route path="/oauth/consent" element={<OAuthConsentPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/clubs/:clubId" element={<ClubPage />} />
+            <Route path="/clubs/:clubId/me" element={<MyClubPage />} />
             <Route path="/clubs/:clubId/calendars/:calendarId" element={<CalendarPage />} />
             <Route
               path="/clubs/:clubId/calendars/:calendarId/events"

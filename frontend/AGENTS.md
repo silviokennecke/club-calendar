@@ -253,6 +253,17 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
     editor; calendar management (club page, general settings), club rename/delete and feed changes need admin; viewers get no feeds
     (`FeedsForbidden`, no request) and no import/feeds navigation entries. Create dialogs show the `forbidden` gate (`createGateState`).
     Tests: `mockApiGet` (`src/test/clubRole.ts`) answers `GET /api/clubs` with the wanted role; see `pages/__tests__/ClubRoles.test.tsx`.
+  - Role `member` (below viewer; staff = viewer+, `isStaff` in `lib/club/permissions.ts`): a plain member may only use `/api/auth/me`,
+    the club list, leaving the club, feed claim/membership and `my-subscription` / `my-feeds` / `my-events`; everything else is 403. The
+    shell follows the role of the ACTIVE club (from `GET /api/clubs`, `ShellData.role`): `AppShell` requests no calendars for a member
+    (`calendarId` null, no setup redirect, no calendar switcher, sidebar/tab bar with "Mein Verein" only) and redirects every path except
+    `/clubs/:id/me` and `/profile` to Mein Verein (`memberMayOpen`); until the club list is loaded nothing else renders (no 403 requests).
+    Club switch, `ClubCard`, `ClubsPage` (last club) and `useEnterClub` open Mein Verein for a member. Staff get "Mein Verein" as the
+    first entry of the "Verein" nav group and a row on `MorePage`.
+  - Mein Verein: `/clubs/:clubId/me` (`pages/MyClubPage`, every role, `lib/club/myClub.ts`; tabs via `HelpTabs`, URL `?tab=calendar|subscription`): tab "Kalender" = `components/myclub/MyCalendarTab`,
+    tab "Abo" = `MySubscriptionTab` (placeholders so far); "Verein verlassen" for every role uses `components/club/LeaveClubDialog` (shared with `MembersSection`; handles `last_member` / `last_admin`).
+    API layer for the member endpoints: `lib/club/memberApi.ts` (functions, TanStack hooks `useMySubscription`, `useReplaceMySubscription`, `useRotateMySubscriptionSecret`,
+    `useMyFeeds`, `useMyEvents`, `useMyEvent`, `useClaimFeed`, `useFeedMembership`, and `mySubscriptionAddresses` for the ICS/webcal address); types in `lib/types.ts`.
   - Club: `/clubs/:clubId` (`pages/ClubPage`, three tabs via `HelpTabs`, URL `?tab=general|calendars|members`, default general: general = `ClubNameSection` + delete-club card, calendars = `CalendarsSection`, members = `MembersSection`; in `components/club/`: `ClubNameSection`, `MembersSection` (table with role per member,
     remove / leave with `ConfirmDialog` (last admin guard); `InviteSection`: admins only, invite by e-mail with role (default editor), open
     invitations pending / expired with "send again" (expired only) and revoke), `CalendarsSection` (create form,

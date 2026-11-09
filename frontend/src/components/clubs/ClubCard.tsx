@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 import { apiGet } from "@/lib/api";
 import { Icon } from "@/components/ui/shared";
 import { pickCalendar } from "@/lib/pickCalendar";
+import { isPlainMember } from "@/lib/club/permissions";
+import { myClubPath } from "@/lib/club/myClub";
 import type { Calendar, Club } from "@/lib/types";
 
 interface ClubCardProps {
@@ -35,14 +37,18 @@ export function ClubCard({ club, lastClubId, lastCalendarId }: ClubCardProps) {
   const remembered = club.lastCalendarId ?? null;
   const guessed = remembered ?? (club.id === lastClubId ? lastCalendarId : null);
   const noCalendars = club.calendarCount === 0 && club.archivedCalendarCount === 0;
-  const href = noCalendars
-    ? `/setup?clubId=${club.id}`
-    : guessed
-      ? `/clubs/${club.id}/calendars/${guessed}`
-      : `/clubs/${club.id}`;
+  const member = isPlainMember(club.role);
+  const href = member
+    ? myClubPath(club.id)
+    : noCalendars
+      ? `/setup?clubId=${club.id}`
+      : guessed
+        ? `/clubs/${club.id}/calendars/${guessed}`
+        : `/clubs/${club.id}`;
 
   async function onClick(e: MouseEvent<HTMLAnchorElement>) {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    if (member) return;
     e.preventDefault();
     try {
       // Same query key as the shell and the club page, so the list is shared.

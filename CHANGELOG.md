@@ -7,6 +7,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Added
 
+- App shell follows the club role: a plain `member` sees only the new page "Mein Verein" (`/clubs/:id/me`, tabs Calendar and Subscription, leaving the club) and never triggers calendar or settings requests; staff get "Mein Verein" in the navigation. Frontend API layer for the personal subscription and feed claim.
 - Personal club subscription (backend): every club member (also plain `member` and admins) has one personal subscription per club with a selection of feeds and target groups behind a personal secret. New routes `GET|PUT /api/clubs/:id/my-subscription`, `POST …/my-subscription/rotate-secret` and `GET /api/clubs/:id/my-feeds`; claiming a feed adds it to the subscription; leaving or being removed from a club deletes it.
 - Personal subscription served (backend): the ICS address `GET /api/feed/me/:id/ics?secret=…` (events of the selected feeds the member may currently access, with ETag/304) and the calendar view `GET /api/clubs/:id/my-events`.
 - With `RESTRICT_REGISTRATION=true`, a feed address also allows creating an account when the feed's club lets new members in through that feed (club setting `feedSignup`; PRIVATE feeds need the secret): optional `feedProof` on `POST /api/auth/identify` and `/register`, `feed_id`/`secret` on the SSO start. It does not join the club by itself.

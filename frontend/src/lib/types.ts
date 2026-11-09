@@ -274,3 +274,49 @@ export interface HolidayEvent {
   date: string; // YYYY-MM-DD, start (inclusive)
   dateEnd: string | null; // YYYY-MM-DD, end (inclusive), null = same day as date
 }
+
+/** Personal club subscription ("Mein Abo", `GET …/my-subscription`). */
+export interface MemberSubscription {
+  id: string;
+  /** Personal secret (64 hex characters) of the subscription address. */
+  secret: string;
+  selectedFeedIds: string[];
+  /** Empty = all audiences. */
+  targetGroupIds: string[];
+  updatedAt: string;
+}
+
+export type FeedAccessReason = "club" | "public" | "staff" | "assigned" | "claimed";
+
+/** A feed the member may put in the personal subscription (`GET …/my-feeds`). */
+export interface MyFeed {
+  id: string;
+  name: string;
+  visibility: FeedVisibility;
+  calendarNames: string[];
+  accessReason: FeedAccessReason;
+  selected: boolean;
+}
+
+export interface MyFeedsResponse {
+  feeds: MyFeed[];
+  targetGroups: { id: string; name: string }[];
+}
+
+/** `GET /api/feed/:id/membership`: what the feed page offers the signed-in user. */
+export interface FeedMembership {
+  clubName: string;
+  isClubMember: boolean;
+  hasFeedAccess: boolean;
+  canJoin: boolean;
+  canClaim: boolean;
+}
+
+/** `POST /api/feed/:id/claim`. */
+export interface FeedClaimResult {
+  clubId: string;
+  clubName: string;
+  feedId: string;
+  /** True when the call made the user a club member. */
+  joined: boolean;
+}

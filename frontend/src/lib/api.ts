@@ -359,6 +359,12 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   return bodyOf<T>(res);
 }
 
+export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+  const res = await apiFetch(path, { method: "PUT", body: JSON.stringify(body) });
+  if (!res.ok) throw await errorFrom(res);
+  return bodyOf<T>(res);
+}
+
 export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   const res = await apiFetch(path, { method: "PATCH", body: JSON.stringify(body) });
   if (!res.ok) throw await errorFrom(res);
