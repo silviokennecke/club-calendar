@@ -149,7 +149,7 @@ function validZone(tzid: string | undefined): string | null {
   if (!tzid) return null;
   const mapped = windowsZoneToIana(tzid);
   if (mapped) return mapped;
-  if (!/^[A-Za-z_]+(?:[/+-][A-Za-z0-9_+-]+)*$/.test(tzid)) return null;
+  if (tzid.length > 64 || !/^[A-Za-z_]+(?:[/+-][A-Za-z0-9_]+)*$/.test(tzid)) return null;
   try {
     new Intl.DateTimeFormat("en", { timeZone: tzid });
     return tzid;

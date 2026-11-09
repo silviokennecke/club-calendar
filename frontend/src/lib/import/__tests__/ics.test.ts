@@ -214,6 +214,28 @@ describe("parseIcs: RFC 5545 corner cases", () => {
     expect(events[0].timeBegin).toBe("19:00");
   });
 
+  it("keeps IANA names with +/- and rejects pathological TZIDs quickly", () => {
+    const names = [
+      "Etc/GMT+5",
+      "Etc/GMT-14",
+      "America/Port-au-Prince",
+      "America/Argentina/Buenos_Aires",
+      "Europe/Berlin",
+      "UTC",
+    ];
+    const { events } = parseIcs(
+      wrap(...names.map((n, i) => vevent(`SUMMARY:${i}`, `DTSTART;TZID=${n}:20261012T190000`))),
+    );
+    expect(events.map((e) => e.timezone)).toEqual(names);
+
+    const start = Date.now();
+    const bad = parseIcs(
+      wrap(vevent("SUMMARY:X", `DTSTART;TZID=A${"+".repeat(5000)}!:20261012T190000`)),
+    );
+    expect(bad.events[0].timezone).toBeNull();
+    expect(Date.now() - start).toBeLessThan(1000);
+  });
+
   it("keeps floating times as they are and does not shift them", () => {
     const { events } = parseIcs(wrap(vevent("SUMMARY:F", "DTSTART:20261014T190000")), {
       timeZone: "Europe/Berlin",
