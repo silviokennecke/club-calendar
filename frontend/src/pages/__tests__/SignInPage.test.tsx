@@ -457,26 +457,26 @@ describe("identify: register", () => {
 
   it("rejects a short password and mismatching passwords without calling the API", async () => {
     const user = await registerStep();
-    apiPost.mockClear();
+    opaqueSignup.mockClear();
     await fill(user, "abc123");
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Das Konto wurde noch nicht erstellt");
     expect(alert).toHaveTextContent("zu kurz");
     expect(alert).toHaveFocus();
-    expect(apiPost).not.toHaveBeenCalled();
+    expect(opaqueSignup).not.toHaveBeenCalled();
   });
 
   it("reports mismatching passwords", async () => {
     const user = await registerStep();
-    apiPost.mockClear();
+    opaqueSignup.mockClear();
     await fill(user, "sicheres-passwort", "anderes-passwort");
     expect(await screen.findByRole("alert")).toHaveTextContent("nicht gleich");
-    expect(apiPost).not.toHaveBeenCalled();
+    expect(opaqueSignup).not.toHaveBeenCalled();
   });
 
   it("registers, stores the restricted session and continues to the confirmation page", async () => {
     const user = await registerStep();
-    apiPost.mockResolvedValue({
+    opaqueSignup.mockResolvedValue({
       access_token: "a",
       refresh_token: "r",
       user: { id: "u1" },
@@ -486,10 +486,8 @@ describe("identify: register", () => {
     });
     await fill(user);
     await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith("/api/auth/register", {
+      expect(opaqueSignup).toHaveBeenCalledWith("alex@beispiel.de", "sicheres-passwort", {
         name: "Alex Beispiel",
-        email: "alex@beispiel.de",
-        password: "sicheres-passwort",
         language: expect.any(String),
         acceptedDocuments: [],
       }),
@@ -507,12 +505,14 @@ describe("identify: register", () => {
     const user = await registerStep(BOTH);
     await fill(user);
     expect(await screen.findByRole("alert")).toHaveTextContent("Datenschutzerklärung");
-    apiPost.mockClear();
+    opaqueSignup.mockClear();
+    opaqueSignup.mockResolvedValue({ access_token: "a", refresh_token: "r", user: { id: "u1" } });
     for (const box of screen.getAllByRole("checkbox")) await user.click(box);
     await user.click(screen.getByRole("button", { name: "Konto erstellen" }));
     await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith(
-        "/api/auth/register",
+      expect(opaqueSignup).toHaveBeenCalledWith(
+        "alex@beispiel.de",
+        "sicheres-passwort",
         expect.objectContaining({ acceptedDocuments: ["doc-p", "doc-t"] }),
       ),
     );
@@ -520,7 +520,9 @@ describe("identify: register", () => {
 
   it("points an address that got a account meanwhile back to step 1", async () => {
     const user = await registerStep();
-    apiPost.mockRejectedValue(Object.assign(new Error("x"), { status: 400, code: "email_taken" }));
+    opaqueSignup.mockRejectedValue(
+      Object.assign(new Error("x"), { status: 400, code: "email_taken" }),
+    );
     await fill(user);
     expect(await screen.findByRole("alert")).toHaveTextContent("schon ein Konto");
     await user.click(screen.getByRole("button", { name: "Zur Anmeldung" }));
@@ -529,7 +531,7 @@ describe("identify: register", () => {
 
   it("shows the rate limit of the registration", async () => {
     const user = await registerStep();
-    apiPost.mockRejectedValue(new ApiError("x", 429, "rate_limited"));
+    opaqueSignup.mockRejectedValue(new ApiError("x", 429, "rate_limited"));
     await fill(user);
     expect(await screen.findByRole("alert")).toHaveTextContent("Zu viele Versuche");
   });
@@ -677,22 +679,17 @@ describe("OPAQUE protocol (identify auth hint)", () => {
     expect(login).not.toHaveBeenCalled();
   });
 
-  it("explains an unsupported browser and a switched-off OPAQUE service", async () => {
+  it("explains an unsupported browser", async () => {
     opaqueLogin.mockRejectedValue(new OpaqueClientError("opaque_unsupported", "no wasm"));
     const user = await stepFor("login", "opaque");
     await signIn(user);
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "unterstützt die sichere Anmeldung nicht",
     );
-    opaqueLogin.mockRejectedValue(new ApiError("x", 503, "opaque_unavailable"));
-    await user.click(screen.getByRole("button", { name: "Anmelden" }));
-    await waitFor(() =>
-      expect(screen.getByRole("alert")).toHaveTextContent("gerade nicht verfügbar"),
-    );
     expect(apiPost).not.toHaveBeenCalledWith("/api/auth/login", expect.anything());
   });
 
-  it("signs up through OPAQUE for auth=opaque and through the legacy route otherwise", async () => {
+  it("signs up through OPAQUE", async () => {
     opaqueSignup.mockResolvedValue({
       ...TOKENS,
       emailVerificationRequired: true,
@@ -715,6 +712,5 @@ describe("OPAQUE protocol (identify auth hint)", () => {
       }),
     );
     expect(login).toHaveBeenCalledWith("a", "r", { id: "u1", emailVerificationRequired: true });
-    expect(apiPost).not.toHaveBeenCalledWith("/api/auth/register", expect.anything());
   });
 });

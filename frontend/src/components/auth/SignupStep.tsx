@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ApiError, apiGet, apiPost, sessionUser, type TokenResponse } from "@/lib/api";
+import { apiGet, sessionUser } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import {
   consentCheckboxId,
@@ -17,8 +17,6 @@ import {
   type OpaqueFailureKind,
   opaqueSignup,
   prefetchOpaque,
-  signupProtocol,
-  type IdentifyAuth,
 } from "@/lib/opaque";
 import { isRateLimited, rateLimitText } from "@/lib/rateLimit";
 import { passwordProblem } from "@/lib/password";
@@ -46,17 +44,7 @@ const IDS = {
 } as const;
 
 /** Step 2 for a new address: the signup form (address fixed). */
-export function SignupStep({
-  email,
-  auth,
-  onBack,
-}: {
-  email: string;
-  /** `auth` hint of identify: `opaque` signs up through the OPAQUE register flow. */
-  auth?: IdentifyAuth;
-  onBack: () => void;
-}) {
-  const protocol = signupProtocol(auth);
+export function SignupStep({ email, onBack }: { email: string; onBack: () => void }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -133,22 +121,7 @@ export function SignupStep({
     try {
       const language = i18n.resolvedLanguage ?? "en";
       const acceptedDocuments = consentItems.map((i) => i.id);
-      const res =
-        protocol === "opaque"
-          ? await opaqueSignup(email, password, { name, language, acceptedDocuments })
-          : await apiPost<TokenResponse>("/api/auth/register", {
-              name,
-              email,
-              password,
-              language,
-              acceptedDocuments,
-            }).catch((err: unknown) => {
-              // stale hint: the server runs OPAQUE now, sign up through it once
-              if (err instanceof ApiError && err.code === "opaque_required") {
-                return opaqueSignup(email, password, { name, language, acceptedDocuments });
-              }
-              throw err;
-            });
+      const res = await opaqueSignup(email, password, { name, language, acceptedDocuments });
       // restricted session: the address is confirmed with the code from the e-mail
       login(res.access_token, res.refresh_token, {
         ...sessionUser(res),
@@ -261,7 +234,7 @@ export function SignupStep({
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         onBlur={(e) => form.touch("password", e)}
-        onFocus={protocol === "opaque" ? prefetchOpaque : undefined}
+        onFocus={prefetchOpaque}
         autoComplete="new-password"
       />
       <PasswordField

@@ -314,7 +314,7 @@ export default function SignInPage() {
             <LoginStep key={panel.email} email={panel.email} auth={panel.auth} onBack={back} />
           )}
           {panel?.status === "register" && (
-            <SignupStep key={panel.email} email={panel.email} auth={panel.auth} onBack={back} />
+            <SignupStep key={panel.email} email={panel.email} onBack={back} />
           )}
           {panel?.status === "registration_restricted" && (
             <RestrictedStep email={panel.email} onBack={back} />

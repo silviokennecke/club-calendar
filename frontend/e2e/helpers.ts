@@ -36,7 +36,7 @@ export function resetLinkFor(email: string): string {
 const KSF = "memory-constrained" as const;
 const OPAQUE = `${API}/api/auth/opaque`;
 
-/** Node-side OPAQUE client (the e2e backend runs with OPAQUE_ENABLED=true, see docs/ops/E2E.md). */
+/** Node-side OPAQUE client (the e2e backend needs OPAQUE keys, see docs/ops/E2E.md). */
 export async function opaqueRegisterRecord(
   request: APIRequestContext,
   context: Record<string, string>,
@@ -137,8 +137,8 @@ export async function createVerifiedUser(request: APIRequestContext, name: strin
 }
 
 /**
- * A user with a bcrypt password and no OPAQUE record. `POST /api/auth/register` answers 409 while OPAQUE
- * is on, so the console command creates it (`--password` stays a legacy account); the first sign-in upgrades it.
+ * A user with a bcrypt password and no OPAQUE record, created by the console command (`--password`
+ * makes a legacy account); the first sign-in upgrades it.
  */
 export async function createLegacyUser(_request: APIRequestContext, name: string) {
   const email = `e2e-legacy-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;

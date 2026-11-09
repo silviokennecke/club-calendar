@@ -14,7 +14,6 @@ import {
 } from "./helpers";
 
 // ——— OPAQUE password protocol: the password never leaves the browser (docs/ops/OPAQUE-PLAN.md) ———
-// The e2e backend runs with OPAQUE_ENABLED=true and OPAQUE_ROLLOUT_PERCENT=100 (docs/ops/E2E.md).
 
 test.use({ locale: "de-DE", timezoneId: "Europe/Berlin" });
 // The Argon2id key stretching (64 MiB) runs in the browser: several rounds per test.
@@ -62,7 +61,6 @@ test.describe("OPAQUE", () => {
     await expect(page).toHaveURL(/\/verify-email$/);
     expect(rec.hit("/api/auth/opaque/register/start")).toBe(true);
     expect(rec.hit("/api/auth/opaque/register/finish")).toBe(true);
-    expect(rec.hit("/api/auth/register")).toBe(false);
 
     // The mail code is not readable in e2e: confirm the address like the other helpers do.
     backendConsole("app:user:verify", email);
@@ -138,7 +136,6 @@ test.describe("OPAQUE", () => {
       page.getByRole("heading", { level: 1, name: "Passwort gespeichert" }),
     ).toBeVisible();
     expect(rec.hit("/api/auth/opaque/register/finish")).toBe(true);
-    expect(rec.hit("/api/auth/reset-password")).toBe(false);
     expect(rec.leaks(NEW_PASSWORD)).toEqual([]);
 
     expect((await apiLogin(request, email, PASSWORD)).status).toBe(401);

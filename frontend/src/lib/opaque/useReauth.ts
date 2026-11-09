@@ -14,7 +14,7 @@ export type PasswordProof = { reauthTicket: string } | { password: string };
  * Proof body for a password-protected request, chosen by the `passwordProtocol` of `GET /api/auth/me`:
  * `opaque` -> ticket, `legacy` -> plain password (the WASM chunk is never loaded for it). Plaintext goes
  * out for `legacy` only; `reset_required` / no password never produce a proof, and every OPAQUE error
- * (incl. 503 `opaque_unavailable`) is thrown, never downgraded.
+ * is thrown, never downgraded.
  */
 export function usePasswordProof(
   purpose: ReauthPurpose,

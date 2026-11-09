@@ -14,13 +14,7 @@ export function loginProtocol(auth: IdentifyAuth | undefined): LoginProtocol {
   return "legacy";
 }
 
-/** Signup uses OPAQUE iff the server says so (flag on); a missing hint means legacy. */
-export function signupProtocol(auth: IdentifyAuth | undefined): "opaque" | "legacy" {
-  return auth === "opaque" ? "opaque" : "legacy";
-}
-
 export const OPAQUE_ERROR_CODES = [
-  "opaque_unavailable",
   "invalid_opaque_message",
   "opaque_state_invalid",
   "reauth_required",
@@ -30,13 +24,12 @@ export const OPAQUE_ERROR_CODES = [
 export type OpaqueErrorCode = (typeof OPAQUE_ERROR_CODES)[number];
 
 /** Which message a failed OPAQUE call needs beyond the usual credential errors; null = not one of them. */
-export type OpaqueFailureKind = "unsupported" | "unavailable" | "reset_required" | "reload";
+export type OpaqueFailureKind = "unsupported" | "reset_required" | "reload";
 
 export function opaqueFailureKind(e: unknown): OpaqueFailureKind | null {
   if (e instanceof OpaqueClientError) return "unsupported";
   if (e instanceof PasswordResetRequiredError) return "reset_required";
   if (e instanceof ApiError) {
-    if (e.code === "opaque_unavailable") return "unavailable";
     if (e.code === "reset_required") return "reset_required";
     // stale view of the account's protocol: the legacy endpoint refuses, a reload picks the right path
     if (e.code === "opaque_required") return "reload";
@@ -47,7 +40,6 @@ export function opaqueFailureKind(e: unknown): OpaqueFailureKind | null {
 /** Text key for a failure kind (profile dialogs, signup, reset). */
 export const OPAQUE_FAILURE_TEXT: Record<OpaqueFailureKind, string> = {
   unsupported: "auth.opaqueUnsupported",
-  unavailable: "auth.opaqueUnavailable",
   reset_required: "auth.opaqueResetRequired",
   reload: "auth.opaqueReload",
 };

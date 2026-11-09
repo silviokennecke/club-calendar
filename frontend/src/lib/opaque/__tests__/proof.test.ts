@@ -47,17 +47,13 @@ describe("usePasswordProof", () => {
     expect(opaqueFailureKind(err)).toBe("reset_required");
   });
 
-  it.each(["opaque_not_registered", "opaque_unavailable"])(
-    "does not fall back to plaintext on %s",
-    async (code) => {
-      opaqueReauth.mockRejectedValue(new ApiError("x", 409, code));
-      await expect(run()).rejects.toMatchObject({ code });
-    },
-  );
+  it.each(["opaque_not_registered"])("does not fall back to plaintext on %s", async (code) => {
+    opaqueReauth.mockRejectedValue(new ApiError("x", 409, code));
+    await expect(run()).rejects.toMatchObject({ code });
+  });
 
-  it("maps opaque_required and opaque_unavailable to messages", () => {
+  it("maps opaque_required to a message", () => {
     expect(opaqueFailureKind(new ApiError("x", 409, "opaque_required"))).toBe("reload");
-    expect(opaqueFailureKind(new ApiError("x", 503, "opaque_unavailable"))).toBe("unavailable");
   });
 
   it("rethrows a wrong password instead of falling back", async () => {

@@ -8,11 +8,9 @@ import { OpaqueClientError } from "@/lib/opaque";
 import ResetPasswordPage from "../ResetPasswordPage";
 
 const apiPost = vi.fn();
-const apiGet = vi.fn();
 vi.mock("@/lib/api", async (orig) => ({
   ...(await orig<typeof import("@/lib/api")>()),
   apiPost: (...a: unknown[]) => apiPost(...a),
-  apiGet: (...a: unknown[]) => apiGet(...a),
 }));
 
 const opaqueReset = vi.fn();
@@ -61,11 +59,8 @@ async function fill(password: string, confirm = password) {
 beforeEach(() => {
   apiPost.mockReset();
   apiPost.mockResolvedValue(undefined);
-  apiGet.mockReset();
-  apiGet.mockResolvedValue({ restricted: false, opaqueEnabled: true });
-  // default: OPAQUE is off, so the legacy endpoint is used
   opaqueReset.mockReset();
-  opaqueReset.mockRejectedValue(new ApiError("x", 503, "opaque_unavailable"));
+  opaqueReset.mockResolvedValue(undefined);
 });
 afterEach(() => {
   document.head.querySelectorAll('meta[name="referrer"]').forEach((m) => m.remove());
@@ -88,27 +83,6 @@ describe("ResetPasswordPage", () => {
   });
 
   it("sets the new password with the token from the link and leads to the login", async () => {
-    apiGet.mockResolvedValue({ restricted: false, opaqueEnabled: false });
-    renderReset();
-    await fill("new-password-1");
-    await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith("/api/auth/reset-password", {
-        token: TOKEN,
-        password: "new-password-1",
-      }),
-    );
-    expect(
-      await screen.findByRole("heading", { level: 1, name: "Passwort gespeichert" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("auf allen Geräten abgemeldet");
-    expect(screen.getByRole("link", { name: "Weiter zur Anmeldung" })).toHaveAttribute(
-      "href",
-      "/login",
-    );
-  });
-
-  it("resets through OPAQUE when it is available", async () => {
-    opaqueReset.mockResolvedValue(undefined);
     renderReset();
     await fill("new-password-1");
     expect(
@@ -116,49 +90,11 @@ describe("ResetPasswordPage", () => {
     ).toBeInTheDocument();
     expect(opaqueReset).toHaveBeenCalledWith(TOKEN, "new-password-1");
     expect(apiPost).not.toHaveBeenCalled();
-  });
-
-  it("uses the legacy endpoint straight away when the flag is off", async () => {
-    apiGet.mockResolvedValue({ restricted: false, opaqueEnabled: false });
-    renderReset();
-    await fill("new-password-1");
-    await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith("/api/auth/reset-password", {
-        token: TOKEN,
-        password: "new-password-1",
-      }),
+    expect(screen.getByRole("status")).toHaveTextContent("auf allen Geräten abgemeldet");
+    expect(screen.getByRole("link", { name: "Weiter zur Anmeldung" })).toHaveAttribute(
+      "href",
+      "/login",
     );
-    expect(opaqueReset).not.toHaveBeenCalled();
-  });
-
-  it("never calls the legacy reset when OPAQUE is enabled, even on 503", async () => {
-    renderReset();
-    await fill("new-password-1");
-    expect(
-      await screen.findByText(/sichere Anmeldung ist gerade nicht verfügbar/),
-    ).toBeInTheDocument();
-    expect(apiPost).not.toHaveBeenCalled();
-  });
-
-  it("retries via OPAQUE once when the legacy reset answers opaque_required", async () => {
-    apiGet.mockResolvedValue({ restricted: false, opaqueEnabled: false });
-    apiPost.mockRejectedValueOnce(new ApiError("x", 409, "opaque_required"));
-    opaqueReset.mockResolvedValue(undefined);
-    renderReset();
-    await fill("new-password-1");
-    expect(
-      await screen.findByRole("heading", { level: 1, name: "Passwort gespeichert" }),
-    ).toBeInTheDocument();
-    expect(apiPost).toHaveBeenCalledTimes(1);
-    expect(opaqueReset).toHaveBeenCalledTimes(1);
-  });
-
-  it("still falls back on a 503 when the flag could not be read", async () => {
-    apiGet.mockRejectedValue(new ApiError("x", 500, "internal_error"));
-    renderReset();
-    await fill("new-password-1");
-    await waitFor(() => expect(apiPost).toHaveBeenCalled());
-    expect(opaqueReset).toHaveBeenCalled();
   });
 
   it("shows an invalid link when the OPAQUE reset rejects the token", async () => {
@@ -169,7 +105,7 @@ describe("ResetPasswordPage", () => {
     expect(apiPost).not.toHaveBeenCalled();
   });
 
-  it("explains an unsupported browser and never falls back to the legacy endpoint", async () => {
+  it("explains an unsupported browser and sends nothing to the API", async () => {
     opaqueReset.mockRejectedValue(new OpaqueClientError("opaque_unsupported", "no wasm"));
     renderReset();
     await fill("new-password-1");
@@ -195,8 +131,7 @@ describe("ResetPasswordPage", () => {
   });
 
   it("explains an invalid, used or expired link with a way to a new one", async () => {
-    apiGet.mockResolvedValue({ restricted: false, opaqueEnabled: false });
-    apiPost.mockRejectedValue(new ApiError("x", 400, "invalid_reset_token"));
+    opaqueReset.mockRejectedValue(new ApiError("x", 400, "invalid_reset_token"));
     renderReset();
     await fill("new-password-1");
     expect(
@@ -219,7 +154,7 @@ describe("ResetPasswordPage", () => {
   });
 
   it("keeps the form after a network error", async () => {
-    apiPost.mockRejectedValue(new TypeError("Failed to fetch"));
+    opaqueReset.mockRejectedValue(new TypeError("Failed to fetch"));
     renderReset();
     await fill("new-password-1");
     expect(await screen.findByRole("alert")).toHaveTextContent(

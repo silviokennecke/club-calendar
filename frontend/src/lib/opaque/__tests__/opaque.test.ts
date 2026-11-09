@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import * as serenity from "@serenity-kit/opaque";
 import { ApiError } from "@/lib/api";
-import { loginProtocol, signupProtocol } from "../auth";
+import { loginProtocol } from "../auth";
 import {
   assertPasswordPolicy,
   opaqueChangePassword,
@@ -272,7 +272,5 @@ describe("helpers", () => {
     expect(loginProtocol("none")).toBe("legacy");
     expect(loginProtocol("reset_required")).toBe("reset");
     expect(loginProtocol(undefined)).toBe("legacy");
-    expect(signupProtocol("opaque")).toBe("opaque");
-    expect(signupProtocol("legacy")).toBe("legacy");
   });
 });

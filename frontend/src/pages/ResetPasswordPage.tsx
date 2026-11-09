@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button, ErrorSummary, LinkButton, PasswordField } from "@/components/ui/shared";
@@ -7,7 +6,6 @@ import { AuthLayout } from "@/components/auth/AuthLayout";
 import { FocusBanner } from "@/components/auth/FocusBanner";
 import { passwordProblem } from "@/lib/password";
 import { resetPasswordSecure } from "@/lib/passwordReset";
-import { fetchRegistrationInfo } from "@/lib/registration";
 import { useMetaTag } from "@/lib/useMetaTag";
 
 type Phase = "form" | "invalid" | "done";
@@ -29,7 +27,6 @@ interface FieldErrors {
 export default function ResetPasswordPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [params] = useSearchParams();
   const [token] = useState(() => params.get("token") ?? "");
   const [phase, setPhase] = useState<Phase>(token ? "form" : "invalid");
@@ -78,15 +75,12 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true);
-    const info = await fetchRegistrationInfo(queryClient);
-    const result = await resetPasswordSecure(token, password, info?.opaqueEnabled);
+    const result = await resetPasswordSecure(token, password);
     setLoading(false);
     if (result === "done") show("done");
     else if (result === "invalid_token") show("invalid");
-    else if (result === "unsupported" || result === "unavailable") {
-      setFailureText(
-        result === "unsupported" ? "auth.opaqueUnsupported" : "auth.opaqueUnavailable",
-      );
+    else if (result === "unsupported") {
+      setFailureText("auth.opaqueUnsupported");
       setFailed((n) => n + 1);
     } else if (result === "weak_password") reject({ password: t("auth.reset.password.short") });
     else setFailed((n) => n + 1);

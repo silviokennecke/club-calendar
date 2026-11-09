@@ -4,8 +4,6 @@ import { apiGet } from "@/lib/api";
 export interface RegistrationInfo {
   /** true: new accounts only for addresses with an open club invitation. */
   restricted: boolean;
-  /** OPAQUE feature flag: signup and password reset use OPAQUE while true. */
-  opaqueEnabled?: boolean;
 }
 
 export const registrationKeys = { info: ["auth", "registration"] as const };
