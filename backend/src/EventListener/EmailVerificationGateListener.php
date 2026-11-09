@@ -45,7 +45,7 @@ class EmailVerificationGateListener
         }
         $request = $event->getRequest();
         $path = $request->getPathInfo();
-        if (!str_starts_with($path, '/api/') || self::isAllowed($path, $request->getMethod())) {
+        if (!str_starts_with($path, '/api/') || self::isAllowed($path, $request->getMethod()) || ReauthGateAllowance::allows($request)) {
             return;
         }
         $user = $this->tokenStorage->getToken()?->getUser();

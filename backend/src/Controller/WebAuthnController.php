@@ -27,8 +27,8 @@ class WebAuthnController extends AbstractController
     }
 
     /**
-     * Registration options after re-authentication (L7): `{password}` for an account with a password, `{code}`
-     * (mailed by `POST /register/code`) for one without. The proof is checked here and only then the signed,
+     * Registration options after re-authentication (L7): `{password}` for an account with a password, `{reauthTicket}`
+     * (OPAQUE, purpose passkey-register), `{code}` (mailed by `POST /register/code`) for one without. The proof is checked here and only then the signed,
      * single-use challenge token is issued, which `/register/verify` requires: there is no way around it.
      */
     #[Route('/register/options', methods: ['POST'])]
@@ -37,10 +37,10 @@ class WebAuthnController extends AbstractController
         $user = $this->userResolver->resolve();
         $this->rateLimiter->assertPasskeyRegisterAllowed($request, $user->getId());
         $data = '' === trim($request->getContent()) ? [] : json_decode($request->getContent(), true);
-        if (!is_array($data) || (isset($data['password']) && !is_string($data['password'])) || (isset($data['code']) && !is_string($data['code']))) {
+        if (!is_array($data) || (isset($data['password']) && !is_string($data['password'])) || (isset($data['code']) && !is_string($data['code'])) || (isset($data['reauthTicket']) && !is_string($data['reauthTicket']))) {
             throw new ApiProblemException(400, 'Invalid request body', 'invalid_request');
         }
-        $this->reauth->assertConfirmed($user, ReauthenticationService::PURPOSE_PASSKEY, $data['password'] ?? null, $data['code'] ?? null);
+        $this->reauth->assertConfirmed($user, ReauthenticationService::PURPOSE_PASSKEY, $data['password'] ?? null, $data['code'] ?? null, $data['reauthTicket'] ?? null);
 
         return new JsonResponse($this->webAuthn->getRegistrationOptions($user));
     }
