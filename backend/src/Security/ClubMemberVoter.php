@@ -14,18 +14,20 @@ use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
 /**
- * Club rights by role: CLUB_MEMBER (any role: read), CLUB_EDITOR (editor or admin: change content),
+ * Club rights by role: CLUB_ANY_MEMBER (any role incl. plain `member`: only for the explicit allow-list), CLUB_MEMBER (staff, viewer or above: read), CLUB_EDITOR (editor or admin: change content),
  * CLUB_ADMIN (admin: manage the club, members, invitations, calendars and feeds). Non-members get 403 for all.
  *
  * @extends Voter<string, Club>
  */
 class ClubMemberVoter extends Voter
 {
+    public const string CLUB_ANY_MEMBER = 'CLUB_ANY_MEMBER';
     public const string CLUB_MEMBER = 'CLUB_MEMBER';
     public const string CLUB_EDITOR = 'CLUB_EDITOR';
     public const string CLUB_ADMIN = 'CLUB_ADMIN';
 
     private const array REQUIRED = [
+        self::CLUB_ANY_MEMBER => ClubRole::MEMBER,
         self::CLUB_MEMBER => ClubRole::VIEWER,
         self::CLUB_EDITOR => ClubRole::EDITOR,
         self::CLUB_ADMIN => ClubRole::ADMIN,

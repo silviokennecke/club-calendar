@@ -57,12 +57,16 @@ info:
     - Every `/api/*` route except `/api/feed/*` passes the JWT firewall. A route marked "no authentication"
       still rejects an *invalid* `Authorization` header with 401 (send none instead).
     - Authorization: club routes require club membership, calendar routes membership in the calendar's club
-      (403 otherwise). Members have one of three **roles** (`viewer` < `editor` < `admin`, each includes the
-      lower ones): *viewer* reads (club, calendars, events, reference data, members, `events.ics`, `events.pdf`); *editor* also
+      (403 otherwise). Members have one of four **roles** (`member` < `viewer` < `editor` < `admin`, each includes the
+      lower ones). Authorization is deny-by-default: a plain *member* belongs to the club but is not staff, so every
+      club- or calendar-scoped route is 403 `forbidden` for them except the allow-list `GET /api/auth/me`,
+      `GET /api/clubs` (minimal entries: `id`, `name`, `timezone`, `role`), `GET /api/clubs/{clubId}` (same minimal
+      fields) and leaving the club; a new route is staff-only unless it is allow-listed on purpose. *Viewer* (the lowest
+      staff role) reads (club, calendars, events, reference data, members, `events.ics`, `events.pdf`); *editor* also
       creates, changes and deletes events, series, templates, locations, badges (properties), extras (features), audiences (target groups) and
       holiday calendars (import, bulk and series included) and reads the feeds of the club (their addresses
       and secrets); *admin* also changes and deletes the club, creates/changes/archives/duplicates/deletes
-      calendars, manages feeds, invitations, members and roles. A role too low is 403 (`Forbidden`). Anyone may
+      calendars, manages feeds, invitations, members and roles. A role too low is 403 (`Forbidden`). Anyone, a plain member and a viewer included, may
       leave a club (`DELETE …/members/{ownId}`). A club never has zero members or zero admins: the last admin can
       neither be demoted, removed nor leave (`422 last_admin`) and cannot delete the account
       (`422 last_admin_of_club`) while other members remain. Writes to an **archived** calendar are 403 (reads
@@ -225,7 +229,7 @@ info:
     responses carry `Cache-Control: no-store`.
 
     **Scopes:** `mcp:read` (read tools) and `mcp:write` (draft and create tools; implies read). The scope is only
-    the ceiling: every tool also checks the caller's **current** club role (viewer/editor/admin).
+    the ceiling: every tool also checks the caller's **current** club role (viewer/editor/admin; a plain `member` is rejected by every tool and `list_clubs` leaves their clubs out).
 
     **Grants** (connected apps) end by user action (`DELETE /api/auth/mcp-grants/{id}`), by revocation
     (`POST /api/oauth/revoke`), and whenever the user's session version changes (sign out everywhere, password
@@ -240,7 +244,7 @@ info:
 
     | Tool | Scope | Role | Notes |
     | --- | --- | --- | --- |
-    | `list_clubs` | read | member | clubs with the caller's role |
+    | `list_clubs` | read | viewer | clubs with the caller's role |
     | `list_calendars` | read | viewer | |
     | `list_events` | read | viewer | `from`/`to`/`q`/`limit`/`offset` with the caps of `GET …/events`; drafts only for editors |
     | `get_event` | read | viewer | drafts only for editors |
@@ -281,7 +285,8 @@ info:
     | --- | --- |
     | `clubsPerUser` | 50 clubs a user is a member of (create club) |
     | `calendarsPerClub` | 100 calendars per club (create, duplicate; archived ones count) |
-    | `membersPerClub` | 500 members per club (also checked when an invitation is accepted) |
+    | `membersPerClub` | 5000 members per club in total (also checked when an invitation is accepted) |
+    | `staffPerClub` | 500 members with a staff role (viewer, editor, admin) per club; checked when a staff invitation is accepted and when a `member` is promoted |
     | `pendingInvitationsPerClub` | 200 open (pending or expired, not yet answered) invitations per club |
     | `eventsPerCalendar` | 20000 events per calendar (create, from-template, series create/rule change, import) |
     | `locationsPerClub` | 2000 locations per club (also those an import creates) |
@@ -1754,7 +1759,7 @@ paths:
     get:
       tags: [Clubs]
       summary: One club with counters
-      description: '`eventCount` includes archived calendars; `feedCount` counts the feeds of the club (what deleting the club removes).'
+      description: 'Plain members get only `id`, `name`, `timezone` and `role`. `eventCount` includes archived calendars; `feedCount` counts the feeds of the club (what deleting the club removes).'
       operationId: getClub
       responses:
         '200':
@@ -2076,7 +2081,7 @@ paths:
               type: object
               required: [role]
               properties:
-                role: { type: string, enum: [viewer, editor, admin] }
+                role: { type: string, enum: [member, viewer, editor, admin] }
       responses:
         '200':
           description: The member with the new role.
@@ -4253,7 +4258,7 @@ components:
         | `last_admin` | 422 | `DELETE /api/clubs/{clubId}/members/{userId}`, `PATCH …`: the user is the only admin (removing, leaving, demoting); promote another member first |
         | `last_admin_of_club` | 422 | `DELETE /api/auth/me`: the user is the only admin of a club with other members |
         | `forbidden` | 403 | Member routes: the role is too low for the service check (removing another member or changing a role without being admin) |
-        | `invalid_role` | 422 | `PATCH /api/clubs/{clubId}/members/{userId}`: role is none of viewer, editor, admin (field `role`) |
+        | `invalid_role` | 422 | `PATCH /api/clubs/{clubId}/members/{userId}`: role is none of member, viewer, editor, admin (field `role`) |
         | `invitation_not_found` | 404 | Club invitation routes: unknown, answered or revoked invitation, or one of another club; `/api/invitations/*`: unknown token or id, an invitation for another address, or an unconfirmed user (all the same answer) |
         | `invitation_expired` | 422 | Accept/decline of an invitation that is addressed to the signed-in user but older than 7 days; the club can re-send it |
         | `authorization_request_not_found` | 404 | `GET /api/oauth/authorization-request/{id}`, `POST /api/oauth/authorize/decision`: unknown, expired (10 min), already answered, or not started in this browser (binding cookie missing or wrong) request |
@@ -4495,7 +4500,7 @@ components:
     # ---------------------------------------------------------------- clubs and calendars
     ClubRole:
       type: string
-      enum: [viewer, editor, admin]
+      enum: [member, viewer, editor, admin]
       description: Role of the signed-in user in the club (see "Authorization").
     Club:
       type: object
@@ -4508,7 +4513,7 @@ components:
       allOf:
         - { $ref: '#/components/schemas/Club' }
         - type: object
-          required: [role, calendarCount, archivedCalendarCount, memberCount, lastCalendarId, _count]
+          required: [role]
           properties:
             role: { $ref: '#/components/schemas/ClubRole' }
             calendarCount: { type: integer, description: Active calendars. }
@@ -4525,7 +4530,7 @@ components:
       allOf:
         - { $ref: '#/components/schemas/Club' }
         - type: object
-          required: [role, calendarCount, archivedCalendarCount, memberCount, eventCount, feedCount]
+          required: [role]
           properties:
             role: { $ref: '#/components/schemas/ClubRole' }
             calendarCount: { type: integer }

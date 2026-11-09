@@ -14,7 +14,7 @@ use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
 /**
- * Calendar rights by the role in the calendar's club (see {@see ClubMemberVoter}): CALENDAR_MEMBER (any role),
+ * Calendar rights by the role in the calendar's club (see {@see ClubMemberVoter}): CALENDAR_MEMBER (staff: viewer or above; a plain `member` is always denied),
  * CALENDAR_EDITOR (editor or admin) and CALENDAR_ADMIN (admin).
  *
  * @extends Voter<string, Calendar>

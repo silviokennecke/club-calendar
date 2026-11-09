@@ -18,6 +18,7 @@ use App\Entity\McpGrant;
 use App\Entity\Property;
 use App\Entity\TargetGroup;
 use App\Entity\User;
+use App\Enum\ClubRole;
 use App\Exception\ApiProblemException;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -39,6 +40,7 @@ class Quota
     public const CLUBS_PER_USER = 'clubsPerUser';
     public const CALENDARS_PER_CLUB = 'calendarsPerClub';
     public const MEMBERS_PER_CLUB = 'membersPerClub';
+    public const STAFF_PER_CLUB = 'staffPerClub';
     public const PENDING_INVITATIONS_PER_CLUB = 'pendingInvitationsPerClub';
     public const EVENTS_PER_CALENDAR = 'eventsPerCalendar';
     public const LOCATIONS_PER_CLUB = 'locationsPerClub';
@@ -54,7 +56,8 @@ class Quota
     public const LIMITS = [
         self::CLUBS_PER_USER => 50,
         self::CALENDARS_PER_CLUB => 100,
-        self::MEMBERS_PER_CLUB => 500,
+        self::MEMBERS_PER_CLUB => 5000,
+        self::STAFF_PER_CLUB => 500,
         self::PENDING_INVITATIONS_PER_CLUB => 200,
         self::EVENTS_PER_CALENDAR => 20000,
         self::LOCATIONS_PER_CLUB => 2000,
@@ -72,6 +75,8 @@ class Quota
         self::CLUBS_PER_USER => [ClubUser::class, 'user'],
         self::CALENDARS_PER_CLUB => [Calendar::class, 'club'],
         self::MEMBERS_PER_CLUB => [ClubUser::class, 'club'],
+        // Counted separately in assertRoom(): members with a staff role (viewer, editor, admin)
+        self::STAFF_PER_CLUB => [ClubUser::class, 'club'],
         // Open invitations (also expired ones, they stay listed until revoked or pruned)
         self::PENDING_INVITATIONS_PER_CLUB => [ClubInvitation::class, 'club', ['status' => ClubInvitation::PENDING]],
         self::EVENTS_PER_CALENDAR => [Event::class, 'calendar'],
@@ -107,6 +112,9 @@ class Quota
             ->from($class, 'r')
             ->where(sprintf('r.%s = :owner', $field))
             ->setParameter('owner', $owner);
+        if (self::STAFF_PER_CLUB === $resource) {
+            $qb->andWhere('r.role != :memberRole')->setParameter('memberRole', ClubRole::MEMBER);
+        }
         foreach ($filter as $column => $value) {
             $qb->andWhere(sprintf('r.%s = :f_%s', $column, $column))->setParameter('f_'.$column, $value);
         }

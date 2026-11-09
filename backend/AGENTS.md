@@ -43,8 +43,8 @@ the router, so a new or changed route needs a matching operation there).
 | File | Purpose |
 |------|---------|
 | `src/Security/CurrentUserResolver.php` | Resolves authenticated `User` entity from JWT token |
-| `src/Security/CalendarMemberVoter.php` | Checks user is a member of the calendar's club (`CALENDAR_MEMBER`) |
-| `src/Security/ClubMemberVoter.php` | Checks user is a club member (`CLUB_MEMBER`) |
+| `src/Security/CalendarMemberVoter.php` | Role check in the calendar's club (`CALENDAR_MEMBER` = staff, viewer+; plain `member` is always denied) |
+| `src/Security/ClubMemberVoter.php` | Role check in the club: `CLUB_MEMBER` = staff (viewer+), `CLUB_EDITOR`, `CLUB_ADMIN`; `CLUB_ANY_MEMBER` (incl. role `member`) only for the allow-list (club read, leaving); new routes are staff-only by default, guarded by `tests/Controller/MemberRoleTest.php` |
 | `src/Security/ArchivedCalendarVoter.php` | Blocks writes to archived calendars (`NOT_ARCHIVED`) |
 | `src/EventListener/ExceptionListener.php` | Converts all exceptions to RFC 7807 `application/problem+json` (`src/Http/ProblemResponse.php`); access denied without a signed-in user → 401 `missing_token`; every 400 gets a code (framework 400s `invalid_request`, array query parameters `validation_failed` + `field`) |
 | `src/Security/JwtProblemListener.php` | 401 problems of the JWT bundle: `missing_token`, `invalid_token`, `token_expired` (`WWW-Authenticate: Bearer`) |

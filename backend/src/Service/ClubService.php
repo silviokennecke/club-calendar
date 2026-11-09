@@ -35,19 +35,21 @@ readonly class ClubService
     /**
      * The user's clubs with calendar and member counters (one grouped query per counter).
      */
-    public function listClubs(User $user): array
+    public function listClubs(User $user, bool $staffOnly = false): array
     {
-        /** @var list<array{0: Club, lastCalendarId: ?string, role: ClubRole}> $rows */
-        $rows = $this->em->createQueryBuilder()
+        $qb = $this->em->createQueryBuilder()
             ->select('c', 'cal.id AS lastCalendarId', 'cu.role AS role')
             ->from(Club::class, 'c')
             ->join(ClubUser::class, 'cu', 'WITH', 'cu.club = c')
             // The remembered calendar counts only while it exists and still belongs to this club.
             ->leftJoin(Calendar::class, 'cal', 'WITH', 'cal.id = cu.lastCalendarId AND cal.club = c')
             ->where('cu.user = :user')
-            ->setParameter('user', $user)
-            ->getQuery()
-            ->getResult();
+            ->setParameter('user', $user);
+        if ($staffOnly) {
+            $qb->andWhere('cu.role != :memberRole')->setParameter('memberRole', ClubRole::MEMBER);
+        }
+        /** @var list<array{0: Club, lastCalendarId: ?string, role: ClubRole}> $rows */
+        $rows = $qb->getQuery()->getResult();
         $clubs = array_map(fn (array $row) => $row[0], $rows);
         $lastCalendars = [];
         $roles = [];
@@ -61,6 +63,9 @@ readonly class ClubService
         $members = $this->counts->membersByClub($ids);
 
         return array_map(function (Club $club) use ($calendars, $members, $lastCalendars, $roles) {
+            if (ClubRole::MEMBER === $roles[$club->getId()]) {
+                return $this->serializeClub($club) + ['role' => ClubRole::MEMBER->value];
+            }
             $cals = $calendars[$club->getId()] ?? ['active' => 0, 'archived' => 0];
 
             return [
@@ -129,6 +134,9 @@ readonly class ClubService
     {
         $id = $club->getId();
         $membership = $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $club, 'user' => $viewer]);
+        if (ClubRole::MEMBER === $membership?->getRole()) {
+            return $this->serializeClub($club) + ['role' => ClubRole::MEMBER->value];
+        }
         $cals = $this->counts->calendarsByClub([$id])[$id] ?? ['active' => 0, 'archived' => 0];
 
         return $this->serializeClub($club) + [
@@ -212,6 +220,9 @@ readonly class ClubService
             $cu = $this->findMembership($club, $memberId);
             if (ClubRole::ADMIN === $cu->getRole() && ClubRole::ADMIN !== $role && $this->countAdmins($club) <= 1) {
                 throw new ApiProblemException(422, 'The last admin cannot be demoted', self::LAST_ADMIN_CODE);
+            }
+            if ($role->isStaff() && !$cu->getRole()->isStaff()) {
+                $this->quota->assertRoom(Quota::STAFF_PER_CLUB, $club);
             }
             $cu->setRole($role);
             $this->em->flush();

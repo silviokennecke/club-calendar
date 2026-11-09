@@ -30,6 +30,7 @@ class McpReadToolsTest extends WebTestCase
     private User $editor;
     private User $viewer;
     private User $outsider;
+    private User $plainMember;
     private \App\Entity\Club $club;
     private Calendar $calendar;
     /** @var array<string, string> */
@@ -52,9 +53,11 @@ class McpReadToolsTest extends WebTestCase
         $this->editor = TestHelper::createUser($this->em, $this->hasher, 'editor@example.com');
         $this->viewer = TestHelper::createUser($this->em, $this->hasher, 'viewer@example.com');
         $this->outsider = TestHelper::createUser($this->em, $this->hasher, 'outsider@example.com');
+        $this->plainMember = TestHelper::createUser($this->em, $this->hasher, 'plain@example.com');
         $this->club = TestHelper::createClub($this->em, $this->admin, 'Mein Verein');
         TestHelper::addMember($this->em, $this->club, $this->editor, ClubRole::EDITOR);
         TestHelper::addMember($this->em, $this->club, $this->viewer, ClubRole::VIEWER);
+        TestHelper::addMember($this->em, $this->club, $this->plainMember, ClubRole::MEMBER);
         $this->calendar = TestHelper::createCalendar($this->em, $this->club, 'Hauptkalender');
     }
 
@@ -175,6 +178,14 @@ class McpReadToolsTest extends WebTestCase
         $this->assertError($this->call($this->outsider, 'get_event', ['calendarId' => $cid, 'eventId' => $unknown]), 'Calendar not found.');
         $this->assertError($this->call($this->outsider, 'get_feed', ['clubId' => $club, 'feedId' => $unknown]), 'Club not found.');
         $this->assertSame([], $this->ok($this->outsider, 'list_clubs'));
+    }
+
+    public function testPlainMemberSeesNothingAndIsForbidden(): void
+    {
+        $this->assertSame([], $this->ok($this->plainMember, 'list_clubs'));
+        $this->assertError($this->call($this->plainMember, 'list_calendars', ['clubId' => $this->club->getId()]), 'Forbidden');
+        $this->assertError($this->call($this->plainMember, 'list_events', ['calendarId' => $this->calendar->getId()]), 'Forbidden');
+        $this->assertSame($this->club->getId(), $this->ok($this->viewer, 'list_clubs')[0]['id']);
     }
 
     public function testDraftsAreHiddenFromViewers(): void

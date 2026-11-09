@@ -143,16 +143,18 @@ class QuotaTest extends WebTestCase
         ['club' => $club, 'user' => $owner] = $this->setup1();
         $limit = Quota::LIMITS[Quota::MEMBERS_PER_CLUB];
         $extra = TestHelper::createUser(self::$em, self::$hasher, 'extra@example.com');
+        $conn = self::$em->getConnection();
+        $conn->executeStatement('SET FOREIGN_KEY_CHECKS=0');
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         for ($i = 1; $i < $limit; ++$i) {
-            $u = (new User())->setName("M $i")->setEmail("m$i@example.com")->setPassword('x')->setIsEmailVerified(true);
-            self::$em->persist($u);
-            self::$em->persist((new ClubUser())->setClub($club)->setUser($u));
+            $conn->insert('club_user', ['club_id' => $club->getId(), 'user_id' => sprintf('00000000-0000-7000-8000-%012d', $i), 'role' => 'member', 'updated_at' => $now]);
         }
+        $conn->executeStatement('SET FOREIGN_KEY_CHECKS=1');
         self::$em->persist(new ClubInvitation($club, $owner, 'extra@example.com', str_repeat('a', 64), new \DateTimeImmutable()));
         self::$em->flush();
         $invitation = self::$em->getRepository(ClubInvitation::class)->findOneBy([]);
 
-        // The invitation is accepted by the user who would be the 501st member
+        // The invitation is accepted by the user who would be the 5001st member
         $r = $this->req('POST', "/api/invitations/{$invitation->getId()}/accept", TestHelper::authHeader($extra, self::$tokens));
         $this->assertQuota($r, Quota::MEMBERS_PER_CLUB, $limit);
     }

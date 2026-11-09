@@ -55,7 +55,7 @@ class ClubController extends AbstractApiController
     }
 
     #[Route('/{clubId}', methods: ['GET'])]
-    #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
+    #[IsGranted(ClubMemberVoter::CLUB_ANY_MEMBER, subject: 'club')]
     public function getOne(#[MapEntity(id: 'clubId')] Club $club): JsonResponse
     {
         return new JsonResponse($this->clubService->getClub($club, $this->userResolver->resolve()));
@@ -87,7 +87,7 @@ class ClubController extends AbstractApiController
     }
 
     #[Route('/{clubId}/members/{userId}', methods: ['DELETE'])]
-    #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
+    #[IsGranted(ClubMemberVoter::CLUB_ANY_MEMBER, subject: 'club')]
     public function removeMember(#[MapEntity(id: 'clubId')] Club $club, string $userId): JsonResponse
     {
         $this->clubService->removeMember($club, $userId, $this->userResolver->resolve());
@@ -95,7 +95,7 @@ class ClubController extends AbstractApiController
         return new JsonResponse(['ok' => true]);
     }
 
-    /** Admins only (the service re-checks under the club lock): `{role: viewer|editor|admin}`. */
+    /** Admins only (the service re-checks under the club lock): `{role: member|viewer|editor|admin}`. */
     #[Route('/{clubId}/members/{userId}', methods: ['PATCH'])]
     #[IsGranted(ClubMemberVoter::CLUB_ADMIN, subject: 'club')]
     public function changeRole(#[MapEntity(id: 'clubId')] Club $club, string $userId, Request $request): JsonResponse

@@ -238,6 +238,9 @@ readonly class ClubInvitationService
             $this->assertAnswerable($user, $invitation);
             if (null === $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $club, 'user' => $user])) {
                 $this->quota->assertRoom(Quota::MEMBERS_PER_CLUB, $club);
+                if ($invitation->getRole()->isStaff()) {
+                    $this->quota->assertRoom(Quota::STAFF_PER_CLUB, $club);
+                }
                 $this->quota->assertRoom(Quota::CLUBS_PER_USER, $user);
                 $this->em->persist((new ClubUser())->setClub($club)->setUser($user)->setRole($invitation->getRole()));
             }

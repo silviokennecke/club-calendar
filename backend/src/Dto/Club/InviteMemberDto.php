@@ -14,7 +14,7 @@ class InviteMemberDto
     #[Assert\Length(max: 254)]
     public string $email = '';
 
-    /** viewer, editor (default) or admin. */
+    /** member, viewer, editor (default) or admin. */
     #[Assert\Choice(callback: [ClubRole::class, 'values'])]
     public string $role = 'editor';
 }
