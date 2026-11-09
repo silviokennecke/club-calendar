@@ -1,5 +1,13 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
-import { API, PASSWORD, authHeaders, createVerifiedUser, login, seedClub } from "./helpers";
+import {
+  API,
+  PASSWORD,
+  apiLogin,
+  authHeaders,
+  createVerifiedUser,
+  login,
+  seedClub,
+} from "./helpers";
 
 // ——— Profil (phase 7): Sprache, Darstellung, Datumsformat, Passkeys, Konto ———
 
@@ -301,9 +309,7 @@ test.describe("Profil", () => {
     await confirm.focus();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/login/);
-    const res = await request.post(`${API}/api/auth/login`, {
-      data: { email: s.email, password: PASSWORD },
-    });
-    expect(res.ok()).toBeFalsy();
+    const res = await apiLogin(request, s.email, PASSWORD);
+    expect(res.status).not.toBe(200);
   });
 });
