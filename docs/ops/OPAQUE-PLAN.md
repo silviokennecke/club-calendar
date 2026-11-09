@@ -357,7 +357,7 @@ Es gibt keinen Weg von OPAQUE zurück zu bcrypt (der Server kennt das Passwort n
 | 9 | **(erledigt)** `identify` um `auth` erweitern, Feature-Flag, Rollout-Prozent, Monitoring-Logzeilen, `app:opaque:status` | 6 | S |
 | 10 | Frontend `lib/opaque`, Worker, Hook `useReauth`, i18n-Keys, Fehlercodes | 0, 9 | M |
 | 11 | Frontend: Login/Signup/Reset/Change/Delete/Passkey/E-Mail-Dialoge + Vitest | 10, 7, 8 | L |
-| 12 | CSP in `.htaccess`, `Caddyfile`, `SecurityHeadersConfigTest`, `csp.spec.ts`, OPERATIONS.md | 0 | S |
+| 12 | **(erledigt)** CSP in `.htaccess`, `Caddyfile`, `SecurityHeadersConfigTest`, `csp.spec.ts`, OPERATIONS.md | 0 | S |
 | 13 | E2E-Helper und Specs, Hilfeseiten DE/EN, CHANGELOG, CLAUDE.md/AGENTS.md | 11, 12 | L |
 | 14 | Upgrade-Pfad (Ticket, Frontend-Hook nach Legacy-Login), Notify-/Retire-Commands | 7, 11 | M |
 | 15 | Schlüsselrotation (`OPAQUE_KEYS`, `opaque_key_id`) | 5 | M |
