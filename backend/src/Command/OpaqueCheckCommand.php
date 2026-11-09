@@ -49,6 +49,11 @@ class OpaqueCheckCommand
 
             return Command::FAILURE;
         }
+        if (OpaqueRollout::cutoffNeedsFullRollout($this->rolloutPercent, $this->legacyCutoff)) {
+            $io->getErrorStyle()->error('OPAQUE_LEGACY_CUTOFF is set but OPAQUE_ROLLOUT_PERCENT is below 100: accounts outside the rollout would never be offered the upgrade.');
+
+            return Command::FAILURE;
+        }
         if (!$this->enabled) {
             $io->writeln('OPAQUE disabled (OPAQUE_ENABLED is false): keys are not checked.');
 

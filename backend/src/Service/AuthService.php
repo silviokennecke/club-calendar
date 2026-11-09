@@ -84,12 +84,12 @@ readonly class AuthService
      *
      * @throws InvalidMessageException on a malformed record
      */
-    public function registerOpaque(string $userId, string $name, string $email, string $record, ?string $language, array $acceptedDocuments, callable $claimState, ?string $ip = null, ?string $userAgent = null): array
+    public function registerOpaque(string $userId, string $name, string $email, string $record, string $keyId, ?string $language, array $acceptedDocuments, callable $claimState, ?string $ip = null, ?string $userAgent = null): array
     {
         return $this->createAccount(
             $name,
             $email,
-            fn (User $user) => $this->opaque->storeRecord($user, $record),
+            fn (User $user) => $this->opaque->storeRecord($user, $record, $keyId),
             $language,
             $acceptedDocuments,
             $ip,
@@ -144,6 +144,12 @@ readonly class AuthService
     {
         $email = EmailAddress::normalize($email);
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
+        // Same information as identify's `auth: opaque`; refused before any password check. The bcrypt hash of an
+        // upgraded account stays stored (rollback with the flag off) but is not accepted meanwhile.
+        if ($user && $this->opaque->isEnabled() && $this->opaque->hasRecord($user)) {
+            $this->logger->info('opaque.legacy_login.failure', ['userId' => $user->getId(), 'reason' => 'opaque_required']);
+            throw new ApiProblemException(409, 'This account signs in with OPAQUE', 'opaque_required');
+        }
         // After the cutoff the bcrypt hash is no longer accepted (same signal as identify's reset_required).
         if ($user && $user->getPassword() && !$this->opaque->hasRecord($user)
             && $this->rollout->isEnabled() && $this->rollout->cutoffReached($this->clock->now())) {
@@ -162,7 +168,7 @@ readonly class AuthService
         }
         $hasRecord = $this->opaque->hasRecord($user);
         // Ticket only for a confirmed address: the upgrade endpoints are behind the e-mail confirmation gate.
-        $offerUpgrade = !$hasRecord && $user->isEmailVerified() && $this->rollout->offersUpgrade($user->getId());
+        $offerUpgrade = null === $user->getOpaqueRecord() && $user->isEmailVerified() && $this->rollout->offersUpgrade($user->getId());
         $this->logger->info('opaque.legacy_login.success', [
             'userId' => $user->getId(),
             'hasRecord' => $hasRecord,
@@ -407,14 +413,18 @@ readonly class AuthService
         ];
     }
 
-    /** Which password proof the client must use for this account: `opaque`, `legacy` (bcrypt) or null (no password). */
+    /** Which password proof the client must use: `opaque`, `legacy` (bcrypt), `reset_required` (only an unusable record) or null (no password). */
     private function passwordProtocol(User $user): ?string
     {
         if ($this->opaque->isEnabled() && $this->opaque->hasRecord($user)) {
             return 'opaque';
         }
+        if (null !== $user->getPassword()) {
+            return 'legacy';
+        }
 
-        return null !== $user->getPassword() ? 'legacy' : null;
+        // Only an unusable record (unknown key, corrupt) or a record with the flag off: no proof works.
+        return null !== $user->getOpaqueRecord() ? 'reset_required' : null;
     }
 
     public function updateMe(User $user, array $data, bool $sessionConsentOk): array
@@ -687,7 +697,8 @@ readonly class AuthService
         // Ends the sessions as well: tokens issued so far would otherwise keep (and, by refreshing, extend)
         // the access of whoever used the removed credentials. The owner's tokens are issued afterwards.
         $user->invalidateTokens();
-        $user->setPassword(null);
+        // Both password credentials: a pre-registered OPAQUE record must not survive the takeover.
+        $user->setPassword(null)->clearOpaque();
         foreach ($user->getPasskeys()->toArray() as $passkey) {
             $user->getPasskeys()->removeElement($passkey);
             $this->em->remove($passkey);

@@ -91,18 +91,24 @@ class OpaqueUpgradeLoginTest extends WebTestCase
         yield 'flag on, 100 %, no record' => ['true', '100', false, true];
         yield 'flag off, 100 %' => ['false', '100', false, false];
         yield 'flag on, 0 %' => ['true', '0', false, false];
-        yield 'flag on, 100 %, has record' => ['true', '100', true, false];
+        yield 'flag on, 100 %, has record' => ['true', '100', true, false, 409];
+        yield 'flag off, has record' => ['false', '100', true, false];
     }
 
     #[DataProvider('matrix')]
-    public function testUpgradeFieldPresence(string $enabled, string $percent, bool $record, bool $expected): void
+    public function testUpgradeFieldPresence(string $enabled, string $percent, bool $record, bool $expected, int $status = 200): void
     {
         $this->boot($enabled, $percent);
         $user = $this->account($record);
 
         $r = $this->login();
 
-        self::assertSame(200, $r['status']);
+        self::assertSame($status, $r['status']);
+        if (409 === $status) {
+            self::assertSame('opaque_required', $r['body']['code']);
+
+            return;
+        }
         if (!$expected) {
             self::assertArrayNotHasKey('opaqueUpgrade', $r['body']);
 

@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Opaque\OpaqueReauthTickets;
+use App\Opaque\OpaqueService;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -34,6 +35,7 @@ readonly class ReauthenticationService
         private AccountMailer $mailer,
         private ClockInterface $clock,
         private OpaqueReauthTickets $tickets,
+        private OpaqueService $opaque,
         #[Autowire(env: 'APP_SECRET')]
         private string $secret,
     ) {
@@ -65,6 +67,10 @@ readonly class ReauthenticationService
             $this->assertTicket($user, $purpose, $ticket);
 
             return;
+        }
+        if ($this->opaque->isEnabled() && $this->opaque->hasRecord($user)) {
+            // The kept bcrypt hash of an upgraded account is not a proof while OPAQUE is enabled.
+            throw new ApiProblemException(409, 'This account signs in with OPAQUE: use a reauth ticket', 'opaque_required');
         }
         if ($user->hasPasswordCredential()) {
             // OPAQUE-only accounts (no bcrypt hash) confirm through reauth tickets (AP 8): never the mailed code.

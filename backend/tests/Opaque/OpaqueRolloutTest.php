@@ -46,6 +46,17 @@ class OpaqueRolloutTest extends TestCase
         }
     }
 
+    public function testEveryoneIsOfferedTheUpgradeOnceACutoffIsSet(): void
+    {
+        $ids = array_map(static fn () => Uuid::v7()->toRfc4122(), range(1, 200));
+
+        self::assertCount(200, array_filter($ids, self::rollout('0', '2026-12-31')->offersUpgrade(...)));
+        self::assertCount(0, array_filter($ids, self::rollout('0', '2026-12-31', false)->offersUpgrade(...)));
+        self::assertTrue(OpaqueRollout::cutoffNeedsFullRollout('99', '2026-12-31'));
+        self::assertFalse(OpaqueRollout::cutoffNeedsFullRollout('100', '2026-12-31'));
+        self::assertFalse(OpaqueRollout::cutoffNeedsFullRollout('0', ''));
+    }
+
     public function testOfferShareFollowsPercentageAndOnlyGrows(): void
     {
         $ids = array_map(static fn () => Uuid::v7()->toRfc4122(), range(1, 5000));

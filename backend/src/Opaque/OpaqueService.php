@@ -69,10 +69,21 @@ final class OpaqueService
         return self::KSF_PROFILES[$version ?? self::CURRENT_VERSION] ?? self::KSF_PROFILES[self::CURRENT_VERSION];
     }
 
-    /** evaluated_element | server_public_key for a registration (signup, reset, change, upgrade). */
-    public function registrationResponse(User $user, string $request): string
+    /** Key id new registrations are evaluated and stored under. */
+    public function activeKeyId(): string
     {
-        return $this->registrationResponseFor($user->getId(), $request);
+        return $this->keys->activeId();
+    }
+
+    public function hasKey(string $keyId): bool
+    {
+        return $this->keys->has($keyId);
+    }
+
+    /** evaluated_element | server_public_key for a registration (signup, reset, change, upgrade). */
+    public function registrationResponse(User $user, string $request, ?string $keyId = null): string
+    {
+        return $this->registrationResponseFor($user->getId(), $request, $keyId);
     }
 
     /**
@@ -80,16 +91,23 @@ final class OpaqueService
      *
      * @throws InvalidMessageException on a malformed blinded element
      */
-    public function registrationResponseFor(string $credentialId, string $request): string
+    public function registrationResponseFor(string $credentialId, string $request, ?string $keyId = null): string
     {
-        return $this->server($this->keys->activeId())->createRegistrationResponse($request, $credentialId);
+        return $this->server($keyId ?? $this->keys->activeId())->createRegistrationResponse($request, $credentialId);
     }
 
-    /** Stores a client record on the entity (192 B, validated); the caller flushes and ends sessions where required. */
-    public function storeRecord(User $user, #[\SensitiveParameter] string $record): void
+    /**
+     * Stores a client record on the entity (192 B, validated) under the key id its registration response was
+     * evaluated with (null = active key, for operator/test paths); the caller flushes and ends sessions where required.
+     */
+    public function storeRecord(User $user, #[\SensitiveParameter] string $record, ?string $keyId = null): void
     {
         $this->assertValidRecord($record);
-        $user->setOpaque($record, self::CURRENT_VERSION, $this->keys->activeId());
+        $keyId ??= $this->keys->activeId();
+        if (!$this->keys->has($keyId)) {
+            throw new InvalidMessageException('Unknown key id.');
+        }
+        $user->setOpaque($record, self::CURRENT_VERSION, $keyId);
     }
 
     /** @throws InvalidMessageException unless the bytes are a well-formed record (length, public key point) */

@@ -172,6 +172,18 @@ class OpaqueCheckCommandTest extends KernelTestCase
         self::assertStringContainsString($expected, $tester->getDisplay());
     }
 
+    public function testCutoffWithPartialRolloutIsFatal(): void
+    {
+        foreach (['0', '99'] as $percent) {
+            $tester = $this->check(['OPAQUE_ENABLED' => 'false', 'OPAQUE_ROLLOUT_PERCENT' => $percent, 'OPAQUE_LEGACY_CUTOFF' => '2026-12-31']);
+
+            self::assertSame(1, $tester->getStatusCode());
+            self::assertStringContainsString('OPAQUE_ROLLOUT_PERCENT is below 100', $tester->getDisplay());
+        }
+        // Without a cutoff a partial rollout is the normal staged rollout.
+        self::assertSame(0, $this->check(['OPAQUE_ENABLED' => 'false', 'OPAQUE_ROLLOUT_PERCENT' => '50', 'OPAQUE_LEGACY_CUTOFF' => ''])->getStatusCode());
+    }
+
     public function testValidRolloutConfigPasses(): void
     {
         $tester = $this->check(['OPAQUE_ENABLED' => 'false', 'OPAQUE_ROLLOUT_PERCENT' => '100', 'OPAQUE_LEGACY_CUTOFF' => '2026-12-31']);

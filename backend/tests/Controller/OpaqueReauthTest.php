@@ -280,7 +280,7 @@ class OpaqueReauthTest extends WebTestCase
         // 5 deletion attempts via password-less bodies exhaust the purpose bucket; the reauth start then hits it
         // (the login bucket is untouched by them).
         for ($i = 0; $i < 5; ++$i) {
-            $this->assertSame(400, $this->call('DELETE', '/api/auth/me', ['password' => 'x'], $auth)['status']);
+            $this->assertSame(409, $this->call('DELETE', '/api/auth/me', ['password' => 'x'], $auth)['status']);
         }
         $r = $this->call('POST', self::START, ['purpose' => 'delete-account', 'startLoginRequest' => $ke1], $auth);
         $this->assertSame(429, $r['status']);
@@ -316,9 +316,8 @@ class OpaqueReauthTest extends WebTestCase
         $auth = $this->bearer($user);
         foreach ([['password' => self::PASSWORD], ['password' => ''], ['code' => '123456'], []] as $body) {
             $r = $this->call('DELETE', '/api/auth/me', $body, $auth);
-            $this->assertSame(400, $r['status']);
-            $this->assertSame('invalid_credentials', $r['body']['code']);
-            $this->assertSame('password', $r['body']['field']);
+            $this->assertSame(409, $r['status']);
+            $this->assertSame('opaque_required', $r['body']['code']);
         }
         $this->assertTrue($this->exists('ada@example.com'));
     }
@@ -383,12 +382,13 @@ class OpaqueReauthTest extends WebTestCase
 
         $upgraded = $this->upgradedUser('up@example.com');
         $auth = $this->bearer($upgraded);
-        $this->assertSame(400, $this->call('DELETE', '/api/auth/me', ['password' => 'wrong'], $auth)['status']);
+        $this->assertSame('opaque_required', $this->call('DELETE', '/api/auth/me', ['password' => 'wrong'], $auth)['body']['code']);
         $ticket = $this->reauth($upgraded, 'delete-account', $auth);
         $this->assertSame(200, $this->call('DELETE', '/api/auth/me', ['reauthTicket' => $ticket], $auth)['status']);
 
+        // The kept hash is no proof while OPAQUE is enabled, not even the right password.
         $upgraded2 = $this->upgradedUser('up2@example.com');
-        $this->assertSame(200, $this->call('DELETE', '/api/auth/me', ['password' => self::PASSWORD], $this->bearer($upgraded2))['status']);
+        $this->assertSame('opaque_required', $this->call('DELETE', '/api/auth/me', ['password' => self::PASSWORD], $this->bearer($upgraded2))['body']['code']);
     }
 
     public function testPasswordlessAccountStillUsesTheMailedCode(): void
@@ -429,7 +429,7 @@ class OpaqueReauthTest extends WebTestCase
     {
         $user = $this->opaqueUser();
         $auth = $this->bearer($user);
-        $this->assertSame('invalid_credentials', $this->call('POST', '/api/auth/webauthn/register/options', ['password' => self::PASSWORD], $auth)['body']['code']);
+        $this->assertSame('opaque_required', $this->call('POST', '/api/auth/webauthn/register/options', ['password' => self::PASSWORD], $auth)['body']['code']);
         $wrong = $this->reauth($user, 'change-email', $auth);
         $this->assertSame(403, $this->call('POST', '/api/auth/webauthn/register/options', ['reauthTicket' => $wrong], $auth)['status']);
 
@@ -447,8 +447,8 @@ class OpaqueReauthTest extends WebTestCase
         $user = $this->opaqueUser();
         $auth = $this->bearer($user);
         $r = $this->call('POST', '/api/auth/change-email', ['email' => 'new@example.com', 'password' => self::PASSWORD], $auth);
-        $this->assertSame(400, $r['status']);
-        $this->assertSame('invalid_credentials', $r['body']['code']);
+        $this->assertSame(409, $r['status']);
+        $this->assertSame('opaque_required', $r['body']['code']);
 
         $wrong = $this->reauth($user, 'delete-account', $auth);
         $r = $this->call('POST', '/api/auth/change-email', ['email' => 'new@example.com', 'reauthTicket' => $wrong], $auth);
@@ -481,10 +481,11 @@ class OpaqueReauthTest extends WebTestCase
         $start = $this->call('POST', '/api/auth/opaque/register/start', ['reauthTicket' => $ticket, 'registrationRequest' => Base64Url::encode($reg['request'])], $auth);
         $this->assertSame(200, $start['status']);
         $record = $this->opaque->finishRegistration('a brand new password', $reg['blind'], Base64Url::decode($start['body']['registrationResponse']))['record'];
-        $finish = $this->call('POST', '/api/auth/opaque/register/finish', ['reauthTicket' => $ticket, 'registrationRecord' => Base64Url::encode($record)], $auth);
+        $state = $start['body']['registrationState'];
+        $finish = $this->call('POST', '/api/auth/opaque/register/finish', ['reauthTicket' => $ticket, 'registrationState' => $state, 'registrationRecord' => Base64Url::encode($record)], $auth);
         $this->assertSame(200, $finish['status']);
         // the ticket is burned and the old password no longer reauths
-        $this->assertSame(403, $this->call('POST', '/api/auth/opaque/register/finish', ['reauthTicket' => $ticket, 'registrationRecord' => Base64Url::encode($record)], $this->bearer($user))['status']);
+        $this->assertSame(403, $this->call('POST', '/api/auth/opaque/register/finish', ['reauthTicket' => $ticket, 'registrationState' => $state, 'registrationRecord' => Base64Url::encode($record)], $this->bearer($user))['status']);
     }
 
     public function testServiceAcceptsTicketOnlyOnceViaReauthenticationService(): void
