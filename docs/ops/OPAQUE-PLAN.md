@@ -231,6 +231,8 @@ Kontexte der Registrierung (`register/start|finish`), jeweils mit eigenem Berech
 
 **Umgesetzt (AP 10):** `frontend/src/lib/opaque/` (`client.ts` Flows, `engine.ts` lazy Worker mit Haupt-Thread-Fallback, `core.ts`/`worker.ts`, `ksf.ts` Profil-Allow-List, `auth.ts` identify-Hilfen und Fehlercodes, `useReauth.ts`). Worker per Vite-Standard (`new Worker(new URL(...))`, iife, eigener Chunk ~158 KB gz); der Worker braucht in AP 12 `'wasm-unsafe-eval'` ebenfalls (erbt die CSP des Worker-Skripts). Neuer Key `auth.opaqueUnsupported`. Seiten/Dialoge folgen in AP 11.
 
+**Umgesetzt (AP 11):** `SignInPage`/`LoginStep`/`SignupStep` entscheiden per identify-`auth` (`opaque` -> OPAQUE, `legacy`/`none` -> Legacy, `reset_required` -> Hinweis mit Link auf `/forgot-password`, Signup OPAQUE nur bei `auth=opaque`). Reset-Seite versucht immer zuerst `opaqueReset` und nutzt den Legacy-Endpunkt nur bei `503 opaque_unavailable`. Change-Password, Delete, Passkey, Change-Email nutzen `usePasswordProof(purpose)`: Ticket, bei `opaque_not_registered`/`opaque_unavailable` Klartext-Passwort (Legacy); Konten ohne Passwort weiter mit Code. Kein Backend-Signal fuer "Konto hat OPAQUE-Record" in `/api/auth/me`: der Client sondiert ueber `reauth/start` (ein Zusatz-Roundtrip, Legacy-Konten laden dafuer das WASM). Neue Keys `auth.opaqueUnavailable`, `auth.login.resetRequiredTitle|Text`.
+
 ## 5. CSP
 
 - `script-src 'self'` -> `script-src 'self' 'wasm-unsafe-eval'` in `backend/public/.htaccess` UND `docker/Caddyfile`
@@ -360,7 +362,7 @@ Es gibt keinen Weg von OPAQUE zurück zu bcrypt (der Server kennt das Passwort n
 | 8 | **(erledigt)** Reauth: `reauth/*`, `ReauthenticationService`, `deleteMe`, Passkey-Options, `changeEmail` | 6 | M |
 | 9 | **(erledigt)** `identify` um `auth` erweitern, Feature-Flag, Rollout-Prozent, Monitoring-Logzeilen, `app:opaque:status` | 6 | S |
 | 10 | **(erledigt)** Frontend `lib/opaque`, Worker, Hook `useReauth`, i18n-Keys, Fehlercodes | 0, 9 | M |
-| 11 | Frontend: Login/Signup/Reset/Change/Delete/Passkey/E-Mail-Dialoge + Vitest | 10, 7, 8 | L |
+| 11 | **(erledigt)** Frontend: Login/Signup/Reset/Change/Delete/Passkey/E-Mail-Dialoge + Vitest | 10, 7, 8 | L |
 | 12 | **(erledigt)** CSP in `.htaccess`, `Caddyfile`, `SecurityHeadersConfigTest`, `csp.spec.ts`, OPERATIONS.md | 0 | S |
 | 13 | E2E-Helper und Specs, Hilfeseiten DE/EN, CHANGELOG, CLAUDE.md/AGENTS.md | 11, 12 | L |
 | 14 | Upgrade-Pfad (Ticket, Frontend-Hook nach Legacy-Login), Notify-/Retire-Commands | 7, 11 | M |

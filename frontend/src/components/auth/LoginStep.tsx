@@ -3,6 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { apiPost, sessionUser, type TokenResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import {
+  loginProtocol,
+  opaqueFailureKind,
+  opaqueLogin,
+  prefetchOpaque,
+  type IdentifyAuth,
+} from "@/lib/opaque";
 import { isRateLimited, rateLimitText } from "@/lib/rateLimit";
 import { useFieldTouch } from "@/lib/useFieldTouch";
 import {
@@ -17,20 +24,30 @@ import { FocusBanner } from "@/components/auth/FocusBanner";
 
 const PASSWORD_ID = "login-password";
 
+interface LoginStepProps {
+  email: string;
+  /** `auth` hint of identify: picks OPAQUE or the legacy login; `reset_required` has no password step. */
+  auth?: IdentifyAuth;
+  onBack: () => void;
+}
+
+type Problem = { kind: "wrong" | "rate" | "unsupported" | "unavailable"; text?: string };
+
 /** Step 2 for an existing account: password sign-in (address fixed). */
-export function LoginStep({ email, onBack }: { email: string; onBack: () => void }) {
+export function LoginStep({ email, auth, onBack }: LoginStepProps) {
+  const protocol = loginProtocol(auth);
   const { t } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
-  const [problem, setProblem] = useState<{ kind: "wrong" | "rate"; text?: string } | null>(null);
+  const [problem, setProblem] = useState<Problem | null>(null);
   const [problemKey, setProblemKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const form = useFieldTouch<"password">();
 
   useEffect(() => {
     document.getElementById(PASSWORD_ID)?.focus();
-  }, []);
+  }, [protocol]);
 
   const missing = password ? undefined : t("auth.login.passwordMissing");
   const error = form.shown("password") ? missing : undefined;
@@ -43,18 +60,47 @@ export function LoginStep({ email, onBack }: { email: string; onBack: () => void
 
     setLoading(true);
     try {
-      const data = await apiPost<TokenResponse>("/api/auth/login", { email, password });
+      const data =
+        protocol === "opaque"
+          ? await opaqueLogin(email, password)
+          : await apiPost<TokenResponse>("/api/auth/login", { email, password });
       login(data.access_token, data.refresh_token, sessionUser(data));
       // an unconfirmed address is a restricted session: confirm it with the mailed code first
       navigate(data.emailVerificationRequired ? "/verify-email" : "/clubs");
     } catch (err: unknown) {
+      const failure = opaqueFailureKind(err);
       setProblem(
-        isRateLimited(err) ? { kind: "rate", text: rateLimitText(t, err) } : { kind: "wrong" },
+        isRateLimited(err)
+          ? { kind: "rate", text: rateLimitText(t, err) }
+          : failure
+            ? { kind: failure }
+            : { kind: "wrong" },
       );
       setProblemKey((k) => k + 1);
     } finally {
       setLoading(false);
     }
+  }
+
+  if (protocol === "reset") {
+    return (
+      <div className="ap-stack">
+        <FocusBanner
+          tone="warning"
+          title={t("auth.login.resetRequiredTitle")}
+          action={
+            <LinkButton to="/forgot-password" variant="secondary">
+              {t("auth.login.resetPassword")}
+            </LinkButton>
+          }
+        >
+          {t("auth.login.resetRequiredText")}
+        </FocusBanner>
+        <Button variant="ghost" block icon="arrow-left" onClick={onBack}>
+          {t("auth.entry.back")}
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -76,6 +122,11 @@ export function LoginStep({ email, onBack }: { email: string; onBack: () => void
           }
         >
           {t("auth.login.wrongText")}
+        </FocusBanner>
+      )}
+      {(problem?.kind === "unsupported" || problem?.kind === "unavailable") && (
+        <FocusBanner key={problemKey} tone="danger" title={t("auth.login.wrongTitle")}>
+          {t(problem.kind === "unsupported" ? "auth.opaqueUnsupported" : "auth.opaqueUnavailable")}
         </FocusBanner>
       )}
       {problem?.kind === "rate" && (
@@ -106,6 +157,7 @@ export function LoginStep({ email, onBack }: { email: string; onBack: () => void
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         onBlur={(e) => form.touch("password", e)}
+        onFocus={protocol === "opaque" ? prefetchOpaque : undefined}
         autoComplete="current-password"
       />
       <Link

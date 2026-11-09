@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import SignInPage from "../SignInPage";
 import { ApiError } from "@/lib/api";
+import { OpaqueClientError } from "@/lib/opaque";
 import { clearInvitationToken, stashInvitationToken } from "@/lib/invitations";
 import { renderAt } from "./authTestUtils";
 
@@ -13,6 +14,8 @@ const apiGet = vi.fn();
 const apiFetch = vi.fn();
 const login = vi.fn();
 const startAuthentication = vi.fn();
+const opaqueLogin = vi.fn();
+const opaqueSignup = vi.fn();
 
 vi.mock("@/lib/api", async () => ({
   ...(await vi.importActual<typeof import("@/lib/api")>("@/lib/api")),
@@ -20,6 +23,11 @@ vi.mock("@/lib/api", async () => ({
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiGet: (...a: unknown[]) => apiGet(...a),
   apiFetch: (...a: unknown[]) => apiFetch(...a),
+}));
+vi.mock("@/lib/opaque/client", async (orig) => ({
+  ...(await orig<typeof import("@/lib/opaque/client")>()),
+  opaqueLogin: (...a: unknown[]) => opaqueLogin(...a),
+  opaqueSignup: (...a: unknown[]) => opaqueSignup(...a),
 }));
 vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ login }) }));
 vi.mock("@simplewebauthn/browser", () => ({
@@ -45,13 +53,13 @@ const NONE = { imprint: null, privacy: null, terms: null };
 type Status = "login" | "register" | "registration_restricted";
 
 /** Routes the mocked API: identify answers `status`, everything else is configured per test. */
-function mockApi(status: Status = "login", extra: Record<string, unknown> = {}) {
+function mockApi(status: Status = "login", extra: Record<string, unknown> = {}, auth?: string) {
   apiGet.mockImplementation((path: string) =>
     Promise.resolve(path === "/api/auth/registration" ? { restricted: false } : NONE),
   );
   apiPost.mockImplementation((path: string, body: { email?: string }) => {
     if (path === "/api/auth/identify") {
-      return Promise.resolve({ email: (body.email ?? "").toLowerCase(), status });
+      return Promise.resolve({ email: (body.email ?? "").toLowerCase(), status, auth });
     }
     if (path in extra) return Promise.resolve(extra[path]);
     return Promise.resolve({});
@@ -551,5 +559,107 @@ describe("invitation link", () => {
   it("makes no preview call without a token", () => {
     renderFlow();
     expect(apiPost).not.toHaveBeenCalled();
+  });
+});
+
+describe("OPAQUE protocol (identify auth hint)", () => {
+  const TOKENS = { access_token: "a", refresh_token: "r", user: { id: "u1" } };
+
+  async function stepFor(status: Status, auth: string) {
+    mockApi(status, {}, auth);
+    renderFlow(status === "login" ? "/login" : "/signup");
+    return continueWith();
+  }
+
+  async function signIn(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(await screen.findByLabelText(/^Passwort \(Pflicht\)/), "geheim123");
+    await user.click(screen.getByRole("button", { name: "Anmelden" }));
+  }
+
+  it("signs in through OPAQUE for auth=opaque and never calls the legacy login", async () => {
+    opaqueLogin.mockResolvedValue(TOKENS);
+    const user = await stepFor("login", "opaque");
+    await signIn(user);
+    await waitFor(() => expect(login).toHaveBeenCalledWith("a", "r", { id: "u1" }));
+    expect(opaqueLogin).toHaveBeenCalledWith("alex@beispiel.de", "geheim123");
+    expect(apiPost).not.toHaveBeenCalledWith("/api/auth/login", expect.anything());
+  });
+
+  it("uses the legacy login for auth=legacy and auth=none", async () => {
+    for (const auth of ["legacy", "none"]) {
+      vi.clearAllMocks();
+      mockApi("login", {}, auth);
+      renderFlow();
+      const user = await continueWith();
+      apiPost.mockResolvedValue(TOKENS);
+      await signIn(user);
+      await waitFor(() =>
+        expect(apiPost).toHaveBeenCalledWith("/api/auth/login", {
+          email: "alex@beispiel.de",
+          password: "geheim123",
+        }),
+      );
+      expect(opaqueLogin).not.toHaveBeenCalled();
+      cleanup();
+    }
+  });
+
+  it("shows a reset notice instead of the password step for auth=reset_required", async () => {
+    await stepFor("login", "reset_required");
+    expect(await screen.findByText("Passwort zurücksetzen erforderlich")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Passwort \(Pflicht\)/)).toBeNull();
+    expect(screen.getByRole("link", { name: "Passwort zurücksetzen" })).toHaveAttribute(
+      "href",
+      "/forgot-password",
+    );
+  });
+
+  it("shows the usual wrong-credentials banner for a wrong OPAQUE password", async () => {
+    opaqueLogin.mockRejectedValue(new ApiError("x", 401, "invalid_credentials", "password"));
+    const user = await stepFor("login", "opaque");
+    await signIn(user);
+    expect(await screen.findByRole("alert")).toHaveTextContent("E-Mail oder Passwort");
+    expect(login).not.toHaveBeenCalled();
+  });
+
+  it("explains an unsupported browser and a switched-off OPAQUE service", async () => {
+    opaqueLogin.mockRejectedValue(new OpaqueClientError("opaque_unsupported", "no wasm"));
+    const user = await stepFor("login", "opaque");
+    await signIn(user);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "unterstützt die sichere Anmeldung nicht",
+    );
+    opaqueLogin.mockRejectedValue(new ApiError("x", 503, "opaque_unavailable"));
+    await user.click(screen.getByRole("button", { name: "Anmelden" }));
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("gerade nicht verfügbar"),
+    );
+    expect(apiPost).not.toHaveBeenCalledWith("/api/auth/login", expect.anything());
+  });
+
+  it("signs up through OPAQUE for auth=opaque and through the legacy route otherwise", async () => {
+    opaqueSignup.mockResolvedValue({
+      ...TOKENS,
+      emailVerificationRequired: true,
+      verificationRequired: true,
+      email: "alex@beispiel.de",
+    });
+    const user = await stepFor("register", "opaque");
+    await user.type(await screen.findByLabelText(/^Name/), "Alex Beispiel");
+    await user.type(screen.getByLabelText(/^Passwort \(Pflicht\)/), "sicheres-passwort");
+    await user.type(screen.getByLabelText(/^Passwort wiederholen/), "sicheres-passwort");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Konto erstellen" })).toBeEnabled(),
+    );
+    await user.click(screen.getByRole("button", { name: "Konto erstellen" }));
+    await waitFor(() =>
+      expect(opaqueSignup).toHaveBeenCalledWith("alex@beispiel.de", "sicheres-passwort", {
+        name: "Alex Beispiel",
+        language: expect.any(String),
+        acceptedDocuments: [],
+      }),
+    );
+    expect(login).toHaveBeenCalledWith("a", "r", { id: "u1", emailVerificationRequired: true });
+    expect(apiPost).not.toHaveBeenCalledWith("/api/auth/register", expect.anything());
   });
 });

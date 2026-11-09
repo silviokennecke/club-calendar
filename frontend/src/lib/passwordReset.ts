@@ -1,4 +1,5 @@
 import { ApiError, apiPost } from "./api";
+import { opaqueFailureKind, opaqueReset } from "./opaque";
 
 export type ResetRequestResult = "sent" | "invalid_email" | "failed";
 
@@ -26,6 +27,29 @@ export async function resetPassword(token: string, password: string): Promise<Re
     await apiPost<void>("/api/auth/reset-password", { token, password });
     return "done";
   } catch (e) {
+    const code = e instanceof ApiError ? e.code : undefined;
+    if (code === "invalid_reset_token") return "invalid_token";
+    if (code === "validation_failed") return "weak_password";
+    return "failed";
+  }
+}
+
+/**
+ * Reset through OPAQUE (the register flow with the reset token); while OPAQUE is off the server answers
+ * `opaque_unavailable` before the token is touched and the legacy endpoint is used. A browser that cannot
+ * run OPAQUE is `unsupported` (never a downgrade to the legacy endpoint).
+ */
+export async function resetPasswordSecure(
+  token: string,
+  password: string,
+): Promise<ResetResult | "unsupported"> {
+  try {
+    await opaqueReset(token, password);
+    return "done";
+  } catch (e) {
+    const kind = opaqueFailureKind(e);
+    if (kind === "unsupported") return "unsupported";
+    if (kind === "unavailable") return resetPassword(token, password);
     const code = e instanceof ApiError ? e.code : undefined;
     if (code === "invalid_reset_token") return "invalid_token";
     if (code === "validation_failed") return "weak_password";

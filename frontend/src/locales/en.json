@@ -15,6 +15,7 @@
   },
   "auth": {
     "opaqueUnsupported": "Your browser or device does not support secure sign-in (WebAssembly or memory). Please try a current browser.",
+    "opaqueUnavailable": "Secure sign-in is currently unavailable. Please try again later.",
     "signIn": "Sign in",
     "signOut": "Sign out",
     "email": "Email",
@@ -53,7 +54,9 @@
       "signInWith": "Sign in with {{provider}}",
       "errorTitle": "The sign-in is not complete yet",
       "emailMissing": "Please enter your email address.",
-      "passwordMissing": "Please enter your password."
+      "passwordMissing": "Please enter your password.",
+      "resetRequiredTitle": "Password reset required",
+      "resetRequiredText": "Your previous password can no longer be used to sign in. Reset it to get access again."
     },
     "register": {
       "name": "Name",
