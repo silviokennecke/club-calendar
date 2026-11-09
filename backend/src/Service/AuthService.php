@@ -373,6 +373,7 @@ readonly class AuthService
             'lastCalendarId' => $user->getLastCalendarId(),
             'language' => $user->getLanguage(),
             'hasPassword' => $user->hasPasswordCredential(),
+            'passwordProtocol' => $this->passwordProtocol($user),
             'pendingConsents' => LegalPresenter::pending($pending),
             'consentRequired' => !$sessionConsentOk && [] !== $pending,
             'emailVerificationRequired' => !$user->isEmailVerified(),
@@ -388,6 +389,16 @@ readonly class AuthService
                 'provider' => $a->getProvider(),
             ])->toArray()),
         ];
+    }
+
+    /** Which password proof the client must use for this account: `opaque`, `legacy` (bcrypt) or null (no password). */
+    private function passwordProtocol(User $user): ?string
+    {
+        if ($this->opaque->isEnabled() && $this->opaque->hasRecord($user)) {
+            return 'opaque';
+        }
+
+        return null !== $user->getPassword() ? 'legacy' : null;
     }
 
     public function updateMe(User $user, array $data, bool $sessionConsentOk): array

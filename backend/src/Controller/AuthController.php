@@ -17,6 +17,7 @@ use App\Dto\Auth\VerifyEmailDto;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Opaque\OpaqueAuthHint;
+use App\Opaque\OpaqueService;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
 use App\Service\AccountService;
@@ -66,6 +67,7 @@ class AuthController extends AbstractApiController
         #[Autowire(env: 'FRONTEND_URL')]
         private readonly string $frontendUrl,
         private readonly OpaqueAuthHint $authHint,
+        private readonly OpaqueService $opaque,
     ) {
     }
 
@@ -431,7 +433,10 @@ class AuthController extends AbstractApiController
     #[Route('/registration', methods: ['GET'])]
     public function registration(): JsonResponse
     {
-        return new JsonResponse(['restricted' => $this->registrationPolicy->isRestricted()]);
+        return new JsonResponse([
+            'restricted' => $this->registrationPolicy->isRestricted(),
+            'opaqueEnabled' => $this->opaque->isEnabled(),
+        ]);
     }
 
     #[Route('/providers', methods: ['GET'])]

@@ -1,9 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 
 export interface RegistrationInfo {
   /** true: new accounts only for addresses with an open club invitation. */
   restricted: boolean;
+  /** OPAQUE feature flag: signup and password reset use OPAQUE while true. */
+  opaqueEnabled?: boolean;
 }
 
 export const registrationKeys = { info: ["auth", "registration"] as const };
@@ -16,4 +18,19 @@ export function useRegistrationInfo() {
     staleTime: 5 * 60_000,
     retry: false,
   });
+}
+
+/** Cached read for non-hook callers; undefined when the request fails. */
+export async function fetchRegistrationInfo(
+  qc: QueryClient,
+): Promise<RegistrationInfo | undefined> {
+  try {
+    return await qc.fetchQuery({
+      queryKey: registrationKeys.info,
+      queryFn: () => apiGet<RegistrationInfo>("/api/auth/registration"),
+      staleTime: 5 * 60_000,
+    });
+  } catch {
+    return undefined;
+  }
 }
