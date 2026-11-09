@@ -1,3 +1,6 @@
+import { ApiError } from "@/lib/api";
+import { OpaqueClientError } from "./ksf";
+
 export type IdentifyAuth = "opaque" | "legacy" | "none" | "reset_required";
 export type LoginProtocol = "opaque" | "legacy" | "reset";
 
@@ -25,3 +28,10 @@ export const OPAQUE_ERROR_CODES = [
   "opaque_not_registered",
 ] as const;
 export type OpaqueErrorCode = (typeof OPAQUE_ERROR_CODES)[number];
+
+/** Which message a failed OPAQUE call needs beyond the usual credential errors; null = not one of them. */
+export function opaqueFailureKind(e: unknown): "unsupported" | "unavailable" | null {
+  if (e instanceof OpaqueClientError) return "unsupported";
+  if (e instanceof ApiError && e.code === "opaque_unavailable") return "unavailable";
+  return null;
+}

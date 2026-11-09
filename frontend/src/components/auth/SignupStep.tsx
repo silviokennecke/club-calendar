@@ -11,6 +11,13 @@ import {
   type LegalOverview,
   type LegalType,
 } from "@/lib/legal";
+import {
+  opaqueFailureKind,
+  opaqueSignup,
+  prefetchOpaque,
+  signupProtocol,
+  type IdentifyAuth,
+} from "@/lib/opaque";
 import { isRateLimited, rateLimitText } from "@/lib/rateLimit";
 import { passwordProblem } from "@/lib/password";
 import { useFieldTouch } from "@/lib/useFieldTouch";
@@ -25,7 +32,8 @@ interface FieldErrors {
   confirm?: string;
 }
 
-type Problem = "exists" | "generic" | "consent" | "restricted" | "rate";
+type Problem =
+  "exists" | "generic" | "consent" | "restricted" | "rate" | "unsupported" | "unavailable";
 
 /** Documents the user has to accept at signup (when the operator provides them). */
 const CONSENT_TYPES: readonly LegalType[] = ["privacy", "terms"];
@@ -37,7 +45,17 @@ const IDS = {
 } as const;
 
 /** Step 2 for a new address: the signup form (address fixed). */
-export function SignupStep({ email, onBack }: { email: string; onBack: () => void }) {
+export function SignupStep({
+  email,
+  auth,
+  onBack,
+}: {
+  email: string;
+  /** `auth` hint of identify: `opaque` signs up through the OPAQUE register flow. */
+  auth?: IdentifyAuth;
+  onBack: () => void;
+}) {
+  const protocol = signupProtocol(auth);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -112,13 +130,18 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
 
     setLoading(true);
     try {
-      const res = await apiPost<TokenResponse>("/api/auth/register", {
-        name,
-        email,
-        password,
-        language: i18n.resolvedLanguage ?? "en",
-        acceptedDocuments: consentItems.map((i) => i.id),
-      });
+      const language = i18n.resolvedLanguage ?? "en";
+      const acceptedDocuments = consentItems.map((i) => i.id);
+      const res =
+        protocol === "opaque"
+          ? await opaqueSignup(email, password, { name, language, acceptedDocuments })
+          : await apiPost<TokenResponse>("/api/auth/register", {
+              name,
+              email,
+              password,
+              language,
+              acceptedDocuments,
+            });
       // restricted session: the address is confirmed with the code from the e-mail
       login(res.access_token, res.refresh_token, {
         ...sessionUser(res),
@@ -127,7 +150,10 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
       navigate("/verify-email");
     } catch (err: unknown) {
       // Stable error code of the API (RFC 7807 body), never the English `detail` text
-      if (isRateLimited(err)) {
+      const failure = opaqueFailureKind(err);
+      if (failure) {
+        fail(failure);
+      } else if (isRateLimited(err)) {
         setRateText(rateLimitText(t, err));
         fail("rate");
       } else if ((err as { code?: string }).code === "email_taken") {
@@ -183,15 +209,19 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
         >
           {problem === "rate"
             ? rateText
-            : t(
-                problem === "exists"
-                  ? "auth.register.problem.exists"
-                  : problem === "consent"
-                    ? "consent.outdated"
-                    : problem === "restricted"
-                      ? "auth.register.emailRestrictedField"
-                      : "auth.register.problem.generic",
-              )}
+            : problem === "unsupported"
+              ? t("auth.opaqueUnsupported")
+              : problem === "unavailable"
+                ? t("auth.opaqueUnavailable")
+                : t(
+                    problem === "exists"
+                      ? "auth.register.problem.exists"
+                      : problem === "consent"
+                        ? "consent.outdated"
+                        : problem === "restricted"
+                          ? "auth.register.emailRestrictedField"
+                          : "auth.register.problem.generic",
+                  )}
         </FocusBanner>
       )}
       <ErrorSummary
@@ -226,6 +256,7 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         onBlur={(e) => form.touch("password", e)}
+        onFocus={protocol === "opaque" ? prefetchOpaque : undefined}
         autoComplete="new-password"
       />
       <PasswordField

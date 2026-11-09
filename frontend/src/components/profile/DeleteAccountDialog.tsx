@@ -10,6 +10,7 @@ import {
   Skeleton,
 } from "@/components/ui/shared";
 import { apiDelete, apiErrorCode, apiPost } from "@/lib/api";
+import { opaqueFailureKind, usePasswordProof } from "@/lib/opaque";
 import { focusFirstInvalid } from "@/lib/focus";
 
 interface DeleteAccountDialogProps {
@@ -49,6 +50,7 @@ export function DeleteAccountDialog({
   const [busy, setBusy] = useState(false);
   const [mail, setMail] = useState<"idle" | "sending" | "sent">("idle");
   const [mailError, setMailError] = useState<string>();
+  const proof = usePasswordProof("delete-account");
   const formRef = useRef<HTMLDivElement>(null);
   useEffect(() => focusFirstInvalid(formRef.current), [fieldError]);
 
@@ -96,7 +98,7 @@ export function DeleteAccountDialog({
     }
     setBusy(true);
     try {
-      await apiDelete("/api/auth/me", hasPassword ? { password } : { code });
+      await apiDelete("/api/auth/me", hasPassword ? await proof(password) : { code });
     } catch (error) {
       const errorCode = apiErrorCode(error);
       if (errorCode === "invalid_credentials") setFieldError(t("profile.account.wrongPassword"));
@@ -107,6 +109,8 @@ export function DeleteAccountDialog({
         setFailure(joinHint(t("profile.danger.lastMemberOfClub"), blockedHint));
       else if (errorCode === "last_admin_of_club")
         setFailure(joinHint(t("profile.danger.lastAdminOfClub"), blockedHint));
+      else if (opaqueFailureKind(error) === "unsupported") setFailure(t("auth.opaqueUnsupported"));
+      else if (opaqueFailureKind(error) === "unavailable") setFailure(t("auth.opaqueUnavailable"));
       else setFailure(t("profile.danger.failed"));
       setBusy(false);
       return;

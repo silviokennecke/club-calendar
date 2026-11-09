@@ -3,12 +3,19 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { ApiError } from "@/lib/api";
+import { OpaqueClientError } from "@/lib/opaque";
 import ResetPasswordPage from "../ResetPasswordPage";
 
 const apiPost = vi.fn();
 vi.mock("@/lib/api", async (orig) => ({
   ...(await orig<typeof import("@/lib/api")>()),
   apiPost: (...a: unknown[]) => apiPost(...a),
+}));
+
+const opaqueReset = vi.fn();
+vi.mock("@/lib/opaque/client", async (orig) => ({
+  ...(await orig<typeof import("@/lib/opaque/client")>()),
+  opaqueReset: (...a: unknown[]) => opaqueReset(...a),
 }));
 
 const TOKEN = "a".repeat(64);
@@ -48,6 +55,9 @@ async function fill(password: string, confirm = password) {
 beforeEach(() => {
   apiPost.mockReset();
   apiPost.mockResolvedValue(undefined);
+  // default: OPAQUE is off, so the legacy endpoint is used
+  opaqueReset.mockReset();
+  opaqueReset.mockRejectedValue(new ApiError("x", 503, "opaque_unavailable"));
 });
 afterEach(() => {
   document.head.querySelectorAll('meta[name="referrer"]').forEach((m) => m.remove());
@@ -86,6 +96,33 @@ describe("ResetPasswordPage", () => {
       "href",
       "/login",
     );
+  });
+
+  it("resets through OPAQUE when it is available", async () => {
+    opaqueReset.mockResolvedValue(undefined);
+    renderReset();
+    await fill("new-password-1");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Passwort gespeichert" }),
+    ).toBeInTheDocument();
+    expect(opaqueReset).toHaveBeenCalledWith(TOKEN, "new-password-1");
+    expect(apiPost).not.toHaveBeenCalled();
+  });
+
+  it("shows an invalid link when the OPAQUE reset rejects the token", async () => {
+    opaqueReset.mockRejectedValue(new ApiError("x", 400, "invalid_reset_token", "token"));
+    renderReset();
+    await fill("new-password-1");
+    expect(await screen.findByRole("heading", { level: 1, name: /Link/ })).toBeInTheDocument();
+    expect(apiPost).not.toHaveBeenCalled();
+  });
+
+  it("explains an unsupported browser and never falls back to the legacy endpoint", async () => {
+    opaqueReset.mockRejectedValue(new OpaqueClientError("opaque_unsupported", "no wasm"));
+    renderReset();
+    await fill("new-password-1");
+    expect(await screen.findByText(/unterstützt die sichere Anmeldung nicht/)).toBeInTheDocument();
+    expect(apiPost).not.toHaveBeenCalled();
   });
 
   it("checks the password policy and the repetition before sending", async () => {

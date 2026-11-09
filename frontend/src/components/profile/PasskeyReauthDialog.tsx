@@ -10,6 +10,7 @@ import {
   Skeleton,
 } from "@/components/ui/shared";
 import { apiErrorCode, apiPost } from "@/lib/api";
+import { opaqueFailureKind, usePasswordProof } from "@/lib/opaque";
 import { focusFirstInvalid } from "@/lib/focus";
 
 export interface PasskeyRegistrationStart {
@@ -49,6 +50,7 @@ export function PasskeyReauthDialog({
   const [busy, setBusy] = useState(false);
   const [mail, setMail] = useState<"idle" | "sending" | "sent">("idle");
   const [mailError, setMailError] = useState<string>();
+  const proof = usePasswordProof("passkey-register");
   const formRef = useRef<HTMLDivElement>(null);
   useEffect(() => focusFirstInvalid(formRef.current), [fieldError]);
 
@@ -98,7 +100,7 @@ export function PasskeyReauthDialog({
     try {
       const start = await apiPost<PasskeyRegistrationStart>(
         "/api/auth/webauthn/register/options",
-        hasPassword ? { password } : { code },
+        hasPassword ? await proof(password) : { code },
       );
       close(false);
       onConfirmed(start);
@@ -108,6 +110,8 @@ export function PasskeyReauthDialog({
       else if (errorCode === "invalid_confirmation_code")
         setFieldError(t("profile.passkeys.reauth.wrongCode"));
       else if (errorCode === "rate_limited") setFailure(t("profile.passkeys.reauth.rateLimited"));
+      else if (opaqueFailureKind(error) === "unsupported") setFailure(t("auth.opaqueUnsupported"));
+      else if (opaqueFailureKind(error) === "unavailable") setFailure(t("auth.opaqueUnavailable"));
       else setFailure(t("profile.passkeys.reauth.failed"));
     } finally {
       setBusy(false);

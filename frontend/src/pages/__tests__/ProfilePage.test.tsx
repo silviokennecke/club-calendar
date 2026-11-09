@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/lib/ThemeProvider";
 import { Toaster } from "@/components/ui/shared";
 import i18n from "@/lib/i18n";
 import { ApiError } from "@/lib/api";
+import { OpaqueClientError } from "@/lib/opaque";
 import ProfilePage from "../ProfilePage";
 
 const apiGet = vi.fn();
@@ -18,6 +19,8 @@ const updateUser = vi.fn();
 const logout = vi.fn();
 const login = vi.fn();
 const startRegistration = vi.fn();
+const opaqueReauth = vi.fn();
+const opaqueChangePassword = vi.fn();
 let authUser: Record<string, unknown>;
 
 vi.mock("@/lib/api", async (orig) => ({
@@ -30,6 +33,11 @@ vi.mock("@/lib/api", async (orig) => ({
 }));
 vi.mock("@/lib/auth-context", () => ({
   useAuth: () => ({ user: authUser, updateUser, logout, login }),
+}));
+vi.mock("@/lib/opaque/client", async (orig) => ({
+  ...(await orig<typeof import("@/lib/opaque/client")>()),
+  opaqueReauth: (...a: unknown[]) => opaqueReauth(...a),
+  opaqueChangePassword: (...a: unknown[]) => opaqueChangePassword(...a),
 }));
 vi.mock("@simplewebauthn/browser", () => ({
   startRegistration: (...a: unknown[]) => startRegistration(...a),
@@ -124,8 +132,12 @@ beforeEach(() => {
     logout,
     login,
     startRegistration,
+    opaqueReauth,
+    opaqueChangePassword,
   ])
     fn.mockReset();
+  // default: a legacy account (no OPAQUE record), so the plain password is sent
+  opaqueReauth.mockRejectedValue(new ApiError("x", 409, "opaque_not_registered"));
   apiPost.mockResolvedValue(undefined);
   updateUser.mockResolvedValue(true);
   apiDelete.mockResolvedValue(undefined);
@@ -740,6 +752,97 @@ describe("ProfilePage", () => {
       await screen.findByText("Du hast noch keinen Passkey eingerichtet."),
     ).toBeInTheDocument();
     expect(screen.getByText(/Es ist keine Anmeldung über einen Anbieter/)).toBeInTheDocument();
+  });
+
+  describe("OPAQUE accounts", () => {
+    beforeEach(() => {
+      opaqueReauth.mockResolvedValue("ticket-1");
+    });
+
+    it("changes the password with a reauth ticket and the OPAQUE register flow", async () => {
+      opaqueChangePassword.mockResolvedValue({
+        access_token: "a3",
+        refresh_token: "r3",
+        user: { id: "u1" },
+      });
+      const user = userEvent.setup();
+      renderProfile();
+      const panel = (await screen.findByRole("heading", { level: 2, name: "Passwort" })).closest(
+        "section",
+      )!;
+      await user.type(within(panel).getByLabelText(/^Aktuelles Passwort/), "old-password");
+      await user.type(within(panel).getByLabelText(/^Neues Passwort/), "new-password-1");
+      await user.type(within(panel).getByLabelText(/^Passwort wiederholen/), "new-password-1");
+      await user.click(within(panel).getByRole("button", { name: "Passwort ändern" }));
+      await waitFor(() =>
+        expect(opaqueChangePassword).toHaveBeenCalledWith("ticket-1", "new-password-1"),
+      );
+      expect(opaqueReauth).toHaveBeenCalledWith("change-password", "old-password");
+      expect(apiPost).not.toHaveBeenCalledWith("/api/auth/change-password", expect.anything());
+      expect(login).toHaveBeenCalledWith("a3", "r3", { id: "u1" });
+    });
+
+    it("shows a wrong current password at its field", async () => {
+      opaqueReauth.mockImplementation(async () => {
+        throw new ApiError("x", 401, "invalid_credentials", "password");
+      });
+      const user = userEvent.setup();
+      renderProfile();
+      const panel = (await screen.findByRole("heading", { level: 2, name: "Passwort" })).closest(
+        "section",
+      )!;
+      await user.type(within(panel).getByLabelText(/^Aktuelles Passwort/), "wrong");
+      await user.type(within(panel).getByLabelText(/^Neues Passwort/), "new-password-1");
+      await user.type(within(panel).getByLabelText(/^Passwort wiederholen/), "new-password-1");
+      await user.click(within(panel).getByRole("button", { name: "Passwort ändern" }));
+      expect(await within(panel).findByText("Das Passwort stimmt nicht.")).toBeInTheDocument();
+      expect(opaqueChangePassword).not.toHaveBeenCalled();
+    });
+
+    it("sends the ticket instead of the password to change the e-mail address", async () => {
+      const user = userEvent.setup();
+      renderProfile();
+      await user.type(await screen.findByLabelText(/^Neue E-Mail-Adresse/), "neu@beispiel.de");
+      const account = screen
+        .getByRole("heading", { name: "Name und E-Mail-Adresse" })
+        .closest("section")!;
+      await user.type(within(account).getByLabelText(/^Aktuelles Passwort/), "password123");
+      await user.click(screen.getByRole("button", { name: "Bestätigungslink senden" }));
+      await waitFor(() =>
+        expect(apiPost).toHaveBeenCalledWith("/api/auth/change-email", {
+          email: "neu@beispiel.de",
+          reauthTicket: "ticket-1",
+        }),
+      );
+      expect(opaqueReauth).toHaveBeenCalledWith("change-email", "password123");
+    });
+
+    it("deletes the account with the ticket", async () => {
+      const user = userEvent.setup();
+      renderProfile();
+      const dialog = await openDeleteDialog(user);
+      await user.type(within(dialog).getByLabelText(/Zur Bestätigung dein Passwort/), "geheim123");
+      await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
+      await waitFor(() =>
+        expect(apiDelete).toHaveBeenCalledWith("/api/auth/me", { reauthTicket: "ticket-1" }),
+      );
+      expect(opaqueReauth).toHaveBeenCalledWith("delete-account", "geheim123");
+    });
+
+    it("names an unsupported browser in the delete dialog and deletes nothing", async () => {
+      opaqueReauth.mockImplementation(async () => {
+        throw new OpaqueClientError("opaque_unsupported", "no wasm");
+      });
+      const user = userEvent.setup();
+      renderProfile();
+      const dialog = await openDeleteDialog(user);
+      await user.type(within(dialog).getByLabelText(/Zur Bestätigung dein Passwort/), "geheim123");
+      await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
+      expect(
+        await within(dialog).findByText(/unterstützt die sichere Anmeldung nicht/),
+      ).toBeInTheDocument();
+      expect(apiDelete).not.toHaveBeenCalled();
+    });
   });
 });
 
