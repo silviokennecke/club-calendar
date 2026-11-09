@@ -8,6 +8,18 @@ description: Passwort ändern, vergessen oder erstmals festlegen.
 
 Mit deinem Passwort meldest du dich an. Es muss zwischen 8 und 128 Zeichen lang sein.
 
+## So sicher ist dein Passwort
+
+Dein Passwort wird mit einem sicheren Verfahren (OPAQUE) geprüft: Es verlässt dein Gerät nie, nicht einmal verschlüsselt. Der Server bekommt es nie zu sehen und speichert es auch nicht. Die Anmeldung dauert deshalb einen Moment länger, weil dein Gerät einen Teil der Prüfung selbst rechnet.
+
+Dafür braucht dein Browser WebAssembly. Das können alle aktuellen Browser. Sehr alte Browser und Geräte werden nicht unterstützt; dann erscheint ein Hinweis und du nimmst einen aktuellen Browser.
+
+### Umstellung für bestehende Konten
+
+Hast du dein Passwort schon vor der Umstellung festgelegt, stellt die App dein Konto bei deiner nächsten Anmeldung einmalig und automatisch um. Du musst nichts tun: Melde dich einfach wie gewohnt mit deinem Passwort an.
+
+Meldest du dich bis zum Stichtag nicht mehr an, kannst du dich danach nicht mehr mit dem alten Passwort anmelden. Die Anmeldeseite zeigt dann **Passwort zurücksetzen erforderlich**; setze das Passwort wie unter [Passwort vergessen](help:settings/password#passwort-vergessen) beschrieben zurück. Vor dem Stichtag erinnern wir dich per E-Mail. Anmeldungen mit Passkey, Google oder Microsoft sind nicht betroffen.
+
 ## Passwort ändern
 
 1. Öffne dein [Profil](help:settings/profile) und gehe zu **Passwort**.

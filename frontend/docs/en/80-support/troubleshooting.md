@@ -16,6 +16,14 @@ For every situation you find the **symptom** (what you see), the **cause** and t
 
 **Solution:** Wait for the time shown. Check the spelling of your address. If you forgot your password, reset it from the sign-in page ([Password](help:settings/password)). Or sign in with a [passkey](help:settings/passkeys) or a [linked account](help:settings/linked-accounts).
 
+## Password reset required or browser not supported
+
+**Symptom:** The sign-in page shows **Password reset required**, or the message "Your browser or device does not support secure sign-in" or "Secure sign-in is currently unavailable".
+
+**Cause:** After the switch to the new password check, your account did not sign in before the cutoff date and still has the old password procedure. Or your browser does not support WebAssembly or has too little memory.
+
+**Solution:** Reset your password from the sign-in page ([Password](help:settings/password)). Use a current browser. If secure sign-in is only unavailable for a moment, try again later.
+
 ## Sign-in with Google, Microsoft or Apple fails
 
 **Symptom:** Messages such as "The sign-in has expired ...", "An account already exists for this e-mail address" or "No account was created. Registration is only possible with an invitation."
