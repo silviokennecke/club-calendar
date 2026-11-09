@@ -50,6 +50,7 @@
     <groups>
         <exclude>
             <group>performance</group>
+            <group>interop</group>
         </exclude>
     </groups>
 

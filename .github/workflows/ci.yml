@@ -212,6 +212,9 @@ jobs:
       - name: Compile mail templates (gitignored build artifacts)
         run: npm run build:mail -w backend
 
+      - name: OPAQUE interop (serenity client vs. PHP server)
+        run: npm run test:opaque-interop -w frontend
+
       - name: Create .env for console commands
         working-directory: backend
         run: cp .env.example .env

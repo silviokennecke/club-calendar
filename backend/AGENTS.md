@@ -109,6 +109,7 @@ See `../CLAUDE.md` "Auth" and `../docs/api/openapi.yaml`.
 
 ## Testing
 
+OPAQUE live interop (pinned `@serenity-kit/opaque` client vs. `App\Opaque\OpaqueServer`): `npm run test:opaque-interop -w frontend` (~5 s, needs `composer install` + `npm ci`; CI step in the backend job; harness `tests/Opaque/bin/interop-server.php`). `phpunit --group interop` wraps it (excluded from the default run).
 Tests are in `tests/Controller/` using `Symfony\Bundle\FrameworkBundle\Test\WebTestCase`.
 `tests/Helper/DatabaseResetter::reset($em)` truncates all tables before each test class.
 `tests/Helper/TestHelper` provides factory helpers: `createUser`, `createClub`, `createCalendar`, `createEvent`, `createTemplate`.

@@ -330,7 +330,7 @@ Es gibt keinen Weg von OPAQUE zurück zu bcrypt (der Server kennt das Passwort n
 | 1 | **(erledigt)** `ext-sodium` in composer.json, Docker `php -m`-Check, `.env.example`/`services.yaml` Konfigurationsgerüst, `OpaqueKeys`, `generate-keys` | 0 | S |
 | 2 | **(erledigt)** Primitive: `Ristretto`, `ExpandMessageXmd`, `HashToGroup`, `Oprf` + RFC-9497/9380-Vektoren | 1 | M |
 | 3 | **(erledigt)** `KeySchedule`, `Hkdf`, `Mac`, `OpaqueServer` (Reg + Login, Fake-Pfad), `RegistrationRecord`, `ServerLoginState` + RFC-9807-Vektoren C.1.1/C.1.2/C.2.1 (voll), C.1.3/C.1.4/C.2.2 (OPRF), serenity-Replay, Test-Client mit Round-Trips | 2 | L |
-| 4 | Test-only `OpaqueTestClient` + Negativ-Tests + Interop-Skript mit serenity (CI-Job) | 3 | M |
+| 4 | **(erledigt)** Live-Interop `frontend/scripts/opaque/interop.mjs` (serenity 1.1.0, echtes Argon2id) gegen PHP-Harness `backend/tests/Opaque/bin/interop-server.php`, CI-Schritt im Backend-Job; `OpaqueTestClient` + Negativ-Tests kamen mit AP 3. Ursprünglich: Test-only `OpaqueTestClient` + Negativ-Tests + Interop-Skript mit serenity (CI-Job) | 3 | M |
 | 5 | DB-Migration (3 Spalten), `User`-Entity, `OpaqueService`, `loginState` (AEAD + NonceStore), Reauth-Ticket | 3 | M |
 | 6 | Endpunkte `login/*` + `AuthService`-Split + Rate-Limits + OpenAPI + Controller-Tests | 5 | L |
 | 7 | Endpunkte `register/*` (Signup, Reset, Change, Upgrade) + `PasswordResetService`/`AccountService`-Anpassung | 6 | L |
