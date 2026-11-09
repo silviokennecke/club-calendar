@@ -72,6 +72,8 @@ den Browser nie.
   Konten werden beim nächsten Login (über Reauth/Re-Registrierung) migriert. Reicht für Kompromittierung eines Schlüssels:
   Notfall = alle Konten reset-pflichtig (Phase-2-Mechanismus wiederverwenden). Diese Story ist ein eigenes AP (M).
 
+**Umgesetzt (AP 15):** `OPAQUE_KEYS` (`id:seed:privateKey,...`) + `OPAQUE_ACTIVE_KEY_ID`; das alte Paar ist Id `1` (Standard-aktiv), doppelte Ids, fehlende aktive Id oder ungültige Schlüssel scheitern beim Start (`OpaqueKeys`, `app:opaque:check` prüft alle Sätze und warnt vor unreferenzierten Schlüsseln). Neue Registrationen speichern die aktive Id; `start` wählt den Schlüssel nach `user.opaque_key_id`; unbekannte oder fehlende Id bei vorhandenem Record = defekter Record (Fehler-Log, Fake-Pfad unter dem aktiven Schlüssel, `identify` `reset_required`). `app:opaque:status` zeigt `recordsByKeyId`. Nicht unterscheidbar: der Serverschlüssel steckt in KE2 maskiert, Fake-Antworten unter dem aktiven Schlüssel entsprechen echten unter altem Schlüssel von außen ohne Passwort. Kein Re-Key beim Login (braucht das Passwort, also Client-Mitwirkung): als Zukunftsoption dokumentiert, kein Backend-Signal.
+
 ### 2.4 PHP-Modul `App\Opaque\` (`backend/src/Opaque/`)
 - `Ristretto` (dünner Wrapper um `sodium_crypto_core_ristretto255_*`, `sodium_crypto_scalarmult_ristretto255*`, mit
   `is_valid_point`-Prüfung und Ablehnung des Identitätselements bei jedem Eingabepunkt).
@@ -362,7 +364,7 @@ Es gibt keinen Weg von OPAQUE zurück zu bcrypt (der Server kennt das Passwort n
 | 12 | **(erledigt)** CSP in `.htaccess`, `Caddyfile`, `SecurityHeadersConfigTest`, `csp.spec.ts`, OPERATIONS.md | 0 | S |
 | 13 | E2E-Helper und Specs, Hilfeseiten DE/EN, CHANGELOG, CLAUDE.md/AGENTS.md | 11, 12 | L |
 | 14 | Upgrade-Pfad (Ticket, Frontend-Hook nach Legacy-Login), Notify-/Retire-Commands | 7, 11 | M |
-| 15 | Schlüsselrotation (`OPAQUE_KEYS`, `opaque_key_id`) | 5 | M |
+| 15 | **(erledigt)** Schlüsselrotation (`OPAQUE_KEYS`, `opaque_key_id`) | 5 | M |
 | 16 | Externes Review, Rollout-Plan, Phase 2 (Stichtag), Legacy-Cleanup, CLI-Umbau | 14, 15 | M + Wartezeit |
 
 Rollout-Reihenfolge in Produktion: 1-9 deployen mit Flag aus -> Migration laufen lassen -> Flag in Staging -> Frontend (10-13) ->

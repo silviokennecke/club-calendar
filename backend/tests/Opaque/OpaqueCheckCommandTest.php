@@ -11,7 +11,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 class OpaqueCheckCommandTest extends KernelTestCase
 {
-    private const VARS = ['OPAQUE_ENABLED', 'OPAQUE_OPRF_SEED', 'OPAQUE_SERVER_PRIVATE_KEY', 'OPAQUE_ROLLOUT_PERCENT', 'OPAQUE_LEGACY_CUTOFF'];
+    private const VARS = ['OPAQUE_ENABLED', 'OPAQUE_OPRF_SEED', 'OPAQUE_SERVER_PRIVATE_KEY', 'OPAQUE_KEYS', 'OPAQUE_ACTIVE_KEY_ID', 'OPAQUE_ROLLOUT_PERCENT', 'OPAQUE_LEGACY_CUTOFF'];
 
     /** @var array<string, array{0: string|false, 1: mixed, 2: mixed}> */
     private array $saved = [];
@@ -90,6 +90,65 @@ class OpaqueCheckCommandTest extends KernelTestCase
         ]);
 
         self::assertSame(1, $tester->getStatusCode());
+    }
+
+    private static function set(string $id): string
+    {
+        return $id.':'.OpaqueKeys::encode(random_bytes(64)).':'.OpaqueKeys::encode(sodium_crypto_core_ristretto255_scalar_random());
+    }
+
+    /** @param array<string, string> $extra */
+    private function checkKeys(array $extra): CommandTester
+    {
+        return $this->check($extra + ['OPAQUE_ENABLED' => 'true', 'OPAQUE_OPRF_SEED' => '', 'OPAQUE_SERVER_PRIVATE_KEY' => '', 'OPAQUE_KEYS' => '', 'OPAQUE_ACTIVE_KEY_ID' => '']);
+    }
+
+    public function testMultipleKeySetsPass(): void
+    {
+        $tester = $this->checkKeys(['OPAQUE_KEYS' => self::set('1').','.self::set('2'), 'OPAQUE_ACTIVE_KEY_ID' => '2']);
+
+        self::assertSame(0, $tester->getStatusCode());
+        self::assertStringContainsString('2 key set(s)', $tester->getDisplay());
+        self::assertStringContainsString('active: 2', $tester->getDisplay());
+    }
+
+    public function testDuplicateKeyIdIsFatal(): void
+    {
+        $tester = $this->checkKeys(['OPAQUE_KEYS' => self::set('2').','.self::set('2'), 'OPAQUE_ACTIVE_KEY_ID' => '2']);
+
+        self::assertSame(1, $tester->getStatusCode());
+        self::assertStringContainsString('defined twice', $tester->getDisplay());
+    }
+
+    public function testMissingActiveIdIsFatal(): void
+    {
+        $tester = $this->checkKeys(['OPAQUE_KEYS' => self::set('1'), 'OPAQUE_ACTIVE_KEY_ID' => '7']);
+
+        self::assertSame(1, $tester->getStatusCode());
+        self::assertStringContainsString('OPAQUE_ACTIVE_KEY_ID', $tester->getDisplay());
+    }
+
+    public function testInvalidKeyInSetIsFatal(): void
+    {
+        $tester = $this->checkKeys(['OPAQUE_KEYS' => self::set('1').',2:abc:def', 'OPAQUE_ACTIVE_KEY_ID' => '1']);
+
+        self::assertSame(1, $tester->getStatusCode());
+        self::assertStringContainsString('OPAQUE_KEYS[2]', $tester->getDisplay());
+    }
+
+    public function testWarnsAboutUnreferencedAndUnknownKeys(): void
+    {
+        self::bootKernel();
+        $em = static::getContainer()->get(\Doctrine\ORM\EntityManagerInterface::class);
+        \App\Tests\Helper\DatabaseResetter::reset($em);
+        $em->persist((new \App\Entity\User())->setName('U')->setEmail('u@example.com')->setIsEmailVerified(true)->setOpaque(str_repeat("\x01", 192), 1, 'gone'));
+        $em->flush();
+
+        $tester = $this->checkKeys(['OPAQUE_KEYS' => self::set('1').','.self::set('2'), 'OPAQUE_ACTIVE_KEY_ID' => '2']);
+
+        self::assertSame(0, $tester->getStatusCode());
+        self::assertStringContainsString('Key "1" is configured but no record references it', $tester->getDisplay());
+        self::assertStringContainsString('reference key id "gone"', $tester->getDisplay());
     }
 
     /** @return iterable<string, array{string, string, string}> */

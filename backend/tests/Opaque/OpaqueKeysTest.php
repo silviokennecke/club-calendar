@@ -96,4 +96,77 @@ class OpaqueKeysTest extends TestCase
 
         self::assertSame(64, strlen($keys->oprfSeed()));
     }
+
+    private static function sets(string ...$ids): string
+    {
+        return implode(',', array_map(static fn (string $id): string => $id.':'.OpaqueKeys::encode(random_bytes(64)).':'.OpaqueKeys::encode(sodium_crypto_core_ristretto255_scalar_random()), $ids));
+    }
+
+    public function testLegacyPairIsKeyOneAndActiveByDefault(): void
+    {
+        $keys = new OpaqueKeys(true, OpaqueKeys::encode(random_bytes(64)), OpaqueKeys::encode(sodium_crypto_core_ristretto255_scalar_random()));
+
+        self::assertSame('1', $keys->activeId());
+        self::assertSame(['1'], $keys->ids());
+        self::assertTrue($keys->has('1'));
+        self::assertFalse($keys->has('2'));
+    }
+
+    public function testMultipleSetsWithLegacyPairAndExplicitActiveId(): void
+    {
+        $seed = random_bytes(64);
+        $private = sodium_crypto_core_ristretto255_scalar_random();
+        $keys = new OpaqueKeys(true, OpaqueKeys::encode($seed), OpaqueKeys::encode($private), self::sets('2', 'k-3'), '2');
+
+        self::assertSame(['1', '2', 'k-3'], $keys->ids());
+        self::assertSame('2', $keys->activeId());
+        self::assertSame($seed, $keys->oprfSeed('1'));
+        self::assertNotSame($keys->oprfSeed('1'), $keys->oprfSeed());
+        self::assertSame(sodium_crypto_scalarmult_ristretto255_base($keys->serverPrivateKey('k-3')), $keys->serverPublicKey('k-3'));
+    }
+
+    public function testKeySetsAloneWithoutLegacyPair(): void
+    {
+        $keys = new OpaqueKeys(true, '', '', self::sets('a', 'b'), 'b');
+
+        self::assertSame(['a', 'b'], $keys->ids());
+        self::assertSame('b', $keys->activeId());
+    }
+
+    /** @return iterable<string, array{string, string, string, bool}> sets, active id, expected message part, legacy pair present */
+    public static function invalidSetsProvider(): iterable
+    {
+        $one = self::sets('2');
+        $enc = static fn (string $b): string => OpaqueKeys::encode($b);
+        yield 'duplicate id' => [$one.','.$one, '2', 'defined twice', false];
+        yield 'id 1 twice (legacy pair present)' => [self::sets('1'), '1', 'defined twice', true];
+        yield 'active id missing' => [$one, '9', 'OPAQUE_ACTIVE_KEY_ID', false];
+        yield 'default active 1 missing' => [$one, '', 'OPAQUE_ACTIVE_KEY_ID', false];
+        yield 'malformed entry' => ['2:onlyseed', '2', 'id:seed:privateKey', false];
+        yield 'bad id' => [str_replace('2:', 'a b:', $one), 'a b', 'id:seed:privateKey', false];
+        yield 'bad seed' => ['2:'.$enc(random_bytes(10)).':'.$enc(sodium_crypto_core_ristretto255_scalar_random()), '2', 'OPAQUE_KEYS[2] seed', false];
+        yield 'bad scalar' => ['2:'.$enc(random_bytes(64)).':'.$enc(str_repeat("\xff", 32)), '2', 'canonical', false];
+    }
+
+    #[DataProvider('invalidSetsProvider')]
+    public function testInvalidKeySetsFailEarly(string $sets, string $active, string $needle, bool $legacy): void
+    {
+        $this->expectException(OpaqueException::class);
+        $this->expectExceptionMessageMatches('/'.preg_quote($needle, '/').'/');
+
+        new OpaqueKeys(
+            true,
+            $legacy ? OpaqueKeys::encode(random_bytes(64)) : '',
+            $legacy ? OpaqueKeys::encode(sodium_crypto_core_ristretto255_scalar_random()) : '',
+            $sets,
+            $active,
+        );
+    }
+
+    public function testUnknownIdAccessThrows(): void
+    {
+        $keys = new OpaqueKeys(true, '', '', self::sets('a'), 'a');
+        $this->expectException(OpaqueException::class);
+        $keys->oprfSeed('zz');
+    }
 }

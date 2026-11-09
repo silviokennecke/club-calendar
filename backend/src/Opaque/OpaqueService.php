@@ -26,14 +26,14 @@ final class OpaqueService
 {
     public const int STATE_TTL = 120;
     public const int CURRENT_VERSION = 1;
-    public const string CURRENT_KEY_ID = '1';
     public const string PURPOSE_LOGIN = 'login';
     private const string REAUTH_PREFIX = 'reauth:';
     private const string NONCE_PURPOSE = 'opaque-login-state';
     /** Protocol version -> client KSF profile (not part of the record, plan 2.2). */
     private const array KSF_PROFILES = [1 => 'memory-constrained'];
 
-    private ?OpaqueServer $server = null;
+    /** @var array<string, OpaqueServer> */
+    private array $servers = [];
 
     public function __construct(
         private readonly OpaqueKeys $keys,
@@ -82,14 +82,14 @@ final class OpaqueService
      */
     public function registrationResponseFor(string $credentialId, string $request): string
     {
-        return $this->server()->createRegistrationResponse($request, $credentialId);
+        return $this->server($this->keys->activeId())->createRegistrationResponse($request, $credentialId);
     }
 
     /** Stores a client record on the entity (192 B, validated); the caller flushes and ends sessions where required. */
     public function storeRecord(User $user, #[\SensitiveParameter] string $record): void
     {
         $this->assertValidRecord($record);
-        $user->setOpaque($record, self::CURRENT_VERSION, self::CURRENT_KEY_ID);
+        $user->setOpaque($record, self::CURRENT_VERSION, $this->keys->activeId());
     }
 
     /** @throws InvalidMessageException unless the bytes are a well-formed record (length, public key point) */
@@ -147,13 +147,15 @@ final class OpaqueService
 
     private function start(?User $user, string $email, string $ke1, string $purpose): OpaqueLoginChallenge
     {
-        $server = $this->server();
         $record = null !== $user ? $this->parseRecord($user) : null;
 
         if (null !== $user && null !== $record) {
+            $server = $this->server($user->getOpaqueKeyId() ?? '');
             $start = $server->generateKE2($ke1, $record, $user->getId());
             $sealed = $this->sealer->seal($start->state, $purpose, $user->getId(), $user->getTokenVersion(), $this->recordHash($user), $this->expiry());
         } else {
+            // Fake path always runs under the active key, like a new registration would.
+            $server = $this->server($this->keys->activeId());
             $credentialId = null !== $user ? $user->getId() : 'fake:'.EmailAddress::normalize($email);
             $start = $server->generateFakeKE2($ke1, $credentialId);
             $sealed = $this->sealer->seal($start->state, $purpose, null, 0, str_repeat("\0", LoginStateSealer::HASH_LENGTH), $this->expiry());
@@ -164,7 +166,6 @@ final class OpaqueService
 
     private function finish(string $loginState, string $ke3, string $purpose): User
     {
-        $server = $this->server();
         $opened = $this->sealer->open($loginState);
         if ($opened->purpose !== $purpose || $opened->expiresAt < $this->clock->now()->getTimestamp()) {
             throw new InvalidMessageException('Invalid login state.');
@@ -174,7 +175,8 @@ final class OpaqueService
             throw new InvalidMessageException('Login state already used.');
         }
 
-        $server->serverFinish($opened->state, $ke3);
+        // serverFinish only compares MACs; any server instance of the (enabled) key sets does.
+        $this->server($this->keys->activeId())->serverFinish($opened->state, $ke3);
         if ($opened->fake) {
             throw new AuthenticationFailedException('Login failed.');
         }
@@ -206,6 +208,12 @@ final class OpaqueService
         if (null === $bytes || self::CURRENT_VERSION !== $user->getOpaqueVersion()) {
             return null;
         }
+        $keyId = $user->getOpaqueKeyId();
+        if ($this->keys->isEnabled() && (null === $keyId || !$this->keys->has($keyId))) {
+            $this->logger->error('Stored OPAQUE record references an unknown key id; answering with the fake path.', ['userId' => $user->getId(), 'keyId' => $keyId]);
+
+            return null;
+        }
         try {
             return RegistrationRecord::fromBytes($bytes);
         } catch (CorruptRecordException) {
@@ -215,8 +223,8 @@ final class OpaqueService
         }
     }
 
-    private function server(): OpaqueServer
+    private function server(string $keyId): OpaqueServer
     {
-        return $this->server ??= OpaqueServer::fromKeys($this->keys);
+        return $this->servers[$keyId] ??= OpaqueServer::fromKeys($this->keys, keyId: $keyId);
     }
 }
