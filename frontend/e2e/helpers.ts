@@ -1,4 +1,5 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import * as opaque from "@serenity-kit/opaque";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -32,16 +33,118 @@ export function resetLinkFor(email: string): string {
   return backendConsole("app:user:reset-link", email).trim();
 }
 
+const KSF = "memory-constrained" as const;
+const OPAQUE = `${API}/api/auth/opaque`;
+
+/** Node-side OPAQUE client (the e2e backend runs with OPAQUE_ENABLED=true, see docs/ops/E2E.md). */
+export async function opaqueRegisterRecord(
+  request: APIRequestContext,
+  context: Record<string, string>,
+  password: string,
+  finishContext: (startBody: { registrationState?: string }) => Record<string, unknown>,
+  extra: Record<string, unknown> = {},
+  headers: Record<string, string> = {},
+) {
+  await opaque.ready;
+  const s1 = opaque.client.startRegistration({ password });
+  const start = await request.post(`${OPAQUE}/register/start`, {
+    headers,
+    data: { ...context, registrationRequest: s1.registrationRequest },
+  });
+  expect(start.ok(), await start.text()).toBeTruthy();
+  const startBody = await start.json();
+  const s2 = opaque.client.finishRegistration({
+    clientRegistrationState: s1.clientRegistrationState,
+    registrationResponse: startBody.registrationResponse,
+    password,
+    keyStretching: KSF,
+  });
+  return request.post(`${OPAQUE}/register/finish`, {
+    headers,
+    data: {
+      ...finishContext(startBody),
+      ...extra,
+      registrationRecord: s2.registrationRecord,
+    },
+  });
+}
+
+/** Signs up through the OPAQUE endpoints (no legal documents in the e2e backend, so no consents). */
+export async function opaqueSignup(
+  request: APIRequestContext,
+  email: string,
+  name: string,
+  password = PASSWORD,
+) {
+  const res = await opaqueRegisterRecord(
+    request,
+    { email },
+    password,
+    (s) => ({ registrationState: s.registrationState }),
+    { name, language: "de", acceptedDocuments: [] },
+  );
+  expect(res.ok(), await res.text()).toBeTruthy();
+  return res;
+}
+
+/** Sets a new password through a reset token with OPAQUE (what the reset page does). */
+export async function opaqueResetPassword(
+  request: APIRequestContext,
+  token: string,
+  password: string,
+) {
+  const res = await opaqueRegisterRecord(request, { resetToken: token }, password, () => ({
+    resetToken: token,
+  }));
+  expect(res.status(), await res.text()).toBeLessThan(300);
+}
+
 /**
- * Registers a user through the API and confirms the e-mail address with `app:user:verify` (the e2e
+ * Password login over OPAQUE. Resolves `{status, body}` like the plain login: a wrong password (the client
+ * cannot finish) is reported as 401, server errors keep their status.
+ */
+export async function apiLogin(request: APIRequestContext, email: string, password = PASSWORD) {
+  await opaque.ready;
+  const l1 = opaque.client.startLogin({ password });
+  const start = await request.post(`${OPAQUE}/login/start`, {
+    data: { email, startLoginRequest: l1.startLoginRequest },
+  });
+  if (!start.ok()) return { status: start.status(), body: await start.json().catch(() => null) };
+  const s = await start.json();
+  const l2 = opaque.client.finishLogin({
+    clientLoginState: l1.clientLoginState,
+    loginResponse: s.loginResponse,
+    password,
+    keyStretching: KSF,
+  });
+  if (!l2) return { status: 401, body: null };
+  const fin = await request.post(`${OPAQUE}/login/finish`, {
+    data: { loginState: s.loginState, finishLoginRequest: l2.finishLoginRequest },
+  });
+  return { status: fin.status(), body: await fin.json().catch(() => null) };
+}
+
+/**
+ * Registers a user through the OPAQUE API and confirms the e-mail address with `app:user:verify` (the e2e
  * backend sends no mails).
  */
 export async function createVerifiedUser(request: APIRequestContext, name: string) {
   const email = `e2e-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
+  await opaqueSignup(request, email, name);
+  backendConsole("app:user:verify", email);
+  return email;
+}
+
+/**
+ * A user with a bcrypt password and no OPAQUE record (the legacy protocol, still served by
+ * `POST /api/auth/register`); the first sign-in upgrades it.
+ */
+export async function createLegacyUser(request: APIRequestContext, name: string) {
+  const email = `e2e-legacy-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
   const res = await request.post(`${API}/api/auth/register`, {
-    data: { name, email, password: PASSWORD, language: "de" },
+    data: { name, email, password: PASSWORD, language: "de", acceptedDocuments: [] },
   });
-  expect(res.ok()).toBeTruthy();
+  expect(res.ok(), await res.text()).toBeTruthy();
   backendConsole("app:user:verify", email);
   return email;
 }
@@ -67,8 +170,16 @@ export async function login(page: Page, email: string) {
 
 /** Authorization headers for direct API calls as the given user. */
 export async function authHeaders(request: APIRequestContext, email: string) {
-  const auth = await request.post(`${API}/api/auth/login`, { data: { email, password: PASSWORD } });
-  const { access_token } = await auth.json();
+  let auth = await apiLogin(request, email);
+  if (auth.status !== 200) {
+    // Fixture accounts (admin@example.com, ...) still carry a bcrypt hash.
+    const legacy = await request.post(`${API}/api/auth/login`, {
+      data: { email, password: PASSWORD },
+    });
+    auth = { status: legacy.status(), body: await legacy.json() };
+  }
+  expect(auth.status).toBe(200);
+  const { access_token } = auth.body;
   return { Authorization: `Bearer ${access_token}` };
 }
 

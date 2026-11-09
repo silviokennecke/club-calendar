@@ -1,5 +1,12 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
-import { API, PASSWORD, createVerifiedUser, login, resetLinkFor, seedClub } from "./helpers";
+import {
+  PASSWORD,
+  createVerifiedUser,
+  login,
+  opaqueResetPassword,
+  resetLinkFor,
+  seedClub,
+} from "./helpers";
 
 // ——— Ended session (backend raised user.token_version): one refresh attempt, then the login page ———
 
@@ -9,10 +16,7 @@ import { API, PASSWORD, createVerifiedUser, login, resetLinkFor, seedClub } from
  */
 async function revokeSessions(request: APIRequestContext, email: string) {
   const token = new URL(resetLinkFor(email)).searchParams.get("token");
-  const res = await request.post(`${API}/api/auth/reset-password`, {
-    data: { token, password: PASSWORD },
-  });
-  expect(res.status()).toBe(204);
+  await opaqueResetPassword(request, token!, PASSWORD);
 }
 
 /** Counts refresh calls and browser dialogs (a "leave page?" prompt would hold the redirect). */
