@@ -39,12 +39,10 @@ jobs:
         run: zensical build --clean
 
       - name: Validate example Compose files
-        run: >
-          docker compose
-          -f docs/admin/docs/examples/docker-compose.yml
-          -f docs/admin/docs/examples/docker-compose.override.yml
-          --env-file docs/admin/docs/examples/example.env
-          config -q
+        working-directory: docs/admin/docs/examples
+        run: |
+          cp example.env .env
+          docker compose config -q
 
       - uses: actions/upload-pages-artifact@v3
         with:
