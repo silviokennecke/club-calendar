@@ -125,6 +125,10 @@ POST /login/finish      {loginState, finishLoginRequest} -> Tokenpaar (wie bishe
 POST /reauth/start      (JWT) {purpose, startLoginRequest} -> {loginResponse, loginState, ksfProfile}
 POST /reauth/finish     (JWT) {loginState, finishLoginRequest} -> {reauthTicket, expiresIn}
 ```
+Jede OPRF-Auswertung unter dem Schlüssel eines echten Nutzers (change-password, reset, upgrade, reauth) ist ein Rate-Orakel:
+die Credential-Id kommt nur aus serverseitiger Bindung (JWT + Ticket, Reset-Token, signierter Registrierungs-State), nie aus
+einem Client-Feld, und jede Auswertung zählt gegen die Nutzer- und IP-Login-Limits (siehe 3.5).
+
 Kontexte der Registrierung (`register/start|finish`), jeweils mit eigenem Berechtigungsnachweis:
 1. **Signup:** `register/start {email, name?}` öffentlich. `register/finish {record, name, email, language, acceptedDocuments}` legt
    den Nutzer an (`AuthService::register`-Logik: Legal-Consent, Registration-Policy, Race-Schutz über Unique-Index,
@@ -152,6 +156,7 @@ Kontexte der Registrierung (`register/start|finish`), jeweils mit eigenem Berech
 **Umgesetzt (AP 5):** `LoginStateSealer` (XChaCha20-Poly1305, Schlüssel per HKDF aus `APP_SECRET`, TTL 120 s weil die Client-KSF nach KE2 läuft). Fester Klartext: ServerLoginState, jti, exp, Purpose (`login` | `reauth:<ticket-purpose>`), Fake-Flag, User-ID (16 B, bei Fake zufällig), `tokenVersion`, SHA-256 des Records. `finish` nimmt den User nur aus dem Blob, verbraucht die jti vor der MAC-Prüfung (`NonceStore`), prüft danach `tokenVersion` und Record-Hash gegen die DB; ein Fake-Zustand scheitert immer. Existierende Konten ohne Record nutzen die User-ID als OPRF-Kennung (stabil bis zur Registrierung), unbekannte `"fake:" || E-Mail`; beide Fake-geflaggt. Ein defekter Record wird geloggt und wie "kein Record" behandelt.
 
 ### 3.4 Reauth-Ticket
+- Die Credential-Id der Reauth-/Change-Auswertung kommt aus JWT und Ticket, nie aus dem Request; jede Auswertung zählt gegen die Limits (3.5).
 - `SignedTokenService::issue('opaque-reauth', {uid, tv, purpose, jti}, 300)`. Verbrauch einmalig (`NonceStore`), gebunden an
   Nutzer, `tokenVersion` und Zweck (`delete-account`, `passkey-register`, `change-email`, `change-password`).
   Ersetzt den Passwort-Pfad von `ReauthenticationService::assertConfirmed($user, $purpose, $password, $code)`; neuer Parameter
@@ -161,9 +166,13 @@ Kontexte der Registrierung (`register/start|finish`), jeweils mit eigenem Berech
   `AuthController::changeEmail` (`password` -> `reauthTicket`), Dtos in `backend/src/Dto/Auth/*`.
 
 ### 3.5 Rate-Limits und Aufzählungsschutz
-- `AuthRateLimiter::assertLoginAllowed(Request, email)` (10/15 min IP, 5/15 min je Adresse) wird bei `login/start` UND
-  `login/finish` geprüft: Fehlversuche zählen am `finish` (Passwort-Raten geschieht erst dort), `recordLoginSuccess` nur bei
-  Erfolg. `identify` bleibt unverändert (bekanntes Orakel, siehe CLAUDE.md "Rate limits").
+- `AuthRateLimiter::assertLoginAllowed(Request, email)` (10/15 min IP, 5/15 min je Adresse) verbraucht bei `login/start`:
+  der Client prüft das Passwort lokal anhand von KE2, Passwort-Raten geschieht also bei `start` (jede OPRF-Auswertung ist ein
+  Rateversuch), nicht erst bei `finish`. Am `finish` höchstens nur lesend prüfen (peek) oder die Prüfung weglassen;
+  `recordLoginSuccess` nur bei Erfolg, die E-Mail dafür kommt aus dem versiegelten State, nicht aus dem Request.
+- Jede OPRF-Auswertung unter dem Schlüssel eines echten Nutzers (change-password, reset, upgrade, reauth; siehe 3.2/3.4) ist
+  ein Rate-Orakel: die Credential-Id stammt ausschließlich aus serverseitiger Bindung (JWT + Ticket, Reset-Token, signierter
+  Registrierungs-State), nie aus einem Client-Feld, und jede Auswertung zählt gegen die Nutzer- und IP-Login-Limits. `identify` bleibt unverändert (bekanntes Orakel, siehe CLAUDE.md "Rate limits").
 - Neu in `rate_limiter.yaml`/`AuthRateLimiter`: `opaque_register_*` (IP, wie register 5/h; plus E-Mail 3/h), `opaque_reauth_*`
   (je Nutzer 5/15 min, wie `assertAccountDeleteAllowed`). Prüfung wie bisher vor DB/Hashing.
 - Antworten für unbekannte und SSO-/Passkey-only-Konten identisch (Fake-Record). `identify` erhält additiv `auth`

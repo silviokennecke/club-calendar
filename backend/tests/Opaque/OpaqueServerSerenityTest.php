@@ -69,7 +69,7 @@ final class OpaqueServerSerenityTest extends TestCase
                 self::assertSame(substr($ke2, 0, 32), Oprf::blindEvaluate($key, $parsed->blindedElement));
 
                 // the masked response opens with the record's masking key to server_public_key || envelope
-                $pad = \App\Opaque\Hkdf::expand($record->maskingKey, substr($ke2, 32, 32).'CredentialResponsePad', 128);
+                $pad = \App\Opaque\Hkdf::expand($record->maskingKey(), substr($ke2, 32, 32).'CredentialResponsePad', 128);
                 self::assertSame($server->serverPublicKey().$record->envelope, substr($ke2, 64, 128) ^ $pad);
 
                 // our own KE2 for the same KE1 has the same shape and evaluated element

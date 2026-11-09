@@ -20,6 +20,7 @@ class OpaqueGenerateKeysCommand
 
         $io->writeln('OPAQUE_OPRF_SEED='.OpaqueKeys::encode($seed));
         $io->writeln('OPAQUE_SERVER_PRIVATE_KEY='.OpaqueKeys::encode($private));
+        $io->getErrorStyle()->warning('The values above are now in your terminal scrollback and shell/CI logs; clear them there and store them in a secret manager.');
         $io->getErrorStyle()->warning('Store these values permanently and back them up. Losing them invalidates every OPAQUE password record.');
 
         sodium_memzero($seed);

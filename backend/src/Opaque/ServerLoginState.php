@@ -55,4 +55,9 @@ final class ServerLoginState
     {
         throw new \LogicException('ServerLoginState must be sealed via toBytes(), not serialized.');
     }
+
+    public function __unserialize(array $data): void
+    {
+        throw new \LogicException('ServerLoginState must not be unserialized.');
+    }
 }

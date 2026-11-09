@@ -174,6 +174,21 @@ class OpaqueServiceTest extends KernelTestCase
         self::assertSame(substr($asLegacy->ke2, 0, 32), substr($reg, 0, 32));
     }
 
+    public function testServiceServerUsesSystemRandom(): void
+    {
+        $server = (new \ReflectionMethod($this->service, 'server'))->invoke($this->service);
+        self::assertInstanceOf(\App\Opaque\SystemRandom::class, (new \ReflectionProperty($server, 'random'))->getValue($server));
+    }
+
+    public function testCorruptRecordLogsOncePerAttempt(): void
+    {
+        $user = $this->user();
+        $user->setOpaque(str_repeat("\1", 192), 1, '1');
+        $this->logger->cleanLogs();
+        $this->login($user, 'ada@example.com');
+        self::assertCount(1, $this->logger->cleanLogs());
+    }
+
     public function testRealAndFakeStatesHaveEqualSize(): void
     {
         $user = $this->user();

@@ -59,7 +59,12 @@ final class OpaqueService
     /** KSF profile the client must use for this account (current profile for accounts without a record). */
     public function ksfProfile(?User $user): string
     {
-        $version = null !== $user && $this->hasRecord($user) ? $user->getOpaqueVersion() : null;
+        return $this->profileFor($user, null !== $user && $this->hasRecord($user));
+    }
+
+    private function profileFor(?User $user, bool $hasRecord): string
+    {
+        $version = null !== $user && $hasRecord ? $user->getOpaqueVersion() : null;
 
         return self::KSF_PROFILES[$version ?? self::CURRENT_VERSION] ?? self::KSF_PROFILES[self::CURRENT_VERSION];
     }
@@ -73,7 +78,11 @@ final class OpaqueService
     /** Stores a client record on the entity (192 B, validated); the caller flushes and ends sessions where required. */
     public function storeRecord(User $user, #[\SensitiveParameter] string $record): void
     {
-        RegistrationRecord::fromBytes($record);
+        try {
+            RegistrationRecord::fromBytes($record);
+        } catch (CorruptRecordException $e) {
+            throw new InvalidMessageException('Invalid registration record.', 0, $e);
+        }
         $user->setOpaque($record, self::CURRENT_VERSION, self::CURRENT_KEY_ID);
     }
 
@@ -134,7 +143,7 @@ final class OpaqueService
             $sealed = $this->sealer->seal($start->state, $purpose, null, 0, str_repeat("\0", LoginStateSealer::HASH_LENGTH), $this->expiry());
         }
 
-        return new OpaqueLoginChallenge($start->ke2, $sealed, $this->ksfProfile($user));
+        return new OpaqueLoginChallenge($start->ke2, $sealed, $this->profileFor($user, null !== $record));
     }
 
     private function finish(string $loginState, string $ke3, string $purpose): User
@@ -183,7 +192,7 @@ final class OpaqueService
         }
         try {
             return RegistrationRecord::fromBytes($bytes);
-        } catch (InvalidMessageException) {
+        } catch (CorruptRecordException) {
             $this->logger->error('Stored OPAQUE record is corrupt; answering with the fake path.', ['userId' => $user->getId()]);
 
             return null;

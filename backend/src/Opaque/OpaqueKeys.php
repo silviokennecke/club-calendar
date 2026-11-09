@@ -13,8 +13,8 @@ final class OpaqueKeys
     public const int SEED_LENGTH = 64;
     public const int PRIVATE_KEY_LENGTH = 32;
 
-    private string $oprfSeed = '';
-    private string $serverPrivateKey = '';
+    private ?string $oprfSeed = '';
+    private ?string $serverPrivateKey = '';
     private string $serverPublicKey = '';
 
     public function __construct(
@@ -49,14 +49,14 @@ final class OpaqueKeys
     {
         $this->assertEnabled();
 
-        return $this->oprfSeed;
+        return $this->oprfSeed ?? '';
     }
 
     public function serverPrivateKey(): string
     {
         $this->assertEnabled();
 
-        return $this->serverPrivateKey;
+        return $this->serverPrivateKey ?? '';
     }
 
     public function serverPublicKey(): string
@@ -83,16 +83,19 @@ final class OpaqueKeys
         throw new \LogicException('OpaqueKeys must not be serialized.');
     }
 
+    public function __unserialize(array $data): void
+    {
+        throw new \LogicException('OpaqueKeys must not be unserialized.');
+    }
+
     public function __destruct()
     {
-        // zeroes the shared buffer in place; the locals then become null
-        $seed = $this->oprfSeed;
-        $private = $this->serverPrivateKey;
-        if ('' !== $seed) {
-            sodium_memzero($seed);
+        // Best-effort: sodium_memzero acts on this property only; copies handed out by the accessors are not reached.
+        if (null !== $this->oprfSeed && '' !== $this->oprfSeed) {
+            sodium_memzero($this->oprfSeed);
         }
-        if ('' !== $private) {
-            sodium_memzero($private);
+        if (null !== $this->serverPrivateKey && '' !== $this->serverPrivateKey) {
+            sodium_memzero($this->serverPrivateKey);
         }
     }
 

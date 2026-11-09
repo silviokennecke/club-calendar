@@ -29,6 +29,7 @@ class OpaqueGenerateKeysCommandTest extends KernelTestCase
         self::assertSame(1, preg_match('/^OPAQUE_SERVER_PRIVATE_KEY=(\S+)$/m', $out, $key));
         self::assertStringNotContainsString('Store these', $out);
         self::assertStringContainsString('Store these', $tester->getErrorOutput());
+        self::assertStringContainsString('scrollback', $tester->getErrorOutput());
 
         $keys = new OpaqueKeys(true, $seed[1], $key[1]);
         self::assertSame(64, strlen($keys->oprfSeed()));

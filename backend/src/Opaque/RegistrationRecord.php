@@ -13,23 +13,23 @@ final readonly class RegistrationRecord
 
     public function __construct(
         public string $clientPublicKey,
-        #[\SensitiveParameter] public string $maskingKey,
+        #[\SensitiveParameter] private string $maskingKey,
         public string $envelope,
     ) {
         if (self::MASKING_KEY_LENGTH !== strlen($maskingKey) || self::ENVELOPE_LENGTH !== strlen($envelope)) {
-            throw new InvalidMessageException('Invalid registration record field length.');
+            throw new CorruptRecordException('Invalid registration record field length.');
         }
         try {
             Ristretto::assertElement($clientPublicKey);
         } catch (OpaqueException $e) {
-            throw new InvalidMessageException('Registration record has an invalid client public key.', 0, $e);
+            throw new CorruptRecordException('Registration record has an invalid client public key.', 0, $e);
         }
     }
 
     public static function fromBytes(#[\SensitiveParameter] string $bytes): self
     {
         if (self::LENGTH !== strlen($bytes)) {
-            throw new InvalidMessageException('Registration record must be 192 bytes.');
+            throw new CorruptRecordException('Registration record must be 192 bytes.');
         }
 
         return new self(substr($bytes, 0, 32), substr($bytes, 32, 64), substr($bytes, 96, 96));
@@ -41,6 +41,11 @@ final readonly class RegistrationRecord
         return new self($clientPublicKey, $maskingKey, str_repeat("\0", self::ENVELOPE_LENGTH));
     }
 
+    public function maskingKey(): string
+    {
+        return $this->maskingKey;
+    }
+
     public function toBytes(): string
     {
         return $this->clientPublicKey.$this->maskingKey.$this->envelope;
@@ -50,5 +55,16 @@ final readonly class RegistrationRecord
     public function __debugInfo(): array
     {
         return [];
+    }
+
+    /** @return never */
+    public function __serialize(): array
+    {
+        throw new \LogicException('RegistrationRecord must not be serialized.');
+    }
+
+    public function __unserialize(array $data): void
+    {
+        throw new \LogicException('RegistrationRecord must not be unserialized.');
     }
 }

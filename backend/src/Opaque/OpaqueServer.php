@@ -10,17 +10,19 @@ namespace App\Opaque;
  *
  * Fake path (§6.4.2 / §10.9): for an unknown account or one without a record, {@see generateFakeKE2()} answers with a
  * record whose masking key is fresh random per call, whose envelope is zero and whose client public key is a fixed
- * group element derived from the OPRF seed (opaque-ke uses a fixed random "dummy_pk" from its setup; deriving it from
- * the seed needs no extra secret). The caller passes a stable fake credential identifier ("fake:" || e-mail) so the
- * OPRF output stays constant per address, like for real accounts.
+ * group element hashed from the OPRF seed, so nobody (not even a seed holder) knows its discrete log. The returned
+ * state additionally expects a random client MAC, so no KE3 can ever verify. The caller passes a stable fake
+ * credential identifier ("fake:" || e-mail) so the OPRF output stays constant per address, like for real accounts.
  */
 final class OpaqueServer
 {
     private const string KEYPAIR_INFO = 'OPAQUE-DeriveDiffieHellmanKeyPair';
+    private const string FAKE_PK_DST = 'ClubCalendar-FakeClientPublicKey-HashToGroup';
 
     private string $serverPublicKey;
     private string $dummyClientPublicKey;
 
+    /** @param RandomSource $random @internal test injection only; production uses the default */
     public function __construct(
         #[\SensitiveParameter] private string $serverPrivateKey,
         #[\SensitiveParameter] private string $oprfSeed,
@@ -37,10 +39,9 @@ final class OpaqueServer
         Ristretto::assertScalar($serverPrivateKey);
         $this->serverPublicKey = Ristretto::baseMult($serverPrivateKey);
 
-        $fakeSeed = Hkdf::expand($oprfSeed, 'ClubCalendar-FakeClientPublicKey', 32);
-        [$sk, $this->dummyClientPublicKey] = Oprf::deriveKeyPair($fakeSeed, self::KEYPAIR_INFO);
-        sodium_memzero($sk);
-        sodium_memzero($fakeSeed);
+        $fakeInput = Hkdf::expand($oprfSeed, 'ClubCalendar-FakeClientPublicKey', 64);
+        $this->dummyClientPublicKey = Oprf::hashToGroup($fakeInput, self::FAKE_PK_DST);
+        sodium_memzero($fakeInput);
     }
 
     public static function fromKeys(OpaqueKeys $keys, string $context = '', ?string $serverIdentity = null, RandomSource $random = new SystemRandom()): self
@@ -82,12 +83,17 @@ final class OpaqueServer
     /** RFC 9807 §6.4.3 GenerateKE2 for an existing record. */
     public function generateKE2(string $ke1, RegistrationRecord $record, string $credentialIdentifier, ?string $clientIdentity = null): LoginStart
     {
+        return $this->respond($ke1, $record, $credentialIdentifier, $clientIdentity, false);
+    }
+
+    private function respond(string $ke1, RegistrationRecord $record, string $credentialIdentifier, ?string $clientIdentity, bool $fake): LoginStart
+    {
         $parsed = Ke1::fromBytes($ke1);
         $evaluated = $this->evaluate($parsed->blindedElement, $credentialIdentifier);
 
         // §6.4.2 CreateCredentialResponse
         $maskingNonce = $this->randomBytes(32);
-        $pad = Hkdf::expand($record->maskingKey, $maskingNonce.'CredentialResponsePad', 128);
+        $pad = Hkdf::expand($record->maskingKey(), $maskingNonce.'CredentialResponsePad', 128);
         $masked = Bytes::xor($pad, $this->serverPublicKey.$record->envelope);
         sodium_memzero($pad);
         $credentialResponse = $evaluated.$maskingNonce.$masked;
@@ -116,17 +122,18 @@ final class OpaqueServer
         sodium_memzero($ikm);
 
         $serverMac = KeySchedule::serverMac($keys);
-        $state = new ServerLoginState($keys->sessionKey, KeySchedule::clientMac($keys, $preamble, $serverMac));
+        $expectedClientMac = $fake ? $this->randomBytes(Mac::LENGTH) : KeySchedule::clientMac($keys, $preamble, $serverMac);
+        $state = new ServerLoginState($keys->sessionKey(), $expectedClientMac);
 
         return new LoginStart($credentialResponse.$serverNonce.$epk.$serverMac, $state);
     }
 
-    /** Same as {@see generateKE2()} with a fake record; the final KE3 can never verify. */
+    /** Same as {@see generateKE2()} with a fake record; the state expects a random client MAC, so no KE3 verifies. */
     public function generateFakeKE2(string $ke1, string $fakeCredentialIdentifier, ?string $clientIdentity = null): LoginStart
     {
         $record = RegistrationRecord::fake($this->dummyClientPublicKey, $this->randomBytes(RegistrationRecord::MASKING_KEY_LENGTH));
 
-        return $this->generateKE2($ke1, $record, $fakeCredentialIdentifier, $clientIdentity);
+        return $this->respond($ke1, $record, $fakeCredentialIdentifier, $clientIdentity, true);
     }
 
     /** RFC 9807 §6.4.3 ServerFinish: returns the session key or throws; the caller must discard the state (single use). */
@@ -140,6 +147,23 @@ final class OpaqueServer
         }
 
         return $state->sessionKey();
+    }
+
+    /** @return array<string, never> */
+    public function __debugInfo(): array
+    {
+        return [];
+    }
+
+    /** @return never */
+    public function __serialize(): array
+    {
+        throw new \LogicException('OpaqueServer must not be serialized.');
+    }
+
+    public function __unserialize(array $data): void
+    {
+        throw new \LogicException('OpaqueServer must not be unserialized.');
     }
 
     private function evaluate(string $blinded, string $credentialIdentifier): string
