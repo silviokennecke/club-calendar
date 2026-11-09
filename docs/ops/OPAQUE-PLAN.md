@@ -1,6 +1,6 @@
 # Plan: OPAQUE (RFC 9807) statt Klartext-Passwort-Login
 
-Status: Entwurf, nicht umgesetzt; AP 0 (Spike) erledigt, Ergebnisse in `OPAQUE-SPIKE.md` (maßgeblich bei Abweichungen). Stand der Codebasis: Branch `security/audit-followup`.
+Status: Entwurf, nicht umgesetzt; AP 0 (Spike) und AP 1 (Konfigurationsgerüst) erledigt, Ergebnisse in `OPAQUE-SPIKE.md` (maßgeblich bei Abweichungen). Stand der Codebasis: Branch `security/audit-followup`.
 Umsetzung direkt im PHP-Backend (kein Sidecar). Zielgruppe: Owner und Implementierer der Arbeitspakete (Abschnitt 8).
 
 ## 1. Ziel, Sicherheitsgewinn, ehrliche Grenzen
@@ -327,7 +327,7 @@ Es gibt keinen Weg von OPAQUE zurück zu bcrypt (der Server kennt das Passwort n
 | AP | Inhalt | Abhängig von | Aufwand |
 |---|---|---|---|
 | 0 | **Spike** (erledigt, `OPAQUE-SPIKE.md`): serenity-Optionen, Wire-Format, RFC-Vektoren, Identitäten, KSF-Zeit (Desktop-Chromium, gedrosselt; echte Geräte offen), `wasm-unsafe-eval` | - | M |
-| 1 | `ext-sodium` in composer.json, Docker `php -m`-Check, `.env.example`/`services.yaml` Konfigurationsgerüst, `OpaqueKeys`, `generate-keys` | 0 | S |
+| 1 | **(erledigt)** `ext-sodium` in composer.json, Docker `php -m`-Check, `.env.example`/`services.yaml` Konfigurationsgerüst, `OpaqueKeys`, `generate-keys` | 0 | S |
 | 2 | Primitive: `Ristretto`, `ExpandMessageXmd`, `HashToGroup`, `Oprf` + RFC-9497/9380-Vektoren | 1 | M |
 | 3 | `KeySchedule`, `Hkdf`, `Mac`, `Server` (Reg + Login), `FakeRecord` + RFC-9807-C.1/C.2-Vektoren | 2 | L |
 | 4 | Test-only `OpaqueTestClient` + Negativ-Tests + Interop-Skript mit serenity (CI-Job) | 3 | M |
