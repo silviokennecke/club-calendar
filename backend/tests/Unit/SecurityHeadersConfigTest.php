@@ -60,7 +60,7 @@ class SecurityHeadersConfigTest extends TestCase
         $d = self::directives(self::header(self::read(self::CADDYFILE), 'Content-Security-Policy'));
 
         self::assertSame("'self'", $d['default-src']);
-        self::assertSame("'self'", $d['script-src'], 'no inline/eval scripts, no third-party script hosts');
+        self::assertSame("'self' 'wasm-unsafe-eval'", $d['script-src'], 'no inline/eval scripts, no third-party script hosts; wasm-unsafe-eval only (OPAQUE WebAssembly), never unsafe-eval');
         self::assertStringNotContainsString("'unsafe-inline'", implode(' ', $d), 'no inline styles or scripts');
         self::assertMatchesRegularExpression(
             "/^'self'( 'sha256-[A-Za-z0-9+\\/]{43}=')*$/",
