@@ -143,3 +143,7 @@ Although code is mostly reviewed by a human the code might contain unexpected be
 ## Further Reading
 
 See `CLAUDE.md`, `backend/AGENTS.md` and `frontend/AGENTS.md` for architecture notes and project conventions.
+
+## License
+
+This project is licensed under the GNU Affero General Public License v3.0 or later — see [LICENSE](LICENSE).

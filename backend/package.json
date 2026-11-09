@@ -1,6 +1,7 @@
 {
   "name": "backend",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "build": "composer install --no-dev --optimize-autoloader --no-interaction && npm run build:mail",
     "build:dev": "composer install --no-interaction && npm run build:mail",
