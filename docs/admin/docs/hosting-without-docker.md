@@ -8,12 +8,12 @@ own web server, this page shows how. You need to be comfortable with PHP hosting
 | What | Details |
 |---|---|
 | PHP | 8.4 with PHP-FPM (or mod_php) |
-| PHP extensions | `ctype`, `dom`, `gd`, `iconv`, `intl`, `mbstring`, `sodium`, `pdo_mysql`, `opcache` (recommended) |
+| PHP extensions | `ctype`, `dom`, `gd`, `iconv`, `intl`, `mbstring`, `pdo_mysql`, `opcache` (recommended) |
 | Database | MySQL 8 or MariaDB |
 | Web server | Apache with `mod_rewrite` and `mod_headers`, or nginx |
 | Build machine | Node.js 22 and Composer (the server itself does not need Node.js) |
 
-`gd` and `intl` are needed for the PDF export, `sodium` for password protection (OPAQUE).
+`gd` and `intl` are needed for the PDF export.
 
 !!! tip
     You can build on a separate machine and upload the result. Only PHP, the web server and the database must run
@@ -64,10 +64,7 @@ Do these steps in the `backend/` directory.
     ```bash
     php bin/console app:legal:sync
     ```
-6. **Password protection keys (OPAQUE):** generate them once with `php bin/console app:opaque:generate-keys`, set
-   `OPAQUE_OPRF_SEED` and `OPAQUE_SERVER_PRIVATE_KEY`, and run `php bin/console app:opaque:check` as part of every deploy.
-   Without the Docker entrypoint nothing else checks the keys at start; without them sign-in does not work. See [Password protection](password-protection.md).
-7. **Create the first user** (see [Command-line tools](operations.md)).
+6. **Create the first user** (see [Command-line tools](operations.md)).
 
 ## Web server
 
@@ -124,7 +121,7 @@ The web server has three jobs:
         client_max_body_size 16m;
 
         # Security headers (same values as the Docker image)
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'sha256-+A14ONesVdzkn6nr37Osn+rUqNz4oFGZFDbLXrlae04='; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'sha256-+A14ONesVdzkn6nr37Osn+rUqNz4oFGZFDbLXrlae04='; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-Frame-Options "DENY" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), midi=(), accelerometer=(), gyroscope=(), magnetometer=(), interest-cohort=()" always;
@@ -140,7 +137,7 @@ The web server has three jobs:
         # Feed pages and feed API: never send a Referer.
         # add_header is not inherited into nested blocks: repeat all headers here.
         location ~ ^/(api/)?feed/ {
-            add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'sha256-+A14ONesVdzkn6nr37Osn+rUqNz4oFGZFDbLXrlae04='; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
+            add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'sha256-+A14ONesVdzkn6nr37Osn+rUqNz4oFGZFDbLXrlae04='; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
             add_header X-Content-Type-Options "nosniff" always;
             add_header X-Frame-Options "DENY" always;
             add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), midi=(), accelerometer=(), gyroscope=(), magnetometer=(), interest-cohort=()" always;
@@ -177,7 +174,7 @@ The web server has three jobs:
         # Web app: real files, otherwise index.html
         location /assets/ {
             add_header Cache-Control "public, max-age=31536000, immutable";
-            add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'sha256-+A14ONesVdzkn6nr37Osn+rUqNz4oFGZFDbLXrlae04='; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
+            add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'sha256-+A14ONesVdzkn6nr37Osn+rUqNz4oFGZFDbLXrlae04='; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
             add_header X-Content-Type-Options "nosniff" always;
             add_header X-Frame-Options "DENY" always;
             add_header Cross-Origin-Opener-Policy "same-origin" always;
@@ -186,7 +183,7 @@ The web server has three jobs:
         }
         location / {
             add_header Cache-Control "no-cache";
-            add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'sha256-+A14ONesVdzkn6nr37Osn+rUqNz4oFGZFDbLXrlae04='; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
+            add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'sha256-+A14ONesVdzkn6nr37Osn+rUqNz4oFGZFDbLXrlae04='; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
             add_header X-Content-Type-Options "nosniff" always;
             add_header X-Frame-Options "DENY" always;
             add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), midi=(), accelerometer=(), gyroscope=(), magnetometer=(), interest-cohort=()" always;
@@ -206,8 +203,7 @@ The web server has three jobs:
       block above shows the web page; make sure your `/api/feed/` requests reach PHP **and** carry that header
       (the simplest way is a separate `location ^~ /api/feed/` block that repeats the PHP settings and all
       headers).
-    - **The Content-Security-Policy must be the same string** as in the example, including `'wasm-unsafe-eval'`
-      (needed for password protection) and the style hash. When the app gets updated, compare it with the
+    - **The Content-Security-Policy must be the same string** as in the example, including the style hash. When the app gets updated, compare it with the
       `Caddyfile` of the new release.
     - **`/.well-known/oauth-*` and `/api/mcp`** must go to PHP, or AI assistants (MCP clients) cannot find and use
       the server. Do not block `.well-known` with a dotfile rule.

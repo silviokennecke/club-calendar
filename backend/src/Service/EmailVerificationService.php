@@ -172,7 +172,7 @@ readonly class EmailVerificationService
      */
     private function revokeUnprovenAccess(User $user): void
     {
-        if ($user->hasPasswordCredential()) {
+        if (null !== $user->getPassword()) {
             foreach ($user->getOauthAccounts()->toArray() as $account) {
                 $user->getOauthAccounts()->removeElement($account);
                 $this->em->remove($account);

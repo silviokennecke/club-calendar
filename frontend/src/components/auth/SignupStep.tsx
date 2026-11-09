@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { apiGet, sessionUser } from "@/lib/api";
+import { apiGet, apiPost, sessionUser, type TokenResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import {
   consentCheckboxId,
@@ -11,13 +11,6 @@ import {
   type LegalOverview,
   type LegalType,
 } from "@/lib/legal";
-import {
-  OPAQUE_FAILURE_TEXT,
-  opaqueFailureKind,
-  type OpaqueFailureKind,
-  opaqueSignup,
-  prefetchOpaque,
-} from "@/lib/opaque";
 import { isRateLimited, rateLimitText } from "@/lib/rateLimit";
 import { passwordProblem } from "@/lib/password";
 import { useFieldTouch } from "@/lib/useFieldTouch";
@@ -32,7 +25,7 @@ interface FieldErrors {
   confirm?: string;
 }
 
-type Problem = "exists" | "generic" | "consent" | "restricted" | "rate" | OpaqueFailureKind;
+type Problem = "exists" | "generic" | "consent" | "restricted" | "rate";
 
 /** Documents the user has to accept at signup (when the operator provides them). */
 const CONSENT_TYPES: readonly LegalType[] = ["privacy", "terms"];
@@ -119,9 +112,13 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
 
     setLoading(true);
     try {
-      const language = i18n.resolvedLanguage ?? "en";
-      const acceptedDocuments = consentItems.map((i) => i.id);
-      const res = await opaqueSignup(email, password, { name, language, acceptedDocuments });
+      const res = await apiPost<TokenResponse>("/api/auth/register", {
+        name,
+        email,
+        password,
+        language: i18n.resolvedLanguage ?? "en",
+        acceptedDocuments: consentItems.map((i) => i.id),
+      });
       // restricted session: the address is confirmed with the code from the e-mail
       login(res.access_token, res.refresh_token, {
         ...sessionUser(res),
@@ -130,10 +127,7 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
       navigate("/verify-email");
     } catch (err: unknown) {
       // Stable error code of the API (RFC 7807 body), never the English `detail` text
-      const failure = opaqueFailureKind(err);
-      if (failure) {
-        fail(failure);
-      } else if (isRateLimited(err)) {
+      if (isRateLimited(err)) {
         setRateText(rateLimitText(t, err));
         fail("rate");
       } else if ((err as { code?: string }).code === "email_taken") {
@@ -189,17 +183,15 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
         >
           {problem === "rate"
             ? rateText
-            : problem in OPAQUE_FAILURE_TEXT
-              ? t(OPAQUE_FAILURE_TEXT[problem as OpaqueFailureKind])
-              : t(
-                  problem === "exists"
-                    ? "auth.register.problem.exists"
-                    : problem === "consent"
-                      ? "consent.outdated"
-                      : problem === "restricted"
-                        ? "auth.register.emailRestrictedField"
-                        : "auth.register.problem.generic",
-                )}
+            : t(
+                problem === "exists"
+                  ? "auth.register.problem.exists"
+                  : problem === "consent"
+                    ? "consent.outdated"
+                    : problem === "restricted"
+                      ? "auth.register.emailRestrictedField"
+                      : "auth.register.problem.generic",
+              )}
         </FocusBanner>
       )}
       <ErrorSummary
@@ -234,7 +226,6 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         onBlur={(e) => form.touch("password", e)}
-        onFocus={prefetchOpaque}
         autoComplete="new-password"
       />
       <PasswordField

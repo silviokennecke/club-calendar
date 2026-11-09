@@ -8,10 +8,6 @@ description: Change, reset or set your password for the first time.
 
 You sign in with your password. It must be between 8 and 128 characters long.
 
-## How secure your password is
-
-Your password is checked on your device and is not sent to the server (method: OPAQUE). At your first sign-in after the switch, your account is converted once automatically; you just sign in as usual. If you have not signed in by the deadline, you have to set a new password afterwards via **Forgot your password**, see [Forgot your password](help:settings/password#forgot-your-password).
-
 ## Change your password
 
 1. Open your [profile](help:settings/profile) and go to **Password**.

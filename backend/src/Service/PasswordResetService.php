@@ -9,8 +9,6 @@ use App\Entity\EmailVerification;
 use App\Entity\PasswordReset;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
-use App\Opaque\InvalidMessageException;
-use App\Opaque\OpaqueService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -35,7 +33,6 @@ readonly class PasswordResetService
         private AccountMailer $mailer,
         private ClockInterface $clock,
         private DeferredMailer $deferred,
-        private OpaqueService $opaque,
     ) {
     }
 
@@ -77,45 +74,9 @@ readonly class PasswordResetService
     }
 
     /**
-     * The user an open (unused, unexpired) link belongs to, without using it: binds an OPAQUE registration response
-     * to the link's account. Unknown, used and expired tokens alike are 400 invalid_reset_token.
-     *
-     * @throws ApiProblemException
+     * @throws ApiProblemException 400 invalid_reset_token for unknown, used and expired tokens alike
      */
-    public function userOfOpenToken(string $token): User
-    {
-        $hash = self::hash($token);
-        $row = $this->em->getConnection()->fetchAssociative(
-            'SELECT user_id, token_hash FROM password_reset WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?',
-            [$hash, $this->now()->format('Y-m-d H:i:s')],
-        );
-        $user = false === $row || !hash_equals((string) $row['token_hash'], $hash)
-            ? null
-            : $this->em->getRepository(User::class)->find($row['user_id']);
-        if (null === $user) {
-            throw self::invalidToken();
-        }
-
-        return $user;
-    }
-
-    /**
-     * Reset with an OPAQUE record: the record replaces the credential and the bcrypt hash is removed, so the old
-     * password stops working (the account authenticates through OPAQUE from now on).
-     *
-     * @throws ApiProblemException     400 invalid_reset_token
-     * @throws InvalidMessageException malformed record (the link stays usable)
-     */
-    public function resetWithRecord(string $token, #[\SensitiveParameter] string $record, string $keyId): void
-    {
-        $this->claim($token, function (User $user) use ($record, $keyId): void {
-            $this->opaque->storeRecord($user, $record, $keyId);
-            $user->setPassword(null);
-        });
-    }
-
-    /** @param callable(User): mixed $setCredential */
-    private function claim(string $token, callable $setCredential): void
+    public function reset(string $token, string $newPassword): void
     {
         $hash = self::hash($token);
         $now = $this->now()->format('Y-m-d H:i:s');
@@ -155,7 +116,7 @@ readonly class PasswordResetService
                     $this->em->remove($passkey);
                 }
             }
-            $setCredential($user);
+            $user->setPassword($this->hasher->hashPassword($user, $newPassword));
             $user->setIsEmailVerified(true);
             $user->invalidateTokens();
             $this->em->createQueryBuilder()

@@ -7,7 +7,6 @@ namespace App\Tests\Controller;
 use App\Entity\Passkey;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
-use App\Tests\Helper\OpaqueApi;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -47,7 +46,9 @@ class AuthTest extends WebTestCase
 
     public function testRegisterReturns201WithARestrictedSession(): void
     {
-        $r = OpaqueApi::signup(self::$client, 'Alice', 'alice@example.com', 'password123');
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
+            'name' => 'Alice', 'email' => 'alice@example.com', 'password' => 'password123',
+        ]);
         $this->assertSame(201, $r['status']);
         $this->assertTrue($r['body']['verificationRequired']);
         $this->assertSame('alice@example.com', $r['body']['email']);
@@ -58,7 +59,9 @@ class AuthTest extends WebTestCase
 
     public function testRegisterSendsVerificationEmail(): void
     {
-        OpaqueApi::signup(self::$client, 'Bob', 'bob@example.com', 'password123');
+        TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
+            'name' => 'Bob', 'email' => 'bob@example.com', 'password' => 'password123',
+        ]);
         $this->assertEmailCount(1);
         $email = $this->getMailerMessage();
         $this->assertEmailAddressContains($email, 'to', 'bob@example.com');
@@ -257,11 +260,15 @@ class AuthTest extends WebTestCase
 
     public function testRegisterStoresNormalizedEmailAndRejectsDuplicateWithOtherCase(): void
     {
-        $r = OpaqueApi::signup(self::$client, 'Dave', 'Dave@Example.com', 'password123');
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
+            'name' => 'Dave', 'email' => 'Dave@Example.com', 'password' => 'password123',
+        ]);
         $this->assertSame(201, $r['status'], $r['content']);
         $this->assertSame('dave@example.com', self::$em->getConnection()->fetchOne('SELECT email FROM user'));
 
-        $r = OpaqueApi::signup(self::$client, 'Dave 2', 'DAVE@example.com', 'password123');
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
+            'name' => 'Dave 2', 'email' => 'DAVE@example.com', 'password' => 'password123',
+        ]);
         $this->assertSame(400, $r['status']);
         $this->assertSame('email_taken', $r['body']['code']);
         $this->assertSame(1, (int) self::$em->getConnection()->fetchOne('SELECT COUNT(*) FROM user'));

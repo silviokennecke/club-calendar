@@ -287,8 +287,6 @@ export interface TokenResponse {
   user: User;
   /** True for a restricted session: the e-mail address still has to be confirmed. */
   emailVerificationRequired?: boolean;
-  /** Legacy login only: one-time ticket to switch the account to OPAQUE (see `startOpaqueUpgrade`). */
-  opaqueUpgrade?: { ticket: string; expiresIn: number };
 }
 
 /** The signed-in user of a token response, with the top-level verification flag merged in. */

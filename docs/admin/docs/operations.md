@@ -25,7 +25,7 @@ Day-to-day tasks: updating, backups, scheduled jobs, command-line tools, logs an
     docker compose up -d
     ```
 
-    At start the container first checks the password protection keys (it stops with a message if they are missing or invalid, so generate them before updating from a version that did not need them, see [Password protection](password-protection.md#upgrading-from-older-versions)), then runs database changes (migrations) and loads the [legal documents](legal.md). Check `docker compose ps` until `app` is `healthy`.
+    At start the container runs database changes (migrations) and loads the [legal documents](legal.md). Check `docker compose ps` until `app` is `healthy`.
 
     With `RUN_MIGRATIONS=0` in `.env` the container skips the database changes. Then run them yourself after every update:
 
@@ -44,7 +44,6 @@ Day-to-day tasks: updating, backups, scheduled jobs, command-line tools, logs an
     php bin/console doctrine:migrations:migrate --no-interaction
     APP_ENV=prod php bin/console cache:clear
     php bin/console app:legal:sync
-    php bin/console app:opaque:check
     ```
 
     Keep your `.env.local` and the `config/jwt/` keys outside the release folder (or copy them over); they are not part of a release. Restart PHP-FPM afterwards.
@@ -63,7 +62,6 @@ Back up regularly and before every update. Keep copies away from the server and 
 |---|---|---|
 | Database | Docker volume `db_data`, dump it as shown below | Everything is gone: clubs, events, users. |
 | `.env` (`.env.local` without Docker) | Next to `docker-compose.yml` | You lose all secrets and settings. Losing `APP_SECRET` or `JWT_REFRESH_SECRET` signs everybody out or breaks sign-in, see [Secrets and key rotation](#secrets-and-key-rotation). |
-| Password protection keys | `OPAQUE_*` values in `.env`, if enabled | **Every password becomes unusable**, all affected users need a new password. Cannot be recreated. See [Password protection](password-protection.md). |
 | Login keys (JWT) | Docker volume `jwt`, mounted at `/data/config`; `backend/config/jwt/` without Docker | A new pair is created. Nobody is signed out: browsers fetch new access tokens automatically. Harmless. |
 | Legal documents | Your `legal` folder (`/data/legal` in the container) | Re-create the files. See [Legal documents](legal.md). |
 
@@ -92,7 +90,7 @@ docker compose cp app:/data/config ./jwt-backup
     docker compose exec -T db sh -c 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < backup.sql
     ```
 
-3. Put back `.env` (including the `OPAQUE_*` values) and the login keys (the keys are protected with `APP_SECRET`, see [Secrets and key rotation](#secrets-and-key-rotation)).
+3. Put back `.env` and the login keys (the keys are protected with `APP_SECRET`, see [Secrets and key rotation](#secrets-and-key-rotation)).
 4. Start the app: `docker compose up -d`. Use the same version that made the backup, or a newer one: it then updates the database itself.
 
 ## Scheduled tasks
@@ -107,7 +105,6 @@ The app cleans up after itself only when these commands run regularly. Add them 
 | `app:prune-club-invitations` | Deletes invitations that were answered or expired more than 30 days ago. | daily |
 | `app:prune-oauth` | Deletes expired entries of AI app connections. | daily |
 | `app:holidays:refresh --all` | Refreshes the predefined holiday calendars. See [Holidays](#holidays). | weekly |
-| `app:opaque:notify-legacy` | Sends the cutoff reminder mails. Only needed when you set a cutoff date for converting old accounts, see [Password protection](password-protection.md). | daily |
 
 === "Docker"
 
@@ -116,10 +113,7 @@ The app cleans up after itself only when these commands run regularly. Add them 
     ```cron
     0 3 * * * cd /srv/club-calendar && for c in app:prune-unverified-users app:prune-password-resets app:prune-refresh-tokens app:prune-club-invitations app:prune-oauth; do docker compose exec -T app php bin/console $c; done
     0 4 * * 0 cd /srv/club-calendar && docker compose exec -T app php bin/console app:holidays:refresh --all
-    30 3 * * * cd /srv/club-calendar && docker compose exec -T app php bin/console app:opaque:notify-legacy
     ```
-
-    Leave out the last line if you do not use the cutoff reminders.
 
 === "Without Docker"
 
@@ -128,7 +122,6 @@ The app cleans up after itself only when these commands run regularly. Add them 
     ```cron
     0 3 * * * cd /var/www/club-calendar/backend && for c in app:prune-unverified-users app:prune-password-resets app:prune-refresh-tokens app:prune-club-invitations app:prune-oauth; do php bin/console $c; done
     0 4 * * 0 cd /var/www/club-calendar/backend && php bin/console app:holidays:refresh --all
-    30 3 * * * cd /var/www/club-calendar/backend && php bin/console app:opaque:notify-legacy
     ```
 
 ## Command-line tools
@@ -154,8 +147,8 @@ The app has a few commands for administrators. Run them like this:
 
 | Command | Purpose |
 |---|---|
-| `app:user:create` | Creates a user with a confirmed address. Options: `--name`, `--email`, `--language=de\|en`, `--link`. Needed for the first user when registration is closed. Missing values are asked interactively. |
-| `app:user:set-password <email or id>` | Sets a new password and ends all sessions of that user. With `--link` it removes the password and prints a one-time link instead. |
+| `app:user:create` | Creates a user with a confirmed address. Options: `--name`, `--email`, `--password` or `--password-stdin`, `--language=de\|en`. Needed for the first user when registration is closed. Missing values are asked interactively. |
+| `app:user:set-password <email or id>` | Sets a new password (`--password` or `--password-stdin`) and ends all sessions of that user. |
 | `app:user:verify <email or id>` | Confirms an address by hand, for users who cannot receive the code. Also available as `app:user:activate`. |
 | `app:user:reset-link <email>` | Prints a password reset link without sending mail. |
 
@@ -165,13 +158,11 @@ The app has a few commands for administrators. Run them like this:
 |---|---|
 | `app:club:create` | Creates a club for an existing user, who becomes its admin. Options: `--name`, `--admin=<e-mail or id>`, `--timezone` (default `Europe/Berlin`). Missing values are asked interactively. Works even when `RESTRICT_CLUB_CREATION=true`. |
 
-By default (see [password protection](password-protection.md)), `app:user:create` and `app:user:set-password` do not set a password themselves: they print a one-time link, valid for 60 minutes, where the user chooses it.
-
 !!! warning "Reset links give access to the account"
     A link from `app:user:reset-link` (valid 60 minutes) lets whoever opens it set a new password for that account. Hand it only to the owner, over a channel you trust.
 
 !!! tip "Passwords on the command line"
-    `--password=...` ends up in the shell history. Prefer `--link`, `--password-stdin` or the interactive prompt.
+    `--password=...` ends up in the shell history. Prefer `--password-stdin` or the interactive prompt.
 
 ### Other tools
 
@@ -179,12 +170,6 @@ By default (see [password protection](password-protection.md)), `app:user:create
 |---|---|
 | `app:legal:sync` | Loads changed [legal documents](legal.md) and reports missing ones and invalid links. |
 | `app:holidays:refresh` | Refreshes holiday calendars: `--all` for all predefined ones, `--calendar=<id>` for one. |
-| `app:opaque:status` | Shows how many accounts use which password protocol (`--json` for scripts). |
-| `app:opaque:check` | Validates the password protection settings. |
-| `app:opaque:generate-keys` | Prints new keys for the first setup. |
-| `app:opaque:notify-legacy`, `app:opaque:retire-legacy` | Steps around a cutoff date for old accounts. |
-
-Details are in [Password protection](password-protection.md).
 
 ## Holidays
 
@@ -220,7 +205,6 @@ Rotating a secret has side effects. The full table of what each secret protects 
 - **Login keys (JWT key pair):** safe to replace. Delete the keys in the `jwt` volume (or `config/jwt/`) and restart; a new pair is created. Nobody is signed out, because access tokens last only 15 minutes and are renewed from the refresh token, which does not use these keys.
 - **`JWT_REFRESH_SECRET`:** changing it signs everybody out.
 - **`APP_SECRET`:** avoid changing it. It is also the default passphrase of the login keys, so sign-in fails for everybody unless you first set `JWT_PASSPHRASE` to the old value (or create a new key pair). It also invalidates pending confirmation codes, reset links, passkey sign-ins in progress and SSO redirects.
-- **`OPAQUE_*` keys:** never replace them directly. Follow the rotation steps in [Password protection](password-protection.md).
 
 After changing `.env`, restart the app (`docker compose up -d` applies it).
 
@@ -239,7 +223,7 @@ Everybody is signed out once.
 
 | Symptom | Check |
 |---|---|
-| Container stops right after starting | `docker compose logs app`: a required variable is missing, the database is not reachable, or the password protection keys are missing or invalid. |
+| Container stops right after starting | `docker compose logs app`: a required variable is missing, the database is not reachable. |
 | Page shows error 400 for the right address | The host name is not in `APP_URL` or `TRUSTED_HOSTS`. See [Protection mechanisms](security.md). |
 | Nobody gets mail, no confirmation codes | `MAILER_DSN` is still the default `null://null`, or the mail server refuses the connection. See [Mail and maps](configuration/mail-and-maps.md). |
 | Everybody is blocked with "too many requests" | Behind a proxy `SYMFONY_TRUSTED_PROXIES` is missing, so all users share one address. See [Protection mechanisms](security.md). |

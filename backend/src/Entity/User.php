@@ -7,12 +7,10 @@ namespace App\Entity;
 use App\Service\EmailAddress;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Uid\Uuid;
-use Symfony\Component\Uid\UuidV7;
 
 #[ORM\Entity]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
@@ -29,20 +27,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $password = null;
-
-    /** OPAQUE registration record (192 B, see App\Opaque\RegistrationRecord); null until the user has registered one. */
-    #[ORM\Column(type: Types::BINARY, length: 256, nullable: true)]
-    private mixed $opaqueRecord = null;
-
-    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
-    private ?int $opaqueVersion = null;
-
-    #[ORM\Column(length: 16, nullable: true)]
-    private ?string $opaqueKeyId = null;
-
-    /** Smallest cutoff reminder (days before the cutoff: 14, then 3) already mailed; null = none (app:opaque:notify-legacy). */
-    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
-    private ?int $opaqueReminderDays = null;
 
     #[ORM\Column(length: 20)]
     private string $dateFormat = 'dd.MM.yyyy';
@@ -91,21 +75,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->createdAt = new \DateTimeImmutable();
     }
 
-    /**
-     * Dedicated path for an id fixed before the row exists (OPAQUE signup: the registration record is bound to the
-     * id). The id must be a UUID v7 minted by the server; callers take it only from a signed state.
-     */
-    public static function withPresetId(string $id): self
-    {
-        if (!Uuid::isValid($id) || !Uuid::fromString($id) instanceof UuidV7 || $id !== Uuid::fromString($id)->toRfc4122()) {
-            throw new \InvalidArgumentException('A preset user id must be a canonical UUID v7.');
-        }
-        $user = new self();
-        $user->id = $id;
-
-        return $user;
-    }
-
     public function getId(): string
     {
         return $this->id;
@@ -143,63 +112,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPassword(?string $password): static
     {
         $this->password = $password;
-
-        return $this;
-    }
-
-    /** A password sign-in credential exists: the legacy bcrypt hash or an OPAQUE record. */
-    public function hasPasswordCredential(): bool
-    {
-        return null !== $this->password || null !== $this->getOpaqueRecord();
-    }
-
-    public function getOpaqueRecord(): ?string
-    {
-        $record = $this->opaqueRecord;
-        if (is_resource($record)) {
-            $record = stream_get_contents($record);
-            $this->opaqueRecord = $record;
-        }
-
-        return is_string($record) ? $record : null;
-    }
-
-    public function getOpaqueVersion(): ?int
-    {
-        return $this->opaqueVersion;
-    }
-
-    public function getOpaqueKeyId(): ?string
-    {
-        return $this->opaqueKeyId;
-    }
-
-    public function getOpaqueReminderDays(): ?int
-    {
-        return $this->opaqueReminderDays;
-    }
-
-    public function setOpaqueReminderDays(?int $days): static
-    {
-        $this->opaqueReminderDays = $days;
-
-        return $this;
-    }
-
-    public function setOpaque(#[\SensitiveParameter] string $record, int $version, string $keyId): static
-    {
-        $this->opaqueRecord = $record;
-        $this->opaqueVersion = $version;
-        $this->opaqueKeyId = $keyId;
-
-        return $this;
-    }
-
-    public function clearOpaque(): static
-    {
-        $this->opaqueRecord = null;
-        $this->opaqueVersion = null;
-        $this->opaqueKeyId = null;
 
         return $this;
     }

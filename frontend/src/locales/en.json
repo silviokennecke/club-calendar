@@ -15,9 +15,6 @@
     "requestTimeout": "The request took too long. Check your connection and try again."
   },
   "auth": {
-    "opaqueUnsupported": "Your browser or device does not support secure sign-in (WebAssembly or memory). Please try a current browser.",
-    "opaqueResetRequired": "Your previous password is no longer accepted. Reset it with \"Forgot password\" on the sign-in page.",
-    "opaqueReload": "This page is out of date. Please reload it and try again.",
     "signIn": "Sign in",
     "signOut": "Sign out",
     "email": "Email",
@@ -56,9 +53,7 @@
       "signInWith": "Sign in with {{provider}}",
       "errorTitle": "The sign-in is not complete yet",
       "emailMissing": "Please enter your email address.",
-      "passwordMissing": "Please enter your password.",
-      "resetRequiredTitle": "Password reset required",
-      "resetRequiredText": "Your previous password can no longer be used to sign in. Reset it to get access again."
+      "passwordMissing": "Please enter your password."
     },
     "register": {
       "name": "Name",

@@ -12,7 +12,7 @@ the router, so a new or changed route needs a matching operation there).
 
 | Module | URL prefix | Controller | Service |
 |--------|-----------|------------|---------|
-| Auth | `/api/auth` (incl. `forgot-password`, `change-password`, `change-email`, `verify-new-email`) | `AuthController` | `AuthService`, `TokenService`, `PasswordResetService`, `AccountService`, `AccountMailer` |
+| Auth | `/api/auth` (incl. `forgot-password`, `reset-password`, `change-password`, `change-email`, `verify-new-email`) | `AuthController` | `AuthService`, `TokenService`, `PasswordResetService`, `AccountService`, `AccountMailer` |
 | WebAuthn | `/api/auth/webauthn` | `WebAuthnController` | `WebAuthnService` |
 | OAuth | `/api/auth/oauth` (sign-in; link `/{provider}/link-start` → `/{provider}/link?ticket=` → callback → `/profile?link_proof=` → `/{provider}/link-complete` (JWT); unlink `DELETE /{provider}`) | `OAuthController` | `AuthService`, `AccountService` |
 | Clubs | `/api/clubs` | `ClubController` | `ClubService` |
@@ -38,7 +38,7 @@ the router, so a new or changed route needs a matching operation there).
 
 ## Common Infrastructure
 
-**Operator docs:** a change to environment variables, console commands, cron jobs, config files, rate limits, sign-in/SSO/OPAQUE behaviour or legal documents also updates `../docs/admin/` (CLAUDE.md working rule 10): settings in `docs/admin/docs/configuration/reference.md`, operations (commands, cron, upgrades) in `docs/admin/docs/operations.md`, examples in `docs/admin/docs/examples/`. Write those pages for operators, without class or file names.
+**Operator docs:** a change to environment variables, console commands, cron jobs, config files, rate limits, sign-in/SSO behaviour or legal documents also updates `../docs/admin/` (CLAUDE.md working rule 10): settings in `docs/admin/docs/configuration/reference.md`, operations (commands, cron, upgrades) in `docs/admin/docs/operations.md`, examples in `docs/admin/docs/examples/`. Write those pages for operators, without class or file names.
 
 | File | Purpose |
 |------|---------|
@@ -112,8 +112,6 @@ See `../CLAUDE.md` "Auth" and `../docs/api/openapi.yaml`.
 
 ## Testing
 
-OPAQUE live interop (pinned `@serenity-kit/opaque` client vs. `App\Opaque\OpaqueServer`): `npm run test:opaque-interop -w frontend` (~5 s, needs `composer install` + `npm ci`; CI step in the backend job; harness `tests/Opaque/bin/interop-server.php`). `phpunit --group interop` wraps it (excluded from the default run).
-The Playwright suite (`frontend/e2e`) runs against a backend with throwaway OPAQUE keys (OPAQUE is always on; the keys must also be exported in the shell running Playwright, `../docs/ops/E2E.md`); its helpers use a Node OPAQUE client, so a backend change to the OPAQUE routes or the legacy `login` contract can break `frontend/e2e/helpers.ts` and `opaque.spec.ts`.
 Tests are in `tests/Controller/` using `Symfony\Bundle\FrameworkBundle\Test\WebTestCase`.
 `tests/Helper/DatabaseResetter::reset($em)` truncates all tables before each test class.
 `tests/Helper/TestHelper` provides factory helpers: `createUser`, `createClub`, `createCalendar`, `createEvent`, `createTemplate`.

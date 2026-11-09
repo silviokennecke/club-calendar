@@ -9,8 +9,6 @@ use App\Entity\EmailVerification;
 use App\Entity\OAuthAccount;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
-use App\Opaque\InvalidMessageException;
-use App\Opaque\OpaqueService;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
@@ -28,7 +26,6 @@ readonly class AccountService
         private TokenService $tokens,
         private AccountMailer $mailer,
         private ClockInterface $clock,
-        private OpaqueService $opaque,
     ) {
     }
 
@@ -43,29 +40,11 @@ readonly class AccountService
     public function changePassword(User $user, string $currentPassword, string $newPassword, ?bool $consentOk = null): array
     {
         $this->assertPassword($user, $currentPassword, 'currentPassword');
-        $user->setPassword($this->hasher->hashPassword($user, $newPassword))->clearOpaque();
+        $user->setPassword($this->hasher->hashPassword($user, $newPassword));
         $user->invalidateTokens();
         $this->deleteOpenEmailChanges($user);
         $this->em->flush();
         // Notice to the account's address (after the response; no link but "forgot password")
-        $this->mailer->sendPasswordChanged($user);
-
-        return $this->tokens->tokenResponse($user, null, null, $consentOk);
-    }
-
-    /**
-     * Change with an OPAQUE record (the caller verified and consumed the reauth ticket). Same effects as
-     * {@see changePassword()}; the bcrypt hash is removed so the old password stops working.
-     *
-     * @throws InvalidMessageException malformed record
-     */
-    public function changePasswordWithRecord(User $user, #[\SensitiveParameter] string $record, string $keyId, ?bool $consentOk = null): array
-    {
-        $this->opaque->storeRecord($user, $record, $keyId);
-        $user->setPassword(null);
-        $user->invalidateTokens();
-        $this->deleteOpenEmailChanges($user);
-        $this->em->flush();
         $this->mailer->sendPasswordChanged($user);
 
         return $this->tokens->tokenResponse($user, null, null, $consentOk);
@@ -78,18 +57,7 @@ readonly class AccountService
      */
     public function setPasswordAsOperator(User $user, string $newPassword): void
     {
-        $this->revokeCredentialsAsOperator($user, $this->hasher->hashPassword($user, $newPassword));
-    }
-
-    /** Operator "reset": no password (hash and OPAQUE record) until a reset link is used; sessions end. */
-    public function revokePasswordAsOperator(User $user): void
-    {
-        $this->revokeCredentialsAsOperator($user, null);
-    }
-
-    private function revokeCredentialsAsOperator(User $user, ?string $hash): void
-    {
-        $user->setPassword($hash)->clearOpaque();
+        $user->setPassword($this->hasher->hashPassword($user, $newPassword));
         $user->invalidateTokens();
         $this->em->getConnection()->executeStatement(
             'UPDATE password_reset SET used_at = ? WHERE user_id = ? AND used_at IS NULL',
@@ -265,7 +233,7 @@ readonly class AccountService
             ->setParameter('provider', $provider)
             ->getQuery()
             ->getSingleScalarResult();
-        $remains = $user->hasPasswordCredential() || $user->getPasskeys()->count() > 0 || (int) $otherProviders > 0;
+        $remains = null !== $user->getPassword() || $user->getPasskeys()->count() > 0 || (int) $otherProviders > 0;
         if (!$remains) {
             throw new ApiProblemException(409, 'At least one sign-in method must remain', 'last_login_method');
         }
@@ -290,24 +258,11 @@ readonly class AccountService
      */
     public function assertPassword(User $user, string $password, string $field): void
     {
-        $this->assertNoOpaqueRecord($user);
         if (null === $user->getPassword()) {
-            // OPAQUE-only accounts have a password, but prove it with a reauth ticket, not this field.
-            if ($user->hasPasswordCredential()) {
-                throw new ApiProblemException(400, 'The password is not correct', 'invalid_credentials', $field);
-            }
             throw new ApiProblemException(409, 'This account has no password', 'no_password');
         }
         if ('' === $password || !$this->hasher->isPasswordValid($user, $password)) {
             throw new ApiProblemException(400, 'The password is not correct', 'invalid_credentials', $field);
-        }
-    }
-
-    /** An account with a usable record proves itself with tickets, never with the kept bcrypt hash. */
-    private function assertNoOpaqueRecord(User $user): void
-    {
-        if ($this->opaque->hasRecord($user)) {
-            throw new ApiProblemException(409, 'This account signs in with OPAQUE', 'opaque_required');
         }
     }
 

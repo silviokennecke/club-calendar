@@ -52,7 +52,6 @@ Club Calendar (web server + PHP) ---- MySQL 8 / MariaDB
 | [Single sign-on](configuration/sso.md) | Sign-in with Google, Microsoft or Apple |
 | [Mail and maps](configuration/mail-and-maps.md) | Outgoing mail and Mapbox |
 | [Protection mechanisms](security.md) | Built-in security and what you must do |
-| [Password protection](password-protection.md) | OPAQUE: passwords that never reach the server |
 | [Legal documents](legal.md) | Imprint, privacy policy and terms |
 | [Operations](operations.md) | Updates, backups, scheduled tasks, tools, troubleshooting |
 | [Examples](examples/index.md) | Ready-to-copy configuration files |

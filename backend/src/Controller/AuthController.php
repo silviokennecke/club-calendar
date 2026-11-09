@@ -10,11 +10,12 @@ use App\Dto\Auth\DeleteAccountDto;
 use App\Dto\Auth\ForgotPasswordDto;
 use App\Dto\Auth\IdentifyDto;
 use App\Dto\Auth\LoginDto;
+use App\Dto\Auth\RegisterDto;
+use App\Dto\Auth\ResetPasswordDto;
 use App\Dto\Auth\UpdateMeDto;
 use App\Dto\Auth\VerifyEmailDto;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
-use App\Opaque\OpaqueAuthHint;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
 use App\Service\AccountService;
@@ -65,14 +66,29 @@ class AuthController extends AbstractApiController
         private readonly array $providersMeta,
         #[Autowire(env: 'FRONTEND_URL')]
         private readonly string $frontendUrl,
-        private readonly OpaqueAuthHint $authHint,
     ) {
     }
 
+    #[Route('/register', methods: ['POST'])]
+    public function register(Request $request): JsonResponse
+    {
+        $this->rateLimiter->assertRegisterAllowed($request);
+        try {
+            $dto = $this->serializer->deserialize($request->getContent(), RegisterDto::class, 'json');
+        } catch (SerializerException $e) {
+            throw self::invalidJson('Invalid JSON body: '.$e->getMessage(), $e);
+        }
+        $this->validateDto($dto, $this->validator);
+        $this->rateLimiter->assertRegisterEmailAllowed($dto->email);
+        $tokens = $this->auth->register($dto->name, $dto->email, $dto->password, $dto->language, $dto->acceptedDocuments, $request->getClientIp(), $request->headers->get('User-Agent'));
+
+        // A restricted session: the address is confirmed with the code from the mail (POST /api/auth/verify-email).
+        return new JsonResponse(['verificationRequired' => true, 'email' => $dto->email] + $tokens, Response::HTTP_CREATED);
+    }
+
     /**
-     * First step of the e-mail-first sign-in: 200 `{email, status, auth}` with `login` (account exists, verified or
-     * not), `register` or `registration_restricted`; `auth` (`opaque|legacy|none|reset_required`, see
-     * {@see OpaqueAuthHint}) names the credential protocol, for new addresses the signup protocol. Intentional account-existence oracle, limited per IP and
+     * First step of the e-mail-first sign-in: 200 `{email, status}` with `login` (account exists, verified or
+     * not), `register` or `registration_restricted`. Intentional account-existence oracle, limited per IP and
      * per address (checked before any database work).
      */
     #[Route('/identify', methods: ['POST'])]
@@ -82,16 +98,13 @@ class AuthController extends AbstractApiController
         $this->validateDto($dto, $this->validator);
         $email = AuthRateLimiter::normalize($dto->email);
         $this->rateLimiter->assertIdentifyAllowed($request, $email);
-        $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
-        if (null !== $user) {
+        if (null !== $this->em->getRepository(User::class)->findOneBy(['email' => $email])) {
             $status = 'login';
-            $auth = $this->authHint->forAccount($user);
         } else {
             $status = $this->registrationPolicy->mayRegister($email) ? 'register' : 'registration_restricted';
-            $auth = $this->authHint->forSignup();
         }
 
-        return new JsonResponse(['email' => $email, 'status' => $status, 'auth' => $auth]);
+        return new JsonResponse(['email' => $email, 'status' => $status]);
     }
 
     #[Route('/login', methods: ['POST'])]
@@ -160,6 +173,17 @@ class AuthController extends AbstractApiController
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 
+    /** 204 on success (all sessions ended; the user signs in again), 400 invalid_reset_token otherwise. */
+    #[Route('/reset-password', methods: ['POST'])]
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $dto = $this->deserializeDto($request, ResetPasswordDto::class);
+        $this->validateDto($dto, $this->validator);
+        $this->passwordResets->reset($dto->token, $dto->password);
+
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+    }
+
     /** Returns new tokens: all other sessions end, the calling session continues with these. */
     #[Route('/change-password', methods: ['POST'])]
     public function changePassword(Request $request): JsonResponse
@@ -183,11 +207,7 @@ class AuthController extends AbstractApiController
         $this->validateDto($dto, $this->validator);
         $dto->email = trim($dto->email);
 
-        if (null !== $dto->reauthTicket && '' !== $dto->reauthTicket) {
-            $this->reauth->assertTicket($user, ReauthenticationService::PURPOSE_CHANGE_EMAIL, $dto->reauthTicket);
-        } else {
-            $this->accounts->assertPassword($user, (string) $dto->password, 'password');
-        }
+        $this->accounts->assertPassword($user, (string) $dto->password, 'password');
         $send = $this->emailChangeLimiter->create($user->getId())->consume()->isAccepted();
         $this->accounts->requestEmailChange($user, $dto->email, $send);
 
@@ -368,10 +388,8 @@ class AuthController extends AbstractApiController
     }
 
     /**
-     * Deletes the account after re-authentication: `{password}` for an account with a password, `{reauthTicket}`
-     * (OPAQUE, purpose delete-account; the only proof of an account with a record and no bcrypt hash), `{code}`
-     * (mailed by `POST /delete-account/code`) for one without any password. The ticket is consumed by the proof,
-     * before the last-member guard, so a refused deletion burns it. 400 `invalid_credentials` /
+     * Deletes the account after re-authentication: `{password}` for an account with a password, `{code}`
+     * (mailed by `POST /delete-account/code`) for one without. 400 `invalid_credentials` /
      * `invalid_confirmation_code`, 429 `rate_limited`; nothing is deleted before the proof is valid.
      */
     #[Route('/me', methods: ['DELETE'])]
@@ -383,7 +401,7 @@ class AuthController extends AbstractApiController
             ? new DeleteAccountDto()
             : $this->deserializeDto($request, DeleteAccountDto::class);
         $this->validateDto($dto, $this->validator);
-        $this->reauth->assertConfirmed($user, ReauthenticationService::PURPOSE_DELETE_ACCOUNT, $dto->password, $dto->code, $dto->reauthTicket);
+        $this->reauth->assertConfirmed($user, ReauthenticationService::PURPOSE_DELETE_ACCOUNT, $dto->password, $dto->code);
         $this->auth->deleteMe($user);
 
         return new JsonResponse(['ok' => true]);

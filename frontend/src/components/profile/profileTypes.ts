@@ -14,7 +14,6 @@ export interface ProfileData {
   email: string;
   /** False for SSO-only accounts (no password set yet). */
   hasPassword: boolean;
-  passwordProtocol?: "opaque" | "legacy" | null;
   /** New address waiting for its confirmation link (null when none). */
   pendingEmail: string | null;
   passkeys: PasskeyInfo[];

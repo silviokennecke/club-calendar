@@ -13,10 +13,6 @@ use App\Exception\ApiProblemException;
 use App\Exception\OAuthAccountConflictException;
 use App\Exception\OAuthIdentityMismatchException;
 use App\Exception\OAuthRegistrationRestrictedException;
-use App\Opaque\InvalidMessageException;
-use App\Opaque\OpaqueCutoff;
-use App\Opaque\OpaqueService;
-use App\Opaque\OpaqueUpgradeTickets;
 use App\Repository\RefreshTokenRepository;
 use App\Security\NonceStore;
 use App\Security\OneTimeTokenService;
@@ -48,9 +44,6 @@ readonly class AuthService
         private LegalConsentService $legal,
         private RegistrationPolicy $registrationPolicy,
         private LoggerInterface $logger,
-        private OpaqueService $opaque,
-        private OpaqueCutoff $cutoff,
-        private OpaqueUpgradeTickets $upgradeTickets,
         /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
         #[Autowire(env: 'int:REFRESH_TOKEN_REUSE_GRACE')]
         private int $refreshReuseGrace,
@@ -63,34 +56,7 @@ readonly class AuthService
     /**
      * @param array<mixed> $acceptedDocuments ids of the accepted legal documents (all current ones are required)
      */
-    /**
-     * Signup with an OPAQUE record (no password hash). `$userId` is the id the record was registered under (from the
-     * signed signup state); `$claimState` consumes that state and runs after every check, right before the insert.
-     *
-     * @param array<mixed> $acceptedDocuments
-     *
-     * @throws InvalidMessageException on a malformed record
-     */
-    public function registerOpaque(string $userId, string $name, string $email, string $record, string $keyId, ?string $language, array $acceptedDocuments, callable $claimState, ?string $ip = null, ?string $userAgent = null): array
-    {
-        return $this->createAccount(
-            $name,
-            $email,
-            fn (User $user) => $this->opaque->storeRecord($user, $record, $keyId),
-            $language,
-            $acceptedDocuments,
-            $ip,
-            $userAgent,
-            $userId,
-            $claimState,
-        );
-    }
-
-    /**
-     * @param callable(User): mixed $credentials       sets the password credential on the new user
-     * @param array<mixed>          $acceptedDocuments
-     */
-    private function createAccount(string $name, string $email, callable $credentials, ?string $language, array $acceptedDocuments, ?string $ip, ?string $userAgent, ?string $presetId = null, ?callable $claimState = null): array
+    public function register(string $name, string $email, string $password, ?string $language = null, array $acceptedDocuments = [], ?string $ip = null, ?string $userAgent = null): array
     {
         $email = EmailAddress::normalize($email);
         // Before the e-mail-taken check and the hashing
@@ -102,15 +68,12 @@ readonly class AuthService
         if ($existing) {
             throw new ApiProblemException(400, 'Email already in use', 'email_taken', 'email');
         }
-        $user = null === $presetId ? new User() : User::withPresetId($presetId);
+        $user = new User();
         $user->setName($name);
         $user->setEmail($email);
-        $credentials($user);
+        $user->setPassword($this->hasher->hashPassword($user, $password));
         if (null !== $language && '' !== $language) {
             $user->setLanguage($language);
-        }
-        if (null !== $claimState) {
-            $claimState();
         }
         $this->em->persist($user);
         try {
@@ -131,57 +94,19 @@ readonly class AuthService
     {
         $email = EmailAddress::normalize($email);
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
-        // Same information as identify's `auth: opaque`; refused before any password check. The bcrypt hash of an
-        // upgraded account stays stored until phase 2 but is not accepted.
-        if ($user && $this->opaque->hasRecord($user)) {
-            $this->logger->info('opaque.legacy_login.failure', ['userId' => $user->getId(), 'reason' => 'opaque_required']);
-            throw new ApiProblemException(409, 'This account signs in with OPAQUE', 'opaque_required');
-        }
-        // After the cutoff the bcrypt hash is no longer accepted (same signal as identify's reset_required).
-        if ($user && $user->getPassword() && !$this->opaque->hasRecord($user)
-            && $this->cutoff->cutoffReached($this->clock->now())) {
-            $this->logger->info('opaque.legacy_login.failure', ['userId' => $user->getId(), 'reason' => 'cutoff']);
-            throw new ApiProblemException(409, 'The password must be reset', 'reset_required');
-        }
         if (!$user || !$user->getPassword()) {
-            if ($user) {
-                $this->logger->info('opaque.legacy_login.failure', ['userId' => $user->getId(), 'reason' => 'no_password_hash']);
-            }
             throw self::invalidCredentials();
         }
         if (!$this->hasher->isPasswordValid($user, $password)) {
-            $this->logger->info('opaque.legacy_login.failure', ['userId' => $user->getId(), 'reason' => 'wrong_password']);
             throw self::invalidCredentials();
         }
-        $hasRecord = $this->opaque->hasRecord($user);
-        // Ticket only for a confirmed address: the upgrade endpoints are behind the e-mail confirmation gate.
-        $offerUpgrade = null === $user->getOpaqueRecord() && $user->isEmailVerified();
-        $this->logger->info('opaque.legacy_login.success', [
-            'userId' => $user->getId(),
-            'hasRecord' => $hasRecord,
-            'upgradeOffered' => $offerUpgrade,
-        ]);
         if ($this->hasher->needsRehash($user)) {
             // Transparent upgrade; deliberately no token version bump, running sessions stay valid.
             $user->setPassword($this->hasher->hashPassword($user, $password));
             $this->em->flush();
         }
-
-        $response = $this->completeLogin($user);
-        if ($offerUpgrade) {
-            $response['opaqueUpgrade'] = ['ticket' => $this->upgradeTickets->issue($user), 'expiresIn' => OpaqueUpgradeTickets::TTL];
-        }
-
-        return $response;
-    }
-
-    /**
-     * Shared tail of password and OPAQUE login once the credentials are proven: an unconfirmed address gets a
-     * restricted session (make sure the user has a code to enter), then the token pair of a new family.
-     */
-    public function completeLogin(User $user): array
-    {
         if (!$user->isEmailVerified()) {
+            // Right password, no confirmed address: restricted session; make sure the user has a code to enter.
             $this->sendCodeIfDue($user);
         }
 
@@ -381,8 +306,7 @@ readonly class AuthService
             'lastClubId' => $user->getLastClubId(),
             'lastCalendarId' => $user->getLastCalendarId(),
             'language' => $user->getLanguage(),
-            'hasPassword' => $user->hasPasswordCredential(),
-            'passwordProtocol' => $this->passwordProtocol($user),
+            'hasPassword' => null !== $user->getPassword(),
             'pendingConsents' => LegalPresenter::pending($pending),
             'consentRequired' => !$sessionConsentOk && [] !== $pending,
             'emailVerificationRequired' => !$user->isEmailVerified(),
@@ -398,20 +322,6 @@ readonly class AuthService
                 'provider' => $a->getProvider(),
             ])->toArray()),
         ];
-    }
-
-    /** Which password proof the client must use: `opaque`, `legacy` (bcrypt, before the cutoff), `reset_required` (bcrypt-only after the cutoff, or only an unusable record) or null (no password). */
-    private function passwordProtocol(User $user): ?string
-    {
-        if ($this->opaque->hasRecord($user)) {
-            return 'opaque';
-        }
-        if (null !== $user->getPassword()) {
-            return $this->cutoff->cutoffReached($this->clock->now()) ? 'reset_required' : 'legacy';
-        }
-
-        // Only an unusable record (unknown key, corrupt) is left: no proof works.
-        return null !== $user->getOpaqueRecord() ? 'reset_required' : null;
     }
 
     public function updateMe(User $user, array $data, bool $sessionConsentOk): array
@@ -684,8 +594,7 @@ readonly class AuthService
         // Ends the sessions as well: tokens issued so far would otherwise keep (and, by refreshing, extend)
         // the access of whoever used the removed credentials. The owner's tokens are issued afterwards.
         $user->invalidateTokens();
-        // Both password credentials: a pre-registered OPAQUE record must not survive the takeover.
-        $user->setPassword(null)->clearOpaque();
+        $user->setPassword(null);
         foreach ($user->getPasskeys()->toArray() as $passkey) {
             $user->getPasskeys()->removeElement($passkey);
             $this->em->remove($passkey);

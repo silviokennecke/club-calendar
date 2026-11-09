@@ -6,12 +6,6 @@ import { ApiError, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { focusFirstInvalid } from "@/lib/focus";
 import { passwordProblem } from "@/lib/password";
-import {
-  OPAQUE_FAILURE_TEXT,
-  opaqueChangePassword,
-  opaqueFailureKind,
-  usePasswordProof,
-} from "@/lib/opaque";
 import { requestPasswordReset } from "@/lib/passwordReset";
 import type { User } from "@/lib/types";
 import type { ProfileData } from "./profileTypes";
@@ -42,8 +36,7 @@ export function PasswordSection({ profile }: { profile: ProfileData }) {
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [errors, setErrors] = useState<Errors>({});
-  const [failed, setFailed] = useState<string | null>(null);
-  const proof = usePasswordProof("change-password");
+  const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [linkState, setLinkState] = useState<"idle" | "sending" | "sent" | "failed">("idle");
 
@@ -53,7 +46,7 @@ export function PasswordSection({ profile }: { profile: ProfileData }) {
 
   async function change(e: React.FormEvent) {
     e.preventDefault();
-    setFailed(null);
+    setFailed(false);
     const found: Errors = {};
     if (!current) found.current = t("profile.account.passwordMissing");
     const problem = passwordProblem(next);
@@ -64,15 +57,10 @@ export function PasswordSection({ profile }: { profile: ProfileData }) {
 
     setSaving(true);
     try {
-      // OPAQUE accounts prove the current password with a ticket and register the new one locally
-      const p = await proof(current);
-      const tokens =
-        "reauthTicket" in p
-          ? await opaqueChangePassword(p.reauthTicket, next)
-          : await apiPost<TokenResponse>("/api/auth/change-password", {
-              currentPassword: current,
-              newPassword: next,
-            });
+      const tokens = await apiPost<TokenResponse>("/api/auth/change-password", {
+        currentPassword: current,
+        newPassword: next,
+      });
       // All sessions ended on the server; this one continues with the new tokens.
       login(tokens.access_token, tokens.refresh_token, tokens.user);
       setCurrent("");
@@ -85,10 +73,7 @@ export function PasswordSection({ profile }: { profile: ProfileData }) {
       if (code === "invalid_credentials")
         setErrors({ current: t("profile.account.wrongPassword") });
       else if (code === "validation_failed") setErrors({ next: t("auth.reset.password.short") });
-      else {
-        const kind = opaqueFailureKind(err);
-        setFailed(kind ? t(OPAQUE_FAILURE_TEXT[kind]) : t("profile.password.failed"));
-      }
+      else setFailed(true);
     } finally {
       setSaving(false);
     }
@@ -118,7 +103,7 @@ export function PasswordSection({ profile }: { profile: ProfileData }) {
           onSubmit={change}
           noValidate
         >
-          {failed && <Banner tone="danger">{failed}</Banner>}
+          {failed && <Banner tone="danger">{t("profile.password.failed")}</Banner>}
           <PasswordField
             label={t("profile.account.currentPassword")}
             requiredLabel

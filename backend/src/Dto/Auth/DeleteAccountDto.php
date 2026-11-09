@@ -14,8 +14,4 @@ class DeleteAccountDto
 
     #[Assert\Length(max: 32)]
     public ?string $code = null;
-
-    /** OPAQUE reauth ticket (purpose delete-account), instead of password or code */
-    #[Assert\Length(max: 2048)]
-    public ?string $reauthTicket = null;
 }

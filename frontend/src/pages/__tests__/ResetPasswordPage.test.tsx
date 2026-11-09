@@ -1,22 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { ApiError } from "@/lib/api";
-import { OpaqueClientError } from "@/lib/opaque";
 import ResetPasswordPage from "../ResetPasswordPage";
 
 const apiPost = vi.fn();
 vi.mock("@/lib/api", async (orig) => ({
   ...(await orig<typeof import("@/lib/api")>()),
   apiPost: (...a: unknown[]) => apiPost(...a),
-}));
-
-const opaqueReset = vi.fn();
-vi.mock("@/lib/opaque/client", async (orig) => ({
-  ...(await orig<typeof import("@/lib/opaque/client")>()),
-  opaqueReset: (...a: unknown[]) => opaqueReset(...a),
 }));
 
 const TOKEN = "a".repeat(64);
@@ -27,24 +19,21 @@ function Probe() {
 }
 
 function renderReset(path = `/reset-password?token=${TOKEN}`) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route
-            path="/reset-password"
-            element={
-              <>
-                <ResetPasswordPage />
-                <Probe />
-              </>
-            }
-          />
-          <Route path="*" element={<Probe />} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>,
+    <MemoryRouter initialEntries={[path]}>
+      <Routes>
+        <Route
+          path="/reset-password"
+          element={
+            <>
+              <ResetPasswordPage />
+              <Probe />
+            </>
+          }
+        />
+        <Route path="*" element={<Probe />} />
+      </Routes>
+    </MemoryRouter>,
   );
 }
 
@@ -59,8 +48,6 @@ async function fill(password: string, confirm = password) {
 beforeEach(() => {
   apiPost.mockReset();
   apiPost.mockResolvedValue(undefined);
-  opaqueReset.mockReset();
-  opaqueReset.mockResolvedValue(undefined);
 });
 afterEach(() => {
   document.head.querySelectorAll('meta[name="referrer"]').forEach((m) => m.remove());
@@ -85,32 +72,20 @@ describe("ResetPasswordPage", () => {
   it("sets the new password with the token from the link and leads to the login", async () => {
     renderReset();
     await fill("new-password-1");
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith("/api/auth/reset-password", {
+        token: TOKEN,
+        password: "new-password-1",
+      }),
+    );
     expect(
       await screen.findByRole("heading", { level: 1, name: "Passwort gespeichert" }),
     ).toBeInTheDocument();
-    expect(opaqueReset).toHaveBeenCalledWith(TOKEN, "new-password-1");
-    expect(apiPost).not.toHaveBeenCalled();
     expect(screen.getByRole("status")).toHaveTextContent("auf allen Geräten abgemeldet");
     expect(screen.getByRole("link", { name: "Weiter zur Anmeldung" })).toHaveAttribute(
       "href",
       "/login",
     );
-  });
-
-  it("shows an invalid link when the OPAQUE reset rejects the token", async () => {
-    opaqueReset.mockRejectedValue(new ApiError("x", 400, "invalid_reset_token", "token"));
-    renderReset();
-    await fill("new-password-1");
-    expect(await screen.findByRole("heading", { level: 1, name: /Link/ })).toBeInTheDocument();
-    expect(apiPost).not.toHaveBeenCalled();
-  });
-
-  it("explains an unsupported browser and sends nothing to the API", async () => {
-    opaqueReset.mockRejectedValue(new OpaqueClientError("opaque_unsupported", "no wasm"));
-    renderReset();
-    await fill("new-password-1");
-    expect(await screen.findByText(/unterstützt die sichere Anmeldung nicht/)).toBeInTheDocument();
-    expect(apiPost).not.toHaveBeenCalled();
   });
 
   it("checks the password policy and the repetition before sending", async () => {
@@ -131,7 +106,7 @@ describe("ResetPasswordPage", () => {
   });
 
   it("explains an invalid, used or expired link with a way to a new one", async () => {
-    opaqueReset.mockRejectedValue(new ApiError("x", 400, "invalid_reset_token"));
+    apiPost.mockRejectedValue(new ApiError("x", 400, "invalid_reset_token"));
     renderReset();
     await fill("new-password-1");
     expect(
@@ -154,7 +129,7 @@ describe("ResetPasswordPage", () => {
   });
 
   it("keeps the form after a network error", async () => {
-    opaqueReset.mockRejectedValue(new TypeError("Failed to fetch"));
+    apiPost.mockRejectedValue(new TypeError("Failed to fetch"));
     renderReset();
     await fill("new-password-1");
     expect(await screen.findByRole("alert")).toHaveTextContent(

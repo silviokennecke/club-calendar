@@ -59,13 +59,6 @@ parameters:
     env(GEOCODER_CACHE_TTL): '3600'       # 1 hour
     env(MAPBOX_PROXY_CACHE_TTL): '2592000' # 30 days
 
-    # OPAQUE (see docs/ops/OPAQUE-PLAN.md): keys are mandatory (app:opaque:check)
-    env(OPAQUE_OPRF_SEED): ''
-    env(OPAQUE_SERVER_PRIVATE_KEY): ''
-    env(OPAQUE_KEYS): ''
-    env(OPAQUE_ACTIVE_KEY_ID): ''
-    env(OPAQUE_LEGACY_CUTOFF): ''
-
     env(MAPBOX_TOKEN): ''
     map.image.zoom: 14
     map.image.width: 800
@@ -92,13 +85,6 @@ services:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
             - '../src/Kernel.php'
-
-    App\Opaque\OpaqueKeys:
-        arguments:
-            $oprfSeed: '%env(OPAQUE_OPRF_SEED)%'
-            $serverPrivateKey: '%env(OPAQUE_SERVER_PRIVATE_KEY)%'
-            $keySets: '%env(OPAQUE_KEYS)%'
-            $activeKeyId: '%env(OPAQUE_ACTIVE_KEY_ID)%'
 
     # Holiday feed URLs come from users: the client checks every resolved address and every redirect
     # target (IPv4 and IPv6) against private networks; assertSafeUrl() only sees the first host.

@@ -101,22 +101,6 @@ readonly class AccountMailer
         ));
     }
 
-    /** Reminder to sign in once before the OPAQUE cutoff `$cutoff` (links: /login and /forgot-password only, no token). */
-    public function sendOpaqueLegacyReminder(User $user, \DateTimeImmutable $cutoff): void
-    {
-        $this->mailer->queue($this->email(
-            $user,
-            $user->getEmail(),
-            'email.opaque_reminder.subject',
-            'email/opaque_legacy_reminder.html.twig',
-            [
-                'deadline' => $cutoff->format('de' === $user->getLanguage() ? 'd.m.Y' : 'Y-m-d'),
-                'loginUrl' => rtrim($this->frontendUrl, '/').'/login',
-                'forgotUrl' => $this->forgotPasswordUrl(),
-            ],
-        ));
-    }
-
     public function sendPasskeyCode(User $user, string $code, int $validMinutes): void
     {
         $this->mailer->queue($this->email(

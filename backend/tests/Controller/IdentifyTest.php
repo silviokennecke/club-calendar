@@ -59,7 +59,7 @@ class IdentifyTest extends WebTestCase
         TestHelper::createUser($this->em, $hasher, 'known@example.com');
         $r = $this->identify('Known@Example.com');
         $this->assertSame(200, $r['status']);
-        $this->assertSame(['email' => 'known@example.com', 'status' => 'login', 'auth' => 'legacy'], $r['body']);
+        $this->assertSame(['email' => 'known@example.com', 'status' => 'login'], $r['body']);
     }
 
     public function testUnverifiedUserIsLogin(): void

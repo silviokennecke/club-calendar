@@ -6,7 +6,6 @@ namespace App\Tests\Controller;
 
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
-use App\Tests\Helper\OpaqueApi;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -54,10 +53,10 @@ class ErrorCodesTest extends WebTestCase
         TestHelper::createUser(self::$em, self::$hasher, 'taken@example.com', 'password123');
         TestHelper::createUser(self::$em, self::$hasher, 'new@example.com', 'password123', false);
 
-        $r = OpaqueApi::signup(self::$client, 'X', 'taken@example.com', 'password123');
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', ['name' => 'X', 'email' => 'taken@example.com', 'password' => 'password123']);
         $this->assertProblem(400, ['code' => 'email_taken', 'field' => 'email', 'detail' => 'Email already in use'], $r);
 
-        $r = OpaqueApi::signup(self::$client, 'X', 'kein-email', 'password123');
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', ['name' => 'X', 'email' => 'kein-email', 'password' => 'password123']);
         $this->assertProblem(422, ['code' => 'validation_failed', 'field' => 'email'], $r);
 
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', ['email' => 'taken@example.com', 'password' => 'falsch-falsch']);
@@ -135,7 +134,7 @@ class ErrorCodesTest extends WebTestCase
         $base = "/api/calendars/{$cal->getId()}/events";
         $clubs = "/api/clubs/{$club->getId()}";
 
-        foreach (['/api/auth/opaque/register/start', '/api/auth/login'] as $path) {
+        foreach (['/api/auth/register', '/api/auth/login'] as $path) {
             self::$client->request('POST', $path, [], [], ['CONTENT_TYPE' => 'application/json'], '{kaputt');
             $body = json_decode((string) self::$client->getResponse()->getContent(), true);
             $this->assertSame(400, self::$client->getResponse()->getStatusCode(), $path);

@@ -12,7 +12,6 @@ This page lists what the app does to keep accounts and data safe, and what you, 
 | Registration control | Strangers creating accounts | Set `RESTRICT_REGISTRATION=true` for closed groups. |
 | SSO | Weak or reused passwords | Optional. See [SSO](configuration/sso.md). |
 | Passkeys | Phishing, password theft | Check the `WEBAUTHN_*` settings. |
-| [Password protection](password-protection.md) | The server ever seeing passwords | Always on. Keep the keys safe and backed up. |
 | Trusted hosts | Forged `Host` headers, wrong links in mails | List extra host names in `TRUSTED_HOSTS`. |
 | Security headers and CSP | Script injection, clickjacking | nginx users must add them. Send HSTS from your TLS proxy. |
 | Feed visibility and secret links | Private events becoming public | Choose the right visibility per feed. |
@@ -124,10 +123,6 @@ Passkeys let users sign in with fingerprint, face or a device PIN instead of a p
 
 Passkeys need HTTPS (except on `localhost`).
 
-## Password protection
-
-The server can be set up so that it never sees users' passwords. This is optional and off by default. See [Password protection](password-protection.md).
-
 ## Trusted hosts
 
 The app only answers requests addressed to its own host names: those in `APP_URL`, `FRONTEND_URL` and `BACKEND_URL`, plus `localhost` and loopback addresses (used by health checks). Any other host name gets a `400` error. Links in mails and redirects are always built from the configured URLs, never from what the visitor sent.
@@ -147,7 +142,7 @@ The bundled Caddy configuration (Docker) and `backend/public/.htaccess` (Apache)
 - `Referrer-Policy` (`no-referrer` for feed addresses).
 
 !!! warning "What you must do yourself"
-    - **nginx or another web server:** add the same headers. Copy them from `.htaccess` or the Caddyfile. The policy string must be identical, including the `wasm-unsafe-eval` entry needed for password protection.
+    - **nginx or another web server:** add the same headers. Copy them from `.htaccess` or the Caddyfile. The policy string must be identical.
     - **HSTS** (`Strict-Transport-Security: max-age=31536000`): the Docker image runs behind your TLS proxy and does not send it. Set it in the proxy. `.htaccess` sends it for HTTPS requests.
     - **Split setups** (frontend and API on different origins): add the API origin to `connect-src` and `img-src` (the latter for static map images).
 
@@ -205,11 +200,10 @@ Keep these out of version control and back them up. Treat them like passwords.
 
 | Secret | Used for | If you change or lose it |
 |---|---|---|
-| `APP_SECRET` | Signing and hashing of codes, links and one-time tokens; also the default passphrase of the JWT keys | Pending confirmation codes, reset links, passkey challenges and sign-in redirects stop working (sign-ins in progress fail), (the password protection keys are separate and not affected). **Unless `JWT_PASSPHRASE` is set to the old value, the JWT keys can no longer be read and sign-in fails** until you create new keys. Avoid changing it; if you must, set `JWT_PASSPHRASE` to the old value first. |
+| `APP_SECRET` | Signing and hashing of codes, links and one-time tokens; also the default passphrase of the JWT keys | Pending confirmation codes, reset links, passkey challenges and sign-in redirects stop working (sign-ins in progress fail),. **Unless `JWT_PASSPHRASE` is set to the old value, the JWT keys can no longer be read and sign-in fails** until you create new keys. Avoid changing it; if you must, set `JWT_PASSPHRASE` to the old value first. |
 | `JWT_REFRESH_SECRET` | Refresh tokens | All users are signed out and must sign in again. |
 | JWT keys (`/data/config/` in Docker, `backend/config/jwt/` otherwise) | Access tokens (15 minutes) | With new keys, current access tokens become invalid and browsers fetch new ones automatically; users usually notice nothing. Keep the keys between updates anyway. |
 | Database password (`DATABASE_URL`) | Database access | The app cannot start until both sides match. |
-| `OPAQUE_*` keys | Password protection | **All password records become useless**, and every affected user must reset the password. See [Password protection](password-protection.md). |
 | OAuth client secrets | SSO | SSO sign-in fails until updated. |
 
 Never reuse these values between test and production.

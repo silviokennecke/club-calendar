@@ -1,5 +1,4 @@
 import { ApiError, apiPost } from "./api";
-import { opaqueFailureKind, opaqueReset } from "./opaque";
 
 export type ResetRequestResult = "sent" | "invalid_email" | "failed";
 
@@ -19,15 +18,14 @@ export async function requestPasswordReset(email: string): Promise<ResetRequestR
   }
 }
 
-export type ResetResult = "done" | "invalid_token" | "weak_password" | "failed" | "unsupported";
+export type ResetResult = "done" | "invalid_token" | "weak_password" | "failed";
 
-/** Reset through OPAQUE (the register flow with the reset token); ends all sessions on success. */
-export async function resetPasswordSecure(token: string, password: string): Promise<ResetResult> {
+/** `POST /api/auth/reset-password`: 204 ends all sessions; the user signs in with the new password. */
+export async function resetPassword(token: string, password: string): Promise<ResetResult> {
   try {
-    await opaqueReset(token, password);
+    await apiPost<void>("/api/auth/reset-password", { token, password });
     return "done";
   } catch (e) {
-    if (opaqueFailureKind(e) === "unsupported") return "unsupported";
     const code = e instanceof ApiError ? e.code : undefined;
     if (code === "invalid_reset_token") return "invalid_token";
     if (code === "validation_failed") return "weak_password";

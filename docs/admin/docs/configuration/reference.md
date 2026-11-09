@@ -72,19 +72,6 @@ Leave empty to hide a provider. Setup: [Single sign-on](sso.md).
 | `WEBAUTHN_USER_VERIFICATION` | `preferred` | `preferred`, `required` (always PIN or biometrics) or `discouraged`. |
 
 
-## Password protection (OPAQUE)
-
-Always on. The server keys are required: the app does not start without them. Explained in [Password protection](../password-protection.md). Back up the keys: losing them invalidates all password records.
-
-| Variable | Default | Description |
-|---|---|---|
-| `OPAQUE_OPRF_SEED` | none, **required** | Secret seed. Create with `php bin/console app:opaque:generate-keys`. |
-| `OPAQUE_SERVER_PRIVATE_KEY` | none, **required** | Secret key. Created together with the seed. |
-| `OPAQUE_KEYS` | empty | Additional key sets for key rotation, `id:seed:privateKey`, comma-separated. The pair above is key `1`. |
-| `OPAQUE_ACTIVE_KEY_ID` | `1` | Key set used for new passwords. |
-| `OPAQUE_LEGACY_CUTOFF` | empty | Date `YYYY-MM-DD` (UTC) after which accounts not yet converted must reset their password. Empty: every account is converted at its next sign-in, without an end date. |
-
-
 ## Mail
 
 See [Mail and maps](mail-and-maps.md).

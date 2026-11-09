@@ -8,10 +8,6 @@ description: Passwort ändern, vergessen oder erstmals festlegen.
 
 Mit deinem Passwort meldest du dich an. Es muss zwischen 8 und 128 Zeichen lang sein.
 
-## So sicher ist dein Passwort
-
-Dein Passwort wird auf deinem Gerät geprüft und nicht an den Server gesendet (Verfahren: OPAQUE). Bei der ersten Anmeldung nach der Umstellung wird dein Konto einmalig automatisch umgestellt; du meldest dich dafür ganz normal an. Wer sich bis zum Stichtag nicht angemeldet hat, muss danach ein neues Passwort über **Passwort vergessen** festlegen, siehe [Passwort vergessen](help:settings/password#passwort-vergessen).
-
 ## Passwort ändern
 
 1. Öffne dein [Profil](help:settings/profile) und gehe zu **Passwort**.

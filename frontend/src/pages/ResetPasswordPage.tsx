@@ -5,7 +5,7 @@ import { Button, ErrorSummary, LinkButton, PasswordField } from "@/components/ui
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { FocusBanner } from "@/components/auth/FocusBanner";
 import { passwordProblem } from "@/lib/password";
-import { resetPasswordSecure } from "@/lib/passwordReset";
+import { resetPassword } from "@/lib/passwordReset";
 import { useMetaTag } from "@/lib/useMetaTag";
 
 type Phase = "form" | "invalid" | "done";
@@ -34,7 +34,6 @@ export default function ResetPasswordPage() {
   const [confirm, setConfirm] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [failed, setFailed] = useState(0);
-  const [failureText, setFailureText] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const changedPhase = useRef(false);
@@ -63,7 +62,6 @@ export default function ResetPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFailed(0);
-    setFailureText(null);
     const found: FieldErrors = {};
     const problem = passwordProblem(password);
     if (problem) found.password = t(`auth.reset.password.${problem}`);
@@ -75,14 +73,11 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true);
-    const result = await resetPasswordSecure(token, password);
+    const result = await resetPassword(token, password);
     setLoading(false);
     if (result === "done") show("done");
     else if (result === "invalid_token") show("invalid");
-    else if (result === "unsupported") {
-      setFailureText("auth.opaqueUnsupported");
-      setFailed((n) => n + 1);
-    } else if (result === "weak_password") reject({ password: t("auth.reset.password.short") });
+    else if (result === "weak_password") reject({ password: t("auth.reset.password.short") });
     else setFailed((n) => n + 1);
   }
 
@@ -135,7 +130,7 @@ export default function ResetPasswordPage() {
     >
       {failed > 0 && (
         <FocusBanner key={failed} tone="danger" title={t("auth.reset.failedTitle")}>
-          {t(failureText ?? "auth.reset.failedText")}
+          {t("auth.reset.failedText")}
         </FocusBanner>
       )}
       <form

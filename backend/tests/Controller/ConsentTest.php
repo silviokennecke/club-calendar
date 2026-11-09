@@ -11,7 +11,6 @@ use App\Security\OneTimeTokenService;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\LegalTestHelper;
-use App\Tests\Helper\OpaqueApi;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -48,7 +47,9 @@ class ConsentTest extends WebTestCase
     {
         self::$client->setServerParameter('HTTP_USER_AGENT', 'TestAgent/1.0');
 
-        return OpaqueApi::signup(self::$client, 'New', $email, 'password123', $extra['acceptedDocuments'] ?? []);
+        return TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
+            'name' => 'New', 'email' => $email, 'password' => 'password123',
+        ] + $extra);
     }
 
     private function auth(User $user): string
@@ -119,13 +120,13 @@ class ConsentTest extends WebTestCase
     public function testRegisterWithUnknownIdOrWrongTypeIs400(): void
     {
         $privacy = LegalTestHelper::publish(self::$em, LegalDocumentType::PRIVACY);
-        foreach ([['nope'], [$privacy->getId(), 'nope'], [123]] as $i => $ids) {
-            $r = $this->register(['acceptedDocuments' => $ids], "bad$i@example.com");
+        foreach ([['nope'], [$privacy->getId(), 'nope'], [123]] as $ids) {
+            $r = $this->register(['acceptedDocuments' => $ids]);
             $this->assertSame(400, $r['status'], json_encode($ids));
             $this->assertSame('validation_failed', $r['body']['code']);
             $this->assertSame('acceptedDocuments', $r['body']['field']);
         }
-        $this->assertSame(400, $this->register(['acceptedDocuments' => 'x'], 'bad-x@example.com')['status']);
+        $this->assertSame(400, $this->register(['acceptedDocuments' => 'x'])['status']);
     }
 
     public function testConsentIsCheckedBeforeEmailTaken(): void

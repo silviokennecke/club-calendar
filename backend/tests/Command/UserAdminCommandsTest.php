@@ -90,15 +90,26 @@ class UserAdminCommandsTest extends WebTestCase
         $this->assertSame(200, $this->login('ada@example.com', 'secret-pass-1'));
     }
 
-    public function testCreateInteractiveAsksForNameAndEmailAndReasksInvalidValues(): void
+    public function testCreateInteractiveAsksForEverythingAndReasksInvalidValues(): void
     {
         $t = $this->command('app:user:create');
-        $t->setInputs(['Grace', 'not-an-email', 'grace@example.com']);
+        $t->setInputs(['Grace', 'not-an-email', 'grace@example.com', 'short', 'long-enough-1', 'long-enough-1']);
         $code = $t->execute([]);
 
         $this->assertSame(Command::SUCCESS, $code, $t->getDisplay());
         $this->assertNotNull($this->userByEmail('grace@example.com'));
-        $this->assertStringContainsString('/reset-password?token=', $t->getDisplay());
+        $this->assertSame(200, $this->login('grace@example.com', 'long-enough-1'));
+    }
+
+    public function testCreateInteractiveMismatchingRepeatAsksAgain(): void
+    {
+        $t = $this->command('app:user:create');
+        $t->setInputs(['long-enough-1', 'different-pass-2', 'long-enough-3', 'long-enough-3']);
+        $code = $t->execute(['--name' => 'Linus', '--email' => 'linus@example.com']);
+
+        $this->assertSame(Command::SUCCESS, $code, $t->getDisplay());
+        $this->assertStringContainsString('do not match', $t->getDisplay());
+        $this->assertSame(200, $this->login('linus@example.com', 'long-enough-3'));
     }
 
     public function testCreateRejectsInvalidEmailAndShortPassword(): void
@@ -130,6 +141,8 @@ class UserAdminCommandsTest extends WebTestCase
         $this->assertStringContainsString('--name', $t->getDisplay());
         $this->assertSame(Command::FAILURE, $t->execute(['--name' => 'A', '--password' => 'secret-pass-1'], ['interactive' => false]));
         $this->assertStringContainsString('--email', $t->getDisplay());
+        $this->assertSame(Command::FAILURE, $t->execute(['--name' => 'A', '--email' => 'a@example.com'], ['interactive' => false]));
+        $this->assertStringContainsString('password is missing', $t->getDisplay());
         $this->assertSame(0, self::$em->getRepository(User::class)->count([]));
     }
 
@@ -182,7 +195,8 @@ class UserAdminCommandsTest extends WebTestCase
         $user = TestHelper::createUser(self::$em, self::$hasher, 'unv@example.com', 'old-password-1', false);
 
         $t = $this->command('app:user:set-password');
-        $code = $t->execute(['user' => 'UNV@example.com', '--password' => 'new-password-1']);
+        $t->setInputs(['new-password-1', 'new-password-1']);
+        $code = $t->execute(['user' => 'UNV@example.com']);
 
         $this->assertSame(Command::SUCCESS, $code, $t->getDisplay());
         $this->assertFalse($this->user($user->getId())->isEmailVerified());
@@ -200,11 +214,11 @@ class UserAdminCommandsTest extends WebTestCase
         $this->assertSame(Command::SUCCESS, $t->execute(['user' => $user->getId(), '--password-stdin' => true], ['interactive' => false]));
         $this->assertSame(200, $this->login('in@example.com', 'from-stdin-1'));
 
+        $this->assertSame(Command::FAILURE, $t->execute(['user' => $user->getId()], ['interactive' => false]));
+        $this->assertStringContainsString('password is missing', $t->getDisplay());
         $this->assertSame(Command::FAILURE, $t->execute(['user' => $user->getId(), '--password' => 'short'], ['interactive' => false]));
         $this->assertStringContainsString('Invalid password', $t->getDisplay());
         $this->assertSame(200, $this->login('in@example.com', 'from-stdin-1'));
-        $this->assertSame(Command::SUCCESS, $t->execute(['user' => $user->getId()], ['interactive' => false]));
-        $this->assertStringContainsString('/reset-password?token=', $t->getDisplay());
     }
 
     public function testSetPasswordUnknownUser(): void

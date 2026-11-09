@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Dto\Auth\RegisterDto;
-use App\Opaque\OpaqueCutoff;
-use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\StreamableInputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -14,7 +12,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
  * Shared input handling of the user administration commands. Values are validated with the constraints of
- * {@see RegisterDto}, the DTO of the former plaintext sign-up.
+ * {@see RegisterDto}, the DTO of POST /api/auth/register.
  */
 trait PasswordInputTrait
 {
@@ -29,7 +27,8 @@ trait PasswordInputTrait
     }
 
     /**
-     * Password from --password or --password-stdin. Prints the error and returns null if it is invalid.
+     * Password from --password, --password-stdin or (interactive) a hidden prompt asked twice. Prints the
+     * error and returns null if there is none or it is invalid.
      */
     private function readPassword(
         SymfonyStyle $io,
@@ -63,23 +62,24 @@ trait PasswordInputTrait
 
             return $password;
         }
+        if (!$input->isInteractive()) {
+            $io->error('The password is missing: use --password, --password-stdin or run interactively.');
 
-        return null;
-    }
-
-    /**
-     * A CLI password is a bcrypt (legacy) one: warn, and refuse after the cutoff unless forced.
-     * Returns false when refused.
-     */
-    private function acceptLegacyPassword(SymfonyStyle $io, OpaqueCutoff $cutoff, ClockInterface $clock, bool $forceLegacy): bool
-    {
-        if ($cutoff->cutoffReached($clock->now()) && !$forceLegacy) {
-            $io->error('OPAQUE_LEGACY_CUTOFF is reached: a password here would create a legacy (bcrypt) account that cannot sign in. Use --link, or --force-legacy.');
-
-            return false;
+            return null;
         }
-        $io->warning('This creates a legacy (bcrypt) password. It is upgraded on first sign-in; after the cutoff the user must reset it. Prefer --link.');
+        while (true) {
+            $first = (string) $io->askHidden('Password');
+            $message = $this->violation($validator, 'password', $first);
+            if (null !== $message) {
+                $io->error($message);
+                continue;
+            }
+            if ($first !== (string) $io->askHidden('Repeat password')) {
+                $io->error('The passwords do not match.');
+                continue;
+            }
 
-        return true;
+            return $first;
+        }
     }
 }

@@ -1,20 +1,12 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
-import {
-  API,
-  PASSWORD,
-  apiLogin,
-  createVerifiedUser,
-  login,
-  resetLinkFor,
-  seedClub,
-} from "./helpers";
+import { API, PASSWORD, createVerifiedUser, login, resetLinkFor, seedClub } from "./helpers";
 
 // ——— Konto (Backend-Paket 3): Passwort zurücksetzen, Profil bearbeiten, letzter Kalender je Verein ———
 
 const NEW_PASSWORD = "Neues-Passwort-2";
 
 async function signIn(request: APIRequestContext, email: string, password: string) {
-  return apiLogin(request, email, password);
+  return request.post(`${API}/api/auth/login`, { data: { email, password } });
 }
 
 test.describe("Passwort zurücksetzen", () => {
@@ -50,8 +42,8 @@ test.describe("Passwort zurücksetzen", () => {
     await page.getByRole("link", { name: "Weiter zur Anmeldung" }).click();
     await expect(page).toHaveURL(/\/login$/);
 
-    expect((await signIn(request, email, PASSWORD)).status).toBe(401);
-    expect((await signIn(request, email, NEW_PASSWORD)).status).toBe(200);
+    expect((await signIn(request, email, PASSWORD)).status()).toBe(401);
+    expect((await signIn(request, email, NEW_PASSWORD)).status()).toBe(200);
 
     // The same link a second time: invalid, with a way to a new one.
     await page.goto(`/reset-password?token=${token}`);
@@ -100,7 +92,7 @@ test.describe("Profil bearbeiten", () => {
     // This session continues with the new tokens (also after a reload).
     await page.reload();
     await expect(page.getByRole("heading", { level: 2, name: "Profil Neu" })).toBeVisible();
-    expect((await signIn(request, email, NEW_PASSWORD)).status).toBe(200);
+    expect((await signIn(request, email, NEW_PASSWORD)).status()).toBe(200);
 
     const newEmail = `neu-${Date.now()}@example.com`;
     await account.getByLabel(/^Neue E-Mail-Adresse/).fill(newEmail);

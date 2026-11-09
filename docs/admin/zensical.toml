@@ -24,7 +24,6 @@ nav = [
   ] },
   { "Security" = [
     { "Protection mechanisms" = "security.md" },
-    { "Password protection" = "password-protection.md" },
   ] },
   { "Legal documents" = "legal.md" },
   { "Operations" = "operations.md" },

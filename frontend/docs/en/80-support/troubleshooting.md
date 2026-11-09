@@ -16,18 +16,6 @@ For every situation you find the **symptom** (what you see), the **cause** and t
 
 **Solution:** Wait for the time shown. Check the spelling of your address. If you forgot your password, reset it from the sign-in page ([Password](help:settings/password)). Or sign in with a [passkey](help:settings/passkeys) or a [linked account](help:settings/linked-accounts).
 
-## You are asked to set a new password
-
-**Symptom:** The sign-in page shows **Password reset required**.
-
-**Solution:** Reset your password from the sign-in page, see [Password](help:settings/password#how-secure-your-password-is).
-
-## Sign-in does not work in this browser
-
-**Symptom:** The page says your browser or device does not support sign-in.
-
-**Solution:** Update your browser or use another one.
-
 ## Sign-in with Google, Microsoft or Apple fails
 
 **Symptom:** Messages such as "The sign-in has expired ...", "An account already exists for this e-mail address" or "No account was created. Registration is only possible with an invitation."

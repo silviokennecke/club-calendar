@@ -59,7 +59,7 @@ class ConsentGateListener
         }
         $request = $event->getRequest();
         $path = $request->getPathInfo();
-        if (!str_starts_with($path, '/api/') || self::isAllowed($path, $request->getMethod()) || ReauthGateAllowance::allows($request)) {
+        if (!str_starts_with($path, '/api/') || self::isAllowed($path, $request->getMethod())) {
             return;
         }
         $token = $this->tokenStorage->getToken();

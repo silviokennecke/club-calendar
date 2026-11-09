@@ -9,7 +9,6 @@ use App\Service\AccountMailer;
 use App\Service\PasswordResetService;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
-use App\Tests\Helper\OpaqueApi;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -178,13 +177,13 @@ class NoticeMailTest extends WebTestCase
             $this->assertSame('Neues Passwort für Club Calendar festlegen', $mail->getSubject());
         }
 
-        $r = OpaqueApi::reset(self::$client, str_repeat('0', 64), 'new-password-1');
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/reset-password', ['token' => str_repeat('0', 64), 'password' => 'new-password-1']);
         $this->assertSame(400, $r['status']);
         $this->assertEmailCount(0);
 
         $container = static::getContainer();
         $token = $container->get(PasswordResetService::class)->createToken($container->get(EntityManagerInterface::class)->find(User::class, $user->getId()));
-        $r = OpaqueApi::reset(self::$client, $token, 'new-password-1');
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/reset-password', ['token' => $token, 'password' => 'new-password-1']);
         $this->assertSame(204, $r['status'], $r['content']);
         $this->assertEmailCount(1);
         $mail = $this->mailTo('alice@example.com');

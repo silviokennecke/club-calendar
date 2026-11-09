@@ -16,18 +16,6 @@ Zu jeder Situation findest du das **Symptom** (was du siehst), die **Ursache** u
 
 **Lösung:** Warte die angezeigte Zeit ab. Prüfe die Schreibweise der Adresse. Hast du das Passwort vergessen, setze es über die Anmeldeseite zurück ([Passwort](help:settings/password)). Alternativ meldest du dich mit [Passkey](help:settings/passkeys) oder [verknüpftem Konto](help:settings/linked-accounts) an.
 
-## Du sollst dein Passwort neu festlegen
-
-**Symptom:** Die Anmeldeseite zeigt **Passwort zurücksetzen erforderlich**.
-
-**Lösung:** Setze das Passwort über die Anmeldeseite zurück, siehe [Passwort](help:settings/password#so-sicher-ist-dein-passwort).
-
-## Anmeldung funktioniert in diesem Browser nicht
-
-**Symptom:** Die Seite meldet, dass dein Browser oder Gerät die Anmeldung nicht unterstützt.
-
-**Lösung:** Aktualisiere den Browser oder nutze einen anderen.
-
 ## Anmeldung über Google, Microsoft oder Apple klappt nicht
 
 **Symptom:** Meldungen wie „Die Anmeldung ist abgelaufen …“, „Zu dieser E-Mail-Adresse gibt es schon ein Konto“ oder „Es wurde kein Konto erstellt. Die Registrierung ist nur mit einer Einladung möglich.“

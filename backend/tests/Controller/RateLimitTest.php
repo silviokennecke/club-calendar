@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Controller;
 
 use App\Tests\Helper\DatabaseResetter;
-use App\Tests\Helper\OpaqueApi;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -51,15 +50,6 @@ class RateLimitTest extends WebTestCase
             'body' => json_decode((string) $response->getContent(), true) ?? [],
             'retryAfter' => $response->headers->get('Retry-After'),
         ];
-    }
-
-    /** Sign-up through OPAQUE; the answer of `finish`, or of `start` when that is refused. */
-    private function signup(string $email, string $ip = '203.0.113.7'): array
-    {
-        self::$client->setServerParameter('REMOTE_ADDR', $ip);
-        $r = OpaqueApi::signup(self::$client, 'Rita', $email, 'password123');
-
-        return ['status' => $r['status'], 'body' => $r['body'] ?? [], 'retryAfter' => $r['headers']['retry-after'][0] ?? null];
     }
 
     private function assertRateLimited(array $r): void
@@ -127,9 +117,10 @@ class RateLimitTest extends WebTestCase
     public function testRegisterIsThrottledPerEmail(): void
     {
         $email = self::email();
+        $body = ['name' => 'Rita', 'email' => $email, 'password' => 'password123'];
         $statuses = [];
         for ($i = 0; $i < 4; ++$i) {
-            $statuses[] = $this->signup($email);
+            $statuses[] = $this->post('/api/auth/register', $body);
         }
         $this->assertSame(201, $statuses[0]['status']);
         // the address exists now (email_taken), which counts against the bucket as well
@@ -137,16 +128,16 @@ class RateLimitTest extends WebTestCase
         $this->assertSame(400, $statuses[2]['status']);
         $this->assertRateLimited($statuses[3]);
         // Other addresses are unaffected.
-        $this->assertSame(201, $this->signup(self::email())['status']);
+        $this->assertSame(201, $this->post('/api/auth/register', ['email' => self::email()] + $body)['status']);
     }
 
     public function testRegisterIsThrottledPerIp(): void
     {
         $ip = '192.0.2.20';
         for ($i = 0; $i < 100; ++$i) {
-            $this->assertSame(201, $this->signup(self::email(), $ip)['status']);
+            $this->assertSame(201, $this->post('/api/auth/register', ['name' => 'R', 'email' => self::email(), 'password' => 'password123'], $ip)['status']);
         }
-        $this->assertRateLimited($this->signup(self::email(), $ip));
+        $this->assertRateLimited($this->post('/api/auth/register', ['name' => 'R', 'email' => self::email(), 'password' => 'password123'], $ip));
     }
 
     public function testRefreshIsThrottledPerIp(): void
@@ -181,8 +172,11 @@ class RateLimitTest extends WebTestCase
         $this->assertSame(422, $r['status']);
         $this->assertSame('email', $r['body']['field']);
 
-        $r = $this->signup(str_repeat('a', 250).'@example.com');
+        $r = $this->post('/api/auth/register', ['name' => 'R', 'email' => str_repeat('a', 250).'@example.com', 'password' => 'password123']);
         $this->assertSame(422, $r['status']);
         $this->assertSame('email', $r['body']['field']);
+
+        $r = $this->post('/api/auth/register', ['name' => 'R', 'email' => self::email(), 'password' => $long]);
+        $this->assertSame(422, $r['status']);
     }
 }

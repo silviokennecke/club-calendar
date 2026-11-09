@@ -37,7 +37,6 @@ The default `null://null` discards every mail. Always set a real server for a li
 - Confirmation of a new e-mail address
 - Codes for deleting an account or adding a passkey
 - Notices when a password or e-mail address is changed
-- Reminders for the password protection changeover, if you use it (see [Password protection](../password-protection.md))
 
 All mails carry the links to your imprint, privacy policy and terms (see [Legal](../legal.md)).
 

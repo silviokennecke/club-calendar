@@ -6,7 +6,6 @@ import { apiFetch, apiPost, BACKEND_URL, sessionUser, type TokenResponse } from 
 import { useAuth } from "@/lib/auth-context";
 import { isEmailShape } from "@/lib/email";
 import { isRateLimited, rateLimitText } from "@/lib/rateLimit";
-import type { IdentifyAuth } from "@/lib/opaque";
 import { ssoErrorKey } from "@/lib/ssoError";
 import { createSsoChallenge } from "@/lib/ssoBinding";
 import {
@@ -47,11 +46,7 @@ export default function SignInPage() {
 
   // null = untouched, so an invitation can prefill without an effect
   const [typed, setTyped] = useState<string | null>(null);
-  const [result, setResult] = useState<{
-    status: Status;
-    email: string;
-    auth?: IdentifyAuth;
-  } | null>(null);
+  const [result, setResult] = useState<{ status: Status; email: string } | null>(null);
   const [emailError, setEmailError] = useState<string | undefined>();
   const [submits, setSubmits] = useState(0);
   const [identifying, setIdentifying] = useState(false);
@@ -116,14 +111,11 @@ export default function SignInPage() {
 
     setIdentifying(true);
     try {
-      const res = await apiPost<{ email: string; status: Status; auth?: IdentifyAuth }>(
-        "/api/auth/identify",
-        {
-          email: trimmed,
-        },
-      );
+      const res = await apiPost<{ email: string; status: Status }>("/api/auth/identify", {
+        email: trimmed,
+      });
       setTyped(res.email);
-      setResult({ status: res.status, email: res.email, auth: res.auth });
+      setResult({ status: res.status, email: res.email });
       navigate(
         { pathname: location.pathname, search: location.search },
         { state: { authStep: true } },
@@ -311,7 +303,7 @@ export default function SignInPage() {
 
         <Collapse open={step !== "email"}>
           {panel?.status === "login" && (
-            <LoginStep key={panel.email} email={panel.email} auth={panel.auth} onBack={back} />
+            <LoginStep key={panel.email} email={panel.email} onBack={back} />
           )}
           {panel?.status === "register" && (
             <SignupStep key={panel.email} email={panel.email} onBack={back} />

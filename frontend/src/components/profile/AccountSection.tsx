@@ -11,7 +11,6 @@ import {
   toast,
 } from "@/components/ui/shared";
 import { ApiError, apiDelete, apiPost } from "@/lib/api";
-import { OPAQUE_FAILURE_TEXT, opaqueFailureKind, usePasswordProof } from "@/lib/opaque";
 import { useAuth } from "@/lib/auth-context";
 import { isEmailShape } from "@/lib/email";
 import { focusFirstInvalid } from "@/lib/focus";
@@ -37,8 +36,7 @@ export function AccountSection({ profile }: { profile: ProfileData }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailErrors, setEmailErrors] = useState<{ email?: string; password?: string }>({});
-  const [emailFailed, setEmailFailed] = useState<string | null>(null);
-  const proof = usePasswordProof("change-email");
+  const [emailFailed, setEmailFailed] = useState(false);
   const [sending, setSending] = useState(false);
   const unsaved = useUnsavedChanges(name !== profile.name || email !== "" || password !== "");
 
@@ -68,7 +66,7 @@ export function AccountSection({ profile }: { profile: ProfileData }) {
 
   async function requestChange(e: React.FormEvent) {
     e.preventDefault();
-    setEmailFailed(null);
+    setEmailFailed(false);
     const found: { email?: string; password?: string } = {};
     if (!email.trim()) found.email = t("auth.register.emailMissing");
     else if (!isEmailShape(email)) found.email = t("auth.emailInvalid");
@@ -78,10 +76,7 @@ export function AccountSection({ profile }: { profile: ProfileData }) {
 
     setSending(true);
     try {
-      await apiPost<void>("/api/auth/change-email", {
-        email: email.trim(),
-        ...(await proof(password)),
-      });
+      await apiPost<void>("/api/auth/change-email", { email: email.trim(), password });
       setEmail("");
       setPassword("");
       await qc.invalidateQueries({ queryKey: ["profile"] });
@@ -91,10 +86,7 @@ export function AccountSection({ profile }: { profile: ProfileData }) {
         setEmailErrors({ password: t("profile.account.wrongPassword") });
       else if (code === "validation_failed")
         setEmailErrors({ email: t("profile.account.emailInvalid") });
-      else {
-        const kind = opaqueFailureKind(err);
-        setEmailFailed(kind ? t(OPAQUE_FAILURE_TEXT[kind]) : t("profile.account.emailFailed"));
-      }
+      else setEmailFailed(true);
     } finally {
       setSending(false);
     }
@@ -177,7 +169,7 @@ export function AccountSection({ profile }: { profile: ProfileData }) {
               />
             </Banner>
           )}
-          {emailFailed && <Banner tone="danger">{emailFailed}</Banner>}
+          {emailFailed && <Banner tone="danger">{t("profile.account.emailFailed")}</Banner>}
           {profile.hasPassword ? (
             <>
               <Field

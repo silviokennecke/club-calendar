@@ -3,11 +3,9 @@
 #   serve (default)  prepare, migrate, then run PHP-FPM + Caddy
 #   anything else    executed as is, e.g. `php bin/console doctrine:fixtures:load`
 #
-# Required:  APP_SECRET, JWT_REFRESH_SECRET, DATABASE_URL, APP_URL (public URL, e.g. https://cal.example.com),
-#            OPAQUE_OPRF_SEED + OPAQUE_SERVER_PRIVATE_KEY (or OPAQUE_KEYS + OPAQUE_ACTIVE_KEY_ID); checked at start
+# Required:  APP_SECRET, JWT_REFRESH_SECRET, DATABASE_URL, APP_URL (public URL, e.g. https://cal.example.com)
 # Optional:  WEBAUTHN_RP_NAME, FRONTEND_URL / BACKEND_URL / WEBAUTHN_RP_ID (derived from APP_URL), MAILER_DSN, MAILER_FROM, MAPBOX_TOKEN,
 #            GOOGLE_*/MICROSOFT_*/APPLE_* OAuth settings, SYMFONY_TRUSTED_PROXIES (behind a TLS proxy, e.g. PRIVATE_SUBNETS),
-#            OPAQUE_LEGACY_CUTOFF (password migration end date, empty = none),
 #            RESTRICT_REGISTRATION (default 0/false), MCP_ACCESS_TOKEN_TTL, MCP_REFRESH_TOKEN_LIFETIME,
 #            MCP_REFRESH_TOKEN_ABSOLUTE_LIFETIME, MCP_REFRESH_TOKEN_REUSE_GRACE, MCP_ALLOWED_CLIENTS (MCP server, see backend/.env.example),
 #            FEED_ICS_WINDOW_ENABLED, FEED_ICS_PAST_DAYS, FEED_ICS_FUTURE_MONTHS, FEED_ICS_MAX_EVENTS (public feed ICS window), FEED_RATE_LIMIT_PER_IP, FEED_RATE_LIMIT_PER_FEED (public feed rate limits), RUN_MIGRATIONS (default 1), MIGRATION_RETRIES (default 15), PORT (default 8080), LEGAL_DOCUMENTS_PATH
@@ -48,12 +46,6 @@ fi
 if [ ! -s "$JWT_PRIVATE_KEY" ]; then
     log "no JWT keypair found, generating one at $JWT_PRIVATE_KEY (mount a volume at $(dirname "$JWT_PRIVATE_KEY") to keep it across restarts)"
     php bin/console lexik:jwt:generate-keypair --skip-if-exists --no-interaction
-fi
-
-# OPAQUE: fatal with missing/invalid keys (never auto-generated, see docs/admin/docs/password-protection.md)
-if ! php bin/console app:opaque:check --no-interaction >&2; then
-    log "OPAQUE keys are missing or invalid: set OPAQUE_OPRF_SEED and OPAQUE_SERVER_PRIVATE_KEY (or OPAQUE_KEYS and OPAQUE_ACTIVE_KEY_ID); generate them once with: php bin/console app:opaque:generate-keys, and keep them permanently"
-    exit 1
 fi
 
 # Database migrations

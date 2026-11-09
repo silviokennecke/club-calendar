@@ -15,9 +15,6 @@
     "requestTimeout": "Die Anfrage hat zu lange gedauert. Prüfe deine Verbindung und versuche es erneut."
   },
   "auth": {
-    "opaqueUnsupported": "Dein Browser oder Gerät unterstützt die sichere Anmeldung nicht (WebAssembly oder Arbeitsspeicher). Bitte probiere einen aktuellen Browser.",
-    "opaqueResetRequired": "Dein bisheriges Passwort wird nicht mehr akzeptiert. Setze es über „Passwort vergessen“ auf der Anmeldeseite zurück.",
-    "opaqueReload": "Die Seite ist veraltet. Bitte lade sie neu und versuche es erneut.",
     "signIn": "Anmelden",
     "signOut": "Abmelden",
     "email": "E-Mail",
@@ -56,9 +53,7 @@
       "signInWith": "Mit {{provider}} anmelden",
       "errorTitle": "Die Anmeldung ist noch nicht vollständig",
       "emailMissing": "Bitte gib deine E-Mail-Adresse ein.",
-      "passwordMissing": "Bitte gib dein Passwort ein.",
-      "resetRequiredTitle": "Passwort zurücksetzen erforderlich",
-      "resetRequiredText": "Mit deinem bisherigen Passwort kannst du dich nicht mehr anmelden. Setze es zurück, um wieder Zugriff zu bekommen."
+      "passwordMissing": "Bitte gib dein Passwort ein."
     },
     "register": {
       "name": "Name",

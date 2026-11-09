@@ -15,8 +15,4 @@ class ChangeEmailDto
 
     #[Assert\Length(max: 4096)]
     public ?string $password = null;
-
-    /** OPAQUE reauth ticket (purpose change-email), instead of the password */
-    #[Assert\Length(max: 2048)]
-    public ?string $reauthTicket = null;
 }

@@ -11,7 +11,6 @@ use App\Entity\PasswordReset;
 use App\Entity\User;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
-use App\Tests\Helper\OpaqueApi;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -88,7 +87,7 @@ class PasswordResetTest extends WebTestCase
 
     private function reset(string $token, string $password = 'new-password-1'): array
     {
-        return OpaqueApi::reset(self::$client, $token, $password);
+        return TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/reset-password', ['token' => $token, 'password' => $password]);
     }
 
     /** Token from the link in the last mail of the last request (null if none was sent). */
@@ -107,12 +106,7 @@ class PasswordResetTest extends WebTestCase
 
     private function login(string $email, string $password): int
     {
-        $hasRecord = null !== self::$em->getConnection()->fetchOne('SELECT opaque_record FROM user WHERE email = ?', [$email]);
-        $r = $hasRecord
-            ? OpaqueApi::login(self::$client, $email, $password)
-            : TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', ['email' => $email, 'password' => $password]);
-
-        return $r['status'];
+        return TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', ['email' => $email, 'password' => $password])['status'];
     }
 
     private function user(string $id): User
@@ -351,15 +345,28 @@ class PasswordResetTest extends WebTestCase
         $this->assertSame(0, $this->user($user->getId())->getTokenVersion());
     }
 
-    public function testResetAcceptsLongMultiByteSecrets(): void
+    public function testResetUsesTheSamePasswordPolicyAsRegistration(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, self::uniqueEmail());
         $this->forgot($user->getEmail());
         $token = $this->tokenFromMail();
 
+        foreach (['short12', str_repeat('a', 129), ''] as $weak) {
+            $r = $this->reset($token, $weak);
+            $this->assertSame(422, $r['status'], $weak);
+            $this->assertSame('validation_failed', $r['body']['code']);
+            $this->assertSame('password', $r['body']['field']);
+        }
+        // A rejected password does not use up the link; 128 characters (multi-byte, > 72 bytes) are fine.
         $long = str_repeat('ä', 128);
         $this->assertSame(204, $this->reset($token, $long)['status']);
         $this->assertSame(200, $this->login($user->getEmail(), $long));
+
+        $register = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
+            'name' => 'Bob', 'email' => self::uniqueEmail('bob'), 'password' => str_repeat('a', 129),
+        ]);
+        $this->assertSame(422, $register['status']);
+        $this->assertSame('password', $register['body']['field']);
     }
 
     public function testResetConfirmsTheAddressAndRemovesPendingConfirmationLinks(): void
@@ -427,10 +434,10 @@ class PasswordResetTest extends WebTestCase
 
     public function testErrorsCarryCorsHeadersAndNoInternalNames(): void
     {
-        self::$client->request('POST', '/api/auth/opaque/register/start', [], [], [
+        self::$client->request('POST', '/api/auth/reset-password', [], [], [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_ORIGIN' => self::$frontendUrl,
-        ], (string) json_encode(['resetToken' => 'nope', 'registrationRequest' => str_repeat('A', 43)]));
+        ], (string) json_encode(['token' => 'nope', 'password' => 'new-password-1']));
         $response = self::$client->getResponse();
         $this->assertSame(400, $response->getStatusCode());
         $this->assertSame(self::$frontendUrl, $response->headers->get('Access-Control-Allow-Origin'));

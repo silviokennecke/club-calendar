@@ -54,10 +54,6 @@ rules](#accessibility-and-structure-rules) · [E2E](#e2e-playwright-frontende2e)
   once (`vite:preloadError` in `main.tsx`, guard and error page: see "Error page and reload guard").
 - **Operator docs:** a change to the build output, CSP or other security headers, or a user-facing setting operators control (sign-in, SSO, languages) also updates `../docs/admin/` (CLAUDE.md working rule 10), in plain English for operators (headers and CSP go to the protection page `docs/admin/docs/security.md`, settings to `docs/admin/docs/configuration/reference.md`).
 
-## OPAQUE client layer (`src/lib/opaque/`)
-
-Import from `@/lib/opaque`: `opaqueLogin`, `opaqueSignup`, `opaqueReset`, `opaqueChangePassword`, `opaqueUpgrade`, `opaqueReauth(purpose, password)` (ticket), `useReauth(purpose)`, `usePasswordProof(purpose)` (ticket or plain-password body), `opaqueFailureKind(err)`, `loginProtocol(auth)`/`signupProtocol(auth)` (identify `auth` hint -> `opaque|legacy|reset`), `prefetchOpaque()` (call on password focus), `assertPasswordPolicy`. A wrong password or unknown account is `ApiError` `invalid_credentials` (decided locally, no finish request); an unknown server `ksfProfile` throws `OpaqueClientError("invalid_ksf_profile")`, WASM/memory failures `opaque_unsupported` (text `auth.opaqueUnsupported`; never fall back to legacy login). The WASM (~158 KB gz) loads lazily; KSF runs in a Web Worker (`worker.ts`, own ~158 KB gz chunk) and falls back to the main thread (`engine.ts`). Registration always uses the `memory-constrained` profile (`REGISTRATION_PROFILE`). Tests simulate the backend with serenity's `server.*` behind a mocked `fetch`.
-
 ## Design system and areas
 
 Background: `docs/ops/BACKLOG.md` (open backend gaps and operations), `docs/api/openapi.yaml` (API reference).
@@ -406,9 +402,6 @@ export DATABASE_URL="mysql://root:root@127.0.0.1:3360/club_calendar_e2e?serverVe
 (cd backend && php bin/console doctrine:database:create --if-not-exists \
   && php bin/console doctrine:migrations:migrate -n && APP_ENV=dev php bin/console doctrine:fixtures:load -n)
 # 2. backend (own terminal in the repo root, same DATABASE_URL; FRONTEND_URL / BACKEND_URL are not in .env)
-# + OPAQUE: eval "$(cd backend && php bin/console app:opaque:generate-keys 2>/dev/null | grep '^OPAQUE_' | sed 's/^/export /')"
-#   and the OPAQUE keys (full command incl. rate-limit variables: docs/ops/E2E.md);
-#   export the same keys in the shell that runs Playwright (console helpers need them)
 FRONTEND_URL=http://localhost:5199 BACKEND_URL=http://localhost:3001 MAILER_DSN=null://null \
   php -S 127.0.0.1:3001 -t backend/public
 # 3. frontend (own terminal in the repo root)
@@ -422,7 +415,7 @@ docker rm -f cc-verify-mysql
 
 `e2e/helpers.ts` runs backend console commands against the e2e database (`backendConsole`, default
 `DATABASE_URL` of `club_calendar_e2e`, override `E2E_DATABASE_URL`): `app:user:verify` confirms registered users
-(`createVerifiedUser`), `app:user:reset-link` gives reset links (`resetLinkFor`). The e2e backend runs with throwaway OPAQUE keys (OPAQUE is always on): `createVerifiedUser` signs up, `authHeaders`/`apiLogin` sign in and `opaqueResetPassword` resets through a Node client (`@serenity-kit/opaque`, `opaqueRegisterRecord`); never POST a plaintext password to `/api/auth/login|register|reset-password` in new helpers (`createLegacyUser` is the deliberate exception: it seeds the bcrypt account for the upgrade test through `app:user:create --password`, since the plaintext `register` endpoint no longer exists). `e2e/opaque.spec.ts` asserts that no request ever carries the password. Clean up afterwards also
+(`createVerifiedUser`), `app:user:reset-link` gives reset links (`resetLinkFor`). Clean up afterwards also
 `frontend/test-results` and `backend/var/cache/prod` (rate limiter state). Details: `docs/ops/E2E.md`.
 `frontend/test-results/` and `playwright-report/` are git-ignored. Key presses that open a file chooser go through
 `pressForFileChooser` (`e2e/helpers.ts`; a plain `Promise.all([waitForEvent, press])` races the interception).
@@ -476,5 +469,3 @@ For Mapbox maps: use `useMapbox` from `src/components/locations/useMapbox.ts`. T
 `assets/`, see `vite.config.ts`; `index.php` and `.htaccess` there stay). `backend/public/.htaccess` routes `/api/*`
 to Symfony and everything else to `index.html`. Bundle check: the build prints chunk sizes; the entry chunk should
 stay small (pages and dialogs are lazy, see Key conventions).
-
-**Wiring (AP 11).** `SignInPage` keeps the identify `auth` hint and passes it to `LoginStep`: `loginProtocol` `opaque` -> `opaqueLogin`, `legacy`/`none` -> `POST /api/auth/login` (as before; `none` shows the normal password form), `reset` (`reset_required`) -> notice with a link to `/forgot-password` instead of the password step; signup always uses `opaqueSignup` (OPAQUE is always on server-side). `prefetchOpaque` runs on focus of the signup password field and when the login protocol is OPAQUE. `OpaqueClientError` shows `auth.opaqueUnsupported`; there is never a downgrade to legacy after an OPAQUE failure. `register/start` always returns `registrationState`; `register/finish` sends it in every context (signup, reset, change, upgrade) and restarts once from `register/start` on 409 `opaque_state_invalid` (`register()` in `client.ts`). Reset (`resetPasswordSecure` in `lib/passwordReset.ts`) is only `opaqueReset` (no plaintext endpoint exists). Stale legacy login answered 409 `opaque_required` retries once through `opaqueLogin`; elsewhere `opaqueFailureKind` -> `reload` (`auth.opaqueReload`). Re-authentication (change-email, delete account, passkey registration, change-password) uses `usePasswordProof(purpose)`: it reads `passwordProtocol` from `GET /api/auth/me` and sends an OPAQUE ticket (`{reauthTicket}`) for `opaque` and `{password}` ONLY for `legacy` (no WASM load); `reset_required` throws `PasswordResetRequiredError` (text `auth.opaqueResetRequired`), no password (`null`) throws `no_password` (callers use the mailed code); no OPAQUE error falls back to plaintext. `passwordProtocol` is `opaque|legacy|reset_required|null`. Change-password: ticket -> `opaqueChangePassword`, legacy -> `POST /api/auth/change-password`. Tests mock `@/lib/opaque/client` (the hooks import from there).

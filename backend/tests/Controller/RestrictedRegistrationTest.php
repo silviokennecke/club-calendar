@@ -11,7 +11,6 @@ use App\Service\ClubInvitationService;
 use App\Service\RegistrationPolicy;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\FakeOAuth2Client;
-use App\Tests\Helper\OpaqueApi;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -64,7 +63,9 @@ class RestrictedRegistrationTest extends WebTestCase
     /** @return array{status: int, body: mixed} */
     private function register(string $email = 'new@example.com'): array
     {
-        return OpaqueApi::signup($this->client, 'New', $email, 'password123');
+        return TestHelper::jsonRequest($this->client, 'POST', '/api/auth/register', [
+            'name' => 'New', 'email' => $email, 'password' => 'password123',
+        ]);
     }
 
     private function userCount(string $email): int
@@ -146,11 +147,11 @@ class RestrictedRegistrationTest extends WebTestCase
         $this->boot(false);
         $r = TestHelper::jsonRequest($this->client, 'GET', '/api/auth/registration');
         $this->assertSame(200, $r['status']);
-        $this->assertFalse($r['body']['restricted']);
+        $this->assertSame(['restricted' => false, 'clubCreationAllowed' => true], $r['body']);
 
         $this->boot(true);
         $r = TestHelper::jsonRequest($this->client, 'GET', '/api/auth/registration');
-        $this->assertTrue($r['body']['restricted']);
+        $this->assertSame(['restricted' => true, 'clubCreationAllowed' => true], $r['body']);
     }
 
     public function testSsoNewUserWithoutInvitationIsRedirectedAndNothingIsCreated(): void

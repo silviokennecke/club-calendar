@@ -26,7 +26,7 @@ This sets up Club Calendar with a database and automatic HTTPS on one server.
     curl -fL $BASE/example.env -o .env
     ```
 
-3. **Edit `.env`.** Set `APP_URL`, `APP_DOMAIN`, the mail settings, and replace every `change-me` with a random value (`openssl rand -hex 32`). Use a different value for each, except the two `OPAQUE_*` keys: generate those with the command in the file ([Password protection](password-protection.md#setting-up-the-keys)) and back them up, because the app does not start without them and cannot create them for you.
+3. **Edit `.env`.** Set `APP_URL`, `APP_DOMAIN`, the mail settings, and replace every `change-me` with a random value (`openssl rand -hex 32`). Use a different value for each.
 
     !!! warning "Keep your secrets"
         Back up `.env`. Never commit it to a public repository.
@@ -60,7 +60,7 @@ This sets up Club Calendar with a database and automatic HTTPS on one server.
 docker compose exec app php bin/console app:user:create --name "Your Name" --email you@example.com --language en
 ```
 
-The command prints a one-time link to set a password (by default, or when you pass `--link`). Without `--password` and `--link` it asks for the password interactively, which needs a terminal. In scripts or without a terminal, use `--link`: it prints a one-time link, valid for 60 minutes, where you set the password. The address is marked as confirmed, so no mail is needed for this user.
+The command asks for the password, which needs a terminal. In scripts or without a terminal, pass `--password-stdin` and send the password on standard input. The address is marked as confirmed, so no mail is needed for this user.
 
 !!! note "Mail is needed for everyone else"
     With the default `MAILER_DSN=null://null` the app runs but sends no mail, so sign-up confirmation codes and invitations do not work. Configure mail, see [Mail and maps](configuration/mail-and-maps.md).
@@ -84,7 +84,7 @@ More in [Security](security.md).
 
 - [Configuration](configuration/index.md): mail, maps, single sign-on and all other settings
 - [Legal documents](legal.md)
-- [Security](security.md) and [Password protection](password-protection.md)
+- [Security](security.md)
 - [Operations](operations.md): updates, backups and cron jobs
 
 ## Updating
