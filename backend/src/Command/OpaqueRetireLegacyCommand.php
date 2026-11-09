@@ -41,6 +41,12 @@ class OpaqueRetireLegacyCommand
             return Command::FAILURE;
         }
 
+        if ($this->rollout->percent() < 100) {
+            $io->error('OPAQUE_ROLLOUT_PERCENT is below 100 while a cutoff is set. Refusing.');
+
+            return Command::FAILURE;
+        }
+
         $row = $this->connection->fetchAssociative(
             'SELECT COALESCE(SUM(opaque_record IS NULL), 0) AS must_reset, COALESCE(SUM(opaque_record IS NOT NULL), 0) AS cleanup'
             .' FROM `user` WHERE password IS NOT NULL',

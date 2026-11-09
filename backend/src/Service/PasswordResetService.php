@@ -117,10 +117,10 @@ readonly class PasswordResetService
      * @throws ApiProblemException     400 invalid_reset_token
      * @throws InvalidMessageException malformed record (the link stays usable)
      */
-    public function resetWithRecord(string $token, #[\SensitiveParameter] string $record): void
+    public function resetWithRecord(string $token, #[\SensitiveParameter] string $record, ?string $keyId = null): void
     {
-        $this->claim($token, function (User $user) use ($record): void {
-            $this->opaque->storeRecord($user, $record);
+        $this->claim($token, function (User $user) use ($record, $keyId): void {
+            $this->opaque->storeRecord($user, $record, $keyId);
             $user->setPassword(null);
         });
     }

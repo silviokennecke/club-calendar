@@ -75,6 +75,7 @@ class AuthController extends AbstractApiController
     public function register(Request $request): JsonResponse
     {
         $this->rateLimiter->assertRegisterAllowed($request);
+        $this->assertPlaintextAllowed();
         try {
             $dto = $this->serializer->deserialize($request->getContent(), RegisterDto::class, 'json');
         } catch (SerializerException $e) {
@@ -127,6 +128,14 @@ class AuthController extends AbstractApiController
         $this->rateLimiter->recordLoginSuccess($dto->email);
 
         return new JsonResponse($tokens);
+    }
+
+    /** With OPAQUE enabled, passwords never travel in plaintext for new credentials: signup and reset use `opaque/register/*`. */
+    private function assertPlaintextAllowed(): void
+    {
+        if ($this->opaque->isEnabled()) {
+            throw new ApiProblemException(409, 'Passwords are set with OPAQUE: use /api/auth/opaque/register', 'opaque_required');
+        }
     }
 
     /**
@@ -183,6 +192,7 @@ class AuthController extends AbstractApiController
     #[Route('/reset-password', methods: ['POST'])]
     public function resetPassword(Request $request): JsonResponse
     {
+        $this->assertPlaintextAllowed();
         $dto = $this->deserializeDto($request, ResetPasswordDto::class);
         $this->validateDto($dto, $this->validator);
         $this->passwordResets->reset($dto->token, $dto->password);

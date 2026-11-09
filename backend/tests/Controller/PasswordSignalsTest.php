@@ -71,7 +71,10 @@ class PasswordSignalsTest extends WebTestCase
             $response = $service->registrationResponse($user, $reg['request']);
             $service->storeRecord($user, $opaque->finishRegistration('correct horse battery', $reg['blind'], $response)['record']);
         }
-        if (in_array($type, ['bcrypt', 'both'], true)) {
+        if (in_array($type, ['badkey', 'badkeyhash'], true)) {
+            $user->setOpaque(sodium_crypto_scalarmult_ristretto255_base(sodium_crypto_core_ristretto255_scalar_random()).random_bytes(160), 1, 'unknown-key');
+        }
+        if (in_array($type, ['bcrypt', 'both', 'badkeyhash'], true)) {
             $user->setPassword(self::BCRYPT);
         }
         $this->em()->persist($user);
@@ -88,6 +91,8 @@ class PasswordSignalsTest extends WebTestCase
         yield 'bcrypt, flag on' => ['bcrypt', 'true', 'legacy'];
         yield 'both, flag off' => ['both', 'false', 'legacy'];
         yield 'bcrypt, flag off' => ['bcrypt', 'false', 'legacy'];
+        yield 'unknown key id, flag on' => ['badkey', 'true', 'reset_required'];
+        yield 'unknown key id and hash, flag on' => ['badkeyhash', 'true', 'legacy'];
         yield 'none, flag on' => ['none', 'true', null];
         yield 'none, flag off' => ['none', 'false', null];
     }
@@ -114,7 +119,7 @@ class PasswordSignalsTest extends WebTestCase
         $auth = TestHelper::authHeader($this->account('record', false), static::getContainer()->get(TokenService::class));
 
         $r = TestHelper::jsonRequest($this->client, 'GET', '/api/auth/me', [], $auth);
-        self::assertNull($r['body']['passwordProtocol']);
+        self::assertSame('reset_required', $r['body']['passwordProtocol']);
     }
 
     #[DataProvider('flags')]

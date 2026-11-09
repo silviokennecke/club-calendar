@@ -131,6 +131,11 @@ class OpaqueRegisterTest extends WebTestCase
 
     private function finish(array $flow, array $credential, array $extra = [], string $auth = ''): array
     {
+        // Outside signup the credential is a link/ticket and the start's state travels along.
+        if (!isset($credential['registrationState']) && isset($flow['start']['body']['registrationState'])) {
+            $credential['registrationState'] = $flow['start']['body']['registrationState'];
+        }
+
         return $this->post('/api/auth/opaque/register/finish', $credential + ['registrationRecord' => Base64Url::encode($flow['record'])] + $extra, $auth);
     }
 
@@ -282,7 +287,7 @@ class OpaqueRegisterTest extends WebTestCase
         $tampered[5] = 'A' === $tampered[5] ? 'B' : 'A';
         foreach ([$tampered, 'garbage', substr($good, 0, -2)] as $bad) {
             $x = $this->finish($flow, ['registrationState' => $bad], ['name' => 'N']);
-            $this->assertSame(400, $x['status']);
+            $this->assertSame(409, $x['status']);
             $this->assertSame('opaque_state_invalid', $x['body']['code']);
         }
 
@@ -330,7 +335,7 @@ class OpaqueRegisterTest extends WebTestCase
 
         $flow = $this->startRegistration(['resetToken' => $token], self::NEW_PASSWORD);
         $this->assertSame(200, $flow['start']['status']);
-        $this->assertArrayNotHasKey('registrationState', $flow['start']['body']);
+        $this->assertArrayHasKey('registrationState', $flow['start']['body']);
         $this->assertSame(
             Base64Url::encode($this->service(OpaqueService::class)->registrationResponse($user, $flow['reg']['request'])),
             $flow['start']['body']['registrationResponse'],
@@ -344,7 +349,7 @@ class OpaqueRegisterTest extends WebTestCase
         $this->assertNull($fresh->getPassword());
         $this->assertNotNull($fresh->getOpaqueRecord());
         $this->assertTrue($fresh->isEmailVerified());
-        $this->assertSame(401, $this->post('/api/auth/login', ['email' => 'ada@example.com', 'password' => self::PASSWORD])['status']);
+        $this->assertSame(409, $this->post('/api/auth/login', ['email' => 'ada@example.com', 'password' => self::PASSWORD])['status']);
         $this->assertSame(401, TestHelper::jsonRequest($this->client, 'GET', '/api/auth/me', [], 'Bearer '.$oldAccess)['status']);
         $this->assertSame(200, $this->opaqueLogin('ada@example.com', self::NEW_PASSWORD)['status']);
         $this->assertSame(0, $this->opaqueLogin('ada@example.com', self::PASSWORD)['status']);
@@ -380,9 +385,11 @@ class OpaqueRegisterTest extends WebTestCase
 
         $this->assertSame(204, $this->finish($flow, ['resetToken' => $adaToken])['status']);
         $this->assertNull($this->reload($bob->getId())->getOpaqueRecord());
+        $adaFlow = $flow;
+        $flow = $this->startRegistration(['resetToken' => $bobToken], self::NEW_PASSWORD);
 
         foreach ([$adaToken, 'unknown-token'] as $dead) {
-            $again = $this->finish($flow, ['resetToken' => $dead]);
+            $again = $this->finish($adaFlow, ['resetToken' => $dead]);
             $this->assertSame(400, $again['status']);
             $this->assertSame('invalid_reset_token', $again['body']['code']);
             $start = $this->startRegistration(['resetToken' => $dead])['start'];
@@ -555,7 +562,8 @@ class OpaqueRegisterTest extends WebTestCase
         // Running sessions stay valid, both sign-in paths work.
         $this->assertSame(200, TestHelper::jsonRequest($this->client, 'GET', '/api/auth/me', [], $auth)['status']);
         $this->assertSame(200, $this->opaqueLogin('ada@example.com')['status']);
-        $this->assertSame(200, $this->post('/api/auth/login', ['email' => 'ada@example.com', 'password' => self::PASSWORD])['status']);
+        // The kept hash is no proof while OPAQUE is enabled.
+        $this->assertSame('opaque_required', $this->post('/api/auth/login', ['email' => 'ada@example.com', 'password' => self::PASSWORD])['body']['code']);
     }
 
     public function testUpgradeNeedsLoginTicketAndNoExistingRecord(): void
@@ -594,7 +602,7 @@ class OpaqueRegisterTest extends WebTestCase
             ['start', ['email' => 'a@example.com', 'resetToken' => 't', 'registrationRequest' => $request]],
             ['start', ['email' => '', 'resetToken' => '', 'registrationRequest' => $request]],
             ['finish', ['registrationRecord' => $record]],
-            ['finish', ['registrationState' => 's', 'resetToken' => 't', 'registrationRecord' => $record]],
+            ['finish', ['upgradeTicket' => 's', 'resetToken' => 't', 'registrationRecord' => $record]],
         ];
         foreach ($cases as [$path, $body]) {
             $r = $this->post('/api/auth/opaque/register/'.$path, $body);

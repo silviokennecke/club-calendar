@@ -6,7 +6,7 @@ namespace App\Dto\Auth;
 
 use Symfony\Component\Validator\Constraints as Assert;
 
-/** Exactly one of registrationState (signup), resetToken, reauthTicket (change password), upgradeTicket selects the context. */
+/** resetToken, reauthTicket (change password) or upgradeTicket selects the context, else it is signup; registrationState (from the start) is required in all of them. */
 class OpaqueRegisterFinishDto
 {
     #[Assert\Length(max: 2048)]

@@ -25,31 +25,33 @@ final readonly class OpaqueSignupStates
     }
 
     /** @return array{userId: string, state: string} */
-    public function issue(string $email): array
+    public function issue(string $email, string $keyId): array
     {
         $userId = Uuid::v7()->toRfc4122();
 
         return ['userId' => $userId, 'state' => $this->tokens->issue(self::TOKEN_PURPOSE, [
             'uid' => $userId,
             'email' => $email,
+            'kid' => $keyId,
             'jti' => bin2hex(random_bytes(16)),
         ], self::TTL)];
     }
 
-    /** @return array{userId: string, email: string, jti: string, exp: int}|null null for forged, expired or malformed states */
+    /** @return array{userId: string, email: string, keyId: string, jti: string, exp: int}|null null for forged, expired or malformed states */
     public function open(string $state): ?array
     {
         $claims = $this->tokens->verify(self::TOKEN_PURPOSE, $state);
         if (null === $claims
             || !is_string($claims['uid'] ?? null)
             || !is_string($claims['email'] ?? null)
+            || !is_string($claims['kid'] ?? null)
             || !is_string($claims['jti'] ?? null)
             || !is_int($claims['exp'] ?? null)
         ) {
             return null;
         }
 
-        return ['userId' => $claims['uid'], 'email' => $claims['email'], 'jti' => $claims['jti'], 'exp' => $claims['exp']];
+        return ['userId' => $claims['uid'], 'email' => $claims['email'], 'keyId' => $claims['kid'], 'jti' => $claims['jti'], 'exp' => $claims['exp']];
     }
 
     /** True once per state. */

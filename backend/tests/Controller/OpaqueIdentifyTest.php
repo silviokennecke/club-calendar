@@ -158,8 +158,8 @@ class OpaqueIdentifyTest extends WebTestCase
 
         $r = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/login', ['email' => 'ada@example.com', 'password' => 'correct horse battery']);
 
-        self::assertSame(401, $r['status']);
-        self::assertSame('invalid_credentials', $r['body']['code']);
+        self::assertSame(409, $r['status']);
+        self::assertSame('opaque_required', $r['body']['code']);
         $record = $this->find($handler, 'opaque.legacy_login.failure');
         self::assertSame($user->getId(), $record->context['userId']);
         self::assertStringNotContainsString('ada@example.com', $this->dump($handler));

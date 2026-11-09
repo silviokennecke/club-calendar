@@ -45,6 +45,11 @@ class OpaqueNotifyLegacyCommand
 
             return Command::SUCCESS;
         }
+        if ($this->rollout->percent() < 100) {
+            $io->error('OPAQUE_ROLLOUT_PERCENT is below 100 while a cutoff is set: refusing to remind accounts that are not offered the upgrade.');
+
+            return Command::FAILURE;
+        }
         $today = $this->clock->now()->setTimezone(new \DateTimeZone('UTC'))->setTime(0, 0);
         if ($today >= $cutoff) {
             $io->writeln('The cutoff is reached: no reminders.');

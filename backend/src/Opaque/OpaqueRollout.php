@@ -69,10 +69,16 @@ final class OpaqueRollout
         return unpack('N', hash_hmac('sha256', $userId, $key, true))[1] % 100;
     }
 
-    /** Whether a legacy account is offered the upgrade (flag on and bucket inside the percentage). */
+    /** Whether a legacy account is offered the upgrade (flag on and bucket inside the percentage; everyone once a cutoff is set). */
     public function offersUpgrade(string $userId): bool
     {
-        return $this->enabled && $this->bucket($userId) < $this->percent;
+        return $this->enabled && (null !== $this->cutoff || $this->bucket($userId) < $this->percent);
+    }
+
+    /** A cutoff with less than 100 % would remind accounts that never get an upgrade offer. */
+    public static function cutoffNeedsFullRollout(string $percent, string $cutoff): bool
+    {
+        return '' !== $cutoff && (int) $percent < 100;
     }
 
     public function cutoffReached(\DateTimeInterface $now): bool
