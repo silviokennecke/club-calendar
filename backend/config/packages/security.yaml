@@ -64,6 +64,8 @@ security:
         - { path: ^/api/auth/(login|register|registration|identify|token|logout|forgot-password|reset-password|providers|verify-new-email)$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/webauthn/authenticate/(options|verify)$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/opaque/login/(start|finish)$, roles: PUBLIC_ACCESS }
+        # Registration contexts signup/reset are public; change/upgrade resolve the JWT user in the controller (401 without).
+        - { path: ^/api/auth/opaque/register/(start|finish)$, roles: PUBLIC_ACCESS }
         # SSO start/callback/link redirect (state/ticket is the credential); DELETE /oauth/{provider} stays authenticated.
         - { path: ^/api/auth/oauth/[^/]+/(callback|link)$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/oauth/[^/]+$, methods: [GET], roles: PUBLIC_ACCESS }

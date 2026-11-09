@@ -47,8 +47,22 @@ final readonly class OpaqueReauthTickets
         ], self::TTL);
     }
 
+    /** Non-consuming check (register/start): the same conditions as {@see consume()} minus the replay guard. */
+    public function isValid(User $user, string $purpose, string $ticket): bool
+    {
+        return null !== $this->claims($user, $purpose, $ticket);
+    }
+
     /** True once per valid ticket; every failure (forged, expired, other user/purpose, ended session, replay) is false. */
     public function consume(User $user, string $purpose, string $ticket): bool
+    {
+        $claims = $this->claims($user, $purpose, $ticket);
+
+        return null !== $claims && $this->nonces->consume(self::TOKEN_PURPOSE, $claims['jti'], $claims['exp']);
+    }
+
+    /** @return array{jti: string, exp: int}|null */
+    private function claims(User $user, string $purpose, string $ticket): ?array
     {
         $claims = $this->tokens->verify(self::TOKEN_PURPOSE, $ticket);
         if (null === $claims
@@ -58,9 +72,9 @@ final readonly class OpaqueReauthTickets
             || !is_string($claims['jti'] ?? null)
             || !is_int($claims['exp'] ?? null)
         ) {
-            return false;
+            return null;
         }
 
-        return $this->nonces->consume(self::TOKEN_PURPOSE, $claims['jti'], $claims['exp']);
+        return ['jti' => $claims['jti'], 'exp' => $claims['exp']];
     }
 }

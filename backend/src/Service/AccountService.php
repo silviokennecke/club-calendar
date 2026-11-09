@@ -9,6 +9,8 @@ use App\Entity\EmailVerification;
 use App\Entity\OAuthAccount;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
+use App\Opaque\InvalidMessageException;
+use App\Opaque\OpaqueService;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
@@ -26,6 +28,7 @@ readonly class AccountService
         private TokenService $tokens,
         private AccountMailer $mailer,
         private ClockInterface $clock,
+        private OpaqueService $opaque,
     ) {
     }
 
@@ -45,6 +48,24 @@ readonly class AccountService
         $this->deleteOpenEmailChanges($user);
         $this->em->flush();
         // Notice to the account's address (after the response; no link but "forgot password")
+        $this->mailer->sendPasswordChanged($user);
+
+        return $this->tokens->tokenResponse($user, null, null, $consentOk);
+    }
+
+    /**
+     * Change with an OPAQUE record (the caller verified and consumed the reauth ticket). Same effects as
+     * {@see changePassword()}; the bcrypt hash is removed so the old password stops working.
+     *
+     * @throws InvalidMessageException malformed record
+     */
+    public function changePasswordWithRecord(User $user, #[\SensitiveParameter] string $record, ?bool $consentOk = null): array
+    {
+        $this->opaque->storeRecord($user, $record);
+        $user->setPassword(null);
+        $user->invalidateTokens();
+        $this->deleteOpenEmailChanges($user);
+        $this->em->flush();
         $this->mailer->sendPasswordChanged($user);
 
         return $this->tokens->tokenResponse($user, null, null, $consentOk);
@@ -233,7 +254,7 @@ readonly class AccountService
             ->setParameter('provider', $provider)
             ->getQuery()
             ->getSingleScalarResult();
-        $remains = null !== $user->getPassword() || $user->getPasskeys()->count() > 0 || (int) $otherProviders > 0;
+        $remains = $user->hasPasswordCredential() || $user->getPasskeys()->count() > 0 || (int) $otherProviders > 0;
         if (!$remains) {
             throw new ApiProblemException(409, 'At least one sign-in method must remain', 'last_login_method');
         }

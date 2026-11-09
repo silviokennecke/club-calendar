@@ -1561,6 +1561,168 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
 
+  /api/auth/opaque/register/start:
+    post:
+      tags: [Auth]
+      summary: OPAQUE registration, step 1 (feature flag `OPAQUE_ENABLED`)
+      description: >-
+        Evaluates the blinded password element (`registrationRequest`, 32 bytes, base64url) and answers
+        `registrationResponse` (64 bytes: evaluated element and server public key). The context is selected by
+        exactly one credential field (none or several: `400 invalid_request`). The credential identifier of the
+        evaluation never comes from a client field.
+
+
+        - **Signup** (`email`, public): mints the new user's id into the signed, single-use `registrationState`
+        (valid 15 minutes, carries id and address) and returns it. Creates nothing and answers the same for taken
+        and free addresses (`email_taken` comes with the finish, as for `POST /api/auth/register`). Counts against
+        the register limits (5 per hour per IP, 3 per hour per address).
+
+        - **Reset** (`resetToken`, public): the id is the user of the open link (unknown, used, expired:
+        `400 invalid_reset_token`); the link is not consumed here.
+
+        - **Change** (`reauthTicket`, JWT): the id is the signed-in user; the ticket (purpose `change-password`, from
+        `reauth/finish`) is checked but not consumed. Missing or invalid ticket: `403 reauth_required`.
+
+        - **Upgrade** (`upgradeTicket`, JWT): the id is the signed-in user, who has a legacy password and no OPAQUE
+        record yet (`409 opaque_already_registered`); the ticket is issued after a legacy password login.
+
+
+        Every start under a real user's key (reset, change, upgrade) is a password-guess oracle and consumes the
+        login limits (10 per 15 minutes per IP, 5 per 15 minutes per address) before any crypto; reset also counts
+        unknown links against the IP. The password policy (8-128 characters) is enforced by the client only.
+        `503 opaque_unavailable` while the feature is off.
+      operationId: opaqueRegisterStart
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [registrationRequest]
+              properties:
+                email: { type: string, format: email, maxLength: 254, description: Signup }
+                resetToken: { type: string, maxLength: 255, description: Reset }
+                reauthTicket: { type: string, maxLength: 2048, description: Change (needs the JWT) }
+                upgradeTicket: { type: string, maxLength: 2048, description: Upgrade (needs the JWT) }
+                registrationRequest: { type: string, maxLength: 256, description: "Blinded element, base64url" }
+      responses:
+        '200':
+          description: The registration response (and, for signup, the state).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [registrationResponse]
+                properties:
+                  registrationResponse: { type: string, description: "64 bytes, base64url" }
+                  registrationState: { type: string, description: "Signup only: send back to `register/finish`" }
+        '400':
+          description: >-
+            `invalid_request` (no JSON object, zero or several credential fields), `invalid_opaque_message` (field
+            `registrationRequest`: not base64url, wrong length or invalid group element) or `invalid_reset_token`.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: '`reauth_required` (change/upgrade: ticket missing, invalid, expired or used), or a session gate.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '409':
+          description: '`opaque_already_registered` (upgrade of an account that already has a record).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+        '503':
+          description: '`opaque_unavailable`: OPAQUE is switched off.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /api/auth/opaque/register/finish:
+    post:
+      tags: [Auth]
+      summary: OPAQUE registration, step 2 (feature flag `OPAQUE_ENABLED`)
+      description: >-
+        Stores the client's `registrationRecord` (192 bytes, base64url). Context by exactly one of
+        `registrationState`, `resetToken`, `reauthTicket` (JWT), `upgradeTicket` (JWT).
+
+
+        - **Signup**: creates the user with the id from the state like `POST /api/auth/register` (consent
+        `acceptedDocuments`, `registration_restricted`, `email_taken`, confirmation code mail), but with the record
+        and no password hash. `201 {verificationRequired, email}` plus a token pair of a restricted session. The state
+        is consumed right before the insert (a failed validation keeps it usable until it expires); replay:
+        `400 opaque_state_invalid`. `name` is required.
+
+        - **Reset**: consumes the link, stores the record, removes the bcrypt hash (the old password stops working),
+        ends all sessions, confirms the address, discards a waiting e-mail change, mails the notice. `204`.
+
+        - **Change**: consumes the `change-password` ticket, stores the record, removes the bcrypt hash, ends the
+        other sessions, discards a waiting e-mail change, mails the notice, `200` with a new token pair.
+
+        - **Upgrade**: consumes the ticket and stores the record next to the bcrypt hash, which stays until phase 2;
+        no session ends. `204`.
+      operationId: opaqueRegisterFinish
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [registrationRecord]
+              properties:
+                registrationState: { type: string, maxLength: 2048, description: Signup }
+                resetToken: { type: string, maxLength: 255, description: Reset }
+                reauthTicket: { type: string, maxLength: 2048, description: Change (needs the JWT) }
+                upgradeTicket: { type: string, maxLength: 2048, description: Upgrade (needs the JWT) }
+                registrationRecord: { type: string, maxLength: 512, description: "192 bytes, base64url" }
+                name: { type: string, maxLength: 255, description: Signup }
+                language: { type: [string, 'null'], description: Signup }
+                acceptedDocuments: { type: array, items: { type: string }, description: Signup }
+      responses:
+        '200': { $ref: '#/components/responses/Tokens' }
+        '201':
+          description: Signup. A restricted session until the code from the mail was entered.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/TokenResponse'
+                  - type: object
+                    properties:
+                      verificationRequired: { type: boolean }
+                      email: { type: string }
+        '204': { description: Reset or upgrade done. }
+        '400':
+          description: >-
+            `invalid_request`, `invalid_opaque_message` (field `registrationRecord`), `opaque_state_invalid` (signup:
+            forged, expired or used state), `invalid_reset_token`, `email_taken` (signup, field `email`).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: '`reauth_required`, `registration_restricted` (signup), `consent_required` or a session gate.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '409':
+          description: '`opaque_already_registered` (upgrade of an account that already has a record).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '503':
+          description: '`opaque_unavailable`: OPAQUE is switched off.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
   /api/auth/webauthn/authenticate/options:
     get:
       tags: [Passkeys]
@@ -4355,8 +4517,11 @@ components:
         | `series_changed` | 409 | Rule change PATCH: prototype/reference deleted concurrently or deadlock; nothing changed |
         | `email_taken` | 400 | Registration, field `email` |
         | `registration_restricted` | 403 | `POST /api/auth/register` with `RESTRICT_REGISTRATION` and no open invitation for the address, field `email` (SSO: redirect error code) |
-        | `invalid_opaque_message` | 400 | OPAQUE login: a base64url value is malformed, has the wrong length or is not a valid group element (`startLoginRequest`, `finishLoginRequest`) |
+        | `invalid_opaque_message` | 400 | OPAQUE login/registration: a base64url value is malformed, has the wrong length or is not a valid group element or record (`startLoginRequest`, `finishLoginRequest`, `registrationRequest`, `registrationRecord`) |
         | `opaque_unavailable` | 503 | OPAQUE endpoints while `OPAQUE_ENABLED` is off |
+        | `opaque_state_invalid` | 400 | `opaque/register/finish` (signup): `registrationState` forged, expired or already used (field `registrationState`) |
+        | `reauth_required` | 403 | `opaque/register/start|finish` (change, upgrade): ticket missing, invalid, expired, used or of another user |
+        | `opaque_already_registered` | 409 | `opaque/register/start|finish` (upgrade): the account already has an OPAQUE record |
         | `invalid_credentials` | 401 / 400 | Login 401 (also `opaque/login/finish`); 400 for `change-password` (field `currentPassword`), `change-email` and `DELETE /api/auth/me` (field `password`) |
         | `invalid_reset_token` | 400 | `reset-password`: unknown, used or expired (same answer), field `token` |
         | `no_password` | 409 | `change-password` / `change-email` of SSO-only accounts |
@@ -4417,6 +4582,9 @@ components:
         - invalid_passkey_registration
         - invalid_opaque_message
         - opaque_unavailable
+        - opaque_state_invalid
+        - reauth_required
+        - opaque_already_registered
         - passkey_already_registered
         - passkey_not_found
         - map_unavailable

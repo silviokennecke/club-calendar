@@ -12,6 +12,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Uid\UuidV7;
 
 #[ORM\Entity]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
@@ -86,6 +87,21 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->createdAt = new \DateTimeImmutable();
     }
 
+    /**
+     * Dedicated path for an id fixed before the row exists (OPAQUE signup: the registration record is bound to the
+     * id). The id must be a UUID v7 minted by the server; callers take it only from a signed state.
+     */
+    public static function withPresetId(string $id): self
+    {
+        if (!Uuid::isValid($id) || !Uuid::fromString($id) instanceof UuidV7 || $id !== Uuid::fromString($id)->toRfc4122()) {
+            throw new \InvalidArgumentException('A preset user id must be a canonical UUID v7.');
+        }
+        $user = new self();
+        $user->id = $id;
+
+        return $user;
+    }
+
     public function getId(): string
     {
         return $this->id;
@@ -125,6 +141,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->password = $password;
 
         return $this;
+    }
+
+    /** A password sign-in credential exists: the legacy bcrypt hash or an OPAQUE record. */
+    public function hasPasswordCredential(): bool
+    {
+        return null !== $this->password || null !== $this->getOpaqueRecord();
     }
 
     public function getOpaqueRecord(): ?string
