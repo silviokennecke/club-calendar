@@ -105,8 +105,17 @@ readonly class AuthService
             $user->setPassword($this->hasher->hashPassword($user, $password));
             $this->em->flush();
         }
+
+        return $this->completeLogin($user);
+    }
+
+    /**
+     * Shared tail of password and OPAQUE login once the credentials are proven: an unconfirmed address gets a
+     * restricted session (make sure the user has a code to enter), then the token pair of a new family.
+     */
+    public function completeLogin(User $user): array
+    {
         if (!$user->isEmailVerified()) {
-            // Right password, no confirmed address: restricted session; make sure the user has a code to enter.
             $this->sendCodeIfDue($user);
         }
 
