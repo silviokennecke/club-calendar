@@ -116,6 +116,6 @@ class PasswordSignalsTest extends WebTestCase
     {
         $r = TestHelper::jsonRequest($this->client, 'GET', '/api/auth/registration');
         self::assertSame(200, $r['status']);
-        self::assertSame(['restricted'], array_keys($r['body']));
+        self::assertSame(['restricted', 'clubCreationAllowed'], array_keys($r['body']));
     }
 }

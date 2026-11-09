@@ -11,6 +11,7 @@
     "all": "All",
     "name": "Name",
     "quotaExceeded": "Limit reached: this club or calendar cannot hold more of these items. Delete unused ones first.",
+    "clubCreationRestricted": "Clubs are only created by the operator here. Please ask to be invited to an existing club.",
     "requestTimeout": "The request took too long. Check your connection and try again."
   },
   "auth": {
@@ -184,6 +185,9 @@
     }
   },
   "setup": {
+    "restrictedTitle": "The operator creates clubs",
+    "restrictedText": "You cannot create your own club on this installation. Please ask a club admin to invite you.",
+    "restrictedBack": "Back to my clubs",
     "stepClub": "Club",
     "stepCalendar": "Calendar",
     "welcome": "Welcome to Club Calendar",
@@ -226,6 +230,7 @@
     "newClubText": "Create another club with its own calendar.",
     "emptyTitle": "You are not in any club yet",
     "emptyText": "Create your first club. Then you set up the first calendar.",
+    "emptyRestrictedText": "Clubs are created by the operator. To join in, you need an invitation to an existing club.",
     "errorTitle": "The clubs could not be loaded",
     "errorText": "Please reload the page.",
     "signOut": "Sign out"

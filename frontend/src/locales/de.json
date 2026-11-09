@@ -11,6 +11,7 @@
     "all": "Alle",
     "name": "Name",
     "quotaExceeded": "Limit erreicht: Dieser Verein oder Kalender kann nicht mehr davon aufnehmen. Lösche zuerst nicht mehr benötigte Einträge.",
+    "clubCreationRestricted": "Vereine werden hier nur vom Betreiber angelegt. Bitte lass dich in einen bestehenden Verein einladen.",
     "requestTimeout": "Die Anfrage hat zu lange gedauert. Prüfe deine Verbindung und versuche es erneut."
   },
   "auth": {
@@ -184,6 +185,9 @@
     }
   },
   "setup": {
+    "restrictedTitle": "Vereine legt der Betreiber an",
+    "restrictedText": "Auf dieser Installation kannst du keinen eigenen Verein anlegen. Bitte lass dich von einem Vereinsadmin einladen.",
+    "restrictedBack": "Zu meinen Vereinen",
     "stepClub": "Verein",
     "stepCalendar": "Kalender",
     "welcome": "Willkommen bei Club Calendar",
@@ -226,6 +230,7 @@
     "newClubText": "Lege einen weiteren Verein mit eigenem Kalender an.",
     "emptyTitle": "Du bist noch in keinem Verein",
     "emptyText": "Lege deinen ersten Verein an. Danach richtest du den ersten Kalender ein.",
+    "emptyRestrictedText": "Vereine werden vom Betreiber angelegt. Um mitzumachen, brauchst du eine Einladung in einen bestehenden Verein.",
     "errorTitle": "Die Vereine konnten nicht geladen werden",
     "errorText": "Bitte lade die Seite neu.",
     "signOut": "Abmelden"

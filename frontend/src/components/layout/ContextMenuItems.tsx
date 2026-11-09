@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Icon } from "@/components/ui/shared";
 import type { ShellData } from "./shellTypes";
+import { useClubCreationAllowed } from "@/lib/registration";
 import { calendarSwitchPath } from "./calendarSwitchPath";
 
 interface ItemsProps {
@@ -16,6 +17,7 @@ export function ClubMenuItems({
   withAllClubs = true,
 }: ItemsProps & { withAllClubs?: boolean }) {
   const { t } = useTranslation();
+  const { allowed: clubCreationAllowed } = useClubCreationAllowed();
   return (
     <>
       {data.clubs.map((club) => {
@@ -46,10 +48,12 @@ export function ClubMenuItems({
           </Link>
         </>
       )}
-      <Link className="ap-menuitem" to="/setup?new=1" onClick={onNavigate}>
-        <Icon glyph="plus" size={18} />
-        <span>{t("shell.newClub")}</span>
-      </Link>
+      {clubCreationAllowed && (
+        <Link className="ap-menuitem" to="/setup?new=1" onClick={onNavigate}>
+          <Icon glyph="plus" size={18} />
+          <span>{t("shell.newClub")}</span>
+        </Link>
+      )}
     </>
   );
 }

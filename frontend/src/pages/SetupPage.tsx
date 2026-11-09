@@ -4,14 +4,17 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useClubCreationAllowed } from "@/lib/registration";
 import type { Club, Calendar } from "@/lib/types";
 import {
   Banner,
   Button,
+  EmptyState,
   ErrorSummary,
   Field,
   FullPageLoader,
   Icon,
+  LinkButton,
   Stepper,
   TextInput,
 } from "@/components/ui/shared";
@@ -35,6 +38,7 @@ export default function SetupPage() {
   const [searchParams] = useSearchParams();
   const clubIdParam = searchParams.get("clubId");
 
+  const { allowed: creationAllowed, loading: registrationLoading } = useClubCreationAllowed();
   const [step, setStep] = useState<Step>(1);
   const [clubName, setClubName] = useState("");
   const [calendarName, setCalendarName] = useState("");
@@ -110,8 +114,8 @@ export default function SetupPage() {
       setCreatedClub(club);
       void queryClient.invalidateQueries({ queryKey: ["clubs"] });
       setStep(2);
-    } catch {
-      setFailed(true);
+    } catch (err) {
+      if ((err as { code?: string })?.code !== "club_creation_restricted") setFailed(true);
     } finally {
       setLoading(false);
     }
@@ -139,7 +143,25 @@ export default function SetupPage() {
     }
   }
 
-  if (detecting) return <FullPageLoader message={t("common.loading")} />;
+  if (detecting || (!clubIdParam && registrationLoading))
+    return <FullPageLoader message={t("common.loading")} />;
+
+  if (!clubIdParam && !creationAllowed) {
+    return (
+      <AuthLayout title={t("setup.restrictedTitle")}>
+        <EmptyState
+          icon="building"
+          title={t("setup.restrictedTitle")}
+          text={t("setup.restrictedText")}
+          actions={
+            <LinkButton to="/clubs?select=1" variant="secondary">
+              {t("setup.restrictedBack")}
+            </LinkButton>
+          }
+        />
+      </AuthLayout>
+    );
+  }
 
   const signOut = (
     <button type="button" className="ap-link min-h-tap" onClick={logout}>

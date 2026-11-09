@@ -12,6 +12,10 @@ Wenn du noch keinem Verein angehörst, führt dich die Einrichtung in zwei Schri
 Bist du von jemandem eingeladen worden, brauchst du das nicht: Nimm die Einladung an, dann gehörst du schon zu einem Verein. Mehr unter [Konto erstellen](help:getting-started/sign-up).
 :::
 
+:::note
+Bei manchen Installationen legt nur der Betreiber Vereine an. Siehst du **Verein anlegen** oder **Neuen Verein anlegen** nicht, bitte den Betreiber oder einen Admin deines Vereins um eine Einladung.
+:::
+
 ## Schritt 1: Verein
 
 1. Gib unter **Name deines Vereins** den Namen ein, zum Beispiel „Schützenverein Waldblick“. Diesen Namen sehen alle Mitglieder.

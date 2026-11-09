@@ -85,6 +85,24 @@ Create the first user on the command line, because nobody can be invited yet:
 php bin/console app:user:create
 ```
 
+## Club creation control
+
+By default every signed-in user can create clubs. To keep that to yourself:
+
+```ini
+RESTRICT_CLUB_CREATION=true
+```
+
+Users then cannot create clubs in the app, and people without a club see a notice that they need an invitation. Invitations, joining and everything else work as before.
+
+The first club: if `RESTRICT_REGISTRATION=true` is set as well, the first user can create the first club in the app while no club exists yet. After that, and in every other setup, you create clubs on the command line:
+
+```bash
+php bin/console app:club:create --name "Waldblick Shooting Club" --admin you@example.com
+```
+
+`--admin` is an existing user (e-mail address or id) who becomes the club's admin. `--timezone` defaults to `Europe/Berlin`. Missing values are asked interactively. The command ignores the restriction but still respects the per-user limit on the number of clubs.
+
 Invitations are valid for 7 days and can be re-sent by club admins. Nobody is added to a club without accepting an invitation.
 
 ## Single sign-on

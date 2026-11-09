@@ -43,6 +43,10 @@ function current() {
     .map((l) => l.textContent);
 }
 
+vi.mock("@/lib/registration", () => ({
+  useClubCreationAllowed: () => ({ allowed: true, loading: false }),
+}));
+
 describe("Sidebar navigation", () => {
   it.each([
     [base, "Kalender"],

@@ -20,6 +20,7 @@ readonly class ClubService
     public const string LAST_MEMBER_OF_CLUB_CODE = 'last_member_of_club';
     public const string LAST_ADMIN_CODE = 'last_admin';
     public const string LAST_ADMIN_OF_CLUB_CODE = 'last_admin_of_club';
+    public const string CREATION_RESTRICTED_CODE = 'club_creation_restricted';
     public const string FORBIDDEN_CODE = 'forbidden';
     public const string INVALID_ROLE_CODE = 'invalid_role';
 
@@ -27,6 +28,7 @@ readonly class ClubService
         private readonly EntityManagerInterface $em,
         private readonly UsageCounts $counts,
         private readonly Quota $quota,
+        private readonly ClubCreationPolicy $creationPolicy,
     ) {
     }
 
@@ -75,7 +77,33 @@ readonly class ClubService
         }, $clubs);
     }
 
-    public function createClub(User $user, string $name, string $timezone = 'Europe/Berlin'): array
+    /**
+     * @param bool $operator console path: skips RESTRICT_CLUB_CREATION
+     */
+    public function createClub(User $user, string $name, string $timezone = 'Europe/Berlin', bool $operator = false): array
+    {
+        if ($operator || !$this->creationPolicy->isRestricted()) {
+            return $this->persistClub($user, $name, $timezone);
+        }
+
+        // The bootstrap check (no club yet) has no row to lock, so serialise it with a server-wide named lock.
+        $conn = $this->em->getConnection();
+        $lock = 'club_creation_bootstrap_'.md5($conn->getDatabase() ?? '');
+        if (1 !== (int) $conn->fetchOne('SELECT GET_LOCK(?, 10)', [$lock])) {
+            throw new ApiProblemException(429, 'Club creation is busy, try again', 'rate_limited', null, ['Retry-After' => '1']);
+        }
+        try {
+            if (!$this->creationPolicy->isCreationAllowed()) {
+                throw new ApiProblemException(403, 'Creating clubs is restricted to operators', self::CREATION_RESTRICTED_CODE);
+            }
+
+            return $this->persistClub($user, $name, $timezone);
+        } finally {
+            $conn->executeQuery('SELECT RELEASE_LOCK(?)', [$lock])->free();
+        }
+    }
+
+    private function persistClub(User $user, string $name, string $timezone): array
     {
         $this->quota->assertRoom(Quota::CLUBS_PER_USER, $user);
         $club = new Club();

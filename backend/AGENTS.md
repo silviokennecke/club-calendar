@@ -58,6 +58,7 @@ the router, so a new or changed route needs a matching operation there).
 | `src/Security/AuthRateLimiter.php` | All rate limits (limiters in `config/packages/rate_limiter.yaml`), 429 `rate_limited` |
 | `src/Security/OneTimeTokenService.php` | Purpose-bound single-use login tokens (e-mail confirmation, SSO code exchange) |
 | `src/Service/EmailVerificationService.php` | 6-digit e-mail confirmation codes (hashed, attempts and resend limits) |
+| `src/Service/ClubCreationPolicy.php`, `src/Command/ClubCreateCommand.php` | `RESTRICT_CLUB_CREATION` check (403 `club_creation_restricted`, bootstrap exception with `RESTRICT_REGISTRATION` and no club); `app:club:create` bypasses it via the `ClubService` operator flag, quota still applies |
 | `src/Service/RegistrationPolicy.php` | `RESTRICT_REGISTRATION` check (open club invitation required) |
 | `src/Pdf/` | PDF export: `PdfExportService` (view model + Twig `templates/pdf/`), `PdfHolidaySelection`/`PdfHolidays` (optional holiday shading), `DompdfFactory` (hardened), `EmojiImages` (allow-list), layout/option classes |
 | `src/Ics/IcsEventReader.php`, `src/Service/IcsService.php` | Array-row ICS read path and streamed ICS output; ICS output changes raise `IcsService::FORMAT_VERSION`; event `SUMMARY` is `emojis name (extras)`, `DESCRIPTION` carries a badge legend (see `../CLAUDE.md` "ICS Feed Endpoint") |

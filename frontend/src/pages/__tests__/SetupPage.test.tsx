@@ -221,3 +221,17 @@ describe("SetupPage with existing clubs", () => {
     expect(apiGet).not.toHaveBeenCalledWith("/api/clubs");
   });
 });
+
+describe("SetupPage restricted club creation", () => {
+  it("shows the operator notice instead of the club form", async () => {
+    apiGet.mockImplementation((path: string) =>
+      Promise.resolve(path === "/api/auth/registration" ? { clubCreationAllowed: false } : []),
+    );
+    renderSetup("/setup?new=1");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Vereine legt der Betreiber an" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Verein anlegen" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Zu meinen Vereinen" })).toBeInTheDocument();
+  });
+});

@@ -43,6 +43,10 @@ parameters:
     env(RESTRICT_REGISTRATION): 'false'
     app.restrict_registration: '%env(bool:RESTRICT_REGISTRATION)%'
 
+    # The API creates no clubs (only the bootstrap with RESTRICT_REGISTRATION=true and no club yet); app:club:create bypasses
+    env(RESTRICT_CLUB_CREATION): 'false'
+    app.restrict_club_creation: '%env(bool:RESTRICT_CLUB_CREATION)%'
+
     # Public feed ICS (/api/feed/:id/ics) default window: events overlapping [today - PAST_DAYS, today + FUTURE_MONTHS]
     # in the club's zone. WINDOW_ENABLED=false = whole history. MAX_EVENTS > 0 caps the output (first N by date/time,
     # protection only, no error), 0 = unlimited. Does not affect the member export or the web view.

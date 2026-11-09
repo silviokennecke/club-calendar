@@ -5,6 +5,10 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ## [Unreleased]
 
+### Added
+
+- `RESTRICT_CLUB_CREATION` (default false): when true, `POST /api/clubs` answers 403 `club_creation_restricted`. With `RESTRICT_REGISTRATION=true` as well, the first user may create the first club (bootstrap); afterwards clubs are created by the operator with the new command `php bin/console app:club:create` (`--name`, `--admin`, `--timezone`). `GET /api/auth/registration` returns `clubCreationAllowed`; the app hides club creation when it is not allowed and tells users without a club that they need an invitation. Invitations and MCP are unaffected. See the admin guide ("Security", "Operations", configuration reference).
+
 ### BREAKING: OPAQUE password protection is always on
 
 - **Server keys are mandatory.** `OPAQUE_OPRF_SEED` + `OPAQUE_SERVER_PRIVATE_KEY` (or `OPAQUE_KEYS` + `OPAQUE_ACTIVE_KEY_ID`) must be set before updating: `app:opaque:check` fails without them and the Docker entrypoint aborts startup with a pointer to `app:opaque:generate-keys` (the keys are deliberately never generated automatically: silently regenerated keys would invalidate every password). Reuse the keys you already had. Development setups need the keys in `backend/.env.local`. See the upgrade step in the admin guide ("Password protection").

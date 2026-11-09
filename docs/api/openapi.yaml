@@ -1316,9 +1316,14 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [restricted]
+                required: [restricted, clubCreationAllowed]
                 properties:
                   restricted: { type: boolean }
+                  clubCreationAllowed:
+                    type: boolean
+                    description: >-
+                      Whether the API creates clubs for signed-in users: true unless `RESTRICT_CLUB_CREATION` is set;
+                      then true only for the bootstrap (`RESTRICT_REGISTRATION` set and no club exists yet).
 
   /api/auth/providers:
     get:
@@ -2019,7 +2024,10 @@ paths:
     post:
       tags: [Clubs]
       summary: Create a club
-      description: The creator becomes an admin.
+      description: >-
+        The creator becomes an admin. With `RESTRICT_CLUB_CREATION` the route answers 403 `club_creation_restricted`,
+        except while `RESTRICT_REGISTRATION` is also set and no club exists yet (bootstrap); operators use
+        `app:club:create`.
       operationId: createClub
       requestBody:
         required: true
@@ -2039,6 +2047,7 @@ paths:
               schema: { $ref: '#/components/schemas/Club' }
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
 
   /api/clubs/{clubId}:
@@ -4563,6 +4572,7 @@ components:
         | `series_changed` | 409 | Rule change PATCH: prototype/reference deleted concurrently or deadlock; nothing changed |
         | `email_taken` | 400 | Registration, field `email` |
         | `registration_restricted` | 403 | `POST /api/auth/opaque/register/start` (signup) with `RESTRICT_REGISTRATION` and no open invitation for the address, field `email` (SSO: redirect error code) |
+        | `club_creation_restricted` | 403 | `POST /api/clubs` with `RESTRICT_CLUB_CREATION` (except the bootstrap: `RESTRICT_REGISTRATION` and no club yet) |
         | `invalid_opaque_message` | 400 | OPAQUE login/registration: a base64url value is malformed, has the wrong length or is not a valid group element or record (`startLoginRequest`, `finishLoginRequest`, `registrationRequest`, `registrationRecord`) |
         | `opaque_state_invalid` | 409 | `opaque/register/finish` (all contexts): `registrationState` missing, forged, expired, used (signup), of another user or context, or its key id is no longer configured (field `registrationState`); retry from the start |
         | `opaque_required` | 409 | `login`, `change-password`, plaintext `password` of `change-email` / `DELETE /api/auth/me` / passkey register options for an account with a usable OPAQUE record |
@@ -4608,6 +4618,7 @@ components:
         - series_changed
         - email_taken
         - registration_restricted
+        - club_creation_restricted
         - invalid_credentials
         - invalid_reset_token
         - no_password

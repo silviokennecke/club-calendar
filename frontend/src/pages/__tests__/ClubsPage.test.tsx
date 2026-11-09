@@ -10,6 +10,7 @@ const apiPost = vi.fn();
 const logout = vi.fn();
 const updateUser = vi.fn();
 let invitations: unknown[] = [];
+let creationAllowed = true;
 let authUser: Record<string, unknown> = {};
 
 vi.mock("@/lib/api", () => ({
@@ -75,6 +76,8 @@ function mockApi(clubList: unknown[] = clubs) {
   apiGet.mockImplementation((path: string) => {
     if (path === "/api/clubs") return Promise.resolve(clubList);
     if (path === "/api/invitations") return Promise.resolve(invitations);
+    if (path === "/api/auth/registration")
+      return Promise.resolve({ restricted: false, clubCreationAllowed: creationAllowed });
     const cal = path.match(/^\/api\/clubs\/([^/]+)\/calendars/);
     if (cal) return Promise.resolve(calendars[cal[1]] ?? []);
     const mem = path.match(/^\/api\/clubs\/([^/]+)\/members/);
@@ -87,6 +90,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   sessionStorage.clear();
   invitations = [];
+  creationAllowed = true;
   updateUser.mockResolvedValue(true);
   authUser = { name: "Alex Beispiel", email: "alex@beispiel.de" };
   mockApi();
@@ -118,7 +122,10 @@ describe("ClubsPage", () => {
   it("loads no calendars or members per club (counts come with the club list)", async () => {
     renderClubs("/clubs?select=1");
     await screen.findByRole("link", { name: "Segelclub Möwe e. V." });
-    expect(apiGet.mock.calls.map((c) => c[0])).toEqual(["/api/clubs", "/api/invitations"]);
+    expect(apiGet.mock.calls.map((c) => c[0])).toEqual(
+      expect.arrayContaining(["/api/clubs", "/api/invitations"]),
+    );
+    expect(apiGet.mock.calls.map((c) => c[0])).not.toContain("/api/clubs/c1/calendars");
   });
 
   it("links a club without any calendar to the setup step", async () => {
@@ -330,5 +337,21 @@ describe("ClubsPage redirects", () => {
     mockApi([]);
     renderClubs();
     expect(await screen.findByTestId("location")).toHaveTextContent("/setup");
+  });
+
+  it("hides the create card when club creation is restricted", async () => {
+    creationAllowed = false;
+    renderClubs("/clubs?select=1");
+    await screen.findByRole("link", { name: "Segelclub Möwe e. V." });
+    expect(screen.queryByText("Neuen Verein anlegen")).not.toBeInTheDocument();
+  });
+
+  it("explains the invitation requirement instead of onboarding when restricted", async () => {
+    creationAllowed = false;
+    mockApi([]);
+    renderClubs("/clubs");
+    expect(await screen.findByText("Du bist noch in keinem Verein")).toBeInTheDocument();
+    expect(screen.getByText(/brauchst du eine Einladung/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Neuen Verein anlegen" })).not.toBeInTheDocument();
   });
 });

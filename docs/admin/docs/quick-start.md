@@ -68,6 +68,8 @@ The command prints a one-time link to set a password (by default, or when you pa
 !!! tip "Invitation-only installations"
     With `RESTRICT_REGISTRATION=true` nobody can register without a club invitation, so this command is the way to create the first user. After that, invite people from inside the app.
 
+    To also reserve club creation for yourself, set `RESTRICT_CLUB_CREATION=true`. With both settings on, the first user can create the first club in the app; later clubs are created with `php bin/console app:club:create`. See [Security](security.md).
+
 ## Without the bundled proxy
 
 If you already run a reverse proxy (nginx, Traefik, Caddy, a load balancer):

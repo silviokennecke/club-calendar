@@ -18,6 +18,7 @@ import { InvitationsSection } from "@/components/clubs/InvitationsSection";
 import { readInvitationToken, takeInvitationRedirect, type MyInvitation } from "@/lib/invitations";
 import { initials } from "@/components/layout/navigation";
 import { takeReturnTo } from "@/lib/mcp";
+import { useClubCreationAllowed } from "@/lib/registration";
 import type { Club } from "@/lib/types";
 
 /**
@@ -41,6 +42,8 @@ export default function ClubsPage() {
     queryFn: () => apiGet<Club[]>("/api/clubs"),
   });
 
+  const { allowed: creationAllowed, loading: registrationLoading } = useClubCreationAllowed();
+
   // Invitations to this account. A failed request counts as "none": the page works without them.
   const { data: invitations = [], isLoading: invitationsLoading } = useQuery({
     queryKey: ["invitations"],
@@ -62,7 +65,7 @@ export default function ClubsPage() {
       navigate(returnTo, { replace: true });
       return;
     }
-    if (isLoading || isError || invitationsLoading) return;
+    if (isLoading || isError || invitationsLoading || registrationLoading) return;
     if (!explicitSelect && user?.lastClubId && user?.lastCalendarId) {
       const clubExists = clubs.some((c) => c.id === user.lastClubId);
       if (clubs.length > 0 && clubExists) {
@@ -73,7 +76,7 @@ export default function ClubsPage() {
     }
     // No club yet: onboarding, unless invitations are waiting (they are shown here instead). With
     // ?select=1 (skipped onboarding) the empty state below explains it.
-    if (clubs.length === 0 && invitations.length === 0 && !explicitSelect) {
+    if (clubs.length === 0 && invitations.length === 0 && !explicitSelect && creationAllowed) {
       setRedirected(true);
       navigate("/setup", { replace: true });
     }
@@ -84,12 +87,18 @@ export default function ClubsPage() {
     isLoading,
     isError,
     invitationsLoading,
+    registrationLoading,
+    creationAllowed,
     redirected,
     navigate,
     explicitSelect,
   ]);
 
-  if (isLoading || redirected || (clubs.length === 0 && !explicitSelect && invitationsLoading))
+  if (
+    isLoading ||
+    redirected ||
+    (clubs.length === 0 && !explicitSelect && (invitationsLoading || registrationLoading))
+  )
     return <FullPageLoader />;
 
   const name = user?.name || user?.email || "";
@@ -122,11 +131,13 @@ export default function ClubsPage() {
         <EmptyState
           icon="building"
           title={t("clubs.emptyTitle")}
-          text={t("clubs.emptyText")}
+          text={creationAllowed ? t("clubs.emptyText") : t("clubs.emptyRestrictedText")}
           actions={
-            <LinkButton to="/setup?new=1" icon="plus">
-              {t("clubs.newClub")}
-            </LinkButton>
+            creationAllowed ? (
+              <LinkButton to="/setup?new=1" icon="plus">
+                {t("clubs.newClub")}
+              </LinkButton>
+            ) : undefined
           }
         />
       </AuthLayout>
@@ -150,24 +161,26 @@ export default function ClubsPage() {
             lastCalendarId={user?.lastCalendarId}
           />
         ))}
-        <article
-          className="ap-panel ap-evcard ap-stack ap-stack--sm"
-          style={{
-            alignItems: "stretch",
-            border: "1.5px dashed var(--border-strong)",
-            boxShadow: "none",
-          }}
-        >
-          <h2 className="t-h3 ap-row ap-row--nowrap">
-            <Icon glyph="plus" size={20} />
-            <Link to="/setup?new=1" aria-describedby="club-new-meta">
-              {t("clubs.newClub")}
-            </Link>
-          </h2>
-          <p className="t-sm t-muted" id="club-new-meta">
-            {t("clubs.newClubText")}
-          </p>
-        </article>
+        {creationAllowed && (
+          <article
+            className="ap-panel ap-evcard ap-stack ap-stack--sm"
+            style={{
+              alignItems: "stretch",
+              border: "1.5px dashed var(--border-strong)",
+              boxShadow: "none",
+            }}
+          >
+            <h2 className="t-h3 ap-row ap-row--nowrap">
+              <Icon glyph="plus" size={20} />
+              <Link to="/setup?new=1" aria-describedby="club-new-meta">
+                {t("clubs.newClub")}
+              </Link>
+            </h2>
+            <p className="t-sm t-muted" id="club-new-meta">
+              {t("clubs.newClubText")}
+            </p>
+          </article>
+        )}
       </div>
     </AuthLayout>
   );

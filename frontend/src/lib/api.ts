@@ -255,6 +255,8 @@ export async function errorFrom(res: Response): Promise<ApiError> {
   } | null;
   // Quota of a club/calendar used up (422): one clear message for every create form and import
   if (err?.code === "quota_exceeded") toast.error(i18n.t("common.quotaExceeded"));
+  if (err?.code === "club_creation_restricted")
+    toast.error(i18n.t("common.clubCreationRestricted"));
   if (res.status === 403 && err?.code === "consent_required" && typeof window !== "undefined") {
     window.dispatchEvent(new Event(CONSENT_REQUIRED_EVENT));
   }

@@ -12,6 +12,10 @@ If you are not in a club yet, the setup takes you to your first calendar in two 
 If someone invited you, you do not need this: accept the invitation and you already belong to a club. More under [Creating an account](help:getting-started/sign-up).
 :::
 
+:::note
+On some installations only the operator creates clubs. If you do not see **Create club** or **Create new club**, ask the operator or a club admin for an invitation.
+:::
+
 ## Step 1: Club
 
 1. Enter the name under **Name of your club**, for example "Waldblick Shooting Club". All members see this name.

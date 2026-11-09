@@ -13,6 +13,11 @@ vi.mock("react-router-dom", async (orig) => ({
   useOutletContext: () => currentData,
 }));
 
+let creationAllowed = true;
+vi.mock("@/lib/registration", () => ({
+  useClubCreationAllowed: () => ({ allowed: creationAllowed, loading: false }),
+}));
+
 let currentData: ShellData;
 
 function data(overrides: Partial<ShellData> = {}): ShellData {
@@ -41,6 +46,18 @@ function renderShell(ui: React.ReactElement) {
 }
 
 describe("desktop club menu", () => {
+  it("hides 'create new club' when club creation is restricted", async () => {
+    creationAllowed = false;
+    try {
+      renderShell(<Sidebar data={data()} />);
+      await userEvent.click(screen.getByRole("button", { name: /Verein.*Waldblick/ }));
+      const panel = screen.getByRole("region", { name: "Verein wechseln" });
+      expect(within(panel).queryByRole("link", { name: "Neuen Verein anlegen" })).toBeNull();
+    } finally {
+      creationAllowed = true;
+    }
+  });
+
   it("lists clubs, all clubs and 'create new club' (design: Verein wechseln)", async () => {
     renderShell(<Sidebar data={data()} />);
     await userEvent.click(screen.getByRole("button", { name: /Verein.*Waldblick/ }));

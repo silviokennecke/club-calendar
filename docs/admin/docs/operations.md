@@ -159,6 +159,12 @@ The app has a few commands for administrators. Run them like this:
 | `app:user:verify <email or id>` | Confirms an address by hand, for users who cannot receive the code. Also available as `app:user:activate`. |
 | `app:user:reset-link <email>` | Prints a password reset link without sending mail. |
 
+### Clubs
+
+| Command | Purpose |
+|---|---|
+| `app:club:create` | Creates a club for an existing user, who becomes its admin. Options: `--name`, `--admin=<e-mail or id>`, `--timezone` (default `Europe/Berlin`). Missing values are asked interactively. Works even when `RESTRICT_CLUB_CREATION=true`. |
+
 By default (see [password protection](password-protection.md)), `app:user:create` and `app:user:set-password` do not set a password themselves: they print a one-time link, valid for 60 minutes, where the user chooses it.
 
 !!! warning "Reset links give access to the account"
