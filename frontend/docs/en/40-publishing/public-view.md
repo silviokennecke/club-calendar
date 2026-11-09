@@ -25,6 +25,18 @@ Clicking an event shows date, time, place with a map, badges, extras, audiences 
 
 With **Subscribe to calendar** visitors add the whole calendar to their app. The steps are in [Subscribe to a calendar](help:publishing/subscribe).
 
+## If you are signed in
+
+When you are signed in, a slim bar at the top shows **Signed in as** and your name, with links to your account and **Sign out**.
+
+In the **Subscribe to calendar** menu you then also find **Add to my account**, or **Show in my account** if you already added it. Your account is the easiest way to keep the calendar: you find the events under [My club](help:getting-started/my-club). If you are not a member of the club yet, you first confirm that you want to join it. The club decides whether this is possible; otherwise ask for an [invitation](help:team/invitations).
+
+## If you are signed in
+
+When you are signed in, a slim bar at the top shows **Signed in as** and your name, with links **Go to my account** and **Sign out**.
+
+In the **Subscribe to calendar** menu you then also find **Add to my account**, or **Show in my account** if you already added it. Your account is the easiest way to keep the calendar: you find the events under [My club](help:getting-started/my-club). If you are not a member of the club yet, you first confirm that you want to join it. The club decides whether this is possible; otherwise ask for an [invitation](help:team/invitations).
+
 ## If nothing shows up
 
 - **No events published yet:** the club has not published anything yet. Subscribing already works.

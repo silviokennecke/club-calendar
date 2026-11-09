@@ -21,6 +21,10 @@ Under **Name and email address** you set how you appear to the other members of 
 
 The name must not be empty and can be at most 255 characters.
 
+## Renew your calendar link
+
+If you subscribed to a club calendar through [My club](help:getting-started/my-club), the section **My calendar subscription** lists your clubs. Click **Renew link** next to a club and confirm. The old link stops working, and you enter the new link in every calendar app where you use it. Do this if you passed the link on by mistake.
+
 ## What else is on the page
 
 All other account settings are listed one below the other, see the [overview](help:settings/index). **Sign out** signs you out on this device.

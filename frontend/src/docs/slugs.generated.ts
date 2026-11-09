@@ -11,6 +11,7 @@ export const DOC_SLUGS = [
   "events/search-filter",
   "events/views",
   "getting-started/index",
+  "getting-started/my-club",
   "getting-started/roles",
   "getting-started/set-up",
   "getting-started/sign-up",

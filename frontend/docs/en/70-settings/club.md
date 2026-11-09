@@ -20,6 +20,20 @@ Only an **Admin** can change the name. Everyone else can see it but not edit it.
 
 The name appears in the sidebar and for all members.
 
+## Joining through feeds
+
+:::note
+Only an **Admin** can change this.
+:::
+
+People who open a feed of your club while signed in can join the club by themselves. They become **Members** and only see what is shared with them, see [Roles](help:getting-started/roles). On the **General** tab, **Joining through feeds** decides who may do this:
+
+- **Off:** nobody joins through a feed. People come in only through invitations.
+- **Club-internal feeds only:** joining works through "Link only" feeds and through private feeds (with the secret).
+- **Also through public feeds:** additionally, any signed-in person can join through a public feed.
+
+The setting is saved right away.
+
 ## The club's time zone
 
 Under the title of the **Manage club** page you see the club's time zone, for example "Time zone Europe/Berlin". It is taken from your browser automatically when the club is created. You cannot change it in the interface.

@@ -7,7 +7,7 @@ description: Ein Feed macht Termine für Mitglieder und Gäste sichtbar, als Web
 # Was ist ein Feed?
 
 :::note
-Feeds sehen Bearbeiter und Admins. Anlegen und ändern dürfen nur Admins.
+Feeds sehen Bearbeiter und Admins. Anlegen und ändern dürfen nur Admins. Betrachter und Mitglieder sehen die Feed-Links nicht.
 :::
 
 Ein Feed ist die Veröffentlichung eines oder mehrerer Kalender deines Vereins. Er hat eine Webseite für alle, die den Link kennen, und eine Abo-Adresse für Kalender-Apps. Du findest Feeds unter **Veröffentlichen**.
@@ -30,6 +30,10 @@ Ein Feed ist die Veröffentlichung eines oder mehrerer Kalender deines Vereins. 
 :::warning
 **Nur per Link** ist kein Zugriffsschutz. Wer den Link weitergibt, gibt den Kalender weiter. Für wirklich interne Termine nimm **Privat (geschützt)**.
 :::
+
+## Wer einen privaten Feed nutzen kann
+
+Neben Personen, die das Geheimnis kennen, können Admins Vereinsmitgliedern den Zugriff auf einen privaten Feed direkt geben, siehe [Feed anlegen und verwalten](help:publishing/create-feed). Mitglieder lesen solche Feeds in ihrem persönlichen Abo unter [Mein Verein](help:getting-started/my-club).
 
 ## Kalender-Apps und Aktualisierung
 

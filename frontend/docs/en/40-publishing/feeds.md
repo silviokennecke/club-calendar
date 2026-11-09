@@ -7,7 +7,7 @@ description: A feed makes events visible to members and guests, as a web page an
 # What is a feed?
 
 :::note
-Editors and admins can see feeds. Only admins can create and change them.
+Editors and admins can see feeds. Only admins can create and change them. Viewers and members do not see the feed links.
 :::
 
 A feed publishes one or more calendars of your club. It has a web page for everyone who knows the link, and a subscription address for calendar apps. You find feeds under **Publish**.
@@ -30,6 +30,10 @@ A feed publishes one or more calendars of your club. It has a web page for every
 :::warning
 **Link only** is not access protection. Whoever passes on the link passes on the calendar. For truly internal events use **Private (protected)**.
 :::
+
+## Who can use a private feed
+
+Besides people who know the secret, admins can give club members access to a private feed directly, see [Create and manage a feed](help:publishing/create-feed). Members read such feeds in their personal subscription under [My club](help:getting-started/my-club).
 
 ## Calendar apps and updates
 

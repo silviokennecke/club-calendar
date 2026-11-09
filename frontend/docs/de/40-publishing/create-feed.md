@@ -7,7 +7,7 @@ description: So legst du einen Feed an, änderst ihn, kopierst die Adresse und l
 # Feed anlegen und verwalten
 
 :::note
-Dafür brauchst du die Rolle Admin. Bearbeiter können Feeds nur ansehen, Betrachter sehen sie nicht.
+Dafür brauchst du die Rolle Admin. Bearbeiter können Feeds nur ansehen, Betrachter und Mitglieder sehen sie nicht.
 :::
 
 ## Feed anlegen
@@ -33,8 +33,18 @@ Klicke in der Übersicht beim Feed auf **Bearbeiten**, ändere die Angaben und s
 
 Ein privater Feed hat ein **Geheimnis**, das Teil jeder Adresse ist. Wer die Adresse kennt, kann den Feed lesen. Gib sie nur an Personen weiter, die den Kalender sehen sollen.
 
-- **Geheimnis neu erzeugen:** Der Feed bekommt neue Adressen. Bestehende Abos funktionieren nicht mehr, alle müssen die neue Abo-Adresse eintragen. Nutze das, wenn der Link in falsche Hände geraten ist.
+- **Geheimnis neu erzeugen:** Der Feed bekommt neue Adressen. Bestehende Abos funktionieren nicht mehr, alle müssen die neue Abo-Adresse eintragen. Nutze das, wenn der Link in falsche Hände geraten ist. Haben Personen den Feed selbst mit dem Geheimnis übernommen, kannst du **Zugriff von Mitgliedern, die den Feed selbst übernommen haben, zurückziehen** ankreuzen. Von dir zugewiesene Mitglieder behalten den Zugriff.
 - **Geheimnis entfernen:** Stelle die Sichtbarkeit auf **Nur per Link** oder **Öffentlich** und bestätige **Ohne Geheimnis speichern**. Danach kann jeder mit dem Link den Kalender sehen.
+
+## Mitgliedern Zugriff auf einen privaten Feed geben
+
+Vereinsmitglieder können einen privaten Feed lesen, ohne das Geheimnis zu kennen, wenn du sie ihm zuweist. Öffne den privaten Feed; unter **Zugewiesene Mitglieder** siehst du, wer Zugriff hat.
+
+1. Klicke auf **Hinzufügen**.
+2. Suche Mitglieder nach Name oder E-Mail und wähle sie aus, oder füge eine Liste von E-Mail-Adressen ein (eine pro Zeile oder durch Komma getrennt). Nur Adressen bestehender Vereinsmitglieder werden hinzugefügt.
+3. Bestätige mit **Hinzufügen** und dann **Fertig**.
+
+Die Liste zeigt, ob jemand von dir **Zugewiesen** wurde oder den Feed **Selbst übernommen** hat, also mit dem Geheimnis. Suche und Filter helfen in langen Listen. Zum Entfernen klickst du auf **Entfernen** oder wählst mehrere Personen aus und klickst auf **Auswahl entfernen**. Sie bleiben Vereinsmitglieder, sehen den Feed aber nicht mehr. Bearbeiter und Admins lesen Feeds immer über ihre Rolle.
 
 ## Feed löschen
 

@@ -25,6 +25,12 @@ Ein Klick auf einen Termin zeigt Datum, Uhrzeit, Ort mit Karte, Besonderheiten, 
 
 Über **Kalender abonnieren** tragen Besucher den ganzen Kalender in ihre App ein. Die Schritte stehen unter [Kalender abonnieren](help:publishing/subscribe).
 
+## Wenn du angemeldet bist
+
+Bist du angemeldet, zeigt eine schmale Leiste oben **Angemeldet als** und deinen Namen, mit Links zu deinem Konto und **Abmelden**.
+
+Im Menü **Kalender abonnieren** findest du dann auch **Zu meinem Konto hinzufügen**, oder **In meinem Konto anzeigen**, wenn du ihn schon hinzugefügt hast. Über dein Konto behältst du den Kalender am einfachsten: Die Termine findest du unter [Mein Verein](help:getting-started/my-club). Bist du noch kein Mitglied des Vereins, bestätigst du zuerst, dass du beitreten möchtest. Ob das möglich ist, legt der Verein fest; sonst frag nach einer [Einladung](help:team/invitations).
+
 ## Wenn nichts erscheint
 
 - **Noch keine Termine veröffentlicht:** Der Verein hat noch nichts veröffentlicht. Abonnieren geht trotzdem schon.

@@ -1,26 +1,29 @@
 ---
 title: Rollen im Verein
 order: 50
-description: Was Betrachter, Bearbeiter und Admins im Verein dürfen.
+description: Was Mitglieder, Betrachter, Bearbeiter und Admins im Verein dürfen.
 ---
 
 # Rollen im Verein
 
-Jedes Mitglied hat in einem Verein eine von drei Rollen: **Betrachter**, **Bearbeiter** oder **Admin**. Die Rollen bauen aufeinander auf: Ein Admin kann alles, was ein Bearbeiter kann, und ein Bearbeiter alles, was ein Betrachter kann.
+Jede Person hat in einem Verein eine von vier Rollen: **Mitglied**, **Betrachter**, **Bearbeiter** oder **Admin**. Die Rollen bauen aufeinander auf: Ein Admin kann alles, was ein Bearbeiter kann, ein Bearbeiter alles, was ein Betrachter kann, und ein Betrachter alles, was ein Mitglied kann.
 
-| Aufgabe                                                          | Betrachter | Bearbeiter | Admin |
-| ---------------------------------------------------------------- | :--------: | :--------: | :---: |
-| Kalender und Termine ansehen                                     |     ja     |     ja     |  ja   |
-| Termine anlegen, ändern, löschen, Serien, Vorlagen, Import       |    nein    |     ja     |  ja   |
-| Orte, Besonderheiten, Zusatzangebote, Gruppen, Feiertage pflegen |    nein    |     ja     |  ja   |
-| Feeds ansehen                                                    |    nein    |     ja     |  ja   |
-| Feeds anlegen, ändern, löschen                                   |    nein    |    nein    |  ja   |
-| Kalender anlegen, archivieren, duplizieren                       |    nein    |    nein    |  ja   |
-| Mitglieder und Einladungen verwalten, Rollen ändern              |    nein    |    nein    |  ja   |
-| Vereinseinstellungen ändern, Verein löschen                      |    nein    |    nein    |  ja   |
+Ein **Mitglied** gehört nur zum Verein. Mitglieder sehen den Vereinskalender nicht selbst, sondern lesen die Termine über ihr eigenes Abo, siehe [Mein Verein](help:getting-started/my-club).
+
+| Aufgabe                                                          | Mitglied | Betrachter | Bearbeiter | Admin |
+| ---------------------------------------------------------------- | :------: | :--------: | :--------: | :---: |
+| Termine über das eigene Abo lesen                                |    ja    |     ja     |     ja     |  ja   |
+| Kalender und Termine ansehen                                     |   nein   |     ja     |     ja     |  ja   |
+| Termine anlegen, ändern, löschen, Serien, Vorlagen, Import       |   nein   |    nein    |     ja     |  ja   |
+| Orte, Besonderheiten, Zusatzangebote, Gruppen, Feiertage pflegen |   nein   |    nein    |     ja     |  ja   |
+| Feeds ansehen                                                    |   nein   |    nein    |     ja     |  ja   |
+| Feeds anlegen, ändern, löschen                                   |   nein   |    nein    |    nein    |  ja   |
+| Kalender anlegen, archivieren, duplizieren                       |   nein   |    nein    |    nein    |  ja   |
+| Mitglieder und Einladungen verwalten, Rollen ändern              |   nein   |    nein    |    nein    |  ja   |
+| Vereinseinstellungen ändern, Verein löschen                      |   nein   |    nein    |    nein    |  ja   |
 
 :::note
-Ob du eher Betrachter bist, merkst du an einem Hinweis: „Deine Rolle in diesem Verein erlaubt nur das Ansehen.“ Betrachter sehen außerdem **Termine importieren** und **Veröffentlichen** nicht.
+Ob du eher Betrachter bist, merkst du an einem Hinweis: „Deine Rolle in diesem Verein erlaubt nur das Ansehen.“ Betrachter sehen außerdem **Termine importieren** und **Veröffentlichen** nicht, also auch keine Links privater Feeds.
 :::
 
 ## Wie du eine andere Rolle bekommst
@@ -31,3 +34,4 @@ Admins legen die Rolle schon bei der Einladung fest und können sie später unte
 
 - [Einladungen](help:team/invitations)
 - [Mitglieder](help:team/members)
+- [Mein Verein](help:getting-started/my-club)

@@ -46,7 +46,7 @@ Every member can leave the club on their own.
 1. Click **Leave club** in your own row.
 2. Confirm with **Leave club**.
 
-You lose access to all calendars, events and feeds. The other members keep it.
+You lose access to all calendars, events and feeds. The other members keep it. As a member you do not see this list: use **Leave club** on [My club](help:getting-started/my-club).
 
 ## When it does not work
 

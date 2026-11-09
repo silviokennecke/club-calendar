@@ -46,7 +46,7 @@ Jedes Mitglied kann den Verein selbst verlassen.
 1. Klicke in deiner eigenen Zeile auf **Verein verlassen**.
 2. Bestätige mit **Verein verlassen**.
 
-Du verlierst den Zugriff auf alle Kalender, Termine und Feeds. Die anderen Mitglieder behalten ihn.
+Du verlierst den Zugriff auf alle Kalender, Termine und Feeds. Die anderen Mitglieder behalten ihn. Als Mitglied siehst du diese Liste nicht: Nutze **Verein verlassen** auf der Seite [Mein Verein](help:getting-started/my-club).
 
 ## Wenn es nicht geht
 
