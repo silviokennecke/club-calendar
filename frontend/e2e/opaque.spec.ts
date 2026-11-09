@@ -101,12 +101,10 @@ test.describe("OPAQUE", () => {
     await expect
       .poll(
         async () => {
-          const res = await request.post(`${API}/api/auth/login`, {
-            data: { email, password: PASSWORD },
-          });
-          const { access_token } = await res.json();
+          const auth = await apiLogin(request, email);
+          if (auth.status !== 200) return "none";
           const m = await request.get(`${API}/api/auth/me`, {
-            headers: { Authorization: `Bearer ${access_token}` },
+            headers: { Authorization: `Bearer ${auth.body.access_token}` },
           });
           return (await m.json()).passwordProtocol;
         },

@@ -9,6 +9,7 @@ import {
   opaqueReauth,
   opaqueReset,
   opaqueSignup,
+  opaqueUpgrade,
 } from "../client";
 import { ksfConfig, OpaqueClientError } from "../ksf";
 
@@ -16,7 +17,8 @@ import { ksfConfig, OpaqueClientError } from "../ksf";
 let setup: string;
 const users = new Map<string, { id: string; record: string }>();
 const states = new Map<string, string>();
-const signupStates = new Map<string, { id: string; email: string }>();
+const signupStates = new Map<string, { id: string; email?: string }>();
+let staleFinishes = 0;
 let ksfProfile = "memory-constrained";
 let calls: { path: string; body: Record<string, unknown> }[] = [];
 
@@ -72,16 +74,16 @@ function handle(path: string, body: Record<string, string>): Response {
         userIdentifier: id,
         registrationRequest: body.registrationRequest,
       });
-      let registrationState: string | undefined;
-      if (body.email) {
-        registrationState = `rs${signupStates.size}`;
-        signupStates.set(registrationState, { id, email: body.email });
-      }
+      const registrationState = `rs${signupStates.size}`;
+      signupStates.set(registrationState, { id, email: body.email });
       return json(200, { registrationResponse: r.registrationResponse, registrationState });
     }
     case "/api/auth/opaque/register/finish": {
-      if (body.registrationState) {
-        const s = signupStates.get(body.registrationState)!;
+      const s = signupStates.get(body.registrationState);
+      if (!s || staleFinishes-- > 0) {
+        return problem(409, "opaque_state_invalid");
+      }
+      if (s.email) {
         users.set(s.email, { id: s.id, record: body.registrationRecord });
         return json(201, {
           verificationRequired: true,
@@ -121,6 +123,7 @@ function mockBackend() {
 afterEach(() => {
   vi.unstubAllGlobals();
   ksfProfile = "memory-constrained";
+  staleFinishes = 0;
 });
 
 describe("opaque client flows", () => {
@@ -187,6 +190,46 @@ describe("opaque client flows", () => {
     expect(calls.at(-1)!.body.resetToken).toBe("tok");
     expect(await opaqueReauth("change-email", "another one")).toBe("ticket-change-email");
   }, 60000);
+
+  it("sends registrationState in every context", async () => {
+    mockBackend();
+    users.set("me@x.org", { id: "me", record: "" });
+    await opaqueReset("tok", "another one");
+    expect(calls.at(-1)!.body).toMatchObject({
+      resetToken: "tok",
+      registrationState: expect.any(String),
+    });
+    await opaqueChangePassword("tk", "another one");
+    expect(calls.at(-1)!.body).toMatchObject({
+      reauthTicket: "tk",
+      registrationState: expect.any(String),
+    });
+    await opaqueUpgrade("up", "another one");
+    expect(calls.at(-1)!.body).toMatchObject({
+      upgradeTicket: "up",
+      registrationState: expect.any(String),
+    });
+  }, 60000);
+
+  it("restarts once from register/start on 409 opaque_state_invalid", async () => {
+    mockBackend();
+    staleFinishes = 1;
+    await opaqueSignup("r@x.org", "correct horse", { name: "R", acceptedDocuments: [] });
+    expect(calls.filter((c) => c.path.endsWith("register/start"))).toHaveLength(2);
+    expect(calls.filter((c) => c.path.endsWith("register/finish"))).toHaveLength(2);
+    expect(users.has("r@x.org")).toBe(true);
+  }, 30000);
+
+  it("surfaces a second opaque_state_invalid", async () => {
+    mockBackend();
+    staleFinishes = 2;
+    const err = await opaqueSignup("s@x.org", "correct horse", {
+      name: "S",
+      acceptedDocuments: [],
+    }).catch((e) => e);
+    expect(err.code).toBe("opaque_state_invalid");
+    expect(calls.filter((c) => c.path.endsWith("register/start"))).toHaveLength(2);
+  }, 30000);
 
   it("rejects an unknown KSF profile before any key stretching", async () => {
     mockBackend();

@@ -21,41 +21,66 @@ export async function requestPasswordReset(email: string): Promise<ResetRequestR
 
 export type ResetResult = "done" | "invalid_token" | "weak_password" | "failed";
 
+function resetOutcome(e: unknown): ResetResult {
+  const code = e instanceof ApiError ? e.code : undefined;
+  if (code === "invalid_reset_token") return "invalid_token";
+  if (code === "validation_failed") return "weak_password";
+  return "failed";
+}
+
 /** `POST /api/auth/reset-password`: 204 ends all sessions; the user signs in with the new password. */
 export async function resetPassword(token: string, password: string): Promise<ResetResult> {
   try {
     await apiPost<void>("/api/auth/reset-password", { token, password });
     return "done";
   } catch (e) {
-    const code = e instanceof ApiError ? e.code : undefined;
-    if (code === "invalid_reset_token") return "invalid_token";
-    if (code === "validation_failed") return "weak_password";
-    return "failed";
+    return resetOutcome(e);
   }
 }
 
-/**
- * Reset through OPAQUE (the register flow with the reset token) when `opaqueEnabled` (from
- * `GET /api/auth/registration`) is not false; with the flag off the legacy endpoint is used directly, and a
- * 503 `opaque_unavailable` (flag unknown or changed) still falls back. A browser that cannot
- * run OPAQUE is `unsupported` (never a downgrade to the legacy endpoint).
- */
-export async function resetPasswordSecure(
+async function resetViaOpaque(
   token: string,
   password: string,
-  opaqueEnabled?: boolean,
-): Promise<ResetResult | "unsupported"> {
-  if (opaqueEnabled === false) return resetPassword(token, password);
+): Promise<ResetResult | "unsupported" | "unavailable"> {
   try {
     await opaqueReset(token, password);
     return "done";
   } catch (e) {
     const kind = opaqueFailureKind(e);
-    if (kind === "unsupported") return "unsupported";
-    if (kind === "unavailable") return resetPassword(token, password);
-    const code = e instanceof ApiError ? e.code : undefined;
-    if (code === "invalid_reset_token") return "invalid_token";
-    if (code === "validation_failed") return "weak_password";
-    return "failed";
+    if (kind === "unsupported" || kind === "unavailable") return kind;
+    return resetOutcome(e);
   }
+}
+
+/**
+ * Reset through OPAQUE (the register flow with the reset token) unless `opaqueEnabled` (from
+ * `GET /api/auth/registration`) is false. With the flag on the legacy endpoint is never called (it answers
+ * 409 `opaque_required`); with the flag unknown, a 503 `opaque_unavailable` may still fall back to it, and
+ * its `opaque_required` means the flag is on after all (one OPAQUE retry). Flag off + `opaque_required`
+ * (flag changed since the page loaded) retries OPAQUE once. A browser that cannot run OPAQUE is
+ * `unsupported` (never a downgrade).
+ */
+export async function resetPasswordSecure(
+  token: string,
+  password: string,
+  opaqueEnabled?: boolean,
+): Promise<ResetResult | "unsupported" | "unavailable"> {
+  const legacy = async () => {
+    try {
+      await apiPost<void>("/api/auth/reset-password", { token, password });
+      return "done" as const;
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "opaque_required") return "opaque_required" as const;
+      return resetOutcome(e);
+    }
+  };
+  if (opaqueEnabled === false) {
+    const r = await legacy();
+    return r === "opaque_required" ? resetViaOpaque(token, password) : r;
+  }
+  const r = await resetViaOpaque(token, password);
+  if (r !== "unavailable" || opaqueEnabled === true) return r;
+  const l = await legacy();
+  if (l !== "opaque_required") return l;
+  return resetViaOpaque(token, password);
 }

@@ -11,6 +11,7 @@ vi.mock("@/lib/api", async (orig) => ({
 vi.mock("../client", () => ({ opaqueReauth: (...a: unknown[]) => opaqueReauth(...a) }));
 
 import { usePasswordProof } from "../useReauth";
+import { opaqueFailureKind } from "../auth";
 
 const run = (password = "pw-12345") =>
   renderHook(() => usePasswordProof("delete-account")).result.current(password);
@@ -28,22 +29,36 @@ describe("usePasswordProof", () => {
     expect(opaqueReauth).toHaveBeenCalledWith("delete-account", "pw-12345");
   });
 
-  it.each(["legacy", null, undefined])(
-    "sends the plain password without any OPAQUE request for protocol %s",
-    async (protocol) => {
-      apiGet.mockResolvedValue({ passwordProtocol: protocol });
-      await expect(run()).resolves.toEqual({ password: "pw-12345" });
-      expect(opaqueReauth).not.toHaveBeenCalled();
+  it("sends the plain password without any OPAQUE request for legacy only", async () => {
+    apiGet.mockResolvedValue({ passwordProtocol: "legacy" });
+    await expect(run()).resolves.toEqual({ password: "pw-12345" });
+    expect(opaqueReauth).not.toHaveBeenCalled();
+  });
+
+  it.each(["reset_required", null, undefined])("never sends plaintext for %s", async (protocol) => {
+    apiGet.mockResolvedValue({ passwordProtocol: protocol });
+    await expect(run()).rejects.toBeDefined();
+    expect(opaqueReauth).not.toHaveBeenCalled();
+  });
+
+  it("reset_required maps to the reset notice", async () => {
+    apiGet.mockResolvedValue({ passwordProtocol: "reset_required" });
+    const err = await run().catch((e) => e);
+    expect(opaqueFailureKind(err)).toBe("reset_required");
+  });
+
+  it.each(["opaque_not_registered", "opaque_unavailable"])(
+    "does not fall back to plaintext on %s",
+    async (code) => {
+      opaqueReauth.mockRejectedValue(new ApiError("x", 409, code));
+      await expect(run()).rejects.toMatchObject({ code });
     },
   );
 
-  it.each(["opaque_not_registered", "opaque_unavailable"])(
-    "falls back to the plain password on %s",
-    async (code) => {
-      opaqueReauth.mockRejectedValue(new ApiError("x", 409, code));
-      await expect(run()).resolves.toEqual({ password: "pw-12345" });
-    },
-  );
+  it("maps opaque_required and opaque_unavailable to messages", () => {
+    expect(opaqueFailureKind(new ApiError("x", 409, "opaque_required"))).toBe("reload");
+    expect(opaqueFailureKind(new ApiError("x", 503, "opaque_unavailable"))).toBe("unavailable");
+  });
 
   it("rethrows a wrong password instead of falling back", async () => {
     opaqueReauth.mockRejectedValue(new ApiError("x", 401, "invalid_credentials"));

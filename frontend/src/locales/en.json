@@ -16,6 +16,8 @@
   "auth": {
     "opaqueUnsupported": "Your browser or device does not support secure sign-in (WebAssembly or memory). Please try a current browser.",
     "opaqueUnavailable": "Secure sign-in is currently unavailable. Please try again later.",
+    "opaqueResetRequired": "Your previous password is no longer accepted. Reset it with \"Forgot password\" on the sign-in page.",
+    "opaqueReload": "This page is out of date. Please reload it and try again.",
     "signIn": "Sign in",
     "signOut": "Sign out",
     "email": "Email",

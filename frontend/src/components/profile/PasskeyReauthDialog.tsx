@@ -10,7 +10,7 @@ import {
   Skeleton,
 } from "@/components/ui/shared";
 import { apiErrorCode, apiPost } from "@/lib/api";
-import { opaqueFailureKind, usePasswordProof } from "@/lib/opaque";
+import { OPAQUE_FAILURE_TEXT, opaqueFailureKind, usePasswordProof } from "@/lib/opaque";
 import { focusFirstInvalid } from "@/lib/focus";
 
 export interface PasskeyRegistrationStart {
@@ -110,8 +110,8 @@ export function PasskeyReauthDialog({
       else if (errorCode === "invalid_confirmation_code")
         setFieldError(t("profile.passkeys.reauth.wrongCode"));
       else if (errorCode === "rate_limited") setFailure(t("profile.passkeys.reauth.rateLimited"));
-      else if (opaqueFailureKind(error) === "unsupported") setFailure(t("auth.opaqueUnsupported"));
-      else if (opaqueFailureKind(error) === "unavailable") setFailure(t("auth.opaqueUnavailable"));
+      else if (opaqueFailureKind(error))
+        setFailure(t(OPAQUE_FAILURE_TEXT[opaqueFailureKind(error)!]));
       else setFailure(t("profile.passkeys.reauth.failed"));
     } finally {
       setBusy(false);
