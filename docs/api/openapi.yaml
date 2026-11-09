@@ -293,6 +293,7 @@ info:
     | `templatesPerCalendar` / `propertiesPerCalendar` / `featuresPerCalendar` | 500 each per calendar |
     | `targetGroupsPerClub` | 500 target groups per club |
     | `feedsPerClub` | 50 feeds per club |
+    | `feedMembersPerFeed` | 5000 people with stored access per feed (assign, claim) |
     | `holidayCalendarsPerCalendar` | 20 holiday calendars |
     | `mcpClientsPerUser` | 20 connected apps (MCP grants) per user (consent decision) |
 
@@ -1759,7 +1760,7 @@ paths:
     get:
       tags: [Clubs]
       summary: One club with counters
-      description: 'Plain members get only `id`, `name`, `timezone` and `role`. `eventCount` includes archived calendars; `feedCount` counts the feeds of the club (what deleting the club removes).'
+      description: 'Plain members get only `id`, `name`, `timezone` and `role` (staff also get `feedSignup`). `eventCount` includes archived calendars; `feedCount` counts the feeds of the club (what deleting the club removes).'
       operationId: getClub
       responses:
         '200':
@@ -1773,7 +1774,9 @@ paths:
     patch:
       tags: [Clubs]
       summary: Update a club
-      description: Admins only.
+      description: >-
+        Admins only. `feedSignup` is the club setting for self-join through feeds (see `FeedSignup`); an unknown
+        value is 400 `validation_failed` (field `feedSignup`). The response carries `feedSignup`.
       operationId: updateClub
       requestBody:
         required: true
@@ -1784,6 +1787,7 @@ paths:
               properties:
                 name: { type: string, minLength: 1, maxLength: 255 }
                 timezone: { type: string }
+                feedSignup: { $ref: '#/components/schemas/FeedSignup' }
       responses:
         '200':
           description: The updated club.
@@ -3390,10 +3394,22 @@ paths:
     post:
       tags: [Feeds]
       summary: Generate a new secret (old links stop working for private feeds)
-      description: The new secret is returned only with `includeSecret`.
+      description: >-
+        The new secret is returned only with `includeSecret`. The old secret stops working in every case. The optional
+        body `{revokeClaimed: bool}` (default false; an empty body is fine) also deletes all stored accesses with
+        source `claimed` of the feed (people who opened it with the old secret); `assigned` accesses stay. Staff are
+        unaffected.
       operationId: regenerateFeedSecret
       parameters:
         - { $ref: '#/components/parameters/IncludeSecret' }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revokeClaimed: { type: boolean, default: false }
       responses:
         '200':
           description: The feed (with its new `sharedSecret` when `includeSecret` is set).
@@ -3405,7 +3421,221 @@ paths:
         '403': { $ref: '#/components/responses/ForbiddenWrite' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /api/clubs/{clubId}/feeds/{feedId}/members:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+      - { $ref: '#/components/parameters/FeedId' }
+    get:
+      tags: [Feeds]
+      summary: People with access to a feed (paginated, searchable)
+      description: >-
+        Editors and admins. Ordered by name, then id; the body is a plain list of one page, the number of all matches
+        is in `X-Total-Count`. `q` matches name or e-mail (case-insensitive, at most 100 characters). Works for any
+        feed (rows that remain after a visibility change stay listed and removable); rows only matter while the feed
+        is `PRIVATE`, and are kept if it is switched to another visibility.
+      operationId: listFeedMembers
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: perPage, in: query, description: '1..100 (default 10).', schema: { type: integer, minimum: 1, maximum: 100, default: 10 } }
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: source, in: query, schema: { type: string, enum: [assigned, claimed] } }
+      responses:
+        '200':
+          description: One page.
+          headers:
+            X-Total-Count: { description: 'Number of all matches.', schema: { type: integer } }
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/FeedMember' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Feeds]
+      summary: Give club members access to a PRIVATE feed
+      description: >-
+        Editors and admins. `userIds` (at most 500) must all be members of the club (422 `unknown_reference`, nothing
+        written). Idempotent; the source becomes `assigned` (a `claimed` row is upgraded). Only for `PRIVATE` feeds
+        (422 `invalid_request` otherwise). Quota `feedMembersPerFeed`. `added` counts people newly assigned or upgraded.
+      operationId: addFeedMembers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userIds]
+              properties:
+                userIds: { type: array, maxItems: 500, items: { type: string } }
+      responses:
+        '200':
+          description: Done.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [added]
+                properties:
+                  added: { type: integer }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/FeedInputRejected' }
+
+  /api/clubs/{clubId}/feeds/{feedId}/members/by-email:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+      - { $ref: '#/components/parameters/FeedId' }
+    post:
+      tags: [Feeds]
+      summary: Give club members access to a PRIVATE feed by e-mail address
+      description: >-
+        Editors and admins. `emails` (at most 500) are normalized; only addresses of existing members of the club are
+        added, the others are returned in `unknown` and ignored (staff can see member addresses anyway). Same rules as
+        `POST …/members`.
+      operationId: addFeedMembersByEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [emails]
+              properties:
+                emails: { type: array, maxItems: 500, items: { type: string } }
+      responses:
+        '200':
+          description: Done.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [added, unknown]
+                properties:
+                  added: { type: integer }
+                  unknown: { type: array, items: { type: string } }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/FeedInputRejected' }
+
+  /api/clubs/{clubId}/feeds/{feedId}/members/bulk-delete:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+      - { $ref: '#/components/parameters/FeedId' }
+    post:
+      tags: [Feeds]
+      summary: Remove the access of several people
+      description: Editors and admins. `userIds` (at most 500); ids without a stored access are ignored. Staff keep reading through their role.
+      operationId: bulkDeleteFeedMembers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userIds]
+              properties:
+                userIds: { type: array, maxItems: 500, items: { type: string } }
+      responses:
+        '200':
+          description: Done.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [removed]
+                properties:
+                  removed: { type: integer }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/clubs/{clubId}/feeds/{feedId}/members/{userId}:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+      - { $ref: '#/components/parameters/FeedId' }
+      - { name: userId, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [Feeds]
+      summary: Remove the access of one person
+      description: Editors and admins. Idempotent (no stored access is fine).
+      operationId: deleteFeedMember
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   # ------------------------------------------------------------------ Public feed
+  /api/feed/{feedId}/claim:
+    parameters:
+      - { $ref: '#/components/parameters/FeedId' }
+    post:
+      tags: [Public feed]
+      summary: Join the club / gain access through a feed (signed in)
+      description: >-
+        The only feed route that is NOT public: it needs a JWT, a confirmed e-mail address and current consent
+        (plain `member` accounts may call it). Body `{secret?}`, required for `PRIVATE` feeds (compared in constant
+        time). Unknown feed, wrong or missing secret and a feed whose calendars are all archived give the same 404
+        `feed_not_found`. In one transaction under the club lock: a user who is not a member becomes a member (role
+        `member`) if the club setting `feedSignup` allows the feed's visibility (else 403 `member_signup_disabled`;
+        quotas `membersPerClub`, `clubsPerUser`); for a `PRIVATE` feed a non-staff user gets a stored access with source
+        `claimed` (idempotent, an `assigned` one is never downgraded; staff need none). Existing members may always
+        claim. 20 per user and hour and 60 per client IP and hour (429 `rate_limited`).
+      operationId: claimFeed
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                secret: { type: string }
+      responses:
+        '200':
+          description: Done.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeedClaimResult' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: 'Not allowed: `member_signup_disabled`, `email_verification_required` or `consent_required`.' }
+        '404': { description: '`feed_not_found`.' }
+        '422': { $ref: '#/components/responses/QuotaExceeded' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /api/feed/{feedId}/membership:
+    parameters:
+      - { $ref: '#/components/parameters/FeedId' }
+    get:
+      tags: [Public feed]
+      summary: What the feed page offers the signed-in user
+      description: >-
+        JWT required (confirmed e-mail). `?secret=` is required for `PRIVATE` feeds; without a valid secret the answer is
+        404 `feed_not_found`, so a private feed's existence is not revealed. Used to choose the button text (join,
+        add to the account). Same per-IP and per-feed rate limit as the other feed routes.
+      operationId: feedMembership
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/FeedSecret' }
+      responses:
+        '200':
+          description: The state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeedMembership' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: '`feed_not_found`.' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
   /api/feed/{feedId}/events:
     parameters:
       - { $ref: '#/components/parameters/FeedId' }
@@ -4274,6 +4504,8 @@ components:
         | `forbidden` | 403 | Member routes: the role is too low for the service check (removing another member or changing a role without being admin) |
         | `invalid_role` | 422 | `PATCH /api/clubs/{clubId}/members/{userId}`: role is none of member, viewer, editor, admin (field `role`) |
         | `invitation_not_found` | 404 | Club invitation routes: unknown, answered or revoked invitation, or one of another club; `/api/invitations/*`: unknown token or id, an invitation for another address, or an unconfirmed user (all the same answer) |
+        | `feed_not_found` | 404 | `POST /api/feed/{feedId}/claim`, `GET /api/feed/{feedId}/membership`: unknown feed, wrong or missing secret of a `PRIVATE` feed, or all calendars archived (one answer, no oracle) |
+        | `member_signup_disabled` | 403 | `POST /api/feed/{feedId}/claim`: the user is no member and the club setting `feedSignup` does not allow this feed's visibility |
         | `invitation_expired` | 422 | Accept/decline of an invitation that is addressed to the signed-in user but older than 7 days; the club can re-send it |
         | `authorization_request_not_found` | 404 | `GET /api/oauth/authorization-request/{id}`, `POST /api/oauth/authorize/decision`: unknown, expired (10 min), already answered, or not started in this browser (binding cookie missing or wrong) request |
         | `mcp_grant_not_found` | 404 | `DELETE /api/auth/mcp-grants/{id}`: unknown id or a grant of another user |
@@ -4367,6 +4599,8 @@ components:
         - invalid_role
         - invitation_not_found
         - invitation_expired
+        - feed_not_found
+        - member_signup_disabled
         - ics_fetch_failed
         - holiday_source_failed
         - authorization_request_not_found
@@ -4523,6 +4757,15 @@ components:
         id: { type: string }
         name: { type: string }
         timezone: { type: string, examples: [Europe/Berlin] }
+        feedSignup: { allOf: [{ $ref: '#/components/schemas/FeedSignup' }], description: 'Only in responses for staff (club list, detail, create, update); not for plain members.' }
+    FeedSignup:
+      type: string
+      enum: [off, internal, public]
+      default: internal
+      description: >-
+        Who may become a club member (role `member`) by opening a feed while signed in (`POST /api/feed/{feedId}/claim`):
+        `off` nobody, `internal` through `CLUB` and `PRIVATE` feeds, `public` additionally through `PUBLIC` feeds.
+        It only gates NEW membership; existing members may always claim.
     ClubListItem:
       allOf:
         - { $ref: '#/components/schemas/Club' }
@@ -5049,7 +5292,7 @@ components:
       description: '`PUBLIC` and `CLUB` are reachable by link without the secret and differ only for search engines; `PRIVATE` requires the secret.'
     Feed:
       type: object
-      required: [id, clubId, calendarIds, name, visibility, indexable, targetGroups]
+      required: [id, clubId, calendarIds, name, visibility, indexable, assignedCount, targetGroups]
       properties:
         id: { type: string }
         clubId: { type: string }
@@ -5057,6 +5300,7 @@ components:
         name: { type: string }
         visibility: { $ref: '#/components/schemas/FeedVisibility' }
         indexable: { type: boolean, description: '`visibility == PUBLIC`.' }
+        assignedCount: { type: integer, description: 'People with a stored access to the feed (assigned and claimed; see "Feed members"). Counted in one grouped query for the list.' }
         sharedSecret: { type: string, description: '32 hex characters; only `PRIVATE` feeds require it. Present only when the request sets `includeSecret` (omitted by default).' }
         targetGroups:
           type: array
@@ -5067,6 +5311,32 @@ components:
             properties:
               feedId: { type: string }
               targetGroupId: { type: string }
+    FeedMember:
+      type: object
+      required: [userId, name, email, source, createdAt]
+      properties:
+        userId: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        source: { type: string, enum: [assigned, claimed], description: '`assigned` by staff, `claimed` by the person opening the feed with its secret.' }
+        createdAt: { type: string, format: date-time }
+    FeedMembership:
+      type: object
+      required: [clubName, isClubMember, hasFeedAccess, canJoin, canClaim]
+      properties:
+        clubName: { type: string }
+        isClubMember: { type: boolean }
+        hasFeedAccess: { type: boolean, description: 'Club member who may include this feed in the personal account: any member for `PUBLIC`/`CLUB`, staff or a `FeedMember` row for `PRIVATE`.' }
+        canJoin: { type: boolean, description: 'Not a member yet and the club setting `feedSignup` allows this feed visibility.' }
+        canClaim: { type: boolean, description: 'Member without access to this `PRIVATE` feed (the request had its secret): `POST …/claim` gives access.' }
+    FeedClaimResult:
+      type: object
+      required: [clubId, clubName, feedId, joined]
+      properties:
+        clubId: { type: string }
+        clubName: { type: string }
+        feedId: { type: string }
+        joined: { type: boolean, description: True when the call made the user a club member (role `member`). }
     FeedInput:
       type: object
       properties:

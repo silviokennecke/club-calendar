@@ -9,6 +9,7 @@ use App\Entity\Club;
 use App\Entity\ClubUser;
 use App\Entity\User;
 use App\Enum\ClubRole;
+use App\Enum\FeedSignup;
 use App\Exception\ApiProblemException;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -29,6 +30,7 @@ readonly class ClubService
         private readonly UsageCounts $counts,
         private readonly Quota $quota,
         private readonly ClubCreationPolicy $creationPolicy,
+        private readonly FeedMemberService $feedMembers,
     ) {
     }
 
@@ -75,6 +77,7 @@ readonly class ClubService
                 'calendarCount' => $cals['active'],
                 'archivedCalendarCount' => $cals['archived'],
                 'memberCount' => $members[$club->getId()] ?? 0,
+                'feedSignup' => $club->getFeedSignup()->value,
                 'role' => $roles[$club->getId()]->value,
                 'lastCalendarId' => $lastCalendars[$club->getId()] ?? null,
                 '_count' => ['calendars' => $cals['active'] + $cals['archived']],
@@ -123,7 +126,7 @@ readonly class ClubService
         $this->em->persist($cu);
         $this->em->flush();
 
-        return $this->serializeClub($club) + ['role' => ClubRole::ADMIN->value];
+        return $this->serializeClub($club) + ['feedSignup' => $club->getFeedSignup()->value, 'role' => ClubRole::ADMIN->value];
     }
 
     /**
@@ -140,6 +143,7 @@ readonly class ClubService
         $cals = $this->counts->calendarsByClub([$id])[$id] ?? ['active' => 0, 'archived' => 0];
 
         return $this->serializeClub($club) + [
+            'feedSignup' => $club->getFeedSignup()->value,
             'role' => $membership?->getRole()->value,
             'calendarCount' => $cals['active'],
             'archivedCalendarCount' => $cals['archived'],
@@ -157,9 +161,16 @@ readonly class ClubService
         if (isset($data['timezone'])) {
             $club->setTimezone((string) Input::timezone($data, 'timezone', false));
         }
+        if (array_key_exists('feedSignup', $data)) {
+            $signup = is_string($data['feedSignup']) ? FeedSignup::tryFrom($data['feedSignup']) : null;
+            if (null === $signup) {
+                throw Input::invalid('feedSignup', 'feedSignup must be one of '.implode(', ', FeedSignup::values()));
+            }
+            $club->setFeedSignup($signup);
+        }
         $this->em->flush();
 
-        return $this->serializeClub($club);
+        return $this->serializeClub($club) + ['feedSignup' => $club->getFeedSignup()->value];
     }
 
     public function deleteClub(Club $club): void
@@ -234,6 +245,7 @@ readonly class ClubService
             if (ClubRole::ADMIN === $cu->getRole() && $this->countAdmins($club) <= 1) {
                 throw new ApiProblemException(422, 'The last admin cannot be removed from a club', self::LAST_ADMIN_CODE);
             }
+            $this->feedMembers->removeAllOfUserInClub($club, $cu->getUser());
             $this->em->remove($cu);
             $this->em->flush();
         });

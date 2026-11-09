@@ -18,8 +18,9 @@ security:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
 
+        # Public feed routes carry no authentication; claim and membership need the signed-in user (api firewall).
         public_feed:
-            pattern: ^/api/feed/
+            pattern: ^/api/feed/(?![^/]+/(claim|membership)$)
             security: false
 
         # MCP endpoint: opaque OAuth access tokens only (App\Mcp\Security\McpAuthenticator); must precede `api`.
@@ -58,6 +59,7 @@ security:
         - { path: ^/api/health$, roles: PUBLIC_ACCESS }
         - { path: ^/api/legal(/|$), roles: PUBLIC_ACCESS }
         - { path: ^/api/map/image/, roles: PUBLIC_ACCESS }
+        - { path: '^/api/feed/[^/]+/(claim|membership)$', roles: IS_AUTHENTICATED }
         - { path: ^/api/feed/, roles: PUBLIC_ACCESS }
         # The MCP firewall authenticates (McpAuthenticator answers 401 with resource metadata; OPTIONS passes).
         - { path: ^/api/mcp(/|$), roles: PUBLIC_ACCESS }

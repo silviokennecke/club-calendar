@@ -73,6 +73,10 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $feedIp,
         #[Autowire(service: 'limiter.feed_id')]
         private readonly RateLimiterFactory $feedId,
+        #[Autowire(service: 'limiter.feed_claim_user')]
+        private readonly RateLimiterFactory $feedClaimUser,
+        #[Autowire(service: 'limiter.feed_claim_ip')]
+        private readonly RateLimiterFactory $feedClaimIp,
         #[Autowire(service: 'limiter.pdf_export_user')]
         private readonly RateLimiterFactory $pdfExportUser,
         #[Autowire(service: 'limiter.pdf_export_ip')]
@@ -249,6 +253,13 @@ class AuthRateLimiter
         if ($this->feedIdLimit > 0) {
             self::assertAccepted($this->feedId->create($feedId)->consume());
         }
+    }
+
+    /** Joining a club / claiming a feed through its address: 20 per user and 60 per client IP per hour. */
+    public function assertFeedClaimAllowed(Request $request, string $userId): void
+    {
+        self::assertAccepted($this->feedClaimUser->create($userId)->consume());
+        self::assertAccepted($this->feedClaimIp->create(self::ip($request))->consume());
     }
 
     /** PDF export (expensive to render): 10 per user and 30 per client IP in 10 minutes. */

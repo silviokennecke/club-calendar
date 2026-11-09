@@ -12,6 +12,7 @@ use App\Entity\EventTargetGroup;
 use App\Entity\EventTemplateFeature;
 use App\Entity\EventTemplateProperty;
 use App\Entity\EventTemplateTargetGroup;
+use App\Entity\FeedMember;
 use App\Entity\UpdateAudited;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
@@ -38,6 +39,7 @@ final class UpdateAuditListener
         EventTemplateTargetGroup::class => 'getTemplate',
         CalendarFeedCalendar::class => 'getFeed',
         CalendarFeedTargetGroup::class => 'getFeed',
+        FeedMember::class => 'getFeed',
     ];
 
     public function __construct(private readonly TokenStorageInterface $tokenStorage)

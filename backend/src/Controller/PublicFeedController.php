@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Exception\ApiProblemException;
 use App\Security\AuthRateLimiter;
+use App\Security\CurrentUserResolver;
+use App\Service\FeedClaimService;
+use App\Service\Input;
 use App\Service\PublicFeedService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -16,8 +20,43 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/feed')]
 class PublicFeedController extends AbstractController
 {
-    public function __construct(private readonly PublicFeedService $feedService, private readonly AuthRateLimiter $rateLimiter)
+    public function __construct(
+        private readonly PublicFeedService $feedService,
+        private readonly AuthRateLimiter $rateLimiter,
+        private readonly FeedClaimService $claims,
+        private readonly CurrentUserResolver $userResolver,
+    ) {
+    }
+
+    /**
+     * Signed-in (JWT, confirmed address, see security.yaml): joins the club through the feed and/or gains access to a
+     * PRIVATE feed. Body `{secret?}`. Unlike the other feed routes this one is not public.
+     */
+    #[Route('/{feedId}/claim', methods: ['POST'])]
+    public function claim(string $feedId, Request $request): JsonResponse
     {
+        $user = $this->userResolver->resolve();
+        $this->rateLimiter->assertFeedClaimAllowed($request, $user->getId());
+        $data = '' === trim($request->getContent()) ? [] : json_decode($request->getContent(), true);
+        if (!is_array($data)) {
+            throw new ApiProblemException(400, 'Invalid JSON body', 'invalid_request');
+        }
+        $secret = $data['secret'] ?? null;
+        if (null !== $secret && !is_string($secret)) {
+            throw Input::invalid('secret', 'secret must be a string');
+        }
+
+        return new JsonResponse($this->claims->claim($user, $feedId, $secret));
+    }
+
+    /** What the feed page offers the signed-in user (button text): `?secret=` is required for PRIVATE feeds. */
+    #[Route('/{feedId}/membership', methods: ['GET'])]
+    public function membership(string $feedId, Request $request): JsonResponse
+    {
+        $user = $this->userResolver->resolve();
+        $this->rateLimiter->assertFeedAllowed($request, $feedId);
+
+        return new JsonResponse($this->claims->membership($user, $feedId, $this->queryString($request, 'secret')));
     }
 
     #[Route('/{feedId}/events', methods: ['GET'])]

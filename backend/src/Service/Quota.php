@@ -12,6 +12,7 @@ use App\Entity\ClubUser;
 use App\Entity\Event;
 use App\Entity\EventTemplate;
 use App\Entity\Feature;
+use App\Entity\FeedMember;
 use App\Entity\HolidayCalendar;
 use App\Entity\Location;
 use App\Entity\McpGrant;
@@ -49,6 +50,7 @@ class Quota
     public const FEATURES_PER_CALENDAR = 'featuresPerCalendar';
     public const TARGET_GROUPS_PER_CLUB = 'targetGroupsPerClub';
     public const FEEDS_PER_CLUB = 'feedsPerClub';
+    public const FEED_MEMBERS_PER_FEED = 'feedMembersPerFeed';
     public const HOLIDAY_CALENDARS_PER_CALENDAR = 'holidayCalendarsPerCalendar';
     public const MCP_CLIENTS_PER_USER = 'mcpClientsPerUser';
 
@@ -66,6 +68,7 @@ class Quota
         self::FEATURES_PER_CALENDAR => 500,
         self::TARGET_GROUPS_PER_CLUB => 500,
         self::FEEDS_PER_CLUB => 50,
+        self::FEED_MEMBERS_PER_FEED => 5000,
         self::HOLIDAY_CALENDARS_PER_CALENDAR => 20,
         self::MCP_CLIENTS_PER_USER => 20,
     ];
@@ -86,6 +89,7 @@ class Quota
         self::FEATURES_PER_CALENDAR => [Feature::class, 'calendar'],
         self::TARGET_GROUPS_PER_CLUB => [TargetGroup::class, 'club'],
         self::FEEDS_PER_CLUB => [CalendarFeed::class, 'club'],
+        self::FEED_MEMBERS_PER_FEED => [FeedMember::class, 'feed'],
         self::HOLIDAY_CALENDARS_PER_CALENDAR => [HolidayCalendar::class, 'calendar'],
         // Connected apps = grants of the user (revoked ones are deleted by the revoke route, not kept)
         self::MCP_CLIENTS_PER_USER => [McpGrant::class, 'user'],
@@ -98,9 +102,9 @@ class Quota
     /**
      * Throws 422 `quota_exceeded` when `$adding` more records would exceed the limit of the resource.
      *
-     * @param Club|Calendar|User $owner the club, calendar or user the records belong to
+     * @param Club|Calendar|User|CalendarFeed $owner the club, calendar, feed or user the records belong to
      */
-    public function assertRoom(string $resource, Club|Calendar|User $owner, int $adding = 1): void
+    public function assertRoom(string $resource, Club|Calendar|User|CalendarFeed $owner, int $adding = 1): void
     {
         if ($adding <= 0) {
             return;

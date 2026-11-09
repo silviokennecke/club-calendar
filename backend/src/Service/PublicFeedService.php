@@ -340,6 +340,24 @@ class PublicFeedService
         return [$from, $to];
     }
 
+    /**
+     * The feed behind an id for a signed-in user's join/claim request, with the checks of {@see loadFeed()}:
+     * unknown id, wrong or missing secret of a PRIVATE feed and a feed whose calendars are all archived give the
+     * same null (the caller answers one 404, so nothing is revealed about the feed).
+     */
+    public function findJoinableFeed(string $feedId, ?string $secret): ?CalendarFeed
+    {
+        $feed = $this->em->getRepository(CalendarFeed::class)->find($feedId);
+        if (!$feed) {
+            return null;
+        }
+        if ($feed->getVisibility()->requiresSecret() && (!$secret || !hash_equals($feed->getSharedSecret(), $secret))) {
+            return null;
+        }
+
+        return [] === $this->activeCalendars($feed) ? null : $feed;
+    }
+
     private function loadFeed(string $feedId, ?string $secret): CalendarFeed
     {
         $feed = $this->em->getRepository(CalendarFeed::class)->find($feedId);

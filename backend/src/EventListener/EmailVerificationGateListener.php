@@ -56,7 +56,7 @@ class EmailVerificationGateListener
 
     private static function isAllowed(string $path, string $method): bool
     {
-        if ('/api/legal' === $path || str_starts_with($path, '/api/legal/') || str_starts_with($path, '/api/feed/')) {
+        if ('/api/legal' === $path || str_starts_with($path, '/api/legal/') || (str_starts_with($path, '/api/feed/') && !preg_match('#^/api/feed/[^/]+/(claim|membership)$#', $path))) {
             return true;
         }
         $path = rtrim($path, '/');

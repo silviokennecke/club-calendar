@@ -19,6 +19,7 @@ use App\Entity\EventTemplateFeature;
 use App\Entity\EventTemplateProperty;
 use App\Entity\EventTemplateTargetGroup;
 use App\Entity\Feature;
+use App\Entity\FeedMember;
 use App\Entity\Location;
 use App\Entity\Property;
 use App\Entity\TargetGroup;
@@ -96,6 +97,18 @@ readonly class UsageCounts
     public function feedsByClub(array $clubIds): array
     {
         return $this->grouped(CalendarFeed::class, 'x.club', 'x.id', 'x.club IN (:ids)', [], ['ids' => $clubIds]);
+    }
+
+    /**
+     * People with access to a PRIVATE feed (assigned and claimed rows) per feed.
+     *
+     * @param list<string> $feedIds
+     *
+     * @return array<string, int>
+     */
+    public function membersByFeed(array $feedIds): array
+    {
+        return $this->grouped(FeedMember::class, 'x.feed', 'x.id', 'x.feed IN (:ids)', [], ['ids' => $feedIds]);
     }
 
     /**

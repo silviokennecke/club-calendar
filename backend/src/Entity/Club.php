@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\FeedSignup;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -23,6 +24,9 @@ class Club implements UpdateAudited
 
     #[ORM\Column(length: 100)]
     private string $timezone = 'Europe/Berlin';
+
+    #[ORM\Column(length: 10, enumType: FeedSignup::class, options: ['default' => 'internal'])]
+    private FeedSignup $feedSignup = FeedSignup::INTERNAL;
 
     #[ORM\OneToMany(targetEntity: ClubUser::class, mappedBy: 'club', cascade: ['persist', 'remove'])]
     private Collection $users;
@@ -62,6 +66,18 @@ class Club implements UpdateAudited
     public function setTimezone(string $timezone): static
     {
         $this->timezone = $timezone;
+
+        return $this;
+    }
+
+    public function getFeedSignup(): FeedSignup
+    {
+        return $this->feedSignup;
+    }
+
+    public function setFeedSignup(FeedSignup $feedSignup): static
+    {
+        $this->feedSignup = $feedSignup;
 
         return $this;
     }

@@ -9,6 +9,7 @@ use App\Entity\CalendarFeed;
 use App\Entity\CalendarFeedCalendar;
 use App\Entity\CalendarFeedTargetGroup;
 use App\Entity\Club;
+use App\Entity\FeedMember;
 use App\Entity\TargetGroup;
 use App\Enum\FeedVisibility;
 use Doctrine\ORM\EntityManagerInterface;
@@ -20,6 +21,7 @@ readonly class FeedService
         private EntityManagerInterface $em,
         private CalendarReferences $references,
         private Quota $quota,
+        private UsageCounts $counts,
     ) {
     }
 
@@ -27,7 +29,9 @@ readonly class FeedService
     {
         $items = $this->em->getRepository(CalendarFeed::class)->findBy(['club' => $club]);
 
-        return array_map(fn (CalendarFeed $f) => $this->serialize($f, $includeSecret), $items);
+        $assigned = $this->counts->membersByFeed(array_map(fn (CalendarFeed $f) => $f->getId(), $items));
+
+        return array_map(fn (CalendarFeed $f) => $this->serialize($f, $includeSecret, $assigned[$f->getId()] ?? 0), $items);
     }
 
     /** One feed of the club (a feed of another club is 404, like an unknown id). */
@@ -106,10 +110,20 @@ readonly class FeedService
         $this->em->flush();
     }
 
-    public function regenerateSecret(string $id, Club $club, bool $includeSecret = false): array
+    /**
+     * The old secret dies either way. `$revokeClaimed` also removes the access gained by opening the feed with
+     * the secret (`claimed` rows); assigned access stays.
+     */
+    public function regenerateSecret(string $id, Club $club, bool $includeSecret = false, bool $revokeClaimed = false): array
     {
         $feed = $this->find($id, $club);
         $feed->setSharedSecret(bin2hex(random_bytes(16)));
+        if ($revokeClaimed) {
+            $this->em->createQuery('DELETE FROM '.FeedMember::class.' m WHERE m.feed = :feed AND m.source = :source')
+                ->setParameter('feed', $feed)
+                ->setParameter('source', FeedMember::CLAIMED)
+                ->execute();
+        }
         $this->em->flush();
 
         return $this->serialize($feed, $includeSecret);
@@ -178,7 +192,7 @@ readonly class FeedService
     }
 
     /** The secret leaves the API only on request (`includeSecret`), never by default. */
-    public function serialize(CalendarFeed $feed, bool $includeSecret = false): array
+    public function serialize(CalendarFeed $feed, bool $includeSecret = false, ?int $memberCount = null): array
     {
         $data = [
             'id' => $feed->getId(),
@@ -187,6 +201,7 @@ readonly class FeedService
             'name' => $feed->getName(),
             'visibility' => $feed->getVisibility()->value,
             'indexable' => $feed->isIndexable(),
+            'assignedCount' => $memberCount ?? ($this->counts->membersByFeed([$feed->getId()])[$feed->getId()] ?? 0),
             'targetGroups' => $feed->getTargetGroups()->map(fn (CalendarFeedTargetGroup $ftg) => [
                 'feedId' => $ftg->getFeed()->getId(),
                 'targetGroupId' => $ftg->getTargetGroup()->getId(),

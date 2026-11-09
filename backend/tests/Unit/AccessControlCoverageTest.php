@@ -21,7 +21,7 @@ class AccessControlCoverageTest extends KernelTestCase
         '#^[A-Z]+ /api/health$#',
         '#^[A-Z]+ /api/legal(/|$)#',
         '#^[A-Z]+ /api/map/image/#',
-        '#^[A-Z]+ /api/feed/#',
+        '#^[A-Z]+ /api/feed/(?![^/]+/(claim|membership)$)#',
         '#^[A-Z]+ /api/mcp(/|$)#',
         '#^[A-Z]+ /api/oauth/(?!authorize/decision$|authorization-request/)#',
         '#^[A-Z]+ /api/auth/(login|register|registration|identify|token|logout|forgot-password|reset-password|providers|verify-new-email)$#',

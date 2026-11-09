@@ -186,6 +186,15 @@ framework:
             policy: sliding_window
             limit: '%env(int:FEED_RATE_LIMIT_PER_FEED)%'
             interval: '1 minute'
+        # Joining a club / claiming a feed (signed in): per user and per client IP.
+        feed_claim_user:
+            policy: sliding_window
+            limit: 20
+            interval: '1 hour'
+        feed_claim_ip:
+            policy: sliding_window
+            limit: 60
+            interval: '1 hour'
         # PDF export (expensive to render): per user and per client IP.
         pdf_export_user:
             policy: sliding_window

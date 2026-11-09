@@ -159,6 +159,16 @@ framework:
             limit: '%env(int:FEED_RATE_LIMIT_PER_FEED)%'
             interval: '1 minute'
             cache_pool: app.auth_limiter_pool
+        feed_claim_user:
+            policy: sliding_window
+            limit: 1000
+            interval: '1 hour'
+            cache_pool: app.auth_limiter_pool
+        feed_claim_ip:
+            policy: sliding_window
+            limit: 1000
+            interval: '1 hour'
+            cache_pool: app.auth_limiter_pool
         pdf_export_user:
             policy: sliding_window
             limit: 1000

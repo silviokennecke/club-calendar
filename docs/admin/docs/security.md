@@ -62,6 +62,7 @@ Limits slow down attackers and mistakes. When one is hit, the app answers `429` 
 | Confirmation mail resend | 25 per day per IP | fixed |
 | Club invitations | 20 per user and 50 per club per day; 5 mails per address per day; re-send once per minute | fixed |
 | Public feeds | 120 per minute per IP, 600 per minute per feed | `FEED_RATE_LIMIT_PER_IP`, `FEED_RATE_LIMIT_PER_FEED` (0 = off) |
+| Joining a club through a feed | 20 per hour per user, 60 per hour per IP | fixed |
 | PDF export | 10 per user and 30 per IP per 10 min | fixed |
 | Maps and address search | several limits | fixed, see [Mail and maps](configuration/mail-and-maps.md) |
 | Holiday calendar fetch from a web address | 20 per hour per user | fixed |
@@ -158,6 +159,8 @@ Each feed has one of three visibility levels:
 
 Private feed addresses contain a secret. Anyone who has the address can read the feed, so share it carefully. A feed can be given a new secret to cut off old addresses. Feed addresses are sent with `Referrer-Policy: no-referrer` so the address does not leak to other sites. The "do not index" header for non-public feeds is set by the app itself, not by the web server.
 
+A signed-in person who opens a feed address can become a plain club member through it, if a club admin allows it. The club setting has three values: off (nobody joins this way), internal (the default; joining through "by link only" and private feeds) and public (public feeds as well). The setting only controls new members; existing members and invitations are unaffected. Joining through a private feed also needs its secret. Club admins can additionally give members access to a private feed by hand, and when they give a private feed a new secret they can choose to remove the access of everyone who joined with the old one. The old secret stops working in every case. If a private feed is switched to another visibility, the stored access stays but has no effect.
+
 Feeds are rate limited (see above). The ICS file by default covers the last 180 days and the next 24 months; `FEED_ICS_WINDOW_ENABLED`, `FEED_ICS_PAST_DAYS`, `FEED_ICS_FUTURE_MONTHS` and `FEED_ICS_MAX_EVENTS` change that, see the [reference](configuration/reference.md).
 
 ## AI apps (MCP)
@@ -181,12 +184,13 @@ Fixed limits keep a single account from filling the database. Exceeding one show
 |---|---|
 | Clubs per user | 50 |
 | Calendars per club | 100 |
-| Members per club | 500 |
+| Members per club | 5,000 (of which at most 500 with a staff role: viewer, editor, admin) |
 | Open invitations per club | 200 |
 | Events per calendar | 20,000 |
 | Locations per club | 2,000 |
 | Audiences per club | 500 |
 | Feeds per club | 50 |
+| People with stored access per private feed | 5,000 |
 | Badges / extras per calendar | 500 each |
 | Holiday calendars per calendar | 20 |
 | Connected AI apps per user | 20 |
