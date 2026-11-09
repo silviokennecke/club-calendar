@@ -38,8 +38,8 @@ Migrationen gehören nicht ungeprüft auf die Dev-DB).
    ```
    Die Fixture-Konten (`admin@example.com`) tragen noch den bcrypt-Hash (Legacy-Anmeldung, wird beim ersten Login im
    Hintergrund umgestellt). `e2e/helpers.ts` registriert und meldet Nutzer per OPAQUE an (Node-Client mit
-   `@serenity-kit/opaque`, Argon2id wie im Browser: etwa 1 s pro Anmeldung); `createLegacyUser` legt ein bcrypt-Konto über das
-   alte `POST /api/auth/register` an (`e2e/opaque.spec.ts`: Upgrade im Hintergrund). Ohne die OPAQUE-Variablen
+   `@serenity-kit/opaque`, Argon2id wie im Browser: etwa 1 s pro Anmeldung); `createLegacyUser` legt ein bcrypt-Konto über
+   `app:user:create --password` an (`POST /api/auth/register` antwortet bei OPAQUE an mit 409 `opaque_required`) (`e2e/opaque.spec.ts`: Upgrade im Hintergrund). Ohne die OPAQUE-Variablen
    schlagen die Helfer mit 503 `opaque_unavailable` fehl.
    `WEBAUTHN_RP_ID=localhost` ist nötig, wenn `backend/.env.local` eine andere `APP_URL` setzt (der Standard ist deren Host), sonst scheitern die Passkey-Tests in `profile.spec.ts`.
    `FRONTEND_URL`/`BACKEND_URL` stehen nicht mehr in `.env` (sie folgen `APP_URL`, siehe `config/services.yaml`) und

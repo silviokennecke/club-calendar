@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { apiGet, apiPost, sessionUser, type TokenResponse } from "@/lib/api";
+import { ApiError, apiGet, apiPost, sessionUser, type TokenResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import {
   consentCheckboxId,
@@ -12,7 +12,9 @@ import {
   type LegalType,
 } from "@/lib/legal";
 import {
+  OPAQUE_FAILURE_TEXT,
   opaqueFailureKind,
+  type OpaqueFailureKind,
   opaqueSignup,
   prefetchOpaque,
   signupProtocol,
@@ -32,8 +34,7 @@ interface FieldErrors {
   confirm?: string;
 }
 
-type Problem =
-  "exists" | "generic" | "consent" | "restricted" | "rate" | "unsupported" | "unavailable";
+type Problem = "exists" | "generic" | "consent" | "restricted" | "rate" | OpaqueFailureKind;
 
 /** Documents the user has to accept at signup (when the operator provides them). */
 const CONSENT_TYPES: readonly LegalType[] = ["privacy", "terms"];
@@ -141,6 +142,12 @@ export function SignupStep({
               password,
               language,
               acceptedDocuments,
+            }).catch((err: unknown) => {
+              // stale hint: the server runs OPAQUE now, sign up through it once
+              if (err instanceof ApiError && err.code === "opaque_required") {
+                return opaqueSignup(email, password, { name, language, acceptedDocuments });
+              }
+              throw err;
             });
       // restricted session: the address is confirmed with the code from the e-mail
       login(res.access_token, res.refresh_token, {
@@ -209,19 +216,17 @@ export function SignupStep({
         >
           {problem === "rate"
             ? rateText
-            : problem === "unsupported"
-              ? t("auth.opaqueUnsupported")
-              : problem === "unavailable"
-                ? t("auth.opaqueUnavailable")
-                : t(
-                    problem === "exists"
-                      ? "auth.register.problem.exists"
-                      : problem === "consent"
-                        ? "consent.outdated"
-                        : problem === "restricted"
-                          ? "auth.register.emailRestrictedField"
-                          : "auth.register.problem.generic",
-                  )}
+            : problem in OPAQUE_FAILURE_TEXT
+              ? t(OPAQUE_FAILURE_TEXT[problem as OpaqueFailureKind])
+              : t(
+                  problem === "exists"
+                    ? "auth.register.problem.exists"
+                    : problem === "consent"
+                      ? "consent.outdated"
+                      : problem === "restricted"
+                        ? "auth.register.emailRestrictedField"
+                        : "auth.register.problem.generic",
+                )}
         </FocusBanner>
       )}
       <ErrorSummary

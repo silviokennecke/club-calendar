@@ -248,6 +248,17 @@ describe("identify: login", () => {
     expect(await screen.findByTestId("location")).toHaveTextContent("/clubs");
   });
 
+  it("retries a stale legacy login through OPAQUE on 409 opaque_required", async () => {
+    const user = await loginStep();
+    apiPost.mockRejectedValue(new ApiError("x", 409, "opaque_required"));
+    opaqueLogin.mockResolvedValue({ access_token: "a", refresh_token: "r", user: { id: "u1" } });
+    await user.type(screen.getByLabelText(/^Passwort \(Pflicht\)/), "geheim123");
+    await user.click(screen.getByRole("button", { name: "Anmelden" }));
+    await waitFor(() => expect(opaqueLogin).toHaveBeenCalledWith("alex@beispiel.de", "geheim123"));
+    expect(await screen.findByTestId("location")).toHaveTextContent("/clubs");
+    expect(opaqueUpgrade).not.toHaveBeenCalled();
+  });
+
   it("upgrades silently to OPAQUE after a legacy login that offers it", async () => {
     const user = await loginStep();
     opaqueUpgrade.mockResolvedValue(undefined);

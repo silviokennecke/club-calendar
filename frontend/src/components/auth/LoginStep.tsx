@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { apiPost, sessionUser, type TokenResponse } from "@/lib/api";
+import { ApiError, apiPost, sessionUser, type TokenResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import {
   loginProtocol,
+  OPAQUE_FAILURE_TEXT,
+  type OpaqueFailureKind,
   opaqueFailureKind,
   opaqueLogin,
   prefetchOpaque,
@@ -32,7 +34,7 @@ interface LoginStepProps {
   onBack: () => void;
 }
 
-type Problem = { kind: "wrong" | "rate" | "unsupported" | "unavailable"; text?: string };
+type Problem = { kind: "wrong" | "rate" | OpaqueFailureKind; text?: string };
 
 /** Step 2 for an existing account: password sign-in (address fixed). */
 export function LoginStep({ email, auth, onBack }: LoginStepProps) {
@@ -61,14 +63,23 @@ export function LoginStep({ email, auth, onBack }: LoginStepProps) {
 
     setLoading(true);
     try {
-      const data =
-        protocol === "opaque"
-          ? await opaqueLogin(email, password)
-          : await apiPost<TokenResponse>("/api/auth/login", { email, password });
+      let viaOpaque = protocol === "opaque";
+      let data: TokenResponse;
+      if (viaOpaque) data = await opaqueLogin(email, password);
+      else {
+        try {
+          data = await apiPost<TokenResponse>("/api/auth/login", { email, password });
+        } catch (err) {
+          // identify was stale: the account has a record now, so sign in through OPAQUE once
+          if (!(err instanceof ApiError && err.code === "opaque_required")) throw err;
+          viaOpaque = true;
+          data = await opaqueLogin(email, password);
+        }
+      }
       login(data.access_token, data.refresh_token, sessionUser(data));
       // an unconfirmed address is a restricted session: confirm it with the mailed code first
       navigate(data.emailVerificationRequired ? "/verify-email" : "/clubs");
-      if (protocol !== "opaque") startOpaqueUpgrade(data.opaqueUpgrade, password);
+      if (!viaOpaque) startOpaqueUpgrade(data.opaqueUpgrade, password);
       setPassword("");
     } catch (err: unknown) {
       const failure = opaqueFailureKind(err);
@@ -127,9 +138,9 @@ export function LoginStep({ email, auth, onBack }: LoginStepProps) {
           {t("auth.login.wrongText")}
         </FocusBanner>
       )}
-      {(problem?.kind === "unsupported" || problem?.kind === "unavailable") && (
+      {problem && problem.kind !== "wrong" && problem.kind !== "rate" && (
         <FocusBanner key={problemKey} tone="danger" title={t("auth.login.wrongTitle")}>
-          {t(problem.kind === "unsupported" ? "auth.opaqueUnsupported" : "auth.opaqueUnavailable")}
+          {t(OPAQUE_FAILURE_TEXT[problem.kind])}
         </FocusBanner>
       )}
       {problem?.kind === "rate" && (

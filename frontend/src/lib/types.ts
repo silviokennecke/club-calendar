@@ -19,7 +19,7 @@ export interface User {
   /** Restricted session: the e-mail address is not confirmed yet (verify gate). */
   emailVerificationRequired?: boolean;
   /** Password proof of this account (`GET /api/auth/me`); null = no password. */
-  passwordProtocol?: "opaque" | "legacy" | null;
+  passwordProtocol?: "opaque" | "legacy" | "reset_required" | null;
 }
 
 export interface PendingConsent {

@@ -64,6 +64,7 @@ export async function opaqueRegisterRecord(
     data: {
       ...finishContext(startBody),
       ...extra,
+      registrationState: startBody.registrationState,
       registrationRecord: s2.registrationRecord,
     },
   });
@@ -136,15 +137,22 @@ export async function createVerifiedUser(request: APIRequestContext, name: strin
 }
 
 /**
- * A user with a bcrypt password and no OPAQUE record (the legacy protocol, still served by
- * `POST /api/auth/register`); the first sign-in upgrades it.
+ * A user with a bcrypt password and no OPAQUE record. `POST /api/auth/register` answers 409 while OPAQUE
+ * is on, so the console command creates it (`--password` stays a legacy account); the first sign-in upgrades it.
  */
-export async function createLegacyUser(request: APIRequestContext, name: string) {
+export async function createLegacyUser(_request: APIRequestContext, name: string) {
   const email = `e2e-legacy-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
-  const res = await request.post(`${API}/api/auth/register`, {
-    data: { name, email, password: PASSWORD, language: "de", acceptedDocuments: [] },
-  });
-  expect(res.ok(), await res.text()).toBeTruthy();
+  backendConsole(
+    "app:user:create",
+    "--name",
+    name,
+    "--email",
+    email,
+    "--password",
+    PASSWORD,
+    "--language",
+    "de",
+  );
   backendConsole("app:user:verify", email);
   return email;
 }

@@ -10,7 +10,7 @@ import {
   Skeleton,
 } from "@/components/ui/shared";
 import { apiDelete, apiErrorCode, apiPost } from "@/lib/api";
-import { opaqueFailureKind, usePasswordProof } from "@/lib/opaque";
+import { OPAQUE_FAILURE_TEXT, opaqueFailureKind, usePasswordProof } from "@/lib/opaque";
 import { focusFirstInvalid } from "@/lib/focus";
 
 interface DeleteAccountDialogProps {
@@ -109,8 +109,8 @@ export function DeleteAccountDialog({
         setFailure(joinHint(t("profile.danger.lastMemberOfClub"), blockedHint));
       else if (errorCode === "last_admin_of_club")
         setFailure(joinHint(t("profile.danger.lastAdminOfClub"), blockedHint));
-      else if (opaqueFailureKind(error) === "unsupported") setFailure(t("auth.opaqueUnsupported"));
-      else if (opaqueFailureKind(error) === "unavailable") setFailure(t("auth.opaqueUnavailable"));
+      else if (opaqueFailureKind(error))
+        setFailure(t(OPAQUE_FAILURE_TEXT[opaqueFailureKind(error)!]));
       else setFailure(t("profile.danger.failed"));
       setBusy(false);
       return;

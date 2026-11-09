@@ -11,7 +11,7 @@ import {
   toast,
 } from "@/components/ui/shared";
 import { ApiError, apiDelete, apiPost } from "@/lib/api";
-import { opaqueFailureKind, usePasswordProof } from "@/lib/opaque";
+import { OPAQUE_FAILURE_TEXT, opaqueFailureKind, usePasswordProof } from "@/lib/opaque";
 import { useAuth } from "@/lib/auth-context";
 import { isEmailShape } from "@/lib/email";
 import { focusFirstInvalid } from "@/lib/focus";
@@ -93,13 +93,7 @@ export function AccountSection({ profile }: { profile: ProfileData }) {
         setEmailErrors({ email: t("profile.account.emailInvalid") });
       else {
         const kind = opaqueFailureKind(err);
-        setEmailFailed(
-          kind === "unsupported"
-            ? t("auth.opaqueUnsupported")
-            : kind === "unavailable"
-              ? t("auth.opaqueUnavailable")
-              : t("profile.account.emailFailed"),
-        );
+        setEmailFailed(kind ? t(OPAQUE_FAILURE_TEXT[kind]) : t("profile.account.emailFailed"));
       }
     } finally {
       setSending(false);

@@ -16,6 +16,8 @@
   "auth": {
     "opaqueUnsupported": "Dein Browser oder Gerät unterstützt die sichere Anmeldung nicht (WebAssembly oder Arbeitsspeicher). Bitte probiere einen aktuellen Browser.",
     "opaqueUnavailable": "Die sichere Anmeldung ist gerade nicht verfügbar. Bitte versuche es später noch einmal.",
+    "opaqueResetRequired": "Dein bisheriges Passwort wird nicht mehr akzeptiert. Setze es über „Passwort vergessen“ auf der Anmeldeseite zurück.",
+    "opaqueReload": "Die Seite ist veraltet. Bitte lade sie neu und versuche es erneut.",
     "signIn": "Anmelden",
     "signOut": "Abmelden",
     "email": "E-Mail",

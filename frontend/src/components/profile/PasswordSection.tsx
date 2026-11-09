@@ -6,7 +6,12 @@ import { ApiError, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { focusFirstInvalid } from "@/lib/focus";
 import { passwordProblem } from "@/lib/password";
-import { opaqueChangePassword, opaqueFailureKind, usePasswordProof } from "@/lib/opaque";
+import {
+  OPAQUE_FAILURE_TEXT,
+  opaqueChangePassword,
+  opaqueFailureKind,
+  usePasswordProof,
+} from "@/lib/opaque";
 import { requestPasswordReset } from "@/lib/passwordReset";
 import type { User } from "@/lib/types";
 import type { ProfileData } from "./profileTypes";
@@ -82,13 +87,7 @@ export function PasswordSection({ profile }: { profile: ProfileData }) {
       else if (code === "validation_failed") setErrors({ next: t("auth.reset.password.short") });
       else {
         const kind = opaqueFailureKind(err);
-        setFailed(
-          kind === "unsupported"
-            ? t("auth.opaqueUnsupported")
-            : kind === "unavailable"
-              ? t("auth.opaqueUnavailable")
-              : t("profile.password.failed"),
-        );
+        setFailed(kind ? t(OPAQUE_FAILURE_TEXT[kind]) : t("profile.password.failed"));
       }
     } finally {
       setSaving(false);

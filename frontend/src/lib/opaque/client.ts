@@ -72,17 +72,17 @@ export type RegisterContext =
 
 interface RegisterStart {
   registrationResponse: string;
-  registrationState?: string;
+  registrationState: string;
 }
 
-/** Registration rounds; `ctx` goes into start, `finishCtx` (state or the same ticket/token) into finish. */
-async function registerRounds(
+/** Profile used for new records; login uses whatever the server stored/announces (`ksfProfile`). */
+export const REGISTRATION_PROFILE = "memory-constrained";
+
+async function registerOnce<T>(
   password: string,
   ctx: RegisterContext,
-  finishCtx: (start: RegisterStart) => Record<string, unknown>,
-  extra: Record<string, unknown> = {},
-) {
-  assertPasswordPolicy(password);
+  extra: Record<string, unknown>,
+): Promise<T> {
   const s1 = await callOpaque<{ clientRegistrationState: string; registrationRequest: string }>({
     op: "startRegistration",
     password,
@@ -99,48 +99,58 @@ async function registerRounds(
     registrationResponse: start.registrationResponse,
     ksf: ksfConfig(REGISTRATION_PROFILE),
   });
-  return {
-    body: { ...finishCtx(start), ...extra, registrationRecord: s2.registrationRecord },
-  };
+  // signup is selected by the absence of a ticket/token; its address only goes to start
+  const finishCtx = "email" in ctx ? {} : ctx;
+  return apiPost<T>(`${BASE}/register/finish`, {
+    ...finishCtx,
+    ...extra,
+    registrationState: start.registrationState,
+    registrationRecord: s2.registrationRecord,
+  });
 }
 
-/** Profile used for new records; login uses whatever the server stored/announces (`ksfProfile`). */
-export const REGISTRATION_PROFILE = "memory-constrained";
+/** Both rounds; a stale state (409 `opaque_state_invalid`, e.g. key rotation) restarts once from register/start. */
+async function register<T>(
+  password: string,
+  ctx: RegisterContext,
+  extra: Record<string, unknown> = {},
+): Promise<T> {
+  assertPasswordPolicy(password);
+  try {
+    return await registerOnce<T>(password, ctx, extra);
+  } catch (e) {
+    if (e instanceof ApiError && e.code === "opaque_state_invalid") {
+      return registerOnce<T>(password, ctx, extra);
+    }
+    throw e;
+  }
+}
 
 export interface SignupResult extends TokenResponse {
   verificationRequired: boolean;
   email: string;
 }
 
-export async function opaqueSignup(
+export function opaqueSignup(
   email: string,
   password: string,
   details: { name: string; language?: string | null; acceptedDocuments: string[] },
 ): Promise<SignupResult> {
-  const { body } = await registerRounds(
-    password,
-    { email },
-    (s) => ({ registrationState: s.registrationState }),
-    details,
-  );
-  return apiPost<SignupResult>(`${BASE}/register/finish`, body);
+  return register<SignupResult>(password, { email }, details);
 }
 
 export async function opaqueReset(resetToken: string, password: string): Promise<void> {
-  const { body } = await registerRounds(password, { resetToken }, () => ({ resetToken }));
-  await apiPost<void>(`${BASE}/register/finish`, body);
+  await register<void>(password, { resetToken });
 }
 
 /** Needs a `change-password` ticket from `opaqueReauth`; ends the other sessions, returns a new token pair. */
-export async function opaqueChangePassword(
+export function opaqueChangePassword(
   reauthTicket: string,
   password: string,
 ): Promise<TokenResponse> {
-  const { body } = await registerRounds(password, { reauthTicket }, () => ({ reauthTicket }));
-  return apiPost<TokenResponse>(`${BASE}/register/finish`, body);
+  return register<TokenResponse>(password, { reauthTicket });
 }
 
 export async function opaqueUpgrade(upgradeTicket: string, password: string): Promise<void> {
-  const { body } = await registerRounds(password, { upgradeTicket }, () => ({ upgradeTicket }));
-  await apiPost<void>(`${BASE}/register/finish`, body);
+  await register<void>(password, { upgradeTicket });
 }

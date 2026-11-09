@@ -30,8 +30,32 @@ export const OPAQUE_ERROR_CODES = [
 export type OpaqueErrorCode = (typeof OPAQUE_ERROR_CODES)[number];
 
 /** Which message a failed OPAQUE call needs beyond the usual credential errors; null = not one of them. */
-export function opaqueFailureKind(e: unknown): "unsupported" | "unavailable" | null {
+export type OpaqueFailureKind = "unsupported" | "unavailable" | "reset_required" | "reload";
+
+export function opaqueFailureKind(e: unknown): OpaqueFailureKind | null {
   if (e instanceof OpaqueClientError) return "unsupported";
-  if (e instanceof ApiError && e.code === "opaque_unavailable") return "unavailable";
+  if (e instanceof PasswordResetRequiredError) return "reset_required";
+  if (e instanceof ApiError) {
+    if (e.code === "opaque_unavailable") return "unavailable";
+    if (e.code === "reset_required") return "reset_required";
+    // stale view of the account's protocol: the legacy endpoint refuses, a reload picks the right path
+    if (e.code === "opaque_required") return "reload";
+  }
   return null;
+}
+
+/** Text key for a failure kind (profile dialogs, signup, reset). */
+export const OPAQUE_FAILURE_TEXT: Record<OpaqueFailureKind, string> = {
+  unsupported: "auth.opaqueUnsupported",
+  unavailable: "auth.opaqueUnavailable",
+  reset_required: "auth.opaqueResetRequired",
+  reload: "auth.opaqueReload",
+};
+
+/** The account has a password the server no longer accepts; the proof cannot be built. */
+export class PasswordResetRequiredError extends Error {
+  constructor() {
+    super("Password reset required");
+    this.name = "PasswordResetRequiredError";
+  }
 }
