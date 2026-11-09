@@ -10,14 +10,11 @@ use App\Dto\Auth\DeleteAccountDto;
 use App\Dto\Auth\ForgotPasswordDto;
 use App\Dto\Auth\IdentifyDto;
 use App\Dto\Auth\LoginDto;
-use App\Dto\Auth\RegisterDto;
-use App\Dto\Auth\ResetPasswordDto;
 use App\Dto\Auth\UpdateMeDto;
 use App\Dto\Auth\VerifyEmailDto;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Opaque\OpaqueAuthHint;
-use App\Opaque\OpaqueService;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
 use App\Service\AccountService;
@@ -67,26 +64,7 @@ class AuthController extends AbstractApiController
         #[Autowire(env: 'FRONTEND_URL')]
         private readonly string $frontendUrl,
         private readonly OpaqueAuthHint $authHint,
-        private readonly OpaqueService $opaque,
     ) {
-    }
-
-    #[Route('/register', methods: ['POST'])]
-    public function register(Request $request): JsonResponse
-    {
-        $this->rateLimiter->assertRegisterAllowed($request);
-        $this->assertPlaintextAllowed();
-        try {
-            $dto = $this->serializer->deserialize($request->getContent(), RegisterDto::class, 'json');
-        } catch (SerializerException $e) {
-            throw self::invalidJson('Invalid JSON body: '.$e->getMessage(), $e);
-        }
-        $this->validateDto($dto, $this->validator);
-        $this->rateLimiter->assertRegisterEmailAllowed($dto->email);
-        $tokens = $this->auth->register($dto->name, $dto->email, $dto->password, $dto->language, $dto->acceptedDocuments, $request->getClientIp(), $request->headers->get('User-Agent'));
-
-        // A restricted session: the address is confirmed with the code from the mail (POST /api/auth/verify-email).
-        return new JsonResponse(['verificationRequired' => true, 'email' => $dto->email] + $tokens, Response::HTTP_CREATED);
     }
 
     /**
@@ -128,14 +106,6 @@ class AuthController extends AbstractApiController
         $this->rateLimiter->recordLoginSuccess($dto->email);
 
         return new JsonResponse($tokens);
-    }
-
-    /** With OPAQUE enabled, passwords never travel in plaintext for new credentials: signup and reset use `opaque/register/*`. */
-    private function assertPlaintextAllowed(): void
-    {
-        if ($this->opaque->isEnabled()) {
-            throw new ApiProblemException(409, 'Passwords are set with OPAQUE: use /api/auth/opaque/register', 'opaque_required');
-        }
     }
 
     /**
@@ -184,18 +154,6 @@ class AuthController extends AbstractApiController
         if ($byEmail->isAccepted() && $byIp->isAccepted()) {
             $this->passwordResets->requestReset($dto->email);
         }
-
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
-    }
-
-    /** 204 on success (all sessions ended; the user signs in again), 400 invalid_reset_token otherwise. */
-    #[Route('/reset-password', methods: ['POST'])]
-    public function resetPassword(Request $request): JsonResponse
-    {
-        $this->assertPlaintextAllowed();
-        $dto = $this->deserializeDto($request, ResetPasswordDto::class);
-        $this->validateDto($dto, $this->validator);
-        $this->passwordResets->reset($dto->token, $dto->password);
 
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
@@ -445,7 +403,6 @@ class AuthController extends AbstractApiController
     {
         return new JsonResponse([
             'restricted' => $this->registrationPolicy->isRestricted(),
-            'opaqueEnabled' => $this->opaque->isEnabled(),
         ]);
     }
 

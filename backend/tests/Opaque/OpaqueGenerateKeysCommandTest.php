@@ -31,7 +31,7 @@ class OpaqueGenerateKeysCommandTest extends KernelTestCase
         self::assertStringContainsString('Store these', $tester->getErrorOutput());
         self::assertStringContainsString('scrollback', $tester->getErrorOutput());
 
-        $keys = new OpaqueKeys(true, $seed[1], $key[1]);
+        $keys = new OpaqueKeys($seed[1], $key[1]);
         self::assertSame(64, strlen($keys->oprfSeed()));
         self::assertSame(32, strlen($keys->serverPublicKey()));
     }

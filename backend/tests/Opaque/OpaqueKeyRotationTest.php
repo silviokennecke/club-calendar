@@ -48,7 +48,7 @@ class OpaqueKeyRotationTest extends KernelTestCase
 
     private function service(string $active = '1', bool $withNew = true): OpaqueService
     {
-        $keys = new OpaqueKeys(true, $this->legacySeed, $this->legacyPrivate, $withNew ? $this->newSet : '', $active);
+        $keys = new OpaqueKeys($this->legacySeed, $this->legacyPrivate, $withNew ? $this->newSet : '', $active);
         $tickets = new OpaqueReauthTickets(new SignedTokenService('test-app-secret', $this->clock), $this->nonces);
 
         return new OpaqueService($keys, new LoginStateSealer('test-app-secret'), $tickets, $this->nonces, $this->clock, $this->em, $this->logger);
@@ -59,7 +59,7 @@ class OpaqueKeyRotationTest extends KernelTestCase
         $user = (new User())->setName('Ada')->setEmail($email)->setIsEmailVerified(true);
         $reg = $this->client->startRegistration(self::PASSWORD);
         $response = $service->registrationResponse($user, $reg['request']);
-        $service->storeRecord($user, $this->client->finishRegistration(self::PASSWORD, $reg['blind'], $response)['record']);
+        $service->storeRecord($user, $this->client->finishRegistration(self::PASSWORD, $reg['blind'], $response)['record'], $service->activeKeyId());
         $this->em->persist($user);
         $this->em->flush();
 

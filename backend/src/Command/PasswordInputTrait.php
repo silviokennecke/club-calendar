@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Dto\Auth\RegisterDto;
-use App\Opaque\OpaqueRollout;
+use App\Opaque\OpaqueCutoff;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\StreamableInputInterface;
@@ -14,7 +14,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
  * Shared input handling of the user administration commands. Values are validated with the constraints of
- * {@see RegisterDto}, the DTO of POST /api/auth/register.
+ * {@see RegisterDto}, the DTO of the former plaintext sign-up.
  */
 trait PasswordInputTrait
 {
@@ -86,20 +86,17 @@ trait PasswordInputTrait
     }
 
     /**
-     * With OPAQUE on, a CLI password is a bcrypt (legacy) one: warn, and refuse after the cutoff unless forced.
+     * A CLI password is a bcrypt (legacy) one: warn, and refuse after the cutoff unless forced.
      * Returns false when refused.
      */
-    private function acceptLegacyPassword(SymfonyStyle $io, OpaqueRollout $rollout, ClockInterface $clock, bool $forceLegacy): bool
+    private function acceptLegacyPassword(SymfonyStyle $io, OpaqueCutoff $cutoff, ClockInterface $clock, bool $forceLegacy): bool
     {
-        if (!$rollout->isEnabled()) {
-            return true;
-        }
-        if ($rollout->cutoffReached($clock->now()) && !$forceLegacy) {
+        if ($cutoff->cutoffReached($clock->now()) && !$forceLegacy) {
             $io->error('OPAQUE_LEGACY_CUTOFF is reached: a password here would create a legacy (bcrypt) account that cannot sign in. Use --link, or --force-legacy.');
 
             return false;
         }
-        $io->warning('OPAQUE is enabled: this creates a legacy (bcrypt) password. It is upgraded on first sign-in; after the cutoff the user must reset it. Prefer --link.');
+        $io->warning('This creates a legacy (bcrypt) password. It is upgraded on first sign-in; after the cutoff the user must reset it. Prefer --link.');
 
         return true;
     }

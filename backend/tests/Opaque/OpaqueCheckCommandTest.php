@@ -11,7 +11,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 class OpaqueCheckCommandTest extends KernelTestCase
 {
-    private const VARS = ['OPAQUE_ENABLED', 'OPAQUE_OPRF_SEED', 'OPAQUE_SERVER_PRIVATE_KEY', 'OPAQUE_KEYS', 'OPAQUE_ACTIVE_KEY_ID', 'OPAQUE_ROLLOUT_PERCENT', 'OPAQUE_LEGACY_CUTOFF'];
+    private const VARS = ['OPAQUE_OPRF_SEED', 'OPAQUE_SERVER_PRIVATE_KEY', 'OPAQUE_KEYS', 'OPAQUE_ACTIVE_KEY_ID', 'OPAQUE_LEGACY_CUTOFF'];
 
     /** @var array<string, array{0: string|false, 1: mixed, 2: mixed}> */
     private array $saved = [];
@@ -54,18 +54,9 @@ class OpaqueCheckCommandTest extends KernelTestCase
         return $tester;
     }
 
-    public function testDisabledSkipsTheCheck(): void
-    {
-        $tester = $this->check(['OPAQUE_ENABLED' => 'false']);
-
-        self::assertSame(0, $tester->getStatusCode());
-        self::assertStringContainsString('disabled', $tester->getDisplay());
-    }
-
-    public function testEnabledWithValidKeysPasses(): void
+    public function testValidKeysPass(): void
     {
         $tester = $this->check([
-            'OPAQUE_ENABLED' => 'true',
             'OPAQUE_OPRF_SEED' => OpaqueKeys::encode(random_bytes(64)),
             'OPAQUE_SERVER_PRIVATE_KEY' => OpaqueKeys::encode(sodium_crypto_core_ristretto255_scalar_random()),
         ]);
@@ -73,18 +64,17 @@ class OpaqueCheckCommandTest extends KernelTestCase
         self::assertSame(0, $tester->getStatusCode());
     }
 
-    public function testEnabledWithMissingKeysIsFatal(): void
+    public function testMissingKeysAreFatal(): void
     {
-        $tester = $this->check(['OPAQUE_ENABLED' => 'true', 'OPAQUE_OPRF_SEED' => '', 'OPAQUE_SERVER_PRIVATE_KEY' => '']);
+        $tester = $this->check(['OPAQUE_OPRF_SEED' => '', 'OPAQUE_SERVER_PRIVATE_KEY' => '']);
 
         self::assertSame(1, $tester->getStatusCode());
         self::assertStringContainsString('OPAQUE_OPRF_SEED', $tester->getDisplay());
     }
 
-    public function testEnabledWithInvalidKeyIsFatal(): void
+    public function testInvalidKeyIsFatal(): void
     {
         $tester = $this->check([
-            'OPAQUE_ENABLED' => 'true',
             'OPAQUE_OPRF_SEED' => OpaqueKeys::encode(random_bytes(64)),
             'OPAQUE_SERVER_PRIVATE_KEY' => OpaqueKeys::encode(str_repeat("\xff", 32)),
         ]);
@@ -100,7 +90,7 @@ class OpaqueCheckCommandTest extends KernelTestCase
     /** @param array<string, string> $extra */
     private function checkKeys(array $extra): CommandTester
     {
-        return $this->check($extra + ['OPAQUE_ENABLED' => 'true', 'OPAQUE_OPRF_SEED' => '', 'OPAQUE_SERVER_PRIVATE_KEY' => '', 'OPAQUE_KEYS' => '', 'OPAQUE_ACTIVE_KEY_ID' => '']);
+        return $this->check($extra + ['OPAQUE_OPRF_SEED' => '', 'OPAQUE_SERVER_PRIVATE_KEY' => '', 'OPAQUE_KEYS' => '', 'OPAQUE_ACTIVE_KEY_ID' => '']);
     }
 
     public function testMultipleKeySetsPass(): void
@@ -151,43 +141,34 @@ class OpaqueCheckCommandTest extends KernelTestCase
         self::assertStringContainsString('reference key id "gone"', $tester->getDisplay());
     }
 
-    /** @return iterable<string, array{string, string, string}> */
-    public static function invalidRollout(): iterable
+    /** @return iterable<string, array{string}> */
+    public static function invalidCutoff(): iterable
     {
-        yield 'percent over 100' => ['101', '', 'OPAQUE_ROLLOUT_PERCENT'];
-        yield 'negative percent' => ['-1', '', 'OPAQUE_ROLLOUT_PERCENT'];
-        yield 'non-numeric percent' => ['half', '', 'OPAQUE_ROLLOUT_PERCENT'];
-        yield 'decimal percent' => ['12.5', '', 'OPAQUE_ROLLOUT_PERCENT'];
-        yield 'cutoff not ISO' => ['0', '31.12.2026', 'OPAQUE_LEGACY_CUTOFF'];
-        yield 'cutoff impossible date' => ['0', '2026-02-30', 'OPAQUE_LEGACY_CUTOFF'];
-        yield 'cutoff with time' => ['0', '2026-12-31T00:00:00', 'OPAQUE_LEGACY_CUTOFF'];
+        yield 'not ISO' => ['31.12.2026'];
+        yield 'impossible date' => ['2026-02-30'];
+        yield 'with time' => ['2026-12-31T00:00:00'];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('invalidRollout')]
-    public function testInvalidRolloutConfigIsFatalEvenWhenDisabled(string $percent, string $cutoff, string $expected): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidCutoff')]
+    public function testInvalidCutoffIsFatal(string $cutoff): void
     {
-        $tester = $this->check(['OPAQUE_ENABLED' => 'false', 'OPAQUE_ROLLOUT_PERCENT' => $percent, 'OPAQUE_LEGACY_CUTOFF' => $cutoff]);
+        $tester = $this->checkKeys(['OPAQUE_OPRF_SEED' => OpaqueKeys::encode(random_bytes(64)), 'OPAQUE_SERVER_PRIVATE_KEY' => OpaqueKeys::encode(sodium_crypto_core_ristretto255_scalar_random()), 'OPAQUE_LEGACY_CUTOFF' => $cutoff]);
 
         self::assertSame(1, $tester->getStatusCode());
-        self::assertStringContainsString($expected, $tester->getDisplay());
+        self::assertStringContainsString('OPAQUE_LEGACY_CUTOFF', $tester->getDisplay());
     }
 
-    public function testCutoffWithPartialRolloutIsFatal(): void
+    public function testValidCutoffPasses(): void
     {
-        foreach (['0', '99'] as $percent) {
-            $tester = $this->check(['OPAQUE_ENABLED' => 'false', 'OPAQUE_ROLLOUT_PERCENT' => $percent, 'OPAQUE_LEGACY_CUTOFF' => '2026-12-31']);
-
-            self::assertSame(1, $tester->getStatusCode());
-            self::assertStringContainsString('OPAQUE_ROLLOUT_PERCENT is below 100', $tester->getDisplay());
-        }
-        // Without a cutoff a partial rollout is the normal staged rollout.
-        self::assertSame(0, $this->check(['OPAQUE_ENABLED' => 'false', 'OPAQUE_ROLLOUT_PERCENT' => '50', 'OPAQUE_LEGACY_CUTOFF' => ''])->getStatusCode());
-    }
-
-    public function testValidRolloutConfigPasses(): void
-    {
-        $tester = $this->check(['OPAQUE_ENABLED' => 'false', 'OPAQUE_ROLLOUT_PERCENT' => '100', 'OPAQUE_LEGACY_CUTOFF' => '2026-12-31']);
+        $tester = $this->checkKeys(['OPAQUE_OPRF_SEED' => OpaqueKeys::encode(random_bytes(64)), 'OPAQUE_SERVER_PRIVATE_KEY' => OpaqueKeys::encode(sodium_crypto_core_ristretto255_scalar_random()), 'OPAQUE_LEGACY_CUTOFF' => '2026-12-31']);
 
         self::assertSame(0, $tester->getStatusCode());
+    }
+
+    public function testEntrypointAbortsWhenTheCheckFails(): void
+    {
+        $script = (string) file_get_contents(__DIR__.'/../../../docker/entrypoint.sh');
+
+        self::assertMatchesRegularExpression('/if ! php bin\/console app:opaque:check.*?\n.*?app:opaque:generate-keys.*?\n\s*exit 1/s', $script);
     }
 }

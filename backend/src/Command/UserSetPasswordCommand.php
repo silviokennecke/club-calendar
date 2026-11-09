@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Opaque\OpaqueRollout;
+use App\Opaque\OpaqueCutoff;
 use App\Service\AccountMailer;
 use App\Service\AccountService;
 use App\Service\PasswordResetService;
@@ -33,7 +33,7 @@ class UserSetPasswordCommand
         private readonly UserLookup $users,
         private readonly AccountService $accounts,
         private readonly ValidatorInterface $validator,
-        private readonly OpaqueRollout $rollout,
+        private readonly OpaqueCutoff $cutoff,
         private readonly ClockInterface $clock,
         private readonly PasswordResetService $passwordResets,
         private readonly AccountMailer $mailer,
@@ -46,7 +46,7 @@ class UserSetPasswordCommand
         #[Argument('User id (UUID) or e-mail address')] string $user,
         #[Option('Password (visible in the shell history: prefer --password-stdin or the prompt)')] ?string $password = null,
         #[Option('Read the password from the first line of STDIN', name: 'password-stdin')] bool $passwordStdin = false,
-        #[Option('Remove the password and print a one-time password-set link (default with OPAQUE)')] bool $link = false,
+        #[Option('Remove the password and print a one-time password-set link (the default unless a password is given)')] bool $link = false,
         #[Option('Allow --password after the OPAQUE cutoff', name: 'force-legacy')] bool $forceLegacy = false,
     ): int {
         $found = $this->users->find($user);
@@ -61,14 +61,14 @@ class UserSetPasswordCommand
 
             return Command::FAILURE;
         }
-        if ($link || (!$passwordGiven && $this->rollout->isEnabled())) {
+        if ($link || !$passwordGiven) {
             $this->accounts->revokePasswordAsOperator($found);
             $io->writeln($this->mailer->passwordResetUrl($this->passwordResets->createToken($found)));
             $io->success('Password removed; all sessions of the user ended. The link above sets a new one (valid 60 minutes, once).');
 
             return Command::SUCCESS;
         }
-        if ($passwordGiven && !$this->acceptLegacyPassword($io, $this->rollout, $this->clock, $forceLegacy)) {
+        if ($passwordGiven && !$this->acceptLegacyPassword($io, $this->cutoff, $this->clock, $forceLegacy)) {
             return Command::FAILURE;
         }
         $password = $this->readPassword($io, $input, $this->validator, $password, $passwordStdin);

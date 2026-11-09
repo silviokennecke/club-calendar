@@ -24,7 +24,7 @@ class AccessControlCoverageTest extends KernelTestCase
         '#^[A-Z]+ /api/feed/#',
         '#^[A-Z]+ /api/mcp(/|$)#',
         '#^[A-Z]+ /api/oauth/(?!authorize/decision$|authorization-request/)#',
-        '#^[A-Z]+ /api/auth/(login|register|registration|identify|token|logout|forgot-password|reset-password|providers|verify-new-email)$#',
+        '#^[A-Z]+ /api/auth/(login|registration|identify|token|logout|forgot-password|providers|verify-new-email)$#',
         '#^[A-Z]+ /api/auth/opaque/login/(start|finish)$#',
         '#^[A-Z]+ /api/auth/opaque/register/(start|finish)$#',
         '#^[A-Z]+ /api/auth/webauthn/authenticate/(options|verify)$#',

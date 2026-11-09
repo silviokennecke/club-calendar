@@ -10,6 +10,7 @@ use App\Entity\User;
 use App\Service\PasswordResetService;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
+use App\Tests\Helper\OpaqueApi;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -535,7 +536,7 @@ class AccountTest extends WebTestCase
         $token = $second;
         $container = static::getContainer();
         $resetToken = $container->get(PasswordResetService::class)->createToken($container->get(EntityManagerInterface::class)->find(User::class, $user->getId()));
-        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/reset-password', ['token' => $resetToken, 'password' => 'new-password-2']);
+        $r = OpaqueApi::reset(self::$client, $resetToken, 'new-password-2');
         $this->assertSame(204, $r['status'], $r['content']);
         $this->assertSame(['status' => 'error', 'reason' => 'invalid', 'flow' => 'email_change'], $this->openConfirmation($token));
         $this->assertSame('alice@example.com', $this->user($user->getId())->getEmail());

@@ -19,7 +19,7 @@ class UserLinkModeCommandsTest extends KernelTestCase
 {
     use ClockSensitiveTrait;
 
-    private const array VARS = ['OPAQUE_ENABLED', 'OPAQUE_ROLLOUT_PERCENT', 'OPAQUE_LEGACY_CUTOFF'];
+    private const array VARS = ['OPAQUE_LEGACY_CUTOFF'];
     private const string BCRYPT = '$2y$04$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
 
     /** @var array<string, string|null> */
@@ -48,14 +48,14 @@ class UserLinkModeCommandsTest extends KernelTestCase
     }
 
     /** $cutoff: '' none, 'past' reached, 'future' not yet. */
-    private function boot(string $enabled, string $cutoff = ''): void
+    private function boot(string $cutoff = ''): void
     {
         $date = match ($cutoff) {
             'past' => '2020-01-01',
             'future' => '2999-01-01',
             default => '',
         };
-        foreach (['OPAQUE_ENABLED' => $enabled, 'OPAQUE_ROLLOUT_PERCENT' => '100', 'OPAQUE_LEGACY_CUTOFF' => $date] as $name => $value) {
+        foreach (['OPAQUE_LEGACY_CUTOFF' => $date] as $name => $value) {
             $_SERVER[$name] = $_ENV[$name] = $value;
             putenv("$name=$value");
         }
@@ -104,9 +104,9 @@ class UserLinkModeCommandsTest extends KernelTestCase
 
     // --- app:user:create ---
 
-    public function testCreateWithOpaqueDefaultsToPasswordlessUserAndLink(): void
+    public function testCreateDefaultsToPasswordlessUserAndLink(): void
     {
-        $this->boot('true');
+        $this->boot();
         $t = $this->exec('app:user:create', ['--name' => 'Ada', '--email' => 'a@example.com']);
 
         $this->assertSame(Command::SUCCESS, $t->getStatusCode(), $t->getDisplay());
@@ -119,9 +119,9 @@ class UserLinkModeCommandsTest extends KernelTestCase
         $this->assertNotNull($reset);
     }
 
-    public function testCreateLinkFlagWorksWithoutOpaqueToo(): void
+    public function testCreateLinkFlagStillWorks(): void
     {
-        $this->boot('false');
+        $this->boot();
         $t = $this->exec('app:user:create', ['--name' => 'Ada', '--email' => 'a@example.com', '--link' => true]);
 
         $this->assertSame(Command::SUCCESS, $t->getStatusCode(), $t->getDisplay());
@@ -131,7 +131,7 @@ class UserLinkModeCommandsTest extends KernelTestCase
 
     public function testCreateLinkAndPasswordTogetherIsRefused(): void
     {
-        $this->boot('true');
+        $this->boot();
         $t = $this->exec('app:user:create', ['--name' => 'Ada', '--email' => 'a@example.com', '--link' => true, '--password' => 'secret-pass-1']);
 
         $this->assertSame(Command::FAILURE, $t->getStatusCode());
@@ -140,7 +140,7 @@ class UserLinkModeCommandsTest extends KernelTestCase
 
     public function testCreateWithOpaqueAndPasswordWarnsBeforeTheCutoff(): void
     {
-        $this->boot('true', 'future');
+        $this->boot('future');
         $t = $this->exec('app:user:create', ['--name' => 'Ada', '--email' => 'a@example.com', '--password' => 'secret-pass-1']);
 
         $this->assertSame(Command::SUCCESS, $t->getStatusCode(), $t->getDisplay());
@@ -152,7 +152,7 @@ class UserLinkModeCommandsTest extends KernelTestCase
 
     public function testCreateWithOpaqueAndPasswordWithoutCutoffWarns(): void
     {
-        $this->boot('true');
+        $this->boot();
         $t = $this->exec('app:user:create', ['--name' => 'Ada', '--email' => 'a@example.com', '--password' => 'secret-pass-1']);
 
         $this->assertSame(Command::SUCCESS, $t->getStatusCode());
@@ -161,7 +161,7 @@ class UserLinkModeCommandsTest extends KernelTestCase
 
     public function testCreateWithPasswordAfterTheCutoffIsRefusedWithoutForce(): void
     {
-        $this->boot('true', 'past');
+        $this->boot('past');
         $t = $this->exec('app:user:create', ['--name' => 'Ada', '--email' => 'a@example.com', '--password' => 'secret-pass-1']);
 
         $this->assertSame(Command::FAILURE, $t->getStatusCode());
@@ -171,7 +171,7 @@ class UserLinkModeCommandsTest extends KernelTestCase
 
     public function testCreateWithPasswordAfterTheCutoffAndForceLegacyWarnsAndCreates(): void
     {
-        $this->boot('true', 'past');
+        $this->boot('past');
         $t = $this->exec('app:user:create', ['--name' => 'Ada', '--email' => 'a@example.com', '--password' => 'secret-pass-1', '--force-legacy' => true]);
 
         $this->assertSame(Command::SUCCESS, $t->getStatusCode(), $t->getDisplay());
@@ -181,37 +181,18 @@ class UserLinkModeCommandsTest extends KernelTestCase
 
     public function testCreateAfterTheCutoffWithoutPasswordStillGivesALink(): void
     {
-        $this->boot('true', 'past');
+        $this->boot('past');
         $t = $this->exec('app:user:create', ['--name' => 'Ada', '--email' => 'a@example.com']);
 
         $this->assertSame(Command::SUCCESS, $t->getStatusCode(), $t->getDisplay());
         $this->assertLink($t);
     }
 
-    public function testCreateWithOpaqueOffAndPasswordIsUnchangedEvenAfterACutoff(): void
-    {
-        $this->boot('false', 'past');
-        $t = $this->exec('app:user:create', ['--name' => 'Ada', '--email' => 'a@example.com', '--password' => 'secret-pass-1']);
-
-        $this->assertSame(Command::SUCCESS, $t->getStatusCode(), $t->getDisplay());
-        $this->assertStringNotContainsString('legacy', $t->getDisplay());
-        $this->assertNotNull($this->byEmail('a@example.com')?->getPassword());
-    }
-
-    public function testCreateWithOpaqueOffAndNoPasswordStillNeedsOne(): void
-    {
-        $this->boot('false');
-        $t = $this->exec('app:user:create', ['--name' => 'Ada', '--email' => 'a@example.com']);
-
-        $this->assertSame(Command::FAILURE, $t->getStatusCode());
-        $this->assertStringContainsString('password is missing', $t->getDisplay());
-    }
-
     // --- app:user:set-password ---
 
-    public function testSetPasswordWithOpaqueDefaultsToLinkClearsCredentialsAndEndsSessions(): void
+    public function testSetPasswordDefaultsToLinkClearsCredentialsAndEndsSessions(): void
     {
-        $this->boot('true');
+        $this->boot();
         $user = $this->legacyUser('s@example.com', true);
         $t = $this->exec('app:user:set-password', ['user' => 's@example.com']);
 
@@ -225,9 +206,9 @@ class UserLinkModeCommandsTest extends KernelTestCase
         $this->assertSame($user->getId(), $after->getId());
     }
 
-    public function testSetPasswordLinkFlagVoidsEarlierLinksWithoutOpaque(): void
+    public function testSetPasswordLinkFlagVoidsEarlierLinks(): void
     {
-        $this->boot('false');
+        $this->boot();
         $this->legacyUser('s@example.com');
         $first = $this->exec('app:user:set-password', ['user' => 's@example.com', '--link' => true]);
         $second = $this->exec('app:user:set-password', ['user' => 's@example.com', '--link' => true]);
@@ -240,7 +221,7 @@ class UserLinkModeCommandsTest extends KernelTestCase
 
     public function testSetPasswordLinkAndPasswordTogetherIsRefused(): void
     {
-        $this->boot('true');
+        $this->boot();
         $this->legacyUser('s@example.com');
         $t = $this->exec('app:user:set-password', ['user' => 's@example.com', '--link' => true, '--password' => 'new-password-1']);
 
@@ -250,7 +231,7 @@ class UserLinkModeCommandsTest extends KernelTestCase
 
     public function testSetPasswordWithOpaqueAndPasswordWarnsAndClearsTheRecord(): void
     {
-        $this->boot('true', 'future');
+        $this->boot('future');
         $this->legacyUser('s@example.com', true);
         $t = $this->exec('app:user:set-password', ['user' => 's@example.com', '--password' => 'new-password-1']);
 
@@ -265,7 +246,7 @@ class UserLinkModeCommandsTest extends KernelTestCase
 
     public function testSetPasswordAfterTheCutoffNeedsForceLegacy(): void
     {
-        $this->boot('true', 'past');
+        $this->boot('past');
         $this->legacyUser('s@example.com');
         $refused = $this->exec('app:user:set-password', ['user' => 's@example.com', '--password' => 'new-password-1']);
 
@@ -275,16 +256,5 @@ class UserLinkModeCommandsTest extends KernelTestCase
         $forced = $this->exec('app:user:set-password', ['user' => 's@example.com', '--password' => 'new-password-1', '--force-legacy' => true]);
         $this->assertSame(Command::SUCCESS, $forced->getStatusCode(), $forced->getDisplay());
         $this->assertStringContainsString('legacy (bcrypt)', $forced->getDisplay());
-    }
-
-    public function testSetPasswordWithOpaqueOffIsUnchanged(): void
-    {
-        $this->boot('false', 'past');
-        $this->legacyUser('s@example.com');
-        $t = $this->exec('app:user:set-password', ['user' => 's@example.com', '--password' => 'new-password-1']);
-
-        $this->assertSame(Command::SUCCESS, $t->getStatusCode(), $t->getDisplay());
-        $this->assertStringNotContainsString('legacy', $t->getDisplay());
-        $this->assertStringNotContainsString('reset-password', $t->getDisplay());
     }
 }

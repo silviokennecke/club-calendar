@@ -52,7 +52,7 @@ class OpaqueStatusCommandTest extends KernelTestCase
 
         $tester->execute([]);
         self::assertStringContainsString('Migrated: 50 %', $tester->getDisplay());
-        self::assertStringContainsString('OPAQUE_ROLLOUT_PERCENT', $tester->getDisplay());
+        self::assertStringContainsString('OPAQUE_LEGACY_CUTOFF', $tester->getDisplay());
     }
 
     public function testCountsRecordsPerKeyId(): void

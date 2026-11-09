@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Security\OneTimeTokenService;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
+use App\Tests\Helper\OpaqueApi;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -78,7 +79,7 @@ class EmailVerificationCodeTest extends WebTestCase
     /** Registers and returns the code from the mail. */
     private function register(string $email = 'new@example.com'): string
     {
-        $r = $this->post('/api/auth/register', ['name' => 'New', 'email' => $email, 'password' => 'password123']);
+        $r = OpaqueApi::signup(self::$client, 'New', $email, 'password123');
         $this->assertSame(201, $r['status'], $r['content']);
         $this->bearer[$email] = $r['body']['access_token'];
 
@@ -131,7 +132,7 @@ class EmailVerificationCodeTest extends WebTestCase
 
     public function testRegisterIssuesARestrictedSessionAndRequiresTheCode(): void
     {
-        $r = $this->post('/api/auth/register', ['name' => 'New', 'email' => 'new@example.com', 'password' => 'password123']);
+        $r = OpaqueApi::signup(self::$client, 'New', 'new@example.com', 'password123');
         $this->assertSame(201, $r['status']);
         $this->assertTrue($r['body']['verificationRequired']);
         $this->assertSame('new@example.com', $r['body']['email']);
@@ -155,7 +156,7 @@ class EmailVerificationCodeTest extends WebTestCase
 
     public function testMailEmbedsTheLogoInline(): void
     {
-        $this->post('/api/auth/register', ['name' => 'New', 'email' => 'new@example.com', 'password' => 'password123']);
+        OpaqueApi::signup(self::$client, 'New', 'new@example.com', 'password123');
         $mail = $this->getMailerMessage();
         $this->assertInstanceOf(Email::class, $mail);
         $this->assertMatchesRegularExpression('#<img src="cid:[^"]+"#', (string) $mail->getHtmlBody());
@@ -182,7 +183,7 @@ class EmailVerificationCodeTest extends WebTestCase
         $this->assertSame(401, TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], 'Bearer '.$old)['status']);
         $me = TestHelper::jsonRequest(self::$client, 'GET', '/api/clubs', [], 'Bearer '.$r['body']['access_token']);
         $this->assertSame(200, $me['status']);
-        $this->assertSame(200, $this->post('/api/auth/login', ['email' => 'new@example.com', 'password' => 'password123'])['status']);
+        $this->assertSame(200, OpaqueApi::login(self::$client, 'new@example.com', 'password123')['status']);
     }
 
     public function testWrongCodeIsInvalidAndWithoutSessionIs401(): void

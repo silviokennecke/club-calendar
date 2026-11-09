@@ -11,6 +11,7 @@ use App\Service\ClubInvitationService;
 use App\Service\RegistrationPolicy;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\FakeOAuth2Client;
+use App\Tests\Helper\OpaqueApi;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -63,9 +64,7 @@ class RestrictedRegistrationTest extends WebTestCase
     /** @return array{status: int, body: mixed} */
     private function register(string $email = 'new@example.com'): array
     {
-        return TestHelper::jsonRequest($this->client, 'POST', '/api/auth/register', [
-            'name' => 'New', 'email' => $email, 'password' => 'password123',
-        ]);
+        return OpaqueApi::signup($this->client, 'New', $email, 'password123');
     }
 
     private function userCount(string $email): int

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Opaque\OpaqueRollout;
+use App\Opaque\OpaqueCutoff;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -17,7 +17,7 @@ class OpaqueStatusCommand
 {
     public function __construct(
         private readonly Connection $connection,
-        private readonly OpaqueRollout $rollout,
+        private readonly OpaqueCutoff $rollout,
     ) {
     }
 
@@ -44,8 +44,6 @@ class OpaqueStatusCommand
         $migrated = 0 === $withPassword ? 0.0 : round(100 * $withRecord / $withPassword, 1);
 
         $data = [
-            'enabled' => $this->rollout->isEnabled(),
-            'rolloutPercent' => $this->rollout->percent(),
             'legacyCutoff' => $this->rollout->cutoff()?->format('Y-m-d'),
             'total' => $total,
             'withRecord' => $withRecord,
@@ -62,8 +60,6 @@ class OpaqueStatusCommand
         }
 
         $io->definitionList(
-            ['OPAQUE_ENABLED' => $data['enabled'] ? 'true' : 'false'],
-            ['OPAQUE_ROLLOUT_PERCENT' => (string) $data['rolloutPercent']],
             ['OPAQUE_LEGACY_CUTOFF' => $data['legacyCutoff'] ?? '(none)'],
         );
         $io->table(['Accounts', 'Count'], [

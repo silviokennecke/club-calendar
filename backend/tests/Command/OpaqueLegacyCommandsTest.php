@@ -18,7 +18,7 @@ class OpaqueLegacyCommandsTest extends KernelTestCase
 {
     use ClockSensitiveTrait;
 
-    private const array VARS = ['OPAQUE_ENABLED', 'OPAQUE_ROLLOUT_PERCENT', 'OPAQUE_LEGACY_CUTOFF'];
+    private const array VARS = ['OPAQUE_LEGACY_CUTOFF'];
     private const string BCRYPT = '$2y$04$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
 
     /** @var array<string, string|null> */
@@ -46,9 +46,9 @@ class OpaqueLegacyCommandsTest extends KernelTestCase
         parent::tearDown();
     }
 
-    private function boot(string $enabled = 'true', string $cutoff = '2026-12-01', string $percent = '100'): void
+    private function boot(string $cutoff = '2026-12-01'): void
     {
-        foreach (['OPAQUE_ENABLED' => $enabled, 'OPAQUE_ROLLOUT_PERCENT' => $percent, 'OPAQUE_LEGACY_CUTOFF' => $cutoff] as $name => $value) {
+        foreach (['OPAQUE_LEGACY_CUTOFF' => $cutoff] as $name => $value) {
             $_SERVER[$name] = $_ENV[$name] = $value;
             putenv("$name=$value");
         }
@@ -107,24 +107,6 @@ class OpaqueLegacyCommandsTest extends KernelTestCase
         self::assertEmailCount(1);
         self::assertEmailAddressContains(self::getMailerMessage(), 'to', 'due@example.com');
         self::assertSame(14, $this->reminderDays($due));
-    }
-
-    public function testNotifyAndRetireRefuseWithAPartialRolloutAndACutoff(): void
-    {
-        $this->boot('true', '2026-12-01', '50');
-        static::mockTime('2026-11-20 10:00:00 UTC');
-        $user = $this->add('due@example.com');
-
-        $notify = $this->exec('app:opaque:notify-legacy');
-        self::assertSame(1, $notify->getStatusCode());
-        self::assertEmailCount(0);
-        self::assertNull($this->reminderDays($user));
-
-        static::mockTime('2026-12-02 10:00:00 UTC');
-        $retire = $this->exec('app:opaque:retire-legacy', ['--force' => true]);
-        self::assertSame(1, $retire->getStatusCode());
-        $this->em()->clear();
-        self::assertNotNull($this->em()->find(User::class, $user->getId())->getPassword());
     }
 
     public function testIsIdempotentPerStage(): void
@@ -222,15 +204,10 @@ class OpaqueLegacyCommandsTest extends KernelTestCase
         self::assertEmailCount(2);
     }
 
-    public function testNothingWithoutFlagOrCutoff(): void
+    public function testNothingWithoutCutoff(): void
     {
         static::mockTime('2026-11-20 10:00:00 UTC');
-        $this->boot('false');
-        $this->add('due@example.com');
-        $this->exec('app:opaque:notify-legacy');
-        self::assertEmailCount(0);
-
-        $this->boot('true', '');
+        $this->boot('');
         $this->add('due@example.com');
         $this->exec('app:opaque:notify-legacy');
         self::assertEmailCount(0);
@@ -263,7 +240,7 @@ class OpaqueLegacyCommandsTest extends KernelTestCase
         self::assertStringContainsString('2026-12-01', $bodies[1]);
     }
 
-    public function testRetireRefusesBeforeTheCutoffAndWhenDisabled(): void
+    public function testRetireRefusesBeforeTheCutoffAndWithoutOne(): void
     {
         $this->boot();
         static::mockTime('2026-11-30 23:59:59 UTC');
@@ -273,12 +250,7 @@ class OpaqueLegacyCommandsTest extends KernelTestCase
         self::assertSame(1, $tester->getStatusCode());
         self::assertSame(self::BCRYPT, $this->em()->find(User::class, $user->getId())->getPassword());
 
-        $this->boot('true', '');
-        $this->add('a@example.com');
-        self::assertSame(1, $this->exec('app:opaque:retire-legacy', ['--force' => true])->getStatusCode());
-
-        $this->boot('false');
-        static::mockTime('2026-12-02 00:00:00 UTC');
+        $this->boot('');
         $this->add('a@example.com');
         self::assertSame(1, $this->exec('app:opaque:retire-legacy', ['--force' => true])->getStatusCode());
     }

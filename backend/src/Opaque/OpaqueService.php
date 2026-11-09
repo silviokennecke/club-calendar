@@ -46,11 +46,6 @@ final class OpaqueService
     ) {
     }
 
-    public function isEnabled(): bool
-    {
-        return $this->keys->isEnabled();
-    }
-
     public function hasRecord(User $user): bool
     {
         return null !== $this->parseRecord($user);
@@ -98,12 +93,11 @@ final class OpaqueService
 
     /**
      * Stores a client record on the entity (192 B, validated) under the key id its registration response was
-     * evaluated with (null = active key, for operator/test paths); the caller flushes and ends sessions where required.
+     * evaluated with; the caller flushes and ends sessions where required.
      */
-    public function storeRecord(User $user, #[\SensitiveParameter] string $record, ?string $keyId = null): void
+    public function storeRecord(User $user, #[\SensitiveParameter] string $record, string $keyId): void
     {
         $this->assertValidRecord($record);
-        $keyId ??= $this->keys->activeId();
         if (!$this->keys->has($keyId)) {
             throw new InvalidMessageException('Unknown key id.');
         }
@@ -227,7 +221,7 @@ final class OpaqueService
             return null;
         }
         $keyId = $user->getOpaqueKeyId();
-        if ($this->keys->isEnabled() && (null === $keyId || !$this->keys->has($keyId))) {
+        if (null === $keyId || !$this->keys->has($keyId)) {
             $this->logger->error('Stored OPAQUE record references an unknown key id; answering with the fake path.', ['userId' => $user->getId(), 'keyId' => $keyId]);
 
             return null;

@@ -760,87 +760,13 @@ paths:
         '404': { $ref: '#/components/responses/LegalDocumentNotFound' }
 
   # ------------------------------------------------------------------ Auth
-  /api/auth/register:
-    post:
-      tags: [Auth]
-      summary: Register with e-mail and password
-      description: >-
-        Refused with `409 opaque_required` while `OPAQUE_ENABLED` is on (signup is `opaque/register/*` then; checked
-        right after the IP rate limit, before any hashing or database access).
-        Creates an unconfirmed account and mails a 6-digit confirmation code (no link, valid 15 minutes). The response
-        carries the usual token pair of a restricted session (`emailVerificationRequired: true`): only
-        `POST /api/auth/verify-email` with that session confirms the address.
-      operationId: register
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [name, email, password]
-              properties:
-                name: { type: string, minLength: 1, maxLength: 255 }
-                email: { type: string, format: email, maxLength: 254 }
-                password: { $ref: '#/components/schemas/Password' }
-                language: { type: [string, 'null'], examples: [de] }
-                acceptedDocuments:
-                  type: array
-                  maxItems: 20
-                  items: { type: string, maxLength: 36 }
-                  description: >-
-                    Ids of the accepted legal documents. The current document of every consent type that is provided
-                    (privacy, terms) must be in the list. Stored as consents with IP address and user agent.
-      responses:
-        '409':
-          description: >-
-            `opaque_required`: `OPAQUE_ENABLED` is on; use `opaque/register/*`.
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '201':
-          description: Account created, confirmation code mailed.
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - { $ref: '#/components/schemas/TokenResponse' }
-                  - type: object
-                    required: [verificationRequired, email]
-                    properties:
-                      verificationRequired: { type: boolean, const: true }
-                      email: { type: string, format: email }
-        '403':
-          description: >-
-            `registration_restricted` (field `email`): `RESTRICT_REGISTRATION` is set and the address has no open
-            club invitation. Checked after the consent check and before `email_taken`.
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '400':
-          description: >-
-            `email_taken` (field `email`), `invalid_request` (no JSON object) or `validation_failed` (field
-            `acceptedDocuments`: unknown id, not a list, more than 20).
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '422':
-          description: >-
-            `validation_failed`, or (checked before `email_taken`) `consent_required` (a current document is missing)
-            / `consent_outdated` (an older version of a document was sent), field `acceptedDocuments`, member
-            `documents` = the current documents to accept.
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '429': { $ref: '#/components/responses/AuthRateLimited' }
-
   /api/auth/login:
     post:
       tags: [Auth]
       summary: Sign in with e-mail and password
       description: >-
         An account whose address is not confirmed gets a restricted session (`emailVerificationRequired: true`). If
-        no valid code is waiting and the resend cooldown allows, a fresh code is mailed. With `OPAQUE_ENABLED` on, an
+        no valid code is waiting and the resend cooldown allows, a fresh code is mailed. An
         account with a usable OPAQUE record is refused with `409 opaque_required` before the password is checked
         (the same information as `identify`'s `auth: opaque`); its kept bcrypt hash is not accepted meanwhile.
       operationId: login
@@ -865,8 +791,8 @@ paths:
               schema: { $ref: '#/components/schemas/Problem' }
         '409':
           description: >-
-            `opaque_required`: `OPAQUE_ENABLED` is on and the account has a usable OPAQUE record (use `opaque/login/*`).
-            Or `reset_required`: `OPAQUE_ENABLED` is on, `OPAQUE_LEGACY_CUTOFF` has passed and the account has a password
+            `opaque_required`: the account has a usable OPAQUE record (use `opaque/login/*`).
+            Or `reset_required`: `OPAQUE_LEGACY_CUTOFF` has passed and the account has a password
             but no OPAQUE record. Answered before the password is checked (same information as `identify`'s
             `auth: reset_required`); the user must use "forgot password".
           content:
@@ -888,14 +814,13 @@ paths:
         per normalized address, `429 rate_limited`, checked before any database work).
 
 
-        `auth` names the credential protocol to use next. For `login`: `opaque` (the account has an OPAQUE record and
-        `OPAQUE_ENABLED` is on: `/api/auth/opaque/login/*`), `legacy` (bcrypt password, or the flag is off: `POST
-        /api/auth/login`), `none` (no password credential, SSO/passkey only; adds "has no password" to the existence
+        `auth` names the credential protocol to use next. For `login`: `opaque` (the account has an OPAQUE record:
+        `/api/auth/opaque/login/*`), `legacy` (bcrypt password before `OPAQUE_LEGACY_CUTOFF`: `POST
+        /api/auth/login`, which offers the silent upgrade), `none` (no password credential, SSO/passkey only; adds "has no password" to the existence
         oracle above, accepted because the UI needs it to pick the sign-in method) or `reset_required` (the password
-        cannot be used any more: `OPAQUE_LEGACY_CUTOFF` has passed for an account without a record, or the account has
-        only an OPAQUE record while the flag is off; use the "forgot password" flow). For `register` and
-        `registration_restricted`: `opaque` when the flag is on (signup via `/api/auth/opaque/register/*`), else
-        `legacy` (`POST /api/auth/register`).
+        cannot be used any more: `OPAQUE_LEGACY_CUTOFF` has passed for an account without a record, or the record is
+        unusable; use the "forgot password" flow). For `register` and `registration_restricted`: always `opaque`
+        (signup via `/api/auth/opaque/register/*`).
       operationId: identify
       security: []
       requestBody:
@@ -1012,47 +937,13 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
 
-  /api/auth/reset-password:
-    post:
-      tags: [Auth]
-      summary: Set a new password with a reset token
-      description: >-
-        Ends all sessions and confirms the address; SSO-only accounts get a password this way. A waiting e-mail change is
-        discarded. Refused with `409 opaque_required` while `OPAQUE_ENABLED` is on (use `opaque/register/*` with `resetToken`).
-      operationId: resetPassword
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [token, password]
-              properties:
-                token: { type: string, maxLength: 255 }
-                password: { $ref: '#/components/schemas/Password' }
-      responses:
-        '204': { description: Password set; the user signs in again. }
-        '409':
-          description: >-
-            `opaque_required`: `OPAQUE_ENABLED` is on; the reset is done with `opaque/register/*`.
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '400':
-          description: '`invalid_reset_token` (field `token`; unknown, used or expired alike) or `invalid_request`.'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '422': { $ref: '#/components/responses/ValidationFailed' }
-
   /api/auth/change-password:
     post:
       tags: [Auth]
       summary: Change the password
       description: >-
-        Returns new tokens for the calling session; all other sessions end. A notice mail goes to the account. With
-        `OPAQUE_ENABLED` on, an account with a usable OPAQUE record gets `409 opaque_required` (use a `change-password`
+        Returns new tokens for the calling session; all other sessions end. A notice mail goes to the account. An
+        account with a usable OPAQUE record gets `409 opaque_required` (use a `change-password`
         reauth ticket with `opaque/register/*`); the kept bcrypt hash is no proof then.
       operationId: changePassword
       requestBody:
@@ -1088,7 +979,7 @@ paths:
         204 whether or not the new address is free (no oracle). A confirmation link goes to the new address only if
         it is free and the rate limit allows; a notice goes to the current address. The change completes with
         `GET /api/auth/verify-new-email`. Proof: `password` (accounts with a bcrypt password) or `reauthTicket`
-        (OPAQUE, purpose `change-email`). With `OPAQUE_ENABLED` on, an account with a usable record is refused the
+        (OPAQUE, purpose `change-email`). An account with a usable record is refused the
         `password` proof with `409 opaque_required` (even with a kept bcrypt hash). The ticket is single use and consumed
         by the proof.
       operationId: requestEmailChange
@@ -1336,7 +1227,7 @@ paths:
         Needs re-authentication (AUTH-03): an account with a password sends `password`; an account without one
         (SSO-only, passkey-only) sends the 6-digit `code` that `POST /api/auth/delete-account/code` mailed to its
         address. An OPAQUE `reauthTicket` (purpose `delete-account`, from `POST /api/auth/opaque/reauth/*`) is accepted
-        instead. With `OPAQUE_ENABLED` on, an account with a usable record is refused `password` and `code` with
+        instead. An account with a usable record is refused `password` and `code` with
         `409 opaque_required` (even with a kept bcrypt hash). Every attempt counts against 5 per 15 minutes per user (and the per-IP limit):
         `429 rate_limited`. Nothing is deleted before the proof is valid. The ticket is consumed by the proof, before the
         last-member guard, so a refused deletion (422) burns it. Like this route, the reauth for this purpose (and only
@@ -1415,8 +1306,7 @@ paths:
       summary: Whether registration is restricted
       description: >-
         `restricted` is true when `RESTRICT_REGISTRATION` is set: only e-mail addresses with an open club invitation
-        (pending, not expired) may create an account, by password or by a first SSO sign-in. `opaqueEnabled` is the
-        OPAQUE feature flag (signup and password reset use OPAQUE while it is true).
+        (pending, not expired) may create an account, by password or by a first SSO sign-in.
       operationId: getRegistrationPolicy
       security: []
       responses:
@@ -1426,10 +1316,9 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [restricted, opaqueEnabled]
+                required: [restricted]
                 properties:
                   restricted: { type: boolean }
-                  opaqueEnabled: { type: boolean }
 
   /api/auth/providers:
     get:
@@ -1460,8 +1349,8 @@ paths:
       summary: Options to register a passkey (needs re-authentication)
       description: >-
         The account proves itself first: `{password}` for an account with a password, `{reauthTicket}` (OPAQUE, purpose
-        `passkey-register`), `{code}` (6 digits, mailed by `POST …/register/code`) for one without. With `OPAQUE_ENABLED`
-        on, an account with a usable record is refused `{password}` and `{code}` with `409 opaque_required`. Only then the options and the signed, single-use challenge token
+        `passkey-register`), `{code}` (6 digits, mailed by `POST …/register/code`) for one without. An account
+        with a usable record is refused `{password}` and `{code}` with `409 opaque_required`. Only then the options and the signed, single-use challenge token
         are issued; `…/register/verify` is impossible without that token. A deletion code is not valid here (the
         code is bound to its purpose). Every attempt counts: 5 per 15 minutes per user, plus the per-IP limit.
       operationId: passkeyRegistrationOptions
@@ -1493,7 +1382,7 @@ paths:
               schema: { $ref: '#/components/schemas/Problem' }
         '409':
           description: >-
-            `opaque_required`: `OPAQUE_ENABLED` is on; the account has a usable OPAQUE record, use a reauth ticket.
+            `opaque_required`: the account has a usable OPAQUE record, use a reauth ticket.
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -1550,7 +1439,7 @@ paths:
   /api/auth/opaque/login/start:
     post:
       tags: [Auth]
-      summary: OPAQUE login, step 1 (feature flag `OPAQUE_ENABLED`)
+      summary: OPAQUE login, step 1
       description: >-
         First step of the password-less-on-the-wire login (RFC 9807 OPAQUE-3DH, docs/ops/OPAQUE-PLAN.md). Binary
         values are unpadded base64url. `startLoginRequest` is KE1 (96 bytes), `loginResponse` KE2 (320 bytes).
@@ -1558,7 +1447,6 @@ paths:
         Password guesses are made here (each KE2 is one attempt), so this step consumes the login limits (10 per
         15 minutes per client IP, 5 per 15 minutes per normalized address, `429 rate_limited`), checked before any
         database or crypto work. `loginState` is an opaque sealed blob (single use, valid 120 seconds).
-        `503 opaque_unavailable` while the feature is off.
       operationId: opaqueLoginStart
       security: []
       requestBody:
@@ -1592,16 +1480,11 @@ paths:
               schema: { $ref: '#/components/schemas/Problem' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
-        '503':
-          description: '`opaque_unavailable`: OPAQUE login is switched off.'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
 
   /api/auth/opaque/login/finish:
     post:
       tags: [Auth]
-      summary: OPAQUE login, step 2 (feature flag `OPAQUE_ENABLED`)
+      summary: OPAQUE login, step 2
       description: >-
         Verifies KE3 and answers like `POST /api/auth/login` (token pair of a new family, `emailVerificationRequired`
         for an unconfirmed address, which also mails a code when due). The user comes only from the sealed
@@ -1635,23 +1518,18 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
-        '503':
-          description: '`opaque_unavailable`: OPAQUE login is switched off.'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
 
   /api/auth/opaque/reauth/start:
     post:
       tags: [Auth]
-      summary: OPAQUE re-authentication, step 1 (feature flag `OPAQUE_ENABLED`)
+      summary: OPAQUE re-authentication, step 1
       description: >-
         Requires the JWT; the credential is the signed-in user, never a client field. `purpose` is one of
         `delete-account`, `passkey-register`, `change-email`, `change-password`. Every start is a password guess for
         the client: it counts against the login limits (10 per 15 minutes per IP, 5 per 15 minutes per address) and
         the purpose's own limit (`delete-account` 5 per 15 minutes per user, `passkey-register` 5 per 15 minutes per
         user, plus the per-IP limit), all before any crypto. An account without an OPAQUE record gets
-        `409 opaque_not_registered` (it keeps using its password). `503 opaque_unavailable` while the feature is off.
+        `409 opaque_not_registered` (it keeps using its password).
         For `delete-account` the route is reachable for sessions blocked by the e-mail confirmation or consent gate.
       operationId: opaqueReauthStart
       requestBody:
@@ -1689,16 +1567,11 @@ paths:
               schema: { $ref: '#/components/schemas/Problem' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
-        '503':
-          description: '`opaque_unavailable`: OPAQUE is switched off.'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
 
   /api/auth/opaque/reauth/finish:
     post:
       tags: [Auth]
-      summary: OPAQUE re-authentication, step 2 (feature flag `OPAQUE_ENABLED`)
+      summary: OPAQUE re-authentication, step 2
       description: >-
         Verifies KE3 and returns a `reauthTicket` (signed, 5 minutes, single use) bound to the user, the session
         version and the `purpose`; the consuming route redeems it (`DELETE /api/auth/me`,
@@ -1736,16 +1609,11 @@ paths:
               schema: { $ref: '#/components/schemas/Problem' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
-        '503':
-          description: '`opaque_unavailable`: OPAQUE is switched off.'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
 
   /api/auth/opaque/register/start:
     post:
       tags: [Auth]
-      summary: OPAQUE registration, step 1 (feature flag `OPAQUE_ENABLED`)
+      summary: OPAQUE registration, step 1
       description: >-
         Evaluates the blinded password element (`registrationRequest`, 32 bytes, base64url) and answers
         `registrationResponse` (64 bytes: evaluated element and server public key). The context is selected by
@@ -1760,7 +1628,7 @@ paths:
 
         - **Signup** (`email`, public): mints the new user's id into the single-use `registrationState`
         (carries id, address and key id). Creates nothing and answers the same for taken
-        and free addresses (`email_taken` comes with the finish, as for `POST /api/auth/register`). Counts against
+        and free addresses (`email_taken` comes with the finish, as for a plaintext sign-up before). Counts against
         the register limits (5 per hour per IP, 3 per hour per address).
 
         - **Reset** (`resetToken`, public): the id is the user of the open link (unknown, used, expired:
@@ -1776,7 +1644,6 @@ paths:
         Every start under a real user's key (reset, change, upgrade) is a password-guess oracle and consumes the
         login limits (10 per 15 minutes per IP, 5 per 15 minutes per address) before any crypto; reset also counts
         unknown links against the IP. The password policy (8-128 characters) is enforced by the client only.
-        `503 opaque_unavailable` while the feature is off.
       operationId: opaqueRegisterStart
       security: []
       requestBody:
@@ -1823,16 +1690,11 @@ paths:
               schema: { $ref: '#/components/schemas/Problem' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
-        '503':
-          description: '`opaque_unavailable`: OPAQUE is switched off.'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
 
   /api/auth/opaque/register/finish:
     post:
       tags: [Auth]
-      summary: OPAQUE registration, step 2 (feature flag `OPAQUE_ENABLED`)
+      summary: OPAQUE registration, step 2
       description: >-
         Stores the client's `registrationRecord` (192 bytes, base64url) under the key id bound in `registrationState`.
         `registrationState` (from the start) is required in every context. Context by `resetToken`,
@@ -1841,7 +1703,7 @@ paths:
         consumed; the client retries from the start).
 
 
-        - **Signup**: creates the user with the id from the state like `POST /api/auth/register` (consent
+        - **Signup**: creates the user with the id from the state (consent
         `acceptedDocuments`, `registration_restricted`, `email_taken`, confirmation code mail), but with the record
         and no password hash. `201 {verificationRequired, email}` plus a token pair of a restricted session. The state
         is consumed right before the insert (a failed validation keeps it usable until it expires); replay:
@@ -1906,11 +1768,6 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
-        '503':
-          description: '`opaque_unavailable`: OPAQUE is switched off.'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
 
   /api/auth/webauthn/authenticate/options:
     get:
@@ -4680,8 +4537,8 @@ components:
         | `missing_token` | 401 | No access token on a route that needs a user (all of `/api/clubs`, `/api/calendars`, `/api/map/geocode/`, `/api/mapbox/` before the id is looked up) |
         | `invalid_token` | 401 | Access token malformed, wrongly signed, of an ended session or of a deleted user |
         | `token_expired` | 401 | Access token expired (refresh it) |
-        | `consent_required` | 403 / 422 | **403** on any gated `/api/*` route (see the consent gate in the overview): the user has not consented to the current privacy policy / terms; member `documents` = `[{type, id}]`. **422** `POST /api/auth/register`: a current document is missing in `acceptedDocuments` (field `acceptedDocuments`, `documents` = the missing ones) |
-        | `consent_outdated` | 422 | `POST /api/auth/register` (field `acceptedDocuments`) or `POST /api/auth/consents`: an older version / a non-consent document was sent; `documents` = the current documents to accept (the client reloads `GET /api/legal`) |
+        | `consent_required` | 403 / 422 | **403** on any gated `/api/*` route (see the consent gate in the overview): the user has not consented to the current privacy policy / terms; member `documents` = `[{type, id}]`. **422** `POST /api/auth/opaque/register/finish` (signup): a current document is missing in `acceptedDocuments` (field `acceptedDocuments`, `documents` = the missing ones) |
+        | `consent_outdated` | 422 | `POST /api/auth/opaque/register/finish` (signup, field `acceptedDocuments`) or `POST /api/auth/consents`: an older version / a non-consent document was sent; `documents` = the current documents to accept (the client reloads `GET /api/legal`) |
         | `legal_document_not_found` | 404 | `GET /api/legal/{type}` (not provided, unknown type) and `GET /api/legal/documents/{id}` |
         | `member_not_found` | 404 | `DELETE /api/clubs/{clubId}/members/{userId}`: no member of the club (unknown ids alike) |
         | `last_member` | 422 | `DELETE /api/clubs/{clubId}/members/{userId}`: the user is the only member of the club (also when leaving it); a club never has zero members |
@@ -4705,11 +4562,10 @@ components:
         | `series_empty` | 409 | Rule change preview/PATCH: the series has no events |
         | `series_changed` | 409 | Rule change PATCH: prototype/reference deleted concurrently or deadlock; nothing changed |
         | `email_taken` | 400 | Registration, field `email` |
-        | `registration_restricted` | 403 | `POST /api/auth/register` with `RESTRICT_REGISTRATION` and no open invitation for the address, field `email` (SSO: redirect error code) |
+        | `registration_restricted` | 403 | `POST /api/auth/opaque/register/start` (signup) with `RESTRICT_REGISTRATION` and no open invitation for the address, field `email` (SSO: redirect error code) |
         | `invalid_opaque_message` | 400 | OPAQUE login/registration: a base64url value is malformed, has the wrong length or is not a valid group element or record (`startLoginRequest`, `finishLoginRequest`, `registrationRequest`, `registrationRecord`) |
-        | `opaque_unavailable` | 503 | OPAQUE endpoints while `OPAQUE_ENABLED` is off |
         | `opaque_state_invalid` | 409 | `opaque/register/finish` (all contexts): `registrationState` missing, forged, expired, used (signup), of another user or context, or its key id is no longer configured (field `registrationState`); retry from the start |
-        | `opaque_required` | 409 | `OPAQUE_ENABLED` is on: `register`, `reset-password`; `login`, `change-password`, plaintext `password` of `change-email` / `DELETE /api/auth/me` / passkey register options for an account with a usable OPAQUE record |
+        | `opaque_required` | 409 | `login`, `change-password`, plaintext `password` of `change-email` / `DELETE /api/auth/me` / passkey register options for an account with a usable OPAQUE record |
         | `reauth_required` | 403 | `opaque/register/start|finish` (change, upgrade), `DELETE /api/auth/me`, `change-email`, passkey register options: ticket missing, invalid, expired, used, of another purpose or user |
         | `opaque_not_registered` | 409 | `opaque/reauth/start`: the account has no OPAQUE record (use the password) |
         | `reset_required` | 409 | `POST /api/auth/login` after `OPAQUE_LEGACY_CUTOFF` for an account with a password but no OPAQUE record (the password is not checked) |
@@ -4773,7 +4629,6 @@ components:
         - invalid_passkey
         - invalid_passkey_registration
         - invalid_opaque_message
-        - opaque_unavailable
         - opaque_state_invalid
         - opaque_required
         - reauth_required
@@ -4859,8 +4714,8 @@ components:
         opaqueUpgrade:
           type: object
           description: >-
-            Only in the answer of `POST /api/auth/login` (legacy password) when `OPAQUE_ENABLED` is on, the address is
-            confirmed, the account has no OPAQUE record and its rollout bucket is inside `OPAQUE_ROLLOUT_PERCENT`. The
+            Only in the answer of `POST /api/auth/login` (legacy password) before `OPAQUE_LEGACY_CUTOFF` (or without one), when the address is
+            confirmed and the account has no OPAQUE record. The
             client registers a record with the password it just sent (`upgradeTicket` of
             `POST /api/auth/opaque/register/start|finish`); the bcrypt hash stays until phase 2.
           required: [ticket, expiresIn]

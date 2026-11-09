@@ -33,12 +33,9 @@ class OpaqueReauthTest extends WebTestCase
 
     private KernelBrowser $client;
     private OpaqueTestClient $opaque;
-    private ?string $previousEnabled = null;
 
     protected function setUp(): void
     {
-        $this->previousEnabled = $_SERVER['OPAQUE_ENABLED'] ?? null;
-        $this->setEnabled('true');
         static::ensureKernelShutdown();
         $this->client = static::createClient();
         $this->client->disableReboot();
@@ -49,19 +46,6 @@ class OpaqueReauthTest extends WebTestCase
     protected function tearDown(): void
     {
         static::mockTime(false);
-        $this->setEnabled($this->previousEnabled);
-    }
-
-    private function setEnabled(?string $value): void
-    {
-        if (null === $value) {
-            unset($_SERVER['OPAQUE_ENABLED'], $_ENV['OPAQUE_ENABLED']);
-            putenv('OPAQUE_ENABLED');
-
-            return;
-        }
-        $_SERVER['OPAQUE_ENABLED'] = $_ENV['OPAQUE_ENABLED'] = $value;
-        putenv('OPAQUE_ENABLED='.$value);
     }
 
     private function em(): EntityManagerInterface
@@ -85,7 +69,7 @@ class OpaqueReauthTest extends WebTestCase
     {
         $service = $this->service(OpaqueService::class);
         $reg = $this->opaque->startRegistration(self::PASSWORD);
-        $service->storeRecord($user, $this->opaque->finishRegistration(self::PASSWORD, $reg['blind'], $service->registrationResponse($user, $reg['request']))['record']);
+        $service->storeRecord($user, $this->opaque->finishRegistration(self::PASSWORD, $reg['blind'], $service->registrationResponse($user, $reg['request']))['record'], $service->activeKeyId());
         $this->em()->flush();
     }
 
@@ -243,19 +227,6 @@ class OpaqueReauthTest extends WebTestCase
         $r = $this->call('POST', self::FINISH, ['purpose' => 'change-email', 'loginState' => $start['body']['loginState'], 'finishLoginRequest' => $ke3], $this->bearer($bob));
         $this->assertSame(400, $r['status']);
         $this->assertSame('invalid_credentials', $r['body']['code']);
-    }
-
-    public function testFlagOffIs503AndConsumersBehaveAsBefore(): void
-    {
-        $user = $this->legacyUser();
-        $auth = $this->bearer($user);
-        $this->setEnabled('false');
-        foreach ([self::START, self::FINISH] as $path) {
-            $r = $this->call('POST', $path, ['purpose' => 'change-email', 'startLoginRequest' => 'x', 'loginState' => 'x', 'finishLoginRequest' => 'x'], $auth);
-            $this->assertSame(503, $r['status']);
-            $this->assertSame('opaque_unavailable', $r['body']['code']);
-        }
-        $this->assertSame(200, $this->call('DELETE', '/api/auth/me', ['password' => self::PASSWORD], $auth)['status']);
     }
 
     public function testStartCountsAgainstLoginAndPurposeLimits(): void

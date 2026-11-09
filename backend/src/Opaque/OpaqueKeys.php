@@ -9,7 +9,7 @@ namespace App\Opaque;
  * scalar) as unpadded base64url. Sources: OPAQUE_KEYS (`id:seed:privateKey,...`) and the legacy pair
  * OPAQUE_OPRF_SEED/OPAQUE_SERVER_PRIVATE_KEY (= id "1", so single-key deployments need no change). New registrations use
  * the active id (OPAQUE_ACTIVE_KEY_ID, default "1"); stored records name their key in user.opaque_key_id.
- * Validated eagerly when enabled; when disabled nothing is read and accessors throw.
+ * Validated eagerly: missing or invalid keys fail construction.
  */
 final class OpaqueKeys
 {
@@ -23,16 +23,11 @@ final class OpaqueKeys
     private string $activeId = '';
 
     public function __construct(
-        private readonly bool $enabled,
         #[\SensitiveParameter] string $oprfSeed,
         #[\SensitiveParameter] string $serverPrivateKey,
         #[\SensitiveParameter] string $keySets = '',
         string $activeKeyId = '',
     ) {
-        if (!$enabled) {
-            return;
-        }
-
         $hasKeySets = '' !== trim($keySets);
         if ('' !== $oprfSeed || '' !== $serverPrivateKey || !$hasKeySets) {
             $this->add(self::LEGACY_ID, $oprfSeed, $serverPrivateKey, 'OPAQUE_OPRF_SEED', 'OPAQUE_SERVER_PRIVATE_KEY');
@@ -57,30 +52,19 @@ final class OpaqueKeys
         $this->activeId = $active;
     }
 
-    public function isEnabled(): bool
-    {
-        return $this->enabled;
-    }
-
     public function activeId(): string
     {
-        $this->assertEnabled();
-
         return $this->activeId;
     }
 
     /** @return list<string> */
     public function ids(): array
     {
-        $this->assertEnabled();
-
         return array_map('strval', array_keys($this->sets));
     }
 
     public function has(string $id): bool
     {
-        $this->assertEnabled();
-
         return isset($this->sets[$id]);
     }
 
@@ -134,7 +118,6 @@ final class OpaqueKeys
     /** @return array{seed: string, private: string, public: string} */
     private function set(?string $id): array
     {
-        $this->assertEnabled();
         $set = $this->sets[$id ?? $this->activeId] ?? null;
         if (null === $set) {
             throw new OpaqueException(sprintf('Unknown OPAQUE key id "%s".', $id));
@@ -155,13 +138,6 @@ final class OpaqueKeys
         }
 
         $this->sets[$id] = ['seed' => $seed, 'private' => $private, 'public' => sodium_crypto_scalarmult_ristretto255_base($private)];
-    }
-
-    private function assertEnabled(): void
-    {
-        if (!$this->enabled) {
-            throw new OpaqueException('OPAQUE is disabled (OPAQUE_ENABLED=false).');
-        }
     }
 
     private static function decode(#[\SensitiveParameter] string $value, int $length, string $name): string

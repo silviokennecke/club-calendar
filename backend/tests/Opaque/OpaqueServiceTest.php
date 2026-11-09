@@ -42,7 +42,7 @@ class OpaqueServiceTest extends KernelTestCase
         $this->clock = new MockClock('2026-11-09 12:00:00 UTC');
         $this->client = new OpaqueTestClient();
 
-        $this->keys = new OpaqueKeys(true, OpaqueKeys::encode(random_bytes(64)), OpaqueKeys::encode(sodium_crypto_core_ristretto255_scalar_random()));
+        $this->keys = new OpaqueKeys(OpaqueKeys::encode(random_bytes(64)), OpaqueKeys::encode(sodium_crypto_core_ristretto255_scalar_random()));
         $this->nonces = new NonceStore(static::getContainer()->get(Connection::class), $this->clock);
         $this->logger = new BufferingLogger();
         $this->tickets = new OpaqueReauthTickets(new SignedTokenService(self::SECRET, $this->clock), $this->nonces);
@@ -60,7 +60,7 @@ class OpaqueServiceTest extends KernelTestCase
         if ($withRecord) {
             $reg = $this->client->startRegistration(self::PASSWORD);
             $response = $this->service->registrationResponse($user, $reg['request']);
-            $this->service->storeRecord($user, $this->client->finishRegistration(self::PASSWORD, $reg['blind'], $response)['record']);
+            $this->service->storeRecord($user, $this->client->finishRegistration(self::PASSWORD, $reg['blind'], $response)['record'], $this->service->activeKeyId());
         }
         $this->em->persist($user);
         $this->em->flush();
@@ -225,7 +225,7 @@ class OpaqueServiceTest extends KernelTestCase
         $user = $this->user();
         [$challenge, $ke3] = $this->login($user, 'ada@example.com');
         $reg = $this->client->startRegistration('new password');
-        $this->service->storeRecord($user, $this->client->finishRegistration('new password', $reg['blind'], $this->service->registrationResponse($user, $reg['request']))['record']);
+        $this->service->storeRecord($user, $this->client->finishRegistration('new password', $reg['blind'], $this->service->registrationResponse($user, $reg['request']))['record'], $this->service->activeKeyId());
         $this->em->flush();
 
         $this->expectException(AuthenticationFailedException::class);
@@ -246,7 +246,7 @@ class OpaqueServiceTest extends KernelTestCase
     public function testStoreRecordRejectsWrongLength(): void
     {
         $this->expectException(InvalidMessageException::class);
-        $this->service->storeRecord(new User(), 'short');
+        $this->service->storeRecord(new User(), 'short', '1');
     }
 
     public function testReplayedStateIsRejected(): void
@@ -416,14 +416,5 @@ class OpaqueServiceTest extends KernelTestCase
             self::assertFalse($columns[$name]->getNotnull());
         }
         self::assertSame(256, $columns['opaque_record']->getLength());
-    }
-
-    public function testDisabledKeysFailOnUse(): void
-    {
-        $service = $this->makeService(self::SECRET, new OpaqueKeys(false, '', ''));
-
-        self::assertFalse($service->isEnabled());
-        $this->expectException(\App\Opaque\OpaqueException::class);
-        $service->startLogin(null, 'a@example.com', $this->client->startLogin('x')['ke1']);
     }
 }

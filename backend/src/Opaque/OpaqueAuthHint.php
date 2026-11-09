@@ -10,9 +10,9 @@ use Psr\Log\LoggerInterface;
 
 /**
  * The `auth` field of POST /api/auth/identify: which credential protocol the client must use next.
- * `opaque` OPAQUE login/signup; `legacy` plaintext password endpoints (bcrypt, or flag off); `none` no password
- * credential (SSO/passkey only); `reset_required` the password cannot be used any more (cutoff passed, or only an
- * OPAQUE record exists while the flag is off): use "forgot password".
+ * `opaque` OPAQUE login/signup; `legacy` plaintext login of a not yet migrated bcrypt account (before the cutoff);
+ * `none` no password credential (SSO/passkey only); `reset_required` the password cannot be used any more (cutoff
+ * passed, or an unusable record): use "forgot password".
  */
 final class OpaqueAuthHint
 {
@@ -22,31 +22,26 @@ final class OpaqueAuthHint
     public const string RESET_REQUIRED = 'reset_required';
 
     public function __construct(
-        private readonly OpaqueRollout $rollout,
+        private readonly OpaqueCutoff $cutoff,
         private readonly OpaqueService $opaque,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $logger,
     ) {
     }
 
-    /** New address: the signup protocol (plan 6.2: signup and reset are OPAQUE as soon as the flag is on). */
+    /** New address: signup is always OPAQUE. */
     public function forSignup(): string
     {
-        return $this->rollout->isEnabled() ? self::OPAQUE : self::LEGACY;
+        return self::OPAQUE;
     }
 
     public function forAccount(User $user): string
     {
-        $enabled = $this->rollout->isEnabled();
         if ($this->opaque->hasRecord($user)) {
-            if ($enabled) {
-                return self::OPAQUE;
-            }
-
-            return null !== $user->getPassword() ? self::LEGACY : $this->resetRequired($user, 'flag_off');
+            return self::OPAQUE;
         }
         if (null !== $user->getPassword()) {
-            return $enabled && $this->rollout->cutoffReached($this->clock->now()) ? $this->resetRequired($user, 'cutoff') : self::LEGACY;
+            return $this->cutoff->cutoffReached($this->clock->now()) ? $this->resetRequired($user, 'cutoff') : self::LEGACY;
         }
 
         // Unusable (corrupt) record without a hash: reset is the only way back.

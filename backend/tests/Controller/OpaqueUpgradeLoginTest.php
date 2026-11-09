@@ -20,7 +20,7 @@ class OpaqueUpgradeLoginTest extends WebTestCase
 {
     use ClockSensitiveTrait;
 
-    private const array VARS = ['OPAQUE_ENABLED', 'OPAQUE_ROLLOUT_PERCENT', 'OPAQUE_LEGACY_CUTOFF'];
+    private const array VARS = ['OPAQUE_LEGACY_CUTOFF'];
     private const string PASSWORD = 'correct horse battery';
 
     private KernelBrowser $client;
@@ -54,9 +54,9 @@ class OpaqueUpgradeLoginTest extends WebTestCase
         }
     }
 
-    private function boot(string $enabled, string $percent, string $cutoff = ''): void
+    private function boot(string $cutoff = ''): void
     {
-        $this->configure(['OPAQUE_ENABLED' => $enabled, 'OPAQUE_ROLLOUT_PERCENT' => $percent, 'OPAQUE_LEGACY_CUTOFF' => $cutoff]);
+        $this->configure(['OPAQUE_LEGACY_CUTOFF' => $cutoff]);
         static::ensureKernelShutdown();
         $this->client = static::createClient();
         $this->client->disableReboot();
@@ -85,61 +85,61 @@ class OpaqueUpgradeLoginTest extends WebTestCase
         return TestHelper::jsonRequest($this->client, 'POST', '/api/auth/login', ['email' => 'ada@example.com', 'password' => self::PASSWORD]);
     }
 
-    /** @return iterable<string, array{string, string, bool, bool}> flag, percent, record, expected field */
+    /** @return iterable<string, array{string, bool}> cutoff, record */
     public static function matrix(): iterable
     {
-        yield 'flag on, 100 %, no record' => ['true', '100', false, true];
-        yield 'flag off, 100 %' => ['false', '100', false, false];
-        yield 'flag on, 0 %' => ['true', '0', false, false];
-        yield 'flag on, 100 %, has record' => ['true', '100', true, false, 409];
-        yield 'flag off, has record' => ['false', '100', true, false];
+        yield 'no cutoff, no record' => ['', false];
+        yield 'future cutoff, no record' => ['2999-01-01', false];
+        yield 'no cutoff, has record' => ['', true];
     }
 
     #[DataProvider('matrix')]
-    public function testUpgradeFieldPresence(string $enabled, string $percent, bool $record, bool $expected, int $status = 200): void
+    public function testUpgradeIsOfferedToEveryLegacyAccount(string $cutoff, bool $record): void
     {
-        $this->boot($enabled, $percent);
+        $this->boot($cutoff);
         $user = $this->account($record);
 
         $r = $this->login();
 
-        self::assertSame($status, $r['status']);
-        if (409 === $status) {
+        if ($record) {
+            self::assertSame(409, $r['status']);
             self::assertSame('opaque_required', $r['body']['code']);
 
             return;
         }
-        if (!$expected) {
-            self::assertArrayNotHasKey('opaqueUpgrade', $r['body']);
-
-            return;
-        }
+        self::assertSame(200, $r['status']);
         self::assertSame(['ticket', 'expiresIn'], array_keys($r['body']['opaqueUpgrade']));
         self::assertSame(300, $r['body']['opaqueUpgrade']['expiresIn']);
         $tickets = static::getContainer()->get(OpaqueUpgradeTickets::class);
         self::assertTrue($tickets->isValid($this->em()->find(User::class, $user->getId()), $r['body']['opaqueUpgrade']['ticket']));
     }
 
+    public function testEveryLegacyAccountGetsATicket(): void
+    {
+        $this->boot();
+        $em = $this->em();
+        $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
+        foreach (range(1, 12) as $i) {
+            TestHelper::createUser($em, $hasher, "user$i@example.com", self::PASSWORD, true);
+        }
+
+        foreach (range(1, 12) as $i) {
+            $r = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/login', ['email' => "user$i@example.com", 'password' => self::PASSWORD]);
+            self::assertArrayHasKey('opaqueUpgrade', $r['body'], "user$i");
+        }
+    }
+
     public function testNoUpgradeForUnconfirmedAddress(): void
     {
-        $this->boot('true', '100');
+        $this->boot();
         $this->account(false, false);
 
         self::assertArrayNotHasKey('opaqueUpgrade', $this->login()['body']);
     }
 
-    public function testPartialRolloutOffersOnlyInsideTheBucket(): void
-    {
-        $this->boot('true', '50');
-        $user = $this->account();
-        $inside = static::getContainer()->get(\App\Opaque\OpaqueRollout::class)->bucket($user->getId()) < 50;
-
-        self::assertSame($inside, array_key_exists('opaqueUpgrade', $this->login()['body']));
-    }
-
     public function testLoginIsRefusedAfterTheCutoffWithoutRecord(): void
     {
-        $this->boot('true', '100', '2026-12-01');
+        $this->boot('2026-12-01');
         static::mockTime('2026-12-01 00:00:00 UTC');
         $this->account();
 
@@ -152,7 +152,7 @@ class OpaqueUpgradeLoginTest extends WebTestCase
 
     public function testCutoffRefusalDoesNotDependOnThePassword(): void
     {
-        $this->boot('true', '100', '2026-12-01');
+        $this->boot('2026-12-01');
         static::mockTime('2026-12-02 10:00:00 UTC');
         $this->account();
 
@@ -163,17 +163,8 @@ class OpaqueUpgradeLoginTest extends WebTestCase
 
     public function testLoginBeforeTheCutoffStillWorks(): void
     {
-        $this->boot('true', '100', '2026-12-01');
+        $this->boot('2026-12-01');
         static::mockTime('2026-11-30 23:59:59 UTC');
-        $this->account();
-
-        self::assertSame(200, $this->login()['status']);
-    }
-
-    public function testCutoffDoesNotApplyWhileTheFlagIsOff(): void
-    {
-        $this->boot('false', '100', '2026-12-01');
-        static::mockTime('2026-12-02 00:00:00 UTC');
         $this->account();
 
         self::assertSame(200, $this->login()['status']);
@@ -181,7 +172,7 @@ class OpaqueUpgradeLoginTest extends WebTestCase
 
     public function testUnknownAddressIsStillInvalidCredentialsAfterTheCutoff(): void
     {
-        $this->boot('true', '100', '2026-12-01');
+        $this->boot('2026-12-01');
         static::mockTime('2026-12-02 00:00:00 UTC');
 
         $r = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/login', ['email' => 'nobody@example.com', 'password' => self::PASSWORD]);

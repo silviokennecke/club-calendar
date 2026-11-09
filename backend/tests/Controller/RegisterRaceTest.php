@@ -6,7 +6,7 @@ namespace App\Tests\Controller;
 
 use App\Entity\User;
 use App\Tests\Helper\DatabaseResetter;
-use App\Tests\Helper\TestHelper;
+use App\Tests\Helper\OpaqueApi;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Event\PreFlushEventArgs;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -34,12 +34,12 @@ class RegisterRaceTest extends WebTestCase
 
     public function testLosingRegistrationAnswersEmailTakenWithoutSideEffects(): void
     {
+        // The listener lives on the EM of this kernel; the sign-up spans two requests.
+        self::$client->disableReboot();
         $em = static::getContainer()->get(EntityManagerInterface::class);
         $this->armRacingInsert($em, 'race@example.com');
 
-        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
-            'name' => 'Loser', 'email' => 'race@example.com', 'password' => 'password123',
-        ]);
+        $r = OpaqueApi::signup(self::$client, 'Loser', 'race@example.com', 'password123');
 
         $this->assertSame(400, $r['status'], $r['content']);
         $this->assertSame('email_taken', $r['body']['code']);

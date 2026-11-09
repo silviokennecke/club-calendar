@@ -55,13 +55,11 @@ parameters:
     env(GEOCODER_CACHE_TTL): '3600'       # 1 hour
     env(MAPBOX_PROXY_CACHE_TTL): '2592000' # 30 days
 
-    # OPAQUE (see docs/ops/OPAQUE-PLAN.md): secrets are only read and validated when enabled
-    env(OPAQUE_ENABLED): 'false'
+    # OPAQUE (see docs/ops/OPAQUE-PLAN.md): keys are mandatory (app:opaque:check)
     env(OPAQUE_OPRF_SEED): ''
     env(OPAQUE_SERVER_PRIVATE_KEY): ''
     env(OPAQUE_KEYS): ''
     env(OPAQUE_ACTIVE_KEY_ID): ''
-    env(OPAQUE_ROLLOUT_PERCENT): '0'
     env(OPAQUE_LEGACY_CUTOFF): ''
 
     env(MAPBOX_TOKEN): ''
@@ -93,7 +91,6 @@ services:
 
     App\Opaque\OpaqueKeys:
         arguments:
-            $enabled: '%env(bool:OPAQUE_ENABLED)%'
             $oprfSeed: '%env(OPAQUE_OPRF_SEED)%'
             $serverPrivateKey: '%env(OPAQUE_SERVER_PRIVATE_KEY)%'
             $keySets: '%env(OPAQUE_KEYS)%'

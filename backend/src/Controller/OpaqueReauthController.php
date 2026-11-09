@@ -25,7 +25,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 /**
  * OPAQUE re-authentication of the signed-in user (docs/ops/OPAQUE-PLAN.md 3.2/3.4): proves the password for one
  * purpose and returns a single-use `reauthTicket` that the consuming route redeems. The credential id is the JWT user,
- * never a client field. Inert (503 `opaque_unavailable`) unless OPAQUE_ENABLED.
+ * never a client field.
  */
 #[Route('/api/auth/opaque/reauth')]
 class OpaqueReauthController extends AbstractApiController
@@ -50,7 +50,6 @@ class OpaqueReauthController extends AbstractApiController
     #[Route('/start', methods: ['POST'])]
     public function start(Request $request): JsonResponse
     {
-        $this->assertEnabled();
         $dto = $this->deserializeDto($request, OpaqueReauthStartDto::class);
         $this->validateDto($dto, $this->validator);
         $this->assertPurpose($dto->purpose);
@@ -84,7 +83,6 @@ class OpaqueReauthController extends AbstractApiController
     #[Route('/finish', methods: ['POST'])]
     public function finish(Request $request): JsonResponse
     {
-        $this->assertEnabled();
         $dto = $this->deserializeDto($request, OpaqueReauthFinishDto::class);
         $this->validateDto($dto, $this->validator);
         $this->assertPurpose($dto->purpose);
@@ -104,13 +102,6 @@ class OpaqueReauthController extends AbstractApiController
     {
         if (!in_array($purpose, OpaqueReauthTickets::PURPOSES, true)) {
             throw new ApiProblemException(400, 'Unknown reauth purpose', 'invalid_request', 'purpose');
-        }
-    }
-
-    private function assertEnabled(): void
-    {
-        if (!$this->opaque->isEnabled()) {
-            throw new ApiProblemException(503, 'OPAQUE login is not available', 'opaque_unavailable');
         }
     }
 

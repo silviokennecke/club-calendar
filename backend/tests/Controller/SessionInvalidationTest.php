@@ -11,6 +11,7 @@ use App\Service\EmailVerificationService;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\FakeOAuth2Client;
+use App\Tests\Helper\OpaqueApi;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Encoder\JWTEncoderInterface;
@@ -300,15 +301,11 @@ class SessionInvalidationTest extends WebTestCase
 
     public function testConfirmingALocalRegistrationKeepsThePassword(): void
     {
-        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
-            'name' => 'Dana', 'email' => 'dana@example.com', 'password' => 'password123',
-        ]);
+        $r = OpaqueApi::signup(self::$client, 'Dana', 'dana@example.com', 'password123');
         $this->assertSame(201, $r['status'], $r['content']);
         $this->confirm('dana@example.com');
 
-        $login = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', [
-            'email' => 'dana@example.com', 'password' => 'password123',
-        ]);
+        $login = OpaqueApi::login(self::$client, 'dana@example.com', 'password123');
         $this->assertSame(200, $login['status'], $login['content']);
         $this->assertSame(200, $this->me($login['body']['access_token']));
         $this->assertSame(200, $this->refresh($login['body']['refresh_token'])[0]);
@@ -321,9 +318,7 @@ class SessionInvalidationTest extends WebTestCase
      */
     public function testPreRegisteredPasswordIsRemovedWhenTheOwnerSignsInWithAVerifiedProvider(): void
     {
-        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/register', [
-            'name' => 'Squatter', 'email' => 'owner@example.com', 'password' => 'squatter-pass',
-        ]);
+        $r = OpaqueApi::signup(self::$client, 'Squatter', 'owner@example.com', 'squatter-pass');
         $this->assertSame(201, $r['status'], $r['content']);
         $squatter = $r['body'];
         $this->assertSame(403, TestHelper::jsonRequest(self::$client, 'GET', '/api/clubs', [], 'Bearer '.$squatter['access_token'])['status']);
@@ -334,9 +329,7 @@ class SessionInvalidationTest extends WebTestCase
         $this->assertSame(401, $this->me($squatter['access_token']));
         $this->assertSame(401, $this->refresh($squatter['refresh_token'])[0]);
 
-        $after = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/login', [
-            'email' => 'owner@example.com', 'password' => 'squatter-pass',
-        ]);
+        $after = OpaqueApi::login(self::$client, 'owner@example.com', 'squatter-pass');
         $this->assertSame(401, $after['status'], 'the registrant password is gone');
     }
 

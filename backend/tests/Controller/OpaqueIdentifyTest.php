@@ -19,10 +19,10 @@ use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
-/** `auth` of POST /api/auth/identify for every account type, flag, rollout and cutoff; AP 9 log lines. */
+/** `auth` of POST /api/auth/identify for every account type and cutoff; AP 9 log lines. */
 class OpaqueIdentifyTest extends WebTestCase
 {
-    private const array VARS = ['OPAQUE_ENABLED', 'OPAQUE_ROLLOUT_PERCENT', 'OPAQUE_LEGACY_CUTOFF'];
+    private const array VARS = ['OPAQUE_LEGACY_CUTOFF'];
     private const string BCRYPT = '$2y$04$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
 
     private KernelBrowser $client;
@@ -57,9 +57,9 @@ class OpaqueIdentifyTest extends WebTestCase
         }
     }
 
-    private function boot(string $enabled, string $percent = '0', string $cutoff = '', bool $restricted = false): void
+    private function boot(string $cutoff = '', bool $restricted = false): void
     {
-        $this->configure(['OPAQUE_ENABLED' => $enabled, 'OPAQUE_ROLLOUT_PERCENT' => $percent, 'OPAQUE_LEGACY_CUTOFF' => $cutoff]);
+        $this->configure(['OPAQUE_LEGACY_CUTOFF' => $cutoff]);
         static::ensureKernelShutdown();
         $this->client = static::createClient();
         $this->client->disableReboot();
@@ -78,13 +78,13 @@ class OpaqueIdentifyTest extends WebTestCase
     {
         $user = (new User())->setName('Ada')->setEmail($email)->setIsEmailVerified(true);
         if (in_array($type, ['record', 'both'], true) && !$real) {
-            // Well-formed but not usable for a login; works with the flag off, where no server can be built.
+            // Well-formed but not usable for a login.
             $user->setOpaque(sodium_crypto_scalarmult_ristretto255_base(sodium_crypto_core_ristretto255_scalar_random()).random_bytes(160), 1, '1');
         } elseif (in_array($type, ['record', 'both'], true)) {
             $service = static::getContainer()->get(OpaqueService::class);
             $reg = $this->opaque->startRegistration('correct horse battery');
             $response = $service->registrationResponse($user, $reg['request']);
-            $service->storeRecord($user, $this->opaque->finishRegistration('correct horse battery', $reg['blind'], $response)['record']);
+            $service->storeRecord($user, $this->opaque->finishRegistration('correct horse battery', $reg['blind'], $response)['record'], $service->activeKeyId());
         }
         if (in_array($type, ['bcrypt', 'both'], true)) {
             $user->setPassword(self::BCRYPT);
@@ -107,52 +107,40 @@ class OpaqueIdentifyTest extends WebTestCase
         return ['status' => $r['body']['status'], 'auth' => $r['body']['auth']];
     }
 
-    /** @return iterable<string, array{string, string, string, string, string}> type, enabled, percent, cutoff, expected auth */
+    /** @return iterable<string, array{string, string, string}> type, cutoff, expected auth */
     public static function matrix(): iterable
     {
         $past = '2000-01-01';
         $future = '2999-01-01';
-        foreach (['0', '50', '100'] as $percent) {
-            // The percentage only gates the upgrade offer, never the answer of identify.
-            yield "record, flag on, $percent%" => ['record', 'true', $percent, '', 'opaque'];
-            yield "both, flag on, $percent%" => ['both', 'true', $percent, $past, 'opaque'];
-            yield "bcrypt, flag on, $percent%" => ['bcrypt', 'true', $percent, '', 'legacy'];
-            yield "none, flag on, $percent%" => ['none', 'true', $percent, $past, 'none'];
-        }
-        yield 'bcrypt, flag on, cutoff future' => ['bcrypt', 'true', '100', $future, 'legacy'];
-        yield 'bcrypt, flag on, cutoff passed' => ['bcrypt', 'true', '100', $past, 'reset_required'];
-        yield 'bcrypt, flag off, cutoff passed' => ['bcrypt', 'false', '100', $past, 'legacy'];
-        yield 'bcrypt, flag off' => ['bcrypt', 'false', '0', '', 'legacy'];
-        yield 'record only, flag off' => ['record', 'false', '100', '', 'reset_required'];
-        yield 'both, flag off' => ['both', 'false', '100', '', 'legacy'];
-        yield 'none, flag off' => ['none', 'false', '0', '', 'none'];
-        yield 'corrupt record only, flag on' => ['corrupt', 'true', '0', '', 'reset_required'];
+        yield 'record, no cutoff' => ['record', '', 'opaque'];
+        yield 'both, cutoff passed' => ['both', $past, 'opaque'];
+        yield 'bcrypt, no cutoff' => ['bcrypt', '', 'legacy'];
+        yield 'bcrypt, cutoff future' => ['bcrypt', $future, 'legacy'];
+        yield 'bcrypt, cutoff passed' => ['bcrypt', $past, 'reset_required'];
+        yield 'none, cutoff passed' => ['none', $past, 'none'];
+        yield 'corrupt record only' => ['corrupt', '', 'reset_required'];
     }
 
     #[DataProvider('matrix')]
-    public function testAuthForExistingAccount(string $type, string $enabled, string $percent, string $cutoff, string $expected): void
+    public function testAuthForExistingAccount(string $type, string $cutoff, string $expected): void
     {
-        $this->boot($enabled, $percent, $cutoff);
+        $this->boot($cutoff);
         $this->account($type, 'ada@example.com');
 
         self::assertSame(['status' => 'login', 'auth' => $expected], $this->identify('ada@example.com'));
     }
 
-    public function testSignupProtocolFollowsTheFlagOnly(): void
+    public function testSignupIsAlwaysOpaque(): void
     {
-        $this->boot('true', '0');
+        $this->boot();
         self::assertSame(['status' => 'register', 'auth' => 'opaque'], $this->identify('new@example.com'));
-        $this->boot('false', '100');
-        self::assertSame(['status' => 'register', 'auth' => 'legacy'], $this->identify('new@example.com'));
-        $this->boot('true', '0', '', true);
+        $this->boot('', true);
         self::assertSame(['status' => 'registration_restricted', 'auth' => 'opaque'], $this->identify('new@example.com'));
-        $this->boot('false', '0', '', true);
-        self::assertSame(['status' => 'registration_restricted', 'auth' => 'legacy'], $this->identify('new@example.com'));
     }
 
     public function testLegacyLoginRejectsRecordOnlyAccountCleanlyAndLogsNoAddress(): void
     {
-        $this->boot('true');
+        $this->boot();
         $user = $this->account('record', 'ada@example.com');
         $handler = $this->captureLogs();
 
@@ -167,7 +155,7 @@ class OpaqueIdentifyTest extends WebTestCase
 
     public function testResetRequiredIsLoggedWithUserIdOnly(): void
     {
-        $this->boot('true', '0', '2000-01-01');
+        $this->boot('2000-01-01');
         $user = $this->account('bcrypt', 'ada@example.com');
         $handler = $this->captureLogs();
 
@@ -180,7 +168,7 @@ class OpaqueIdentifyTest extends WebTestCase
 
     public function testLegacyLoginSuccessLogsUpgradeOffer(): void
     {
-        $this->boot('true', '100');
+        $this->boot();
         $user = (new User())->setName('Ada')->setEmail('ada@example.com')->setIsEmailVerified(true);
         $user->setPassword(static::getContainer()->get('security.user_password_hasher')->hashPassword($user, 'secret-pass-1'));
         $this->em()->persist($user);
@@ -196,7 +184,7 @@ class OpaqueIdentifyTest extends WebTestCase
 
     public function testOpaqueLoginSuccessAndFailureAreLogged(): void
     {
-        $this->boot('true');
+        $this->boot();
         $user = $this->account('record', 'ada@example.com', true);
         $handler = $this->captureLogs();
 
@@ -221,7 +209,7 @@ class OpaqueIdentifyTest extends WebTestCase
 
     public function testOperatorSetPasswordDropsTheStaleRecord(): void
     {
-        $this->boot('false');
+        $this->boot();
         $user = $this->account('record', 'ada@example.com');
 
         static::getContainer()->get(\App\Service\AccountService::class)->setPasswordAsOperator($user, 'a-new-password-1');

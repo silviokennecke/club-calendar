@@ -68,8 +68,8 @@ readonly class ReauthenticationService
 
             return;
         }
-        if ($this->opaque->isEnabled() && $this->opaque->hasRecord($user)) {
-            // The kept bcrypt hash of an upgraded account is not a proof while OPAQUE is enabled.
+        if ($this->opaque->hasRecord($user)) {
+            // The kept bcrypt hash of an upgraded account is not a proof .
             throw new ApiProblemException(409, 'This account signs in with OPAQUE: use a reauth ticket', 'opaque_required');
         }
         if ($user->hasPasswordCredential()) {

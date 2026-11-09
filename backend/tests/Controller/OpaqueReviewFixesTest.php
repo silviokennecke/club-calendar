@@ -20,10 +20,10 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
-/** Final security review fixes: SSO takeover, key id binding, legacy endpoints while enabled, upgrade offers. */
+/** Final security review fixes: SSO takeover, key id binding, removed plaintext endpoints, upgrade offers. */
 class OpaqueReviewFixesTest extends WebTestCase
 {
-    private const array VARS = ['OPAQUE_ENABLED', 'OPAQUE_ROLLOUT_PERCENT', 'OPAQUE_LEGACY_CUTOFF', 'OPAQUE_KEYS', 'OPAQUE_ACTIVE_KEY_ID'];
+    private const array VARS = ['OPAQUE_LEGACY_CUTOFF', 'OPAQUE_KEYS', 'OPAQUE_ACTIVE_KEY_ID'];
     private const string PASSWORD = 'correct horse battery';
 
     private KernelBrowser $client;
@@ -59,9 +59,9 @@ class OpaqueReviewFixesTest extends WebTestCase
     }
 
     /** @param array<string, string|null> $env */
-    private function boot(string $enabled = 'true', array $env = []): void
+    private function boot(array $env = []): void
     {
-        $this->configure($env + ['OPAQUE_ENABLED' => $enabled, 'OPAQUE_ROLLOUT_PERCENT' => '100', 'OPAQUE_LEGACY_CUTOFF' => '', 'OPAQUE_KEYS' => '', 'OPAQUE_ACTIVE_KEY_ID' => '']);
+        $this->configure($env + ['OPAQUE_LEGACY_CUTOFF' => '', 'OPAQUE_KEYS' => '', 'OPAQUE_ACTIVE_KEY_ID' => '']);
         static::ensureKernelShutdown();
         $this->client = static::createClient();
         $this->client->disableReboot();
@@ -178,7 +178,7 @@ class OpaqueReviewFixesTest extends WebTestCase
 
     public function testResetStoresTheKeyOfTheStartEvenAfterARotation(): void
     {
-        $this->boot('true', $this->twoKeys('2'));
+        $this->boot($this->twoKeys('2'));
         $user = $this->legacyUser();
         $token = static::getContainer()->get(PasswordResetService::class)->createToken($user);
         $flow = $this->registration(['resetToken' => $token]);
@@ -195,7 +195,7 @@ class OpaqueReviewFixesTest extends WebTestCase
 
     public function testSignupStoresTheKeyOfTheStartEvenAfterARotation(): void
     {
-        $this->boot('true', $this->twoKeys('2'));
+        $this->boot($this->twoKeys('2'));
         $flow = $this->registration(['email' => 'new@example.com']);
         $state = $flow['start']['body']['registrationState'];
 
@@ -209,7 +209,7 @@ class OpaqueReviewFixesTest extends WebTestCase
 
     public function testStateOfAKeyThatIsNoLongerConfiguredIsRefused(): void
     {
-        $this->boot('true', $this->twoKeys('2'));
+        $this->boot($this->twoKeys('2'));
         $user = $this->legacyUser();
         $token = static::getContainer()->get(PasswordResetService::class)->createToken($user);
         $flow = $this->registration(['resetToken' => $token]);
@@ -252,9 +252,9 @@ class OpaqueReviewFixesTest extends WebTestCase
         self::assertSame(204, $this->finish($adaFlow, ['resetToken' => $adaToken], $adaState)['status']);
     }
 
-    // --- M2: legacy endpoints while enabled ---
+    // --- M2: plaintext endpoints ---
 
-    public function testLegacyEndpointsAreRefusedWhileEnabled(): void
+    public function testPlaintextProofsAreRefusedForRecordAccounts(): void
     {
         $this->boot();
         $upgraded = $this->legacyUser('up@example.com');
@@ -264,13 +264,6 @@ class OpaqueReviewFixesTest extends WebTestCase
         $upgradedUser = $this->em()->find(User::class, $upgraded->getId());
         $upgradedUser->setOpaque($flow['record'], 1, '1');
         $this->em()->flush();
-
-        // New credentials are OPAQUE only.
-        $r = $this->post('/api/auth/register', ['name' => 'N', 'email' => 'x@example.com', 'password' => 'whatever12345', 'acceptedDocuments' => []]);
-        self::assertSame([409, 'opaque_required'], [$r['status'], $r['body']['code']]);
-        $r = $this->post('/api/auth/reset-password', ['token' => 't', 'password' => 'whatever12345']);
-        self::assertSame([409, 'opaque_required'], [$r['status'], $r['body']['code']]);
-        self::assertNull($this->em()->getRepository(User::class)->findOneBy(['email' => 'x@example.com']));
 
         // Upgraded account (record + kept hash): plaintext proofs are refused, even the right password.
         $auth = $this->bearer($upgraded);
@@ -295,18 +288,19 @@ class OpaqueReviewFixesTest extends WebTestCase
         self::assertSame(204, $this->post('/api/auth/change-email', ['email' => 'l2@example.com', 'password' => self::PASSWORD], $this->bearer($legacy))['status']);
     }
 
-    public function testFlagOffEverythingStaysLegacy(): void
+    public function testPlaintextRegisterAndResetRoutesAreGone(): void
     {
-        $this->boot('false');
-        $r = $this->post('/api/auth/register', ['name' => 'N', 'email' => 'x@example.com', 'password' => 'whatever12345', 'acceptedDocuments' => []]);
-        self::assertSame(201, $r['status'], json_encode($r['body']));
-        $user = $this->legacyUser('ada@example.com');
-        // An upgraded account (hash kept) signs in with the hash again after a rollback.
-        $this->em()->clear();
-        $this->em()->find(User::class, $user->getId())->setOpaque(str_repeat("\x01", 192), 1, '1');
-        $this->em()->flush();
-        self::assertSame(200, $this->post('/api/auth/login', ['email' => 'ada@example.com', 'password' => self::PASSWORD])['status']);
-        self::assertSame(204, $this->post('/api/auth/change-email', ['email' => 'n@example.com', 'password' => self::PASSWORD], $this->bearer($user))['status']);
+        $this->boot();
+        $auth = $this->bearer($this->legacyUser());
+
+        foreach ([
+            ['/api/auth/register', ['name' => 'N', 'email' => 'x@example.com', 'password' => 'whatever12345', 'acceptedDocuments' => []]],
+            ['/api/auth/reset-password', ['token' => 't', 'password' => 'whatever12345']],
+        ] as [$path, $body]) {
+            self::assertSame(404, $this->post($path, $body, $auth)['status'], $path);
+            self::assertSame(404, $this->post($path, $body)['status'], $path);
+        }
+        self::assertNull($this->em()->getRepository(User::class)->findOneBy(['email' => 'x@example.com']));
     }
 
     // --- L2: unusable records get no upgrade ticket ---

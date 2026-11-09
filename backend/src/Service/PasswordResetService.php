@@ -100,24 +100,13 @@ readonly class PasswordResetService
     }
 
     /**
-     * @throws ApiProblemException 400 invalid_reset_token for unknown, used and expired tokens alike
-     */
-    public function reset(string $token, string $newPassword): void
-    {
-        $this->claim($token, function (User $user) use ($newPassword): void {
-            // A stale OPAQUE record would keep the old password alive (flag off, then on again).
-            $user->setPassword($this->hasher->hashPassword($user, $newPassword))->clearOpaque();
-        });
-    }
-
-    /**
      * Reset with an OPAQUE record: the record replaces the credential and the bcrypt hash is removed, so the old
      * password stops working (the account authenticates through OPAQUE from now on).
      *
      * @throws ApiProblemException     400 invalid_reset_token
      * @throws InvalidMessageException malformed record (the link stays usable)
      */
-    public function resetWithRecord(string $token, #[\SensitiveParameter] string $record, ?string $keyId = null): void
+    public function resetWithRecord(string $token, #[\SensitiveParameter] string $record, string $keyId): void
     {
         $this->claim($token, function (User $user) use ($record, $keyId): void {
             $this->opaque->storeRecord($user, $record, $keyId);

@@ -128,7 +128,7 @@ class OpaqueHardeningTest extends KernelTestCase
 
     public function testWiredServerUsesSystemRandom(): void
     {
-        $keys = new \App\Opaque\OpaqueKeys(true, \App\Opaque\OpaqueKeys::encode(random_bytes(64)), \App\Opaque\OpaqueKeys::encode(sodium_crypto_core_ristretto255_scalar_random()));
+        $keys = new \App\Opaque\OpaqueKeys(\App\Opaque\OpaqueKeys::encode(random_bytes(64)), \App\Opaque\OpaqueKeys::encode(sodium_crypto_core_ristretto255_scalar_random()));
         $server = OpaqueServer::fromKeys($keys);
         self::assertInstanceOf(SystemRandom::class, (new \ReflectionProperty($server, 'random'))->getValue($server));
 

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Opaque\OpaqueCutoff;
 use App\Opaque\OpaqueException;
 use App\Opaque\OpaqueKeys;
-use App\Opaque\OpaqueRollout;
 use App\Opaque\OpaqueServer;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -14,13 +14,11 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
-/** Fails (exit 1) on an invalid rollout/cutoff value, or when OPAQUE_ENABLED is true and any key set is missing or invalid (all ids, unique, active id present); used by docker/entrypoint.sh. */
-#[AsCommand(name: 'app:opaque:check', description: 'Validate the OPAQUE configuration (fatal when enabled and invalid)')]
+/** Fails (exit 1) on an invalid cutoff value or when any key set is missing or invalid (all ids, unique, active id present); used by docker/entrypoint.sh. */
+#[AsCommand(name: 'app:opaque:check', description: 'Validate the OPAQUE configuration (fatal when invalid)')]
 class OpaqueCheckCommand
 {
     public function __construct(
-        #[Autowire(env: 'bool:OPAQUE_ENABLED')]
-        private readonly bool $enabled,
         #[Autowire(env: 'OPAQUE_OPRF_SEED')]
         #[\SensitiveParameter]
         private readonly string $seed,
@@ -33,8 +31,6 @@ class OpaqueCheckCommand
         #[Autowire(env: 'OPAQUE_ACTIVE_KEY_ID')]
         private readonly string $activeKeyId,
         private readonly Connection $connection,
-        #[Autowire(env: 'OPAQUE_ROLLOUT_PERCENT')]
-        private readonly string $rolloutPercent,
         #[Autowire(env: 'OPAQUE_LEGACY_CUTOFF')]
         private readonly string $legacyCutoff,
     ) {
@@ -43,24 +39,14 @@ class OpaqueCheckCommand
     public function __invoke(SymfonyStyle $io): int
     {
         try {
-            OpaqueRollout::validate($this->rolloutPercent, $this->legacyCutoff);
+            OpaqueCutoff::validate($this->legacyCutoff);
         } catch (OpaqueException $e) {
             $io->getErrorStyle()->error($e->getMessage());
 
             return Command::FAILURE;
         }
-        if (OpaqueRollout::cutoffNeedsFullRollout($this->rolloutPercent, $this->legacyCutoff)) {
-            $io->getErrorStyle()->error('OPAQUE_LEGACY_CUTOFF is set but OPAQUE_ROLLOUT_PERCENT is below 100: accounts outside the rollout would never be offered the upgrade.');
-
-            return Command::FAILURE;
-        }
-        if (!$this->enabled) {
-            $io->writeln('OPAQUE disabled (OPAQUE_ENABLED is false): keys are not checked.');
-
-            return Command::SUCCESS;
-        }
         try {
-            $keys = new OpaqueKeys(true, $this->seed, $this->privateKey, $this->keySets, $this->activeKeyId);
+            $keys = new OpaqueKeys($this->seed, $this->privateKey, $this->keySets, $this->activeKeyId);
             foreach ($keys->ids() as $id) {
                 OpaqueServer::fromKeys($keys, keyId: $id);
             }
@@ -69,7 +55,7 @@ class OpaqueCheckCommand
 
             return Command::FAILURE;
         }
-        $io->writeln(sprintf('OPAQUE enabled, %d key set(s) valid (%s), active: %s.', count($keys->ids()), implode(', ', $keys->ids()), $keys->activeId()));
+        $io->writeln(sprintf('OPAQUE configuration valid, %d key set(s) valid (%s), active: %s.', count($keys->ids()), implode(', ', $keys->ids()), $keys->activeId()));
         $this->warnAboutKeyUsage($io, $keys);
 
         return Command::SUCCESS;

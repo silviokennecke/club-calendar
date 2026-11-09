@@ -25,7 +25,7 @@ use Symfony\Component\Serializer\Exception\ExceptionInterface as SerializerExcep
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-/** OPAQUE password login (docs/ops/OPAQUE-PLAN.md 3.2); inert (503 `opaque_unavailable`) unless OPAQUE_ENABLED. */
+/** OPAQUE password login (docs/ops/OPAQUE-PLAN.md 3.2) */
 #[Route('/api/auth/opaque')]
 class OpaqueLoginController extends AbstractApiController
 {
@@ -49,7 +49,6 @@ class OpaqueLoginController extends AbstractApiController
     #[Route('/login/start', methods: ['POST'])]
     public function loginStart(Request $request): JsonResponse
     {
-        $this->assertEnabled();
         $dto = $this->deserializeDto($request, OpaqueLoginStartDto::class);
         $this->validateDto($dto, $this->validator);
         $this->rateLimiter->assertLoginAllowed($request, $dto->email);
@@ -77,7 +76,6 @@ class OpaqueLoginController extends AbstractApiController
     #[Route('/login/finish', methods: ['POST'])]
     public function loginFinish(Request $request): JsonResponse
     {
-        $this->assertEnabled();
         $dto = $this->deserializeDto($request, OpaqueLoginFinishDto::class);
         $this->validateDto($dto, $this->validator);
         $ke3 = $this->decode($dto->finishLoginRequest, 'finishLoginRequest', self::KE3_LENGTH);
@@ -92,13 +90,6 @@ class OpaqueLoginController extends AbstractApiController
         $this->logger->info('opaque.login.success', ['userId' => $user->getId()]);
 
         return new JsonResponse($this->auth->completeLogin($user));
-    }
-
-    private function assertEnabled(): void
-    {
-        if (!$this->opaque->isEnabled()) {
-            throw new ApiProblemException(503, 'OPAQUE login is not available', 'opaque_unavailable');
-        }
     }
 
     private function decode(string $value, string $field, int $length): string

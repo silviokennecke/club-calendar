@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\User;
-use App\Opaque\OpaqueRollout;
+use App\Opaque\OpaqueCutoff;
 use App\Service\AccountMailer;
 use App\Service\DeferredMailer;
 use Doctrine\ORM\EntityManagerInterface;
@@ -27,7 +27,7 @@ class OpaqueNotifyLegacyCommand
 
     public function __construct(
         private readonly EntityManagerInterface $em,
-        private readonly OpaqueRollout $rollout,
+        private readonly OpaqueCutoff $rollout,
         private readonly AccountMailer $mailer,
         private readonly DeferredMailer $deferredMailer,
         private readonly ClockInterface $clock,
@@ -40,15 +40,10 @@ class OpaqueNotifyLegacyCommand
         #[Option(description: 'Maximum number of mails per run (the rest follows at the next run)')] int $limit = 500,
     ): int {
         $cutoff = $this->rollout->cutoff();
-        if (!$this->rollout->isEnabled() || null === $cutoff) {
-            $io->warning('OPAQUE_ENABLED is off or OPAQUE_LEGACY_CUTOFF is empty: nothing to remind.');
+        if (null === $cutoff) {
+            $io->warning('OPAQUE_LEGACY_CUTOFF is empty: nothing to remind.');
 
             return Command::SUCCESS;
-        }
-        if ($this->rollout->percent() < 100) {
-            $io->error('OPAQUE_ROLLOUT_PERCENT is below 100 while a cutoff is set: refusing to remind accounts that are not offered the upgrade.');
-
-            return Command::FAILURE;
         }
         $today = $this->clock->now()->setTimezone(new \DateTimeZone('UTC'))->setTime(0, 0);
         if ($today >= $cutoff) {

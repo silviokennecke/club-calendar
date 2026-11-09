@@ -59,7 +59,7 @@ readonly class AccountService
      *
      * @throws InvalidMessageException malformed record
      */
-    public function changePasswordWithRecord(User $user, #[\SensitiveParameter] string $record, ?bool $consentOk = null, ?string $keyId = null): array
+    public function changePasswordWithRecord(User $user, #[\SensitiveParameter] string $record, string $keyId, ?bool $consentOk = null): array
     {
         $this->opaque->storeRecord($user, $record, $keyId);
         $user->setPassword(null);
@@ -303,10 +303,10 @@ readonly class AccountService
         }
     }
 
-    /** With OPAQUE enabled an account with a usable record proves itself with tickets, never with the kept bcrypt hash. */
+    /** An account with a usable record proves itself with tickets, never with the kept bcrypt hash. */
     private function assertNoOpaqueRecord(User $user): void
     {
-        if ($this->opaque->isEnabled() && $this->opaque->hasRecord($user)) {
+        if ($this->opaque->hasRecord($user)) {
             throw new ApiProblemException(409, 'This account signs in with OPAQUE', 'opaque_required');
         }
     }

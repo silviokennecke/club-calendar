@@ -16,28 +16,24 @@ class OpaqueKeysTest extends TestCase
         $seed = random_bytes(64);
         $private = sodium_crypto_core_ristretto255_scalar_random();
 
-        $keys = new OpaqueKeys(true, OpaqueKeys::encode($seed), OpaqueKeys::encode($private));
+        $keys = new OpaqueKeys(OpaqueKeys::encode($seed), OpaqueKeys::encode($private));
 
-        self::assertTrue($keys->isEnabled());
         self::assertSame($seed, $keys->oprfSeed());
         self::assertSame($private, $keys->serverPrivateKey());
         self::assertSame(sodium_crypto_scalarmult_ristretto255_base($private), $keys->serverPublicKey());
         self::assertSame(32, strlen($keys->serverPublicKey()));
     }
 
-    public function testDisabledNeedsNoKeysAndRefusesAccess(): void
+    public function testMissingKeysFailEarly(): void
     {
-        $keys = new OpaqueKeys(false, '', '');
-
-        self::assertFalse($keys->isEnabled());
         $this->expectException(OpaqueException::class);
-        $keys->oprfSeed();
+        new OpaqueKeys('', '');
     }
 
     public function testDoesNotLeakSecrets(): void
     {
         $private = sodium_crypto_core_ristretto255_scalar_random();
-        $keys = new OpaqueKeys(true, OpaqueKeys::encode(random_bytes(64)), OpaqueKeys::encode($private));
+        $keys = new OpaqueKeys(OpaqueKeys::encode(random_bytes(64)), OpaqueKeys::encode($private));
 
         ob_start();
         var_dump($keys);
@@ -72,14 +68,14 @@ class OpaqueKeysTest extends TestCase
         $this->expectException(OpaqueException::class);
         $this->expectExceptionMessageMatches('/'.preg_quote($needle, '/').'/');
 
-        new OpaqueKeys(true, $seed, $key);
+        new OpaqueKeys($seed, $key);
     }
 
     public function testErrorMessageNeverContainsTheValue(): void
     {
         $bad = OpaqueKeys::encode(random_bytes(31));
         try {
-            new OpaqueKeys(true, $bad, $bad);
+            new OpaqueKeys($bad, $bad);
             self::fail('expected exception');
         } catch (OpaqueException $e) {
             self::assertStringNotContainsString($bad, $e->getMessage());
@@ -89,7 +85,6 @@ class OpaqueKeysTest extends TestCase
     public function testConfiguredTestKeysAreValid(): void
     {
         $keys = new OpaqueKeys(
-            true,
             (string) getenv('OPAQUE_OPRF_SEED'),
             (string) getenv('OPAQUE_SERVER_PRIVATE_KEY'),
         );
@@ -104,7 +99,7 @@ class OpaqueKeysTest extends TestCase
 
     public function testLegacyPairIsKeyOneAndActiveByDefault(): void
     {
-        $keys = new OpaqueKeys(true, OpaqueKeys::encode(random_bytes(64)), OpaqueKeys::encode(sodium_crypto_core_ristretto255_scalar_random()));
+        $keys = new OpaqueKeys(OpaqueKeys::encode(random_bytes(64)), OpaqueKeys::encode(sodium_crypto_core_ristretto255_scalar_random()));
 
         self::assertSame('1', $keys->activeId());
         self::assertSame(['1'], $keys->ids());
@@ -116,7 +111,7 @@ class OpaqueKeysTest extends TestCase
     {
         $seed = random_bytes(64);
         $private = sodium_crypto_core_ristretto255_scalar_random();
-        $keys = new OpaqueKeys(true, OpaqueKeys::encode($seed), OpaqueKeys::encode($private), self::sets('2', 'k-3'), '2');
+        $keys = new OpaqueKeys(OpaqueKeys::encode($seed), OpaqueKeys::encode($private), self::sets('2', 'k-3'), '2');
 
         self::assertSame(['1', '2', 'k-3'], $keys->ids());
         self::assertSame('2', $keys->activeId());
@@ -127,7 +122,7 @@ class OpaqueKeysTest extends TestCase
 
     public function testKeySetsAloneWithoutLegacyPair(): void
     {
-        $keys = new OpaqueKeys(true, '', '', self::sets('a', 'b'), 'b');
+        $keys = new OpaqueKeys('', '', self::sets('a', 'b'), 'b');
 
         self::assertSame(['a', 'b'], $keys->ids());
         self::assertSame('b', $keys->activeId());
@@ -155,7 +150,6 @@ class OpaqueKeysTest extends TestCase
         $this->expectExceptionMessageMatches('/'.preg_quote($needle, '/').'/');
 
         new OpaqueKeys(
-            true,
             $legacy ? OpaqueKeys::encode(random_bytes(64)) : '',
             $legacy ? OpaqueKeys::encode(sodium_crypto_core_ristretto255_scalar_random()) : '',
             $sets,
@@ -165,7 +159,7 @@ class OpaqueKeysTest extends TestCase
 
     public function testUnknownIdAccessThrows(): void
     {
-        $keys = new OpaqueKeys(true, '', '', self::sets('a'), 'a');
+        $keys = new OpaqueKeys('', '', self::sets('a'), 'a');
         $this->expectException(OpaqueException::class);
         $keys->oprfSeed('zz');
     }

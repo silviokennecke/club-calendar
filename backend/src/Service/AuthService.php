@@ -14,7 +14,7 @@ use App\Exception\OAuthAccountConflictException;
 use App\Exception\OAuthIdentityMismatchException;
 use App\Exception\OAuthRegistrationRestrictedException;
 use App\Opaque\InvalidMessageException;
-use App\Opaque\OpaqueRollout;
+use App\Opaque\OpaqueCutoff;
 use App\Opaque\OpaqueService;
 use App\Opaque\OpaqueUpgradeTickets;
 use App\Repository\RefreshTokenRepository;
@@ -49,7 +49,7 @@ readonly class AuthService
         private RegistrationPolicy $registrationPolicy,
         private LoggerInterface $logger,
         private OpaqueService $opaque,
-        private OpaqueRollout $rollout,
+        private OpaqueCutoff $cutoff,
         private OpaqueUpgradeTickets $upgradeTickets,
         /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
         #[Autowire(env: 'int:REFRESH_TOKEN_REUSE_GRACE')]
@@ -63,19 +63,6 @@ readonly class AuthService
     /**
      * @param array<mixed> $acceptedDocuments ids of the accepted legal documents (all current ones are required)
      */
-    public function register(string $name, string $email, string $password, ?string $language = null, array $acceptedDocuments = [], ?string $ip = null, ?string $userAgent = null): array
-    {
-        return $this->createAccount(
-            $name,
-            $email,
-            fn (User $user) => $user->setPassword($this->hasher->hashPassword($user, $password)),
-            $language,
-            $acceptedDocuments,
-            $ip,
-            $userAgent,
-        );
-    }
-
     /**
      * Signup with an OPAQUE record (no password hash). `$userId` is the id the record was registered under (from the
      * signed signup state); `$claimState` consumes that state and runs after every check, right before the insert.
@@ -145,14 +132,14 @@ readonly class AuthService
         $email = EmailAddress::normalize($email);
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         // Same information as identify's `auth: opaque`; refused before any password check. The bcrypt hash of an
-        // upgraded account stays stored (rollback with the flag off) but is not accepted meanwhile.
-        if ($user && $this->opaque->isEnabled() && $this->opaque->hasRecord($user)) {
+        // upgraded account stays stored until phase 2 but is not accepted.
+        if ($user && $this->opaque->hasRecord($user)) {
             $this->logger->info('opaque.legacy_login.failure', ['userId' => $user->getId(), 'reason' => 'opaque_required']);
             throw new ApiProblemException(409, 'This account signs in with OPAQUE', 'opaque_required');
         }
         // After the cutoff the bcrypt hash is no longer accepted (same signal as identify's reset_required).
         if ($user && $user->getPassword() && !$this->opaque->hasRecord($user)
-            && $this->rollout->isEnabled() && $this->rollout->cutoffReached($this->clock->now())) {
+            && $this->cutoff->cutoffReached($this->clock->now())) {
             $this->logger->info('opaque.legacy_login.failure', ['userId' => $user->getId(), 'reason' => 'cutoff']);
             throw new ApiProblemException(409, 'The password must be reset', 'reset_required');
         }
@@ -168,7 +155,7 @@ readonly class AuthService
         }
         $hasRecord = $this->opaque->hasRecord($user);
         // Ticket only for a confirmed address: the upgrade endpoints are behind the e-mail confirmation gate.
-        $offerUpgrade = null === $user->getOpaqueRecord() && $user->isEmailVerified() && $this->rollout->offersUpgrade($user->getId());
+        $offerUpgrade = null === $user->getOpaqueRecord() && $user->isEmailVerified();
         $this->logger->info('opaque.legacy_login.success', [
             'userId' => $user->getId(),
             'hasRecord' => $hasRecord,
@@ -416,7 +403,7 @@ readonly class AuthService
     /** Which password proof the client must use: `opaque`, `legacy` (bcrypt), `reset_required` (only an unusable record) or null (no password). */
     private function passwordProtocol(User $user): ?string
     {
-        if ($this->opaque->isEnabled() && $this->opaque->hasRecord($user)) {
+        if ($this->opaque->hasRecord($user)) {
             return 'opaque';
         }
         if (null !== $user->getPassword()) {

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Opaque\OpaqueRollout;
+use App\Opaque\OpaqueCutoff;
 use Doctrine\DBAL\Connection;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -15,14 +15,14 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 /**
  * Phase 2 (docs/ops/OPAQUE-PLAN.md 6.5, 6.8): deletes every remaining bcrypt hash after the cutoff. Accounts with an
  * OPAQUE record lose only the kept hash; accounts without one must reset their password. Sessions stay valid.
- * Dry run unless --force; refuses before the cutoff and while OPAQUE is off.
+ * Dry run unless --force; refuses before the cutoff.
  */
 #[AsCommand(name: 'app:opaque:retire-legacy', description: 'After the cutoff: delete all remaining bcrypt password hashes (dry run unless --force)')]
 class OpaqueRetireLegacyCommand
 {
     public function __construct(
         private readonly Connection $connection,
-        private readonly OpaqueRollout $rollout,
+        private readonly OpaqueCutoff $rollout,
         private readonly ClockInterface $clock,
     ) {
     }
@@ -30,19 +30,8 @@ class OpaqueRetireLegacyCommand
     public function __invoke(SymfonyStyle $io, #[Option(description: 'Actually delete the hashes (default: only count)')] bool $force = false): int
     {
         $cutoff = $this->rollout->cutoff();
-        if (!$this->rollout->isEnabled()) {
-            $io->error('OPAQUE_ENABLED is off. Refusing.');
-
-            return Command::FAILURE;
-        }
         if (null === $cutoff || !$this->rollout->cutoffReached($this->clock->now())) {
             $io->error('The OPAQUE_LEGACY_CUTOFF date is not set or not reached yet. Refusing.');
-
-            return Command::FAILURE;
-        }
-
-        if ($this->rollout->percent() < 100) {
-            $io->error('OPAQUE_ROLLOUT_PERCENT is below 100 while a cutoff is set. Refusing.');
 
             return Command::FAILURE;
         }

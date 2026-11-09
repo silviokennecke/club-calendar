@@ -40,7 +40,6 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  * field: signup uses the id minted into the signed state, reset the user of the link, change/upgrade the signed-in
  * user. Starts under a real user's key count against that user's and the IP's login limits (guessing oracle).
  * The password policy (8-128) is enforced by the client only; the server cannot see the password.
- * Inert (503 `opaque_unavailable`) unless OPAQUE_ENABLED.
  */
 #[Route('/api/auth/opaque')]
 class OpaqueRegisterController extends AbstractApiController
@@ -72,12 +71,11 @@ class OpaqueRegisterController extends AbstractApiController
     /**
      * Signup counts against the register limits (IP, address); the other contexts against the login limits of the
      * account the evaluation is bound to. Signup answers the same for taken and free addresses (`email_taken`
-     * is reported by the finish, as POST /api/auth/register does).
+     * is reported by the finish).
      */
     #[Route('/register/start', methods: ['POST'])]
     public function registerStart(Request $request): JsonResponse
     {
-        $this->assertEnabled();
         $dto = $this->deserializeDto($request, OpaqueRegisterStartDto::class);
         $context = self::context([self::SIGNUP => $dto->email, self::RESET => $dto->resetToken, self::CHANGE => $dto->reauthTicket, self::UPGRADE => $dto->upgradeTicket]);
 
@@ -126,13 +124,12 @@ class OpaqueRegisterController extends AbstractApiController
     }
 
     /**
-     * Signup: 201 `{verificationRequired, email}` + token pair (restricted session), like POST /api/auth/register.
+     * Signup: 201 `{verificationRequired, email}` + token pair (restricted session).
      * Reset and upgrade: 204. Change: 200 with a new token pair (other sessions end).
      */
     #[Route('/register/finish', methods: ['POST'])]
     public function registerFinish(Request $request): JsonResponse
     {
-        $this->assertEnabled();
         $dto = $this->deserializeDto($request, OpaqueRegisterFinishDto::class);
         $context = self::finishContext($dto);
         $this->validateDto($dto, $this->validator);
@@ -188,7 +185,7 @@ class OpaqueRegisterController extends AbstractApiController
             throw self::reauthRequired();
         }
 
-        return new JsonResponse($this->accounts->changePasswordWithRecord($user, $record, $this->userResolver->sessionConsentOk(), $keyId));
+        return new JsonResponse($this->accounts->changePasswordWithRecord($user, $record, $keyId, $this->userResolver->sessionConsentOk()));
     }
 
     /** Stores the record only: the bcrypt hash stays until phase 2 and running sessions stay valid. */
@@ -281,13 +278,6 @@ class OpaqueRegisterController extends AbstractApiController
     private static function reauthRequired(): ApiProblemException
     {
         return new ApiProblemException(403, 'A fresh re-authentication ticket is required', 'reauth_required');
-    }
-
-    private function assertEnabled(): void
-    {
-        if (!$this->opaque->isEnabled()) {
-            throw new ApiProblemException(503, 'OPAQUE login is not available', 'opaque_unavailable');
-        }
     }
 
     private function decode(string $value, string $field, int $length): string

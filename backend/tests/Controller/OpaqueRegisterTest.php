@@ -35,12 +35,9 @@ class OpaqueRegisterTest extends WebTestCase
 
     private KernelBrowser $client;
     private OpaqueTestClient $opaque;
-    private ?string $previousEnabled = null;
 
     protected function setUp(): void
     {
-        $this->previousEnabled = $_SERVER['OPAQUE_ENABLED'] ?? null;
-        $this->setEnabled('true');
         static::ensureKernelShutdown();
         $this->client = static::createClient();
         $this->client->disableReboot();
@@ -51,19 +48,6 @@ class OpaqueRegisterTest extends WebTestCase
     protected function tearDown(): void
     {
         static::mockTime(false);
-        $this->setEnabled($this->previousEnabled);
-    }
-
-    private function setEnabled(?string $value): void
-    {
-        if (null === $value) {
-            unset($_SERVER['OPAQUE_ENABLED'], $_ENV['OPAQUE_ENABLED']);
-            putenv('OPAQUE_ENABLED');
-
-            return;
-        }
-        $_SERVER['OPAQUE_ENABLED'] = $_ENV['OPAQUE_ENABLED'] = $value;
-        putenv('OPAQUE_ENABLED='.$value);
     }
 
     private function em(): EntityManagerInterface
@@ -93,7 +77,7 @@ class OpaqueRegisterTest extends WebTestCase
         $user = (new User())->setName('Ada')->setEmail($email)->setIsEmailVerified($verified);
         $service = $this->service(OpaqueService::class);
         $reg = $this->opaque->startRegistration(self::PASSWORD);
-        $service->storeRecord($user, $this->opaque->finishRegistration(self::PASSWORD, $reg['blind'], $service->registrationResponse($user, $reg['request']))['record']);
+        $service->storeRecord($user, $this->opaque->finishRegistration(self::PASSWORD, $reg['blind'], $service->registrationResponse($user, $reg['request']))['record'], $service->activeKeyId());
         $this->em()->persist($user);
         $this->em()->flush();
 
@@ -608,19 +592,6 @@ class OpaqueRegisterTest extends WebTestCase
             $r = $this->post('/api/auth/opaque/register/'.$path, $body);
             $this->assertSame(400, $r['status'], json_encode($body));
             $this->assertSame('invalid_request', $r['body']['code'], json_encode($body));
-        }
-    }
-
-    public function testDisabledFlagAnswers503(): void
-    {
-        $this->setEnabled('false');
-        static::ensureKernelShutdown();
-        $this->client = static::createClient();
-        $this->client->disableReboot();
-        foreach (['start' => ['email' => 'a@example.com', 'registrationRequest' => 'x'], 'finish' => ['registrationState' => 'x', 'registrationRecord' => 'x']] as $path => $body) {
-            $r = $this->post('/api/auth/opaque/register/'.$path, $body);
-            $this->assertSame(503, $r['status']);
-            $this->assertSame('opaque_unavailable', $r['body']['code']);
         }
     }
 
