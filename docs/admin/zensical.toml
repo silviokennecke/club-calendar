@@ -1,6 +1,6 @@
 [project]
 site_name = "Club Calendar – Admin Guide"
-copyright = "Licensed under the GNU AGPL v3.0 or later"
+copyright = "Licensed under the GNU AGPL v3.0 or later · Written with AI assistance."
 site_description = "Installation and operation guide for Club Calendar administrators"
 site_url = "https://silviokennecke.github.io/club-calendar/"
 repo_url = "https://github.com/silviokennecke/club-calendar"
