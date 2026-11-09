@@ -26,3 +26,6 @@ backend/build/node_modules
 # Compiled email templates (built from MJML sources)
 backend/templates/email/*.html.twig
 # Keep MJML source files tracked (negation handled by explicit .mjml rules in source control)
+
+# Admin docs build output
+docs/admin/site/

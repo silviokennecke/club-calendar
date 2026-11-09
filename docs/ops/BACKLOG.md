@@ -1,6 +1,6 @@
 # Backlog: offene Punkte
 
-Offene Backend-Features, Sicherheitsrisiken, Betriebspunkte und Design-Entscheidungen. Endpoints, Schemas und Fehlercodes: [`../api/openapi.yaml`](../api/openapi.yaml). Betrieb: [`OPERATIONS.md`](OPERATIONS.md). E2E-Umgebung: [`E2E.md`](E2E.md).
+Offene Backend-Features, Sicherheitsrisiken, Betriebspunkte und Design-Entscheidungen. Endpoints, Schemas und Fehlercodes: [`../api/openapi.yaml`](../api/openapi.yaml). Betrieb: [Admin-Guide](../admin/docs/index.md), Maintainer-Notizen: [`OPERATIONS.md`](OPERATIONS.md). E2E-Umgebung: [`E2E.md`](E2E.md).
 
 ## Offene Backend-Features
 
@@ -75,7 +75,7 @@ Hier steht die einzige maßgebliche Liste der offenen Sicherheitspunkte. Die Aud
 | Schweregrad | Risiko | Details / mögliche Behebung |
 | --- | --- | --- |
 | niedrig | **API-53 (ehemals L5): öffentliche statische Kartenbilder** | `/api/map/image/location/{id}` und `/event/{id}` sind ohne Anmeldung erreichbar (für anonyme Feed-Seiten) und prüfen nicht, ob Ort/Termin in einem Feed veröffentlicht ist; Ausgabe ist nur ein Kartenbild mit der Position. IP-Limit 360/h; das gemeinsame Mapbox-Bildbudget bleibt von vielen IPs erschöpfbar. Behebung: feed-gebundene/signierte URLs bzw. Mitgliedsprüfung in der App. |
-| info | **I3: Backend-Hinweise** | Fixtures-Passwort `password123` (nur Dev/CI); `app:prune-unverified-users` steht als Cron in `OPERATIONS.md`, nichts im Repo plant es ein; Refresh-Token ist ein selbst gebauter HS256-Token mit Standard-Base64; `OidcProvider` ohne PKCE zum Identity Provider; lokale `config/jwt/public.pem` mit 0666 (Umask des Entwicklerrechners, öffentlicher Schlüssel); 404-vs-403-Orakel auf Verein-/Kalender-IDs. |
+| info | **I3: Backend-Hinweise** | Fixtures-Passwort `password123` (nur Dev/CI); `app:prune-unverified-users` steht als Cron im Admin-Guide (`docs/admin/docs/security.md`), nichts im Repo plant es ein; Refresh-Token ist ein selbst gebauter HS256-Token mit Standard-Base64; `OidcProvider` ohne PKCE zum Identity Provider; lokale `config/jwt/public.pem` mit 0666 (Umask des Entwicklerrechners, öffentlicher Schlüssel); 404-vs-403-Orakel auf Verein-/Kalender-IDs. |
 | info | **I4: Frontend-Hinweise** | Routen-Guards nur clientseitig (Backend erzwingt); IDs in API-Pfaden meist ohne `encodeURIComponent` (serverseitige UUIDs); OAuth-Provider-ID unkodiert im `href`; alter `accessToken`-Storage-Key wird noch gelesen. |
 | info | **SCAN-12 (Rest): Release-`ci`-Aufruf mit `contents: write`** | `release.yml` muss `contents: write` an `ci.yml` geben, weil dort `autofix` es deklariert (läuft auf Tags nicht). |
 | niedrig | **MCP: Familien-Treffer beweist nicht den Betreiber** | Die Bezeichnung (Claude, ChatGPT, Gemini) kommt aus der Redirect-URI-Familie, der selbst angegebene `client_name` gilt nur als Behauptung. Ein eigener ChatGPT-Konnektor (`chatgpt.com/connector/oauth/<id>`) oder ein lokales Programm (Loopback) trifft trotzdem eine Familie; akzeptiert, die Zustimmungsseite warnt dafür gesondert. Ein leeres `MCP_ALLOWED_CLIENTS` erlaubt keinen Client mehr, alle nur mit `*`. |
@@ -88,7 +88,7 @@ Hier steht die einzige maßgebliche Liste der offenen Sicherheitspunkte. Die Aud
 ## Akzeptierte Abweichungen
 
 - **AUTH-07: Fehlergrund im Weiterleitungslink der Adressänderung.** `GET /api/auth/verify-new-email` leitet bei einem Fehler auf `/auth/verify-email?status=error&reason=…&flow=email_change` (`invalid`, `expired`, `already_used`, `email_taken`); die Seite `EmailVerifyPage` zeigt je Grund eine passende Meldung. Vom Auftraggeber als gewolltes Verhalten bestätigt. Die Registrierungs-Bestätigung per Link (ursprünglicher Ort des Befunds) gibt es nicht mehr, sie läuft per 6-stelligem Code.
-- **HSTS (Betrieb):** Entscheidung des Eigentümers: `Strict-Transport-Security` setzt der TLS-Terminator vor dem Container, nicht der Container (Betreiberaufgabe, siehe `OPERATIONS.md`).
+- **HSTS (Betrieb):** Entscheidung des Eigentümers: `Strict-Transport-Security` setzt der TLS-Terminator vor dem Container, nicht der Container (Betreiberaufgabe, siehe `docs/admin/docs/security.md`).
 - **Mapbox-Token in Logs (ehem. L10):** Der Eigentümer hat bestätigt, dass das Mapbox-Token bereits so eingeschränkt ist, wie es möglich ist. Die Log-Redaktion ist umgesetzt (`63e3547`).
 
 ## Offene Design-Punkte

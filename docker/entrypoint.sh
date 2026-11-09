@@ -3,18 +3,17 @@
 #   serve (default)  prepare, migrate, then run PHP-FPM + Caddy
 #   anything else    executed as is, e.g. `php bin/console doctrine:fixtures:load`
 #
-# Required:  APP_SECRET, JWT_REFRESH_SECRET, DATABASE_URL, APP_URL (public URL, e.g. https://cal.example.com),
-#            WEBAUTHN_RP_NAME
-# Optional:  FRONTEND_URL / BACKEND_URL / WEBAUTHN_RP_ID (derived from APP_URL), MAILER_DSN, MAILER_FROM, MAPBOX_TOKEN,
+# Required:  APP_SECRET, JWT_REFRESH_SECRET, DATABASE_URL, APP_URL (public URL, e.g. https://cal.example.com)
+# Optional:  WEBAUTHN_RP_NAME, FRONTEND_URL / BACKEND_URL / WEBAUTHN_RP_ID (derived from APP_URL), MAILER_DSN, MAILER_FROM, MAPBOX_TOKEN,
 #            GOOGLE_*/MICROSOFT_*/APPLE_* OAuth settings, SYMFONY_TRUSTED_PROXIES (behind a TLS proxy, e.g. PRIVATE_SUBNETS),
 #            OPAQUE_ENABLED (default false), OPAQUE_OPRF_SEED, OPAQUE_SERVER_PRIVATE_KEY (required when enabled; checked at start),
 #            RESTRICT_REGISTRATION (default 0/false), MCP_ACCESS_TOKEN_TTL, MCP_REFRESH_TOKEN_LIFETIME,
 #            MCP_REFRESH_TOKEN_ABSOLUTE_LIFETIME, MCP_REFRESH_TOKEN_REUSE_GRACE, MCP_ALLOWED_CLIENTS (MCP server, see backend/.env.example),
 #            FEED_ICS_WINDOW_ENABLED, FEED_ICS_PAST_DAYS, FEED_ICS_FUTURE_MONTHS, FEED_ICS_MAX_EVENTS (public feed ICS window), FEED_RATE_LIMIT_PER_IP, FEED_RATE_LIMIT_PER_FEED (public feed rate limits), RUN_MIGRATIONS (default 1), MIGRATION_RETRIES (default 15), PORT (default 8080), LEGAL_DOCUMENTS_PATH
-# JWT keys:  JWT_PRIVATE_KEY / JWT_PUBLIC_KEY (paths) or keys in /var/www/html/config/jwt (mount a volume there,
-#            otherwise a new keypair is generated on every container start and sessions are lost).
-# Legal documents: mount your legal Markdown files (imprint.md, privacy.md, terms.md) at /var/www/html/legal or set
-#                  LEGAL_DOCUMENTS_PATH to another directory (see backend/legal/README.md).
+# JWT keys:  JWT_PRIVATE_KEY / JWT_PUBLIC_KEY (paths; the image sets /data/config/*.pem, mount a volume at /data/config,
+#            otherwise a new keypair is generated on every container start).
+# Legal documents: mount your legal Markdown files (imprint.md, privacy.md, terms.md) at /data/legal (the image sets
+#                  LEGAL_DOCUMENTS_PATH=/data/legal; set it to use another directory, see backend/legal/README.md).
 #                  Or set LEGAL_IMPRINT_URL / LEGAL_PRIVACY_URL / LEGAL_TERMS_URL to an http(s) URL of an external document
 #                  (used only when the Markdown file of that type is missing).
 set -euo pipefail
@@ -46,11 +45,11 @@ fi
 
 # JWT keypair
 if [ ! -s "$JWT_PRIVATE_KEY" ]; then
-    log "no JWT keypair found, generating one in config/jwt (mount a volume there to keep it across restarts)"
+    log "no JWT keypair found, generating one at $JWT_PRIVATE_KEY (mount a volume at $(dirname "$JWT_PRIVATE_KEY") to keep it across restarts)"
     php bin/console lexik:jwt:generate-keypair --skip-if-exists --no-interaction
 fi
 
-# OPAQUE: fatal when enabled with missing/invalid keys (never auto-generated, see docs/ops/OPERATIONS.md)
+# OPAQUE: fatal when enabled with missing/invalid keys (never auto-generated, see docs/admin/docs/password-protection.md)
 if ! php bin/console app:opaque:check --no-interaction >&2; then
     log "OPAQUE_ENABLED is true but OPAQUE_OPRF_SEED / OPAQUE_SERVER_PRIVATE_KEY are missing or invalid"
     exit 1
