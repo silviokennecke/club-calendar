@@ -1973,6 +1973,24 @@
       "viewer": "Betrachter",
       "editor": "Bearbeiter",
       "admin": "Admin"
+    },
+    "feedSignup": {
+      "title": "Beitritt über Feeds",
+      "text": "Legt fest, ob sich angemeldete Personen dem Verein anschließen können, indem sie einen Feed öffnen. Sie werden dann Mitglied ohne Zugriff auf Inhalte und sehen nur Feeds, die für sie freigegeben sind.",
+      "off": {
+        "label": "Aus",
+        "text": "Niemand tritt über einen Feed bei. Mitglieder kommen nur über Einladungen."
+      },
+      "internal": {
+        "label": "Nur über vereinsinterne Feeds",
+        "text": "Beitritt über Feeds mit „Nur per Link“ und über private Feeds (mit Geheimnis)."
+      },
+      "public": {
+        "label": "Auch über öffentliche Feeds",
+        "text": "Zusätzlich kann jede angemeldete Person über einen öffentlichen Feed beitreten."
+      },
+      "saved": "Einstellung gespeichert.",
+      "failed": "Die Einstellung konnte nicht gespeichert werden. Bitte versuche es erneut."
     }
   },
   "feeds": {
@@ -2023,7 +2041,10 @@
       "consequence": "Bestehende Abonnements werden unterbrochen. Alle müssen die neue Abo-Adresse eintragen.",
       "confirm": "Geheimnis neu erzeugen",
       "done": "Neues Geheimnis erzeugt. Die Adressen des Feeds haben sich geändert.",
-      "failed": "Das Geheimnis konnte nicht erneuert werden. Bitte versuche es erneut."
+      "failed": "Das Geheimnis konnte nicht erneuert werden. Bitte versuche es erneut.",
+      "revokeClaimed": "Zugriff von Mitgliedern, die den Feed selbst übernommen haben, zurückziehen",
+      "revokeHint_one": "Zugewiesene Mitglieder behalten den Zugriff. Aktuell haben {{count}} Person Zugriff (zugewiesen und selbst übernommen).",
+      "revokeHint_other": "Zugewiesene Mitglieder behalten den Zugriff. Aktuell haben {{count}} Personen Zugriff (zugewiesen und selbst übernommen)."
     },
     "secret": {
       "title": "Geheimnis",
@@ -2094,7 +2115,85 @@
       "back": "Zurück zum Verein"
     },
     "readOnlyRole": "Nur Vereins-Admins können Feeds anlegen oder ändern. Du kannst sie ansehen.",
-    "calendarsOf": "Kalender von {{name}}"
+    "calendarsOf": "Kalender von {{name}}",
+    "assign": {
+      "title": "Zugewiesene Mitglieder",
+      "countLabel_one": "{{count}} Person",
+      "countLabel_other": "{{count}} Personen",
+      "text": "Diese Mitglieder können den privaten Feed lesen, ohne das Geheimnis zu kennen. Auch wer den Feed selbst mit dem Geheimnis geöffnet hat, steht hier.",
+      "listCount_one": "{{count}} Person zugewiesen",
+      "listCount_other": "{{count}} Personen zugewiesen",
+      "add": "Hinzufügen",
+      "search": "Name oder E-Mail suchen",
+      "searchLabel": "Zugewiesene Mitglieder durchsuchen",
+      "sourceFilter": "Herkunft",
+      "sourceAll": "Alle",
+      "source": {
+        "assigned": "Zugewiesen",
+        "claimed": "Selbst übernommen"
+      },
+      "loading": "Zugewiesene Mitglieder werden geladen …",
+      "loadError": "Die zugewiesenen Mitglieder konnten nicht geladen werden.",
+      "emptyTitle": "Noch niemand zugewiesen",
+      "empty": "Füge Mitglieder hinzu, damit sie diesen Feed lesen können.",
+      "noMatchTitle": "Keine Treffer",
+      "noMatch": "Zu dieser Suche gibt es keine zugewiesenen Mitglieder.",
+      "caption_one": "{{count}} Person mit Zugriff",
+      "caption_other": "{{count}} Personen mit Zugriff",
+      "colName": "Name",
+      "colEmail": "E-Mail",
+      "colSource": "Herkunft",
+      "colAction": "Aktion",
+      "select": "{{name}} auswählen",
+      "selectPage": "Alle auf dieser Seite auswählen",
+      "remove": "Entfernen",
+      "removeLabel": "{{name}} entfernen",
+      "removeSelected_one": "Auswahl entfernen ({{count}})",
+      "removeSelected_other": "Auswahl entfernen ({{count}})",
+      "removeTitle": "Zugriff von {{name}} entfernen?",
+      "removeManyTitle_one": "Zugriff von {{count}} Person entfernen?",
+      "removeManyTitle_other": "Zugriff von {{count}} Personen entfernen?",
+      "removeText": "Der Feed „{{feed}}“ ist für sie nicht mehr freigegeben.",
+      "removeConsequence": "Sie bleiben Vereinsmitglieder, sehen den Feed aber nicht mehr. Redakteure und Admins lesen weiterhin über ihre Rolle.",
+      "removeConfirm": "Zugriff entfernen",
+      "removed": "Zugriff von {{name}} entfernt.",
+      "removedMany_one": "Zugriff von {{count}} Person entfernt.",
+      "removedMany_other": "Zugriff von {{count}} Personen entfernt.",
+      "removeFailed": "Der Zugriff konnte nicht entfernt werden. Bitte versuche es erneut.",
+      "addTitle": "Mitglieder hinzufügen",
+      "addDescription": "Mitglieder für den Feed „{{name}}“ auswählen oder per E-Mail-Liste hinzufügen.",
+      "modeLabel": "Art des Hinzufügens",
+      "mode": {
+        "search": "Mitglieder suchen",
+        "emails": "E-Mail-Liste einfügen"
+      },
+      "candidateSearch": "Mitglied suchen (Name oder E-Mail)",
+      "candidatesLabel": "Mitglieder des Vereins",
+      "candidatesNone": "Keine passenden Mitglieder gefunden.",
+      "candidatesError": "Die Mitglieder konnten nicht geladen werden.",
+      "pickedCount_one": "{{count}} Person ausgewählt",
+      "pickedCount_other": "{{count}} Personen ausgewählt",
+      "addSelected_one": "{{count}} Person hinzufügen",
+      "addSelected_other": "{{count}} Personen hinzufügen",
+      "addEmails_one": "{{count}} Adresse hinzufügen",
+      "addEmails_other": "{{count}} Adressen hinzufügen",
+      "emailsLabel": "E-Mail-Adressen",
+      "emailsHint": "Eine Adresse pro Zeile oder getrennt durch Komma, höchstens {{max}}. Nur Adressen bestehender Vereinsmitglieder werden hinzugefügt.",
+      "emailsPlaceholder": "anna@example.org\nben@example.org",
+      "emailsTooMany": "Es sind höchstens {{max}} Adressen auf einmal möglich.",
+      "emailsParsed_one": "{{count}} Adresse erkannt.",
+      "emailsParsed_other": "{{count}} Adressen erkannt.",
+      "emailsInvalid_one": "{{count}} Eintrag wird ignoriert.",
+      "emailsInvalid_other": "{{count}} Einträge werden ignoriert.",
+      "added_one": "{{count}} Person hinzugefügt.",
+      "added_other": "{{count}} Personen hinzugefügt.",
+      "result_one": "{{count}} Person hinzugefügt.",
+      "result_other": "{{count}} Personen hinzugefügt.",
+      "unknown_one": "Diese {{count}} Adresse gehört zu keinem Vereinsmitglied und wurde nicht hinzugefügt:",
+      "unknown_other": "Diese {{count}} Adressen gehören zu keinem Vereinsmitglied und wurden nicht hinzugefügt:",
+      "addFailed": "Das Hinzufügen hat nicht geklappt. Bitte versuche es erneut.",
+      "done": "Fertig"
+    }
   },
   "profile": {
     "title": "Profil",

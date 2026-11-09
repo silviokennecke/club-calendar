@@ -12,6 +12,7 @@ import {
   LinkButton,
   Skeleton,
   StatusBadge,
+  Tag,
   buttonClass,
   toast,
 } from "@/components/ui/shared";
@@ -134,6 +135,9 @@ export default function FeedsPage() {
                         {feed.name}
                       </h2>
                       <StatusBadge status={feedStatus(feed.visibility)} />
+                      {feed.visibility === "PRIVATE" && (
+                        <Tag>{t("feeds.assign.listCount", { count: feed.assignedCount ?? 0 })}</Tag>
+                      )}
                     </div>
                     <CalendarTags feed={feed} calendars={page.calendars} />
                     <AudienceTags feed={feed} data={data} />

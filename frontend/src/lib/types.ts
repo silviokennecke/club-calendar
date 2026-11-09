@@ -43,7 +43,11 @@ export interface Club {
   /** Events / feeds of all calendars (only `GET /api/clubs/:id`, for the delete dialog). */
   eventCount?: number;
   feedCount?: number;
+  /** Self-join through feeds (staff responses only). */
+  feedSignup?: FeedSignup;
 }
+
+export type FeedSignup = "off" | "internal" | "public";
 
 /** Member of a club (`GET /api/clubs/:id/members`). */
 export interface ClubMember extends User {
@@ -83,6 +87,17 @@ export interface CalendarFeed {
   /** Only present when requested with `?includeSecret=1`; the feed screens always request it. */
   sharedSecret: string;
   targetGroups: { feedId: string; targetGroupId: string }[];
+  /** People with a stored access (assigned and claimed); relevant for PRIVATE feeds. */
+  assignedCount?: number;
+}
+
+/** Person with a stored access to a private feed (`GET …/feeds/:id/members`). */
+export interface FeedMember {
+  userId: string;
+  name: string;
+  email: string;
+  source: "assigned" | "claimed";
+  createdAt: string;
 }
 
 /**

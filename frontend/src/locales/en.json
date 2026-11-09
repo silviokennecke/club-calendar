@@ -1973,6 +1973,24 @@
       "viewer": "Viewer",
       "editor": "Editor",
       "admin": "Admin"
+    },
+    "feedSignup": {
+      "title": "Joining through feeds",
+      "text": "Decides whether signed-in people can join the club by opening a feed. They become members without access to content and only see feeds that are shared with them.",
+      "off": {
+        "label": "Off",
+        "text": "Nobody joins through a feed. Members only come in through invitations."
+      },
+      "internal": {
+        "label": "Club-internal feeds only",
+        "text": "Joining through feeds set to \"Link only\" and through private feeds (with the secret)."
+      },
+      "public": {
+        "label": "Also through public feeds",
+        "text": "Additionally, any signed-in person can join through a public feed."
+      },
+      "saved": "Setting saved.",
+      "failed": "The setting could not be saved. Please try again."
     }
   },
   "feeds": {
@@ -2023,7 +2041,10 @@
       "consequence": "Existing subscriptions stop working. Everyone has to enter the new subscription address.",
       "confirm": "Regenerate secret",
       "done": "New secret created. The addresses of the feed have changed.",
-      "failed": "The secret could not be regenerated. Please try again."
+      "failed": "The secret could not be regenerated. Please try again.",
+      "revokeClaimed": "Withdraw access from members who joined this feed themselves",
+      "revokeHint_one": "Assigned members keep their access. Currently {{count}} person has access (assigned and joined themselves).",
+      "revokeHint_other": "Assigned members keep their access. Currently {{count}} people have access (assigned and joined themselves)."
     },
     "secret": {
       "title": "Secret",
@@ -2094,7 +2115,85 @@
       "back": "Back to the club"
     },
     "readOnlyRole": "Only club admins can create or change feeds. You can view them.",
-    "calendarsOf": "Calendars of {{name}}"
+    "calendarsOf": "Calendars of {{name}}",
+    "assign": {
+      "title": "Assigned members",
+      "countLabel_one": "{{count}} person",
+      "countLabel_other": "{{count}} people",
+      "text": "These members can read the private feed without knowing the secret. People who opened the feed themselves with the secret are listed too.",
+      "listCount_one": "{{count}} person assigned",
+      "listCount_other": "{{count}} people assigned",
+      "add": "Add",
+      "search": "Search by name or e-mail",
+      "searchLabel": "Search assigned members",
+      "sourceFilter": "Source",
+      "sourceAll": "All",
+      "source": {
+        "assigned": "Assigned",
+        "claimed": "Joined themselves"
+      },
+      "loading": "Loading assigned members …",
+      "loadError": "The assigned members could not be loaded.",
+      "emptyTitle": "Nobody assigned yet",
+      "empty": "Add members so they can read this feed.",
+      "noMatchTitle": "No matches",
+      "noMatch": "No assigned members match this search.",
+      "caption_one": "{{count}} person with access",
+      "caption_other": "{{count}} people with access",
+      "colName": "Name",
+      "colEmail": "E-mail",
+      "colSource": "Source",
+      "colAction": "Action",
+      "select": "Select {{name}}",
+      "selectPage": "Select everyone on this page",
+      "remove": "Remove",
+      "removeLabel": "Remove {{name}}",
+      "removeSelected_one": "Remove selection ({{count}})",
+      "removeSelected_other": "Remove selection ({{count}})",
+      "removeTitle": "Remove access for {{name}}?",
+      "removeManyTitle_one": "Remove access for {{count}} person?",
+      "removeManyTitle_other": "Remove access for {{count}} people?",
+      "removeText": "The feed \"{{feed}}\" is no longer shared with them.",
+      "removeConsequence": "They stay club members but no longer see the feed. Editors and admins still read it through their role.",
+      "removeConfirm": "Remove access",
+      "removed": "Removed access for {{name}}.",
+      "removedMany_one": "Removed access for {{count}} person.",
+      "removedMany_other": "Removed access for {{count}} people.",
+      "removeFailed": "The access could not be removed. Please try again.",
+      "addTitle": "Add members",
+      "addDescription": "Choose members for the feed \"{{name}}\" or add them from a list of e-mail addresses.",
+      "modeLabel": "How to add",
+      "mode": {
+        "search": "Search members",
+        "emails": "Paste e-mail list"
+      },
+      "candidateSearch": "Search a member (name or e-mail)",
+      "candidatesLabel": "Club members",
+      "candidatesNone": "No matching members found.",
+      "candidatesError": "The members could not be loaded.",
+      "pickedCount_one": "{{count}} person selected",
+      "pickedCount_other": "{{count}} people selected",
+      "addSelected_one": "Add {{count}} person",
+      "addSelected_other": "Add {{count}} people",
+      "addEmails_one": "Add {{count}} address",
+      "addEmails_other": "Add {{count}} addresses",
+      "emailsLabel": "E-mail addresses",
+      "emailsHint": "One address per line or separated by commas, at most {{max}}. Only addresses of existing club members are added.",
+      "emailsPlaceholder": "anna@example.org\nben@example.org",
+      "emailsTooMany": "At most {{max}} addresses at a time.",
+      "emailsParsed_one": "{{count}} address recognised.",
+      "emailsParsed_other": "{{count}} addresses recognised.",
+      "emailsInvalid_one": "{{count}} entry will be ignored.",
+      "emailsInvalid_other": "{{count}} entries will be ignored.",
+      "added_one": "Added {{count}} person.",
+      "added_other": "Added {{count}} people.",
+      "result_one": "Added {{count}} person.",
+      "result_other": "Added {{count}} people.",
+      "unknown_one": "This {{count}} address does not belong to a club member and was not added:",
+      "unknown_other": "These {{count}} addresses do not belong to club members and were not added:",
+      "addFailed": "Adding did not work. Please try again.",
+      "done": "Done"
+    }
   },
   "profile": {
     "title": "Profile",

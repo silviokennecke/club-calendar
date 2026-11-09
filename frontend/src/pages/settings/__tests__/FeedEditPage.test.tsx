@@ -14,11 +14,13 @@ const apiGet = vi.fn();
 const apiPost = vi.fn();
 const apiPatch = vi.fn();
 const apiDelete = vi.fn();
+const apiGetWithTotal = vi.fn();
 
 vi.mock("@/lib/api", () => ({
   BACKEND_URL: "https://api.example.org",
   ApiError: class ApiError extends Error {},
   apiGet: (...a: unknown[]) => apiGet(...a),
+  apiGetWithTotal: (...a: unknown[]) => apiGetWithTotal(...a),
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiPatch: (...a: unknown[]) => apiPatch(...a),
   apiDelete: (...a: unknown[]) => apiDelete(...a),
@@ -49,6 +51,18 @@ const privateFeed = {
   targetGroups: [{ feedId: "f2", targetGroupId: "g1" }],
 };
 
+const feedMembers = [
+  {
+    userId: "u1",
+    name: "Anna Beispiel",
+    email: "anna@example.org",
+    source: "assigned",
+    createdAt: "",
+  },
+  { userId: "u2", name: "Ben Muster", email: "ben@example.org", source: "claimed", createdAt: "" },
+];
+const candidates = [{ id: "u3", name: "Carla Neu", email: "carla@example.org", role: "member" }];
+
 function renderEdit(feedId?: string) {
   const path = feedId
     ? `${CLUB_PATTERN}/settings/feeds/:feedId`
@@ -59,7 +73,14 @@ function renderEdit(feedId?: string) {
 
 beforeEach(() => {
   feeds = [privateFeed];
-  for (const fn of [apiGet, apiPost, apiPatch, apiDelete]) fn.mockReset();
+  for (const fn of [apiGet, apiPost, apiPatch, apiDelete, apiGetWithTotal]) fn.mockReset();
+  apiGetWithTotal.mockImplementation((path: string) => {
+    if (path.startsWith(`${feedsPath}/f2/members?`))
+      return Promise.resolve({ data: feedMembers, total: feedMembers.length });
+    if (path.startsWith("/api/clubs/c1/members?"))
+      return Promise.resolve({ data: candidates, total: candidates.length });
+    return Promise.resolve({ data: [], total: 0 });
+  });
   mockApiGet(apiGet, (path: string) => {
     if (path === CLUB_CALENDARS_PATH) return Promise.resolve(calendars);
     if (path === `${feedsPath}${q}`) return Promise.resolve(feeds);
@@ -488,5 +509,112 @@ describe("FeedEditPage (new, roles)", () => {
       await screen.findByRole("heading", { level: 1, name: "Keine Berechtigung" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Feed speichern" })).not.toBeInTheDocument();
+  });
+});
+
+describe("FeedEditPage assignments and rotation", () => {
+  it("lists assigned members with their source and removes one after confirming", async () => {
+    const user = userEvent.setup();
+    apiPost.mockResolvedValue({ removed: 1 });
+    renderEdit("f2");
+    const heading = await screen.findByRole("heading", { name: /Zugewiesene Mitglieder/ });
+    expect(heading).toBeInTheDocument();
+    expect(await screen.findByText("Anna Beispiel")).toBeInTheDocument();
+    const table = within(screen.getByRole("table"));
+    expect(table.getByText("Zugewiesen")).toBeInTheDocument();
+    expect(table.getByText("Selbst übernommen")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Anna Beispiel entfernen" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Zugriff entfernen" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith(`${feedsPath}/f2/members/bulk-delete`, {
+        userIds: ["u1"],
+      }),
+    );
+  });
+
+  it("removes the selection in one request and searches on the server", async () => {
+    const user = userEvent.setup();
+    apiPost.mockResolvedValue({ removed: 2 });
+    renderEdit("f2");
+    await screen.findByText("Anna Beispiel");
+    await user.click(screen.getByRole("checkbox", { name: "Anna Beispiel auswählen" }));
+    await user.click(screen.getByRole("checkbox", { name: "Ben Muster auswählen" }));
+    await user.click(screen.getByRole("button", { name: "Auswahl entfernen (2)" }));
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Zugriff entfernen",
+      }),
+    );
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith(`${feedsPath}/f2/members/bulk-delete`, {
+        userIds: ["u1", "u2"],
+      }),
+    );
+
+    await user.type(
+      screen.getByRole("searchbox", { name: "Zugewiesene Mitglieder durchsuchen" }),
+      "ben",
+    );
+    await waitFor(() =>
+      expect(apiGetWithTotal).toHaveBeenCalledWith(
+        expect.stringContaining("members?page=1&perPage=10&q=ben"),
+        expect.anything(),
+      ),
+    );
+  });
+
+  it("adds members found by the server-side search", async () => {
+    const user = userEvent.setup();
+    apiPost.mockResolvedValue({ added: 1 });
+    renderEdit("f2");
+    await user.click(await screen.findByRole("button", { name: "Hinzufügen" }));
+    await user.click(await screen.findByRole("checkbox", { name: /Carla Neu/ }));
+    await user.click(screen.getByRole("button", { name: "1 Person hinzufügen" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith(`${feedsPath}/f2/members`, { userIds: ["u3"] }),
+    );
+  });
+
+  it("adds an e-mail list (deduplicated) and shows the unknown addresses", async () => {
+    const user = userEvent.setup();
+    apiPost.mockResolvedValue({ added: 1, unknown: ["fremd@example.org"] });
+    renderEdit("f2");
+    await user.click(await screen.findByRole("button", { name: "Hinzufügen" }));
+    await user.click(screen.getByRole("button", { name: "E-Mail-Liste einfügen" }));
+    await user.type(
+      screen.getByRole("textbox", { name: /E-Mail-Adressen/ }),
+      "Anna@example.org, anna@example.org; fremd@example.org",
+    );
+    await user.click(screen.getByRole("button", { name: "2 Adressen hinzufügen" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith(`${feedsPath}/f2/members/by-email`, {
+        emails: ["anna@example.org", "fremd@example.org"],
+      }),
+    );
+    expect(await screen.findByText("fremd@example.org")).toBeInTheDocument();
+  });
+
+  it("offers to withdraw claimed access when rotating the secret", async () => {
+    const user = userEvent.setup();
+    renderEdit("f2");
+    await user.click(await screen.findByRole("button", { name: "Geheimnis neu erzeugen" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("checkbox", { name: /selbst übernommen haben/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Geheimnis neu erzeugen" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith(`${feedsPath}/f2/regenerate-secret${q}`, {
+        revokeClaimed: true,
+      }),
+    );
+  });
+
+  it("hides the section for feeds that are not private", async () => {
+    feeds = [{ ...privateFeed, visibility: "CLUB" }];
+    renderEdit("f2");
+    await screen.findByRole("heading", { level: 1 });
+    expect(
+      screen.queryByRole("heading", { name: /Zugewiesene Mitglieder/ }),
+    ).not.toBeInTheDocument();
   });
 });

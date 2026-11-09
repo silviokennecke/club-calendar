@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/shared";
 import { HelpTabs } from "@/components/help/HelpTabs";
 import { ClubNameSection } from "@/components/club/ClubNameSection";
+import { FeedSignupSection } from "@/components/club/FeedSignupSection";
 import { MembersSection } from "@/components/club/MembersSection";
 import { CalendarsSection } from "@/components/club/CalendarsSection";
 import { apiDelete, apiErrorStatus, apiGet } from "@/lib/api";
@@ -128,6 +129,7 @@ export default function ClubPage() {
           {tab === "general" && (
             <>
               <ClubNameSection key={club.name} club={club} />
+              {permissionsFor(club.role).isAdmin && <FeedSignupSection club={club} />}
               {permissionsFor(club.role).isAdmin && (
                 <section className="ap-panel ap-panel--danger" aria-labelledby="cl-danger-h">
                   <div className="ap-panel-head">

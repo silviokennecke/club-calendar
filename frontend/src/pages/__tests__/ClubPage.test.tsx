@@ -220,6 +220,17 @@ describe("ClubPage", () => {
     ).toHaveAttribute("href", "/clubs/c1/calendars/k0");
   });
 
+  it("changes the feed self-join setting (admins only)", async () => {
+    const user = userEvent.setup();
+    renderClub();
+    const internal = await screen.findByRole("radio", { name: /Nur über vereinsinterne Feeds/ });
+    expect(internal).toBeChecked();
+    await user.click(screen.getByRole("radio", { name: /Auch über öffentliche Feeds/ }));
+    await waitFor(() =>
+      expect(apiPatch).toHaveBeenCalledWith("/api/clubs/c1", { feedSignup: "public" }),
+    );
+  });
+
   it("renames the club and validates an empty name", async () => {
     const user = userEvent.setup();
     renderClub("general");

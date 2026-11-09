@@ -22,6 +22,7 @@ import {
 import { FeedsForbidden } from "@/components/feeds/FeedsForbidden";
 import { useClubSettingsPage } from "@/components/settings/useClubSettingsPage";
 import { FeedAccess } from "@/components/feeds/FeedAccess";
+import { FeedAssignments } from "@/components/feeds/FeedAssignments";
 import { useFeed, useFeeds } from "@/components/feeds/useFeeds";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api";
 import { keepExisting, saveDroppingDeletedReferences } from "@/lib/staleReferences";
@@ -177,6 +178,7 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
   // Server rejection (422 unknown_reference / validation_failed) of `calendarIds`.
   const [calendarsRejected, setCalendarsRejected] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
+  const [revokeClaimed, setRevokeClaimed] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [unprotectOpen, setUnprotectOpen] = useState(false);
 
@@ -272,7 +274,7 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
     try {
       await apiPost(
         `/api/clubs/${page.clubId}/feeds/${feed.id}/regenerate-secret?includeSecret=1`,
-        {},
+        revokeClaimed ? { revokeClaimed: true } : {},
       );
       await qc.invalidateQueries({ queryKey: ["feeds", page.clubId] });
       toast.success(t("feeds.regen.done"));
@@ -451,6 +453,10 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
           </section>
         )}
 
+        {saved && saved.visibility === "PRIVATE" && (
+          <FeedAssignments clubId={page.clubId} feed={saved} />
+        )}
+
         <section className="ap-panel ap-form-section" aria-labelledby="fe-access">
           <h2 className="t-h2" id="fe-access">
             {t("feeds.form.access")}
@@ -485,10 +491,32 @@ function FeedEditor({ feed }: { feed?: CalendarFeed }) {
         <>
           <ConfirmDialog
             open={regenOpen}
-            onOpenChange={setRegenOpen}
+            onOpenChange={(open) => {
+              setRegenOpen(open);
+              if (!open) setRevokeClaimed(false);
+            }}
             icon="refresh"
             title={t("feeds.regen.title")}
-            description={t("feeds.regen.text", { name: feed.name })}
+            description={
+              <>
+                {t("feeds.regen.text", { name: feed.name })}
+                {feed.visibility === "PRIVATE" && (
+                  <label className="ap-optionrow" style={{ marginTop: 12 }}>
+                    <input
+                      type="checkbox"
+                      checked={revokeClaimed}
+                      onChange={(e) => setRevokeClaimed(e.target.checked)}
+                    />
+                    <span className="ap-stack ap-stack--sm">
+                      <span>{t("feeds.regen.revokeClaimed")}</span>
+                      <span className="t-sm">
+                        {t("feeds.regen.revokeHint", { count: feed.assignedCount ?? 0 })}
+                      </span>
+                    </span>
+                  </label>
+                )}
+              </>
+            }
             consequence={t("feeds.regen.consequence")}
             confirmLabel={t("feeds.regen.confirm")}
             onConfirm={regenerate}
