@@ -53,6 +53,10 @@ rules](#accessibility-and-structure-rules) · [E2E](#e2e-playwright-frontende2e)
   (`src/lib/i18n.ts`); `main.tsx` renders after `i18nReady`. A failed chunk import after a deploy reloads the page
   once (`vite:preloadError` in `main.tsx`, guard and error page: see "Error page and reload guard").
 
+## OPAQUE client layer (`src/lib/opaque/`)
+
+Not wired into pages yet (AP 11). Import from `@/lib/opaque`: `opaqueLogin`, `opaqueSignup`, `opaqueReset`, `opaqueChangePassword`, `opaqueUpgrade`, `opaqueReauth(purpose, password)` (ticket), `useReauth(purpose)`, `loginProtocol(auth)`/`signupProtocol(auth)` (identify `auth` hint -> `opaque|legacy|reset`), `prefetchOpaque()` (call on password focus), `assertPasswordPolicy`. A wrong password or unknown account is `ApiError` `invalid_credentials` (decided locally, no finish request); an unknown server `ksfProfile` throws `OpaqueClientError("invalid_ksf_profile")`, WASM/memory failures `opaque_unsupported` (text `auth.opaqueUnsupported`; never fall back to legacy login). The WASM (~158 KB gz) loads lazily; KSF runs in a Web Worker (`worker.ts`, own ~158 KB gz chunk) and falls back to the main thread (`engine.ts`). Registration always uses the `memory-constrained` profile (`REGISTRATION_PROFILE`). Tests simulate the backend with serenity's `server.*` behind a mocked `fetch`.
+
 ## Design system and areas
 
 Background: `docs/ops/BACKLOG.md` (open backend gaps and operations), `docs/api/openapi.yaml` (API reference).
