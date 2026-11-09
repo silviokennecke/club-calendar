@@ -44,7 +44,7 @@ JWT keys are created automatically. In Docker they live under `/data/config`, so
 
 | Variable | Default | Description |
 |---|---|---|
-| `RESTRICT_REGISTRATION` | `false` | When `true`, only e-mail addresses with an open club invitation can create an account. Create the first user on the command line. |
+| `RESTRICT_REGISTRATION` | `false` | When `true`, only e-mail addresses with an open club invitation can create an account, or people who join a club through a feed that allows it (club setting "Joining through feeds"). Create the first user on the command line. |
 | `RESTRICT_CLUB_CREATION` | `false` | When `true`, users cannot create clubs themselves; you create them on the command line (`app:club:create`). With `RESTRICT_REGISTRATION=true` as well, the first user may create the first club. Invitations are unaffected. |
 
 

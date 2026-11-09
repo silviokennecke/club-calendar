@@ -78,7 +78,7 @@ By default anyone can create an account. To close the app to outsiders:
 RESTRICT_REGISTRATION=true
 ```
 
-Then only addresses with an **open club invitation** can register, with a password or with SSO. The exception is a club's feed address: when the club allows self-join through feeds (club setting "Join via feeds"; private feeds also need their secret), people who open that feed address can create an account too. Switch that club setting off to allow invitations only. Existing accounts, sign-in and passkeys are not affected.
+Then only addresses with an **open club invitation** can register, with a password or with SSO. The exception is a club's feed address: when the club allows joining through feeds (club setting "Joining through feeds", see [Clubs and members](clubs.md#joining-through-feeds); private feeds also need their secret), people who open that feed address can create an account too. Set that club setting to Off to allow invitations only. Existing accounts, sign-in and passkeys are not affected.
 
 Create the first user on the command line, because nobody can be invited yet:
 
@@ -162,7 +162,7 @@ Private feed addresses contain a secret. Anyone who has the address can read the
 
 Every club member also has a personal subscription address (a calendar made of the feeds the member picked). It contains a secret, is never indexed and is sent with `Referrer-Policy: no-referrer` like the feed addresses (the existing `/api/feed/` rules cover it, nothing to configure). It only shows what the member may access at that moment, so removing a member or access to a private feed takes effect at once.
 
-A signed-in person who opens a feed address can become a plain club member through it, if a club admin allows it. The club setting has three values: off (nobody joins this way), internal (the default; joining through "by link only" and private feeds) and public (public feeds as well). The setting only controls new members; existing members and invitations are unaffected. Joining through a private feed also needs its secret. Club admins can additionally give members access to a private feed by hand, and when they give a private feed a new secret they can choose to remove the access of everyone who joined with the old one. The old secret stops working in every case. If a private feed is switched to another visibility, the stored access stays but has no effect.
+A signed-in person who opens a feed address can become a plain club member through it, if a club admin allows it (see [Clubs and members](clubs.md#joining-through-feeds)). When a private feed gets a new secret, admins can also remove the access of everyone who joined with the old one. The old secret stops working in every case. If a private feed is switched to another visibility, the stored access stays but has no effect.
 
 Feeds are rate limited (see above). The ICS file by default covers the last 180 days and the next 24 months; `FEED_ICS_WINDOW_ENABLED`, `FEED_ICS_PAST_DAYS`, `FEED_ICS_FUTURE_MONTHS` and `FEED_ICS_MAX_EVENTS` change that, see the [reference](configuration/reference.md).
 

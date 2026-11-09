@@ -25,6 +25,7 @@ nav = [
   { "Security" = [
     { "Protection mechanisms" = "security.md" },
   ] },
+  { "Clubs and members" = "clubs.md" },
   { "Legal documents" = "legal.md" },
   { "Operations" = "operations.md" },
   { "Examples" = "examples/index.md" },

@@ -105,7 +105,7 @@ Microsoft does not prove the address in a way the app can trust. People who regi
 
 ## Closed registration
 
-With `RESTRICT_REGISTRATION=true`, a **new** account can only be created for an address that has an open club invitation. This applies to SSO too. Existing accounts can still sign in, and linking a provider in the profile still works. Someone without an invitation sees "registration restricted" (see below).
+With `RESTRICT_REGISTRATION=true`, a **new** account can only be created for an address that has an open club invitation, or when the person joins a club through a feed that allows it (club setting "Joining through feeds"). This applies to SSO too. Existing accounts can still sign in, and linking a provider in the profile still works. Someone without an invitation sees "registration restricted" (see below).
 
 ## Troubleshooting
 

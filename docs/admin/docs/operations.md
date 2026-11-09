@@ -48,6 +48,9 @@ Day-to-day tasks: updating, backups, scheduled jobs, command-line tools, logs an
 
     Keep your `.env.local` and the `config/jwt/` keys outside the release folder (or copy them over); they are not part of a release. Restart PHP-FPM afterwards.
 
+!!! note "Upgrading to the member role and joining through feeds"
+    The update adds the club role **Member** and the club setting **Joining through feeds**. The database changes run with the usual migration step above. Existing members keep their roles. Existing clubs start with **Joining through feeds** set to club-internal feeds only. Check that setting in each club and set it to **Off** if people should only join by invitation, especially with `RESTRICT_REGISTRATION=true`. See [Clubs and members](clubs.md).
+
 !!! note "Open browser tabs"
     Visitors who keep the app open during an update reload the page once by themselves when they open a part of the app that no longer exists. No action is needed.
 

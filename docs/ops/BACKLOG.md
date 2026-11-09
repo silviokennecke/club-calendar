@@ -13,6 +13,9 @@ Offene Backend-Features, Sicherheitsrisiken, Betriebspunkte und Design-Entscheid
   Wechsel bleibt unsichtbar wartend (kein Orakel, und sonst könnte jeder beliebigen Kontoinhabern Mails schicken).
   Die bisherige Adresse bekommt den Hinweis trotzdem. Keine Hinweis-Mail bei "Passwort vergessen" (Spam-Vektor).
 - **Mehrere Konten desselben Anbieters** (z. B. zwei Google-Konten) lassen sich nicht verknüpfen (`already_linked`).
+- **Inaktive Konten ohne Verein** werden nicht automatisch gelöscht. Geplant: Konten ohne Vereinsmitgliedschaft nach X Tagen
+  ohne Aktivität löschen, vorher Hinweis per E-Mail. Dafür fehlen Zeitstempel der letzten Aktivität, ein Cron-Befehl wie
+  die `app:prune-*`-Befehle und Konfiguration für X und die Vorankündigungsfrist. Nicht umgesetzt.
 
 ### Termine und Serien
 
@@ -40,6 +43,13 @@ Offene Backend-Features, Sicherheitsrisiken, Betriebspunkte und Design-Entscheid
   `/feed/*` bekommen ihr noindex nur per `<meta>` (aus `feed.indexable`); der Webserver sendet für sie kein
   `X-Robots-Tag` (bewusst nur Backend). Ein Abschalten der Option entfernt bereits indexierte Seiten erst beim
   nächsten Besuch der Suchmaschine.
+- **Ein-Termin-ICS in "Mein Verein"**: Der Download "Zum Kalender hinzufügen" gibt es nur für Termine öffentlicher Feeds
+  (`GET /api/feed/{feedId}/events/{eventId}/ics`), nicht für Termine der persönlichen Kalenderansicht. Dafür fehlt eine
+  Backend-Route mit demselben Zugriff wie das persönliche Abo.
+- **Zielgruppen-Chips in der persönlichen Kalenderansicht** listen alle Zielgruppen des Vereins, nicht nur die, die in den
+  angezeigten Terminen vorkommen. Vorgesehen: die Auswahl aus den Terminen ableiten.
+- **Rate-Limit persönlicher Abo-Adressen** (`/api/feed/me/…`): sie teilen sich den IP-Zähler mit den übrigen Feed-Routen
+  (`FEED_RATE_LIMIT_PER_IP`). Ein eigener Zähler oder das bewusst gemeinsame Limit ist eine Entscheidung, noch offen.
 
 ### Import und Export
 
