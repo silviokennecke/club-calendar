@@ -1,0 +1,34 @@
+name: Cleanup container images
+
+on:
+  schedule:
+    - cron: "17 3 * * 0"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "List what would be deleted without deleting"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  untagged:
+    name: Delete old untagged images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # tag-selection untagged never touches tagged versions; the action also
+      # protects the child manifests of kept multi-arch images (v3.1.0+)
+      - uses: snok/container-retention-policy@v3.1.0
+        with:
+          account: user
+          token: ${{ secrets.GITHUB_TOKEN }}
+          image-names: club-calendar
+          tag-selection: untagged
+          cut-off: 1w
+          dry-run: ${{ inputs.dry-run || false }}
