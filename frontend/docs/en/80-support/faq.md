@@ -58,10 +58,6 @@ Both are in your profile, see [Change e-mail address](help:settings/email-change
 
 Use the reset function on the sign-in page; you get a link by e-mail (valid for 60 minutes). Other ways to sign in: [Passkeys](help:settings/passkeys).
 
-## Does the app see my password?
-
-No. The password is checked on your device and never leaves it, see [Password](help:settings/password#how-your-password-is-protected). An older account is converted automatically the next time you sign in.
-
 ## How do I connect an AI assistant?
 
 It takes a few steps, see [Connect an AI assistant](help:ai-assistants/connect).

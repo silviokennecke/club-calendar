@@ -8,17 +8,9 @@ description: Change, reset or set your password for the first time.
 
 You sign in with your password. It must be between 8 and 128 characters long.
 
-## How your password is protected
+## How secure your password is
 
-Your password is checked with a secure procedure (OPAQUE): it never leaves your device, not even encrypted. The server never sees it and does not store it. Signing in therefore takes a moment longer, because your device computes part of the check itself.
-
-Your browser needs WebAssembly for this, which all current browsers have. Very old browsers and devices are not supported; you see a message and should use a current browser.
-
-### Switch for existing accounts
-
-If you set your password before the switch, the app converts your account once and automatically the next time you sign in. You do not have to do anything: just sign in with your password as usual.
-
-If you do not sign in again before the cutoff date, you can no longer sign in with the old password afterwards. The sign-in page then shows **Password reset required**; reset your password as described under [Forgot your password](help:settings/password#forgot-your-password). We remind you by e-mail before the cutoff date. Signing in with a passkey, Google or Microsoft is not affected.
+Your password is checked on your device and is not sent to the server (method: OPAQUE). At your first sign-in after the switch, your account is converted once automatically; you just sign in as usual. If you have not signed in by the deadline, you have to set a new password afterwards via **Forgot your password**, see [Forgot your password](help:settings/password#forgot-your-password).
 
 ## Change your password
 
