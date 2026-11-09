@@ -3610,6 +3610,125 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  # ------------------------------------------------------------------ Personal subscription
+  /api/clubs/{clubId}/my-subscription:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+    get:
+      tags: [Clubs]
+      summary: The own personal subscription ("Mein Abo")
+      description: >-
+        Every club member (any role incl. `member`), own data only. One subscription per (user, club), created on the
+        first call without feeds (`selectedFeedIds` empty). `secret` is the personal secret of the subscription
+        address and always included. Selected feeds the user can no longer access (or whose calendars are all
+        archived) are left out. Empty `targetGroupIds` = all groups.
+      operationId: getMySubscription
+      responses:
+        '200':
+          description: The subscription.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberSubscription' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Clubs]
+      summary: Replace the selection of the personal subscription
+      description: >-
+        Replace semantics; both keys are required (400 otherwise), at most 500 distinct ids each. `feedIds` must be
+        feeds the user may include now (`PUBLIC`/`CLUB`, `PRIVATE` for staff or with stored access, with an active
+        calendar), `targetGroupIds` must belong to the club; any other id is 422 `unknown_reference` (field
+        `feedIds` / `targetGroupIds`) and nothing is written. Stale selections are dropped by the replace.
+      operationId: replaceMySubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [feedIds, targetGroupIds]
+              properties:
+                feedIds: { type: array, maxItems: 500, items: { type: string } }
+                targetGroupIds: { type: array, maxItems: 500, items: { type: string } }
+      responses:
+        '200':
+          description: The subscription after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberSubscription' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: "`unknown_reference`."
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /api/clubs/{clubId}/my-subscription/rotate-secret:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+    post:
+      tags: [Clubs]
+      summary: Issue a new secret for the personal subscription
+      description: Every club member, own subscription only. The old address stops working at once. 10 per user and hour (429 `rate_limited`).
+      operationId: rotateMySubscriptionSecret
+      responses:
+        '200':
+          description: The subscription with the new secret.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberSubscription' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+
+  /api/clubs/{clubId}/my-feeds:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+    get:
+      tags: [Clubs]
+      summary: Feeds the user may select for the personal subscription
+      description: >-
+        Every club member. Only feeds the user may include (see `PUT …/my-subscription`) and that have at least one
+        non-archived calendar; never a feed secret. Also the club's target groups (names only).
+      operationId: listMyFeeds
+      responses:
+        '200':
+          description: Selectable feeds and target groups.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [feeds, targetGroups]
+                properties:
+                  feeds:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, visibility, calendarNames, accessReason, selected]
+                      properties:
+                        id: { type: string }
+                        name: { type: string }
+                        visibility: { type: string, enum: [PUBLIC, CLUB, PRIVATE] }
+                        calendarNames: { type: array, items: { type: string }, description: 'Non-archived calendars of the feed.' }
+                        accessReason: { type: string, enum: [club, public, staff, assigned, claimed], description: 'Why the user may select it: `club`/`public` by visibility, `staff` (viewer or above, PRIVATE feeds), `assigned`/`claimed` stored access.' }
+                        selected: { type: boolean }
+                  targetGroups:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name]
+                      properties:
+                        id: { type: string }
+                        name: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   # ------------------------------------------------------------------ Public feed
   /api/feed/{feedId}/claim:
     parameters:
@@ -5348,6 +5467,15 @@ components:
             properties:
               feedId: { type: string }
               targetGroupId: { type: string }
+    MemberSubscription:
+      type: object
+      required: [id, secret, selectedFeedIds, targetGroupIds, updatedAt]
+      properties:
+        id: { type: string, description: 'Subscription id (part of the personal subscription address).' }
+        secret: { type: string, description: 'Personal secret, 64 hex characters; changes with `rotate-secret`.' }
+        selectedFeedIds: { type: array, items: { type: string } }
+        targetGroupIds: { type: array, items: { type: string }, description: 'Empty = all target groups.' }
+        updatedAt: { type: string, format: date-time }
     FeedMember:
       type: object
       required: [userId, name, email, source, createdAt]

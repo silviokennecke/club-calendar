@@ -195,6 +195,11 @@ framework:
             policy: sliding_window
             limit: 60
             interval: '1 hour'
+        # Rotating the personal subscription secret: per user.
+        subscription_rotate_user:
+            policy: sliding_window
+            limit: 10
+            interval: '1 hour'
         # PDF export (expensive to render): per user and per client IP.
         pdf_export_user:
             policy: sliding_window

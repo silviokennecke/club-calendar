@@ -30,6 +30,10 @@ class MemberRoleTest extends WebTestCase
     private const array MEMBER_ALLOWED = [
         'GET /api/clubs/{clubId}',
         'DELETE /api/clubs/{clubId}/members/{userId}',
+        'GET /api/clubs/{clubId}/my-subscription',
+        'PUT /api/clubs/{clubId}/my-subscription',
+        'POST /api/clubs/{clubId}/my-subscription/rotate-secret',
+        'GET /api/clubs/{clubId}/my-feeds',
     ];
 
     private static KernelBrowser $client;
@@ -122,6 +126,15 @@ class MemberRoleTest extends WebTestCase
 
         $r = $this->req($this->member, 'GET', '/api/holiday-sources/countries');
         $this->assertSame(403, $r['status']);
+    }
+
+    public function testMemberMayUseTheOwnSubscriptionRoutes(): void
+    {
+        $base = '/api/clubs/'.$this->club->getId();
+        $this->assertSame(200, $this->req($this->member, 'GET', $base.'/my-subscription')['status']);
+        $this->assertSame(200, $this->req($this->member, 'PUT', $base.'/my-subscription', ['feedIds' => [], 'targetGroupIds' => []])['status']);
+        $this->assertSame(200, $this->req($this->member, 'POST', $base.'/my-subscription/rotate-secret')['status']);
+        $this->assertSame(200, $this->req($this->member, 'GET', $base.'/my-feeds')['status']);
     }
 
     public function testMemberCanLeaveButNotRemoveOthers(): void

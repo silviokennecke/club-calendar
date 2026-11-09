@@ -77,6 +77,8 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $feedClaimUser,
         #[Autowire(service: 'limiter.feed_claim_ip')]
         private readonly RateLimiterFactory $feedClaimIp,
+        #[Autowire(service: 'limiter.subscription_rotate_user')]
+        private readonly RateLimiterFactory $subscriptionRotateUser,
         #[Autowire(service: 'limiter.pdf_export_user')]
         private readonly RateLimiterFactory $pdfExportUser,
         #[Autowire(service: 'limiter.pdf_export_ip')]
@@ -260,6 +262,12 @@ class AuthRateLimiter
     {
         self::assertAccepted($this->feedClaimUser->create($userId)->consume());
         self::assertAccepted($this->feedClaimIp->create(self::ip($request))->consume());
+    }
+
+    /** Rotating the personal subscription secret: 10 per user and hour. */
+    public function assertSubscriptionRotateAllowed(string $userId): void
+    {
+        self::assertAccepted($this->subscriptionRotateUser->create($userId)->consume());
     }
 
     /** PDF export (expensive to render): 10 per user and 30 per client IP in 10 minutes. */

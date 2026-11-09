@@ -29,6 +29,7 @@ readonly class FeedClaimService
         private PublicFeedService $publicFeeds,
         private FeedAccessPolicy $policy,
         private Quota $quota,
+        private MemberSubscriptionService $subscriptions,
     ) {
     }
 
@@ -82,6 +83,8 @@ readonly class FeedClaimService
                 $this->quota->assertRoom(Quota::FEED_MEMBERS_PER_FEED, $feed);
                 $this->em->persist(new FeedMember($feed, $user, FeedMember::CLAIMED, $user));
             }
+            $this->em->flush();
+            $this->subscriptions->addClaimedFeed($user, $club, $feed);
             $this->em->flush();
 
             return $joined;

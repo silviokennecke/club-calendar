@@ -63,6 +63,7 @@ Limits slow down attackers and mistakes. When one is hit, the app answers `429` 
 | Club invitations | 20 per user and 50 per club per day; 5 mails per address per day; re-send once per minute | fixed |
 | Public feeds | 120 per minute per IP, 600 per minute per feed | `FEED_RATE_LIMIT_PER_IP`, `FEED_RATE_LIMIT_PER_FEED` (0 = off) |
 | Joining a club through a feed | 20 per hour per user, 60 per hour per IP | fixed |
+| Renewing the personal subscription address | 10 per hour per user | fixed |
 | PDF export | 10 per user and 30 per IP per 10 min | fixed |
 | Maps and address search | several limits | fixed, see [Mail and maps](configuration/mail-and-maps.md) |
 | Holiday calendar fetch from a web address | 20 per hour per user | fixed |

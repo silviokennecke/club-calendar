@@ -31,6 +31,7 @@ readonly class ClubService
         private readonly Quota $quota,
         private readonly ClubCreationPolicy $creationPolicy,
         private readonly FeedMemberService $feedMembers,
+        private readonly MemberSubscriptionService $subscriptions,
     ) {
     }
 
@@ -246,6 +247,7 @@ readonly class ClubService
                 throw new ApiProblemException(422, 'The last admin cannot be removed from a club', self::LAST_ADMIN_CODE);
             }
             $this->feedMembers->removeAllOfUserInClub($club, $cu->getUser());
+            $this->subscriptions->removeAllOfUserInClub($club, $cu->getUser());
             $this->em->remove($cu);
             $this->em->flush();
         });

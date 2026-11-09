@@ -22,7 +22,7 @@ class DatabaseResetter
             'event', 'event_series',
             'event_template_target_group', 'event_template_feature', 'event_template_property',
             'event_template',
-            'feed_member', 'calendar_feed_target_group', 'calendar_feed_calendar', 'calendar_feed',
+            'member_subscription_feed', 'member_subscription_target_group', 'member_subscription', 'feed_member', 'calendar_feed_target_group', 'calendar_feed_calendar', 'calendar_feed',
             'target_group', 'location', 'feature', 'property',
             'holiday_event', 'holiday_calendar',
             'calendar', 'club_invitation', 'club_user', 'passkey', 'oauth_account', 'club',
