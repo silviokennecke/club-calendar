@@ -77,7 +77,7 @@ By default anyone can create an account. To close the app to outsiders:
 RESTRICT_REGISTRATION=true
 ```
 
-Then only addresses with an **open club invitation** can register, with a password or with SSO. Existing accounts, sign-in and passkeys are not affected.
+Then only addresses with an **open club invitation** can register, with a password or with SSO. The exception is a club's feed address: when the club allows self-join through feeds (club setting "Join via feeds"; private feeds also need their secret), people who open that feed address can create an account too. Switch that club setting off to allow invitations only. Existing accounts, sign-in and passkeys are not affected.
 
 Create the first user on the command line, because nobody can be invited yet:
 

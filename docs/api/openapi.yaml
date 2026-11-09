@@ -787,6 +787,18 @@ paths:
                 name: { type: string, minLength: 1, maxLength: 255 }
                 email: { type: string, format: email, maxLength: 254 }
                 password: { $ref: '#/components/schemas/Password' }
+                feedProof:
+                  type: object
+                  required: [feedId]
+                  properties:
+                    feedId: { type: string, maxLength: 64 }
+                    secret: { type: string, maxLength: 256 }
+                  description: >-
+                    Optional, read only with `RESTRICT_REGISTRATION=true`. Lifts the restriction when the feed exists, its
+                    club currently lets new members in through the feed's visibility (setting `feedSignup`) and, for a
+                    PRIVATE feed, the secret is right. An invalid, unknown or malformed proof behaves exactly like none
+                    (no extra error, no hint about the feed). It does not join the club; joining stays a claim after
+                    sign-in. A proof with a secret counts against the public feed rate limits.
                 language: { type: [string, 'null'], examples: [de] }
                 acceptedDocuments:
                   type: array
@@ -884,6 +896,18 @@ paths:
               required: [email]
               properties:
                 email: { type: string, format: email, maxLength: 254 }
+                feedProof:
+                  type: object
+                  required: [feedId]
+                  properties:
+                    feedId: { type: string, maxLength: 64 }
+                    secret: { type: string, maxLength: 256 }
+                  description: >-
+                    Optional, read only with `RESTRICT_REGISTRATION=true`. Lifts the restriction when the feed exists, its
+                    club currently lets new members in through the feed's visibility (setting `feedSignup`) and, for a
+                    PRIVATE feed, the secret is right. An invalid, unknown or malformed proof behaves exactly like none
+                    (no extra error, no hint about the feed). It does not join the club; joining stays a claim after
+                    sign-in. A proof with a secret counts against the public feed rate limits.
       responses:
         '200':
           description: The status of the address.
@@ -1561,6 +1585,19 @@ paths:
           required: true
           description: Base64url (no padding) SHA-256 of the browser's random verifier, 43 characters.
           schema: { type: string, pattern: '^[A-Za-z0-9_-]{43}$' }
+        - name: feed_id
+          in: query
+          required: false
+          description: >-
+            Feed proof for a NEW account under `RESTRICT_REGISTRATION=true` (see `feedProof` of register). Checked at
+            the start and again at the callback; the signed state carries only the SHA-256 of the secret. Invalid
+            proofs are ignored silently (the callback then ends in `registration_restricted`).
+          schema: { type: string, maxLength: 64 }
+        - name: secret
+          in: query
+          required: false
+          description: Secret of a PRIVATE proof feed.
+          schema: { type: string, maxLength: 256 }
       responses:
         '302':
           description: >-

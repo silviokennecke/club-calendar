@@ -7,6 +7,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Added
 
+- With `RESTRICT_REGISTRATION=true`, a feed address also allows creating an account when the feed's club lets new members in through that feed (club setting `feedSignup`; PRIVATE feeds need the secret): optional `feedProof` on `POST /api/auth/identify` and `/register`, `feed_id`/`secret` on the SSO start. It does not join the club by itself.
 - New club role `member` (below `viewer`): belongs to the club but has no access to its content. Authorization is deny-by-default (only the own memberships, the minimal club record and leaving the club are open to a member; MCP tools reject members). Invitations and role changes accept `member`. New quota `staffPerClub` (500 viewers/editors/admins per club); `membersPerClub` is now 5000.
 - `RESTRICT_CLUB_CREATION` (default false): when true, `POST /api/clubs` answers 403 `club_creation_restricted`. With `RESTRICT_REGISTRATION=true` as well, the first user may create the first club (bootstrap); afterwards clubs are created by the operator with the new command `php bin/console app:club:create` (`--name`, `--admin`, `--timezone`). `GET /api/auth/registration` returns `clubCreationAllowed`; the app hides club creation when it is not allowed and tells users without a club that they need an invitation. Invitations and MCP are unaffected. See the admin guide ("Security", "Operations", configuration reference).
 

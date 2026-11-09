@@ -21,6 +21,7 @@ use App\Security\CurrentUserResolver;
 use App\Service\AccountService;
 use App\Service\AuthService;
 use App\Service\ClubCreationPolicy;
+use App\Service\FeedProof;
 use App\Service\Input;
 use App\Service\LegalConsentService;
 use App\Service\PasswordResetService;
@@ -80,7 +81,7 @@ class AuthController extends AbstractApiController
         }
         $this->validateDto($dto, $this->validator);
         $this->rateLimiter->assertRegisterEmailAllowed($dto->email);
-        $tokens = $this->auth->register($dto->name, $dto->email, $dto->password, $dto->language, $dto->acceptedDocuments, $request->getClientIp(), $request->headers->get('User-Agent'));
+        $tokens = $this->auth->register($dto->name, $dto->email, $dto->password, $dto->language, $dto->acceptedDocuments, $request->getClientIp(), $request->headers->get('User-Agent'), $this->feedProof($request, $dto->feedProof));
 
         // A restricted session: the address is confirmed with the code from the mail (POST /api/auth/verify-email).
         return new JsonResponse(['verificationRequired' => true, 'email' => $dto->email] + $tokens, Response::HTTP_CREATED);
@@ -101,10 +102,26 @@ class AuthController extends AbstractApiController
         if (null !== $this->em->getRepository(User::class)->findOneBy(['email' => $email])) {
             $status = 'login';
         } else {
-            $status = $this->registrationPolicy->mayRegister($email) ? 'register' : 'registration_restricted';
+            $status = $this->registrationPolicy->mayRegister($email, $this->feedProof($request, $dto->feedProof)) ? 'register' : 'registration_restricted';
         }
 
         return new JsonResponse(['email' => $email, 'status' => $status]);
+    }
+
+    /**
+     * The optional feed proof of a restricted registration. Only read while registration is restricted; a proof
+     * with a secret counts against the public feed limits (no brute force of private-feed secrets).
+     */
+    private function feedProof(Request $request, mixed $raw): ?FeedProof
+    {
+        if (!$this->registrationPolicy->isRestricted() || null === ($proof = FeedProof::fromInput($raw))) {
+            return null;
+        }
+        if (null !== $proof->secret) {
+            $this->rateLimiter->assertFeedAllowed($request, $proof->feedId);
+        }
+
+        return $proof;
     }
 
     #[Route('/login', methods: ['POST'])]

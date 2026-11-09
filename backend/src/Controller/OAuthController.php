@@ -18,6 +18,8 @@ use App\Security\OneTimeTokenService;
 use App\Security\SignedTokenService;
 use App\Service\AccountService;
 use App\Service\AuthService;
+use App\Service\FeedProof;
+use App\Service\RegistrationPolicy;
 use Doctrine\ORM\EntityManagerInterface;
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
 use KnpU\OAuth2ClientBundle\Client\OAuth2ClientInterface;
@@ -103,6 +105,7 @@ class OAuthController extends AbstractController
         private readonly AccountService $accounts,
         private readonly AuthRateLimiter $rateLimiter,
         private readonly EntityManagerInterface $em,
+        private readonly RegistrationPolicy $registrationPolicy,
         private readonly string $frontendUrl,
         #[Autowire(env: 'BACKEND_URL')]
         private readonly string $backendUrl,
@@ -203,9 +206,29 @@ class OAuthController extends AbstractController
             return $this->fail('invalid_request');
         }
 
+        // Feed proof for a new account under RESTRICT_REGISTRATION: validated now, re-validated at the callback. The
+        // state is only signed (the provider sees it), so it carries the SHA-256 of the secret, not the secret.
+        $feedClaims = [];
+        if ($this->registrationPolicy->isRestricted()) {
+            $proof = FeedProof::fromInput(['feedId' => $request->query->get('feed_id'), 'secret' => $request->query->get('secret')]);
+            if (null !== $proof) {
+                try {
+                    if (null !== $proof->secret) {
+                        $this->rateLimiter->assertFeedAllowed($request, $proof->feedId);
+                    }
+                    $valid = $this->registrationPolicy->proofAllowsSignup($proof);
+                } catch (ApiProblemException) {
+                    $valid = false; // throttled: a browser redirect cannot show a 429, so no proof
+                }
+                if ($valid) {
+                    $feedClaims = ['fid' => $proof->feedId, 'fs' => null === $proof->secret ? null : hash('sha256', $proof->secret)];
+                }
+            }
+        }
+
         $nonce = SignedTokenService::b64(random_bytes(32));
         $oidcNonce = SignedTokenService::b64(random_bytes(32));
-        $state = $this->signedTokens->issue(self::STATE_PURPOSE, ['n' => $nonce, 'on' => $oidcNonce, 'prov' => $provider, 'cc' => $challenge], self::STATE_TTL);
+        $state = $this->signedTokens->issue(self::STATE_PURPOSE, ['n' => $nonce, 'on' => $oidcNonce, 'prov' => $provider, 'cc' => $challenge] + $feedClaims, self::STATE_TTL);
         $response = $client->redirect([], $this->authorizeOptions($provider, $state, $oidcNonce));
         $response->headers->setCookie($this->stateCookie($nonce, self::STATE_TTL));
 
@@ -259,6 +282,7 @@ class OAuthController extends AbstractController
                 true,
                 'microsoft' === $provider ? $resourceOwner->getTenantId() : null,
                 'microsoft' === $provider ? $resourceOwner->getObjectId() : null,
+                is_string($claims['fid'] ?? null) ? new FeedProof($claims['fid'], null, is_string($claims['fs'] ?? null) ? $claims['fs'] : null) : null,
             );
         } catch (OAuthIdentityMismatchException) {
             return $this->fail('oauth_failed');

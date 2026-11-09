@@ -26,7 +26,7 @@ class IdentifyTest extends WebTestCase
         $this->client = static::createClient();
         $this->client->disableReboot();
         $container = static::getContainer();
-        $container->set(RegistrationPolicy::class, new RegistrationPolicy($container->get(ClubInvitationService::class), $restricted));
+        $container->set(RegistrationPolicy::class, new RegistrationPolicy($container->get(ClubInvitationService::class), $container->get(\App\Service\PublicFeedService::class), $restricted));
         $this->em = $container->get(EntityManagerInterface::class);
         DatabaseResetter::reset($this->em);
     }

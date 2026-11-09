@@ -56,12 +56,12 @@ readonly class AuthService
     /**
      * @param array<mixed> $acceptedDocuments ids of the accepted legal documents (all current ones are required)
      */
-    public function register(string $name, string $email, string $password, ?string $language = null, array $acceptedDocuments = [], ?string $ip = null, ?string $userAgent = null): array
+    public function register(string $name, string $email, string $password, ?string $language = null, array $acceptedDocuments = [], ?string $ip = null, ?string $userAgent = null, ?FeedProof $feedProof = null): array
     {
         $email = EmailAddress::normalize($email);
         // Before the e-mail-taken check and the hashing
         $accepted = $this->legal->assertAccepted($acceptedDocuments);
-        if (!$this->registrationPolicy->mayRegister($email)) {
+        if (!$this->registrationPolicy->mayRegister($email, $feedProof)) {
             throw new ApiProblemException(403, 'Registration is restricted to invited addresses', 'registration_restricted', 'email');
         }
         $existing = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
@@ -423,7 +423,7 @@ readonly class AuthService
      * @throws OAuthAccountConflictException
      * @throws OAuthIdentityMismatchException
      */
-    public function findOrCreateOAuthUser(string $provider, string $providerId, string $email, string $name, bool $providerSaysEmailVerified = false, bool $retryOnRace = true, ?string $tenantId = null, ?string $objectId = null): User
+    public function findOrCreateOAuthUser(string $provider, string $providerId, string $email, string $name, bool $providerSaysEmailVerified = false, bool $retryOnRace = true, ?string $tenantId = null, ?string $objectId = null, ?FeedProof $feedProof = null): User
     {
         $email = EmailAddress::normalize($email);
         if (null === $tenantId || null === $objectId) {
@@ -462,7 +462,7 @@ readonly class AuthService
                 $user->setIsEmailVerified(true);
             }
         } else {
-            if (!$this->registrationPolicy->mayRegister($email)) {
+            if (!$this->registrationPolicy->mayRegister($email, $feedProof)) {
                 throw new OAuthRegistrationRestrictedException();
             }
             $user = new User();
@@ -487,7 +487,7 @@ readonly class AuthService
                 throw new OAuthAccountConflictException('An account with this e-mail address already exists', false);
             }
 
-            return $this->findOrCreateOAuthUser($provider, $providerId, $email, $name, $providerSaysEmailVerified, false, $tenantId, $objectId);
+            return $this->findOrCreateOAuthUser($provider, $providerId, $email, $name, $providerSaysEmailVerified, false, $tenantId, $objectId, $feedProof);
         }
 
         if (!$user->isEmailVerified()) {

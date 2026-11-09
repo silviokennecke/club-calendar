@@ -345,14 +345,19 @@ class PublicFeedService
      * unknown id, wrong or missing secret of a PRIVATE feed and a feed whose calendars are all archived give the
      * same null (the caller answers one 404, so nothing is revealed about the feed).
      */
-    public function findJoinableFeed(string $feedId, ?string $secret): ?CalendarFeed
+    public function findJoinableFeed(string $feedId, ?string $secret, ?string $secretSha256 = null): ?CalendarFeed
     {
         $feed = $this->em->getRepository(CalendarFeed::class)->find($feedId);
         if (!$feed) {
             return null;
         }
-        if ($feed->getVisibility()->requiresSecret() && (!$secret || !hash_equals($feed->getSharedSecret(), $secret))) {
-            return null;
+        if ($feed->getVisibility()->requiresSecret()) {
+            $ok = null !== $secretSha256
+                ? hash_equals(hash('sha256', $feed->getSharedSecret()), $secretSha256)
+                : ($secret && hash_equals($feed->getSharedSecret(), $secret));
+            if (!$ok) {
+                return null;
+            }
         }
 
         return [] === $this->activeCalendars($feed) ? null : $feed;

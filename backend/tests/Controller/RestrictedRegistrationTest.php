@@ -33,7 +33,7 @@ class RestrictedRegistrationTest extends WebTestCase
         $this->client = static::createClient();
         $this->client->disableReboot();
         $container = static::getContainer();
-        $container->set(RegistrationPolicy::class, new RegistrationPolicy($container->get(ClubInvitationService::class), $restricted));
+        $container->set(RegistrationPolicy::class, new RegistrationPolicy($container->get(ClubInvitationService::class), $container->get(\App\Service\PublicFeedService::class), $restricted));
         $this->google = new FakeOAuth2Client();
         $container->set('knpu.oauth2.client.google', $this->google);
         $this->em = $container->get(EntityManagerInterface::class);

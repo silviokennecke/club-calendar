@@ -14,6 +14,7 @@ readonly class RegistrationPolicy
 {
     public function __construct(
         private ClubInvitationService $invitations,
+        private PublicFeedService $publicFeeds,
         #[Autowire(param: 'app.restrict_registration')]
         private bool $restricted,
     ) {
@@ -24,8 +25,22 @@ readonly class RegistrationPolicy
         return $this->restricted;
     }
 
-    public function mayRegister(string $email): bool
+    public function mayRegister(string $email, ?FeedProof $proof = null): bool
     {
-        return !$this->restricted || $this->invitations->hasOpenInvitationFor($email);
+        return !$this->restricted || $this->invitations->hasOpenInvitationFor($email) || $this->proofAllowsSignup($proof);
+    }
+
+    /**
+     * A feed proof counts when the feed is joinable with it and its club currently lets new members in through
+     * this feed's visibility (the rule of FeedClaimService for a new member). Anything else is just "no proof".
+     */
+    public function proofAllowsSignup(?FeedProof $proof): bool
+    {
+        if (null === $proof) {
+            return false;
+        }
+        $feed = $this->publicFeeds->findJoinableFeed($proof->feedId, $proof->secret, $proof->secretSha256);
+
+        return null !== $feed && $feed->getClub()->getFeedSignup()->allows($feed->getVisibility());
     }
 }

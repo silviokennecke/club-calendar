@@ -25,4 +25,7 @@ class RegisterDto
 
     /** @var array<mixed> ids of the legal documents the user accepts (checked by AuthService::register) */
     public array $acceptedDocuments = [];
+
+    /** @var mixed optional {feedId, secret?}; parsed leniently by FeedProof::fromInput */
+    public mixed $feedProof = null;
 }
