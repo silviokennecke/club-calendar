@@ -29,8 +29,7 @@ trait PasswordInputTrait
     }
 
     /**
-     * Password from --password, --password-stdin or (interactive) a hidden prompt asked twice. Prints the
-     * error and returns null if there is none or it is invalid.
+     * Password from --password or --password-stdin. Prints the error and returns null if it is invalid.
      */
     private function readPassword(
         SymfonyStyle $io,
@@ -64,25 +63,8 @@ trait PasswordInputTrait
 
             return $password;
         }
-        if (!$input->isInteractive()) {
-            $io->error('The password is missing: use --password, --password-stdin or run interactively.');
 
-            return null;
-        }
-        while (true) {
-            $first = (string) $io->askHidden('Password');
-            $message = $this->violation($validator, 'password', $first);
-            if (null !== $message) {
-                $io->error($message);
-                continue;
-            }
-            if ($first !== (string) $io->askHidden('Repeat password')) {
-                $io->error('The passwords do not match.');
-                continue;
-            }
-
-            return $first;
-        }
+        return null;
     }
 
     /**

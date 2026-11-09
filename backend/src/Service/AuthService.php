@@ -400,17 +400,17 @@ readonly class AuthService
         ];
     }
 
-    /** Which password proof the client must use: `opaque`, `legacy` (bcrypt), `reset_required` (only an unusable record) or null (no password). */
+    /** Which password proof the client must use: `opaque`, `legacy` (bcrypt, before the cutoff), `reset_required` (bcrypt-only after the cutoff, or only an unusable record) or null (no password). */
     private function passwordProtocol(User $user): ?string
     {
         if ($this->opaque->hasRecord($user)) {
             return 'opaque';
         }
         if (null !== $user->getPassword()) {
-            return 'legacy';
+            return $this->cutoff->cutoffReached($this->clock->now()) ? 'reset_required' : 'legacy';
         }
 
-        // Only an unusable record (unknown key, corrupt) or a record with the flag off: no proof works.
+        // Only an unusable record (unknown key, corrupt) is left: no proof works.
         return null !== $user->getOpaqueRecord() ? 'reset_required' : null;
     }
 

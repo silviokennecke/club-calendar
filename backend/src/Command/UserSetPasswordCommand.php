@@ -44,7 +44,7 @@ class UserSetPasswordCommand
         SymfonyStyle $io,
         InputInterface $input,
         #[Argument('User id (UUID) or e-mail address')] string $user,
-        #[Option('Password (visible in the shell history: prefer --password-stdin or the prompt)')] ?string $password = null,
+        #[Option('Password (visible in the shell history: prefer --password-stdin)')] ?string $password = null,
         #[Option('Read the password from the first line of STDIN', name: 'password-stdin')] bool $passwordStdin = false,
         #[Option('Remove the password and print a one-time password-set link (the default unless a password is given)')] bool $link = false,
         #[Option('Allow --password after the OPAQUE cutoff', name: 'force-legacy')] bool $forceLegacy = false,

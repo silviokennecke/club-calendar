@@ -83,6 +83,35 @@ class PasswordSignalsTest extends WebTestCase
         self::assertSame($expected, $patch['body']['passwordProtocol']);
     }
 
+    public function testBcryptOnlyAccountIsResetRequiredAfterCutoff(): void
+    {
+        $saved = $_SERVER['OPAQUE_LEGACY_CUTOFF'] ?? null;
+        $set = static function (?string $v): void {
+            if (null === $v) {
+                unset($_SERVER['OPAQUE_LEGACY_CUTOFF'], $_ENV['OPAQUE_LEGACY_CUTOFF']);
+                putenv('OPAQUE_LEGACY_CUTOFF');
+            } else {
+                $_SERVER['OPAQUE_LEGACY_CUTOFF'] = $_ENV['OPAQUE_LEGACY_CUTOFF'] = $v;
+                putenv('OPAQUE_LEGACY_CUTOFF='.$v);
+            }
+        };
+        try {
+            $set('2020-01-01');
+            static::ensureKernelShutdown();
+            $this->client = static::createClient();
+            $this->client->disableReboot();
+            DatabaseResetter::reset($this->em());
+            foreach (['bcrypt' => 'reset_required', 'record' => 'opaque'] as $type => $expected) {
+                DatabaseResetter::reset($this->em());
+                $auth = TestHelper::authHeader($this->account($type), static::getContainer()->get(TokenService::class));
+                $me = TestHelper::jsonRequest($this->client, 'GET', '/api/auth/me', [], $auth);
+                self::assertSame($expected, $me['body']['passwordProtocol']);
+            }
+        } finally {
+            $set($saved);
+        }
+    }
+
     public function testRegistrationHasNoOpaqueFlag(): void
     {
         $r = TestHelper::jsonRequest($this->client, 'GET', '/api/auth/registration');

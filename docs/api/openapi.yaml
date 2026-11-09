@@ -4766,10 +4766,10 @@ components:
               type: [string, 'null']
               enum: [opaque, legacy, reset_required, null]
               description: >-
-                Proof the client must use for this account's password: `opaque` (OPAQUE enabled and a usable record),
-                `legacy` (bcrypt hash and no usable record, or OPAQUE off; the only value for which plaintext is sent),
-                `reset_required` (only an unusable record: unknown key id or corrupt, or a record with OPAQUE off; use
-                "forgot password") or null (no password credential).
+                Proof the client must use for this account's password: `opaque` (usable OPAQUE record), `legacy`
+                (bcrypt hash and no record, before `OPAQUE_LEGACY_CUTOFF`; plaintext is sent and the account is upgraded),
+                `reset_required` (bcrypt-only on or after the cutoff, or only an unusable record: unknown key id or
+                corrupt; use "forgot password") or null (no password credential).
             pendingConsents:
               type: array
               description: Current privacy / terms documents the user has not consented to yet.

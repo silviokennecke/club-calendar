@@ -46,7 +46,7 @@ class UserCreateCommand
         InputInterface $input,
         #[Option('Display name')] ?string $name = null,
         #[Option('E-mail address')] ?string $email = null,
-        #[Option('Password (visible in the shell history: prefer --password-stdin or the prompt)')] ?string $password = null,
+        #[Option('Password (visible in the shell history: prefer --password-stdin)')] ?string $password = null,
         #[Option('Read the password from the first line of STDIN', name: 'password-stdin')] bool $passwordStdin = false,
         #[Option('Interface language (de or en)')] ?string $language = null,
         #[Option('Create without a password and print a one-time password-set link (the default unless a password is given)')] bool $link = false,
@@ -83,7 +83,7 @@ class UserCreateCommand
         }
 
         $email = EmailAddress::normalize((string) $email);
-        // Before the password prompt: no point in asking when the address is taken.
+        // Fail early when the address is taken.
         if (null !== $this->em->getRepository(User::class)->findOneBy(['email' => $email])) {
             $io->error('A user with this e-mail address already exists.');
 
