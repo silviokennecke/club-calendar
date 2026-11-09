@@ -5,6 +5,10 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ## [Unreleased]
 
+### Fixed
+
+- `GET /api/feed/:feedId/membership` returns `clubId` for members only (null for outsiders); the public feed page uses it instead of guessing the club by name.
+
 ### Added
 
 - Public feed page and accounts: a slim bar "Angemeldet als ..." (to the account, sign out) above all public pages for signed-in visitors; the subscribe split button gets "Zu meinem Konto hinzufügen" / "In meinem Konto anzeigen" depending on membership and subscription; new confirmation page `/feed/:feedId/join` (becomes a club member and adds the feed); the sign-in and signup flow passes the feed proof (identify, register, SSO start) so registration works under `RESTRICT_REGISTRATION`.

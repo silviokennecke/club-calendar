@@ -42,6 +42,7 @@ function renderPage(url = "/feed/f1/join") {
 }
 
 const membership = (over: Record<string, unknown> = {}) => ({
+  clubId: null,
   clubName: "Schützen",
   isClubMember: false,
   hasFeedAccess: false,

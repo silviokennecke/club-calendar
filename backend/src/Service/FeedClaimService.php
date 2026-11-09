@@ -37,7 +37,7 @@ readonly class FeedClaimService
      * What the page of a feed offers the signed-in user. `canJoin`: not yet a member and the club allows joining
      * through this feed; `canClaim`: a member without access to this PRIVATE feed (reachable only with its secret).
      *
-     * @return array{clubName: string, isClubMember: bool, hasFeedAccess: bool, canJoin: bool, canClaim: bool}
+     * @return array{clubId: string|null, clubName: string, isClubMember: bool, hasFeedAccess: bool, canJoin: bool, canClaim: bool}
      */
     public function membership(User $user, string $feedId, ?string $secret): array
     {
@@ -47,6 +47,7 @@ readonly class FeedClaimService
         $hasAccess = $isMember && $this->policy->canAccess($user, $feed);
 
         return [
+            'clubId' => $isMember ? $club->getId() : null,
             'clubName' => $club->getName(),
             'isClubMember' => $isMember,
             'hasFeedAccess' => $hasAccess,

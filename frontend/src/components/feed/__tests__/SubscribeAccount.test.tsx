@@ -19,7 +19,6 @@ vi.mock("@/lib/api", async (orig) => ({
 
 const addresses = { ics: "https://x/ics", webcal: "webcal://x/ics" };
 const SIGNED_IN = { user: { id: "u1", name: "Alex" }, loading: false } as AuthContextValue;
-const CLUB = { id: "c1", name: "Schützen", timezone: "Europe/Berlin", role: "member" };
 
 interface State {
   membership?: unknown;
@@ -32,7 +31,6 @@ function mockApi({ membership, membershipError, feedSelected = false }: State) {
     if (path.includes("/membership")) {
       return membershipError ? Promise.reject(membershipError) : Promise.resolve(membership);
     }
-    if (path === "/api/clubs") return Promise.resolve([CLUB]);
     if (path.endsWith("/my-feeds"))
       return Promise.resolve({
         feeds: [{ id: "f1", name: "F", selected: feedSelected }],
@@ -42,14 +40,17 @@ function mockApi({ membership, membershipError, feedSelected = false }: State) {
   });
 }
 
-const info = (over: Record<string, unknown>) => ({
-  clubName: "Schützen",
-  isClubMember: false,
-  hasFeedAccess: false,
-  canJoin: false,
-  canClaim: false,
-  ...over,
-});
+const info = (over: Record<string, unknown>) => {
+  const base = {
+    clubName: "Schützen",
+    isClubMember: false,
+    hasFeedAccess: false,
+    canJoin: false,
+    canClaim: false,
+    ...over,
+  };
+  return { clubId: base.isClubMember ? "c1" : null, ...base };
+};
 
 function Button({ secret }: { secret?: string }) {
   const account = useFeedAccount("f1", secret);

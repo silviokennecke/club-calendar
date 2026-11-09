@@ -5590,8 +5590,9 @@ components:
         createdAt: { type: string, format: date-time }
     FeedMembership:
       type: object
-      required: [clubName, isClubMember, hasFeedAccess, canJoin, canClaim]
+      required: [clubId, clubName, isClubMember, hasFeedAccess, canJoin, canClaim]
       properties:
+        clubId: { type: string, nullable: true, description: 'Id of the club, only when the signed-in user is a member of it; `null` for outsiders (no club id leak).' }
         clubName: { type: string }
         isClubMember: { type: boolean }
         hasFeedAccess: { type: boolean, description: 'Club member who may include this feed in the personal account: any member for `PUBLIC`/`CLUB`, staff or a `FeedMember` row for `PRIVATE`.' }

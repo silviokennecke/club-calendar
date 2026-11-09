@@ -305,6 +305,8 @@ export interface MyFeedsResponse {
 
 /** `GET /api/feed/:id/membership`: what the feed page offers the signed-in user. */
 export interface FeedMembership {
+  /** Only for club members, null otherwise. */
+  clubId: string | null;
   clubName: string;
   isClubMember: boolean;
   hasFeedAccess: boolean;

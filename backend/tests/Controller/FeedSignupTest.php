@@ -145,6 +145,7 @@ class FeedSignupTest extends WebTestCase
         $this->assertSame(200, $m['status']);
         $this->assertSame($allowed, $m['body']['canJoin']);
         $this->assertFalse($m['body']['isClubMember']);
+        $this->assertNull($m['body']['clubId']);
 
         $r = $this->req($newcomer, 'POST', "/api/feed/{$feed->getId()}/claim", ['secret' => 'secret-abc']);
         if (!$allowed) {
@@ -172,7 +173,7 @@ class FeedSignupTest extends WebTestCase
         $member = $this->user('member@example.com', ClubRole::MEMBER);
 
         $m = $this->req($member, 'GET', "/api/feed/{$feed->getId()}/membership?secret=secret-abc");
-        $this->assertSame(['clubName' => 'Test Club', 'isClubMember' => true, 'hasFeedAccess' => false, 'canJoin' => false, 'canClaim' => true], $m['body']);
+        $this->assertSame(['clubId' => $this->club->getId(), 'clubName' => 'Test Club', 'isClubMember' => true, 'hasFeedAccess' => false, 'canJoin' => false, 'canClaim' => true], $m['body']);
 
         $r = $this->req($member, 'POST', "/api/feed/{$feed->getId()}/claim", ['secret' => 'secret-abc']);
         $this->assertSame(200, $r['status']);

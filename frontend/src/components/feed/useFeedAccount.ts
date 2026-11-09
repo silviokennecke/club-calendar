@@ -1,13 +1,11 @@
 import { useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
-import { apiErrorStatus, apiGet } from "@/lib/api";
+import { apiErrorStatus } from "@/lib/api";
 import { AuthContext } from "@/lib/auth-context";
 import { myClubPath } from "@/lib/club/myClub";
 import { useClaimFeed, useFeedMembership, useMyFeeds } from "@/lib/club/memberApi";
 import { feedJoinFailure, feedJoinPath, stashFeedProof } from "@/lib/feeds/feedProof";
-import type { Club } from "@/lib/types";
 import { toast } from "@/components/ui/shared";
 
 export interface FeedAccountAction {
@@ -32,14 +30,7 @@ export function useFeedAccount(feedId: string, secret: string | undefined) {
 
   const membership = useFeedMembership(feedId, secret, ready);
   const member = membership.data?.isClubMember === true;
-  // The membership answer has no club id: a unique club of that name is the one.
-  const clubs = useQuery({
-    queryKey: ["clubs"],
-    queryFn: () => apiGet<Club[]>("/api/clubs"),
-    enabled: ready && member,
-  });
-  const matches = clubs.data?.filter((c) => c.name === membership.data?.clubName) ?? [];
-  const clubId = matches.length === 1 ? matches[0].id : undefined;
+  const clubId = (member ? membership.data?.clubId : null) ?? undefined;
   const myFeeds = useMyFeeds(member ? clubId : undefined);
   const inAccount = myFeeds.data?.feeds.some((f) => f.id === feedId && f.selected) === true;
 
@@ -86,7 +77,7 @@ export function useFeedAccount(feedId: string, secret: string | undefined) {
       : null;
   }
   if (!info.hasFeedAccess && !info.canClaim) return null;
-  if (clubs.isPending || (clubId && myFeeds.isPending)) return null;
+  if (clubId && myFeeds.isPending) return null;
   if (inAccount && clubId) {
     return {
       label: t("feed.account.show"),
