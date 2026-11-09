@@ -155,6 +155,8 @@ Kontexte der Registrierung (`register/start|finish`), jeweils mit eigenem Berech
 
 **Umgesetzt (AP 5):** `LoginStateSealer` (XChaCha20-Poly1305, Schlüssel per HKDF aus `APP_SECRET`, TTL 120 s weil die Client-KSF nach KE2 läuft). Fester Klartext: ServerLoginState, jti, exp, Purpose (`login` | `reauth:<ticket-purpose>`), Fake-Flag, User-ID (16 B, bei Fake zufällig), `tokenVersion`, SHA-256 des Records. `finish` nimmt den User nur aus dem Blob, verbraucht die jti vor der MAC-Prüfung (`NonceStore`), prüft danach `tokenVersion` und Record-Hash gegen die DB; ein Fake-Zustand scheitert immer. Existierende Konten ohne Record nutzen die User-ID als OPRF-Kennung (stabil bis zur Registrierung), unbekannte `"fake:" || E-Mail`; beide Fake-geflaggt. Ein defekter Record wird geloggt und wie "kein Record" behandelt.
 
+**Umgesetzt (AP 6):** `OpaqueLoginController` (`login/start|finish`), Feldnamen wie 3.2 (`startLoginRequest`, `loginResponse`, `finishLoginRequest`). Flag aus: 503 `opaque_unavailable` vor jeder Schlüsselnutzung. `start`: `assertLoginAllowed` vor DB/Krypto, dann 400 `invalid_opaque_message` (Feld) bei Format/Länge/Gruppenelement. `finish`: KE3-Format 400, danach jeder Fehler (gefälscht, Replay, abgelaufen, Fake, Konto geändert/gelöscht) 401 `invalid_credentials`; kein Adress-Bucket, kein IP-Limit (der Zustand ist einmalig); `recordLoginSuccess` mit der Adresse des Nutzers aus dem Zustand. `AuthService::completeLogin` (Verifikationsmail + `tokenResponse`) teilt sich der Passwort-Login; kein Rehash für OPAQUE.
+
 ### 3.4 Reauth-Ticket
 - Die Credential-Id der Reauth-/Change-Auswertung kommt aus JWT und Ticket, nie aus dem Request; jede Auswertung zählt gegen die Limits (3.5).
 - `SignedTokenService::issue('opaque-reauth', {uid, tv, purpose, jti}, 300)`. Verbrauch einmalig (`NonceStore`), gebunden an
@@ -343,7 +345,7 @@ Es gibt keinen Weg von OPAQUE zurück zu bcrypt (der Server kennt das Passwort n
 | 3 | **(erledigt)** `KeySchedule`, `Hkdf`, `Mac`, `OpaqueServer` (Reg + Login, Fake-Pfad), `RegistrationRecord`, `ServerLoginState` + RFC-9807-Vektoren C.1.1/C.1.2/C.2.1 (voll), C.1.3/C.1.4/C.2.2 (OPRF), serenity-Replay, Test-Client mit Round-Trips | 2 | L |
 | 4 | **(erledigt)** Live-Interop `frontend/scripts/opaque/interop.mjs` (serenity 1.1.0, echtes Argon2id) gegen PHP-Harness `backend/tests/Opaque/bin/interop-server.php`, CI-Schritt im Backend-Job; `OpaqueTestClient` + Negativ-Tests kamen mit AP 3. Ursprünglich: Test-only `OpaqueTestClient` + Negativ-Tests + Interop-Skript mit serenity (CI-Job) | 3 | M |
 | 5 | **(erledigt)** DB-Migration (3 Spalten), `User`-Entity, `OpaqueService`, `loginState` (AEAD + NonceStore), Reauth-Ticket | 3 | M |
-| 6 | Endpunkte `login/*` + `AuthService`-Split + Rate-Limits + OpenAPI + Controller-Tests | 5 | L |
+| 6 | **(erledigt)** Endpunkte `login/*` + `AuthService`-Split + Rate-Limits + OpenAPI + Controller-Tests | 5 | L |
 | 7 | Endpunkte `register/*` (Signup, Reset, Change, Upgrade) + `PasswordResetService`/`AccountService`-Anpassung | 6 | L |
 | 8 | Reauth: `reauth/*`, `ReauthenticationService`, `deleteMe`, Passkey-Options, `changeEmail` | 6 | M |
 | 9 | `identify` um `auth` erweitern, Feature-Flag, Rollout-Prozent, Monitoring-Logzeilen, `app:opaque:status` | 6 | S |

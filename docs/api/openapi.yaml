@@ -1467,6 +1467,100 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
 
+  /api/auth/opaque/login/start:
+    post:
+      tags: [Auth]
+      summary: OPAQUE login, step 1 (feature flag `OPAQUE_ENABLED`)
+      description: >-
+        First step of the password-less-on-the-wire login (RFC 9807 OPAQUE-3DH, docs/ops/OPAQUE-PLAN.md). Binary
+        values are unpadded base64url. `startLoginRequest` is KE1 (96 bytes), `loginResponse` KE2 (320 bytes).
+        The answer has the same shape for unknown addresses, accounts without an OPAQUE record and real accounts.
+        Password guesses are made here (each KE2 is one attempt), so this step consumes the login limits (10 per
+        15 minutes per client IP, 5 per 15 minutes per normalized address, `429 rate_limited`), checked before any
+        database or crypto work. `loginState` is an opaque sealed blob (single use, valid 120 seconds).
+        `503 opaque_unavailable` while the feature is off.
+      operationId: opaqueLoginStart
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, startLoginRequest]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                startLoginRequest: { type: string, maxLength: 256, description: "KE1, base64url" }
+      responses:
+        '200':
+          description: KE2 and the sealed state.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [loginResponse, loginState, ksfProfile]
+                properties:
+                  loginResponse: { type: string, description: "KE2, base64url" }
+                  loginState: { type: string, description: "Sealed state to send back to `login/finish`" }
+                  ksfProfile: { type: string, description: "Key-stretching profile the client must use", example: memory-constrained }
+        '400':
+          description: >-
+            `invalid_request` (no JSON object) or `invalid_opaque_message` (field `startLoginRequest`: not base64url,
+            wrong length or invalid group element).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+        '503':
+          description: '`opaque_unavailable`: OPAQUE login is switched off.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /api/auth/opaque/login/finish:
+    post:
+      tags: [Auth]
+      summary: OPAQUE login, step 2 (feature flag `OPAQUE_ENABLED`)
+      description: >-
+        Verifies KE3 and answers like `POST /api/auth/login` (token pair of a new family, `emailVerificationRequired`
+        for an unconfirmed address, which also mails a code when due). The user comes only from the sealed
+        `loginState`. Every failure (wrong, forged, replayed, expired or tampered state, fake account, account changed
+        since the start) is the same `401 invalid_credentials`. No address bucket is consumed here; a success clears
+        the failures of the account's address.
+      operationId: opaqueLoginFinish
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [loginState, finishLoginRequest]
+              properties:
+                loginState: { type: string, maxLength: 2048 }
+                finishLoginRequest: { type: string, maxLength: 256, description: "KE3 (64 bytes), base64url" }
+      responses:
+        '200': { $ref: '#/components/responses/Tokens' }
+        '400':
+          description: >-
+            `invalid_request` (no JSON object) or `invalid_opaque_message` (field `finishLoginRequest`: not base64url
+            or not 64 bytes).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: '`invalid_credentials`.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '503':
+          description: '`opaque_unavailable`: OPAQUE login is switched off.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
   /api/auth/webauthn/authenticate/options:
     get:
       tags: [Passkeys]
@@ -4261,7 +4355,9 @@ components:
         | `series_changed` | 409 | Rule change PATCH: prototype/reference deleted concurrently or deadlock; nothing changed |
         | `email_taken` | 400 | Registration, field `email` |
         | `registration_restricted` | 403 | `POST /api/auth/register` with `RESTRICT_REGISTRATION` and no open invitation for the address, field `email` (SSO: redirect error code) |
-        | `invalid_credentials` | 401 / 400 | Login 401; 400 for `change-password` (field `currentPassword`), `change-email` and `DELETE /api/auth/me` (field `password`) |
+        | `invalid_opaque_message` | 400 | OPAQUE login: a base64url value is malformed, has the wrong length or is not a valid group element (`startLoginRequest`, `finishLoginRequest`) |
+        | `opaque_unavailable` | 503 | OPAQUE endpoints while `OPAQUE_ENABLED` is off |
+        | `invalid_credentials` | 401 / 400 | Login 401 (also `opaque/login/finish`); 400 for `change-password` (field `currentPassword`), `change-email` and `DELETE /api/auth/me` (field `password`) |
         | `invalid_reset_token` | 400 | `reset-password`: unknown, used or expired (same answer), field `token` |
         | `no_password` | 409 | `change-password` / `change-email` of SSO-only accounts |
         | `invalid_confirmation_code` | 400 | `DELETE /api/auth/me` of an account without password: code missing, wrong, expired or of another account, field `code` |
@@ -4319,6 +4415,8 @@ components:
         - invalid_refresh_token
         - invalid_passkey
         - invalid_passkey_registration
+        - invalid_opaque_message
+        - opaque_unavailable
         - passkey_already_registered
         - passkey_not_found
         - map_unavailable
