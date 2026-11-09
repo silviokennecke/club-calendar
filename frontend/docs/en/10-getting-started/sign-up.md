@@ -19,6 +19,10 @@ You work in the club calendar with your own account. Signing in and signing up u
 
 If the address already has an account, the page asks for your password instead, so you cannot create a duplicate.
 
+:::note
+Your password never leaves your device: it is checked with a secure procedure (OPAQUE) and the server does not see it. Creating an account and signing in therefore take a moment. Your browser needs WebAssembly; very old browsers are not supported. More under [Password](help:settings/password#how-your-password-is-protected).
+:::
+
 ## With Google, Microsoft or a passkey
 
 Below **or** on the first step you find more ways: **Sign in with Google**, **Sign in with Microsoft**, **Sign in with Apple** (if enabled) and **Sign in with passkey**. A passkey signs you in with a fingerprint, face recognition or your device PIN. It works once you have set it up in your [profile](help:settings/passkeys).

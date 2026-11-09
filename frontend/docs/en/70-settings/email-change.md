@@ -15,7 +15,7 @@ You need a password for this. If you only sign in through a provider, set a [pas
 ## Steps
 
 1. Open your [profile](help:settings/profile), section **Name and email address**.
-2. Enter the **New email address** and your **Current password**.
+2. Enter the **New email address** and your **Current password**. The password is checked on your device and never sent to the server.
 3. Click **Send confirmation link**.
 4. Open the link in the e-mail sent to the **new** address. It is valid for 24 hours.
 

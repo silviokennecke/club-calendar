@@ -16,6 +16,14 @@ Zu jeder Situation findest du das **Symptom** (was du siehst), die **Ursache** u
 
 **Lösung:** Warte die angezeigte Zeit ab. Prüfe die Schreibweise der Adresse. Hast du das Passwort vergessen, setze es über die Anmeldeseite zurück ([Passwort](help:settings/password)). Alternativ meldest du dich mit [Passkey](help:settings/passkeys) oder [verknüpftem Konto](help:settings/linked-accounts) an.
 
+## Passwort zurücksetzen erforderlich oder Browser nicht unterstützt
+
+**Symptom:** Die Anmeldeseite zeigt **Passwort zurücksetzen erforderlich**, oder die Meldung „Dein Browser oder Gerät unterstützt die sichere Anmeldung nicht“ bzw. „Die sichere Anmeldung ist gerade nicht verfügbar“.
+
+**Ursache:** Dein Konto wurde nach der Umstellung der Passwortprüfung bis zum Stichtag nicht mehr angemeldet und hat noch das alte Passwortverfahren. Oder dein Browser unterstützt WebAssembly bzw. genug Arbeitsspeicher nicht.
+
+**Lösung:** Setze das Passwort über die Anmeldeseite zurück ([Passwort](help:settings/password)). Nutze einen aktuellen Browser. Ist die sichere Anmeldung nur kurz nicht verfügbar, versuche es später noch einmal.
+
 ## Anmeldung über Google, Microsoft oder Apple klappt nicht
 
 **Symptom:** Meldungen wie „Die Anmeldung ist abgelaufen …“, „Zu dieser E-Mail-Adresse gibt es schon ein Konto“ oder „Es wurde kein Konto erstellt. Die Registrierung ist nur mit einer Einladung möglich.“

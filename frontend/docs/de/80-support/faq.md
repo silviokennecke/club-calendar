@@ -58,6 +58,10 @@ Beides geht im Profil, siehe [E-Mail-Adresse ändern](help:settings/email-change
 
 Wähle bei der Anmeldung die Funktion zum Zurücksetzen; du bekommst einen Link per E-Mail (60 Minuten gültig). Weitere Anmeldewege: [Passkeys](help:settings/passkeys).
 
+## Sieht die App mein Passwort?
+
+Nein. Das Passwort wird auf deinem Gerät geprüft und verlässt es nie, siehe [Passwort](help:settings/password#so-sicher-ist-dein-passwort). Dein altes Konto wird bei der nächsten Anmeldung automatisch umgestellt.
+
 ## Wie verbinde ich einen KI-Assistenten?
 
 Das geht in wenigen Schritten, siehe [KI-Assistenten verbinden](help:ai-assistants/connect).

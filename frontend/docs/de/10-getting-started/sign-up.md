@@ -19,6 +19,10 @@ Mit einem eigenen Konto arbeitest du im Vereinskalender. Anmelden und Registrier
 
 Hat die Adresse schon ein Konto, fragt dich die Seite stattdessen nach dem Passwort. Du kannst also nichts doppelt anlegen.
 
+:::note
+Dein Passwort verlässt dein Gerät nie: Es wird mit einem sicheren Verfahren (OPAQUE) geprüft, der Server sieht es nicht. Das Anlegen und die Anmeldung dauern dadurch einen Moment. Dein Browser braucht WebAssembly; sehr alte Browser werden nicht unterstützt. Mehr unter [Passwort](help:settings/password#so-sicher-ist-dein-passwort).
+:::
+
 ## Mit Google, Microsoft oder Passkey
 
 Auf dem ersten Schritt findest du unter **oder** weitere Wege: **Mit Google anmelden**, **Mit Microsoft anmelden**, **Mit Apple anmelden** (sofern aktiviert) und **Mit Passkey anmelden**. Ein Passkey meldet dich per Fingerabdruck, Gesichtserkennung oder Geräte-PIN an. Er funktioniert, sobald du ihn in deinem [Profil](help:settings/passkeys) eingerichtet hast.
