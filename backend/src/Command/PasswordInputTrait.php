@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Dto\Auth\RegisterDto;
+use App\Opaque\OpaqueRollout;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\StreamableInputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -81,5 +83,24 @@ trait PasswordInputTrait
 
             return $first;
         }
+    }
+
+    /**
+     * With OPAQUE on, a CLI password is a bcrypt (legacy) one: warn, and refuse after the cutoff unless forced.
+     * Returns false when refused.
+     */
+    private function acceptLegacyPassword(SymfonyStyle $io, OpaqueRollout $rollout, ClockInterface $clock, bool $forceLegacy): bool
+    {
+        if (!$rollout->isEnabled()) {
+            return true;
+        }
+        if ($rollout->cutoffReached($clock->now()) && !$forceLegacy) {
+            $io->error('OPAQUE_LEGACY_CUTOFF is reached: a password here would create a legacy (bcrypt) account that cannot sign in. Use --link, or --force-legacy.');
+
+            return false;
+        }
+        $io->warning('OPAQUE is enabled: this creates a legacy (bcrypt) password. It is upgraded on first sign-in; after the cutoff the user must reset it. Prefer --link.');
+
+        return true;
     }
 }

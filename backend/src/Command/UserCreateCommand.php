@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\User;
+use App\Opaque\OpaqueRollout;
+use App\Service\AccountMailer;
 use App\Service\EmailAddress;
+use App\Service\PasswordResetService;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
@@ -18,6 +22,8 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 /**
  * Operator: creates a confirmed user (e.g. the first one while RESTRICT_REGISTRATION=true). The address counts
  * as verified, no mail goes out and no consent is recorded (the consent gate asks at the first sign-in).
+ * With OPAQUE on (or --link) the user gets no password but a one-time password-set link (the reset page registers
+ * via OPAQUE); --password stays possible as a legacy (bcrypt) account, refused after the cutoff without --force-legacy.
  */
 #[AsCommand(name: 'app:user:create', description: 'Create a user with a verified e-mail address')]
 class UserCreateCommand
@@ -28,6 +34,10 @@ class UserCreateCommand
         private readonly EntityManagerInterface $em,
         private readonly UserPasswordHasherInterface $hasher,
         private readonly ValidatorInterface $validator,
+        private readonly OpaqueRollout $rollout,
+        private readonly ClockInterface $clock,
+        private readonly PasswordResetService $passwordResets,
+        private readonly AccountMailer $mailer,
     ) {
     }
 
@@ -39,6 +49,8 @@ class UserCreateCommand
         #[Option('Password (visible in the shell history: prefer --password-stdin or the prompt)')] ?string $password = null,
         #[Option('Read the password from the first line of STDIN', name: 'password-stdin')] bool $passwordStdin = false,
         #[Option('Interface language (de or en)')] ?string $language = null,
+        #[Option('Create without a password and print a one-time password-set link (default with OPAQUE)')] bool $link = false,
+        #[Option('Allow --password after the OPAQUE cutoff', name: 'force-legacy')] bool $forceLegacy = false,
     ): int {
         $interactive = $input->isInteractive();
         foreach (['name' => &$name, 'email' => &$email] as $field => &$value) {
@@ -77,15 +89,29 @@ class UserCreateCommand
 
             return Command::FAILURE;
         }
-        $password = $this->readPassword($io, $input, $this->validator, $password, $passwordStdin);
-        if (null === $password) {
+        $passwordGiven = null !== $password || $passwordStdin;
+        if ($link && $passwordGiven) {
+            $io->error('Use either --link or --password/--password-stdin, not both.');
+
             return Command::FAILURE;
+        }
+        $useLink = $link || (!$passwordGiven && $this->rollout->isEnabled());
+        if (!$useLink) {
+            if ($passwordGiven && !$this->acceptLegacyPassword($io, $this->rollout, $this->clock, $forceLegacy)) {
+                return Command::FAILURE;
+            }
+            $password = $this->readPassword($io, $input, $this->validator, $password, $passwordStdin);
+            if (null === $password) {
+                return Command::FAILURE;
+            }
         }
 
         $user = new User();
         $user->setName($name);
         $user->setEmail($email);
-        $user->setPassword($this->hasher->hashPassword($user, $password));
+        if (!$useLink) {
+            $user->setPassword($this->hasher->hashPassword($user, (string) $password));
+        }
         $user->setIsEmailVerified(true);
         if (null !== $language) {
             $user->setLanguage($language);
@@ -94,6 +120,10 @@ class UserCreateCommand
         $this->em->flush();
 
         $io->success('User created: '.$user->getId());
+        if ($useLink) {
+            $io->writeln($this->mailer->passwordResetUrl($this->passwordResets->createToken($user)));
+            $io->note('One-time link to set the password, valid 60 minutes.');
+        }
 
         return Command::SUCCESS;
     }
