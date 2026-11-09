@@ -1,6 +1,6 @@
 # Plan: OPAQUE (RFC 9807) statt Klartext-Passwort-Login
 
-Status: Entwurf, nicht umgesetzt. Stand der Codebasis: Branch `security/audit-followup`.
+Status: Entwurf, nicht umgesetzt; AP 0 (Spike) erledigt, Ergebnisse in `OPAQUE-SPIKE.md` (maßgeblich bei Abweichungen). Stand der Codebasis: Branch `security/audit-followup`.
 Umsetzung direkt im PHP-Backend (kein Sidecar). Zielgruppe: Owner und Implementierer der Arbeitspakete (Abschnitt 8).
 
 ## 1. Ziel, Sicherheitsgewinn, ehrliche Grenzen
@@ -36,40 +36,35 @@ den Browser nie.
 ## 2. Architektur
 
 ### 2.1 Cipher-Suite und Parameter
-- RFC 9807: OPRF(ristretto255, SHA-512), 3DH, HKDF-SHA-512, HMAC-SHA-512, SHA-512; KSF Argon2id (nur Client).
-  Entspricht dem Default von `@serenity-kit/opaque` (opaque-ke 4.0.x). Konfiguration: SPIKE klärt, ob serenity
-  Nicht-Default-Optionen (Context-String, Identifiers) verwendet; PHP muss bit-identisch folgen (AP 0).
-- **Context-String:** `"club-calendar/opaque/v1"` (fest, Teil des Records-Formats). Falls serenity den Context nicht setzbar
-  macht, den serenity-Wert übernehmen und hier dokumentieren (er geht in den Transcript-Hash ein).
-- **Server-Identität** (`server_identity`): Host aus `APP_URL` (nicht aus dem Request, vgl. Host-Header-Regel M2).
-- **Client-Identität / `credential_identifier`:**
-  - Empfehlung: `credential_identifier` = stabile User-ID (UUID v7, `User::getId()`), `client_identity` = ebenfalls die User-ID.
-  - Grund: E-Mail-Änderung (`AccountService::requestEmailChange`, beendet alle Sessions) würde bei E-Mail als Identität
-    den Record entwerten und einen kompletten Re-Registrierungsflow erzwingen (Passwort nötig, geht aber nur mit dem alten Record).
-  - Konsequenz: `login/start` muss E-Mail -> User-ID auflösen (server-seitig, wie `identify`), der Client kennt die ID nicht
-    vorab; der Server liefert sie nicht zurück, sondern die Antwort ist ein OPRF-Ergebnis über `credential_identifier = user id`.
-    Der Client setzt für die AKE `client_identity`: Dafür muss der Client die ID kennen. Lösung: `login/start`-Antwort enthält
-    `userId` NICHT; stattdessen `client_identity` weglassen (RFC: Default = Client-Public-Key). Empfehlung: Identitäten leer
-    lassen (Public Keys), nur `credential_identifier` = User-ID serverseitig. Der Spike prüft, dass serenity das so unterstützt.
-  - Der OPRF-Key pro Konto wird aus `oprf_seed` und `credential_identifier` abgeleitet (RFC 9807 `DeriveKeyPair`-Weg),
-    es wird nichts pro Konto gespeichert außer dem Record.
+- RFC 9807: OPRF(ristretto255, SHA-512), 3DH (KE-Gruppe ristretto255), HKDF-SHA-512, HMAC-SHA-512, SHA-512; KSF Argon2id (nur Client).
+  Entspricht `@serenity-kit/opaque` 1.1.0 (opaque-ke 4.0.1); die Suite ist dort fest, Details und Wire-Format in `OPAQUE-SPIKE.md`.
+- **Context-String: leer.** serenity übergibt `context: None` und bietet keine Option. Der frühere Wert `"club-calendar/opaque/v1"`
+  entfällt; Domänentrennung zwischen Deployments leisten die Server-Schlüssel. Der PHP-Server hat dennoch einen konfigurierbaren
+  Context (Produktion leer), weil die RFC-Vektoren `"OPAQUE-POC"` verwenden.
+- **Identitäten (Entscheidung AP 0):** weder `client_identity` noch `server_identity` setzen; Default = statische Public Keys. Der Client
+  übergibt keine `identifiers`. Kein Domain- oder Nutzerbezug im Record, E-Mail-Änderung und Hostwechsel entwerten ihn nicht.
+- **`credential_identifier`** (nur Server, geht roh in `oprf_key = DeriveKeyPair(HKDF-Expand(oprf_seed, id || "OprfKey", 32), "OPAQUE-DeriveKeyPair")`):
+  stabile User-ID (UUID v7, `User::getId()`); `login/start` löst E-Mail → User-ID serverseitig auf, der Client kennt sie nicht.
+  Unbekannte Adressen: stabile Fake-Kennung `"fake:" || normalisierte E-Mail` (der OPRF-Schlüssel muss pro Adresse konstant bleiben, sonst
+  verrät der Vergleich zweier Versuche mit gleichem Passwort das Fehlen des Kontos).
+  Grund für die User-ID: `AccountService::requestEmailChange` beendet alle Sessions, mit E-Mail als Kennung wäre der Record danach wertlos.
 - **Argon2id-KSF-Profil** (Client): Wahl siehe Abschnitt 9 (Entscheidungen). Das Profil wird pro Konto als `opaque_version` /
   `ksf_profile` gespeichert und in `identify` und `login/start` an den Client geliefert (Profilwechsel später möglich).
 
 ### 2.2 Record-Format
 - `user.opaque_record` (`VARBINARY(256)`, nullable): serialisierter RFC-Record (`client_public_key` 32 B, `masking_key` 64 B,
-  Envelope `nonce` 32 B + `auth_tag` 64 B = 192 B).
-- `user.opaque_version` (`SMALLINT`, nullable): Protokoll-/Profilversion. Version 1 = ristretto255-SHA512, 3DH, Context v1,
-  KSF-Profil A. Bei künftigen Änderungen (serenity-Breaking-Changes: Context-Wechsel in 0.9.0, Record-Inkompatibilität in 1.0.0)
+  Envelope `nonce` 32 B + `auth_tag` 64 B = 192 B), in der API Base64url ohne Padding.
+- `user.opaque_version` (`SMALLINT`, nullable): Protokoll-/Profilversion. Version 1 = serenity 1.1.0 / opaque-ke 4.0.1: ristretto255-SHA512, 3DH,
+  leerer Context, Default-Identitäten, KSF-Profil A (`memory-constrained`). Das Profil steckt nicht im Record, es muss gespeichert und dem Client geliefert werden. Bei künftigen Änderungen (serenity-Breaking-Changes: Context-Wechsel in 0.9.0, Record-Inkompatibilität in 1.0.0)
   bleibt der alte Pfad bis zur Re-Registrierung lauffähig oder das Konto ist reset-pflichtig.
 - Spalte `password` (bcrypt) bleibt bis zum Ende von Phase 2 (Abschnitt 6).
 
 ### 2.3 Server-Setup und Schlüssel
-- Env: `OPAQUE_OPRF_SEED` (32 B, base64), `OPAQUE_SERVER_PRIVATE_KEY` (32 B Ristretto-Skalar, base64; öffentlicher Schlüssel wird
-  abgeleitet), `OPAQUE_FAKE_SEED` (Seed für Fake-Records), optional `OPAQUE_ENABLED` (Feature-Flag, siehe 6).
+- Env: `OPAQUE_OPRF_SEED` (**64 B**, base64), `OPAQUE_SERVER_PRIVATE_KEY` (32 B kanonischer Ristretto-Skalar, base64; öffentlicher Schlüssel wird
+  abgeleitet; der Dummy-Public-Key für Fake-Records kann daraus abgeleitet werden, kein eigener Wert nötig), optional `OPAQUE_ENABLED` (Feature-Flag, siehe 6).
   Defaults/Doku in `backend/.env.example` und `backend/config/services.yaml`; Start schlägt fehl bei fehlendem oder falsch
   langem Wert, wenn `OPAQUE_ENABLED=1`.
-- CLI: `app:opaque:generate-keys` gibt die drei Werte aus (ohne zu speichern). Docker: `docker/entrypoint.sh` generiert sie
+- CLI: `app:opaque:generate-keys` gibt die Werte aus (ohne zu speichern). Docker: `docker/entrypoint.sh` generiert sie
   NICHT automatisch (anders als JWT-Keys): ein automatisch erzeugter, nicht persistierter Seed würde bei jedem Neustart alle
   Konten entwerten. Im Entrypoint nur Prüfung und klare Fehlermeldung.
 - **Rotation:** Seed/Server-Key-Wechsel entwertet alle Records. Daher versionierte Schlüsselmenge
@@ -80,15 +75,16 @@ den Browser nie.
 ### 2.4 PHP-Modul `App\Opaque\` (`backend/src/Opaque/`)
 - `Ristretto` (dünner Wrapper um `sodium_crypto_core_ristretto255_*`, `sodium_crypto_scalarmult_ristretto255*`, mit
   `is_valid_point`-Prüfung und Ablehnung des Identitätselements bei jedem Eingabepunkt).
-- `ExpandMessageXmd` + `HashToGroup` (RFC 9380 `expand_message_xmd` mit SHA-512, DST `HashToGroup-OPAQUE...` laut RFC 9497
-  contextString; Ausgabe 64 B -> `sodium_crypto_core_ristretto255_from_hash`).
+- `ExpandMessageXmd` + `HashToGroup` (RFC 9380 `expand_message_xmd` mit SHA-512, DST `"HashToGroup-" || "OPRFV1-" || 0x00 || "-ristretto255-SHA512"`;
+  Ausgabe 64 B -> `sodium_crypto_core_ristretto255_from_hash`; `HashToScalar` = 64 B little-endian mit `sodium_crypto_core_ristretto255_scalar_reduce`).
+  Im Spike in PHP mit `ext-sodium` gegen alle RFC-Vektoren bestätigt.
 - `Oprf` (RFC 9497 Base-Mode: `blindEvaluate`, `deriveKeyPair`, nur Server-Seite; `finalize` nur für Tests/Fake).
 - `Hkdf` (Extract/Expand, `HKDF-Expand-Label` mit `"OPAQUEv1-"`-Präfix wie RFC 9807 §6.4.2/§3.3), `Mac`.
 - `KeySchedule` (3DH: Preamble, Transcript-Hash, `km2/km3/session_key`, `server_mac`/`client_mac`).
-- `Server` (`registrationResponse`, `startLogin` -> `ke2` + State, `finishLogin(state, ke3)` -> `session_key` oder Exception;
+- `Server` (`registrationResponse`, `startLogin` -> `ke2` + State, `finishLogin(state, ke3)` -> `session_key` oder Exception; Context konfigurierbar, Nonces/Keyshare-Seeds für Tests injizierbar (`DeriveKeyPair(seed, "OPAQUE-DeriveDiffieHellmanKeyPair")`);
   `RegistrationRecord`-Wertobjekt mit Parser, der Längen und Punktgültigkeit prüft).
-- `FakeRecord` (RFC 9807 §10.9: deterministisch aus `OPAQUE_FAKE_SEED` + Identifier ein gefälschter Record + gefälschter
-  Masking-Key; Antwort für unbekannte Konten und für Konten ohne Record (SSO-only/Passkey-only/Legacy-ohne-Record) ist
+- `FakeRecord` (wie opaque-ke: `masking_key` 64 Zufallsbytes pro Aufruf, `client_public_key` = fester Dummy-Key, Envelope 96 Nullbytes;
+  der OPRF-Schlüssel kommt aus der stabilen Fake-Kennung, siehe 2.1, kein `OPAQUE_FAKE_SEED`; Antwort für unbekannte Konten und für Konten ohne Record (SSO-only/Passkey-only/Legacy-ohne-Record) ist
   für den Beobachter nicht unterscheidbar).
 - `OpaqueKeys` (lädt Env, validiert), `OpaqueException` (alle Fehlerpfade -> gleiches 401 `invalid_credentials`).
 - Alles `final readonly`, `declare(strict_types=1)`, konstante Zeit via `hash_equals`/`sodium_memcmp` für alle MAC-Vergleiche,
@@ -181,9 +177,9 @@ Kontexte der Registrierung (`register/start|finish`), jeweils mit eigenem Berech
 
 ## 4. Frontend
 
-- Paket `@serenity-kit/opaque` **exakt gepinnt** (`"1.1.x"` ohne `^`) in `frontend/package.json`. Wrapper `frontend/src/lib/opaque/`
+- Paket `@serenity-kit/opaque` **exakt gepinnt** (`"1.1.0"` ohne `^`, bereits in AP 0 eingetragen) in `frontend/package.json`. Wrapper `frontend/src/lib/opaque/`
   (`client.ts`: `registerStart/Finish`, `loginStart/Finish`, `ready`), nur über dynamisches `import()` geladen, damit das
-  WASM (inline-Base64, ca. mehrere hundert KB) nicht in den Erst-Bundle kommt: Route-Chunk `src/pages/lazy.ts` plus Prefetch
+  WASM (inline-Base64; gemessen: Bundle 413 KB, 158 KB gzip) nicht in den Erst-Bundle kommt: Route-Chunk `src/pages/lazy.ts` plus Prefetch
   beim Fokus des Passwort-Feldes.
 - KSF läuft im Browser (Argon2id, 64 MiB). Empfehlung: in einem Web Worker (CSP `worker-src 'self' blob:` erlaubt das bereits,
   Vite-Worker-Konfiguration prüfen), damit die UI nicht einfriert; Fallback Haupt-Thread mit "Button disabled + Spinner".
@@ -221,6 +217,7 @@ Kontexte der Registrierung (`register/start|finish`), jeweils mit eigenem Berech
 - `'wasm-unsafe-eval'` erlaubt WebAssembly-Kompilierung, aber weiterhin kein `eval()`/`new Function()` für JS. Nur WASM, das
   das eigene Skript lädt (WASM inline im Chunk, keine Fremdquelle). Gegenmaßnahme gegen das Risiko: Kein `'unsafe-eval'`.
 - CLAUDE.md "Deployment"-Absatz und `docs/ops/OPERATIONS.md` aktualisieren (CSP-Beschreibung).
+- Im Spike bestätigt (Chromium 148): mit `script-src 'self'` wirft `WebAssembly.compile` einen CSP-`CompileError`, mit `'wasm-unsafe-eval'` läuft es ohne Verstoß; `'unsafe-eval'` ist nicht nötig.
 - Alternative ohne CSP-Änderung gibt es mit der gewählten Bibliothek nicht (reines WASM). Eine reine JS-Implementierung wäre ein
   eigenes Auditprojekt: verworfen.
 
@@ -291,9 +288,14 @@ Es gibt keinen Weg von OPAQUE zurück zu bcrypt (der Server kennt das Passwort n
 
 ## 7. Teststrategie
 
-- **RFC-Vektoren** (PHPUnit-DataProvider, `backend/tests/Unit/Opaque/`): Appendix C.1.x (Real-Vektoren: Registration-Request/
-  Response, KE1/KE2/KE3, Session-Key, Export-Key) und C.2.x (Fake-Response); zusätzlich RFC 9497 (OPRF, ristretto255-SHA512)
-  und RFC 9380-`expand_message_xmd`-Vektoren für Hash-to-Group. Einheitlich als JSON-Fixtures in `tests/Unit/Opaque/fixtures/`.
+- **RFC-Vektoren** (PHPUnit-DataProvider, `backend/tests/Unit/Opaque/`): Fixtures liegen bereits in `backend/tests/Opaque/fixtures/`
+  (`rfc9807-vectors.json`, `rfc9497-oprf-vectors.json`, `rfc9380-xmd-sha512-vectors.json`, Extraktionsskript `frontend/scripts/opaque/extract-rfc-vectors.mjs`).
+  RFC 9807 passt voll nur mit C.1.1, C.1.2 und C.2.1 (ristretto255 auch als KE-Gruppe, KSF Identity, Context `OPAQUE-POC`); C.1.3/C.1.4/C.2.2
+  nur für den OPRF-Teil (KE-Gruppe curve25519); P-256-Vektoren unbrauchbar. Der Server-Test speist Record, KE1, Seeds/Nonces ein und erwartet KE2,
+  Session-Key und KE3-MAC byte-genau (im Spike mit einem PHP-Prototyp bestätigt).
+- **serenity-Transkripte** (`serenity-transcripts.json`, Generator `frontend/scripts/opaque/generate-serenity-transcripts.mjs`): `serverSetup` ist parsebar
+  (64 B Seed, 32 B Server-Key, 32 B Dummy-Key), Registrierungsantwort und evaluiertes Element müssen byte-identisch reproduziert, `masked_response` mit dem
+  Record-`masking_key` entmaskiert werden. Einen kompletten Login kann nur der Live-Interop-Test (unten) prüfen.
 - **Test-only PHP-Client** (`tests/Support/OpaqueTestClient`, mit Identitäts-KSF wie in den RFC-Vektoren): ermöglicht
   PHPUnit-Controller-Tests (Registrierung/Login/Reauth/Reset/Change) ohne Node und macht die vielen bestehenden Tests mit Passwort
   portierbar. Nur im Test-Autoload.
@@ -324,7 +326,7 @@ Es gibt keinen Weg von OPAQUE zurück zu bcrypt (der Server kennt das Passwort n
 
 | AP | Inhalt | Abhängig von | Aufwand |
 |---|---|---|---|
-| 0 | **Spike**: serenity-kit Optionen (Context, Identifier, KSF-Profile, Wire-Format) gegen RFC-C.1-Vektoren prüfen; Entscheidung Identitäten; Browser-Messung der KSF-Zeit auf realen Geräten; `wasm-unsafe-eval` verifizieren; Ergebnis-Notiz im Repo | - | M |
+| 0 | **Spike** (erledigt, `OPAQUE-SPIKE.md`): serenity-Optionen, Wire-Format, RFC-Vektoren, Identitäten, KSF-Zeit (Desktop-Chromium, gedrosselt; echte Geräte offen), `wasm-unsafe-eval` | - | M |
 | 1 | `ext-sodium` in composer.json, Docker `php -m`-Check, `.env.example`/`services.yaml` Konfigurationsgerüst, `OpaqueKeys`, `generate-keys` | 0 | S |
 | 2 | Primitive: `Ristretto`, `ExpandMessageXmd`, `HashToGroup`, `Oprf` + RFC-9497/9380-Vektoren | 1 | M |
 | 3 | `KeySchedule`, `Hkdf`, `Mac`, `Server` (Reg + Login), `FakeRecord` + RFC-9807-C.1/C.2-Vektoren | 2 | L |
@@ -350,9 +352,9 @@ Flag in Produktion (Signup/Reset OPAQUE, Upgrade 10 % -> 50 % -> 100 %) -> Revie
 | Risiko | Bewertung / Gegenmaßnahme |
 |---|---|
 | Eigener Krypto-Code, keine Audits | Hoch. RFC-Vektoren, Interop, Review (AP 16), kleine Angriffsfläche (nur Server-Rolle), kein selbst erfundenes Protokoll |
-| serenity nicht RFC-konform / Nicht-Default-Optionen | Mittel. Spike (AP 0) entscheidet; Fallback: Bibliothek-Konfiguration anpassen oder serenity-Defaults zum Standard erklären (Interop-Test fixiert das) |
+| serenity nicht RFC-konform / Nicht-Default-Optionen | Gering. Spike: Suite, Preamble, Schlüsselableitung und Wire-Format entsprechen RFC 9807; einzige Abweichung ist der nicht setzbare (leere) Context und `2^21-1` statt `2^21` im RFC-Profil. Interop-Test (AP 4) fixiert das |
 | Breaking Changes serenity (0.9.0 Context, 1.0.0 Record) | Exakt pinnen, `opaque_version`, Upgrade nur bewusst mit Migrationsplan und Re-Registrierungsfluss |
-| Mobile Browser-Speicher bei 64 MiB Argon2 | Messen im Spike; Profil notfalls senken (Versionsfeld erlaubt Wechsel) |
+| Mobile Browser-Speicher bei 64 MiB Argon2 | Spike: Desktop ca. 0,1 s, mit 6x CPU-Drosselung ca. 0,65 s; echte Geräte vor Rollout messen (AP 10); Profil notfalls senken (Versionsfeld erlaubt Wechsel) |
 | Aktiv kompromittierter Server liefert manipuliertes JS | Bleibt (Abschnitt 1) |
 | Verlust Seed/Server-Key | Alle Konten reset-pflichtig; Backup Pflicht |
 | Support: Nutzer mit sehr altem Browser/ohne WASM | Anzeige und Hilfe-Hinweis; kein Legacy-Fallback nach Phase 2 |
@@ -362,11 +364,12 @@ Flag in Produktion (Signup/Reset OPAQUE, Upgrade 10 % -> 50 % -> 100 %) -> Revie
 1. **CSP `'wasm-unsafe-eval'`:** entschieden ja. Ohne WASM keine brauchbare OPAQUE-Client-Bibliothek; der Eintrag erlaubt kein
    `eval` von JS. Dokumentieren in CLAUDE.md.
 2. **Argon2id-KSF-Profil:** entschieden serenity-Default "memory-constrained" (m=2^16 KiB = 64 MiB, t=3, p=4). Das Profil wird pro
-   Konto als `opaque_version`/`ksf_profile` gespeichert, damit künftig ohne Hard-Break erhöht werden kann. Bestätigung durch die
-   Messung im Spike (Zielgrenze: ca. 1-2 s auf einem Mittelklasse-Handy).
+   Konto als `opaque_version`/`ksf_profile` gespeichert, damit künftig ohne Hard-Break erhöht werden kann. Spike-Messung:
+   Desktop (M4 Pro) ca. 0,1 s je Registrierung/Login, 4-6x CPU-Drosselung 0,4-0,7 s; `rfc-recommended` (2 GiB) ca. 1,1 s Desktop, 5-8 s gedrosselt: ungeeignet.
+   Messung auf echten Mobilgeräten (Zielgrenze ca. 1-2 s) folgt in AP 10.
 3. **Länge der Übergangsphase:** entschieden 30 Tage ab Rollout-100 %, danach Stichtag. Erinnerungsmails 14 und 3 Tage vorher.
    Konten ohne Login im Zeitraum werden per Reset wiederhergestellt, kein Datenverlust.
-4. Client-Identität: unverändert, entscheidet der Spike (AP 0) (Abschnitt 2.1).
+4. Client-Identität (Spike AP 0, 2026-11-09): `credential_identifier` = User-UUID (nur Server), keine eigenen `identifiers` (Default = Public Keys), Context leer (Abschnitt 2.1, Begründung in `OPAQUE-SPIKE.md` §7).
 5. Bcrypt-Hash: entschieden erst in Phase 2 löschen (Rollback verlustfrei, siehe 6.8). Bis dahin bleibt der Offline-Angriff über den
    alten Hash möglich.
 
@@ -374,8 +377,8 @@ Flag in Produktion (Signup/Reset OPAQUE, Upgrade 10 % -> 50 % -> 100 %) -> Revie
 
 | Komponente | Status (Recherche) | Policy |
 |---|---|---|
-| `@serenity-kit/opaque` 1.1.x | MIT, Rust opaque-ke 4.0.x als WASM, RFC 9807, ca. 45k Downloads/Woche, 2 Haupt-Contributor, 1 npm-Maintainer, 7ASecurity-Pentest; opaque-ke-Audit (NCC 2021) nur alte Version | Exakt pinnen (kein `^`/`~`), Upgrades nur mit Interop-Test + Changelog-Review, Breaking-Changes-Historie beachten (Context 0.9.0, Records 1.0.0); Lockfile-Integrität prüfen |
-| `opaque-ke` (transitiv) | wie oben | Version im Spike notieren (`cargo`-Metadaten in der Bibliothek bzw. Release-Notizen) |
+| `@serenity-kit/opaque` 1.1.0 (gepinnt) | MIT, Rust opaque-ke 4.0.x als WASM, RFC 9807, ca. 45k Downloads/Woche, 2 Haupt-Contributor, 1 npm-Maintainer, 7ASecurity-Pentest; opaque-ke-Audit (NCC 2021) nur alte Version | Exakt pinnen (kein `^`/`~`), Upgrades nur mit Interop-Test + Changelog-Review, Breaking-Changes-Historie beachten (Context 0.9.0, Records 1.0.0); Lockfile-Integrität prüfen |
+| `opaque-ke` (transitiv, im WASM) | 4.0.1 (mit `voprf` 0.5.0, `argon2` 0.5.3, `curve25519-dalek` 4.1.3; aus den Pfaden im WASM belegt) | Bei jedem serenity-Upgrade die Versionen im WASM neu prüfen (`strings`) und Spike-Fixtures regenerieren |
 | `noxlogic/oprf` | RFC 9497 Base-Mode, v0.9.1, 1 Maintainer, 41 Installs, hängt an `web-token/jwt-framework` | NICHT als Abhängigkeit, höchstens als Referenz für Vektoren/Vergleich |
 | `stef/libopaque` | LGPL-3.0, Pre-RFC-Draft, PHP-7-Binding | nicht verwendbar |
 | `cloudflare/opaque-ts`, `@aldenml`, andere JS-Libs | Draft-Stände / nicht verwendbar | nicht verwenden |
