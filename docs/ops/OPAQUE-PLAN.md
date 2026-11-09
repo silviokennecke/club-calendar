@@ -149,6 +149,8 @@ Kontexte der Registrierung (`register/start|finish`), jeweils mit eigenem Berech
 - Fake-Pfad: Auch für unbekannte Konten wird ein vollständiger KE2 samt `loginState` ausgegeben; `finish` scheitert immer mit
   dem gleichen 401 `invalid_credentials` (keine Unterscheidung nach Zeit: gleiche Rechenwege, siehe 7).
 
+**Umgesetzt (AP 5):** `LoginStateSealer` (XChaCha20-Poly1305, Schlüssel per HKDF aus `APP_SECRET`, TTL 120 s weil die Client-KSF nach KE2 läuft). Fester Klartext: ServerLoginState, jti, exp, Purpose (`login` | `reauth:<ticket-purpose>`), Fake-Flag, User-ID (16 B, bei Fake zufällig), `tokenVersion`, SHA-256 des Records. `finish` nimmt den User nur aus dem Blob, verbraucht die jti vor der MAC-Prüfung (`NonceStore`), prüft danach `tokenVersion` und Record-Hash gegen die DB; ein Fake-Zustand scheitert immer. Existierende Konten ohne Record nutzen die User-ID als OPRF-Kennung (stabil bis zur Registrierung), unbekannte `"fake:" || E-Mail`; beide Fake-geflaggt. Ein defekter Record wird geloggt und wie "kein Record" behandelt.
+
 ### 3.4 Reauth-Ticket
 - `SignedTokenService::issue('opaque-reauth', {uid, tv, purpose, jti}, 300)`. Verbrauch einmalig (`NonceStore`), gebunden an
   Nutzer, `tokenVersion` und Zweck (`delete-account`, `passkey-register`, `change-email`, `change-password`).
@@ -331,7 +333,7 @@ Es gibt keinen Weg von OPAQUE zurück zu bcrypt (der Server kennt das Passwort n
 | 2 | **(erledigt)** Primitive: `Ristretto`, `ExpandMessageXmd`, `HashToGroup`, `Oprf` + RFC-9497/9380-Vektoren | 1 | M |
 | 3 | **(erledigt)** `KeySchedule`, `Hkdf`, `Mac`, `OpaqueServer` (Reg + Login, Fake-Pfad), `RegistrationRecord`, `ServerLoginState` + RFC-9807-Vektoren C.1.1/C.1.2/C.2.1 (voll), C.1.3/C.1.4/C.2.2 (OPRF), serenity-Replay, Test-Client mit Round-Trips | 2 | L |
 | 4 | **(erledigt)** Live-Interop `frontend/scripts/opaque/interop.mjs` (serenity 1.1.0, echtes Argon2id) gegen PHP-Harness `backend/tests/Opaque/bin/interop-server.php`, CI-Schritt im Backend-Job; `OpaqueTestClient` + Negativ-Tests kamen mit AP 3. Ursprünglich: Test-only `OpaqueTestClient` + Negativ-Tests + Interop-Skript mit serenity (CI-Job) | 3 | M |
-| 5 | DB-Migration (3 Spalten), `User`-Entity, `OpaqueService`, `loginState` (AEAD + NonceStore), Reauth-Ticket | 3 | M |
+| 5 | **(erledigt)** DB-Migration (3 Spalten), `User`-Entity, `OpaqueService`, `loginState` (AEAD + NonceStore), Reauth-Ticket | 3 | M |
 | 6 | Endpunkte `login/*` + `AuthService`-Split + Rate-Limits + OpenAPI + Controller-Tests | 5 | L |
 | 7 | Endpunkte `register/*` (Signup, Reset, Change, Upgrade) + `PasswordResetService`/`AccountService`-Anpassung | 6 | L |
 | 8 | Reauth: `reauth/*`, `ReauthenticationService`, `deleteMe`, Passkey-Options, `changeEmail` | 6 | M |
