@@ -78,7 +78,18 @@ readonly class AccountService
      */
     public function setPasswordAsOperator(User $user, string $newPassword): void
     {
-        $user->setPassword($this->hasher->hashPassword($user, $newPassword))->clearOpaque();
+        $this->revokeCredentialsAsOperator($user, $this->hasher->hashPassword($user, $newPassword));
+    }
+
+    /** Operator "reset": no password (hash and OPAQUE record) until a reset link is used; sessions end. */
+    public function revokePasswordAsOperator(User $user): void
+    {
+        $this->revokeCredentialsAsOperator($user, null);
+    }
+
+    private function revokeCredentialsAsOperator(User $user, ?string $hash): void
+    {
+        $user->setPassword($hash)->clearOpaque();
         $user->invalidateTokens();
         $this->em->getConnection()->executeStatement(
             'UPDATE password_reset SET used_at = ? WHERE user_id = ? AND used_at IS NULL',
