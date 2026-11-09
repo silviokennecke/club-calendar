@@ -29,7 +29,18 @@ Migrationen gehören nicht ungeprüft auf die Dev-DB).
    und 60 Token-Erneuerungen/min je IP, die Suite läuft sonst nach wenigen Tests in 429 `rate_limited`
    (`AUTH_LOGIN_IP_LIMIT`, `AUTH_REGISTER_IP_LIMIT`, `AUTH_REFRESH_IP_LIMIT`, `AUTH_IDENTIFY_IP_LIMIT`, `AUTH_IDENTIFY_EMAIL_LIMIT`). Die Umgebung `test` taugt nicht: dort
    speichert der Hasher Passwörter im Klartext, die Fixture-Anmeldung `admin@example.com` schlüge fehl:
-   `AUTH_LOGIN_IP_LIMIT=100000 AUTH_REGISTER_IP_LIMIT=100000 AUTH_REFRESH_IP_LIMIT=100000 AUTH_IDENTIFY_IP_LIMIT=100000 AUTH_IDENTIFY_EMAIL_LIMIT=100000 MCP_ALLOWED_CLIENTS='*' WEBAUTHN_RP_ID=localhost FRONTEND_URL=http://localhost:5199 BACKEND_URL=http://localhost:3001 MAILER_DSN=null://null php -S 127.0.0.1:3001 -t backend/public`.
+   OPAQUE ist im E2E-Backend **an** (`OPAQUE_ENABLED=true`, `OPAQUE_ROLLOUT_PERCENT=100`), mit Wegwerf-Schlüsseln pro Start
+   (Konten aus einem früheren Start wären sonst unbrauchbar: bei neuer Datenbank egal, sonst die Schlüssel behalten). Aus der Repo-Wurzel:
+   ```bash
+   export XDEBUG_MODE=off DATABASE_URL='mysql://root:root@127.0.0.1:3360/club_calendar_e2e?serverVersion=8.0&charset=utf8mb4'
+   eval "$(cd backend && php bin/console app:opaque:generate-keys 2>/dev/null | grep '^OPAQUE_' | sed 's/^/export /')"
+   OPAQUE_ENABLED=true OPAQUE_ROLLOUT_PERCENT=100 AUTH_LOGIN_IP_LIMIT=100000 AUTH_REGISTER_IP_LIMIT=100000 AUTH_REFRESH_IP_LIMIT=100000 AUTH_IDENTIFY_IP_LIMIT=100000 AUTH_IDENTIFY_EMAIL_LIMIT=100000 MCP_ALLOWED_CLIENTS='*' WEBAUTHN_RP_ID=localhost FRONTEND_URL=http://localhost:5199 BACKEND_URL=http://localhost:3001 MAILER_DSN=null://null php -S 127.0.0.1:3001 -t backend/public
+   ```
+   Die Fixture-Konten (`admin@example.com`) tragen noch den bcrypt-Hash (Legacy-Anmeldung, wird beim ersten Login im
+   Hintergrund umgestellt). `e2e/helpers.ts` registriert und meldet Nutzer per OPAQUE an (Node-Client mit
+   `@serenity-kit/opaque`, Argon2id wie im Browser: etwa 1 s pro Anmeldung); `createLegacyUser` legt ein bcrypt-Konto über das
+   alte `POST /api/auth/register` an (`e2e/opaque.spec.ts`: Upgrade im Hintergrund). Ohne die OPAQUE-Variablen
+   schlagen die Helfer mit 503 `opaque_unavailable` fehl.
    `WEBAUTHN_RP_ID=localhost` ist nötig, wenn `backend/.env.local` eine andere `APP_URL` setzt (der Standard ist deren Host), sonst scheitern die Passkey-Tests in `profile.spec.ts`.
    `FRONTEND_URL`/`BACKEND_URL` stehen nicht mehr in `.env` (sie folgen `APP_URL`, siehe `config/services.yaml`) und
    müssen hier gesetzt werden: Passkey-Origin, Links der neuen E-Mail-Adresse und der SSO-Verknüpfung bauen darauf
