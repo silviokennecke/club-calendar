@@ -61,7 +61,7 @@ Limits slow down attackers and mistakes. When one is hit, the app answers `429` 
 | Forgot password | 3 per hour per address, 20 per hour per IP | fixed |
 | Confirmation mail resend | 25 per day per IP | fixed |
 | Club invitations | 20 per user and 50 per club per day; 5 mails per address per day; re-send once per minute | fixed |
-| Public feeds | 120 per minute per IP, 600 per minute per feed | `FEED_RATE_LIMIT_PER_IP`, `FEED_RATE_LIMIT_PER_FEED` (0 = off) |
+| Public feeds and personal subscription addresses | 120 per minute per IP, 600 per minute per feed or subscription | `FEED_RATE_LIMIT_PER_IP`, `FEED_RATE_LIMIT_PER_FEED` (0 = off) |
 | Joining a club through a feed | 20 per hour per user, 60 per hour per IP | fixed |
 | Renewing the personal subscription address | 10 per hour per user | fixed |
 | PDF export | 10 per user and 30 per IP per 10 min | fixed |
@@ -159,6 +159,8 @@ Each feed has one of three visibility levels:
 | Private | Only with the link and a secret | Never indexed |
 
 Private feed addresses contain a secret. Anyone who has the address can read the feed, so share it carefully. A feed can be given a new secret to cut off old addresses. Feed addresses are sent with `Referrer-Policy: no-referrer` so the address does not leak to other sites. The "do not index" header for non-public feeds is set by the app itself, not by the web server.
+
+Every club member also has a personal subscription address (a calendar made of the feeds the member picked). It contains a secret, is never indexed and is sent with `Referrer-Policy: no-referrer` like the feed addresses (the existing `/api/feed/` rules cover it, nothing to configure). It only shows what the member may access at that moment, so removing a member or access to a private feed takes effect at once.
 
 A signed-in person who opens a feed address can become a plain club member through it, if a club admin allows it. The club setting has three values: off (nobody joins this way), internal (the default; joining through "by link only" and private feeds) and public (public feeds as well). The setting only controls new members; existing members and invitations are unaffected. Joining through a private feed also needs its secret. Club admins can additionally give members access to a private feed by hand, and when they give a private feed a new secret they can choose to remove the access of everyone who joined with the old one. The old secret stops working in every case. If a private feed is switched to another visibility, the stored access stays but has no effect.
 

@@ -52,6 +52,19 @@ class IcsService
     }
 
     /**
+     * Same as streamFeedIcs() for a club known only by its time zone (the personal subscription feed reads it
+     * from a light query), with the calendar name shown by the client.
+     *
+     * @param iterable<list<IcsEvent>> $chunks
+     *
+     * @return \Generator<int, string>
+     */
+    public function streamFeedIcsForZone(string $timezone, iterable $chunks, ?string $calendarName = null): \Generator
+    {
+        return $this->stream(Input::canonicalTimezone($timezone) ?? 'UTC', $chunks, false, $calendarName);
+    }
+
+    /**
      * ICS of a calendar's events (member export), as a stream. Drafts are marked STATUS:TENTATIVE.
      *
      * @param iterable<list<IcsEvent>> $chunks
@@ -83,6 +96,24 @@ class IcsService
         };
     }
 
+    /** `X-WR-CALNAME:` line (RFC 5545 text escaping, folded at 75 octets without splitting a UTF-8 character). */
+    private static function nameLine(string $name): string
+    {
+        $clean = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $name) ?? '');
+        $text = 'X-WR-CALNAME:'.strtr($clean, ['\\' => '\\\\', ';' => '\\;', ',' => '\\,']);
+        $out = '';
+        $line = '';
+        foreach (mb_str_split($text) as $ch) {
+            if (strlen($line) + strlen($ch) > 75) {
+                $out .= $line."\r\n";
+                $line = ' ';
+            }
+            $line .= $ch;
+        }
+
+        return $out.$line."\r\n";
+    }
+
     private function clubTimezone(Club $club): string
     {
         return Input::canonicalTimezone($club->getTimezone()) ?? 'UTC';
@@ -98,14 +129,14 @@ class IcsService
      *
      * @return \Generator<int, string>
      */
-    private function stream(string $clubTimezone, iterable $chunks, bool $markDrafts): \Generator
+    private function stream(string $clubTimezone, iterable $chunks, bool $markDrafts, ?string $calendarName = null): \Generator
     {
         $eventFactory = new EventFactory();
         $envelope = (string) (new CalendarFactory($eventFactory))->createCalendar(new Calendar());
         if (!str_ends_with($envelope, self::END)) {
             throw new \LogicException('Unexpected calendar envelope');
         }
-        yield substr($envelope, 0, -strlen(self::END));
+        yield substr($envelope, 0, -strlen(self::END)).(null === $calendarName ? '' : self::nameLine($calendarName));
 
         /** @var array<string, array{\DateTimeImmutable, \DateTimeImmutable}> $zoneRanges */
         $zoneRanges = [];

@@ -67,6 +67,21 @@ class FeedRateLimitTest extends WebTestCase
         $this->assertSame(404, $this->get($c, '/api/feed/a/ics', '198.51.100.9')[0]);
     }
 
+    public function testPersonalSubscriptionIcsSharesTheIpLimitAndHasItsOwnIdLimit(): void
+    {
+        $c = $this->client(3, 1000);
+        $this->assertSame(404, $this->get($c, '/api/feed/me/a/ics?secret=x')[0]);
+        $this->assertSame(404, $this->get($c, '/api/feed/me/b/ics?secret=x')[0]);
+        $this->assertSame(404, $this->get($c, '/api/feed/c/ics')[0]);
+        $this->assertSame(429, $this->get($c, '/api/feed/me/d/ics?secret=x')[0]);
+
+        $c = $this->client(1000, 2);
+        $this->assertSame(404, $this->get($c, '/api/feed/me/same/ics', '203.0.113.1')[0]);
+        $this->assertSame(404, $this->get($c, '/api/feed/me/same/ics', '203.0.113.2')[0]);
+        $this->assertSame(429, $this->get($c, '/api/feed/me/same/ics', '203.0.113.3')[0]);
+        $this->assertSame(404, $this->get($c, '/api/feed/me/other/ics', '203.0.113.3')[0]);
+    }
+
     public function testPerFeedLimitAcrossIpsLeavesOtherFeedsUntouched(): void
     {
         $c = $this->client(1000, 2);

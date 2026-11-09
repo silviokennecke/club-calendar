@@ -34,6 +34,8 @@ class MemberRoleTest extends WebTestCase
         'PUT /api/clubs/{clubId}/my-subscription',
         'POST /api/clubs/{clubId}/my-subscription/rotate-secret',
         'GET /api/clubs/{clubId}/my-feeds',
+        'GET /api/clubs/{clubId}/my-events',
+        'GET /api/clubs/{clubId}/my-events/{eventId}',
     ];
 
     private static KernelBrowser $client;
@@ -135,6 +137,7 @@ class MemberRoleTest extends WebTestCase
         $this->assertSame(200, $this->req($this->member, 'PUT', $base.'/my-subscription', ['feedIds' => [], 'targetGroupIds' => []])['status']);
         $this->assertSame(200, $this->req($this->member, 'POST', $base.'/my-subscription/rotate-secret')['status']);
         $this->assertSame(200, $this->req($this->member, 'GET', $base.'/my-feeds')['status']);
+        $this->assertSame(200, $this->req($this->member, 'GET', $base.'/my-events')['status']);
     }
 
     public function testMemberCanLeaveButNotRemoveOthers(): void

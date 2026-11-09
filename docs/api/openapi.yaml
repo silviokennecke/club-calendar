@@ -3686,6 +3686,65 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
 
+  /api/clubs/{clubId}/my-events:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+    get:
+      tags: [Clubs]
+      summary: Calendar view of the personal subscription
+      description: >-
+        Every club member (also plain `member`). Same payload and limits as the public web view `/api/feed/{feedId}/events`,
+        over the effective feeds of the personal subscription (selected feeds the user may access now, non-archived
+        calendars, published events only; holidays de-duplicated by uid; the club time zone). `feed` is a header with
+        `name` "Mein Abo", `visibility` PRIVATE, `indexable` false; it never contains a secret (`id` is the subscription id, empty while none exists). Without `targetGroupIds`
+        the subscription's own target groups apply; a given list (also empty = all groups) overrides it. Does not create the
+        subscription (none = empty result).
+      operationId: listMyEvents
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: targetGroupIds, in: query, description: 'Target group ids (`targetGroupIds[]=` or comma-separated); present but empty = all groups.', schema: { type: array, items: { type: string } } }
+      responses:
+        '200':
+          description: Header, events and holidays.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [feed, events, holidays]
+                properties:
+                  feed: { $ref: '#/components/schemas/PublicFeedHeader' }
+                  events: { type: array, items: { $ref: '#/components/schemas/PublicEvent' } }
+                  holidays: { type: array, items: { $ref: '#/components/schemas/HolidayEvent' } }
+        '400': { description: Invalid or too wide date range, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/clubs/{clubId}/my-events/{eventId}:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+      - { name: eventId, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Clubs]
+      summary: One event of the personal subscription
+      description: A published event of the effective feeds; drafts, events of other feeds and unknown ids are the same 404.
+      operationId: getMyEvent
+      responses:
+        '200':
+          description: Header and event.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [feed, event]
+                properties:
+                  feed: { $ref: '#/components/schemas/PublicFeedHeader' }
+                  event: { $ref: '#/components/schemas/PublicEvent' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /api/clubs/{clubId}/my-feeds:
     parameters:
       - { $ref: '#/components/parameters/ClubId' }
@@ -3885,6 +3944,50 @@ paths:
             text/calendar:
               schema: { type: string }
         '403': { $ref: '#/components/responses/FeedForbidden' }
+        '404': { $ref: '#/components/responses/FeedNotFound' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+
+  /api/feed/me/{subscriptionId}/ics:
+    parameters:
+      - { name: subscriptionId, in: path, required: true, description: 'Id of the personal subscription (`GET …/my-subscription`).', schema: { type: string } }
+    get:
+      tags: [Public feed]
+      summary: ICS of the personal subscription ("Mein Abo")
+      description: >-
+        No sign-in; the personal `secret` in the query is the credential. The calendar holds the published events of
+        the EFFECTIVE feeds: the selected feeds the member may access right now (re-evaluated on every request, so a
+        revoked assignment, a demotion or leaving the club takes effect at once), each with its own calendars (non-archived),
+        feed target group filter and the subscription's target groups (an event of several feeds appears once; with
+        a target group filter, events without a group are not delivered). No holidays. Same window
+        (`FEED_ICS_*`), cap, time zone handling and event rendering as the feed ICS; `X-WR-CALNAME` is
+        `<club name> – Mein Abo`. No effective feed gives a valid empty calendar (200). Unknown id, wrong or missing
+        secret and a member who is gone are the same `404` (checked before any other work). Rate limits: the feed limits
+        (`FEED_RATE_LIMIT_PER_IP` per client IP and `FEED_RATE_LIMIT_PER_FEED` per subscription id).
+
+        Conditional requests like the feed ICS: strong `ETag` computed without loading events (subscription and its
+        configuration, effective feeds with their configuration and filters, content versions of their calendars, window
+        and cap, club name and zone, ICS format version; never the secret). A 304 requires the valid secret.
+        Always `Cache-Control: no-cache, private`, `X-Robots-Tag: noindex`, `Referrer-Policy: no-referrer`.
+      operationId: personalSubscriptionIcs
+      security: [{}]
+      parameters:
+        - { name: secret, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 'iCalendar (`Content-Disposition: attachment; filename="my-subscription.ics"`, `ETag`).'
+          headers:
+            ETag: { description: 'Strong validator, quoted hex.', schema: { type: string } }
+            Referrer-Policy: { $ref: '#/components/headers/ReferrerPolicy' }
+            X-Robots-Tag: { $ref: '#/components/headers/XRobotsTag' }
+          content:
+            text/calendar:
+              schema: { type: string }
+        '304':
+          description: '`If-None-Match` matches the current `ETag`; no body.'
+          headers:
+            ETag: { description: 'Current validator.', schema: { type: string } }
+            Referrer-Policy: { $ref: '#/components/headers/ReferrerPolicy' }
+            X-Robots-Tag: { $ref: '#/components/headers/XRobotsTag' }
         '404': { $ref: '#/components/responses/FeedNotFound' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
 

@@ -64,13 +64,19 @@ class PublicFeedService
         return [
             'feed' => $this->serializeFeed($feed),
             'events' => array_map(fn (Event $e) => $this->serializeEvent($e), $events),
-            'holidays' => array_map(fn (HolidayEvent $h) => [
-                'id' => $h->getId(),
-                'holidayCalendarId' => $h->getHolidayCalendar()->getId(),
-                'name' => $h->getName(),
-                'date' => $h->getDate()->format('Y-m-d'),
-                'dateEnd' => $h->getDateEnd()?->format('Y-m-d'),
-            ], $holidays),
+            'holidays' => array_map($this->serializeHoliday(...), $holidays),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public function serializeHoliday(HolidayEvent $h): array
+    {
+        return [
+            'id' => $h->getId(),
+            'holidayCalendarId' => $h->getHolidayCalendar()->getId(),
+            'name' => $h->getName(),
+            'date' => $h->getDate()->format('Y-m-d'),
+            'dateEnd' => $h->getDateEnd()?->format('Y-m-d'),
         ];
     }
 
@@ -82,7 +88,7 @@ class PublicFeedService
      *
      * @return HolidayEvent[]
      */
-    private function dedupeHolidays(array $holidays): array
+    public function dedupeHolidays(array $holidays): array
     {
         usort($holidays, fn (HolidayEvent $a, HolidayEvent $b) => [$a->getDate(), $a->getId()] <=> [$b->getDate(), $b->getId()]);
         $seen = [];
@@ -266,6 +272,11 @@ class PublicFeedService
         return [$filename, $this->icsService->streamFeedIcs($feed->getClub(), [$events])];
     }
 
+    public function maxIcsEvents(): int
+    {
+        return $this->icsMaxEvents;
+    }
+
     public function icsOutput(\Generator $pieces): \Closure
     {
         return $this->icsService->outputCallback($pieces);
@@ -328,10 +339,16 @@ class PublicFeedService
      */
     private function icsWindow(CalendarFeed $feed): array
     {
+        return $this->windowForZone($feed->getClub()->getTimezone());
+    }
+
+    /** @return array{0: ?\DateTimeImmutable, 1: ?\DateTimeImmutable} default ICS window for a club time zone */
+    public function windowForZone(string $timezone): array
+    {
         if (!$this->icsWindowEnabled) {
             return [null, null];
         }
-        $zone = new \DateTimeZone(Input::canonicalTimezone($feed->getClub()->getTimezone()) ?? 'UTC');
+        $zone = new \DateTimeZone(Input::canonicalTimezone($timezone) ?? 'UTC');
         $today = new \DateTimeImmutable('today', $zone);
         // Date-only values: compared as DATE, time and zone of the object do not matter
         $from = $today->modify(sprintf('-%d days', $this->icsPastDays));
@@ -415,7 +432,7 @@ class PublicFeedService
      *
      * @return Event[]
      */
-    private function fetchEvents(QueryBuilder $qb): array
+    public function fetchEvents(QueryBuilder $qb): array
     {
         $query = $qb->getQuery();
         foreach (['location', 'properties', 'features', 'targetGroups'] as $association) {
@@ -456,7 +473,7 @@ class PublicFeedService
         }
     }
 
-    private function serializeEvent(Event $e): array
+    public function serializeEvent(Event $e): array
     {
         return [
             'id' => $e->getId(),
