@@ -46,6 +46,7 @@ FROM caddy:${CADDY_VERSION}-alpine AS caddy
 
 # ── Stage 4: runtime ─────────────────────────────────────────────────────────
 FROM php:${PHP_VERSION}-fpm-alpine AS runtime
+LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
 COPY --from=ghcr.io/mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 RUN apk add --no-cache bash tini \
