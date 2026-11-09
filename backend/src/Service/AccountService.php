@@ -43,7 +43,7 @@ readonly class AccountService
     public function changePassword(User $user, string $currentPassword, string $newPassword, ?bool $consentOk = null): array
     {
         $this->assertPassword($user, $currentPassword, 'currentPassword');
-        $user->setPassword($this->hasher->hashPassword($user, $newPassword));
+        $user->setPassword($this->hasher->hashPassword($user, $newPassword))->clearOpaque();
         $user->invalidateTokens();
         $this->deleteOpenEmailChanges($user);
         $this->em->flush();
@@ -78,7 +78,7 @@ readonly class AccountService
      */
     public function setPasswordAsOperator(User $user, string $newPassword): void
     {
-        $user->setPassword($this->hasher->hashPassword($user, $newPassword));
+        $user->setPassword($this->hasher->hashPassword($user, $newPassword))->clearOpaque();
         $user->invalidateTokens();
         $this->em->getConnection()->executeStatement(
             'UPDATE password_reset SET used_at = ? WHERE user_id = ? AND used_at IS NULL',

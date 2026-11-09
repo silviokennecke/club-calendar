@@ -104,7 +104,10 @@ readonly class PasswordResetService
      */
     public function reset(string $token, string $newPassword): void
     {
-        $this->claim($token, fn (User $user) => $user->setPassword($this->hasher->hashPassword($user, $newPassword)));
+        $this->claim($token, function (User $user) use ($newPassword): void {
+            // A stale OPAQUE record would keep the old password alive (flag off, then on again).
+            $user->setPassword($this->hasher->hashPassword($user, $newPassword))->clearOpaque();
+        });
     }
 
     /**

@@ -14,6 +14,7 @@ use App\Exception\OAuthAccountConflictException;
 use App\Exception\OAuthIdentityMismatchException;
 use App\Exception\OAuthRegistrationRestrictedException;
 use App\Opaque\InvalidMessageException;
+use App\Opaque\OpaqueRollout;
 use App\Opaque\OpaqueService;
 use App\Repository\RefreshTokenRepository;
 use App\Security\NonceStore;
@@ -47,6 +48,7 @@ readonly class AuthService
         private RegistrationPolicy $registrationPolicy,
         private LoggerInterface $logger,
         private OpaqueService $opaque,
+        private OpaqueRollout $rollout,
         /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
         #[Autowire(env: 'int:REFRESH_TOKEN_REUSE_GRACE')]
         private int $refreshReuseGrace,
@@ -141,11 +143,20 @@ readonly class AuthService
         $email = EmailAddress::normalize($email);
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         if (!$user || !$user->getPassword()) {
+            if ($user) {
+                $this->logger->info('opaque.legacy_login.failure', ['userId' => $user->getId(), 'reason' => 'no_password_hash']);
+            }
             throw self::invalidCredentials();
         }
         if (!$this->hasher->isPasswordValid($user, $password)) {
+            $this->logger->info('opaque.legacy_login.failure', ['userId' => $user->getId(), 'reason' => 'wrong_password']);
             throw self::invalidCredentials();
         }
+        $this->logger->info('opaque.legacy_login.success', [
+            'userId' => $user->getId(),
+            'hasRecord' => $this->opaque->hasRecord($user),
+            'upgradeOffered' => !$this->opaque->hasRecord($user) && $this->rollout->offersUpgrade($user->getId()),
+        ]);
         if ($this->hasher->needsRehash($user)) {
             // Transparent upgrade; deliberately no token version bump, running sessions stay valid.
             $user->setPassword($this->hasher->hashPassword($user, $password));

@@ -11,7 +11,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 class OpaqueCheckCommandTest extends KernelTestCase
 {
-    private const VARS = ['OPAQUE_ENABLED', 'OPAQUE_OPRF_SEED', 'OPAQUE_SERVER_PRIVATE_KEY'];
+    private const VARS = ['OPAQUE_ENABLED', 'OPAQUE_OPRF_SEED', 'OPAQUE_SERVER_PRIVATE_KEY', 'OPAQUE_ROLLOUT_PERCENT', 'OPAQUE_LEGACY_CUTOFF'];
 
     /** @var array<string, array{0: string|false, 1: mixed, 2: mixed}> */
     private array $saved = [];
@@ -90,5 +90,33 @@ class OpaqueCheckCommandTest extends KernelTestCase
         ]);
 
         self::assertSame(1, $tester->getStatusCode());
+    }
+
+    /** @return iterable<string, array{string, string, string}> */
+    public static function invalidRollout(): iterable
+    {
+        yield 'percent over 100' => ['101', '', 'OPAQUE_ROLLOUT_PERCENT'];
+        yield 'negative percent' => ['-1', '', 'OPAQUE_ROLLOUT_PERCENT'];
+        yield 'non-numeric percent' => ['half', '', 'OPAQUE_ROLLOUT_PERCENT'];
+        yield 'decimal percent' => ['12.5', '', 'OPAQUE_ROLLOUT_PERCENT'];
+        yield 'cutoff not ISO' => ['0', '31.12.2026', 'OPAQUE_LEGACY_CUTOFF'];
+        yield 'cutoff impossible date' => ['0', '2026-02-30', 'OPAQUE_LEGACY_CUTOFF'];
+        yield 'cutoff with time' => ['0', '2026-12-31T00:00:00', 'OPAQUE_LEGACY_CUTOFF'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidRollout')]
+    public function testInvalidRolloutConfigIsFatalEvenWhenDisabled(string $percent, string $cutoff, string $expected): void
+    {
+        $tester = $this->check(['OPAQUE_ENABLED' => 'false', 'OPAQUE_ROLLOUT_PERCENT' => $percent, 'OPAQUE_LEGACY_CUTOFF' => $cutoff]);
+
+        self::assertSame(1, $tester->getStatusCode());
+        self::assertStringContainsString($expected, $tester->getDisplay());
+    }
+
+    public function testValidRolloutConfigPasses(): void
+    {
+        $tester = $this->check(['OPAQUE_ENABLED' => 'false', 'OPAQUE_ROLLOUT_PERCENT' => '100', 'OPAQUE_LEGACY_CUTOFF' => '2026-12-31']);
+
+        self::assertSame(0, $tester->getStatusCode());
     }
 }

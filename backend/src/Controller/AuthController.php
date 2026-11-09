@@ -16,6 +16,7 @@ use App\Dto\Auth\UpdateMeDto;
 use App\Dto\Auth\VerifyEmailDto;
 use App\Entity\User;
 use App\Exception\ApiProblemException;
+use App\Opaque\OpaqueAuthHint;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
 use App\Service\AccountService;
@@ -64,6 +65,7 @@ class AuthController extends AbstractApiController
         private readonly array $providersMeta,
         #[Autowire(env: 'FRONTEND_URL')]
         private readonly string $frontendUrl,
+        private readonly OpaqueAuthHint $authHint,
     ) {
     }
 
@@ -85,8 +87,9 @@ class AuthController extends AbstractApiController
     }
 
     /**
-     * First step of the e-mail-first sign-in: 200 `{email, status}` with `login` (account exists, verified or
-     * not), `register` or `registration_restricted`. Intentional account-existence oracle, limited per IP and
+     * First step of the e-mail-first sign-in: 200 `{email, status, auth}` with `login` (account exists, verified or
+     * not), `register` or `registration_restricted`; `auth` (`opaque|legacy|none|reset_required`, see
+     * {@see OpaqueAuthHint}) names the credential protocol, for new addresses the signup protocol. Intentional account-existence oracle, limited per IP and
      * per address (checked before any database work).
      */
     #[Route('/identify', methods: ['POST'])]
@@ -96,13 +99,16 @@ class AuthController extends AbstractApiController
         $this->validateDto($dto, $this->validator);
         $email = AuthRateLimiter::normalize($dto->email);
         $this->rateLimiter->assertIdentifyAllowed($request, $email);
-        if (null !== $this->em->getRepository(User::class)->findOneBy(['email' => $email])) {
+        $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
+        if (null !== $user) {
             $status = 'login';
+            $auth = $this->authHint->forAccount($user);
         } else {
             $status = $this->registrationPolicy->mayRegister($email) ? 'register' : 'registration_restricted';
+            $auth = $this->authHint->forSignup();
         }
 
-        return new JsonResponse(['email' => $email, 'status' => $status]);
+        return new JsonResponse(['email' => $email, 'status' => $status, 'auth' => $auth]);
     }
 
     #[Route('/login', methods: ['POST'])]

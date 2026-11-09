@@ -59,6 +59,8 @@ parameters:
     env(OPAQUE_ENABLED): 'false'
     env(OPAQUE_OPRF_SEED): ''
     env(OPAQUE_SERVER_PRIVATE_KEY): ''
+    env(OPAQUE_ROLLOUT_PERCENT): '0'
+    env(OPAQUE_LEGACY_CUTOFF): ''
 
     env(MAPBOX_TOKEN): ''
     map.image.zoom: 14
