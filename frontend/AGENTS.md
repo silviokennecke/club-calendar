@@ -261,7 +261,15 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
     Club switch, `ClubCard`, `ClubsPage` (last club) and `useEnterClub` open Mein Verein for a member. Staff get "Mein Verein" as the
     first entry of the "Verein" nav group and a row on `MorePage`.
   - Mein Verein: `/clubs/:clubId/me` (`pages/MyClubPage`, every role, `lib/club/myClub.ts`; tabs via `HelpTabs`, URL `?tab=calendar|subscription`): tab "Kalender" = `components/myclub/MyCalendarTab`,
-    tab "Abo" = `MySubscriptionTab` (placeholders so far); "Verein verlassen" for every role uses `components/club/LeaveClubDialog` (shared with `MembersSection`; handles `last_member` / `last_admin`).
+    tab "Abo" = `MySubscriptionTab`; "Verein verlassen" for every role uses `components/club/LeaveClubDialog` (shared with `MembersSection`; handles `last_member` / `last_admin`).
+    "Kalender" reuses the feed page's view (`components/feed/PublicCalendarView`, state owned by the caller: date / view / `q` in the URL next to `tab`) with data from `my-events`;
+    the audience chips (`my-feeds` `targetGroups`) start with the subscription's selection (empty = all, not sent to the server); changing them is local state only and is then sent as
+    `targetGroupIds` (an explicit empty list = all), with the note "Aus deinem Abo vorausgewählt"; holidays stay visible while only audiences are selected (`holidaysWithGroups`). Empty states: no feed selected
+    (link to the Abo tab), no events. Event details are the routed modal `pages/MyEventModal` (`/clubs/:clubId/me/events/:eventId`, `modalRoutes` kind `my`, background `/clubs/:id/me`; shares `EventDetail`
+    of `PublicEventModal`, no one-event ICS; `memberMayOpen` allows the path). "Abo" = checkable feed rows (`StatusBadge`, calendar names, why accessible via `accessReason`, hint for private feeds) +
+    `ChipSelect` of audiences, explicit save (`PUT my-subscription`, `useUnsavedChanges`, toasts) + the personal address (`PersonalLink` = `CopyField` + `components/feed/SubscribeButton`, the subscribe split button
+    extracted from `FeedPage`). Renewing the personal link is NOT on this page: profile section `components/profile/CalendarSubscriptionSection` ("Mein Kalender-Abo", per club a `ConfirmDialog` and
+    `rotate-secret`, the new address shown as `PersonalLink`). UI wording says "persönlicher Link", never "secret".
     API layer for the member endpoints: `lib/club/memberApi.ts` (functions, TanStack hooks `useMySubscription`, `useReplaceMySubscription`, `useRotateMySubscriptionSecret`,
     `useMyFeeds`, `useMyEvents`, `useMyEvent`, `useClaimFeed`, `useFeedMembership`, and `mySubscriptionAddresses` for the ICS/webcal address); types in `lib/types.ts`.
   - Club: `/clubs/:clubId` (`pages/ClubPage`, three tabs via `HelpTabs`, URL `?tab=general|calendars|members`, default general: general = `ClubNameSection` + delete-club card, calendars = `CalendarsSection`, members = `MembersSection`; in `components/club/`: `ClubNameSection`, `MembersSection` (table with role per member,

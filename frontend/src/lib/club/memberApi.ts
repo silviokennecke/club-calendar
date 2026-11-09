@@ -1,5 +1,5 @@
 // Member endpoints: the personal subscription, its calendar view and feed claim / membership.
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_URL } from "@/lib/apiUrl";
 import { apiGet, apiPost, apiPut } from "@/lib/api";
 import type { PublicAddresses, PublicEventData, PublicFeedData } from "@/lib/feeds/public";
@@ -97,6 +97,8 @@ export function useMyEvents(clubId: string | undefined, params: MyEventsParams =
     queryFn: () => getMyEvents(clubId!, params),
     enabled: !!clubId,
     retry: false,
+    // The previous month stays visible while the next one loads.
+    placeholderData: keepPreviousData,
   });
 }
 

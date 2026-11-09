@@ -26,6 +26,8 @@ describe("Mein Verein paths", () => {
     expect(memberMayOpen("/clubs/c1/me", "c1")).toBe(true);
     expect(memberMayOpen("/clubs/c1/me/", "c1")).toBe(true);
     expect(memberMayOpen("/profile", "c1")).toBe(true);
+    expect(memberMayOpen("/clubs/c1/me/events/e1", "c1")).toBe(true);
+    expect(memberMayOpen("/clubs/c2/me/events/e1", "c1")).toBe(false);
     expect(memberMayOpen("/clubs/c1", "c1")).toBe(false);
     expect(memberMayOpen("/clubs/c1/calendars/k1", "c1")).toBe(false);
     expect(memberMayOpen("/clubs/c2/me", "c1")).toBe(false);

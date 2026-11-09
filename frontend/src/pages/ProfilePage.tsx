@@ -9,6 +9,7 @@ import type { ShellData } from "@/components/layout/shellTypes";
 import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
 import { AccountSection } from "@/components/profile/AccountSection";
 import { LinkedLoginsSection, type LinkOutcome } from "@/components/profile/LinkedLoginsSection";
+import { CalendarSubscriptionSection } from "@/components/profile/CalendarSubscriptionSection";
 import { ConnectedAppsSection } from "@/components/profile/ConnectedAppsSection";
 import { LegalSection } from "@/components/profile/LegalSection";
 import { PasswordSection } from "@/components/profile/PasswordSection";
@@ -173,6 +174,8 @@ export default function ProfilePage() {
       )}
 
       <PreferencesSection />
+
+      <CalendarSubscriptionSection />
 
       <ConnectedAppsSection />
 

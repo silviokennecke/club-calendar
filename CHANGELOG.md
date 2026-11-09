@@ -7,6 +7,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Added
 
+- "Mein Verein" tabs: the calendar shows the events of the personal subscription (month / list, audience filter preselected from the subscription, event dialog); the subscription tab chooses feeds and audiences and shows the personal calendar link with the usual subscribe button. The profile has a new section "Mein Kalender-Abo" to renew the personal link per club.
 - App shell follows the club role: a plain `member` sees only the new page "Mein Verein" (`/clubs/:id/me`, tabs Calendar and Subscription, leaving the club) and never triggers calendar or settings requests; staff get "Mein Verein" in the navigation. Frontend API layer for the personal subscription and feed claim.
 - Personal club subscription (backend): every club member (also plain `member` and admins) has one personal subscription per club with a selection of feeds and target groups behind a personal secret. New routes `GET|PUT /api/clubs/:id/my-subscription`, `POST …/my-subscription/rotate-secret` and `GET /api/clubs/:id/my-feeds`; claiming a feed adds it to the subscription; leaving or being removed from a club deletes it.
 - Personal subscription served (backend): the ICS address `GET /api/feed/me/:id/ics?secret=…` (events of the selected feeds the member may currently access, with ETag/304) and the calendar view `GET /api/clubs/:id/my-events`.

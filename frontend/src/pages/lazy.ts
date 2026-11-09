@@ -18,6 +18,7 @@ const modalImports = {
   EventFromTemplateModal: () => import("./events/EventFromTemplateModal"),
   EventSeriesEditModal: () => import("./events/EventSeriesEditModal"),
   PublicEventModal: () => import("./PublicEventModal"),
+  MyEventModal: () => import("./MyEventModal"),
   LegalModal: () => import("./LegalModal"),
 };
 
@@ -48,6 +49,11 @@ export function preloadPublicEventModal(): () => void {
   return preload(["PublicEventModal"]);
 }
 
+/** Same for the event dialog above the personal calendar of "Mein Verein". */
+export function preloadMyEventModal(): () => void {
+  return preload(["MyEventModal"]);
+}
+
 export const SignInPage = lazyPage(() => import("./SignInPage"));
 export const ForgotPasswordPage = lazyPage(() => import("./ForgotPasswordPage"));
 export const ResetPasswordPage = lazyPage(() => import("./ResetPasswordPage"));
@@ -56,6 +62,7 @@ export const VerifyCodePage = lazyPage(() => import("./VerifyCodePage"));
 export const EmailVerifyPage = lazyPage(() => import("./EmailVerifyPage"));
 export const FeedPage = lazyPage(() => import("./FeedPage"));
 export const PublicEventModal = lazyPage(modalImports.PublicEventModal);
+export const MyEventModal = lazyPage(modalImports.MyEventModal);
 export const HelpPage = lazyPage(() => import("./HelpPage"));
 export const InvitationPage = lazyPage(() => import("./InvitationPage"));
 export const ClubsPage = lazyPage(() => import("./ClubsPage"));

@@ -16,8 +16,18 @@ export function isMyClubPath(pathname: string, clubId: string): boolean {
   return path === `/clubs/${clubId}/me`;
 }
 
+function isMyEventPath(path: string, clubId: string): boolean {
+  const prefix = `/clubs/${clubId}/me/events/`;
+  return (
+    path.startsWith(prefix) &&
+    path.length > prefix.length &&
+    !path.slice(prefix.length).includes("/")
+  );
+}
+
 /** Pages a plain member may open inside the shell: Mein Verein and the own profile. */
 export function memberMayOpen(pathname: string, clubId: string): boolean {
   const path = pathname.replace(/\/+$/, "") || "/";
-  return path === "/profile" || isMyClubPath(path, clubId);
+  // The event dialog above Mein Verein has its own address (/clubs/:id/me/events/:eventId).
+  return path === "/profile" || isMyClubPath(path, clubId) || isMyEventPath(path, clubId);
 }

@@ -21,6 +21,7 @@ export interface ModalNavState {
 export type ModalMatch =
   | { kind: "event"; clubId: string; calendarId: string; base: string }
   | { kind: "public"; feedId: string; eventId: string }
+  | { kind: "my"; clubId: string; eventId: string }
   | { kind: "legal"; type: LegalType };
 
 const CAL = "/clubs/:clubId/calendars/:calendarId";
@@ -45,6 +46,8 @@ export function matchModal(pathname: string): ModalMatch | null {
   }
   const pub = matchPath("/feed/:feedId/events/:eventId", pathname);
   if (pub) return { kind: "public", feedId: pub.params.feedId!, eventId: pub.params.eventId! };
+  const my = matchPath("/clubs/:clubId/me/events/:eventId", pathname);
+  if (my) return { kind: "my", clubId: my.params.clubId!, eventId: my.params.eventId! };
   const legal = matchPath("/:type", pathname);
   if (legal && isLegalType(legal.params.type ?? "")) {
     return { kind: "legal", type: legal.params.type as LegalType };
@@ -96,6 +99,7 @@ export function modalBackground(location: LocationLike): string | null {
   }
 
   const valid = validStored(stored);
+  if (match.kind === "my") return valid ?? `/clubs/${match.clubId}/me`;
   if (valid) return valid;
   const date = params.get("date");
   return isValidIso(date) ? `${match.base}?date=${date}` : match.base;

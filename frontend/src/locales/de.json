@@ -2294,6 +2294,20 @@
       "view": "Ansehen",
       "viewLabel": "{{type}}, Fassung vom {{date}} ansehen",
       "close": "Schließen"
+    },
+    "subscription": {
+      "title": "Mein Kalender-Abo",
+      "text": "Dein persönlicher Link zeigt deine Termine in einer Kalender-App. Hier kannst du ihn für jeden Verein erneuern.",
+      "loading": "Deine Vereine werden geladen",
+      "loadFailed": "Deine Vereine konnten nicht geladen werden.",
+      "retry": "Erneut versuchen",
+      "renew": "Link erneuern",
+      "renewed": "Der Link für „{{club}}“ wurde erneuert",
+      "renewFailed": "Der Link konnte nicht erneuert werden",
+      "newLink": "Dein neuer Link:",
+      "confirmTitle": "Link für „{{club}}“ erneuern?",
+      "confirmText": "Der bisherige Link funktioniert danach nicht mehr. Trage den neuen Link in allen Kalender-Apps ein, in denen du deine Termine abonniert hast.",
+      "confirm": "Link erneuern"
     }
   },
   "errorPage": {
@@ -2479,11 +2493,55 @@
     },
     "calendar": {
       "emptyTitle": "Noch keine Termine",
-      "emptyText": "Sobald du im Reiter „Abo“ Feeds ausgewählt hast, erscheinen ihre Termine hier."
+      "emptyText": "In deinen ausgewählten Feeds gibt es noch keine veröffentlichten Termine.",
+      "noFeedsTitle": "Noch keine Feeds ausgewählt",
+      "noFeedsText": "Wähle im Reiter „Abo“ aus, welche Feeds in deinem Kalender erscheinen sollen.",
+      "chooseFeeds": "Feeds auswählen",
+      "fromSubscription": "Aus deinem Abo vorausgewählt. Die Auswahl hier ändert dein Abo nicht.",
+      "errorTitle": "Der Kalender konnte nicht geladen werden",
+      "errorText": "Bitte prüfe deine Verbindung und versuche es noch einmal.",
+      "retry": "Erneut versuchen",
+      "backToCalendar": "Zurück zum Kalender"
     },
     "subscription": {
-      "emptyTitle": "Noch kein Abo eingerichtet",
-      "emptyText": "Hier wählst du die Feeds für deinen persönlichen Kalender aus."
+      "loading": "Dein Abo wird geladen.",
+      "errorTitle": "Dein Abo konnte nicht geladen werden",
+      "errorText": "Bitte prüfe deine Verbindung und versuche es noch einmal.",
+      "feeds": {
+        "title": "Feeds",
+        "text": "Wähle, welche Feeds in deinem Kalender und in deinem Kalender-Link erscheinen.",
+        "emptyTitle": "Keine Feeds verfügbar",
+        "emptyText": "Für dich sind in diesem Verein noch keine Feeds freigegeben.",
+        "privateHint": "Private Feeds sind nicht öffentlich. Du siehst sie, weil du Zugang bekommen hast. Gib deinen persönlichen Link deshalb nicht weiter."
+      },
+      "reason": {
+        "club": "Für alle Mitglieder",
+        "public": "Öffentlich",
+        "staff": "Für dich als Mitarbeitende freigegeben",
+        "assigned": "Dir zugewiesen",
+        "claimed": "Mit deinem Zugangslink freigeschaltet"
+      },
+      "groups": {
+        "title": "Gruppen",
+        "text": "Du siehst nur Termine der gewählten Gruppen. Ohne Auswahl bekommst du die Termine aller Gruppen.",
+        "label": "Gruppen",
+        "hintAll": "Keine Gruppe gewählt: Du bekommst alle Termine.",
+        "hintSome": "Du bekommst nur Termine der gewählten Gruppen.",
+        "none": "In diesem Verein gibt es noch keine Gruppen. Du bekommst alle Termine."
+      },
+      "save": "Auswahl speichern",
+      "discard": "Änderungen verwerfen",
+      "saved": "Dein Abo wurde gespeichert",
+      "saveFailed": "Dein Abo konnte nicht gespeichert werden",
+      "link": {
+        "title": "Dein persönlicher Link",
+        "text": "Mit diesem Link zeigt deine Kalender-App deine Termine an. Er enthält immer deine gespeicherte Auswahl.",
+        "calendarName": "Mein Vereinskalender"
+      }
+    },
+    "link": {
+      "label": "Persönlicher Link",
+      "hint": "Nur für dich bestimmt. Wer den Link hat, sieht deine Termine."
     }
   }
 }

@@ -40,6 +40,7 @@ import {
   SignInPage,
   MorePage,
   MyClubPage,
+  MyEventModal,
   OAuthConsentPage,
   ProfilePage,
   PropertiesPage,
@@ -161,6 +162,7 @@ function AppRoutes() {
               />
               <Route path={`${CAL}/events/:eventId`} element={<EventFormModal />} />
               <Route path={`${CAL}/events/:eventId/series`} element={<EventSeriesEditModal />} />
+              <Route path="/clubs/:clubId/me/events/:eventId" element={<MyEventModal />} />
             </Route>
           </Route>
           <Route element={<ModalFrame />}>

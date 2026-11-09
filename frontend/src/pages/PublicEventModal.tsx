@@ -161,8 +161,9 @@ export default function PublicEventModal() {
     <EventDetail
       event={event}
       feed={one.data.feed}
-      feedId={feedId}
-      secret={secret}
+      onAddToCalendar={async () =>
+        downloadBlob(await fetchPublicEventIcs(feedId, event.id, secret), icsFileName(event.name))
+      }
       onClose={nav.close}
     />
   );
@@ -171,12 +172,13 @@ export default function PublicEventModal() {
 interface EventDetailProps {
   event: PublicFeedEvent;
   feed: PublicFeedHeader;
-  feedId: string;
-  secret?: string;
+  /** Offers "Zum Kalender hinzufügen"; a rejected promise shows the error toast. */
+  onAddToCalendar?: () => Promise<void>;
   onClose: () => void;
 }
 
-function EventDetail({ event, feed, feedId, secret, onClose }: EventDetailProps) {
+/** Details dialog of a feed event; also used by the personal calendar of "Mein Verein". */
+export function EventDetail({ event, feed, onAddToCalendar, onClose }: EventDetailProps) {
   const audiences = feed.audiences;
   const { t } = useTranslation();
   const locale = useLocale();
@@ -203,7 +205,7 @@ function EventDetail({ event, feed, feedId, secret, onClose }: EventDetailProps)
 
   async function addToCalendar() {
     try {
-      downloadBlob(await fetchPublicEventIcs(feedId, event.id, secret), icsFileName(event.name));
+      await onAddToCalendar?.();
     } catch {
       toast.error(t("feed.event.downloadFailed"));
     }
@@ -349,14 +351,16 @@ function EventDetail({ event, feed, feedId, secret, onClose }: EventDetailProps)
         </div>
       )}
 
-      <p className="t-sm t-muted">{t("feed.event.addToCalendarHint")}</p>
+      {onAddToCalendar && <p className="t-sm t-muted">{t("feed.event.addToCalendarHint")}</p>}
       <div className="ap-dialog-foot">
         <Button variant="secondary" onClick={onClose}>
           {t("feed.event.close")}
         </Button>
-        <Button icon="calendar" onClick={addToCalendar}>
-          {t("feed.event.addToCalendar")}
-        </Button>
+        {onAddToCalendar && (
+          <Button icon="calendar" onClick={addToCalendar}>
+            {t("feed.event.addToCalendar")}
+          </Button>
+        )}
       </div>
     </Modal>
   );

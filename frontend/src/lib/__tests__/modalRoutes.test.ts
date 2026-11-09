@@ -118,3 +118,23 @@ describe("legal modals", () => {
     expect(modalBackground({ ...loc, state: { background: "/privacy" } })).toBeNull();
   });
 });
+
+describe("personal event dialog", () => {
+  it("is a modal above Mein Verein", () => {
+    expect(matchModal("/clubs/c1/me/events/e1")).toEqual({
+      kind: "my",
+      clubId: "c1",
+      eventId: "e1",
+    });
+    expect(modalBackground({ pathname: "/clubs/c1/me/events/e1", search: "" })).toBe(
+      "/clubs/c1/me",
+    );
+    expect(
+      modalBackground({
+        pathname: "/clubs/c1/me/events/e1",
+        search: "",
+        state: { background: "/clubs/c1/me?view=list" },
+      }),
+    ).toBe("/clubs/c1/me?view=list");
+  });
+});

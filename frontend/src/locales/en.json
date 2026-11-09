@@ -2294,6 +2294,20 @@
       "view": "View",
       "viewLabel": "View {{type}}, version of {{date}}",
       "close": "Close"
+    },
+    "subscription": {
+      "title": "My calendar subscription",
+      "text": "Your personal link shows your events in a calendar app. Here you can renew it for each club.",
+      "loading": "Loading your clubs",
+      "loadFailed": "Your clubs could not be loaded.",
+      "retry": "Try again",
+      "renew": "Renew link",
+      "renewed": "The link for \"{{club}}\" was renewed",
+      "renewFailed": "The link could not be renewed",
+      "newLink": "Your new link:",
+      "confirmTitle": "Renew the link for \"{{club}}\"?",
+      "confirmText": "The current link stops working afterwards. Enter the new link in every calendar app where you subscribed to your events.",
+      "confirm": "Renew link"
     }
   },
   "errorPage": {
@@ -2479,11 +2493,55 @@
     },
     "calendar": {
       "emptyTitle": "No events yet",
-      "emptyText": "Once you have chosen feeds on the “Subscription” tab, their events appear here."
+      "emptyText": "Your selected feeds have no published events yet.",
+      "noFeedsTitle": "No feeds selected yet",
+      "noFeedsText": "Choose in the \"Subscription\" tab which feeds should appear in your calendar.",
+      "chooseFeeds": "Choose feeds",
+      "fromSubscription": "Preselected from your subscription. Changing the selection here does not change your subscription.",
+      "errorTitle": "The calendar could not be loaded",
+      "errorText": "Please check your connection and try again.",
+      "retry": "Try again",
+      "backToCalendar": "Back to the calendar"
     },
     "subscription": {
-      "emptyTitle": "No subscription set up yet",
-      "emptyText": "Here you choose the feeds for your personal calendar."
+      "loading": "Loading your subscription.",
+      "errorTitle": "Your subscription could not be loaded",
+      "errorText": "Please check your connection and try again.",
+      "feeds": {
+        "title": "Feeds",
+        "text": "Choose which feeds appear in your calendar and in your calendar link.",
+        "emptyTitle": "No feeds available",
+        "emptyText": "No feeds have been made available to you in this club yet.",
+        "privateHint": "Private feeds are not public. You can see them because you were given access. Do not share your personal link."
+      },
+      "reason": {
+        "club": "For all members",
+        "public": "Public",
+        "staff": "Available to you as a staff member",
+        "assigned": "Assigned to you",
+        "claimed": "Unlocked with your access link"
+      },
+      "groups": {
+        "title": "Audiences",
+        "text": "You only see events of the chosen audiences. With none chosen you get the events of all audiences.",
+        "label": "Audiences",
+        "hintAll": "No audience chosen: you get all events.",
+        "hintSome": "You only get events of the chosen audiences.",
+        "none": "This club has no audiences yet. You get all events."
+      },
+      "save": "Save selection",
+      "discard": "Discard changes",
+      "saved": "Your subscription was saved",
+      "saveFailed": "Your subscription could not be saved",
+      "link": {
+        "title": "Your personal link",
+        "text": "Your calendar app uses this link to show your events. It always contains your saved selection.",
+        "calendarName": "My club calendar"
+      }
+    },
+    "link": {
+      "label": "Personal link",
+      "hint": "Meant only for you. Anyone with the link can see your events."
     }
   }
 }
