@@ -8,6 +8,7 @@ import {
   opaqueFailureKind,
   opaqueLogin,
   prefetchOpaque,
+  startOpaqueUpgrade,
   type IdentifyAuth,
 } from "@/lib/opaque";
 import { isRateLimited, rateLimitText } from "@/lib/rateLimit";
@@ -67,6 +68,8 @@ export function LoginStep({ email, auth, onBack }: LoginStepProps) {
       login(data.access_token, data.refresh_token, sessionUser(data));
       // an unconfirmed address is a restricted session: confirm it with the mailed code first
       navigate(data.emailVerificationRequired ? "/verify-email" : "/clubs");
+      if (protocol !== "opaque") startOpaqueUpgrade(data.opaqueUpgrade, password);
+      setPassword("");
     } catch (err: unknown) {
       const failure = opaqueFailureKind(err);
       setProblem(

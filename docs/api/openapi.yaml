@@ -853,6 +853,14 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
+        '409':
+          description: >-
+            `reset_required`: `OPAQUE_ENABLED` is on, `OPAQUE_LEGACY_CUTOFF` has passed and the account has a password
+            but no OPAQUE record. Answered before the password is checked (same information as `identify`'s
+            `auth: reset_required`); the user must use "forgot password".
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
 
@@ -1723,7 +1731,7 @@ paths:
         `reauth/finish`) is checked but not consumed. Missing or invalid ticket: `403 reauth_required`.
 
         - **Upgrade** (`upgradeTicket`, JWT): the id is the signed-in user, who has a legacy password and no OPAQUE
-        record yet (`409 opaque_already_registered`); the ticket is issued after a legacy password login.
+        record yet (`409 opaque_already_registered`); the ticket is issued in `opaqueUpgrade` of a legacy password login.
 
 
         Every start under a real user's key (reset, change, upgrade) is a password-guess oracle and consumes the
@@ -4661,6 +4669,7 @@ components:
         | `opaque_state_invalid` | 400 | `opaque/register/finish` (signup): `registrationState` forged, expired or already used (field `registrationState`) |
         | `reauth_required` | 403 | `opaque/register/start|finish` (change, upgrade), `DELETE /api/auth/me`, `change-email`, passkey register options: ticket missing, invalid, expired, used, of another purpose or user |
         | `opaque_not_registered` | 409 | `opaque/reauth/start`: the account has no OPAQUE record (use the password) |
+        | `reset_required` | 409 | `POST /api/auth/login` after `OPAQUE_LEGACY_CUTOFF` for an account with a password but no OPAQUE record (the password is not checked) |
         | `opaque_already_registered` | 409 | `opaque/register/start|finish` (upgrade): the account already has an OPAQUE record |
         | `invalid_credentials` | 401 / 400 | Login 401 (also `opaque/login/finish`); 400 for `opaque/reauth/finish` (field `password`) and `change-password` (field `currentPassword`), `change-email` and `DELETE /api/auth/me` (field `password`) |
         | `invalid_reset_token` | 400 | `reset-password`: unknown, used or expired (same answer), field `token` |
@@ -4726,6 +4735,7 @@ components:
         - reauth_required
         - opaque_not_registered
         - opaque_already_registered
+        - reset_required
         - passkey_already_registered
         - passkey_not_found
         - map_unavailable
@@ -4802,6 +4812,17 @@ components:
         expires_in: { type: integer, const: 900 }
         refresh_token: { type: string, description: 'Single-use, 7 days (never past the session''s absolute end); exchange at `POST /api/auth/token`, which rotates it.' }
         emailVerificationRequired: { type: boolean, description: 'True for a restricted session: the e-mail address is not confirmed yet (see the e-mail verification gate).' }
+        opaqueUpgrade:
+          type: object
+          description: >-
+            Only in the answer of `POST /api/auth/login` (legacy password) when `OPAQUE_ENABLED` is on, the address is
+            confirmed, the account has no OPAQUE record and its rollout bucket is inside `OPAQUE_ROLLOUT_PERCENT`. The
+            client registers a record with the password it just sent (`upgradeTicket` of
+            `POST /api/auth/opaque/register/start|finish`); the bcrypt hash stays until phase 2.
+          required: [ticket, expiresIn]
+          properties:
+            ticket: { type: string, description: 'Signed, single use, bound to the user and the session version.' }
+            expiresIn: { type: integer, const: 300 }
         user: { $ref: '#/components/schemas/UserSummary' }
     LegalDocumentSummary:
       type: object

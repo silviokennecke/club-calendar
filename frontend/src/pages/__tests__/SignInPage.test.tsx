@@ -16,6 +16,7 @@ const login = vi.fn();
 const startAuthentication = vi.fn();
 const opaqueLogin = vi.fn();
 const opaqueSignup = vi.fn();
+const opaqueUpgrade = vi.fn();
 
 vi.mock("@/lib/api", async () => ({
   ...(await vi.importActual<typeof import("@/lib/api")>("@/lib/api")),
@@ -28,6 +29,7 @@ vi.mock("@/lib/opaque/client", async (orig) => ({
   ...(await orig<typeof import("@/lib/opaque/client")>()),
   opaqueLogin: (...a: unknown[]) => opaqueLogin(...a),
   opaqueSignup: (...a: unknown[]) => opaqueSignup(...a),
+  opaqueUpgrade: (...a: unknown[]) => opaqueUpgrade(...a),
 }));
 vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ login }) }));
 vi.mock("@simplewebauthn/browser", () => ({
@@ -244,6 +246,48 @@ describe("identify: login", () => {
       password: "geheim123",
     });
     expect(await screen.findByTestId("location")).toHaveTextContent("/clubs");
+  });
+
+  it("upgrades silently to OPAQUE after a legacy login that offers it", async () => {
+    const user = await loginStep();
+    opaqueUpgrade.mockResolvedValue(undefined);
+    apiPost.mockResolvedValue({
+      access_token: "a",
+      refresh_token: "r",
+      user: { id: "u1" },
+      opaqueUpgrade: { ticket: "tk", expiresIn: 300 },
+    });
+    await user.type(screen.getByLabelText(/^Passwort \(Pflicht\)/), "geheim123");
+    await user.click(screen.getByRole("button", { name: "Anmelden" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent("/clubs");
+    await waitFor(() => expect(opaqueUpgrade).toHaveBeenCalledWith("tk", "geheim123"));
+  });
+
+  it("does not upgrade without an offer", async () => {
+    const user = await loginStep();
+    apiPost.mockResolvedValue({ access_token: "a", refresh_token: "r", user: { id: "u1" } });
+    await user.type(screen.getByLabelText(/^Passwort \(Pflicht\)/), "geheim123");
+    await user.click(screen.getByRole("button", { name: "Anmelden" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent("/clubs");
+    await new Promise((r) => setTimeout(r, 20));
+    expect(opaqueUpgrade).not.toHaveBeenCalled();
+  });
+
+  it("keeps the session and shows nothing when the upgrade fails", async () => {
+    const user = await loginStep();
+    opaqueUpgrade.mockRejectedValue(new Error("network"));
+    apiPost.mockResolvedValue({
+      access_token: "a",
+      refresh_token: "r",
+      user: { id: "u1" },
+      opaqueUpgrade: { ticket: "tk", expiresIn: 300 },
+    });
+    await user.type(screen.getByLabelText(/^Passwort \(Pflicht\)/), "geheim123");
+    await user.click(screen.getByRole("button", { name: "Anmelden" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent("/clubs");
+    await waitFor(() => expect(opaqueUpgrade).toHaveBeenCalled());
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(login).toHaveBeenCalledTimes(1);
   });
 
   it("requires a password without calling the API", async () => {

@@ -40,6 +40,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 16, nullable: true)]
     private ?string $opaqueKeyId = null;
 
+    /** Smallest cutoff reminder (days before the cutoff: 14, then 3) already mailed; null = none (app:opaque:notify-legacy). */
+    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
+    private ?int $opaqueReminderDays = null;
+
     #[ORM\Column(length: 20)]
     private string $dateFormat = 'dd.MM.yyyy';
 
@@ -168,6 +172,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getOpaqueKeyId(): ?string
     {
         return $this->opaqueKeyId;
+    }
+
+    public function getOpaqueReminderDays(): ?int
+    {
+        return $this->opaqueReminderDays;
+    }
+
+    public function setOpaqueReminderDays(?int $days): static
+    {
+        $this->opaqueReminderDays = $days;
+
+        return $this;
     }
 
     public function setOpaque(#[\SensitiveParameter] string $record, int $version, string $keyId): static
