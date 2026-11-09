@@ -1,4 +1,4 @@
-// Club role checks (viewer < editor < admin). The role comes from `GET /api/clubs/:id` (`role` of the
+// Club role checks (member < viewer < editor < admin). The role comes from `GET /api/clubs/:id` (`role` of the
 // signed-in user), read through the shared ["club", clubId] query, so no extra request is made.
 //
 //   const { role, canEdit, isAdmin } = useClubPermissions(clubId);
@@ -8,9 +8,9 @@ import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import type { Club, ClubRole } from "@/lib/types";
 
-const RANK: Record<ClubRole, number> = { viewer: 0, editor: 1, admin: 2 };
+const RANK: Record<ClubRole, number> = { member: 0, viewer: 1, editor: 2, admin: 3 };
 
-export const CLUB_ROLES: readonly ClubRole[] = ["viewer", "editor", "admin"];
+export const CLUB_ROLES: readonly ClubRole[] = ["member", "viewer", "editor", "admin"];
 
 /** True if `role` is at least `required`; an unknown role (undefined) never is. */
 export function roleAtLeast(role: ClubRole | undefined | null, required: ClubRole): boolean {

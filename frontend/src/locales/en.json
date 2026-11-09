@@ -1716,6 +1716,13 @@
     "chipCombobox": {
       "createHint": "Type a name to create a new one",
       "createNamed": "Create “{{name}}”"
+    },
+    "pagination": {
+      "label": "Pages",
+      "prev": "Previous",
+      "next": "Next",
+      "status_one": "Page {{page}} of {{pages}} ({{count}} entry)",
+      "status_other": "Page {{page}} of {{pages}} ({{count}} entries)"
     }
   },
   "shell": {
@@ -1812,7 +1819,7 @@
     },
     "members": {
       "title": "Members",
-      "text": "Viewers can read, editors can also make changes, admins also manage members and invitations.",
+      "text": "Members only belong to the club. Viewers can read, editors can also make changes, admins also manage members and invitations.",
       "loading": "Loading members …",
       "loadError": "The members could not be loaded.",
       "emptyTitle": "No members",
@@ -1845,7 +1852,13 @@
       "roleChanged": "{{name}} is now {{role}}.",
       "roleFailed": "The role could not be changed. Please try again.",
       "invalidRole": "This role does not exist.",
-      "lastAdmin": "You are the only admin of the club. Make another member an admin first."
+      "lastAdmin": "You are the only admin of the club. Make another member an admin first.",
+      "searchPlaceholder": "Search by name or email",
+      "searchLabel": "Search members",
+      "filterRole": "Filter by role",
+      "allRoles": "All roles",
+      "noMatchTitle": "No matches",
+      "noMatch": "No member matches your search or filter."
     },
     "calendars": {
       "title": "Calendars",
@@ -1940,9 +1953,10 @@
       "revoked": "The invitation to {{email}} was revoked.",
       "revokeFailed": "The invitation could not be revoked. Please try again.",
       "roleLabel": "Role",
-      "roleHint": "Viewers can only read, editors can edit, admins also manage members."
+      "roleHint": "Members only belong to the club, viewers can only read, editors can edit, admins also manage members."
     },
     "roles": {
+      "member": "Member",
       "viewer": "Viewer",
       "editor": "Editor",
       "admin": "Admin"

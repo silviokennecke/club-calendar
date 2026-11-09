@@ -13,7 +13,9 @@ Hier siehst du, wer zu deinem Verein gehört, und verwaltest die Rollen.
 1. Öffne **Verein verwalten**.
 2. Wechsle zum Reiter **Mitglieder**.
 
-Die Liste zeigt Name, E-Mail, Rolle und Aktion. Dich selbst erkennst du am Hinweis **Du**. Alle Mitglieder können die Liste sehen.
+Die Liste zeigt Name, E-Mail, Rolle und Aktion. Dich selbst erkennst du am Hinweis **Du**. Bei großen Vereinen ist die Liste in Seiten aufgeteilt (10 Einträge pro Seite): Mit **Zurück** und **Weiter** blätterst du.
+
+Im Suchfeld findest du Personen nach Name oder E-Mail, mit **Nach Rolle filtern** zeigst du nur eine Rolle.
 
 ## Rolle ändern
 
@@ -22,7 +24,7 @@ Dafür brauchst du die Rolle Admin.
 :::
 
 1. Öffne im Reiter **Mitglieder** die Rollenauswahl in der Zeile der Person.
-2. Wähle **Betrachter**, **Bearbeiter** oder **Admin**.
+2. Wähle **Mitglied**, **Betrachter**, **Bearbeiter** oder **Admin**.
 
 Du siehst eine Bestätigung, sobald die Rolle gespeichert ist. Was die Rollen bedeuten, steht unter [Rollen](help:getting-started/roles).
 

@@ -1,7 +1,7 @@
 import type { EventSeriesInfo } from "@/lib/events/series";
 
 /** Club role, ascending rights: viewer < editor < admin. */
-export type ClubRole = "viewer" | "editor" | "admin";
+export type ClubRole = "member" | "viewer" | "editor" | "admin";
 
 export interface User {
   id: string;

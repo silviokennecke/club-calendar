@@ -13,7 +13,9 @@ Here you see who belongs to your club and manage their roles.
 1. Open **Manage club**.
 2. Switch to the **Members** tab.
 
-The list shows name, e-mail, role and action. You can spot yourself by the **You** label. Every member can see the list.
+The list shows name, e-mail, role and action. You can spot yourself by the **You** label. In large clubs the list is split into pages (10 entries each): use **Previous** and **Next** to browse.
+
+Use the search field to find people by name or e-mail, and **Filter by role** to show only one role.
 
 ## Change a role
 
@@ -22,7 +24,7 @@ You need the Admin role for this.
 :::
 
 1. In the **Members** tab, open the role selector in the person's row.
-2. Choose **Viewer**, **Editor** or **Admin**.
+2. Choose **Member**, **Viewer**, **Editor** or **Admin**.
 
 A confirmation appears once the role is saved. What the roles mean is explained under [Roles](help:getting-started/roles).
 

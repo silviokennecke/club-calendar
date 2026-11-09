@@ -168,16 +168,48 @@ readonly class ClubService
         $this->em->flush();
     }
 
-    public function listMembers(Club $club): array
-    {
-        $members = $this->em->getRepository(ClubUser::class)->findBy(['club' => $club]);
+    public const MEMBERS_MAX_PER_PAGE = 100;
+    public const MEMBERS_DEFAULT_PER_PAGE = 10;
 
-        return array_map(fn (ClubUser $cu) => [
-            'id' => $cu->getUser()->getId(),
-            'name' => $cu->getUser()->getName(),
-            'email' => $cu->getUser()->getEmail(),
-            'role' => $cu->getRole()->value,
-        ], $members);
+    /**
+     * One page of members, ordered by name then id. `$search` matches name or e-mail (case-insensitive, LIKE
+     * wildcards escaped), `$role` filters exactly.
+     *
+     * @return array{items: list<array{id: string, name: string, email: string, role: string}>, total: int}
+     */
+    public function listMembers(Club $club, int $page = 1, int $perPage = self::MEMBERS_DEFAULT_PER_PAGE, ?string $search = null, ?ClubRole $role = null): array
+    {
+        $qb = $this->em->createQueryBuilder()
+            ->from(ClubUser::class, 'cu')
+            ->join('cu.user', 'u')
+            ->where('cu.club = :club')
+            ->setParameter('club', $club);
+        if (null !== $role) {
+            $qb->andWhere('cu.role = :role')->setParameter('role', $role);
+        }
+        if (null !== $search && '' !== $search) {
+            $qb->andWhere('(LOWER(u.name) LIKE :q OR LOWER(u.email) LIKE :q)')
+                ->setParameter('q', '%'.addcslashes(mb_strtolower($search), '%_\\').'%');
+        }
+
+        $total = (int) (clone $qb)->select('COUNT(u.id)')->getQuery()->getSingleScalarResult();
+        $rows = $qb->select('u.id AS id', 'u.name AS name', 'u.email AS email', 'cu.role AS role')
+            ->orderBy('u.name', 'ASC')
+            ->addOrderBy('u.id', 'ASC')
+            ->setFirstResult(($page - 1) * $perPage)
+            ->setMaxResults($perPage)
+            ->getQuery()
+            ->getArrayResult();
+
+        return [
+            'items' => array_map(static fn (array $r) => [
+                'id' => $r['id'],
+                'name' => $r['name'],
+                'email' => $r['email'],
+                'role' => $r['role'] instanceof ClubRole ? $r['role']->value : (string) $r['role'],
+            ], $rows),
+            'total' => $total,
+        ];
     }
 
     /**
@@ -210,7 +242,7 @@ readonly class ClubService
     /**
      * Changes the role of a member (admins only, 403 `forbidden` otherwise; a member can change their own role only
      * as an admin, e.g. to step down). The last admin cannot be demoted (422 `last_admin`). Returns the member as in
-     * {@see listMembers()}.
+     * a list item of {@see listMembers()}.
      */
     public function changeRole(Club $club, string $memberId, ClubRole $role, User $actor): array
     {

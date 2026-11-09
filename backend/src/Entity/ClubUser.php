@@ -8,6 +8,7 @@ use App\Enum\ClubRole;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
+#[ORM\Index(name: 'idx_club_user_club_role', columns: ['club_id', 'role'])]
 class ClubUser implements UpdateAudited
 {
     use Trait\HasUpdateAudit;

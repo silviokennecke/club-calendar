@@ -1,18 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
   Banner,
   Button,
   ConfirmDialog,
   EmptyState,
+  Field,
   NativeSelect,
+  Pagination,
+  SearchInput,
   Skeleton,
   Tag,
   toast,
 } from "@/components/ui/shared";
-import { apiDelete, apiGet, apiPatch } from "@/lib/api";
+import { apiDelete, apiGetWithTotal, apiPatch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { focusAfterDialog } from "@/lib/focus";
 import { isInvalidRole, isLastAdmin, isLastMember, isMemberGone } from "@/lib/club";
@@ -20,9 +23,13 @@ import { CLUB_ROLES, permissionsFor } from "@/lib/club/permissions";
 import type { Club, ClubMember, ClubRole } from "@/lib/types";
 import { InviteSection } from "./InviteSection";
 
+const PER_PAGE = 10;
+const SEARCH_DEBOUNCE_MS = 300;
+
 /**
  * "Mitglieder" panel (design: Club): table with remove / leave (confirmed with consequences), the
- * invitation form and the open invitations (`InviteSection`).
+ * invitation form and the open invitations (`InviteSection`). The list is paginated and searched on the
+ * server (a club can have thousands of members): the full list is never loaded.
  */
 export function MembersSection({ club }: { club: Club }) {
   const { t } = useTranslation();
@@ -32,12 +39,41 @@ export function MembersSection({ club }: { club: Club }) {
   const [removing, setRemoving] = useState<ClubMember | null>(null);
   const { isAdmin } = permissionsFor(club.role);
   const queryKey = ["members", club.id];
+  const [text, setText] = useState("");
+  const [q, setQ] = useState("");
+  const [role, setRole] = useState<ClubRole | "">("");
+  const [page, setPage] = useState(1);
 
-  const members = useQuery<ClubMember[]>({
-    queryKey,
-    queryFn: () => apiGet<ClubMember[]>(`/api/clubs/${club.id}/members`),
+  // A new search term starts at page 1 once typing pauses
+  useEffect(() => {
+    const trimmed = text.trim();
+    if (trimmed === q) return;
+    const timer = setTimeout(() => {
+      setQ(trimmed);
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [text, q]);
+
+  const members = useQuery({
+    queryKey: [...queryKey, { page, q, role }],
+    queryFn: ({ signal }) => {
+      const params = new URLSearchParams({ page: String(page), perPage: String(PER_PAGE) });
+      if (q) params.set("q", q);
+      if (role) params.set("role", role);
+      return apiGetWithTotal<ClubMember[]>(`/api/clubs/${club.id}/members?${params}`, signal);
+    },
+    placeholderData: keepPreviousData,
   });
-  const list = members.data ?? [];
+  const list = members.data?.data ?? [];
+  const total = members.data?.total ?? list.length;
+  const pageCount = Math.max(1, Math.ceil(total / PER_PAGE));
+  const filtered = q !== "" || role !== "";
+
+  // The last entry of the last page was removed: step back
+  useEffect(() => {
+    if (members.data && !members.isPlaceholderData && page > pageCount) setPage(pageCount);
+  }, [members.data, members.isPlaceholderData, page, pageCount]);
 
   async function changeRole(member: ClubMember, role: ClubRole) {
     try {
@@ -115,7 +151,13 @@ export function MembersSection({ club }: { club: Club }) {
       />
     );
   } else if (list.length === 0) {
-    table = (
+    table = filtered ? (
+      <EmptyState
+        icon="search"
+        title={t("club.members.noMatchTitle")}
+        text={t("club.members.noMatch")}
+      />
+    ) : (
       <EmptyState
         icon="users"
         title={t("club.members.emptyTitle")}
@@ -124,9 +166,13 @@ export function MembersSection({ club }: { club: Club }) {
     );
   } else {
     table = (
-      <div className="ap-panel ap-panel--flush" style={{ boxShadow: "none" }}>
+      <div
+        className="ap-panel ap-panel--flush"
+        style={{ boxShadow: "none", opacity: members.isPlaceholderData ? 0.6 : 1 }}
+        aria-busy={members.isPlaceholderData}
+      >
         <table className="ap-table">
-          <caption className="ap-sr">{t("club.members.caption", { count: list.length })}</caption>
+          <caption className="ap-sr">{t("club.members.caption", { count: total })}</caption>
           <thead>
             <tr>
               <th scope="col">{t("club.members.colName")}</th>
@@ -174,7 +220,7 @@ export function MembersSection({ club }: { club: Club }) {
                     {(self || isAdmin) && (
                       <Button
                         variant="secondary"
-                        disabled={list.length <= 1}
+                        disabled={!filtered && total <= 1}
                         aria-label={
                           self
                             ? t("club.members.leaveLabel", { club: club.name })
@@ -191,7 +237,7 @@ export function MembersSection({ club }: { club: Club }) {
             })}
           </tbody>
         </table>
-        {list.length <= 1 && (
+        {!filtered && total <= 1 && (
           <p className="t-small" style={{ padding: "var(--space-3) var(--space-4)" }}>
             {t("club.members.lastMemberHint")}
           </p>
@@ -212,7 +258,39 @@ export function MembersSection({ club }: { club: Club }) {
           <p>{t("club.members.text")}</p>
         </div>
       </div>
+      <div className="ap-toolbar">
+        <SearchInput
+          className="ap-toolbar-search"
+          value={text}
+          onChange={setText}
+          placeholder={t("club.members.searchPlaceholder")}
+          label={t("club.members.searchLabel")}
+        />
+        <Field id="cl-mem-role" label={t("club.members.filterRole")}>
+          <NativeSelect
+            value={role}
+            onChange={(e) => {
+              setRole(e.target.value as ClubRole | "");
+              setPage(1);
+            }}
+          >
+            <option value="">{t("club.members.allRoles")}</option>
+            {CLUB_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {t(`club.roles.${r}`)}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+      </div>
       {table}
+      <Pagination
+        page={page}
+        pageCount={pageCount}
+        total={total}
+        disabled={members.isPlaceholderData}
+        onPageChange={setPage}
+      />
       {isAdmin && <InviteSection club={club} members={list} />}
 
       {removing && (

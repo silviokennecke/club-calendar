@@ -11,6 +11,8 @@ use App\Exception\ApiProblemException;
 use App\Security\ClubMemberVoter;
 use App\Security\CurrentUserResolver;
 use App\Service\ClubService;
+use App\Service\EventService;
+use App\Service\Input;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -81,9 +83,29 @@ class ClubController extends AbstractApiController
 
     #[Route('/{clubId}/members', methods: ['GET'])]
     #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
-    public function listMembers(#[MapEntity(id: 'clubId')] Club $club): JsonResponse
+    public function listMembers(#[MapEntity(id: 'clubId')] Club $club, Request $request): JsonResponse
     {
-        return new JsonResponse($this->clubService->listMembers($club));
+        $query = $request->query->all();
+        foreach (['page', 'perPage', 'q', 'role'] as $key) {
+            if (isset($query[$key]) && !is_string($query[$key])) {
+                throw Input::invalid($key, sprintf('%s must be a single value', $key));
+            }
+        }
+        $page = Input::optionalInt($query['page'] ?? null, 'page', 1, 1000000) ?? 1;
+        $perPage = Input::optionalInt($query['perPage'] ?? null, 'perPage', 1, ClubService::MEMBERS_MAX_PER_PAGE) ?? ClubService::MEMBERS_DEFAULT_PER_PAGE;
+        $q = trim((string) ($query['q'] ?? ''));
+        if (mb_strlen($q) > EventService::SEARCH_MAX_LENGTH) {
+            throw Input::invalid('q', sprintf('q must be at most %d characters', EventService::SEARCH_MAX_LENGTH));
+        }
+        $roleValue = $query['role'] ?? '';
+        $role = '' === $roleValue ? null : ClubRole::tryFrom($roleValue);
+        if ('' !== $roleValue && null === $role) {
+            throw Input::invalid('role', 'role must be one of '.implode(', ', ClubRole::values()));
+        }
+
+        $result = $this->clubService->listMembers($club, $page, $perPage, '' === $q ? null : $q, $role);
+
+        return new JsonResponse($result['items'], 200, ['X-Total-Count' => (string) $result['total']]);
     }
 
     #[Route('/{clubId}/members/{userId}', methods: ['DELETE'])]

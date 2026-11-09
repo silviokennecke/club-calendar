@@ -42,6 +42,7 @@ export { ThemeSwitch } from "./ThemeSwitch";
 export { Skeleton } from "./Skeleton";
 export { FilterPillGroup } from "./FilterPillGroup";
 export { SearchInput } from "./SearchInput";
+export { Pagination } from "./Pagination";
 export { FullPageLoader } from "./PageLoader";
 export { CodeInput } from "./CodeInput";
 export { ErrorSummary } from "./ErrorSummary";

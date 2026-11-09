@@ -1716,6 +1716,13 @@
     "chipCombobox": {
       "createHint": "Namen eingeben, um neu anzulegen",
       "createNamed": "„{{name}}“ neu anlegen"
+    },
+    "pagination": {
+      "label": "Seiten",
+      "prev": "Zurück",
+      "next": "Weiter",
+      "status_one": "Seite {{page}} von {{pages}} ({{count}} Eintrag)",
+      "status_other": "Seite {{page}} von {{pages}} ({{count}} Einträge)"
     }
   },
   "shell": {
@@ -1812,7 +1819,7 @@
     },
     "members": {
       "title": "Mitglieder",
-      "text": "Betrachter können lesen, Bearbeiter auch ändern, Admins verwalten zusätzlich Mitglieder und Einladungen.",
+      "text": "Mitglieder gehören nur zum Verein. Betrachter können lesen, Bearbeiter auch ändern, Admins verwalten zusätzlich Mitglieder und Einladungen.",
       "loading": "Mitglieder werden geladen …",
       "loadError": "Die Mitglieder konnten nicht geladen werden.",
       "emptyTitle": "Keine Mitglieder",
@@ -1845,7 +1852,13 @@
       "roleChanged": "{{name}} ist jetzt {{role}}.",
       "roleFailed": "Die Rolle konnte nicht geändert werden. Bitte versuche es erneut.",
       "invalidRole": "Diese Rolle gibt es nicht.",
-      "lastAdmin": "Du bist der einzige Admin des Vereins. Mache zuerst ein anderes Mitglied zum Admin."
+      "lastAdmin": "Du bist der einzige Admin des Vereins. Mache zuerst ein anderes Mitglied zum Admin.",
+      "searchPlaceholder": "Nach Name oder E-Mail suchen",
+      "searchLabel": "Mitglieder durchsuchen",
+      "filterRole": "Nach Rolle filtern",
+      "allRoles": "Alle Rollen",
+      "noMatchTitle": "Keine Treffer",
+      "noMatch": "Kein Mitglied passt zu Suche oder Filter."
     },
     "calendars": {
       "title": "Kalender",
@@ -1940,9 +1953,10 @@
       "revoked": "Die Einladung an {{email}} wurde widerrufen.",
       "revokeFailed": "Die Einladung konnte nicht widerrufen werden. Bitte versuche es noch einmal.",
       "roleLabel": "Rolle",
-      "roleHint": "Betrachter dürfen nur lesen, Bearbeiter ändern, Admins verwalten auch Mitglieder."
+      "roleHint": "Mitglieder gehören nur zum Verein, Betrachter können nur lesen, Bearbeiter können ändern, Admins verwalten auch Mitglieder."
     },
     "roles": {
+      "member": "Mitglied",
       "viewer": "Betrachter",
       "editor": "Bearbeiter",
       "admin": "Admin"

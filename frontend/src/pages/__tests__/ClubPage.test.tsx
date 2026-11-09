@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { renderRoute } from "../events/__tests__/testUtils";
 
 const apiGet = vi.fn();
+const apiGetWithTotal = vi.fn();
 const apiPost = vi.fn();
 const apiPatch = vi.fn();
 const apiDelete = vi.fn();
@@ -15,6 +16,7 @@ const updateUser = vi.fn();
 vi.mock("@/lib/api", async (orig) => ({
   ...(await orig<typeof import("@/lib/api")>()),
   apiGet: (...a: unknown[]) => apiGet(...a),
+  apiGetWithTotal: (...a: unknown[]) => apiGetWithTotal(...a),
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiPatch: (...a: unknown[]) => apiPatch(...a),
   apiDelete: (...a: unknown[]) => apiDelete(...a),
@@ -42,6 +44,24 @@ let calendars: Record<string, unknown>[];
 let clubError: Error | null;
 let clubList: unknown[];
 
+/** Stand-in for the server side of `GET /api/clubs/c1/members` (search, role filter, page). */
+function memberPage(path: string) {
+  const params = new URL(path, "http://x").searchParams;
+  const q = (params.get("q") ?? "").toLowerCase();
+  const role = params.get("role");
+  const perPage = Number(params.get("perPage") ?? 10);
+  const page = Number(params.get("page") ?? 1);
+  const matches = members.filter(
+    (m) =>
+      (!q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)) &&
+      (!role || m.role === role),
+  );
+  return Promise.resolve({
+    data: matches.slice((page - 1) * perPage, page * perPage),
+    total: matches.length,
+  });
+}
+
 function renderClub(tab?: "general" | "calendars" | "members") {
   return renderRoute("/clubs/:clubId", `/clubs/c1${tab ? `?tab=${tab}` : ""}`, <ClubPage />);
 }
@@ -67,13 +87,13 @@ beforeEach(() => {
   clubRole = "admin";
   clubError = null;
   clubList = [club];
-  for (const fn of [apiGet, apiPost, apiPatch, apiDelete, updateUser]) fn.mockReset();
+  for (const fn of [apiGet, apiGetWithTotal, apiPost, apiPatch, apiDelete, updateUser])
+    fn.mockReset();
   updateUser.mockResolvedValue(true);
   apiGet.mockImplementation((path: string) => {
     if (path === "/api/clubs") return Promise.resolve(clubList);
     if (path === "/api/clubs/c1")
       return clubError ? Promise.reject(clubError) : Promise.resolve({ ...club, role: clubRole });
-    if (path === "/api/clubs/c1/members") return Promise.resolve(members);
     if (path === "/api/clubs/c1/invitations") return Promise.resolve(invitations);
     // Single GET (delete dialog): fresh counters
     if (path === "/api/clubs/c1/calendars/k2")
@@ -86,6 +106,7 @@ beforeEach(() => {
     if (path.startsWith("/api/clubs/c1/calendars")) return Promise.resolve(calendars);
     return Promise.resolve([]);
   });
+  apiGetWithTotal.mockImplementation((path: string) => memberPage(path));
   apiPost.mockResolvedValue({ id: "new", name: "Copy of Schießbetrieb 2026" });
   apiPatch.mockResolvedValue({});
   apiDelete.mockResolvedValue(undefined);
@@ -125,6 +146,61 @@ describe("ClubPage", () => {
     expect(
       within(rows[2]).getByRole("button", { name: "Mara Sommer entfernen" }),
     ).toBeInTheDocument();
+  });
+
+  describe("members: server-side paging, search and role filter", () => {
+    beforeEach(() => {
+      members = Array.from({ length: 23 }, (_, i) => ({
+        id: i === 0 ? "u1" : `x${i}`,
+        name: `Person ${String(i).padStart(2, "0")}`,
+        email: `p${i}@beispiel.de`,
+        role: i === 0 ? "admin" : i % 5 === 0 ? "member" : "viewer",
+      }));
+    });
+
+    const lastMembersUrl = () =>
+      String(apiGetWithTotal.mock.calls.at(-1)?.[0]).replace("/api/clubs/c1/members?", "");
+
+    it("asks for one page only and pages forward", async () => {
+      renderClub("members");
+      const table = await screen.findByRole("table", { name: "Mitglieder des Vereins (23)" });
+      expect(within(table).getAllByRole("row")).toHaveLength(11);
+      expect(apiGet).not.toHaveBeenCalledWith(expect.stringContaining("/members"));
+      expect(screen.getByText("Seite 1 von 3 (23 Einträge)")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Weiter" }));
+      expect(await screen.findByText("Seite 2 von 3 (23 Einträge)")).toBeInTheDocument();
+      expect(lastMembersUrl()).toContain("page=2");
+      expect(await screen.findByText("Person 10")).toBeInTheDocument();
+    });
+
+    it("searches with a debounce and returns to page 1", async () => {
+      renderClub("members");
+      await screen.findByRole("table", { name: /Mitglieder des Vereins/ });
+      await userEvent.click(screen.getByRole("button", { name: "Weiter" }));
+      await screen.findByText("Seite 2 von 3 (23 Einträge)");
+      await userEvent.type(screen.getByRole("searchbox", { name: "Mitglieder durchsuchen" }), "p2");
+      await waitFor(() => expect(lastMembersUrl()).toContain("q=p2"));
+      expect(lastMembersUrl()).toContain("page=1");
+      expect(
+        await screen.findByRole("table", { name: "Mitglieder des Vereins (4)" }),
+      ).toBeVisible();
+      expect(screen.queryByRole("navigation", { name: "Seiten" })).not.toBeInTheDocument();
+    });
+
+    it("filters by role and shows a no-match state", async () => {
+      renderClub("members");
+      await screen.findByRole("table", { name: /Mitglieder des Vereins/ });
+      await userEvent.selectOptions(screen.getByLabelText("Nach Rolle filtern"), "member");
+      await waitFor(() => expect(lastMembersUrl()).toContain("role=member"));
+      expect(
+        await screen.findByRole("table", { name: "Mitglieder des Vereins (4)" }),
+      ).toBeVisible();
+      await userEvent.type(
+        screen.getByRole("searchbox", { name: "Mitglieder durchsuchen" }),
+        "zzz",
+      );
+      expect(await screen.findByText("Keine Treffer")).toBeInTheDocument();
+    });
   });
 
   it("switches tabs and lists calendars incl. archived on the calendars tab", async () => {
@@ -511,11 +587,9 @@ describe("ClubPage", () => {
     apiGet.mockImplementation((path: string) =>
       path === "/api/clubs/c1"
         ? Promise.resolve(withoutCounts)
-        : path === "/api/clubs/c1/members"
-          ? Promise.resolve(members)
-          : path === "/api/clubs/c1/invitations"
-            ? Promise.resolve([])
-            : Promise.resolve(path === "/api/clubs" ? clubList : calendars),
+        : path === "/api/clubs/c1/invitations"
+          ? Promise.resolve([])
+          : Promise.resolve(path === "/api/clubs" ? clubList : calendars),
     );
     const user = userEvent.setup();
     renderClub("general");
@@ -580,6 +654,7 @@ describe("ClubPage", () => {
       if (path === "/api/clubs/c1") return Promise.resolve(club);
       return Promise.reject(new Error("API error 500"));
     });
+    apiGetWithTotal.mockRejectedValue(new Error("API error 500"));
     renderClub("members");
     expect(
       await screen.findByText("Die Mitglieder konnten nicht geladen werden."),

@@ -1810,16 +1810,30 @@ paths:
       - { $ref: '#/components/parameters/ClubId' }
     get:
       tags: [Clubs]
-      summary: Members of a club
+      summary: Members of a club (paginated, searchable)
+      description: >-
+        Viewers and above may read. Ordered by name, then id. The body stays a plain list of one page; the number of
+        all matches is in the `X-Total-Count` header. `q` matches name or e-mail (case-insensitive, at most 100
+        characters, `%` and `_` are literal). Invalid values are a 400 `validation_failed` with the field.
       operationId: listMembers
+      parameters:
+        - { name: page, in: query, description: 'Page number, 1-based (default 1).', schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: perPage, in: query, description: 'Page size, 1..100 (default 10).', schema: { type: integer, minimum: 1, maximum: 100, default: 10 } }
+        - { name: q, in: query, description: 'Search in name and e-mail.', schema: { type: string, maxLength: 100 } }
+        - { name: role, in: query, description: 'Only members with this role.', schema: { $ref: '#/components/schemas/ClubRole' } }
       responses:
         '200':
-          description: Members.
+          description: One page of members.
+          headers:
+            X-Total-Count:
+              description: Number of all members matching `q` and `role` (before `page`/`perPage`).
+              schema: { type: integer }
           content:
             application/json:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Member' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
