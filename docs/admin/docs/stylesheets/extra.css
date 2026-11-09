@@ -1,0 +1,51 @@
+/* App brand colours (frontend/src/index.css) */
+:root > * {
+  --md-primary-fg-color: #0b6b58;
+  --md-primary-fg-color--light: #dcefe9;
+  --md-primary-fg-color--dark: #09584a;
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: #dcefe9;
+  --md-accent-fg-color: #09584a;
+  --md-accent-fg-color--transparent: rgba(9, 88, 74, 0.1);
+  --md-accent-bg-color: #ffffff;
+  --md-typeset-a-color: #0b6b58;
+  --md-default-fg-color: #14221e;
+  --md-default-fg-color--light: #4a5b55;
+  --md-default-fg-color--lighter: #7b8a84;
+  --md-default-fg-color--lightest: #cfd7d2;
+  --md-default-bg-color: #ffffff;
+  --md-code-bg-color: #edf0ec;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #0b6b58;
+  --md-primary-fg-color--light: #14332c;
+  --md-primary-fg-color--dark: #09584a;
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: #a6b6af;
+  --md-accent-fg-color: #7ad6bf;
+  --md-accent-fg-color--transparent: rgba(122, 214, 191, 0.1);
+  --md-accent-bg-color: #06231c;
+  --md-typeset-a-color: #4fc3a6;
+  --md-default-bg-color: #0f1715;
+  --md-default-bg-color--light: rgba(15, 23, 21, 0.54);
+  --md-default-bg-color--lighter: rgba(15, 23, 21, 0.26);
+  --md-default-bg-color--lightest: rgba(15, 23, 21, 0.07);
+  --md-default-fg-color: #eef3f0;
+  --md-default-fg-color--light: #a6b6af;
+  --md-default-fg-color--lighter: #6b7d76;
+  --md-default-fg-color--lightest: #2c3a35;
+  --md-code-bg-color: #17211e;
+  --md-code-fg-color: #eef3f0;
+  --md-footer-bg-color: #0b1110;
+  --md-footer-bg-color--dark: #0b1110;
+}
+
+/* Header in brand colour, thin orange line from the logo as the only accent */
+.md-header {
+  background-color: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+  border-bottom: 2px solid #f2a93b;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}

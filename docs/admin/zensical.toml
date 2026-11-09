@@ -6,6 +6,7 @@ site_url = "https://silviokennecke.github.io/club-calendar/"
 repo_url = "https://github.com/silviokennecke/club-calendar"
 repo_name = "silviokennecke/club-calendar"
 docs_dir = "docs"
+extra_css = ["stylesheets/extra.css"]
 site_dir = "site"
 strict = true
 
@@ -43,11 +44,15 @@ features = [
 
 [[project.theme.palette]]
 scheme = "default"
+primary = "custom"
+accent = "custom"
 toggle.icon = "lucide/sun"
 toggle.name = "Switch to dark mode"
 
 [[project.theme.palette]]
 scheme = "slate"
+primary = "custom"
+accent = "custom"
 toggle.icon = "lucide/moon"
 toggle.name = "Switch to light mode"
 
