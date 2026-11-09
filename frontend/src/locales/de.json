@@ -14,6 +14,7 @@
     "requestTimeout": "Die Anfrage hat zu lange gedauert. Prüfe deine Verbindung und versuche es erneut."
   },
   "auth": {
+    "opaqueUnsupported": "Dein Browser oder Gerät unterstützt die sichere Anmeldung nicht (WebAssembly oder Arbeitsspeicher). Bitte probiere einen aktuellen Browser.",
     "signIn": "Anmelden",
     "signOut": "Abmelden",
     "email": "E-Mail",
