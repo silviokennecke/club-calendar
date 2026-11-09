@@ -7,6 +7,7 @@ namespace App\Entity;
 use App\Service\EmailAddress;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -27,6 +28,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $password = null;
+
+    /** OPAQUE registration record (192 B, see App\Opaque\RegistrationRecord); null until the user has registered one. */
+    #[ORM\Column(type: Types::BINARY, length: 256, nullable: true)]
+    private mixed $opaqueRecord = null;
+
+    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
+    private ?int $opaqueVersion = null;
+
+    #[ORM\Column(length: 16, nullable: true)]
+    private ?string $opaqueKeyId = null;
 
     #[ORM\Column(length: 20)]
     private string $dateFormat = 'dd.MM.yyyy';
@@ -112,6 +123,45 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPassword(?string $password): static
     {
         $this->password = $password;
+
+        return $this;
+    }
+
+    public function getOpaqueRecord(): ?string
+    {
+        $record = $this->opaqueRecord;
+        if (is_resource($record)) {
+            $record = stream_get_contents($record);
+            $this->opaqueRecord = $record;
+        }
+
+        return is_string($record) ? $record : null;
+    }
+
+    public function getOpaqueVersion(): ?int
+    {
+        return $this->opaqueVersion;
+    }
+
+    public function getOpaqueKeyId(): ?string
+    {
+        return $this->opaqueKeyId;
+    }
+
+    public function setOpaque(#[\SensitiveParameter] string $record, int $version, string $keyId): static
+    {
+        $this->opaqueRecord = $record;
+        $this->opaqueVersion = $version;
+        $this->opaqueKeyId = $keyId;
+
+        return $this;
+    }
+
+    public function clearOpaque(): static
+    {
+        $this->opaqueRecord = null;
+        $this->opaqueVersion = null;
+        $this->opaqueKeyId = null;
 
         return $this;
     }
