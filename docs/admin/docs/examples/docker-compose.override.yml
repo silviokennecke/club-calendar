@@ -1,0 +1,40 @@
+# Optional: Caddy reverse proxy with automatic HTTPS for APP_DOMAIN.
+# Docker Compose merges this file automatically. Skip it if you already have a proxy.
+# Needs APP_DOMAIN in .env and ports 80/443 reachable from the internet.
+services:
+  app:
+    environment:
+      # Trust the proxy so rate limits see the real visitor address
+      SYMFONY_TRUSTED_PROXIES: private_ranges
+
+  proxy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?set APP_DOMAIN in .env}
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+configs:
+  caddyfile:
+    content: |
+      {$$APP_DOMAIN} {
+        encode zstd gzip
+        header Strict-Transport-Security "max-age=31536000"
+        reverse_proxy app:8080 {
+          flush_interval -1
+        }
+      }
+
+volumes:
+  caddy_data:
+  caddy_config:
