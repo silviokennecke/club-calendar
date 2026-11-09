@@ -1379,7 +1379,8 @@ paths:
       summary: Whether registration is restricted
       description: >-
         `restricted` is true when `RESTRICT_REGISTRATION` is set: only e-mail addresses with an open club invitation
-        (pending, not expired) may create an account, by password or by a first SSO sign-in.
+        (pending, not expired) may create an account, by password or by a first SSO sign-in. `opaqueEnabled` is the
+        OPAQUE feature flag (signup and password reset use OPAQUE while it is true).
       operationId: getRegistrationPolicy
       security: []
       responses:
@@ -1389,9 +1390,10 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [restricted]
+                required: [restricted, opaqueEnabled]
                 properties:
                   restricted: { type: boolean }
+                  opaqueEnabled: { type: boolean }
 
   /api/auth/providers:
     get:
@@ -4837,9 +4839,15 @@ components:
       allOf:
         - { $ref: '#/components/schemas/UserSummary' }
         - type: object
-          required: [hasPassword, pendingConsents, consentRequired, emailVerificationRequired, pendingEmail, passkeys, oauthAccounts]
+          required: [hasPassword, passwordProtocol, pendingConsents, consentRequired, emailVerificationRequired, pendingEmail, passkeys, oauthAccounts]
           properties:
             hasPassword: { type: boolean }
+            passwordProtocol:
+              type: [string, 'null']
+              enum: [opaque, legacy, null]
+              description: >-
+                Proof the client must use for this account's password: `opaque` (OPAQUE enabled and a usable record),
+                `legacy` (bcrypt hash, no usable record or OPAQUE off) or null (no password credential).
             pendingConsents:
               type: array
               description: Current privacy / terms documents the user has not consented to yet.

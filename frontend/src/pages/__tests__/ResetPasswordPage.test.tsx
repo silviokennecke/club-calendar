@@ -1,15 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { ApiError } from "@/lib/api";
 import { OpaqueClientError } from "@/lib/opaque";
 import ResetPasswordPage from "../ResetPasswordPage";
 
 const apiPost = vi.fn();
+const apiGet = vi.fn();
 vi.mock("@/lib/api", async (orig) => ({
   ...(await orig<typeof import("@/lib/api")>()),
   apiPost: (...a: unknown[]) => apiPost(...a),
+  apiGet: (...a: unknown[]) => apiGet(...a),
 }));
 
 const opaqueReset = vi.fn();
@@ -26,21 +29,24 @@ function Probe() {
 }
 
 function renderReset(path = `/reset-password?token=${TOKEN}`) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route
-          path="/reset-password"
-          element={
-            <>
-              <ResetPasswordPage />
-              <Probe />
-            </>
-          }
-        />
-        <Route path="*" element={<Probe />} />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route
+            path="/reset-password"
+            element={
+              <>
+                <ResetPasswordPage />
+                <Probe />
+              </>
+            }
+          />
+          <Route path="*" element={<Probe />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -55,6 +61,8 @@ async function fill(password: string, confirm = password) {
 beforeEach(() => {
   apiPost.mockReset();
   apiPost.mockResolvedValue(undefined);
+  apiGet.mockReset();
+  apiGet.mockResolvedValue({ restricted: false, opaqueEnabled: true });
   // default: OPAQUE is off, so the legacy endpoint is used
   opaqueReset.mockReset();
   opaqueReset.mockRejectedValue(new ApiError("x", 503, "opaque_unavailable"));
@@ -107,6 +115,27 @@ describe("ResetPasswordPage", () => {
     ).toBeInTheDocument();
     expect(opaqueReset).toHaveBeenCalledWith(TOKEN, "new-password-1");
     expect(apiPost).not.toHaveBeenCalled();
+  });
+
+  it("uses the legacy endpoint straight away when the flag is off", async () => {
+    apiGet.mockResolvedValue({ restricted: false, opaqueEnabled: false });
+    renderReset();
+    await fill("new-password-1");
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith("/api/auth/reset-password", {
+        token: TOKEN,
+        password: "new-password-1",
+      }),
+    );
+    expect(opaqueReset).not.toHaveBeenCalled();
+  });
+
+  it("still falls back on a 503 when the flag could not be read", async () => {
+    apiGet.mockRejectedValue(new ApiError("x", 500, "internal_error"));
+    renderReset();
+    await fill("new-password-1");
+    await waitFor(() => expect(apiPost).toHaveBeenCalled());
+    expect(opaqueReset).toHaveBeenCalled();
   });
 
   it("shows an invalid link when the OPAQUE reset rejects the token", async () => {

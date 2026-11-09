@@ -18,6 +18,8 @@ export interface User {
   consentRequired?: boolean;
   /** Restricted session: the e-mail address is not confirmed yet (verify gate). */
   emailVerificationRequired?: boolean;
+  /** Password proof of this account (`GET /api/auth/me`); null = no password. */
+  passwordProtocol?: "opaque" | "legacy" | null;
 }
 
 export interface PendingConsent {

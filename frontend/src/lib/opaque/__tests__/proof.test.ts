@@ -3,6 +3,11 @@ import { renderHook } from "@testing-library/react";
 import { ApiError } from "@/lib/api";
 
 const opaqueReauth = vi.fn();
+const apiGet = vi.fn();
+vi.mock("@/lib/api", async (orig) => ({
+  ...(await orig<typeof import("@/lib/api")>()),
+  apiGet: (...a: unknown[]) => apiGet(...a),
+}));
 vi.mock("../client", () => ({ opaqueReauth: (...a: unknown[]) => opaqueReauth(...a) }));
 
 import { usePasswordProof } from "../useReauth";
@@ -12,6 +17,8 @@ const run = (password = "pw-12345") =>
 
 beforeEach(() => {
   opaqueReauth.mockReset();
+  apiGet.mockReset();
+  apiGet.mockResolvedValue({ passwordProtocol: "opaque" });
 });
 
 describe("usePasswordProof", () => {
@@ -20,6 +27,15 @@ describe("usePasswordProof", () => {
     await expect(run()).resolves.toEqual({ reauthTicket: "t1" });
     expect(opaqueReauth).toHaveBeenCalledWith("delete-account", "pw-12345");
   });
+
+  it.each(["legacy", null, undefined])(
+    "sends the plain password without any OPAQUE request for protocol %s",
+    async (protocol) => {
+      apiGet.mockResolvedValue({ passwordProtocol: protocol });
+      await expect(run()).resolves.toEqual({ password: "pw-12345" });
+      expect(opaqueReauth).not.toHaveBeenCalled();
+    },
+  );
 
   it.each(["opaque_not_registered", "opaque_unavailable"])(
     "falls back to the plain password on %s",

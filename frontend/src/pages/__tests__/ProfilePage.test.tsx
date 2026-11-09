@@ -101,6 +101,7 @@ beforeEach(() => {
     name: "Alex Beispiel",
     email: "alex@beispiel.de",
     hasPassword: true,
+    passwordProtocol: "legacy",
     pendingEmail: null,
     passkeys: [
       {
@@ -756,6 +757,7 @@ describe("ProfilePage", () => {
 
   describe("OPAQUE accounts", () => {
     beforeEach(() => {
+      profile = { ...profile, passwordProtocol: "opaque" };
       opaqueReauth.mockResolvedValue("ticket-1");
     });
 

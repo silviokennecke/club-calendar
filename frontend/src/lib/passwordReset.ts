@@ -35,14 +35,17 @@ export async function resetPassword(token: string, password: string): Promise<Re
 }
 
 /**
- * Reset through OPAQUE (the register flow with the reset token); while OPAQUE is off the server answers
- * `opaque_unavailable` before the token is touched and the legacy endpoint is used. A browser that cannot
+ * Reset through OPAQUE (the register flow with the reset token) when `opaqueEnabled` (from
+ * `GET /api/auth/registration`) is not false; with the flag off the legacy endpoint is used directly, and a
+ * 503 `opaque_unavailable` (flag unknown or changed) still falls back. A browser that cannot
  * run OPAQUE is `unsupported` (never a downgrade to the legacy endpoint).
  */
 export async function resetPasswordSecure(
   token: string,
   password: string,
+  opaqueEnabled?: boolean,
 ): Promise<ResetResult | "unsupported"> {
+  if (opaqueEnabled === false) return resetPassword(token, password);
   try {
     await opaqueReset(token, password);
     return "done";
