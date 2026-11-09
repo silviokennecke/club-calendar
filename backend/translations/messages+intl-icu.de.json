@@ -31,6 +31,14 @@
             "not_you_title": "Warst du das nicht?",
             "automatic": "Diese E-Mail informiert dich nur über eine Änderung an deinem Konto; sie wurde automatisch verschickt. Du musst nichts tun, wenn du die Änderung selbst vorgenommen hast."
         },
+        "opaque_reminder": {
+            "subject": "Bitte melde dich bis zum Stichtag einmal an",
+            "greeting": "Hallo {name},",
+            "body": "Bitte melde dich bis zum {date} einmal bei Club Calendar an, damit dein Passwort auf das neue, sicherere Verfahren umgestellt wird. Danach musst du dein Passwort zurücksetzen, bevor du dich wieder anmelden kannst.",
+            "button": "Jetzt anmelden",
+            "forgot": "Du hast dein Passwort vergessen oder möchtest es gleich neu setzen? Hier geht es zu „Passwort vergessen“:",
+            "no_action": "Wenn du dich nicht mehr anmelden möchtest, musst du nichts tun. Deine Daten bleiben erhalten, das Passwort lässt sich jederzeit zurücksetzen."
+        },
         "password_changed": {
             "subject": "Dein Passwort wurde geändert",
             "greeting": "Hallo {name},",

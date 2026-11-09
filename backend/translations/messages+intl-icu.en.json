@@ -31,6 +31,14 @@
             "not_you_title": "This wasn't you?",
             "automatic": "This e-mail only informs you about a change to your account; it was sent automatically. If you made the change yourself, there is nothing to do."
         },
+        "opaque_reminder": {
+            "subject": "Please sign in once before the deadline",
+            "greeting": "Hello {name},",
+            "body": "Please sign in to Club Calendar once before {date} so that your password is switched to the new, more secure method. After that date you will have to reset your password before you can sign in again.",
+            "button": "Sign in now",
+            "forgot": "Forgot your password or want to set a new one right away? Go to “Forgot password”:",
+            "no_action": "If you no longer want to sign in, there is nothing to do. Your data is kept and the password can be reset at any time."
+        },
         "password_changed": {
             "subject": "Your password was changed",
             "greeting": "Hello {name},",

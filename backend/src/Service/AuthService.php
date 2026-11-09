@@ -16,6 +16,7 @@ use App\Exception\OAuthRegistrationRestrictedException;
 use App\Opaque\InvalidMessageException;
 use App\Opaque\OpaqueRollout;
 use App\Opaque\OpaqueService;
+use App\Opaque\OpaqueUpgradeTickets;
 use App\Repository\RefreshTokenRepository;
 use App\Security\NonceStore;
 use App\Security\OneTimeTokenService;
@@ -49,6 +50,7 @@ readonly class AuthService
         private LoggerInterface $logger,
         private OpaqueService $opaque,
         private OpaqueRollout $rollout,
+        private OpaqueUpgradeTickets $upgradeTickets,
         /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
         #[Autowire(env: 'int:REFRESH_TOKEN_REUSE_GRACE')]
         private int $refreshReuseGrace,
@@ -142,6 +144,12 @@ readonly class AuthService
     {
         $email = EmailAddress::normalize($email);
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
+        // After the cutoff the bcrypt hash is no longer accepted (same signal as identify's reset_required).
+        if ($user && $user->getPassword() && !$this->opaque->hasRecord($user)
+            && $this->rollout->isEnabled() && $this->rollout->cutoffReached($this->clock->now())) {
+            $this->logger->info('opaque.legacy_login.failure', ['userId' => $user->getId(), 'reason' => 'cutoff']);
+            throw new ApiProblemException(409, 'The password must be reset', 'reset_required');
+        }
         if (!$user || !$user->getPassword()) {
             if ($user) {
                 $this->logger->info('opaque.legacy_login.failure', ['userId' => $user->getId(), 'reason' => 'no_password_hash']);
@@ -152,10 +160,13 @@ readonly class AuthService
             $this->logger->info('opaque.legacy_login.failure', ['userId' => $user->getId(), 'reason' => 'wrong_password']);
             throw self::invalidCredentials();
         }
+        $hasRecord = $this->opaque->hasRecord($user);
+        // Ticket only for a confirmed address: the upgrade endpoints are behind the e-mail confirmation gate.
+        $offerUpgrade = !$hasRecord && $user->isEmailVerified() && $this->rollout->offersUpgrade($user->getId());
         $this->logger->info('opaque.legacy_login.success', [
             'userId' => $user->getId(),
-            'hasRecord' => $this->opaque->hasRecord($user),
-            'upgradeOffered' => !$this->opaque->hasRecord($user) && $this->rollout->offersUpgrade($user->getId()),
+            'hasRecord' => $hasRecord,
+            'upgradeOffered' => $offerUpgrade,
         ]);
         if ($this->hasher->needsRehash($user)) {
             // Transparent upgrade; deliberately no token version bump, running sessions stay valid.
@@ -163,7 +174,12 @@ readonly class AuthService
             $this->em->flush();
         }
 
-        return $this->completeLogin($user);
+        $response = $this->completeLogin($user);
+        if ($offerUpgrade) {
+            $response['opaqueUpgrade'] = ['ticket' => $this->upgradeTickets->issue($user), 'expiresIn' => OpaqueUpgradeTickets::TTL];
+        }
+
+        return $response;
     }
 
     /**
