@@ -73,17 +73,15 @@ Leave empty to hide a provider. Setup: [Single sign-on](sso.md).
 
 ## Password protection (OPAQUE)
 
-Off by default. Explained in [Password protection](../password-protection.md). Back up the keys: losing them invalidates all password records.
+Always on. The server keys are required: the app does not start without them. Explained in [Password protection](../password-protection.md). Back up the keys: losing them invalidates all password records.
 
 | Variable | Default | Description |
 |---|---|---|
-| `OPAQUE_ENABLED` | `false` | Turns the password protection on. |
-| `OPAQUE_OPRF_SEED` | empty | Secret seed (required when enabled). Create with `php bin/console app:opaque:generate-keys`. |
-| `OPAQUE_SERVER_PRIVATE_KEY` | empty | Secret key (required when enabled). Created together with the seed. |
+| `OPAQUE_OPRF_SEED` | none, **required** | Secret seed. Create with `php bin/console app:opaque:generate-keys`. |
+| `OPAQUE_SERVER_PRIVATE_KEY` | none, **required** | Secret key. Created together with the seed. |
 | `OPAQUE_KEYS` | empty | Additional key sets for key rotation, `id:seed:privateKey`, comma-separated. The pair above is key `1`. |
 | `OPAQUE_ACTIVE_KEY_ID` | `1` | Key set used for new passwords. |
-| `OPAQUE_ROLLOUT_PERCENT` | `0` | 0-100: share of existing accounts offered the upgrade at their next sign-in. |
-| `OPAQUE_LEGACY_CUTOFF` | empty | Date `YYYY-MM-DD` (UTC) after which accounts not yet upgraded must reset their password. Needs rollout 100. |
+| `OPAQUE_LEGACY_CUTOFF` | empty | Date `YYYY-MM-DD` (UTC) after which accounts not yet converted must reset their password. Empty: every account is converted at its next sign-in, without an end date. |
 
 
 ## Mail

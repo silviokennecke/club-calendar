@@ -12,7 +12,7 @@ This page lists what the app does to keep accounts and data safe, and what you, 
 | Registration control | Strangers creating accounts | Set `RESTRICT_REGISTRATION=true` for closed groups. |
 | SSO | Weak or reused passwords | Optional. See [SSO](configuration/sso.md). |
 | Passkeys | Phishing, password theft | Check the `WEBAUTHN_*` settings. |
-| [Password protection](password-protection.md) | The server ever seeing passwords | Optional, off by default. Follow the rollout. |
+| [Password protection](password-protection.md) | The server ever seeing passwords | Always on. Keep the keys safe and backed up. |
 | Trusted hosts | Forged `Host` headers, wrong links in mails | List extra host names in `TRUSTED_HOSTS`. |
 | Security headers and CSP | Script injection, clickjacking | nginx users must add them. Send HSTS from your TLS proxy. |
 | Feed visibility and secret links | Private events becoming public | Choose the right visibility per feed. |
@@ -187,7 +187,7 @@ Keep these out of version control and back them up. Treat them like passwords.
 
 | Secret | Used for | If you change or lose it |
 |---|---|---|
-| `APP_SECRET` | Signing and hashing of codes, links and one-time tokens; also the default passphrase of the JWT keys | Pending confirmation codes, reset links, passkey challenges and sign-in redirects stop working (sign-ins in progress fail), and the password protection rollout shuffles which accounts are offered the upgrade. **Unless `JWT_PASSPHRASE` is set to the old value, the JWT keys can no longer be read and sign-in fails** until you create new keys. Avoid changing it; if you must, set `JWT_PASSPHRASE` to the old value first. |
+| `APP_SECRET` | Signing and hashing of codes, links and one-time tokens; also the default passphrase of the JWT keys | Pending confirmation codes, reset links, passkey challenges and sign-in redirects stop working (sign-ins in progress fail), (the password protection keys are separate and not affected). **Unless `JWT_PASSPHRASE` is set to the old value, the JWT keys can no longer be read and sign-in fails** until you create new keys. Avoid changing it; if you must, set `JWT_PASSPHRASE` to the old value first. |
 | `JWT_REFRESH_SECRET` | Refresh tokens | All users are signed out and must sign in again. |
 | JWT keys (`/data/config/` in Docker, `backend/config/jwt/` otherwise) | Access tokens (15 minutes) | With new keys, current access tokens become invalid and browsers fetch new ones automatically; users usually notice nothing. Keep the keys between updates anyway. |
 | Database password (`DATABASE_URL`) | Database access | The app cannot start until both sides match. |

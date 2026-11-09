@@ -1,6 +1,8 @@
 # Plan: OPAQUE (RFC 9807) statt Klartext-Passwort-Login
 
 Status: Entwurf, nicht umgesetzt; AP 0 (Spike), AP 1 (Konfigurationsgerüst), AP 2 (Primitive) und AP 3 (Server-Rolle, RFC-9807-Vektoren) erledigt, Ergebnisse in `OPAQUE-SPIKE.md` (maßgeblich bei Abweichungen). Stand der Codebasis: Branch `security/audit-followup`.
+**Geänderte Entscheidung (f554a5c, 3114ccb, 6f3c52f): kein Feature-Flag und kein gestaffelter Rollout.** `OPAQUE_ENABLED` und `OPAQUE_ROLLOUT_PERCENT` sind entfernt (Abschnitt 6.2, 6.8 und die Umsetzungsnotizen unten beschreiben den früheren Stand). OPAQUE ist immer an: die Server-Schlüssel sind Pflicht (`app:opaque:check` schlägt ohne sie fehl, `docker/entrypoint.sh` bricht den Start ab und verweist auf `app:opaque:generate-keys`; bewusst keine automatische Erzeugung, stillschweigend neu erzeugte Schlüssel würden alle Passwörter ungültig machen). Die Migration steuert allein `OPAQUE_LEGACY_CUTOFF` (`OpaqueCutoff` ersetzt `OpaqueRollout`): leer oder in der Zukunft = jedes bestätigte bcrypt-Konto wird bei seinem nächsten Login umgestellt; ab dem Datum bekommen Konten ohne Record `reset_required`. Entfernt: `POST /api/auth/register`, `POST /api/auth/reset-password` (Signup und Reset laufen nur über `opaque/register/*`), 503 `opaque_unavailable`, `opaqueEnabled` in `GET /api/auth/registration`. Der Klartext-`login` gilt nur noch für bcrypt-Konten vor dem Stichtag (liefert das `opaqueUpgrade`-Ticket). Einen Rollback per Flag gibt es nicht mehr.
+
 Umsetzung direkt im PHP-Backend (kein Sidecar). Zielgruppe: Owner und Implementierer der Arbeitspakete (Abschnitt 8).
 
 ## 1. Ziel, Sicherheitsgewinn, ehrliche Grenzen
@@ -264,7 +266,7 @@ Grundprinzip: Dual-Stack, kein Downgrade, Nutzer wechseln beim nächsten Login, 
 `user.opaque_record VARBINARY(256) NULL`, `user.opaque_version SMALLINT NULL`, `user.opaque_key_id VARCHAR(16) NULL`.
 Kein Index nötig. `password` bleibt. Entity `App\Entity\User` (UUID-Regeln unverändert), Fixtures/Raw-SQL-Inserts bleiben gültig.
 
-### 6.2 Feature-Flag und Rollout
+### 6.2 Feature-Flag und Rollout (ÜBERHOLT: immer an, nur `OPAQUE_LEGACY_CUTOFF`, siehe Hinweis am Anfang)
 - `OPAQUE_ENABLED` (Default `0`): `0` = alles wie bisher, `identify` liefert nur `legacy`; `1` = neue Endpunkte aktiv.
 - Gestaffelt: `OPAQUE_ROLLOUT_PERCENT` (0-100, Hash der User-ID) für den Upgrade-Pfad; Signup und Reset sind bei Flag `1`
   sofort OPAQUE (neue Konten haben nie einen Legacy-Hash). Rollback = Flag aus: OPAQUE-Konten (ohne Legacy-Hash) können dann nicht mehr
@@ -310,7 +312,7 @@ Es gibt keinen Weg von OPAQUE zurück zu bcrypt (der Server kennt das Passwort n
 - Neu: `app:opaque:status` (Anzahl total/mit Record/Legacy/ohne Passwort), `app:opaque:generate-keys`,
   `app:opaque:notify-legacy`, `app:opaque:retire-legacy`.
 
-### 6.8 Monitoring und Rollback
+### 6.8 Monitoring und Rollback (Rollback per Flag entfällt, siehe Hinweis am Anfang)
 - Metrik "Anteil migrierter Konten": `app:opaque:status` (Cron/Ausgabe in Logs, `docs/ops/OPERATIONS.md`), plus Logzeilen
   `opaque.login.success|failure`, `opaque.upgrade.success` (ohne Nutzerdaten/Token; `RedactTokensProcessor` greift).
 - Alarm: Verhältnis Fehlschläge/Erfolge `login/finish`, Anstieg `opaque_state_invalid`, Antwortzeiten `login/start`.

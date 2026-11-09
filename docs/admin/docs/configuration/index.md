@@ -82,7 +82,7 @@ The Docker image speaks plain HTTP on port 8080 and does not handle HTTPS itself
 
 | Command | What it checks |
 |---|---|
-| `php bin/console app:opaque:check` | The [password protection](../password-protection.md) settings. Fails only when it is enabled and the keys are missing or invalid. |
+| `php bin/console app:opaque:check` | The [password protection](../password-protection.md) settings. Fails when the keys are missing or invalid, or the cutoff date is malformed. |
 | `php bin/console app:legal:sync` | Reads your [legal texts](../legal.md) and reports missing or invalid ones. |
 
 With Docker, run commands inside the container:

@@ -25,7 +25,7 @@ Day-to-day tasks: updating, backups, scheduled jobs, command-line tools, logs an
     docker compose up -d
     ```
 
-    At start the container first checks the password protection settings (it stops with a message if they are invalid), then runs database changes (migrations) and loads the [legal documents](legal.md). Check `docker compose ps` until `app` is `healthy`.
+    At start the container first checks the password protection keys (it stops with a message if they are missing or invalid, so generate them before updating from a version that did not need them, see [Password protection](password-protection.md#upgrading-from-older-versions)), then runs database changes (migrations) and loads the [legal documents](legal.md). Check `docker compose ps` until `app` is `healthy`.
 
     With `RUN_MIGRATIONS=0` in `.env` the container skips the database changes. Then run them yourself after every update:
 
@@ -107,7 +107,7 @@ The app cleans up after itself only when these commands run regularly. Add them 
 | `app:prune-club-invitations` | Deletes invitations that were answered or expired more than 30 days ago. | daily |
 | `app:prune-oauth` | Deletes expired entries of AI app connections. | daily |
 | `app:holidays:refresh --all` | Refreshes the predefined holiday calendars. See [Holidays](#holidays). | weekly |
-| `app:opaque:notify-legacy` | Sends the cutoff reminder mails. Only needed when you use the password protection rollout with a cutoff date, see [Password protection](password-protection.md). | daily |
+| `app:opaque:notify-legacy` | Sends the cutoff reminder mails. Only needed when you set a cutoff date for converting old accounts, see [Password protection](password-protection.md). | daily |
 
 === "Docker"
 
@@ -159,7 +159,7 @@ The app has a few commands for administrators. Run them like this:
 | `app:user:verify <email or id>` | Confirms an address by hand, for users who cannot receive the code. Also available as `app:user:activate`. |
 | `app:user:reset-link <email>` | Prints a password reset link without sending mail. |
 
-With [password protection](password-protection.md) enabled, `app:user:create` and `app:user:set-password` do not set a password themselves: they print a one-time link, valid for 60 minutes, where the user chooses it.
+By default (see [password protection](password-protection.md)), `app:user:create` and `app:user:set-password` do not set a password themselves: they print a one-time link, valid for 60 minutes, where the user chooses it.
 
 !!! warning "Reset links give access to the account"
     A link from `app:user:reset-link` (valid 60 minutes) lets whoever opens it set a new password for that account. Hand it only to the owner, over a channel you trust.
@@ -176,9 +176,9 @@ With [password protection](password-protection.md) enabled, `app:user:create` an
 | `app:opaque:status` | Shows how many accounts use which password protocol (`--json` for scripts). |
 | `app:opaque:check` | Validates the password protection settings. |
 | `app:opaque:generate-keys` | Prints new keys for the first setup. |
-| `app:opaque:notify-legacy`, `app:opaque:retire-legacy` | Rollout steps after a cutoff date. |
+| `app:opaque:notify-legacy`, `app:opaque:retire-legacy` | Steps around a cutoff date for old accounts. |
 
-Details and the order of the rollout are in [Password protection](password-protection.md).
+Details are in [Password protection](password-protection.md).
 
 ## Holidays
 
@@ -213,7 +213,7 @@ Rotating a secret has side effects. The full table of what each secret protects 
 
 - **Login keys (JWT key pair):** safe to replace. Delete the keys in the `jwt` volume (or `config/jwt/`) and restart; a new pair is created. Nobody is signed out, because access tokens last only 15 minutes and are renewed from the refresh token, which does not use these keys.
 - **`JWT_REFRESH_SECRET`:** changing it signs everybody out.
-- **`APP_SECRET`:** avoid changing it. It is also the default passphrase of the login keys, so sign-in fails for everybody unless you first set `JWT_PASSPHRASE` to the old value (or create a new key pair). It also invalidates pending confirmation codes, reset links, passkey sign-ins in progress and SSO redirects, and changes which accounts the password protection rollout offers the upgrade.
+- **`APP_SECRET`:** avoid changing it. It is also the default passphrase of the login keys, so sign-in fails for everybody unless you first set `JWT_PASSPHRASE` to the old value (or create a new key pair). It also invalidates pending confirmation codes, reset links, passkey sign-ins in progress and SSO redirects.
 - **`OPAQUE_*` keys:** never replace them directly. Follow the rotation steps in [Password protection](password-protection.md).
 
 After changing `.env`, restart the app (`docker compose up -d` applies it).

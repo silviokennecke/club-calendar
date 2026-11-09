@@ -64,8 +64,9 @@ Do these steps in the `backend/` directory.
     ```bash
     php bin/console app:legal:sync
     ```
-6. **If you use password protection (OPAQUE):** run `php bin/console app:opaque:check` as part of every deploy. Without
-   the Docker entrypoint nothing else checks the keys at start. See [Password protection](password-protection.md).
+6. **Password protection keys (OPAQUE):** generate them once with `php bin/console app:opaque:generate-keys`, set
+   `OPAQUE_OPRF_SEED` and `OPAQUE_SERVER_PRIVATE_KEY`, and run `php bin/console app:opaque:check` as part of every deploy.
+   Without the Docker entrypoint nothing else checks the keys at start; without them sign-in does not work. See [Password protection](password-protection.md).
 7. **Create the first user** (see [Command-line tools](operations.md)).
 
 ## Web server

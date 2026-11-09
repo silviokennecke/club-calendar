@@ -407,7 +407,8 @@ export DATABASE_URL="mysql://root:root@127.0.0.1:3360/club_calendar_e2e?serverVe
   && php bin/console doctrine:migrations:migrate -n && APP_ENV=dev php bin/console doctrine:fixtures:load -n)
 # 2. backend (own terminal in the repo root, same DATABASE_URL; FRONTEND_URL / BACKEND_URL are not in .env)
 # + OPAQUE: eval "$(cd backend && php bin/console app:opaque:generate-keys 2>/dev/null | grep '^OPAQUE_' | sed 's/^/export /')"
-#   and the OPAQUE keys (full command incl. rate-limit variables: docs/ops/E2E.md)
+#   and the OPAQUE keys (full command incl. rate-limit variables: docs/ops/E2E.md);
+#   export the same keys in the shell that runs Playwright (console helpers need them)
 FRONTEND_URL=http://localhost:5199 BACKEND_URL=http://localhost:3001 MAILER_DSN=null://null \
   php -S 127.0.0.1:3001 -t backend/public
 # 3. frontend (own terminal in the repo root)
@@ -421,7 +422,7 @@ docker rm -f cc-verify-mysql
 
 `e2e/helpers.ts` runs backend console commands against the e2e database (`backendConsole`, default
 `DATABASE_URL` of `club_calendar_e2e`, override `E2E_DATABASE_URL`): `app:user:verify` confirms registered users
-(`createVerifiedUser`), `app:user:reset-link` gives reset links (`resetLinkFor`). The e2e backend runs with OPAQUE on: `createVerifiedUser` signs up, `authHeaders`/`apiLogin` sign in and `opaqueResetPassword` resets through a Node client (`@serenity-kit/opaque`, `opaqueRegisterRecord`); never POST a plaintext password to `/api/auth/login|register|reset-password` in new helpers (`createLegacyUser` is the deliberate exception: it seeds the bcrypt account for the upgrade test through `app:user:create --password`, since `POST /api/auth/register` answers 409 `opaque_required` while OPAQUE is on). `e2e/opaque.spec.ts` asserts that no request ever carries the password. Clean up afterwards also
+(`createVerifiedUser`), `app:user:reset-link` gives reset links (`resetLinkFor`). The e2e backend runs with throwaway OPAQUE keys (OPAQUE is always on): `createVerifiedUser` signs up, `authHeaders`/`apiLogin` sign in and `opaqueResetPassword` resets through a Node client (`@serenity-kit/opaque`, `opaqueRegisterRecord`); never POST a plaintext password to `/api/auth/login|register|reset-password` in new helpers (`createLegacyUser` is the deliberate exception: it seeds the bcrypt account for the upgrade test through `app:user:create --password`, since the plaintext `register` endpoint no longer exists). `e2e/opaque.spec.ts` asserts that no request ever carries the password. Clean up afterwards also
 `frontend/test-results` and `backend/var/cache/prod` (rate limiter state). Details: `docs/ops/E2E.md`.
 `frontend/test-results/` and `playwright-report/` are git-ignored. Key presses that open a file chooser go through
 `pressForFileChooser` (`e2e/helpers.ts`; a plain `Promise.all([waitForEvent, press])` races the interception).

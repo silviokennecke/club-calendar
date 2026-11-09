@@ -40,7 +40,9 @@ Migrationen gehören nicht ungeprüft auf die Dev-DB).
    Hintergrund umgestellt). `e2e/helpers.ts` registriert und meldet Nutzer per OPAQUE an (Node-Client mit
    `@serenity-kit/opaque`, Argon2id wie im Browser: etwa 1 s pro Anmeldung); `createLegacyUser` legt ein bcrypt-Konto über
    `app:user:create --password` an (`e2e/opaque.spec.ts`: Upgrade im Hintergrund). Ohne die Schlüssel startet das Backend
-   nicht richtig (`app:opaque:check`).
+   nicht richtig (`app:opaque:check`). Dieselben Schlüssel müssen auch in der Shell exportiert sein, die Playwright startet
+   (Schritt 5): die Konsolen-Helfer in `e2e/helpers.ts` (`app:user:verify`, `app:user:reset-link`) laden den Kernel und
+   brauchen sie ebenfalls (die `export`-Zeilen mit denselben Werten wie beim Backend wiederholen).
    `WEBAUTHN_RP_ID=localhost` ist nötig, wenn `backend/.env.local` eine andere `APP_URL` setzt (der Standard ist deren Host), sonst scheitern die Passkey-Tests in `profile.spec.ts`.
    `FRONTEND_URL`/`BACKEND_URL` stehen nicht mehr in `.env` (sie folgen `APP_URL`, siehe `config/services.yaml`) und
    müssen hier gesetzt werden: Passkey-Origin, Links der neuen E-Mail-Adresse und der SSO-Verknüpfung bauen darauf
