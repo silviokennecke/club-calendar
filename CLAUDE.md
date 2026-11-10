@@ -20,7 +20,7 @@ A web app for clubs to manage and publish event calendars.
   with the redesign's design tokens (`src/index.css`), shared building blocks on a minimal shadcn/Base UI basis,
   i18next (de/en), light/dark/system theme; own month/week calendar views (no FullCalendar); Mapbox GL and emoji-mart
   loaded lazily; route-level code splitting (`src/pages/lazy.ts`)
-- **MCP:** `symfony/mcp-bundle` (pinned `~0.14.1`, pre-1.0; mcp/sdk 0.8.1) + a hand-written OAuth 2.1 authorization server (see "MCP server and OAuth")
+- **MCP:** `symfony/mcp-bundle` (pinned `~0.15.0`, pre-1.0; mcp/sdk 0.9) + a hand-written OAuth 2.1 authorization server (see "MCP server and OAuth")
 - **Frontend tests:** Vitest + Testing Library, Playwright (E2E)
 - **Database:** MySQL 8 or MariaDB (no `server_version` in `doctrine.yaml`: DBAL detects the platform; a fixed `8.0` broke MariaDB introspection)
 

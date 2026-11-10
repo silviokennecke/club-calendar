@@ -187,8 +187,9 @@ services:
         arguments:
             $httpErrorListener: '@exception_listener'
 
-    # MCP DNS-rebinding protection (Origin/Host check): the same hosts as framework.trusted_hosts.
+    # MCP DNS-rebinding protection: Host = same hosts as framework.trusted_hosts; Origin = same origin or the frontend.
     mcp.server.app.middleware_factory:
         class: Symfony\AI\McpBundle\Http\MiddlewareFactory
         arguments:
             - '%env(trusted_host_list:TRUSTED_HOSTS)%'
+            - ['%env(FRONTEND_URL)%']

@@ -89,7 +89,7 @@ Hier steht die einzige maßgebliche Liste der offenen Sicherheitspunkte. Die Aud
 | info | **I4: Frontend-Hinweise** | Routen-Guards nur clientseitig (Backend erzwingt); IDs in API-Pfaden meist ohne `encodeURIComponent` (serverseitige UUIDs); OAuth-Provider-ID unkodiert im `href`; alter `accessToken`-Storage-Key wird noch gelesen. |
 | info | **SCAN-12 (Rest): Release-`ci`-Aufruf mit `contents: write`** | `release.yml` muss `contents: write` an `ci.yml` geben, weil dort `autofix` es deklariert (läuft auf Tags nicht). |
 | niedrig | **MCP: Familien-Treffer beweist nicht den Betreiber** | Die Bezeichnung (Claude, ChatGPT, Gemini) kommt aus der Redirect-URI-Familie, der selbst angegebene `client_name` gilt nur als Behauptung. Ein eigener ChatGPT-Konnektor (`chatgpt.com/connector/oauth/<id>`) oder ein lokales Programm (Loopback) trifft trotzdem eine Familie; akzeptiert, die Zustimmungsseite warnt dafür gesondert. Ein leeres `MCP_ALLOWED_CLIENTS` erlaubt keinen Client mehr, alle nur mit `*`. |
-| niedrig | **MCP: Bundle vor 1.0** | `symfony/mcp-bundle` ist auf `~0.14.1` gepinnt (mcp/sdk 0.8.1); API und Verhalten können sich bei Updates ändern, Updates nur mit laufender `McpEndpointTest`/Tool-Tests. |
+| niedrig | **MCP: Bundle vor 1.0** | `symfony/mcp-bundle` ist auf `~0.15.0` gepinnt (mcp/sdk 0.9); API und Verhalten können sich bei Updates ändern, Updates nur mit laufender `McpEndpointTest`/Tool-Tests. |
 
 ## Offene Betriebspunkte
 
