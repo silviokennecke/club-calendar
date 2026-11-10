@@ -52,29 +52,6 @@ describe("token storage", () => {
     expect(JSON.stringify(FakeBroadcastChannel.sent)).not.toContain("refresh-secret");
     expect(FakeBroadcastChannel.sent).toContainEqual({ type: "tokens", accessToken: "access-1" });
   });
-
-  it("migrates legacy sessionStorage tokens to localStorage and removes them", async () => {
-    sessionStorage.setItem("refresh_token", "legacy-r");
-    sessionStorage.setItem("access_token", "legacy-a");
-    sessionStorage.setItem("accessToken", "legacy-a2");
-    sessionStorage.setItem("sso_code_verifier", "keep");
-    const api = await openTab();
-    expect(localStorage.getItem("refresh_token")).toBe("legacy-r");
-    expect(sessionStorage.getItem("refresh_token")).toBeNull();
-    expect(sessionStorage.getItem("access_token")).toBeNull();
-    expect(sessionStorage.getItem("accessToken")).toBeNull();
-    expect(sessionStorage.getItem("sso_code_verifier")).toBe("keep");
-    expect(api.getAccessToken()).toBeNull();
-    expect(api.hasSession()).toBe(true);
-  });
-
-  it("does not overwrite an existing localStorage refresh token on migration", async () => {
-    localStorage.setItem("refresh_token", "current");
-    sessionStorage.setItem("refresh_token", "legacy-r");
-    await openTab();
-    expect(localStorage.getItem("refresh_token")).toBe("current");
-    expect(sessionStorage.getItem("refresh_token")).toBeNull();
-  });
 });
 
 describe("startup and refresh lock", () => {

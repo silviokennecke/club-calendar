@@ -71,18 +71,6 @@ function readRefreshStorage(): string | null {
   }
 }
 
-/** One-time move from the old per-tab storage; afterwards no token key remains in sessionStorage. */
-function migrateLegacyTokens() {
-  if (typeof window === "undefined") return;
-  try {
-    const legacy = sessionStorage.getItem(REFRESH_KEY);
-    if (legacy && !localStorage.getItem(REFRESH_KEY)) localStorage.setItem(REFRESH_KEY, legacy);
-    for (const key of [REFRESH_KEY, "access_token", "accessToken"]) sessionStorage.removeItem(key);
-  } catch {
-    // storage unavailable: nothing to migrate
-  }
-}
-
 type AuthMessage = { type: "tokens"; accessToken: string } | { type: "logout" };
 
 let channel: BroadcastChannel | null | undefined;
@@ -144,7 +132,6 @@ export function resetAuthSyncForTests() {
 }
 
 if (typeof window !== "undefined") {
-  migrateLegacyTokens();
   getChannel();
   // The refresh token is removed in another tab: that tab signed out (also covers no BroadcastChannel).
   window.addEventListener("storage", (e) => {
