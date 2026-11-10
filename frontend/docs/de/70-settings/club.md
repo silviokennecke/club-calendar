@@ -34,6 +34,8 @@ Wer angemeldet einen Feed deines Vereins öffnet, kann dem Verein selbst beitret
 
 Die Einstellung wird sofort gespeichert.
 
+![Einstellung „Beitritt über Feeds“ mit den drei Auswahlmöglichkeiten](shot:club-feed-signup)
+
 ## Zeitzone des Vereins
 
 Unter dem Titel der Seite **Verein verwalten** steht die Zeitzone des Vereins, zum Beispiel „Zeitzone Europe/Berlin“. Beim Anlegen des Vereins wird sie automatisch aus deinem Browser übernommen. In der Oberfläche kannst du sie nicht ändern.

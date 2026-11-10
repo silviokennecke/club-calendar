@@ -34,6 +34,8 @@ People who open a feed of your club while signed in can join the club by themsel
 
 The setting is saved right away.
 
+![The “Joining through feeds” setting with its three choices](shot:club-feed-signup)
+
 ## The club's time zone
 
 Under the title of the **Manage club** page you see the club's time zone, for example "Time zone Europe/Berlin". It is taken from your browser automatically when the club is created. You cannot change it in the interface.

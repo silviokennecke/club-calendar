@@ -1,5 +1,12 @@
 import { test, expect, type Page } from "@playwright/test";
-import { API, createVerifiedUser, seedClub } from "../helpers";
+import {
+  API,
+  PASSWORD,
+  backendConsole,
+  createVerifiedUser,
+  inviteAndAccept,
+  seedClub,
+} from "../helpers";
 import { LANGS, prepare, shot, signIn, type Lang } from "./shots";
 
 /** Club with three calendars (one archived), a feed and a few events. */
@@ -50,6 +57,17 @@ async function seed(page: Page, lang: Lang) {
     visibility: "PUBLIC",
     calendarIds: [calendarId],
   });
+  // Fixed fake members; the account is created once, the second language reuses it.
+  for (const [name, memberEmail, role] of [
+    ["Anna Beispiel", "anna.beispiel@example.com", "editor"],
+    ["Ben Beispiel", "ben.beispiel@example.com", "viewer"],
+  ] as const) {
+    const known = await request.post(`${API}/api/auth/register`, {
+      data: { name, email: memberEmail, password: PASSWORD, language: lang },
+    });
+    if (known.ok()) backendConsole("app:user:verify", memberEmail);
+    await inviteAndAccept(request, clubId, headers, memberEmail, role);
+  }
   return { email, clubId, calendarId };
 }
 
@@ -84,6 +102,24 @@ for (const lang of LANGS) {
       await expect(page.getByText(/\d\d:\d\d/).first()).toBeVisible();
       await shot(page, lang, "calendar-settings-general");
 
+      await page.goto(`/clubs/${s.clubId}?tab=members`);
+      await expect(page.getByText("anna.beispiel@example.com").first()).toBeVisible();
+      await expect(page.getByText("ben.beispiel@example.com").first()).toBeVisible();
+      // The admin's address is random per run: show a fixed fake one.
+      await page.evaluate(() => {
+        const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        for (let n = w.nextNode(); n; n = w.nextNode()) {
+          if (/^e2e-.*@example\.com$/.test((n.textContent ?? "").trim()))
+            n.textContent = "max.mustermann@example.com";
+        }
+      });
+      await shot(page, lang, "club-members-list");
+
+      await page.setViewportSize({ width: 1280, height: 1000 });
+      await page.goto(`/clubs/${s.clubId}?tab=general`);
+      await expect(page.getByRole("radio").first()).toBeVisible();
+      await shot(page, lang, "club-feed-signup");
+      await page.setViewportSize({ width: 1280, height: 800 });
       await page.goto(`/clubs/${s.clubId}?tab=general`);
       const del = page.getByRole("button", {
         name: lang === "de" ? "Verein löschen" : "Delete club",

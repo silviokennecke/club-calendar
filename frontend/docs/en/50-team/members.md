@@ -17,6 +17,8 @@ The list shows name, e-mail, role and action. You can spot yourself by the **You
 
 Use the search field to find people by name or e-mail, and **Filter by role** to show only one role.
 
+![The Members tab with the member list, search field and role filter](shot:club-members-list)
+
 ## Change a role
 
 :::note

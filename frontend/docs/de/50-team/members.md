@@ -17,6 +17,8 @@ Die Liste zeigt Name, E-Mail, Rolle und Aktion. Dich selbst erkennst du am Hinwe
 
 Im Suchfeld findest du Personen nach Name oder E-Mail, mit **Nach Rolle filtern** zeigst du nur eine Rolle.
 
+![Reiter Mitglieder mit Mitgliederliste, Suchfeld und Rollenfilter](shot:club-members-list)
+
 ## Rolle ändern
 
 :::note
