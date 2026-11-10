@@ -1,5 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { API, continueWithEmail, loginPassword } from "./helpers";
+import {
+  API,
+  continueWithEmail,
+  createVerifiedUser,
+  login,
+  loginPassword,
+  seedClub,
+} from "./helpers";
 
 // The auth pages are tested in German (the design's source language).
 test.use({ locale: "de-DE" });
@@ -125,6 +132,38 @@ test.describe("Login", () => {
     await page.getByRole("button", { name: "Anmelden", exact: true }).click();
     await page.waitForURL("**/clubs**");
     await expect(page).toHaveURL(/\/clubs/);
+  });
+
+  test("a login carries over to a second tab, and a logout ends it there too", async ({
+    page,
+    request,
+  }) => {
+    const email = await createVerifiedUser(request, "Tab Sitzung");
+    const { clubId, calendarId, headers } = await seedClub(request, email, "Tab Sitzung Verein");
+    await login(page, email);
+    await page.waitForURL(/\/clubs/);
+
+    const second = await page.context().newPage();
+    await second.goto("/");
+    await expect(second).toHaveURL(/\/clubs/);
+    await expect(
+      second.getByRole("heading", { level: 1, name: "Anmelden oder Konto erstellen" }),
+    ).toHaveCount(0);
+
+    await page.goto(`/clubs/${clubId}/calendars/${calendarId}`);
+    await expect
+      .poll(
+        async () =>
+          (await (await request.get(`${API}/api/auth/me`, { headers })).json()).lastClubId,
+      )
+      .toBe(clubId);
+    await page
+      .getByRole("complementary")
+      .getByRole("link", { name: /Mein Profil/ })
+      .click();
+    await page.getByRole("main").getByRole("button", { name: "Abmelden", exact: true }).click();
+    await expect(page).toHaveURL(/\/login/);
+    await expect(second).toHaveURL(/\/login/);
   });
 
   test("unauthenticated user is redirected to login", async ({ page }) => {

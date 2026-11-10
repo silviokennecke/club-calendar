@@ -73,6 +73,6 @@ describe("request timeout", () => {
     await vi.advanceTimersByTimeAsync(30_000);
     expect(await result).toMatchObject({ code: "request_timeout" });
     expect(markSessionEnded).not.toHaveBeenCalled();
-    expect(sessionStorage.getItem("refresh_token")).toBe("refresh");
+    expect(localStorage.getItem("refresh_token")).toBe("refresh");
   });
 });

@@ -501,7 +501,10 @@ test.describe("Veröffentlichen", () => {
     const viewer = await createVerifiedUser(request, "Feeds Betrachter");
     await inviteAndAccept(request, s.clubId, s.headers, viewer, "viewer");
     await page.context().clearCookies();
-    await page.evaluate(() => sessionStorage.clear());
+    await page.evaluate(() => {
+      sessionStorage.clear();
+      localStorage.removeItem("refresh_token");
+    });
     await openFeeds(page, viewer, s.feedsPath);
     await expect(
       page.getByRole("heading", { name: "Feeds sind für deine Rolle nicht verfügbar" }),

@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { getAccessToken } from "@/lib/api";
+import { hasSession } from "@/lib/api";
 import { AuthContext } from "@/lib/auth-context";
 
 /**
@@ -16,7 +16,7 @@ export function SignedInBar() {
   const { user, loading, logout } = auth;
 
   if (!user) {
-    return loading && getAccessToken() ? (
+    return loading && hasSession() ? (
       <div className="pub-accountbar" aria-hidden="true" data-testid="signed-in-bar-placeholder" />
     ) : null;
   }

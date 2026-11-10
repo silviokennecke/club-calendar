@@ -20,7 +20,7 @@ This page lists what the app does to keep accounts and data safe, and what you, 
 
 ## Sign-in and sessions
 
-- A sign-in gives the browser a short-lived **access token** (15 minutes) and a **refresh token** (7 days, renewed on every use). Users stay signed in without noticing.
+- A sign-in gives the browser a short-lived **access token** (15 minutes) and a **refresh token** (7 days, renewed on every use). Users stay signed in without noticing. The refresh token is kept in the browser, so the sign-in survives new tabs and closing the browser; signing out applies to all open tabs. On shared computers users must sign out, because the sign-in stays until then.
 - A session ends at the latest **30 days** after the sign-in, however active the user is.
 - Every refresh token works once. If an old one is replayed, the whole session is revoked.
 - Users can **sign out everywhere** in their profile. Changing the password, changing the e-mail address, resetting the password and removing a passkey also end all other sessions.
@@ -28,7 +28,7 @@ This page lists what the app does to keep accounts and data safe, and what you, 
 | Variable | Default | Effect |
 |---|---|---|
 | `REFRESH_TOKEN_ABSOLUTE_LIFETIME` | `2592000` (30 days) | Longest possible session, in seconds. |
-| `REFRESH_TOKEN_REUSE_GRACE` | `10` | Seconds in which a refresh token may be sent twice (lost response, two tabs) without ending the session. |
+| `REFRESH_TOKEN_REUSE_GRACE` | `10` | Seconds in which a refresh token may be sent twice (lost response, requests at the same time) without ending the session. |
 | `OAUTH_LOGIN_CODE_TTL` | `180` | Seconds the one-time code of the SSO redirect stays valid. |
 
 ## E-mail confirmation

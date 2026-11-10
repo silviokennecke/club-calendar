@@ -6,11 +6,13 @@ description: Sign out on this device or everywhere.
 
 # Sessions and signing out
 
-A session lasts until you sign out, but at most 30 days after signing in.
+A session lasts until you sign out, but at most 30 days after signing in. You also stay signed in when you open a new tab or close and reopen the browser.
 
 ## Sign out on this device
 
-Click **Sign out** in the sidebar or on your [profile](help:settings/profile).
+Click **Sign out** in the sidebar or on your [profile](help:settings/profile). Then you are signed out in all open tabs of this browser.
+
+Tip: on someone else's or a shared computer, always sign out when you are done. Otherwise you stay signed in even after closing the browser.
 
 ## Sign out everywhere
 

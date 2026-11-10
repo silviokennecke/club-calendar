@@ -80,7 +80,7 @@ function AppRoutes() {
           <Route path="/help/subscribe" element={<SubscribeRedirect />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="/help/*" element={<HelpPage />} />
-          {/* Handles the signed-out case itself: the token survives the login (sessionStorage). */}
+          {/* Handles the signed-out case itself: the session survives the login (refresh token in localStorage). */}
           <Route path="/invitations" element={<InvitationPage />} />
 
           <Route element={<ProtectedRoute />}>

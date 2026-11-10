@@ -79,7 +79,7 @@ describe("apiFetch session handling", () => {
     );
     expect(authOf(2)).toBe("Bearer new-access");
     expect(getAccessToken()).toBe("new-access");
-    expect(sessionStorage.getItem("refresh_token")).toBe("refresh-2");
+    expect(localStorage.getItem("refresh_token")).toBe("refresh-2");
     expect(markSessionEnded).not.toHaveBeenCalled();
   });
 
@@ -101,7 +101,7 @@ describe("apiFetch session handling", () => {
     expect(markSessionEnded).toHaveBeenCalledOnce();
     expect(location.href).toBe("/login");
     expect(getAccessToken()).toBeNull();
-    expect(sessionStorage.getItem("refresh_token")).toBeNull();
+    expect(localStorage.getItem("refresh_token")).toBeNull();
   });
 
   it("does not refresh or leave the page on a 401 without a token (missing_token)", async () => {
@@ -149,7 +149,7 @@ describe("apiFetch session handling", () => {
 
     expect(results).toHaveLength(3);
     expect(refreshCalls).toBe(1);
-    expect(sessionStorage.getItem("refresh_token")).toBe("refresh-2");
+    expect(localStorage.getItem("refresh_token")).toBe("refresh-2");
     expect(markSessionEnded).not.toHaveBeenCalled();
   });
 
@@ -184,7 +184,7 @@ describe("apiFetch session handling", () => {
     expect(String(fetchMock.mock.calls[4][1]?.body)).toBe(
       "grant_type=refresh_token&refresh_token=r2",
     );
-    expect(sessionStorage.getItem("refresh_token")).toBe("r3");
+    expect(localStorage.getItem("refresh_token")).toBe("r3");
   });
 
   it("keeps the session when the refresh is answered with 429 (no verdict on the token)", async () => {
@@ -196,7 +196,7 @@ describe("apiFetch session handling", () => {
     await expect(apiGet("/api/clubs")).rejects.toMatchObject({ status: 401 });
 
     expect(markSessionEnded).not.toHaveBeenCalled();
-    expect(sessionStorage.getItem("refresh_token")).toBe("refresh");
+    expect(localStorage.getItem("refresh_token")).toBe("refresh");
   });
 });
 

@@ -10,6 +10,10 @@ import {
   CONSENT_REQUIRED_EVENT,
   EMAIL_VERIFICATION_REQUIRED_EVENT,
   getAccessToken,
+  broadcastLogout,
+  ensureAccessToken,
+  hasSession,
+  onRemoteSignOut,
 } from "./api";
 import { AuthContext, type AuthContextValue } from "./auth-context";
 import { clearDrafts } from "./events/draft";
@@ -37,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const decision = useRef(0);
 
   useEffect(() => {
-    if (!getAccessToken()) {
+    if (!hasSession()) {
       setLoading(false);
       return;
     }
@@ -48,6 +52,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (async () => {
       for (let i = 0; ; i++) {
         try {
+          // A new tab or restarted browser has only the refresh token: get an access token first.
+          if (!(await ensureAccessToken())) {
+            if (stale()) return;
+            setUser(null);
+            break;
+          }
           const me = await apiGet<User>("/api/auth/me");
           if (stale()) return;
           applyUserLanguage(me);
@@ -113,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     decision.current++;
     revokeRefreshToken();
     clearTokens();
+    broadcastLogout();
     clearDrafts();
     // Cached clubs/events of this account must not show up for the next one in the same tab.
     queryClient.clear();
@@ -120,6 +131,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionError(false);
     setLoading(false);
   };
+
+  // Another tab signed out: same local reset as logout(), without API call or echo.
+  useEffect(
+    () =>
+      onRemoteSignOut(() => {
+        decision.current++;
+        clearDrafts();
+        queryClient.clear();
+        setUser(null);
+        setSessionError(false);
+        setLoading(false);
+      }),
+    [queryClient],
+  );
 
   const refreshUser = async () => {
     try {

@@ -25,6 +25,10 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 - Club self-join through feeds: new club setting `feedSignup` (`off` | `internal` default | `public`, admin-editable via `PATCH /api/clubs/:id`, in club responses for staff) decides whether a signed-in non-member who opens a feed becomes a `member` through it (`internal`: `CLUB` and `PRIVATE` feeds, `public`: `PUBLIC` feeds too). New `POST /api/feed/:feedId/claim` (JWT, confirmed address, `{secret?}`; 404 `feed_not_found` for every lookup failure, 403 `member_signup_disabled`) and `GET /api/feed/:feedId/membership`. New table `feed_member` (access of members to `PRIVATE` feeds, `assigned` by staff or `claimed` by secret) with editor/admin endpoints `GET|POST /api/clubs/:id/feeds/:feedId/members`, `…/members/by-email`, `…/members/bulk-delete`, `DELETE …/members/:userId`; feed responses carry `assignedCount`; `POST …/regenerate-secret` accepts `{revokeClaimed}`; leaving or removal from the club deletes the feed access. Quota `feedMembersPerFeed` (5000); rate limit 20 per user and hour. Migration adds `club.feed_signup` (existing clubs: `internal`) and `feed_member`.
 
+### Changed
+
+- Sign-in is kept across tabs and browser restarts: the refresh token is stored in the browser, the access token only per tab. Signing out applies to all open tabs of the browser.
+
 ### Security
 
 - Feed shared secrets and personal subscription secrets are now encrypted in the database (XChaCha20-Poly1305 with a key derived from `APP_SECRET`, bound to the column; format `enc:v1:<keyId>:<data>`); the API and the app still show the plaintext address. Existing plaintext values stay readable and are encrypted by the new command `php bin/console app:secrets:rotate` (the Docker entrypoint runs it at start, non-fatal). The same command re-encrypts everything after an `APP_SECRET` change: set `APP_SECRET_PREVIOUS` (old values, comma-separated) while rotating. `APP_SECRET` is now part of what a database backup needs to be readable. Migration widens `member_subscription.secret` to 255; `ext-sodium` is now a declared requirement.

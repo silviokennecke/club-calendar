@@ -20,7 +20,7 @@ function renderBar(value: Partial<AuthContextValue> | null) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  sessionStorage.clear();
+  localStorage.clear();
 });
 
 describe("SignedInBar", () => {
@@ -46,7 +46,7 @@ describe("SignedInBar", () => {
   });
 
   it("holds the place while a returning session is checked", () => {
-    sessionStorage.setItem("access_token", "t");
+    localStorage.setItem("refresh_token", "t");
     renderBar({ loading: true });
     expect(screen.getByTestId("signed-in-bar-placeholder")).toBeInTheDocument();
   });

@@ -57,39 +57,146 @@ export function isDuplicateNameError(error: unknown): boolean {
   return error instanceof ApiError && error.status === 422 && error.code === "duplicate_name";
 }
 
+const REFRESH_KEY = "refresh_token";
+const CHANNEL_NAME = "cc-auth";
+
+/** Lives in memory only (never in a storage); a new tab obtains one with the refresh token. */
 let accessToken: string | null = null;
+
+function readRefreshStorage(): string | null {
+  try {
+    return typeof window === "undefined" ? null : localStorage.getItem(REFRESH_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** One-time move from the old per-tab storage; afterwards no token key remains in sessionStorage. */
+function migrateLegacyTokens() {
+  if (typeof window === "undefined") return;
+  try {
+    const legacy = sessionStorage.getItem(REFRESH_KEY);
+    if (legacy && !localStorage.getItem(REFRESH_KEY)) localStorage.setItem(REFRESH_KEY, legacy);
+    for (const key of [REFRESH_KEY, "access_token", "accessToken"]) sessionStorage.removeItem(key);
+  } catch {
+    // storage unavailable: nothing to migrate
+  }
+}
+
+type AuthMessage = { type: "tokens"; accessToken: string } | { type: "logout" };
+
+let channel: BroadcastChannel | null | undefined;
+const remoteLogoutListeners = new Set<() => void>();
+
+function getChannel(): BroadcastChannel | null {
+  if (channel !== undefined) return channel;
+  try {
+    channel = typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel(CHANNEL_NAME);
+    channel?.addEventListener("message", (e: MessageEvent<AuthMessage>) => onMessage(e.data));
+  } catch {
+    channel = null;
+  }
+  return channel;
+}
+
+function post(message: AuthMessage) {
+  try {
+    getChannel()?.postMessage(message);
+  } catch {
+    // no sync without a channel
+  }
+}
+
+function onRemoteLogout() {
+  clearTokens();
+  remoteLogoutListeners.forEach((listener) => listener());
+}
+
+function onMessage(message: AuthMessage | undefined) {
+  if (message?.type === "tokens" && typeof message.accessToken === "string") {
+    // A tab without a session must not pick one up; a pending refresh does (see doRefresh).
+    if (accessToken || refreshInFlight) accessToken = message.accessToken;
+  } else if (message?.type === "logout") {
+    onRemoteLogout();
+  }
+}
+
+/** Called when another tab signed out (the caller resets its own state; no API call, no echo). */
+export function onRemoteSignOut(listener: () => void): () => void {
+  remoteLogoutListeners.add(listener);
+  return () => remoteLogoutListeners.delete(listener);
+}
+
+/** Tells other tabs the session ended. Carries no token. */
+export function broadcastLogout() {
+  post({ type: "logout" });
+}
+
+/** Test hook: re-creates the channel (a new BroadcastChannel stub). */
+export function resetAuthSyncForTests() {
+  try {
+    channel?.close();
+  } catch {
+    // ignore
+  }
+  channel = undefined;
+  getChannel();
+}
+
+if (typeof window !== "undefined") {
+  migrateLegacyTokens();
+  getChannel();
+  // The refresh token is removed in another tab: that tab signed out (also covers no BroadcastChannel).
+  window.addEventListener("storage", (e) => {
+    if (e.key === REFRESH_KEY || e.key === null) {
+      if (e.newValue === null) onRemoteLogout();
+    }
+  });
+}
 
 export function storeTokens(newAccessToken: string, newRefreshToken: string) {
   accessToken = newAccessToken;
-  if (typeof window !== "undefined") {
-    sessionStorage.setItem("access_token", newAccessToken);
-    sessionStorage.setItem("refresh_token", newRefreshToken);
+  try {
+    if (typeof window !== "undefined") localStorage.setItem(REFRESH_KEY, newRefreshToken);
+  } catch {
+    // the session then ends with this tab
   }
+  // Only the access token travels over the channel; the refresh token goes through localStorage.
+  post({ type: "tokens", accessToken: newAccessToken });
 }
 
 export function getAccessToken(): string | null {
-  if (accessToken) return accessToken;
-  if (typeof window !== "undefined") {
-    // Support both new key and old key for backward compatibility
-    return sessionStorage.getItem("access_token") ?? sessionStorage.getItem("accessToken");
-  }
-  return null;
+  return accessToken;
 }
 
 function getRefreshToken(): string | null {
-  if (typeof window !== "undefined") {
-    return sessionStorage.getItem("refresh_token");
-  }
-  return null;
+  return readRefreshStorage();
 }
 
+/** Signed in, or a session that still needs its first access token (new tab, restarted browser). */
+export function hasSession(): boolean {
+  return accessToken !== null || readRefreshStorage() !== null;
+}
+
+/**
+ * Makes sure this tab holds an access token (refreshing with the stored refresh token when needed).
+ * Resolves false when there is no session; rejects when the server gave no verdict (network, 429, 5xx).
+ */
+export async function ensureAccessToken(): Promise<boolean> {
+  if (accessToken) return true;
+  if (!getRefreshToken()) return false;
+  if (await refreshSession()) return true;
+  if (!getRefreshToken()) return false;
+  throw new ApiError("Session refresh unavailable", 0, "refresh_unavailable");
+}
+
+/** Forgets the session in this tab and the stored refresh token (does not notify other tabs). */
 export function clearTokens() {
   accessToken = null;
-  if (typeof window !== "undefined") {
-    sessionStorage.removeItem("access_token");
-    sessionStorage.removeItem("refresh_token");
-    // Also remove old key in case it exists
-    sessionStorage.removeItem("accessToken");
+  try {
+    if (typeof window !== "undefined") localStorage.removeItem(REFRESH_KEY);
+  } catch {
+    // ignore
   }
   // A pending invitation belongs to the visitor who opened the link, not to whoever signs in next.
   clearInvitationToken();
@@ -98,6 +205,7 @@ export function clearTokens() {
 /** The session was rejected: forget the tokens and leave for the login page (without unsaved-changes prompt). */
 function endSession() {
   clearTokens();
+  broadcastLogout();
   if (typeof window !== "undefined") {
     markSessionEnded();
     window.location.href = "/login";
@@ -155,32 +263,50 @@ export function refreshSession(): Promise<string | null> {
   return refreshInFlight;
 }
 
+/** One refresh at a time across all tabs (Web Locks); without the API the in-tab single flight remains. */
+function withRefreshLock<T>(fn: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator === "undefined" ? undefined : navigator.locks;
+  return locks ? locks.request("cc-refresh", fn) : fn();
+}
+
 async function doRefresh(): Promise<string | null> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
+  const startedWith = getRefreshToken();
+  if (!startedWith) {
     endSession();
     return null;
   }
-  const res = await fetchWithTimeout(
-    BASE_URL + "/api/auth/token",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: refreshToken,
-      }).toString(),
-    },
-    REQUEST_TIMEOUT_MS,
-  );
-  if (res.ok) {
-    const data = (await res.json()) as { access_token: string; refresh_token: string };
-    storeTokens(data.access_token, data.refresh_token);
-    return data.access_token;
-  }
-  // Only the server's verdict on the token ends the session; rate limits and outages do not.
-  if (res.status === 400 || res.status === 401 || res.status === 403) endSession();
-  return null;
+  const accessBefore = accessToken;
+  return withRefreshLock(async () => {
+    // Another tab may have rotated the token while this call waited for the lock.
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      endSession();
+      return null;
+    }
+    if (refreshToken !== startedWith && accessToken && accessToken !== accessBefore) {
+      return accessToken;
+    }
+    const res = await fetchWithTimeout(
+      BASE_URL + "/api/auth/token",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          refresh_token: refreshToken,
+        }).toString(),
+      },
+      REQUEST_TIMEOUT_MS,
+    );
+    if (res.ok) {
+      const data = (await res.json()) as { access_token: string; refresh_token: string };
+      storeTokens(data.access_token, data.refresh_token);
+      return data.access_token;
+    }
+    // Only the server's verdict on the token ends the session; rate limits and outages do not.
+    if (res.status === 400 || res.status === 401 || res.status === 403) endSession();
+    return null;
+  });
 }
 
 /**

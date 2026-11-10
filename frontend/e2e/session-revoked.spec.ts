@@ -37,7 +37,7 @@ async function expectSettledOnLogin(page: Page, seen: { refreshes: number; dialo
   await expect(page).toHaveURL(/\/login$/);
   expect(seen.refreshes).toBe(refreshes);
   expect(seen.dialogs).toEqual([]);
-  expect(await page.evaluate(() => sessionStorage.getItem("refresh_token"))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem("refresh_token"))).toBeNull();
 }
 
 test.describe("Beendete Sitzung", () => {
