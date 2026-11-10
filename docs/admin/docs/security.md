@@ -207,7 +207,7 @@ Keep these out of version control and back them up. Treat them like passwords.
 
 | Secret | Used for | If you change or lose it |
 |---|---|---|
-| `APP_SECRET` | Signing and hashing of codes, links and one-time tokens; also the default passphrase of the JWT keys | Pending confirmation codes, reset links, passkey challenges and sign-in redirects stop working (sign-ins in progress fail),. **Unless `JWT_PASSPHRASE` is set to the old value, the JWT keys can no longer be read and sign-in fails** until you create new keys. Avoid changing it; if you must, set `JWT_PASSPHRASE` to the old value first. |
+| `APP_SECRET` | Encryption of stored feed and personal calendar secrets; signing of short-lived tokens; protection of confirmation codes; also the default passphrase of the JWT keys | **Stored feed and calendar secrets cannot be read** until the old value is set as `APP_SECRET_PREVIOUS` and `app:secrets:rotate` has run. Unused confirmation codes, single sign-on redirects and passkey steps in progress stop working. **Unless `JWT_PASSPHRASE` is set to the old value, the JWT keys can no longer be read and sign-in fails.** Follow [Changing `APP_SECRET`](operations.md#changing-app_secret); it also lists what does not depend on it. |
 | `JWT_REFRESH_SECRET` | Refresh tokens | All users are signed out and must sign in again. |
 | JWT keys (`/data/config/` in Docker, `backend/config/jwt/` otherwise) | Access tokens (15 minutes) | With new keys, current access tokens become invalid and browsers fetch new ones automatically; users usually notice nothing. Keep the keys between updates anyway. |
 | Database password (`DATABASE_URL`) | Database access | The app cannot start until both sides match. |

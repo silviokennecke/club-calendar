@@ -5,7 +5,7 @@
 #
 # Required:  APP_SECRET, JWT_REFRESH_SECRET, DATABASE_URL, APP_URL (public URL, e.g. https://cal.example.com)
 # Optional:  WEBAUTHN_RP_NAME, FRONTEND_URL / BACKEND_URL / WEBAUTHN_RP_ID (derived from APP_URL), MAILER_DSN, MAILER_FROM, MAPBOX_TOKEN,
-#            GOOGLE_*/MICROSOFT_*/APPLE_* OAuth settings, SYMFONY_TRUSTED_PROXIES (behind a TLS proxy, e.g. PRIVATE_SUBNETS),
+#            APP_SECRET_PREVIOUS (only while rotating APP_SECRET), GOOGLE_*/MICROSOFT_*/APPLE_* OAuth settings, SYMFONY_TRUSTED_PROXIES (behind a TLS proxy, e.g. PRIVATE_SUBNETS),
 #            RESTRICT_REGISTRATION (default 0/false), MCP_ACCESS_TOKEN_TTL, MCP_REFRESH_TOKEN_LIFETIME,
 #            MCP_REFRESH_TOKEN_ABSOLUTE_LIFETIME, MCP_REFRESH_TOKEN_REUSE_GRACE, MCP_ALLOWED_CLIENTS (MCP server, see backend/.env.example),
 #            FEED_ICS_WINDOW_ENABLED, FEED_ICS_PAST_DAYS, FEED_ICS_FUTURE_MONTHS, FEED_ICS_MAX_EVENTS (public feed ICS window), FEED_RATE_LIMIT_PER_IP, FEED_RATE_LIMIT_PER_FEED (public feed rate limits), RUN_MIGRATIONS (default 1), MIGRATION_RETRIES (default 15), PORT (default 8080), LEGAL_DOCUMENTS_PATH
@@ -67,6 +67,11 @@ fi
 # Sync legal documents from the mounted directory
 if ! php bin/console app:legal:sync --no-interaction >&2; then
     log "WARNING: legal document sync failed (non-fatal, documents may be out of date)"
+fi
+
+# Encrypt stored feed and subscription secrets with the current APP_SECRET (legacy plaintext on upgrade, rotation)
+if ! php bin/console app:secrets:rotate --no-interaction >&2; then
+    log "WARNING: app:secrets:rotate failed (non-fatal): some secrets could not be encrypted or decrypted; check APP_SECRET / APP_SECRET_PREVIOUS and run the command by hand"
 fi
 
 # Run PHP-FPM + Caddy; if one exits, take the other down so the container restarts

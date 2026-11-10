@@ -373,6 +373,7 @@ class PersonalFeedTest extends WebTestCase
             static::getContainer()->get(\App\Ics\IcsEventReader::class),
             static::getContainer()->get(\App\Repository\HolidayEventRepository::class),
             static::getContainer()->get('request_stack'),
+            static::getContainer()->get(\App\Security\Secret\SecretCipher::class),
         ));
         $feeds = [];
         for ($i = 0; $i < 4; ++$i) {

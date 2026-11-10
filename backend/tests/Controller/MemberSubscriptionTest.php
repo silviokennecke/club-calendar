@@ -270,7 +270,9 @@ class MemberSubscriptionTest extends WebTestCase
             $this->assertEqualsCanonicalizing(['id', 'name', 'visibility', 'calendarNames', 'accessReason', 'selected'], array_keys($f));
         }
         $this->assertStringNotContainsString('sharedSecret', $r['content']);
-        $secrets = self::$em->getConnection()->fetchFirstColumn('SELECT shared_secret FROM calendar_feed');
+        self::$em->clear();
+        $secrets = array_map(fn (CalendarFeed $f) => $f->getSharedSecret(), self::$em->getRepository(CalendarFeed::class)->findAll());
+        $this->assertNotEmpty($secrets);
         foreach ($secrets as $secret) {
             $this->assertStringNotContainsString($secret, $r['content']);
         }

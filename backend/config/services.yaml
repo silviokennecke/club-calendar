@@ -4,6 +4,9 @@ parameters:
     env(BACKEND_URL): '%env(APP_URL)%'
     env(TRUSTED_HOSTS): ''
 
+    # Older APP_SECRET values (comma-separated) still accepted for decrypting stored secrets while rotating APP_SECRET
+    env(APP_SECRET_PREVIOUS): ''
+
     env(LEGAL_DOCUMENTS_PATH): '%kernel.project_dir%/legal'
     app.legal_documents_path: '%env(resolve:LEGAL_DOCUMENTS_PATH)%'
     # External documents (absolute http(s) URL) used when the Markdown file of the type is missing
@@ -85,6 +88,10 @@ services:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
             - '../src/Kernel.php'
+
+    # Public so the Doctrine encrypted types (static) can reach it lazily, see Kernel::boot()
+    App\Security\Secret\SecretCipher:
+        public: true
 
     # Holiday feed URLs come from users: the client checks every resolved address and every redirect
     # target (IPv4 and IPv6) against private networks; assertSafeUrl() only sees the first host.

@@ -12,6 +12,7 @@ use App\Enum\ClubRole;
 use App\EventListener\FeedResponseHeadersListener;
 use App\Ics\IcsEventReader;
 use App\Repository\HolidayEventRepository;
+use App\Security\Secret\SecretCipher;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
@@ -37,6 +38,7 @@ class PersonalFeedService
         private readonly IcsEventReader $icsReader,
         private readonly HolidayEventRepository $holidays,
         private readonly RequestStack $requestStack,
+        private readonly SecretCipher $cipher,
     ) {
     }
 
@@ -244,7 +246,12 @@ class PersonalFeedService
             $params,
         );
 
-        return false === $row ? null : $row;
+        if (false === $row) {
+            return null;
+        }
+        $row['secret'] = $this->cipher->decrypt((string) $row['secret'], SecretCipher::PURPOSE_SUBSCRIPTION);
+
+        return $row;
     }
 
     /**
@@ -315,7 +322,7 @@ class PersonalFeedService
                 'id' => $f['id'],
                 'name' => $f['name'],
                 'visibility' => $f['visibility'],
-                'secret' => $f['shared_secret'],
+                'secret' => $this->cipher->decrypt((string) $f['shared_secret'], SecretCipher::PURPOSE_FEED),
                 'updatedAt' => $f['updated_at'],
                 'groups' => $groups,
                 'calendars' => $cals,

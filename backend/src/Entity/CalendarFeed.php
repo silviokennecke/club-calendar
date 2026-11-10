@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Doctrine\Type\EncryptedFeedSecretType;
 use App\Enum\FeedVisibility;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -30,7 +31,8 @@ class CalendarFeed implements UpdateAudited
     #[ORM\Column(enumType: FeedVisibility::class, options: ['default' => 'CLUB'])]
     private FeedVisibility $visibility = FeedVisibility::CLUB;
 
-    #[ORM\Column(length: 255, unique: true)]
+    /** Stored encrypted (SecretCipher); the getter returns plaintext. */
+    #[ORM\Column(type: EncryptedFeedSecretType::NAME, length: 255, unique: true)]
     private string $sharedSecret;
 
     #[ORM\OneToMany(targetEntity: CalendarFeedTargetGroup::class, mappedBy: 'feed', cascade: ['persist', 'remove'], orphanRemoval: true)]

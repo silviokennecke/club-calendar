@@ -14,6 +14,7 @@ use App\Entity\MemberSubscriptionTargetGroup;
 use App\Entity\TargetGroup;
 use App\Entity\User;
 use App\Enum\FeedVisibility;
+use App\Security\Secret\SecretCipher;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -28,6 +29,7 @@ readonly class MemberSubscriptionService
         private EntityManagerInterface $em,
         private FeedAccessPolicy $policy,
         private CalendarReferences $references,
+        private SecretCipher $cipher,
     ) {
     }
 
@@ -178,7 +180,7 @@ readonly class MemberSubscriptionService
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
         $created = 1 === $conn->executeStatement(
             'INSERT IGNORE INTO member_subscription (id, club_id, user_id, secret, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-            [Uuid::v7()->toRfc4122(), $club->getId(), $user->getId(), MemberSubscription::newSecret(), $now, $now],
+            [Uuid::v7()->toRfc4122(), $club->getId(), $user->getId(), $this->cipher->encrypt(MemberSubscription::newSecret(), SecretCipher::PURPOSE_SUBSCRIPTION), $now, $now],
         );
         // FOR UPDATE reads the latest committed row even if a concurrent insert won the race
         $id = $conn->fetchOne('SELECT id FROM member_subscription WHERE club_id = ? AND user_id = ? FOR UPDATE', [$club->getId(), $user->getId()]);

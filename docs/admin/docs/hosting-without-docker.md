@@ -59,12 +59,17 @@ Do these steps in the `backend/` directory.
     ```bash
     APP_ENV=prod php bin/console cache:clear
     ```
-5. **Load the legal documents** (if you provide them, see [Legal documents](legal.md)):
+5. **Encrypt the stored secrets** (feed and personal calendar secrets; safe to repeat, also after every update):
+
+    ```bash
+    php bin/console app:secrets:rotate
+    ```
+6. **Load the legal documents** (if you provide them, see [Legal documents](legal.md)):
 
     ```bash
     php bin/console app:legal:sync
     ```
-6. **Create the first user** (see [Command-line tools](operations.md)).
+7. **Create the first user** (see [Command-line tools](operations.md)).
 
 ## Web server
 

@@ -30,11 +30,12 @@ JWT keys are created automatically. In Docker they live under `/data/config`, so
 
 | Variable | Default | Description |
 |---|---|---|
-| `APP_SECRET` | **required** | Long random secret for signing and hashing. Do not change it casually: it also unlocks the signing keys unless `JWT_PASSPHRASE` is set. See [Secrets to protect](../security.md). |
+| `APP_SECRET` | **required** | Long random secret. Encrypts the stored feed and personal calendar secrets, signs short-lived tokens and (unless `JWT_PASSPHRASE` is set) unlocks the signing keys. Back it up together with the database. Do not change it casually: follow [Changing `APP_SECRET`](../operations.md#changing-app_secret). |
+| `APP_SECRET_PREVIOUS` | empty | Only while changing `APP_SECRET`: the old value (several values separated by commas). Used to read secrets that are still encrypted with it; `app:secrets:rotate` re-encrypts them. Remove it afterwards. |
 | `JWT_REFRESH_SECRET` | **required** | Long random secret (at least 32 characters) for session renewal tokens. Changing it signs everyone out. |
 | `JWT_PRIVATE_KEY` | Docker image: `/data/config/private.pem`. Without Docker: `backend/config/jwt/private.pem` | Path to the signing key. Generated automatically at first start if missing. |
 | `JWT_PUBLIC_KEY` | Docker image: `/data/config/public.pem`. Without Docker: `backend/config/jwt/public.pem` | Path to the matching public key. |
-| `JWT_PASSPHRASE` | value of `APP_SECRET` | Passphrase of the private key. Set it explicitly to the old `APP_SECRET` if you ever need to change `APP_SECRET`. |
+| `JWT_PASSPHRASE` | value of `APP_SECRET` | Passphrase of the private key. Set it explicitly to the old `APP_SECRET` before you change `APP_SECRET`. |
 | `REFRESH_TOKEN_ABSOLUTE_LIFETIME` | `2592000` (30 days) | Longest a session lasts, however often it renews. |
 | `REFRESH_TOKEN_REUSE_GRACE` | `10` | Seconds in which a renewal may be repeated (lost response, two tabs) without ending the session. |
 | `OAUTH_LOGIN_CODE_TTL` | `180` | Seconds the one-time code after a single sign-on redirect stays valid. |

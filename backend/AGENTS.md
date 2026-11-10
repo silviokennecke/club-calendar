@@ -68,13 +68,14 @@ the router, so a new or changed route needs a matching operation there).
 | `src/Controller/AbstractApiController.php` | Base controller with `validateDto()` and `decodeJson()` helpers (no JSON object → 400 `invalid_request`) |
 | `src/Service/TokenService.php` | Creates JWT access tokens (lexik) and HMAC refresh tokens (claims `uid`, `tv` = `user.token_version`) |
 | `src/Security/SessionVersionListener.php` | Rejects JWTs whose `tv`/`uid` no longer match the user (sessions ended after credential resets) |
+| `src/Security/Secret/` (`SecretCipher`, `EncryptedColumns`, `SecretRotator`), `src/Doctrine/Type/Encrypted*SecretType.php`, `src/Command/SecretsRotateCommand.php` | Encryption at rest of feed and subscription secrets with a key derived from `APP_SECRET`, key ring `APP_SECRET_PREVIOUS`, `app:secrets:rotate` (see `../CLAUDE.md` "Secrets at rest"); raw SQL touching these columns must encrypt/decrypt itself |
 | `src/Security/SignedTokenService.php`, `NonceStore.php` | Signed, purpose-bound, single-use tokens (passkey challenges, OAuth `state`, SSO link ticket/state/proof; table `auth_nonce`) |
 | `src/Service/PasswordResetService.php` | Forgot / reset password: hashed one-time tokens (table `password_reset`, 60 min), single conditional UPDATE against races, ends all sessions |
 | `src/Service/AccountService.php` | Change password (new tokens), e-mail change with confirmation link (table `email_change`, no oracle), unlink SSO (last sign-in method stays) |
 | `src/Service/DeferredMailer.php`, `AccountMailer.php` | Mails (and `defer()`red work such as the forgot-password lookup and token) after the response (`kernel.terminate`, no timing oracle; transport errors are logged, never raised); links only from `FRONTEND_URL` / `BACKEND_URL`; notices (password changed, e-mail change requested / done) carry no token and no link but `/forgot-password`, the new address masked (`maskEmail`) |
 | `src/Validator/PasswordPolicy.php` | The one password policy (8–128 characters) for registration, reset and change |
 | `src/Logging/RedactTokensProcessor.php` | Monolog processor: `token`/`ticket`/`secret`/`access_token`/… query values in log records (exceptions carrying them become redacted arrays) → `[redacted]` |
-| `src/Command/` | `app:prune-unverified-users`, `app:prune-password-resets` (cron), `app:user:verify <email>`, `app:user:reset-link <email>` (support / dev / E2E) |
+| `src/Command/` | `app:secrets:rotate`, `app:prune-unverified-users`, `app:prune-password-resets` (cron), `app:user:verify <email>`, `app:user:reset-link <email>` (support / dev / E2E) |
 | `src/Service/CalendarReferences.php` | Resolves location/template/property/feature/target-group IDs within one calendar (unknown or foreign → 422) |
 | `src/Service/LinkCollectionSync.php` | Syncs join-table collections by diff (deduplicated IDs, no identity collisions) |
 | `src/Service/Input.php` | Typed input validation helpers (400 `validation_failed` with `field`, also invalid time zones; 422 is reserved for DTO constraints and state conflicts); `optionalDate` / `assertDateRange` for `from`/`to` query parameters (strict `YYYY-MM-DD`, never `strtotime`) |

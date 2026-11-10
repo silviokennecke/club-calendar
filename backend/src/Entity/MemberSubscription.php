@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Doctrine\Type\EncryptedSubscriptionSecretType;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -11,8 +12,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * The personal subscription ("Mein Abo") of a club member: one per (user, club), a selection of feeds and target
- * groups behind a personal secret address. The secret is stored in clear like a feed's `sharedSecret` (the app
- * shows the address) and must always be compared with hash_equals. Empty target group selection = all groups.
+ * groups behind a personal secret address. The secret is stored encrypted (SecretCipher) like a feed's `sharedSecret` (the app
+ * shows the address); the getter returns plaintext, compare with hash_equals. Empty target group selection = all groups.
  */
 #[ORM\Entity]
 #[ORM\UniqueConstraint(name: 'uq_member_subscription_club_user', columns: ['club_id', 'user_id'])]
@@ -33,7 +34,7 @@ class MemberSubscription implements UpdateAudited
     #[ORM\JoinColumn(name: 'user_id', nullable: false, onDelete: 'CASCADE')]
     private User $user;
 
-    #[ORM\Column(length: 64)]
+    #[ORM\Column(type: EncryptedSubscriptionSecretType::NAME, length: 255)]
     private string $secret;
 
     #[ORM\Column]
