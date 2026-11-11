@@ -272,11 +272,12 @@ for (const lang of LANGS) {
       await signIn(page, lang, s.email);
       await page.goto(`${s.base}/settings/holiday-calendars`);
       await expect(page.getByText("Schulferien Bayern").first()).toBeVisible();
+      await page.getByRole("radio", { name: tr("settings.holidays.modeIcs") }).check();
       await page
         .getByLabel(new RegExp(`^${esc(tr("settings.holidays.nameLabel"))}`))
         .fill(lang === "de" ? "Feiertage Bayern" : "Bavaria public holidays");
       await page
-        .getByLabel(new RegExp(`^${esc(tr("settings.holidays.urlLabel"))}`))
+        .getByRole("textbox", { name: new RegExp(`^${esc(tr("settings.holidays.urlLabel"))}`) })
         .fill("https://example.org/feiertage.ics");
       await shot(page, lang, "holidays-settings");
     });
