@@ -402,6 +402,23 @@ export interface TokenResponse {
   emailVerificationRequired?: boolean;
 }
 
+/** Answer of `POST /api/auth/login` when the account has a second factor: no tokens yet. */
+export interface MfaChallenge {
+  mfaRequired: true;
+  mfaToken: string;
+  expiresIn: number;
+  methods: Array<"totp" | "backup_code" | "passkey">;
+}
+
+export type LoginResult = TokenResponse | MfaChallenge;
+
+export function isMfaChallenge(result: LoginResult): result is MfaChallenge {
+  return "mfaRequired" in result && result.mfaRequired === true;
+}
+
+/** Token response of the second step; `mfaDisabled` is set after a backup code was used. */
+export type MfaTokenResponse = TokenResponse & { mfaDisabled?: boolean };
+
 /** The signed-in user of a token response, with the top-level verification flag merged in. */
 export function sessionUser(tokens: { user: User; emailVerificationRequired?: boolean }): User {
   return tokens.emailVerificationRequired

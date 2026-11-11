@@ -178,6 +178,26 @@
         "registration_restricted": "Registration is only possible with an invitation."
       },
       "feedProofNote": "After signing in you continue with the calendar you want to add to your account."
+    },
+    "mfa": {
+      "formLabel": "Second factor confirmation",
+      "expiredTitle": "Sign-in expired",
+      "expiredText": "The confirmation took too long. Please enter your password again.",
+      "totpIntro": "Your account is protected with multi-factor authentication (MFA). Enter the current code from your authenticator app.",
+      "totpLabel": "Code from your authenticator app",
+      "backupIntro": "Enter one of your backup codes. Each code works only once.",
+      "backupLabel": "Backup code",
+      "codeMissing": "Please enter a code.",
+      "codeWrong": "The code is wrong or has expired. Please try again.",
+      "verify": "Confirm",
+      "verifying": "Checking…",
+      "useBackup": "Use a backup code",
+      "useTotp": "Use the code from your authenticator app",
+      "usePasskey": "Use a passkey",
+      "passkeyErrorTitle": "Passkey confirmation not possible",
+      "passkeyErrorText": "The passkey confirmation was cancelled or did not work. Try again or use a code.",
+      "back": "Back to password",
+      "disabledToast": "MFA was turned off and other devices were signed out. Turn it on again in your profile."
     }
   },
   "setup": {

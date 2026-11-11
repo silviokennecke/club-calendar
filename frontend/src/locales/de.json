@@ -178,6 +178,26 @@
         "registration_restricted": "Die Registrierung ist nur mit einer Einladung möglich."
       },
       "feedProofNote": "Nach der Anmeldung geht es mit dem Kalender weiter, den du zu deinem Konto hinzufügen möchtest."
+    },
+    "mfa": {
+      "formLabel": "Bestätigung mit zweitem Faktor",
+      "expiredTitle": "Anmeldung abgelaufen",
+      "expiredText": "Die Bestätigung hat zu lange gedauert. Bitte gib dein Passwort noch einmal ein.",
+      "totpIntro": "Dein Konto ist mit Zwei-Faktor-Authentifizierung (MFA) geschützt. Gib den aktuellen Code aus deiner Authenticator-App ein.",
+      "totpLabel": "Code aus der Authenticator-App",
+      "backupIntro": "Gib einen deiner Backup-Codes ein. Jeder Code funktioniert nur einmal.",
+      "backupLabel": "Backup-Code",
+      "codeMissing": "Bitte gib einen Code ein.",
+      "codeWrong": "Der Code stimmt nicht oder ist abgelaufen. Bitte versuche es noch einmal.",
+      "verify": "Bestätigen",
+      "verifying": "Wird geprüft…",
+      "useBackup": "Backup-Code verwenden",
+      "useTotp": "Code aus der Authenticator-App verwenden",
+      "usePasskey": "Passkey verwenden",
+      "passkeyErrorTitle": "Bestätigung mit Passkey nicht möglich",
+      "passkeyErrorText": "Die Passkey-Bestätigung wurde abgebrochen oder hat nicht geklappt. Versuche es erneut oder nutze einen Code.",
+      "back": "Zurück zum Passwort",
+      "disabledToast": "Die Zwei-Faktor-Authentifizierung (MFA) wurde ausgeschaltet und andere Geräte wurden abgemeldet. Schalte sie im Profil wieder ein."
     }
   },
   "setup": {

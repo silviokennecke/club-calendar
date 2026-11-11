@@ -89,7 +89,7 @@ Background: `docs/ops/BACKLOG.md` (open backend gaps and operations), `docs/api/
   Sign-in entry (`pages/SignInPage`, routes `/login` and `/signup` render the same page): one email-first flow. Step 1 =
   e-mail field + "Weiter" + SSO / passkey buttons; submit validates the address, then `POST /api/auth/identify`
   decides step 2: `login` (`components/auth/LoginStep`: password, forgot link, `email_not_verified` -> `/verify-email`,
-  429 with `ApiError.retryAfter`), `register` (`components/auth/SignupStep`: the signup fields and consent checkboxes,
+  429 with `ApiError.retryAfter`; a `mfaRequired` login answer renders `components/auth/MfaStep` in place: authenticator code, backup code or passkey, `invalid_mfa_token` returns to the password with a banner), `register` (`components/auth/SignupStep`: the signup fields and consent checkboxes,
   then `/verify-email`) or `registration_restricted` (banner "only with an invitation", no form). Step 2 shows the
   address read-only, SSO / passkey are gone, "Zurück" and Escape return to step 1 with the address kept (focus: first
   field of the new step, the email field on return; passkey autofill: while step 1 is shown and `PublicKeyCredential.isConditionalMediationAvailable()` is true, `startAuthentication({useBrowserAutofill: true})` runs on mount (the email input has `autocomplete="username webauthn"`), is cancelled via `WebAuthnAbortService.cancelCeremony()` on submit, unmount and step change, AbortError/NotAllowedError are silent, success shares the passkey button flow; an sr-only `role=status` announces each step). Transitions: `components/auth/Collapse`
