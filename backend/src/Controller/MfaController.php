@@ -31,7 +31,7 @@ class MfaController extends AbstractApiController
     {
         $data = $this->decodeJson($request);
         $method = $data['method'] ?? null;
-        if (!is_string($data['mfaToken'] ?? null) || !in_array($method, [MfaLoginService::METHOD_TOTP, MfaLoginService::METHOD_BACKUP_CODE], true)
+        if (!is_string($data['mfaToken'] ?? null) || !in_array($method, [MfaLoginService::METHOD_TOTP, MfaLoginService::METHOD_BACKUP], true)
             || !is_string($data['code'] ?? null)) {
             throw new ApiProblemException(400, 'Invalid request body', 'invalid_request');
         }

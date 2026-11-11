@@ -22,7 +22,7 @@ class MfaLoginService
     public const string PURPOSE = 'mfa.login';
     public const int TTL = 300;
     public const string METHOD_TOTP = 'totp';
-    public const string METHOD_BACKUP_CODE = 'backup_code';
+    public const string METHOD_BACKUP = 'backup_code';
 
     public function __construct(
         private readonly EntityManagerInterface $em,
@@ -47,7 +47,7 @@ class MfaLoginService
         if (null !== $this->mfa->status($user)['totp']) {
             $methods[] = self::METHOD_TOTP;
         }
-        $methods[] = self::METHOD_BACKUP_CODE;
+        $methods[] = self::METHOD_BACKUP;
         if (!$user->getPasskeys()->isEmpty()) {
             $methods[] = 'passkey';
         }
@@ -162,7 +162,7 @@ class MfaLoginService
             throw self::invalidToken();
         }
         $this->events->record($user, SecurityEventType::MFA_VERIFY, true, $method);
-        if (self::METHOD_BACKUP_CODE !== $method) {
+        if (self::METHOD_BACKUP !== $method) {
             return $this->tokens->tokenResponse($user);
         }
         // Ends all other sessions and MCP grants (token version); the new pair below carries the new version.
