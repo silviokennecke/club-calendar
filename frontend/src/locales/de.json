@@ -2446,6 +2446,75 @@
       "confirm": "Link erneuern"
     },
     "mfa": {
+      "add": {
+        "title": "Zweiten Schritt hinzufügen",
+        "description": "Eine Authenticator-App oder einen Passkey als zweiten Schritt bei der Anmeldung hinzufügen.",
+        "intro": "Wähle, wie du deine Anmeldung künftig bestätigen möchtest.",
+        "next": "Weiter",
+        "rateLimited": "Zu viele Versuche. Bitte warte eine Weile und versuche es dann erneut.",
+        "steps": { "scan": "App einrichten", "codes": "Backup-Codes", "confirm": "Bestätigen", "name": "Name" },
+        "choose": {
+          "totp": "Authenticator-App",
+          "totpHint": "Ein 6-stelliger Code aus einer App auf deinem Handy.",
+          "totpSet": "Eine Authenticator-App ist bereits eingerichtet.",
+          "passkey": "Passkey",
+          "passkeyHint": "Fingerabdruck, Gesichtserkennung oder Geräte-PIN.",
+          "unsupported": "Dieser Browser unterstützt keine Passkeys."
+        },
+        "errors": {
+          "totpAlreadySet": "Eine Authenticator-App ist bereits eingerichtet.",
+          "setupFailed": "Die Einrichtung konnte nicht gestartet werden. Bitte versuche es erneut.",
+          "setupExpired": "Die Einrichtung ist abgelaufen. Bitte starte sie neu.",
+          "alreadyEnabled": "Der zweite Schritt ist bereits aktiv.",
+          "enableFailed": "Die Authenticator-App konnte nicht aktiviert werden. Bitte versuche es erneut."
+        },
+        "totp": {
+          "title": "Authenticator-App einrichten",
+          "text": "Scanne den QR-Code mit deiner Authenticator-App und gib dann den 6-stelligen Code ein, den sie anzeigt.",
+          "qrAlt": "QR-Code für deine Authenticator-App",
+          "manualKey": "Einrichtungsschlüssel",
+          "manualHint": "Gib diesen Schlüssel in deiner App ein, wenn du den Code nicht scannen kannst.",
+          "codeLabel": "Code aus der App",
+          "codeHint": "6 Ziffern",
+          "codeInvalid": "Bitte gib den 6-stelligen Code ein.",
+          "codeWrong": "Der Code stimmt nicht. Bitte prüfe den Code in deiner App und versuche es erneut."
+        },
+        "codes": {
+          "title": "Deine Backup-Codes",
+          "text": "Bewahre diese Backup-Codes sicher auf. Jeder Code funktioniert nur einmal, zum Beispiel wenn du dein Handy verlierst.",
+          "copy": "Alle kopieren",
+          "copied": "Backup-Codes kopiert.",
+          "copyFailed": "Die Codes konnten nicht kopiert werden.",
+          "download": "Als Textdatei herunterladen",
+          "ack": "Ich habe die Backup-Codes aufbewahrt",
+          "ackMissing": "Bitte bestätige, dass du die Backup-Codes aufbewahrt hast."
+        },
+        "confirm": {
+          "title": "Bestätige, dass du es bist",
+          "text": "Bestätige deine Identität, um die Einrichtung abzuschließen.",
+          "submit": "Aktivieren"
+        },
+        "passkey": {
+          "title": "Passkey hinzufügen",
+          "text": "Bestätige zuerst deine Identität. Danach fragt dich dein Gerät, den Passkey anzulegen.",
+          "submit": "Weiter",
+          "cancelled": "Der Passkey wurde nicht angelegt, weil die Anfrage abgebrochen wurde.",
+          "error": "Der Passkey konnte nicht angelegt werden. Bitte versuche es erneut.",
+          "defaultName": "Dieses Gerät",
+          "nameTitle": "Passkey benennen",
+          "created": "Der Passkey wurde angelegt.",
+          "nameLabel": "Name",
+          "save": "Namen speichern",
+          "skipName": "Überspringen",
+          "nameFailed": "Der Name konnte nicht gespeichert werden. Du kannst diesen Schritt überspringen."
+        },
+        "done": {
+          "title": "Fertig",
+          "totp": "Die Authenticator-App ist jetzt aktiv.",
+          "passkey": "Der Passkey wurde hinzugefügt.",
+          "close": "Schließen"
+        }
+      },
       "reauth": {
         "passwordLabel": "Dein Passwort",
         "codeText": "Dein Konto hat kein Passwort. Zur Bestätigung schicken wir einen 6-stelligen Code an {{email}}.",

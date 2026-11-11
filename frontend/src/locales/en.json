@@ -2446,6 +2446,75 @@
       "confirm": "Renew link"
     },
     "mfa": {
+      "add": {
+        "title": "Add a second step",
+        "description": "Add an authenticator app or a passkey as a second step for signing in.",
+        "intro": "Choose how you want to confirm your sign-in in the future.",
+        "next": "Next",
+        "rateLimited": "Too many attempts. Please wait a while and try again.",
+        "steps": { "scan": "Set up app", "codes": "Backup codes", "confirm": "Confirm", "name": "Name" },
+        "choose": {
+          "totp": "Authenticator app",
+          "totpHint": "A 6-digit code from an app on your phone.",
+          "totpSet": "An authenticator app is already set up.",
+          "passkey": "Passkey",
+          "passkeyHint": "Fingerprint, face recognition or device PIN.",
+          "unsupported": "This browser does not support passkeys."
+        },
+        "errors": {
+          "totpAlreadySet": "An authenticator app is already set up.",
+          "setupFailed": "The setup could not be started. Please try again.",
+          "setupExpired": "The setup has expired. Please start again.",
+          "alreadyEnabled": "The second step is already active.",
+          "enableFailed": "The authenticator app could not be activated. Please try again."
+        },
+        "totp": {
+          "title": "Set up the authenticator app",
+          "text": "Scan the QR code with your authenticator app, then enter the 6-digit code it shows.",
+          "qrAlt": "QR code for your authenticator app",
+          "manualKey": "Setup key",
+          "manualHint": "Enter this key in your app if you cannot scan the code.",
+          "codeLabel": "Code from the app",
+          "codeHint": "6 digits",
+          "codeInvalid": "Please enter the 6-digit code.",
+          "codeWrong": "The code is not correct. Please check the code in your app and try again."
+        },
+        "codes": {
+          "title": "Your backup codes",
+          "text": "Store these backup codes safely. Each one works only once, for example if you lose your phone.",
+          "copy": "Copy all",
+          "copied": "Backup codes copied.",
+          "copyFailed": "The codes could not be copied.",
+          "download": "Download as text file",
+          "ack": "I stored the backup codes",
+          "ackMissing": "Please confirm that you stored the backup codes."
+        },
+        "confirm": {
+          "title": "Confirm it is you",
+          "text": "To finish the setup, confirm your identity.",
+          "submit": "Activate"
+        },
+        "passkey": {
+          "title": "Add a passkey",
+          "text": "Confirm your identity first. Then your device asks you to create the passkey.",
+          "submit": "Continue",
+          "cancelled": "The passkey was not created because the request was cancelled.",
+          "error": "The passkey could not be created. Please try again.",
+          "defaultName": "This device",
+          "nameTitle": "Name your passkey",
+          "created": "The passkey was created.",
+          "nameLabel": "Name",
+          "save": "Save name",
+          "skipName": "Skip",
+          "nameFailed": "The name could not be saved. You can skip this step."
+        },
+        "done": {
+          "title": "Done",
+          "totp": "The authenticator app is now active.",
+          "passkey": "The passkey was added.",
+          "close": "Close"
+        }
+      },
       "reauth": {
         "passwordLabel": "Your password",
         "codeText": "Your account has no password. We send a 6-digit code to {{email}} to confirm.",
