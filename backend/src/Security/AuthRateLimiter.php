@@ -49,6 +49,16 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $passkeyRegisterAttempt,
         #[Autowire(service: 'limiter.passkey_register_code')]
         private readonly RateLimiterFactory $passkeyRegisterCode,
+        #[Autowire(service: 'limiter.mfa_verify_user')]
+        private readonly RateLimiterFactory $mfaVerifyUser,
+        #[Autowire(service: 'limiter.mfa_verify_ip')]
+        private readonly RateLimiterFactory $mfaVerifyIp,
+        #[Autowire(service: 'limiter.mfa_token_attempt')]
+        private readonly RateLimiterFactory $mfaTokenAttempt,
+        #[Autowire(service: 'limiter.mfa_manage_attempt')]
+        private readonly RateLimiterFactory $mfaManageAttempt,
+        #[Autowire(service: 'limiter.mfa_manage_code')]
+        private readonly RateLimiterFactory $mfaManageCode,
         #[Autowire(service: 'limiter.invitation_user')]
         private readonly RateLimiterFactory $invitationUser,
         #[Autowire(service: 'limiter.invitation_club')]
@@ -183,6 +193,28 @@ class AuthRateLimiter
     {
         self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
         self::assertAccepted($this->passkeyRegisterCode->create($userId)->consume());
+    }
+
+    /** MFA verification at sign-in: per client IP, per user and per login token (`jti`; it dies after 5 guesses). */
+    public function assertMfaVerifyAllowed(Request $request, string $userId, string $tokenId): void
+    {
+        self::assertAccepted($this->mfaVerifyIp->create(self::ip($request))->consume());
+        self::assertAccepted($this->mfaVerifyUser->create($userId)->consume());
+        self::assertAccepted($this->mfaTokenAttempt->create($tokenId)->consume());
+    }
+
+    /** Re-authenticated MFA management (enable, disable, backup codes, passkey delete): per client IP and user. */
+    public function assertMfaManageAllowed(Request $request, string $userId): void
+    {
+        self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
+        self::assertAccepted($this->mfaManageAttempt->create($userId)->consume());
+    }
+
+    /** Mails of the MFA re-authentication code: 5 per user and hour. */
+    public function assertMfaManageCodeAllowed(Request $request, string $userId): void
+    {
+        self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
+        self::assertAccepted($this->mfaManageCode->create($userId)->consume());
     }
 
     /** Creating or re-sending a club invitation: 20 per user and day and 50 per club and day (M8). */

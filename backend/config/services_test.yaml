@@ -2,3 +2,8 @@ services:
     # Counts SQL statements in tests (N+1 checks, e.g. CountersTest)
     App\Tests\Helper\QueryCounter:
         tags: ['doctrine.middleware']
+
+    # Not yet used by a controller everywhere; tests fetch it from the container
+    App\Service\MfaService:
+        autowire: true
+        public: true

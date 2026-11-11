@@ -8,7 +8,9 @@ use App\Entity\EmailChange;
 use App\Entity\EmailVerification;
 use App\Entity\PasswordReset;
 use App\Entity\User;
+use App\Enum\SecurityEventType;
 use App\Exception\ApiProblemException;
+use App\Security\ClientContextResolver;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -33,6 +35,8 @@ readonly class PasswordResetService
         private AccountMailer $mailer,
         private ClockInterface $clock,
         private DeferredMailer $deferred,
+        private ClientContextResolver $clientContext,
+        private SecurityEventLogger $events,
     ) {
     }
 
@@ -141,7 +145,9 @@ readonly class PasswordResetService
             throw $e;
         }
         // Notice to the account's address (after the response; no link but "forgot password")
-        $this->mailer->sendPasswordChanged($user);
+        $context = $this->clientContext->current();
+        $this->events->record($user, SecurityEventType::PASSWORD_CHANGED, true, 'reset', null, $context);
+        $this->mailer->sendPasswordChanged($user, $context);
     }
 
     /** Deletes expired links; returns the number of deleted rows. */

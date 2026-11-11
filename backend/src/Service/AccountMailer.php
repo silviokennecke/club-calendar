@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\Calendar;
 use App\Entity\Club;
 use App\Entity\User;
+use App\Security\ClientContext;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
@@ -54,14 +55,52 @@ readonly class AccountMailer
     }
 
     /** Notice to the account's address after a password change or a reset (no link but "forgot password"). */
-    public function sendPasswordChanged(User $user): void
+    public function sendPasswordChanged(User $user, ClientContext $context = new ClientContext()): void
+    {
+        $this->sendNotice($user, 'password_changed', $context);
+    }
+
+    public function sendMfaEnabled(User $user, ClientContext $context = new ClientContext()): void
+    {
+        $this->sendNotice($user, 'mfa_enabled', $context);
+    }
+
+    public function sendMfaDisabled(User $user, ClientContext $context = new ClientContext()): void
+    {
+        $this->sendNotice($user, 'mfa_disabled', $context);
+    }
+
+    public function sendBackupCodesRegenerated(User $user, ClientContext $context = new ClientContext()): void
+    {
+        $this->sendNotice($user, 'backup_codes_regenerated', $context);
+    }
+
+    /** A backup code ended the two-step sign-in (and all other sessions). */
+    public function sendBackupCodeUsed(User $user, ClientContext $context = new ClientContext()): void
+    {
+        $this->sendNotice($user, 'backup_code_used', $context);
+    }
+
+    public function sendPasskeyDeleted(User $user, ClientContext $context = new ClientContext()): void
+    {
+        $this->sendNotice($user, 'passkey_deleted', $context);
+    }
+
+    /** Repeated failed sign-in attempts ($count within the last hour); `$context` is the latest attempt. */
+    public function sendFailedSignIns(User $user, ClientContext $context, int $count): void
+    {
+        $this->sendNotice($user, 'failed_sign_ins', $context, ['count' => $count]);
+    }
+
+    /** @param array<string, scalar> $extra */
+    private function sendNotice(User $user, string $name, ClientContext $context, array $extra = []): void
     {
         $this->mailer->queue($this->email(
             $user,
             $user->getEmail(),
-            'email.password_changed.subject',
-            'email/password_changed.html.twig',
-            $this->noticeContext($user),
+            "email.$name.subject",
+            "email/$name.html.twig",
+            $this->noticeContext($user, $context) + $extra,
         ));
     }
 
@@ -112,8 +151,20 @@ readonly class AccountMailer
         ));
     }
 
-    /** @return array<string, string> when (UTC and, if known, the user's calendar zone) and the forgot-password page */
-    private function noticeContext(User $user): array
+    /** The 6-digit code that confirms an MFA change (or passkey deletion) for an account without password. */
+    public function sendMfaCode(User $user, string $code, int $validMinutes): void
+    {
+        $this->mailer->queue($this->email(
+            $user,
+            $user->getEmail(),
+            'email.mfa_code.subject',
+            'email/mfa_code.html.twig',
+            ['code' => $code, 'validMinutes' => (string) $validMinutes],
+        ));
+    }
+
+    /** @return array<string, string> when (UTC and, if known, the user's calendar zone), client details and the forgot-password page */
+    private function noticeContext(User $user, ?ClientContext $client = null): array
     {
         $locale = $user->getLanguage();
         $now = $this->clock->now()->setTimezone(new \DateTimeZone('UTC'));
@@ -127,7 +178,17 @@ readonly class AccountMailer
             $when .= ' '.$format($now->setTimezone(new \DateTimeZone($zone)), 'email.notice.when_local', ['zone' => $zone]);
         }
 
-        return ['when' => $when, 'forgotUrl' => $this->forgotPasswordUrl()];
+        $unknown = $this->translator->trans('email.notice.unknown', [], 'messages', $locale);
+        $country = null !== $client?->country ? (\Locale::getDisplayRegion('-'.$client->country, $locale) ?: $client->country) : null;
+        $place = implode(', ', array_filter([$client?->city, $country], static fn (?string $p) => null !== $p && '' !== $p));
+
+        return [
+            'when' => $when,
+            'ip' => $client?->ip ?? $unknown,
+            'browser' => $client?->browser ?? $unknown,
+            'place' => '' !== $place ? $place : $unknown,
+            'forgotUrl' => $this->forgotPasswordUrl(),
+        ];
     }
 
     /** Zone of the user's last calendar (calendar, else club), else of the last club; null if unknown. */

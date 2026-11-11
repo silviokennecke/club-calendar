@@ -8,7 +8,9 @@ use App\Entity\EmailChange;
 use App\Entity\EmailVerification;
 use App\Entity\OAuthAccount;
 use App\Entity\User;
+use App\Enum\SecurityEventType;
 use App\Exception\ApiProblemException;
+use App\Security\ClientContextResolver;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
@@ -26,6 +28,8 @@ readonly class AccountService
         private TokenService $tokens,
         private AccountMailer $mailer,
         private ClockInterface $clock,
+        private ClientContextResolver $clientContext,
+        private SecurityEventLogger $events,
     ) {
     }
 
@@ -45,7 +49,9 @@ readonly class AccountService
         $this->deleteOpenEmailChanges($user);
         $this->em->flush();
         // Notice to the account's address (after the response; no link but "forgot password")
-        $this->mailer->sendPasswordChanged($user);
+        $context = $this->clientContext->current();
+        $this->events->record($user, SecurityEventType::PASSWORD_CHANGED, true, 'password', null, $context);
+        $this->mailer->sendPasswordChanged($user, $context);
 
         return $this->tokens->tokenResponse($user, null, null, $consentOk);
     }

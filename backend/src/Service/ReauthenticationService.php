@@ -24,6 +24,7 @@ readonly class ReauthenticationService
     public const int CODE_WINDOW = 600;
     public const string PURPOSE_DELETE_ACCOUNT = 'delete-account';
     public const string PURPOSE_PASSKEY = 'passkey-register';
+    public const string PURPOSE_MFA = 'mfa';
 
     public function __construct(
         private UserPasswordHasherInterface $hasher,
@@ -44,6 +45,8 @@ readonly class ReauthenticationService
         $minutes = intdiv(self::CODE_WINDOW, 60);
         if (self::PURPOSE_PASSKEY === $purpose) {
             $this->mailer->sendPasskeyCode($user, $code, $minutes);
+        } elseif (self::PURPOSE_MFA === $purpose) {
+            $this->mailer->sendMfaCode($user, $code, $minutes);
         } else {
             $this->mailer->sendAccountDeletionCode($user, $code, $minutes);
         }

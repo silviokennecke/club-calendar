@@ -50,4 +50,13 @@ class MfaBackupCodeRepository extends ServiceEntityRepository
         return (int) $this->getEntityManager()->createQuery('DELETE FROM App\Entity\MfaBackupCode c WHERE c.user = :u')
             ->setParameter('u', $user)->execute();
     }
+
+    public function latestCreatedAt(User $user): ?\DateTimeImmutable
+    {
+        $value = $this->createQueryBuilder('c')->select('MAX(c.createdAt)')
+            ->where('c.user = :u')->setParameter('u', $user)
+            ->getQuery()->getSingleScalarResult();
+
+        return null === $value ? null : new \DateTimeImmutable((string) $value);
+    }
 }

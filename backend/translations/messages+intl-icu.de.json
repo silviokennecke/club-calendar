@@ -66,6 +66,13 @@
             "expiry_note": "Der Code ist mindestens {minutes} Minuten gültig und funktioniert nur für dieses Konto.",
             "ignore_note": "Warst du das nicht, gib den Code nicht ein und ignoriere diese E-Mail. Es wird kein Passkey hinzugefügt. Ändere am besten dein Passwort."
         },
+        "mfa_code": {
+            "subject": "Änderung deines Anmeldeschutzes bestätigen",
+            "greeting": "Hallo {name},",
+            "body": "Du möchtest die Anmeldung in zwei Schritten oder die Passkeys deines Club-Calendar-Kontos ändern. Gib diesen Code in der App ein, um das zu bestätigen.",
+            "expiry_note": "Der Code ist mindestens {minutes} Minuten gültig und funktioniert nur für dieses Konto.",
+            "ignore_note": "Warst du das nicht, gib den Code nicht ein und ignoriere diese E-Mail. Es wird nichts geändert. Ändere am besten dein Passwort."
+        },
         "invitation": {
             "subject": "Einladung in den Verein {club} bei Club Calendar",
             "greeting": "Hallo,",

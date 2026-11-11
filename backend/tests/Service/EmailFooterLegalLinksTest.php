@@ -59,7 +59,7 @@ class EmailFooterLegalLinksTest extends KernelTestCase
                 'userName' => 'Tester', 'forgotUrl' => 'https://x.test/f', 'when' => 'now', 'zone' => 'UTC',
                 'date' => '2026-01-01', 'time' => '12:00', 'maskedEmail' => 'a***@example.com',
                 'newEmail' => 'b@example.com', 'validMinutes' => 15, 'resetUrl' => 'https://x.test/r',
-                'confirmUrl' => 'https://x.test/c',
+                'confirmUrl' => 'https://x.test/c', 'ip' => '203.0.113.1', 'place' => 'Berlin', 'browser' => 'Chrome 126', 'count' => 3,
             ]);
         self::getContainer()->get('twig.mime_body_renderer')->render($message);
 
