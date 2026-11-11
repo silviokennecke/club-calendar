@@ -59,7 +59,7 @@ export default function LocationsPage() {
   const places = useMemo(
     () =>
       [...(list.data ?? [])].sort((a, b) =>
-        a.name.localeCompare(b.name, i18n.language, { sensitivity: "base" }),
+        (a.name ?? "").localeCompare(b.name ?? "", i18n.language, { sensitivity: "base" }),
       ),
     [list.data, i18n.language],
   );
