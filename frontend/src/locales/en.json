@@ -1645,7 +1645,7 @@
       "new": "New",
       "private": "Private",
       "public": "Public",
-      "club": "Link only",
+      "club": "Club-internal",
       "danger": "Error"
     },
     "toast": {
@@ -1985,7 +1985,7 @@
       },
       "internal": {
         "label": "Club-internal feeds only",
-        "text": "Joining through feeds set to \"Link only\" and through private feeds (with the secret)."
+        "text": "Joining through feeds set to \"Club-internal\" and through private feeds (with the secret)."
       },
       "public": {
         "label": "Also through public feeds",
@@ -2083,12 +2083,12 @@
           "text": "Anyone with the link can view the calendar, and search engines may find and list it."
         },
         "club": {
-          "label": "Link only",
-          "text": "No access protection: anyone with the link can view the calendar, including non-members. Reachable only by link; search engines do not list it."
+          "label": "Club-internal",
+          "text": "All club members and anyone with the link can view the calendar. Search engines do not list it."
         },
         "private": {
           "label": "Private (protected)",
-          "text": "Only with the secret in the link."
+          "text": "Only with the secret in the link or by assignment."
         }
       },
       "audiences": "Audiences",
@@ -2106,7 +2106,7 @@
     },
     "unprotect": {
       "title": "Stop requiring the secret?",
-      "textClub": "“{{name}}” is set to “Link only”. The calendar can then be reached through the link without the secret.",
+      "textClub": "“{{name}}” is set to “Club-internal”. The calendar can then be reached through the link without the secret.",
       "textPublic": "“{{name}}” becomes public. The calendar can then be reached through the link without the secret.",
       "consequence": "Afterwards, anyone with the link can see the calendar, including people who don’t know the previous link with the secret.",
       "confirm": "Save without secret"

@@ -98,9 +98,9 @@ class AccountDeletionTest extends WebTestCase
     {
         $mail = $this->getMailerMessage($index);
         $this->assertInstanceOf(Email::class, $mail);
-        $this->assertSame(1, preg_match('/letter-spacing:\d+px[^>]*>(\d{6})</', (string) $mail->getHtmlBody(), $m));
+        $this->assertSame(1, preg_match('/letter-spacing:\d+px[^>]*>(\d{3})-(\d{3})</', (string) $mail->getHtmlBody(), $m));
 
-        return $m[1];
+        return $m[1].$m[2];
     }
 
     public function testWithoutCredentialsNothingIsDeleted(): void

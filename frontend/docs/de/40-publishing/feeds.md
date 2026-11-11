@@ -21,14 +21,14 @@ Ein Feed ist die Veröffentlichung eines oder mehrerer Kalender deines Vereins. 
 
 ## Die drei Sichtbarkeiten
 
-| Sichtbarkeit           | Wer kann den Kalender sehen?                                                   |
-| ---------------------- | ------------------------------------------------------------------------------ |
-| **Öffentlich**         | Jeder mit dem Link. Suchmaschinen dürfen ihn finden und auflisten.             |
-| **Nur per Link**       | Jeder mit dem Link, auch Nicht-Mitglieder. Suchmaschinen listen ihn nicht auf. |
-| **Privat (geschützt)** | Nur, wer das Geheimnis im Link kennt.                                          |
+| Sichtbarkeit           | Wer kann den Kalender sehen?                                                       |
+| ---------------------- | ---------------------------------------------------------------------------------- |
+| **Öffentlich**         | Jeder mit dem Link. Suchmaschinen dürfen ihn finden und auflisten.                 |
+| **Vereinsintern**      | Alle Vereinsmitglieder und jeder mit dem Link. Suchmaschinen listen ihn nicht auf. |
+| **Privat (geschützt)** | Nur mit dem Geheimnis im Link oder per Zuweisung.                                  |
 
 :::warning
-**Nur per Link** ist kein Zugriffsschutz. Wer den Link weitergibt, gibt den Kalender weiter. Für wirklich interne Termine nimm **Privat (geschützt)**.
+**Vereinsintern** schützt nicht vor Fremden: Wer den Link weitergibt, gibt den Kalender weiter. Für wirklich interne Termine nimm **Privat (geschützt)**.
 :::
 
 ## Wer einen privaten Feed nutzen kann

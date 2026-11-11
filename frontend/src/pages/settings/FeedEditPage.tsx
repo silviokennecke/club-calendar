@@ -41,7 +41,7 @@ import type { CalendarFeed } from "@/lib/types";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import { usePageTitle } from "@/lib/usePageTitle";
 
-/** From open to protected; CLUB ("Nur per Link") is the default for new feeds. */
+/** From open to protected; CLUB ("Vereinsintern") is the default for new feeds. */
 const VISIBILITIES: { value: FeedVisibility; key: "public" | "club" | "private"; icon: Glyph }[] = [
   { value: "PUBLIC", key: "public", icon: "globe" },
   { value: "CLUB", key: "club", icon: "users" },

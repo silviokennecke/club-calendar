@@ -45,7 +45,7 @@ export interface FeedFormValues {
   targetGroupIds: string[];
 }
 
-/** New feeds are CLUB ("Nur per Link"). */
+/** New feeds are CLUB ("Vereinsintern"). */
 export function emptyFeedValues(calendarIds: string[] = []): FeedFormValues {
   return { name: "", visibility: "CLUB", calendarIds, targetGroupIds: [] };
 }

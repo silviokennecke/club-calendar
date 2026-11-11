@@ -155,8 +155,8 @@ Each feed has one of three visibility levels:
 | Level | Who can open it | Search engines |
 |---|---|---|
 | Public | Anyone with the link | May index it |
-| By link only (default) | Anyone with the link | Never indexed |
-| Private | Only with the link and a secret | Never indexed |
+| Club-internal (default) | All club members and anyone with the link | Never indexed |
+| Private | Only with the link and a secret, or by assignment | Never indexed |
 
 Private feed addresses contain a secret. Anyone who has the address can read the feed, so share it carefully. A feed can be given a new secret to cut off old addresses. Feed addresses are sent with `Referrer-Policy: no-referrer` so the address does not leak to other sites. The "do not index" header for non-public feeds is set by the app itself, not by the web server.
 

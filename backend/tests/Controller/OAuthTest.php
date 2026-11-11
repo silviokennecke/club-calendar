@@ -450,7 +450,7 @@ class OAuthTest extends WebTestCase
         $mail = $this->getMailerMessage();
         $this->assertInstanceOf(Email::class, $mail);
         $this->assertEmailAddressContains($mail, 'To', 'ms@example.com');
-        $this->assertSame(1, preg_match('/>\s*(\d{6})\s*</', (string) $mail->getHtmlBody(), $m));
+        $this->assertSame(1, preg_match('/>\s*(\d{3})-(\d{3})\s*</', (string) $mail->getHtmlBody(), $m));
         $user = $this->user('ms@example.com');
         $this->assertFalse($user->isEmailVerified());
         $this->assertCount(1, $user->getOauthAccounts());

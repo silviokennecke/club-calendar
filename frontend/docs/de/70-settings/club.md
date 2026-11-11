@@ -29,7 +29,7 @@ Das kann nur ein **Admin** ändern.
 Wer angemeldet einen Feed deines Vereins öffnet, kann dem Verein selbst beitreten. Die Person wird **Mitglied** und sieht nur, was für sie freigegeben ist, siehe [Rollen](help:getting-started/roles). Auf dem Reiter **Allgemeines** legst du unter **Beitritt über Feeds** fest, wer das darf:
 
 - **Aus:** Niemand tritt über einen Feed bei. Personen kommen nur über Einladungen.
-- **Nur über vereinsinterne Feeds:** Beitritt über Feeds mit „Nur per Link“ und über private Feeds (mit Geheimnis).
+- **Nur über vereinsinterne Feeds:** Beitritt über Feeds mit „Vereinsintern“ und über private Feeds (mit Geheimnis).
 - **Auch über öffentliche Feeds:** Zusätzlich kann jede angemeldete Person über einen öffentlichen Feed beitreten.
 
 Die Einstellung wird sofort gespeichert.

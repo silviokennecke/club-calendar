@@ -15,7 +15,7 @@ Dafür brauchst du die Rolle Admin. Bearbeiter können Feeds nur ansehen, Betrac
 1. Öffne **Veröffentlichen** und klicke auf **Feed anlegen**.
 2. Gib einen **Namen** ein, z. B. „Öffentlicher Kalender“. Er erscheint nur in deiner Übersicht.
 3. Wähle unter **Kalender** mindestens einen Kalender.
-4. Wähle die **Sichtbarkeit**: **Öffentlich**, **Nur per Link** oder **Privat (geschützt)**. Mehr dazu unter [Was ist ein Feed?](help:publishing/feeds#die-drei-sichtbarkeiten).
+4. Wähle die **Sichtbarkeit**: **Öffentlich**, **Vereinsintern** oder **Privat (geschützt)**. Mehr dazu unter [Was ist ein Feed?](help:publishing/feeds#die-drei-sichtbarkeiten).
 5. Wähle optional **Gruppen**. Ohne Auswahl enthält der Feed alle Gruppen.
 6. Klicke auf **Feed speichern**.
 
@@ -34,7 +34,7 @@ Klicke in der Übersicht beim Feed auf **Bearbeiten**, ändere die Angaben und s
 Ein privater Feed hat ein **Geheimnis**, das Teil jeder Adresse ist. Wer die Adresse kennt, kann den Feed lesen. Gib sie nur an Personen weiter, die den Kalender sehen sollen.
 
 - **Geheimnis neu erzeugen:** Der Feed bekommt neue Adressen. Bestehende Abos funktionieren nicht mehr, alle müssen die neue Abo-Adresse eintragen. Nutze das, wenn der Link in falsche Hände geraten ist. Haben Personen den Feed selbst mit dem Geheimnis übernommen, kannst du **Zugriff von Mitgliedern, die den Feed selbst übernommen haben, zurückziehen** ankreuzen. Von dir zugewiesene Mitglieder behalten den Zugriff.
-- **Geheimnis entfernen:** Stelle die Sichtbarkeit auf **Nur per Link** oder **Öffentlich** und bestätige **Ohne Geheimnis speichern**. Danach kann jeder mit dem Link den Kalender sehen.
+- **Geheimnis entfernen:** Stelle die Sichtbarkeit auf **Vereinsintern** oder **Öffentlich** und bestätige **Ohne Geheimnis speichern**. Danach kann jeder mit dem Link den Kalender sehen.
 
 ## Mitgliedern Zugriff auf einen privaten Feed geben
 

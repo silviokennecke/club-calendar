@@ -219,7 +219,7 @@ test.describe("Veröffentlichen", () => {
     const group = page.getByRole("group", { name: "Sichtbarkeit" });
 
     // Standard: nur per Link
-    await expect(group.getByRole("radio", { name: /^Nur per Link/ })).toBeChecked();
+    await expect(group.getByRole("radio", { name: /^Vereinsintern/ })).toBeChecked();
     await page.getByLabel(/^Name/).fill("Mitglieder");
     await page.getByRole("button", { name: "Feed speichern" }).click();
     await expect(page.getByText("Feed „Mitglieder“ angelegt.")).toBeVisible();
@@ -246,7 +246,7 @@ test.describe("Veröffentlichen", () => {
 
     // Liste: Wort + Icon je Status
     const badges = (name: string) => page.getByRole("region", { name }).locator(".ap-badge");
-    await expect(badges("Mitglieder")).toHaveText(["Nur per Link"]);
+    await expect(badges("Mitglieder")).toHaveText(["Vereinsintern"]);
     await expect(badges("Für alle")).toHaveText(["Öffentlich"]);
     await expect(badges("Vorstand")).toHaveText(["Privat"]);
     for (const name of ["Mitglieder", "Für alle", "Vorstand"])
@@ -288,10 +288,10 @@ test.describe("Veröffentlichen", () => {
 
     await openFeeds(page, s.email, `${s.feedsPath}/${created.id}`);
     await expect(page.getByRole("heading", { name: "Geheimnis" })).toBeVisible();
-    await page.getByRole("radio", { name: /^Nur per Link/ }).check();
+    await page.getByRole("radio", { name: /^Vereinsintern/ }).check();
     await page.getByRole("button", { name: "Feed speichern" }).click();
     const dialog = page.getByRole("alertdialog", { name: "Geheimnis nicht mehr verlangen?" });
-    await expect(dialog).toContainText("„Vorstand“ wird auf „Nur per Link“ gestellt.");
+    await expect(dialog).toContainText("„Vorstand“ wird auf „Vereinsintern“ gestellt.");
     await expect(dialog).toContainText(
       "Danach kann jeder mit dem Link den Kalender sehen, auch wer den bisherigen Link mit Geheimnis nicht kennt.",
     );
@@ -307,7 +307,7 @@ test.describe("Veröffentlichen", () => {
       .click();
     await expect(page).toHaveURL(new RegExp(`${s.feedsPath}$`));
     await expect(page.getByRole("region", { name: "Vorstand" }).locator(".ap-badge")).toHaveText(
-      "Nur per Link",
+      "Vereinsintern",
     );
     expect((await listFeeds(request, s))[0]).toMatchObject({
       visibility: "CLUB",

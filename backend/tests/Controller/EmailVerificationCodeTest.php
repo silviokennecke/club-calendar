@@ -92,9 +92,9 @@ class EmailVerificationCodeTest extends WebTestCase
         $mail = end($mails);
         $this->assertSame($to, $mail->getTo()[0]->getAddress());
         $html = (string) $mail->getHtmlBody();
-        $this->assertSame(1, preg_match('/>\s*(\d{6})\s*</', $html, $m), $html);
+        $this->assertSame(1, preg_match('/>\s*(\d{3})-(\d{3})\s*</', $html, $m), $html);
 
-        return $m[1];
+        return $m[1].$m[2];
     }
 
     private function verify(string $email, string $code): array
@@ -151,6 +151,15 @@ class EmailVerificationCodeTest extends WebTestCase
         $stored = $this->em->getConnection()->fetchOne('SELECT token_hash FROM email_verification');
         $this->assertNotSame($code, $stored);
         $this->assertStringStartsWith('$2y$04$', $stored);
+    }
+
+    public function testMailShowsTheCodeGroupedInThreeDigits(): void
+    {
+        $this->register();
+        $html = (string) $this->getMailerMessage()->getHtmlBody();
+        $this->assertSame(1, preg_match('/>(\d{3})-(\d{3})</', $html, $m), $html);
+        $this->assertDoesNotMatchRegularExpression('/>\s*\d{6}\s*</', $html);
+        $this->assertSame(6, strlen($this->codeFromLastMail('new@example.com')));
     }
 
     public function testMailEmbedsTheLogoInline(): void

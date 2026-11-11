@@ -112,7 +112,7 @@ describe("FeedsPage", () => {
       ).map((b) => [b.dataset.status, b.textContent, !!b.querySelector("svg")]);
 
     await screen.findByRole("region", { name: "Vereinskalender" });
-    expect(badges("Vereinskalender")).toEqual([["club", "Nur per Link", true]]);
+    expect(badges("Vereinskalender")).toEqual([["club", "Vereinsintern", true]]);
     expect(badges("Öffentlicher Kalender")).toEqual([["public", "Öffentlich", true]]);
     expect(badges("Vorstand intern")).toEqual([["private", "Privat", true]]);
 

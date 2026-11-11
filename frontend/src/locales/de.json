@@ -1645,7 +1645,7 @@
       "new": "Neu",
       "private": "Privat",
       "public": "Öffentlich",
-      "club": "Nur per Link",
+      "club": "Vereinsintern",
       "danger": "Fehler"
     },
     "toast": {
@@ -1985,7 +1985,7 @@
       },
       "internal": {
         "label": "Nur über vereinsinterne Feeds",
-        "text": "Beitritt über Feeds mit „Nur per Link“ und über private Feeds (mit Geheimnis)."
+        "text": "Beitritt über Feeds mit „Vereinsintern“ und über private Feeds (mit Geheimnis)."
       },
       "public": {
         "label": "Auch über öffentliche Feeds",
@@ -2083,12 +2083,12 @@
           "text": "Jeder mit dem Link kann den Kalender ansehen, und Suchmaschinen dürfen ihn finden und auflisten."
         },
         "club": {
-          "label": "Nur per Link",
-          "text": "Kein Zugriffsschutz: Jeder mit dem Link kann den Kalender ansehen, auch Nicht-Mitglieder. Nur über den Link erreichbar, Suchmaschinen listen ihn nicht auf."
+          "label": "Vereinsintern",
+          "text": "Alle Mitglieder des Vereins und jeder mit dem Link können den Kalender ansehen. Suchmaschinen listen ihn nicht auf."
         },
         "private": {
           "label": "Privat (geschützt)",
-          "text": "Nur mit dem Geheimnis im Link."
+          "text": "Nur mit dem Geheimnis im Link oder per Zuweisung."
         }
       },
       "audiences": "Gruppen",
@@ -2106,7 +2106,7 @@
     },
     "unprotect": {
       "title": "Geheimnis nicht mehr verlangen?",
-      "textClub": "„{{name}}“ wird auf „Nur per Link“ gestellt. Der Kalender ist dann ohne Geheimnis über den Link erreichbar.",
+      "textClub": "„{{name}}“ wird auf „Vereinsintern“ gestellt. Der Kalender ist dann ohne Geheimnis über den Link erreichbar.",
       "textPublic": "„{{name}}“ wird öffentlich. Der Kalender ist dann ohne Geheimnis über den Link erreichbar.",
       "consequence": "Danach kann jeder mit dem Link den Kalender sehen, auch wer den bisherigen Link mit Geheimnis nicht kennt.",
       "confirm": "Ohne Geheimnis speichern"

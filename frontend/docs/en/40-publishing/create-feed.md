@@ -15,7 +15,7 @@ You need the admin role for this. Editors can only view feeds, viewers and membe
 1. Open **Publish** and click **Create feed**.
 2. Enter a **Name**, e.g. "Public calendar". It only appears in your overview.
 3. Under **Calendars**, select at least one calendar.
-4. Choose the **Visibility**: **Public**, **Link only** or **Private (protected)**. More in [What is a feed?](help:publishing/feeds#the-three-visibilities).
+4. Choose the **Visibility**: **Public**, **Club-internal** or **Private (protected)**. More in [What is a feed?](help:publishing/feeds#the-three-visibilities).
 5. Optionally select **Audiences**. Without a selection the feed contains all audiences.
 6. Click **Save feed**.
 
@@ -34,7 +34,7 @@ In the overview click **Edit** on the feed, change the details and save. The add
 A private feed has a **Secret** that is part of every address. Anyone who knows the address can read the feed. Only share it with people who should see the calendar.
 
 - **Regenerate secret:** the feed gets new addresses. Existing subscriptions stop working and everyone must enter the new subscription address. Use this if the link fell into the wrong hands. If people joined the feed themselves with the secret, you can tick **Withdraw access from members who joined this feed themselves**. Members you assigned keep their access.
-- **Remove the secret:** set the visibility to **Link only** or **Public** and confirm **Save without secret**. Afterwards anyone with the link can see the calendar.
+- **Remove the secret:** set the visibility to **Club-internal** or **Public** and confirm **Save without secret**. Afterwards anyone with the link can see the calendar.
 
 ## Give members access to a private feed
 

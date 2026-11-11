@@ -109,7 +109,7 @@ describe("FeedEditPage (new)", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Feed anlegen" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /^Nur per Link/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /^Vereinsintern/ })).toBeChecked();
     expect(screen.getByRole("radio", { name: /^Öffentlich/ })).not.toBeChecked();
     expect(screen.getByRole("radio", { name: /^Privat \(geschützt\)/ })).not.toBeChecked();
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
@@ -212,18 +212,18 @@ describe("FeedEditPage (new)", () => {
     const radios = within(group).getAllByRole("radio");
     expect(radios.map((r) => (r as HTMLInputElement).value)).toEqual(["PUBLIC", "CLUB", "PRIVATE"]);
     expect(new Set(radios.map((r) => (r as HTMLInputElement).name)).size).toBe(1);
-    expect(within(group).getByRole("radio", { name: /^Nur per Link/ })).toHaveAccessibleName(
+    expect(within(group).getByRole("radio", { name: /^Vereinsintern/ })).toHaveAccessibleName(
       /Suchmaschinen listen ihn nicht auf/,
     );
-    // "Nur per Link" is no access restriction: the text must say that anyone with the link sees it
-    expect(within(group).getByRole("radio", { name: /^Nur per Link/ })).toHaveAccessibleName(
-      /Kein Zugriffsschutz: Jeder mit dem Link .* auch Nicht-Mitglieder/,
+    // "Vereinsintern" text must say that members and anyone with the link see it
+    expect(within(group).getByRole("radio", { name: /^Vereinsintern/ })).toHaveAccessibleName(
+      /Alle Mitglieder des Vereins und jeder mit dem Link/,
     );
     expect(within(group).getByRole("radio", { name: /^Öffentlich/ })).toHaveAccessibleName(
       /Jeder mit dem Link kann den Kalender ansehen/,
     );
     expect(within(group).getByRole("radio", { name: /^Privat/ })).toHaveAccessibleName(
-      /Nur mit dem Geheimnis im Link/,
+      /Nur mit dem Geheimnis im Link (oder per Zuweisung)/,
     );
   });
 
@@ -349,14 +349,14 @@ describe("FeedEditPage (edit)", () => {
   it("asks before a private feed becomes reachable without the secret", async () => {
     const user = userEvent.setup();
     renderEdit("f2");
-    await user.click(await screen.findByRole("radio", { name: /^Nur per Link/ }));
+    await user.click(await screen.findByRole("radio", { name: /^Vereinsintern/ }));
     // The secret panel describes the saved feed until it is saved
     expect(screen.getByRole("heading", { name: "Geheimnis" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Feed speichern" }));
     const dialog = await screen.findByRole("alertdialog", {
       name: "Geheimnis nicht mehr verlangen?",
     });
-    expect(dialog).toHaveTextContent("„Vorstand intern“ wird auf „Nur per Link“ gestellt.");
+    expect(dialog).toHaveTextContent("„Vorstand intern“ wird auf „Vereinsintern“ gestellt.");
     expect(dialog).toHaveTextContent(
       "Danach kann jeder mit dem Link den Kalender sehen, auch wer den bisherigen Link mit Geheimnis nicht kennt.",
     );

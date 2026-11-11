@@ -27,7 +27,7 @@ class CalendarFeed implements UpdateAudited
     #[ORM\Column(length: 255)]
     private string $name;
 
-    /** New feeds are CLUB ("Nur per Link"): reachable by link, not indexed. */
+    /** New feeds are CLUB ("Vereinsintern"): reachable by link, not indexed. */
     #[ORM\Column(enumType: FeedVisibility::class, options: ['default' => 'CLUB'])]
     private FeedVisibility $visibility = FeedVisibility::CLUB;
 

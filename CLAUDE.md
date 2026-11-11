@@ -128,7 +128,7 @@ Security headers (audit M4) live in both `backend/public/.htaccess` and `docker/
 - **ClubInvitation** — an invitation of an e-mail address to a club (see "Club invitations" below); pending, accepted or declined, valid 7 days, pending and expired ones stay listed and can be re-sent at any time (60 s cooldown per invitation)
 - **Calendar** — belongs to a Club; contains Events, EventTemplates, Properties, Features, HolidayCalendars, and reference data per calendar; can be archived (read-only) or duplicated
 - **CalendarFeed** — a publishable view of 1..n Calendars of a Club (ICS + web) with one of three states: `PUBLIC` (by link, search
-  engines may index it), `CLUB` ("Nur per Link", default: by link, never indexed)
+  engines may index it), `CLUB` ("Vereinsintern", default: by link, never indexed)
   or `PRIVATE` (shared-secret protected); the web view merges published events and holiday events of all selected non-archived calendars; ICS lists events only, never holidays; scoped to a Club; see `docs/api/openapi.yaml`
 - **Event** — a single occurrence on a Calendar; optional plain-text `note` (max 2000 chars, trimmed, empty = null; copied from the template; ICS `DESCRIPTION`, shown in the public feed); may be based on an EventTemplate; may belong to an EventSeries
 - **EventSeries** — a recurrence rule (weekly, every two weeks, monthly on the n-th weekday; until a date or a count; skip holidays) with the events created from it; edit/delete "only this event" or "all events of the series" (`scope`); the rule can be changed later ("Reihe ändern", `PATCH …/event-series/{id}`: only future events change, past ones stay). ICS imports with RRULE create single events, not series

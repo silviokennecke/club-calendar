@@ -21,14 +21,14 @@ A feed publishes one or more calendars of your club. It has a web page for every
 
 ## The three visibilities
 
-| Visibility              | Who can see the calendar?                                                   |
-| ----------------------- | --------------------------------------------------------------------------- |
-| **Public**              | Anyone with the link. Search engines may find and list it.                  |
-| **Link only**           | Anyone with the link, including non-members. Search engines do not list it. |
-| **Private (protected)** | Only people who know the secret in the link.                                |
+| Visibility              | Who can see the calendar?                                                 |
+| ----------------------- | ------------------------------------------------------------------------- |
+| **Public**              | Anyone with the link. Search engines may find and list it.                |
+| **Club-internal**       | All club members and anyone with the link. Search engines do not list it. |
+| **Private (protected)** | Only with the secret in the link or by assignment.                        |
 
 :::warning
-**Link only** is not access protection. Whoever passes on the link passes on the calendar. For truly internal events use **Private (protected)**.
+**Club-internal** does not keep outsiders out: whoever passes on the link passes on the calendar. For truly internal events use **Private (protected)**.
 :::
 
 ## Who can use a private feed

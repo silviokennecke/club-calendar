@@ -22,7 +22,7 @@ Signed-in people can become members by opening a feed of the club. Club admins d
 | Setting | Effect |
 |---|---|
 | Off | Nobody joins through a feed. Members come in through invitations only. |
-| Club-internal feeds only (default) | Joining works through feeds set to "Link only" and through private feeds (the secret is needed). |
+| Club-internal feeds only (default) | Joining works through feeds set to "Club-internal" and through private feeds (the secret is needed). |
 | Also through public feeds | As above, and through public feeds as well. |
 
 Notes:
@@ -32,7 +32,7 @@ Notes:
 - Joining through a private feed also needs the feed's secret. Admins can give members access to a private feed by hand as well.
 
 !!! warning "Joining through feeds and registration"
-    With `RESTRICT_REGISTRATION=true`, an account can normally only be created with an open invitation. A feed that lets people join also lets them create an account, so with the default setting anyone who has the address of a "Link only" feed can register. If you want registration to stay invitation-only, set **Joining through feeds** to **Off** in every club. See [Registration control](security.md#registration-control).
+    With `RESTRICT_REGISTRATION=true`, an account can normally only be created with an open invitation. A feed that lets people join also lets them create an account, so with the default setting anyone who has the address of a "Club-internal" feed can register. If you want registration to stay invitation-only, set **Joining through feeds** to **Off** in every club. See [Registration control](security.md#registration-control).
 
 ## Personal subscription links
 

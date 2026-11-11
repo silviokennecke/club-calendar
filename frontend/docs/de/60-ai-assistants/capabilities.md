@@ -25,7 +25,7 @@ Mit **Lesen und Entwürfe** kann er zusätzlich, wenn du mindestens Bearbeiter b
 - Terminentwürfe anlegen und noch nicht veröffentlichte Entwürfe ändern,
 - Gruppen, Besonderheiten, Zusatzangebote und Orte anlegen,
 - Terminvorlagen anlegen, ändern und löschen,
-- als Admin Feeds anlegen, aber nur mit Sichtbarkeit „Nur per Link“ oder „Privat“.
+- als Admin Feeds anlegen, aber nur mit Sichtbarkeit „Vereinsintern“ oder „Privat“.
 
 ## Was bewusst nicht geht
 

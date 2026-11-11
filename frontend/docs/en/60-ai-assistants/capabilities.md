@@ -25,7 +25,7 @@ With **Read and drafts** it can additionally, if you are at least an editor:
 - create event drafts and change drafts that are not yet published,
 - create audiences, badges, extras and locations,
 - create, change and delete event templates,
-- as admin, create feeds, but only with visibility "Link only" or "Private".
+- as admin, create feeds, but only with visibility "Club-internal" or "Private".
 
 ## What deliberately does not work
 

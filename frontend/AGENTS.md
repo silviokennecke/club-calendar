@@ -239,7 +239,7 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
     delete confirmation with the calendar's `eventCount` (single GET when it opens).
 - Publish, club, profile:
   - Feeds: list `/clubs/:clubId/settings/feeds` (`pages/settings/FeedsPage`: status as `StatusBadge` word + icon (`public` /
-    `club` "Nur per Link" / `private`), audience
+    `club` "Vereinsintern" / `private`), audience
     tags, addresses behind a disclosure, first feed open, a freshly saved one opens via router state `{ open }`),
     `…/settings/feeds/new` and `…/settings/feeds/:feedId` (`FeedEditPage`: name, visibility radio group with three
     states `PUBLIC` / `CLUB` / `PRIVATE` (default `CLUB`), no search engine option (a feed is indexable iff it is `PUBLIC`, API field `indexable`), saving a saved private feed as `PUBLIC`/`CLUB` asks first (`ConfirmDialog`, `dropsSecret`), audience chips,

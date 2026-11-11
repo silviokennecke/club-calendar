@@ -154,7 +154,7 @@ info:
     | State | Access | Search engines |
     | --- | --- | --- |
     | `PUBLIC` | by link, no secret (a sent secret is ignored) | indexable |
-    | `CLUB` ("club-internal", **default** for new feeds) | by link, no secret | never indexed |
+    | `CLUB` ("Club-internal", **default** for new feeds) | club members and anyone with the link, no secret | never indexed |
     | `PRIVATE` | only with `?secret=<sharedSecret>` (403 without or with a wrong one, checked first) | never indexed |
 
     - `indexable` = `visibility == PUBLIC`. There is no separate search engine setting.
@@ -5548,7 +5548,7 @@ components:
     FeedVisibility:
       type: string
       enum: [PUBLIC, CLUB, PRIVATE]
-      description: '`PUBLIC` and `CLUB` are reachable by link without the secret and differ only for search engines; `PRIVATE` requires the secret.'
+      description: '`PUBLIC` and `CLUB` ("Club-internal") are reachable by link without the secret and differ only for search engines; `PRIVATE` requires the secret in the link or an assignment (signed-in club access).'
     Feed:
       type: object
       required: [id, clubId, calendarIds, name, visibility, indexable, assignedCount, targetGroups]
