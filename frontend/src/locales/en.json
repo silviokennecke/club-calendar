@@ -1682,6 +1682,9 @@
       "showSecret": "Show secret",
       "hideSecret": "Hide secret"
     },
+    "qrCode": {
+      "failed": "The QR code could not be created. Please use the key below instead."
+    },
     "chipSelect": {
       "create": "Create new",
       "createAndAssign": "Create and assign",

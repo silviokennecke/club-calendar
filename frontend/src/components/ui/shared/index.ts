@@ -50,3 +50,4 @@ export type { ErrorSummaryItem } from "./ErrorSummary";
 export { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 export { AutocompleteInput } from "./AutocompleteInput";
 export type { AutocompleteInputProps } from "./AutocompleteInput";
+export { QrCode } from "./QrCode";

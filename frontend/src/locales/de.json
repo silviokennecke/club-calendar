@@ -1682,6 +1682,9 @@
       "showSecret": "Geheimnis anzeigen",
       "hideSecret": "Geheimnis verbergen"
     },
+    "qrCode": {
+      "failed": "Der QR-Code konnte nicht erstellt werden. Bitte nutze stattdessen den Schlüssel darunter."
+    },
     "chipSelect": {
       "create": "Neu anlegen",
       "createAndAssign": "Anlegen und zuweisen",
