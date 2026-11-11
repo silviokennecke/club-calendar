@@ -46,7 +46,7 @@ const LocationsOverviewMap = lazy(() => import("@/components/locations/Locations
  * manage places; the maps are an addition (text alternative, coordinate fields).
  */
 export default function LocationsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const qc = useQueryClient();
   const page = useClubSettingsPage();
   const { clubId, readOnly } = page;
@@ -56,7 +56,13 @@ export default function LocationsPage() {
     queryKey,
     queryFn: () => apiGet<Location[]>(`/api/clubs/${clubId}/locations`),
   });
-  const places = useMemo(() => list.data ?? [], [list.data]);
+  const places = useMemo(
+    () =>
+      [...(list.data ?? [])].sort((a, b) =>
+        a.name.localeCompare(b.name, i18n.language, { sensitivity: "base" }),
+      ),
+    [list.data, i18n.language],
+  );
 
   // editId: place in the form, null = new place
   const [editId, setEditId] = useState<string | null>(null);

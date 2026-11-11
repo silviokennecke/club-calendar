@@ -1,4 +1,5 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
+import { sortByName } from "@/lib/sortByName";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
@@ -52,7 +53,7 @@ interface MasterListProps {
  * the consequences for events and templates, empty / loading / error states.
  */
 export function MasterList({ kind, clubId, calendarId, readOnly }: MasterListProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const qc = useQueryClient();
   const cfg = MASTER_KINDS[kind];
   const tk = (key: string, opts?: Record<string, unknown>) =>
@@ -65,7 +66,10 @@ export function MasterList({ kind, clubId, calendarId, readOnly }: MasterListPro
   const usageScope = cfg.owner === "clubs" || !calendarId ? [] : [calendarId];
 
   const list = useQuery<MasterItem[]>({ queryKey, queryFn: () => apiGet<MasterItem[]>(base) });
-  const items = list.data ?? [];
+  const items = useMemo(
+    () => sortByName(list.data ?? [], i18n.language),
+    [list.data, i18n.language],
+  );
 
   // Add form
   const [draft, setDraft] = useState("");

@@ -71,9 +71,9 @@ describe("MasterList", () => {
     const list = await screen.findByRole("list", { name: /Vorhandene Besonderheiten \(2\)/ });
     const rows = within(list).getAllByRole("listitem");
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toHaveTextContent("Wettkampf");
-    expect(rows[0]).toHaveTextContent("🏆");
-    expect(within(rows[1]).getByRole("button", { name: "Draußen bearbeiten" })).toBeInTheDocument();
+    expect(rows[1]).toHaveTextContent("Wettkampf");
+    expect(rows[1]).toHaveTextContent("🏆");
+    expect(within(rows[0]).getByRole("button", { name: "Draußen bearbeiten" })).toBeInTheDocument();
     expect(apiGet).toHaveBeenCalledWith("/api/calendars/k1/properties");
   });
 
@@ -94,6 +94,23 @@ describe("MasterList", () => {
       ),
     );
     expect(apiPath[kind]).toBe(path);
+  });
+
+  it("lists the items alphabetically, ignoring case", async () => {
+    items = [
+      { id: "a", name: "zebra" },
+      { id: "b", name: "Äpfel" },
+      { id: "c", name: "Berta" },
+      { id: "d", name: "anton" },
+    ];
+    renderList("features");
+    await screen.findByText("Berta");
+    const names = screen.getAllByRole("listitem").map((li) => li.textContent ?? "");
+    const order = ["anton", "Äpfel", "Berta", "zebra"].map((n) =>
+      names.findIndex((x) => x.includes(n)),
+    );
+    expect(order).toEqual([...order].sort((x, y) => x - y));
+    expect(order.every((i) => i >= 0)).toBe(true);
   });
 
   it("creates a property with its symbol", async () => {
