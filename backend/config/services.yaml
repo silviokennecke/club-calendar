@@ -18,7 +18,7 @@ parameters:
     app.legal_terms: '%env(LEGAL_TERMS_URL)%'
 
     # Header with the client's ISO country code set by a trusted proxy/CDN (empty = off)
-    env(CLIENT_COUNTRY_HEADER): 'CF-IPCountry'
+    env(CLIENT_COUNTRY_HEADER): ''
 
     # Offline GeoIP (city + country in security notices): with a licence key MaxMind is the only source,
     # `app:geoip:update` downloads GeoLite2-City to GEOIP_DB_PATH

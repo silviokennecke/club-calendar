@@ -66,7 +66,7 @@ Users also get a mail when there are **three failed sign-in attempts within one 
 Security entries and mails name the approximate location of the sign-in. Two ways to get it:
 
 - **With a MaxMind licence key** (`MAXMIND_ACCOUNT_ID` and `MAXMIND_LICENSE_KEY`): the app uses the GeoLite2 City database, stored on your server. It never asks an external service while users work. You need a free MaxMind account, and using the database means accepting MaxMind's licence terms. The container downloads the database at start when it is missing or older than seven days. Run `app:geoip:update` weekly as well, see [Operations](operations.md#scheduled-tasks). Without the key the command does nothing.
-- **Without a key:** only the country is known, and only when your CDN or proxy sends it in a header (`CLIENT_COUNTRY_HEADER`, default `CF-IPCountry`). Otherwise the location stays empty.
+- **Without a key:** only the country is known, and only when your CDN or proxy sends it in a header (`CLIENT_COUNTRY_HEADER`, default empty). Otherwise the location stays empty.
 
 The visitor's address and the country header are trusted only for requests that come through a proxy listed in `SYMFONY_TRUSTED_PROXIES`. Without that list anyone could fake them. The variables are in the [reference](configuration/reference.md#security-notices-and-location).
 
