@@ -220,7 +220,8 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
           type="email"
           value={email}
           readOnly
-          autoComplete="email"
+          name="username"
+          autoComplete="username"
           inputMode="email"
           spellCheck={false}
         />
@@ -235,6 +236,7 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         onBlur={(e) => form.touch("password", e)}
+        name="new-password"
         autoComplete="new-password"
       />
       <PasswordField
@@ -246,6 +248,7 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
         value={confirm}
         onChange={(e) => setConfirm(e.target.value)}
         onBlur={(e) => form.touch("confirm", e)}
+        name="confirm-password"
         autoComplete="new-password"
       />
       {consentItems.length > 0 && (

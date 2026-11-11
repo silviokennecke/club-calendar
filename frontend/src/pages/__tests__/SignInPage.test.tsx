@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
@@ -14,6 +14,7 @@ const apiGet = vi.fn();
 const apiFetch = vi.fn();
 const login = vi.fn();
 const startAuthentication = vi.fn();
+const cancelCeremony = vi.fn();
 
 vi.mock("@/lib/api", async () => ({
   ...(await vi.importActual<typeof import("@/lib/api")>("@/lib/api")),
@@ -25,6 +26,7 @@ vi.mock("@/lib/api", async () => ({
 vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ login }) }));
 vi.mock("@simplewebauthn/browser", () => ({
   startAuthentication: (...a: unknown[]) => startAuthentication(...a),
+  WebAuthnAbortService: { cancelCeremony: () => cancelCeremony() },
 }));
 
 function HistoryButtons() {
@@ -186,6 +188,63 @@ describe("step 1: email", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  describe("passkey autofill", () => {
+    afterEach(() => {
+      vi.stubGlobal("PublicKeyCredential", undefined);
+    });
+
+    it("does nothing when conditional mediation is unavailable", async () => {
+      vi.stubGlobal("PublicKeyCredential", {
+        isConditionalMediationAvailable: () => Promise.resolve(false),
+      });
+      renderFlow();
+      await screen.findByLabelText(/^E-Mail/);
+      await new Promise((r) => setTimeout(r, 20));
+      expect(startAuthentication).not.toHaveBeenCalled();
+    });
+
+    it("starts the conditional ceremony, signs in and stays silent on abort", async () => {
+      vi.stubGlobal("PublicKeyCredential", {
+        isConditionalMediationAvailable: () => Promise.resolve(true),
+      });
+      apiFetch.mockImplementation((path: string) =>
+        Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve(
+              path.includes("options")
+                ? { options: {}, challengeToken: "c" }
+                : { access_token: "a", refresh_token: "r", user: { id: "1" } },
+            ),
+        }),
+      );
+      startAuthentication.mockResolvedValue({ id: "x" });
+      renderFlow();
+      await waitFor(() => expect(login).toHaveBeenCalled());
+      expect(startAuthentication).toHaveBeenCalledWith(
+        expect.objectContaining({ useBrowserAutofill: true }),
+      );
+    });
+
+    it("ignores AbortError and cancels the ceremony on submit", async () => {
+      vi.stubGlobal("PublicKeyCredential", {
+        isConditionalMediationAvailable: () => Promise.resolve(true),
+      });
+      apiFetch.mockResolvedValue({
+        json: () => Promise.resolve({ options: {}, challengeToken: "c" }),
+      });
+      const abort = new Error("aborted");
+      abort.name = "AbortError";
+      startAuthentication.mockRejectedValue(abort);
+      renderFlow();
+      await waitFor(() => expect(startAuthentication).toHaveBeenCalled());
+      expect(screen.queryByRole("alert")).toBeNull();
+      cancelCeremony.mockClear();
+      await continueWith();
+      await waitFor(() => expect(cancelCeremony).toHaveBeenCalled());
+    });
+  });
+
   it("shows the wait time of a rate-limited identify (429 Retry-After)", async () => {
     apiPost.mockRejectedValue(
       new ApiError("x", 429, "rate_limited", undefined, { retryAfter: 600 }),
@@ -217,6 +276,15 @@ describe("identify: login", () => {
     expect(screen.getByLabelText("E-Mail", { selector: "#login-email" })).toHaveValue(
       "alex@beispiel.de",
     );
+    const hidden = document.querySelector<HTMLInputElement>('input[name="username"]')!;
+    expect(hidden).toHaveValue("alex@beispiel.de");
+    expect(hidden).toHaveAttribute("autocomplete", "username");
+    expect(hidden).toHaveAttribute("aria-hidden", "true");
+    expect(hidden).toHaveAttribute("tabindex", "-1");
+    expect(hidden.hidden).toBe(false);
+    expect(hidden.form).toBe(screen.getByLabelText(/^Passwort$/).closest("form"));
+    expect(screen.getByLabelText(/^Passwort$/)).toHaveAttribute("name", "password");
+    expect(screen.getByRole("button", { name: "Anmelden" })).toHaveAttribute("type", "submit");
     expect(screen.getByRole("link", { name: "Passwort vergessen?" })).toHaveAttribute(
       "href",
       "/forgot-password",
@@ -386,6 +454,15 @@ describe("identify: register", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Konto erstellen" })).toBeInTheDocument();
     expect(screen.getByLabelText(/^Name/)).toHaveFocus();
     expect(screen.getByLabelText(/^Name/)).toHaveAttribute("autocomplete", "name");
+    expect(screen.getByLabelText("E-Mail", { selector: "#signup-email" })).toHaveAttribute(
+      "autocomplete",
+      "username",
+    );
+    expect(screen.getByLabelText(/^Passwort$/)).toHaveAttribute("autocomplete", "new-password");
+    expect(screen.getByLabelText(/^Passwort wiederholen/)).toHaveAttribute(
+      "autocomplete",
+      "new-password",
+    );
     expect(screen.getByLabelText("E-Mail", { selector: "#signup-email" })).toHaveAttribute(
       "readonly",
     );

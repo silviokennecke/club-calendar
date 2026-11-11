@@ -88,12 +88,23 @@ export function LoginStep({ email, onBack }: { email: string; onBack: () => void
         focusSignal={form.submits}
         errors={error ? [{ fieldId: PASSWORD_ID, message: error }] : []}
       />
+      <input
+        type="email"
+        id="username"
+        name="username"
+        className="sr-only"
+        value={email}
+        readOnly
+        tabIndex={-1}
+        aria-hidden="true"
+        autoComplete="username"
+      />
       <Field id="login-email" label={t("auth.email")}>
         <TextInput
           type="email"
           value={email}
           readOnly
-          autoComplete="username"
+          autoComplete="off"
           inputMode="email"
           spellCheck={false}
         />
@@ -107,6 +118,7 @@ export function LoginStep({ email, onBack }: { email: string; onBack: () => void
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         onBlur={(e) => form.touch("password", e)}
+        name="password"
         autoComplete="current-password"
       />
       <Link
