@@ -8,10 +8,12 @@ use App\Entity\MfaBackupCode;
 use App\Entity\Passkey;
 use App\Entity\User;
 use App\Entity\UserTotp;
+use App\Enum\SecurityEventType;
 use App\Exception\ApiProblemException;
 use App\Repository\MfaBackupCodeRepository;
 use App\Repository\UserTotpRepository;
 use App\Security\ClientContext;
+use App\Security\ClientContextResolver;
 use App\Security\Mfa\BackupCodeGenerator;
 use App\Security\Mfa\Totp;
 use App\Security\NonceStore;
@@ -42,6 +44,9 @@ class MfaService
         private readonly SignedTokenService $signedTokens,
         private readonly NonceStore $nonces,
         private readonly TokenService $tokens,
+        private readonly SecurityEventLogger $events,
+        private readonly AccountMailer $mailer,
+        private readonly ClientContextResolver $contextResolver,
     ) {
     }
 
@@ -107,7 +112,7 @@ class MfaService
     /**
      * Turns two-step sign-in on. Does NOT end other sessions.
      *
-     * `$context` is reserved for the security event and mail of the caller wiring.
+     * Records the `mfa_enabled` event and sends the notice (context defaults to the current request).
      *
      * @param list<string>|null $backupCodes the codes exactly as issued by setup(), null when setup returned none
      *
@@ -169,6 +174,8 @@ class MfaService
             $this->em->flush();
         });
 
+        $this->notify($user, SecurityEventType::MFA_ENABLED, $method, $context);
+
         return $this->status($user);
     }
 
@@ -188,6 +195,7 @@ class MfaService
             $this->storeCodes($user, $codes);
             $this->em->flush();
         });
+        $this->notify($user, SecurityEventType::BACKUP_CODES_REGENERATED, null, $context);
 
         return $codes;
     }
@@ -196,18 +204,22 @@ class MfaService
      * Turns two-step sign-in off (profile and CLI; the caller re-authenticates). Removes TOTP and codes, keeps
      * passkeys, ends all sessions and MCP grants. The caller issues a fresh token pair if a session continues.
      *
+     * `$method` is the event method; default `password`, or `cli` when no client address is known.
+     *
      * @throws ApiProblemException 409 `mfa_not_enabled`
      */
-    public function disable(User $user, ?ClientContext $context = null): void
+    public function disable(User $user, ?ClientContext $context = null, ?string $method = null): void
     {
         $this->assertEnabled($user);
         $this->removeAndEndSessions($user);
+        $this->notify($user, SecurityEventType::MFA_DISABLED, $method, $context);
     }
 
     /** Backup-code sign-in: same effect as disable(); the caller then issues the token pair of the new session. */
     public function endEnforcement(User $user, ?ClientContext $context = null): void
     {
         $this->removeAndEndSessions($user);
+        $this->notify($user, SecurityEventType::BACKUP_CODE_USED, 'backup_code', $context);
     }
 
     /** Checks a TOTP code at sign-in; a step is accepted once (race safe). */
@@ -258,6 +270,21 @@ class MfaService
             $this->em->flush();
         });
         $this->tokens->revokeAllRefreshTokens($user);
+    }
+
+    private function notify(User $user, SecurityEventType $type, ?string $method, ?ClientContext $context): void
+    {
+        $context ??= $this->contextResolver->current();
+        if (SecurityEventType::MFA_DISABLED === $type) {
+            $method ??= null === $context->ip ? 'cli' : 'password';
+        }
+        $this->events->record($user, $type, true, $method, null, $context);
+        match ($type) {
+            SecurityEventType::MFA_ENABLED => $this->mailer->sendMfaEnabled($user, $context),
+            SecurityEventType::MFA_DISABLED => $this->mailer->sendMfaDisabled($user, $context),
+            SecurityEventType::BACKUP_CODE_USED => $this->mailer->sendBackupCodeUsed($user, $context),
+            default => $this->mailer->sendBackupCodesRegenerated($user, $context),
+        };
     }
 
     private function assertEnabled(User $user): void

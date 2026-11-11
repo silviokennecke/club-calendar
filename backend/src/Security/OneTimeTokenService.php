@@ -33,13 +33,13 @@ final readonly class OneTimeTokenService
     }
 
     /** @param string|null $challenge S256 challenge (base64url) the redeemer must prove with the verifier */
-    public function issue(User $user, string $purpose, int $ttlSeconds, ?string $challenge = null): string
+    public function issue(User $user, string $purpose, int $ttlSeconds, ?string $challenge = null, ?string $provider = null): string
     {
         return $this->signedTokens->issue($purpose, [
             'n' => SignedTokenService::b64(random_bytes(32)),
             'uid' => $user->getId(),
             'tv' => $user->getTokenVersion(),
-        ] + (null === $challenge ? [] : ['cc' => $challenge]), $ttlSeconds);
+        ] + (null === $challenge ? [] : ['cc' => $challenge]) + (null === $provider ? [] : ['prov' => $provider]), $ttlSeconds);
     }
 
     /** Challenge a start request must send: S256 of a 32-byte verifier, base64url without padding. */
@@ -63,7 +63,7 @@ final readonly class OneTimeTokenService
      * @throws ApiProblemException 400 invalid_code_verifier: the token requires a verifier that is missing or
      *                             wrong. The token is consumed first, so a wrong guess burns it (the user signs in again).
      */
-    public function redeem(string $token, array $purposes, ?string $verifier = null): ?User
+    public function redeem(string $token, array $purposes, ?string $verifier = null, ?string &$provider = null): ?User
     {
         foreach ($purposes as $purpose) {
             $claims = $this->signedTokens->verify($purpose, $token);
@@ -89,6 +89,8 @@ final readonly class OneTimeTokenService
             if (null !== $challenge && (!is_string($verifier) || !hash_equals((string) $challenge, self::challengeFor($verifier)))) {
                 throw new ApiProblemException(400, 'The sign-in was not started in this browser', 'invalid_code_verifier');
             }
+
+            $provider = is_string($claims['prov'] ?? null) ? $claims['prov'] : null;
 
             return $user;
         }

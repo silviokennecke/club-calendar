@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\Passkey;
 use App\Entity\User;
+use App\Enum\SecurityEventType;
 use App\Exception\ApiProblemException;
 use App\Security\NonceStore;
 use App\Security\SignedTokenService;
@@ -63,6 +64,7 @@ class WebAuthnService
         private readonly SignedTokenService $signedTokens,
         private readonly NonceStore $nonces,
         private readonly LoggerInterface $logger,
+        private readonly SecurityEventLogger $events,
         private readonly string $rpId,
         private readonly string $rpName,
         private readonly string $allowedOrigin,
@@ -263,10 +265,13 @@ class WebAuthnService
                 ->check($record, $response, $options, $this->rpId, null);
         } catch (\Throwable $e) {
             $this->logger->warning('Passkey sign-in rejected', ['passkey' => $passkey->getId(), 'exception' => $e]);
+            $this->events->record($user, SecurityEventType::LOGIN, false, 'passkey');
             throw $this->authenticationFailed();
         }
 
         if (!$user->isEmailVerified()) {
+            $this->events->record($user, SecurityEventType::LOGIN, false, 'passkey');
+
             throw $this->authenticationFailed();
         }
 
@@ -274,6 +279,7 @@ class WebAuthnService
         $passkey->setPublicKey($updated->credentialPublicKey);
         $passkey->setLastUsedAt($this->signedTokens->now()->setTimezone(new \DateTimeZone('UTC')));
         $this->em->flush();
+        $this->events->record($user, SecurityEventType::LOGIN, true, 'passkey');
 
         return $this->tokens->tokenResponse($user);
     }
@@ -292,6 +298,7 @@ class WebAuthnService
         $user->invalidateTokens();
         $this->em->flush();
         $this->tokens->revokeAllRefreshTokens($user);
+        $this->events->record($user, SecurityEventType::PASSKEY_DELETED, true, 'passkey');
 
         return $this->tokens->tokenResponse($user, null, null, $consentOk);
     }

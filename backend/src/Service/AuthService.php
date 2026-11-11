@@ -9,6 +9,7 @@ use App\Entity\ClubUser;
 use App\Entity\EmailVerification;
 use App\Entity\OAuthAccount;
 use App\Entity\User;
+use App\Enum\SecurityEventType;
 use App\Exception\ApiProblemException;
 use App\Exception\OAuthAccountConflictException;
 use App\Exception\OAuthIdentityMismatchException;
@@ -44,6 +45,7 @@ readonly class AuthService
         private LegalConsentService $legal,
         private RegistrationPolicy $registrationPolicy,
         private LoggerInterface $logger,
+        private SecurityEventLogger $events,
         /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
         #[Autowire(env: 'int:REFRESH_TOKEN_REUSE_GRACE')]
         private int $refreshReuseGrace,
@@ -98,8 +100,11 @@ readonly class AuthService
             throw self::invalidCredentials();
         }
         if (!$this->hasher->isPasswordValid($user, $password)) {
+            $this->events->record($user, SecurityEventType::LOGIN, false, 'password');
+
             throw self::invalidCredentials();
         }
+        $this->events->record($user, SecurityEventType::LOGIN, true, 'password');
         if ($this->hasher->needsRehash($user)) {
             // Transparent upgrade; deliberately no token version bump, running sessions stay valid.
             $user->setPassword($this->hasher->hashPassword($user, $password));
@@ -179,9 +184,9 @@ readonly class AuthService
     }
 
     /** One-time code for the SSO redirect; redeemed at the token endpoint like the e-mail login token. */
-    public function issueOAuthLoginCode(User $user, string $challenge): string
+    public function issueOAuthLoginCode(User $user, string $challenge, ?string $provider = null): string
     {
-        return $this->oneTimeTokens->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, $this->oauthLoginCodeTtl, $challenge);
+        return $this->oneTimeTokens->issue($user, OneTimeTokenService::PURPOSE_OAUTH_LOGIN, $this->oauthLoginCodeTtl, $challenge, $provider);
     }
 
     /**
@@ -191,10 +196,11 @@ readonly class AuthService
      */
     public function redeemOneTimeToken(string $token, ?string $verifier = null): array
     {
-        $user = $this->oneTimeTokens->redeem($token, [OneTimeTokenService::PURPOSE_OAUTH_LOGIN], $verifier);
+        $user = $this->oneTimeTokens->redeem($token, [OneTimeTokenService::PURPOSE_OAUTH_LOGIN], $verifier, $provider);
         if (null === $user) {
             throw new ApiProblemException(400, 'The token is invalid, expired or was used before', 'invalid_grant');
         }
+        $this->events->record($user, SecurityEventType::LOGIN, true, 'sso', $provider);
 
         return $this->tokens->tokenResponse($user);
     }
@@ -437,7 +443,13 @@ readonly class AuthService
                 $this->em->remove($existing);
                 $this->em->flush();
             } else {
-                $this->syncDirectoryIdentity($existing, $providerId, $tenantId, $objectId);
+                try {
+                    $this->syncDirectoryIdentity($existing, $providerId, $tenantId, $objectId);
+                } catch (OAuthIdentityMismatchException $e) {
+                    $this->events->record($oauthUser, SecurityEventType::LOGIN, false, 'sso', $provider);
+
+                    throw $e;
+                }
                 if (!$oauthUser->isEmailVerified()) {
                     // Created by a provider that does not prove the address: restricted session until the code was entered.
                     $this->sendCodeIfDue($oauthUser);
@@ -454,6 +466,7 @@ readonly class AuthService
             // The column collation (utf8mb4_unicode_ci) also equates "ä" with "a", "ß" with "ss" or full-width
             // letters: link only if the stored address is exactly the normalized one.
             if (!$emailVerified || $user->getEmail() !== $email) {
+                $this->events->record($user, SecurityEventType::LOGIN, false, 'sso', $provider);
                 $trustedProvider = in_array($provider, self::PROVIDERS_WITH_VERIFIED_EMAIL_CLAIM, true);
                 throw new OAuthAccountConflictException('An account with this e-mail address already exists', $trustedProvider && !$providerSaysEmailVerified);
             }

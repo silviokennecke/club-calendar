@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller;
 
+use App\Entity\Passkey;
 use App\Entity\User;
+use App\Exception\OAuthAccountConflictException;
+use App\OAuth\OAuthServerService;
 use App\Security\Location;
 use App\Security\LocationResolver;
+use App\Security\OneTimeTokenService;
+use App\Service\AuthService;
 use App\Service\PasswordResetService;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
+use App\Tests\Helper\SoftwareAuthenticator;
 use App\Tests\Helper\TestHelper;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -63,7 +69,7 @@ class SecurityEventTest extends WebTestCase
     /** @return list<array<string, mixed>> */
     private function events(): array
     {
-        return static::getContainer()->get(Connection::class)->fetchAllAssociative('SELECT * FROM security_event');
+        return static::getContainer()->get(Connection::class)->fetchAllAssociative('SELECT * FROM security_event ORDER BY id');
     }
 
     private function mail(): Email
@@ -132,5 +138,167 @@ class SecurityEventTest extends WebTestCase
         $this->em->remove($this->em->find(User::class, $user->getId()));
         $this->em->flush();
         $this->assertCount(0, $this->events());
+    }
+
+    /** @param array<string, mixed> $row */
+    private function assertEvent(array $row, string $type, bool $success, ?string $method, ?string $provider): void
+    {
+        $this->assertSame($type, $row['type']);
+        $this->assertSame($success, 1 === (int) $row['success']);
+        $this->assertSame($method, $row['method']);
+        $this->assertSame($provider, $row['provider']);
+    }
+
+    private function passwordLogin(string $email, string $password): int
+    {
+        $this->client->request('POST', '/api/auth/login', [], [], ['CONTENT_TYPE' => 'application/json', 'REMOTE_ADDR' => '203.0.113.9'], json_encode(['email' => $email, 'password' => $password]));
+
+        return $this->client->getResponse()->getStatusCode();
+    }
+
+    public function testPasswordLoginSuccessAndFailureAreStored(): void
+    {
+        $this->client->disableReboot();
+        $this->user();
+        $this->assertSame(200, $this->passwordLogin('alice@example.com', 'password123'));
+        $this->assertSame(401, $this->passwordLogin('alice@example.com', 'wrong-password'));
+
+        $events = $this->events();
+        $this->assertCount(2, $events);
+        $this->assertEvent($events[0], 'login', true, 'password', null);
+        $this->assertEvent($events[1], 'login', false, 'password', null);
+        $this->assertSame('203.0.113.9', $events[1]['ip']);
+    }
+
+    public function testUnknownAddressIsNotLogged(): void
+    {
+        $this->user();
+        $this->assertSame(401, $this->passwordLogin('nobody@example.com', 'password123'));
+        $this->assertSame([], $this->events());
+    }
+
+    public function testRateLimitedLoginIsNotLogged(): void
+    {
+        $this->client->disableReboot();
+        $this->user();
+        $limited = false;
+        for ($i = 0; $i < 8; ++$i) {
+            if (429 === $this->passwordLogin('alice@example.com', 'wrong-password')) {
+                $limited = true;
+            }
+        }
+        $this->assertTrue($limited);
+        $attempts = array_sum(array_column($this->events(), 'attempts'));
+        $this->assertSame(5, $attempts);
+    }
+
+    public function testSsoCodeRedemptionStoresProviderAndCallbackConflictIsAFailure(): void
+    {
+        $user = $this->user();
+        $auth = static::getContainer()->get(AuthService::class);
+        $verifier = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
+        $code = $auth->issueOAuthLoginCode($user, OneTimeTokenService::challengeFor($verifier), 'microsoft');
+        $auth->redeemOneTimeToken($code, $verifier);
+
+        try {
+            $auth->findOrCreateOAuthUser('microsoft', 'sub-1', 'alice@example.com', 'Alice', false);
+            $this->fail('conflict expected');
+        } catch (OAuthAccountConflictException) {
+        }
+        // a new, unknown address is not attributable and creates no failure row
+        $auth->findOrCreateOAuthUser('google', 'sub-2', 'newbie@example.com', 'New', true);
+
+        $events = $this->events();
+        $this->assertCount(2, $events);
+        $this->assertEvent($events[0], 'login', true, 'sso', 'microsoft');
+        $this->assertEvent($events[1], 'login', false, 'sso', 'microsoft');
+    }
+
+    /** @return array{0: SoftwareAuthenticator, 1: string} */
+    private function passkeyFor(User $user): array
+    {
+        $origin = rtrim((string) $_ENV['FRONTEND_URL'], '/');
+        $auth = 'Bearer '.static::getContainer()->get(TokenService::class)->createAccessToken($user);
+        $json = fn (string $m, string $u, array $d, string $a = '') => TestHelper::jsonRequest($this->client, $m, $u, $d, $a);
+        $o = $json('POST', '/api/auth/webauthn/register/options', ['password' => 'password123'], $auth);
+        $authenticator = new SoftwareAuthenticator();
+        $r = $json('POST', '/api/auth/webauthn/register/verify', [
+            'challengeToken' => $o['body']['challengeToken'],
+            'response' => $authenticator->attestation($o['body']['options']['challenge'], $origin, 'localhost'),
+            'deviceName' => 'Software',
+        ], $auth);
+        $this->assertSame(200, $r['status'], $r['content']);
+
+        return [$authenticator, $auth];
+    }
+
+    private function passkeyLogin(SoftwareAuthenticator $authenticator, User $user, string $rpId): int
+    {
+        $origin = rtrim((string) $_ENV['FRONTEND_URL'], '/');
+        $o = TestHelper::jsonRequest($this->client, 'GET', '/api/auth/webauthn/authenticate/options');
+
+        return TestHelper::jsonRequest($this->client, 'POST', '/api/auth/webauthn/authenticate/verify', [
+            'challengeToken' => $o['body']['challengeToken'],
+            'response' => $authenticator->assertion($o['body']['options']['challenge'], $origin, $rpId, $user->getId()),
+        ])['status'];
+    }
+
+    public function testPasskeyLoginFailureSuccessAndDeletion(): void
+    {
+        $this->client->disableReboot();
+        $user = $this->user();
+        [$authenticator, $auth] = $this->passkeyFor($user);
+
+        $this->assertSame(401, $this->passkeyLogin($authenticator, $user, 'evil.example'));
+        $this->assertSame(200, $this->passkeyLogin($authenticator, $user, 'localhost'));
+
+        $id = $this->em->getRepository(Passkey::class)->findOneBy([])->getId();
+        $r = TestHelper::jsonRequest($this->client, 'DELETE', '/api/auth/webauthn/'.$id, [], $auth);
+        $this->assertSame(200, $r['status'], $r['content']);
+
+        $events = $this->events();
+        $this->assertCount(3, $events);
+        $this->assertEvent($events[0], 'login', false, 'passkey', null);
+        $this->assertEvent($events[1], 'login', true, 'passkey', null);
+        $this->assertEvent($events[2], 'passkey_deleted', true, 'passkey', null);
+    }
+
+    public function testUnknownPasskeyIsNotLogged(): void
+    {
+        $this->client->disableReboot();
+        $user = $this->user();
+        $this->assertSame(401, $this->passkeyLogin(new SoftwareAuthenticator(), $user, 'localhost'));
+        $this->assertSame([], $this->events());
+    }
+
+    /** @return string id of an authorization request of a Claude client */
+    private function authorizationRequest(): string
+    {
+        $redirect = 'https://claude.ai/api/mcp/auth_callback';
+        $reg = TestHelper::jsonRequest($this->client, 'POST', '/api/oauth/register', ['client_name' => 'Claude', 'redirect_uris' => [$redirect]]);
+        $this->client->request('GET', '/api/oauth/authorize?'.http_build_query([
+            'client_id' => $reg['body']['client_id'], 'redirect_uri' => $redirect, 'response_type' => 'code',
+            'code_challenge' => 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', 'code_challenge_method' => 'S256',
+            'scope' => 'mcp:read', 'state' => 'xyz', 'resource' => static::getContainer()->get(OAuthServerService::class)->canonicalResource(),
+        ]));
+        parse_str((string) parse_url((string) $this->client->getResponse()->headers->get('Location'), PHP_URL_QUERY), $q);
+
+        return $q['request'];
+    }
+
+    public function testMcpAuthorizationApproveAndDenyAreStoredWithTheClientFamily(): void
+    {
+        $this->client->disableReboot();
+        $user = $this->user();
+        $auth = 'Bearer '.static::getContainer()->get(TokenService::class)->createAccessToken($user);
+        foreach ([false, true] as $approve) {
+            $r = TestHelper::jsonRequest($this->client, 'POST', '/api/oauth/authorize/decision', ['requestId' => $this->authorizationRequest(), 'approve' => $approve], $auth);
+            $this->assertSame(200, $r['status'], $r['content']);
+        }
+
+        $events = $this->events();
+        $this->assertCount(2, $events);
+        $this->assertEvent($events[0], 'login', false, 'mcp', 'claude');
+        $this->assertEvent($events[1], 'login', true, 'mcp', 'claude');
     }
 }

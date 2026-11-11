@@ -301,7 +301,7 @@ class OAuthController extends AbstractController
         }
 
         $response = new RedirectResponse($this->frontendUrl.'/auth/callback?'.http_build_query([
-            'code' => $this->authService->issueOAuthLoginCode($user, $claims['cc']),
+            'code' => $this->authService->issueOAuthLoginCode($user, $claims['cc'], $provider),
         ]));
         $response->headers->setCookie($this->stateCookie('', -1));
 

@@ -11,14 +11,18 @@ use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Repository\MfaBackupCodeRepository;
 use App\Repository\UserTotpRepository;
+use App\Security\ClientContext;
 use App\Security\Mfa\Totp;
+use App\Service\DeferredMailer;
 use App\Service\MfaService;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
+use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class MfaServiceTest extends WebTestCase
@@ -242,5 +246,110 @@ class MfaServiceTest extends WebTestCase
 
         $this->addPasskey($user, 'pk2');
         $this->mfa->assertPasskeyDeletable($user);
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function events(): array
+    {
+        return static::getContainer()->get(Connection::class)->fetchAllAssociative('SELECT * FROM security_event ORDER BY created_at, id');
+    }
+
+    private function mailCount(): int
+    {
+        static::getContainer()->get(DeferredMailer::class)->flush();
+
+        return count(array_filter(self::getMailerMessages(), fn ($m) => $m instanceof Email));
+    }
+
+    private function ctx(): ClientContext
+    {
+        return new ClientContext('203.0.113.9', 'Firefox on Linux', 'Berlin', 'DE');
+    }
+
+    public function testEnableRecordsEventAndMail(): void
+    {
+        $user = $this->user();
+        $setup = $this->mfa->setup($user, 'totp');
+        $code = Totp::code($setup['secret'], Totp::step(time()));
+        $this->mfa->enable($user, $setup['setupToken'], 'totp', $setup['secret'], $code, $setup['backupCodes'], true, $this->ctx());
+
+        $rows = $this->events();
+        $this->assertCount(1, $rows);
+        $this->assertSame('mfa_enabled', $rows[0]['type']);
+        $this->assertSame('totp', $rows[0]['method']);
+        $this->assertSame('203.0.113.9', $rows[0]['ip']);
+        $this->assertSame('Berlin', $rows[0]['city']);
+        $this->assertSame(1, $this->mailCount());
+    }
+
+    public function testFailedEnableRecordsNothing(): void
+    {
+        $user = $this->user();
+        $setup = $this->mfa->setup($user, 'totp');
+        $this->assertProblem('invalid_totp_code', fn () => $this->mfa->enable($user, $setup['setupToken'], 'totp', $setup['secret'], '000000', $setup['backupCodes'], true, $this->ctx()));
+        $this->assertSame([], $this->events());
+        $this->assertSame(0, $this->mailCount());
+    }
+
+    public function testRegenerateRecordsEventAndMail(): void
+    {
+        [$user] = $this->enabledTotpUser();
+        $this->em->getConnection()->executeStatement('DELETE FROM security_event');
+        $before = $this->mailCount();
+        $this->mfa->regenerateBackupCodes($user, $this->ctx());
+
+        $rows = $this->events();
+        $this->assertCount(1, $rows);
+        $this->assertSame('backup_codes_regenerated', $rows[0]['type']);
+        $this->assertSame('203.0.113.9', $rows[0]['ip']);
+        $this->assertSame($before + 1, $this->mailCount());
+    }
+
+    public function testDisableRecordsEventAndMail(): void
+    {
+        [$user] = $this->enabledTotpUser();
+        $this->em->getConnection()->executeStatement('DELETE FROM security_event');
+        $before = $this->mailCount();
+        $this->mfa->disable($user, $this->ctx());
+
+        $rows = $this->events();
+        $this->assertCount(1, $rows);
+        $this->assertSame('mfa_disabled', $rows[0]['type']);
+        $this->assertSame('password', $rows[0]['method']);
+        $this->assertSame($before + 1, $this->mailCount());
+    }
+
+    public function testDisableWithoutClientAddressIsCli(): void
+    {
+        [$user] = $this->enabledTotpUser();
+        $this->em->getConnection()->executeStatement('DELETE FROM security_event');
+        $this->mfa->disable($user);
+
+        $rows = $this->events();
+        $this->assertCount(1, $rows);
+        $this->assertSame('cli', $rows[0]['method']);
+        $this->assertNull($rows[0]['ip']);
+    }
+
+    public function testEndEnforcementRecordsEventAndMail(): void
+    {
+        [$user] = $this->enabledTotpUser();
+        $this->em->getConnection()->executeStatement('DELETE FROM security_event');
+        $before = $this->mailCount();
+        $this->mfa->endEnforcement($user, $this->ctx());
+
+        $rows = $this->events();
+        $this->assertCount(1, $rows);
+        $this->assertSame('backup_code_used', $rows[0]['type']);
+        $this->assertSame($before + 1, $this->mailCount());
+    }
+
+    public function testNoEventWhenOperationThrows(): void
+    {
+        $user = $this->user();
+        $this->assertProblem('mfa_not_enabled', fn () => $this->mfa->disable($user, $this->ctx()));
+        $this->assertProblem('mfa_not_enabled', fn () => $this->mfa->regenerateBackupCodes($user, $this->ctx()));
+        $this->assertSame([], $this->events());
+        $this->assertSame(0, $this->mailCount());
     }
 }

@@ -7,6 +7,7 @@ namespace App\OAuth;
 use App\Entity\McpGrant;
 use App\Entity\OAuthAuthorizationRequest;
 use App\Entity\User;
+use App\Enum\SecurityEventType;
 use App\EventListener\ConsentGateListener;
 use App\Exception\ApiProblemException;
 use App\Repository\McpGrantRepository;
@@ -14,6 +15,7 @@ use App\Repository\OAuthAuthorizationRequestRepository;
 use App\Security\AuthRateLimiter;
 use App\Service\LegalDocumentService;
 use App\Service\Quota;
+use App\Service\SecurityEventLogger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -30,6 +32,7 @@ class OAuthConsentService
         private readonly LegalDocumentService $legal,
         private readonly Quota $quota,
         private readonly AuthRateLimiter $limiter,
+        private readonly SecurityEventLogger $events,
     ) {
     }
 
@@ -60,6 +63,7 @@ class OAuthConsentService
 
         if (!$approve) {
             $this->oauth->deny($request);
+            $this->logAuthorization($user, $request, false);
 
             return OAuthAuthorizeController::redirectUrl($request->getRedirectUri(), ['error' => 'access_denied', 'error_description' => 'The user denied the request', 'state' => $request->getState()]);
         }
@@ -69,6 +73,8 @@ class OAuthConsentService
             throw ConsentGateListener::required($pending);
         }
         if (!$user->isEmailVerified()) {
+            $this->logAuthorization($user, $request, false);
+
             throw new ApiProblemException(403, 'The e-mail address is not confirmed', 'email_not_verified', null, [], null, ['email' => $user->getEmail()]);
         }
 
@@ -84,7 +90,14 @@ class OAuthConsentService
             throw self::notFound();
         }
 
+        $this->logAuthorization($user, $request, true);
+
         return OAuthAuthorizeController::redirectUrl($result['redirectUri'], ['code' => $result['code'], 'state' => $result['state']]);
+    }
+
+    private function logAuthorization(User $user, OAuthAuthorizationRequest $request, bool $success): void
+    {
+        $this->events->record($user, SecurityEventType::LOGIN, $success, 'mcp', $request->getClient()->getFamily() ?? 'unverified');
     }
 
     /** @return list<array<string, mixed>> */
