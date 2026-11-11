@@ -24,12 +24,14 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 - Club members: `GET /api/clubs/:id/members` is paginated and searchable on the server (`page`, `perPage` 1..100 default 10, `q` on name and e-mail, `role`; ordered by name then id; total in `X-Total-Count`, now also exposed by CORS; migration adds index `club_user(club_id, role)`). The members tab of "Manage club" uses it with search, role filter and paging and never loads the whole list.
 
 - Club self-join through feeds: new club setting `feedSignup` (`off` | `internal` default | `public`, admin-editable via `PATCH /api/clubs/:id`, in club responses for staff) decides whether a signed-in non-member who opens a feed becomes a `member` through it (`internal`: `CLUB` and `PRIVATE` feeds, `public`: `PUBLIC` feeds too). New `POST /api/feed/:feedId/claim` (JWT, confirmed address, `{secret?}`; 404 `feed_not_found` for every lookup failure, 403 `member_signup_disabled`) and `GET /api/feed/:feedId/membership`. New table `feed_member` (access of members to `PRIVATE` feeds, `assigned` by staff or `claimed` by secret) with editor/admin endpoints `GET|POST /api/clubs/:id/feeds/:feedId/members`, `…/members/by-email`, `…/members/bulk-delete`, `DELETE …/members/:userId`; feed responses carry `assignedCount`; `POST …/regenerate-secret` accepts `{revokeClaimed}`; leaving or removal from the club deletes the feed access. Quota `feedMembersPerFeed` (5000); rate limit 20 per user and hour. Migration adds `club.feed_signup` (existing clubs: `internal`) and `feed_member`.
+- Sign-in offers passkeys through the browser's and the password manager's autofill on the e-mail field (conditional UI); users without a passkey see no extra UI.
 
 ### Changed
 
 - Small UI fixes: audience and location lists and the audience chips and filters are sorted alphabetically; the feed visibility "CLUB" is now called "Vereinsintern" and private feed assignment is described; the template picker loads templates in chunks of 5; "Import" is removed from the sidebar navigation; the dropdown arrow of selects no longer overlaps the text; the sign-in flow shows no required marker; the e-mail confirmation code is shown grouped as 123-456.
 - Calendar search is the same everywhere: an autocomplete with at most 10 previews and a last entry "Alle Ergebnisse anzeigen" that opens the list with the search term. In the event calendar the list is the event list; on the public feed page and in "Mein Verein" the click opens the event dialog and the list shows the matches of all dates.
 - Sign-in is kept across tabs and browser restarts: the refresh token is stored in the browser, the access token only per tab. Signing out applies to all open tabs of the browser.
+- Sign-in and signup forms are marked up for password managers: a hidden username field and `current-password` / `new-password` autocomplete, so they are recognised as a login.
 
 ### Security
 
