@@ -56,6 +56,7 @@ import { eventRoutes } from "@/components/events/routes";
 import { openModalState } from "@/lib/modalRoutes";
 import { preloadEventModals } from "./lazy";
 import { usePageTitle } from "@/lib/usePageTitle";
+import { sortByName, sortTargetGroupRefs } from "@/lib/sortByName";
 
 /**
  * Calendar (design: Calendar, CalendarWeek, CalendarArchived, CalendarStates, CalendarMobile).
@@ -87,6 +88,7 @@ export default function CalendarPage() {
   const { data: targetGroups = [] } = useQuery<TargetGroup[]>({
     queryKey: ["targetGroups", clubId],
     queryFn: () => apiGet(`/api/clubs/${clubId}/target-groups`),
+    select: sortByName,
   });
 
   const club = shell?.clubs.find((c) => c.id === clubId);
@@ -284,11 +286,13 @@ export default function CalendarPage() {
     return loc ? loc.name || formatAddress(loc) : null;
   };
   const tagsOf = (item: CalItem): EventItemTag[] =>
-    ((item.source as CalendarEvent).targetGroups ?? []).map(({ targetGroup }) => ({
-      id: targetGroup.id,
-      label: targetGroup.name,
-      tone: audienceTone(targetGroups.findIndex((g) => g.id === targetGroup.id)),
-    }));
+    sortTargetGroupRefs((item.source as CalendarEvent).targetGroups ?? []).map(
+      ({ targetGroup }) => ({
+        id: targetGroup.id,
+        label: targetGroup.name,
+        tone: audienceTone(targetGroups.findIndex((g) => g.id === targetGroup.id)),
+      }),
+    );
 
   // ——— Content by state ———
   let content: ReactNode;

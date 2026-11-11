@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost } from "@/lib/api";
 import type { Feature, Location, Property, TargetGroup } from "@/lib/types";
+import { sortByName } from "@/lib/sortByName";
 
 /**
  * Reference data for the event form, plus inline creation. Properties and features belong to the
@@ -20,6 +21,7 @@ export function useEventResources(clubId: string, calendarId: string) {
   const targetGroups = useQuery({
     queryKey: ["targetGroups", clubId],
     queryFn: () => apiGet<TargetGroup[]>(`/api/clubs/${clubId}/target-groups`),
+    select: sortByName,
   });
   const locations = useQuery({
     queryKey: ["locations", clubId],

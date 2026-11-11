@@ -40,6 +40,7 @@ import { audienceTone } from "@/components/calendar/eventDisplay";
 import { useLocale } from "@/components/calendar/useLocale";
 import { preloadEventModals } from "../lazy";
 import { usePageTitle } from "@/lib/usePageTitle";
+import { sortByName } from "@/lib/sortByName";
 
 /** Names in the bulk delete dialog; more are summarized ("und 3 weitere"). */
 const MAX_NAMED = 5;
@@ -75,6 +76,7 @@ export default function EventsListPage() {
   const groups = useQuery<TargetGroup[]>({
     queryKey: ["targetGroups", page.clubId],
     queryFn: () => apiGet(`/api/clubs/${page.clubId}/target-groups`),
+    select: sortByName,
   });
   const properties = useQuery<Property[]>({
     queryKey: ["properties", page.calendarId],

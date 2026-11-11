@@ -3,6 +3,7 @@ import { apiGet } from "@/lib/api";
 import { audienceTone } from "@/components/calendar/eventDisplay";
 import { feedAddresses } from "@/lib/feeds";
 import type { CalendarFeed, TargetGroup } from "@/lib/types";
+import { sortByName } from "@/lib/sortByName";
 
 /**
  * Feeds and audiences of a club (design: Feeds, FeedEdit), plus the addresses of a feed.
@@ -17,6 +18,7 @@ export function useFeeds(clubId: string, { withList = true }: { withList?: boole
   const groups = useQuery<TargetGroup[]>({
     queryKey: ["targetGroups", clubId],
     queryFn: () => apiGet<TargetGroup[]>(`/api/clubs/${clubId}/target-groups`),
+    select: sortByName,
   });
   const groupList = groups.data ?? [];
   return {

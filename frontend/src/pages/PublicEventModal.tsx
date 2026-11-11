@@ -20,6 +20,7 @@ import { ModalSkeleton } from "@/components/events/CreateGate";
 import { usePublicEvent, usePublicFeed } from "@/components/feed/usePublicFeed";
 import { usePublicHead } from "@/components/feed/usePublicHead";
 import { Button, Icon, Modal, Tag, buttonClass, toast } from "@/components/ui/shared";
+import { sortTargetGroupRefs } from "@/lib/sortByName";
 
 /**
  * Static map image of a location from the backend (`/api/map/image/location/{id}`, fixed 800x288,
@@ -338,7 +339,7 @@ export function EventDetail({ event, feed, onAddToCalendar, onClose }: EventDeta
                 {t("feed.event.audiences")}
               </h2>
               <ul className="cc-tags" style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                {event.targetGroups.map(({ targetGroup }) => (
+                {sortTargetGroupRefs(event.targetGroups).map(({ targetGroup }) => (
                   <li key={targetGroup.id}>
                     <Tag tone={audienceTone(audiences.findIndex((g) => g.id === targetGroup.id))}>
                       {targetGroup.name}

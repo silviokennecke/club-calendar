@@ -36,6 +36,7 @@ import { MonthNav } from "@/components/calendar/MonthNav";
 import { MonthView } from "@/components/calendar/MonthView";
 import { useLocale } from "@/components/calendar/useLocale";
 import { Button, EmptyState } from "@/components/ui/shared";
+import { sortTargetGroupRefs } from "@/lib/sortByName";
 
 export interface CalendarViewChange {
   date?: IsoDate;
@@ -143,11 +144,13 @@ export function PublicCalendarView({
   const tagsOf = (item: CalItem): EventItemTag[] =>
     item.kind !== "event"
       ? []
-      : (item.source as PublicFeedEvent).targetGroups.map(({ targetGroup }) => ({
-          id: targetGroup.id,
-          label: targetGroup.name,
-          tone: audienceTone(audiences.findIndex((g) => g.id === targetGroup.id)),
-        }));
+      : sortTargetGroupRefs((item.source as PublicFeedEvent).targetGroups).map(
+          ({ targetGroup }) => ({
+            id: targetGroup.id,
+            label: targetGroup.name,
+            tone: audienceTone(audiences.findIndex((g) => g.id === targetGroup.id)),
+          }),
+        );
 
   function reset() {
     onChange({ q: "", groups: [] });

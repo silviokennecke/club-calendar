@@ -15,6 +15,7 @@ import type { CalendarEvent } from "@/lib/types";
 import { Button, Icon, StatusBadge, Tag, type TagTone } from "@/components/ui/shared";
 import { useLocale } from "@/components/calendar/useLocale";
 import { enterTableRef } from "@/lib/pageMotion";
+import { sortTargetGroupRefs } from "@/lib/sortByName";
 
 interface EventsTableProps {
   events: CalendarEvent[];
@@ -210,7 +211,7 @@ export function EventsTable({
                   <td data-label={t("events.list.col.audiences")}>
                     {ev.targetGroups.length > 0 ? (
                       <div className="cc-tags">
-                        {ev.targetGroups.map(({ targetGroup }) => (
+                        {sortTargetGroupRefs(ev.targetGroups).map(({ targetGroup }) => (
                           <Tag key={targetGroup.id} tone={toneOf(targetGroup.id)}>
                             {targetGroup.name}
                           </Tag>

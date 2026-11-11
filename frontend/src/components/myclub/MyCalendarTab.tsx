@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -16,6 +16,7 @@ import { openModalState } from "@/lib/modalRoutes";
 import { PublicCalendarView } from "@/components/feed/PublicCalendarView";
 import { Button, EmptyState, LinkButton, Skeleton } from "@/components/ui/shared";
 import { preloadMyEventModal } from "@/pages/lazy";
+import { sortByName } from "@/lib/sortByName";
 
 /**
  * Tab "Kalender" of Mein Verein: the events of the personal subscription in the view of the public
@@ -48,7 +49,7 @@ export function MyCalendarTab({ clubId }: { clubId: string }) {
     if (loadedZone) setZone(loadedZone);
   }, [loadedZone]);
 
-  const groups = feeds.data?.targetGroups ?? [];
+  const groups = useMemo(() => sortByName(feeds.data?.targetGroups ?? []), [feeds.data]);
   const subscribed = subscription.data?.targetGroupIds ?? [];
   const groupIds = parseGroupIds((override ?? subscribed).join(","), groups);
   const fromSubscription = override === null && groupIds.length > 0;

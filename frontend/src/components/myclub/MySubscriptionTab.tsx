@@ -20,6 +20,7 @@ import {
 } from "@/lib/club/memberApi";
 import { feedStatus, requiresSecret, toggleId } from "@/lib/feeds";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
+import { sortByName } from "@/lib/sortByName";
 
 interface Selection {
   feedIds: string[];
@@ -86,7 +87,8 @@ export function MySubscriptionTab({ clubId }: { clubId: string }) {
     );
   }
 
-  const { feeds: options, targetGroups } = feeds.data;
+  const { feeds: options } = feeds.data;
+  const targetGroups = sortByName(feeds.data.targetGroups);
   const hasPrivate = options.some((f) => requiresSecret(f.visibility));
   const addresses = mySubscriptionAddresses(subscription.data);
 

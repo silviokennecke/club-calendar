@@ -62,7 +62,7 @@ beforeEach(() => {
   for (const fn of [apiGet, apiPost, apiPatch, apiDelete]) fn.mockReset();
   mockApiGet(apiGet, (path: string) => {
     if (path === "/api/clubs/c1/calendars/k1") return Promise.resolve(calendar);
-    if (path.endsWith("/target-groups")) return Promise.resolve(groups);
+    if (path.endsWith("/target-groups")) return Promise.resolve([...groups]);
     if (path.endsWith("/locations")) return Promise.resolve(locations);
     if (path.endsWith("/properties")) return Promise.resolve(properties);
     if (path.endsWith("/features")) return Promise.resolve(features);

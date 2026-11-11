@@ -25,6 +25,7 @@ import { locationName } from "@/lib/events";
 import { preloadEventModals } from "./lazy";
 import { usePageTitle } from "@/lib/usePageTitle";
 import { enterListRef } from "@/lib/pageMotion";
+import { sortByName, sortTargetGroupRefs } from "@/lib/sortByName";
 
 /**
  * Templates of a calendar (design: Templates): cards with time, place, audiences and tags, a search,
@@ -51,6 +52,7 @@ export default function TemplatesPage() {
   const groups = useQuery<TargetGroup[]>({
     queryKey: ["targetGroups", page.clubId],
     queryFn: () => apiGet<TargetGroup[]>(`/api/clubs/${page.clubId}/target-groups`),
+    select: sortByName,
   });
   const toneOf = (id: string) => audienceTone((groups.data ?? []).findIndex((g) => g.id === id));
 
@@ -188,7 +190,7 @@ export default function TemplatesPage() {
                   <span className="t-label">{t("templates.audiences")}</span>
                   {tpl.targetGroups.length > 0 ? (
                     <span className="cc-tags">
-                      {tpl.targetGroups.map(({ targetGroup }) => (
+                      {sortTargetGroupRefs(tpl.targetGroups).map(({ targetGroup }) => (
                         <Tag key={targetGroup.id} tone={toneOf(targetGroup.id)}>
                           {targetGroup.name}
                         </Tag>

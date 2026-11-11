@@ -3,6 +3,7 @@ import { API_URL } from "@/lib/apiUrl";
 import { overlapsRange, type IsoDate } from "@/lib/calendar";
 import { matchesGroups } from "@/lib/events/list";
 import type { FeedVisibility } from "@/lib/types";
+import { sortByName } from "@/lib/sortByName";
 
 const API_BASE = API_URL;
 
@@ -122,7 +123,7 @@ export async function fetchPublicFeed(
     signal,
   );
   return {
-    feed: { ...data.feed, audiences: data.feed?.audiences ?? [] },
+    feed: { ...data.feed, audiences: sortByName(data.feed?.audiences ?? []) },
     events: (data.events ?? []).filter((ev) => !ev.isDraft),
     holidays: data.holidays ?? [],
   };
@@ -141,7 +142,10 @@ export async function fetchPublicEvent(
     signal,
   );
   if (!data.event || data.event.isDraft) throw new PublicFeedError("notFound");
-  return { feed: { ...data.feed, audiences: data.feed?.audiences ?? [] }, event: data.event };
+  return {
+    feed: { ...data.feed, audiences: sortByName(data.feed?.audiences ?? []) },
+    event: data.event,
+  };
 }
 
 /** The one-event ICS file rendered by the backend (same output as the feed). */

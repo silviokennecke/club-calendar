@@ -41,6 +41,7 @@ import { HolidayCalendarChecklist } from "@/components/events/HolidayCalendarChe
 import { useHolidayCalendars } from "@/components/events/useHolidayCalendars";
 import { useLocale } from "@/components/calendar/useLocale";
 import { usePageTitle } from "@/lib/usePageTitle";
+import { sortByName } from "@/lib/sortByName";
 
 /**
  * Export (design: Export, route …/events/export). The file comes from the backend: ICS
@@ -66,6 +67,7 @@ export default function EventsExportPage() {
   const groups = useQuery<TargetGroup[]>({
     queryKey: ["targetGroups", page.clubId],
     queryFn: () => apiGet(`/api/clubs/${page.clubId}/target-groups`),
+    select: sortByName,
   });
 
   const [first, last] = monthBounds(page.today);
