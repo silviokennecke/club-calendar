@@ -66,9 +66,9 @@ class WebAuthnController extends AbstractController
         if (null !== $deviceName && (!is_string($deviceName) || mb_strlen($deviceName) > 255)) {
             throw new ApiProblemException(400, 'Invalid passkey registration', 'invalid_passkey_registration');
         }
-        $this->webAuthn->verifyRegistration($user, $data['challengeToken'], $data['response'], $deviceName);
+        $id = $this->webAuthn->verifyRegistration($user, $data['challengeToken'], $data['response'], $deviceName);
 
-        return new JsonResponse(['ok' => true]);
+        return new JsonResponse(['ok' => true, 'id' => $id]);
     }
 
     #[Route('/authenticate/options', methods: ['GET'])]

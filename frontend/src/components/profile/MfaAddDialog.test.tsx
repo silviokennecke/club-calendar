@@ -9,12 +9,10 @@ vi.mock("react-i18next", () => ({
 }));
 
 const apiPost = vi.fn();
-const apiGet = vi.fn();
 const apiPatch = vi.fn();
 vi.mock("@/lib/api", async (orig) => ({
   ...(await orig<typeof import("@/lib/api")>()),
   apiPost: (...a: unknown[]) => apiPost(...a),
-  apiGet: (...a: unknown[]) => apiGet(...a),
   apiPatch: (...a: unknown[]) => apiPatch(...a),
 }));
 
@@ -70,7 +68,6 @@ async function toCodeStep() {
 beforeEach(() => {
   Object.defineProperty(window, "PublicKeyCredential", { value: class {}, configurable: true });
   apiPost.mockReset();
-  apiGet.mockReset();
   apiPatch.mockReset();
   startRegistration.mockReset();
 });
@@ -129,12 +126,9 @@ describe("MfaAddDialog", () => {
   });
 
   it("registers a passkey, then names it with a prefilled name", async () => {
-    apiGet
-      .mockResolvedValueOnce({ passkeys: [{ id: "old" }] })
-      .mockResolvedValueOnce({ passkeys: [{ id: "old" }, { id: "new" }] });
     apiPost
       .mockResolvedValueOnce({ options: {}, challengeToken: "ct" })
-      .mockResolvedValueOnce({ ok: true });
+      .mockResolvedValueOnce({ ok: true, id: "new" });
     startRegistration.mockResolvedValue({ id: "cred" });
     apiPatch.mockResolvedValue({ ok: true });
     const { onChanged } = renderDialog();

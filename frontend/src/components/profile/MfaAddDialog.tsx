@@ -13,7 +13,7 @@ import {
   TextInput,
   toast,
 } from "@/components/ui/shared";
-import { apiErrorCode, apiGet, apiPatch, apiPost } from "@/lib/api";
+import { apiErrorCode, apiPatch, apiPost } from "@/lib/api";
 import { focusFirstInvalid } from "@/lib/focus";
 import { ReauthFields } from "./ReauthFields";
 import { emptyReauth, reauthBody, reauthFieldError, reauthMissing } from "./reauth";
@@ -257,8 +257,6 @@ export function MfaAddDialog({
     }
     setBusy(true);
     try {
-      const before = await apiGet<{ passkeys: { id: string }[] }>("/api/auth/me");
-      const known = new Set(before.passkeys.map((p) => p.id));
       const start = await apiPost<PasskeyStart>(
         "/api/auth/webauthn/register/options",
         reauthBody(proof, hasPassword, "code"),
@@ -281,13 +279,12 @@ export function MfaAddDialog({
         );
         return;
       }
-      await apiPost("/api/auth/webauthn/register/verify", {
-        challengeToken: start.challengeToken,
-        response,
-      });
+      const created = await apiPost<{ ok: true; id: string }>(
+        "/api/auth/webauthn/register/verify",
+        { challengeToken: start.challengeToken, response },
+      );
       onChanged();
-      const after = await apiGet<{ passkeys: { id: string }[] }>("/api/auth/me");
-      setPasskeyId(after.passkeys.find((p) => !known.has(p.id))?.id ?? null);
+      setPasskeyId(created.id);
       setDeviceName(suggestDeviceName() || t("profile.mfa.add.passkey.defaultName"));
       setDoneKind("passkey");
       go("pkName");

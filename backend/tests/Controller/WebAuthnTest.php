@@ -367,10 +367,13 @@ class WebAuthnTest extends WebTestCase
     {
         $user = TestHelper::createUser(self::$em, self::$hasher);
         $authenticator = new SoftwareAuthenticator();
-        $this->assertSame(200, $this->register($user, $authenticator)['status']);
+        $r = $this->register($user, $authenticator);
+        $this->assertSame(200, $r['status']);
 
         self::$em->clear();
         $passkey = self::$em->getRepository(Passkey::class)->findOneBy([]);
+        $this->assertTrue($r['body']['ok'] ?? false);
+        $this->assertSame($passkey->getId(), $r['body']['id'] ?? null);
         $this->assertSame(base64_encode($authenticator->credentialId), $passkey->getCredentialId());
         $this->assertSame($authenticator->cosePublicKey(), $passkey->getPublicKey());
     }

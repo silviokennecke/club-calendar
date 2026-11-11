@@ -129,7 +129,7 @@ class WebAuthnService
         return ['options' => $options, 'challengeToken' => $challengeToken];
     }
 
-    public function verifyRegistration(User $user, string $challengeToken, array $responseData, ?string $deviceName): void
+    public function verifyRegistration(User $user, string $challengeToken, array $responseData, ?string $deviceName): string
     {
         $claims = $this->signedTokens->verify(self::PURPOSE_CREATE, $challengeToken);
         if (null === $claims || ($claims['sub'] ?? null) !== $user->getId() || !is_string($claims['ch'] ?? null)) {
@@ -193,6 +193,8 @@ class WebAuthnService
 
         $this->em->persist($passkey);
         $this->em->flush();
+
+        return $passkey->getId();
     }
 
     public function getAuthenticationOptions(): array

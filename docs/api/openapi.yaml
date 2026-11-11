@@ -1495,6 +1495,7 @@ paths:
     post:
       tags: [Passkeys]
       summary: Register a passkey
+      description: Returns the id of the new passkey (for `PATCH …/webauthn/{id}`, e.g. to name it).
       operationId: passkeyRegistrationVerify
       requestBody:
         required: true
@@ -1508,7 +1509,17 @@ paths:
                 response: { type: object, description: The `PublicKeyCredential` (attestation) as JSON. }
                 deviceName: { type: [string, 'null'], maxLength: 255 }
       responses:
-        '200': { $ref: '#/components/responses/Ok' }
+        '200':
+          description: Registered.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, id]
+                properties:
+                  ok: { type: boolean, const: true }
+                  id: { type: string, description: Id of the new passkey. }
+              example: { ok: true, id: ckx1passkey0000000000000001 }
         '400':
           description: '`invalid_request` (body incomplete), `invalid_passkey_registration`, `passkey_already_registered`.'
           content:
