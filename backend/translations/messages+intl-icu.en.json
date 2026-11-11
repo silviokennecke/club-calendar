@@ -29,7 +29,12 @@
             "when_utc": "{date} at {time} UTC",
             "when_local": "({time} in the time zone {zone})",
             "not_you_title": "This wasn't you?",
-            "automatic": "This e-mail only informs you about a change to your account; it was sent automatically. If you made the change yourself, there is nothing to do."
+            "automatic": "This e-mail only informs you about a change to your account; it was sent automatically. If you made the change yourself, there is nothing to do.",
+            "details_time": "Time",
+            "details_ip": "IP address",
+            "details_location": "Location",
+            "details_browser": "Browser",
+            "unknown": "unknown"
         },
         "password_changed": {
             "subject": "Your password was changed",
@@ -86,6 +91,48 @@
             "imprint": "Imprint",
             "privacy": "Privacy policy",
             "terms": "Terms of use"
+        },
+        "mfa_enabled": {
+            "subject": "Two-step sign-in was turned on",
+            "greeting": "Hello {name},",
+            "body": "Two-step sign-in was turned on for your Club Calendar account. When you sign in with your password, you now also need a code from your authenticator app.",
+            "info": "Your other sessions stay signed in.",
+            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then check two-step sign-in and your passkeys in your profile and contact Club Calendar support. You can find the \"Forgot password\" page here:"
+        },
+        "mfa_disabled": {
+            "subject": "Two-step sign-in was turned off",
+            "greeting": "Hello {name},",
+            "body": "Two-step sign-in was turned off for your Club Calendar account. Signing in with your password is no longer protected by a second step.",
+            "info": "All other sessions and connected apps were signed out. You can turn two-step sign-in back on in your profile at any time.",
+            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\", then turn two-step sign-in back on in your profile and contact Club Calendar support. You can find the \"Forgot password\" page here:"
+        },
+        "backup_codes_regenerated": {
+            "subject": "New backup codes were created",
+            "greeting": "Hello {name},",
+            "body": "New backup codes were created for your Club Calendar account.",
+            "info": "Your previous backup codes no longer work. Your sessions stay signed in.",
+            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then check two-step sign-in and your passkeys in your profile and contact Club Calendar support. You can find the \"Forgot password\" page here:"
+        },
+        "backup_code_used": {
+            "subject": "A backup code was used",
+            "greeting": "Hello {name},",
+            "body": "A backup code was used to sign in to your Club Calendar account. This turned off two-step sign-in.",
+            "info": "All other sessions and connected apps were signed out. Set up two-step sign-in again in your profile if you want it.",
+            "not_you": "Then someone knows your password and one of your backup codes. Immediately set a new password via \"Forgot password\", then set up two-step sign-in again in your profile and contact Club Calendar support. You can find the \"Forgot password\" page here:"
+        },
+        "passkey_deleted": {
+            "subject": "A passkey was deleted",
+            "greeting": "Hello {name},",
+            "body": "A passkey was deleted from your Club Calendar account.",
+            "info": "This passkey can no longer be used to sign in. Your sessions stay signed in.",
+            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then check two-step sign-in and your passkeys in your profile and contact Club Calendar support. You can find the \"Forgot password\" page here:"
+        },
+        "failed_sign_ins": {
+            "subject": "Failed sign-in attempts on your account",
+            "greeting": "Hello {name},",
+            "body": "There were {count} failed sign-in attempts on your Club Calendar account in the last hour. This means someone tried to sign in but did not enter the password or code correctly. The details below belong to the latest attempt.",
+            "info": "Nothing was changed on your account and nobody is signed in. We send you at most one message per day about such attempts.",
+            "not_you": "If this was not you, change your password via \"Forgot password\" to be safe (this ends all sessions), then check two-step sign-in and your passkeys in your profile. You can find the page here:"
         }
     }
 }

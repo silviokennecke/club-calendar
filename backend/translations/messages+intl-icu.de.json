@@ -29,7 +29,12 @@
             "when_utc": "{date} um {time} Uhr UTC",
             "when_local": "({time} Uhr in der Zeitzone {zone})",
             "not_you_title": "Warst du das nicht?",
-            "automatic": "Diese E-Mail informiert dich nur über eine Änderung an deinem Konto; sie wurde automatisch verschickt. Du musst nichts tun, wenn du die Änderung selbst vorgenommen hast."
+            "automatic": "Diese E-Mail informiert dich nur über eine Änderung an deinem Konto; sie wurde automatisch verschickt. Du musst nichts tun, wenn du die Änderung selbst vorgenommen hast.",
+            "details_time": "Zeitpunkt",
+            "details_ip": "IP-Adresse",
+            "details_location": "Ort",
+            "details_browser": "Browser",
+            "unknown": "unbekannt"
         },
         "password_changed": {
             "subject": "Dein Passwort wurde geändert",
@@ -86,6 +91,48 @@
             "imprint": "Impressum",
             "privacy": "Datenschutz",
             "terms": "Nutzungsbedingungen"
+        },
+        "mfa_enabled": {
+            "subject": "Die Zwei-Schritt-Anmeldung wurde eingeschaltet",
+            "greeting": "Hallo {name},",
+            "body": "für dein Club-Calendar-Konto wurde die Zwei-Schritt-Anmeldung eingeschaltet. Bei der Anmeldung mit Passwort brauchst du jetzt zusätzlich einen Code aus deiner Authenticator-App.",
+            "info": "Deine anderen Sitzungen bleiben angemeldet.",
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil die Zwei-Schritt-Anmeldung und deine Passkeys und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+        },
+        "mfa_disabled": {
+            "subject": "Die Zwei-Schritt-Anmeldung wurde ausgeschaltet",
+            "greeting": "Hallo {name},",
+            "body": "für dein Club-Calendar-Konto wurde die Zwei-Schritt-Anmeldung ausgeschaltet. Die Anmeldung mit Passwort ist jetzt nicht mehr durch einen zweiten Schritt geschützt.",
+            "info": "Alle anderen Sitzungen und verbundenen Apps wurden abgemeldet. Du kannst die Zwei-Schritt-Anmeldung jederzeit in deinem Profil wieder einschalten.",
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort, schalte danach die Zwei-Schritt-Anmeldung in deinem Profil wieder ein und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+        },
+        "backup_codes_regenerated": {
+            "subject": "Neue Backup-Codes wurden erstellt",
+            "greeting": "Hallo {name},",
+            "body": "für dein Club-Calendar-Konto wurden neue Backup-Codes erstellt.",
+            "info": "Die bisherigen Backup-Codes sind damit ungültig. Deine Sitzungen bleiben angemeldet.",
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil die Zwei-Schritt-Anmeldung und deine Passkeys und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+        },
+        "backup_code_used": {
+            "subject": "Ein Backup-Code wurde verwendet",
+            "greeting": "Hallo {name},",
+            "body": "bei der Anmeldung zu deinem Club-Calendar-Konto wurde ein Backup-Code verwendet. Dadurch wurde die Zwei-Schritt-Anmeldung ausgeschaltet.",
+            "info": "Alle anderen Sitzungen und verbundenen Apps wurden abgemeldet. Richte die Zwei-Schritt-Anmeldung in deinem Profil bei Bedarf neu ein.",
+            "not_you": "Dann kennt jemand anderes dein Passwort und einen deiner Backup-Codes. Setze sofort über „Passwort vergessen“ ein neues Passwort, richte danach die Zwei-Schritt-Anmeldung in deinem Profil neu ein und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+        },
+        "passkey_deleted": {
+            "subject": "Ein Passkey wurde gelöscht",
+            "greeting": "Hallo {name},",
+            "body": "aus deinem Club-Calendar-Konto wurde ein Passkey gelöscht.",
+            "info": "Mit diesem Passkey kann man sich nicht mehr anmelden. Deine Sitzungen bleiben angemeldet.",
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil die Zwei-Schritt-Anmeldung und deine Passkeys und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+        },
+        "failed_sign_ins": {
+            "subject": "Fehlgeschlagene Anmeldeversuche bei deinem Konto",
+            "greeting": "Hallo {name},",
+            "body": "in der letzten Stunde gab es {count} fehlgeschlagene Anmeldeversuche bei deinem Club-Calendar-Konto. Das heißt: Jemand hat versucht, sich anzumelden, hat aber das Passwort oder den Code nicht richtig eingegeben. Die Angaben unten gehören zum letzten Versuch.",
+            "info": "An deinem Konto wurde nichts geändert und niemand ist angemeldet. Zu solchen Versuchen schicken wir dir höchstens eine Nachricht pro Tag.",
+            "not_you": "Warst du das nicht, ändere sicherheitshalber dein Passwort über „Passwort vergessen“ (dadurch werden alle Sitzungen beendet) und prüfe danach in deinem Profil die Zwei-Schritt-Anmeldung und deine Passkeys. Die Seite „Passwort vergessen“ findest du hier:"
         }
     }
 }
