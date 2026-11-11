@@ -46,6 +46,7 @@ readonly class AuthService
         private RegistrationPolicy $registrationPolicy,
         private LoggerInterface $logger,
         private SecurityEventLogger $events,
+        private MfaLoginService $mfaLogin,
         /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
         #[Autowire(env: 'int:REFRESH_TOKEN_REUSE_GRACE')]
         private int $refreshReuseGrace,
@@ -113,6 +114,9 @@ readonly class AuthService
         if (!$user->isEmailVerified()) {
             // Right password, no confirmed address: restricted session; make sure the user has a code to enter.
             $this->sendCodeIfDue($user);
+        }
+        if ($this->mfaLogin->isRequired($user)) {
+            return $this->mfaLogin->challenge($user);
         }
 
         return $this->tokens->tokenResponse($user);

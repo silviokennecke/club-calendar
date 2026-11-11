@@ -103,6 +103,7 @@
             "subject": "Two-step sign-in was turned off",
             "greeting": "Hello {name},",
             "body": "Two-step sign-in was turned off for your Club Calendar account. Signing in with your password is no longer protected by a second step.",
+            "body_operator": "Two-step sign-in was turned off for your Club Calendar account by the operator of this installation. Signing in with your password is no longer protected by a second step.",
             "info": "All other sessions and connected apps were signed out. You can turn two-step sign-in back on in your profile at any time.",
             "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\", then turn two-step sign-in back on in your profile and contact Club Calendar support. You can find the \"Forgot password\" page here:"
         },

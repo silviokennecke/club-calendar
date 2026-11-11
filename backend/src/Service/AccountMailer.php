@@ -65,9 +65,10 @@ readonly class AccountMailer
         $this->sendNotice($user, 'mfa_enabled', $context);
     }
 
-    public function sendMfaDisabled(User $user, ClientContext $context = new ClientContext()): void
+    /** `$byOperator`: disabled with the console command (no client details; the text says the operator did it). */
+    public function sendMfaDisabled(User $user, ClientContext $context = new ClientContext(), bool $byOperator = false): void
     {
-        $this->sendNotice($user, 'mfa_disabled', $context);
+        $this->sendNotice($user, 'mfa_disabled', $context, ['byOperator' => $byOperator]);
     }
 
     public function sendBackupCodesRegenerated(User $user, ClientContext $context = new ClientContext()): void

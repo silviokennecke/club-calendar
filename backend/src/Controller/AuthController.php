@@ -135,7 +135,10 @@ class AuthController extends AbstractApiController
         $this->validateDto($dto, $this->validator);
         $this->rateLimiter->assertLoginAllowed($request, $dto->email);
         $tokens = $this->auth->login($dto->email, $dto->password);
-        $this->rateLimiter->recordLoginSuccess($dto->email);
+        // With a second factor the sign-in is only finished by /mfa/verify
+        if (!isset($tokens['mfaRequired'])) {
+            $this->rateLimiter->recordLoginSuccess($dto->email);
+        }
 
         return new JsonResponse($tokens);
     }

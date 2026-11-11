@@ -103,6 +103,7 @@
             "subject": "Die Zwei-Schritt-Anmeldung wurde ausgeschaltet",
             "greeting": "Hallo {name},",
             "body": "für dein Club-Calendar-Konto wurde die Zwei-Schritt-Anmeldung ausgeschaltet. Die Anmeldung mit Passwort ist jetzt nicht mehr durch einen zweiten Schritt geschützt.",
+            "body_operator": "für dein Club-Calendar-Konto wurde die Zwei-Schritt-Anmeldung durch den Betreiber dieser Installation ausgeschaltet. Die Anmeldung mit Passwort ist jetzt nicht mehr durch einen zweiten Schritt geschützt.",
             "info": "Alle anderen Sitzungen und verbundenen Apps wurden abgemeldet. Du kannst die Zwei-Schritt-Anmeldung jederzeit in deinem Profil wieder einschalten.",
             "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort, schalte danach die Zwei-Schritt-Anmeldung in deinem Profil wieder ein und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
         },

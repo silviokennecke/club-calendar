@@ -16,7 +16,7 @@
           {{ 'email.mfa_disabled.greeting'|trans({name: userName}) }}
         </mj-text>
         <mj-text padding-bottom="16px">
-          {{ 'email.mfa_disabled.body'|trans }}
+          {{ (byOperator ? 'email.mfa_disabled.body_operator' : 'email.mfa_disabled.body')|trans }}
         </mj-text>
         <mj-include path="./_components/client-details.mjml" />
         <mj-text padding-bottom="16px">

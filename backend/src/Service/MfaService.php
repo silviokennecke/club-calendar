@@ -281,7 +281,7 @@ class MfaService
         $this->events->record($user, $type, true, $method, null, $context);
         match ($type) {
             SecurityEventType::MFA_ENABLED => $this->mailer->sendMfaEnabled($user, $context),
-            SecurityEventType::MFA_DISABLED => $this->mailer->sendMfaDisabled($user, $context),
+            SecurityEventType::MFA_DISABLED => $this->mailer->sendMfaDisabled($user, $context, 'cli' === $method),
             SecurityEventType::BACKUP_CODE_USED => $this->mailer->sendBackupCodeUsed($user, $context),
             default => $this->mailer->sendBackupCodesRegenerated($user, $context),
         };

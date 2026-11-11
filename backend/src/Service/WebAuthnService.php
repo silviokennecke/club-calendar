@@ -51,6 +51,7 @@ class WebAuthnService
 {
     private const string PURPOSE_CREATE = 'webauthn.create';
     private const string PURPOSE_GET = 'webauthn.get';
+    private const string PURPOSE_MFA = 'webauthn.mfa';
     private const int CHALLENGE_TTL = 300;
     private const int TIMEOUT_MS = 60000;
 
@@ -221,6 +222,77 @@ class WebAuthnService
             throw $this->authenticationFailed();
         }
 
+        [$passkey, $updated] = $this->checkAssertion($claims, $responseData, null);
+        $user = $passkey->getUser();
+
+        if (!$user->isEmailVerified()) {
+            $this->events->record($user, SecurityEventType::LOGIN, false, 'passkey');
+
+            throw $this->authenticationFailed();
+        }
+
+        $this->applyAssertion($passkey, $updated);
+        $this->events->record($user, SecurityEventType::LOGIN, true, 'passkey');
+
+        return $this->tokens->tokenResponse($user);
+    }
+
+    /**
+     * Assertion options for the second factor of a password sign-in: only the user's own passkeys are allowed.
+     *
+     * @return array{options: array<string, mixed>, challengeToken: string}
+     */
+    public function getMfaOptions(User $user): array
+    {
+        $challengeB64 = SignedTokenService::b64(random_bytes(32));
+        $challengeToken = $this->signedTokens->issue(
+            self::PURPOSE_MFA,
+            ['ch' => $challengeB64, 'sub' => $user->getId()],
+            self::CHALLENGE_TTL,
+        );
+        $allow = array_values($user->getPasskeys()->map(fn (Passkey $p) => [
+            'type' => 'public-key',
+            'id' => SignedTokenService::b64((string) base64_decode($p->getCredentialId(), true)),
+        ])->toArray());
+
+        return ['options' => [
+            'challenge' => $challengeB64,
+            'rpId' => $this->rpId,
+            'timeout' => self::TIMEOUT_MS,
+            'userVerification' => $this->userVerification,
+            'allowCredentials' => $allow,
+        ], 'challengeToken' => $challengeToken];
+    }
+
+    /**
+     * Verifies the second-factor assertion; the credential must belong to `$user`. Failures are the same 401
+     * as at passkey sign-in; the caller logs the MFA event.
+     *
+     * @throws ApiProblemException 401 `invalid_passkey`
+     */
+    public function verifyMfaAssertion(User $user, string $challengeToken, array $responseData): void
+    {
+        $claims = $this->signedTokens->verify(self::PURPOSE_MFA, $challengeToken);
+        if (null === $claims || !is_string($claims['ch'] ?? null) || ($claims['sub'] ?? null) !== $user->getId()
+            || !$this->nonces->consume(self::PURPOSE_MFA, $claims['ch'], $claims['exp'])) {
+            throw $this->authenticationFailed();
+        }
+
+        [$passkey, $updated] = $this->checkAssertion($claims, $responseData, $user);
+        $this->applyAssertion($passkey, $updated);
+    }
+
+    /**
+     * Parses and validates an assertion. Without `$expectedUser` the credential identifies the user (login,
+     * failures are logged as login events); with it the credential must belong to that user and the
+     * user handle is checked against it.
+     *
+     * @param array<string, mixed> $claims
+     *
+     * @return array{0: Passkey, 1: CredentialRecord}
+     */
+    private function checkAssertion(array $claims, array $responseData, ?User $expectedUser): array
+    {
         try {
             $credential = $this->parseCredential($responseData);
             $response = $credential->response;
@@ -234,7 +306,7 @@ class WebAuthnService
         }
 
         $passkey = $this->em->getRepository(Passkey::class)->findOneBy(['credentialId' => base64_encode($credential->rawId)]);
-        if (!$passkey) {
+        if (!$passkey || (null !== $expectedUser && $passkey->getUser()->getId() !== $expectedUser->getId())) {
             throw $this->authenticationFailed();
         }
         $user = $passkey->getUser();
@@ -259,29 +331,26 @@ class WebAuthnService
                 self::TIMEOUT_MS,
             );
 
-            // userHandle = null: the user was not identified beforehand, so the response must carry the
-            // user handle and it must match the credential's owner.
+            // Login: userHandle null, the response must carry the handle and it must match the credential's owner.
             $updated = AuthenticatorAssertionResponseValidator::create($this->ceremonies->requestCeremony())
-                ->check($record, $response, $options, $this->rpId, null);
+                ->check($record, $response, $options, $this->rpId, $expectedUser?->getId());
         } catch (\Throwable $e) {
             $this->logger->warning('Passkey sign-in rejected', ['passkey' => $passkey->getId(), 'exception' => $e]);
-            $this->events->record($user, SecurityEventType::LOGIN, false, 'passkey');
+            if (null === $expectedUser) {
+                $this->events->record($user, SecurityEventType::LOGIN, false, 'passkey');
+            }
             throw $this->authenticationFailed();
         }
 
-        if (!$user->isEmailVerified()) {
-            $this->events->record($user, SecurityEventType::LOGIN, false, 'passkey');
+        return [$passkey, $updated];
+    }
 
-            throw $this->authenticationFailed();
-        }
-
+    private function applyAssertion(Passkey $passkey, CredentialRecord $updated): void
+    {
         $passkey->setCounter($updated->counter);
         $passkey->setPublicKey($updated->credentialPublicKey);
         $passkey->setLastUsedAt($this->signedTokens->now()->setTimezone(new \DateTimeZone('UTC')));
         $this->em->flush();
-        $this->events->record($user, SecurityEventType::LOGIN, true, 'passkey');
-
-        return $this->tokens->tokenResponse($user);
     }
 
     /**
