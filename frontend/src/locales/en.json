@@ -257,6 +257,7 @@
     "subscriptionFilter": "Your subscription uses this selection.",
     "noneInMonth": "There are no published events this month.",
     "listHeading": "Events in {{month}}",
+    "listHeadingSearch": "Search results",
     "noResults": {
       "searchTitle": "No events found for “{{query}}”",
       "filterTitle": "No events for this selection",
@@ -347,6 +348,7 @@
       "loading": "Searching …",
       "empty": "No events found for “{{query}}”",
       "more": "Showing {{shown}} of {{total}} matches. Refine your search.",
+      "showAll": "Show all results",
       "results_one": "1 result",
       "results_other": "{{count}} results",
       "placeholderAll": "Name, note, place or extra…"

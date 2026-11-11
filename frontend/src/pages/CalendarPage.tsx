@@ -8,7 +8,7 @@ import {
 } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { apiGet, apiPatch, apiPost } from "@/lib/api";
+import { apiGet, apiGetWithTotal, apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useIsMobile } from "@/lib/useMediaQuery";
 import type { Calendar, CalendarEvent, TargetGroup } from "@/lib/types";
@@ -36,7 +36,11 @@ import {
 import type { ShellData } from "@/components/layout/shellTypes";
 import { Banner, Button, EmptyState, LinkButton, toast } from "@/components/ui/shared";
 import { CalendarToolbar } from "@/components/calendar/CalendarToolbar";
-import { CalendarSearch } from "@/components/calendar/CalendarSearch";
+import {
+  CalendarSearch,
+  SEARCH_LIMIT,
+  type SearchEvent,
+} from "@/components/calendar/CalendarSearch";
 import { FilterBar } from "@/components/calendar/FilterBar";
 import { MonthView } from "@/components/calendar/MonthView";
 import { WeekView } from "@/components/calendar/WeekView";
@@ -218,7 +222,8 @@ export default function CalendarPage() {
     routerNavigate(routes.edit(item.id), { state: navState });
   }
 
-  function pickSearchResult(ev: CalendarEvent) {
+  function pickSearchResult(found: SearchEvent) {
+    const ev = found as CalendarEvent;
     // One navigation: the dialog's background page already shows the event's date (two
     // navigations in a row would overwrite each other).
     const date = ev.date.slice(0, 10);
@@ -399,7 +404,20 @@ export default function CalendarPage() {
       />
 
       <FilterBar
-        searchSlot={<CalendarSearch calendarId={calendarId!} onPick={pickSearchResult} />}
+        searchSlot={
+          <CalendarSearch
+            scope={["events", calendarId]}
+            search={(q, signal) =>
+              apiGetWithTotal<CalendarEvent[]>(
+                `/api/calendars/${calendarId}/events?q=${encodeURIComponent(q)}&limit=${SEARCH_LIMIT}`,
+                signal,
+              )
+            }
+            onPick={pickSearchResult}
+            onShowAll={(q) => routerNavigate(`${base}/events?q=${encodeURIComponent(q)}`)}
+            placeholder={t("calendar.search.placeholderAll")}
+          />
+        }
         groups={targetGroups.map((g) => ({ id: g.id, label: g.name }))}
         selectedGroups={selectedGroups}
         onToggleGroup={(id) =>

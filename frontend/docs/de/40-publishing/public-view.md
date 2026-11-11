@@ -12,7 +12,7 @@ Jeder Feed hat eine Webseite, die ohne Anmeldung funktioniert. Sie zeigt Verein 
 
 - Eine **Monat**- oder **Listen**-Ansicht der Termine.
 - Termine der ausgewählten Kalender und die Feiertage.
-- Eine Suche und, falls der Verein Gruppen nutzt, einen Filter nach Gruppen. Beim Abonnieren wird die gewählte Gruppe übernommen.
+- Eine Suche mit Vorschlägen (bis zu 10 Treffer; **Alle Ergebnisse anzeigen** öffnet die Liste mit allen Treffern) und, falls der Verein Gruppen nutzt, einen Filter nach Gruppen. Beim Abonnieren wird die gewählte Gruppe übernommen.
 - Entwürfe sehen Besucher nie.
 
 ![Öffentliche Feed-Seite in der Monatsansicht mit Terminen und Feiertagen](shot:public-view-month)

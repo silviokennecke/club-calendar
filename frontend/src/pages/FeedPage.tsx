@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { parseAnchor, todayIn, visibleRange, type IsoDate } from "@/lib/calendar";
 import { helpPath } from "@/docs/paths";
 import {
+  fetchPublicFeed,
+  isSearchList,
   parseGroupIds,
   publicEventPath,
   publicFeedAddresses,
@@ -38,7 +41,12 @@ export default function FeedPage() {
   const today = todayIn(zone);
   const anchor = parseAnchor(params.get("date"), today);
   const [from, to] = visibleRange("month", anchor, 1);
-  const feed = usePublicFeed(feedId, secret, { from, to });
+  // The list of a search spans all dates: load without a range (same cache entry as the search).
+  const allDates = isSearchList(
+    params.get("view") === "list" ? "list" : "month",
+    params.get("q") ?? "",
+  );
+  const feed = usePublicFeed(feedId, secret, allDates ? undefined : { from, to });
   const loadedZone = feed.data?.feed.timezone ?? null;
   useEffect(() => {
     if (loadedZone) setZone(loadedZone);
@@ -126,6 +134,7 @@ function FeedCalendar({ data, feedId, secret, today, anchor, range }: FeedCalend
   const navigate = useNavigate();
   const location = useLocation();
   const [params, setParams] = useSearchParams();
+  const qc = useQueryClient();
   const audiences = data.feed.audiences;
   const groupIds = parseGroupIds(params.get("groups"), audiences);
 
@@ -173,6 +182,16 @@ function FeedCalendar({ data, feedId, secret, today, anchor, range }: FeedCalend
       groupIds={groupIds}
       audiences={audiences}
       onOpenEvent={openEvent}
+      searchScope={["publicFeed", feedId, secret ?? null]}
+      loadAllEvents={async (signal) =>
+        (
+          await qc.fetchQuery({
+            queryKey: ["publicFeed", feedId, secret ?? null, null, null],
+            queryFn: () => fetchPublicFeed(feedId, secret, undefined, signal),
+            staleTime: 60_000,
+          })
+        ).events
+      }
       filterNote={
         groupIds.length > 0 && <p className="t-sm t-muted">{t("feed.subscriptionFilter")}</p>
       }

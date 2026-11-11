@@ -27,6 +27,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Changed
 
+- Calendar search is the same everywhere: an autocomplete with at most 10 previews and a last entry "Alle Ergebnisse anzeigen" that opens the list with the search term. In the event calendar the list is the event list; on the public feed page and in "Mein Verein" the click opens the event dialog and the list shows the matches of all dates.
 - Sign-in is kept across tabs and browser restarts: the refresh token is stored in the browser, the access token only per tab. Signing out applies to all open tabs of the browser.
 
 ### Security

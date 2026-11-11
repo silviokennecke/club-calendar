@@ -16,6 +16,7 @@ import { monthBounds } from "@/lib/events/ics";
 import {
   eventsInRange,
   filterPublicEvents,
+  isSearchList,
   type AudienceOption,
   type PublicFeedData,
   type PublicFeedEvent,
@@ -25,6 +26,11 @@ import { formatAddress } from "@/lib/types";
 import { useIsMobile } from "@/lib/useMediaQuery";
 import { audienceTone } from "@/components/calendar/eventDisplay";
 import { EventItem, type EventItemTag } from "@/components/calendar/EventItem";
+import {
+  CalendarSearch,
+  SEARCH_LIMIT,
+  type SearchEvent,
+} from "@/components/calendar/CalendarSearch";
 import { FilterBar } from "@/components/calendar/FilterBar";
 import { MonthNav } from "@/components/calendar/MonthNav";
 import { MonthView } from "@/components/calendar/MonthView";
@@ -52,6 +58,10 @@ interface PublicCalendarViewProps {
   audiences: AudienceOption[];
   onChange: (change: CalendarViewChange, replace?: boolean) => void;
   onOpenEvent: (eventId: string) => void;
+  /** Identifies the data source in the query cache of the search. */
+  searchScope: readonly unknown[];
+  /** All events of the source over all dates (cached by the caller); the search runs on them. */
+  loadAllEvents: (signal: AbortSignal) => Promise<PublicFeedEvent[]>;
   /** Small note next to the counter (e.g. where the preselected filter comes from). */
   filterNote?: ReactNode;
   /** Keep holidays visible while only audiences are selected (a search always hides them). */
@@ -73,6 +83,8 @@ export function PublicCalendarView({
   audiences,
   onChange,
   onOpenEvent,
+  searchScope,
+  loadAllEvents,
   filterNote,
   holidaysWithGroups,
 }: PublicCalendarViewProps) {
@@ -104,8 +116,15 @@ export function PublicCalendarView({
   const hasHolidays = items.some((i) => i.kind === "holiday");
 
   const [first, last] = monthBounds(anchor);
-  const monthTotal = eventsInRange(events, first, last).length;
-  const monthShown = eventsInRange(filtered, first, last).length;
+  // The list of a search spans all dates; the caller then loads the events without a range.
+  const searchList = isSearchList(view, query);
+  const monthTotal = searchList ? events.length : eventsInRange(events, first, last).length;
+  const monthShown = searchList ? filtered.length : eventsInRange(filtered, first, last).length;
+
+  async function searchAll(q: string, signal: AbortSignal) {
+    const matches = filterPublicEvents(await loadAllEvents(signal), groupIds, q);
+    return { data: matches.slice(0, SEARCH_LIMIT) as SearchEvent[], total: matches.length };
+  }
 
   function go(date: IsoDate, replace = false) {
     setPanelOpen(false);
@@ -135,7 +154,9 @@ export function PublicCalendarView({
   }
 
   const monthList = items
-    .filter((item) => item.kind === "event" && item.start <= last && item.end >= first)
+    .filter(
+      (item) => item.kind === "event" && (searchList || (item.start <= last && item.end >= first)),
+    )
     .sort(compareItems);
 
   let content;
@@ -162,7 +183,9 @@ export function PublicCalendarView({
       monthList.length === 0 ? null : (
         <section aria-labelledby={`${titleId}-list`} className="ap-stack ap-stack--sm">
           <h2 className="ap-sr" id={`${titleId}-list`}>
-            {t("feed.listHeading", { month: formatMonthTitle(month, locale) })}
+            {searchList
+              ? t("feed.listHeadingSearch")
+              : t("feed.listHeading", { month: formatMonthTitle(month, locale) })}
           </h2>
           <ul
             ref={enterListRef}
@@ -241,7 +264,17 @@ export function PublicCalendarView({
 
       <FilterBar
         search={query}
-        onSearchChange={(value) => onChange({ q: value })}
+        searchSlot={
+          <CalendarSearch
+            key={query}
+            scope={searchScope}
+            search={searchAll}
+            onPick={(ev) => onOpenEvent(ev.id)}
+            onShowAll={(q) => onChange({ view: "list", q }, false)}
+            placeholder={t("calendar.search.placeholder")}
+            initialText={query}
+          />
+        }
         groups={audiences.map((g) => ({ id: g.id, label: g.name }))}
         selectedGroups={groupIds}
         onToggleGroup={(id) => onChange({ groups: toggleId(groupIds, id) })}

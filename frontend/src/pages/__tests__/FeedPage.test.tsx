@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, useLocation } from "react-router-dom";
 import FeedPage from "../FeedPage";
@@ -385,16 +385,31 @@ describe("FeedPage", () => {
     expect(screen.getByText("Zeige 3 von 3 Terminen")).toBeInTheDocument();
   });
 
-  it("searches by name and offers a way out when nothing matches", async () => {
+  it("suggests at most ten matches, opens one and lists all results of every date", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderAt("/feed/f1");
     await screen.findByRole("heading", { level: 1, name: FEED_NAME });
-    await user.type(screen.getByRole("searchbox", { name: "Termine suchen" }), "herbst");
-    expect(screen.getByText("Zeige 1 von 3 Terminen")).toBeInTheDocument();
-    await user.clear(screen.getByRole("searchbox", { name: "Termine suchen" }));
-    await user.type(screen.getByRole("searchbox", { name: "Termine suchen" }), "xyz");
+    const box = screen.getByRole("combobox", { name: "Termine suchen" });
+    await user.type(box, "herbst");
+    await act(() => vi.advanceTimersByTimeAsync(400));
+    const options = await screen.findAllByRole("option");
+    expect(options.length).toBeLessThanOrEqual(11);
+    expect(options[options.length - 1]).toHaveTextContent("Alle Ergebnisse anzeigen");
+    await user.click(options[options.length - 1]);
+    expect(screen.getByTestId("location")).toHaveTextContent("q=herbst");
+    expect(screen.getByTestId("location")).toHaveTextContent("view=list");
+    expect(await screen.findByText("Zeige 1 von 3 Terminen")).toBeInTheDocument();
+  });
+
+  it("offers 'show all results' without matches and ends in the empty state", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderAt("/feed/f1");
+    await screen.findByRole("heading", { level: 1, name: FEED_NAME });
+    await user.type(screen.getByRole("combobox", { name: "Termine suchen" }), "xyz");
+    await act(() => vi.advanceTimersByTimeAsync(400));
+    await user.click(await screen.findByRole("option", { name: "Alle Ergebnisse anzeigen" }));
     expect(
-      screen.getByRole("heading", { name: "Keine Termine zu „xyz“ gefunden" }),
+      await screen.findByRole("heading", { name: "Keine Termine zu „xyz“ gefunden" }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Auswahl zurücksetzen" }));
     expect(screen.getByText("Zeige 3 von 3 Terminen")).toBeInTheDocument();

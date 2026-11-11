@@ -257,6 +257,7 @@
     "subscriptionFilter": "Dein Abo übernimmt diese Auswahl.",
     "noneInMonth": "In diesem Monat gibt es keine veröffentlichten Termine.",
     "listHeading": "Termine im {{month}}",
+    "listHeadingSearch": "Suchergebnisse",
     "noResults": {
       "searchTitle": "Keine Termine zu „{{query}}“ gefunden",
       "filterTitle": "Keine Termine für diese Auswahl",
@@ -347,6 +348,7 @@
       "loading": "Suche läuft …",
       "empty": "Keine Termine zu „{{query}}“ gefunden",
       "more": "{{shown}} von {{total}} Treffern angezeigt. Präzisiere die Suche.",
+      "showAll": "Alle Ergebnisse anzeigen",
       "results_one": "1 Treffer",
       "results_other": "{{count}} Treffer",
       "placeholderAll": "Name, Notiz, Ort oder Zusatzangebot…"

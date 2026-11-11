@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { parseAnchor, todayIn, visibleRange } from "@/lib/calendar";
-import { parseGroupIds } from "@/lib/feeds/public";
+import { isSearchList, parseGroupIds } from "@/lib/feeds/public";
 import { myClubPath } from "@/lib/club/myClub";
-import { useMyEvents, useMyFeeds, useMySubscription } from "@/lib/club/memberApi";
+import {
+  getMyEvents,
+  myEventsKey,
+  useMyEvents,
+  useMyFeeds,
+  useMySubscription,
+} from "@/lib/club/memberApi";
 import { openModalState } from "@/lib/modalRoutes";
 import { PublicCalendarView } from "@/components/feed/PublicCalendarView";
 import { Button, EmptyState, LinkButton, Skeleton } from "@/components/ui/shared";
@@ -30,7 +37,12 @@ export function MyCalendarTab({ clubId }: { clubId: string }) {
   const today = todayIn(zone);
   const anchor = parseAnchor(params.get("date"), today);
   const [from, to] = visibleRange("month", anchor, 1);
-  const events = useMyEvents(clubId, { from, to, targetGroupIds: override ?? undefined });
+  const qc = useQueryClient();
+  const view = params.get("view") === "list" ? "list" : "month";
+  // The list of a search spans all dates: load without a range (same cache entry as the search).
+  const allDates = isSearchList(view, params.get("q") ?? "");
+  const targetGroupIds = override ?? undefined;
+  const events = useMyEvents(clubId, allDates ? { targetGroupIds } : { from, to, targetGroupIds });
   const loadedZone = events.data?.feed.timezone ?? null;
   useEffect(() => {
     if (loadedZone) setZone(loadedZone);
@@ -106,13 +118,23 @@ export function MyCalendarTab({ clubId }: { clubId: string }) {
       today={today}
       anchor={anchor}
       range={[from, to]}
-      view={params.get("view") === "list" ? "list" : "month"}
+      view={view}
       query={params.get("q") ?? ""}
       groupIds={groupIds}
       audiences={groups}
       holidaysWithGroups
       filterNote={
         fromSubscription && <p className="t-sm t-muted">{t("myClub.calendar.fromSubscription")}</p>
+      }
+      searchScope={["my-events", clubId, targetGroupIds ?? null]}
+      loadAllEvents={async () =>
+        (
+          await qc.fetchQuery({
+            queryKey: myEventsKey(clubId, { targetGroupIds }),
+            queryFn: () => getMyEvents(clubId, { targetGroupIds }),
+            staleTime: 60_000,
+          })
+        ).events
       }
       onOpenEvent={(eventId) =>
         navigate(`/clubs/${encodeURIComponent(clubId)}/me/events/${encodeURIComponent(eventId)}`, {

@@ -5,9 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CalendarSearch } from "../CalendarSearch";
 
 const apiGetWithTotal = vi.fn();
-vi.mock("@/lib/api", () => ({
-  apiGetWithTotal: (...args: unknown[]) => apiGetWithTotal(...args),
-}));
 
 const event = (id: string, name: string) => ({
   id,
@@ -19,14 +16,20 @@ const event = (id: string, name: string) => ({
   location: { id: "l1", name: "Schützenhaus" },
 });
 
-function setup(onPick = vi.fn()) {
+function setup(onPick = vi.fn(), onShowAll = vi.fn()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <CalendarSearch calendarId="c1" onPick={onPick} />
+      <CalendarSearch
+        scope={["events", "c1"]}
+        search={(q) => apiGetWithTotal(`/api/calendars/c1/events?q=${q}&limit=10`)}
+        onPick={onPick}
+        onShowAll={onShowAll}
+        placeholder="Suche"
+      />
     </QueryClientProvider>,
   );
-  return { onPick, user: userEvent.setup() };
+  return { onPick, onShowAll, user: userEvent.setup() };
 }
 
 describe("CalendarSearch", () => {
@@ -46,7 +49,7 @@ describe("CalendarSearch", () => {
     await user.type(input, "Tra");
     const option = await screen.findByRole("option", { name: /Training/ });
     expect(option).toHaveTextContent("Schützenhaus");
-    expect(apiGetWithTotal.mock.calls[0][0]).toBe("/api/calendars/c1/events?q=Tra&limit=20");
+    expect(apiGetWithTotal.mock.calls[0][0]).toBe("/api/calendars/c1/events?q=Tra&limit=10");
     expect(await screen.findByText(/1 von 25 Treffern/)).toBeInTheDocument();
     await user.keyboard("{ArrowDown}{Enter}");
     expect(onPick).toHaveBeenCalledWith(expect.objectContaining({ id: "e1" }));
@@ -71,7 +74,20 @@ describe("CalendarSearch", () => {
     const input = screen.getByRole("combobox");
     await user.type(input, "Sommerfest");
     expect(await screen.findByText("Keine Termine zu „Sommerfest“ gefunden")).toBeVisible();
+    expect(screen.getByRole("option", { name: "Alle Ergebnisse anzeigen" })).toBeVisible();
     await user.keyboard("{Escape}");
     expect(input).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("always offers 'show all results' last and opens the list with the term", async () => {
+    apiGetWithTotal.mockResolvedValue({ data: [event("e1", "Training")], total: 1 });
+    const { user, onShowAll, onPick } = setup();
+    await user.type(screen.getByRole("combobox"), "Tra");
+    await screen.findByRole("option", { name: /Training/ });
+    const options = screen.getAllByRole("option");
+    expect(options[options.length - 1]).toHaveTextContent("Alle Ergebnisse anzeigen");
+    await user.click(options[options.length - 1]);
+    expect(onShowAll).toHaveBeenCalledWith("Tra");
+    expect(onPick).not.toHaveBeenCalled();
   });
 });

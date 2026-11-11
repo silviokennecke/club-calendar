@@ -12,7 +12,7 @@ Every feed has a web page that works without signing in. It shows the club and f
 
 - A **Month** or **List** view of the events.
 - Events of the selected calendars and the holidays.
-- A search and, if the club uses audiences, a filter by audience. When subscribing, the chosen audience is carried over.
+- A search with suggestions (up to 10 results; **Show all results** opens the list with every match) and, if the club uses audiences, a filter by audience. When subscribing, the chosen audience is carried over.
 - Visitors never see drafts.
 
 ![Public feed page in month view with events and holidays](shot:public-view-month)

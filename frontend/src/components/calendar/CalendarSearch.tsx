@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { apiGetWithTotal } from "@/lib/api";
 import { eventToItem, formatNumericDate } from "@/lib/calendar";
+import type { PublicFeedEvent } from "@/lib/feeds/public";
 import { formatAddress, type CalendarEvent } from "@/lib/types";
 import { Field, StatusBadge, TextInput } from "@/components/ui/shared";
 import { itemTimeText } from "./eventDisplay";
@@ -10,24 +10,42 @@ import { useLocale } from "./useLocale";
 
 const DEBOUNCE_MS = 250;
 const MIN_CHARS = 2;
-const LIMIT = 20;
+/** Number of previews in the popup. */
+export const SEARCH_LIMIT = 10;
+
+export type SearchEvent = CalendarEvent | PublicFeedEvent;
 
 interface CalendarSearchProps {
-  calendarId: string;
-  onPick: (event: CalendarEvent) => void;
+  /** Identifies the data source (calendar, feed, subscription) in the query cache. */
+  scope: readonly unknown[];
+  /** Up to `SEARCH_LIMIT` matches and their total count. */
+  search: (q: string, signal: AbortSignal) => Promise<{ data: SearchEvent[]; total: number }>;
+  onPick: (event: SearchEvent) => void;
+  /** Opens the list view with the search term applied. */
+  onShowAll: (q: string) => void;
+  placeholder: string;
+  /** Text to start with (the term of the list view). */
+  initialText?: string;
 }
 
 /**
- * Searches the whole calendar on the server (name, note, location, features) and lists the matches
- * in a combobox popup. Reuses the `ap-ac` list styles of `AutocompleteInput`, which cannot show
- * a total count or loading / empty rows.
+ * Autocomplete search of every calendar view: up to ten previews in a combobox popup, a click opens
+ * the event, the last entry always leads to the list with all results. Reuses the `ap-ac` list
+ * styles of `AutocompleteInput`, which cannot show a total count or loading / empty rows.
  */
-export function CalendarSearch({ calendarId, onPick }: CalendarSearchProps) {
+export function CalendarSearch({
+  scope,
+  search,
+  onPick,
+  onShowAll,
+  placeholder,
+  initialText = "",
+}: CalendarSearchProps) {
   const { t } = useTranslation();
   const locale = useLocale();
   const listId = useId();
-  const [text, setText] = useState("");
-  const [debounced, setDebounced] = useState("");
+  const [text, setText] = useState(initialText);
+  const [debounced, setDebounced] = useState(initialText.trim());
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -39,19 +57,15 @@ export function CalendarSearch({ calendarId, onPick }: CalendarSearchProps) {
 
   const q = debounced.length >= MIN_CHARS ? debounced : "";
   const { data, isFetching, isError } = useQuery({
-    queryKey: ["events", calendarId, "search", q],
-    queryFn: ({ signal }) =>
-      apiGetWithTotal<CalendarEvent[]>(
-        `/api/calendars/${calendarId}/events?q=${encodeURIComponent(q)}&limit=${LIMIT}`,
-        signal,
-      ),
+    queryKey: [...scope, "search", q],
+    queryFn: ({ signal }) => search(q, signal),
     enabled: q !== "",
     placeholderData: keepPreviousData,
   });
 
   const typed = text.trim().length >= MIN_CHARS;
   const visible = open && typed;
-  const results = data?.data ?? [];
+  const results = (data?.data ?? []).slice(0, SEARCH_LIMIT);
   const total = data?.total ?? results.length;
   const settled = q === text.trim() && !isFetching;
   const optionId = (i: number) => `${listId}-opt-${i}`;
@@ -67,14 +81,20 @@ export function CalendarSearch({ calendarId, onPick }: CalendarSearchProps) {
     setActiveIndex(-1);
   }
 
-  function choose(ev: CalendarEvent) {
+  function choose(ev: SearchEvent) {
     close();
     onPick(ev);
   }
 
+  function showAll() {
+    const term = text.trim();
+    close();
+    onShowAll(term);
+  }
+
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.nativeEvent.isComposing) return;
-    const count = results.length;
+    const count = results.length + 1;
     switch (e.key) {
       case "ArrowDown":
       case "ArrowUp": {
@@ -90,10 +110,10 @@ export function CalendarSearch({ calendarId, onPick }: CalendarSearchProps) {
         return;
       }
       case "Enter":
-        if (visible && activeIndex >= 0 && results[activeIndex]) {
-          e.preventDefault();
-          choose(results[activeIndex]);
-        }
+        if (!visible) return;
+        e.preventDefault();
+        if (activeIndex >= 0 && results[activeIndex]) choose(results[activeIndex]);
+        else showAll();
         return;
       case "Escape":
         if (visible) {
@@ -130,7 +150,7 @@ export function CalendarSearch({ calendarId, onPick }: CalendarSearchProps) {
           aria-controls={listId}
           aria-activedescendant={visible && activeIndex >= 0 ? optionId(activeIndex) : undefined}
           value={text}
-          placeholder={t("calendar.search.placeholderAll")}
+          placeholder={placeholder}
           onChange={(e) => {
             setText(e.target.value);
             setOpen(true);
@@ -185,6 +205,18 @@ export function CalendarSearch({ calendarId, onPick }: CalendarSearchProps) {
         {visible && !isError && settled && total > results.length && (
           <li role="presentation" className="ap-ac-note">
             {t("calendar.search.more", { shown: results.length, total })}
+          </li>
+        )}
+        {visible && (
+          <li
+            id={optionId(results.length)}
+            role="option"
+            aria-selected={activeIndex === results.length}
+            className="ap-ac-option"
+            onClick={showAll}
+            onMouseMove={() => activeIndex !== results.length && setActiveIndex(results.length)}
+          >
+            <span className="ap-ac-title">{t("calendar.search.showAll")}</span>
           </li>
         )}
       </ul>

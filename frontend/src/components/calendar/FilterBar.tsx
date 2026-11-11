@@ -1,13 +1,12 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Field, FilterPillGroup, TextInput } from "@/components/ui/shared";
+import { Button, FilterPillGroup } from "@/components/ui/shared";
 
 interface FilterBarProps {
-  /** Text filter (feed page). Omit it and pass `searchSlot` for a custom search. */
+  /** The search (`CalendarSearch`). */
+  searchSlot: ReactNode;
+  /** Applied search term of the list view; shows "Filter zurücksetzen". */
   search?: string;
-  onSearchChange?: (value: string) => void;
-  /** Replaces the text input, e.g. the server-side calendar search. */
-  searchSlot?: ReactNode;
   groups: { id: string; label: string }[];
   selectedGroups: string[];
   onToggleGroup: (id: string) => void;
@@ -22,7 +21,6 @@ interface FilterBarProps {
  */
 export function FilterBar({
   search = "",
-  onSearchChange,
   searchSlot,
   groups,
   selectedGroups,
@@ -34,21 +32,7 @@ export function FilterBar({
   const active = selectedGroups.length > 0 || search.trim() !== "";
   return (
     <div className="ap-toolbar">
-      <div className="ap-toolbar-search">
-        {searchSlot ?? (
-          <Field id="calendar-search" label={t("calendar.search.label")}>
-            <TextInput
-              type="search"
-              name="search"
-              autoComplete="off"
-              spellCheck={false}
-              value={search}
-              placeholder={t("calendar.search.placeholder")}
-              onChange={(e) => onSearchChange?.(e.target.value)}
-            />
-          </Field>
-        )}
-      </div>
+      <div className="ap-toolbar-search">{searchSlot}</div>
       {groups.length > 0 && (
         <FilterPillGroup
           label={t("calendar.filter.label")}

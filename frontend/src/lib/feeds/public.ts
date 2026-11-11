@@ -183,6 +183,11 @@ export function filterPublicEvents<T extends PublicFeedEvent>(
   );
 }
 
+/** The list view with a search term shows the matches of all dates, not one month. */
+export function isSearchList(view: "month" | "list", query: string): boolean {
+  return view === "list" && query.trim() !== "";
+}
+
 /** Events that overlap the range (first and last day, inclusive). */
 export function eventsInRange<T extends PublicFeedEvent>(
   events: T[],
