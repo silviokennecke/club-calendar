@@ -98,10 +98,15 @@ export default function SignInPage() {
     void (async () => {
       try {
         if (!(await window.PublicKeyCredential?.isConditionalMediationAvailable?.())) return;
+      } catch {
+        return;
+      }
+      try {
         await runPasskeyLogin(true, () => cancelled);
-      } catch (e: unknown) {
-        const name = e instanceof Error ? e.name : "";
-        if (cancelled || name === "AbortError" || name === "NotAllowedError") return;
+      } catch {
+        // Only a failure after the user picked a passkey is reported (in runPasskeyLogin); here the
+        // verify request itself broke.
+        if (cancelled) return;
         setPasskeyProblem(true);
         setProblemKey((k) => k + 1);
       }
@@ -175,16 +180,28 @@ export default function SignInPage() {
   // Shared by the passkey button and the autofill (conditional UI) ceremony.
   async function runPasskeyLogin(autofill: boolean, isCancelled: () => boolean = () => false) {
     const { startAuthentication } = await import("@simplewebauthn/browser");
-    const optRes = await apiFetch("/api/auth/webauthn/authenticate/options");
-    const { options, challengeToken } = (await optRes.json()) as {
-      options: Parameters<typeof startAuthentication>[0]["optionsJSON"];
-      challengeToken: string;
-    };
-    if (isCancelled()) return;
-    const response = await startAuthentication({
-      optionsJSON: options,
-      useBrowserAutofill: autofill,
-    });
+    let challengeToken: string;
+    let response: Awaited<ReturnType<typeof startAuthentication>>;
+    try {
+      const optRes = await apiFetch("/api/auth/webauthn/authenticate/options");
+      const body = (await optRes.json()) as {
+        options: Parameters<typeof startAuthentication>[0]["optionsJSON"];
+        challengeToken: string;
+      };
+      challengeToken = body.challengeToken;
+      if (isCancelled()) return;
+      response = await startAuthentication({
+        optionsJSON: body.options,
+        useBrowserAutofill: autofill,
+      });
+    } catch (e: unknown) {
+      // The silent autofill attempt never shows an error (no authenticator, unsupported, aborted ...).
+      if (!autofill) throw e;
+      if (!(e instanceof Error && (e.name === "AbortError" || e.name === "NotAllowedError"))) {
+        console.debug("passkey autofill unavailable", e);
+      }
+      return;
+    }
     if (isCancelled()) return;
     {
       const verifyRes = await apiFetch("/api/auth/webauthn/authenticate/verify", {

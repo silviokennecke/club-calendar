@@ -226,6 +226,55 @@ describe("step 1: email", () => {
       );
     });
 
+    it.each(["NotSupportedError", "SecurityError", "Error"])(
+      "shows no banner when the autofill attempt fails with %s",
+      async (name) => {
+        vi.stubGlobal("PublicKeyCredential", {
+          isConditionalMediationAvailable: () => Promise.resolve(true),
+        });
+        apiFetch.mockResolvedValue({
+          json: () => Promise.resolve({ options: {}, challengeToken: "c" }),
+        });
+        const err = new Error("no authenticator");
+        err.name = name;
+        startAuthentication.mockRejectedValue(err);
+        renderFlow();
+        await waitFor(() => expect(startAuthentication).toHaveBeenCalled());
+        await new Promise((r) => setTimeout(r, 20));
+        expect(screen.queryByRole("alert")).toBeNull();
+      },
+    );
+
+    it("shows no banner when fetching the autofill options fails", async () => {
+      vi.stubGlobal("PublicKeyCredential", {
+        isConditionalMediationAvailable: () => Promise.resolve(true),
+      });
+      apiFetch.mockRejectedValue(new Error("offline"));
+      renderFlow();
+      await waitFor(() => expect(apiFetch).toHaveBeenCalled());
+      await new Promise((r) => setTimeout(r, 20));
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("shows the banner when the server rejects the autofilled assertion", async () => {
+      vi.stubGlobal("PublicKeyCredential", {
+        isConditionalMediationAvailable: () => Promise.resolve(true),
+      });
+      apiFetch.mockImplementation((path: string) =>
+        Promise.resolve(
+          path.includes("options")
+            ? { ok: true, json: () => Promise.resolve({ options: {}, challengeToken: "c" }) }
+            : { ok: false, json: () => Promise.resolve({ code: "invalid_passkey" }) },
+        ),
+      );
+      startAuthentication.mockResolvedValue({ id: "x" });
+      renderFlow();
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Anmeldung mit Passkey nicht möglich",
+      );
+      expect(login).not.toHaveBeenCalled();
+    });
+
     it("ignores AbortError and cancels the ceremony on submit", async () => {
       vi.stubGlobal("PublicKeyCredential", {
         isConditionalMediationAvailable: () => Promise.resolve(true),

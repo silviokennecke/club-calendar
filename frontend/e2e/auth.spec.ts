@@ -13,7 +13,6 @@ test.use({ locale: "de-DE" });
 
 const PASSWORD = "Sicheres-Passwort-1";
 
-// The login page may show a second banner from the passkey autofill attempt (headless Chromium has no authenticator).
 function ssoAlert(page: Page) {
   return page
     .getByRole("alert")
