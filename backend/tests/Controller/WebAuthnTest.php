@@ -458,7 +458,7 @@ class WebAuthnTest extends WebTestCase
         $passkeyId = self::$em->getRepository(Passkey::class)->findOneBy([])->getId();
         $mallory = TestHelper::createUser(self::$em, self::$hasher, 'mallory@example.com');
 
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', "/api/auth/webauthn/$passkeyId", [], $this->auth($mallory));
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', "/api/auth/webauthn/$passkeyId", ['password' => 'password123'], $this->auth($mallory));
         $this->assertSame(404, $r['status']);
         $this->assertSame(1, self::$em->getRepository(Passkey::class)->count([]));
     }
