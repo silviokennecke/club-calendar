@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import {
   API,
   continueWithEmail,
@@ -12,6 +12,13 @@ import {
 test.use({ locale: "de-DE" });
 
 const PASSWORD = "Sicheres-Passwort-1";
+
+// The login page may show a second banner from the passkey autofill attempt (headless Chromium has no authenticator).
+function ssoAlert(page: Page) {
+  return page
+    .getByRole("alert")
+    .filter({ hasText: "Anmeldung mit Google oder Microsoft nicht möglich" });
+}
 
 test.describe("Login", () => {
   test("login page is accessible", async ({ page }) => {
@@ -30,7 +37,7 @@ test.describe("Login", () => {
     await expect(page.getByRole("link", { name: "Passwort vergessen?" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Mit Passkey anmelden" })).toHaveCount(0);
     await page.getByRole("button", { name: "Zurück" }).click();
-    await expect(page.getByLabel(/^E-Mail$/)).toHaveValue("admin@example.com");
+    await expect(page.locator("#entry-email")).toHaveValue("admin@example.com");
     await expect(page.getByRole("button", { name: "Mit Passkey anmelden" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Zum Inhalt springen" })).toBeAttached();
     await expect(page.locator("main#main")).toBeVisible();
@@ -74,16 +81,14 @@ test.describe("Login", () => {
   test("failed SSO shows an explanation on the login page", async ({ page }) => {
     await page.goto("/auth/callback?error=oauth_failed");
     await expect(page).toHaveURL(/\/login\?error=/);
-    await expect(page.getByRole("alert")).toContainText(
-      "Anmeldung mit Google oder Microsoft nicht möglich",
-    );
+    await expect(ssoAlert(page)).toBeVisible();
   });
 
   test("an SSO login code without a verifier from this tab is rejected", async ({ page }) => {
     await page.goto("/auth/callback?code=invalid");
     await expect(page).toHaveURL(/\/login\?error=invalid_code_verifier/);
     expect(page.url()).not.toContain("code=invalid");
-    await expect(page.getByRole("alert")).toContainText("in einem anderen Browser oder Tab");
+    await expect(ssoAlert(page)).toContainText("in einem anderen Browser oder Tab");
   });
 
   test("an invalid SSO login code is explained and never stays in the URL", async ({ page }) => {
@@ -92,7 +97,7 @@ test.describe("Login", () => {
     await page.goto("/auth/callback?code=invalid");
     await expect(page).toHaveURL(/\/login\?error=invalid_login_code/);
     expect(page.url()).not.toContain("code=invalid");
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(ssoAlert(page)).toContainText(
       "Die Anmeldung ist abgelaufen oder wurde bereits verwendet",
     );
   });
@@ -110,9 +115,7 @@ test.describe("Login", () => {
     test(`SSO error code ${code} shows its own explanation`, async ({ page }) => {
       await page.goto(`/auth/callback?error=${code}`);
       await expect(page).toHaveURL(new RegExp(`/login\\?error=${code}`));
-      const alert = page.getByRole("alert");
-      await expect(alert).toContainText("Anmeldung mit Google oder Microsoft nicht möglich");
-      await expect(alert).toContainText(text);
+      await expect(ssoAlert(page)).toContainText(text);
     });
   }
 
@@ -120,9 +123,7 @@ test.describe("Login", () => {
     // Login CSRF: a callback URL that was not started in this browser must not sign in.
     await page.goto(`${API}/api/auth/oauth/google/callback?code=x&state=forged`);
     await expect(page).toHaveURL(/\/login\?error=invalid_state/);
-    await expect(page.getByRole("alert")).toContainText(
-      "Anmeldung mit Google oder Microsoft nicht möglich",
-    );
+    await expect(ssoAlert(page)).toBeVisible();
   });
 
   test("login with correct credentials redirects to clubs", async ({ page }) => {

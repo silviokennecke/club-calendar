@@ -11,7 +11,7 @@ import {
 async function loginAdmin(page: Page) {
   await page.goto("/login");
   await continueWithEmail(page, "admin@example.com");
-  await page.getByLabel(/^Password \(required\)/).fill("password123");
+  await page.getByLabel(/^Password$/).fill("password123");
   await page.getByRole("button", { name: /^sign in$/i }).click();
   await page.waitForURL("**/clubs**");
 }

@@ -248,8 +248,8 @@ test.describe("Öffentlicher Kalender", () => {
     await page.getByRole("button", { name: "Liste" }).click();
     await expect(page.getByRole("region", { name: "Termine im Oktober 2026" })).toBeVisible();
     await expect(page.locator("body")).not.toContainText("Geheimer Entwurf");
-    await page.getByRole("searchbox", { name: "Termine suchen" }).fill("Entwurf");
-    await expect(page.getByRole("heading", { name: /Keine Termine zu „Entwurf“/ })).toBeVisible();
+    await page.getByRole("combobox", { name: "Termine suchen" }).fill("Entwurf");
+    await expect(page.getByText(/Keine Termine zu „Entwurf“/).first()).toBeVisible();
     // auch nicht über die API und nicht über die Detailadresse
     const res = await request.get(`${API}/api/feed/${seed.publicFeedId}/events`);
     expect(JSON.stringify(await res.json())).not.toContain("Geheimer Entwurf");
@@ -279,7 +279,9 @@ test.describe("Öffentlicher Kalender", () => {
     const popup = page.waitForEvent("popup");
     await page.getByRole("button", { name: "Zu Google Kalender hinzufügen" }).click();
     expect(decodeURIComponent((await popup).url())).toMatch(/targetGroupIds=/);
-    await page.getByRole("searchbox", { name: "Termine suchen" }).fill("herbst");
+    const search = page.getByRole("combobox", { name: "Termine suchen" });
+    await search.fill("herbst");
+    await search.press("Enter");
     await expect(page.getByText("Zeige 1 von 3 Terminen")).toBeVisible();
     await page.getByRole("button", { name: "Filter zurücksetzen" }).click();
     await expect(page.getByText("Zeige 3 von 3 Terminen")).toBeVisible();
