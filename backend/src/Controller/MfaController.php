@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Second factor of the password sign-in. Public routes: the signed `mfaToken` from `POST /api/auth/login`
+ * MFA of the password sign-in. Public routes: the signed `mfaToken` from `POST /api/auth/login`
  * is the credential. 401 `invalid_mfa_token`, 401 `invalid_mfa_code` (field `code`, same for TOTP and backup
  * code), 401 `invalid_passkey`, 429 `rate_limited`.
  */

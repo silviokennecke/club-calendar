@@ -1,14 +1,14 @@
 ---
-title: Zwei-Faktor-Anmeldung (MFA)
+title: Multi-Faktor-Authentifizierung (MFA)
 order: 25
-description: Einen zweiten Schritt bei der Anmeldung einrichten, mit Authenticator-App oder Passkey.
+description: MFA einrichten, mit Authenticator-App oder Passkey.
 ---
 
-# Zwei-Faktor-Anmeldung (MFA)
+# Multi-Faktor-Authentifizierung (MFA)
 
-Mit Zwei-Faktor-Anmeldung (MFA) fragt dich die Anmeldung mit Passwort zusätzlich nach einem zweiten Schritt: einem Code aus einer Authenticator-App oder einem Passkey.
+Mit Multi-Faktor-Authentifizierung (MFA) fragt dich die Anmeldung mit Passwort zusätzlich nach einem weiteren Faktor: einem Code aus einer Authenticator-App oder einem Passkey.
 
-Den Abschnitt findest du in deinem [Profil](help:settings/profile) unter **Zwei-Faktor-Authentifizierung (MFA)**.
+Den Abschnitt findest du in deinem [Profil](help:settings/profile) unter **Multi-Faktor-Authentifizierung (MFA)**.
 
 ## Authenticator-App einrichten
 
@@ -19,7 +19,7 @@ Den Abschnitt findest du in deinem [Profil](help:settings/profile) unter **Zwei-
 5. Bewahre die **Backup-Codes** sicher auf (siehe unten). Setze den Haken bei **Ich habe die Backup-Codes aufbewahrt** und klicke auf **Weiter**.
 6. Bestätige, dass du es bist: Gib dein Passwort ein und klicke auf **Aktivieren**. Hat dein Konto kein Passwort, klicke auf **Code senden** und gib den Code aus der E-Mail ein.
 
-Du kannst nur eine Authenticator-App einrichten. Statt einer App kannst du im selben Schritt auch einen **Passkey** als zweiten Schritt wählen.
+Du kannst nur eine Authenticator-App einrichten. Statt einer App kannst du im selben Schritt auch einen **Passkey** für MFA wählen.
 
 ## MFA mit einem vorhandenen Passkey einschalten
 
@@ -31,13 +31,13 @@ Hast du schon einen Passkey, kannst du MFA direkt damit einschalten. Der Knopf *
 
 ## Bei der Anmeldung
 
-Nach dem Passwort fragt dich die Anmeldung nach dem zweiten Schritt. Du hast drei Möglichkeiten:
+Nach dem Passwort fragt dich die Anmeldung nach dem weiteren Faktor. Du hast drei Möglichkeiten:
 
 - **Code aus der Authenticator-App verwenden**: Gib den aktuellen 6-stelligen Code ein.
 - **Backup-Code verwenden**: Gib einen deiner Backup-Codes ein.
 - **Passkey verwenden**: Bestätige am Gerät mit dem Passkey.
 
-Bei der Anmeldung mit Google, Microsoft oder einem Passkey fragt die Anmeldung nicht nach dem zweiten Schritt.
+Bei der Anmeldung mit Google, Microsoft oder einem Passkey fragt die Anmeldung nicht nach MFA.
 
 ## Backup-Codes
 

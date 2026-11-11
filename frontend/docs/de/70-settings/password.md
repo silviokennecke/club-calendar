@@ -32,10 +32,10 @@ Wenn du dich nur mit Google, Microsoft oder einem Passkey anmeldest, hat dein Ko
 
 ## E-Mails bei Änderungen
 
-Wenn sich dein Passwort ändert, bekommst du eine E-Mail. Das Gleiche gilt, wenn du [Zwei-Faktor-Anmeldung (MFA)](help:settings/mfa) ein- oder ausschaltest. Schlägt die Anmeldung mehrfach fehl, bekommst du ebenfalls eine E-Mail. Hast du das nicht selbst veranlasst, ändere sofort dein Passwort.
+Wenn sich dein Passwort ändert, bekommst du eine E-Mail. Das Gleiche gilt, wenn du [Multi-Faktor-Authentifizierung (MFA)](help:settings/mfa) ein- oder ausschaltest. Schlägt die Anmeldung mehrfach fehl, bekommst du ebenfalls eine E-Mail. Hast du das nicht selbst veranlasst, ändere sofort dein Passwort.
 
 ## Siehe auch
 
-- [Zwei-Faktor-Anmeldung (MFA)](help:settings/mfa)
+- [Multi-Faktor-Authentifizierung (MFA)](help:settings/mfa)
 - [Passkeys](help:settings/passkeys)
 - [Anmeldungen und Abmelden](help:settings/sessions)

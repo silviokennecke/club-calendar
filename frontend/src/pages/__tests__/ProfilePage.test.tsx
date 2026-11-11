@@ -376,7 +376,7 @@ describe("ProfilePage", () => {
       "/clubs?select=1",
     );
     expect(
-      await screen.findByRole("heading", { name: "Zwei-Faktor-Authentifizierung (MFA)" }),
+      await screen.findByRole("heading", { name: "Multi-Faktor-Authentifizierung (MFA)" }),
     ).toBeInTheDocument();
   });
 
@@ -578,7 +578,7 @@ describe("ProfilePage", () => {
     );
     await user.click(screen.getByRole("button", { name: "Erneut versuchen" }));
     expect(
-      await screen.findByRole("heading", { name: "Zwei-Faktor-Authentifizierung (MFA)" }),
+      await screen.findByRole("heading", { name: "Multi-Faktor-Authentifizierung (MFA)" }),
     ).toBeInTheDocument();
   });
 
@@ -587,7 +587,7 @@ describe("ProfilePage", () => {
     providers = [];
     renderProfile();
     expect(
-      await screen.findByText("Du hast noch keinen zweiten Faktor eingerichtet."),
+      await screen.findByText("Du hast noch keine MFA-Methode eingerichtet."),
     ).toBeInTheDocument();
     expect(screen.getByText(/Es ist keine Anmeldung über einen Anbieter/)).toBeInTheDocument();
   });
@@ -612,7 +612,7 @@ describe("ProfilePage (dialog while loading)", () => {
     resolveMe(profile);
     // The page behind the modal dialog is inert, hence `hidden`.
     await screen.findByRole("heading", {
-      name: "Zwei-Faktor-Authentifizierung (MFA)",
+      name: "Multi-Faktor-Authentifizierung (MFA)",
       hidden: true,
     });
     expect(screen.getByRole("dialog", { name: "Konto löschen?" })).toBeInTheDocument();

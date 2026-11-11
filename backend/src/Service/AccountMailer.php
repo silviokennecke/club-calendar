@@ -76,7 +76,7 @@ readonly class AccountMailer
         $this->sendNotice($user, 'backup_codes_regenerated', $context);
     }
 
-    /** A backup code ended the two-step sign-in (and all other sessions). */
+    /** A backup code ended MFA (and all other sessions). */
     public function sendBackupCodeUsed(User $user, ClientContext $context = new ClientContext()): void
     {
         $this->sendNotice($user, 'backup_code_used', $context);

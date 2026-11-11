@@ -76,16 +76,17 @@ class MfaEntitiesTest extends KernelTestCase
     {
         $user = $this->user();
         $other = $this->user('b@example.com');
-        $hashA = hash('sha256', 'AAAA');
-        $this->em->persist(new MfaBackupCode($user, $hashA));
-        $this->em->persist(new MfaBackupCode($user, hash('sha256', 'BBBB')));
+        $a = new MfaBackupCode($user, 'hash-a');
+        $this->em->persist($a);
+        $this->em->persist(new MfaBackupCode($user, 'hash-b'));
         $this->em->flush();
         $repo = static::getContainer()->get(MfaBackupCodeRepository::class);
 
         $this->assertSame(2, $repo->countUnused($user));
-        $this->assertFalse($repo->consume($other, $hashA), 'a code of another user never matches');
-        $this->assertTrue($repo->consume($user, $hashA));
-        $this->assertFalse($repo->consume($user, $hashA));
+        $this->assertCount(2, $repo->findUnused($user));
+        $this->assertCount(0, $repo->findUnused($other));
+        $this->assertTrue($repo->consume($a->getId()));
+        $this->assertFalse($repo->consume($a->getId()), 'second use loses');
         $this->assertSame(1, $repo->countUnused($user));
         $this->assertSame(2, $repo->countAll($user));
         $this->assertSame(2, $repo->deleteAll($user));

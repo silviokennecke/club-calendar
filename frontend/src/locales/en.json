@@ -180,7 +180,7 @@
       "feedProofNote": "After signing in you continue with the calendar you want to add to your account."
     },
     "mfa": {
-      "formLabel": "Second factor confirmation",
+      "formLabel": "MFA confirmation",
       "expiredTitle": "Sign-in expired",
       "expiredText": "The confirmation took too long. Please enter your password again.",
       "totpIntro": "Your account is protected with multi-factor authentication (MFA). Enter the current code from your authenticator app.",
@@ -2415,11 +2415,11 @@
       "confirm": "Renew link"
     },
     "mfa": {
-      "title": "Two-factor authentication (MFA)",
-      "text": "Protect your account with a second step at sign-in: an authenticator app or a passkey.",
+      "title": "Multi-factor authentication (MFA)",
+      "text": "Protect your account at sign-in with an authenticator app or a passkey.",
       "statusOn": "MFA is on.",
       "statusOff": "MFA is off.",
-      "none": "You have not set up a second factor yet.",
+      "none": "You have not set up an MFA method yet.",
       "listLabel": "Your MFA methods",
       "totpName": "Authenticator app",
       "backupName": "Backup codes",
@@ -2470,18 +2470,18 @@
         "done": "MFA is on."
       },
       "disable": {
-        "action": "Disable MFA",
-        "title": "Disable MFA?",
+        "action": "Turn off MFA",
+        "title": "Turn off MFA?",
         "text": "The backup codes will be deleted.",
         "textTotp": "The authenticator app and the backup codes will be deleted.",
         "passkeysStay": "Your passkeys stay.",
         "signOutOthers": "All other devices will be signed out.",
-        "confirm": "Disable MFA",
+        "confirm": "Turn off MFA",
         "done": "MFA is off."
       },
       "add": {
-        "title": "Add a second step",
-        "description": "Add an authenticator app or a passkey as a second step for signing in.",
+        "title": "Add an MFA method",
+        "description": "Add an authenticator app or a passkey for MFA at sign-in.",
         "intro": "Choose how you want to confirm your sign-in in the future.",
         "next": "Next",
         "rateLimited": "Too many attempts. Please wait a while and try again.",
@@ -2503,7 +2503,7 @@
           "totpAlreadySet": "An authenticator app is already set up.",
           "setupFailed": "The setup could not be started. Please try again.",
           "setupExpired": "The setup has expired. Please start again.",
-          "alreadyEnabled": "The second step is already active.",
+          "alreadyEnabled": "MFA is already on.",
           "enableFailed": "The authenticator app could not be activated. Please try again."
         },
         "totp": {

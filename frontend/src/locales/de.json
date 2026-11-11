@@ -180,10 +180,10 @@
       "feedProofNote": "Nach der Anmeldung geht es mit dem Kalender weiter, den du zu deinem Konto hinzufügen möchtest."
     },
     "mfa": {
-      "formLabel": "Bestätigung mit zweitem Faktor",
+      "formLabel": "Bestätigung mit MFA",
       "expiredTitle": "Anmeldung abgelaufen",
       "expiredText": "Die Bestätigung hat zu lange gedauert. Bitte gib dein Passwort noch einmal ein.",
-      "totpIntro": "Dein Konto ist mit Zwei-Faktor-Authentifizierung (MFA) geschützt. Gib den aktuellen Code aus deiner Authenticator-App ein.",
+      "totpIntro": "Dein Konto ist mit Multi-Faktor-Authentifizierung (MFA) geschützt. Gib den aktuellen Code aus deiner Authenticator-App ein.",
       "totpLabel": "Code aus der Authenticator-App",
       "backupIntro": "Gib einen deiner Backup-Codes ein. Jeder Code funktioniert nur einmal.",
       "backupLabel": "Backup-Code",
@@ -197,7 +197,7 @@
       "passkeyErrorTitle": "Bestätigung mit Passkey nicht möglich",
       "passkeyErrorText": "Die Passkey-Bestätigung wurde abgebrochen oder hat nicht geklappt. Versuche es erneut oder nutze einen Code.",
       "back": "Zurück zum Passwort",
-      "disabledToast": "Die Zwei-Faktor-Authentifizierung (MFA) wurde ausgeschaltet und andere Geräte wurden abgemeldet. Schalte sie im Profil wieder ein."
+      "disabledToast": "MFA wurde ausgeschaltet und andere Geräte wurden abgemeldet. Schalte MFA im Profil wieder ein."
     }
   },
   "setup": {
@@ -2415,11 +2415,11 @@
       "confirm": "Link erneuern"
     },
     "mfa": {
-      "title": "Zwei-Faktor-Authentifizierung (MFA)",
-      "text": "Schütze dein Konto mit einem zweiten Schritt bei der Anmeldung: einer Authenticator-App oder einem Passkey.",
+      "title": "Multi-Faktor-Authentifizierung (MFA)",
+      "text": "Schütze dein Konto bei der Anmeldung zusätzlich mit einer Authenticator-App oder einem Passkey.",
       "statusOn": "MFA ist eingeschaltet.",
       "statusOff": "MFA ist ausgeschaltet.",
-      "none": "Du hast noch keinen zweiten Faktor eingerichtet.",
+      "none": "Du hast noch keine MFA-Methode eingerichtet.",
       "listLabel": "Deine MFA-Methoden",
       "totpName": "Authenticator-App",
       "backupName": "Backup-Codes",
@@ -2480,8 +2480,8 @@
         "done": "MFA ist ausgeschaltet."
       },
       "add": {
-        "title": "Zweiten Schritt hinzufügen",
-        "description": "Eine Authenticator-App oder einen Passkey als zweiten Schritt bei der Anmeldung hinzufügen.",
+        "title": "MFA-Methode hinzufügen",
+        "description": "Eine Authenticator-App oder einen Passkey für MFA bei der Anmeldung hinzufügen.",
         "intro": "Wähle, wie du deine Anmeldung künftig bestätigen möchtest.",
         "next": "Weiter",
         "rateLimited": "Zu viele Versuche. Bitte warte eine Weile und versuche es dann erneut.",
@@ -2503,7 +2503,7 @@
           "totpAlreadySet": "Eine Authenticator-App ist bereits eingerichtet.",
           "setupFailed": "Die Einrichtung konnte nicht gestartet werden. Bitte versuche es erneut.",
           "setupExpired": "Die Einrichtung ist abgelaufen. Bitte starte sie neu.",
-          "alreadyEnabled": "Der zweite Schritt ist bereits aktiv.",
+          "alreadyEnabled": "MFA ist bereits eingeschaltet.",
           "enableFailed": "Die Authenticator-App konnte nicht aktiviert werden. Bitte versuche es erneut."
         },
         "totp": {

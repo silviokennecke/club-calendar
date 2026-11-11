@@ -333,9 +333,9 @@ tags:
       dynamic registration). See "MCP server and OAuth" in the API description.
   - name: Passkeys
     description: WebAuthn registration and sign-in.
-  - name: Two-step sign-in
+  - name: Multi-factor authentication (MFA)
     description: >-
-      Second factor of the password sign-in (authenticator app, backup codes, passkey) and its management. The
+      MFA of the password sign-in (authenticator app, backup codes, passkey) and its management. The
       sign-in routes are public and use the signed `mfaToken` from `POST /api/auth/login` as credential.
   - name: SSO
     description: OAuth 2.0 / OpenID Connect sign-in and account linking (browser redirects).
@@ -856,9 +856,9 @@ paths:
       summary: Sign in with e-mail and password
       description: >-
         An account whose address is not confirmed gets a restricted session (`emailVerificationRequired: true`). If
-        no valid code is waiting and the resend cooldown allows, a fresh code is mailed. An account with two-step
-        sign-in on gets no tokens but a `MfaChallenge` (200): the sign-in is finished by one of the
-        `/api/auth/mfa/*` sign-in routes (see "Two-step sign-in").
+        no valid code is waiting and the resend cooldown allows, a fresh code is mailed. An account with MFA
+        on gets no tokens but a `MfaChallenge` (200): the sign-in is finished by one of the
+        `/api/auth/mfa/*` sign-in routes (see "Multi-factor authentication (MFA)").
       operationId: login
       security: []
       requestBody:
@@ -873,7 +873,7 @@ paths:
                 password: { type: string, maxLength: 128 }
       responses:
         '200':
-          description: Tokens, or the second-factor challenge of an account with two-step sign-in.
+          description: Tokens, or the second-factor challenge of an account with MFA.
           content:
             application/json:
               schema:
@@ -1570,11 +1570,11 @@ paths:
 
   /api/auth/mfa/verify:
     post:
-      tags: [Two-step sign-in]
+      tags: [Multi-factor authentication (MFA)]
       summary: Finish a password sign-in with an authenticator app or a backup code
       description: >-
         Public: the signed `mfaToken` of the challenge is the credential (valid 5 minutes, single use, consumed only by
-        a successful second factor). A backup code is single use too and ends two-step sign-in for the account: the
+        a successful second factor). A backup code is single use too and ends MFA for the account: the
         answer then carries `mfaDisabled: true` and all other sessions have ended. Wrong codes count against 5 attempts
         per 15 minutes per account and per token, and 20 per 15 minutes per IP.
       operationId: mfaVerify
@@ -1600,7 +1600,7 @@ paths:
                   - $ref: '#/components/schemas/TokenResponse'
                   - type: object
                     properties:
-                      mfaDisabled: { type: boolean, const: true, description: 'Only after a backup code: two-step sign-in is now off.' }
+                      mfaDisabled: { type: boolean, const: true, description: 'Only after a backup code: MFA is now off.' }
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401':
           description: '`invalid_mfa_token` (challenge expired, used or invalid) or `invalid_mfa_code` (field `code`: wrong or used code; the same answer for an authenticator code and a backup code).'
@@ -1611,7 +1611,7 @@ paths:
 
   /api/auth/mfa/passkey/options:
     post:
-      tags: [Two-step sign-in]
+      tags: [Multi-factor authentication (MFA)]
       summary: Options to finish a sign-in with a passkey
       description: >-
         Public: needs the signed `mfaToken` of the challenge. Only the passkeys of that account are offered. Answers
@@ -1643,7 +1643,7 @@ paths:
 
   /api/auth/mfa/passkey/verify:
     post:
-      tags: [Two-step sign-in]
+      tags: [Multi-factor authentication (MFA)]
       summary: Finish a sign-in with a passkey
       description: >-
         Public: the signed `mfaToken` of the challenge and the challenge token of the options are the credentials.
@@ -1672,12 +1672,12 @@ paths:
 
   /api/auth/mfa/setup:
     post:
-      tags: [Two-step sign-in]
-      summary: Prepare two-step sign-in (authenticator app or passkeys)
+      tags: [Multi-factor authentication (MFA)]
+      summary: Prepare MFA (authenticator app or passkeys)
       description: >-
         Stores nothing. Returns the secret and backup codes of the new setup and a signed `setupToken` (15 minutes)
         that binds them; `POST /api/auth/mfa/enable` needs it back unchanged. The authenticator app's secret and
-        `otpauthUri` are shown once. Backup codes are issued only while two-step sign-in is off (`null` otherwise).
+        `otpauthUri` are shown once. Backup codes are issued only while MFA is off (`null` otherwise).
       operationId: mfaSetup
       requestBody:
         required: true
@@ -1697,7 +1697,7 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '409':
-          description: '`totp_already_set` (an authenticator app is already set up) or `mfa_already_enabled` (two-step sign-in is on).'
+          description: '`totp_already_set` (an authenticator app is already set up) or `mfa_already_enabled` (MFA is on).'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -1710,8 +1710,8 @@ paths:
 
   /api/auth/mfa/enable:
     post:
-      tags: [Two-step sign-in]
-      summary: Turn two-step sign-in on
+      tags: [Multi-factor authentication (MFA)]
+      summary: Turn MFA on
       description: >-
         Needs re-authentication: `password`, or `confirmationCode` for an account without one (see
         `POST /api/auth/mfa/code`). Sending the `setupToken` again with the same secret/codes proves the setup. An
@@ -1736,7 +1736,7 @@ paths:
                 confirmationCode: { type: [string, 'null'], maxLength: 32 }
       responses:
         '200':
-          description: Two-step sign-in is on.
+          description: MFA is on.
           content:
             application/json:
               schema:
@@ -1764,8 +1764,8 @@ paths:
 
   /api/auth/mfa/disable:
     post:
-      tags: [Two-step sign-in]
-      summary: Turn two-step sign-in off
+      tags: [Multi-factor authentication (MFA)]
+      summary: Turn MFA off
       description: >-
         Needs re-authentication (`password`, or `confirmationCode` for an account without one). Removes the authenticator
         app and the backup codes, keeps the passkeys, and ends all other sessions and MCP connections. The answer is
@@ -1782,7 +1782,7 @@ paths:
                 confirmationCode: { type: [string, 'null'], maxLength: 32 }
       responses:
         '200':
-          description: Two-step sign-in is off; the new token pair of this session.
+          description: MFA is off; the new token pair of this session.
           content:
             application/json:
               schema:
@@ -1795,7 +1795,7 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '409':
-          description: '`mfa_not_enabled`: two-step sign-in is not on.'
+          description: '`mfa_not_enabled`: MFA is not on.'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -1803,7 +1803,7 @@ paths:
 
   /api/auth/mfa/backup-codes:
     post:
-      tags: [Two-step sign-in]
+      tags: [Multi-factor authentication (MFA)]
       summary: Replace the backup codes
       description: >-
         Needs re-authentication (`password`, or `confirmationCode` for an account without one). The old codes stop
@@ -1832,7 +1832,7 @@ paths:
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '409':
-          description: '`mfa_not_enabled`: two-step sign-in is not on.'
+          description: '`mfa_not_enabled`: MFA is not on.'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -1840,8 +1840,8 @@ paths:
 
   /api/auth/mfa/code:
     post:
-      tags: [Two-step sign-in]
-      summary: Mail the confirmation code for two-step sign-in changes
+      tags: [Multi-factor authentication (MFA)]
+      summary: Mail the confirmation code for MFA changes
       description: >-
         For accounts without a password only (they confirm with a code instead of a password). Same stateless code as
         for account deletion, bound to this purpose. Counts against the per-user and per-IP limits.
@@ -1889,7 +1889,7 @@ paths:
         Needs re-authentication: `password`, or `confirmationCode` for an account without one (see
         `POST /api/auth/mfa/code`); the body may be empty only when neither applies. Ends all sessions (session
         version, refresh tokens) and answers with `{"ok": true}` plus a fresh token pair (`access_token`,
-        `refresh_token`, ... like login), so the calling session continues. While two-step sign-in is on, the last
+        `refresh_token`, ... like login), so the calling session continues. While MFA is on, the last
         passkey cannot be deleted (422 `mfa_last_passkey`).
       operationId: deletePasskey
       parameters:
@@ -1927,7 +1927,7 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '422':
-          description: '`mfa_last_passkey`: the last passkey while two-step sign-in is on.'
+          description: '`mfa_last_passkey`: the last passkey while MFA is on.'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -5158,16 +5158,16 @@ components:
         | `email_verification_required` | 403 | **Any gated `/api/*` route** (see the e-mail verification gate in the overview): the session belongs to a user whose address is not confirmed; extra member `email` |
         | `invalid_verification_code` | 422 | `POST /api/auth/verify-email`: wrong, expired, used up or already confirmed (same answer), field `code` |
         | `verification_resend_too_early` | 429 | `POST /api/auth/resend-verification` less than 5 minutes after the last code mail of the account; extra member `retryAt` (ISO-8601 UTC), header `Retry-After` |
-        | `invalid_mfa_token` | 401 | Two-step sign-in routes `/api/auth/mfa/verify`, `…/passkey/options`, `…/passkey/verify`: the signed `mfaToken` is expired, used, invalid or the account changed since the sign-in |
+        | `invalid_mfa_token` | 401 | MFA routes `/api/auth/mfa/verify`, `…/passkey/options`, `…/passkey/verify`: the signed `mfaToken` is expired, used, invalid or the account changed since the sign-in |
         | `invalid_mfa_code` | 401 | `POST /api/auth/mfa/verify`: wrong or used authenticator or backup code (field `code`; same answer for both) |
         | `invalid_mfa_setup` | 400 | `POST /api/auth/mfa/enable`: setup token expired, used, or not matching the secret/codes sent |
         | `invalid_totp_code` | 422 | `POST /api/auth/mfa/enable`: the 6-digit code of the new authenticator app is wrong (field `code`) |
         | `totp_already_set` | 409 | `POST /api/auth/mfa/setup` and `…/enable` (method `totp`): an authenticator app is already set up |
-        | `mfa_already_enabled` | 409 | `POST /api/auth/mfa/setup` and `…/enable` (method `passkeys`): two-step sign-in is already on |
+        | `mfa_already_enabled` | 409 | `POST /api/auth/mfa/setup` and `…/enable` (method `passkeys`): MFA is already on |
         | `mfa_passkey_required` | 422 | `POST /api/auth/mfa/setup` and `…/enable` (method `passkeys`): no passkey is registered yet |
         | `backup_codes_not_acknowledged` | 422 | `POST /api/auth/mfa/enable`: backup codes were issued but `backupCodesAcknowledged` is not `true` |
-        | `mfa_not_enabled` | 409 | `POST /api/auth/mfa/disable` and `…/backup-codes`: two-step sign-in is not on |
-        | `mfa_last_passkey` | 422 | `DELETE /api/auth/webauthn/{id}`: the last passkey while two-step sign-in is on |
+        | `mfa_not_enabled` | 409 | `POST /api/auth/mfa/disable` and `…/backup-codes`: MFA is not on |
+        | `mfa_last_passkey` | 422 | `DELETE /api/auth/webauthn/{id}`: the last passkey while MFA is on |
         | `invalid_code_verifier` | 400 | `POST /api/auth/token` `one_time_token`: `code_verifier` missing or wrong (the code is consumed) |
         | `invalid_grant` | 400 | `POST /api/auth/token` with an unknown `grant_type`, a missing token or an unusable one-time token |
         | `invalid_refresh_token` | 401 | Refresh token invalid, expired, unknown, revoked, reused after rotation (revokes the session), session lifetime over, user gone or sessions ended |
@@ -5388,7 +5388,7 @@ components:
         challengeToken: { type: string, description: 'Signed, single-use token carrying the challenge; send it back with the response.' }
     MfaChallenge:
       type: object
-      description: Answer of `POST /api/auth/login` for an account with two-step sign-in. No tokens yet.
+      description: Answer of `POST /api/auth/login` for an account with MFA. No tokens yet.
       required: [mfaRequired, mfaToken, expiresIn, methods]
       properties:
         mfaRequired: { type: boolean, const: true }
@@ -5400,10 +5400,10 @@ components:
           items: { type: string, enum: [totp, backup_code, passkey] }
     MfaStatus:
       type: object
-      description: Two-step sign-in state of the account (`mfa` in `GET /api/auth/me` and in the management answers).
+      description: MFA state of the account (`mfa` in `GET /api/auth/me` and in the management answers).
       required: [enforced, totp, backupCodes, canEnforce]
       properties:
-        enforced: { type: boolean, description: 'Two-step sign-in is on: sign-in asks for a second factor.' }
+        enforced: { type: boolean, description: 'MFA is on: sign-in asks for a second factor.' }
         totp:
           type: [object, 'null']
           description: Set when an authenticator app is set up.
@@ -5417,7 +5417,7 @@ components:
           properties:
             remaining: { type: integer, minimum: 0 }
             createdAt: { type: string, format: date-time }
-        canEnforce: { type: boolean, description: 'Two-step sign-in can be turned on with passkeys: it is off and at least one passkey is registered.' }
+        canEnforce: { type: boolean, description: 'MFA can be turned on with passkeys: it is off and at least one passkey is registered.' }
     MfaSetupResponse:
       type: object
       description: Result of `POST /api/auth/mfa/setup`. Nothing is stored until `POST /api/auth/mfa/enable`.
@@ -5426,7 +5426,7 @@ components:
         setupToken: { type: string, description: 'Signed, single-use token for 15 minutes, bound to the secret and backup codes.' }
         backupCodes:
           type: [array, 'null']
-          description: Ten backup codes, shown once; `null` while two-step sign-in is already on (the existing codes stay).
+          description: Ten backup codes, shown once; `null` while MFA is already on (the existing codes stay).
           items: { type: string }
         secret: { type: string, description: 'Authenticator app only: the secret to enter manually.' }
         otpauthUri: { type: string, description: 'Authenticator app only: `otpauth://` URI for the QR code.' }

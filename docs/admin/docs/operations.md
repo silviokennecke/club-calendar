@@ -165,7 +165,7 @@ The app has a few commands for administrators. Run them like this:
 | `app:user:set-password <email or id>` | Sets a new password (`--password` or `--password-stdin`) and ends all sessions of that user. |
 | `app:user:verify <email or id>` | Confirms an address by hand, for users who cannot receive the code. Also available as `app:user:activate`. |
 | `app:user:reset-link <email>` | Prints a password reset link without sending mail. |
-| `app:user:disable-mfa <email or id>` | Switches two-step sign-in off for a user who lost the authenticator app and the backup codes. Removes the authenticator app and backup codes (passkeys stay), ends all sessions and AI app connections, mails the user and writes a security log entry. No password needed; nothing happens if the second step is off. |
+| `app:user:disable-mfa <email or id>` | Switches MFA off for a user who lost the authenticator app and the backup codes. Removes the authenticator app and backup codes (passkeys stay), ends all sessions and AI app connections, mails the user and writes a security log entry. No password needed; nothing happens if MFA is off. |
 
 ### Clubs
 
@@ -173,8 +173,8 @@ The app has a few commands for administrators. Run them like this:
 |---|---|
 | `app:club:create` | Creates a club for an existing user, who becomes its admin. Options: `--name`, `--admin=<e-mail or id>`, `--timezone` (default `Europe/Berlin`). Missing values are asked interactively. Works even when `RESTRICT_CLUB_CREATION=true`. |
 
-!!! warning "Switching off two-step sign-in"
-    `app:user:disable-mfa` removes the second step without the user's password. Use it only after you have confirmed the person's identity, and only when the user has neither the authenticator app nor the backup codes. Normally the user switches it off in the profile or uses a backup code.
+!!! warning "Switching off MFA"
+    `app:user:disable-mfa` switches MFA off without the user's password. Use it only after you have confirmed the person's identity, and only when the user has neither the authenticator app nor the backup codes. Normally the user switches it off in the profile or uses a backup code.
 
 !!! warning "Reset links give access to the account"
     A link from `app:user:reset-link` (valid 60 minutes) lets whoever opens it set a new password for that account. Hand it only to the owner, over a channel you trust.
@@ -249,7 +249,7 @@ After changing `.env`, restart the app (`docker compose up -d` applies it).
 
 | Used for | If it changes without the steps below |
 |---|---|
-| Encrypting the secrets of feeds, of members' personal calendar links and of authenticator apps (two-step sign-in) in the database | These values can no longer be read: private feeds and personal calendar links fail with an error, and users with an authenticator app cannot use it to sign in (backup codes and passkeys still work). |
+| Encrypting the secrets of feeds, of members' personal calendar links and of authenticator apps (MFA) in the database | These values can no longer be read: private feeds and personal calendar links fail with an error, and users with an authenticator app cannot use it to sign in (backup codes and passkeys still work). |
 | Passphrase of the login keys (JWT key pair), unless `JWT_PASSPHRASE` is set | The keys cannot be read and sign-in fails for everybody. |
 | Signing short-lived tokens: single sign-on redirects and one-time codes, account linking, passkey registration and sign-in in progress | Anything in progress fails; the user starts again. |
 | Protecting e-mail confirmation codes | Codes that were sent but not yet used no longer work; the user asks for a new code. |
@@ -269,7 +269,7 @@ Password reset links, e-mail change links, refresh tokens (sessions), feed links
     docker compose exec app php bin/console app:secrets:rotate
     ```
 
-    The command also re-encrypts the authenticator app secrets of two-step sign-in. The command lists how many values it rewrote per kind. If it reports rows it cannot read, the matching old secret is missing from `APP_SECRET_PREVIOUS`; add it and run the command again. It never prints the secrets themselves.
+    The command also re-encrypts the authenticator app secrets of MFA. The command lists how many values it rewrote per kind. If it reports rows it cannot read, the matching old secret is missing from `APP_SECRET_PREVIOUS`; add it and run the command again. It never prints the secrets themselves.
 5. When the command reports no failures, remove `APP_SECRET_PREVIOUS` from `.env` and restart. Keep `JWT_PASSPHRASE`, or create new login keys and remove it (see above).
 
 Until step 5, the old secret stays accepted for reading; after it, only the new one.

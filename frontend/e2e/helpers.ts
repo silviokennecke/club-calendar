@@ -204,7 +204,7 @@ export async function typeDigits(page: Page, code: string) {
  */
 export async function addPasskeyInProfile(page: Page, deviceName: string) {
   await page.getByRole("button", { name: "MFA-Methode hinzufügen" }).click();
-  const dialog = page.getByRole("dialog", { name: "Zweiten Schritt hinzufügen" });
+  const dialog = page.getByRole("dialog", { name: "MFA-Methode hinzufügen" });
   await dialog.getByRole("button", { name: "Passkey", exact: true }).click();
   await dialog.getByLabel(/Dein Passwort/).fill(PASSWORD);
   await dialog.getByRole("button", { name: "Weiter" }).click();

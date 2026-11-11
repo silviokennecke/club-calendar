@@ -7,10 +7,9 @@ namespace App\Entity;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
-/** One single-use backup code (SHA-256 hex of the normalised code; the code itself is never stored). Not audited. */
+/** One single-use backup code (salted bcrypt hash of the normalised code, hasher `backup_code`; the code itself is never stored). Not audited. */
 #[ORM\Entity]
-#[ORM\UniqueConstraint(name: 'uq_mfa_backup_code_hash', columns: ['code_hash'])]
-#[ORM\Index(name: 'idx_mfa_backup_code_user', columns: ['user_id'])]
+#[ORM\Index(name: 'idx_mfa_backup_code_user_used', columns: ['user_id', 'used_at'])]
 class MfaBackupCode
 {
     #[ORM\Id]
@@ -21,7 +20,7 @@ class MfaBackupCode
     #[ORM\JoinColumn(name: 'user_id', nullable: false, onDelete: 'CASCADE')]
     private User $user;
 
-    #[ORM\Column(type: 'string', length: 64, options: ['fixed' => true])]
+    #[ORM\Column(length: 255)]
     private string $codeHash;
 
     #[ORM\Column]

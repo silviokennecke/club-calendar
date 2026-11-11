@@ -74,7 +74,7 @@
         "mfa_code": {
             "subject": "Änderung deines Anmeldeschutzes bestätigen",
             "greeting": "Hallo {name},",
-            "body": "Du möchtest die Anmeldung in zwei Schritten oder die Passkeys deines Club-Calendar-Kontos ändern. Gib diesen Code in der App ein, um das zu bestätigen.",
+            "body": "Du möchtest MFA oder die Passkeys deines Club-Calendar-Kontos ändern. Gib diesen Code in der App ein, um das zu bestätigen.",
             "expiry_note": "Der Code ist mindestens {minutes} Minuten gültig und funktioniert nur für dieses Konto.",
             "ignore_note": "Warst du das nicht, gib den Code nicht ein und ignoriere diese E-Mail. Es wird nichts geändert. Ändere am besten dein Passwort."
         },
@@ -93,47 +93,47 @@
             "terms": "Nutzungsbedingungen"
         },
         "mfa_enabled": {
-            "subject": "Die Zwei-Schritt-Anmeldung wurde eingeschaltet",
+            "subject": "MFA wurde eingeschaltet",
             "greeting": "Hallo {name},",
-            "body": "für dein Club-Calendar-Konto wurde die Zwei-Schritt-Anmeldung eingeschaltet. Bei der Anmeldung mit Passwort brauchst du jetzt zusätzlich einen Code aus deiner Authenticator-App.",
+            "body": "für dein Club-Calendar-Konto wurde die Multi-Faktor-Authentifizierung (MFA) eingeschaltet. Bei der Anmeldung mit Passwort brauchst du jetzt zusätzlich einen Code aus deiner Authenticator-App.",
             "info": "Deine anderen Sitzungen bleiben angemeldet.",
-            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil die Zwei-Schritt-Anmeldung und deine Passkeys und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil MFA und deine Passkeys und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "mfa_disabled": {
-            "subject": "Die Zwei-Schritt-Anmeldung wurde ausgeschaltet",
+            "subject": "MFA wurde ausgeschaltet",
             "greeting": "Hallo {name},",
-            "body": "für dein Club-Calendar-Konto wurde die Zwei-Schritt-Anmeldung ausgeschaltet. Die Anmeldung mit Passwort ist jetzt nicht mehr durch einen zweiten Schritt geschützt.",
-            "body_operator": "für dein Club-Calendar-Konto wurde die Zwei-Schritt-Anmeldung durch den Betreiber dieser Installation ausgeschaltet. Die Anmeldung mit Passwort ist jetzt nicht mehr durch einen zweiten Schritt geschützt.",
-            "info": "Alle anderen Sitzungen und verbundenen Apps wurden abgemeldet. Du kannst die Zwei-Schritt-Anmeldung jederzeit in deinem Profil wieder einschalten.",
-            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort, schalte danach die Zwei-Schritt-Anmeldung in deinem Profil wieder ein und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+            "body": "für dein Club-Calendar-Konto wurde die Multi-Faktor-Authentifizierung (MFA) ausgeschaltet. Die Anmeldung mit Passwort ist jetzt nicht mehr durch MFA geschützt.",
+            "body_operator": "für dein Club-Calendar-Konto wurde die Multi-Faktor-Authentifizierung (MFA) durch den Betreiber dieser Installation ausgeschaltet. Die Anmeldung mit Passwort ist jetzt nicht mehr durch MFA geschützt.",
+            "info": "Alle anderen Sitzungen und verbundenen Apps wurden abgemeldet. Du kannst MFA jederzeit in deinem Profil wieder einschalten.",
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort, schalte danach MFA in deinem Profil wieder ein und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "backup_codes_regenerated": {
             "subject": "Neue Backup-Codes wurden erstellt",
             "greeting": "Hallo {name},",
             "body": "für dein Club-Calendar-Konto wurden neue Backup-Codes erstellt.",
             "info": "Die bisherigen Backup-Codes sind damit ungültig. Deine Sitzungen bleiben angemeldet.",
-            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil die Zwei-Schritt-Anmeldung und deine Passkeys und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil MFA und deine Passkeys und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "backup_code_used": {
             "subject": "Ein Backup-Code wurde verwendet",
             "greeting": "Hallo {name},",
-            "body": "bei der Anmeldung zu deinem Club-Calendar-Konto wurde ein Backup-Code verwendet. Dadurch wurde die Zwei-Schritt-Anmeldung ausgeschaltet.",
-            "info": "Alle anderen Sitzungen und verbundenen Apps wurden abgemeldet. Richte die Zwei-Schritt-Anmeldung in deinem Profil bei Bedarf neu ein.",
-            "not_you": "Dann kennt jemand anderes dein Passwort und einen deiner Backup-Codes. Setze sofort über „Passwort vergessen“ ein neues Passwort, richte danach die Zwei-Schritt-Anmeldung in deinem Profil neu ein und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+            "body": "bei der Anmeldung zu deinem Club-Calendar-Konto wurde ein Backup-Code verwendet. Dadurch wurde die Multi-Faktor-Authentifizierung (MFA) ausgeschaltet.",
+            "info": "Alle anderen Sitzungen und verbundenen Apps wurden abgemeldet. Richte MFA in deinem Profil bei Bedarf neu ein.",
+            "not_you": "Dann kennt jemand anderes dein Passwort und einen deiner Backup-Codes. Setze sofort über „Passwort vergessen“ ein neues Passwort, richte danach MFA in deinem Profil neu ein und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "passkey_deleted": {
             "subject": "Ein Passkey wurde gelöscht",
             "greeting": "Hallo {name},",
             "body": "aus deinem Club-Calendar-Konto wurde ein Passkey gelöscht.",
             "info": "Mit diesem Passkey kann man sich nicht mehr anmelden. Deine Sitzungen bleiben angemeldet.",
-            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil die Zwei-Schritt-Anmeldung und deine Passkeys und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil MFA und deine Passkeys und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "failed_sign_ins": {
             "subject": "Fehlgeschlagene Anmeldeversuche bei deinem Konto",
             "greeting": "Hallo {name},",
             "body": "in der letzten Stunde gab es {count} fehlgeschlagene Anmeldeversuche bei deinem Club-Calendar-Konto. Das heißt: Jemand hat versucht, sich anzumelden, hat aber das Passwort oder den Code nicht richtig eingegeben. Die Angaben unten gehören zum letzten Versuch.",
             "info": "An deinem Konto wurde nichts geändert und niemand ist angemeldet. Zu solchen Versuchen schicken wir dir höchstens eine Nachricht pro Tag.",
-            "not_you": "Warst du das nicht, ändere sicherheitshalber dein Passwort über „Passwort vergessen“ (dadurch werden alle Sitzungen beendet) und prüfe danach in deinem Profil die Zwei-Schritt-Anmeldung und deine Passkeys. Die Seite „Passwort vergessen“ findest du hier:"
+            "not_you": "Warst du das nicht, ändere sicherheitshalber dein Passwort über „Passwort vergessen“ (dadurch werden alle Sitzungen beendet) und prüfe danach in deinem Profil MFA und deine Passkeys. Die Seite „Passwort vergessen“ findest du hier:"
         }
     }
 }

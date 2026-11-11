@@ -63,7 +63,7 @@ async function toMfaStep() {
   await u.click(screen.getByRole("button", { name: "Weiter" }));
   await u.type(await screen.findByLabelText(/^Passwort$/), "secret-pw-123");
   await u.click(screen.getByRole("button", { name: "Anmelden" }));
-  await screen.findByRole("form", { name: "Bestätigung mit zweitem Faktor" });
+  await screen.findByRole("form", { name: "Bestätigung mit MFA" });
   return u;
 }
 
@@ -72,7 +72,7 @@ beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ json: () => Promise.resolve([]) }));
 });
 
-describe("second factor step", () => {
+describe("MFA step", () => {
   it("signs in with a TOTP code", async () => {
     setup(undefined, () => tokens);
     const u = await toMfaStep();

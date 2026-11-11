@@ -19,7 +19,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
-/** Management API of the second factor: setup, enable, disable, backup codes, passkey rename/delete. */
+/** Management API of MFA: setup, enable, disable, backup codes, passkey rename/delete. */
 class MfaManagementTest extends WebTestCase
 {
     private KernelBrowser $client;
@@ -315,9 +315,13 @@ class MfaManagementTest extends WebTestCase
         $this->assertSame(10, $r['body']['mfa']['backupCodes']['remaining']);
         $this->assertNotSame($setup['backupCodes'], $r['body']['backupCodes']);
         $generator = static::getContainer()->get(BackupCodeGenerator::class);
+        $hasher = static::getContainer()->get('security.password_hasher_factory')->getPasswordHasher('backup_code');
         $hashes = array_column($this->conn()->fetchAllAssociative('SELECT code_hash FROM mfa_backup_code'), 'code_hash');
-        $this->assertContains($generator->hash($r['body']['backupCodes'][0]), $hashes);
-        $this->assertNotContains($generator->hash($setup['backupCodes'][0]), $hashes);
+        $this->assertCount(10, $hashes);
+        $this->assertStringStartsWith('$2y$', $hashes[0]);
+        $matches = static fn (string $code): bool => [] !== array_filter($hashes, static fn (string $h): bool => $hasher->verify($h, $generator->normalize($code)));
+        $this->assertTrue($matches($r['body']['backupCodes'][0]));
+        $this->assertFalse($matches($setup['backupCodes'][0]));
         $this->assertSame(200, $this->call('GET', '/api/auth/me', [], 'Bearer '.$other['access_token'])['status']);
     }
 

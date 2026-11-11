@@ -18,7 +18,7 @@ type Problem = { kind: "passkey" | "rate"; text?: string } | null;
 
 const CODE_ID = "mfa-code";
 
-/** Step 3 of a sign-in with a second factor: authenticator code, backup code or passkey. */
+/** Step 3 of a sign-in with MFA: authenticator code, backup code or passkey. */
 export function MfaStep({
   challenge,
   onBack,

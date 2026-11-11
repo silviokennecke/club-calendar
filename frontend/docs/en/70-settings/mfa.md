@@ -1,14 +1,14 @@
 ---
-title: Two-step sign-in (MFA)
+title: Multi-factor authentication (MFA)
 order: 25
-description: Set up a second step at sign-in with an authenticator app or a passkey.
+description: Set up MFA with an authenticator app or a passkey.
 ---
 
-# Two-step sign-in (MFA)
+# Multi-factor authentication (MFA)
 
-With two-step sign-in (MFA), signing in with your password also asks for a second step: a code from an authenticator app or a passkey.
+With multi-factor authentication (MFA), signing in with your password also asks for another factor: a code from an authenticator app or a passkey.
 
-You find the section in your [profile](help:settings/profile) under **Two-factor authentication (MFA)**.
+You find the section in your [profile](help:settings/profile) under **Multi-factor authentication (MFA)**.
 
 ## Set up an authenticator app
 
@@ -19,7 +19,7 @@ You find the section in your [profile](help:settings/profile) under **Two-factor
 5. Store your **Backup codes** safely (see below). Tick **I stored the backup codes** and click **Continue**.
 6. Confirm that it is you: enter your password and click **Activate**. If your account has no password, click **Send code** and enter the code from the e-mail.
 
-You can set up only one authenticator app. Instead of an app, you can also choose a **Passkey** as the second step in the same dialog.
+You can set up only one authenticator app. Instead of an app, you can also choose a **Passkey** for MFA in the same dialog.
 
 ## Turn on MFA with a passkey you already have
 
@@ -31,13 +31,13 @@ If you already have a passkey, you can turn on MFA with it. The **Turn on MFA** 
 
 ## When signing in
 
-After your password, sign-in asks for the second step. You have three options:
+After your password, sign-in asks for the other factor. You have three options:
 
 - **Use the code from your authenticator app**: enter the current 6-digit code.
 - **Use a backup code**: enter one of your backup codes.
 - **Use a passkey**: confirm on the device with your passkey.
 
-When you sign in with Google, Microsoft or a passkey, sign-in does not ask for the second step.
+When you sign in with Google, Microsoft or a passkey, sign-in does not ask for MFA.
 
 ## Backup codes
 
@@ -55,8 +55,8 @@ Sign in with your password, choose **Use a backup code** and enter one code. The
 
 ## Turn off MFA
 
-1. In the section, click **Disable MFA**.
-2. Confirm that it is you: enter your password (without a password: the code from the e-mail) and click **Disable MFA**.
+1. In the section, click **Turn off MFA**.
+2. Confirm that it is you: enter your password (without a password: the code from the e-mail) and click **Turn off MFA**.
 
 The authenticator app and the backup codes are deleted. Your passkeys stay. All other devices are signed out.
 

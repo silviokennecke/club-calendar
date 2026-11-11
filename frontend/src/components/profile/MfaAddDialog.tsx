@@ -27,7 +27,7 @@ interface MfaAddDialogProps {
   email: string;
   /** An authenticator app is already set up. */
   totpSet: boolean;
-  /** Second factor is enforced (the server then returns no new backup codes). */
+  /** MFA is on (the server then returns no new backup codes). */
   enforced: boolean;
   passkeyCount: number;
 }

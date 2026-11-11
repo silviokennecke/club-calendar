@@ -17,15 +17,24 @@ class MfaBackupCodeRepository extends ServiceEntityRepository
         parent::__construct($registry, MfaBackupCode::class);
     }
 
+    /** @return list<MfaBackupCode> */
+    public function findUnused(User $user): array
+    {
+        return $this->createQueryBuilder('c')
+            ->where('c.user = :u')->andWhere('c.usedAt IS NULL')->setParameter('u', $user)
+            ->orderBy('c.createdAt')->addOrderBy('c.id')
+            ->getQuery()->getResult();
+    }
+
     /**
-     * Marks an unused code of the user as used. The conditional UPDATE makes it single use even for
-     * concurrent requests: only the request that changes the row wins.
+     * Marks an unused code as used. The conditional UPDATE makes it single use even for concurrent
+     * requests: only the request that changes the row wins.
      */
-    public function consume(User $user, string $codeHash, \DateTimeImmutable $now = new \DateTimeImmutable()): bool
+    public function consume(string $id, \DateTimeImmutable $now = new \DateTimeImmutable()): bool
     {
         $rows = $this->getEntityManager()->getConnection()->executeStatement(
-            'UPDATE mfa_backup_code SET used_at = ? WHERE user_id = ? AND code_hash = ? AND used_at IS NULL',
-            [$now->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'), $user->getId(), $codeHash],
+            'UPDATE mfa_backup_code SET used_at = ? WHERE id = ? AND used_at IS NULL',
+            [$now->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'), $id],
         );
 
         return 1 === $rows;

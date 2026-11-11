@@ -23,7 +23,7 @@ use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
-/** Second factor at password sign-in: login challenge, TOTP, backup code, passkey. */
+/** MFA at password sign-in: login challenge, TOTP, backup code, passkey. */
 class MfaLoginTest extends WebTestCase
 {
     use ClockSensitiveTrait;
@@ -65,9 +65,10 @@ class MfaLoginTest extends WebTestCase
     private function backupCodes(User $user): array
     {
         $generator = static::getContainer()->get(BackupCodeGenerator::class);
+        $hasher = static::getContainer()->get('security.password_hasher_factory')->getPasswordHasher('backup_code');
         $codes = $generator->generate();
         foreach ($codes as $code) {
-            $this->em->persist(new MfaBackupCode($user, $generator->hash($code)));
+            $this->em->persist(new MfaBackupCode($user, $hasher->hash($generator->normalize($code))));
         }
         $this->em->flush();
 

@@ -20,10 +20,11 @@ use App\Security\NonceStore;
 use App\Security\SignedTokenService;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Second factor of the sign-in: TOTP, backup codes and the per-account enforcement switch (`mfa_enforced`).
+ * MFA of the sign-in: TOTP, backup codes and the per-account enforcement switch (`mfa_enforced`).
  * Rate limits and re-authentication are the controller's job; this service owns the state changes. Ending MFA
  * (disable, backup-code sign-in) bumps the token version, which ends all other sessions and MCP grants;
  * enabling does not.
@@ -41,6 +42,7 @@ class MfaService
         private readonly UserTotpRepository $totps,
         private readonly MfaBackupCodeRepository $backupCodes,
         private readonly BackupCodeGenerator $generator,
+        private readonly PasswordHasherFactoryInterface $hasherFactory,
         private readonly SignedTokenService $signedTokens,
         private readonly NonceStore $nonces,
         private readonly TokenService $tokens,
@@ -81,7 +83,7 @@ class MfaService
             }
         } elseif (self::METHOD_PASSKEYS === $method) {
             if ($user->isMfaEnforced()) {
-                throw new ApiProblemException(409, 'Two-step sign-in is already on', 'mfa_already_enabled');
+                throw new ApiProblemException(409, 'MFA is already on', 'mfa_already_enabled');
             }
             if ($this->passkeyCount($user) < 1) {
                 throw new ApiProblemException(422, 'Add a passkey first', 'mfa_passkey_required');
@@ -110,7 +112,7 @@ class MfaService
     }
 
     /**
-     * Turns two-step sign-in on. Does NOT end other sessions.
+     * Turns MFA on. Does NOT end other sessions.
      *
      * Records the `mfa_enabled` event and sends the notice (context defaults to the current request).
      *
@@ -154,7 +156,7 @@ class MfaService
                     throw new ApiProblemException(409, 'An authenticator app is already set up', 'totp_already_set');
                 }
             } elseif ($user->isMfaEnforced()) {
-                throw new ApiProblemException(409, 'Two-step sign-in is already on', 'mfa_already_enabled');
+                throw new ApiProblemException(409, 'MFA is already on', 'mfa_already_enabled');
             } elseif ($this->passkeyCount($user) < 1) {
                 throw new ApiProblemException(422, 'Add a passkey first', 'mfa_passkey_required');
             }
@@ -201,7 +203,7 @@ class MfaService
     }
 
     /**
-     * Turns two-step sign-in off (profile and CLI; the caller re-authenticates). Removes TOTP and codes, keeps
+     * Turns MFA off (profile and CLI; the caller re-authenticates). Removes TOTP and codes, keeps
      * passkeys, ends all sessions and MCP grants. The caller issues a fresh token pair if a session continues.
      *
      * `$method` is the event method; default `password`, or `cli` when no client address is known.
@@ -218,7 +220,18 @@ class MfaService
     /** Backup-code sign-in: same effect as disable(); the caller then issues the token pair of the new session. */
     public function endEnforcement(User $user, ?ClientContext $context = null): void
     {
+        $this->endEnforcementState($user);
+        $this->notifyBackupCodeUsed($user, $context);
+    }
+
+    /** The state change of endEnforcement() only, so a caller can run it inside its own transaction. */
+    public function endEnforcementState(User $user): void
+    {
         $this->removeAndEndSessions($user);
+    }
+
+    public function notifyBackupCodeUsed(User $user, ?ClientContext $context = null): void
+    {
         $this->notify($user, SecurityEventType::BACKUP_CODE_USED, 'backup_code', $context);
     }
 
@@ -245,14 +258,24 @@ class MfaService
             return false;
         }
 
-        return $this->backupCodes->consume($user, $this->generator->hash($code));
+        // Verify against every unused row (no early exit) so timing does not reveal which code matched.
+        $hasher = $this->hasherFactory->getPasswordHasher('backup_code');
+        $normalized = $this->generator->normalize($code);
+        $match = null;
+        foreach ($this->backupCodes->findUnused($user) as $row) {
+            if ($hasher->verify($row->getCodeHash(), $normalized) && null === $match) {
+                $match = $row;
+            }
+        }
+
+        return null !== $match && $this->backupCodes->consume($match->getId());
     }
 
-    /** @throws ApiProblemException 422 `mfa_last_passkey` when the passkey is the only second factor left */
+    /** @throws ApiProblemException 422 `mfa_last_passkey` when the passkey is the only factor left */
     public function assertPasskeyDeletable(User $user): void
     {
         if ($user->isMfaEnforced() && null === $this->totps->findOneByUser($user) && $this->passkeyCount($user) <= 1) {
-            throw new ApiProblemException(422, 'The last passkey cannot be deleted while two-step sign-in is on', 'mfa_last_passkey');
+            throw new ApiProblemException(422, 'The last passkey cannot be deleted while MFA is on', 'mfa_last_passkey');
         }
     }
 
@@ -290,15 +313,16 @@ class MfaService
     private function assertEnabled(User $user): void
     {
         if (!$user->isMfaEnforced()) {
-            throw new ApiProblemException(409, 'Two-step sign-in is not on', 'mfa_not_enabled');
+            throw new ApiProblemException(409, 'MFA is not on', 'mfa_not_enabled');
         }
     }
 
     /** @param list<string> $codes */
     private function storeCodes(User $user, array $codes): void
     {
+        $hasher = $this->hasherFactory->getPasswordHasher('backup_code');
         foreach ($codes as $code) {
-            $this->em->persist(new MfaBackupCode($user, $this->generator->hash($code)));
+            $this->em->persist(new MfaBackupCode($user, $hasher->hash($this->generator->normalize($code))));
         }
     }
 

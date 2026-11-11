@@ -84,7 +84,7 @@ test.describe("Profil", () => {
     await expect(page.getByText(s.email).first()).toBeVisible();
     await expect(page.getByRole("region", { name: "Name und E-Mail-Adresse" })).toBeVisible();
     await expect(page.getByRole("region", { name: "Passwort" })).toBeVisible();
-    await expect(page.getByText("Du hast noch keinen zweiten Faktor eingerichtet.")).toBeVisible();
+    await expect(page.getByText("Du hast noch keine MFA-Methode eingerichtet.")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Verknüpfte Anmeldungen" })).toBeVisible();
   });
 
@@ -236,7 +236,7 @@ test.describe("Profil", () => {
     await page.getByRole("button", { name: "Passkey „Test-Laptop“ entfernen" }).click();
     await dialog.getByLabel(/Dein Passwort/).fill(PASSWORD);
     await dialog.getByRole("button", { name: "Passkey entfernen" }).click();
-    await expect(page.getByText("Du hast noch keinen zweiten Faktor eingerichtet.")).toBeVisible();
+    await expect(page.getByText("Du hast noch keine MFA-Methode eingerichtet.")).toBeVisible();
     // deleting a passkey ends all sessions (token version), so the old access token is dead: sign in again
     expect((await me(request, await authHeaders(request, s.email))).passkeys).toHaveLength(0);
   });

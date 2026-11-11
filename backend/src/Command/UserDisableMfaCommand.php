@@ -13,11 +13,11 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * Operator recovery: turns two-step sign-in off for a user who lost the authenticator app and backup codes.
+ * Operator recovery: turns multi-factor authentication (MFA) off for a user who lost the authenticator app and backup codes.
  * Like the profile action it removes TOTP and backup codes and ends all sessions and connected apps (passkeys
  * stay); it records a security event (method cli) and mails the user. Nothing happens if MFA is not on.
  */
-#[AsCommand(name: 'app:user:disable-mfa', description: 'Turn off two-step sign-in for a user (ends all sessions)')]
+#[AsCommand(name: 'app:user:disable-mfa', description: 'Turn off multi-factor authentication (MFA) for a user (ends all sessions)')]
 class UserDisableMfaCommand
 {
     public function __construct(
@@ -37,12 +37,12 @@ class UserDisableMfaCommand
             return Command::FAILURE;
         }
         if (!$found->isMfaEnforced()) {
-            $io->success('Two-step sign-in is not on for this user; nothing changed.');
+            $io->success('MFA is not on for this user; nothing changed.');
 
             return Command::SUCCESS;
         }
         $this->mfa->disable($found, new ClientContext(), 'cli');
-        $io->success('Two-step sign-in turned off; all sessions of the user ended and the user was notified by e-mail.');
+        $io->success('MFA turned off; all sessions of the user ended and the user was notified by e-mail.');
 
         return Command::SUCCESS;
     }

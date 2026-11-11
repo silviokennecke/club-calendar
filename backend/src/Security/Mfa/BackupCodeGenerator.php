@@ -32,11 +32,6 @@ final class BackupCodeGenerator
         return strtr($code, ['I' => '1', 'L' => '1', 'O' => '0']);
     }
 
-    public function hash(string $code): string
-    {
-        return hash('sha256', $this->normalize($code));
-    }
-
     public function isWellFormed(string $code): bool
     {
         return (bool) preg_match('/^['.self::ALPHABET.']{12}$/', $this->normalize($code));

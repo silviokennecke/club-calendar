@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Management of the second factor (JWT). Re-authentication = `password`, or for accounts without one
+ * Management of MFA (JWT). Re-authentication = `password`, or for accounts without one
  * `confirmationCode` mailed by `POST /api/auth/mfa/code`: 400 `invalid_credentials` (field `password`) /
  * 400 `invalid_confirmation_code` (field `code`).
  */

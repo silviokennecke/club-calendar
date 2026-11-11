@@ -6,6 +6,10 @@ security:
         verification_code:
             algorithm: bcrypt
             cost: 12
+        # MFA backup codes (MfaService): salted bcrypt, no pepper (APP_SECRET rotation must not kill them).
+        backup_code:
+            algorithm: bcrypt
+            cost: 10
 
     providers:
         jwt_user_provider:
@@ -65,7 +69,7 @@ security:
         - { path: ^/api/mcp(/|$), roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/(login|register|registration|identify|token|logout|forgot-password|reset-password|providers|verify-new-email)$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/webauthn/authenticate/(options|verify)$, roles: PUBLIC_ACCESS }
-        # Second factor of the password sign-in: the signed mfaToken is the credential.
+        # MFA of the password sign-in: the signed mfaToken is the credential.
         - { path: ^/api/auth/mfa/(verify|passkey/(options|verify))$, roles: PUBLIC_ACCESS }
         # SSO start/callback/link redirect (state/ticket is the credential); DELETE /oauth/{provider} stays authenticated.
         - { path: ^/api/auth/oauth/[^/]+/(callback|link)$, roles: PUBLIC_ACCESS }
@@ -82,5 +86,8 @@ when@test:
                 cost: 5
             # Lowest bcrypt cost keeps the suite fast.
             verification_code:
+                algorithm: bcrypt
+                cost: 4
+            backup_code:
                 algorithm: bcrypt
                 cost: 4

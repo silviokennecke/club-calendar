@@ -12,7 +12,7 @@ This page lists what the app does to keep accounts and data safe, and what you, 
 | Registration control | Strangers creating accounts | Set `RESTRICT_REGISTRATION=true` for closed groups. |
 | SSO | Weak or reused passwords | Optional. See [SSO](configuration/sso.md). |
 | Passkeys | Phishing, password theft | Check the `WEBAUTHN_*` settings. |
-| Two-step sign-in | Stolen passwords | None. Users switch it on themselves. Lost devices: `app:user:disable-mfa`. |
+| Multi-factor authentication (MFA) | Stolen passwords | None. Users switch it on themselves. Lost devices: `app:user:disable-mfa`. |
 | Security log and notices | Unnoticed misuse of an account | Mention the log in your privacy policy. Keep the cleanup job running. |
 | Trusted hosts | Forged `Host` headers, wrong links in mails | List extra host names in `TRUSTED_HOSTS`. |
 | Security headers and CSP | Script injection, clickjacking | nginx users must add them. Send HSTS from your TLS proxy. |
@@ -33,17 +33,17 @@ This page lists what the app does to keep accounts and data safe, and what you, 
 | `REFRESH_TOKEN_REUSE_GRACE` | `10` | Seconds in which a refresh token may be sent twice (lost response, requests at the same time) without ending the session. |
 | `OAUTH_LOGIN_CODE_TTL` | `180` | Seconds the one-time code of the SSO redirect stays valid. |
 
-## Two-step sign-in
+## Multi-factor authentication (MFA)
 
-Users can add a second step to password sign-in in their profile: a six-digit code from an **authenticator app**, a **passkey**, or both. Once it is on, a password alone is not enough.
+Users can turn on multi-factor authentication (MFA) for password sign-in in their profile: besides the password they confirm with a six-digit code from an **authenticator app**, a **passkey**, or both. Once it is on, a password alone is not enough.
 
-- Sign-in with a single sign-on provider or with a passkey does not ask for the second step.
+- Sign-in with a single sign-on provider or with a passkey does not ask for MFA.
 - When it is switched on, the user receives **backup codes**. They are shown once, each works one time, and the user can make new ones at any time.
-- Someone who uses a **backup code** gets signed in, but two-step sign-in is then switched off, all other sessions end and all connected AI apps are disconnected. The user is mailed about it and must switch the second step on again.
+- Someone who uses a **backup code** gets signed in, but MFA is then switched off, all other sessions end and all connected AI apps are disconnected. The user is mailed about it and must switch MFA on again.
 - Switching it off in the profile has the same effect: the authenticator app and the backup codes are removed, passkeys stay, and all sessions and AI app connections end.
-- Users receive a notification mail when two-step sign-in is switched on or off, when backup codes are made again or used, and when a passkey is deleted.
+- Users receive a notification mail when MFA is switched on or off, when backup codes are made again or used, and when a passkey is deleted.
 
-Nothing needs configuring. If a user has lost the device with the authenticator app and also has no backup codes, an operator can switch the second step off on the command line, see [Command-line tools](operations.md#command-line-tools). Check the identity of the person first.
+Nothing needs configuring. If a user has lost the device with the authenticator app and also has no backup codes, an operator can switch MFA off on the command line, see [Command-line tools](operations.md#command-line-tools). Check the identity of the person first.
 
 ## Security log
 
@@ -51,7 +51,7 @@ The app keeps a log of security-relevant events for each account. It holds:
 
 - every sign-in (with password, passkey, single sign-on or the connection of an AI app),
 - failed sign-in attempts on existing accounts,
-- two-step sign-in steps and changes, and password changes.
+- MFA steps and changes, and password changes.
 
 Each entry has the time, the IP address, the approximate city and country, and the browser name and version. The log is not shown in the app; it is only in the database.
 
@@ -246,7 +246,7 @@ Keep these out of version control and back them up. Treat them like passwords.
 
 | Secret | Used for | If you change or lose it |
 |---|---|---|
-| `APP_SECRET` | Encryption of stored feed, personal calendar and authenticator app (two-step sign-in) secrets; signing of short-lived tokens; protection of confirmation codes; also the default passphrase of the JWT keys | **Stored feed, calendar and authenticator app secrets cannot be read** until the old value is set as `APP_SECRET_PREVIOUS` and `app:secrets:rotate` has run. Unused confirmation codes, single sign-on redirects and passkey steps in progress stop working. **Unless `JWT_PASSPHRASE` is set to the old value, the JWT keys can no longer be read and sign-in fails.** Follow [Changing `APP_SECRET`](operations.md#changing-app_secret); it also lists what does not depend on it. |
+| `APP_SECRET` | Encryption of stored feed, personal calendar and authenticator app (MFA) secrets; signing of short-lived tokens; protection of confirmation codes; also the default passphrase of the JWT keys | **Stored feed, calendar and authenticator app secrets cannot be read** until the old value is set as `APP_SECRET_PREVIOUS` and `app:secrets:rotate` has run. Unused confirmation codes, single sign-on redirects and passkey steps in progress stop working. **Unless `JWT_PASSPHRASE` is set to the old value, the JWT keys can no longer be read and sign-in fails.** Follow [Changing `APP_SECRET`](operations.md#changing-app_secret); it also lists what does not depend on it. |
 | `JWT_REFRESH_SECRET` | Refresh tokens | All users are signed out and must sign in again. |
 | JWT keys (`/data/config/` in Docker, `backend/config/jwt/` otherwise) | Access tokens (15 minutes) | With new keys, current access tokens become invalid and browsers fetch new ones automatically; users usually notice nothing. Keep the keys between updates anyway. |
 | Database password (`DATABASE_URL`) | Database access | The app cannot start until both sides match. |

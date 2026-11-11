@@ -402,7 +402,7 @@ export interface TokenResponse {
   emailVerificationRequired?: boolean;
 }
 
-/** Answer of `POST /api/auth/login` when the account has a second factor: no tokens yet. */
+/** Answer of `POST /api/auth/login` when the account has MFA on: no tokens yet. */
 export interface MfaChallenge {
   mfaRequired: true;
   mfaToken: string;
@@ -416,7 +416,7 @@ export function isMfaChallenge(result: LoginResult): result is MfaChallenge {
   return "mfaRequired" in result && result.mfaRequired === true;
 }
 
-/** Token response of the second step; `mfaDisabled` is set after a backup code was used. */
+/** Token response of the MFA step; `mfaDisabled` is set after a backup code was used. */
 export type MfaTokenResponse = TokenResponse & { mfaDisabled?: boolean };
 
 /** The signed-in user of a token response, with the top-level verification flag merged in. */

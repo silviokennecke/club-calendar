@@ -15,7 +15,7 @@ import { MfaProofDialog } from "./MfaProofDialog";
 import type { PasskeyInfo, ProfileData } from "./profileTypes";
 
 /**
- * "Zwei-Faktor-Authentifizierung (MFA)": one row per method (authenticator app, each passkey, backup
+ * "Multi-Faktor-Authentifizierung (MFA)": one row per method (authenticator app, each passkey, backup
  * codes), add button, and enforce / disable. Replaces the former passkey section.
  */
 export function MfaSection({ profile }: { profile: ProfileData }) {

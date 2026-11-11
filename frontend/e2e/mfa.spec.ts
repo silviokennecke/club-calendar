@@ -11,12 +11,12 @@ import {
   typeDigits,
 } from "./helpers";
 
-// ——— Zwei-Faktor-Anmeldung (MFA): Authenticator-App, Backup-Codes, Passkeys ———
+// ——— Multi-Faktor-Authentifizierung (MFA): Authenticator-App, Backup-Codes, Passkeys ———
 
 // Without a club the profile has no sidebar; the header button is first in both layouts.
 const SIGN_OUT = (page: Page) =>
   page.getByRole("button", { name: "Abmelden", exact: true }).first();
-const MFA_FORM = (page: Page) => page.getByRole("form", { name: "Bestätigung mit zweitem Faktor" });
+const MFA_FORM = (page: Page) => page.getByRole("form", { name: "Bestätigung mit MFA" });
 
 async function openProfile(page: Page, email: string) {
   await login(page, email);
@@ -127,9 +127,7 @@ test.describe("MFA", () => {
 
       await page.goto("/profile");
       await expect(page.getByText("MFA ist ausgeschaltet.")).toBeVisible();
-      await expect(
-        page.getByText("Du hast noch keinen zweiten Faktor eingerichtet."),
-      ).toBeVisible();
+      await expect(page.getByText("Du hast noch keine MFA-Methode eingerichtet.")).toBeVisible();
 
       // the other device lost its session
       await other.page.goto("/profile");
@@ -165,9 +163,7 @@ test.describe("MFA", () => {
       await dialog.getByLabel(/Dein Passwort/).fill(PASSWORD);
       await dialog.getByRole("button", { name: "MFA ausschalten" }).click();
       await expect(page.getByText("MFA ist ausgeschaltet.", { exact: true }).first()).toBeVisible();
-      await expect(
-        page.getByText("Du hast noch keinen zweiten Faktor eingerichtet."),
-      ).toBeVisible();
+      await expect(page.getByText("Du hast noch keine MFA-Methode eingerichtet.")).toBeVisible();
 
       // the current session stays
       await page.reload();

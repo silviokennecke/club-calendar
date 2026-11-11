@@ -14,7 +14,7 @@ Diese Einstellungen betreffen nur dich. Du findest sie auf deiner Profilseite (*
 
 - [Profil und Name](help:settings/profile)
 - [Passwort](help:settings/password)
-- [Zwei-Faktor-Anmeldung (MFA)](help:settings/mfa)
+- [Multi-Faktor-Authentifizierung (MFA)](help:settings/mfa)
 - [Passkeys](help:settings/passkeys)
 - [Verknüpfte Anmeldungen](help:settings/linked-accounts)
 - [E-Mail-Adresse ändern](help:settings/email-change)

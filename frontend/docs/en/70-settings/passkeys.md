@@ -8,7 +8,7 @@ description: Sign in with fingerprint, face or device PIN.
 
 With a passkey you sign in by fingerprint, face recognition or device PIN, without a password.
 
-You manage passkeys in the section **Two-factor authentication (MFA)** on your [profile](help:settings/profile). More under [Two-step sign-in (MFA)](help:settings/mfa).
+You manage passkeys in the section **Multi-factor authentication (MFA)** on your [profile](help:settings/profile). More under [Multi-factor authentication (MFA)](help:settings/mfa).
 
 ## Set up a passkey
 
@@ -36,11 +36,11 @@ When you remove a passkey, your other devices are signed out.
 :::
 
 :::note
-You cannot remove your last passkey while MFA is on and no authenticator app is set up. More under [Two-step sign-in (MFA)](help:settings/mfa).
+You cannot remove your last passkey while MFA is on and no authenticator app is set up. More under [Multi-factor authentication (MFA)](help:settings/mfa).
 :::
 
 ## See also
 
-- [Two-step sign-in (MFA)](help:settings/mfa)
+- [Multi-factor authentication (MFA)](help:settings/mfa)
 - [Password](help:settings/password)
 - [Linked sign-ins](help:settings/linked-accounts)
