@@ -16,6 +16,7 @@ final class EncryptedColumns
         return [
             new EncryptedColumn('calendar_feed', 'shared_secret', 'id', SecretCipher::PURPOSE_FEED),
             new EncryptedColumn('member_subscription', 'secret', 'id', SecretCipher::PURPOSE_SUBSCRIPTION),
+            new EncryptedColumn('user_totp', 'secret', 'id', SecretCipher::PURPOSE_TOTP),
         ];
     }
 }

@@ -57,6 +57,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(options: ['default' => 0])]
     private int $tokenVersion = 0;
 
+    /** Single switch for multi-factor sign-in (see "MFA" in CLAUDE.md). */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $mfaEnforced = false;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $mfaEnforcedAt = null;
+
     #[ORM\OneToMany(targetEntity: ClubUser::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
     private Collection $clubs;
 
@@ -202,6 +209,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function invalidateTokens(): static
     {
         ++$this->tokenVersion;
+
+        return $this;
+    }
+
+    public function isMfaEnforced(): bool
+    {
+        return $this->mfaEnforced;
+    }
+
+    public function getMfaEnforcedAt(): ?\DateTimeImmutable
+    {
+        return $this->mfaEnforcedAt;
+    }
+
+    public function setMfaEnforced(bool $enforced, \DateTimeImmutable $now = new \DateTimeImmutable()): static
+    {
+        $this->mfaEnforced = $enforced;
+        $this->mfaEnforcedAt = $enforced ? $now : null;
 
         return $this;
     }

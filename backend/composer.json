@@ -18,6 +18,7 @@
         "dompdf/dompdf": "^3.1.6",
         "eluceo/ical": "^2.16",
         "geocoder-php/mapbox-provider": "^1.5",
+        "geoip2/geoip2": "^3.4",
         "knpuniversity/oauth2-client-bundle": "^2.20.2",
         "lcobucci/jwt": "^5.6",
         "league/commonmark": "^2.10",

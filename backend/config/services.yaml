@@ -20,6 +20,12 @@ parameters:
     # Header with the client's ISO country code set by a trusted proxy/CDN (empty = off)
     env(CLIENT_COUNTRY_HEADER): 'CF-IPCountry'
 
+    # Offline GeoIP (city + country in security notices): with a licence key MaxMind is the only source,
+    # `app:geoip:update` downloads GeoLite2-City to GEOIP_DB_PATH
+    env(MAXMIND_ACCOUNT_ID): ''
+    env(MAXMIND_LICENSE_KEY): ''
+    env(GEOIP_DB_PATH): '%kernel.project_dir%/var/geoip/GeoLite2-City.mmdb'
+
     env(WEBAUTHN_RP_ID): '%env(string:key:host:url:APP_URL)%'
     env(WEBAUTHN_RP_NAME): 'Club Calendar'
     env(WEBAUTHN_USER_VERIFICATION): 'preferred'
@@ -146,6 +152,10 @@ services:
             $allowedPatterns: '%mapbox.allowed_patterns%'
             $mapboxProxyCache: '@mapbox_proxy'
             $mapboxToken: '%env(MAPBOX_TOKEN)%'
+
+    App\Security\LocationResolver:
+        factory: ['@App\Security\LocationResolverFactory', 'create']
+        arguments: ['%env(MAXMIND_LICENSE_KEY)%']
 
     App\EventListener\LocationMapCacheInvalidator:
         arguments:

@@ -6,6 +6,7 @@ namespace App\Tests\Command;
 
 use App\Entity\CalendarFeed;
 use App\Entity\MemberSubscription;
+use App\Entity\UserTotp;
 use App\Enum\FeedVisibility;
 use App\Security\Secret\SecretCipher;
 use App\Security\Secret\SecretRotator;
@@ -28,6 +29,7 @@ class SecretsRotateCommandTest extends WebTestCase
     private Connection $conn;
     private string $feedId;
     private string $subId;
+    private string $totpId;
 
     public static function setUpBeforeClass(): void
     {
@@ -46,7 +48,10 @@ class SecretsRotateCommandTest extends WebTestCase
         $feed = TestHelper::createFeed(self::$em, $club, [$cal], FeedVisibility::PRIVATE, 'F', 'feed-secret-value');
         $sub = new MemberSubscription($club, $user);
         self::$em->persist($sub);
+        $totp = new UserTotp($user, 'JBSWY3DPEHPK3PXP');
+        self::$em->persist($totp);
         self::$em->flush();
+        $this->totpId = $totp->getId();
         $this->feedId = $feed->getId();
         $this->subId = $sub->getId();
         self::$em->clear();
@@ -75,8 +80,14 @@ class SecretsRotateCommandTest extends WebTestCase
         return (string) $this->conn->fetchOne('SELECT secret FROM member_subscription WHERE id = ?', [$this->subId]);
     }
 
+    private function totpRaw(): string
+    {
+        return (string) $this->conn->fetchOne('SELECT secret FROM user_totp WHERE id = ?', [$this->totpId]);
+    }
+
     private function makeLegacy(): void
     {
+        $this->conn->executeStatement('UPDATE user_totp SET secret = ? WHERE id = ?', ['LEGACYTOTP', $this->totpId]);
         $this->conn->executeStatement('UPDATE calendar_feed SET shared_secret = ? WHERE id = ?', ['legacy-feed', $this->feedId]);
         $this->conn->executeStatement('UPDATE member_subscription SET secret = ? WHERE id = ?', ['legacy-sub', $this->subId]);
     }
@@ -100,6 +111,7 @@ class SecretsRotateCommandTest extends WebTestCase
         $sub = $this->subRaw();
         $this->assertStringStartsWith('enc:v1:', $feed);
         $this->assertStringStartsWith('enc:v1:', $sub);
+        $this->assertStringStartsWith('enc:v1:', $this->totpRaw());
 
         $this->assertSame(Command::SUCCESS, $this->rotateCommand()->getStatusCode());
         $this->assertSame($feed, $this->feedRaw());
@@ -108,6 +120,7 @@ class SecretsRotateCommandTest extends WebTestCase
         self::$em->clear();
         $this->assertSame('legacy-feed', self::$em->find(CalendarFeed::class, $this->feedId)->getSharedSecret());
         $this->assertSame('legacy-sub', self::$em->find(MemberSubscription::class, $this->subId)->getSecret());
+        $this->assertSame('LEGACYTOTP', self::$em->find(UserTotp::class, $this->totpId)->getSecret());
     }
 
     public function testRotationFromOldKeyKeepsPlaintextAndLeavesAuditFieldsAlone(): void
@@ -115,24 +128,26 @@ class SecretsRotateCommandTest extends WebTestCase
         $old = new SecretCipher('old-app-secret');
         $this->conn->executeStatement('UPDATE calendar_feed SET shared_secret = ? WHERE id = ?', [$old->encrypt('feed-plain', SecretCipher::PURPOSE_FEED), $this->feedId]);
         $this->conn->executeStatement('UPDATE member_subscription SET secret = ? WHERE id = ?', [$old->encrypt('sub-plain', SecretCipher::PURPOSE_SUBSCRIPTION), $this->subId]);
+        $this->conn->executeStatement('UPDATE user_totp SET secret = ? WHERE id = ?', [$old->encrypt('totp-plain', SecretCipher::PURPOSE_TOTP), $this->totpId]);
         $updatedBefore = $this->conn->fetchOne('SELECT updated_at FROM calendar_feed WHERE id = ?', [$this->feedId]);
         $versionBefore = $this->conn->fetchFirstColumn('SELECT content_version FROM calendar');
 
         $rotator = new SecretRotator($this->conn, new SecretCipher('new-app-secret', 'old-app-secret'));
         $result = $rotator->rotate(false);
-        $this->assertSame([1, 1], array_column($result, 'rewritten'));
+        $this->assertSame([1, 1, 1], array_column($result, 'rewritten'));
         $this->assertSame([], array_merge(...array_column($result, 'failedIds')));
 
         $new = new SecretCipher('new-app-secret');
         $this->assertSame('feed-plain', $new->decrypt($this->feedRaw(), SecretCipher::PURPOSE_FEED));
         $this->assertSame('sub-plain', $new->decrypt($this->subRaw(), SecretCipher::PURPOSE_SUBSCRIPTION));
+        $this->assertSame('totp-plain', $new->decrypt($this->totpRaw(), SecretCipher::PURPOSE_TOTP));
         $this->assertTrue($new->usesCurrentKey($this->feedRaw()));
         $this->assertSame($updatedBefore, $this->conn->fetchOne('SELECT updated_at FROM calendar_feed WHERE id = ?', [$this->feedId]));
         $this->assertSame($versionBefore, $this->conn->fetchFirstColumn('SELECT content_version FROM calendar'));
 
         $again = $rotator->rotate(false);
-        $this->assertSame([0, 0], array_column($again, 'rewritten'));
-        $this->assertSame([1, 1], array_column($again, 'current'));
+        $this->assertSame([0, 0, 0], array_column($again, 'rewritten'));
+        $this->assertSame([1, 1, 1], array_column($again, 'current'));
     }
 
     public function testUndecryptableRowFailsWithIdsButNeverValues(): void

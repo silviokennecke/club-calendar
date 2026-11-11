@@ -20,6 +20,7 @@ final class SecretCipher
 {
     public const string PURPOSE_FEED = 'feed.shared_secret';
     public const string PURPOSE_SUBSCRIPTION = 'member_subscription.secret';
+    public const string PURPOSE_TOTP = 'user_totp.secret';
 
     private const string PREFIX = 'enc:';
     private const string VERSION = 'v1';
