@@ -11,7 +11,7 @@ All variables an admin can set. Variables marked **required** have no default. T
 | `FRONTEND_URL` | `APP_URL` | Address of the web app. Only for split setups. Passkeys work only on exactly this address. |
 | `BACKEND_URL` | `APP_URL` | Public address of the API. Only for split setups. It is used in the link for confirming a new e-mail address and for SSO, so it must be reachable by users. |
 | `TRUSTED_HOSTS` | empty | Extra host names the app accepts, comma-separated (e.g. a `www` alias). |
-| `SYMFONY_TRUSTED_PROXIES` | empty | Addresses of reverse proxies in front of the app, comma-separated. Needed so rate limits see real visitor addresses. |
+| `SYMFONY_TRUSTED_PROXIES` | empty | Addresses of reverse proxies in front of the app, comma-separated. Needed so rate limits see real visitor addresses. The visitor address and the country header of a proxy are trusted only from these addresses. |
 | `PORT` | `8080` | Docker image only: port the built-in web server listens on. |
 | `RUN_MIGRATIONS` | `1` | Docker image only: set `0` to skip database updates at start. |
 | `MIGRATION_RETRIES` | `15` | Docker image only: how often the start waits (2 s apart) for the database before giving up. |
@@ -62,6 +62,18 @@ Leave empty to hide a provider. Setup: [Single sign-on](sso.md).
 | `MICROSOFT_TENANT_ID` | `common` | Microsoft tenant: `common`, `organizations`, `consumers` or a tenant ID. |
 | `APPLE_CLIENT_ID` | empty | Apple Services ID. |
 | `APPLE_CLIENT_SECRET` | empty | Apple client secret: a pre-generated token signed with your Apple private key (it expires, so renew it). |
+
+
+## Security notices and location
+
+City and country in security mails and the security log. See [Location in security notices](../security.md#location-in-security-notices).
+
+| Variable | Default | Description |
+|---|---|---|
+| `MAXMIND_ACCOUNT_ID` | empty | Your MaxMind account ID. Needed with the licence key to download the database. |
+| `MAXMIND_LICENSE_KEY` | empty | MaxMind licence key. When set, the local GeoLite2 City database is the only source of locations and the country header is ignored. Using the database means accepting MaxMind's licence terms. |
+| `GEOIP_DB_PATH` | Docker image: `/data/geoip/GeoLite2-City.mmdb`. Without Docker: `backend/var/geoip/GeoLite2-City.mmdb` | Where the database file is stored. The folder must be writable and, with Docker, kept on a volume. |
+| `CLIENT_COUNTRY_HEADER` | `CF-IPCountry` | Header in which your CDN or proxy sends the visitor's country code. Used only without a MaxMind key and only for requests from a trusted proxy (`SYMFONY_TRUSTED_PROXIES`). Empty = off. |
 
 
 ## Passkeys

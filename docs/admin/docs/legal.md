@@ -112,6 +112,12 @@ For each accepted document, the app stores:
 
 Your privacy policy must describe this. Users can see their own consent history in their profile.
 
+## What the security log stores
+
+Besides the consent history, the app keeps a security log per account (see [Protection mechanisms](security.md#security-log)). For each entry it stores the time, the IP address, the approximate city and country, and the browser name and version. It covers sign-ins (password, passkey, single sign-on, AI app connections), failed sign-ins on existing accounts, two-step sign-in and password changes. Entries are deleted after one year, and when the account is deleted.
+
+Your privacy policy must describe this log, its purpose, and its retention period.
+
 ## Troubleshooting
 
 - **A document does not appear:** run `app:legal:sync` and read its output. A missing file is reported as a warning.

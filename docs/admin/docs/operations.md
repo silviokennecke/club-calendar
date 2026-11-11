@@ -114,15 +114,18 @@ The app cleans up after itself only when these commands run regularly. Add them 
 | `app:prune-refresh-tokens` | Deletes expired sessions. | daily |
 | `app:prune-club-invitations` | Deletes invitations that were answered or expired more than 30 days ago. | daily |
 | `app:prune-oauth` | Deletes expired entries of AI app connections. | daily |
+| `app:prune-security-events` | Deletes security log entries older than one year. See [Protection mechanisms](security.md#security-log). | daily |
 | `app:holidays:refresh --all` | Refreshes the predefined holiday calendars. See [Holidays](#holidays). | weekly |
+| `app:geoip:update` | Downloads a newer location database for security notices. Does nothing without `MAXMIND_LICENSE_KEY`. See [Protection mechanisms](security.md#location-in-security-notices). | weekly |
 
 === "Docker"
 
     Example for the host's crontab (`crontab -e`). Replace `/srv/club-calendar` with the folder that holds your `docker-compose.yml`. `-T` is needed because cron has no terminal.
 
     ```cron
-    0 3 * * * cd /srv/club-calendar && for c in app:prune-unverified-users app:prune-password-resets app:prune-refresh-tokens app:prune-club-invitations app:prune-oauth; do docker compose exec -T app php bin/console $c; done
+    0 3 * * * cd /srv/club-calendar && for c in app:prune-unverified-users app:prune-password-resets app:prune-refresh-tokens app:prune-club-invitations app:prune-oauth app:prune-security-events; do docker compose exec -T app php bin/console $c; done
     0 4 * * 0 cd /srv/club-calendar && docker compose exec -T app php bin/console app:holidays:refresh --all
+    0 4 * * 0 cd /srv/club-calendar && docker compose exec -T app php bin/console app:geoip:update
     ```
 
 === "Without Docker"
@@ -130,8 +133,9 @@ The app cleans up after itself only when these commands run regularly. Add them 
     Run the jobs as the user that runs PHP:
 
     ```cron
-    0 3 * * * cd /var/www/club-calendar/backend && for c in app:prune-unverified-users app:prune-password-resets app:prune-refresh-tokens app:prune-club-invitations app:prune-oauth; do php bin/console $c; done
+    0 3 * * * cd /var/www/club-calendar/backend && for c in app:prune-unverified-users app:prune-password-resets app:prune-refresh-tokens app:prune-club-invitations app:prune-oauth app:prune-security-events; do php bin/console $c; done
     0 4 * * 0 cd /var/www/club-calendar/backend && php bin/console app:holidays:refresh --all
+    0 4 * * 0 cd /var/www/club-calendar/backend && php bin/console app:geoip:update
     ```
 
 ## Command-line tools
@@ -161,12 +165,16 @@ The app has a few commands for administrators. Run them like this:
 | `app:user:set-password <email or id>` | Sets a new password (`--password` or `--password-stdin`) and ends all sessions of that user. |
 | `app:user:verify <email or id>` | Confirms an address by hand, for users who cannot receive the code. Also available as `app:user:activate`. |
 | `app:user:reset-link <email>` | Prints a password reset link without sending mail. |
+| `app:user:disable-mfa <email or id>` | Switches two-step sign-in off for a user who lost the authenticator app and the backup codes. Removes the authenticator app and backup codes (passkeys stay), ends all sessions and AI app connections, mails the user and writes a security log entry. No password needed; nothing happens if the second step is off. |
 
 ### Clubs
 
 | Command | Purpose |
 |---|---|
 | `app:club:create` | Creates a club for an existing user, who becomes its admin. Options: `--name`, `--admin=<e-mail or id>`, `--timezone` (default `Europe/Berlin`). Missing values are asked interactively. Works even when `RESTRICT_CLUB_CREATION=true`. |
+
+!!! warning "Switching off two-step sign-in"
+    `app:user:disable-mfa` removes the second step without the user's password. Use it only after you have confirmed the person's identity, and only when the user has neither the authenticator app nor the backup codes. Normally the user switches it off in the profile or uses a backup code.
 
 !!! warning "Reset links give access to the account"
     A link from `app:user:reset-link` (valid 60 minutes) lets whoever opens it set a new password for that account. Hand it only to the owner, over a channel you trust.
@@ -184,7 +192,7 @@ The app has a few commands for administrators. Run them like this:
 
 ## Browser recognition
 
-Sign-in notification mails and the security overview name the browser used (for example "Chrome 126"). The app recognises browsers from a maintained list of patterns. Nothing is downloaded while the app runs, and the server needs no extra internet access for this.
+Sign-in notification mails and the security log name the browser used (for example "Chrome 126"). The app recognises browsers from a maintained list of patterns. Nothing is downloaded while the app runs, and the server needs no extra internet access for this.
 
 === "Docker"
 
@@ -241,7 +249,7 @@ After changing `.env`, restart the app (`docker compose up -d` applies it).
 
 | Used for | If it changes without the steps below |
 |---|---|
-| Encrypting the secrets of feeds and of members' personal calendar links in the database | These values can no longer be read: private feeds and personal calendar links fail with an error. |
+| Encrypting the secrets of feeds, of members' personal calendar links and of authenticator apps (two-step sign-in) in the database | These values can no longer be read: private feeds and personal calendar links fail with an error, and users with an authenticator app cannot use it to sign in (backup codes and passkeys still work). |
 | Passphrase of the login keys (JWT key pair), unless `JWT_PASSPHRASE` is set | The keys cannot be read and sign-in fails for everybody. |
 | Signing short-lived tokens: single sign-on redirects and one-time codes, account linking, passkey registration and sign-in in progress | Anything in progress fails; the user starts again. |
 | Protecting e-mail confirmation codes | Codes that were sent but not yet used no longer work; the user asks for a new code. |
@@ -261,7 +269,7 @@ Password reset links, e-mail change links, refresh tokens (sessions), feed links
     docker compose exec app php bin/console app:secrets:rotate
     ```
 
-    The command lists how many values it rewrote per kind. If it reports rows it cannot read, the matching old secret is missing from `APP_SECRET_PREVIOUS`; add it and run the command again. It never prints the secrets themselves.
+    The command also re-encrypts the authenticator app secrets of two-step sign-in. The command lists how many values it rewrote per kind. If it reports rows it cannot read, the matching old secret is missing from `APP_SECRET_PREVIOUS`; add it and run the command again. It never prints the secrets themselves.
 5. When the command reports no failures, remove `APP_SECRET_PREVIOUS` from `.env` and restart. Keep `JWT_PASSPHRASE`, or create new login keys and remove it (see above).
 
 Until step 5, the old secret stays accepted for reading; after it, only the new one.
@@ -288,6 +296,8 @@ Everybody is signed out once.
 | Everybody has to sign in again after every restart | `JWT_REFRESH_SECRET` changes between starts (for example it is generated at each start). |
 | Sign-in fails for everybody after changing `APP_SECRET` | The login keys were protected with the old value. Set `JWT_PASSPHRASE` to the old `APP_SECRET`. |
 | Private feed or personal calendar link answers with an error after changing `APP_SECRET` | The stored secrets were encrypted with the old value. Put it in `APP_SECRET_PREVIOUS` and run `app:secrets:rotate`. |
+| A user cannot sign in with the authenticator app | After an `APP_SECRET` change the stored secret cannot be read (see the row above). Otherwise the device is lost. Backup codes still work. If they are gone too, run `app:user:disable-mfa` after checking the person's identity. |
+| Security mails show no city or country | No MaxMind key is set, or the database is missing or old: see [Location in security notices](security.md#location-in-security-notices). |
 | Single sign-on fails | The app is served over plain HTTP, or the redirect address at the provider does not match. See [Single sign-on](configuration/sso.md). |
 | Maps are empty | `MAPBOX_TOKEN` is missing or invalid. See [Mail and maps](configuration/mail-and-maps.md). |
 | Legal documents missing | Run `app:legal:sync` and read its warnings. See [Legal documents](legal.md). |

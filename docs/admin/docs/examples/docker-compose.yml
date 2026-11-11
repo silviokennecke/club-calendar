@@ -14,6 +14,8 @@ services:
       - jwt:/data/config
       # Your imprint, privacy policy and terms (imprint.md, privacy.md, terms.md)
       - ./legal:/data/legal:ro
+      # Location database for security notices (only used with MAXMIND_LICENSE_KEY, see example.env)
+      - geoip:/data/geoip
     depends_on:
       db:
         condition: service_healthy
@@ -38,4 +40,5 @@ services:
 
 volumes:
   jwt:
+  geoip:
   db_data:
