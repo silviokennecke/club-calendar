@@ -121,7 +121,9 @@ info:
     password, `{code}` mailed by `POST …/register/code`) or `GET …/webauthn/authenticate/options` returns
     `{options, challengeToken}`; the browser runs `navigator.credentials.create/get` with `options`; the result
     goes to `POST …/register/verify` or `POST …/authenticate/verify` together with the signed, single-use
-    `challengeToken`. Allowed origin is `FRONTEND_URL`, RP ID `WEBAUTHN_RP_ID`.
+    `challengeToken`. Allowed origin is `FRONTEND_URL`, RP ID `WEBAUTHN_RP_ID`. The authentication options need no
+    e-mail (discoverable credentials, empty `allowCredentials`), so the same options serve the passkey button and
+    browser autofill (`mediation: conditional`) on the sign-in page.
 
     ## Errors
 

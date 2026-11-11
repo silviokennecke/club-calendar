@@ -92,7 +92,7 @@ Background: `docs/ops/BACKLOG.md` (open backend gaps and operations), `docs/api/
   429 with `ApiError.retryAfter`), `register` (`components/auth/SignupStep`: the signup fields and consent checkboxes,
   then `/verify-email`) or `registration_restricted` (banner "only with an invitation", no form). Step 2 shows the
   address read-only, SSO / passkey are gone, "Zurück" and Escape return to step 1 with the address kept (focus: first
-  field of the new step, the email field on return; an sr-only `role=status` announces each step). Transitions: `components/auth/Collapse`
+  field of the new step, the email field on return; passkey autofill: while step 1 is shown and `PublicKeyCredential.isConditionalMediationAvailable()` is true, `startAuthentication({useBrowserAutofill: true})` runs on mount (the email input has `autocomplete="username webauthn"`), is cancelled via `WebAuthnAbortService.cancelCeremony()` on submit, unmount and step change, AbortError/NotAllowedError are silent, success shares the passkey button flow; an sr-only `role=status` announces each step). Transitions: `components/auth/Collapse`
   (grid-template-rows 0fr -> 1fr + fade, `.ap-collapse` in `index.css`, inert while closed, unmounted after the exit,
   no motion under `prefers-reduced-motion`). The stashed invitation token (`lib/invitations`) is previewed with
   `POST /api/invitations/preview`: banner "invited to <club>" + prefilled address (typing replaces it); 404 = neutral

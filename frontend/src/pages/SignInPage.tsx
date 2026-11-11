@@ -91,6 +91,28 @@ export default function SignInPage() {
     else if (leftEmailStep.current) document.getElementById(EMAIL_ID)?.focus();
   }, [step]);
 
+  // Conditional UI: the password manager offers a passkey in the e-mail field's autofill list.
+  useEffect(() => {
+    if (step !== "email") return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        if (!(await window.PublicKeyCredential?.isConditionalMediationAvailable?.())) return;
+        await runPasskeyLogin(true, () => cancelled);
+      } catch (e: unknown) {
+        const name = e instanceof Error ? e.name : "";
+        if (cancelled || name === "AbortError" || name === "NotAllowedError") return;
+        setPasskeyProblem(true);
+        setProblemKey((k) => k + 1);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      void import("@simplewebauthn/browser").then((m) => m.WebAuthnAbortService.cancelCeremony());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   function back() {
     if (inStepTwo) navigate(-1);
     else navigate({ pathname: location.pathname, search: location.search }, { replace: true });
@@ -111,6 +133,7 @@ export default function SignInPage() {
     setEmailError(invalid);
     if (invalid) return;
 
+    void import("@simplewebauthn/browser").then((m) => m.WebAuthnAbortService.cancelCeremony());
     setIdentifying(true);
     try {
       const res = await apiPost<{ email: string; status: Status }>("/api/auth/identify", {
@@ -149,19 +172,21 @@ export default function SignInPage() {
     }
   }
 
-  async function handlePasskey() {
-    setSsoError(null);
-    setPasskeyProblem(false);
-    setIdentifyProblem(null);
-    setPasskeyLoading(true);
-    try {
-      const { startAuthentication } = await import("@simplewebauthn/browser");
-      const optRes = await apiFetch("/api/auth/webauthn/authenticate/options");
-      const { options, challengeToken } = (await optRes.json()) as {
-        options: Parameters<typeof startAuthentication>[0]["optionsJSON"];
-        challengeToken: string;
-      };
-      const response = await startAuthentication({ optionsJSON: options });
+  // Shared by the passkey button and the autofill (conditional UI) ceremony.
+  async function runPasskeyLogin(autofill: boolean, isCancelled: () => boolean = () => false) {
+    const { startAuthentication } = await import("@simplewebauthn/browser");
+    const optRes = await apiFetch("/api/auth/webauthn/authenticate/options");
+    const { options, challengeToken } = (await optRes.json()) as {
+      options: Parameters<typeof startAuthentication>[0]["optionsJSON"];
+      challengeToken: string;
+    };
+    if (isCancelled()) return;
+    const response = await startAuthentication({
+      optionsJSON: options,
+      useBrowserAutofill: autofill,
+    });
+    if (isCancelled()) return;
+    {
       const verifyRes = await apiFetch("/api/auth/webauthn/authenticate/verify", {
         method: "POST",
         body: JSON.stringify({ challengeToken, response }),
@@ -174,6 +199,16 @@ export default function SignInPage() {
       const data = (await verifyRes.json()) as TokenResponse;
       login(data.access_token, data.refresh_token, sessionUser(data));
       navigate(data.emailVerificationRequired ? "/verify-email" : "/clubs");
+    }
+  }
+
+  async function handlePasskey() {
+    setSsoError(null);
+    setPasskeyProblem(false);
+    setIdentifyProblem(null);
+    setPasskeyLoading(true);
+    try {
+      await runPasskeyLogin(false);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "";
       if (!msg.includes("cancel") && !msg.includes("abort")) {
