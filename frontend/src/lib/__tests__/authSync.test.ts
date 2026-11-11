@@ -25,7 +25,7 @@ beforeEach(() => {
   FakeBroadcastChannel.sent = [];
   fetchMock.mockReset();
   vi.stubGlobal("fetch", fetchMock);
-  vi.stubGlobal("location", { href: "/clubs" });
+  vi.stubGlobal("location", { href: "/clubs", origin: "http://localhost" });
   sessionStorage.clear();
   localStorage.clear();
 });

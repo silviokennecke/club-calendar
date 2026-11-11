@@ -340,7 +340,7 @@ class ImportTest extends WebTestCase
         $body = ['events' => [
             $this->event(['name' => 'Pacific', 'timezone' => 'US/Pacific-New']),
             $this->event(['name' => 'Windows', 'timezone' => 'W. Europe Standard Time']),
-            $this->event(['name' => 'Alias', 'timezone' => 'US/Pacific']),
+            $this->event(['name' => 'Alias', 'timezone' => 'America/Los_Angeles']),
             $this->event(['name' => 'Ohne', 'timezone' => null]),
         ]];
         $preview = $this->post("$base/events/import/preview", $body, $auth);
@@ -358,7 +358,7 @@ class ImportTest extends WebTestCase
         ], $r['body']['warnings'][0]);
         $this->assertSame('W. Europe Standard Time', $r['body']['warnings'][1]['value']);
         $zones = array_column(TestHelper::jsonRequest(self::$client, 'GET', "$base/events", [], $auth)['body'], 'timezone', 'name');
-        $this->assertSame(['Pacific' => 'Europe/Vienna', 'Windows' => 'Europe/Vienna', 'Alias' => 'US/Pacific', 'Ohne' => null], $zones);
+        $this->assertSame(['Pacific' => 'Europe/Vienna', 'Windows' => 'Europe/Vienna', 'Alias' => 'America/Los_Angeles', 'Ohne' => null], $zones);
         // Not a string: still a validation error
         $r = $this->post("$base/events/import", ['events' => [$this->event(['timezone' => 42])]], $auth);
         $this->assertSame(400, $r['status']);

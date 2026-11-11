@@ -407,12 +407,13 @@ export default function CalendarPage() {
         searchSlot={
           <CalendarSearch
             scope={["events", calendarId]}
-            search={(q, signal) =>
-              apiGetWithTotal<CalendarEvent[]>(
+            search={async (q, signal) => {
+              const { data, total } = await apiGetWithTotal<CalendarEvent[]>(
                 `/api/calendars/${calendarId}/events?q=${encodeURIComponent(q)}&limit=${SEARCH_LIMIT}`,
                 signal,
-              )
-            }
+              );
+              return { data, total: total ?? data.length };
+            }}
             onPick={pickSearchResult}
             onShowAll={(q) => routerNavigate(`${base}/events?q=${encodeURIComponent(q)}`)}
             placeholder={t("calendar.search.placeholderAll")}
