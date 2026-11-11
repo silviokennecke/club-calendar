@@ -72,11 +72,15 @@ test("/help/ und Ordner-URLs lösen auf: Startseite bzw. Standard-Inhaltsverzeic
   ).toBeVisible();
 });
 
-test("der Hilfe-Link im Footer der Anmeldeseite führt ins Hilfezentrum", async ({ page }) => {
+test("der Hilfe-Link im Footer der Anmeldeseite öffnet die passende Hilfeseite in neuem Tab", async ({
+  page,
+}) => {
   await page.goto("/login");
-  await page.getByRole("link", { name: "Hilfe", exact: true }).click();
-  await expect(page).toHaveURL(/\/help$/);
-  await expect(page.getByRole("navigation", { name: "Hilfe-Navigation" })).toBeVisible();
+  const link = page.getByRole("link", { name: /^Hilfe/ });
+  await expect(link).toHaveAttribute("target", "_blank");
+  const [help] = await Promise.all([page.context().waitForEvent("page"), link.click()]);
+  await expect(help).toHaveURL(/\/help\/getting-started\/sign-up$/);
+  await expect(help.getByRole("navigation", { name: "Hilfe-Navigation" })).toBeVisible();
 });
 
 test("das Hilfezentrum zeigt keinen Hilfe-Link im Footer (nur rechtliche Links)", async ({

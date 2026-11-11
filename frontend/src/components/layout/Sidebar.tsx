@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Icon, Logo, StatusBadge } from "@/components/ui/shared";
 import { isPlainMember } from "@/lib/club/permissions";
+import { HelpCenterLink } from "@/docs/HelpCenterLink";
 import { ContextMenu } from "./ContextMenu";
 import { CalendarMenuItems, ClubMenuItems } from "./ContextMenuItems";
 import { activeNavKey, buildNavGroups, initials } from "./navigation";
@@ -109,10 +110,9 @@ export function Sidebar({ data }: { data: ShellData }) {
             <span className="ap-sr">, {t("shell.profile")}</span>
           </span>
         </Link>
-        <Link className="ap-navlink" to="/help">
+        <HelpCenterLink className="ap-navlink">
           <Icon glyph="info" size={20} />
-          {t("docs.footerLink")}
-        </Link>
+        </HelpCenterLink>
         <button type="button" className="ap-navlink" onClick={data.onLogout}>
           <Icon glyph="log-out" size={20} />
           {t("shell.signOut")}

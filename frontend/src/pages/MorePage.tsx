@@ -7,6 +7,7 @@ import { clubSettingsRoutes } from "@/components/settings/clubSettingsRoutes";
 import { roleAtLeast } from "@/lib/club/permissions";
 import { myClubPath } from "@/lib/club/myClub";
 import type { ShellData } from "@/components/layout/shellTypes";
+import { useContextHelpUrl } from "@/docs/contextHelp";
 import { usePageTitle } from "@/lib/usePageTitle";
 
 interface Row {
@@ -18,6 +19,7 @@ interface Row {
 /** Mobile "Mehr" page (design: Menu.dc.html): context, further areas, language, sign out. */
 export default function MorePage() {
   const { t } = useTranslation();
+  const helpUrl = useContextHelpUrl();
   usePageTitle(t("shell.more.title"));
   const { updateUser } = useAuth();
   const data = useOutletContext<ShellData>();
@@ -46,7 +48,6 @@ export default function MorePage() {
     },
     { labelKey: "shell.more.allClubs", href: "/clubs?select=1", icon: "list" },
     { labelKey: "shell.profile", href: "/profile", icon: "user" },
-    { labelKey: "docs.footerLink", href: "/help", icon: "info" },
   ];
 
   return (
@@ -86,6 +87,14 @@ export default function MorePage() {
                   <Icon glyph="chevron-right" size={20} />
                 </Link>
               ))}
+              <Link className="ap-listrow" to={helpUrl} target="_blank" rel="noopener noreferrer">
+                <Icon glyph="info" size={22} />
+                <span className="ap-listrow-main">
+                  <b>{t("docs.footerLink")}</b>
+                  <span className="ap-sr"> ({t("docs.opensInNewTab")})</span>
+                </span>
+                <Icon glyph="chevron-right" size={20} />
+              </Link>
             </nav>
           </div>
         </section>

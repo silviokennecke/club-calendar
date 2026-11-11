@@ -2590,6 +2590,7 @@
   "docs": {
     "aiNotice": "Note: The texts in this help were created with the help of artificial intelligence (AI) and might contain inaccuracies or errors.",
     "title": "Help",
+    "opensInNewTab": "opens in a new tab",
     "footerLink": "Help",
     "navLabel": "Help navigation",
     "tocLabel": "Table of contents",

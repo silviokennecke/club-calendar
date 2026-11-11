@@ -2590,6 +2590,7 @@
   "docs": {
     "aiNotice": "Hinweis: Die Texte dieser Hilfe wurden mithilfe künstlicher Intelligenz (KI) erstellt und können Fehler enthalten.",
     "title": "Hilfe",
+    "opensInNewTab": "öffnet in neuem Tab",
     "footerLink": "Hilfe",
     "navLabel": "Hilfe-Navigation",
     "tocLabel": "Inhaltsverzeichnis",

@@ -177,7 +177,7 @@ describe("MorePage (design: Menu)", () => {
       "Orte und Gruppen",
       "Alle Vereine",
       "Mein Profil",
-      "Hilfe",
+      "Hilfe (öffnet in neuem Tab)",
     ]);
     expect(within(nav).getByRole("link", { name: "Alle Vereine" })).toHaveAttribute(
       "href",

@@ -134,6 +134,16 @@ describe("Sidebar navigation", () => {
   });
 });
 
+describe("help link", () => {
+  it("opens the help page of the current screen in a new tab", () => {
+    renderAt(`/clubs/c1/settings/target-groups`);
+    const link = screen.getByRole("link", { name: /Hilfe/ });
+    expect(link).toHaveAttribute("href", "/help/organize/target-groups");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+});
+
 describe("Tabbar", () => {
   it.each([
     [base, "Kalender"],
