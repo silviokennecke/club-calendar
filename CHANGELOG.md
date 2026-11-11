@@ -27,6 +27,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Changed
 
+- Small UI fixes: audience and location lists and the audience chips and filters are sorted alphabetically; the feed visibility "CLUB" is now called "Vereinsintern" and private feed assignment is described; the template picker loads templates in chunks of 5; "Import" is removed from the sidebar navigation; the dropdown arrow of selects no longer overlaps the text; the sign-in flow shows no required marker; the e-mail confirmation code is shown grouped as 123-456.
 - Calendar search is the same everywhere: an autocomplete with at most 10 previews and a last entry "Alle Ergebnisse anzeigen" that opens the list with the search term. In the event calendar the list is the event list; on the public feed page and in "Mein Verein" the click opens the event dialog and the list shows the matches of all dates.
 - Sign-in is kept across tabs and browser restarts: the refresh token is stored in the browser, the access token only per tab. Signing out applies to all open tabs of the browser.
 
