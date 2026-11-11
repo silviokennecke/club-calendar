@@ -224,7 +224,7 @@ describe("FeedsPage", () => {
     renderRoute(route, url, <FeedsPage />);
     await screen.findByRole("heading", { level: 1, name: "Veröffentlichen" });
     expect(screen.queryByRole("navigation", { name: "Einstellungen des Vereins" })).toBeNull();
-    expect(screen.getByText("Schützenverein", { exact: false })).toBeInTheDocument();
+    expect(await screen.findByText("Schützenverein", { exact: false })).toBeInTheDocument();
     expect(screen.queryByText("Archiviert, schreibgeschützt")).not.toBeInTheDocument();
   });
 
