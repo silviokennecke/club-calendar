@@ -14,6 +14,7 @@ These settings only affect you. You find them on your profile page (**My profile
 
 - [Profile and name](help:settings/profile)
 - [Password](help:settings/password)
+- [Two-step sign-in (MFA)](help:settings/mfa)
 - [Passkeys](help:settings/passkeys)
 - [Linked sign-ins](help:settings/linked-accounts)
 - [Change your e-mail address](help:settings/email-change)

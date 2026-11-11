@@ -23,6 +23,8 @@ Hat die Adresse schon ein Konto, fragt dich die Seite stattdessen nach dem Passw
 
 Auf dem ersten Schritt findest du unter **oder** weitere Wege: **Mit Google anmelden**, **Mit Microsoft anmelden**, **Mit Apple anmelden** (sofern aktiviert) und **Mit Passkey anmelden**. Ein Passkey meldet dich per Fingerabdruck, Gesichtserkennung oder Geräte-PIN an. Er funktioniert, sobald du ihn in deinem [Profil](help:settings/passkeys) eingerichtet hast.
 
+Ist für dein Konto [Zwei-Faktor-Anmeldung (MFA)](help:settings/mfa) eingeschaltet, fragt dich die Anmeldung mit Passwort nach dem Passwort zusätzlich nach einem zweiten Schritt.
+
 ## E-Mail-Adresse bestätigen
 
 Nach dem Registrieren bist du sofort angemeldet und siehst die Seite **E-Mail-Adresse bestätigen**. Wir schicken einen 6-stelligen Code an deine Adresse.

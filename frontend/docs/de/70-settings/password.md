@@ -30,7 +30,12 @@ Danach bist du überall abgemeldet und meldest dich mit dem neuen Passwort wiede
 
 Wenn du dich nur mit Google, Microsoft oder einem Passkey anmeldest, hat dein Konto kein Passwort. Klicke im Profil unter **Passwort** auf **Passwort per E-Mail festlegen**. Du bekommst einen Link (60 Minuten gültig), mit dem du ein Passwort festlegst. Das brauchst du zum Beispiel, um die [E-Mail-Adresse zu ändern](help:settings/email-change).
 
+## E-Mails bei Änderungen
+
+Wenn sich dein Passwort ändert, bekommst du eine E-Mail. Das Gleiche gilt, wenn du [Zwei-Faktor-Anmeldung (MFA)](help:settings/mfa) ein- oder ausschaltest. Schlägt die Anmeldung mehrfach fehl, bekommst du ebenfalls eine E-Mail. Hast du das nicht selbst veranlasst, ändere sofort dein Passwort.
+
 ## Siehe auch
 
+- [Zwei-Faktor-Anmeldung (MFA)](help:settings/mfa)
 - [Passkeys](help:settings/passkeys)
 - [Anmeldungen und Abmelden](help:settings/sessions)

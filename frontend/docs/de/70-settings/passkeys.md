@@ -8,13 +8,14 @@ description: Mit Fingerabdruck, Gesicht oder Geräte-PIN anmelden.
 
 Mit einem Passkey meldest du dich per Fingerabdruck, Gesichtserkennung oder Geräte-PIN an, ohne Passwort.
 
+Passkeys verwaltest du im Abschnitt **Zwei-Faktor-Authentifizierung (MFA)** in deinem [Profil](help:settings/profile). Mehr dazu unter [Zwei-Faktor-Anmeldung (MFA)](help:settings/mfa).
+
 ## Passkey einrichten
 
-1. Öffne dein [Profil](help:settings/profile) und gehe zu **Passkeys**.
-2. Gib unter **Gerätename** einen Namen ein, zum Beispiel „Büro-PC“. Damit erkennst du das Gerät später in der Liste.
-3. Klicke auf **Passkey auf diesem Gerät einrichten**.
-4. Bestätige, dass du es bist: Gib dein Passwort ein. Hat dein Konto kein Passwort (nur Anbieter oder Passkey), klicke auf **Code senden**, gib den 6-stelligen Code aus der E-Mail unter **Bestätigungscode** ein (mindestens 10 Minuten gültig).
-5. Klicke auf **Weiter** und bestätige am Gerät.
+1. Klicke im Abschnitt auf **MFA-Methode hinzufügen** und wähle **Passkey**. Klicke auf **Weiter**.
+2. Bestätige, dass du es bist: Gib dein Passwort ein. Hat dein Konto kein Passwort (nur Anbieter oder Passkey), klicke auf **Code senden** und gib den 6-stelligen Code aus der E-Mail unter **Bestätigungscode** ein (mindestens 10 Minuten gültig).
+3. Klicke auf **Weiter** und bestätige am Gerät.
+4. Gib dem Passkey optional einen Namen, zum Beispiel „Büro-PC“, und klicke auf **Namen speichern**. Damit erkennst du das Gerät später in der Liste.
 
 Pro Gerät richtest du einen eigenen Passkey ein. Unterstützt dein Browser keine Passkeys, erscheint ein Hinweis.
 
@@ -22,19 +23,24 @@ Pro Gerät richtest du einen eigenen Passkey ein. Unterstützt dein Browser kein
 
 Klicke auf der Anmeldeseite auf **Mit Passkey anmelden** und bestätige am Gerät.
 
+## Passkey umbenennen
+
+Klicke bei dem Passkey auf **Umbenennen**, ändere den Namen und klicke auf **Speichern**.
+
 ## Passkey entfernen
 
-In der Liste steht bei jedem Passkey, wann er hinzugefügt und zuletzt benutzt wurde. Klicke auf **Entfernen** und bestätige. Mit diesem Gerät kannst du dich danach nicht mehr per Passkey anmelden.
-
-:::note
-Einen Passkey umbenennen kannst du nicht. Entferne ihn und richte ihn mit neuem Namen neu ein.
-:::
+Klicke bei dem Passkey auf **Entfernen**, bestätige mit deinem Passwort (ohne Passwort mit dem Code aus der E-Mail) und klicke auf **Passkey entfernen**. Mit diesem Gerät kannst du dich danach nicht mehr per Passkey anmelden.
 
 :::warning
 Wenn du einen Passkey entfernst, werden deine anderen Geräte abgemeldet.
 :::
 
+:::note
+Du kannst deinen letzten Passkey nicht entfernen, solange MFA eingeschaltet ist und keine Authenticator-App eingerichtet ist. Mehr dazu unter [Zwei-Faktor-Anmeldung (MFA)](help:settings/mfa).
+:::
+
 ## Siehe auch
 
+- [Zwei-Faktor-Anmeldung (MFA)](help:settings/mfa)
 - [Passwort](help:settings/password)
 - [Verknüpfte Anmeldungen](help:settings/linked-accounts)

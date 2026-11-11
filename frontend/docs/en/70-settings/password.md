@@ -30,7 +30,12 @@ Afterwards you are signed out everywhere and sign in again with the new password
 
 If you sign in only with Google, Microsoft or a passkey, your account has no password. In your profile under **Password**, click **Set password by email**. You get a link (valid for 60 minutes) to choose a password. You need one, for example, to [change your e-mail address](help:settings/email-change).
 
+## E-mails about changes
+
+When your password changes, you get an e-mail. The same applies when you turn two-step sign-in (MFA) on or off. If sign-in fails repeatedly, you also get an e-mail. If you did not do this yourself, change your password right away.
+
 ## See also
 
+- [Two-step sign-in (MFA)](help:settings/mfa)
 - [Passkeys](help:settings/passkeys)
 - [Sessions and signing out](help:settings/sessions)

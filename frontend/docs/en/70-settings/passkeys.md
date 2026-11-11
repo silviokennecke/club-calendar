@@ -8,13 +8,14 @@ description: Sign in with fingerprint, face or device PIN.
 
 With a passkey you sign in by fingerprint, face recognition or device PIN, without a password.
 
+You manage passkeys in the section **Two-factor authentication (MFA)** on your [profile](help:settings/profile). More under [Two-step sign-in (MFA)](help:settings/mfa).
+
 ## Set up a passkey
 
-1. Open your [profile](help:settings/profile) and go to **Passkeys**.
-2. Enter a name under **Device name**, for example "Office PC". It helps you recognize the device in the list.
-3. Click **Set up a passkey on this device**.
-4. Confirm that it is you: enter your password. If your account has no password (provider or passkey only), click **Send code** and enter the 6-digit code from the email under **Confirmation code** (valid for at least 10 minutes).
-5. Click **Continue** and confirm on the device.
+1. In the section, click **Add MFA method** and choose **Passkey**. Click **Next**.
+2. Confirm that it is you: enter your password. If your account has no password (provider or passkey only), click **Send code** and enter the 6-digit code from the e-mail under **Confirmation code** (valid for at least 10 minutes).
+3. Click **Next** and confirm on the device.
+4. Optionally enter a name for the passkey, for example "Office PC", and click **Save name**. It helps you recognize the device in the list.
 
 You set up one passkey per device. If your browser does not support passkeys, you see a notice.
 
@@ -22,19 +23,24 @@ You set up one passkey per device. If your browser does not support passkeys, yo
 
 On the sign-in page, click **Sign in with passkey** and confirm on the device.
 
+## Rename a passkey
+
+Next to the passkey, click **Rename**, change the name and click **Save**.
+
 ## Remove a passkey
 
-The list shows when each passkey was added and last used. Click **Remove** and confirm. You can no longer sign in with that device by passkey.
-
-:::note
-You cannot rename a passkey. Remove it and set it up again with a new name.
-:::
+Next to the passkey, click **Remove**, confirm it is you with your password (without a password, with the code from the e-mail) and click **Remove passkey**. You can no longer sign in with that device by passkey.
 
 :::warning
 When you remove a passkey, your other devices are signed out.
 :::
 
+:::note
+You cannot remove your last passkey while MFA is on and no authenticator app is set up. More under [Two-step sign-in (MFA)](help:settings/mfa).
+:::
+
 ## See also
 
+- [Two-step sign-in (MFA)](help:settings/mfa)
 - [Password](help:settings/password)
 - [Linked sign-ins](help:settings/linked-accounts)

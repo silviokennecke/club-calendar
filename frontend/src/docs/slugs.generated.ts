@@ -42,6 +42,7 @@ export const DOC_SLUGS = [
   "settings/email-change",
   "settings/index",
   "settings/linked-accounts",
+  "settings/mfa",
   "settings/passkeys",
   "settings/password",
   "settings/preferences",
