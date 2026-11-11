@@ -1,5 +1,6 @@
-import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, type APIRequestContext, type CDPSession, type Page } from "@playwright/test";
 import { spawnSync } from "node:child_process";
+import { createHmac } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 export const API = process.env.E2E_API_URL ?? "http://localhost:3001";
@@ -143,4 +144,87 @@ export async function pressForFileChooser(page: Page, key: string) {
   await page.evaluate(() => undefined);
   await page.keyboard.press(key);
   return chooser;
+}
+
+const BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+/** RFC 6238 time step (30 s) of `ms`, default now. */
+export function totpStep(ms = Date.now()) {
+  return Math.floor(ms / 1000 / 30);
+}
+
+/** RFC 6238 TOTP (HMAC-SHA1, 6 digits, 30 s) of a base32 secret for `step` (default: the current one). */
+export function totpCode(base32: string, step = totpStep()) {
+  const clean = base32.replace(/[\s=-]/g, "").toUpperCase();
+  let bits = "";
+  for (const ch of clean) bits += BASE32.indexOf(ch).toString(2).padStart(5, "0");
+  const key = Buffer.from((bits.match(/.{8}/g) ?? []).map((b) => parseInt(b, 2)));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(step));
+  const hash = createHmac("sha1", key).update(counter).digest();
+  const offset = hash[hash.length - 1] & 0x0f;
+  const bin = hash.readUInt32BE(offset) & 0x7fffffff;
+  return String(bin % 1_000_000).padStart(6, "0");
+}
+
+/** Adds a CDP virtual authenticator (resident keys, user verification) to the page. */
+export async function addVirtualAuthenticator(page: Page) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("WebAuthn.enable");
+  const { authenticatorId } = await cdp.send("WebAuthn.addVirtualAuthenticator", {
+    options: {
+      protocol: "ctap2",
+      transport: "internal",
+      hasResidentKey: true,
+      hasUserVerification: true,
+      isUserVerified: true,
+      automaticPresenceSimulation: true,
+    },
+  });
+  return { cdp, authenticatorId };
+}
+
+/** Email-first sign-in up to and including the password step (no waiting for the target page). */
+export async function submitPassword(page: Page, email: string) {
+  await page.goto("/login");
+  await continueWithEmail(page, email);
+  await loginPassword(page).fill(PASSWORD);
+  await page.getByRole("button", { name: "Anmelden", exact: true }).click();
+}
+
+/** Types a 6-digit code into the CodeInput group (first field focused, digits auto-advance). */
+export async function typeDigits(page: Page, code: string) {
+  await page.getByLabel("Ziffer 1 von 6").click();
+  await page.keyboard.type(code);
+}
+
+/**
+ * Profile > MFA > add a passkey (German UI): password proof, ceremony (needs a virtual authenticator),
+ * naming, close. Expects the profile page to be open.
+ */
+export async function addPasskeyInProfile(page: Page, deviceName: string) {
+  await page.getByRole("button", { name: "MFA-Methode hinzufügen" }).click();
+  const dialog = page.getByRole("dialog", { name: "Zweiten Schritt hinzufügen" });
+  await dialog.getByRole("button", { name: "Passkey", exact: true }).click();
+  await dialog.getByLabel(/Dein Passwort/).fill(PASSWORD);
+  await dialog.getByRole("button", { name: "Weiter" }).click();
+  const naming = page.getByRole("dialog", { name: "Passkey benennen" });
+  await naming.getByLabel("Name").fill(deviceName);
+  await naming.getByRole("button", { name: "Namen speichern" }).click();
+  const done = page.getByRole("dialog", { name: "Fertig" });
+  await done.getByRole("button", { name: "Schließen" }).click();
+  await expect(done).toHaveCount(0);
+}
+
+/**
+ * The login page starts a conditional passkey request, which a virtual authenticator with automatic presence
+ * simulation answers at once (the page signs in on its own). Turn the simulation off while a password
+ * sign-in has to be typed, on again for the passkey ceremony.
+ */
+export async function setPresenceSimulation(
+  cdp: CDPSession,
+  authenticatorId: string,
+  enabled: boolean,
+) {
+  await cdp.send("WebAuthn.setAutomaticPresenceSimulation", { authenticatorId, enabled });
 }

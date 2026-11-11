@@ -1,7 +1,16 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
-import { API, PASSWORD, authHeaders, createVerifiedUser, login, seedClub } from "./helpers";
+import {
+  API,
+  PASSWORD,
+  addVirtualAuthenticator,
+  setPresenceSimulation,
+  authHeaders,
+  createVerifiedUser,
+  login,
+  seedClub,
+} from "./helpers";
 
-// ——— Profil (phase 7): Sprache, Darstellung, Datumsformat, Passkeys, Konto ———
+// ——— Profil (phase 7): Sprache, Darstellung, Datumsformat, MFA/Passkeys, Konto ———
 
 async function seed(request: APIRequestContext, name: string) {
   const email = await createVerifiedUser(request, name);
@@ -28,12 +37,27 @@ async function openProfile(
   await expect(page.getByRole("heading", { level: 1, name: "Profil" })).toBeVisible();
 }
 
-/** Passkey setup first asks for the password (L7); clicks the button, then confirms in the dialog. */
+/** Opens "MFA-Methode hinzufügen" > Passkey (unless the proof step is open) and confirms the password. */
 async function startPasskeySetup(page: Page) {
-  await page.getByRole("button", { name: "Passkey auf diesem Gerät einrichten" }).click();
-  const dialog = page.getByRole("dialog", { name: "Bestätige, dass du es bist" });
-  await dialog.getByLabel(/Dein Passwort/).fill(PASSWORD);
+  const dialog = page.getByRole("dialog");
+  const password = dialog.getByLabel(/Dein Passwort/);
+  if (!(await password.isVisible())) {
+    await page.getByRole("button", { name: "MFA-Methode hinzufügen" }).click();
+    await dialog.getByRole("button", { name: "Passkey", exact: true }).click();
+  }
+  await password.fill(PASSWORD);
   await dialog.getByRole("button", { name: "Weiter" }).click();
+}
+
+/** Names the new passkey (step "Passkey benennen") and closes the dialog. */
+async function nameAndFinish(page: Page, name: string) {
+  const naming = page.getByRole("dialog", { name: "Passkey benennen" });
+  await naming.getByLabel("Name").fill(name);
+  await naming.getByRole("button", { name: "Namen speichern" }).click();
+  await page
+    .getByRole("dialog", { name: "Fertig" })
+    .getByRole("button", { name: "Schließen" })
+    .click();
 }
 
 const me = async (request: APIRequestContext, headers: Record<string, string>) =>
@@ -60,7 +84,7 @@ test.describe("Profil", () => {
     await expect(page.getByText(s.email).first()).toBeVisible();
     await expect(page.getByRole("region", { name: "Name und E-Mail-Adresse" })).toBeVisible();
     await expect(page.getByRole("region", { name: "Passwort" })).toBeVisible();
-    await expect(page.getByText("Du hast noch keinen Passkey eingerichtet.")).toBeVisible();
+    await expect(page.getByText("Du hast noch keinen zweiten Faktor eingerichtet.")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Verknüpfte Anmeldungen" })).toBeVisible();
   });
 
@@ -173,18 +197,17 @@ test.describe("Profil", () => {
       navigator.credentials.create = () =>
         Promise.reject(new DOMException("The operation was cancelled", "NotAllowedError"));
     });
-    await page.getByLabel(/^Gerätename/).fill("Büro-PC");
     await startPasskeySetup(page);
-    await expect(page.getByText(/Das Einrichten wurde abgebrochen/)).toBeVisible();
-    await expect(page.getByLabel(/^Gerätename/)).toHaveValue("Büro-PC");
+    const dialog = page.getByRole("dialog", { name: "Passkey hinzufügen" });
+    await expect(dialog.getByText(/Der Passkey wurde nicht angelegt/)).toBeVisible();
     // Ein anderer Fehler: eigene Meldung als Alarm
     await page.evaluate(() => {
       navigator.credentials.create = () =>
         Promise.reject(new DOMException("Device not supported", "NotSupportedError"));
     });
     await startPasskeySetup(page);
-    await expect(page.getByRole("alert")).toContainText(
-      "Der Passkey konnte nicht eingerichtet werden.",
+    await expect(dialog.getByRole("alert")).toContainText(
+      "Der Passkey konnte nicht angelegt werden.",
     );
     expect((await me(request, s.headers)).passkeys).toHaveLength(0);
   });
@@ -195,37 +218,25 @@ test.describe("Profil", () => {
   }) => {
     const s = await seed(request, "Profil Virtuell");
     await openProfile(page, s, request);
-    const cdp = await page.context().newCDPSession(page);
-    await cdp.send("WebAuthn.enable");
-    await cdp.send("WebAuthn.addVirtualAuthenticator", {
-      options: {
-        protocol: "ctap2",
-        transport: "internal",
-        hasResidentKey: true,
-        hasUserVerification: true,
-        isUserVerified: true,
-        automaticPresenceSimulation: true,
-      },
-    });
+    await addVirtualAuthenticator(page);
 
-    await page.getByLabel(/^Gerätename/).fill("Test-Laptop");
     await startPasskeySetup(page);
-    await expect(page.getByText("Passkey „Test-Laptop“ wurde hinzugefügt.")).toBeVisible();
-    const list = page.getByRole("list", { name: "Deine Passkeys (1)" });
+    await nameAndFinish(page, "Test-Laptop");
+    const list = page.getByRole("list", { name: "Deine MFA-Methoden" });
     await expect(list).toContainText("Test-Laptop");
     await expect(list).toContainText("hinzugefügt am");
-    await expect(page.getByLabel(/^Gerätename/)).toHaveValue("");
     expect((await me(request, s.headers)).passkeys).toHaveLength(1);
 
-    // Entfernen: Abbrechen ändert nichts, Bestätigen entfernt
+    // Entfernen: Abbrechen ändert nichts, Bestätigen (mit Passwort) entfernt
     await page.getByRole("button", { name: "Passkey „Test-Laptop“ entfernen" }).click();
-    const dialog = page.getByRole("alertdialog", { name: "Passkey „Test-Laptop“ entfernen?" });
-    await expect(dialog).toContainText("Deine anderen Anmeldewege bleiben bestehen.");
+    const dialog = page.getByRole("dialog", { name: "Passkey „Test-Laptop“ entfernen?" });
+    await expect(dialog).toContainText("Bitte bestätige, dass du es bist.");
     await dialog.getByRole("button", { name: "Abbrechen" }).click();
     await expect(list).toContainText("Test-Laptop");
     await page.getByRole("button", { name: "Passkey „Test-Laptop“ entfernen" }).click();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Passkey entfernen" }).click();
-    await expect(page.getByText("Du hast noch keinen Passkey eingerichtet.")).toBeVisible();
+    await dialog.getByLabel(/Dein Passwort/).fill(PASSWORD);
+    await dialog.getByRole("button", { name: "Passkey entfernen" }).click();
+    await expect(page.getByText("Du hast noch keinen zweiten Faktor eingerichtet.")).toBeVisible();
     // deleting a passkey ends all sessions (token version), so the old access token is dead: sign in again
     expect((await me(request, await authHeaders(request, s.email))).passkeys).toHaveLength(0);
   });
@@ -236,30 +247,25 @@ test.describe("Profil", () => {
   }) => {
     const s = await seed(request, "Profil Passkey Login");
     await openProfile(page, s, request);
-    const cdp = await page.context().newCDPSession(page);
-    await cdp.send("WebAuthn.enable");
-    const { authenticatorId } = await cdp.send("WebAuthn.addVirtualAuthenticator", {
-      options: {
-        protocol: "ctap2",
-        transport: "internal",
-        hasResidentKey: true,
-        hasUserVerification: true,
-        isUserVerified: true,
-        automaticPresenceSimulation: true,
-      },
-    });
-    await page.getByLabel(/^Gerätename/).fill("Login-Laptop");
+    const { cdp, authenticatorId } = await addVirtualAuthenticator(page);
     await startPasskeySetup(page);
-    await expect(page.getByText("Passkey „Login-Laptop“ wurde hinzugefügt.")).toBeVisible();
+    await nameAndFinish(page, "Login-Laptop");
+    await expect(page.getByRole("list", { name: "Deine MFA-Methoden" })).toContainText(
+      "Login-Laptop",
+    );
 
+    // The login page asks for a passkey on its own (conditional request, answered by the virtual
+    // authenticator); keep it silent until the listener for the request is in place.
+    await setPresenceSimulation(cdp, authenticatorId, false);
     await page.getByRole("main").getByRole("button", { name: "Abmelden", exact: true }).click();
     await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByRole("button", { name: "Mit Passkey anmelden" })).toBeVisible();
 
     // Capture what the browser sends, to replay it afterwards.
     const verify = page.waitForRequest(
       (r) => r.url().endsWith("/api/auth/webauthn/authenticate/verify") && r.method() === "POST",
     );
-    await page.getByRole("button", { name: "Mit Passkey anmelden" }).click();
+    await setPresenceSimulation(cdp, authenticatorId, true);
     const sent = (await verify).postData() ?? "";
     await page.waitForURL(/\/clubs/);
     const { credentials } = await cdp.send("WebAuthn.getCredentials", { authenticatorId });
