@@ -6,6 +6,7 @@ doctrine:
         types:
             encrypted_feed_secret: App\Doctrine\Type\EncryptedFeedSecretType
             encrypted_subscription_secret: App\Doctrine\Type\EncryptedSubscriptionSecretType
+            encrypted_totp_secret: App\Doctrine\Type\EncryptedTotpSecretType
     orm:
         naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
         auto_mapping: true

@@ -25,7 +25,7 @@ class DatabaseResetter
             'member_subscription_feed', 'member_subscription_target_group', 'member_subscription', 'feed_member', 'calendar_feed_target_group', 'calendar_feed_calendar', 'calendar_feed',
             'target_group', 'location', 'feature', 'property',
             'holiday_event', 'holiday_calendar',
-            'calendar', 'club_invitation', 'club_user', 'passkey', 'oauth_account', 'club',
+            'calendar', 'club_invitation', 'club_user', 'passkey', 'user_totp', 'mfa_backup_code', 'security_event', 'oauth_account', 'club',
             'oauth_authorization_code', 'oauth_authorization_request', 'mcp_token', 'mcp_grant', 'oauth_client',
             'email_verification', 'password_reset', 'email_change', 'refresh_token', 'user_consent', 'legal_document', 'user', 'auth_nonce',
         ];
