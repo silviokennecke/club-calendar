@@ -17,6 +17,9 @@ parameters:
     app.legal_privacy: '%env(LEGAL_PRIVACY_URL)%'
     app.legal_terms: '%env(LEGAL_TERMS_URL)%'
 
+    # Header with the client's ISO country code set by a trusted proxy/CDN (empty = off)
+    env(CLIENT_COUNTRY_HEADER): 'CF-IPCountry'
+
     env(WEBAUTHN_RP_ID): '%env(string:key:host:url:APP_URL)%'
     env(WEBAUTHN_RP_NAME): 'Club Calendar'
     env(WEBAUTHN_USER_VERIFICATION): 'preferred'
