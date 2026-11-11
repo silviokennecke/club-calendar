@@ -1793,8 +1793,7 @@
       "targetGroups": "Audiences",
       "locations": "Locations",
       "holidays": "Holidays",
-      "clubLabel": "Club settings",
-      "feeds": "Feeds"
+      "clubLabel": "Club settings"
     },
     "unavailable": "Not available",
     "toClubPicker": "Go to club selection",

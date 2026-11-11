@@ -217,7 +217,7 @@ Background: `docs/ops/BACKLOG.md` (open backend gaps and operations), `docs/api/
   Locations, target groups and feeds are CLUB data: their pages live at `/clubs/:clubId/settings/{locations,
 target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `…/calendars/:calendarId/settings/…`
   addresses redirect via `LegacyClubSettingsRedirect`) and use `components/settings/ClubSettingsLayout` (+
-  `ClubSettingsTabs`, feeds tab only for editors+) and `useClubSettingsPage()` (club, role, `canEdit` / `isAdmin`,
+  `ClubSettingsTabs`: only locations and target groups; the feeds pages are standalone without tabs) and `useClubSettingsPage()` (club, role, `canEdit` / `isAdmin`,
   `readOnly` = role only, no archived state, `activeCalendars`, `routes` = `clubSettingsRoutes(clubId)`). A new feed
   starts with all active calendars of the club selected. `ProtectedRoute` treats `/clubs/:id/settings/*` as club
   context (shell calendar = last used). Properties, features, holiday calendars and general settings stay below

@@ -1793,8 +1793,7 @@
       "targetGroups": "Gruppen",
       "locations": "Orte",
       "holidays": "Feiertage",
-      "clubLabel": "Einstellungen des Vereins",
-      "feeds": "Feeds"
+      "clubLabel": "Einstellungen des Vereins"
     },
     "unavailable": "Nicht verfügbar",
     "toClubPicker": "Zur Vereinsauswahl",

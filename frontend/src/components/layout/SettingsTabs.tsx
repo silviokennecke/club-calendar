@@ -1,6 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import type { ClubRole } from "@/lib/types";
 import { buildClubSettingsTabs, buildSettingsTabs, type SettingsTab } from "./navigation";
 
 function TabLinks({ tabs, label }: { tabs: SettingsTab[]; label: string }) {
@@ -27,13 +26,10 @@ export function SettingsTabs({ clubId, calendarId }: { clubId: string; calendarI
   );
 }
 
-/** Tabs for the club settings sub-pages (locations, target groups, feeds); feeds only for editors and admins. */
-export function ClubSettingsTabs({ clubId, role }: { clubId: string; role?: ClubRole }) {
+/** Tabs for the club settings sub-pages (locations, target groups). */
+export function ClubSettingsTabs({ clubId }: { clubId: string }) {
   const { t } = useTranslation();
   return (
-    <TabLinks
-      tabs={buildClubSettingsTabs(clubId, role)}
-      label={t("shell.settingsTabs.clubLabel")}
-    />
+    <TabLinks tabs={buildClubSettingsTabs(clubId)} label={t("shell.settingsTabs.clubLabel")} />
   );
 }

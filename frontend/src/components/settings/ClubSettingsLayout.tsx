@@ -31,7 +31,7 @@ export function ClubSettingsLayout({ wide, actions, children }: ClubSettingsLayo
         </div>
         {actions && <div className="ap-actions">{actions}</div>}
       </header>
-      <ClubSettingsTabs clubId={page.clubId} role={page.club?.role} />
+      <ClubSettingsTabs clubId={page.clubId} />
       <div className="ap-stack ap-stack--lg">
         {!page.canEdit && !page.roleLoading && (
           <Banner tone="info" icon="lock">

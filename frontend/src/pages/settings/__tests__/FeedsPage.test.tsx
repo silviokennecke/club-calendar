@@ -220,20 +220,10 @@ describe("FeedsPage", () => {
     expect(await screen.findByRole("heading", { name: "Noch kein Feed" })).toBeInTheDocument();
   });
 
-  it("has the club settings tabs and no archived state", async () => {
+  it("is a standalone page without tabs and has no archived state", async () => {
     renderRoute(route, url, <FeedsPage />);
     await screen.findByRole("heading", { level: 1, name: "Veröffentlichen" });
-    const tabs = screen.getByRole("navigation", { name: "Einstellungen des Vereins" });
-    await within(tabs).findByRole("link", { name: "Feeds" });
-    expect(
-      within(tabs)
-        .getAllByRole("link")
-        .map((l) => l.textContent),
-    ).toEqual(["Orte", "Gruppen", "Feeds"]);
-    expect(within(tabs).getByRole("link", { name: "Feeds" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    expect(screen.queryByRole("navigation", { name: "Einstellungen des Vereins" })).toBeNull();
     expect(screen.getByText("Schützenverein", { exact: false })).toBeInTheDocument();
     expect(screen.queryByText("Archiviert, schreibgeschützt")).not.toBeInTheDocument();
   });

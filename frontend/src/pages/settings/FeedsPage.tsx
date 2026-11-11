@@ -22,7 +22,6 @@ import { FeedsForbidden } from "@/components/feeds/FeedsForbidden";
 import { FeedAccess } from "@/components/feeds/FeedAccess";
 import { useFeeds } from "@/components/feeds/useFeeds";
 import { useClubSettingsPage } from "@/components/settings/useClubSettingsPage";
-import { ClubSettingsTabs } from "@/components/layout/SettingsTabs";
 import { apiDelete } from "@/lib/api";
 import { feedStatus } from "@/lib/feeds";
 import { focusAfterDialog } from "@/lib/focus";
@@ -218,7 +217,6 @@ export default function FeedsPage() {
           )}
         </div>
       </header>
-      <ClubSettingsTabs clubId={page.clubId} role={page.club?.role} />
       <div className="ap-stack ap-stack--lg">
         {readOnly ? (
           <Banner tone="info" icon="lock">

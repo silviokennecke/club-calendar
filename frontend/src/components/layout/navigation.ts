@@ -192,15 +192,13 @@ export function buildSettingsTabs(clubId: string, calendarId: string): SettingsT
   ];
 }
 
-/** Club settings sub-pages: locations, target groups and feeds (feeds are not readable for viewers). */
-export function buildClubSettingsTabs(clubId: string, role?: ClubRole): SettingsTab[] {
+/** Club settings sub-pages: locations and target groups (feeds have their own page). */
+export function buildClubSettingsTabs(clubId: string): SettingsTab[] {
   const routes = clubSettingsRoutes(clubId);
-  const tabs: SettingsTab[] = [
+  return [
     { labelKey: "shell.settingsTabs.locations", href: routes.locations },
     { labelKey: "shell.settingsTabs.targetGroups", href: routes.targetGroups },
-    { labelKey: "shell.settingsTabs.feeds", href: routes.feeds },
   ];
-  return roleAtLeast(role, "editor") ? tabs : tabs.filter((tab) => tab.href !== routes.feeds);
 }
 
 export function initials(name: string | undefined | null): string {
