@@ -13,7 +13,7 @@ import { CalendarSubscriptionSection } from "@/components/profile/CalendarSubscr
 import { ConnectedAppsSection } from "@/components/profile/ConnectedAppsSection";
 import { LegalSection } from "@/components/profile/LegalSection";
 import { PasswordSection } from "@/components/profile/PasswordSection";
-import { PasskeysSection } from "@/components/profile/PasskeysSection";
+import { MfaSection } from "@/components/profile/MfaSection";
 import { PreferencesSection } from "@/components/profile/PreferencesSection";
 import { SessionsSection } from "@/components/profile/SessionsSection";
 import type { ProfileData } from "@/components/profile/profileTypes";
@@ -57,7 +57,7 @@ async function completeLink(provider: string, proof: string): Promise<LinkOutcom
 
 /**
  * Profile (design: Profile, ProfileMobile): account (name, e-mail with confirmation link), password
- * (change, or set by e-mail for SSO-only accounts), linked sign-ins (link / unlink), passkeys, personal
+ * (change, or set by e-mail for SSO-only accounts), linked sign-ins (link / unlink), MFA (authenticator app, passkeys, backup codes), personal
  * settings (incl. theme) and account deletion. Name / e-mail / password editing extends the design.
  */
 export default function ProfilePage() {
@@ -152,12 +152,7 @@ export default function ProfilePage() {
           <AccountSection key={data.name} profile={data} />
           <PasswordSection profile={data} />
           <LinkedLoginsSection profile={data} outcome={linkOutcome} />
-          <PasskeysSection
-            passkeys={data.passkeys}
-            hasPassword={data.hasPassword}
-            email={data.email}
-            refresh={() => profile.refetch()}
-          />
+          <MfaSection profile={data} />
         </>
       ) : (
         <Banner

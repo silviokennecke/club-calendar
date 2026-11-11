@@ -109,6 +109,7 @@ beforeEach(() => {
       },
     ],
     oauthAccounts: [{ provider: "google" }],
+    mfa: { enforced: false, totp: null, backupCodes: null, canEnforce: true },
   };
   providers = [
     { id: "google", name: "Google", icon: "google" },
@@ -169,7 +170,7 @@ describe("ProfilePage", () => {
     expect(within(sso).getByRole("button", { name: "Microsoft-Konto verknüpfen" })).toBeEnabled();
     expect(within(sso).queryByText(/Mindestens eine Anmeldemethode/)).not.toBeInTheDocument();
 
-    const keys = within(screen.getByRole("list", { name: "Deine Passkeys (2)" })).getAllByRole(
+    const keys = within(screen.getByRole("list", { name: "Deine MFA-Methoden" })).getAllByRole(
       "listitem",
     );
     expect(keys[0]).toHaveTextContent("MacBook Alex");
@@ -374,7 +375,9 @@ describe("ProfilePage", () => {
       "href",
       "/clubs?select=1",
     );
-    expect(await screen.findByRole("heading", { name: "Passkeys" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Zwei-Faktor-Authentifizierung (MFA)" }),
+    ).toBeInTheDocument();
   });
 
   it("signs out", async () => {
@@ -432,21 +435,6 @@ describe("ProfilePage", () => {
     expect(updateUser).not.toHaveBeenCalled();
   });
 
-  it("removes a passkey only after confirming and names the consequence", async () => {
-    const user = userEvent.setup();
-    renderProfile();
-    await user.click(
-      await screen.findByRole("button", { name: "Passkey „iPhone Alex“ entfernen" }),
-    );
-    const dialog = await screen.findByRole("alertdialog", {
-      name: "Passkey „iPhone Alex“ entfernen?",
-    });
-    expect(dialog).toHaveTextContent("Deine anderen Anmeldewege bleiben bestehen.");
-    expect(apiDelete).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole("button", { name: "Passkey entfernen" }));
-    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/auth/webauthn/p2"));
-  });
-
   it("signs out everywhere only after confirming, then signs out locally", async () => {
     const user = userEvent.setup();
     logoutEverywhere.mockResolvedValue(undefined);
@@ -473,152 +461,6 @@ describe("ProfilePage", () => {
     await user.click(within(dialog).getByRole("button", { name: "Überall abmelden" }));
     expect(await screen.findByText(/Abmelden auf allen Geräten hat nicht geklappt/)).toBeVisible();
     expect(logout).not.toHaveBeenCalled();
-  });
-
-  it("continues with the fresh tokens after a passkey was removed", async () => {
-    const user = userEvent.setup();
-    apiDelete.mockResolvedValue({
-      ok: true,
-      access_token: "a2",
-      refresh_token: "r2",
-      user: authUser,
-    });
-    renderProfile();
-    await user.click(
-      await screen.findByRole("button", { name: "Passkey „iPhone Alex“ entfernen" }),
-    );
-    const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Passkey entfernen" }));
-    await waitFor(() => expect(login).toHaveBeenCalledWith("a2", "r2", authUser));
-  });
-
-  it("sets up a passkey after the password was confirmed and refreshes the list", async () => {
-    const user = userEvent.setup();
-    apiPost.mockResolvedValue({ options: { challenge: "x" }, challengeToken: "t" });
-    apiFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ ok: true }) });
-    startRegistration.mockResolvedValue({ id: "cred" });
-    renderProfile();
-    await user.type(await screen.findByLabelText(/^Gerätename/), "Büro-PC");
-    await user.click(screen.getByRole("button", { name: "Passkey auf diesem Gerät einrichten" }));
-    const dialog = await screen.findByRole("dialog", { name: "Bestätige, dass du es bist" });
-    await user.type(within(dialog).getByLabelText(/Dein Passwort/), "geheim123");
-    await user.click(within(dialog).getByRole("button", { name: "Weiter" }));
-    expect(await screen.findByText("Passkey „Büro-PC“ wurde hinzugefügt.")).toBeInTheDocument();
-    expect(apiPost).toHaveBeenCalledWith("/api/auth/webauthn/register/options", {
-      password: "geheim123",
-    });
-    const verify = apiFetch.mock.calls.find(([p]) => String(p).endsWith("/register/verify"))!;
-    expect(JSON.parse(verify[1].body)).toEqual({
-      challengeToken: "t",
-      response: { id: "cred" },
-      deviceName: "Büro-PC",
-    });
-    expect(apiGet.mock.calls.filter(([p]) => p === "/api/auth/me").length).toBeGreaterThanOrEqual(
-      2,
-    );
-  });
-
-  it("starts nothing when the password is wrong", async () => {
-    const user = userEvent.setup();
-    apiPost.mockRejectedValue(new ApiError("x", 400, "invalid_credentials"));
-    renderProfile();
-    await user.click(
-      await screen.findByRole("button", { name: "Passkey auf diesem Gerät einrichten" }),
-    );
-    const dialog = await screen.findByRole("dialog", { name: "Bestätige, dass du es bist" });
-    await user.type(within(dialog).getByLabelText(/Dein Passwort/), "falsch");
-    await user.click(within(dialog).getByRole("button", { name: "Weiter" }));
-    expect(
-      await within(dialog).findByText(/Passwort ist nicht korrekt|Passwort stimmt nicht/),
-    ).toBeInTheDocument();
-    expect(startRegistration).not.toHaveBeenCalled();
-    expect(apiFetch).not.toHaveBeenCalled();
-  });
-
-  it("confirms an account without a password with the mailed code before the passkey", async () => {
-    profile = { ...profile, hasPassword: false };
-    const user = userEvent.setup();
-    apiPost.mockResolvedValue({ options: { challenge: "x" }, challengeToken: "t" });
-    apiFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ ok: true }) });
-    startRegistration.mockResolvedValue({ id: "cred" });
-    renderProfile();
-    await user.click(
-      await screen.findByRole("button", { name: "Passkey auf diesem Gerät einrichten" }),
-    );
-    const dialog = await screen.findByRole("dialog", { name: "Bestätige, dass du es bist" });
-    await user.click(within(dialog).getByRole("button", { name: "Code senden" }));
-    await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith("/api/auth/webauthn/register/code", {}),
-    );
-    // An incomplete code is not sent
-    await user.click(within(dialog).getByRole("button", { name: "Weiter" }));
-    expect(apiPost).not.toHaveBeenCalledWith(
-      "/api/auth/webauthn/register/options",
-      expect.anything(),
-    );
-    await user.click(within(dialog).getAllByRole("textbox")[0]);
-    await user.paste("123456");
-    await user.click(within(dialog).getByRole("button", { name: "Weiter" }));
-    await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith("/api/auth/webauthn/register/options", {
-        code: "123456",
-      }),
-    );
-    expect(await screen.findByText(/wurde hinzugefügt/)).toBeInTheDocument();
-  });
-
-  it("shows a wrong passkey code at the field", async () => {
-    profile = { ...profile, hasPassword: false };
-    apiPost.mockRejectedValue(new ApiError("x", 400, "invalid_confirmation_code"));
-    const user = userEvent.setup();
-    renderProfile();
-    await user.click(
-      await screen.findByRole("button", { name: "Passkey auf diesem Gerät einrichten" }),
-    );
-    const dialog = await screen.findByRole("dialog", { name: "Bestätige, dass du es bist" });
-    await user.click(within(dialog).getAllByRole("textbox")[0]);
-    await user.paste("123456");
-    await user.click(within(dialog).getByRole("button", { name: "Weiter" }));
-    expect(
-      await within(dialog).findByText("Der Code ist nicht korrekt oder abgelaufen."),
-    ).toBeInTheDocument();
-    expect(startRegistration).not.toHaveBeenCalled();
-  });
-
-  it("explains a failed passkey setup and a cancelled one differently", async () => {
-    const user = userEvent.setup();
-    apiPost.mockResolvedValue({ options: { challenge: "x" }, challengeToken: "t" });
-    apiFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ ok: true }) });
-    const confirm = async () => {
-      await user.click(add);
-      const dialog = await screen.findByRole("dialog", { name: "Bestätige, dass du es bist" });
-      await user.type(within(dialog).getByLabelText(/Dein Passwort/), "geheim123");
-      await user.click(within(dialog).getByRole("button", { name: "Weiter" }));
-    };
-    renderProfile();
-    const add = await screen.findByRole("button", { name: "Passkey auf diesem Gerät einrichten" });
-    startRegistration.mockRejectedValue(
-      Object.assign(new Error("denied"), { name: "NotAllowedError" }),
-    );
-    await confirm();
-    expect(await screen.findByText(/Das Einrichten wurde abgebrochen/)).toBeInTheDocument();
-    startRegistration.mockRejectedValue(new Error("boom"));
-    await confirm();
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Der Passkey konnte nicht eingerichtet werden.",
-    );
-    expect(screen.queryByText(/abgebrochen/)).not.toBeInTheDocument();
-  });
-
-  it("disables the passkey setup in browsers without passkey support", async () => {
-    Reflect.deleteProperty(window, "PublicKeyCredential");
-    renderProfile();
-    expect(
-      await screen.findByText("Dieser Browser unterstützt keine Passkeys."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Passkey auf diesem Gerät einrichten" }),
-    ).toBeDisabled();
   });
 
   async function openDeleteDialog(user: ReturnType<typeof userEvent.setup>) {
@@ -735,7 +577,9 @@ describe("ProfilePage", () => {
       ),
     );
     await user.click(screen.getByRole("button", { name: "Erneut versuchen" }));
-    expect(await screen.findByRole("heading", { name: "Passkeys" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Zwei-Faktor-Authentifizierung (MFA)" }),
+    ).toBeInTheDocument();
   });
 
   it("says so when there are no passkeys and no linked sign-ins", async () => {
@@ -743,7 +587,7 @@ describe("ProfilePage", () => {
     providers = [];
     renderProfile();
     expect(
-      await screen.findByText("Du hast noch keinen Passkey eingerichtet."),
+      await screen.findByText("Du hast noch keinen zweiten Faktor eingerichtet."),
     ).toBeInTheDocument();
     expect(screen.getByText(/Es ist keine Anmeldung über einen Anbieter/)).toBeInTheDocument();
   });
@@ -767,7 +611,10 @@ describe("ProfilePage (dialog while loading)", () => {
     await screen.findByRole("dialog", { name: "Konto löschen?" });
     resolveMe(profile);
     // The page behind the modal dialog is inert, hence `hidden`.
-    await screen.findByRole("heading", { name: "Passkeys", hidden: true });
+    await screen.findByRole("heading", {
+      name: "Zwei-Faktor-Authentifizierung (MFA)",
+      hidden: true,
+    });
     expect(screen.getByRole("dialog", { name: "Konto löschen?" })).toBeInTheDocument();
   });
 });
