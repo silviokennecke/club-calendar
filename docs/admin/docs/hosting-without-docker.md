@@ -242,3 +242,5 @@ Set up the jobs listed under [Scheduled tasks](operations.md). They are the same
 ## Updating
 
 See [Updating](operations.md).
+
+The list of known browsers (shown in sign-in notification mails) can be refreshed between releases, see [Browser recognition](operations.md#browser-recognition).

@@ -25,6 +25,8 @@ COPY backend/ ./
 # fixtures need a dev-only bundle and are not meant for production
 RUN rm -rf src/DataFixtures \
     && composer dump-autoload --no-dev --classmap-authoritative --no-scripts --no-interaction
+# Freshest browser-recognition data (uap-core) at build time; on failure the data shipped with the package stays
+RUN php bin/update-uap-regexes.php || echo "WARNING: using the uap-core data shipped with the package"
 
 # ── Stage 2: mail templates + frontend (Vite builds into backend/public) ─────
 FROM --platform=$BUILDPLATFORM node:${NODE_VERSION}-alpine AS frontend-build

@@ -4,26 +4,26 @@ declare(strict_types=1);
 
 namespace App\Security;
 
+use UAParser\Parser;
+
 final class UserAgentSummary
 {
-    /** Ordered: Edge/Opera/Samsung contain "Chrome", Chrome contains "Safari". */
-    private const PATTERNS = [
-        'Edge' => '#\bEdg(?:e|A|iOS)?/(\d+)#',
-        'Opera' => '#\bOPR/(\d+)#',
-        'Samsung Internet' => '#\bSamsungBrowser/(\d+)#',
-        'Firefox' => '#\b(?:Firefox|FxiOS)/(\d+)#',
-        'Chrome' => '#\b(?:Chrome|CriOS)/(\d+)#',
-        'Safari' => '#\bVersion/(\d+)[^ ]*(?: Mobile/\S+)? Safari/#',
-    ];
+    private static ?Parser $parser = null;
 
+    /** "Chrome 126" (family and major version) or null when the browser is unknown. */
     public static function browser(string $userAgent): ?string
     {
-        foreach (self::PATTERNS as $name => $regex) {
-            if (preg_match($regex, $userAgent, $m)) {
-                return $name.' '.$m[1];
-            }
+        if ('' === trim($userAgent)) {
+            return null;
         }
 
-        return null;
+        // Built once per process from the pre-converted resources/regexes.php (no YAML parsing).
+        $ua = (self::$parser ??= Parser::create())->parse($userAgent)->ua;
+        $family = $ua->family;
+        if ('' === $family || 'Other' === $family) {
+            return null;
+        }
+
+        return null !== $ua->major && '' !== $ua->major ? $family.' '.$ua->major : $family;
     }
 }

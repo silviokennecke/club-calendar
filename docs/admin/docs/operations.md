@@ -182,6 +182,24 @@ The app has a few commands for administrators. Run them like this:
 | `app:secrets:rotate` | Encrypts stored feed and calendar secrets with the current `APP_SECRET` and re-encrypts values of older keys. `--dry-run` only counts. Prints counts per column; ends with an error and the ids of rows it cannot read. Safe to repeat. See [Secrets and key rotation](#secrets-and-key-rotation). |
 | `app:holidays:refresh` | Refreshes holiday calendars: `--all` for all predefined ones, `--calendar=<id>` for one. |
 
+## Browser recognition
+
+Sign-in notification mails and the security overview name the browser used (for example "Chrome 126"). The app recognises browsers from a maintained list of patterns. Nothing is downloaded while the app runs, and the server needs no extra internet access for this.
+
+=== "Docker"
+
+    The list is refreshed every time the image is built, so each new release contains current data. Updating to a newer image (see [Updating](#updating)) is all you need. If the build cannot reach the source, it keeps the list that ships with the software and prints a warning in the build log.
+
+=== "Without Docker"
+
+    The list ships with the software. To refresh it between releases, run this in the `backend/` folder:
+
+    ```bash
+    composer update ua-parser/uap-php --no-dev
+    ```
+
+    A browser that is not recognised is shown as "unknown" in the mails; nothing else is affected.
+
 ## Holidays
 
 Predefined holiday and school holiday calendars are loaded from `openholidaysapi.org`, so the server needs outbound HTTPS access to that host. The data is stored in your database and shown from there. The app refreshes a calendar by itself when it is older than three months when someone uses it; the weekly job above keeps all of them current. If the source is down, the stored data stays and is used.

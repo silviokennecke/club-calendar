@@ -57,6 +57,7 @@ the router, so a new or changed route needs a matching operation there).
 | `src/Service/Quota.php` | Per-resource limits, `assertRoom()` before every create (422 `quota_exceeded`); see `../CLAUDE.md` "Limits and Quotas" |
 | `src/Doctrine/UpdateAuditListener.php` | Fills `updated_at`/`updated_by` of domain entities (`Entity\Trait\HasUpdateAudit`) |
 | `src/Doctrine/ContentVersionListener.php`, `src/Service/CalendarVersionBumper.php` | `calendar.content_version` bump for the feed ETag; bulk statements call the bumper themselves (see `../CLAUDE.md` "Content version") |
+| `src/Security/UserAgentSummary.php`, `bin/update-uap-regexes.php` | Browser name + major version from the User-Agent via `ua-parser/uap-php` (parser built once per process from the pre-converted `vendor/ua-parser/uap-php/resources/regexes.php`). `composer install` uses the data shipped with the package; the Docker build runs `php bin/update-uap-regexes.php` (fetch uap-core, verify in a temp dir, replace; failure keeps the shipped data). Refresh locally the same way or with `composer update ua-parser/uap-php`. Do not use `vendor/bin/uaparser` (needs `Application::add`, gone in Symfony 8) |
 | `src/Security/AuthRateLimiter.php` | All rate limits (limiters in `config/packages/rate_limiter.yaml`), 429 `rate_limited` |
 | `src/Security/OneTimeTokenService.php` | Purpose-bound single-use login tokens (e-mail confirmation, SSO code exchange) |
 | `src/Service/EmailVerificationService.php` | 6-digit e-mail confirmation codes (hashed, attempts and resend limits) |

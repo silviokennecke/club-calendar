@@ -45,6 +45,7 @@
         "symfony/twig-bundle": "8.1.*",
         "symfony/validator": "8.1.*",
         "symfony/yaml": "8.1.*",
+        "ua-parser/uap-php": "^3.10",
         "web-auth/webauthn-lib": "^5.3.5",
         "willdurand/geocoder-bundle": "^6.0"
     },
