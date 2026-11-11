@@ -113,7 +113,11 @@ export function LinkedLoginsSection({
                   <div className="ap-listrow-main">
                     <b>{p.name}</b>
                     <span className="ap-row" style={{ display: "flex", gap: 6 }}>
-                      <Icon glyph={p.linked ? "check-circle" : "minus"} size={16} />
+                      <Icon
+                        glyph={p.linked ? "check-circle" : "x-circle"}
+                        size={16}
+                        className={p.linked ? undefined : "t-muted"}
+                      />
                       {p.linked ? t("profile.sso.linked") : t("profile.sso.notLinked")}
                     </span>
                   </div>
