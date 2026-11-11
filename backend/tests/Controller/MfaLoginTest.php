@@ -285,6 +285,17 @@ class MfaLoginTest extends WebTestCase
         $this->assertSame('invalid_mfa_token', $this->verify($t2, 'backup_code', $codes[2])['body']['code']);
     }
 
+    public function testSpentTokenDoesNotBurnABackupCode(): void
+    {
+        $codes = $this->backupCodes($this->user());
+        $token = $this->token();
+        $this->assertSession($this->verify($token, 'totp', $this->totpCode()));
+
+        $this->assertSame('invalid_mfa_token', $this->verify($token, 'backup_code', $codes[0])['body']['code']);
+        $this->assertSame(10, (int) static::getContainer()->get(Connection::class)->fetchOne('SELECT COUNT(*) FROM mfa_backup_code WHERE used_at IS NULL'));
+        $this->assertSession($this->verify($this->token(), 'backup_code', $codes[0]));
+    }
+
     public function testMfaTokenIsSingleUseAndExpires(): void
     {
         $this->user();

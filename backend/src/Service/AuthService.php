@@ -47,6 +47,7 @@ readonly class AuthService
         private LoggerInterface $logger,
         private SecurityEventLogger $events,
         private MfaLoginService $mfaLogin,
+        private MfaService $mfa,
         /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
         #[Autowire(env: 'int:REFRESH_TOKEN_REUSE_GRACE')]
         private int $refreshReuseGrace,
@@ -320,6 +321,7 @@ readonly class AuthService
             'pendingConsents' => LegalPresenter::pending($pending),
             'consentRequired' => !$sessionConsentOk && [] !== $pending,
             'emailVerificationRequired' => !$user->isEmailVerified(),
+            'mfa' => $this->mfa->status($user),
             'pendingEmail' => $this->accounts->pendingEmail($user),
             'passkeys' => array_values($user->getPasskeys()->map(fn ($p) => [
                 'id' => $p->getId(),

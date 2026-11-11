@@ -66,6 +66,7 @@ class WebAuthnService
         private readonly NonceStore $nonces,
         private readonly LoggerInterface $logger,
         private readonly SecurityEventLogger $events,
+        private readonly MfaService $mfa,
         private readonly string $rpId,
         private readonly string $rpName,
         private readonly string $allowedOrigin,
@@ -363,6 +364,7 @@ class WebAuthnService
         if (!$passkey || $passkey->getUser()->getId() !== $user->getId()) {
             throw new ApiProblemException(404, 'Passkey not found', 'passkey_not_found');
         }
+        $this->mfa->assertPasskeyDeletable($user);
         $this->em->remove($passkey);
         $user->invalidateTokens();
         $this->em->flush();
@@ -370,6 +372,16 @@ class WebAuthnService
         $this->events->record($user, SecurityEventType::PASSKEY_DELETED, true, 'passkey');
 
         return $this->tokens->tokenResponse($user, null, null, $consentOk);
+    }
+
+    public function renamePasskey(string $id, User $user, string $deviceName): void
+    {
+        $passkey = $this->em->getRepository(Passkey::class)->find($id);
+        if (!$passkey || $passkey->getUser()->getId() !== $user->getId()) {
+            throw new ApiProblemException(404, 'Passkey not found', 'passkey_not_found');
+        }
+        $passkey->setDeviceName($deviceName);
+        $this->em->flush();
     }
 
     private function authenticationFailed(): ApiProblemException

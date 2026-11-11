@@ -463,7 +463,7 @@ class ConsentTest extends WebTestCase
         $session = $this->login($user)['body'];
         LegalTestHelper::publish(self::$em, LegalDocumentType::PRIVACY, 'v2');
 
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/webauthn/'.$passkey->getId(), [], 'Bearer '.$session['access_token']);
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/webauthn/'.$passkey->getId(), ['password' => 'password123'], 'Bearer '.$session['access_token']);
         $this->assertSame(200, $r['status']);
         $this->assertTrue(self::claims($r['body']['access_token'])['lc']);
     }

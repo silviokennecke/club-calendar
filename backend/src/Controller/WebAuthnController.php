@@ -103,10 +103,35 @@ class WebAuthnController extends AbstractController
         return $data;
     }
 
-    #[Route('/{id}', methods: ['DELETE'])]
-    public function deletePasskey(string $id): JsonResponse
+    /** `{deviceName}` (1-255 chars); the JWT is enough, no re-authentication. */
+    #[Route('/{id}', methods: ['PATCH'])]
+    public function renamePasskey(string $id, Request $request): JsonResponse
     {
         $user = $this->userResolver->resolve();
+        $data = json_decode($request->getContent(), true);
+        $name = is_array($data) ? $data['deviceName'] ?? null : null;
+        if (!is_string($name) || '' === trim($name) || mb_strlen($name) > 255) {
+            throw new ApiProblemException(400, 'Invalid request body', 'invalid_request', 'deviceName');
+        }
+        $this->webAuthn->renamePasskey($id, $user, trim($name));
+
+        return new JsonResponse(['ok' => true]);
+    }
+
+    /**
+     * Needs re-authentication (`{password}` or `{confirmationCode}` from `POST /api/auth/mfa/code`). Ends all
+     * sessions and answers with a fresh token pair.
+     */
+    #[Route('/{id}', methods: ['DELETE'])]
+    public function deletePasskey(string $id, Request $request): JsonResponse
+    {
+        $user = $this->userResolver->resolve();
+        $this->rateLimiter->assertMfaManageAllowed($request, $user->getId());
+        $data = '' === trim($request->getContent()) ? [] : json_decode($request->getContent(), true);
+        if (!is_array($data) || (isset($data['password']) && !is_string($data['password'])) || (isset($data['confirmationCode']) && !is_string($data['confirmationCode']))) {
+            throw new ApiProblemException(400, 'Invalid request body', 'invalid_request');
+        }
+        $this->reauth->assertConfirmed($user, ReauthenticationService::PURPOSE_MFA, $data['password'] ?? null, $data['confirmationCode'] ?? null);
 
         // `ok` like every delete, plus the fresh token pair: the deletion ended all sessions.
         return new JsonResponse(['ok' => true] + $this->webAuthn->deletePasskey($id, $user, $this->userResolver->sessionConsentOk()));

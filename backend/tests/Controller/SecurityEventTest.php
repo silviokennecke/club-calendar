@@ -253,7 +253,7 @@ class SecurityEventTest extends WebTestCase
         $this->assertSame(200, $this->passkeyLogin($authenticator, $user, 'localhost'));
 
         $id = $this->em->getRepository(Passkey::class)->findOneBy([])->getId();
-        $r = TestHelper::jsonRequest($this->client, 'DELETE', '/api/auth/webauthn/'.$id, [], $auth);
+        $r = TestHelper::jsonRequest($this->client, 'DELETE', '/api/auth/webauthn/'.$id, ['password' => 'password123'], $auth);
         $this->assertSame(200, $r['status'], $r['content']);
 
         $events = $this->events();

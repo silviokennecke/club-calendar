@@ -105,7 +105,7 @@ class ErrorCodesTest extends WebTestCase
         $this->assertProblem(400, ['code' => 'invalid_request'], $r);
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/verify', ['challengeToken' => 'forged', 'response' => ['id' => 'x']], $auth);
         $this->assertProblem(400, ['code' => 'invalid_passkey_registration'], $r);
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/webauthn/gibt-es-nicht', [], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/webauthn/gibt-es-nicht', ['password' => 'password123'], $auth);
         $this->assertProblem(404, ['code' => 'passkey_not_found'], $r);
     }
 

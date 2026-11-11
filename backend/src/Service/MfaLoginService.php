@@ -107,6 +107,10 @@ class MfaLoginService
     public function verifyCode(array $claims, string $method, string $code): array
     {
         $user = $this->userOf($claims);
+        // A spent token must not burn a code (the nonce itself is consumed only on success, in finish()).
+        if ($this->nonces->isConsumed(self::PURPOSE, $claims['jti'])) {
+            throw self::invalidToken();
+        }
         $ok = self::METHOD_TOTP === $method ? $this->mfa->verifyTotp($user, $code) : $this->mfa->consumeBackupCode($user, $code);
         if (!$ok) {
             $this->events->record($user, SecurityEventType::MFA_VERIFY, false, $method);

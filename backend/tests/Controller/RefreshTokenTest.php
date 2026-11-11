@@ -356,7 +356,7 @@ class RefreshTokenTest extends WebTestCase
         $current = $this->tokens->tokenResponse($user);
         $other = $this->tokens->tokenResponse($user);
 
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/webauthn/pk-1', [], 'Bearer '.$current['access_token']);
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/webauthn/pk-1', ['password' => 'password123'], 'Bearer '.$current['access_token']);
         $this->assertSame(200, $r['status']);
         $this->assertTrue($r['body']['ok']);
         $this->assertSame(401, TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], 'Bearer '.$other['access_token'])['status']);

@@ -21,6 +21,15 @@ final readonly class NonceStore
     ) {
     }
 
+    /** True when the value was consumed before (and the entry has not been purged yet); does not consume. */
+    public function isConsumed(string $purpose, string $nonce): bool
+    {
+        return false !== $this->connection->fetchOne(
+            'SELECT 1 FROM auth_nonce WHERE nonce_hash = ?',
+            [hash('sha256', $purpose."\0".$nonce)],
+        );
+    }
+
     public function consume(string $purpose, string $nonce, int $expiresAtTimestamp): bool
     {
         // Both sides in UTC: expires_at is written from a Unix timestamp, so comparing against the clock's
