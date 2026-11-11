@@ -161,15 +161,14 @@ describe("club page sections by club role", () => {
 describe("navigation by club role", () => {
   const keys = (role?: ClubRole) =>
     buildNavGroups("c1", "k1", role).flatMap((g) => g.items.map((i) => i.key));
-  it("hides import and feeds from viewers and while the role is unknown", () => {
+  it("hides feeds from viewers and while the role is unknown", () => {
     for (const role of ["viewer", undefined] as const) {
-      expect(keys(role)).not.toContain("import");
       expect(keys(role)).not.toContain("feeds");
       expect(buildTabs("c1", "k1", role).map((t) => t.key)).not.toContain("feeds");
     }
   });
-  it("shows them to editors", () => {
-    expect(keys("editor")).toEqual(expect.arrayContaining(["import", "feeds"]));
+  it("shows it to editors", () => {
+    expect(keys("editor")).toEqual(expect.arrayContaining(["feeds"]));
     expect(buildTabs("c1", "k1", "editor").map((t) => t.key)).toContain("feeds");
   });
 });

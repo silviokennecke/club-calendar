@@ -14,7 +14,7 @@ Dafür brauchst du die Rolle Bearbeiter oder Admin. In einem archivierten Kalend
 
 ## Schritt für Schritt
 
-1. Öffne in der Seitenleiste **Termine importieren**. Alternativ öffnest du das Menü neben **Termin anlegen** und wählst **Termine importieren**.
+1. Öffne das Menü neben **Termin anlegen** und wähle **Termine importieren**.
 2. **Datei:** Ziehe die Datei in das Feld oder wähle sie mit **Datei auswählen**. Es werden nur Dateien mit der Endung `.ics` angenommen. Die App zeigt, wie viele Termine sie erkannt hat. Klicke auf **Datei prüfen**.
 3. **Prüfen:** Du siehst alle Termine, gruppiert nach Namen. Es wird noch nichts angelegt. Wähle aus, welche Termine du übernehmen willst (siehe unten).
 4. Klicke auf **… Termine importieren**.

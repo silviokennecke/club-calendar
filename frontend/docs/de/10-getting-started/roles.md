@@ -23,7 +23,7 @@ Ein **Mitglied** gehört nur zum Verein. Mitglieder sehen den Vereinskalender ni
 | Vereinseinstellungen ändern, Verein löschen                      |   nein   |    nein    |    nein    |  ja   |
 
 :::note
-Ob du eher Betrachter bist, merkst du an einem Hinweis: „Deine Rolle in diesem Verein erlaubt nur das Ansehen.“ Betrachter sehen außerdem **Termine importieren** und **Veröffentlichen** nicht, also auch keine Links privater Feeds.
+Ob du eher Betrachter bist, merkst du an einem Hinweis: „Deine Rolle in diesem Verein erlaubt nur das Ansehen.“ Betrachter sehen außerdem **Veröffentlichen** nicht, also auch keine Links privater Feeds.
 :::
 
 ## Wie du eine andere Rolle bekommst

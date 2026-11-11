@@ -170,7 +170,6 @@ describe("MorePage (design: Menu)", () => {
         .map((l) => l.textContent),
     ).toEqual([
       "Vorlagen",
-      "Termine importieren",
       "Einstellungen",
       "Mein Verein",
       "Verein verwalten",

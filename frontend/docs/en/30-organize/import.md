@@ -14,7 +14,7 @@ You need the Editor or Admin role for this. Archived calendars can't be imported
 
 ## Step by step
 
-1. Open **Import events** in the sidebar. Or open the menu next to **Create event** and choose **Import events**.
+1. Open the menu next to **Create event** and choose **Import events**.
 2. **File:** Drag the file into the box or pick it with **Choose file**. Only files ending in `.ics` are accepted. The app shows how many events it found. Click **Review file**.
 3. **Review:** You see all events, grouped by name. Nothing is created yet. Choose which events to take over (see below).
 4. Click **Import … events**.

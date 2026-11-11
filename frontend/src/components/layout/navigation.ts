@@ -8,7 +8,6 @@ import { clubSettingsRoutes } from "@/components/settings/clubSettingsRoutes";
 export type NavKey =
   | "calendar"
   | "events"
-  | "import"
   | "templates"
   | "settings"
   | "feeds"
@@ -76,7 +75,6 @@ export function buildNavGroups(
           href: `${base}/templates`,
           icon: "layers",
         },
-        { key: "import", labelKey: "shell.nav.import", href: `${base}/import`, icon: "upload" },
       ],
     },
     {
@@ -105,7 +103,7 @@ export function buildNavGroups(
       ],
     },
   ];
-  const hidden: NavKey[] = canEdit ? [] : ["import", "feeds"];
+  const hidden: NavKey[] = canEdit ? [] : ["feeds"];
   return groups.map((g) => ({ ...g, items: g.items.filter((i) => !hidden.includes(i.key)) }));
 }
 
@@ -149,7 +147,7 @@ export function activeNavKey(
   // Design (Export.dc.html): the export page belongs to "Veröffentlichen".
   if (path === `${base}/events/export`) return "feeds";
   if (path.startsWith(`${base}/events`)) return "events";
-  if (path.startsWith(`${base}/import`)) return "import";
+  if (path.startsWith(`${base}/import`)) return "events";
   if (path.startsWith(`${base}/templates`)) return "templates";
   if (path.startsWith(`${base}/settings`)) return "settings";
   if (path.startsWith(`${base}/more`)) return "more";
@@ -162,7 +160,6 @@ export function tabForNavKey(key: NavKey | null): TabKey | null {
     case "calendar":
       return "calendar";
     case "events":
-    case "import":
     case "templates":
       return "events";
     case "feeds":

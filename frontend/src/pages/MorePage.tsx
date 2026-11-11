@@ -4,7 +4,6 @@ import { useAuth } from "@/lib/auth-context";
 import { Icon, LangSwitch, type Glyph } from "@/components/ui/shared";
 import { calendarBase } from "@/components/layout/navigation";
 import { clubSettingsRoutes } from "@/components/settings/clubSettingsRoutes";
-import { roleAtLeast } from "@/lib/club/permissions";
 import { myClubPath } from "@/lib/club/myClub";
 import type { ShellData } from "@/components/layout/shellTypes";
 import { useContextHelpUrl } from "@/docs/contextHelp";
@@ -33,9 +32,6 @@ export default function MorePage() {
     ...(base
       ? [
           { labelKey: "shell.nav.templates", href: `${base}/templates`, icon: "layers" as const },
-          ...(roleAtLeast(club?.role, "editor")
-            ? [{ labelKey: "shell.nav.import", href: `${base}/import`, icon: "upload" as const }]
-            : []),
           { labelKey: "shell.nav.settings", href: `${base}/settings`, icon: "sliders" as const },
         ]
       : []),

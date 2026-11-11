@@ -51,7 +51,7 @@ describe("Sidebar navigation", () => {
   it.each([
     [base, "Kalender"],
     [`${base}/events`, "Alle Termine"],
-    [`${base}/import`, "Termine importieren"],
+    [`${base}/import`, "Alle Termine"],
     [`${base}/templates`, "Vorlagen"],
     [`${base}/settings`, "Einstellungen"],
     [`${base}/settings/properties`, "Einstellungen"],

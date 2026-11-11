@@ -21,14 +21,14 @@ Auf dem Smartphone steckt beides in einem Wechsler in der oberen Leiste.
 
 ## Die Bereiche der Seitenleiste
 
-- **Termine**: **Kalender**, **Alle Termine**, **Vorlagen** und **Termine importieren**.
+- **Termine**: **Kalender**, **Alle Termine** und **Vorlagen**.
 - **Kalender einrichten**: **Einstellungen** des Kalenders und **Veröffentlichen**.
 - **Verein**: **Verein verwalten** (Mitglieder, Kalender) und **Orte und Gruppen**.
 
 Unten findest du **Mein Profil** (dein Name), **Hilfe** und **Abmelden**.
 
 :::note
-Betrachter sehen **Termine importieren** und **Veröffentlichen** nicht. Mehr dazu unter [Rollen im Verein](help:getting-started/roles).
+Betrachter sehen **Veröffentlichen** nicht. Mehr dazu unter [Rollen im Verein](help:getting-started/roles).
 :::
 
 ## Auf dem Smartphone
