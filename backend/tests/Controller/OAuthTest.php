@@ -467,7 +467,7 @@ class OAuthTest extends WebTestCase
         $this->assertEmailCount(0);
 
         // The mailbox owner (with the restricted session) enters the code and gets the full session.
-        $verified = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/verify-email', ['code' => $m[1]], $auth);
+        $verified = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/verify-email', ['code' => $m[1].$m[2]], $auth);
         $this->assertSame(200, $verified['status'], $verified['content']);
         $this->assertFalse($verified['body']['emailVerificationRequired']);
         $user = $this->user('ms@example.com');

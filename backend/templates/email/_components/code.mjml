@@ -8,7 +8,7 @@
 <mj-raw>
   <tr><td style="padding:8px 0 16px 0;">
     <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;background-color:{{ THEME.colors.softBrandFill }};border:1px solid {{ THEME.colors.border }};border-radius:{{ THEME.components.code.containerBorderRadius }};">
-      <tr><td align="center" style="padding:{{ THEME.components.code.padding }};font-family:{{ THEME.fonts.monospace }};font-size:{{ THEME.fonts.size.code }};line-height:44px;font-weight:700;letter-spacing:{{ THEME.components.code.letterSpacing }};color:{{ THEME.colors.textDark }};">{{ code }}</td></tr>
+      <tr><td align="center" style="padding:{{ THEME.components.code.padding }};font-family:{{ THEME.fonts.monospace }};font-size:{{ THEME.fonts.size.code }};line-height:44px;font-weight:700;letter-spacing:{{ THEME.components.code.letterSpacing }};color:{{ THEME.colors.textDark }};">{{ code|slice(0, 3) }}-{{ code|slice(3) }}</td></tr>
     </table>
   </td></tr>
 </mj-raw>
