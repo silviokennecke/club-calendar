@@ -9,6 +9,8 @@ interface PasswordFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>,
   error?: ReactNode;
   /** Adds "(Pflicht)" to the label and aria-required. */
   requiredLabel?: boolean;
+  /** Keeps aria-required, hides the visible marker. */
+  hideRequiredMarker?: boolean;
   id?: string;
 }
 
@@ -18,6 +20,7 @@ export function PasswordField({
   hint,
   error,
   requiredLabel,
+  hideRequiredMarker,
   id,
   className,
   ...inputProps
@@ -26,7 +29,14 @@ export function PasswordField({
   const [shown, setShown] = useState(false);
 
   return (
-    <Field label={label} hint={hint} error={error} required={requiredLabel} id={id}>
+    <Field
+      label={label}
+      hint={hint}
+      error={error}
+      required={requiredLabel}
+      hideRequiredMarker={hideRequiredMarker}
+      id={id}
+    >
       {(control) => (
         <div className="ap-pw">
           <TextInput

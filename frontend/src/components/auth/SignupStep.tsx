@@ -201,7 +201,13 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
         errors={problem ? [] : summary}
         focusSignal={form.submits}
       />
-      <Field id={IDS.name} label={t("auth.register.name")} required error={errors.name}>
+      <Field
+        id={IDS.name}
+        label={t("auth.register.name")}
+        required
+        hideRequiredMarker
+        error={errors.name}
+      >
         <TextInput
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -223,6 +229,7 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
         id={IDS.password}
         label={t("auth.password")}
         requiredLabel
+        hideRequiredMarker
         hint={t("auth.register.passwordHint")}
         error={errors.password}
         value={password}
@@ -234,6 +241,7 @@ export function SignupStep({ email, onBack }: { email: string; onBack: () => voi
         id={IDS.confirm}
         label={t("auth.register.confirmPassword")}
         requiredLabel
+        hideRequiredMarker
         error={errors.confirm}
         value={confirm}
         onChange={(e) => setConfirm(e.target.value)}

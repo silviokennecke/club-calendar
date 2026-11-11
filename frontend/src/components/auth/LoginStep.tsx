@@ -102,6 +102,7 @@ export function LoginStep({ email, onBack }: { email: string; onBack: () => void
         id={PASSWORD_ID}
         label={t("auth.password")}
         requiredLabel
+        hideRequiredMarker
         error={error}
         value={password}
         onChange={(e) => setPassword(e.target.value)}

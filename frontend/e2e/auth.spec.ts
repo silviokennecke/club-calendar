@@ -19,7 +19,7 @@ test.describe("Login", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Anmelden oder Konto erstellen" }),
     ).toBeVisible();
-    await expect(page.getByLabel(/^E-Mail \(Pflicht\)/)).toBeVisible();
+    await expect(page.getByLabel(/^E-Mail$/)).toBeVisible();
     await expect(loginPassword(page)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Mit Passkey anmelden" })).toBeVisible();
 
@@ -30,7 +30,7 @@ test.describe("Login", () => {
     await expect(page.getByRole("link", { name: "Passwort vergessen?" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Mit Passkey anmelden" })).toHaveCount(0);
     await page.getByRole("button", { name: "Zurück" }).click();
-    await expect(page.getByLabel(/^E-Mail \(Pflicht\)/)).toHaveValue("admin@example.com");
+    await expect(page.getByLabel(/^E-Mail$/)).toHaveValue("admin@example.com");
     await expect(page.getByRole("button", { name: "Mit Passkey anmelden" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Zum Inhalt springen" })).toBeAttached();
     await expect(page.locator("main#main")).toBeVisible();
@@ -183,7 +183,7 @@ test.describe("Registration", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Konto erstellen" })).toBeVisible();
 
     await page.getByLabel(/^Name/).fill("Erika E2E");
-    await page.getByLabel(/^Passwort \(Pflicht\)/).fill(PASSWORD);
+    await page.getByLabel(/^Passwort$/).fill(PASSWORD);
     await page.getByLabel(/^Passwort wiederholen/).fill(PASSWORD);
     await page.getByRole("button", { name: "Konto erstellen", exact: true }).click();
 
@@ -228,7 +228,7 @@ test.describe("Registration", () => {
     await page.goto("/signup");
     await continueWithEmail(page, `erika-${Date.now()}@example.com`);
     await page.getByLabel(/^Name/).fill("Erika E2E");
-    await page.getByLabel(/^Passwort \(Pflicht\)/).fill(PASSWORD);
+    await page.getByLabel(/^Passwort$/).fill(PASSWORD);
     await page.getByLabel(/^Passwort wiederholen/).fill("etwas-anderes-123");
     await page.getByRole("button", { name: "Konto erstellen", exact: true }).click();
     await expect(page.getByRole("alert")).toContainText("Das Konto wurde noch nicht erstellt");

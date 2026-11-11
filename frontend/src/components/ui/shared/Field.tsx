@@ -27,6 +27,8 @@ interface FieldProps {
   error?: ReactNode;
   /** Adds "(Pflicht)"/"(required)" to the label and aria-required to the control. */
   required?: boolean;
+  /** With `required`: keeps aria-required but shows no visible marker (obvious required fields). */
+  hideRequiredMarker?: boolean;
   /** Adds "(optional)" to the label. */
   optional?: boolean;
   /** Control id; generated when omitted. */
@@ -50,6 +52,7 @@ export function Field({
   hint,
   error,
   required,
+  hideRequiredMarker,
   optional,
   id,
   group,
@@ -74,7 +77,9 @@ export function Field({
   const labelContent = (
     <>
       {label}
-      {required && <span className="font-normal"> {t("ui.field.required")}</span>}
+      {required && !hideRequiredMarker && (
+        <span className="font-normal"> {t("ui.field.required")}</span>
+      )}
       {optional && <span className="t-muted font-normal"> {t("ui.field.optional")}</span>}
     </>
   );

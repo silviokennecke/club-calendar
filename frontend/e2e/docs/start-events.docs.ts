@@ -88,9 +88,7 @@ for (const lang of LANGS) {
       // A user without a club lands on /setup, not /clubs, so signIn() cannot be used.
       await page.goto("/login");
       await continueWithEmail(page, email);
-      await page
-        .getByLabel(lang === "de" ? /^Passwort \(Pflicht\)/ : /^Password \(required\)/)
-        .fill(PASSWORD);
+      await page.getByLabel(lang === "de" ? /^Passwort$/ : /^Password$/).fill(PASSWORD);
       await page
         .getByRole("button", {
           name: lang === "de" ? "Anmelden" : /^sign in$/i,

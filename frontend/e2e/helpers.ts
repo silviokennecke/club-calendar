@@ -46,9 +46,9 @@ export async function createVerifiedUser(request: APIRequestContext, name: strin
   return email;
 }
 
-/** Password field of the login form (accessible name carries the required marker). */
+/** Password field of the login form (no visible required marker). */
 export function loginPassword(page: Page) {
-  return page.getByLabel(/^Passwort \(Pflicht\)/);
+  return page.getByLabel(/^Passwort$/);
 }
 
 /** Step 1 of the email-first flow: enters the address and presses Continue ("Weiter" / "Continue"). */

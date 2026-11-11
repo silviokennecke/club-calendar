@@ -264,7 +264,13 @@ export default function SignInPage() {
                 focusSignal={submits}
                 errors={emailError ? [{ fieldId: EMAIL_ID, message: emailError }] : []}
               />
-              <Field id={EMAIL_ID} label={t("auth.email")} required error={emailError}>
+              <Field
+                id={EMAIL_ID}
+                label={t("auth.email")}
+                required
+                hideRequiredMarker
+                error={emailError}
+              >
                 <TextInput
                   type="email"
                   value={email}

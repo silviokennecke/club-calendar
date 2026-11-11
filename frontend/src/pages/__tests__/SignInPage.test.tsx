@@ -83,7 +83,7 @@ async function loginStep() {
   mockApi("login");
   renderFlow();
   const user = await continueWith();
-  await screen.findByLabelText(/^Passwort \(Pflicht\)/);
+  await screen.findByLabelText(/^Passwort$/);
   return user;
 }
 
@@ -209,13 +209,14 @@ describe("identify: login", () => {
     await loginStep();
     expect(apiPost).toHaveBeenCalledWith("/api/auth/identify", { email: "Alex@beispiel.de" });
     expect(screen.getByRole("heading", { level: 1, name: "Anmelden" })).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Passwort \(Pflicht\)/)).toHaveFocus();
-    expect(screen.getByLabelText(/^Passwort \(Pflicht\)/)).toHaveAttribute(
-      "autocomplete",
-      "current-password",
+    expect(screen.getByLabelText(/^Passwort$/)).toHaveFocus();
+    expect(screen.getByLabelText(/^Passwort$/)).toHaveAttribute("autocomplete", "current-password");
+    expect(screen.getByLabelText("E-Mail", { selector: "#login-email" })).toHaveAttribute(
+      "readonly",
     );
-    expect(screen.getByLabelText("E-Mail")).toHaveAttribute("readonly");
-    expect(screen.getByLabelText("E-Mail")).toHaveValue("alex@beispiel.de");
+    expect(screen.getByLabelText("E-Mail", { selector: "#login-email" })).toHaveValue(
+      "alex@beispiel.de",
+    );
     expect(screen.getByRole("link", { name: "Passwort vergessen?" })).toHaveAttribute(
       "href",
       "/forgot-password",
@@ -230,7 +231,7 @@ describe("identify: login", () => {
   it("signs in and navigates to /clubs", async () => {
     const user = await loginStep();
     apiPost.mockResolvedValue({ access_token: "a", refresh_token: "r", user: { id: "u1" } });
-    await user.type(screen.getByLabelText(/^Passwort \(Pflicht\)/), "geheim123");
+    await user.type(screen.getByLabelText(/^Passwort$/), "geheim123");
     await user.click(screen.getByRole("button", { name: "Anmelden" }));
     await waitFor(() => expect(login).toHaveBeenCalledWith("a", "r", { id: "u1" }));
     expect(apiPost).toHaveBeenCalledWith("/api/auth/login", {
@@ -245,13 +246,13 @@ describe("identify: login", () => {
     apiPost.mockClear();
     await user.click(screen.getByRole("button", { name: "Anmelden" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Bitte gib dein Passwort ein.");
-    expect(screen.getByLabelText(/^Passwort \(Pflicht\)/)).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText(/^Passwort$/)).toHaveAttribute("aria-invalid", "true");
     expect(apiPost).not.toHaveBeenCalled();
   });
 
   it("toggles password visibility with aria-pressed", async () => {
     const user = await loginStep();
-    const input = screen.getByLabelText(/^Passwort \(Pflicht\)/);
+    const input = screen.getByLabelText(/^Passwort$/);
     const toggle = screen.getByRole("button", { name: "Passwort anzeigen" });
     expect(toggle).toHaveAttribute("aria-pressed", "false");
     await user.click(toggle);
@@ -261,7 +262,7 @@ describe("identify: login", () => {
   it("shows a focused alert banner with a reset link for wrong credentials", async () => {
     const user = await loginStep();
     apiPost.mockRejectedValue(Object.assign(new Error("Invalid"), { status: 401 }));
-    await user.type(screen.getByLabelText(/^Passwort \(Pflicht\)/), "falsch");
+    await user.type(screen.getByLabelText(/^Passwort$/), "falsch");
     await user.click(screen.getByRole("button", { name: "Anmelden" }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("E-Mail oder Passwort stimmt nicht");
@@ -278,7 +279,7 @@ describe("identify: login", () => {
     apiPost.mockRejectedValue(
       new ApiError("x", 429, "rate_limited", undefined, { retryAfter: 90 }),
     );
-    await user.type(screen.getByLabelText(/^Passwort \(Pflicht\)/), "geheim123");
+    await user.type(screen.getByLabelText(/^Passwort$/), "geheim123");
     await user.click(screen.getByRole("button", { name: "Anmelden" }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Zu viele Versuche");
@@ -294,7 +295,7 @@ describe("identify: login", () => {
       user: { id: "u1" },
       emailVerificationRequired: true,
     });
-    await user.type(screen.getByLabelText(/^Passwort \(Pflicht\)/), "geheim123");
+    await user.type(screen.getByLabelText(/^Passwort$/), "geheim123");
     await user.click(screen.getByRole("button", { name: "Anmelden" }));
     await waitFor(() =>
       expect(login).toHaveBeenCalledWith("a", "r", { id: "u1", emailVerificationRequired: true }),
@@ -333,17 +334,17 @@ describe("identify: login", () => {
       </MemoryRouter>,
     );
     const user = await continueWith();
-    await screen.findByLabelText(/^Passwort \(Pflicht\)/);
+    await screen.findByLabelText(/^Passwort$/);
     await user.click(screen.getByRole("button", { name: "history-back" }));
     expect(await screen.findByRole("button", { name: "Weiter" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /^E-Mail/ })).toHaveValue("alex@beispiel.de");
     await user.click(screen.getByRole("button", { name: "history-forward" }));
-    await screen.findByLabelText(/^Passwort \(Pflicht\)/);
+    await screen.findByLabelText(/^Passwort$/);
     // the in-page Back button uses the same history: one more Back would leave the page, not loop
     await user.click(screen.getByRole("button", { name: "Zurück" }));
     expect(await screen.findByRole("button", { name: "Weiter" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "history-forward" }));
-    await screen.findByLabelText(/^Passwort \(Pflicht\)/);
+    await screen.findByLabelText(/^Passwort$/);
   });
 
   it("goes back with Escape", async () => {
@@ -375,7 +376,7 @@ describe("identify: register", () => {
     pw2 = pw,
   ) {
     await user.type(screen.getByLabelText(/^Name/), "Alex Beispiel");
-    if (pw) await user.type(screen.getByLabelText(/^Passwort \(Pflicht\)/), pw);
+    if (pw) await user.type(screen.getByLabelText(/^Passwort$/), pw);
     if (pw2) await user.type(screen.getByLabelText(/^Passwort wiederholen/), pw2);
     await user.click(screen.getByRole("button", { name: "Konto erstellen" }));
   }
@@ -385,11 +386,10 @@ describe("identify: register", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Konto erstellen" })).toBeInTheDocument();
     expect(screen.getByLabelText(/^Name/)).toHaveFocus();
     expect(screen.getByLabelText(/^Name/)).toHaveAttribute("autocomplete", "name");
-    expect(screen.getByLabelText("E-Mail")).toHaveAttribute("readonly");
-    expect(screen.getByLabelText(/^Passwort \(Pflicht\)/)).toHaveAttribute(
-      "autocomplete",
-      "new-password",
+    expect(screen.getByLabelText("E-Mail", { selector: "#signup-email" })).toHaveAttribute(
+      "readonly",
     );
+    expect(screen.getByLabelText(/^Passwort$/)).toHaveAttribute("autocomplete", "new-password");
     expect(screen.getByText("Mindestens 8 Zeichen")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mit Passkey anmelden" })).toBeNull();
   });
@@ -547,7 +547,7 @@ describe("invitation link", () => {
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/^E-Mail/), "a@b.de");
     await user.click(screen.getByRole("button", { name: "Weiter" }));
-    expect(await screen.findByLabelText(/^Passwort \(Pflicht\)/)).toBeInTheDocument();
+    expect(await screen.findByLabelText(/^Passwort$/)).toBeInTheDocument();
   });
 
   it("makes no preview call without a token", () => {
@@ -604,7 +604,7 @@ describe("feed proof", () => {
       expect(screen.getByRole("button", { name: "Konto erstellen" })).toBeEnabled(),
     );
     await user.type(screen.getByLabelText(/^Name/), "Alex Beispiel");
-    await user.type(screen.getByLabelText(/^Passwort \(Pflicht\)/), "sicheres-passwort");
+    await user.type(screen.getByLabelText(/^Passwort$/), "sicheres-passwort");
     await user.type(screen.getByLabelText(/^Passwort wiederholen/), "sicheres-passwort");
     await user.click(screen.getByRole("button", { name: "Konto erstellen" }));
     await waitFor(() =>

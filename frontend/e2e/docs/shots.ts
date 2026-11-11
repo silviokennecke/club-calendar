@@ -68,9 +68,7 @@ export async function prepare(page: Page, lang: Lang, height = VIEWPORT.height) 
 export async function signIn(page: Page, lang: Lang, email: string) {
   await page.goto("/login");
   await continueWithEmail(page, email);
-  await page
-    .getByLabel(lang === "de" ? /^Passwort \(Pflicht\)/ : /^Password \(required\)/)
-    .fill(PASSWORD);
+  await page.getByLabel(lang === "de" ? /^Passwort$/ : /^Password$/).fill(PASSWORD);
   await page
     .getByRole("button", { name: lang === "de" ? "Anmelden" : /^sign in$/i, exact: lang === "de" })
     .click();
