@@ -2441,6 +2441,20 @@
       "confirmTitle": "Renew the link for \"{{club}}\"?",
       "confirmText": "The current link stops working afterwards. Enter the new link in every calendar app where you subscribed to your events.",
       "confirm": "Renew link"
+    },
+    "mfa": {
+      "reauth": {
+        "passwordLabel": "Your password",
+        "codeText": "Your account has no password. We send a 6-digit code to {{email}} to confirm.",
+        "codeSend": "Send code",
+        "codeResend": "Send code again",
+        "codeSent": "The code was sent to {{email}}. It is valid for at least 10 minutes.",
+        "codeLabel": "Confirmation code",
+        "codeMissing": "Please enter the 6-digit code from the email.",
+        "wrongCode": "The code is not correct or has expired.",
+        "codeFailed": "The code could not be sent. Please try again.",
+        "rateLimited": "Too many attempts. Please wait a while and try again."
+      }
     }
   },
   "errorPage": {

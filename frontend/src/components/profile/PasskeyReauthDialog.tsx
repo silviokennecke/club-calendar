@@ -1,16 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Banner,
-  Button,
-  CodeInput,
-  Field,
-  FormDialog,
-  PasswordField,
-  Skeleton,
-} from "@/components/ui/shared";
+import { Banner, Button, FormDialog } from "@/components/ui/shared";
 import { apiErrorCode, apiPost } from "@/lib/api";
 import { focusFirstInvalid } from "@/lib/focus";
+import { ReauthFields } from "./ReauthFields";
+import { emptyReauth, reauthBody, reauthFieldError, reauthMissing } from "./reauth";
 
 export interface PasskeyRegistrationStart {
   options: unknown;
@@ -27,8 +21,6 @@ interface PasskeyReauthDialogProps {
   onConfirmed: (start: PasskeyRegistrationStart) => void;
 }
 
-const CODE_ID = "pr-pk-code";
-
 /**
  * Proof of the account holder before a passkey is registered (L7): the password, or for an account
  * without one a 6-digit code mailed to its address. The server hands out the registration options only
@@ -42,71 +34,45 @@ export function PasskeyReauthDialog({
   onConfirmed,
 }: PasskeyReauthDialogProps) {
   const { t } = useTranslation();
-  const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
+  const [proof, setProof] = useState(emptyReauth);
+  const [fieldsKey, setFieldsKey] = useState(0);
   const [fieldError, setFieldError] = useState<string>();
   const [failure, setFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const [mail, setMail] = useState<"idle" | "sending" | "sent">("idle");
-  const [mailError, setMailError] = useState<string>();
   const formRef = useRef<HTMLDivElement>(null);
   useEffect(() => focusFirstInvalid(formRef.current), [fieldError]);
 
   function close(next: boolean) {
     if (!next) {
-      setPassword("");
-      setCode("");
+      setProof(emptyReauth);
+      setFieldsKey((k) => k + 1);
       setFieldError(undefined);
       setFailure(undefined);
-      setMail("idle");
-      setMailError(undefined);
     }
     onOpenChange(next);
-  }
-
-  async function sendCode() {
-    setMail("sending");
-    setMailError(undefined);
-    try {
-      await apiPost("/api/auth/webauthn/register/code", {});
-      setMail("sent");
-    } catch (error) {
-      setMail("idle");
-      setMailError(
-        t(
-          apiErrorCode(error) === "rate_limited"
-            ? "profile.passkeys.reauth.rateLimited"
-            : "profile.passkeys.reauth.codeFailed",
-        ),
-      );
-    }
   }
 
   async function submit() {
     if (busy || hasPassword === undefined) return;
     setFieldError(undefined);
     setFailure(undefined);
-    if (hasPassword && !password) {
-      setFieldError(t("profile.account.passwordMissing"));
-      return;
-    }
-    if (!hasPassword && !/^\d{6}$/.test(code)) {
-      setFieldError(t("profile.passkeys.reauth.codeMissing"));
+    const missing = reauthMissing(proof, hasPassword, "passkey", t);
+    if (missing) {
+      setFieldError(missing);
       return;
     }
     setBusy(true);
     try {
       const start = await apiPost<PasskeyRegistrationStart>(
         "/api/auth/webauthn/register/options",
-        hasPassword ? { password } : { code },
+        reauthBody(proof, hasPassword, "code"),
       );
       close(false);
       onConfirmed(start);
     } catch (error) {
       const errorCode = apiErrorCode(error);
-      if (errorCode === "invalid_credentials") setFieldError(t("profile.account.wrongPassword"));
-      else if (errorCode === "invalid_confirmation_code")
-        setFieldError(t("profile.passkeys.reauth.wrongCode"));
+      const wrong = reauthFieldError(error, "passkey", t);
+      if (wrong) setFieldError(wrong);
       else if (errorCode === "rate_limited") setFailure(t("profile.passkeys.reauth.rateLimited"));
       else setFailure(t("profile.passkeys.reauth.failed"));
     } finally {
@@ -135,54 +101,17 @@ export function PasskeyReauthDialog({
       <div ref={formRef} className="ap-stack">
         <p>{t("profile.passkeys.reauth.text")}</p>
         {failure && <Banner tone="danger">{failure}</Banner>}
-        {hasPassword === undefined && <Skeleton />}
-        {hasPassword === true && (
-          <PasswordField
-            label={t("profile.passkeys.reauth.passwordLabel")}
-            requiredLabel
-            error={fieldError}
-            value={password}
-            autoComplete="current-password"
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        )}
-        {hasPassword === false && (
-          <>
-            <p className="t-sm">{t("profile.passkeys.reauth.codeText", { email })}</p>
-            {mailError && <Banner tone="danger">{mailError}</Banner>}
-            {mail === "sent" && (
-              <Banner tone="success">{t("profile.passkeys.reauth.codeSent", { email })}</Banner>
-            )}
-            <div className="ap-actions">
-              <Button
-                variant="secondary"
-                icon="mail"
-                loading={mail === "sending"}
-                onClick={() => void sendCode()}
-              >
-                {mail === "sent"
-                  ? t("profile.passkeys.reauth.codeResend")
-                  : t("profile.passkeys.reauth.codeSend")}
-              </Button>
-            </div>
-            <Field
-              group
-              id={CODE_ID}
-              label={t("profile.passkeys.reauth.codeLabel")}
-              error={fieldError}
-            >
-              <CodeInput
-                id={CODE_ID}
-                label={t("profile.passkeys.reauth.codeLabel")}
-                value={code}
-                onChange={setCode}
-                invalid={!!fieldError}
-                describedBy={fieldError ? `${CODE_ID}-error` : undefined}
-                disabled={busy}
-              />
-            </Field>
-          </>
-        )}
+        <ReauthFields
+          key={fieldsKey}
+          purpose="passkey"
+          idPrefix="pr-pk"
+          hasPassword={hasPassword}
+          email={email}
+          value={proof}
+          onChange={setProof}
+          error={fieldError}
+          busy={busy}
+        />
       </div>
     </FormDialog>
   );

@@ -2441,6 +2441,20 @@
       "confirmTitle": "Link für „{{club}}“ erneuern?",
       "confirmText": "Der bisherige Link funktioniert danach nicht mehr. Trage den neuen Link in allen Kalender-Apps ein, in denen du deine Termine abonniert hast.",
       "confirm": "Link erneuern"
+    },
+    "mfa": {
+      "reauth": {
+        "passwordLabel": "Dein Passwort",
+        "codeText": "Dein Konto hat kein Passwort. Zur Bestätigung schicken wir einen 6-stelligen Code an {{email}}.",
+        "codeSend": "Code senden",
+        "codeResend": "Code erneut senden",
+        "codeSent": "Der Code wurde an {{email}} gesendet. Er ist mindestens 10 Minuten gültig.",
+        "codeLabel": "Bestätigungscode",
+        "codeMissing": "Bitte gib den 6-stelligen Code aus der E-Mail ein.",
+        "wrongCode": "Der Code ist nicht korrekt oder abgelaufen.",
+        "codeFailed": "Der Code konnte nicht gesendet werden. Bitte versuche es erneut.",
+        "rateLimited": "Zu viele Versuche. Bitte warte eine Weile und versuche es erneut."
+      }
     }
   },
   "errorPage": {

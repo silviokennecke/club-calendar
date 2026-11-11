@@ -293,6 +293,7 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
     method (`isLastSignInMethod`); the page reads `?linked=` / `?link_error=` / `link_proof` once (banner + toast),
     removes them from the address and maps codes with `linkErrorKind`). After a failed submit the profile forms move
     focus to the first invalid field (`focusFirstInvalid`, `lib/focus.ts`; field errors are no live regions),
+    `ReauthFields` (shared proof for sensitive actions: password, or for passwordless accounts the mailed 6-digit code with send button; `purpose` `passkey|delete|mfa` picks the code endpoint and the `profile.*` text keys; helpers `reauthBody` (`confirmationCode`, or `code` for the older routes), `reauthMissing`, `reauthFieldError`; used by `PasskeyReauthDialog`, `DeleteAccountDialog`),
     `PasskeysSection` (WebAuthn via `@simplewebauthn/browser`, "zuletzt benutzt am …" from `lastUsedAt` in the
     browser's time zone, remove with `ConfirmDialog`),
     `PreferencesSection` (date format, first weekday and language are saved on the account at once, theme only in

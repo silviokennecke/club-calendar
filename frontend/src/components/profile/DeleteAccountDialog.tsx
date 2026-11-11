@@ -1,16 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Banner,
-  Button,
-  CodeInput,
-  Field,
-  FormDialog,
-  PasswordField,
-  Skeleton,
-} from "@/components/ui/shared";
-import { apiDelete, apiErrorCode, apiPost } from "@/lib/api";
+import { Banner, Button, FormDialog } from "@/components/ui/shared";
+import { apiDelete, apiErrorCode } from "@/lib/api";
 import { focusFirstInvalid } from "@/lib/focus";
+import { ReauthFields } from "./ReauthFields";
+import { emptyReauth, reauthBody, reauthFieldError, reauthMissing } from "./reauth";
 
 interface DeleteAccountDialogProps {
   open: boolean;
@@ -26,8 +20,6 @@ interface DeleteAccountDialogProps {
 
 const joinHint = (text: string, hint?: string) => (hint ? `${text} ${hint}` : text);
 
-const CODE_ID = "pr-del-code";
-
 /**
  * Account deletion with re-authentication (AUTH-03): an account with a password confirms with it; an
  * account without one (SSO-only, passkey-only) with a 6-digit code mailed to its address. Wrong
@@ -42,66 +34,40 @@ export function DeleteAccountDialog({
   blockedHint,
 }: DeleteAccountDialogProps) {
   const { t } = useTranslation();
-  const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
+  const [proof, setProof] = useState(emptyReauth);
+  const [fieldsKey, setFieldsKey] = useState(0);
   const [fieldError, setFieldError] = useState<string>();
   const [failure, setFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const [mail, setMail] = useState<"idle" | "sending" | "sent">("idle");
-  const [mailError, setMailError] = useState<string>();
   const formRef = useRef<HTMLDivElement>(null);
   useEffect(() => focusFirstInvalid(formRef.current), [fieldError]);
 
   function close(next: boolean) {
     if (!next) {
-      setPassword("");
-      setCode("");
+      setProof(emptyReauth);
+      setFieldsKey((k) => k + 1);
       setFieldError(undefined);
       setFailure(undefined);
-      setMail("idle");
-      setMailError(undefined);
     }
     onOpenChange(next);
-  }
-
-  async function sendCode() {
-    setMail("sending");
-    setMailError(undefined);
-    try {
-      await apiPost("/api/auth/delete-account/code", {});
-      setMail("sent");
-    } catch (error) {
-      setMail("idle");
-      setMailError(
-        t(
-          apiErrorCode(error) === "rate_limited"
-            ? "profile.danger.rateLimited"
-            : "profile.danger.codeFailed",
-        ),
-      );
-    }
   }
 
   async function submit() {
     if (busy || hasPassword === undefined) return;
     setFieldError(undefined);
     setFailure(undefined);
-    if (hasPassword && !password) {
-      setFieldError(t("profile.account.passwordMissing"));
-      return;
-    }
-    if (!hasPassword && !/^\d{6}$/.test(code)) {
-      setFieldError(t("profile.danger.codeMissing"));
+    const missing = reauthMissing(proof, hasPassword, "delete", t);
+    if (missing) {
+      setFieldError(missing);
       return;
     }
     setBusy(true);
     try {
-      await apiDelete("/api/auth/me", hasPassword ? { password } : { code });
+      await apiDelete("/api/auth/me", reauthBody(proof, hasPassword, "code"));
     } catch (error) {
       const errorCode = apiErrorCode(error);
-      if (errorCode === "invalid_credentials") setFieldError(t("profile.account.wrongPassword"));
-      else if (errorCode === "invalid_confirmation_code")
-        setFieldError(t("profile.danger.wrongCode"));
+      const wrong = reauthFieldError(error, "delete", t);
+      if (wrong) setFieldError(wrong);
       else if (errorCode === "rate_limited") setFailure(t("profile.danger.rateLimited"));
       else if (errorCode === "last_member_of_club")
         setFailure(joinHint(t("profile.danger.lastMemberOfClub"), blockedHint));
@@ -142,47 +108,17 @@ export function DeleteAccountDialog({
         <p>{t("profile.danger.confirmText")}</p>
         <p className="t-sm">{t("profile.danger.consequence")}</p>
         {failure && <Banner tone="danger">{failure}</Banner>}
-        {hasPassword === undefined && <Skeleton />}
-        {hasPassword === true && (
-          <PasswordField
-            label={t("profile.danger.passwordLabel")}
-            requiredLabel
-            error={fieldError}
-            value={password}
-            autoComplete="current-password"
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        )}
-        {hasPassword === false && (
-          <>
-            <p className="t-sm">{t("profile.danger.codeText", { email })}</p>
-            {mailError && <Banner tone="danger">{mailError}</Banner>}
-            {mail === "sent" && (
-              <Banner tone="success">{t("profile.danger.codeSent", { email })}</Banner>
-            )}
-            <div className="ap-actions">
-              <Button
-                variant="secondary"
-                icon="mail"
-                loading={mail === "sending"}
-                onClick={() => void sendCode()}
-              >
-                {mail === "sent" ? t("profile.danger.codeResend") : t("profile.danger.codeSend")}
-              </Button>
-            </div>
-            <Field group id={CODE_ID} label={t("profile.danger.codeLabel")} error={fieldError}>
-              <CodeInput
-                id={CODE_ID}
-                label={t("profile.danger.codeLabel")}
-                value={code}
-                onChange={setCode}
-                invalid={!!fieldError}
-                describedBy={fieldError ? `${CODE_ID}-error` : undefined}
-                disabled={busy}
-              />
-            </Field>
-          </>
-        )}
+        <ReauthFields
+          key={fieldsKey}
+          purpose="delete"
+          idPrefix="pr-del"
+          hasPassword={hasPassword}
+          email={email}
+          value={proof}
+          onChange={setProof}
+          error={fieldError}
+          busy={busy}
+        />
       </div>
     </FormDialog>
   );
