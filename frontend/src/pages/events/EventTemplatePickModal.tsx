@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -18,6 +18,8 @@ import { useTemplateMeta } from "@/components/events/useTemplateMeta";
 import { CreateGateBody, ModalSkeleton } from "@/components/events/CreateGate";
 import { createGate, gateTitle } from "@/components/events/createGateState";
 import { useModalNav } from "@/lib/useModalNav";
+
+const PAGE_SIZE = 5;
 
 /**
  * "Vorlage wählen" (design: EventNewTemplate; route …/events/new/template?date=).
@@ -43,20 +45,29 @@ export default function EventTemplatePickModal() {
 function TemplatePick() {
   const page = useEventPage();
   const nav = useModalNav();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const meta = useTemplateMeta();
   const [params] = useSearchParams();
   const date = params.get("date");
   const [picked, setPicked] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [limit, setLimit] = useState(PAGE_SIZE);
 
   const templates = useQuery<EventTemplate[]>({
     queryKey: ["templates", page.calendarId],
     queryFn: () => apiGet<EventTemplate[]>(`/api/calendars/${page.calendarId}/templates`),
   });
-  const all = templates.data ?? [];
+  const all = useMemo(
+    () =>
+      [...(templates.data ?? [])].sort((a, b) =>
+        a.name.localeCompare(b.name, i18n.language, { sensitivity: "base" }),
+      ),
+    [templates.data, i18n.language],
+  );
   const q = query.trim().toLocaleLowerCase();
-  const list = q ? all.filter((tpl) => tpl.name.toLocaleLowerCase().includes(q)) : all;
+  const matches = q ? all.filter((tpl) => tpl.name.toLocaleLowerCase().includes(q)) : all;
+  const list = matches.slice(0, limit);
+  const hidden = matches.length - list.length;
   const selected =
     (picked && list.some((tpl) => tpl.id === picked) ? picked : null) ?? list[0]?.id ?? null;
 
@@ -98,7 +109,10 @@ function TemplatePick() {
       <>
         <SearchInput
           value={query}
-          onChange={setQuery}
+          onChange={(v) => {
+            setQuery(v);
+            setLimit(PAGE_SIZE);
+          }}
           label={t("events.templatePick.searchLabel")}
           placeholder={t("events.templatePick.searchPlaceholder")}
         />
@@ -125,6 +139,11 @@ function TemplatePick() {
             </label>
           ))}
         </fieldset>
+        {hidden > 0 && (
+          <Button variant="secondary" onClick={() => setLimit(limit + PAGE_SIZE)}>
+            {t("events.templatePick.showMore", { count: Math.min(PAGE_SIZE, hidden) })}
+          </Button>
+        )}
       </>
     );
   }

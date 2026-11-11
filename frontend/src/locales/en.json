@@ -679,6 +679,8 @@
       "searchLabel": "Search templates by name",
       "searchPlaceholder": "Search templates…",
       "noMatch": "No template found for “{{query}}”.",
+      "showMore_one": "Show 1 more template",
+      "showMore_other": "Show {{count}} more templates",
       "loading": "Loading templates.",
       "error": "The templates could not be loaded.",
       "empty": {

@@ -679,6 +679,8 @@
       "searchLabel": "Vorlagen nach Namen suchen",
       "searchPlaceholder": "Vorlagen suchen …",
       "noMatch": "Keine Vorlage zu „{{query}}“ gefunden.",
+      "showMore_one": "Weitere Vorlage anzeigen",
+      "showMore_other": "{{count}} weitere Vorlagen anzeigen",
       "loading": "Vorlagen werden geladen.",
       "error": "Die Vorlagen konnten nicht geladen werden.",
       "empty": {

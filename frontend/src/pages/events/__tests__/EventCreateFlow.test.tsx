@@ -135,14 +135,45 @@ describe("template picker", () => {
       <EventTemplatePickModal />,
     );
     const group = await screen.findByRole("group", { name: "Vorlage" });
-    const first = within(group).getByRole("radio", { name: /Training Luftgewehr/ });
+    const first = within(group).getByRole("radio", { name: /Jugendtraining/ });
     expect(first).toBeChecked();
+    await user.click(within(group).getByRole("radio", { name: /Training Luftgewehr/ }));
     expect(group).toHaveTextContent("19:00 – 21:00 · Schützenhaus Waldblick");
-    await user.click(within(group).getByRole("radio", { name: /Jugendtraining/ }));
     await user.click(screen.getByRole("button", { name: "Weiter" }));
     expect(await screen.findByTestId("location")).toHaveTextContent(
-      `${BASE}/events/new/template/t2`,
+      `${BASE}/events/new/template/t1`,
     );
+  });
+  it("sorts alphabetically, shows five at first and searches all templates", async () => {
+    const user = userEvent.setup();
+    const many = Array.from({ length: 12 }, (_, i) => ({
+      ...templates[1],
+      id: `m${i}`,
+      name: `${i % 2 ? "vorlage" : "Vorlage"} ${String(i).padStart(2, "0")}`,
+    }));
+    const base = apiGet.getMockImplementation()!;
+    apiGet.mockImplementation((path: string, ...rest: unknown[]) =>
+      path.endsWith("/templates") ? Promise.resolve(many) : base(path, ...rest),
+    );
+    renderRoute(
+      `${PATTERN}/events/new/template`,
+      `${BASE}/events/new/template`,
+      <EventTemplatePickModal />,
+    );
+    const group = await screen.findByRole("group", { name: "Vorlage" });
+    let radios = within(group).getAllByRole("radio");
+    expect(radios).toHaveLength(5);
+    expect(radios[0]).toHaveAccessibleName(/Vorlage 00/);
+    expect(radios[1]).toHaveAccessibleName(/vorlage 01/);
+    await user.click(screen.getByRole("button", { name: "5 weitere Vorlagen anzeigen" }));
+    expect(within(group).getAllByRole("radio")).toHaveLength(10);
+    await user.click(screen.getByRole("button", { name: "2 weitere Vorlagen anzeigen" }));
+    expect(within(group).getAllByRole("radio")).toHaveLength(12);
+    expect(screen.queryByRole("button", { name: /weitere Vorlagen/ })).toBeNull();
+    await user.type(screen.getByRole("searchbox"), "11");
+    radios = within(group).getAllByRole("radio");
+    expect(radios).toHaveLength(1);
+    expect(radios[0]).toHaveAccessibleName(/vorlage 11/);
   });
   it("filters the templates by name while typing", async () => {
     const user = userEvent.setup();
