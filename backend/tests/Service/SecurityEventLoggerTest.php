@@ -201,4 +201,20 @@ class SecurityEventLoggerTest extends KernelTestCase
         $this->assertSame('Fehlgeschlagene Anmeldeversuche bei deinem Konto', $mails[0]->getSubject());
         $this->assertStringContainsString('Berlin, Deutschland', (string) $mails[0]->getHtmlBody());
     }
+
+    public function testHostileUserAgentLeavesNoUrlInRowsOrMail(): void
+    {
+        $ua = 'URGENT: your account is locked, restore at https://evil.example/restore now/1.0 CFNetwork/1.0 Darwin/1.0';
+        $context = new ClientContext('203.0.113.5', \App\Security\UserAgentSummary::browser($ua), 'Berlin', 'DE');
+        for ($i = 0; $i < 3; ++$i) {
+            $this->logger->record($this->user, SecurityEventType::LOGIN, false, 'password', null, $context);
+        }
+        $row = $this->rows()[0];
+        $this->assertDoesNotMatchRegularExpression('/[:\/@<>%]/', (string) $row['browser']);
+        $mails = $this->mails();
+        $this->assertCount(1, $mails);
+        $html = (string) $mails[0]->getHtmlBody().(string) $mails[0]->getTextBody();
+        $this->assertStringNotContainsString('evil.example', $html);
+        $this->assertStringNotContainsString('https://evil', $html);
+    }
 }

@@ -298,6 +298,25 @@ class MfaManagementTest extends WebTestCase
         $this->assertCount(1, $this->conn()->fetchAllAssociative("SELECT id FROM security_event WHERE type = 'mfa_disabled'"));
     }
 
+    public function testSignOutOthersEndsOtherSessionsAndKeepsThisOne(): void
+    {
+        $user = $this->user();
+        $this->enableTotp($user);
+        $other = $this->tokens->tokenResponse($user);
+        $this->assertSame(401, $this->call('POST', '/api/auth/sessions/sign-out-others', [], '')['status']);
+
+        $r = $this->call('POST', '/api/auth/sessions/sign-out-others', [], $user);
+        $this->assertSame(200, $r['status'], $r['content']);
+        $this->assertTrue($r['body']['ok']);
+        $this->assertSame(401, $this->call('GET', '/api/auth/me', [], 'Bearer '.$other['access_token'])['status']);
+        $this->assertSame(200, $this->call('GET', '/api/auth/me', [], 'Bearer '.$r['body']['access_token'])['status']);
+        $this->client->request('POST', '/api/auth/token', ['grant_type' => 'refresh_token', 'refresh_token' => $r['body']['refresh_token']]);
+        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        $this->assertCount(1, $this->conn()->fetchAllAssociative("SELECT id FROM security_event WHERE type = 'sessions_ended'"));
+        $this->em->clear();
+        $this->assertTrue($this->em->find(User::class, $user->getId())->isMfaEnforced());
+    }
+
     public function testBackupCodesRegenerate(): void
     {
         $user = $this->user();

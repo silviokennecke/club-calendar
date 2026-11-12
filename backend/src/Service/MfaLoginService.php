@@ -23,6 +23,10 @@ class MfaLoginService
     public const int TTL = 300;
     public const string PURPOSE_GUESS = 'mfa.guess';
     public const int MAX_GUESSES = 5;
+    public const string PURPOSE_USER_FAILURE = 'mfa.user_failure';
+    /** At most this many failed factor checks per user within USER_FAILURE_WINDOW seconds. */
+    public const int MAX_USER_FAILURES = 5;
+    public const int USER_FAILURE_WINDOW = 900;
     public const string METHOD_TOTP = 'totp';
     public const string METHOD_BACKUP = 'backup_code';
 
@@ -102,7 +106,7 @@ class MfaLoginService
     /**
      * @param array{sub: string, tv: int, jti: string, exp: int} $claims
      *
-     * @return array token response; a backup code additionally ends MFA (`mfaDisabled: true`) and all other sessions
+     * @return array token response; a backup code adds `backupCodeUsed: true` and `backupCodesRemaining`; MFA stays on
      *
      * @throws ApiProblemException 401 `invalid_mfa_code` (identical for TOTP and backup code), 401 `invalid_mfa_token`
      */
@@ -151,7 +155,8 @@ class MfaLoginService
      * One verification attempt, serialised per user by a row lock. Inside the transaction: the user and the
      * token version are re-read, a spent token and the per-token guess budget are rejected BEFORE the factor
      * is evaluated (so a lost race burns no code), the factor is checked, and on success the mfaToken nonce is
-     * consumed (unique insert, the insert decides), MFA is ended for a backup code and the tokens are issued.
+     * consumed (unique insert, the insert decides) and the tokens are issued. Once MAX_USER_FAILURES failed checks
+     * of the user are live, further attempts get 429 without evaluating any factor, whatever the number of tokens.
      * Everything commits or rolls back together, so a failure after the nonce never leaves a spent token
      * without a session. A failed factor commits (guess counted, passkey challenge spent).
      *
@@ -170,27 +175,29 @@ class MfaLoginService
             if ($user->getTokenVersion() !== $claims['tv'] || !$this->isRequired($user) || $this->nonces->isConsumed(self::PURPOSE, $claims['jti'])) {
                 throw self::invalidToken();
             }
+            $this->assertUserNotLocked($user);
             $this->claimGuess($claims);
             try {
                 $ok = $factor();
             } catch (ApiProblemException $e) {
                 $failure = $e;
+                $this->recordUserFailure($user);
 
                 return;
             }
             if (!$ok) {
                 $failure = $codeError;
+                $this->recordUserFailure($user);
 
                 return;
             }
             if (!$this->nonces->consume(self::PURPOSE, $claims['jti'], $claims['exp'])) {
                 throw self::invalidToken();
             }
+            $response = $this->tokens->tokenResponse($user);
             if (self::METHOD_BACKUP === $method) {
-                // Ends all other sessions and MCP grants (token version); the new pair below carries the new version.
-                $this->mfa->endEnforcementState($user);
+                $response += ['backupCodeUsed' => true, 'backupCodesRemaining' => $this->mfa->remainingBackupCodes($user)];
             }
-            $response = $this->tokens->tokenResponse($user) + (self::METHOD_BACKUP === $method ? ['mfaDisabled' => true] : []);
         });
         if (null !== $failure) {
             $this->events->record($user, SecurityEventType::MFA_VERIFY, false, $method);
@@ -199,10 +206,39 @@ class MfaLoginService
         }
         $this->events->record($user, SecurityEventType::MFA_VERIFY, true, $method);
         if (self::METHOD_BACKUP === $method) {
-            $this->mfa->notifyBackupCodeUsed($user);
+            $this->mfa->notifyBackupCodeUsed($user, $response['backupCodesRemaining']);
         }
 
         return $response;
+    }
+
+    /**
+     * Exact per-user budget, evaluated under the user row lock: each failed check takes a free slot that
+     * frees up USER_FAILURE_WINDOW seconds later (so never more than MAX_USER_FAILURES evaluated failures per
+     * window). A success deliberately does not reset it: otherwise whoever holds one valid factor, or the
+     * legitimate user signing in in between, would hand an attacker fresh guesses.
+     */
+    private function assertUserNotLocked(User $user): void
+    {
+        $live = $this->nonces->liveExpiries(self::PURPOSE_USER_FAILURE, $this->failureSlots($user));
+        if (count($live) >= self::MAX_USER_FAILURES) {
+            throw new ApiProblemException(429, 'Too many requests', 'rate_limited', null, ['Retry-After' => (string) max(1, min($live) - time())]);
+        }
+    }
+
+    private function recordUserFailure(User $user): void
+    {
+        foreach ($this->failureSlots($user) as $slot) {
+            if ($this->nonces->consume(self::PURPOSE_USER_FAILURE, $slot, time() + self::USER_FAILURE_WINDOW - 60)) {
+                return;
+            }
+        }
+    }
+
+    /** @return list<string> */
+    private function failureSlots(User $user): array
+    {
+        return array_map(static fn (int $i): string => $user->getId().'#'.$i, range(1, self::MAX_USER_FAILURES));
     }
 
     /**

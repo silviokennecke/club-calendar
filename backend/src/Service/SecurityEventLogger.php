@@ -20,7 +20,8 @@ use Symfony\Component\Uid\Uuid;
  * logged and swallowed: the log never breaks the flow it observes.
  *
  * Failures are attacker-writable (anyone who knows an address), so they are folded: same user, type,
- * method, provider and IP within an hour increment `attempts` of one row; at most FAILURE_ROWS_PER_DAY
+ * method, provider and IP within the same clock hour (UTC) increment `attempts` of one row (unique
+ * `dedupe_key`, so parallel requests cannot create two); a per-user advisory lock makes the daily cap exact; at most FAILURE_ROWS_PER_DAY
  * failure rows per user and UTC day, beyond that the newest failure row only counts up.
  *
  * From the 3rd failed attempt of the same kind (user, type, method, provider) within an hour the user
@@ -71,24 +72,35 @@ class SecurityEventLogger
         $hourAgo = $now->modify('-1 hour')->format('Y-m-d H:i:s');
         $kindSql = 'user_id = ? AND type = ? AND success = 0 AND method <=> ? AND provider <=> ?';
         $kind = [$user->getId(), $type->value, $method, $provider];
+        $key = hash('sha256', implode('|', [$user->getId(), $type->value, $method, $provider, $context->ip, $now->format('Y-m-d H')]));
+        $lock = 'secev:'.$user->getId();
 
-        $updated = $this->connection->executeStatement(
-            'UPDATE security_event SET attempts = LEAST(attempts + 1, '.self::MAX_ATTEMPTS.") WHERE $kindSql AND ip <=> ? AND created_at > ? ORDER BY created_at DESC LIMIT 1",
-            [...$kind, $context->ip, $hourAgo],
-        );
-        if (0 === $updated) {
-            $dayStart = $now->setTime(0, 0)->format('Y-m-d H:i:s');
-            $today = (int) $this->connection->fetchOne(
-                'SELECT COUNT(*) FROM security_event WHERE user_id = ? AND success = 0 AND created_at >= ?',
-                [$user->getId(), $dayStart],
+        // The lock makes the daily cap exact; the unique key alone already prevents duplicate rows if it times out.
+        $locked = 1 === (int) $this->connection->fetchOne('SELECT GET_LOCK(?, 3)', [$lock]);
+        try {
+            $updated = $this->connection->executeStatement(
+                'UPDATE security_event SET attempts = LEAST(attempts + 1, '.self::MAX_ATTEMPTS.') WHERE dedupe_key = ?',
+                [$key],
             );
-            if ($today >= self::FAILURE_ROWS_PER_DAY) {
-                $this->connection->executeStatement(
-                    'UPDATE security_event SET attempts = LEAST(attempts + 1, '.self::MAX_ATTEMPTS.') WHERE user_id = ? AND success = 0 AND created_at >= ? ORDER BY created_at DESC LIMIT 1',
+            if (0 === $updated) {
+                $dayStart = $now->setTime(0, 0)->format('Y-m-d H:i:s');
+                // locking read: sees rows committed after this connection's transaction snapshot
+                $today = (int) $this->connection->fetchOne(
+                    'SELECT COUNT(*) FROM security_event WHERE user_id = ? AND success = 0 AND created_at >= ? LOCK IN SHARE MODE',
                     [$user->getId(), $dayStart],
                 );
-            } else {
-                $this->insert($user, $type, false, $method, $provider, $context, $now);
+                if ($today >= self::FAILURE_ROWS_PER_DAY) {
+                    $this->connection->executeStatement(
+                        'UPDATE security_event SET attempts = LEAST(attempts + 1, '.self::MAX_ATTEMPTS.') WHERE user_id = ? AND success = 0 AND created_at >= ? ORDER BY created_at DESC LIMIT 1',
+                        [$user->getId(), $dayStart],
+                    );
+                } else {
+                    $this->insert($user, $type, false, $method, $provider, $context, $now, $key);
+                }
+            }
+        } finally {
+            if ($locked) {
+                $this->connection->executeStatement('DO RELEASE_LOCK(?)', [$lock]);
             }
         }
 
@@ -110,7 +122,7 @@ class SecurityEventLogger
         }
     }
 
-    private function insert(User $user, SecurityEventType $type, bool $success, ?string $method, ?string $provider, ClientContext $context, \DateTimeImmutable $now): void
+    private function insert(User $user, SecurityEventType $type, bool $success, ?string $method, ?string $provider, ClientContext $context, \DateTimeImmutable $now, ?string $dedupeKey = null): void
     {
         $this->connection->insert('security_event', [
             'id' => Uuid::v7()->toRfc4122(),
@@ -124,6 +136,7 @@ class SecurityEventLogger
             'city' => null !== $context->city ? mb_substr($context->city, 0, 100) : null,
             'country' => null !== $context->country ? substr($context->country, 0, 2) : null,
             'browser' => null !== $context->browser ? mb_substr($context->browser, 0, 100) : null,
+            'dedupe_key' => $dedupeKey,
             'created_at' => $now->format('Y-m-d H:i:s'),
         ]);
     }

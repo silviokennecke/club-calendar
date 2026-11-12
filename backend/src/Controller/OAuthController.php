@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Exception\OAuthAccountConflictException;
 use App\Exception\OAuthIdentityMismatchException;
+use App\Exception\OAuthMfaLinkRequiredException;
 use App\Exception\OAuthRegistrationRestrictedException;
 use App\OAuth\OidcProvider;
 use App\OAuth\OidcResourceOwner;
@@ -290,6 +291,8 @@ class OAuthController extends AbstractController
             return $this->fail($e->unverifiedAtProvider ? 'email_unverified_at_provider' : 'account_exists');
         } catch (OAuthRegistrationRestrictedException) {
             return $this->fail('registration_restricted');
+        } catch (OAuthMfaLinkRequiredException) {
+            return $this->fail('mfa_link_required');
         } catch (\Throwable $e) {
             $this->logger->error('OAuth sign-in failed', ['provider' => $provider, 'exception' => $e]);
 

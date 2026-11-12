@@ -153,13 +153,10 @@ class MfaConcurrencyTest extends WebTestCase
 
         $this->assertSame([200, 401], $this->statuses($results), json_encode($results));
         $this->assertSame(1, (int) $this->db()->fetchOne('SELECT COUNT(DISTINCT family_id) FROM refresh_token'));
-        if (isset($results[1]['body']['mfaDisabled'])) {
-            $this->assertFalse((bool) $this->db()->fetchOne('SELECT mfa_enforced FROM user'));
-        } else {
-            // TOTP won: the backup code was not spent by the lost race
-            $this->assertSame(10, (int) $this->db()->fetchOne('SELECT COUNT(*) FROM mfa_backup_code WHERE used_at IS NULL'));
-            $this->assertTrue((bool) $this->db()->fetchOne('SELECT mfa_enforced FROM user'));
-        }
+        $this->assertTrue((bool) $this->db()->fetchOne('SELECT mfa_enforced FROM user'));
+        $spent = 10 - (int) $this->db()->fetchOne('SELECT COUNT(*) FROM mfa_backup_code WHERE used_at IS NULL');
+        // Exactly the winner's factor is spent: a lost race burns no backup code
+        $this->assertSame(isset($results[1]['body']['backupCodeUsed']) ? 1 : 0, $spent);
     }
 
     public function testTwoBackupCodesInParallelOneSessionSurvives(): void
@@ -171,9 +168,11 @@ class MfaConcurrencyTest extends WebTestCase
 
         $this->assertSame([200, 401], $this->statuses($results), json_encode($results));
         $winner = 200 === $results[0]['status'] ? $results[0] : $results[1];
-        $this->assertTrue($winner['body']['mfaDisabled']);
-        $this->assertSame($versionBefore + 1, (int) $this->db()->fetchOne('SELECT token_version FROM user'));
-        $this->assertSame(0, (int) $this->db()->fetchOne('SELECT COUNT(*) FROM mfa_backup_code'));
+        $this->assertTrue($winner['body']['backupCodeUsed']);
+        $this->assertSame(9, $winner['body']['backupCodesRemaining']);
+        $this->assertSame($versionBefore, (int) $this->db()->fetchOne('SELECT token_version FROM user'));
+        $this->assertTrue((bool) $this->db()->fetchOne('SELECT mfa_enforced FROM user'));
+        $this->assertSame(9, (int) $this->db()->fetchOne('SELECT COUNT(*) FROM mfa_backup_code WHERE used_at IS NULL'));
         $this->assertSame(1, (int) $this->db()->fetchOne('SELECT COUNT(DISTINCT family_id) FROM refresh_token'));
         // The surviving session carries the new token version
         $me = TestHelper::jsonRequest($this->client, 'GET', '/api/auth/me', [], 'Bearer '.$winner['body']['access_token']);
@@ -192,6 +191,26 @@ class MfaConcurrencyTest extends WebTestCase
         // Even the right code is refused once the budget is gone
         $r = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/mfa/verify', ['mfaToken' => $token, 'method' => 'totp', 'code' => Totp::code($this->secret, Totp::step(time()))]);
         $this->assertSame(429, $r['status']);
+    }
+
+    public function testUserFailureBudgetHoldsAcrossManyTokensInParallel(): void
+    {
+        $this->user();
+        $requests = [];
+        for ($t = 0; $t < 5; ++$t) {
+            $token = $this->mfaToken();
+            $requests[] = $this->verify($token, 'totp', '000000');
+            $requests[] = $this->verify($token, 'totp', '000000');
+        }
+        $results = $this->parallel($requests);
+
+        $codes = array_count_values(array_column(array_column($results, 'body'), 'code'));
+        $this->assertSame(5, $codes['invalid_mfa_code'] ?? 0, json_encode($results));
+        $this->assertSame(5, $codes['rate_limited'] ?? 0, json_encode($results));
+        // Locked: even a right code on a fresh token is refused without being evaluated
+        $r = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/mfa/verify', ['mfaToken' => $this->mfaToken(), 'method' => 'totp', 'code' => Totp::code($this->secret, Totp::step(time()))]);
+        $this->assertSame(429, $r['status']);
+        $this->assertTrue($this->client->getResponse()->headers->has('Retry-After'));
     }
 
     public function testSamePasskeyAssertionTwiceInParallelIssuesOneSession(): void

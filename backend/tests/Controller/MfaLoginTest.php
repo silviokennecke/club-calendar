@@ -241,7 +241,7 @@ class MfaLoginTest extends WebTestCase
         $this->assertSession($this->verify($token, 'totp', $this->totpCode()));
     }
 
-    public function testBackupCodeEndsEnforcementAndOtherSessions(): void
+    public function testBackupCodeKeepsMfaAndSessionsAndMailsRemaining(): void
     {
         $user = $this->user();
         $codes = $this->backupCodes($user);
@@ -253,26 +253,37 @@ class MfaLoginTest extends WebTestCase
         $this->assertSame(200, $r['status'], $r['content']);
         $mails = array_filter($this->getMailerMessages(), fn ($m) => $m instanceof Email);
         $this->assertCount(1, $mails);
-        $this->assertTrue($r['body']['mfaDisabled']);
-        // The returned pair works, the session from before is dead
+        $this->assertTrue($r['body']['backupCodeUsed']);
+        $this->assertSame(9, $r['body']['backupCodesRemaining']);
+        $this->assertArrayNotHasKey('mfaDisabled', $r['body']);
         $this->assertSession($r);
-        $this->assertSame(401, TestHelper::jsonRequest($this->client, 'GET', '/api/auth/me', [], $other)['status']);
-        $this->client->request('POST', '/api/auth/token', ['grant_type' => 'refresh_token', 'refresh_token' => $r['body']['refresh_token']]);
-        $this->assertSame(200, $this->client->getResponse()->getStatusCode());
+        // The other session stays
+        $this->assertSame(200, TestHelper::jsonRequest($this->client, 'GET', '/api/auth/me', [], $other)['status']);
 
         $this->em->clear();
         $fresh = $this->em->getRepository(User::class)->find($user->getId());
-        $this->assertFalse($fresh->isMfaEnforced());
-        $this->assertSame(0, (int) static::getContainer()->get(Connection::class)->fetchOne('SELECT COUNT(*) FROM user_totp'));
-        $this->assertSame(0, (int) static::getContainer()->get(Connection::class)->fetchOne('SELECT COUNT(*) FROM mfa_backup_code'));
+        $this->assertTrue($fresh->isMfaEnforced());
+        $this->assertSame(1, (int) static::getContainer()->get(Connection::class)->fetchOne('SELECT COUNT(*) FROM user_totp'));
+        $this->assertSame(9, (int) static::getContainer()->get(Connection::class)->fetchOne('SELECT COUNT(*) FROM mfa_backup_code WHERE used_at IS NULL'));
         $used = $this->events('backup_code_used');
         $this->assertCount(1, $used);
         $this->assertSame(1, (int) $used[0]['success']);
-        $verify = $this->events('mfa_verify');
-        $this->assertSame('backup_code', $verify[0]['method']);
+        $this->assertSame('backup_code', $this->events('mfa_verify')[0]['method']);
 
-        // Without enforcement the next sign-in is a plain one
-        $this->assertSession($this->loginChallenge());
+        // The next sign-in still asks for a second factor
+        $this->assertTrue($this->loginChallenge()['body']['mfaRequired'] ?? false);
+    }
+
+    public function testSixthFailureIsRefusedWithoutEvaluatingAnyFactor(): void
+    {
+        $this->user();
+        for ($i = 0; $i < 5; ++$i) {
+            $this->assertSame('invalid_mfa_code', $this->verify($this->token(), 'totp', '000000')['body']['code']);
+        }
+        $good = $this->verify($this->token(), 'totp', $this->totpCode());
+        $this->assertSame(429, $good['status']);
+        $this->assertSame('rate_limited', $good['body']['code']);
+        $this->assertCount(5, $this->events('mfa_verify'));
     }
 
     public function testBackupCodeIsSingleUse(): void

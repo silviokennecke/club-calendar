@@ -13,8 +13,10 @@ use App\Enum\SecurityEventType;
 use App\Exception\ApiProblemException;
 use App\Exception\OAuthAccountConflictException;
 use App\Exception\OAuthIdentityMismatchException;
+use App\Exception\OAuthMfaLinkRequiredException;
 use App\Exception\OAuthRegistrationRestrictedException;
 use App\Repository\RefreshTokenRepository;
+use App\Security\ClientContextResolver;
 use App\Security\NonceStore;
 use App\Security\OneTimeTokenService;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -46,6 +48,8 @@ readonly class AuthService
         private RegistrationPolicy $registrationPolicy,
         private LoggerInterface $logger,
         private SecurityEventLogger $events,
+        private AccountMailer $accountMailer,
+        private ClientContextResolver $contextResolver,
         private MfaLoginService $mfaLogin,
         private MfaService $mfa,
         /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
@@ -476,6 +480,12 @@ readonly class AuthService
                 $trustedProvider = in_array($provider, self::PROVIDERS_WITH_VERIFIED_EMAIL_CLAIM, true);
                 throw new OAuthAccountConflictException('An account with this e-mail address already exists', $trustedProvider && !$providerSaysEmailVerified);
             }
+            if ($user->isMfaEnforced()) {
+                // No auto-link into an MFA account: the mailbox alone must not open a session.
+                $this->events->record($user, SecurityEventType::LOGIN, false, 'sso', $provider);
+
+                throw new OAuthMfaLinkRequiredException('Sign in with password and MFA, then link the provider in the profile');
+            }
             if (!$user->isEmailVerified()) {
                 $this->revokeUnprovenCredentials($user);
                 $user->setIsEmailVerified(true);
@@ -557,6 +567,9 @@ readonly class AuthService
             // Linked concurrently by another user.
             return 'account_in_use';
         }
+        $context = $this->contextResolver->current();
+        $this->events->record($user, SecurityEventType::SSO_LINKED, true, 'sso', $provider, $context);
+        $this->accountMailer->sendSsoProviderLinked($user, $provider, $context);
 
         return null;
     }

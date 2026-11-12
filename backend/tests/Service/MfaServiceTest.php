@@ -225,13 +225,18 @@ class MfaServiceTest extends WebTestCase
         $this->assertProblem('mfa_not_enabled', fn () => $this->mfa->disable($user));
     }
 
-    public function testEndEnforcementBumpsTokenVersion(): void
+    public function testEndOtherSessionsBumpsTokenVersionAndKeepsMfa(): void
     {
         [$user] = $this->enabledTotpUser();
         $version = $user->getTokenVersion();
-        $this->mfa->endEnforcement($user);
+        $this->em->getConnection()->executeStatement('DELETE FROM security_event');
+        $this->mfa->endOtherSessions($user, $this->ctx());
         $this->assertSame($version + 1, $user->getTokenVersion());
-        $this->assertFalse($user->isMfaEnforced());
+        $this->assertTrue($user->isMfaEnforced());
+        $rows = $this->events();
+        $this->assertCount(1, $rows);
+        $this->assertSame('sessions_ended', $rows[0]['type']);
+        $this->assertSame('user', $rows[0]['method']);
     }
 
     public function testLastPasskeyGuard(): void
@@ -331,17 +336,18 @@ class MfaServiceTest extends WebTestCase
         $this->assertNull($rows[0]['ip']);
     }
 
-    public function testEndEnforcementRecordsEventAndMail(): void
+    public function testBackupCodeUsedRecordsEventAndMail(): void
     {
         [$user] = $this->enabledTotpUser();
         $this->em->getConnection()->executeStatement('DELETE FROM security_event');
         $before = $this->mailCount();
-        $this->mfa->endEnforcement($user, $this->ctx());
+        $this->mfa->notifyBackupCodeUsed($user, 7, $this->ctx());
 
         $rows = $this->events();
         $this->assertCount(1, $rows);
         $this->assertSame('backup_code_used', $rows[0]['type']);
         $this->assertSame($before + 1, $this->mailCount());
+        $this->assertTrue($user->isMfaEnforced());
     }
 
     public function testNoEventWhenOperationThrows(): void

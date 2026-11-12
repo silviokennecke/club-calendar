@@ -26,7 +26,7 @@ use Symfony\Component\Uid\Uuid;
 /**
  * MFA of the sign-in: TOTP, backup codes and the per-account enforcement switch (`mfa_enforced`).
  * Rate limits and re-authentication are the controller's job; this service owns the state changes. Ending MFA
- * (disable, backup-code sign-in) bumps the token version, which ends all other sessions and MCP grants;
+ * (disable) and ending other sessions bump the token version, which ends all other sessions and MCP grants;
  * enabling does not.
  */
 class MfaService
@@ -217,22 +217,31 @@ class MfaService
         $this->notify($user, SecurityEventType::MFA_DISABLED, $method, $context);
     }
 
-    /** Backup-code sign-in: same effect as disable(); the caller then issues the token pair of the new session. */
-    public function endEnforcement(User $user, ?ClientContext $context = null): void
+    /** Unused backup codes left. */
+    public function remainingBackupCodes(User $user): int
     {
-        $this->endEnforcementState($user);
-        $this->notifyBackupCodeUsed($user, $context);
+        return count($this->backupCodes->findUnused($user));
     }
 
-    /** The state change of endEnforcement() only, so a caller can run it inside its own transaction. */
-    public function endEnforcementState(User $user): void
+    /** A backup code signed the user in: event and mail only; MFA and the other sessions stay. */
+    public function notifyBackupCodeUsed(User $user, int $remaining, ?ClientContext $context = null): void
     {
-        $this->removeAndEndSessions($user);
+        $this->notify($user, SecurityEventType::BACKUP_CODE_USED, 'backup_code', $context, $remaining);
     }
 
-    public function notifyBackupCodeUsed(User $user, ?ClientContext $context = null): void
+    /**
+     * Ends all other sessions and MCP grants (token version bump, refresh families revoked). The caller issues
+     * the token pair that continues the current session.
+     */
+    public function endOtherSessions(User $user, ?ClientContext $context = null): void
     {
-        $this->notify($user, SecurityEventType::BACKUP_CODE_USED, 'backup_code', $context);
+        $this->em->wrapInTransaction(function () use ($user): void {
+            $this->em->refresh($user, LockMode::PESSIMISTIC_WRITE);
+            $user->invalidateTokens();
+            $this->em->flush();
+        });
+        $this->tokens->revokeAllRefreshTokens($user);
+        $this->events->record($user, SecurityEventType::SESSIONS_ENDED, true, 'user', null, $context ?? $this->contextResolver->current());
     }
 
     /** Checks a TOTP code at sign-in; a step is accepted once (race safe). */
@@ -295,7 +304,7 @@ class MfaService
         $this->tokens->revokeAllRefreshTokens($user);
     }
 
-    private function notify(User $user, SecurityEventType $type, ?string $method, ?ClientContext $context): void
+    private function notify(User $user, SecurityEventType $type, ?string $method, ?ClientContext $context, int $remaining = 0): void
     {
         $context ??= $this->contextResolver->current();
         if (SecurityEventType::MFA_DISABLED === $type) {
@@ -305,7 +314,7 @@ class MfaService
         match ($type) {
             SecurityEventType::MFA_ENABLED => $this->mailer->sendMfaEnabled($user, $context),
             SecurityEventType::MFA_DISABLED => $this->mailer->sendMfaDisabled($user, $context, 'cli' === $method),
-            SecurityEventType::BACKUP_CODE_USED => $this->mailer->sendBackupCodeUsed($user, $context),
+            SecurityEventType::BACKUP_CODE_USED => $this->mailer->sendBackupCodeUsed($user, $context, $remaining),
             default => $this->mailer->sendBackupCodesRegenerated($user, $context),
         };
     }

@@ -12,6 +12,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Index(name: 'idx_security_event_user_created', columns: ['user_id', 'created_at'])]
 #[ORM\Index(name: 'idx_security_event_created', columns: ['created_at'])]
+#[ORM\UniqueConstraint(name: 'uq_security_event_dedupe_key', columns: ['dedupe_key'])]
 #[ORM\Index(name: 'idx_security_event_dedupe', columns: ['user_id', 'type', 'success', 'created_at'])]
 class SecurityEvent
 {
@@ -50,6 +51,10 @@ class SecurityEvent
 
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $browser = null;
+
+    /** Hash of user, type, method, provider, IP and hour of a failure row; unique, so parallel failures fold into one row. */
+    #[ORM\Column(type: 'string', length: 64, nullable: true, options: ['fixed' => true])]
+    private ?string $dedupeKey = null;
 
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;

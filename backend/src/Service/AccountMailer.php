@@ -76,15 +76,27 @@ readonly class AccountMailer
         $this->sendNotice($user, 'backup_codes_regenerated', $context);
     }
 
-    /** A backup code ended MFA (and all other sessions). */
-    public function sendBackupCodeUsed(User $user, ClientContext $context = new ClientContext()): void
+    /** A backup code was used to sign in; MFA stays on, `$remaining` codes are left. */
+    public function sendBackupCodeUsed(User $user, ClientContext $context = new ClientContext(), int $remaining = 0): void
     {
-        $this->sendNotice($user, 'backup_code_used', $context);
+        $this->sendNotice($user, 'backup_code_used', $context, ['remaining' => $remaining]);
     }
 
     public function sendPasskeyDeleted(User $user, ClientContext $context = new ClientContext()): void
     {
         $this->sendNotice($user, 'passkey_deleted', $context);
+    }
+
+    /** A passkey was registered; `$deviceName` is user input (the template escapes it). */
+    public function sendPasskeyAdded(User $user, string $deviceName, ClientContext $context = new ClientContext()): void
+    {
+        $this->sendNotice($user, 'passkey_added', $context, ['passkeyName' => $deviceName]);
+    }
+
+    /** An SSO provider was linked to the account in the profile. */
+    public function sendSsoProviderLinked(User $user, string $provider, ClientContext $context = new ClientContext()): void
+    {
+        $this->sendNotice($user, 'sso_linked', $context, ['provider' => ucfirst($provider)]);
     }
 
     /** Repeated failed sign-in attempts ($count within the last hour); `$context` is the latest attempt. */

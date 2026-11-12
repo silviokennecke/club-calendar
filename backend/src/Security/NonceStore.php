@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Security;
 
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Doctrine\DBAL\ParameterType;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -30,27 +32,73 @@ final readonly class NonceStore
         );
     }
 
+    /**
+     * Single insert-or-fail. Expired rows are not swept here (a sweep inside a caller's transaction locks
+     * unrelated rows); `app:prune-auth-nonces` does that. Only an expired row with the very same hash is
+     * replaced, so a reused key (slot, mail interval) becomes available again at its expiry.
+     */
     public function consume(string $purpose, string $nonce, int $expiresAtTimestamp): bool
     {
-        // Both sides in UTC: expires_at is written from a Unix timestamp, so comparing against the clock's
-        // local time would purge consumed entries early (and reopen replays) on a non-UTC server.
-        $now = $this->clock->now()->setTimezone(new \DateTimeZone('UTC'));
-        $this->connection->executeStatement(
-            'DELETE FROM auth_nonce WHERE expires_at < ?',
-            [$now->format('Y-m-d H:i:s')],
-        );
+        $hash = hash('sha256', $purpose."\0".$nonce);
+        for ($attempt = 0; $attempt < 2; ++$attempt) {
+            try {
+                $this->connection->insert('auth_nonce', [
+                    'id' => Uuid::v7()->toRfc4122(),
+                    'nonce_hash' => $hash,
+                    // Keep the entry a little past the token expiry so clock skew cannot reopen it.
+                    'expires_at' => (new \DateTimeImmutable('@'.($expiresAtTimestamp + 60)))->format('Y-m-d H:i:s'),
+                ]);
 
-        try {
-            $this->connection->insert('auth_nonce', [
-                'id' => Uuid::v7()->toRfc4122(),
-                'nonce_hash' => hash('sha256', $purpose."\0".$nonce),
-                // Keep the entry a little past the token expiry so clock skew cannot reopen it.
-                'expires_at' => (new \DateTimeImmutable('@'.($expiresAtTimestamp + 60)))->format('Y-m-d H:i:s'),
-            ]);
-        } catch (UniqueConstraintViolationException) {
-            return false;
+                return true;
+            } catch (UniqueConstraintViolationException) {
+                // Both sides in UTC: expires_at is written from a Unix timestamp.
+                $now = $this->clock->now()->setTimezone(new \DateTimeZone('UTC'));
+                $replaced = $this->connection->executeStatement(
+                    'DELETE FROM auth_nonce WHERE nonce_hash = ? AND expires_at < ?',
+                    [$hash, $now->format('Y-m-d H:i:s')],
+                );
+                if (0 === $replaced) {
+                    return false;
+                }
+            }
         }
 
-        return true;
+        return false;
+    }
+
+    /**
+     * Unix expiry timestamps (including the 60 s padding) of the still live entries among the given values.
+     *
+     * @param list<string> $nonces
+     *
+     * @return list<int>
+     */
+    public function liveExpiries(string $purpose, array $nonces): array
+    {
+        $hashes = array_map(static fn (string $n): string => hash('sha256', $purpose."\0".$n), $nonces);
+        $now = $this->clock->now()->setTimezone(new \DateTimeZone('UTC'));
+        $rows = $this->connection->fetchFirstColumn(
+            'SELECT expires_at FROM auth_nonce WHERE nonce_hash IN (?) AND expires_at >= ?',
+            [$hashes, $now->format('Y-m-d H:i:s')],
+            [ArrayParameterType::STRING, ParameterType::STRING],
+        );
+
+        return array_map(static fn (string $d): int => (new \DateTimeImmutable($d, new \DateTimeZone('UTC')))->getTimestamp(), $rows);
+    }
+
+    /** Deletes expired entries in small batches (autocommit); returns the number deleted. */
+    public function prune(int $batch = 1000): int
+    {
+        $now = $this->clock->now()->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+        $total = 0;
+        do {
+            $n = (int) $this->connection->executeStatement(
+                sprintf('DELETE FROM auth_nonce WHERE expires_at < ? LIMIT %d', $batch),
+                [$now],
+            );
+            $total += $n;
+        } while ($n >= $batch);
+
+        return $total;
     }
 }

@@ -8,11 +8,13 @@ use App\Entity\Passkey;
 use App\Entity\User;
 use App\Enum\SecurityEventType;
 use App\Exception\ApiProblemException;
+use App\Security\ClientContextResolver;
 use App\Security\NonceStore;
 use App\Security\SignedTokenService;
 use Cose\Algorithm\Manager;
 use Cose\Algorithm\Signature\ECDSA\ES256;
 use Cose\Algorithm\Signature\RSA\RS256;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
@@ -67,6 +69,8 @@ class WebAuthnService
         private readonly LoggerInterface $logger,
         private readonly SecurityEventLogger $events,
         private readonly MfaService $mfa,
+        private readonly AccountMailer $mailer,
+        private readonly ClientContextResolver $contextResolver,
         private readonly string $rpId,
         private readonly string $rpName,
         private readonly string $allowedOrigin,
@@ -193,6 +197,10 @@ class WebAuthnService
 
         $this->em->persist($passkey);
         $this->em->flush();
+
+        $context = $this->contextResolver->current();
+        $this->events->record($user, SecurityEventType::PASSKEY_ADDED, true, 'passkey', null, $context);
+        $this->mailer->sendPasskeyAdded($user, (string) $deviceName, $context);
 
         return $passkey->getId();
     }
@@ -362,16 +370,22 @@ class WebAuthnService
      */
     public function deletePasskey(string $id, User $user, ?bool $consentOk = null): array
     {
-        $passkey = $this->em->getRepository(Passkey::class)->find($id);
-        if (!$passkey || $passkey->getUser()->getId() !== $user->getId()) {
-            throw new ApiProblemException(404, 'Passkey not found', 'passkey_not_found');
-        }
-        $this->mfa->assertPasskeyDeletable($user);
-        $this->em->remove($passkey);
-        $user->invalidateTokens();
-        $this->em->flush();
+        // The user row lock makes "not the last passkey" and the delete one step: two parallel deletes serialise.
+        $this->em->wrapInTransaction(function () use ($id, $user): void {
+            $this->em->refresh($user, LockMode::PESSIMISTIC_WRITE);
+            $passkey = $this->em->getRepository(Passkey::class)->find($id);
+            if (!$passkey || $passkey->getUser()->getId() !== $user->getId()) {
+                throw new ApiProblemException(404, 'Passkey not found', 'passkey_not_found');
+            }
+            $this->mfa->assertPasskeyDeletable($user);
+            $this->em->remove($passkey);
+            $user->invalidateTokens();
+            $this->em->flush();
+        });
         $this->tokens->revokeAllRefreshTokens($user);
-        $this->events->record($user, SecurityEventType::PASSKEY_DELETED, true, 'passkey');
+        $context = $this->contextResolver->current();
+        $this->events->record($user, SecurityEventType::PASSKEY_DELETED, true, 'passkey', null, $context);
+        $this->mailer->sendPasskeyDeleted($user, $context);
 
         return $this->tokens->tokenResponse($user, null, null, $consentOk);
     }

@@ -21,8 +21,13 @@ use Monolog\Processor\ProcessorInterface;
 #[AsMonologProcessor]
 final class RedactTokensProcessor implements ProcessorInterface
 {
-    private const string PATTERN = '/([?&](?:token|ticket|secret|refresh_token|code|state|link_proof|access_token)=)[^&#\s"\']+/i';
-    private const string JSON_PATTERN = '/("(?:access_token|refresh_token|token|secret)"\s*:\s*")[^"]*/i';
+    private const string PATTERN = '/([?&](?:token|ticket|secret|refresh_token|code|state|link_proof|access_token|mfaToken|setupToken|challengeToken|backupCodes?(?:%5B%5D|\[\])?|otpauthUri)=)[^&#\s"\']+/i';
+    private const string JSON_PATTERN = '/("(?:access_token|refresh_token|token|secret|mfaToken|setupToken|challengeToken|backupCode|otpauthUri)"\s*:\s*")[^"]*/i';
+    // "backupCodes": ["a","b"] (whole array) and 6 to 10 digit MFA codes; other "code" values (error codes) stay readable
+    private const string JSON_LIST_PATTERN = '/("backupCodes"\s*:\s*)\[[^\]]*\]/i';
+    private const string JSON_CODE_PATTERN = '/("code"\s*:\s*")\d{6,10}(?=")/';
+    // TOTP provisioning URIs carry the secret in their query
+    private const string OTPAUTH_PATTERN = '/otpauth:\/\/[^\s"\'<>]+/i';
 
     public function __invoke(LogRecord $record): LogRecord
     {
@@ -57,7 +62,11 @@ final class RedactTokensProcessor implements ProcessorInterface
     {
         $value = (string) preg_replace(self::PATTERN, '$1[redacted]', $value);
 
-        return (string) preg_replace(self::JSON_PATTERN, '$1[redacted]', $value);
+        $value = (string) preg_replace(self::JSON_PATTERN, '$1[redacted]', $value);
+        $value = (string) preg_replace(self::JSON_LIST_PATTERN, '$1"[redacted]"', $value);
+        $value = (string) preg_replace(self::JSON_CODE_PATTERN, '$1[redacted]', $value);
+
+        return (string) preg_replace(self::OTPAUTH_PATTERN, 'otpauth://[redacted]', $value);
     }
 
     private static function leaks(\Throwable $e): bool

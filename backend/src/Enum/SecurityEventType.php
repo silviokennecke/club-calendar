@@ -18,4 +18,7 @@ enum SecurityEventType: string
     case BACKUP_CODE_USED = 'backup_code_used';
     case PASSWORD_CHANGED = 'password_changed';
     case PASSKEY_DELETED = 'passkey_deleted';
+    case SESSIONS_ENDED = 'sessions_ended';
+    case PASSKEY_ADDED = 'passkey_added';
+    case SSO_LINKED = 'sso_linked';
 }

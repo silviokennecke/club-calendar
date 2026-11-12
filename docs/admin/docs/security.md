@@ -37,11 +37,11 @@ This page lists what the app does to keep accounts and data safe, and what you, 
 
 Users can turn on multi-factor authentication (MFA) for password sign-in in their profile: besides the password they confirm with a six-digit code from an **authenticator app**, a **passkey**, or both. Once it is on, a password alone is not enough.
 
-- Sign-in with a single sign-on provider or with a passkey does not ask for MFA.
+- Sign-in with a single sign-on provider or with a passkey does not ask for MFA. A new provider is never linked automatically to an account that has MFA on: the user signs in with password and MFA and links the provider in the profile.
 - When it is switched on, the user receives **backup codes**. They are shown once, each works one time, and the user can make new ones at any time.
 - Someone who uses a **backup code** gets signed in, but MFA is then switched off, all other sessions end and all connected AI apps are disconnected. The user is mailed about it and must switch MFA on again.
 - Switching it off in the profile has the same effect: the authenticator app and the backup codes are removed, passkeys stay, and all sessions and AI app connections end.
-- Users receive a notification mail when MFA is switched on or off, when backup codes are made again or used, and when a passkey is deleted.
+- Users receive a notification mail when MFA is switched on or off, when backup codes are made again or used, and when a passkey or a single sign-on provider is added or a passkey is deleted.
 
 Nothing needs configuring. If a user has lost the device with the authenticator app and also has no backup codes, an operator can switch MFA off on the command line, see [Command-line tools](operations.md#command-line-tools). Check the identity of the person first.
 
@@ -53,9 +53,9 @@ The app keeps a log of security-relevant events for each account. It holds:
 - failed sign-in attempts on existing accounts,
 - MFA steps and changes, and password changes.
 
-Each entry has the time, the IP address, the approximate city and country, and the browser name and version. The log is not shown in the app; it is only in the database.
+Each entry has the time, the IP address, the approximate city and country, and the browser name and version. Text that comes from the visitor's browser is reduced to plain letters, digits, spaces and a few separators, and the browser entry is at most 20 characters, so nobody can smuggle links or other text into the log or into notification mails. The log is not shown in the app; it is only in the database.
 
-- Failed attempts are merged: repeated failures from the same address within one hour count up in one entry. There are at most 50 failure entries per account and day.
+- Failed attempts are merged: repeated failures from the same address within the same clock hour (UTC) count up in one entry. There are at most 50 failure entries per account and day.
 - Entries older than **one year** are deleted by the scheduled command `app:prune-security-events` (see [Operations](operations.md#scheduled-tasks)). They are also deleted when the account is deleted.
 - **Your privacy policy must say that this log exists**, what it contains and how long it is kept. The [legal documents](legal.md#what-the-security-log-stores) page lists the details.
 

@@ -76,4 +76,29 @@ class RedactTokensProcessorTest extends TestCase
 
         $this->assertSame($e, $out->context['exception']);
     }
+
+    public function testMfaSecretsAreRedacted(): void
+    {
+        $record = new LogRecord(
+            new \DateTimeImmutable(),
+            'app',
+            Level::Error,
+            'POST /api/auth/mfa/verify?mfaToken=abc.def&x=1 otpauth://totp/Club:a@b.c?secret=JBSWY3DP&issuer=Club failed',
+            [
+                'body' => '{"mfaToken":"t1","setupToken":"t2","challengeToken":"t3","backupCodes":["aaaa-bbbb","cccc-dddd"],"backupCode":"eeee","otpauthUri":"otpauth://totp/x?secret=Z","code":"123456","keep":"visible"}',
+                'err' => '{"code":"rate_limited"}',
+                'form' => 'a=1&backupCodes[]=x1&setupToken=t9',
+            ],
+        );
+
+        $out = (new RedactTokensProcessor())($record);
+        $all = $out->message.json_encode($out->context);
+
+        foreach (['abc.def', 'JBSWY3DP', 't1', 't2', 't3', 'aaaa-bbbb', 'cccc-dddd', 'eeee', 'secret=Z', '123456', 'x1', 't9'] as $leak) {
+            $this->assertStringNotContainsString($leak, $all, $leak);
+        }
+        $this->assertStringContainsString('"keep":"visible"', $out->context['body']);
+        $this->assertSame('{"code":"rate_limited"}', $out->context['err']);
+        $this->assertStringContainsString('x=1', $out->message);
+    }
 }
