@@ -10,12 +10,21 @@ Mit Multi-Faktor-Authentifizierung (MFA) fragt dich die Anmeldung mit Passwort z
 
 Den Abschnitt findest du in deinem [Profil](help:settings/profile) unter **Multi-Faktor-Authentifizierung (MFA)**.
 
+![Profil, Abschnitt MFA mit Authenticator-App, Passkey und Backup-Codes](shot:profile-mfa)
+
 ## Authenticator-App einrichten
 
 1. Klicke im Abschnitt auf **MFA-Methode hinzufügen**.
 2. Wähle **Authenticator-App** und klicke auf **Weiter**.
+
+![Auswahl der MFA-Methode: Authenticator-App oder Passkey](shot:mfa-add-method)
+
 3. Scanne den QR-Code mit deiner App. Kannst du ihn nicht scannen, gib den **Einrichtungsschlüssel** in der App ein.
+   ![Einrichtung der Authenticator-App mit QR-Code und Einrichtungsschlüssel](shot:mfa-totp-setup)
+
 4. Gib den 6-stelligen Code ein, den deine App anzeigt, unter **Code aus der App**.
+   ![Backup-Codes zum Aufbewahren](shot:mfa-backup-codes)
+
 5. Bewahre die **Backup-Codes** sicher auf (siehe unten). Setze den Haken bei **Ich habe die Backup-Codes aufbewahrt** und klicke auf **Weiter**.
 6. Bestätige, dass du es bist: Gib dein Passwort ein und klicke auf **Aktivieren**. Hat dein Konto kein Passwort, klicke auf **Code senden** und gib den Code aus der E-Mail ein.
 
@@ -31,7 +40,11 @@ Hast du schon einen Passkey, kannst du MFA direkt damit einschalten. Der Knopf *
 
 ## Bei der Anmeldung
 
-Nach dem Passwort fragt dich die Anmeldung nach dem weiteren Faktor. Du hast drei Möglichkeiten:
+Nach dem Passwort fragt dich die Anmeldung nach dem weiteren Faktor.
+
+![Anmeldung fragt nach dem Code aus der Authenticator-App](shot:sign-in-mfa)
+
+Du hast drei Möglichkeiten:
 
 - **Code aus der Authenticator-App verwenden**: Gib den aktuellen 6-stelligen Code ein.
 - **Backup-Code verwenden**: Gib einen deiner Backup-Codes ein.

@@ -10,12 +10,21 @@ With multi-factor authentication (MFA), signing in with your password also asks 
 
 You find the section in your [profile](help:settings/profile) under **Multi-factor authentication (MFA)**.
 
+![Profile, MFA section with authenticator app, passkey and backup codes](shot:profile-mfa)
+
 ## Set up an authenticator app
 
 1. In the section, click **Add MFA method**.
 2. Choose **Authenticator app** and click **Next**.
+
+![Choosing the MFA method: authenticator app or passkey](shot:mfa-add-method)
+
 3. Scan the QR code with your app. If you cannot scan it, enter the **Setup key** in your app.
+   ![Authenticator app setup with QR code and setup key](shot:mfa-totp-setup)
+
 4. Enter the 6-digit code your app shows under **Code from the app**.
+   ![Backup codes to store safely](shot:mfa-backup-codes)
+
 5. Store your **Backup codes** safely (see below). Tick **I stored the backup codes** and click **Continue**.
 6. Confirm that it is you: enter your password and click **Activate**. If your account has no password, click **Send code** and enter the code from the e-mail.
 
@@ -31,7 +40,11 @@ If you already have a passkey, you can turn on MFA with it. The **Turn on MFA** 
 
 ## When signing in
 
-After your password, sign-in asks for the other factor. You have three options:
+After your password, sign-in asks for the other factor.
+
+![Sign-in asking for the code from the authenticator app](shot:sign-in-mfa)
+
+You have three options:
 
 - **Use the code from your authenticator app**: enter the current 6-digit code.
 - **Use a backup code**: enter one of your backup codes.
