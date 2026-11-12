@@ -12,6 +12,7 @@ use App\Security\SignedTokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\FakeOAuth2Client;
 use App\Tests\Helper\TestHelper;
+use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -400,6 +401,41 @@ class OAuthTest extends WebTestCase
         // Google vouches for its claim, and the claim says "not verified": the user can fix it at Google
         $this->assertFailed('email_unverified_at_provider', $this->signIn('google', self::google('alice@example.com', false)));
         $this->assertCount(0, $this->user('alice@example.com')->getOauthAccounts());
+    }
+
+    public function testVerifiedLoginIsNotLinkedIntoAnAccountWithMfa(): void
+    {
+        $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
+        $alice = TestHelper::createUser($this->em, $hasher, 'alice@example.com');
+        $alice->setMfaEnforced(true);
+        TestHelper::createUser($this->em, $hasher, 'bob@example.com');
+        $this->em->flush();
+
+        foreach (['google', 'apple'] as $provider) {
+            $claims = self::google('alice@example.com', true, $provider.'-1');
+            $this->assertFailed('mfa_link_required', $this->signIn($provider, $claims), $provider);
+        }
+        $this->assertCount(0, $this->user('alice@example.com')->getOauthAccounts());
+        $this->assertSame(2, (int) static::getContainer()->get(Connection::class)->fetchOne(
+            "SELECT COUNT(*) FROM security_event WHERE type = 'login' AND success = 0 AND method = 'sso'",
+        ));
+
+        // Without MFA the address still links as before.
+        $this->assertSignedIn($this->signIn('google', self::google('bob@example.com', true, 'google-bob')));
+        $this->assertCount(1, $this->user('bob@example.com')->getOauthAccounts());
+    }
+
+    public function testAlreadyLinkedIdentityOfAnMfaUserStillSignsIn(): void
+    {
+        $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
+        $alice = TestHelper::createUser($this->em, $hasher, 'alice@example.com');
+        $account = new OAuthAccount();
+        $account->setUser($alice)->setProvider('google')->setProviderId('google-1');
+        $this->em->persist($account);
+        $alice->setMfaEnforced(true);
+        $this->em->flush();
+
+        $this->assertSignedIn($this->signIn('google', self::google('alice@example.com')));
     }
 
     public function testUntrustedProviderOrDifferentAddressStillReportsAccountExists(): void

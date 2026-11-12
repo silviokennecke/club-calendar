@@ -277,24 +277,26 @@ class MfaLoginTest extends WebTestCase
     public function testSixthFailureIsRefusedWithoutEvaluatingAnyFactor(): void
     {
         $this->user();
-        for ($i = 0; $i < 5; ++$i) {
-            $this->assertSame('invalid_mfa_code', $this->verify($this->token(), 'totp', '000000')['body']['code']);
+        $a = $this->token();
+        $b = $this->token();
+        foreach ([$a, $a, $a, $b, $b] as $token) {
+            $this->assertSame('invalid_mfa_code', $this->verify($token, 'totp', '000000')['body']['code']);
         }
-        $good = $this->verify($this->token(), 'totp', $this->totpCode());
+        $good = $this->verify($b, 'totp', $this->totpCode());
         $this->assertSame(429, $good['status']);
         $this->assertSame('rate_limited', $good['body']['code']);
-        $this->assertCount(5, $this->events('mfa_verify'));
+        // The refused attempt took no guess slot and evaluated nothing: the token is still usable after the window
+        $this->assertSame(5, array_sum(array_column($this->events('mfa_verify'), 'attempts')));
     }
 
     public function testBackupCodeIsSingleUse(): void
     {
         $codes = $this->backupCodes($this->user());
-        // Second code set aside so enforcement stays irrelevant: use the same code on two tokens
         $t1 = $this->token();
         $t2 = $this->token();
         $this->assertSame(200, $this->verify($t1, 'backup_code', $codes[1])['status']);
-        // t2 is dead anyway (token version bumped), and so is the code
-        $this->assertSame('invalid_mfa_token', $this->verify($t2, 'backup_code', $codes[2])['body']['code']);
+        $this->assertSame('invalid_mfa_code', $this->verify($t2, 'backup_code', $codes[1])['body']['code']);
+        $this->assertSame(200, $this->verify($t2, 'backup_code', $codes[2])['status']);
     }
 
     public function testSpentTokenDoesNotBurnABackupCode(): void

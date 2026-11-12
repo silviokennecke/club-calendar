@@ -20,7 +20,7 @@
         </mj-text>
         <mj-include path="./_components/client-details.mjml" />
         <mj-text padding-bottom="16px">
-          {{ 'email.backup_code_used.info'|trans }}
+          {{ 'email.backup_code_used.info'|trans({remaining: remaining}) }}
         </mj-text>
 
         {% set noticeText = 'email.backup_code_used.not_you'|trans %}

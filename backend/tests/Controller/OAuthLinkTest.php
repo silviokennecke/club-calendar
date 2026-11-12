@@ -283,6 +283,30 @@ class OAuthLinkTest extends WebTestCase
         $this->assertCount(1, $this->accounts());
     }
 
+    public function testLinkingFromTheProfileWorksForAnMfaUserAndSendsOneNoticeAndEvent(): void
+    {
+        $user = $this->createUser('alice@example.com');
+        $user->setMfaEnforced(true)->setLanguage('de');
+        $this->em->flush();
+        $this->assertSame(self::profile(['linked' => 'google']), $this->link($user, 'google', ['sub' => 'g-1', 'email' => 'a@gmail.example']));
+        $this->assertCount(1, $this->accounts());
+
+        $mails = array_values(array_filter($this->getMailerMessages(), fn ($m) => $m instanceof \Symfony\Component\Mime\Email));
+        $this->assertCount(1, $mails);
+        $this->assertSame('Eine Anmeldung über einen Anbieter wurde verknüpft', $mails[0]->getSubject());
+        $this->assertStringContainsString('Google', (string) $mails[0]->getHtmlBody());
+        $this->assertStringContainsString('/forgot-password', (string) $mails[0]->getHtmlBody());
+        $row = static::getContainer()->get(\Doctrine\DBAL\Connection::class)->fetchAssociative("SELECT * FROM security_event WHERE type = 'sso_linked'");
+        $this->assertSame('google', $row['provider']);
+        $this->assertSame('sso', $row['method']);
+        $this->assertSame(1, (int) $row['success']);
+
+        // Linking the same account again is not a new link: no notice for that request, no second event.
+        $this->link($user, 'google', ['sub' => 'g-1', 'email' => 'a@gmail.example']);
+        $this->assertCount(0, array_filter($this->getMailerMessages(), fn ($m) => $m instanceof \Symfony\Component\Mime\Email));
+        $this->assertSame(1, (int) static::getContainer()->get(\Doctrine\DBAL\Connection::class)->fetchOne("SELECT COUNT(*) FROM security_event WHERE type = 'sso_linked'"));
+    }
+
     public function testProviderAccountOfAnotherUserCannotBeTakenOver(): void
     {
         $owner = $this->createUser('owner@example.com');

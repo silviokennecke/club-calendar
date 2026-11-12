@@ -104,7 +104,9 @@ info:
     2. The provider calls back `GET|POST /api/auth/oauth/{provider}/callback`; the API redirects to
        `{FRONTEND_URL}/auth/callback?code=<one-time code>` (redeemed at `POST /api/auth/token`, `grant_type=one_time_token`; no token in the URL) or `?error=<code>` with one of
        `invalid_request`, `invalid_state`, `provider_denied`, `provider_error`, `oauth_failed`, `email_missing`, `account_exists`,
-       `email_unverified_at_provider`, `registration_restricted` (`RESTRICT_REGISTRATION`: a new account needs an open club
+       `email_unverified_at_provider`, `mfa_link_required` (the address belongs to an account with MFA: no
+       automatic linking and no session; sign in with password and MFA and link the provider in the profile),
+       `registration_restricted` (`RESTRICT_REGISTRATION`: a new account needs an open club
        invitation for the address; existing accounts and linking are not affected). A provider that does not prove the
        address (Microsoft) creates the account unverified and mails the 6-digit code; the redirect is the normal one
        (`?code=`), and the redeemed session is restricted until `POST /api/auth/verify-email`. An existing account is linked by e-mail only when the provider vouches
@@ -1574,9 +1576,11 @@ paths:
       summary: Finish a password sign-in with an authenticator app or a backup code
       description: >-
         Public: the signed `mfaToken` of the challenge is the credential (valid 5 minutes, single use, consumed only by
-        a successful second factor). A backup code is single use too and ends MFA for the account: the
-        answer then carries `mfaDisabled: true` and all other sessions have ended. Wrong codes count against 5 attempts
-        per 15 minutes per account and per token, and 20 per 15 minutes per IP.
+        a successful second factor). A backup code is single use too; MFA stays on and other sessions
+        stay, the answer carries `backupCodeUsed: true` and `backupCodesRemaining` and the user is mailed (the app can then offer
+        `POST /api/auth/sessions/sign-out-others`). Every attempt counts against 5 per 15 minutes per token and 20 per 15 minutes
+        per IP; failed factor checks also count in an exact per-account budget of 5 per 15 minutes (not reset by a success):
+        once used up, further attempts get 429 `rate_limited` with `Retry-After` without any code being checked.
       operationId: mfaVerify
       security: []
       requestBody:
@@ -1592,7 +1596,7 @@ paths:
                 code: { type: string, description: '6-digit code of the authenticator app, or a backup code.' }
       responses:
         '200':
-          description: The token pair of the sign-in (plus `mfaDisabled` after a backup code).
+          description: The token pair of the sign-in (plus `backupCodeUsed` and `backupCodesRemaining` after a backup code).
           content:
             application/json:
               schema:
@@ -1600,7 +1604,8 @@ paths:
                   - $ref: '#/components/schemas/TokenResponse'
                   - type: object
                     properties:
-                      mfaDisabled: { type: boolean, const: true, description: 'Only after a backup code: MFA is now off.' }
+                      backupCodeUsed: { type: boolean, const: true, description: 'Only after a backup code.' }
+                      backupCodesRemaining: { type: integer, minimum: 0, description: 'Only after a backup code: unused backup codes left.' }
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401':
           description: '`invalid_mfa_token` (challenge expired, used or invalid) or `invalid_mfa_code` (field `code`: wrong or used code; the same answer for an authenticator code and a backup code).'
@@ -1799,6 +1804,30 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+
+  /api/auth/sessions/sign-out-others:
+    post:
+      tags: [Multi-factor authentication (MFA)]
+      summary: Sign out all other sessions
+      description: >-
+        No body and no re-authentication. Ends every other session and all MCP connections of the user (token version
+        bump, refresh token families revoked) and returns a fresh token pair of a new family, so the calling session
+        continues. Shares the rate limit of MFA management (5 per 15 minutes per user).
+      operationId: signOutOtherSessions
+      responses:
+        '200':
+          description: Other sessions ended; the new token pair of this session.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/TokenResponse'
+                  - type: object
+                    required: [ok]
+                    properties:
+                      ok: { type: boolean, const: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/auth/mfa/backup-codes:

@@ -101,7 +101,7 @@ test.describe("MFA", () => {
     await page.waitForURL(/\/clubs/);
   });
 
-  test("Anmeldung mit Backup-Code schaltet MFA aus und meldet andere Geräte ab", async ({
+  test("Anmeldung mit Backup-Code lässt MFA und andere Geräte bestehen", async ({
     page,
     browser,
     baseURL,
@@ -123,15 +123,13 @@ test.describe("MFA", () => {
       await MFA_FORM(page).getByLabel("Backup-Code", { exact: true }).fill(backupCodes[0]);
       await MFA_FORM(page).getByRole("button", { name: "Bestätigen" }).click();
       await page.waitForURL(/\/clubs/);
-      await expect(page.getByText(/wurde ausgeschaltet und andere Geräte/)).toBeVisible();
 
+      // MFA stays on and the other device keeps its session
       await page.goto("/profile");
-      await expect(page.getByText("MFA ist ausgeschaltet.")).toBeVisible();
-      await expect(page.getByText("Du hast noch keine MFA-Methode eingerichtet.")).toBeVisible();
-
-      // the other device lost its session
+      await expect(page.getByRole("heading", { level: 1, name: "Profil" })).toBeVisible();
+      await expect(page.getByText("MFA ist ausgeschaltet.")).toHaveCount(0);
       await other.page.goto("/profile");
-      await expect(other.page).toHaveURL(/\/login/);
+      await expect(other.page).toHaveURL(/\/profile/);
     } finally {
       await other.context.close();
     }

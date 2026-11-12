@@ -747,13 +747,19 @@ class WebAuthnTest extends WebTestCase
         }
     }
 
-    public function testExpiredNoncesAreCleanedUp(): void
+    public function testExpiredNoncesArePrunedNotSweptByConsume(): void
     {
         $conn = self::$em->getConnection();
         $store = new \App\Security\NonceStore($conn, new \Symfony\Component\Clock\NativeClock());
         $this->assertTrue($store->consume('webauthn.get', 'old', time() - 3600));
         $this->assertTrue($store->consume('webauthn.get', 'new', time() + 300));
-        $this->assertSame(1, (int) $conn->fetchOne('SELECT COUNT(*) FROM auth_nonce'));
+        $this->assertSame(2, (int) $conn->fetchOne('SELECT COUNT(*) FROM auth_nonce'));
+        // A reused key becomes available again once its own entry expired
+        $this->assertTrue($store->consume('webauthn.get', 'old', time() + 300));
+        $this->assertFalse($store->consume('webauthn.get', 'old', time() + 300));
+        $this->assertTrue($store->consume('webauthn.get', 'old2', time() - 3600));
+        $this->assertSame(1, $store->prune());
+        $this->assertSame(2, (int) $conn->fetchOne('SELECT COUNT(*) FROM auth_nonce'));
     }
 
     public function testMalformedRequestBodiesEndInClientErrors(): void

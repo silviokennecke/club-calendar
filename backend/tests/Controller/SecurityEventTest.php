@@ -215,7 +215,7 @@ class SecurityEventTest extends WebTestCase
     }
 
     /** @return array{0: SoftwareAuthenticator, 1: string} */
-    private function passkeyFor(User $user): array
+    private function passkeyFor(User $user, string $name = 'Software'): array
     {
         $origin = rtrim((string) $_ENV['FRONTEND_URL'], '/');
         $auth = 'Bearer '.static::getContainer()->get(TokenService::class)->createAccessToken($user);
@@ -225,7 +225,7 @@ class SecurityEventTest extends WebTestCase
         $r = $json('POST', '/api/auth/webauthn/register/verify', [
             'challengeToken' => $o['body']['challengeToken'],
             'response' => $authenticator->attestation($o['body']['options']['challenge'], $origin, 'localhost'),
-            'deviceName' => 'Software',
+            'deviceName' => $name,
         ], $auth);
         $this->assertSame(200, $r['status'], $r['content']);
 
@@ -257,10 +257,59 @@ class SecurityEventTest extends WebTestCase
         $this->assertSame(200, $r['status'], $r['content']);
 
         $events = $this->events();
-        $this->assertCount(3, $events);
-        $this->assertEvent($events[0], 'login', false, 'passkey', null);
-        $this->assertEvent($events[1], 'login', true, 'passkey', null);
-        $this->assertEvent($events[2], 'passkey_deleted', true, 'passkey', null);
+        $this->assertCount(4, $events);
+        $types = array_column($events, 'type');
+        sort($types);
+        $this->assertSame(['login', 'login', 'passkey_added', 'passkey_deleted'], $types);
+    }
+
+    /** @return list<Email> */
+    private function mails(): array
+    {
+        return array_values(array_filter($this->getMailerMessages(), fn ($m) => $m instanceof Email));
+    }
+
+    /** Registers a passkey and deletes it; returns the mails of the two requests (a request sees only its own). */
+    private function addAndDeletePasskey(string $language): array
+    {
+        $this->client->disableReboot();
+        $user = $this->user($language);
+        [, $auth] = $this->passkeyFor($user);
+        $added = $this->mails();
+        $id = $this->em->getRepository(Passkey::class)->findOneBy([])->getId();
+        $r = TestHelper::jsonRequest($this->client, 'DELETE', '/api/auth/webauthn/'.$id, ['password' => 'password123'], $auth);
+        $this->assertSame(200, $r['status'], $r['content']);
+
+        return [$added, $this->mails()];
+    }
+
+    public function testPasskeyAddedAndDeletedMailsAreQueuedOnceEachWithContext(): void
+    {
+        [$added, $deleted] = $this->addAndDeletePasskey('en');
+        $this->assertCount(1, $added);
+        $this->assertCount(1, $deleted);
+        $html = (string) $added[0]->getHtmlBody();
+        $this->assertSame('A passkey was added', $added[0]->getSubject());
+        $this->assertStringContainsString('Software', $html);
+        $this->assertStringContainsString('/forgot-password', $html);
+        $this->assertSame('A passkey was deleted', $deleted[0]->getSubject());
+        $this->assertStringContainsString('/forgot-password', (string) $deleted[0]->getHtmlBody());
+    }
+
+    public function testPasskeyNameIsEscapedInTheMail(): void
+    {
+        $this->client->disableReboot();
+        $this->passkeyFor($this->user('en'), '<b>Evil</b> & co');
+        $html = (string) $this->mails()[0]->getHtmlBody();
+        $this->assertStringNotContainsString('<b>Evil</b>', $html);
+        $this->assertStringContainsString('&lt;b&gt;Evil&lt;/b&gt;', $html);
+    }
+
+    public function testPasskeyMailsAreGermanForGermanAccounts(): void
+    {
+        [$added, $deleted] = $this->addAndDeletePasskey('de');
+        $this->assertSame('Ein Passkey wurde hinzugefügt', $added[0]->getSubject());
+        $this->assertSame('Ein Passkey wurde gelöscht', $deleted[0]->getSubject());
     }
 
     public function testUnknownPasskeyIsNotLogged(): void

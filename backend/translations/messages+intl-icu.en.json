@@ -115,18 +115,32 @@
             "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then check MFA and your passkeys in your profile and contact Club Calendar support. You can find the \"Forgot password\" page here:"
         },
         "backup_code_used": {
-            "subject": "A backup code was used",
+            "subject": "A backup code was used to sign in",
             "greeting": "Hello {name},",
-            "body": "A backup code was used to sign in to your Club Calendar account. This turned off MFA.",
-            "info": "All other sessions and connected apps were signed out. Set up MFA again in your profile if you want it.",
-            "not_you": "Then someone knows your password and one of your backup codes. Immediately set a new password via \"Forgot password\", then set up MFA again in your profile and contact Club Calendar support. You can find the \"Forgot password\" page here:"
+            "body": "A backup code was used to sign in to your Club Calendar account. Multi-factor authentication (MFA) stays on.",
+            "info": "{remaining, plural, =0 {You have no backup codes left. If you lose your authenticator app or passkey, you can no longer sign in and must ask the operator of this installation to reset MFA for your account. Generate new backup codes in your profile under MFA.} one {You have 1 backup code left. You can generate new backup codes in your profile under MFA.} other {You have # backup codes left. You can generate new backup codes in your profile under MFA.}}",
+            "not_you": "Then someone knows your password and one of your backup codes. Immediately set a new password via \"Forgot password\" (this ends all sessions), check your MFA settings in your profile, and if you are locked out ask the operator of this installation to reset MFA for your account. You can find the \"Forgot password\" page here:"
         },
         "passkey_deleted": {
             "subject": "A passkey was deleted",
             "greeting": "Hello {name},",
             "body": "A passkey was deleted from your Club Calendar account.",
-            "info": "This passkey can no longer be used to sign in. Your sessions stay signed in.",
+            "info": "This passkey can no longer be used to sign in. All other sessions were signed out.",
             "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then check MFA and your passkeys in your profile and contact Club Calendar support. You can find the \"Forgot password\" page here:"
+        },
+        "passkey_added": {
+            "subject": "A passkey was added",
+            "greeting": "Hello {name},",
+            "body": "The passkey \"{name}\" was added to your Club Calendar account.",
+            "info": "This passkey can now be used to sign in, even when MFA is on.",
+            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then delete the unknown passkey in your profile, check MFA and contact Club Calendar support. You can find the \"Forgot password\" page here:"
+        },
+        "sso_linked": {
+            "subject": "A sign-in provider was linked",
+            "greeting": "Hello {name},",
+            "body": "Signing in with {provider} was linked to your Club Calendar account.",
+            "info": "This provider can now be used to sign in, even when MFA is on.",
+            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then remove the unknown link in your profile, check MFA and contact Club Calendar support. You can find the \"Forgot password\" page here:"
         },
         "failed_sign_ins": {
             "subject": "Failed sign-in attempts on your account",

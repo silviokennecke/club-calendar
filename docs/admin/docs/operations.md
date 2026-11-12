@@ -115,6 +115,7 @@ The app cleans up after itself only when these commands run regularly. Add them 
 | `app:prune-club-invitations` | Deletes invitations that were answered or expired more than 30 days ago. | daily |
 | `app:prune-oauth` | Deletes expired entries of AI app connections. | daily |
 | `app:prune-security-events` | Deletes security log entries older than one year. See [Protection mechanisms](security.md#security-log). | daily |
+| `app:prune-auth-nonces` | Deletes expired one-time sign-in values. | daily |
 | `app:holidays:refresh --all` | Refreshes the predefined holiday calendars. See [Holidays](#holidays). | weekly |
 | `app:geoip:update` | Downloads a newer location database for security notices. Does nothing without `MAXMIND_LICENSE_KEY`. See [Protection mechanisms](security.md#location-in-security-notices). | weekly |
 
@@ -123,7 +124,7 @@ The app cleans up after itself only when these commands run regularly. Add them 
     Example for the host's crontab (`crontab -e`). Replace `/srv/club-calendar` with the folder that holds your `docker-compose.yml`. `-T` is needed because cron has no terminal.
 
     ```cron
-    0 3 * * * cd /srv/club-calendar && for c in app:prune-unverified-users app:prune-password-resets app:prune-refresh-tokens app:prune-club-invitations app:prune-oauth app:prune-security-events; do docker compose exec -T app php bin/console $c; done
+    0 3 * * * cd /srv/club-calendar && for c in app:prune-unverified-users app:prune-password-resets app:prune-refresh-tokens app:prune-club-invitations app:prune-oauth app:prune-security-events app:prune-auth-nonces; do docker compose exec -T app php bin/console $c; done
     0 4 * * 0 cd /srv/club-calendar && docker compose exec -T app php bin/console app:holidays:refresh --all
     0 4 * * 0 cd /srv/club-calendar && docker compose exec -T app php bin/console app:geoip:update
     ```
@@ -133,7 +134,7 @@ The app cleans up after itself only when these commands run regularly. Add them 
     Run the jobs as the user that runs PHP:
 
     ```cron
-    0 3 * * * cd /var/www/club-calendar/backend && for c in app:prune-unverified-users app:prune-password-resets app:prune-refresh-tokens app:prune-club-invitations app:prune-oauth app:prune-security-events; do php bin/console $c; done
+    0 3 * * * cd /var/www/club-calendar/backend && for c in app:prune-unverified-users app:prune-password-resets app:prune-refresh-tokens app:prune-club-invitations app:prune-oauth app:prune-security-events app:prune-auth-nonces; do php bin/console $c; done
     0 4 * * 0 cd /var/www/club-calendar/backend && php bin/console app:holidays:refresh --all
     0 4 * * 0 cd /var/www/club-calendar/backend && php bin/console app:geoip:update
     ```

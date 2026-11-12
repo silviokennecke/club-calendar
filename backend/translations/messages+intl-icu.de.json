@@ -115,18 +115,32 @@
             "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil MFA und deine Passkeys und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "backup_code_used": {
-            "subject": "Ein Backup-Code wurde verwendet",
+            "subject": "Ein Backup-Code wurde zur Anmeldung verwendet",
             "greeting": "Hallo {name},",
-            "body": "bei der Anmeldung zu deinem Club-Calendar-Konto wurde ein Backup-Code verwendet. Dadurch wurde die Multi-Faktor-Authentifizierung (MFA) ausgeschaltet.",
-            "info": "Alle anderen Sitzungen und verbundenen Apps wurden abgemeldet. Richte MFA in deinem Profil bei Bedarf neu ein.",
-            "not_you": "Dann kennt jemand anderes dein Passwort und einen deiner Backup-Codes. Setze sofort über „Passwort vergessen“ ein neues Passwort, richte danach MFA in deinem Profil neu ein und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+            "body": "bei der Anmeldung zu deinem Club-Calendar-Konto wurde ein Backup-Code verwendet. Die Multi-Faktor-Authentifizierung (MFA) bleibt eingeschaltet.",
+            "info": "{remaining, plural, =0 {Du hast keine Backup-Codes mehr. Wenn du deine Authenticator-App oder deinen Passkey verlierst, kannst du dich nicht mehr anmelden und musst den Betreiber dieser Installation bitten, MFA für dein Konto zurückzusetzen. Erzeuge in deinem Profil unter MFA neue Backup-Codes.} one {Du hast noch 1 Backup-Code. Neue Backup-Codes kannst du in deinem Profil unter MFA erzeugen.} other {Du hast noch # Backup-Codes. Neue Backup-Codes kannst du in deinem Profil unter MFA erzeugen.}}",
+            "not_you": "Dann kennt jemand anderes dein Passwort und einen deiner Backup-Codes. Setze sofort über „Passwort vergessen“ ein neues Passwort (das beendet alle Sitzungen), prüfe deine MFA-Einstellungen im Profil und bitte bei einer Aussperrung den Betreiber dieser Installation, MFA für dein Konto zurückzusetzen. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "passkey_deleted": {
             "subject": "Ein Passkey wurde gelöscht",
             "greeting": "Hallo {name},",
             "body": "aus deinem Club-Calendar-Konto wurde ein Passkey gelöscht.",
-            "info": "Mit diesem Passkey kann man sich nicht mehr anmelden. Deine Sitzungen bleiben angemeldet.",
+            "info": "Mit diesem Passkey kann man sich nicht mehr anmelden. Alle anderen Sitzungen wurden abgemeldet.",
             "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil MFA und deine Passkeys und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+        },
+        "passkey_added": {
+            "subject": "Ein Passkey wurde hinzugefügt",
+            "greeting": "Hallo {name},",
+            "body": "zu deinem Club-Calendar-Konto wurde der Passkey „{name}“ hinzugefügt.",
+            "info": "Mit diesem Passkey kann man sich jetzt anmelden, auch wenn MFA eingeschaltet ist.",
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), lösche danach in deinem Profil den fremden Passkey, prüfe MFA und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+        },
+        "sso_linked": {
+            "subject": "Eine Anmeldung über einen Anbieter wurde verknüpft",
+            "greeting": "Hallo {name},",
+            "body": "mit deinem Club-Calendar-Konto wurde die Anmeldung über {provider} verknüpft.",
+            "info": "Man kann sich jetzt über diesen Anbieter anmelden, auch wenn MFA eingeschaltet ist.",
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), trenne danach in deinem Profil die fremde Verknüpfung, prüfe MFA und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "failed_sign_ins": {
             "subject": "Fehlgeschlagene Anmeldeversuche bei deinem Konto",
