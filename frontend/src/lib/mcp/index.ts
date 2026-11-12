@@ -53,7 +53,12 @@ export function useAuthorizationRequest(id: string | null) {
 }
 
 export function decide(requestId: string, approve: boolean): Promise<{ redirectUrl: string }> {
-  return apiPost<{ redirectUrl: string }>("/api/oauth/authorize/decision", { requestId, approve });
+  // Approving needs the step-up confirmation; denying stays free.
+  return apiPost<{ redirectUrl: string }>(
+    "/api/oauth/authorize/decision",
+    { requestId, approve },
+    approve ? { stepUp: true } : {},
+  );
 }
 
 /** Leaves the SPA for the client's redirect URL (wrapped so tests can replace it). */

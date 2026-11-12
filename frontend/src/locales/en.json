@@ -2680,6 +2680,7 @@
       "writeNote": "The app cannot publish anything or delete events. New events stay drafts.",
       "allow": "Allow",
       "deny": "Deny",
+      "stepUpHint": "You will be asked to confirm it is you.",
       "revokeHint": "You can end access at any time in your profile under “Connected apps”.",
       "loading": "Loading request",
       "loadFailed": "The request could not be loaded. Please try again.",

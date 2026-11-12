@@ -23,7 +23,8 @@ Standardmäßig sind Claude, ChatGPT (OpenAI) und Gemini freigegeben. Wer den Ve
 
 3. Die App leitet dich zum Vereinskalender weiter. Melde dich an, falls nötig.
 4. Du siehst die Seite **App verbinden?**. Prüfe die Angaben (siehe unten) und klicke auf **Erlauben**. Mit **Ablehnen** brichst du ab.
-5. Du landest wieder in der KI-App. Die Verbindung steht.
+5. Die App fragt, ob du es bist. Bestätige es (siehe [Bestätigen, dass du es bist](help:settings/confirmation)). Abbrechen lässt die Seite offen.
+6. Du landest wieder in der KI-App. Die Verbindung steht.
 
 :::note
 Du brauchst ein bestätigtes Konto: Bestätige zuerst deine E-Mail-Adresse und stimme den aktuellen Dokumenten zu, sonst kann die App nicht verbunden werden.

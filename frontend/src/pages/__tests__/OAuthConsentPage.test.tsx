@@ -99,10 +99,28 @@ describe("OAuthConsentPage", () => {
     await renderPage();
     await userEvent.click(await screen.findByRole("button", { name: "Erlauben" }));
     await waitFor(() => expect(assign).toHaveBeenCalledWith("https://claude.ai/cb?code=x"));
-    expect(apiPost).toHaveBeenCalledWith("/api/oauth/authorize/decision", {
-      requestId: "r1",
-      approve: true,
-    });
+    expect(apiPost).toHaveBeenCalledWith(
+      "/api/oauth/authorize/decision",
+      {
+        requestId: "r1",
+        approve: true,
+      },
+      { stepUp: true },
+    );
+  });
+
+  it("stays silent and usable when the step-up confirmation is cancelled", async () => {
+    apiPost.mockRejectedValueOnce(new ApiError("x", 0, "step_up_cancelled"));
+    await renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: "Erlauben" }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Erlauben" })).toBeEnabled());
+    expect(screen.queryByText("Fehler")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(assign).not.toHaveBeenCalled();
+    apiPost.mockResolvedValue({ redirectUrl: "https://claude.ai/cb?code=x" });
+    await userEvent.click(screen.getByRole("button", { name: "Erlauben" }));
+    await waitFor(() => expect(assign).toHaveBeenCalledWith("https://claude.ai/cb?code=x"));
   });
 
   it("denies", async () => {
@@ -110,10 +128,14 @@ describe("OAuthConsentPage", () => {
     await renderPage();
     await userEvent.click(await screen.findByRole("button", { name: "Ablehnen" }));
     await waitFor(() => expect(assign).toHaveBeenCalled());
-    expect(apiPost).toHaveBeenCalledWith("/api/oauth/authorize/decision", {
-      requestId: "r1",
-      approve: false,
-    });
+    expect(apiPost).toHaveBeenCalledWith(
+      "/api/oauth/authorize/decision",
+      {
+        requestId: "r1",
+        approve: false,
+      },
+      {},
+    );
   });
 
   it.each([

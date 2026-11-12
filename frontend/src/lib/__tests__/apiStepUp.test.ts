@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { decide } from "../mcp";
 import { apiPost, clearTokens, isStepUpCancelled, storeTokens } from "../api";
 import {
   cancelStepUp,
@@ -95,5 +96,34 @@ describe("apiFetch step-up", () => {
       .mockResolvedValueOnce(json(200, { ok: true }));
     await expect(apiPost("/api/auth/step-up", {})).resolves.toEqual({ ok: true });
     expect(sent[2]["Authorization"]).toBe("Bearer new");
+  });
+});
+
+describe("MCP consent decision", () => {
+  it("approving opens the confirmation, retries once with the token and keeps the cookie", async () => {
+    const inits: (RequestInit | undefined)[] = [];
+    fetchMock.mockImplementation(async (_i, init) => {
+      inits.push(init);
+      return inits.length === 1
+        ? json(403, { code: "step_up_required", status: 403 })
+        : json(200, { redirectUrl: "https://claude.ai/cb" });
+    });
+    const pending = decide("r1", true);
+    await vi.waitFor(() => expect(isStepUpPrompting()).toBe(true));
+    completeStepUp("fresh", 600);
+    await expect(pending).resolves.toEqual({ redirectUrl: "https://claude.ai/cb" });
+    expect(sent[1]["X-Step-Up-Token"]).toBe("fresh");
+    expect(inits.every((i) => i?.credentials === "include")).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("denying never sends the step-up token", async () => {
+    completeStepUp("tok", 600);
+    fetchMock.mockResolvedValue(
+      json(200, { redirectUrl: "https://claude.ai/cb?error=access_denied" }),
+    );
+    await decide("r1", false);
+    expect(sent[0]["X-Step-Up-Token"]).toBeUndefined();
+    expect(isStepUpPrompting()).toBe(false);
   });
 });

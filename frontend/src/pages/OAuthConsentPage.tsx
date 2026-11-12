@@ -10,7 +10,7 @@ import {
   useAuthorizationRequest,
   type DecisionFailure,
 } from "@/lib/mcp";
-import { apiErrorCode } from "@/lib/api";
+import { apiErrorCode, isStepUpCancelled } from "@/lib/api";
 
 /**
  * /oauth/consent?request=<id>: an AI client (MCP) asks for access to the account. The authorization
@@ -41,6 +41,10 @@ export default function OAuthConsentPage() {
       setLeaving(true);
       navigateAway.to(redirectUrl);
     } catch (error) {
+      if (isStepUpCancelled(error)) {
+        setBusy(null);
+        return;
+      }
       setFailure(decisionFailure(error));
       setBusy(null);
     }
@@ -192,6 +196,7 @@ export default function OAuthConsentPage() {
         >
           {t("oauth.consent.deny")}
         </Button>
+        <p className="t-sm t-muted">{t("oauth.consent.stepUpHint")}</p>
         <p className="t-sm t-muted">{t("oauth.consent.revokeHint")}</p>
       </div>
     </AuthLayout>

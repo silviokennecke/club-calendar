@@ -25,6 +25,7 @@ The confirmation is valid for 10 minutes. In that time the app does not ask agai
 - Turn MFA on or off, set up the authenticator app, create new backup codes (see [Multi-factor authentication (MFA)](help:settings/mfa))
 - [Add or remove a passkey](help:settings/passkeys)
 - [Link or unlink a sign-in provider](help:settings/linked-accounts)
+- [Connect an AI app](help:ai-assistants/connect)
 
 :::note
 If you use a backup code to confirm, it is used up.

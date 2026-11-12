@@ -23,7 +23,8 @@ By default Claude, ChatGPT (OpenAI) and Gemini are allowed. Whoever runs your cl
 
 3. The app sends you to the club calendar. Sign in if needed.
 4. You see the page **Connect app?**. Check the details (see below) and click **Allow**. **Deny** cancels.
-5. You return to the AI app. The connection is set up.
+5. The app asks you to confirm it is you (see [Confirm it is you](help:settings/confirmation)). If you cancel, the page stays open.
+6. You return to the AI app. The connection is set up.
 
 :::note
 You need a confirmed account: confirm your e-mail address and accept the current documents first, otherwise the app cannot be connected.

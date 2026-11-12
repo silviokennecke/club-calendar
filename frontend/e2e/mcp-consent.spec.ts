@@ -1,6 +1,13 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 import { createHash, randomBytes } from "node:crypto";
-import { API, continueWithEmail, createVerifiedUser, loginPassword, PASSWORD } from "./helpers";
+import {
+  API,
+  confirmStepUp,
+  continueWithEmail,
+  createVerifiedUser,
+  loginPassword,
+  PASSWORD,
+} from "./helpers";
 
 // MCP / OAuth: consent page and "Verbundene Apps". Needs the e2e backend started with an empty
 // MCP_ALLOWED_CLIENTS=* (any https/loopback redirect URI; see docs/ops/E2E.md).
@@ -69,6 +76,7 @@ test("Anmeldung, Zustimmung, Weiterleitung mit Code, Trennen im Profil", async (
   await expect(page.getByText(/Terminentwürfe/)).toBeVisible();
 
   await page.getByRole("button", { name: "Erlauben" }).click();
+  await confirmStepUp(page);
   await expect.poll(() => seen.length).toBeGreaterThan(0);
   expect(seen[0].searchParams.get("state")).toBe("st-allow");
   expect(seen[0].searchParams.get("code")).toBeTruthy();

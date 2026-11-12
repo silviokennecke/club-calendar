@@ -2680,6 +2680,7 @@
       "writeNote": "Die App kann nichts veröffentlichen und keine Termine löschen. Neue Termine bleiben Entwürfe.",
       "allow": "Erlauben",
       "deny": "Ablehnen",
+      "stepUpHint": "Du wirst gebeten zu bestätigen, dass du es bist.",
       "revokeHint": "Du kannst den Zugriff jederzeit im Profil unter „Verbundene Apps“ beenden.",
       "loading": "Anfrage wird geladen",
       "loadFailed": "Die Anfrage konnte nicht geladen werden. Bitte versuche es erneut.",

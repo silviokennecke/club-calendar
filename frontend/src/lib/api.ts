@@ -557,8 +557,12 @@ export async function apiGetWithTotal<T>(
   return { data: await res.json(), total: Number.isFinite(total) ? total : null };
 }
 
-export async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await apiFetch(path, { method: "POST", body: JSON.stringify(body) });
+export async function apiPost<T>(
+  path: string,
+  body: unknown,
+  options: { stepUp?: boolean } = {},
+): Promise<T> {
+  const res = await apiFetch(path, { method: "POST", body: JSON.stringify(body), ...options });
   if (!res.ok) throw await errorFrom(res);
   return bodyOf<T>(res);
 }

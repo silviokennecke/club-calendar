@@ -25,6 +25,7 @@ Die Bestätigung gilt 10 Minuten. In dieser Zeit fragt die App für diese Aktion
 - MFA ein- oder ausschalten, Authenticator-App einrichten, neue Backup-Codes erzeugen (siehe [Multi-Faktor-Authentifizierung (MFA)](help:settings/mfa))
 - [Passkey hinzufügen oder entfernen](help:settings/passkeys)
 - [Anmeldung bei einem Anbieter verknüpfen oder trennen](help:settings/linked-accounts)
+- [Eine KI-App verbinden](help:ai-assistants/connect)
 
 :::note
 Bestätigst du mit einem Backup-Code, ist er danach verbraucht.
