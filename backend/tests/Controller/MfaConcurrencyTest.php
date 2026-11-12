@@ -6,6 +6,7 @@ namespace App\Tests\Controller;
 
 use App\Entity\User;
 use App\Entity\UserTotp;
+use App\Repository\UserTotpRepository;
 use App\Security\Mfa\Totp;
 use App\Service\MfaService;
 use App\Service\TokenService;
@@ -218,5 +219,118 @@ class MfaConcurrencyTest extends WebTestCase
 
         $this->assertSame([200, 401], $this->statuses($results), json_encode($results));
         $this->assertSame(1, (int) $this->db()->fetchOne('SELECT COUNT(DISTINCT family_id) FROM refresh_token'));
+    }
+
+    /** @return iterable<string, array{int}> */
+    public static function parallelismProvider(): iterable
+    {
+        yield '2 children' => [2];
+        yield '4 children' => [4];
+    }
+
+    /** Two different valid mfaTokens of one user: only the step advance can decide the winner, not the token nonce. */
+    #[\PHPUnit\Framework\Attributes\DataProvider('parallelismProvider')]
+    public function testSameTotpWithDifferentTokensIssuesOneSession(int $n): void
+    {
+        $this->user();
+        $step = Totp::step(time());
+        $code = Totp::code($this->secret, $step);
+        $requests = [];
+        for ($i = 0; $i < $n; ++$i) {
+            $requests[] = $this->verify($this->mfaToken(), 'totp', $code);
+        }
+        $results = $this->parallel($requests);
+
+        $this->assertSame(array_merge([200], array_fill(0, $n - 1, 401)), $this->statuses($results), json_encode($results));
+        foreach ($results as $r) {
+            if (401 === $r['status']) {
+                $this->assertSame('invalid_mfa_code', $r['body']['code'] ?? null, json_encode($r));
+            }
+        }
+        $this->assertSame($step, (int) $this->db()->fetchOne('SELECT last_used_step FROM user_totp'));
+        $this->assertSame(1, (int) $this->db()->fetchOne('SELECT COUNT(DISTINCT family_id) FROM refresh_token'));
+    }
+
+    /**
+     * Runs $work(i) in $n forked processes (own kernel and connection each) at a common start time.
+     *
+     * @param callable(int, UserTotpRepository): bool $work
+     *
+     * @return list<bool|null> result per child, null when the child failed
+     */
+    private function forkRepository(int $n, callable $work): array
+    {
+        $dir = dirname(__DIR__, 2).'/var';
+        $startAt = microtime(true) + 3.0;
+        $files = $pids = [];
+        static::getContainer()->get(Connection::class)->close();
+        self::ensureKernelShutdown();
+        for ($i = 0; $i < $n; ++$i) {
+            $files[$i] = tempnam($dir, 'mfa-race-');
+            $pid = pcntl_fork();
+            if (0 === $pid) {
+                $result = null;
+                try {
+                    self::ensureKernelShutdown();
+                    static::createClient();
+                    $repo = static::getContainer()->get(UserTotpRepository::class);
+                    $repo->getEntityManager()->getConnection()->executeQuery('SELECT 1');
+                    while (microtime(true) < $startAt) {
+                        usleep(200);
+                    }
+                    $result = $work($i, $repo);
+                } catch (\Throwable) {
+                }
+                file_put_contents($files[$i], json_encode($result));
+                exit(0);
+            }
+            $this->assertGreaterThan(0, $pid);
+            $pids[$i] = $pid;
+        }
+        foreach ($pids as $pid) {
+            pcntl_waitpid($pid, $status);
+        }
+        $out = [];
+        foreach ($files as $i => $file) {
+            $out[$i] = json_decode((string) file_get_contents($file), true);
+            unlink($file);
+        }
+        self::ensureKernelShutdown();
+        $this->client = static::createClient();
+
+        return $out;
+    }
+
+    private function totpId(): string
+    {
+        return (string) $this->db()->fetchOne('SELECT id FROM user_totp');
+    }
+
+    public function testAdvanceStepSameStepExactlyOneWinner(): void
+    {
+        $this->user();
+        $id = $this->totpId();
+        $n = 8;
+        $flags = $this->forkRepository($n, static fn (int $i, UserTotpRepository $repo): bool => $repo->advanceStep($repo->find($id), 5000));
+
+        $this->assertNotContains(null, $flags, 'a child failed');
+        $this->assertSame(1, count(array_filter($flags)), json_encode($flags));
+        $this->assertSame(5000, (int) $this->db()->fetchOne('SELECT last_used_step FROM user_totp'));
+    }
+
+    public function testAdvanceStepAscendingStepsEndsAtMaximum(): void
+    {
+        $this->user();
+        $id = $this->totpId();
+        $n = 8;
+        $flags = $this->forkRepository($n, static fn (int $i, UserTotpRepository $repo): bool => $repo->advanceStep($repo->find($id), 6000 + $i));
+
+        $this->assertNotContains(null, $flags, 'a child failed');
+        $winners = count(array_filter($flags));
+        $this->assertGreaterThanOrEqual(1, $winners, json_encode($flags));
+        $this->assertLessThanOrEqual($n, $winners);
+        // The highest step always wins its UPDATE: nothing can overwrite it with a lower one
+        $this->assertTrue($flags[$n - 1], json_encode($flags));
+        $this->assertSame(6000 + $n - 1, (int) $this->db()->fetchOne('SELECT last_used_step FROM user_totp'));
     }
 }
