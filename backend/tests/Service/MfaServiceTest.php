@@ -170,9 +170,9 @@ class MfaServiceTest extends WebTestCase
         $repo = static::getContainer()->get(MfaBackupCodeRepository::class);
 
         // Two requests that both passed the "unused" read: only the conditional UPDATE of one wins
-        $hash = hash('sha256', str_replace('-', '', $codes[0]));
-        $this->assertTrue($repo->consume($user, $hash));
-        $this->assertFalse($repo->consume($user, $hash));
+        $id = $repo->findUnused($user)[0]->getId();
+        $this->assertTrue($repo->consume($id));
+        $this->assertFalse($repo->consume($id));
 
         $this->assertTrue($this->mfa->consumeBackupCode($user, strtolower($codes[1])), 'case and dashes are tolerated');
         $this->assertFalse($this->mfa->consumeBackupCode($user, $codes[1]));
