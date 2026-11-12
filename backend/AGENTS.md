@@ -147,3 +147,10 @@ Run and DB setup: `../CLAUDE.md` "Tests".
 - `POST …/event-series/{id}/preview-update {rule}` → `{toCreate, toDelete, kept, past, skippedHolidays}`; `PATCH …/event-series/{id} {rule}` → `{series, created, deleted, kept}`: future events (date ≥ today in the calendar's zone) on dates of the new rule stay, missing dates are created from the prototype (earliest future event), other future events are deleted; past events never change (`EventSeriesRuleChangeTest`).
 - `POST …/events/series/preview {rule}` → `{dates, count, skippedHolidays, holidays}`; `POST …/events/series {rule, templateId?, event?, isDraft?}` → 201 `{series, events}` (one flush); lists carry `seriesId`, the single event GET also `series {id, rule, eventCount, …}`.
 - `PATCH …/events/{id}` `scope: "all"` applies the sent fields to every event of the series except `date`/`dateEnd`/template (each event keeps its day); `this` (default) changes one event, which stays in the series. `DELETE …?scope=all` deletes the series with its events; a series without events is removed (also after bulk delete). Details: `../docs/api/openapi.yaml`.
+
+## Git commits
+
+- Conventional Commits: `type(scope): subject`. Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `build`, `ci`, `chore`. The scope is optional (e.g. `auth`, `ics`).
+- Imperative, lower-case subject, no trailing period, kept short. Body only when essential, separated by a blank line.
+- Breaking changes: `!` after the type/scope (`feat(api)!: ...`) or a `BREAKING CHANGE:` footer.
+- Commits created by an AI agent end with a co-author trailer after a blank line, using the exact name of the model that made the changes or the commit, e.g. `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. This applies even if attribution is disabled in the agent's settings.

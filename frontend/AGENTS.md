@@ -281,7 +281,7 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
     (`eventCount`). Deleting the club asks to type its name (`ConfirmDialog` `requireText`) and names the scope from
     the club's counters (`clubDeleteConsequence`). Pure logic: `src/lib/club/`. The club picker (`ClubsPage` /
     `ClubCard`) shows the counters of `GET /api/clubs` and loads a club's calendars only when it is opened.
-  - Profile: `/profile` (`pages/ProfilePage`, `components/profile/`: `AccountSection` (name via `updateUser({name})`;
+  - Profile: tabbed with own routes (`pages/ProfilePage` = frame with `ProfileTabs`, nested routes in `App.tsx`, tab pages in `pages/profile/`, tab list and anchor map in `components/profile/profileTabsConfig.ts`): `/profile` Account (`AccountSection`, `PreferencesSection`), `/profile/security` (`PasswordSection`, `LinkedLoginsSection`, `MfaSection`, `SessionsSection`; also receives the SSO link return `?linked=`/`?link_error=`/`link_proof`), `/profile/apps` (`CalendarSubscriptionSection`, `ConnectedAppsSection`), `/profile/privacy` (`LegalSection`, `DangerSection`); EN tab names Account, Security, Calendar & apps, Privacy. Old `/profile#pr-…` links (and the link-flow parameters on `/profile`) are forwarded to the owning tab keeping query and hash (`profileTabForHash`); `useScrollToHash` scrolls to the anchor. Sections (`components/profile/`): `AccountSection` (name via `updateUser({name})`;
     new e-mail (+ step-up) → `POST /api/auth/change-email`, the waiting address (`pendingEmail` of
     `/api/auth/me`) as banner with "Änderung verwerfen" (`DELETE …/change-email`)), `PasswordSection` (change with the current password and the step-up: the API returns new tokens, `login()` stores them,
     other devices are signed out; SSO-only: "Passwort per E-Mail festlegen" = forgot-password for the own address),
@@ -493,3 +493,10 @@ For Mapbox maps: use `useMapbox` from `src/components/locations/useMapbox.ts`. T
 `assets/`, see `vite.config.ts`; `index.php` and `.htaccess` there stay). `backend/public/.htaccess` routes `/api/*`
 to Symfony and everything else to `index.html`. Bundle check: the build prints chunk sizes; the entry chunk should
 stay small (pages and dialogs are lazy, see Key conventions).
+
+## Git commits
+
+- Conventional Commits: `type(scope): subject`. Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `build`, `ci`, `chore`. The scope is optional (e.g. `auth`, `ics`).
+- Imperative, lower-case subject, no trailing period, kept short. Body only when essential, separated by a blank line.
+- Breaking changes: `!` after the type/scope (`feat(api)!: ...`) or a `BREAKING CHANGE:` footer.
+- Commits created by an AI agent end with a co-author trailer after a blank line, using the exact name of the model that made the changes or the commit, e.g. `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. This applies even if attribution is disabled in the agent's settings.
