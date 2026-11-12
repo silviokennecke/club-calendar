@@ -81,13 +81,10 @@ describe("ConsentPage", () => {
     expect(await screen.findByText(/aktualisiert/)).toBeInTheDocument();
   });
 
-  it("opens the delete account dialog with the password field", async () => {
-    apiGet.mockResolvedValue({ id: "u", email: "a@b.de", hasPassword: true });
+  it("opens the delete account dialog (the proof is the step-up confirmation)", async () => {
     renderPage();
     await userEvent.setup().click(screen.getByRole("button", { name: /Konto löschen/ }));
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
-    expect(apiGet).toHaveBeenCalledWith("/api/auth/me");
-    expect(await screen.findByLabelText(/Zur Bestätigung dein Passwort/)).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Konto löschen?" })).toBeInTheDocument();
   });
 
   it("opens the consent history modal and loads the list", async () => {

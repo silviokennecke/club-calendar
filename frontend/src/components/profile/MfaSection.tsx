@@ -11,7 +11,7 @@ import { BackupCodesDialog } from "./BackupCodesDialog";
 import { MfaAddDialog } from "./MfaAddDialog";
 import { MfaDisableDialog } from "./MfaDisableDialog";
 import { MfaEnforceDialog } from "./MfaEnforceDialog";
-import { MfaProofDialog } from "./MfaProofDialog";
+import { MfaActionDialog } from "./MfaActionDialog";
 import type { PasskeyInfo, ProfileData } from "./profileTypes";
 
 /**
@@ -23,7 +23,7 @@ export function MfaSection({ profile }: { profile: ProfileData }) {
   const qc = useQueryClient();
   const { user } = useAuth();
   const dateFormat = user?.dateFormat ?? "dd.MM.yyyy";
-  const { mfa, passkeys, hasPassword, email } = profile;
+  const { mfa, passkeys } = profile;
   const rename = useRenamePasskey();
   const deletePasskey = useDeletePasskey();
   const [addOpen, setAddOpen] = useState(false);
@@ -207,51 +207,35 @@ export function MfaSection({ profile }: { profile: ProfileData }) {
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onChanged={() => void qc.invalidateQueries({ queryKey: ["profile"] })}
-        hasPassword={hasPassword}
-        email={email}
         totpSet={!!mfa.totp}
         enforced={mfa.enforced}
         passkeyCount={passkeys.length}
       />
-      <MfaEnforceDialog
-        open={enforceOpen}
-        onClose={() => setEnforceOpen(false)}
-        hasPassword={hasPassword}
-        email={email}
-      />
+      <MfaEnforceDialog open={enforceOpen} onClose={() => setEnforceOpen(false)} />
       <MfaDisableDialog
         open={disableOpen}
         onClose={() => setDisableOpen(false)}
-        hasPassword={hasPassword}
-        email={email}
         hasTotp={!!mfa.totp}
       />
-      <BackupCodesDialog
-        open={codesOpen}
-        onClose={() => setCodesOpen(false)}
-        hasPassword={hasPassword}
-        email={email}
-      />
+      <BackupCodesDialog open={codesOpen} onClose={() => setCodesOpen(false)} />
       {removing && (
-        <MfaProofDialog
+        <MfaActionDialog
           open
           onClose={() => setRemoving(null)}
           title={t("profile.mfa.removeTitle", { name: nameOf(removing) })}
           submitLabel={t("profile.mfa.removeConfirm")}
           danger
-          hasPassword={hasPassword}
-          email={email}
           failureText={(e) =>
             apiErrorCode(e) === "mfa_last_passkey" ? t("profile.mfa.lastPasskey") : undefined
           }
-          onSubmit={async (proof) => {
-            await deletePasskey.mutateAsync({ id: removing.id, proof });
+          onSubmit={async () => {
+            await deletePasskey.mutateAsync({ id: removing.id });
             toast.success(t("profile.mfa.removed", { name: nameOf(removing) }));
             setRemoving(null);
           }}
         >
           <p>{t("profile.mfa.removeText", { name: nameOf(removing) })}</p>
-        </MfaProofDialog>
+        </MfaActionDialog>
       )}
     </section>
   );

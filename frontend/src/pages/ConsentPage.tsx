@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { legalKeys } from "@/lib/legal";
 import { apiGet, apiPost, apiErrorCode } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -11,7 +11,6 @@ import { AuthLayout } from "@/components/auth/AuthLayout";
 import { ConsentCheckboxes } from "@/components/legal/ConsentCheckboxes";
 import { ConsentHistoryDialog } from "@/components/legal/ConsentHistoryList";
 import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
-import type { ProfileData } from "@/components/profile/profileTypes";
 
 /**
  * Consent gate (rendered by ProtectedRoute while `user.consentRequired`): the user accepts the current
@@ -29,13 +28,6 @@ export default function ConsentPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const navigate = useNavigate();
-  // the kind of deletion proof (password or mailed code) comes from /me, which the gate allows
-  const profile = useQuery<ProfileData>({
-    queryKey: ["profile"],
-    queryFn: () => apiGet<ProfileData>("/api/auth/me"),
-    enabled: deleteOpen,
-  });
-
   function accountDeleted() {
     logout();
     navigate("/login", { replace: true });
@@ -134,8 +126,6 @@ export default function ConsentPage() {
       <DeleteAccountDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        hasPassword={profile.data?.hasPassword}
-        email={profile.data?.email ?? user?.email ?? ""}
         onDeleted={accountDeleted}
         blockedHint={t("consent.deleteHint")}
       />

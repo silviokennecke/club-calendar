@@ -1,5 +1,9 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 import {
+  confirmStepUp,
+  confirmStepUpIfAsked,
+  forgetStepUp,
+  stepUpDialog,
   API,
   PASSWORD,
   addVirtualAuthenticator,
@@ -37,16 +41,16 @@ async function openProfile(
   await expect(page.getByRole("heading", { level: 1, name: "Profil" })).toBeVisible();
 }
 
-/** Opens "MFA-Methode hinzufügen" > Passkey (unless the proof step is open) and confirms the password. */
+/** Opens "MFA-Methode hinzufügen" > Passkey (unless the proof step is open) and confirms with the step-up dialog. */
 async function startPasskeySetup(page: Page) {
   const dialog = page.getByRole("dialog");
-  const password = dialog.getByLabel(/Dein Passwort/);
-  if (!(await password.isVisible())) {
+  const next = dialog.getByRole("button", { name: "Weiter" });
+  if (!(await next.isVisible())) {
     await page.getByRole("button", { name: "MFA-Methode hinzufügen" }).click();
     await dialog.getByRole("button", { name: "Passkey", exact: true }).click();
   }
-  await password.fill(PASSWORD);
-  await dialog.getByRole("button", { name: "Weiter" }).click();
+  await next.click();
+  await confirmStepUpIfAsked(page);
 }
 
 /** Names the new passkey (step "Passkey benennen") and closes the dialog. */
@@ -227,15 +231,15 @@ test.describe("Profil", () => {
     await expect(list).toContainText("hinzugefügt am");
     expect((await me(request, s.headers)).passkeys).toHaveLength(1);
 
-    // Entfernen: Abbrechen ändert nichts, Bestätigen (mit Passwort) entfernt
+    // Entfernen: Abbrechen ändert nichts, Bestätigen (Step-up-Bestätigung) entfernt
     await page.getByRole("button", { name: "Passkey „Test-Laptop“ entfernen" }).click();
     const dialog = page.getByRole("dialog", { name: "Passkey „Test-Laptop“ entfernen?" });
     await expect(dialog).toContainText("Bitte bestätige, dass du es bist.");
     await dialog.getByRole("button", { name: "Abbrechen" }).click();
     await expect(list).toContainText("Test-Laptop");
     await page.getByRole("button", { name: "Passkey „Test-Laptop“ entfernen" }).click();
-    await dialog.getByLabel(/Dein Passwort/).fill(PASSWORD);
     await dialog.getByRole("button", { name: "Passkey entfernen" }).click();
+    await confirmStepUpIfAsked(page);
     await expect(page.getByText("Du hast noch keine MFA-Methode eingerichtet.")).toBeVisible();
     // deleting a passkey ends all sessions (token version), so the old access token is dead: sign in again
     expect((await me(request, await authHeaders(request, s.email))).passkeys).toHaveLength(0);
@@ -294,27 +298,32 @@ test.describe("Profil", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("Konto löschen verlangt das Passwort", async ({ page, request }) => {
+  test("Konto löschen verlangt die Bestätigung", async ({ page, request }) => {
     const s = await seed(request, "Profil Löschen");
     await openProfile(page, s, request);
     await page.getByRole("button", { name: "Konto löschen" }).click();
     const dialog = page.getByRole("dialog", { name: "Konto löschen?" });
     await expect(dialog).toContainText("Du wirst abgemeldet.");
     const confirm = dialog.getByRole("button", { name: "Konto löschen" });
-    // Wrong password: the account stays
-    await dialog.getByLabel(/Zur Bestätigung dein Passwort/).fill("falsches-Passwort-1");
+    // Wrong password in the step-up dialog: the account stays
+    await forgetStepUp(page);
     await confirm.click();
-    await expect(dialog.getByText("Das Passwort stimmt nicht.")).toBeVisible();
+    const stepUp = stepUpDialog(page);
+    await confirmStepUp(page, { password: "falsches-Passwort-1" });
+    await expect(stepUp.getByText("Das Passwort stimmt nicht.")).toBeVisible();
+    // Cancelling the confirmation leaves the account alone
+    await stepUp.getByRole("button", { name: "Abbrechen" }).click();
+    await expect(stepUp).toHaveCount(0);
     // The only member of a club cannot delete the account (422 last_member_of_club): delete the club first
     const clubDeleted = await request.delete(`${API}/api/clubs/${s.clubId}`, {
       headers: s.headers,
     });
     expect(clubDeleted.ok()).toBeTruthy();
-    await dialog.getByLabel(/Zur Bestätigung dein Passwort/).fill(PASSWORD);
     // Activate by keyboard: the page unmounts as soon as the account is gone, which makes a mouse
     // click's "element detached" bookkeeping flaky.
     await confirm.focus();
     await page.keyboard.press("Enter");
+    await confirmStepUp(page);
     await expect(page).toHaveURL(/\/login/);
     const res = await request.post(`${API}/api/auth/login`, {
       data: { email: s.email, password: PASSWORD },

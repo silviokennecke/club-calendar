@@ -5,7 +5,7 @@ import { apiErrorCode, apiPost } from "@/lib/api";
 import { CODE_ENDPOINT, TEXT_PREFIX, type ReauthPurpose, type ReauthValue } from "./reauth";
 
 interface ReauthFieldsProps {
-  purpose: ReauthPurpose;
+  purpose?: ReauthPurpose;
   /** Undefined while the profile loads (the kind of proof is not known yet). */
   hasPassword: boolean | undefined;
   email: string;
@@ -22,7 +22,7 @@ interface ReauthFieldsProps {
  * 6-digit code mailed to its address (send button with its own error and "sent" state).
  */
 export function ReauthFields({
-  purpose,
+  purpose = "step_up",
   hasPassword,
   email,
   value,

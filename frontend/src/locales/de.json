@@ -2272,20 +2272,6 @@
       "unlinkText": "Die Verknüpfung mit {{name}} wird aus deinem Konto entfernt.",
       "unlinkConsequence": "Mit {{name}} kannst du dich danach nicht mehr anmelden. Deine anderen Anmeldewege bleiben bestehen."
     },
-    "passkeys": {
-      "reauth": {
-        "passwordLabel": "Dein Passwort",
-        "codeText": "Dein Konto hat kein Passwort. Zur Bestätigung schicken wir einen 6-stelligen Code an {{email}}.",
-        "codeSend": "Code senden",
-        "codeResend": "Code erneut senden",
-        "codeSent": "Der Code wurde an {{email}} gesendet. Er ist mindestens 10 Minuten gültig.",
-        "codeLabel": "Bestätigungscode",
-        "codeMissing": "Bitte gib den 6-stelligen Code aus der E-Mail ein.",
-        "wrongCode": "Der Code ist nicht korrekt oder abgelaufen.",
-        "codeFailed": "Der Code konnte nicht gesendet werden. Bitte versuche es erneut.",
-        "rateLimited": "Zu viele Versuche. Bitte warte eine Weile und versuche es erneut."
-      }
-    },
     "prefs": {
       "title": "Persönliche Einstellungen",
       "text": "Änderungen gelten sofort.",
@@ -2342,16 +2328,6 @@
       "confirm": "Konto löschen",
       "failed": "Das Konto konnte nicht gelöscht werden. Bitte versuche es erneut.",
       "lastMemberOfClub": "Das Konto kann nicht gelöscht werden, solange du das einzige Mitglied eines Vereins bist. Lösche zuerst den Verein oder füge ein weiteres Mitglied hinzu.",
-      "passwordLabel": "Zur Bestätigung dein Passwort",
-      "codeText": "Dein Konto hat kein Passwort. Zur Bestätigung der Löschung schicken wir einen 6-stelligen Code an {{email}}.",
-      "codeSend": "Code senden",
-      "codeResend": "Code erneut senden",
-      "codeSent": "Der Code wurde an {{email}} geschickt. Er ist mindestens 10 Minuten gültig.",
-      "codeLabel": "Bestätigungscode",
-      "codeMissing": "Bitte gib den 6-stelligen Code aus der E-Mail ein.",
-      "wrongCode": "Der Code stimmt nicht oder ist abgelaufen.",
-      "codeFailed": "Der Code konnte nicht gesendet werden. Bitte versuche es erneut.",
-      "rateLimited": "Zu viele Versuche. Bitte warte eine Weile und versuche es erneut.",
       "lastAdminOfClub": "Das Konto kann nicht gelöscht werden, solange du der einzige Admin eines Vereins mit weiteren Mitgliedern bist. Mache zuerst ein anderes Mitglied zum Admin oder lösche den Verein."
     },
     "account": {
@@ -2378,8 +2354,7 @@
       "passwordMissing": "Bitte gib dein aktuelles Passwort ein.",
       "wrongPassword": "Das Passwort stimmt nicht.",
       "emailInvalid": "Bitte gib eine gültige E-Mail-Adresse ein, die sich von der aktuellen unterscheidet.",
-      "emailSubmit": "Bestätigungslink senden",
-      "emailNeedsPassword": "Du meldest dich nur über einen Anbieter an. Um die E-Mail-Adresse zu ändern, lege zuerst ein Passwort fest."
+      "emailSubmit": "Bestätigungslink senden"
     },
     "password": {
       "title": "Passwort",
@@ -2567,18 +2542,6 @@
           "passkey": "Der Passkey wurde hinzugefügt.",
           "close": "Schließen"
         }
-      },
-      "reauth": {
-        "passwordLabel": "Dein Passwort",
-        "codeText": "Dein Konto hat kein Passwort. Zur Bestätigung schicken wir einen 6-stelligen Code an {{email}}.",
-        "codeSend": "Code senden",
-        "codeResend": "Code erneut senden",
-        "codeSent": "Der Code wurde an {{email}} gesendet. Er ist mindestens 10 Minuten gültig.",
-        "codeLabel": "Bestätigungscode",
-        "codeMissing": "Bitte gib den 6-stelligen Code aus der E-Mail ein.",
-        "wrongCode": "Der Code ist nicht korrekt oder abgelaufen.",
-        "codeFailed": "Der Code konnte nicht gesendet werden. Bitte versuche es erneut.",
-        "rateLimited": "Zu viele Versuche. Bitte warte eine Weile und versuche es erneut."
       }
     }
   },
@@ -2837,6 +2800,40 @@
     "link": {
       "label": "Persönlicher Link",
       "hint": "Nur für dich bestimmt. Wer den Link hat, sieht deine Termine."
+    }
+  },
+  "stepUp": {
+    "title": "Bestätige, dass du es bist",
+    "text": "Bestätige, dass du es bist. Die Bestätigung gilt 10 Minuten.",
+    "confirm": "Bestätigen",
+    "failed": "Die Bestätigung hat nicht geklappt. Bitte versuche es noch einmal.",
+    "backupUsed_one": "Backup-Code verwendet. Dir bleibt noch {{count}} Backup-Code.",
+    "backupUsed_other": "Backup-Code verwendet. Dir bleiben noch {{count}} Backup-Codes.",
+    "reauth": {
+      "passwordLabel": "Dein Passwort",
+      "codeText": "Dein Konto hat kein Passwort. Wir senden einen 6-stelligen Code an {{email}}, um das zu bestätigen.",
+      "codeSend": "Code senden",
+      "codeResend": "Code erneut senden",
+      "codeSent": "Der Code wurde an {{email}} gesendet. Er ist mindestens 10 Minuten gültig.",
+      "codeLabel": "Bestätigungscode",
+      "codeMissing": "Bitte gib den 6-stelligen Code aus der E-Mail ein.",
+      "wrongCode": "Der Code ist nicht korrekt oder abgelaufen.",
+      "codeFailed": "Der Code konnte nicht gesendet werden. Bitte versuche es noch einmal.",
+      "rateLimited": "Zu viele Versuche. Bitte warte eine Weile und versuche es dann erneut."
+    },
+    "factor": {
+      "choose": "Zweiter Faktor",
+      "totp": "Authenticator-App",
+      "backup": "Backup-Code",
+      "passkey": "Passkey",
+      "totpLabel": "Code aus deiner Authenticator-App",
+      "backupLabel": "Backup-Code",
+      "passkeyText": "Dein Gerät fragt dich nach der Bestätigung mit dem Passkey, sobald du auf Bestätigen drückst.",
+      "codeMissing": "Bitte gib einen Code ein.",
+      "codeWrong": "Der Code ist falsch oder abgelaufen. Bitte versuche es noch einmal.",
+      "required": "Bitte gib zusätzlich einen Code für die Multi-Faktor-Authentifizierung (MFA) ein.",
+      "passkeyFailed": "Die Bestätigung mit dem Passkey hat nicht geklappt. Versuche es noch einmal oder nutze einen Code.",
+      "passkeyCancelled": "Die Bestätigung mit dem Passkey wurde abgebrochen."
     }
   }
 }

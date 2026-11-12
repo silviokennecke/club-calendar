@@ -328,12 +328,11 @@ describe("ProfilePage", () => {
     expect(login).not.toHaveBeenCalled();
   });
 
-  it("lets SSO-only accounts set a password by e-mail and explains why the address is fixed", async () => {
+  it("lets SSO-only accounts set a password by e-mail", async () => {
     profile = { ...profile, hasPassword: false };
     const user = userEvent.setup();
     renderProfile();
-    expect(await screen.findByText(/lege zuerst ein Passwort fest/)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/^Neue E-Mail-Adresse/)).not.toBeInTheDocument();
+    expect(await screen.findByLabelText(/^Neue E-Mail-Adresse/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Passwort per E-Mail festlegen" }));
     await waitFor(() =>
       expect(apiPost).toHaveBeenCalledWith("/api/auth/forgot-password", {
@@ -343,20 +342,15 @@ describe("ProfilePage", () => {
     expect(await screen.findByText("Prüfe dein Postfach")).toBeInTheDocument();
   });
 
-  it("requests a new e-mail address with the password and shows the pending change", async () => {
+  it("requests a new e-mail address (step-up confirmation by the API layer) and shows the pending change", async () => {
     const user = userEvent.setup();
     renderProfile();
     await user.type(await screen.findByLabelText(/^Neue E-Mail-Adresse/), "neu@beispiel.de");
-    const account = screen
-      .getByRole("heading", { name: "Name und E-Mail-Adresse" })
-      .closest("section")!;
-    await user.type(within(account).getByLabelText(/^Aktuelles Passwort/), "password123");
     profile = { ...profile, pendingEmail: "neu@beispiel.de" };
     await user.click(screen.getByRole("button", { name: "Bestätigungslink senden" }));
     await waitFor(() =>
       expect(apiPost).toHaveBeenCalledWith("/api/auth/change-email", {
         email: "neu@beispiel.de",
-        password: "password123",
       }),
     );
     expect(await screen.findByText("Neue Adresse wartet auf Bestätigung")).toBeInTheDocument();
@@ -468,31 +462,25 @@ describe("ProfilePage", () => {
     return screen.findByRole("dialog", { name: "Konto löschen?" });
   }
 
-  it("deletes the account only with the password, then signs out", async () => {
+  it("deletes the account after the confirmation, then signs out", async () => {
     const user = userEvent.setup();
     renderProfile();
     const dialog = await openDeleteDialog(user);
-    // Without a password nothing is sent
+    expect(within(dialog).queryByLabelText(/Passwort/)).toBeNull();
     await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
-    expect(apiDelete).not.toHaveBeenCalled();
-    expect(within(dialog).getByText("Bitte gib dein aktuelles Passwort ein.")).toBeInTheDocument();
-    await user.type(within(dialog).getByLabelText(/Zur Bestätigung dein Passwort/), "geheim123");
-    await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
-    await waitFor(() =>
-      expect(apiDelete).toHaveBeenCalledWith("/api/auth/me", { password: "geheim123" }),
-    );
+    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/auth/me"));
     expect(logout).toHaveBeenCalled();
     expect(await screen.findByTestId("location")).toHaveTextContent("/login");
   });
 
-  it("shows a wrong password at the field and keeps the account", async () => {
-    apiDelete.mockRejectedValue(new ApiError("x", 400, "invalid_credentials"));
+  it("stays quiet and keeps the account when the step-up confirmation is cancelled", async () => {
+    apiDelete.mockRejectedValue(new ApiError("x", 0, "step_up_cancelled"));
     const user = userEvent.setup();
     renderProfile();
     const dialog = await openDeleteDialog(user);
-    await user.type(within(dialog).getByLabelText(/Zur Bestätigung dein Passwort/), "falsch");
     await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
-    expect(await within(dialog).findByText("Das Passwort stimmt nicht.")).toBeInTheDocument();
+    await waitFor(() => expect(apiDelete).toHaveBeenCalled());
+    expect(within(dialog).queryByRole("alert")).toBeNull();
     expect(logout).not.toHaveBeenCalled();
   });
 
@@ -501,44 +489,8 @@ describe("ProfilePage", () => {
     const user = userEvent.setup();
     renderProfile();
     const dialog = await openDeleteDialog(user);
-    await user.type(within(dialog).getByLabelText(/Zur Bestätigung dein Passwort/), "x");
     await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
     expect(await within(dialog).findByText(/Zu viele Versuche/)).toBeInTheDocument();
-  });
-
-  it("confirms an account without a password with the mailed code", async () => {
-    profile = { ...profile, hasPassword: false };
-    const user = userEvent.setup();
-    renderProfile();
-    const dialog = await openDeleteDialog(user);
-    await user.click(within(dialog).getByRole("button", { name: "Code senden" }));
-    await waitFor(() => expect(apiPost).toHaveBeenCalledWith("/api/auth/delete-account/code", {}));
-    expect(
-      await within(dialog).findByText(/Der Code wurde an alex@beispiel.de/),
-    ).toBeInTheDocument();
-    // An incomplete code is not sent
-    await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
-    expect(apiDelete).not.toHaveBeenCalled();
-    await user.click(within(dialog).getAllByRole("textbox")[0]);
-    await user.paste("123456");
-    await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
-    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/auth/me", { code: "123456" }));
-    expect(logout).toHaveBeenCalled();
-  });
-
-  it("shows a wrong code at the field", async () => {
-    profile = { ...profile, hasPassword: false };
-    apiDelete.mockRejectedValue(new ApiError("x", 400, "invalid_confirmation_code"));
-    const user = userEvent.setup();
-    renderProfile();
-    const dialog = await openDeleteDialog(user);
-    await user.click(within(dialog).getAllByRole("textbox")[0]);
-    await user.paste("123456");
-    await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
-    expect(
-      await within(dialog).findByText("Der Code stimmt nicht oder ist abgelaufen."),
-    ).toBeInTheDocument();
-    expect(logout).not.toHaveBeenCalled();
   });
 
   it("explains that the account stays while the user is the only member of a club", async () => {
@@ -546,7 +498,6 @@ describe("ProfilePage", () => {
     const user = userEvent.setup();
     renderProfile();
     const dialog = await openDeleteDialog(user);
-    await user.type(within(dialog).getByLabelText(/Zur Bestätigung dein Passwort/), "geheim123");
     await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
     expect(await screen.findByText(/einzige Mitglied eines Vereins/)).toBeInTheDocument();
     expect(logout).not.toHaveBeenCalled();

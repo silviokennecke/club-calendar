@@ -2272,20 +2272,6 @@
       "unlinkText": "The link to {{name}} is removed from your account.",
       "unlinkConsequence": "You can no longer sign in with {{name}}. Your other sign-in methods stay."
     },
-    "passkeys": {
-      "reauth": {
-        "passwordLabel": "Your password",
-        "codeText": "Your account has no password. We send a 6-digit code to {{email}} to confirm.",
-        "codeSend": "Send code",
-        "codeResend": "Send code again",
-        "codeSent": "The code was sent to {{email}}. It is valid for at least 10 minutes.",
-        "codeLabel": "Confirmation code",
-        "codeMissing": "Please enter the 6-digit code from the email.",
-        "wrongCode": "The code is not correct or has expired.",
-        "codeFailed": "The code could not be sent. Please try again.",
-        "rateLimited": "Too many attempts. Please wait a while and try again."
-      }
-    },
     "prefs": {
       "title": "Personal settings",
       "text": "Changes apply immediately.",
@@ -2342,16 +2328,6 @@
       "confirm": "Delete account",
       "failed": "The account could not be deleted. Please try again.",
       "lastMemberOfClub": "Your account cannot be deleted while you are the only member of a club. Delete the club first or add another member.",
-      "passwordLabel": "Your password to confirm",
-      "codeText": "Your account has no password. We send a 6-digit code to {{email}} to confirm the deletion.",
-      "codeSend": "Send code",
-      "codeResend": "Send code again",
-      "codeSent": "The code was sent to {{email}}. It is valid for at least 10 minutes.",
-      "codeLabel": "Confirmation code",
-      "codeMissing": "Please enter the 6-digit code from the email.",
-      "wrongCode": "The code is not correct or has expired.",
-      "codeFailed": "The code could not be sent. Please try again.",
-      "rateLimited": "Too many attempts. Please wait a while and try again.",
       "lastAdminOfClub": "Your account cannot be deleted while you are the only admin of a club that has other members. Make another member an admin first or delete the club."
     },
     "account": {
@@ -2378,8 +2354,7 @@
       "passwordMissing": "Please enter your current password.",
       "wrongPassword": "The password is not correct.",
       "emailInvalid": "Please enter a valid email address that differs from the current one.",
-      "emailSubmit": "Send confirmation link",
-      "emailNeedsPassword": "You only sign in through a provider. To change the email address, set a password first."
+      "emailSubmit": "Send confirmation link"
     },
     "password": {
       "title": "Password",
@@ -2567,18 +2542,6 @@
           "passkey": "The passkey was added.",
           "close": "Close"
         }
-      },
-      "reauth": {
-        "passwordLabel": "Your password",
-        "codeText": "Your account has no password. We send a 6-digit code to {{email}} to confirm.",
-        "codeSend": "Send code",
-        "codeResend": "Send code again",
-        "codeSent": "The code was sent to {{email}}. It is valid for at least 10 minutes.",
-        "codeLabel": "Confirmation code",
-        "codeMissing": "Please enter the 6-digit code from the email.",
-        "wrongCode": "The code is not correct or has expired.",
-        "codeFailed": "The code could not be sent. Please try again.",
-        "rateLimited": "Too many attempts. Please wait a while and try again."
       }
     }
   },
@@ -2837,6 +2800,40 @@
     "link": {
       "label": "Personal link",
       "hint": "Meant only for you. Anyone with the link can see your events."
+    }
+  },
+  "stepUp": {
+    "title": "Confirm it is you",
+    "text": "Confirm it is you. The confirmation is valid for 10 minutes.",
+    "confirm": "Confirm",
+    "failed": "The confirmation did not work. Please try again.",
+    "backupUsed_one": "Backup code used. You have {{count}} backup code left.",
+    "backupUsed_other": "Backup code used. You have {{count}} backup codes left.",
+    "reauth": {
+      "passwordLabel": "Your password",
+      "codeText": "Your account has no password. We send a 6-digit code to {{email}} to confirm.",
+      "codeSend": "Send code",
+      "codeResend": "Send code again",
+      "codeSent": "The code was sent to {{email}}. It is valid for at least 10 minutes.",
+      "codeLabel": "Confirmation code",
+      "codeMissing": "Please enter the 6-digit code from the email.",
+      "wrongCode": "The code is not correct or has expired.",
+      "codeFailed": "The code could not be sent. Please try again.",
+      "rateLimited": "Too many attempts. Please wait a while and try again."
+    },
+    "factor": {
+      "choose": "Second factor",
+      "totp": "Authenticator app",
+      "backup": "Backup code",
+      "passkey": "Passkey",
+      "totpLabel": "Code from your authenticator app",
+      "backupLabel": "Backup code",
+      "passkeyText": "Your device asks you to confirm with your passkey when you press Confirm.",
+      "codeMissing": "Please enter a code.",
+      "codeWrong": "The code is wrong or has expired. Please try again.",
+      "required": "Please also enter a code for multi-factor authentication (MFA).",
+      "passkeyFailed": "The passkey confirmation did not work. Try again or use a code.",
+      "passkeyCancelled": "The passkey confirmation was cancelled."
     }
   }
 }

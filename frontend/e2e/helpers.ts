@@ -198,16 +198,57 @@ export async function typeDigits(page: Page, code: string) {
   await page.keyboard.type(code);
 }
 
+/** The step-up confirmation dialog (the MFA setup step has the same title, so it is found by its button). */
+export function stepUpDialog(page: Page) {
+  return page
+    .getByRole("dialog")
+    .filter({ has: page.getByRole("button", { name: "Bestätigen", exact: true }) });
+}
+
+/** Drops the stored step-up token so the next sensitive action asks for the confirmation again. */
+export async function forgetStepUp(page: Page) {
+  await page.evaluate(() => sessionStorage.removeItem("cc_step_up"));
+}
+
+/** Fills the step-up dialog (password, optional authenticator code) and confirms. The dialog must open. */
+export async function confirmStepUp(
+  page: Page,
+  options: { password?: string; totp?: string } = {},
+) {
+  const dialog = stepUpDialog(page);
+  await dialog.getByLabel(/Dein Passwort/).fill(options.password ?? PASSWORD);
+  if (options.totp) {
+    await dialog.getByLabel("Ziffer 1 von 6").click();
+    await page.keyboard.type(options.totp);
+  }
+  await dialog.getByRole("button", { name: "Bestätigen", exact: true }).click();
+}
+
+/** Confirms the step-up dialog when it opens within a few seconds (a still valid confirmation skips it). */
+export async function confirmStepUpIfAsked(
+  page: Page,
+  options: { password?: string; totp?: string } = {},
+) {
+  try {
+    await stepUpDialog(page).waitFor({ state: "visible", timeout: 3_000 });
+  } catch {
+    return false;
+  }
+  await confirmStepUp(page, options);
+  await expect(stepUpDialog(page)).toHaveCount(0);
+  return true;
+}
+
 /**
- * Profile > MFA > add a passkey (German UI): password proof, ceremony (needs a virtual authenticator),
+ * Profile > MFA > add a passkey (German UI): step-up confirmation, ceremony (needs a virtual authenticator),
  * naming, close. Expects the profile page to be open.
  */
 export async function addPasskeyInProfile(page: Page, deviceName: string) {
   await page.getByRole("button", { name: "MFA-Methode hinzufügen" }).click();
   const dialog = page.getByRole("dialog", { name: "MFA-Methode hinzufügen" });
   await dialog.getByRole("button", { name: "Passkey", exact: true }).click();
-  await dialog.getByLabel(/Dein Passwort/).fill(PASSWORD);
   await dialog.getByRole("button", { name: "Weiter" }).click();
+  await confirmStepUpIfAsked(page);
   const naming = page.getByRole("dialog", { name: "Passkey benennen" });
   await naming.getByLabel("Name").fill(deviceName);
   await naming.getByRole("button", { name: "Namen speichern" }).click();

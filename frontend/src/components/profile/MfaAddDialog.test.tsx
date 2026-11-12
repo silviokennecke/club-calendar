@@ -45,8 +45,6 @@ function renderDialog(props: Partial<React.ComponentProps<typeof MfaAddDialog>> 
       open
       onClose={onClose}
       onChanged={onChanged}
-      hasPassword
-      email="a@example.org"
       totpSet={false}
       enforced={false}
       passkeyCount={0}
@@ -89,7 +87,6 @@ describe("MfaAddDialog", () => {
 
     await userEvent.click(screen.getByRole("checkbox"));
     await userEvent.click(screen.getByRole("button", { name: "profile.mfa.add.next" }));
-    await userEvent.type(screen.getByLabelText(/profile\.mfa\.reauth\.passwordLabel/), "pw");
     expect(apiPost).toHaveBeenCalledTimes(1);
     await userEvent.click(screen.getByRole("button", { name: "profile.mfa.add.confirm.submit" }));
 
@@ -102,9 +99,22 @@ describe("MfaAddDialog", () => {
       code: "123456",
       backupCodes: CODES,
       backupCodesAcknowledged: true,
-      password: "pw",
     });
     expect(onChanged).toHaveBeenCalled();
+  });
+
+  it("does nothing visible when the step-up confirmation is cancelled", async () => {
+    apiPost
+      .mockResolvedValueOnce(setupRes)
+      .mockRejectedValueOnce(new ApiError("x", 0, "step_up_cancelled"));
+    renderDialog();
+    await toCodeStep();
+    await userEvent.click(screen.getByRole("checkbox"));
+    await userEvent.click(screen.getByRole("button", { name: "profile.mfa.add.next" }));
+    await userEvent.click(screen.getByRole("button", { name: "profile.mfa.add.confirm.submit" }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("profile.mfa.add.confirm.title")).toBeInTheDocument();
   });
 
   it("returns to the code step on an invalid TOTP code", async () => {
@@ -113,7 +123,6 @@ describe("MfaAddDialog", () => {
     await toCodeStep();
     await userEvent.click(screen.getByRole("checkbox"));
     await userEvent.click(screen.getByRole("button", { name: "profile.mfa.add.next" }));
-    await userEvent.type(screen.getByLabelText(/profile\.mfa\.reauth\.passwordLabel/), "pw");
     await userEvent.click(screen.getByRole("button", { name: "profile.mfa.add.confirm.submit" }));
     expect(await screen.findByText("profile.mfa.add.totp.codeWrong")).toBeInTheDocument();
   });
@@ -136,14 +145,11 @@ describe("MfaAddDialog", () => {
     await userEvent.click(
       screen.getByRole("button", { name: /profile\.mfa\.add\.choose\.passkey$/ }),
     );
-    await userEvent.type(screen.getByLabelText(/profile\.passkeys\.reauth\.passwordLabel/), "pw");
     await userEvent.click(screen.getByRole("button", { name: "profile.mfa.add.passkey.submit" }));
 
     const name = await screen.findByLabelText("profile.mfa.add.passkey.nameLabel");
     expect(name).not.toHaveValue("");
-    expect(apiPost).toHaveBeenNthCalledWith(1, "/api/auth/webauthn/register/options", {
-      password: "pw",
-    });
+    expect(apiPost).toHaveBeenNthCalledWith(1, "/api/auth/webauthn/register/options", {});
     expect(apiPost).toHaveBeenNthCalledWith(2, "/api/auth/webauthn/register/verify", {
       challengeToken: "ct",
       response: { id: "cred" },

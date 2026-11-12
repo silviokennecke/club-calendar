@@ -4,6 +4,7 @@ import { API_URL } from "./apiUrl";
 import { clearInvitationToken } from "./invitations";
 import { dismissBackupCodeNotice } from "./backupCodeNotice";
 import { markSessionEnded } from "./sessionEnd";
+import { StepUpCancelledError, clearStepUp, ensureStepUp, getStepUpToken } from "./stepUp";
 import type {
   HolidayCalendar,
   HolidayCountry,
@@ -189,6 +190,7 @@ export function clearTokens() {
   // A pending invitation belongs to the visitor who opened the link, not to whoever signs in next.
   clearInvitationToken();
   dismissBackupCodeNotice();
+  clearStepUp();
 }
 
 /** The session was rejected: forget the tokens and leave for the login page (without unsaved-changes prompt). */
@@ -327,28 +329,87 @@ export async function logoutEverywhere(): Promise<void> {
 /** The MCP consent API is bound to the browser by an HttpOnly cookie, which a split-origin fetch only sends with credentials. */
 const CREDENTIALED_PATH = /^\/api\/oauth\//;
 
-export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
-  if (CREDENTIALED_PATH.test(path) && options.credentials === undefined) {
-    options = { ...options, credentials: "include" };
+/** Step-up routes live below this prefix; the token is attached there (and to requests flagged `stepUp`). */
+const STEP_UP_SCOPE = /^\/api\/auth\//;
+const STEP_UP_HEADER = "X-Step-Up-Token";
+
+export type ApiRequestInit = RequestInit & { stepUp?: boolean };
+
+/** Problem `code` of a 403 (read from a clone, the caller still gets an unread body). */
+async function forbiddenCode(res: Response): Promise<string | undefined> {
+  if (res.status !== 403 || typeof res.clone !== "function") return undefined;
+  try {
+    const body = (await res.clone().json()) as { code?: unknown };
+    return typeof body.code === "string" ? body.code : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Code of the ApiError thrown when the user cancels the step-up confirmation. */
+export const STEP_UP_CANCELLED = "step_up_cancelled";
+
+export function isStepUpCancelled(error: unknown): boolean {
+  return error instanceof ApiError && error.code === STEP_UP_CANCELLED;
+}
+
+async function promptStepUp(): Promise<void> {
+  try {
+    await ensureStepUp();
+  } catch (error) {
+    if (error instanceof StepUpCancelledError)
+      throw new ApiError("Step-up confirmation cancelled", 0, STEP_UP_CANCELLED);
+    throw error;
+  }
+}
+
+export async function apiFetch(path: string, options: ApiRequestInit = {}): Promise<Response> {
+  const { stepUp, ...init } = options;
+  if (CREDENTIALED_PATH.test(path) && init.credentials === undefined) {
+    init.credentials = "include";
   }
   const token = getAccessToken();
-  const headers: Record<string, string> = {
+  const baseHeaders: Record<string, string> = {
     "Content-Type": "application/json",
-    ...((options.headers as Record<string, string>) ?? {}),
+    ...((init.headers as Record<string, string>) ?? {}),
   };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-
+  const attachStepUp = stepUp === true || STEP_UP_SCOPE.test(path);
   const timeoutMs = LONG_REQUEST_PATH.test(path) ? LONG_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
-  let res = await fetchWithTimeout(BASE_URL + path, { ...options, headers }, timeoutMs);
+
+  const send = (access: string | null, forceStepUp = false) => {
+    const headers = { ...baseHeaders };
+    if (access) headers["Authorization"] = `Bearer ${access}`;
+    const stepUpToken = attachStepUp || forceStepUp ? getStepUpToken() : null;
+    if (stepUpToken) headers[STEP_UP_HEADER] = stepUpToken;
+    return fetchWithTimeout(BASE_URL + path, { ...init, headers }, timeoutMs);
+  };
+
+  let res = await send(token);
+  let access = token;
 
   if (res.status === 401 && token) {
     // Another request may have refreshed while this one was in flight: then just retry with the current token.
     const current = getAccessToken();
     const fresh = current && current !== token ? current : await refreshSession();
     if (fresh) {
-      headers["Authorization"] = `Bearer ${fresh}`;
-      res = await fetchWithTimeout(BASE_URL + path, { ...options, headers }, timeoutMs);
+      access = fresh;
+      res = await send(fresh);
     }
+  }
+
+  let code = await forbiddenCode(res);
+  if (code === "step_up_unavailable") {
+    // The access token predates the session family claim: a refreshed one carries it.
+    const fresh = await refreshSession();
+    if (fresh) {
+      access = fresh;
+      res = await send(fresh, true);
+      code = await forbiddenCode(res);
+    }
+  }
+  if (code === "step_up_required" && !path.startsWith("/api/auth/step-up")) {
+    await promptStepUp();
+    res = await send(getAccessToken() ?? access, true);
   }
 
   return res;

@@ -5,12 +5,11 @@ import {
   Banner,
   Button,
   Field,
-  PasswordField,
   TextInput,
   UnsavedChangesDialog,
   toast,
 } from "@/components/ui/shared";
-import { ApiError, apiDelete, apiPost } from "@/lib/api";
+import { ApiError, apiDelete, apiPost, isStepUpCancelled } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { isEmailShape } from "@/lib/email";
 import { focusFirstInvalid } from "@/lib/focus";
@@ -21,10 +20,9 @@ const NAME_MAX = 255;
 
 /**
  * "Name und E-Mail-Adresse" (extends design Profile, which only showed both read-only): rename at once;
- * a new address needs the current password and only takes effect when the link sent to it is opened
- * (pending state with "Änderung verwerfen"). SSO-only accounts have no password to confirm with, so
- * they first set one (password panel). The API answers the same whether or not the new address is
- * free, so the success text never claims that a mail was sent for sure.
+ * a new address needs the step-up confirmation and only takes effect when the link sent to it is opened
+ * (pending state with "Änderung verwerfen"). Accounts without a password confirm with a mailed code (step-up).
+ * The API answers the same whether or not the new address is free, so the success text never claims that a mail was sent for sure.
  */
 export function AccountSection({ profile }: { profile: ProfileData }) {
   const { t } = useTranslation();
@@ -34,11 +32,10 @@ export function AccountSection({ profile }: { profile: ProfileData }) {
   const [nameError, setNameError] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [emailErrors, setEmailErrors] = useState<{ email?: string; password?: string }>({});
+  const [emailErrors, setEmailErrors] = useState<{ email?: string }>({});
   const [emailFailed, setEmailFailed] = useState(false);
   const [sending, setSending] = useState(false);
-  const unsaved = useUnsavedChanges(name !== profile.name || email !== "" || password !== "");
+  const unsaved = useUnsavedChanges(name !== profile.name || email !== "");
 
   // A failed submit (client check or server answer) moves focus to the first invalid field.
   const nameForm = useRef<HTMLFormElement>(null);
@@ -67,24 +64,21 @@ export function AccountSection({ profile }: { profile: ProfileData }) {
   async function requestChange(e: React.FormEvent) {
     e.preventDefault();
     setEmailFailed(false);
-    const found: { email?: string; password?: string } = {};
+    const found: { email?: string } = {};
     if (!email.trim()) found.email = t("auth.register.emailMissing");
     else if (!isEmailShape(email)) found.email = t("auth.emailInvalid");
-    if (!password) found.password = t("profile.account.passwordMissing");
     setEmailErrors(found);
     if (Object.keys(found).length > 0) return;
 
     setSending(true);
     try {
-      await apiPost<void>("/api/auth/change-email", { email: email.trim(), password });
+      await apiPost<void>("/api/auth/change-email", { email: email.trim() });
       setEmail("");
-      setPassword("");
       await qc.invalidateQueries({ queryKey: ["profile"] });
     } catch (err) {
+      if (isStepUpCancelled(err)) return;
       const code = err instanceof ApiError ? err.code : undefined;
-      if (code === "invalid_credentials")
-        setEmailErrors({ password: t("profile.account.wrongPassword") });
-      else if (code === "validation_failed")
+      if (code === "validation_failed")
         setEmailErrors({ email: t("profile.account.emailInvalid") });
       else setEmailFailed(true);
     } finally {
@@ -170,52 +164,33 @@ export function AccountSection({ profile }: { profile: ProfileData }) {
             </Banner>
           )}
           {emailFailed && <Banner tone="danger">{t("profile.account.emailFailed")}</Banner>}
-          {profile.hasPassword ? (
-            <>
-              <Field
-                label={t("profile.account.newEmail")}
-                required
-                error={emailErrors.email}
-                hint={t("profile.account.newEmailHint")}
-              >
-                <TextInput
-                  type="email"
-                  value={email}
-                  autoComplete="email"
-                  inputMode="email"
-                  spellCheck={false}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setEmailErrors((prev) => (prev.email ? { ...prev, email: undefined } : prev));
-                  }}
-                  onBlur={() => {
-                    if (email.trim() && !isEmailShape(email))
-                      setEmailErrors((prev) => ({ ...prev, email: t("auth.emailInvalid") }));
-                  }}
-                />
-              </Field>
-              <PasswordField
-                label={t("profile.account.currentPassword")}
-                requiredLabel
-                error={emailErrors.password}
-                value={password}
-                autoComplete="current-password"
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setEmailErrors((prev) =>
-                    prev.password ? { ...prev, password: undefined } : prev,
-                  );
-                }}
-              />
-              <div className="ap-actions">
-                <Button type="submit" variant="secondary" icon="send" loading={sending}>
-                  {t("profile.account.emailSubmit")}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <p className="t-sm">{t("profile.account.emailNeedsPassword")}</p>
-          )}
+          <Field
+            label={t("profile.account.newEmail")}
+            required
+            error={emailErrors.email}
+            hint={t("profile.account.newEmailHint")}
+          >
+            <TextInput
+              type="email"
+              value={email}
+              autoComplete="email"
+              inputMode="email"
+              spellCheck={false}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setEmailErrors((prev) => (prev.email ? { ...prev, email: undefined } : prev));
+              }}
+              onBlur={() => {
+                if (email.trim() && !isEmailShape(email))
+                  setEmailErrors((prev) => ({ ...prev, email: t("auth.emailInvalid") }));
+              }}
+            />
+          </Field>
+          <div className="ap-actions">
+            <Button type="submit" variant="secondary" icon="send" loading={sending}>
+              {t("profile.account.emailSubmit")}
+            </Button>
+          </div>
         </form>
       </div>
       <UnsavedChangesDialog {...unsaved.dialog} />

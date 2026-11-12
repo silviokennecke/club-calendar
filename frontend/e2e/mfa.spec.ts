@@ -1,7 +1,11 @@
 import { test, expect, type Browser, type Page } from "@playwright/test";
 import {
   PASSWORD,
+  confirmStepUp,
+  confirmStepUpIfAsked,
+  forgetStepUp,
   setPresenceSimulation,
+  stepUpDialog,
   addVirtualAuthenticator,
   createVerifiedUser,
   login,
@@ -46,8 +50,8 @@ async function enableTotp(page: Page) {
   await dialog.getByLabel("Ich habe die Backup-Codes aufbewahrt").check();
   await dialog.getByRole("button", { name: "Weiter" }).click();
 
-  await dialog.getByLabel(/Dein Passwort/).fill(PASSWORD);
   await dialog.getByRole("button", { name: "Aktivieren" }).click();
+  await confirmStepUpIfAsked(page);
   await expect(dialog.getByText("Die Authenticator-App ist jetzt aktiv.")).toBeVisible();
   await dialog.getByRole("button", { name: "Schließen" }).click();
   await expect(page.getByText("MFA ist eingeschaltet.")).toBeVisible();
@@ -154,7 +158,7 @@ test.describe("MFA", () => {
     }
   });
 
-  test("MFA ausschalten verlangt das Passwort und meldet andere Geräte ab", async ({
+  test("MFA ausschalten verlangt die Bestätigung und meldet andere Geräte ab", async ({
     page,
     browser,
     baseURL,
@@ -174,11 +178,17 @@ test.describe("MFA", () => {
         "Die Authenticator-App und die Backup-Codes werden gelöscht.",
       );
       await expect(dialog).toContainText("Alle anderen Geräte werden abgemeldet.");
-      await dialog.getByLabel(/Dein Passwort/).fill("falsches-Passwort-1");
+      // The confirmation (password + authenticator code) is asked for; a wrong password keeps it open
+      await forgetStepUp(page);
       await dialog.getByRole("button", { name: "MFA ausschalten" }).click();
-      await expect(dialog.getByText("Das Passwort stimmt nicht.")).toBeVisible();
-      await dialog.getByLabel(/Dein Passwort/).fill(PASSWORD);
-      await dialog.getByRole("button", { name: "MFA ausschalten" }).click();
+      const stepUp = stepUpDialog(page);
+      await confirmStepUp(page, {
+        password: "falsches-Passwort-1",
+        totp: totpCode(secret, step + 2),
+      });
+      await expect(stepUp.getByText("Das Passwort stimmt nicht.")).toBeVisible();
+      await stepUp.getByLabel(/Dein Passwort/).fill(PASSWORD);
+      await stepUp.getByRole("button", { name: "Bestätigen", exact: true }).click();
       await expect(page.getByText("MFA ist ausgeschaltet.", { exact: true }).first()).toBeVisible();
       await expect(page.getByText("Du hast noch keine MFA-Methode eingerichtet.")).toBeVisible();
 
@@ -201,12 +211,12 @@ test.describe("MFA", () => {
     await openProfile(page, email);
     const { cdp, authenticatorId } = await addVirtualAuthenticator(page);
 
-    // add a passkey (password proof, ceremony, name)
+    // add a passkey (step-up confirmation, ceremony, name)
     await page.getByRole("button", { name: "MFA-Methode hinzufügen" }).click();
     const add = page.getByRole("dialog");
     await add.getByRole("button", { name: "Passkey", exact: true }).click();
-    await add.getByLabel(/Dein Passwort/).fill(PASSWORD);
     await add.getByRole("button", { name: "Weiter" }).click();
+    await confirmStepUpIfAsked(page);
     const naming = page.getByRole("dialog", { name: "Passkey benennen" });
     await naming.getByLabel("Name").fill("Büro-Laptop");
     await naming.getByRole("button", { name: "Namen speichern" }).click();
@@ -218,7 +228,7 @@ test.describe("MFA", () => {
     await expect(list).toContainText("Büro-Laptop");
     await expect(page.getByText("MFA ist ausgeschaltet.")).toBeVisible();
 
-    // enforce MFA with it: backup codes first, then the password
+    // enforce MFA with it: backup codes first, then the confirmation
     await page.getByRole("button", { name: "MFA einschalten" }).click();
     const enforce = page.getByRole("dialog", { name: "MFA einschalten" });
     await expect(
@@ -229,16 +239,16 @@ test.describe("MFA", () => {
     await enforce.getByLabel("Ich habe die Backup-Codes aufbewahrt.").check();
     await next.click();
     const proof = page.getByRole("dialog", { name: "MFA einschalten" });
-    await proof.getByLabel(/Dein Passwort/).fill(PASSWORD);
     await proof.getByRole("button", { name: "MFA einschalten" }).click();
+    await confirmStepUpIfAsked(page);
     await expect(page.getByText("MFA ist eingeschaltet.", { exact: true }).first()).toBeVisible();
     await expect(list).toContainText("noch 10 Codes übrig");
 
     // the last passkey cannot go while MFA is on and no authenticator app exists
     await page.getByRole("button", { name: "Passkey „Büro-Laptop“ entfernen" }).click();
     const remove = page.getByRole("dialog", { name: "Passkey „Büro-Laptop“ entfernen?" });
-    await remove.getByLabel(/Dein Passwort/).fill(PASSWORD);
     await remove.getByRole("button", { name: "Passkey entfernen" }).click();
+    await confirmStepUpIfAsked(page);
     await expect(
       remove.getByText(/Du kannst deinen letzten Passkey nicht entfernen/),
     ).toBeVisible();

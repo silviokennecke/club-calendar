@@ -3,13 +3,11 @@ import { useTranslation } from "react-i18next";
 import { Banner, Button, FormDialog, Skeleton, toast } from "@/components/ui/shared";
 import { useEnablePasskeyEnforcement, useStartPasskeyEnforcement } from "@/lib/profile/mfa";
 import { BackupCodesView } from "./BackupCodesView";
-import { MfaProofDialog } from "./MfaProofDialog";
+import { MfaActionDialog } from "./MfaActionDialog";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  hasPassword: boolean | undefined;
-  email: string;
 }
 
 interface Setup {
@@ -17,8 +15,8 @@ interface Setup {
   backupCodes: string[];
 }
 
-/** Enforce MFA with the existing passkeys: backup codes (acknowledged), then re-authentication. */
-export function MfaEnforceDialog({ open, onClose, hasPassword, email }: Props) {
+/** Enforce MFA with the existing passkeys: backup codes (acknowledged), then the step-up confirmation. */
+export function MfaEnforceDialog({ open, onClose }: Props) {
   const { t } = useTranslation();
   const start = useStartPasskeyEnforcement();
   const enable = useEnablePasskeyEnforcement();
@@ -50,21 +48,19 @@ export function MfaEnforceDialog({ open, onClose, hasPassword, email }: Props) {
 
   if (proofStep && setup) {
     return (
-      <MfaProofDialog
+      <MfaActionDialog
         open={open}
         onClose={close}
         title={t("profile.mfa.enforce.title")}
         submitLabel={t("profile.mfa.enforce.confirm")}
-        hasPassword={hasPassword}
-        email={email}
-        onSubmit={async (proof) => {
-          await enable.mutateAsync({ ...setup, proof });
+        onSubmit={async () => {
+          await enable.mutateAsync(setup);
           toast.success(t("profile.mfa.enforce.done"));
           close();
         }}
       >
         <p>{t("profile.mfa.enforce.proofText")}</p>
-      </MfaProofDialog>
+      </MfaActionDialog>
     );
   }
 

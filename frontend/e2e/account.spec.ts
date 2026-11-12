@@ -1,5 +1,13 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
-import { API, PASSWORD, createVerifiedUser, login, resetLinkFor, seedClub } from "./helpers";
+import {
+  API,
+  PASSWORD,
+  confirmStepUpIfAsked,
+  createVerifiedUser,
+  login,
+  resetLinkFor,
+  seedClub,
+} from "./helpers";
 
 // ——— Konto (Backend-Paket 3): Passwort zurücksetzen, Profil bearbeiten, letzter Kalender je Verein ———
 
@@ -85,9 +93,11 @@ test.describe("Profil bearbeiten", () => {
     await password.getByLabel(/^Neues Passwort/).fill(NEW_PASSWORD);
     await password.getByLabel(/^Passwort wiederholen/).fill(NEW_PASSWORD);
     await password.getByRole("button", { name: "Passwort ändern" }).click();
+    await confirmStepUpIfAsked(page);
     await expect(password.getByText("Das Passwort stimmt nicht.")).toBeVisible();
     await password.getByLabel(/^Aktuelles Passwort/).fill(PASSWORD);
     await password.getByRole("button", { name: "Passwort ändern" }).click();
+    await confirmStepUpIfAsked(page);
     await expect(page.getByText(/Passwort geändert/)).toBeVisible();
     // This session continues with the new tokens (also after a reload).
     await page.reload();
@@ -96,8 +106,9 @@ test.describe("Profil bearbeiten", () => {
 
     const newEmail = `neu-${Date.now()}@example.com`;
     await account.getByLabel(/^Neue E-Mail-Adresse/).fill(newEmail);
-    await account.getByLabel(/^Aktuelles Passwort/).fill(NEW_PASSWORD);
     await account.getByRole("button", { name: "Bestätigungslink senden" }).click();
+    // the password change ended the old confirmation: a new one is asked for
+    await confirmStepUpIfAsked(page, { password: NEW_PASSWORD });
     await expect(account.getByText("Neue Adresse wartet auf Bestätigung")).toBeVisible();
     await expect(account.getByText(newEmail)).toBeVisible();
     await account.getByRole("button", { name: "Änderung verwerfen" }).click();

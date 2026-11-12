@@ -19,6 +19,7 @@ import { AuthContext, type AuthContextValue } from "./auth-context";
 import { dropBackupCodeNoticeUnless } from "./backupCodeNotice";
 import { clearDrafts } from "./events/draft";
 import i18n from "./i18n";
+import { clearStepUp } from "./stepUp";
 import type { User } from "./types";
 
 /** Pauses before the retries of /me after a failure that is no verdict on the session. */
@@ -115,6 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = (accessToken: string, refreshToken: string, user: User) => {
     decision.current++;
+    // New token pair: a step-up token of the previous session (or user) is dead.
+    clearStepUp();
     storeTokens(accessToken, refreshToken);
     clearDrafts(user.id);
     applyUserLanguage(user);

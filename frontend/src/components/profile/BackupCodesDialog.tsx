@@ -3,17 +3,15 @@ import { useTranslation } from "react-i18next";
 import { Banner, Button, FormDialog } from "@/components/ui/shared";
 import { useRegenerateBackupCodes } from "@/lib/profile/mfa";
 import { BackupCodesView } from "./BackupCodesView";
-import { MfaProofDialog } from "./MfaProofDialog";
+import { MfaActionDialog } from "./MfaActionDialog";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  hasPassword: boolean | undefined;
-  email: string;
 }
 
-/** Regenerates the backup codes after re-authentication and shows the new ones once. */
-export function BackupCodesDialog({ open, onClose, hasPassword, email }: Props) {
+/** Regenerates the backup codes after the step-up confirmation and shows the new ones once. */
+export function BackupCodesDialog({ open, onClose }: Props) {
   const { t } = useTranslation();
   const regenerate = useRegenerateBackupCodes();
   const [codes, setCodes] = useState<string[] | null>(null);
@@ -42,19 +40,17 @@ export function BackupCodesDialog({ open, onClose, hasPassword, email }: Props) 
   }
 
   return (
-    <MfaProofDialog
+    <MfaActionDialog
       open={open}
       onClose={close}
       title={t("profile.mfa.regenerate.title")}
       submitLabel={t("profile.mfa.regenerate.confirm")}
-      hasPassword={hasPassword}
-      email={email}
-      onSubmit={async (proof) => {
-        const result = await regenerate.mutateAsync(proof);
+      onSubmit={async () => {
+        const result = await regenerate.mutateAsync();
         setCodes(result.backupCodes);
       }}
     >
       <p>{t("profile.mfa.regenerate.text")}</p>
-    </MfaProofDialog>
+    </MfaActionDialog>
   );
 }

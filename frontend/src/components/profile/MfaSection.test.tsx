@@ -50,10 +50,6 @@ function renderSection(p: ProfileData) {
   );
 }
 
-async function typePassword(dialog: HTMLElement) {
-  await userEvent.type(within(dialog).getByLabelText(/^Dein Passwort/), "secret-pw");
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
   apiPost.mockResolvedValue(undefined);
@@ -109,7 +105,7 @@ describe("MfaSection", () => {
     expect(screen.queryByRole("button", { name: "MFA einschalten" })).toBeNull();
   });
 
-  it("enforces with passkeys: codes, acknowledgement, proof, enable request", async () => {
+  it("enforces with passkeys: codes, acknowledgement, enable request", async () => {
     apiPost.mockImplementation(async (path: string) =>
       path === "/api/auth/mfa/setup"
         ? { setupToken: "st", backupCodes: ["AAAA-BBBB-CCCC"] }
@@ -124,7 +120,6 @@ describe("MfaSection", () => {
     await userEvent.click(screen.getByLabelText("Ich habe die Backup-Codes aufbewahrt."));
     await userEvent.click(next);
     const dialog = await screen.findByRole("dialog");
-    await typePassword(dialog);
     await userEvent.click(within(dialog).getByRole("button", { name: "MFA einschalten" }));
     await waitFor(() =>
       expect(apiPost).toHaveBeenCalledWith("/api/auth/mfa/enable", {
@@ -132,12 +127,11 @@ describe("MfaSection", () => {
         method: "passkeys",
         backupCodes: ["AAAA-BBBB-CCCC"],
         backupCodesAcknowledged: true,
-        password: "secret-pw",
       }),
     );
   });
 
-  it("disable replaces enforce, explains, sends the proof and stores the tokens", async () => {
+  it("disable replaces enforce, explains, disables and stores the tokens", async () => {
     apiPost.mockResolvedValue(tokens);
     renderSection(profile({}, { enforced: true, totp: { createdAt: "2026-10-02T10:00:00Z" } }));
     expect(screen.queryByRole("button", { name: "MFA einschalten" })).toBeNull();
@@ -146,25 +140,17 @@ describe("MfaSection", () => {
     expect(within(dialog).getByText(/Authenticator-App und die Backup-Codes/)).toBeInTheDocument();
     expect(within(dialog).getByText("Deine Passkeys bleiben erhalten.")).toBeInTheDocument();
     expect(within(dialog).getByText("Alle anderen Geräte werden abgemeldet.")).toBeInTheDocument();
-    await typePassword(dialog);
     await userEvent.click(within(dialog).getByRole("button", { name: "MFA ausschalten" }));
-    await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith("/api/auth/mfa/disable", { password: "secret-pw" }),
-    );
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith("/api/auth/mfa/disable", {}));
     await waitFor(() => expect(login).toHaveBeenCalledWith("a", "r", tokens.user));
   });
 
-  it("deleting a passkey needs a proof and adopts the new tokens", async () => {
+  it("deleting a passkey (confirmation by step-up) and adopts the new tokens", async () => {
     renderSection(profile());
     await userEvent.click(screen.getByRole("button", { name: "Passkey „Laptop“ entfernen" }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.click(within(dialog).getByRole("button", { name: "Passkey entfernen" }));
-    expect(apiDelete).not.toHaveBeenCalled();
-    await typePassword(dialog);
-    await userEvent.click(within(dialog).getByRole("button", { name: "Passkey entfernen" }));
-    await waitFor(() =>
-      expect(apiDelete).toHaveBeenCalledWith("/api/auth/webauthn/p1", { password: "secret-pw" }),
-    );
+    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/auth/webauthn/p1"));
     await waitFor(() => expect(login).toHaveBeenCalled());
   });
 
@@ -173,7 +159,6 @@ describe("MfaSection", () => {
     renderSection(profile());
     await userEvent.click(screen.getByRole("button", { name: "Passkey „Laptop“ entfernen" }));
     const dialog = await screen.findByRole("dialog");
-    await typePassword(dialog);
     await userEvent.click(within(dialog).getByRole("button", { name: "Passkey entfernen" }));
     expect(await within(dialog).findByText(/letzten Passkey nicht entfernen/)).toBeInTheDocument();
   });
@@ -201,25 +186,8 @@ describe("MfaSection", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Neu erzeugen" }));
     const dialog = await screen.findByRole("dialog");
-    await typePassword(dialog);
     await userEvent.click(within(dialog).getByRole("button", { name: "Codes erzeugen" }));
     expect(await screen.findByText("1111-2222-3333")).toBeInTheDocument();
-    expect(apiPost).toHaveBeenCalledWith("/api/auth/mfa/backup-codes", { password: "secret-pw" });
-  });
-
-  it("uses the mailed code for accounts without a password", async () => {
-    apiPost.mockResolvedValue(tokens);
-    renderSection(profile({ hasPassword: false }, { enforced: true }));
-    await userEvent.click(screen.getByRole("button", { name: "MFA ausschalten" }));
-    const dialog = await screen.findByRole("dialog");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Code senden" }));
-    expect(apiPost).toHaveBeenCalledWith("/api/auth/mfa/code", {});
-    const digits = within(dialog).getAllByRole("textbox");
-    await userEvent.click(digits[0]);
-    await userEvent.keyboard("123456");
-    await userEvent.click(within(dialog).getByRole("button", { name: "MFA ausschalten" }));
-    await waitFor(() =>
-      expect(apiPost).toHaveBeenCalledWith("/api/auth/mfa/disable", { confirmationCode: "123456" }),
-    );
+    expect(apiPost).toHaveBeenCalledWith("/api/auth/mfa/backup-codes", {});
   });
 });

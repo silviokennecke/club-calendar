@@ -1,7 +1,7 @@
 import type { TFunction } from "i18next";
 import { apiErrorCode } from "@/lib/api";
 
-export type ReauthPurpose = "passkey" | "delete" | "mfa";
+export type ReauthPurpose = "step_up";
 
 export interface ReauthValue {
   password: string;
@@ -11,29 +11,19 @@ export interface ReauthValue {
 export const emptyReauth: ReauthValue = { password: "", code: "" };
 
 export const CODE_ENDPOINT: Record<ReauthPurpose, string> = {
-  passkey: "/api/auth/webauthn/register/code",
-  delete: "/api/auth/delete-account/code",
-  mfa: "/api/auth/mfa/code",
+  step_up: "/api/auth/step-up/code",
 };
 
 export const TEXT_PREFIX: Record<ReauthPurpose, string> = {
-  passkey: "profile.passkeys.reauth",
-  delete: "profile.danger",
-  mfa: "profile.mfa.reauth",
+  step_up: "stepUp.reauth",
 };
 
-/**
- * Request body for a re-authenticated call. The MFA routes expect `confirmationCode`; the older
- * passkey-registration and account-deletion routes call the same value `code`.
- */
+/** The proof part of `POST /api/auth/step-up`: the password, or the mailed code of a passwordless account. */
 export function reauthBody(
   value: ReauthValue,
   hasPassword: boolean,
-  codeKey: "confirmationCode" | "code" = "confirmationCode",
-): { password: string } | { confirmationCode: string } | { code: string } {
-  return hasPassword
-    ? { password: value.password }
-    : ({ [codeKey]: value.code } as { confirmationCode: string } | { code: string });
+): { password: string } | { confirmationCode: string } {
+  return hasPassword ? { password: value.password } : { confirmationCode: value.code };
 }
 
 /** Client-side check before the request; returns the field error text or undefined. */

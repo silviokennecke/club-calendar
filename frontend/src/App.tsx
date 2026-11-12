@@ -4,6 +4,7 @@ import { useAuth } from "./lib/auth-context";
 import { AuthProvider } from "./lib/AuthProvider";
 import { ThemeProvider } from "./lib/ThemeProvider";
 import { ModalFrame, Toaster } from "./components/ui/shared";
+import { StepUpDialog } from "./components/auth/StepUpDialog";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import GuestRoute from "./components/layout/GuestRoute";
 import { BackgroundRoutes } from "./components/layout/BackgroundRoutes";
@@ -191,6 +192,7 @@ function Root() {
     <ReactQueryProvider>
       <AuthProvider>
         <AppRoutes />
+        <StepUpDialog />
         <Toaster />
       </AuthProvider>
     </ReactQueryProvider>

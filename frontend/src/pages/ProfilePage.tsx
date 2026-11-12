@@ -192,8 +192,6 @@ export default function ProfilePage() {
           <DeleteAccountDialog
             open={deleteOpen}
             onOpenChange={setDeleteOpen}
-            hasPassword={data?.hasPassword}
-            email={email}
             onDeleted={accountDeleted}
           />
         </div>

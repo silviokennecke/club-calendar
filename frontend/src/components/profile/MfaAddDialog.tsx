@@ -13,18 +13,14 @@ import {
   TextInput,
   toast,
 } from "@/components/ui/shared";
-import { apiErrorCode, apiPatch, apiPost } from "@/lib/api";
+import { apiErrorCode, apiPatch, apiPost, isStepUpCancelled } from "@/lib/api";
 import { focusFirstInvalid } from "@/lib/focus";
-import { ReauthFields } from "./ReauthFields";
-import { emptyReauth, reauthBody, reauthFieldError, reauthMissing } from "./reauth";
 
 interface MfaAddDialogProps {
   open: boolean;
   onClose: () => void;
   /** Called after the profile data changed (refetch it). */
   onChanged: () => void;
-  hasPassword: boolean | undefined;
-  email: string;
   /** An authenticator app is already set up. */
   totpSet: boolean;
   /** MFA is on (the server then returns no new backup codes). */
@@ -98,17 +94,12 @@ export function MfaAddDialog({
   open,
   onClose,
   onChanged,
-  hasPassword,
-  email,
   totpSet,
   enforced: _enforced,
   passkeyCount,
 }: MfaAddDialogProps) {
   const { t } = useTranslation();
   const [step, setStep] = useState<Step>("choose");
-  const [proof, setProof] = useState(emptyReauth);
-  const [fieldsKey, setFieldsKey] = useState(0);
-  const [proofError, setProofError] = useState<string>();
   const [failure, setFailure] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [setup, setSetup] = useState<TotpSetup | null>(null);
@@ -123,16 +114,13 @@ export function MfaAddDialog({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const supported = passkeysSupported();
 
-  useEffect(() => focusFirstInvalid(bodyRef.current), [proofError, codeError, ackError]);
+  useEffect(() => focusFirstInvalid(bodyRef.current), [codeError, ackError]);
   useEffect(() => {
     if (open) headingRef.current?.focus();
   }, [step, open]);
 
   function reset() {
     setStep("choose");
-    setProof(emptyReauth);
-    setFieldsKey((k) => k + 1);
-    setProofError(undefined);
     setFailure(undefined);
     setBusy(false);
     setSetup(null);
@@ -152,14 +140,13 @@ export function MfaAddDialog({
 
   function go(next: Step) {
     setFailure(undefined);
-    setProofError(undefined);
     setStep(next);
   }
 
-  function handleProofError(error: unknown) {
-    const wrong = reauthFieldError(error, step === "pkProof" ? "passkey" : "mfa", t);
-    if (wrong) setProofError(wrong);
-    else if (apiErrorCode(error) === "rate_limited") setFailure(t("profile.mfa.add.rateLimited"));
+  /** True when the error was handled (cancelled confirmation, rate limit). */
+  function handleCommonError(error: unknown) {
+    if (isStepUpCancelled(error)) return true;
+    if (apiErrorCode(error) === "rate_limited") setFailure(t("profile.mfa.add.rateLimited"));
     else return false;
     return true;
   }
@@ -202,14 +189,8 @@ export function MfaAddDialog({
   }
 
   async function enableTotp() {
-    if (busy || hasPassword === undefined || !setup) return;
-    setProofError(undefined);
+    if (busy || !setup) return;
     setFailure(undefined);
-    const missing = reauthMissing(proof, hasPassword, "mfa", t);
-    if (missing) {
-      setProofError(missing);
-      return;
-    }
     setBusy(true);
     try {
       await apiPost("/api/auth/mfa/enable", {
@@ -219,13 +200,12 @@ export function MfaAddDialog({
         code,
         ...(setup.backupCodes ? { backupCodes: setup.backupCodes } : {}),
         backupCodesAcknowledged: true,
-        ...reauthBody(proof, hasPassword),
       });
       setDoneKind("totp");
       onChanged();
       go("done");
     } catch (error) {
-      if (handleProofError(error)) return;
+      if (handleCommonError(error)) return;
       const c = apiErrorCode(error);
       if (c === "invalid_totp_code") {
         setCodeError(t("profile.mfa.add.totp.codeWrong"));
@@ -247,22 +227,11 @@ export function MfaAddDialog({
   }
 
   async function addPasskey() {
-    if (busy || hasPassword === undefined) return;
-    setProofError(undefined);
+    if (busy) return;
     setFailure(undefined);
-    const missing = reauthMissing(proof, hasPassword, "passkey", t);
-    if (missing) {
-      setProofError(missing);
-      return;
-    }
     setBusy(true);
     try {
-      const start = await apiPost<PasskeyStart>(
-        "/api/auth/webauthn/register/options",
-        reauthBody(proof, hasPassword, "code"),
-      );
-      setProof(emptyReauth);
-      setFieldsKey((k) => k + 1);
+      const start = await apiPost<PasskeyStart>("/api/auth/webauthn/register/options", {});
       const { startRegistration } = await import("@simplewebauthn/browser");
       let response;
       try {
@@ -289,7 +258,7 @@ export function MfaAddDialog({
       setDoneKind("passkey");
       go("pkName");
     } catch (error) {
-      if (handleProofError(error)) return;
+      if (handleCommonError(error)) return;
       setFailure(t("profile.mfa.add.passkey.error"));
     } finally {
       setBusy(false);
@@ -390,11 +359,7 @@ export function MfaAddDialog({
             {t("profile.mfa.add.passkey.skipName")}
           </Button>
         )}
-        <Button
-          type="submit"
-          loading={busy}
-          disabled={(step === "totpProof" || step === "pkProof") && hasPassword === undefined}
-        >
+        <Button type="submit" loading={busy}>
           {step === "totpProof"
             ? t("profile.mfa.add.confirm.submit")
             : step === "pkProof"
@@ -549,39 +514,9 @@ export function MfaAddDialog({
           </>
         )}
 
-        {step === "totpProof" && (
-          <>
-            <p>{t("profile.mfa.add.confirm.text")}</p>
-            <ReauthFields
-              key={fieldsKey}
-              purpose="mfa"
-              idPrefix="mfa-add"
-              hasPassword={hasPassword}
-              email={email}
-              value={proof}
-              onChange={setProof}
-              error={proofError}
-              busy={busy}
-            />
-          </>
-        )}
+        {step === "totpProof" && <p>{t("profile.mfa.add.confirm.text")}</p>}
 
-        {step === "pkProof" && (
-          <>
-            <p>{t("profile.mfa.add.passkey.text")}</p>
-            <ReauthFields
-              key={fieldsKey}
-              purpose="passkey"
-              idPrefix="mfa-add-pk"
-              hasPassword={hasPassword}
-              email={email}
-              value={proof}
-              onChange={setProof}
-              error={proofError}
-              busy={busy}
-            />
-          </>
-        )}
+        {step === "pkProof" && <p>{t("profile.mfa.add.passkey.text")}</p>}
 
         {step === "pkName" && (
           <>

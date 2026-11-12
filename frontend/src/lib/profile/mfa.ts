@@ -3,9 +3,6 @@ import { apiDelete, apiPatch, apiPost, type TokenResponse } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import type { MfaStatus } from "@/components/profile/profileTypes";
 
-/** Proof of the account holder: `{password}` or `{confirmationCode}` (see `reauthBody`). */
-export type Proof = Record<string, string>;
-
 type Tokens = Partial<TokenResponse> | undefined;
 
 function useRefreshProfile() {
@@ -35,8 +32,7 @@ export function useDeletePasskey() {
   const refresh = useRefreshProfile();
   const adopt = useAdoptTokens();
   return useMutation({
-    mutationFn: ({ id, proof }: { id: string; proof: Proof }) =>
-      apiDelete<Tokens>(`/api/auth/webauthn/${id}`, proof),
+    mutationFn: ({ id }: { id: string }) => apiDelete<Tokens>(`/api/auth/webauthn/${id}`),
     onSuccess: async (tokens) => {
       adopt(tokens);
       await refresh();
@@ -47,8 +43,8 @@ export function useDeletePasskey() {
 export function useRegenerateBackupCodes() {
   const refresh = useRefreshProfile();
   return useMutation({
-    mutationFn: (proof: Proof) =>
-      apiPost<{ backupCodes: string[]; mfa: MfaStatus }>("/api/auth/mfa/backup-codes", proof),
+    mutationFn: () =>
+      apiPost<{ backupCodes: string[]; mfa: MfaStatus }>("/api/auth/mfa/backup-codes", {}),
     onSuccess: refresh,
   });
 }
@@ -65,21 +61,12 @@ export function useStartPasskeyEnforcement() {
 export function useEnablePasskeyEnforcement() {
   const refresh = useRefreshProfile();
   return useMutation({
-    mutationFn: ({
-      setupToken,
-      backupCodes,
-      proof,
-    }: {
-      setupToken: string;
-      backupCodes: string[];
-      proof: Proof;
-    }) =>
+    mutationFn: ({ setupToken, backupCodes }: { setupToken: string; backupCodes: string[] }) =>
       apiPost<unknown>("/api/auth/mfa/enable", {
         setupToken,
         method: "passkeys",
         backupCodes,
         backupCodesAcknowledged: true,
-        ...proof,
       }),
     onSuccess: refresh,
   });
@@ -89,7 +76,7 @@ export function useDisableMfa() {
   const refresh = useRefreshProfile();
   const adopt = useAdoptTokens();
   return useMutation({
-    mutationFn: (proof: Proof) => apiPost<Tokens>("/api/auth/mfa/disable", proof),
+    mutationFn: () => apiPost<Tokens>("/api/auth/mfa/disable", {}),
     onSuccess: async (tokens) => {
       adopt(tokens);
       await refresh();

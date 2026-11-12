@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trans, useTranslation } from "react-i18next";
 import { Banner, Button, PasswordField, toast } from "@/components/ui/shared";
-import { ApiError, apiPost } from "@/lib/api";
+import { ApiError, apiPost, isStepUpCancelled } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { focusFirstInvalid } from "@/lib/focus";
 import { passwordProblem } from "@/lib/password";
@@ -69,6 +69,7 @@ export function PasswordSection({ profile }: { profile: ProfileData }) {
       await qc.invalidateQueries({ queryKey: ["profile"] });
       toast.success(t("profile.password.changed"));
     } catch (err) {
+      if (isStepUpCancelled(err)) return;
       const code = err instanceof ApiError ? err.code : undefined;
       if (code === "invalid_credentials")
         setErrors({ current: t("profile.account.wrongPassword") });
