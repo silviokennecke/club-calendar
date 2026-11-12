@@ -256,6 +256,8 @@ test.describe("Profil", () => {
 
     // The login page asks for a passkey on its own (conditional request, answered by the virtual
     // authenticator); keep it silent until the listener for the request is in place.
+    // Switching presence back on does not always answer a conditional request that is already
+    // pending (the trace shows it hanging), so the button is the fallback: it starts a fresh ceremony.
     await setPresenceSimulation(cdp, authenticatorId, false);
     await page.getByRole("main").getByRole("button", { name: "Abmelden", exact: true }).click();
     await expect(page).toHaveURL(/\/login/);
@@ -266,7 +268,14 @@ test.describe("Profil", () => {
       (r) => r.url().endsWith("/api/auth/webauthn/authenticate/verify") && r.method() === "POST",
     );
     await setPresenceSimulation(cdp, authenticatorId, true);
+    const fallback = page
+      .waitForTimeout(2000)
+      .then(() =>
+        page.getByRole("button", { name: "Mit Passkey anmelden" }).click({ timeout: 3000 }),
+      )
+      .catch(() => {});
     const sent = (await verify).postData() ?? "";
+    await fallback;
     await page.waitForURL(/\/clubs/);
     const { credentials } = await cdp.send("WebAuthn.getCredentials", { authenticatorId });
     expect(credentials[0].signCount).toBeGreaterThan(0);
