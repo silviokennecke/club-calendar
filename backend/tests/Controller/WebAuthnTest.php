@@ -42,6 +42,10 @@ class WebAuthnTest extends WebTestCase
 
     protected function setUp(): void
     {
+        // A test ending in an ApiProblemException inside wrapInTransaction closes the EntityManager.
+        if (!static::getContainer()->get(EntityManagerInterface::class)->isOpen()) {
+            static::getContainer()->get('doctrine')->resetManager();
+        }
         self::$em = static::getContainer()->get(EntityManagerInterface::class);
         DatabaseResetter::reset(self::$em);
     }

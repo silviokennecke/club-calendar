@@ -197,8 +197,11 @@ class MfaConcurrencyTest extends WebTestCase
     {
         $this->user();
         $requests = [];
+        // The password login is limited to 5 per 15 min and address: all tokens come from those 5 logins, the
+        // locked check below reuses the first one (failed codes do not consume a token).
+        $tokens = [];
         for ($t = 0; $t < 5; ++$t) {
-            $token = $this->mfaToken();
+            $tokens[] = $token = $this->mfaToken();
             $requests[] = $this->verify($token, 'totp', '000000');
             $requests[] = $this->verify($token, 'totp', '000000');
         }
@@ -208,7 +211,7 @@ class MfaConcurrencyTest extends WebTestCase
         $this->assertSame(5, $codes['invalid_mfa_code'] ?? 0, json_encode($results));
         $this->assertSame(5, $codes['rate_limited'] ?? 0, json_encode($results));
         // Locked: even a right code on a fresh token is refused without being evaluated
-        $r = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/mfa/verify', ['mfaToken' => $this->mfaToken(), 'method' => 'totp', 'code' => Totp::code($this->secret, Totp::step(time()))]);
+        $r = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/mfa/verify', ['mfaToken' => $tokens[0], 'method' => 'totp', 'code' => Totp::code($this->secret, Totp::step(time()))]);
         $this->assertSame(429, $r['status']);
         $this->assertTrue($this->client->getResponse()->headers->has('Retry-After'));
     }

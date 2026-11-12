@@ -249,7 +249,7 @@ class WebAuthnService
     }
 
     /**
-     * Assertion options for the second factor of a password sign-in: only the user's own passkeys are allowed.
+     * Assertion options for the MFA step of a password sign-in: only the user's own passkeys are allowed.
      *
      * @return array{options: array<string, mixed>, challengeToken: string}
      */

@@ -270,7 +270,7 @@ class MfaLoginTest extends WebTestCase
         $this->assertSame(1, (int) $used[0]['success']);
         $this->assertSame('backup_code', $this->events('mfa_verify')[0]['method']);
 
-        // The next sign-in still asks for a second factor
+        // The next sign-in still asks for MFA
         $this->assertTrue($this->loginChallenge()['body']['mfaRequired'] ?? false);
     }
 

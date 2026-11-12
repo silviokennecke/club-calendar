@@ -1576,7 +1576,7 @@ paths:
       summary: Finish a password sign-in with an authenticator app or a backup code
       description: >-
         Public: the signed `mfaToken` of the challenge is the credential (valid 5 minutes, single use, consumed only by
-        a successful second factor). A backup code is single use too; MFA stays on and other sessions
+        a successful MFA step). A backup code is single use too; MFA stays on and other sessions
         stay, the answer carries `backupCodeUsed: true` and `backupCodesRemaining` and the user is mailed (the app can then offer
         `POST /api/auth/sessions/sign-out-others`). Every attempt counts against 5 per 15 minutes per token and 20 per 15 minutes
         per IP; failed factor checks also count in an exact per-account budget of 5 per 15 minutes (not reset by a success):
@@ -1692,7 +1692,7 @@ paths:
               type: object
               required: [method]
               properties:
-                method: { type: string, enum: [totp, passkeys], description: '`totp` = authenticator app, `passkeys` = passkeys as second factor.' }
+                method: { type: string, enum: [totp, passkeys], description: '`totp` = authenticator app, `passkeys` = passkeys as MFA.' }
       responses:
         '200':
           description: The setup to confirm.
@@ -5421,18 +5421,18 @@ components:
       required: [mfaRequired, mfaToken, expiresIn, methods]
       properties:
         mfaRequired: { type: boolean, const: true }
-        mfaToken: { type: string, description: 'Signed sign-in token, single use, consumed only by a successful second factor.' }
+        mfaToken: { type: string, description: 'Signed sign-in token, single use, consumed only by a successful MFA step.' }
         expiresIn: { type: integer, const: 300, description: Seconds the token is valid. }
         methods:
           type: array
-          description: 'Second factors usable now: `totp` with an authenticator app, `backup_code` always, `passkey` with a registered passkey.'
+          description: 'Factors usable now: `totp` with an authenticator app, `backup_code` always, `passkey` with a registered passkey.'
           items: { type: string, enum: [totp, backup_code, passkey] }
     MfaStatus:
       type: object
       description: MFA state of the account (`mfa` in `GET /api/auth/me` and in the management answers).
       required: [enforced, totp, backupCodes, canEnforce]
       properties:
-        enforced: { type: boolean, description: 'MFA is on: sign-in asks for a second factor.' }
+        enforced: { type: boolean, description: 'MFA is on: sign-in asks for another factor.' }
         totp:
           type: [object, 'null']
           description: Set when an authenticator app is set up.

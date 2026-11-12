@@ -44,8 +44,8 @@ Users can turn on multi-factor authentication (MFA) for password sign-in in thei
 - If a user's account has MFA on, **Sign in with Google or Apple** for an address not yet linked to the account is refused with the advice to sign in with password and MFA and link the provider in the profile. Providers already linked keep working.
 - Users receive a notification mail when MFA is switched on or off, when backup codes are made again or used, and when a passkey or a single sign-on provider is added or a passkey is deleted.
 
-!!! warning "Limit: factor changes are confirmed with the password, not a second factor"
-    Switching MFA off, creating new backup codes, adding or removing a factor and deleting the account are confirmed with the password (or, for accounts without a password, a code sent by e-mail). They do not ask for a second factor. Anyone who holds a stolen signed-in session and knows the password can therefore change them. This is an accepted limit; the notification mails are the way users notice it.
+!!! warning "Limit: factor changes are confirmed with the password, not another factor"
+    Switching MFA off, creating new backup codes, adding or removing a factor and deleting the account are confirmed with the password (or, for accounts without a password, a code sent by e-mail). They do not ask for another factor. Anyone who holds a stolen signed-in session and knows the password can therefore change them. This is an accepted limit; the notification mails are the way users notice it.
 
 Nothing needs configuring. If a user has lost the device with the authenticator app and also has no backup codes, an operator can switch MFA off on the command line, see [Command-line tools](operations.md#command-line-tools). Check the identity of the person first. Run the daily cleanup `app:prune-auth-nonces` as well (see [Operations](operations.md#scheduled-tasks)).
 

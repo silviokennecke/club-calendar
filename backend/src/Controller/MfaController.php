@@ -25,7 +25,7 @@ class MfaController extends AbstractApiController
     ) {
     }
 
-    /** `{mfaToken, method: totp|backup_code, code}` -> the token response of a login (+ `mfaDisabled: true` after a backup code). */
+    /** `{mfaToken, method: totp|backup_code, code}` -> the token response of a login (+ `backupCodeUsed: true` and `backupCodesRemaining` after a backup code; MFA stays on). */
     #[Route('/verify', methods: ['POST'])]
     public function verify(Request $request): JsonResponse
     {

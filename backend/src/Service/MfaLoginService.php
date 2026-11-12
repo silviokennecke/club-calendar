@@ -14,7 +14,7 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * MFA step of a password sign-in. The first step (AuthService::login) answers with a signed, short-lived
- * `mfaToken` instead of tokens; it is consumed only when the second factor succeeded. Rate limits are the
+ * `mfaToken` instead of tokens; it is consumed only when the MFA step succeeded. Rate limits are the
  * controller's job (they need the claims first, see {@see self::claims()}).
  */
 class MfaLoginService
