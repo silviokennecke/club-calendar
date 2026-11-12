@@ -65,3 +65,7 @@ It takes a few steps, see [Connect an AI assistant](help:ai-assistants/connect).
 ## How do I delete my account?
 
 See [Delete account](help:settings/delete-account). If you are the last admin of a club, delete the club or hand over the role first.
+
+## Can I run Club-Calendar myself?
+
+Club-Calendar is an open-source project, anyone can contribute and anyone can run it themselves. Find out more on [GitHub](https://github.com/silviokennecke/club-calendar) and in the [Administrator's Handbook](https://silviokennecke.github.io/club-calendar).

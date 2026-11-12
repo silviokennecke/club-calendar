@@ -65,3 +65,7 @@ Das geht in wenigen Schritten, siehe [KI-Assistenten verbinden](help:ai-assistan
 ## Wie lösche ich mein Konto?
 
 Siehe [Konto löschen](help:settings/delete-account). Bist du der letzte Admin eines Vereins, musst du zuerst den Verein löschen oder die Rolle abgeben.
+
+## Kann ich Club-Calendar selber betreiben?
+
+Club-Calendar ist ein Open-Source-Projekt, an dem jeder mitwirken und jeder selber betreiben kann. Weitere Details dazu findest du auf [GitHub](https://github.com/silviokennecke/club-calendar) und im [Handbuch für Administratoren](https://silviokennecke.github.io/club-calendar).
