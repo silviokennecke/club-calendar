@@ -23,7 +23,7 @@ If the address already has an account, the page asks for your password instead, 
 
 Below **or** on the first step you find more ways: **Sign in with Google**, **Sign in with Microsoft**, **Sign in with Apple** (if enabled) and **Sign in with passkey**. A passkey signs you in with a fingerprint, face recognition or your device PIN. It works once you have set it up in your [profile](help:settings/passkeys).
 
-If multi-factor authentication (MFA) is on for your account, signing in with your password also asks for another factor. More under [Multi-factor authentication (MFA)](help:settings/mfa).
+If multi-factor authentication (MFA) is on for your account, signing in with your password also asks for another factor. More under [Multi-factor authentication (MFA)](help:settings/mfa), also for signing in with Google or Apple.
 
 ## Confirm your e-mail address
 

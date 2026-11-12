@@ -23,6 +23,8 @@ Pro Gerät richtest du einen eigenen Passkey ein. Unterstützt dein Browser kein
 
 Klicke auf der Anmeldeseite auf **Mit Passkey anmelden** und bestätige am Gerät.
 
+Wenn ein Passkey hinzugefügt oder entfernt wird, bekommst du eine E-Mail. Hast du das nicht selbst veranlasst, ändere sofort dein Passwort.
+
 ## Passkey umbenennen
 
 Klicke bei dem Passkey auf **Umbenennen**, ändere den Namen und klicke auf **Speichern**.

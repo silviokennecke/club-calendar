@@ -50,7 +50,7 @@ Du hast drei Möglichkeiten:
 - **Backup-Code verwenden**: Gib einen deiner Backup-Codes ein.
 - **Passkey verwenden**: Bestätige am Gerät mit dem Passkey.
 
-Bei der Anmeldung mit Google, Microsoft oder einem Passkey fragt die Anmeldung nicht nach MFA.
+Bei der Anmeldung mit Google, Apple, Microsoft oder einem Passkey fragt die Anmeldung nicht nach MFA. Ist MFA für dein Konto eingeschaltet, kann sich Google oder Apple mit einer Adresse, die noch nicht mit deinem Konto verknüpft ist, nicht anmelden: Melde dich mit Passwort und MFA an und verknüpfe den Anbieter dann in deinem Profil (siehe [Verknüpfte Anmeldungen](help:settings/linked-accounts)).
 
 ## Backup-Codes
 
@@ -58,13 +58,19 @@ Backup-Codes sind Ersatzcodes, falls du deine Authenticator-App nicht benutzen k
 
 Neue Codes bekommst du im Abschnitt über **Neu erzeugen** bei **Backup-Codes**. Bestätige, klicke auf **Codes erzeugen** und speichere die neuen Codes. Die alten funktionieren danach nicht mehr.
 
+Das Profil warnt dich, wenn nur noch 2 oder weniger Backup-Codes übrig sind. Meldest du dich mit einem Backup-Code an, schicken wir dir eine E-Mail mit der Zahl der übrigen Codes.
+
 ## Handy verloren
 
 :::warning
-Wenn du dich mit einem Backup-Code anmeldest, wird MFA ausgeschaltet. Die Authenticator-App und die Backup-Codes werden gelöscht, und alle anderen Geräte werden abgemeldet.
+Hast du Authenticator-App, Backup-Codes und Passkey verloren, kann nur der Betreiber dieses Club Calendar MFA für dich zurücksetzen.
 :::
 
-Melde dich mit deinem Passwort an, wähle **Backup-Code verwenden** und gib einen Code ein. Danach richtest du MFA im Profil mit einer neuen Authenticator-App wieder ein.
+Melde dich mit deinem Passwort an, wähle **Backup-Code verwenden** und gib einen Code ein. Der Code funktioniert nur einmal. MFA bleibt eingeschaltet.
+
+Gleich nach der Anmeldung zeigt dir die App, wie viele Codes übrig sind. Dort kannst du deine anderen Geräte abmelden und neue Codes erzeugen.
+
+Hast du die Authenticator-App endgültig verloren, schalte MFA im Profil mit deinem Passwort aus (siehe unten) und richte es mit einer neuen App wieder ein.
 
 ## MFA ausschalten
 

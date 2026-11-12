@@ -32,7 +32,7 @@ If you sign in only with Google, Microsoft or a passkey, your account has no pas
 
 ## E-mails about changes
 
-When your password changes, you get an e-mail. The same applies when you turn multi-factor authentication (MFA) on or off. If sign-in fails repeatedly, you also get an e-mail. If you did not do this yourself, change your password right away.
+When your password changes, you get an e-mail. The same applies when you turn multi-factor authentication (MFA) on or off, create or use backup codes, add or remove a passkey, or link a sign-in provider. If sign-in fails repeatedly, you also get an e-mail. If you did not do this yourself, change your password right away.
 
 ## See also
 

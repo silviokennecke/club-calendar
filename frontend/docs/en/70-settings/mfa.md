@@ -50,7 +50,7 @@ You have three options:
 - **Use a backup code**: enter one of your backup codes.
 - **Use a passkey**: confirm on the device with your passkey.
 
-When you sign in with Google, Microsoft or a passkey, sign-in does not ask for MFA.
+When you sign in with Google, Apple, Microsoft or a passkey, sign-in does not ask for MFA. If your account has MFA on, Google or Apple cannot sign in to an address that is not yet linked to your account: sign in with your password and MFA, then link the provider in your profile (see [Linked sign-ins](help:settings/linked-accounts)).
 
 ## Backup codes
 
@@ -58,13 +58,19 @@ Backup codes are spare codes in case you cannot use your authenticator app. You 
 
 To get new codes, click **Regenerate** next to **Backup codes** in the section. Confirm, click **Generate codes** and store the new codes. The old codes stop working.
 
+The profile warns you when 2 or fewer backup codes are left. When you sign in with a backup code, we send you an e-mail with the number of codes left.
+
 ## Lost your phone
 
 :::warning
-If you sign in with a backup code, MFA is turned off. The authenticator app and the backup codes are deleted, and all other devices are signed out.
+If you lose your authenticator app and have no backup codes or passkey left, only the operator of this Club Calendar can reset MFA for you.
 :::
 
-Sign in with your password, choose **Use a backup code** and enter one code. Then set up MFA again in your profile with a new authenticator app.
+Sign in with your password, choose **Use a backup code** and enter one code. The code works only once. MFA stays on.
+
+Right after signing in, the app tells you how many codes are left. You can sign out your other devices there and create new codes.
+
+If you lost the authenticator app for good, switch MFA off in your profile (see below) with your password and set it up again with a new app.
 
 ## Turn off MFA
 

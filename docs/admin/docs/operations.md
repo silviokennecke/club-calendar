@@ -166,7 +166,7 @@ The app has a few commands for administrators. Run them like this:
 | `app:user:set-password <email or id>` | Sets a new password (`--password` or `--password-stdin`) and ends all sessions of that user. |
 | `app:user:verify <email or id>` | Confirms an address by hand, for users who cannot receive the code. Also available as `app:user:activate`. |
 | `app:user:reset-link <email>` | Prints a password reset link without sending mail. |
-| `app:user:disable-mfa <email or id>` | Switches MFA off for a user who lost the authenticator app and the backup codes. Removes the authenticator app and backup codes (passkeys stay), ends all sessions and AI app connections, mails the user and writes a security log entry. No password needed; nothing happens if MFA is off. |
+| `app:user:disable-mfa <email or id>` | Switches MFA off for a user who lost the authenticator app and all backup codes (or the passkey). This is the only way to help such a user besides their own switch in the profile. Removes the authenticator app and backup codes (passkeys stay), ends all sessions and AI app connections, mails the user and writes a security log entry. No password needed; nothing happens if MFA is off. |
 
 ### Clubs
 
@@ -175,7 +175,7 @@ The app has a few commands for administrators. Run them like this:
 | `app:club:create` | Creates a club for an existing user, who becomes its admin. Options: `--name`, `--admin=<e-mail or id>`, `--timezone` (default `Europe/Berlin`). Missing values are asked interactively. Works even when `RESTRICT_CLUB_CREATION=true`. |
 
 !!! warning "Switching off MFA"
-    `app:user:disable-mfa` switches MFA off without the user's password. Use it only after you have confirmed the person's identity, and only when the user has neither the authenticator app nor the backup codes. Normally the user switches it off in the profile or uses a backup code.
+    `app:user:disable-mfa` switches MFA off without the user's password. Use it only after you have confirmed the person's identity, and only when the user has neither the authenticator app nor the backup codes. Normally the user uses a backup code (MFA stays on) or switches it off in the profile.
 
 !!! warning "Reset links give access to the account"
     A link from `app:user:reset-link` (valid 60 minutes) lets whoever opens it set a new password for that account. Hand it only to the owner, over a channel you trust.

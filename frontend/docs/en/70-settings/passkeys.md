@@ -23,6 +23,8 @@ You set up one passkey per device. If your browser does not support passkeys, yo
 
 On the sign-in page, click **Sign in with passkey** and confirm on the device.
 
+You get an e-mail when a passkey is added or removed. If you did not do this yourself, change your password right away.
+
 ## Rename a passkey
 
 Next to the passkey, click **Rename**, change the name and click **Save**.

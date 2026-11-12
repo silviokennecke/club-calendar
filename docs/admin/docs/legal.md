@@ -114,7 +114,7 @@ Your privacy policy must describe this. Users can see their own consent history 
 
 ## What the security log stores
 
-Besides the consent history, the app keeps a security log per account (see [Protection mechanisms](security.md#security-log)). For each entry it stores the time, the IP address, the approximate city and country, and the browser name and version. It covers sign-ins (password, passkey, single sign-on, AI app connections), failed sign-ins on existing accounts, MFA and password changes. Entries are deleted after one year, and when the account is deleted.
+Besides the consent history, the app keeps a security log per account (see [Protection mechanisms](security.md#security-log)). For each entry it stores the time, the IP address, the approximate city and country, and the browser name and version. It covers sign-ins (password, passkey, single sign-on, AI app connections), failed sign-ins on existing accounts, MFA changes, passkey and sign-in provider changes and password changes. Browser text is reduced to plain characters (at most 20), and repeated failures within one clock hour are one entry. Entries are deleted after one year, and when the account is deleted.
 
 Your privacy policy must describe this log, its purpose, and its retention period.
 

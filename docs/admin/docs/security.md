@@ -39,11 +39,15 @@ Users can turn on multi-factor authentication (MFA) for password sign-in in thei
 
 - Sign-in with a single sign-on provider or with a passkey does not ask for MFA. A new provider is never linked automatically to an account that has MFA on: the user signs in with password and MFA and links the provider in the profile.
 - When it is switched on, the user receives **backup codes**. They are shown once, each works one time, and the user can make new ones at any time.
-- Someone who uses a **backup code** gets signed in, but MFA is then switched off, all other sessions end and all connected AI apps are disconnected. The user is mailed about it and must switch MFA on again.
-- Switching it off in the profile has the same effect: the authenticator app and the backup codes are removed, passkeys stay, and all sessions and AI app connections end.
+- Signing in with a **backup code** uses the code up. MFA and the authenticator app stay on. The user is mailed the number of codes left, and the app offers to sign out other devices and to create new codes. With no codes left it warns that the operator must reset MFA if the app or passkey is lost; the profile warns at 2 or fewer codes.
+- Only two things end MFA: the user switches it off in the profile (the authenticator app and backup codes are removed, passkeys stay, other sessions and AI app connections end), or an operator runs `app:user:disable-mfa`.
+- If a user's account has MFA on, **Sign in with Google or Apple** for an address not yet linked to the account is refused with the advice to sign in with password and MFA and link the provider in the profile. Providers already linked keep working.
 - Users receive a notification mail when MFA is switched on or off, when backup codes are made again or used, and when a passkey or a single sign-on provider is added or a passkey is deleted.
 
-Nothing needs configuring. If a user has lost the device with the authenticator app and also has no backup codes, an operator can switch MFA off on the command line, see [Command-line tools](operations.md#command-line-tools). Check the identity of the person first.
+!!! warning "Limit: factor changes are confirmed with the password, not a second factor"
+    Switching MFA off, creating new backup codes, adding or removing a factor and deleting the account are confirmed with the password (or, for accounts without a password, a code sent by e-mail). They do not ask for a second factor. Anyone who holds a stolen signed-in session and knows the password can therefore change them. This is an accepted limit; the notification mails are the way users notice it.
+
+Nothing needs configuring. If a user has lost the device with the authenticator app and also has no backup codes, an operator can switch MFA off on the command line, see [Command-line tools](operations.md#command-line-tools). Check the identity of the person first. Run the daily cleanup `app:prune-auth-nonces` as well (see [Operations](operations.md#scheduled-tasks)).
 
 ## Security log
 

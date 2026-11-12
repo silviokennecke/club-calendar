@@ -14,6 +14,8 @@ Wenn du dein Google- oder Microsoft-Konto verknüpfst, meldest du dich damit ohn
 2. Klicke beim Anbieter auf **Konto verknüpfen**.
 3. Melde dich beim Anbieter an und bestätige. Du landest wieder im Profil, dort steht **Verbunden**.
 
+Ist für dein Konto Multi-Faktor-Authentifizierung (MFA) eingeschaltet, kann sich eine noch nicht verknüpfte Adresse nicht mit Google oder Apple anmelden. Melde dich zuerst mit Passwort und MFA an und verknüpfe den Anbieter dann hier. Bereits verknüpfte Anbieter funktionieren weiter. Wenn du einen verknüpfst, bekommst du eine E-Mail.
+
 Ein Anbieterkonto kann nur mit einem Club-Calendar-Konto verknüpft sein, und pro Anbieter ist ein Konto möglich.
 
 ## Verknüpfung trennen

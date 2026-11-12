@@ -14,6 +14,8 @@ If you link your Google or Microsoft account, you can use it to sign in without 
 2. Click **Link account** next to the provider.
 3. Sign in with the provider and confirm. You return to your profile, which now shows **Connected**.
 
+If multi-factor authentication (MFA) is on for your account, an address that is not linked yet cannot sign in with Google or Apple. Sign in with your password and MFA first, then link the provider here. Providers you already linked keep working. You get an e-mail when you link one.
+
 A provider account can be linked to only one Club Calendar account, and one account per provider is possible.
 
 ## Unlink
