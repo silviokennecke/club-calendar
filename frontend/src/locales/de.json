@@ -2267,6 +2267,8 @@
         "invalid_state": "Die Verknüpfung ist abgelaufen oder wurde in einem anderen Browser gestartet. Bitte starte sie hier noch einmal.",
         "generic": "Die Verknüpfung hat nicht geklappt. Bitte versuche es noch einmal."
       },
+      "completeCancelled": "Die Bestätigung wurde abgebrochen, die Verknüpfung mit {{name}} ist noch nicht abgeschlossen.",
+      "completeRetry": "Erneut bestätigen",
       "startFailed": "Die Verknüpfung konnte nicht gestartet werden. Bitte versuche es erneut.",
       "unlinkTitle": "Verknüpfung mit {{name}} trennen?",
       "unlinkText": "Die Verknüpfung mit {{name}} wird aus deinem Konto entfernt.",

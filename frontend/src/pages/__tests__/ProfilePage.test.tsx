@@ -219,6 +219,71 @@ describe("ProfilePage", () => {
     ).toBeInTheDocument();
   });
 
+  it("stays silent when the step-up confirmation for link-start is cancelled", async () => {
+    apiPost.mockRejectedValueOnce(new ApiError("x", 0, "step_up_cancelled"));
+    const assign = vi.fn();
+    const original = window.location;
+    Object.defineProperty(window, "location", {
+      value: { ...original, assign },
+      configurable: true,
+    });
+    const user = userEvent.setup();
+    try {
+      renderProfile();
+      await user.click(await screen.findByRole("button", { name: "Microsoft-Konto verknüpfen" }));
+      await waitFor(() => expect(apiPost).toHaveBeenCalledTimes(1));
+      expect(assign).not.toHaveBeenCalled();
+      expect(screen.queryByText(/konnte nicht gestartet werden/)).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "Microsoft-Konto verknüpfen" })).toBeEnabled(),
+      );
+    } finally {
+      Object.defineProperty(window, "location", { value: original, configurable: true });
+    }
+  });
+
+  it("keeps the link proof when the step-up for link-complete is cancelled and retries", async () => {
+    apiPost
+      .mockRejectedValueOnce(new ApiError("x", 0, "step_up_cancelled"))
+      .mockResolvedValueOnce(undefined);
+    const user = userEvent.setup();
+    renderProfile(true, "/profile?link_provider=google&link_proof=proof-value");
+    expect(await screen.findByText(/noch nicht abgeschlossen/)).toBeInTheDocument();
+    expect(screen.queryByText("Das Konto wurde nicht verknüpft")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Erneut bestätigen" }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledTimes(2));
+    expect(apiPost).toHaveBeenLastCalledWith("/api/auth/oauth/google/link-complete", {
+      proof: "proof-value",
+    });
+    expect((await screen.findAllByText("Google wurde verknüpft.")).length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getByTestId("search")).toHaveTextContent(/^$/));
+  });
+
+  it("stays silent when the step-up for unlinking is cancelled", async () => {
+    apiDelete.mockRejectedValueOnce(new ApiError("x", 0, "step_up_cancelled"));
+    const user = userEvent.setup();
+    renderProfile();
+    await user.click(await screen.findByRole("button", { name: "Google-Verknüpfung trennen" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Verknüpfung trennen" }));
+    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/auth/oauth/google"));
+    expect(screen.queryByText(/konnte nicht getrennt werden/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Die Verknüpfung mit Google wurde getrennt."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("lets an account without a password request an e-mail change", async () => {
+    profile = { ...profile, hasPassword: false };
+    const user = userEvent.setup();
+    renderProfile();
+    await user.type(await screen.findByLabelText(/^Neue E-Mail-Adresse/), "neu@beispiel.de");
+    await user.click(screen.getByRole("button", { name: "Bestätigungslink senden" }));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith("/api/auth/change-email", { email: "neu@beispiel.de" }),
+    );
+  });
+
   it("keeps the last sign-in method: unlink disabled with an explanation", async () => {
     profile = { ...profile, hasPassword: false, passkeys: [] };
     renderProfile();

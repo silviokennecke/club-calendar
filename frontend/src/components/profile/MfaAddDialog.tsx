@@ -161,6 +161,7 @@ export function MfaAddDialog({
       setAcknowledged(false);
       go("totpScan");
     } catch (error) {
+      if (isStepUpCancelled(error)) return;
       const c = apiErrorCode(error);
       if (c === "totp_already_set") setFailure(t("profile.mfa.add.errors.totpAlreadySet"));
       else if (c === "rate_limited") setFailure(t("profile.mfa.add.rateLimited"));

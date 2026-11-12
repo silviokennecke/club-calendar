@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -17,7 +17,7 @@ import { MfaSection } from "@/components/profile/MfaSection";
 import { PreferencesSection } from "@/components/profile/PreferencesSection";
 import { SessionsSection } from "@/components/profile/SessionsSection";
 import type { ProfileData } from "@/components/profile/profileTypes";
-import { ApiError, apiGet, apiPost } from "@/lib/api";
+import { ApiError, apiGet, apiPost, isStepUpCancelled } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { linkErrorKind, providerLabel } from "@/lib/profile";
 import { usePageTitle } from "@/lib/usePageTitle";
@@ -51,6 +51,7 @@ async function completeLink(provider: string, proof: string): Promise<LinkOutcom
     await apiPost<void>(`/api/auth/oauth/${encodeURIComponent(provider)}/link-complete`, { proof });
     return { kind: "linked", provider };
   } catch (err) {
+    if (isStepUpCancelled(err)) return { kind: "cancelled", provider };
     return { kind: "error", error: linkErrorKind(err instanceof ApiError ? err.code : undefined) };
   }
 }
@@ -73,16 +74,25 @@ export default function ProfilePage() {
   const [linkOutcome, setLinkOutcome] = useState(() => linkOutcomeOf(params));
   const [linkProof] = useState(() => linkProofOf(params));
   const completing = useRef(false);
+  // The proof stays in the address until the call has an answer (or was cancelled: then the state keeps it).
+  const [linkSettled, setLinkSettled] = useState(!linkProof);
+
+  const runComplete = useCallback(() => {
+    if (!linkProof) return;
+    setLinkOutcome(null);
+    void completeLink(linkProof.provider, linkProof.proof).then((outcome) => {
+      setLinkOutcome(outcome);
+      setLinkSettled(true);
+      if (outcome.kind === "linked") void queryClient.invalidateQueries({ queryKey: ["profile"] });
+    });
+  }, [linkProof, queryClient]);
 
   useEffect(() => {
     // Once, also when effects run twice (StrictMode): the proof is single-use.
     if (!linkProof || completing.current) return;
     completing.current = true;
-    void completeLink(linkProof.provider, linkProof.proof).then((outcome) => {
-      setLinkOutcome(outcome);
-      if (outcome.kind === "linked") void queryClient.invalidateQueries({ queryKey: ["profile"] });
-    });
-  }, [linkProof, queryClient]);
+    runComplete();
+  }, [linkProof, runComplete]);
 
   useEffect(() => {
     if (linkOutcome?.kind !== "linked") return;
@@ -94,11 +104,14 @@ export default function ProfilePage() {
 
   // The result of the link flow is shown once; the address loses the parameters (no repeat on reload).
   useEffect(() => {
-    if (!LINK_PARAMS.some((p) => params.has(p))) return;
+    const removable = LINK_PARAMS.filter(
+      (p) => linkSettled || (p !== "link_proof" && p !== "link_provider"),
+    );
+    if (!removable.some((p) => params.has(p))) return;
     const rest = new URLSearchParams(params);
-    for (const p of LINK_PARAMS) rest.delete(p);
+    for (const p of removable) rest.delete(p);
     setParams(rest, { replace: true });
-  }, [params, setParams]);
+  }, [params, setParams, linkSettled]);
 
   const profile = useQuery<ProfileData>({
     queryKey: ["profile"],
@@ -151,7 +164,7 @@ export default function ProfilePage() {
         <>
           <AccountSection key={data.name} profile={data} />
           <PasswordSection profile={data} />
-          <LinkedLoginsSection profile={data} outcome={linkOutcome} />
+          <LinkedLoginsSection profile={data} outcome={linkOutcome} onRetryComplete={runComplete} />
           <MfaSection profile={data} />
         </>
       ) : (

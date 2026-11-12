@@ -117,6 +117,16 @@ describe("MfaAddDialog", () => {
     expect(screen.getByText("profile.mfa.add.confirm.title")).toBeInTheDocument();
   });
 
+  it("stays on the choice step without an error when the setup confirmation is cancelled", async () => {
+    apiPost.mockRejectedValueOnce(new ApiError("x", 0, "step_up_cancelled"));
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: /profile\.mfa\.add\.choose\.totp$/ }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByText("profile.mfa.add.errors.setupFailed")).toBeNull();
+    expect(screen.getByRole("button", { name: /profile\.mfa\.add\.choose\.totp$/ })).toBeEnabled();
+  });
+
   it("returns to the code step on an invalid TOTP code", async () => {
     apiPost.mockResolvedValueOnce(setupRes).mockRejectedValueOnce(problem("invalid_totp_code"));
     renderDialog();

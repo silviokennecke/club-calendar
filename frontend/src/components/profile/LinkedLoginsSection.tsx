@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Banner, Button, ConfirmDialog, Icon, toast } from "@/components/ui/shared";
-import { ApiError, apiDelete, apiGet, apiPost } from "@/lib/api";
+import { ApiError, apiDelete, apiGet, apiPost, isStepUpCancelled } from "@/lib/api";
 import { focusAfterDialog } from "@/lib/focus";
 import {
   isLastSignInMethod,
@@ -16,7 +16,10 @@ import type { ProfileData } from "./profileTypes";
 
 /** Result of an SSO link flow, read from `/profile?linked=` / `?link_error=` by the page. */
 export type LinkOutcome =
-  { kind: "linked"; provider: string } | { kind: "error"; error: LinkError };
+  | { kind: "linked"; provider: string }
+  | { kind: "error"; error: LinkError }
+  /** The step-up confirmation for `link-complete` was cancelled; the proof is kept for a retry. */
+  | { kind: "cancelled"; provider: string };
 
 const LAST_METHOD_NOTE = "pr-sso-last";
 
@@ -29,9 +32,11 @@ const LAST_METHOD_NOTE = "pr-sso-last";
 export function LinkedLoginsSection({
   profile,
   outcome,
+  onRetryComplete,
 }: {
   profile: ProfileData;
   outcome: LinkOutcome | null;
+  onRetryComplete?: () => void;
 }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -57,9 +62,9 @@ export function LinkedLoginsSection({
         {},
       );
       window.location.assign(url);
-    } catch {
+    } catch (err) {
       setStarting(null);
-      setStartFailed(true);
+      if (!isStepUpCancelled(err)) setStartFailed(true);
     }
   }
 
@@ -67,6 +72,7 @@ export function LinkedLoginsSection({
     try {
       await apiDelete(`/api/auth/oauth/${encodeURIComponent(row.id)}`);
     } catch (err) {
+      if (isStepUpCancelled(err)) return;
       const code = err instanceof ApiError ? err.code : undefined;
       toast.error(
         code === "last_login_method"
@@ -99,6 +105,20 @@ export function LinkedLoginsSection({
         {outcome?.kind === "error" && (
           <Banner tone="danger" title={t("profile.sso.linkErrorTitle")}>
             {t(`profile.sso.linkError.${outcome.error}`)}
+          </Banner>
+        )}
+        {outcome?.kind === "cancelled" && (
+          <Banner
+            tone="info"
+            action={
+              onRetryComplete && (
+                <Button type="button" variant="secondary" onClick={onRetryComplete}>
+                  {t("profile.sso.completeRetry")}
+                </Button>
+              )
+            }
+          >
+            {t("profile.sso.completeCancelled", { name: nameOf(outcome.provider) })}
           </Banner>
         )}
         {startFailed && <Banner tone="danger">{t("profile.sso.startFailed")}</Banner>}

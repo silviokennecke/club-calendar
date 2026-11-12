@@ -2267,6 +2267,8 @@
         "invalid_state": "The linking expired or was started in another browser. Please start it here again.",
         "generic": "Linking did not work. Please try again."
       },
+      "completeCancelled": "The confirmation was cancelled, so the link with {{name}} is not finished yet.",
+      "completeRetry": "Confirm again",
       "startFailed": "Linking could not be started. Please try again.",
       "unlinkTitle": "Unlink {{name}}?",
       "unlinkText": "The link to {{name}} is removed from your account.",
