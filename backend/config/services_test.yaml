@@ -11,3 +11,8 @@ services:
     App\Tests\Support\StepUpProbeController:
         autowire: true
         tags: ['controller.service_arguments']
+
+    # Not yet used by a controller; tests fetch it from the container
+    App\Export\UserDataExportService:
+        autowire: true
+        public: true
