@@ -104,7 +104,7 @@ describe("MFA step", () => {
       "/api/auth/mfa/verify",
       expect.objectContaining({ method: "backup_code", code: "abcd-efgh" }),
     );
-    expect(announceBackupCodeUsed).toHaveBeenCalledWith(4);
+    expect(announceBackupCodeUsed).toHaveBeenCalledWith("u1", 4);
   });
 
   it("offers the passkey button only when the account has a passkey", async () => {

@@ -2,6 +2,7 @@ import i18n from "i18next";
 import { toast } from "sonner";
 import { API_URL } from "./apiUrl";
 import { clearInvitationToken } from "./invitations";
+import { dismissBackupCodeNotice } from "./backupCodeNotice";
 import { markSessionEnded } from "./sessionEnd";
 import type {
   HolidayCalendar,
@@ -187,6 +188,7 @@ export function clearTokens() {
   }
   // A pending invitation belongs to the visitor who opened the link, not to whoever signs in next.
   clearInvitationToken();
+  dismissBackupCodeNotice();
 }
 
 /** The session was rejected: forget the tokens and leave for the login page (without unsaved-changes prompt). */

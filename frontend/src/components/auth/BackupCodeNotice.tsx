@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { ConfirmDialog, toast } from "@/components/ui/shared";
+import { useAuth } from "@/lib/auth-context";
 import { dismissBackupCodeNotice, usePendingBackupCodeNotice } from "@/lib/backupCodeNotice";
 import { useSignOutOtherSessions } from "@/lib/profile/mfa";
 import { isRateLimited, rateLimitText } from "@/lib/rateLimit";
@@ -11,7 +12,10 @@ import { isRateLimited, rateLimitText } from "@/lib/rateLimit";
  */
 export function BackupCodeNotice() {
   const pending = usePendingBackupCodeNotice();
-  return pending ? <NoticeDialog remaining={pending.remaining} /> : null;
+  const { user } = useAuth();
+  return pending && user?.id === pending.userId ? (
+    <NoticeDialog remaining={pending.remaining} />
+  ) : null;
 }
 
 function NoticeDialog({ remaining }: { remaining: number }) {

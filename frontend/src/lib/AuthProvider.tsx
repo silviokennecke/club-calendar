@@ -16,6 +16,7 @@ import {
   onRemoteSignOut,
 } from "./api";
 import { AuthContext, type AuthContextValue } from "./auth-context";
+import { dropBackupCodeNoticeUnless } from "./backupCodeNotice";
 import { clearDrafts } from "./events/draft";
 import i18n from "./i18n";
 import type { User } from "./types";
@@ -90,6 +91,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [attempt]);
+
+  // Logout, remote sign-out, a rejected session or another user: the notice belongs to the announced user only.
+  const userId = user?.id;
+  useEffect(() => dropBackupCodeNoticeUnless(userId), [userId]);
 
   // Retry later when the connection or the tab comes back.
   useEffect(() => {

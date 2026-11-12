@@ -4,8 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { toast } from "sonner";
-import { ApiError } from "@/lib/api";
-import { announceBackupCodeUsed, dismissBackupCodeNotice } from "@/lib/backupCodeNotice";
+import { ApiError, clearTokens } from "@/lib/api";
+import {
+  announceBackupCodeUsed,
+  dismissBackupCodeNotice,
+  dropBackupCodeNoticeUnless,
+} from "@/lib/backupCodeNotice";
 import { BackupCodeNotice } from "./BackupCodeNotice";
 
 const apiPost = vi.fn();
@@ -14,7 +18,8 @@ vi.mock("@/lib/api", async (orig) => ({
   ...(await orig<typeof import("@/lib/api")>()),
   apiPost: (...a: unknown[]) => apiPost(...a),
 }));
-vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ login }) }));
+let currentUser: { id: string } | null = { id: "u" };
+vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ login, user: currentUser }) }));
 
 const tokens = { access_token: "a2", refresh_token: "r2", user: { id: "u" } };
 
@@ -28,7 +33,10 @@ function mount() {
   );
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  currentUser = { id: "u" };
+});
 afterEach(() => act(() => dismissBackupCodeNotice()));
 
 describe("BackupCodeNotice", () => {
@@ -41,7 +49,7 @@ describe("BackupCodeNotice", () => {
     apiPost.mockResolvedValue(tokens);
     const success = vi.spyOn(toast, "success");
     mount();
-    act(() => announceBackupCodeUsed(4));
+    act(() => announceBackupCodeUsed("u", 4));
     expect(await screen.findByText(/Dir bleiben noch 4 Backup-Codes/)).toBeInTheDocument();
     expect(screen.queryByText(/keine Backup-Codes mehr/)).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Andere Geräte abmelden" }));
@@ -55,7 +63,7 @@ describe("BackupCodeNotice", () => {
 
   it("keeps the other devices and does not come back", async () => {
     const { unmount } = mount();
-    act(() => announceBackupCodeUsed(3));
+    act(() => announceBackupCodeUsed("u", 3));
     await userEvent.click(await screen.findByRole("button", { name: "Angemeldet lassen" }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(apiPost).not.toHaveBeenCalled();
@@ -66,7 +74,7 @@ describe("BackupCodeNotice", () => {
 
   it("warns when no codes are left", async () => {
     mount();
-    act(() => announceBackupCodeUsed(0));
+    act(() => announceBackupCodeUsed("u", 0));
     expect(await screen.findByText(/Du hast keine Backup-Codes mehr/)).toBeInTheDocument();
     expect(screen.getByText(/Betreiber \(Admin\)/)).toBeInTheDocument();
   });
@@ -77,9 +85,37 @@ describe("BackupCodeNotice", () => {
     );
     const error = vi.spyOn(toast, "error");
     mount();
-    act(() => announceBackupCodeUsed(5));
+    act(() => announceBackupCodeUsed("u", 5));
     await userEvent.click(await screen.findByRole("button", { name: "Andere Geräte abmelden" }));
     await waitFor(() => expect(error).toHaveBeenCalledWith(expect.stringMatching(/2 Min\./)));
     expect(login).not.toHaveBeenCalled();
+  });
+
+  it("is dropped when the session ends", async () => {
+    mount();
+    act(() => announceBackupCodeUsed("u", 2));
+    expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
+    act(() => clearTokens());
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  });
+
+  it("is not shown to another user and does not come back for the first one", async () => {
+    currentUser = { id: "other" };
+    const { unmount } = mount();
+    act(() => announceBackupCodeUsed("u", 2));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    unmount();
+    currentUser = { id: "u" };
+    mount();
+    act(() => dropBackupCodeNoticeUnless("other"));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("is dropped by a remote sign-out of another tab", async () => {
+    mount();
+    act(() => announceBackupCodeUsed("u", 2));
+    expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
+    act(() => dropBackupCodeNoticeUnless(undefined));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
   });
 });

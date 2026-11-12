@@ -47,8 +47,9 @@ export function MfaStep({
   }, [method]);
 
   function finish(data: MfaTokenResponse) {
-    login(data.access_token, data.refresh_token, sessionUser(data));
-    if (data.backupCodeUsed) announceBackupCodeUsed(data.backupCodesRemaining ?? 0);
+    const user = sessionUser(data);
+    login(data.access_token, data.refresh_token, user);
+    if (data.backupCodeUsed) announceBackupCodeUsed(user.id, data.backupCodesRemaining ?? 0);
     navigate(data.emailVerificationRequired ? "/verify-email" : "/clubs");
   }
 
