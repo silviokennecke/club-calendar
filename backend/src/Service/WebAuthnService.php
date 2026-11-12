@@ -54,6 +54,7 @@ class WebAuthnService
     private const string PURPOSE_CREATE = 'webauthn.create';
     private const string PURPOSE_GET = 'webauthn.get';
     private const string PURPOSE_MFA = 'webauthn.mfa';
+    public const string PURPOSE_STEP_UP = 'webauthn.step_up';
     private const int CHALLENGE_TTL = 300;
     private const int TIMEOUT_MS = 60000;
 
@@ -249,15 +250,16 @@ class WebAuthnService
     }
 
     /**
-     * Assertion options for the MFA step of a password sign-in: only the user's own passkeys are allowed.
+     * Assertion options for the MFA step of a password sign-in (or, with another `$purpose`, a step-up): only the
+     * user's own passkeys are allowed.
      *
      * @return array{options: array<string, mixed>, challengeToken: string}
      */
-    public function getMfaOptions(User $user): array
+    public function getMfaOptions(User $user, string $purpose = self::PURPOSE_MFA): array
     {
         $challengeB64 = SignedTokenService::b64(random_bytes(32));
         $challengeToken = $this->signedTokens->issue(
-            self::PURPOSE_MFA,
+            $purpose,
             ['ch' => $challengeB64, 'sub' => $user->getId()],
             self::CHALLENGE_TTL,
         );
@@ -281,11 +283,11 @@ class WebAuthnService
      *
      * @throws ApiProblemException 401 `invalid_passkey`
      */
-    public function verifyMfaAssertion(User $user, string $challengeToken, array $responseData): void
+    public function verifyMfaAssertion(User $user, string $challengeToken, array $responseData, string $purpose = self::PURPOSE_MFA): void
     {
-        $claims = $this->signedTokens->verify(self::PURPOSE_MFA, $challengeToken);
+        $claims = $this->signedTokens->verify($purpose, $challengeToken);
         if (null === $claims || !is_string($claims['ch'] ?? null) || ($claims['sub'] ?? null) !== $user->getId()
-            || !$this->nonces->consume(self::PURPOSE_MFA, $claims['ch'], $claims['exp'])) {
+            || !$this->nonces->consume($purpose, $claims['ch'], $claims['exp'])) {
             throw $this->authenticationFailed();
         }
 

@@ -65,7 +65,7 @@ class OpenApiSpecTest extends KernelTestCase
         $operations = [];
         foreach ($router->getRouteCollection() as $name => $route) {
             $path = $route->getPath();
-            if ('/api' !== $path && !str_starts_with($path, '/api/')) {
+            if (('/api' !== $path && !str_starts_with($path, '/api/')) || str_starts_with($path, '/api/__test/')) {
                 continue;
             }
             $methods = $route->getMethods();

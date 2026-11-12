@@ -78,6 +78,13 @@
             "expiry_note": "Der Code ist mindestens {minutes} Minuten gültig und funktioniert nur für dieses Konto.",
             "ignore_note": "Warst du das nicht, gib den Code nicht ein und ignoriere diese E-Mail. Es wird nichts geändert. Ändere am besten dein Passwort."
         },
+        "step_up_code": {
+            "subject": "Sensible Aktion bestätigen",
+            "greeting": "Hallo {name},",
+            "body": "Du möchtest eine sensible Aktion in deinem Club-Calendar-Konto bestätigen. Gib diesen Code in der App ein, um das zu bestätigen.",
+            "expiry_note": "Der Code ist mindestens {minutes} Minuten gültig und funktioniert nur für dieses Konto.",
+            "ignore_note": "Warst du das nicht, gib den Code nicht ein und ignoriere diese E-Mail. Es wird nichts geändert. Ändere am besten dein Passwort."
+        },
         "invitation": {
             "subject": "Einladung in den Verein {club} bei Club Calendar",
             "greeting": "Hallo,",

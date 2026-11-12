@@ -339,6 +339,11 @@ tags:
     description: >-
       MFA of the password sign-in (authenticator app, backup codes, passkey) and its management. The
       sign-in routes are public and use the signed `mfaToken` from `POST /api/auth/login` as credential.
+  - name: Step-up confirmation
+    description: >-
+      Confirms sensitive actions once with a short-lived step-up token (10 minutes, not renewable, bound to the
+      session). The token goes into the `X-Step-Up-Token` header of the sensitive request, next to the access
+      token. A route that needs it answers 403 `step_up_required` (with the `methods` member) without a valid one.
   - name: SSO
     description: OAuth 2.0 / OpenID Connect sign-in and account linking (browser redirects).
   - name: Clubs
@@ -1883,6 +1888,94 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '409':
           description: '`has_password`: the account has a password, confirm with it.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+
+  /api/auth/step-up/code:
+    post:
+      tags: [Step-up confirmation]
+      summary: Mail the step-up confirmation code
+      description: >-
+        For accounts without a password only (they confirm with a code instead of a password). Same stateless code
+        as for account deletion, bound to this purpose. 5 mails per user and hour. 403 `step_up_unavailable` when
+        the access token has no session claim (see `POST /api/auth/step-up`).
+      operationId: stepUpSendCode
+      responses:
+        '204': { description: The code went to the account's address. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/StepUpUnavailable' }
+        '409':
+          description: '`has_password`: the account has a password, confirm with it.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+
+  /api/auth/step-up/passkey/options:
+    post:
+      tags: [Step-up confirmation]
+      summary: Passkey assertion options for a step-up
+      description: >-
+        Only the user's own passkeys are allowed. The challenge token is single use and valid for step-ups only
+        (not for the MFA sign-in). 10 attempts per user and 30 per IP per 15 minutes together with `POST /api/auth/step-up`.
+      operationId: stepUpPasskeyOptions
+      responses:
+        '200':
+          description: Options for `navigator.credentials.get` and the signed challenge token.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [options, challengeToken]
+                properties:
+                  options: { type: object, additionalProperties: true }
+                  challengeToken: { type: string }
+        '400': { description: '`invalid_request`: the account has no passkey.', content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/StepUpUnavailable' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
+
+  /api/auth/step-up:
+    post:
+      tags: [Step-up confirmation]
+      summary: Confirm sensitive actions (issue a step-up token)
+      description: >-
+        Proof = the password (or, for accounts without one, the `confirmationCode` mailed by
+        `POST /api/auth/step-up/code`) plus, when MFA is on, one `factor` (authenticator code, backup code or passkey
+        assertion; accounts without MFA need only the password or code). Order: rate limit (10 per user and 30 per IP per
+        15 minutes), password or code (400 `invalid_credentials` field `password` / 400 `invalid_confirmation_code` field
+        `code`), then the factor: missing is 422 `mfa_factor_required`; wrong is 422 `invalid_mfa_code` (field `code`)
+        or 422 `invalid_passkey`. Failed factor checks count against the same exact per-user budget as the MFA
+        sign-in (5 per 15 minutes in total over both; exhausted is 429 `rate_limited` with `Retry-After` before any factor
+        is evaluated). A backup code is consumed like at sign-in (event and mail with the remaining count; MFA and all
+        sessions stay; the response adds `backupCodeUsed` and `backupCodesRemaining`). The token is valid 10 minutes,
+        cannot be refreshed or extended, and is bound to the user, the token version (any session ending kills it)
+        and the session's refresh-token family (the `fam` claim of the access token): it works only with the access
+        token of the session that requested it. An access token without `fam` (issued before the claim existed, at
+        most 15 minutes old) gets 403 `step_up_unavailable`: refresh the access token and retry.
+      operationId: stepUp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StepUpRequest' }
+      responses:
+        '200':
+          description: The step-up token.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StepUpResponse' }
+        '400':
+          description: '`invalid_request` (malformed body or `factor`), `invalid_credentials` (field `password`), `invalid_confirmation_code` (field `code`).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/StepUpUnavailable' }
+        '422':
+          description: '`mfa_factor_required` (field `factor`), `invalid_mfa_code` (field `code`), `invalid_passkey`.'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -5043,6 +5136,11 @@ components:
       description: >-
         Map images: per-IP limit (360 per hour, `rate_limited` problem body with `Retry-After`) or the provider's
         budget reached (empty body).
+    StepUpUnavailable:
+      description: '`step_up_unavailable`: the access token carries no session claim; refresh it and retry.'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
     AuthRateLimited:
       description: >-
         `rate_limited`: too many requests from this client IP (all routes of this kind) or, for login and
@@ -5122,6 +5220,16 @@ components:
               type: { type: string, enum: [privacy, terms] }
               id: { type: string }
         email: { type: string, description: 'Only `email_not_verified` and `email_verification_required`.' }
+        methods:
+          type: object
+          description: 'Only `step_up_required`: what the confirmation form can offer.'
+          required: [password, mfa]
+          properties:
+            password: { type: boolean, description: The account has a password (otherwise it confirms with a mailed code). }
+            mfa:
+              type: array
+              description: Available factors; empty when MFA is off.
+              items: { type: string, enum: [totp, backup_code, passkey] }
         resource: { type: string, description: 'Only `quota_exceeded`: the quota that is used up.' }
         limit: { type: integer, description: 'Only `quota_exceeded`: its limit.' }
         field:
@@ -5191,7 +5299,7 @@ components:
         | `invalid_verification_code` | 422 | `POST /api/auth/verify-email`: wrong, expired, used up or already confirmed (same answer), field `code` |
         | `verification_resend_too_early` | 429 | `POST /api/auth/resend-verification` less than 5 minutes after the last code mail of the account; extra member `retryAt` (ISO-8601 UTC), header `Retry-After` |
         | `invalid_mfa_token` | 401 | MFA routes `/api/auth/mfa/verify`, `…/passkey/options`, `…/passkey/verify`: the signed `mfaToken` is expired, used, invalid or the account changed since the sign-in |
-        | `invalid_mfa_code` | 401 | `POST /api/auth/mfa/verify`: wrong or used authenticator or backup code (field `code`; same answer for both) |
+        | `invalid_mfa_code` | 401 / 422 | `POST /api/auth/mfa/verify` (401): wrong or used authenticator or backup code (field `code`; same answer for both); `POST /api/auth/step-up` (422): the same for the step-up factor |
         | `invalid_mfa_setup` | 400 | `POST /api/auth/mfa/enable`: setup token expired, used, or not matching the secret/codes sent |
         | `invalid_totp_code` | 422 | `POST /api/auth/mfa/enable`: the 6-digit code of the new authenticator app is wrong (field `code`) |
         | `totp_already_set` | 409 | `POST /api/auth/mfa/setup` and `…/enable` (method `totp`): an authenticator app is already set up |
@@ -5199,11 +5307,14 @@ components:
         | `mfa_passkey_required` | 422 | `POST /api/auth/mfa/setup` and `…/enable` (method `passkeys`): no passkey is registered yet |
         | `backup_codes_not_acknowledged` | 422 | `POST /api/auth/mfa/enable`: backup codes were issued but `backupCodesAcknowledged` is not `true` |
         | `mfa_not_enabled` | 409 | `POST /api/auth/mfa/disable` and `…/backup-codes`: MFA is not on |
+        | `step_up_required` | 403 | Any route marked as sensitive: the `X-Step-Up-Token` header is missing, invalid, expired or belongs to another user or session (one answer for all); extra member `methods` |
+        | `step_up_unavailable` | 403 | `POST /api/auth/step-up*` and sensitive routes: the access token has no session claim (`fam`, tokens issued before it existed, at most 15 minutes old); refresh the access token and retry |
+        | `mfa_factor_required` | 422 | `POST /api/auth/step-up`: MFA is on and no `factor` was sent (field `factor`) |
         | `mfa_last_passkey` | 422 | `DELETE /api/auth/webauthn/{id}`: the last passkey while MFA is on |
         | `invalid_code_verifier` | 400 | `POST /api/auth/token` `one_time_token`: `code_verifier` missing or wrong (the code is consumed) |
         | `invalid_grant` | 400 | `POST /api/auth/token` with an unknown `grant_type`, a missing token or an unusable one-time token |
         | `invalid_refresh_token` | 401 | Refresh token invalid, expired, unknown, revoked, reused after rotation (revokes the session), session lifetime over, user gone or sessions ended |
-        | `invalid_passkey` | 401 | Passkey sign-in failed |
+        | `invalid_passkey` | 401 / 422 | Passkey sign-in failed (401); `POST /api/auth/step-up` with a passkey factor that does not verify (422) |
         | `invalid_passkey_registration` | 400 | Passkey registration failed |
         | `passkey_already_registered` | 400 | Passkey registration: credential exists |
         | `passkey_not_found` | 404 | Delete passkey (unknown or another user's) |
@@ -5256,6 +5367,9 @@ components:
         - backup_codes_not_acknowledged
         - mfa_not_enabled
         - mfa_last_passkey
+        - step_up_required
+        - step_up_unavailable
+        - mfa_factor_required
         - map_unavailable
         - missing_token
         - invalid_token
@@ -5430,6 +5544,33 @@ components:
           type: array
           description: 'Factors usable now: `totp` with an authenticator app, `backup_code` always, `passkey` with a registered passkey.'
           items: { type: string, enum: [totp, backup_code, passkey] }
+    StepUpRequest:
+      type: object
+      description: One of `password` / `confirmationCode` (as the account has a password or not), plus `factor` when MFA is on.
+      properties:
+        password: { type: string, maxLength: 128 }
+        confirmationCode: { type: string, description: 'The 6-digit code from `POST /api/auth/step-up/code` (accounts without a password).' }
+        factor:
+          oneOf:
+            - type: object
+              required: [method, code]
+              properties:
+                method: { type: string, enum: [totp, backup_code] }
+                code: { type: string, maxLength: 64 }
+            - type: object
+              required: [method, challengeToken, response]
+              properties:
+                method: { type: string, const: passkey }
+                challengeToken: { type: string, description: 'From `POST /api/auth/step-up/passkey/options`.' }
+                response: { type: object, additionalProperties: true, description: The WebAuthn assertion. }
+    StepUpResponse:
+      type: object
+      required: [stepUpToken, expiresIn]
+      properties:
+        stepUpToken: { type: string, description: 'Send as `X-Step-Up-Token` with the sensitive request. Not a bearer token.' }
+        expiresIn: { type: integer, const: 600 }
+        backupCodeUsed: { type: boolean, const: true, description: Only after a backup code. }
+        backupCodesRemaining: { type: integer, description: Only after a backup code. }
     MfaStatus:
       type: object
       description: MFA state of the account (`mfa` in `GET /api/auth/me` and in the management answers).

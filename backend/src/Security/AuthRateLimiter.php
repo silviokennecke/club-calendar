@@ -59,6 +59,12 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $mfaManageAttempt,
         #[Autowire(service: 'limiter.mfa_manage_code')]
         private readonly RateLimiterFactory $mfaManageCode,
+        #[Autowire(service: 'limiter.step_up_user')]
+        private readonly RateLimiterFactory $stepUpUser,
+        #[Autowire(service: 'limiter.step_up_ip')]
+        private readonly RateLimiterFactory $stepUpIp,
+        #[Autowire(service: 'limiter.step_up_code')]
+        private readonly RateLimiterFactory $stepUpCode,
         #[Autowire(service: 'limiter.invitation_user')]
         private readonly RateLimiterFactory $invitationUser,
         #[Autowire(service: 'limiter.invitation_club')]
@@ -215,6 +221,20 @@ class AuthRateLimiter
     {
         self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
         self::assertAccepted($this->mfaManageCode->create($userId)->consume());
+    }
+
+    /** Step-up confirmation attempts: 10 per user and 30 per client IP per 15 minutes. */
+    public function assertStepUpAllowed(Request $request, string $userId): void
+    {
+        self::assertAccepted($this->stepUpIp->create(self::ip($request))->consume());
+        self::assertAccepted($this->stepUpUser->create($userId)->consume());
+    }
+
+    /** Mails of the step-up confirmation code: 5 per user and hour. */
+    public function assertStepUpCodeAllowed(Request $request, string $userId): void
+    {
+        self::assertAccepted($this->stepUpIp->create(self::ip($request))->consume());
+        self::assertAccepted($this->stepUpCode->create($userId)->consume());
     }
 
     /** Creating or re-sending a club invitation: 20 per user and day and 50 per club and day (M8). */

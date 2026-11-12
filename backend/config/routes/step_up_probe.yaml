@@ -1,0 +1,5 @@
+when@test:
+    step_up_probe:
+        path: /api/__test/step-up-probe
+        controller: App\Tests\Support\StepUpProbeController
+        methods: [GET]

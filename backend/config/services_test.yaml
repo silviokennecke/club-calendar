@@ -7,3 +7,7 @@ services:
     App\Service\MfaService:
         autowire: true
         public: true
+
+    App\Tests\Support\StepUpProbeController:
+        autowire: true
+        tags: ['controller.service_arguments']

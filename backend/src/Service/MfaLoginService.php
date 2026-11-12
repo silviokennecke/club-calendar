@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\User;
 use App\Enum\SecurityEventType;
 use App\Exception\ApiProblemException;
+use App\Security\Mfa\MfaFailureBudget;
 use App\Security\NonceStore;
 use App\Security\SignedTokenService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -23,10 +24,6 @@ class MfaLoginService
     public const int TTL = 300;
     public const string PURPOSE_GUESS = 'mfa.guess';
     public const int MAX_GUESSES = 5;
-    public const string PURPOSE_USER_FAILURE = 'mfa.user_failure';
-    /** At most this many failed factor checks per user within USER_FAILURE_WINDOW seconds. */
-    public const int MAX_USER_FAILURES = 5;
-    public const int USER_FAILURE_WINDOW = 900;
     public const string METHOD_TOTP = 'totp';
     public const string METHOD_BACKUP = 'backup_code';
 
@@ -38,6 +35,7 @@ class MfaLoginService
         private readonly WebAuthnService $webAuthn,
         private readonly TokenService $tokens,
         private readonly SecurityEventLogger $events,
+        private readonly MfaFailureBudget $budget,
     ) {
     }
 
@@ -155,7 +153,7 @@ class MfaLoginService
      * One verification attempt, serialised per user by a row lock. Inside the transaction: the user and the
      * token version are re-read, a spent token and the per-token guess budget are rejected BEFORE the factor
      * is evaluated (so a lost race burns no code), the factor is checked, and on success the mfaToken nonce is
-     * consumed (unique insert, the insert decides) and the tokens are issued. Once MAX_USER_FAILURES failed checks
+     * consumed (unique insert, the insert decides) and the tokens are issued. Once MfaFailureBudget::MAX_FAILURES failed checks
      * of the user are live, further attempts get 429 without evaluating any factor, whatever the number of tokens.
      * Everything commits or rolls back together, so a failure after the nonce never leaves a spent token
      * without a session. A failed factor commits (guess counted, passkey challenge spent).
@@ -175,19 +173,19 @@ class MfaLoginService
             if ($user->getTokenVersion() !== $claims['tv'] || !$this->isRequired($user) || $this->nonces->isConsumed(self::PURPOSE, $claims['jti'])) {
                 throw self::invalidToken();
             }
-            $this->assertUserNotLocked($user);
+            $this->budget->assertNotLocked($user);
             $this->claimGuess($claims);
             try {
                 $ok = $factor();
             } catch (ApiProblemException $e) {
                 $failure = $e;
-                $this->recordUserFailure($user);
+                $this->budget->recordFailure($user);
 
                 return;
             }
             if (!$ok) {
                 $failure = $codeError;
-                $this->recordUserFailure($user);
+                $this->budget->recordFailure($user);
 
                 return;
             }
@@ -210,35 +208,6 @@ class MfaLoginService
         }
 
         return $response;
-    }
-
-    /**
-     * Exact per-user budget, evaluated under the user row lock: each failed check takes a free slot that
-     * frees up USER_FAILURE_WINDOW seconds later (so never more than MAX_USER_FAILURES evaluated failures per
-     * window). A success deliberately does not reset it: otherwise whoever holds one valid factor, or the
-     * legitimate user signing in in between, would hand an attacker fresh guesses.
-     */
-    private function assertUserNotLocked(User $user): void
-    {
-        $live = $this->nonces->liveExpiries(self::PURPOSE_USER_FAILURE, $this->failureSlots($user));
-        if (count($live) >= self::MAX_USER_FAILURES) {
-            throw new ApiProblemException(429, 'Too many requests', 'rate_limited', null, ['Retry-After' => (string) max(1, min($live) - time())]);
-        }
-    }
-
-    private function recordUserFailure(User $user): void
-    {
-        foreach ($this->failureSlots($user) as $slot) {
-            if ($this->nonces->consume(self::PURPOSE_USER_FAILURE, $slot, time() + self::USER_FAILURE_WINDOW - 60)) {
-                return;
-            }
-        }
-    }
-
-    /** @return list<string> */
-    private function failureSlots(User $user): array
-    {
-        return array_map(static fn (int $i): string => $user->getId().'#'.$i, range(1, self::MAX_USER_FAILURES));
     }
 
     /**
