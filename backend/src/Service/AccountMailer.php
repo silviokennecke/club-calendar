@@ -105,6 +105,19 @@ readonly class AccountMailer
         $this->sendNotice($user, 'failed_sign_ins', $context, ['count' => $count]);
     }
 
+    /** Repeated failed confirmations of a sensitive action; only a signed-in session can make them. */
+    public function sendFailedStepUps(User $user, ClientContext $context, int $count): void
+    {
+        $this->sendNotice($user, 'failed_step_ups', $context, ['count' => $count]);
+    }
+
+    /** `$appLabel`: the label derived from the client family, never the client-declared name; null = unverified app. */
+    public function sendMcpGrantCreated(User $user, ?string $appLabel, ClientContext $context = new ClientContext()): void
+    {
+        $appLabel ??= $this->translator->trans('email.mcp_grant_created.unverified_app', [], 'messages', $user->getLanguage());
+        $this->sendNotice($user, 'mcp_grant_created', $context, ['appLabel' => $appLabel]);
+    }
+
     /** @param array<string, scalar> $extra */
     private function sendNotice(User $user, string $name, ClientContext $context, array $extra = []): void
     {

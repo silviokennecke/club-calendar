@@ -89,7 +89,8 @@ class OAuthLinkTest extends WebTestCase
                 $this->em->refresh($user);
             }
             try {
-                $this->stepUps[$auth] = TestHelper::stepUp(self::$client, $auth);
+                $stepUp = TestHelper::stepUp(self::$client, $auth);
+                $this->stepUps[$auth] = $row['mfa_enforced'] ? TestHelper::claimFactor(self::$client, $stepUp) : $stepUp;
             } finally {
                 $conn->executeStatement('UPDATE user SET password = ?, mfa_enforced = ? WHERE id = ?', [$row['password'], $row['mfa_enforced'], $user->getId()]);
                 if ($this->em->contains($user)) {

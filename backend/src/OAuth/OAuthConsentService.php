@@ -13,6 +13,8 @@ use App\Exception\ApiProblemException;
 use App\Repository\McpGrantRepository;
 use App\Repository\OAuthAuthorizationRequestRepository;
 use App\Security\AuthRateLimiter;
+use App\Security\ClientContextResolver;
+use App\Service\AccountMailer;
 use App\Service\LegalDocumentService;
 use App\Service\Quota;
 use App\Service\SecurityEventLogger;
@@ -33,6 +35,8 @@ class OAuthConsentService
         private readonly Quota $quota,
         private readonly AuthRateLimiter $limiter,
         private readonly SecurityEventLogger $events,
+        private readonly ClientContextResolver $contextResolver,
+        private readonly AccountMailer $mailer,
     ) {
     }
 
@@ -91,6 +95,10 @@ class OAuthConsentService
         }
 
         $this->logAuthorization($user, $request, true);
+        $context = $this->contextResolver->current();
+        $family = $request->getClient()->getFamily();
+        $this->events->record($user, SecurityEventType::MCP_GRANT_CREATED, true, 'mcp', $family ?? 'unverified', $context);
+        $this->mailer->sendMcpGrantCreated($user, RedirectUriPolicy::label($family), $context);
 
         return OAuthAuthorizeController::redirectUrl($result['redirectUri'], ['code' => $result['code'], 'state' => $result['state']]);
     }

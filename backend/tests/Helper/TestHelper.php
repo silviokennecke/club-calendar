@@ -18,6 +18,7 @@ use App\Entity\TargetGroup;
 use App\Entity\User;
 use App\Enum\ClubRole;
 use App\Enum\FeedVisibility;
+use App\Security\SignedTokenService;
 use App\Service\TokenService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -200,10 +201,13 @@ class TestHelper
         return 'Bearer '.$tokens->createAccessToken($user);
     }
 
-    /** Access token with a session (`fam`) claim, which a step-up is bound to (no refresh-token row is stored). */
+    /** Access token with a session (`fam`) claim of a live session (its refresh-token row is stored); a step-up is bound to it. */
     public static function sessionHeader(User $user, TokenService $tokens): string
     {
-        return 'Bearer '.$tokens->createAccessToken($user, null, Uuid::v7()->toRfc4122());
+        $family = Uuid::v7()->toRfc4122();
+        $tokens->createRefreshToken($user, $family);
+
+        return 'Bearer '.$tokens->createAccessToken($user, null, $family);
     }
 
     /**
@@ -239,6 +243,16 @@ class TestHelper
         return [$auth, self::stepUp($client, $auth, $factor, $password)];
     }
 
+    /** Re-signs a step-up token obtained with MFA switched off briefly (fixtures) so that it claims a proven factor. */
+    public static function claimFactor(KernelBrowser $client, string $token): string
+    {
+        $signed = $client->getContainer()->get('test.service_container')->get(SignedTokenService::class);
+        $claims = $signed->verify('step_up', $token);
+        unset($claims['p'], $claims['exp']);
+
+        return $signed->issue('step_up', ['mfa' => true] + $claims, 600);
+    }
+
     /**
      * Fixture shortcut for a user whose MFA is already on: the step-up is obtained with MFA switched off briefly.
      *
@@ -251,7 +265,9 @@ class TestHelper
         $conn->executeStatement('UPDATE user SET mfa_enforced = 0 WHERE id = ?', [$user->getId()]);
         $em->refresh($user);
         try {
-            return self::stepUpSession($client, $user, $tokens);
+            [$auth, $token] = self::stepUpSession($client, $user, $tokens);
+
+            return [$auth, $enforced ? self::claimFactor($client, $token) : $token];
         } finally {
             $conn->executeStatement('UPDATE user SET mfa_enforced = ? WHERE id = ?', [$enforced, $user->getId()]);
             if ($em->contains($user)) {

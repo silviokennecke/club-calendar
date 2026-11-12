@@ -21,9 +21,9 @@ use Monolog\Processor\ProcessorInterface;
 #[AsMonologProcessor]
 final class RedactTokensProcessor implements ProcessorInterface
 {
-    private const string KEYS = 'access_token|refresh_token|token|secret|mfaToken|setupToken|challengeToken|backupCode|otpauthUri|password|newPassword|currentPassword|client_secret';
+    private const string KEYS = 'access_token|refresh_token|token|secret|mfaToken|setupToken|challengeToken|backupCode|otpauthUri|password|newPassword|currentPassword|client_secret|stepUpToken|confirmationCode|proof';
     // query strings and form bodies (also at the start of a body); indexed backupCodes[0]= / %5B0%5D= / []=
-    private const string PATTERN = '/((?:^|[?&\s])(?:token|ticket|secret|refresh_token|code|state|link_proof|access_token|mfaToken|setupToken|challengeToken|password|newPassword|currentPassword|backupCodes?(?:%5B\d*%5D|\[\d*\])?|otpauthUri)=)[^&#\s"\']+/i';
+    private const string PATTERN = '/((?:^|[?&\s])(?:token|ticket|secret|refresh_token|code|state|link_proof|access_token|mfaToken|setupToken|challengeToken|password|newPassword|currentPassword|stepUpToken|confirmationCode|proof|backupCodes?(?:%5B\d*%5D|\[\d*\])?|otpauthUri)=)[^&#\s"\']+/i';
     // JSON, plain and double-encoded (\"key\":\"value\"); the value ends at the closing quote
     private const string JSON_PATTERN = '/("(?:'.self::KEYS.')"\s*:\s*")(?:[^"\\\\]|\\\\.)*/i';
     private const string JSON_ESCAPED_PATTERN = '/(\\\\"(?:'.self::KEYS.')\\\\"\s*:\s*\\\\")(?:[^"\\\\]|\\\\(?!"))*/i';
@@ -34,11 +34,13 @@ final class RedactTokensProcessor implements ProcessorInterface
     private const string JSON_CODE_PATTERN = '/("code"\s*:\s*\\\\?"?)'.self::CODE_VALUE.'(?=[\\\\"\s,}\]]|$)/i';
     private const string JSON_CODE_ESCAPED_PATTERN = '/(\\\\"code\\\\"\s*:\s*\\\\?"?)'.self::CODE_VALUE.'(?=[\\\\"\s,}\]]|$)/i';
     private const string AUTHORIZATION_PATTERN = '/(\bauthorization\b\\\\?["\']?\s*[:=]\s*\\\\?["\']?(?:(?:Bearer|Basic|Token)\s+)?)[^\s"\',;\\\\]+/i';
+    // the step-up header, also as `X-Step-Up-Token: value` in a dumped header list or `x-step-up-token => value`
+    private const string STEP_UP_HEADER_PATTERN = '/(\bx-step-up-token\b\\\\?["\']?\s*(?:[:=]>?|=>)\s*\\\\?["\']?)[^\s"\',;\\\\]+/i';
     private const string BEARER_PATTERN = '/\b(Bearer\s+)[A-Za-z0-9._~+\/=-]{8,}/';
     // TOTP provisioning URIs carry the secret in their query
     private const string OTPAUTH_PATTERN = '/otpauth:\/\/[^\s"\'<>]+/i';
     // keys of context arrays whose value is always masked (a "code" is masked only when it looks like an MFA code)
-    private const string SENSITIVE_KEY = '/^(?:'.self::KEYS.'|backupCodes|authorization|ticket|link_proof)$/i';
+    private const string SENSITIVE_KEY = '/^(?:'.self::KEYS.'|backupCodes|authorization|x-step-up-token|ticket|link_proof)$/i';
 
     public function __invoke(LogRecord $record): LogRecord
     {
@@ -77,7 +79,7 @@ final class RedactTokensProcessor implements ProcessorInterface
     {
         foreach ([
             self::PATTERN, self::JSON_PATTERN, self::JSON_ESCAPED_PATTERN,
-            self::JSON_CODE_PATTERN, self::JSON_CODE_ESCAPED_PATTERN, self::AUTHORIZATION_PATTERN, self::BEARER_PATTERN,
+            self::JSON_CODE_PATTERN, self::JSON_CODE_ESCAPED_PATTERN, self::AUTHORIZATION_PATTERN, self::STEP_UP_HEADER_PATTERN, self::BEARER_PATTERN,
         ] as $pattern) {
             $value = (string) preg_replace($pattern, '$1[redacted]', $value);
         }

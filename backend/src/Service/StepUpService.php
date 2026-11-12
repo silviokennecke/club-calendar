@@ -8,12 +8,13 @@ use App\Entity\User;
 use App\Enum\SecurityEventType;
 use App\Exception\ApiProblemException;
 use App\Security\Mfa\MfaFailureBudget;
+use App\Security\StepUp\StepUpProofBudget;
 use App\Security\StepUp\StepUpTokenService;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Step-up confirmation of sensitive actions. Proof = the password (or, for accounts without one, the mailed
- * code, {@see ReauthenticationService}) plus, when MFA is on, one factor (authenticator code, backup code or
+ * sent code, {@see ReauthenticationService}) plus, when MFA is on, one factor (authenticator code, backup code or
  * passkey assertion). The factor check runs like the MFA sign-in: inside a transaction holding the user row
  * lock, against the same exact per-user failure budget ({@see MfaFailureBudget}), a spent backup code or TOTP step
  * stays spent. The result is a {@see StepUpTokenService} token; no session is touched.
@@ -21,7 +22,6 @@ use Doctrine\ORM\EntityManagerInterface;
 class StepUpService
 {
     public const string METHOD_PASSKEY = 'passkey';
-    public const string PURPOSE_CODE = ReauthenticationService::PURPOSE_STEP_UP;
 
     public function __construct(
         private readonly EntityManagerInterface $em,
@@ -29,6 +29,7 @@ class StepUpService
         private readonly MfaService $mfa,
         private readonly WebAuthnService $webAuthn,
         private readonly MfaFailureBudget $budget,
+        private readonly StepUpProofBudget $proofBudget,
         private readonly StepUpTokenService $tokens,
         private readonly SecurityEventLogger $events,
     ) {
@@ -54,7 +55,7 @@ class StepUpService
     public function sendCode(User $user): void
     {
         $this->tokens->requireFamily();
-        $this->reauth->sendCode($user, self::PURPOSE_CODE);
+        $this->reauth->sendCode($user);
     }
 
     /** @return array{options: array<string, mixed>, challengeToken: string} */
@@ -69,42 +70,27 @@ class StepUpService
     }
 
     /**
+     * One transaction under the user row lock: the proof (password, or the sent code) is checked against the exact
+     * proof budget, then the MFA factor against the factor budget; a failure commits its counted slot, a success
+     * consumes the mailed code and a spent backup code or TOTP step stays spent.
+     *
      * @param array{method: string, code?: string, challengeToken?: string, response?: array<mixed>}|null $factor
      *
      * @return array{stepUpToken: string, expiresIn: int, backupCodeUsed?: true, backupCodesRemaining?: int}
      *
-     * @throws ApiProblemException 403 `step_up_unavailable`, 400 `invalid_credentials` (field `password`),
-     *                             400 `invalid_confirmation_code` (field `code`), 422 `mfa_factor_required`,
-     *                             422 `invalid_mfa_code` (field `code`), 422 `invalid_passkey`, 429 `rate_limited`
+     * @throws ApiProblemException 403 `step_up_unavailable`, 401 `invalid_token` (session ended), 400
+     *                             `invalid_credentials` (field `password`), 400 `invalid_confirmation_code` (field
+     *                             `code`), 422 `mfa_factor_required`, 422 `invalid_mfa_code` (field `code`),
+     *                             422 `invalid_passkey`, 429 `rate_limited`
      */
     public function confirm(User $user, ?string $password, ?string $confirmationCode, ?array $factor): array
     {
         $this->tokens->requireFamily();
-        $proof = null !== $user->getPassword() ? 'password' : 'code';
-        try {
-            $this->reauth->assertConfirmed($user, self::PURPOSE_CODE, $password, $confirmationCode);
-        } catch (ApiProblemException $e) {
-            $this->events->record($user, SecurityEventType::STEP_UP, false, $proof);
-
-            throw $e;
-        }
-        if (!$user->isMfaEnforced()) {
-            return $this->succeeded($user, $proof, []);
-        }
-        if (null === $factor) {
-            throw new ApiProblemException(422, 'An MFA factor is required', 'mfa_factor_required', 'factor');
-        }
-
-        return $this->confirmFactor($user, $proof, $factor);
-    }
-
-    /** @param array<string, mixed> $factor */
-    private function confirmFactor(User $user, string $proof, array $factor): array
-    {
-        $method = (string) $factor['method'];
         $failure = null;
+        $failedAs = null;
+        $method = null;
         $extra = [];
-        $this->em->wrapInTransaction(function () use ($user, $method, $factor, &$failure, &$extra): void {
+        $this->em->wrapInTransaction(function () use ($user, $password, $confirmationCode, $factor, &$failure, &$failedAs, &$method, &$extra): void {
             $tokenVersion = $user->getTokenVersion();
             if (false === $this->em->getConnection()->fetchOne('SELECT id FROM user WHERE id = ? FOR UPDATE', [$user->getId()])) {
                 throw new ApiProblemException(401, 'User not found', 'invalid_token', null, ['WWW-Authenticate' => 'Bearer']);
@@ -113,31 +99,50 @@ class StepUpService
             if ($user->getTokenVersion() !== $tokenVersion) {
                 throw new ApiProblemException(401, 'The session has ended', 'invalid_token', null, ['WWW-Authenticate' => 'Bearer']);
             }
-            if (!$user->isMfaEnforced()) {
-                return;
-            }
-            $this->budget->assertNotLocked($user);
-            try {
-                $ok = match ($method) {
-                    MfaLoginService::METHOD_TOTP => $this->mfa->verifyTotp($user, $factor['code']),
-                    MfaLoginService::METHOD_BACKUP => $this->mfa->consumeBackupCode($user, $factor['code']),
-                    default => $this->passkeyAssertion($user, $factor),
-                };
-                $failure = $ok ? null : new ApiProblemException(422, 'The code is not correct', 'invalid_mfa_code', 'code');
-            } catch (ApiProblemException $e) {
-                $failure = $e;
-            }
-            if (null !== $failure) {
-                $this->budget->recordFailure($user);
+            $withPassword = null !== $user->getPassword();
+            $failedAs = $method = $withPassword ? 'password' : 'code';
+            $this->proofBudget->assertNotLocked($user);
+            $proven = $withPassword ? $this->reauth->passwordMatches($user, $password) : $this->reauth->codeMatches($user, $confirmationCode);
+            if (!$proven) {
+                $this->proofBudget->recordFailure($user);
+                $failure = $withPassword
+                    ? new ApiProblemException(400, 'The password is not correct', 'invalid_credentials', 'password')
+                    : new ApiProblemException(400, 'The confirmation code is not correct or expired', 'invalid_confirmation_code', 'code');
 
                 return;
             }
-            if (MfaLoginService::METHOD_BACKUP === $method) {
-                $extra = ['backupCodeUsed' => true, 'backupCodesRemaining' => $this->mfa->remainingBackupCodes($user)];
+            if ($user->isMfaEnforced()) {
+                if (null === $factor) {
+                    throw new ApiProblemException(422, 'An MFA factor is required', 'mfa_factor_required', 'factor');
+                }
+                $method = (string) $factor['method'];
+                $failedAs = $method;
+                $this->budget->assertNotLocked($user);
+                try {
+                    $ok = match ($method) {
+                        MfaLoginService::METHOD_TOTP => $this->mfa->verifyTotp($user, $factor['code']),
+                        MfaLoginService::METHOD_BACKUP => $this->mfa->consumeBackupCode($user, $factor['code']),
+                        default => $this->passkeyAssertion($user, $factor),
+                    };
+                    $failure = $ok ? null : new ApiProblemException(422, 'The code is not correct', 'invalid_mfa_code', 'code');
+                } catch (ApiProblemException $e) {
+                    $failure = $e;
+                }
+                if (null !== $failure) {
+                    $this->budget->recordFailure($user);
+
+                    return;
+                }
+                if (MfaLoginService::METHOD_BACKUP === $method) {
+                    $extra = ['backupCodeUsed' => true, 'backupCodesRemaining' => $this->mfa->remainingBackupCodes($user)];
+                }
+            }
+            if (!$withPassword) {
+                $this->reauth->consumeCode($user);
             }
         });
         if (null !== $failure) {
-            $this->events->record($user, SecurityEventType::STEP_UP, false, $method);
+            $this->events->record($user, SecurityEventType::STEP_UP, false, $failedAs);
 
             throw $failure;
         }
@@ -145,7 +150,7 @@ class StepUpService
             $this->mfa->notifyBackupCodeUsed($user, $extra['backupCodesRemaining']);
         }
 
-        return $this->succeeded($user, $user->isMfaEnforced() ? $method : $proof, $extra);
+        return $this->succeeded($user, $method, $extra);
     }
 
     /** @param array<string, mixed> $factor */
@@ -163,7 +168,7 @@ class StepUpService
     /** @param array<string, mixed> $extra */
     private function succeeded(User $user, string $method, array $extra): array
     {
-        $issued = $this->tokens->issue($user);
+        $issued = $this->tokens->issue($user, $user->isMfaEnforced());
         $this->events->record($user, SecurityEventType::STEP_UP, true, $method);
 
         return ['stepUpToken' => $issued['token'], 'expiresIn' => $issued['expiresIn']] + $extra;

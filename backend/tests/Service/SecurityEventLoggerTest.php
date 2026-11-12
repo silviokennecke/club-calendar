@@ -144,6 +144,22 @@ class SecurityEventLoggerTest extends KernelTestCase
         $this->addToAssertionCount(1);
     }
 
+    public function testFailedStepUpsGetTheirOwnNoticeInsteadOfTheSignInWording(): void
+    {
+        foreach ([null, null, '203.0.113.9'] as $ip) {
+            $this->failLogin($ip ?? '203.0.113.5', 'password', null, SecurityEventType::STEP_UP);
+        }
+        $mails = $this->mails();
+        $this->assertCount(1, $mails);
+        $this->assertSame('Failed confirmations of a sensitive action on your account', $mails[0]->getSubject());
+        $html = (string) $mails[0]->getHtmlBody();
+        $this->assertStringContainsString('signed in to your Club Calendar account tried to confirm a sensitive action 3 times', $html);
+        $this->assertStringContainsString('Sign out everywhere', $html);
+        $this->assertStringContainsString('/forgot-password', $html);
+        $this->assertStringNotContainsString('nobody is signed in', $html);
+        $this->assertStringContainsString('203.0.113.9', $html);
+    }
+
     public function testNoMailForTwoFailuresOneMailFromTheThirdNoFurtherMailWithin24Hours(): void
     {
         $this->failLogin();

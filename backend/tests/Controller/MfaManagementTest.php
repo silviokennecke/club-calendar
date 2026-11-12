@@ -100,10 +100,11 @@ class MfaManagementTest extends WebTestCase
                 $r = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/step-up', ['confirmationCode' => $this->mailedCode()], $auth);
                 $this->assertSame(200, $r['status'], $r['content']);
 
-                return $r['body']['stepUpToken'];
+                return $enforced ? TestHelper::claimFactor($this->client, $r['body']['stepUpToken']) : $r['body']['stepUpToken'];
             }
+            $token = TestHelper::stepUp($this->client, $auth);
 
-            return TestHelper::stepUp($this->client, $auth);
+            return $enforced ? TestHelper::claimFactor($this->client, $token) : $token;
         } finally {
             $this->conn()->executeStatement('UPDATE user SET mfa_enforced = ? WHERE id = ?', [(int) $enforced, $user->getId()]);
         }

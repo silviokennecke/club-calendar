@@ -39,12 +39,16 @@ class OAuthAuthorizeTest extends WebTestCase
         $this->em = $c->get(EntityManagerInterface::class);
         DatabaseResetter::reset($this->em);
         $this->user = TestHelper::createUser($this->em, $c->get(UserPasswordHasherInterface::class));
-        $this->auth = TestHelper::authHeader($this->user, $c->get(TokenService::class));
+        $this->auth = TestHelper::sessionHeader($this->user, $c->get(TokenService::class));
     }
 
     private function json(string $method, string $uri, array $data = [], ?string $auth = null): array
     {
-        return TestHelper::jsonRequest($this->client, $method, $uri, $data, $auth ?? $this->auth);
+        $auth ??= $this->auth;
+        // approving a connection needs a step-up confirmation, denying does not
+        $stepUp = '/api/oauth/authorize/decision' === $uri && true === ($data['approve'] ?? false) ? TestHelper::stepUp($this->client, $auth) : null;
+
+        return TestHelper::jsonRequest($this->client, $method, $uri, $data, $auth, $stepUp);
     }
 
     private function registerClient(): string
@@ -417,7 +421,66 @@ class OAuthAuthorizeTest extends WebTestCase
         $c = static::getContainer();
         $other = TestHelper::createUser($this->em, $c->get(UserPasswordHasherInterface::class), 'other@example.com');
 
-        return TestHelper::authHeader($other, $c->get(TokenService::class));
+        return TestHelper::sessionHeader($other, $c->get(TokenService::class));
+    }
+
+    public function testApprovingNeedsAStepUpButDenyingDoesNot(): void
+    {
+        $requestId = $this->startRequest($this->registerClient());
+
+        $approve = TestHelper::jsonRequest($this->client, 'POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => true], $this->auth);
+        $this->assertSame(403, $approve['status']);
+        $this->assertSame('step_up_required', $approve['body']['code']);
+        // the request and the browser binding survive the refusal; nothing was granted
+        $this->assertSame(1, $this->em->getRepository(OAuthAuthorizationRequest::class)->count([]));
+        $this->assertSame(0, (int) $this->em->getConnection()->fetchOne('SELECT COUNT(*) FROM mcp_grant'));
+        $this->assertSame([], $this->client->getResponse()->headers->getCookies());
+
+        $withToken = $this->json('POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => true]);
+        $this->assertSame(200, $withToken['status'], $withToken['content']);
+    }
+
+    public function testDenyWorksWithoutAStepUp(): void
+    {
+        $requestId = $this->startRequest($this->registerClient());
+        $deny = TestHelper::jsonRequest($this->client, 'POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => false], $this->auth);
+        $this->assertSame(200, $deny['status'], $deny['content']);
+        $this->assertStringContainsString('access_denied', $deny['body']['redirectUrl']);
+    }
+
+    public function testGatesAndTheBindingCookieStillAnswerBeforeOrAfterTheStepUp(): void
+    {
+        $requestId = $this->startRequest($this->registerClient());
+        $saved = $this->leaveBrowser();
+        $other = $this->otherUserAuth();
+        // no step-up: the step-up refusal comes first, and reveals nothing about the request
+        $r = TestHelper::jsonRequest($this->client, 'POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => true], $other);
+        $this->assertSame('step_up_required', $r['body']['code']);
+        // with a step-up but without the cookie: the usual 404
+        $d = $this->json('POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => true], $other);
+        $this->assertSame('authorization_request_not_found', $d['body']['code']);
+        $this->assertNotEmpty($saved);
+    }
+
+    public function testApprovingSendsAnAppConnectedNoticeAndRecordsTheEvent(): void
+    {
+        $requestId = $this->startRequest($this->registerClient());
+        $this->assertSame(200, $this->json('POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => true])['status']);
+
+        static::getContainer()->get(\App\Service\DeferredMailer::class)->flush();
+        $mails = array_values(array_filter(self::getMailerMessages(), static fn ($m) => $m instanceof \Symfony\Component\Mime\Email && str_contains((string) $m->getSubject(), 'app was connected')));
+        $this->assertCount(1, $mails);
+        $html = (string) $mails[0]->getHtmlBody();
+        $this->assertStringContainsString('Claude', $html);
+        $this->assertStringContainsString('/forgot-password', $html);
+        $this->assertSame(1, (int) $this->em->getConnection()->fetchOne("SELECT COUNT(*) FROM security_event WHERE type = 'mcp_grant_created' AND provider = 'claude'"));
+    }
+
+    public function testDenyingSendsNoNotice(): void
+    {
+        $requestId = $this->startRequest($this->registerClient());
+        $this->json('POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => false]);
+        $this->assertSame(0, (int) $this->em->getConnection()->fetchOne("SELECT COUNT(*) FROM security_event WHERE type = 'mcp_grant_created'"));
     }
 
     public function testAuthorizeSetsAScopedHttpOnlyLaxCookieWithOnlyTheHashStored(): void

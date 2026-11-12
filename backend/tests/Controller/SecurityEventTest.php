@@ -370,15 +370,17 @@ class SecurityEventTest extends WebTestCase
     {
         $this->client->disableReboot();
         $user = $this->user();
-        $auth = 'Bearer '.static::getContainer()->get(TokenService::class)->createAccessToken($user);
+        $auth = TestHelper::sessionHeader($user, static::getContainer()->get(TokenService::class));
         foreach ([false, true] as $approve) {
-            $r = TestHelper::jsonRequest($this->client, 'POST', '/api/oauth/authorize/decision', ['requestId' => $this->authorizationRequest(), 'approve' => $approve], $auth);
+            $requestId = $this->authorizationRequest();
+            $r = TestHelper::jsonRequest($this->client, 'POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => $approve], $auth, $approve ? TestHelper::stepUp($this->client, $auth) : null);
             $this->assertSame(200, $r['status'], $r['content']);
         }
 
         $events = $this->events();
-        $this->assertCount(2, $events);
+        $this->assertCount(3, $events);
         $this->assertEvent($events[0], 'login', false, 'mcp', 'claude');
         $this->assertEvent($events[1], 'login', true, 'mcp', 'claude');
+        $this->assertEvent($events[2], 'mcp_grant_created', true, 'mcp', 'claude');
     }
 }

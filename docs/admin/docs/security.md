@@ -42,7 +42,7 @@ Users can turn on multi-factor authentication (MFA) for password sign-in in thei
 - Signing in with a **backup code** uses the code up. MFA and the authenticator app stay on. The user is mailed the number of codes left, and the app offers to sign out other devices and to create new codes. With no codes left it warns that the operator must reset MFA if the app or passkey is lost; the profile warns at 2 or fewer codes.
 - Only two things end MFA: the user switches it off in the profile (the authenticator app and backup codes are removed, passkeys stay, other sessions and AI app connections end), or an operator runs `app:user:disable-mfa`.
 - If a user's account has MFA on, **Sign in with Google or Apple** for an address not yet linked to the account is refused with the advice to sign in with password and MFA and link the provider in the profile. Providers already linked keep working.
-- Users receive a notification mail when MFA is switched on or off, when backup codes are made again or used, and when a passkey or a single sign-on provider is added or a passkey is deleted.
+- Users receive a notification mail when MFA is switched on or off, when backup codes are made again or used, and when a passkey or a single sign-on provider is added or a passkey is deleted, or an AI app is connected to the account.
 
 Nothing needs configuring. If a user has lost the device with the authenticator app and also has no backup codes, an operator can switch MFA off on the command line, see [Command-line tools](operations.md#command-line-tools). Check the identity of the person first. Run the daily cleanup `app:prune-auth-nonces` as well (see [Operations](operations.md#scheduled-tasks)).
 
@@ -51,6 +51,10 @@ Nothing needs configuring. If a user has lost the device with the authenticator 
 Sensitive account actions need a one-time confirmation on top of the signed-in session: changing the password or e-mail address, deleting the account, switching MFA on or off, setting up the authenticator app, creating new backup codes, adding or removing a passkey, and linking or unlinking a single sign-on provider. The user confirms once with the password (accounts without a password use a code sent by e-mail) and, when MFA is on, also with one MFA factor: an authenticator code, a backup code or a passkey. A stolen session alone is therefore not enough to change sign-in methods.
 
 - The confirmation is valid for 10 minutes and cannot be renewed; after that the user confirms again. It is kept only in the browser tab's session storage, is not shared between tabs and ends on sign-out, password change and other events that end the session.
+- A confirmation only works in a session that is still alive. After the user signed out on a device, or after a stolen sign-in was detected and shut down, the leftover short-lived access token of that session can no longer be used to confirm anything, to sign out the other devices or to change the password.
+- A confirmation made with the password alone stops counting as soon as MFA is switched on afterwards.
+- Accounts without a password get a one-time code by e-mail. Only a code that was actually sent works, it works once, a new code replaces the previous one, and it is valid for 10 minutes.
+- Wrong passwords and wrong e-mail codes share one limit of 10 per 15 minutes per account. It is counted exactly, also when many requests arrive at once; once it is used up, even the right password is refused until the oldest attempt is 15 minutes old.
 - A backup code used for the confirmation is used up, and the user gets the usual mail.
 - Wrong MFA factors, at sign-in and in the confirmation, share one limit of 5 per 15 minutes per account.
 - Signing out other devices needs no confirmation.
@@ -69,7 +73,7 @@ Each entry has the time, the IP address, the approximate city and country, the b
 - Entries older than **one year** are deleted by the scheduled command `app:prune-security-events` (see [Operations](operations.md#scheduled-tasks)). They are also deleted when the account is deleted.
 - **Your privacy policy must say that this log exists**, what it contains and how long it is kept. The [legal documents](legal.md#what-the-security-log-stores) page lists the details.
 
-Users also get a mail when there are **three failed sign-in attempts within one hour** on their account. The app sends at most one such mail per day.
+Users also get a mail when there are **three failed sign-in attempts within one hour** on their account. The app sends at most one such mail per day. Three failed confirmations of a sensitive action within an hour (which can only happen inside a signed-in session) get their own mail with different wording: someone who is signed in failed to confirm, so the user should sign out everywhere and change the password.
 
 ## Location in security notices
 
@@ -113,7 +117,7 @@ Limits slow down attackers and mistakes. When one is hit, the app answers `429` 
 | Public feeds and personal subscription addresses | 120 per minute per IP, 600 per minute per feed or subscription | `FEED_RATE_LIMIT_PER_IP`, `FEED_RATE_LIMIT_PER_FEED` (0 = off) |
 | Joining a club through a feed | 20 per hour per user, 60 per hour per IP | fixed |
 | Renewing the personal subscription address | 10 per hour per user | fixed |
-| Confirming a sensitive action (password or code, plus the MFA code when MFA is on) | 10 per user and 30 per IP per 15 min; 5 confirmation mails per user per hour; wrong MFA codes share the sign-in limit of 5 per 15 min per user | fixed |
+| Confirming a sensitive action (password or code, plus the MFA code when MFA is on) | 30 per IP per 15 min; wrong passwords or e-mail codes 10 per user per 15 min (exact); 5 confirmation mails per user per hour; wrong MFA codes share the sign-in limit of 5 per 15 min per user | fixed |
 | PDF export | 10 per user and 30 per IP per 10 min | fixed |
 | Maps and address search | several limits | fixed, see [Mail and maps](configuration/mail-and-maps.md) |
 | Holiday calendar fetch from a web address | 20 per hour per user | fixed |
@@ -221,6 +225,7 @@ Feeds are rate limited (see above). The ICS file by default covers the last 180 
 The app can let AI assistants (such as Claude, ChatGPT or Gemini) read a user's calendar and create **draft** events, after the user has allowed it on a consent page. AI apps cannot publish or delete events.
 
 - `MCP_ALLOWED_CLIENTS` decides which assistants may connect. Default: `claude,openai,gemini`. `*` allows every app, an empty value allows none.
+- Allowing a connection needs the same one-time confirmation as other sensitive actions (a stolen sign-in alone cannot connect an app), and the user gets a mail that an app was connected. Denying needs no confirmation.
 - Users see and revoke connections under "Connected apps" in their profile. Changing the password or signing out everywhere revokes all of them.
 - An empty `MCP_ALLOWED_CLIENTS` now means "no client" (older versions allowed all). After an upgrade, set it to `*` if you want every app to connect.
 - In a split setup (web app and API on different addresses), the consent step only works when both addresses are on the same site, for example `app.example.com` and `api.example.com`. AI apps running in a browser on other addresses are blocked.

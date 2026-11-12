@@ -134,6 +134,21 @@
             "body": "in der letzten Stunde gab es {count} fehlgeschlagene Anmeldeversuche bei deinem Club-Calendar-Konto. Das heißt: Jemand hat versucht, sich anzumelden, hat aber das Passwort oder den Code nicht richtig eingegeben. Die Angaben unten gehören zum letzten Versuch.",
             "info": "An deinem Konto wurde nichts geändert und niemand ist angemeldet. Zu solchen Versuchen schicken wir dir höchstens eine Nachricht pro Tag.",
             "not_you": "Warst du das nicht, ändere sicherheitshalber dein Passwort über „Passwort vergessen“ (dadurch werden alle Sitzungen beendet) und prüfe danach in deinem Profil MFA und deine Passkeys. Die Seite „Passwort vergessen“ findest du hier:"
+        },
+        "failed_step_ups": {
+            "subject": "Fehlgeschlagene Bestätigungen einer sensiblen Aktion bei deinem Konto",
+            "greeting": "Hallo {name},",
+            "body": "Jemand, der in deinem Club-Calendar-Konto angemeldet ist, hat in der letzten Stunde {count} Mal versucht, eine sensible Aktion zu bestätigen, und dabei das Passwort oder den Code nicht richtig eingegeben. Die Angaben unten gehören zum letzten Versuch.",
+            "info": "An deinem Konto wurde nichts geändert. Zu solchen Versuchen schicken wir dir höchstens eine Nachricht pro Tag.",
+            "not_you": "Warst du das nicht, hat vielleicht jemand Zugriff auf eine Sitzung deines Kontos. Melde dich in deinem Profil überall ab und ändere dein Passwort über „Passwort vergessen“ (dadurch werden alle Sitzungen beendet). Die Seite „Passwort vergessen“ findest du hier:"
+        },
+        "mcp_grant_created": {
+            "unverified_app": "Nicht verifizierte App",
+            "subject": "Eine neue App wurde mit deinem Konto verbunden",
+            "greeting": "Hallo {name},",
+            "body": "Mit deinem Club-Calendar-Konto wurde eine neue App verbunden: {app}. Sie kann jetzt die Kalender deiner Vereine lesen und in deinem Namen Entwürfe anlegen.",
+            "info": "Verbundene Apps siehst du in deinem Profil und kannst sie dort jederzeit trennen.",
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Trenne die App in deinem Profil unter „Verbundene Apps“ und setze über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet). Die Seite „Passwort vergessen“ findest du hier:"
         }
     }
 }

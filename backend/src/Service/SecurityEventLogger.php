@@ -121,7 +121,11 @@ class SecurityEventLogger
         $key = $user->getId().'|'.$type->value.'|'.($method ?? '');
         // NonceStore keeps an entry 60 s past the given time
         if ($this->nonces->consume(self::MAIL_PURPOSE, $key, $now->getTimestamp() + self::MAIL_INTERVAL - 60)) {
-            $this->mailer->sendFailedSignIns($user, $context, $count);
+            if (SecurityEventType::STEP_UP === $type) {
+                $this->mailer->sendFailedStepUps($user, $context, $count);
+            } else {
+                $this->mailer->sendFailedSignIns($user, $context, $count);
+            }
         }
     }
 

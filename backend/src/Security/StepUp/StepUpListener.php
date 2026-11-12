@@ -31,7 +31,7 @@ class StepUpListener
 
     public function __invoke(ControllerEvent $event): void
     {
-        if (!$event->isMainRequest() || [] === $event->getAttributes(RequiresStepUp::class)) {
+        if (!$event->isMainRequest() || !$this->required($event)) {
             return;
         }
         $user = $this->tokenStorage->getToken()?->getUser();
@@ -42,5 +42,20 @@ class StepUpListener
         if (!$this->tokens->accepts($event->getRequest()->headers->get(StepUpTokenService::HEADER), $user)) {
             throw new ApiProblemException(403, 'This action must be confirmed first', 'step_up_required', null, [], null, ['methods' => $this->stepUp->methods($user)]);
         }
+    }
+
+    private function required(ControllerEvent $event): bool
+    {
+        foreach ($event->getAttributes(RequiresStepUp::class) as $attribute) {
+            if (null === $attribute->whenJsonTrue) {
+                return true;
+            }
+            $body = json_decode($event->getRequest()->getContent(), true);
+            if (is_array($body) && true === ($body[$attribute->whenJsonTrue] ?? null)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -240,7 +240,7 @@ class MfaConcurrencyTest extends WebTestCase
         $results = $this->parallel([['/api/auth/mfa/passkey/verify', $body], ['/api/auth/mfa/passkey/verify', $body]]);
 
         $this->assertSame([200, 401], $this->statuses($results), json_encode($results));
-        $this->assertSame(1, (int) $this->db()->fetchOne('SELECT COUNT(DISTINCT family_id) FROM refresh_token'));
+        $this->assertSame(2, (int) $this->db()->fetchOne('SELECT COUNT(DISTINCT family_id) FROM refresh_token'));
     }
 
     /** @return iterable<string, array{int}> */

@@ -68,6 +68,18 @@ class StepUpMigrationTest extends WebTestCase
         return ['status' => $r['status'], 'code' => $r['body']['code'] ?? null];
     }
 
+    public function testTheOAuthDecisionNeedsAStepUpOnlyWhenApproving(): void
+    {
+        $auth = TestHelper::sessionHeader($this->user(), $this->tokens);
+        $approve = TestHelper::jsonRequest($this->client, 'POST', '/api/oauth/authorize/decision', ['requestId' => 'x', 'approve' => true], $auth);
+        $this->assertSame([403, 'step_up_required'], [$approve['status'], $approve['body']['code']]);
+        $deny = TestHelper::jsonRequest($this->client, 'POST', '/api/oauth/authorize/decision', ['requestId' => 'x', 'approve' => false], $auth);
+        $this->assertSame('authorization_request_not_found', $deny['body']['code']);
+        // a body that is no approval is not a step-up matter: the controller's own 400
+        $bad = TestHelper::jsonRequest($this->client, 'POST', '/api/oauth/authorize/decision', ['requestId' => 'x', 'approve' => 'true'], $auth);
+        $this->assertSame(400, $bad['status']);
+    }
+
     public function testEveryMigratedRouteNeedsAStepUp(): void
     {
         $user = $this->user();

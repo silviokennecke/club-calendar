@@ -22,4 +22,5 @@ enum SecurityEventType: string
     case PASSKEY_ADDED = 'passkey_added';
     case SSO_LINKED = 'sso_linked';
     case STEP_UP = 'step_up';
+    case MCP_GRANT_CREATED = 'mcp_grant_created';
 }

@@ -138,6 +138,36 @@ class RedactTokensProcessorTest extends TestCase
         $this->assertStringContainsString('method=backup_code', $this->redact('code=ABCD-EFGH-JKMN&method=backup_code')->message);
     }
 
+    public function testStepUpSecretsAreRedactedInQueryJsonFormAndHeaders(): void
+    {
+        $t = 'abc123.def456_ghi';
+        $record = new LogRecord(
+            new \DateTimeImmutable(),
+            'req',
+            Level::Error,
+            "GET /x?stepUpToken=$t&confirmationCode=123456&proof=$t&page=2",
+            [
+                'json' => '{"stepUpToken":"'.$t.'","confirmationCode":"123456","proof":"'.$t.'","ok":1}',
+                'escaped' => '{\"stepUpToken\":\"'.$t.'\",\"proof\":\"'.$t.'\"}',
+                'form' => "proof=$t&confirmationCode=123456",
+                'headers' => "X-Step-Up-Token: $t\r\nAccept: */*",
+                'dump' => "x-step-up-token => $t",
+                'nested' => ['stepUpToken' => $t, 'confirmationCode' => '123456', 'proof' => $t, 'X-Step-Up-Token' => $t, 'page' => 2],
+            ],
+        );
+
+        $out = (new RedactTokensProcessor())($record);
+
+        $this->assertSame('GET /x?stepUpToken=[redacted]&confirmationCode=[redacted]&proof=[redacted]&page=2', $out->message);
+        $this->assertSame('{"stepUpToken":"[redacted]","confirmationCode":"[redacted]","proof":"[redacted]","ok":1}', $out->context['json']);
+        $this->assertStringNotContainsString($t, $out->context['escaped']);
+        $this->assertSame('proof=[redacted]&confirmationCode=[redacted]', $out->context['form']);
+        $this->assertSame("X-Step-Up-Token: [redacted]\r\nAccept: */*", $out->context['headers']);
+        $this->assertSame('x-step-up-token => [redacted]', $out->context['dump']);
+        $this->assertSame(['stepUpToken' => '[redacted]', 'confirmationCode' => '[redacted]', 'proof' => '[redacted]', 'X-Step-Up-Token' => '[redacted]', 'page' => 2], $out->context['nested']);
+        $this->assertStringNotContainsString($t, json_encode($out->context));
+    }
+
     public function testErrorCodesAndPlainWordsStayReadable(): void
     {
         foreach (['{"code":"rate_limited"}', '{"code":"invalid_mfa_code"}', '{"code":429}', 'rate_limited for user', 'status code=500 retry'] as $text) {

@@ -90,6 +90,15 @@ class StepUpTest extends WebTestCase
         return TestHelper::jsonRequest($this->client, 'POST', $uri, $data, $auth);
     }
 
+    /** @return array{status: int, body: mixed, content: string} */
+    private function refresh(string $refreshToken): array
+    {
+        $this->client->request('POST', '/api/auth/token', ['grant_type' => 'refresh_token', 'refresh_token' => $refreshToken]);
+        $content = (string) $this->client->getResponse()->getContent();
+
+        return ['status' => $this->client->getResponse()->getStatusCode(), 'body' => json_decode($content, true), 'content' => $content];
+    }
+
     private function probe(string $auth, ?string $stepUp): array
     {
         $headers = ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json', 'HTTP_AUTHORIZATION' => $auth];
@@ -125,8 +134,6 @@ class StepUpTest extends WebTestCase
         $user->setMfaEnforced(false);
         $this->em->flush();
         $stepUp = $this->stepUp($auth, ['password' => 'password123']);
-        $user->setMfaEnforced($enforced);
-        $this->em->flush();
         $o = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/webauthn/register/options', [], $auth, $stepUp);
         $authenticator = new SoftwareAuthenticator();
         $r = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/webauthn/register/verify', [
@@ -135,6 +142,8 @@ class StepUpTest extends WebTestCase
             'deviceName' => 'Software',
         ], $auth, $stepUp);
         $this->assertSame(200, $r['status'], $r['content']);
+        static::getContainer()->get(Connection::class)->executeStatement('UPDATE user SET mfa_enforced = ? WHERE id = ?', [(int) $enforced, $user->getId()]);
+        $this->em->clear();
 
         return [$authenticator, $origin];
     }
@@ -315,28 +324,137 @@ class StepUpTest extends WebTestCase
         $this->assertSame(2, (int) array_sum(array_column(array_filter($this->events('step_up'), fn ($e) => 0 === (int) $e['success']), 'attempts')));
     }
 
-    public function testPasswordlessAccountUsesTheMailedCode(): void
+    private function passwordless(bool $mfa = false): array
     {
-        $user = $this->user();
+        $user = $this->user('alice@example.com', $mfa);
         $user->setPassword(null);
         $this->em->flush();
-        $auth = $this->session($user);
+
+        return [$user, $this->session($user)];
+    }
+
+    /** Sends a code through the real route and returns it from the mail. */
+    private function mailedCode(string $auth): string
+    {
+        $this->assertSame(204, $this->post('/api/auth/step-up/code', [], $auth)['status']);
+        $mail = $this->getMailerMessage();
+        $this->assertInstanceOf(Email::class, $mail);
+        $this->assertSame(1, preg_match('/letter-spacing:\d+px[^>]*>(\d{3})-(\d{3})</', (string) $mail->getHtmlBody(), $m));
+
+        return $m[1].$m[2];
+    }
+
+    public function testPasswordlessAccountUsesTheMailedCode(): void
+    {
+        [, $auth] = $this->passwordless();
 
         $this->assertSame(['password' => false, 'mfa' => []], $this->probe($auth, null)['body']['methods']);
         $bad = $this->post('/api/auth/step-up', ['confirmationCode' => '000000'], $auth);
         $this->assertSame(400, $bad['status']);
         $this->assertSame('invalid_confirmation_code', $bad['body']['code']);
 
-        $this->assertSame(204, $this->post('/api/auth/step-up/code', [], $auth)['status']);
-        $this->assertEmailCount(1);
-        $mail = $this->getMailerMessage();
-        $this->assertInstanceOf(Email::class, $mail);
-        $this->assertSame(1, preg_match('/letter-spacing:\d+px[^>]*>(\d{3})-(\d{3})</', (string) $mail->getHtmlBody(), $m));
-
-        // a code of another purpose is no good, the right one is
-        $token = $this->stepUp($auth, ['confirmationCode' => $m[1].$m[2]]);
+        $token = $this->stepUp($auth, ['confirmationCode' => $this->mailedCode($auth)]);
         $this->assertSame(200, $this->probe($auth, $token)['status']);
         $this->assertSame('code', $this->events('step_up')[1]['method']);
+    }
+
+    public function testACodeThatWasNeverSentIsRejected(): void
+    {
+        [, $auth] = $this->passwordless();
+
+        // no code requested: nothing is stored, so no guess can match, whatever the value
+        $this->assertSame(0, (int) static::getContainer()->get(Connection::class)->fetchOne('SELECT COUNT(*) FROM step_up_code'));
+        foreach (['000000', '123456', ''] as $guess) {
+            $this->assertSame('invalid_confirmation_code', $this->post('/api/auth/step-up', ['confirmationCode' => $guess], $auth)['body']['code']);
+        }
+    }
+
+    public function testAMailedCodeIsSingleUseAndStoredHashed(): void
+    {
+        [, $auth] = $this->passwordless();
+        $code = $this->mailedCode($auth);
+        $this->assertStringNotContainsString($code, (string) static::getContainer()->get(Connection::class)->fetchOne('SELECT code_hash FROM step_up_code'));
+
+        $this->stepUp($auth, ['confirmationCode' => $code]);
+        $this->assertSame(0, (int) static::getContainer()->get(Connection::class)->fetchOne('SELECT COUNT(*) FROM step_up_code'));
+        $again = $this->post('/api/auth/step-up', ['confirmationCode' => $code], $auth);
+        $this->assertSame('invalid_confirmation_code', $again['body']['code']);
+    }
+
+    public function testANewCodeKillsTheOldOne(): void
+    {
+        [, $auth] = $this->passwordless();
+        $first = $this->mailedCode($auth);
+        $second = $this->mailedCode($auth);
+        $this->assertNotSame($first, $second);
+
+        $this->assertSame('invalid_confirmation_code', $this->post('/api/auth/step-up', ['confirmationCode' => $first], $auth)['body']['code']);
+        $this->assertSame(200, $this->post('/api/auth/step-up', ['confirmationCode' => $second], $auth)['status']);
+    }
+
+    public function testAMailedCodeExpiresAfterTenMinutes(): void
+    {
+        self::mockTime(new \DateTimeImmutable('2026-11-12 10:00:00', new \DateTimeZone('UTC')));
+        [, $auth] = $this->passwordless();
+        $code = $this->mailedCode($auth);
+
+        self::mockTime(new \DateTimeImmutable('2026-11-12 10:10:30', new \DateTimeZone('UTC')));
+        $this->assertSame('invalid_confirmation_code', $this->post('/api/auth/step-up', ['confirmationCode' => $code], $auth)['body']['code']);
+    }
+
+    public function testAFailedFactorDoesNotSpendTheMailedCode(): void
+    {
+        [, $auth] = $this->passwordless(true);
+        $code = $this->mailedCode($auth);
+
+        $bad = $this->post('/api/auth/step-up', ['confirmationCode' => $code, 'factor' => ['method' => 'totp', 'code' => '000000']], $auth);
+        $this->assertSame('invalid_mfa_code', $bad['body']['code']);
+        $this->assertSame(200, $this->post('/api/auth/step-up', ['confirmationCode' => $code, 'factor' => ['method' => 'totp', 'code' => $this->totp()]], $auth)['status']);
+    }
+
+    public function testFailedProofsUseAnExactPerUserBudget(): void
+    {
+        $user = $this->user();
+        $auth = $this->session($user);
+
+        for ($i = 0; $i < 10; ++$i) {
+            $this->assertSame('invalid_credentials', $this->post('/api/auth/step-up', ['password' => 'wrong'], $auth)['body']['code'], "attempt $i");
+        }
+        $locked = $this->post('/api/auth/step-up', ['password' => 'wrong'], $auth);
+        $this->assertSame(429, $locked['status']);
+        $this->assertSame('rate_limited', $locked['body']['code']);
+        $this->assertNotNull($this->client->getResponse()->headers->get('Retry-After'));
+        // even the right password is refused without being evaluated, also from another session of the user
+        $this->assertSame(429, $this->post('/api/auth/step-up', ['password' => 'password123'], $auth)['status']);
+        $this->assertSame(429, $this->post('/api/auth/step-up', ['password' => 'password123'], $this->session($user))['status']);
+    }
+
+    public function testFailedCodesCountAgainstTheSameBudget(): void
+    {
+        [, $auth] = $this->passwordless();
+        $this->mailedCode($auth);
+        for ($i = 0; $i < 10; ++$i) {
+            $this->post('/api/auth/step-up', ['confirmationCode' => '00000'.$i], $auth);
+        }
+        $this->assertSame(429, $this->post('/api/auth/step-up', ['confirmationCode' => '999999'], $auth)['status']);
+    }
+
+    public function testAStepUpWithoutFactorStopsCountingOnceMfaIsOn(): void
+    {
+        $user = $this->user();
+        $auth = $this->session($user);
+        $token = $this->stepUp($auth, ['password' => 'password123']);
+        $this->assertSame(200, $this->probe($auth, $token)['status']);
+
+        $this->em->clear();
+        $user = $this->em->getRepository(User::class)->find($user->getId());
+        $this->em->persist(new UserTotp($user, $this->secret));
+        $user->setMfaEnforced(true);
+        $this->em->flush();
+
+        $this->assertSame('step_up_required', $this->probe($auth, $token)['body']['code']);
+        $withFactor = $this->stepUp($auth, ['password' => 'password123', 'factor' => ['method' => 'totp', 'code' => $this->totp()]]);
+        $this->assertSame(200, $this->probe($auth, $withFactor)['status']);
     }
 
     public function testCodeRouteIsOnlyForAccountsWithoutPassword(): void
@@ -369,14 +487,70 @@ class StepUpTest extends WebTestCase
         $family = $tokens->decodeRefreshToken($pair['refresh_token'])['fam'];
         $token = $this->stepUp($auth, ['password' => 'password123']);
 
-        $logout = $this->post('/api/auth/logout-all', [], $auth);
-        $this->assertSame(204, $logout['status'], $logout['content']);
-        $this->assertSame(401, $this->probe($auth, $token)['status']);
-        // a fresh access token of the same family (as a refresh would give) does not revive it
+        // the version bump alone (the family stays live) kills the step-up token
+        static::getContainer()->get(Connection::class)->executeStatement('UPDATE user SET token_version = token_version + 1 WHERE id = ?', [$user->getId()]);
         $this->em->clear();
         $fresh = $this->em->getRepository(User::class)->find($user->getId());
         $revived = 'Bearer '.$tokens->createAccessToken($fresh, true, $family);
         $this->assertSame('step_up_required', $this->probe($revived, $token)['body']['code']);
+    }
+
+    public function testTokenDiesWhenTheSessionIsSignedOut(): void
+    {
+        $user = $this->user();
+        $tokens = static::getContainer()->get(TokenService::class);
+        $pair = $tokens->tokenResponse($user);
+        $auth = 'Bearer '.$pair['access_token'];
+        $token = $this->stepUp($auth, ['password' => 'password123']);
+        $this->assertSame(200, $this->probe($auth, $token)['status']);
+
+        $this->assertSame(200, $this->post('/api/auth/logout', ['refresh_token' => $pair['refresh_token']], '')['status']);
+        // the leftover access token is dead for sensitive flows: no use of the token, no new one, no new session
+        $this->assertSame(401, $this->probe($auth, $token)['status']);
+        $this->assertSame(401, $this->post('/api/auth/step-up', ['password' => 'password123'], $auth)['status']);
+        $before = (int) static::getContainer()->get(Connection::class)->fetchOne('SELECT COUNT(*) FROM refresh_token');
+        $this->assertSame(401, $this->post('/api/auth/sessions/sign-out-others', [], $auth)['status']);
+        $this->assertSame($before, (int) static::getContainer()->get(Connection::class)->fetchOne('SELECT COUNT(*) FROM refresh_token'));
+    }
+
+    public function testAnEndedOrPrunedSessionIsDeadForSensitiveFlows(): void
+    {
+        $user = $this->user();
+        $tokens = static::getContainer()->get(TokenService::class);
+        $conn = static::getContainer()->get(Connection::class);
+
+        $auth = 'Bearer '.$tokens->tokenResponse($user)['access_token'];
+        $this->assertSame(200, $this->post('/api/auth/step-up', ['password' => 'password123'], $auth)['status']);
+        $conn->executeStatement("UPDATE refresh_token SET family_expires_at = '2000-01-01 00:00:00'");
+        $this->assertSame(401, $this->post('/api/auth/step-up', ['password' => 'password123'], $auth)['status'], 'absolutely expired');
+
+        $auth = 'Bearer '.$tokens->tokenResponse($user)['access_token'];
+        $conn->executeStatement('DELETE FROM refresh_token');
+        $this->assertSame(401, $this->post('/api/auth/sessions/sign-out-others', [], $auth)['status'], 'pruned: no fresh lifetime');
+
+        // a token without the session claim keeps the documented behaviour (403, refresh first)
+        $legacy = 'Bearer '.$tokens->createAccessToken($user);
+        $this->assertSame('step_up_unavailable', $this->post('/api/auth/step-up', ['password' => 'password123'], $legacy)['body']['code']);
+    }
+
+    public function testReuseDetectionKillsTheStepUpAndTheSession(): void
+    {
+        $user = $this->user();
+        $tokens = static::getContainer()->get(TokenService::class);
+        $pair = $tokens->tokenResponse($user);
+        $auth = 'Bearer '.$pair['access_token'];
+        $token = $this->stepUp($auth, ['password' => 'password123']);
+
+        $first = $this->refresh($pair['refresh_token']);
+        $this->assertSame(200, $first['status'], $first['content']);
+        // the rotated refresh token replayed after the grace period revokes the family
+        static::getContainer()->get(Connection::class)->executeStatement("UPDATE refresh_token SET rotated_at = '2000-01-01 00:00:00' WHERE rotated_at IS NOT NULL");
+        $this->assertSame(401, $this->refresh($pair['refresh_token'])['status']);
+
+        $this->assertSame(401, $this->probe($auth, $token)['status']);
+        $this->assertSame(401, $this->post('/api/auth/sessions/sign-out-others', [], $auth)['status']);
+        $newAuth = 'Bearer '.$first['body']['access_token'];
+        $this->assertSame(401, $this->post('/api/auth/step-up', ['password' => 'password123'], $newAuth)['status']);
     }
 
     public function testTokenExpiresAfterTenMinutes(): void

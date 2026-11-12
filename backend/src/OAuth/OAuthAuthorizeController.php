@@ -8,6 +8,7 @@ use App\Exception\ApiProblemException;
 use App\Repository\OAuthClientRepository;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
+use App\Security\StepUp\RequiresStepUp;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -107,7 +108,9 @@ class OAuthAuthorizeController
         return new JsonResponse($this->consent->describeRequest($id, self::nonce($request, $id)));
     }
 
+    /** Approving needs a step-up confirmation (`X-Step-Up-Token`), denying does not. */
     #[Route('/api/oauth/authorize/decision', methods: ['POST'])]
+    #[RequiresStepUp(whenJsonTrue: 'approve')]
     public function decision(Request $request): JsonResponse
     {
         $user = $this->userResolver->resolve();

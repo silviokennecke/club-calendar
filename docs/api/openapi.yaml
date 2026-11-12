@@ -594,12 +594,17 @@ paths:
       tags: [OAuth]
       summary: Allow or deny an authorization request
       description: >-
-        Approving needs consent to the current legal documents (`403 consent_required`), a confirmed e-mail address
+        Approving (not denying) needs a step-up token (`X-Step-Up-Token`, 403 `step_up_required`, checked before the
+        request is opened, so a refusal leaves the request and the binding cookie untouched); a connected app can
+        read club data for up to 30 days, so a stolen access token alone must not be enough. Approving also mails the
+        user a notice that an app was connected. Approving needs consent to the current legal documents (`403 consent_required`), a confirmed e-mail address
         (`403 email_not_verified`) and room in the quota of connected apps (`422 quota_exceeded`); a new grant
         replaces the user's open grant of the same client. 30 decisions per user and hour. The SPA navigates the
         browser to `redirectUrl`. Needs the binding cookie like the authorization-request route (404
         `authorization_request_not_found` without it, the request stays); a successful decision clears the cookie.
       operationId: oauthDecision
+      parameters:
+        - { name: X-Step-Up-Token, in: header, required: false, description: 'Required when `approve` is true (see the description).', schema: { type: string } }
       requestBody:
         required: true
         content:
@@ -622,7 +627,7 @@ paths:
                   redirectUrl: { type: string }
         '400': { description: '`invalid_request`: body incomplete.', content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { description: '`consent_required` or `email_not_verified`.', content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '403': { description: '`step_up_required` (approving only), `consent_required` or `email_not_verified`.', content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
         '404': { description: '`authorization_request_not_found`.', content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
         '422': { description: '`quota_exceeded`.', content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
@@ -1798,9 +1803,11 @@ paths:
       tags: [Step-up confirmation]
       summary: Mail the step-up confirmation code
       description: >-
-        For accounts without a password only (they confirm with a code instead of a password). The code is stateless
-        (derived from the user, the session version, the address and a 10-minute window) and bound to this purpose. 5 mails per user and hour. 403 `step_up_unavailable` when
-        the access token has no session claim (see `POST /api/auth/step-up`).
+        For accounts without a password only (they confirm with a code instead of a password). The code is random and
+        stored (keyed hash only, one per user): a new code replaces and kills the earlier one, it is valid 10 minutes
+        and single use, and only a code that was sent this way is accepted. 5 mails per user and hour (and the shared
+        `step_up_ip` limit). 403 `step_up_unavailable` when the access token has no session claim, 401 `invalid_token`
+        when its session was signed out, revoked or ended (see `POST /api/auth/step-up`).
       operationId: stepUpSendCode
       responses:
         '204': { description: The code went to the account's address. }
@@ -1844,16 +1851,22 @@ paths:
       description: >-
         Proof = the password (or, for accounts without one, the `confirmationCode` mailed by
         `POST /api/auth/step-up/code`) plus, when MFA is on, one `factor` (authenticator code, backup code or passkey
-        assertion; accounts without MFA need only the password or code). Order: rate limit (10 per user and 30 per IP per
-        15 minutes), password or code (400 `invalid_credentials` field `password` / 400 `invalid_confirmation_code` field
-        `code`), then the factor: missing is 422 `mfa_factor_required`; wrong is 422 `invalid_mfa_code` (field `code`)
+        assertion; accounts without MFA need only the password or code). Order: rate limit (30 per IP per 15 minutes and a
+        flood guard of 10 attempts per user), then, in one transaction under the user row lock, the proof: wrong
+        passwords and codes count against an exact per-user budget (10 per 15 minutes; exhausted is 429 `rate_limited`
+        with `Retry-After` before any proof is evaluated), a wrong one is 400 `invalid_credentials` (field `password`) /
+        400 `invalid_confirmation_code` (field `code`); a mailed code is spent only when the whole confirmation
+        succeeds. Then the factor: missing is 422 `mfa_factor_required`; wrong is 422 `invalid_mfa_code` (field `code`)
         or 422 `invalid_passkey`. Failed factor checks count against the same exact per-user budget as the MFA
         sign-in (5 per 15 minutes in total over both; exhausted is 429 `rate_limited` with `Retry-After` before any factor
         is evaluated). A backup code is consumed like at sign-in (event and mail with the remaining count; MFA and all
         sessions stay; the response adds `backupCodeUsed` and `backupCodesRemaining`). The token is valid 10 minutes,
-        cannot be refreshed or extended, and is bound to the user, the token version (any session ending kills it)
-        and the session's refresh-token family (the `fam` claim of the access token): it works only with the access
-        token of the session that requested it. An access token without `fam` (issued before the claim existed, at
+        cannot be refreshed or extended, and is bound to the user, the token version (it dies with a version bump:
+        password change, sign out everywhere, ...) and the session's refresh-token family (the `fam` claim of the
+        access token; it dies when that session is revoked, signed out or expired): it works only with the access token
+        of the session that requested it, and carries whether an MFA factor was proven (a token proven without a factor
+        stops working once MFA is switched on). An access token whose session (family) is not live gets 401
+        `invalid_token` on the step-up routes and on every flow that continues a session under a new family. An access token without `fam` (issued before the claim existed, at
         most 15 minutes old) gets 403 `step_up_unavailable`: refresh the access token and retry.
       operationId: stepUp
       requestBody:

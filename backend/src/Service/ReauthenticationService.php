@@ -6,79 +6,80 @@ namespace App\Service;
 
 use App\Entity\User;
 use App\Exception\ApiProblemException;
+use Doctrine\DBAL\Connection;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Uid\Uuid;
 
 /**
- * Re-authentication of the step-up confirmation (`StepUpService`). The code of
- * one purpose never validates for another (the purpose is part of the HMAC key). An account with a password confirms with that password.
- * An account without one (SSO-only, passkey-only) confirms with a 6-digit code mailed to its address: the
- * code is derived (HMAC of APP_SECRET over user, session version, address and a 10-minute window), so nothing
- * is stored; it is valid for the window it was issued in and the next one (10 to 20 minutes), ends with the
- * sessions (password set, takeover revocation) and with an address change. Attempts are limited per user and
- * client IP by the caller (`AuthRateLimiter`); a guess has a chance of 1 in 10^6 per try.
+ * Proof of the step-up confirmation (`StepUpService`). An account with a password proves it with that password.
+ * An account without one (SSO-only, passkey-only) proves it with a 6-digit code mailed to its address on
+ * request: the code is random, only its keyed hash is stored (`step_up_code`, one row per user, a new code
+ * replaces the old one), it is valid 10 minutes and single use. A code that was never sent cannot match. The
+ * caller checks it under the user row lock and consumes it only when the whole confirmation succeeded; failed
+ * attempts are counted by `StepUpProofBudget`.
  */
 readonly class ReauthenticationService
 {
-    public const int CODE_WINDOW = 600;
-    public const string PURPOSE_STEP_UP = 'step-up';
+    public const int CODE_TTL = 600;
 
     public function __construct(
         private UserPasswordHasherInterface $hasher,
         private AccountMailer $mailer,
         private ClockInterface $clock,
+        private Connection $connection,
         #[Autowire(env: 'APP_SECRET')]
         private string $secret,
     ) {
     }
 
-    /** Mails the current code (the same one within a window, so repeated requests do not invalidate it). */
-    public function sendCode(User $user, string $purpose): void
+    /** Stores a fresh code (replacing any earlier one, which dies) and mails it. */
+    public function sendCode(User $user): void
     {
         if (null !== $user->getPassword()) {
             throw new ApiProblemException(409, 'This account has a password: confirm with it', 'has_password');
         }
-        $code = $this->code($user, $purpose, $this->window());
-        $minutes = intdiv(self::CODE_WINDOW, 60);
-        $this->mailer->sendStepUpCode($user, $code, $minutes);
+        $code = str_pad((string) random_int(0, 999_999), 6, '0', \STR_PAD_LEFT);
+        $now = $this->clock->now()->setTimezone(new \DateTimeZone('UTC'));
+        $this->connection->executeStatement(
+            'INSERT INTO step_up_code (id, user_id, code_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE id = VALUES(id), code_hash = VALUES(code_hash), expires_at = VALUES(expires_at), created_at = VALUES(created_at)',
+            [
+                Uuid::v7()->toRfc4122(),
+                $user->getId(),
+                $this->hash($user, $code),
+                $now->modify('+'.self::CODE_TTL.' seconds')->format('Y-m-d H:i:s'),
+                $now->format('Y-m-d H:i:s'),
+            ],
+        );
+        $this->mailer->sendStepUpCode($user, $code, intdiv(self::CODE_TTL, 60));
     }
 
-    /**
-     * @throws ApiProblemException 400 `invalid_credentials` (password missing or wrong, field `password`),
-     *                             400 `invalid_confirmation_code` (code missing, wrong or expired, field `code`)
-     */
-    public function assertConfirmed(User $user, string $purpose, ?string $password, ?string $code): void
+    public function passwordMatches(User $user, ?string $password): bool
     {
-        if (null !== $user->getPassword()) {
-            if (null === $password || '' === $password || !$this->hasher->isPasswordValid($user, $password)) {
-                throw new ApiProblemException(400, 'The password is not correct', 'invalid_credentials', 'password');
-            }
-
-            return;
-        }
-        $window = $this->window();
-        $given = trim((string) $code);
-        $valid = false;
-        foreach ([$window, $window - 1] as $w) {
-            $valid = hash_equals($this->code($user, $purpose, $w), $given) || $valid;
-        }
-        if (!$valid) {
-            throw new ApiProblemException(400, 'The confirmation code is not correct or expired', 'invalid_confirmation_code', 'code');
-        }
+        return null !== $password && '' !== $password && $this->hasher->isPasswordValid($user, $password);
     }
 
-    private function window(): int
+    /** Whether `$code` is the user's sent, unused, unexpired code. Does not consume it. */
+    public function codeMatches(User $user, ?string $code): bool
     {
-        return intdiv($this->clock->now()->getTimestamp(), self::CODE_WINDOW);
+        return false !== $this->connection->fetchOne(
+            'SELECT 1 FROM step_up_code WHERE user_id = ? AND code_hash = ? AND expires_at > ?',
+            [$user->getId(), $this->hash($user, trim((string) $code)), $this->clock->now()->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s')],
+        );
     }
 
-    private function code(User $user, string $purpose, int $window): string
+    /** Spends the user's code (after a successful confirmation). */
+    public function consumeCode(User $user): void
     {
-        $key = hash_hmac('sha256', 'reauth-code|'.$purpose, $this->secret, true);
-        $mac = hash_hmac('sha256', implode('|', [$user->getId(), $user->getTokenVersion(), $user->getEmail(), $window]), $key, true);
-        $number = unpack('N', substr($mac, 0, 4))[1] % 1_000_000;
+        $this->connection->executeStatement('DELETE FROM step_up_code WHERE user_id = ?', [$user->getId()]);
+    }
 
-        return str_pad((string) $number, 6, '0', \STR_PAD_LEFT);
+    private function hash(User $user, string $code): string
+    {
+        $key = hash_hmac('sha256', 'step-up-code', $this->secret, true);
+
+        return hash_hmac('sha256', $user->getId().'|'.$code, $key);
     }
 }

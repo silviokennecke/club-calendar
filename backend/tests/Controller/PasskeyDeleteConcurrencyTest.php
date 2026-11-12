@@ -37,7 +37,8 @@ class PasskeyDeleteConcurrencyTest extends WebTestCase
         $em->flush();
         $client = static::getClient();
         [$auth, $stepUp] = TestHelper::stepUpSession($client, $user, $c->get(TokenService::class));
-        // MFA is switched on after the (password-only) step-up; the token stays valid
+        // fixture: MFA is switched on directly, the token is re-signed as factor-proven
+        $stepUp = TestHelper::claimFactor($client, $stepUp);
         $user->setMfaEnforced(true);
         $em->flush();
 

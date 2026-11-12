@@ -176,4 +176,14 @@ class StepUpConcurrencyTest extends WebTestCase
         $this->assertSame([200, 422, 422], $statuses, json_encode($results));
         $this->assertSame(9, (int) static::getContainer()->get(Connection::class)->fetchOne('SELECT COUNT(*) FROM mfa_backup_code WHERE used_at IS NULL'));
     }
+
+    public function testWrongPasswordsAreCountedExactlyInParallel(): void
+    {
+        $this->user();
+        $results = $this->parallel(array_fill(0, 14, ['/api/auth/step-up', ['password' => 'wrong'], $this->auth]));
+
+        $codes = $this->codes($results);
+        $this->assertSame(10, $codes['invalid_credentials'] ?? 0, json_encode($results));
+        $this->assertSame(4, $codes['rate_limited'] ?? 0, json_encode($results));
+    }
 }

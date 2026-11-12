@@ -6,16 +6,16 @@ namespace App\Security\StepUp;
 
 use App\Entity\User;
 use App\Exception\ApiProblemException;
-use App\Security\SessionConsentListener;
+use App\Security\SessionFamilyGuard;
 use App\Security\SignedTokenService;
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
  * The step-up token: a signed token (purpose `step_up`) that proves a sensitive-action confirmation (password
- * or mailed code, plus an MFA factor when MFA is on) for ONE session. Valid TTL seconds, never renewed or extended
- * (a new one needs a new confirmation). Bound to the user, the token version (`tv`, so any session ending kills it)
- * and the refresh-token family (`fam`) of the access token it was issued for, so it is useless in another session.
+ * or mailed code, plus an MFA factor when MFA is on; the claim `mfa` records whether a factor was required) for ONE session. Valid TTL seconds, never renewed or extended
+ * (a new one needs a new confirmation). Bound to the user, the token version (`tv`, so a version bump kills it)
+ * and the refresh-token family (`fam`) of the access token it was issued for, so it is useless in another session and
+ * dies with that session (a dead family is a 401 for the access token, see {@see SessionFamilyGuard}).
  * Carried in the `X-Step-Up-Token` header next to the normal access token.
  */
 class StepUpTokenService
@@ -26,32 +26,36 @@ class StepUpTokenService
 
     public function __construct(
         private readonly SignedTokenService $signedTokens,
-        private readonly TokenStorageInterface $tokenStorage,
+        private readonly SessionFamilyGuard $familyGuard,
     ) {
     }
 
     /** Whether the presenting session can get and use a step-up at all (its access token carries the `fam` claim). */
     public function sessionFamily(): ?string
     {
-        return SessionConsentListener::family($this->tokenStorage->getToken());
+        return $this->familyGuard->family();
     }
 
     /**
      * @throws ApiProblemException 403 `step_up_unavailable`: the access token has no session claim (issued before it
-     *                             existed, at most 15 minutes old); the client refreshes the access token first
+     *                             existed, at most 15 minutes old); the client refreshes the access token first;
+     *                             401 `invalid_token`: its session was signed out, revoked or has ended
      */
     public function requireFamily(): string
     {
+        $this->familyGuard->liveExpiry();
+
         return $this->sessionFamily() ?? throw new ApiProblemException(403, 'Refresh the access token first', 'step_up_unavailable');
     }
 
     /** @return array{token: string, expiresIn: int} */
-    public function issue(User $user): array
+    public function issue(User $user, bool $mfa): array
     {
         return ['token' => $this->signedTokens->issue(self::PURPOSE, [
             'sub' => $user->getId(),
             'tv' => $user->getTokenVersion(),
             'fam' => $this->requireFamily(),
+            'mfa' => $mfa,
             'jti' => Uuid::v7()->toRfc4122(),
         ], self::TTL), 'expiresIn' => self::TTL];
     }
@@ -59,6 +63,7 @@ class StepUpTokenService
     public function accepts(?string $token, User $user): bool
     {
         $family = $this->sessionFamily();
+        $this->familyGuard->liveExpiry();
         if (null === $family || null === $token || '' === $token) {
             return false;
         }
@@ -67,6 +72,8 @@ class StepUpTokenService
         return null !== $claims
             && ($claims['sub'] ?? null) === $user->getId()
             && ($claims['tv'] ?? null) === $user->getTokenVersion()
-            && ($claims['fam'] ?? null) === $family;
+            && ($claims['fam'] ?? null) === $family
+            // a token proven without a factor stops counting once MFA was turned on afterwards
+            && (true === ($claims['mfa'] ?? null) || !$user->isMfaEnforced());
     }
 }

@@ -12,4 +12,8 @@ namespace App\Security\StepUp;
 #[\Attribute(\Attribute::TARGET_CLASS | \Attribute::TARGET_METHOD)]
 final class RequiresStepUp
 {
+    /** @param string|null $whenJsonTrue only enforced when this key of the JSON body is `true` (e.g. approving, not denying) */
+    public function __construct(public readonly ?string $whenJsonTrue = null)
+    {
+    }
 }

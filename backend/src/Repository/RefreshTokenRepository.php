@@ -65,12 +65,15 @@ class RefreshTokenRepository extends ServiceEntityRepository
         ];
     }
 
-    /** Absolute end of a user's session (family), or null when unknown (pruned, or another user's). */
-    public function findFamilyExpiry(string $familyId, string $userId): ?\DateTimeImmutable
+    /**
+     * Absolute end of a LIVE session (family) of the user: at least one token that is not revoked and not
+     * expired, and the family's absolute end still ahead. Null when there is none (revoked, ended, pruned, foreign).
+     */
+    public function findLiveFamilyExpiry(string $familyId, string $userId, \DateTimeImmutable $now): ?\DateTimeImmutable
     {
         $value = $this->connection()->fetchOne(
-            'SELECT MIN(family_expires_at) FROM refresh_token WHERE family_id = ? AND user_id = ?',
-            [$familyId, $userId],
+            'SELECT MIN(family_expires_at) FROM refresh_token WHERE family_id = ? AND user_id = ? AND revoked_at IS NULL AND expires_at > ? AND family_expires_at > ?',
+            [$familyId, $userId, $this->utc($now), $this->utc($now)],
         );
 
         return is_string($value) ? new \DateTimeImmutable($value, new \DateTimeZone('UTC')) : null;

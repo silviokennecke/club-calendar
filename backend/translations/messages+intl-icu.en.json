@@ -134,6 +134,21 @@
             "body": "There were {count} failed sign-in attempts on your Club Calendar account in the last hour. This means someone tried to sign in but did not enter the password or code correctly. The details below belong to the latest attempt.",
             "info": "Nothing was changed on your account and nobody is signed in. We send you at most one message per day about such attempts.",
             "not_you": "If this was not you, change your password via \"Forgot password\" to be safe (this ends all sessions), then check MFA and your passkeys in your profile. You can find the page here:"
+        },
+        "failed_step_ups": {
+            "subject": "Failed confirmations of a sensitive action on your account",
+            "greeting": "Hello {name},",
+            "body": "Someone who is signed in to your Club Calendar account tried to confirm a sensitive action {count} times in the last hour and entered the password or code incorrectly. The details below belong to the latest attempt.",
+            "info": "Nothing was changed on your account. We send you at most one message per day about such attempts.",
+            "not_you": "If this was not you, someone may have access to a session of your account. Sign out everywhere in your profile and change your password via \"Forgot password\" (this ends all sessions). You can find the \"Forgot password\" page here:"
+        },
+        "mcp_grant_created": {
+            "unverified_app": "Unverified app",
+            "subject": "A new app was connected to your account",
+            "greeting": "Hello {name},",
+            "body": "A new app was connected to your Club Calendar account: {app}. It can now read your clubs' calendars and create drafts in your name.",
+            "info": "You can see and disconnect connected apps in your profile at any time.",
+            "not_you": "Then someone has access to your account. Disconnect the app in your profile under \"Connected apps\" and set a new password via \"Forgot password\" (this ends all sessions). You can find the \"Forgot password\" page here:"
         }
     }
 }
