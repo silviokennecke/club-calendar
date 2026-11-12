@@ -60,6 +60,10 @@ bin/console` in `backend/` mit `DATABASE_URL` der E2E-Datenbank, überschreibbar
 beendet Sitzungen über einen echten Reset), `app:user:create` und `app:user:set-password` (Nutzer anlegen/Passwörter ändern). Der Konsolenbefehl läuft mit `APP_ENV` aus `.env` (prod) und teilt sich den
 Cache `backend/var/cache/prod` mit dem PHP-Server.
 
+Die Docs-Screenshot-Specs `organize.docs.ts` und `publishing.docs.ts` befüllen Daten über `docker exec cc-verify-mysql … club_calendar_e2e` (Datenbankname fest eingetragen, `E2E_DATABASE_URL` gilt dort nicht): Container und Datenbank `club_calendar_e2e` müssen so heißen, sonst schlagen diese 8 Specs fehl.
+
+Virtueller Authenticator (CDP `WebAuthn`, `automaticPresenceSimulation: true`): Die Anmeldeseite stellt im Hintergrund eine stille Passkey-Anfrage (Autofill), die ein solcher Authenticator sofort beantwortet und damit den Login auslöst. In Tests, die nur Passkeys registrieren oder selbst auslösen, vorher `setPresenceSimulation(cdp, authenticatorId, false)` (`e2e/helpers.ts`) aufrufen und erst für den gewollten Schritt wieder einschalten.
+
 Aufräumen (immer, auch nach Fehlern): Server auf 3001 / 5199 beenden (auch den `npm exec`-Elternprozess von Vite),
 `DROP DATABASE club_calendar_e2e`, Container entfernen (`docker rm -f cc-verify-mysql`), `frontend/test-results` und
 `backend/var/cache/prod` löschen (der Rate-Limiter von "Passwort vergessen" merkt sich dort 20 Anfragen je IP und

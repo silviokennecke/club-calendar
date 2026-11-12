@@ -196,7 +196,7 @@ Sign-in notification mails and the security log name the browser used (for examp
 
 === "Docker"
 
-    The list is refreshed every time the image is built, so each new release contains current data. Updating to a newer image (see [Updating](#updating)) is all you need. If the build cannot reach the source, it keeps the list that ships with the software and prints a warning in the build log.
+    The list is refreshed every time the image is built, so each new release contains current data. Updating to a newer image (see [Updating](#updating)) is all you need. If you rebuild the image yourself, Docker reuses its cached layers when nothing changed, so an unchanged rebuild keeps the old list. To force a fresh list, build with `docker build --no-cache-filter runtime ...`; to keep the current list, change nothing. If the build cannot reach the source, it keeps the list that ships with the software and prints a warning in the build log.
 
 === "Without Docker"
 

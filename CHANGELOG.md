@@ -11,6 +11,10 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Added
 
+- Multi-factor authentication (MFA): users can add an authenticator app and passkeys as an additional factor at password sign-in, get backup codes (shown once), and turn MFA on or off in the new profile section "Multi-Faktor-Authentifizierung (MFA)". A password sign-in with MFA on returns `mfaRequired` and a short-lived `mfaToken` (new routes `/api/auth/mfa/*`); a backup code ends MFA and all other sessions. Operators can reset a locked-out user with `php bin/console app:user:disable-mfa <id|email>`.
+- Notice e-mails for security events (password changed, MFA turned on or off, backup codes regenerated or used, passkey deleted, repeated failed sign-ins) with time, IP address, approximate location and browser.
+- Security log of sign-ins and account-security events (not viewable in the app yet; kept for one year, cleaned by the new command `app:prune-security-events`, to be run by cron).
+- Optional offline location lookup for these notices: MaxMind GeoLite2 City (`MAXMIND_ACCOUNT_ID`, `MAXMIND_LICENSE_KEY`, `GEOIP_DB_PATH`, database refreshed by `app:geoip:update`) or, without a key, the visitor's country from a header of a trusted proxy (`CLIENT_COUNTRY_HEADER`, default empty = off).
 - Admin UI for feed self-join: club setting "Beitritt über Feeds" (off / internal feeds / also public feeds) on the club's general tab; private feeds get a section "Zugewiesene Mitglieder" (paginated list with search and source filter, add by member search or pasted e-mail list, remove single or selected); rotating a private feed's secret can withdraw the access of members who joined it themselves; the feed list shows the assigned count.
 - Public feed page and accounts: a slim bar "Angemeldet als ..." (to the account, sign out) above all public pages for signed-in visitors; the subscribe split button gets "Zu meinem Konto hinzufügen" / "In meinem Konto anzeigen" depending on membership and subscription; new confirmation page `/feed/:feedId/join` (becomes a club member and adds the feed); the sign-in and signup flow passes the feed proof (identify, register, SSO start) so registration works under `RESTRICT_REGISTRATION`.
 - "Mein Verein" tabs: the calendar shows the events of the personal subscription (month / list, audience filter preselected from the subscription, event dialog); the subscription tab chooses feeds and audiences and shows the personal calendar link with the usual subscribe button. The profile has a new section "Mein Kalender-Abo" to renew the personal link per club.
@@ -28,6 +32,11 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Changed
 
+- Deleting a passkey now needs a confirmation (password, or a mailed code for accounts without a password); `POST /api/auth/webauthn/register/verify` returns the id of the new passkey. The last passkey cannot be deleted while it is the only MFA factor.
+- The password-changed mail now also names IP address, approximate location and browser.
+- Backup codes are stored with a salted slow hash.
+- The silent passkey autofill on the sign-in page no longer shows an error when it is dismissed or fails.
+- Browsers in notices are recognised by a maintained parser (uap-php); in the Docker image its data is refreshed at build time.
 - Small UI fixes: audience and location lists and the audience chips and filters are sorted alphabetically; the feed visibility "CLUB" is now called "Vereinsintern" and private feed assignment is described; the template picker loads templates in chunks of 5; "Import" is removed from the sidebar navigation; the dropdown arrow of selects no longer overlaps the text; the sign-in flow shows no required marker; the e-mail confirmation code is shown grouped as 123-456.
 - Calendar search is the same everywhere: an autocomplete with at most 10 previews and a last entry "Alle Ergebnisse anzeigen" that opens the list with the search term. In the event calendar the list is the event list; on the public feed page and in "Mein Verein" the click opens the event dialog and the list shows the matches of all dates.
 - Sign-in is kept across tabs and browser restarts: the refresh token is stored in the browser, the access token only per tab. Signing out applies to all open tabs of the browser.
@@ -35,6 +44,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Security
 
+- MFA verification at sign-in is atomic: the guess budget per login token is exact (kept in the database), a lost race no longer burns a code, and stale state cannot be reused. The per-user and per-IP verify limits are best effort under parallel requests.
 - Feed shared secrets and personal subscription secrets are now encrypted in the database (XChaCha20-Poly1305 with a key derived from `APP_SECRET`, bound to the column; format `enc:v1:<keyId>:<data>`); the API and the app still show the plaintext address. Existing plaintext values stay readable and are encrypted by the new command `php bin/console app:secrets:rotate` (the Docker entrypoint runs it at start, non-fatal). The same command re-encrypts everything after an `APP_SECRET` change: set `APP_SECRET_PREVIOUS` (old values, comma-separated) while rotating. `APP_SECRET` is now part of what a database backup needs to be readable. Migration widens `member_subscription.secret` to 255; `ext-sodium` is now a declared requirement.
 - SSO (Google, Microsoft, Apple; sign-in and account linking): every flow now sends an OIDC `nonce`, kept in the signed `state`, and the ID token must carry exactly that nonce, so an ID token issued for another flow is refused (`oauth_failed`).
 - SSO (Google, Microsoft, Apple): the signature of the ID token is now verified against the provider's JWKS (RS256 only; keys cached for 1 hour, at most one refetch per minute on an unknown key id). A failed fetch or invalid signature ends the sign-in with `oauth_failed`. The backend must reach `www.googleapis.com`, `login.microsoftonline.com` and `appleid.apple.com` over HTTPS. `lcobucci/jwt` is now a direct dependency.
