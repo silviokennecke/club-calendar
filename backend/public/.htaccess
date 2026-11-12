@@ -1,7 +1,7 @@
 # Serves the built SPA (index.html + assets) and the Symfony API from one docroot.
 #   /api/*        -> Symfony front controller (index.php)
-#   /.well-known/oauth-authorization-server, /.well-known/oauth-protected-resource[/api/mcp]
-#                 -> Symfony (OAuth/MCP discovery documents, RFC 8414 / 9728); other /.well-known paths -> SPA
+#   /.well-known/oauth-authorization-server, /.well-known/oauth-protected-resource[/api/mcp], /.well-known/change-password
+#                 -> Symfony (OAuth/MCP discovery documents, RFC 8414 / 9728; change-password redirect); other /.well-known paths -> SPA
 #   existing file -> served as is
 #   anything else -> SPA (index.html), so client-side routes survive a reload (directories too: /assets/ is never listed)
 # No "Options -Indexes": under a restrictive AllowOverride it is a 500 for the whole site (audit I2); directory listings
@@ -19,15 +19,15 @@ DirectoryIndex index.html index.php
     RewriteCond %{ENV:REDIRECT_STATUS} =""
     RewriteRule ^index\.php(?:/(.*)|$) /$1 [R=301,L]
 
-    # Keep dotfiles and dot directories private (.env, .git/..., .htaccess), except the OAuth discovery documents.
+    # Keep dotfiles and dot directories private (.env, .git/..., .htaccess), except the OAuth discovery documents and change-password.
     # Not a FilesMatch: that is evaluated while Apache walks the .well-known directory and would deny it.
-    RewriteRule (^|/)\.(?!well-known/oauth-(?:authorization-server|protected-resource)(?:/|$)) - [F]
+    RewriteRule (^|/)\.(?!well-known/(?:oauth-(?:authorization-server|protected-resource)|change-password)(?:/|$)) - [F]
 
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
     RewriteRule ^api(?:/|$) index.php [L]
-    RewriteRule ^\.well-known/oauth-(?:authorization-server|protected-resource)(?:/|$) index.php [L]
+    RewriteRule ^\.well-known/(?:oauth-(?:authorization-server|protected-resource)|change-password)(?:/|$) index.php [L]
 
     RewriteRule ^ index.html [L]
 </IfModule>

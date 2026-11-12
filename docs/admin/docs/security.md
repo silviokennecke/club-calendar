@@ -230,7 +230,7 @@ The app can let AI assistants (such as Claude, ChatGPT or Gemini) read a user's 
 - An empty `MCP_ALLOWED_CLIENTS` now means "no client" (older versions allowed all). After an upgrade, set it to `*` if you want every app to connect.
 - In a split setup (web app and API on different addresses), the consent step only works when both addresses are on the same site, for example `app.example.com` and `api.example.com`. AI apps running in a browser on other addresses are blocked.
 - Behind a proxy, do not buffer `/api/mcp` and allow long-lived connections.
-- With nginx or another web server, the discovery addresses under `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource`, and `/api/mcp`, must reach the app, and `/api/mcp` must not be buffered. The bundled Caddy and `.htaccess` already do this.
+- With nginx or another web server, the discovery addresses under `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource`, and `/api/mcp`, must reach the app, and `/api/mcp` must not be buffered. `/.well-known/change-password` (a redirect for password managers) must reach the app as well. The bundled Caddy and `.htaccess` already do this.
 - Connection lifetimes can be tuned with the `MCP_*` variables, see the [reference](configuration/reference.md).
 - Expired entries are cleaned up by the scheduled command `app:prune-oauth` (see [Operations](operations.md)).
 

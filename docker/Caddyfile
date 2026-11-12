@@ -65,8 +65,8 @@
 		}
 	}
 
-	# API and the OAuth/MCP discovery documents (RFC 8414 / 9728, not under /api) -> Symfony via PHP-FPM
-	@symfony path /api/* /.well-known/oauth-authorization-server /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/*
+	# API and the OAuth/MCP discovery documents (RFC 8414 / 9728) and the change-password redirect (not under /api) -> Symfony via PHP-FPM
+	@symfony path /api/* /.well-known/oauth-authorization-server /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/* /.well-known/change-password
 	handle @symfony {
 		request_body {
 			max_size 16MB

@@ -162,8 +162,8 @@ The web server has three jobs:
             fastcgi_read_timeout 3600s;
         }
 
-        # API and OAuth/MCP discovery documents
-        location ~ ^/(api/|\.well-known/oauth-(authorization-server|protected-resource)) {
+        # API, OAuth/MCP discovery documents and the change-password redirect
+        location ~ ^/(api/|\.well-known/(oauth-(authorization-server|protected-resource)|change-password)) {
             fastcgi_pass unix:/run/php/php8.4-fpm.sock;
             include fastcgi_params;
             fastcgi_param SCRIPT_FILENAME $document_root/index.php;
@@ -212,6 +212,7 @@ The web server has three jobs:
       `Caddyfile` of the new release.
     - **`/.well-known/oauth-*` and `/api/mcp`** must go to PHP, or AI assistants (MCP clients) cannot find and use
       the server. Do not block `.well-known` with a dotfile rule.
+    - **`/.well-known/change-password`** must go to PHP too. It sends password managers to the password section of the profile page.
     - **TLS** is not shown. Terminate it here or in front, and send the HSTS header only over HTTPS.
     - **Timeouts** for `/api/` should be at least 60 seconds (PDF export).
 
