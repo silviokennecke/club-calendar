@@ -227,9 +227,6 @@ class AuthController extends AbstractApiController
         $this->validateDto($dto, $this->validator);
         $dto->email = trim($dto->email);
 
-        if (null === $user->getPassword()) {
-            throw new ApiProblemException(409, 'This account has no password', 'no_password');
-        }
         $send = $this->emailChangeLimiter->create($user->getId())->consume()->isAccepted();
         $this->accounts->requestEmailChange($user, $dto->email, $send);
 

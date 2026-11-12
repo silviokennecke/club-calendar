@@ -24,12 +24,16 @@ class StepUpMigrationTest extends WebTestCase
         ['DELETE', '/api/auth/me'],
         ['POST', '/api/auth/change-password'],
         ['POST', '/api/auth/change-email'],
+        ['POST', '/api/auth/mfa/setup'],
         ['POST', '/api/auth/mfa/enable'],
         ['POST', '/api/auth/mfa/disable'],
         ['POST', '/api/auth/mfa/backup-codes'],
         ['POST', '/api/auth/webauthn/register/options'],
         ['POST', '/api/auth/webauthn/register/verify'],
         ['DELETE', '/api/auth/webauthn/some-id'],
+        ['POST', '/api/auth/oauth/google/link-start'],
+        ['POST', '/api/auth/oauth/google/link-complete'],
+        ['DELETE', '/api/auth/oauth/google'],
     ];
 
     private KernelBrowser $client;

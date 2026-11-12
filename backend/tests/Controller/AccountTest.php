@@ -454,14 +454,24 @@ class AccountTest extends WebTestCase
         $this->assertSame(0, self::$em->getRepository(EmailChange::class)->count([]));
     }
 
-    public function testSsoOnlyAccountsCannotChangeTheAddress(): void
+    public function testSsoOnlyAccountChangesTheAddressWithAMailedCodeStepUp(): void
     {
         $sso = $this->ssoOnlyUser();
+        $auth = TestHelper::sessionHeader($sso, self::$tokens);
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-email', ['email' => 'other@example.com'], $auth);
+        $this->assertSame('step_up_required', $r['body']['code']);
+
         [$auth, $stepUp] = $this->ssoSu($sso);
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-email', ['email' => 'other@example.com'], $auth, $stepUp);
-        $this->assertSame(409, $r['status']);
-        $this->assertSame('no_password', $r['body']['code']);
-        $this->assertEmailCount(0);
+        $this->assertSame(204, $r['status']);
+        $this->assertEmailCount(2);
+        $this->assertEmailAddressContains($this->getMailerMessage(0), 'to', 'other@example.com');
+        $this->assertEmailAddressContains($this->getMailerMessage(1), 'to', $sso->getEmail());
+        $token = $this->confirmTokenFromMail();
+
+        $this->assertSame(['status' => 'email_changed'], $this->openConfirmation($token));
+        $this->assertSame('other@example.com', $this->user($sso->getId())->getEmail());
+        $this->assertSame(401, TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], $auth)['status']);
     }
 
     public function testChangeEmailValidatesTheAddress(): void

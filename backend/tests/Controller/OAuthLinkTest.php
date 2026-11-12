@@ -70,14 +70,46 @@ class OAuthLinkTest extends WebTestCase
 
     // --- helpers ---
 
+    /** @var array<string, string> step-up token by Authorization header */
+    private array $stepUps = [];
+
+    /** @var array<string, string> Authorization header by user id and token version */
+    private array $sessions = [];
+
+    /** One session per user (and session version) with a step-up token, as the profile page has after confirming. */
     private function auth(User $user): string
     {
-        return 'Bearer '.$this->tokens->createAccessToken($user);
+        $key = $user->getId().'#'.$user->getTokenVersion();
+        if (!isset($this->sessions[$key])) {
+            $auth = TestHelper::sessionHeader($user, $this->tokens);
+            $conn = $this->em->getConnection();
+            $row = $conn->fetchAssociative('SELECT password, mfa_enforced FROM user WHERE id = ?', [$user->getId()]);
+            $conn->executeStatement('UPDATE user SET password = ?, mfa_enforced = 0 WHERE id = ?', [$this->hasher->hashPassword($user, 'password123'), $user->getId()]);
+            if ($this->em->contains($user)) {
+                $this->em->refresh($user);
+            }
+            try {
+                $this->stepUps[$auth] = TestHelper::stepUp(self::$client, $auth);
+            } finally {
+                $conn->executeStatement('UPDATE user SET password = ?, mfa_enforced = ? WHERE id = ?', [$row['password'], $row['mfa_enforced'], $user->getId()]);
+                if ($this->em->contains($user)) {
+                    $this->em->refresh($user);
+                }
+            }
+            $this->sessions[$key] = $auth;
+        }
+
+        return $this->sessions[$key];
+    }
+
+    private function stepUpOf(string $auth): ?string
+    {
+        return $this->stepUps[$auth] ?? null;
     }
 
     private function linkStart(User $user, string $provider): array
     {
-        return TestHelper::jsonRequest(self::$client, 'POST', self::API."/api/auth/oauth/$provider/link-start", [], $this->auth($user));
+        return TestHelper::jsonRequest(self::$client, 'POST', self::API."/api/auth/oauth/$provider/link-start", [], $this->auth($user), $this->stepUpOf($this->auth($user)));
     }
 
     /** POST link-start, then open the returned URL in the browser; returns the ticket. */
@@ -146,11 +178,11 @@ class OAuthLinkTest extends WebTestCase
         return 204 === $r['status'] ? self::profile(['linked' => $query['link_provider']]) : self::profile(['link_error' => $r['body']['code'] ?? 'status-'.$r['status']]);
     }
 
-    private function completeRequest(string $provider, string $proof, ?string $auth): array
+    private function completeRequest(string $provider, string $proof, ?string $auth, ?string $stepUp = null): array
     {
         return null === $auth
             ? TestHelper::jsonRequest(self::$client, 'POST', self::API."/api/auth/oauth/$provider/link-complete", ['proof' => $proof])
-            : TestHelper::jsonRequest(self::$client, 'POST', self::API."/api/auth/oauth/$provider/link-complete", ['proof' => $proof], $auth);
+            : TestHelper::jsonRequest(self::$client, 'POST', self::API."/api/auth/oauth/$provider/link-complete", ['proof' => $proof], $auth, $stepUp ?? $this->stepUpOf($auth));
     }
 
     /** Callback of a started link flow; returns the proof of the redirect to the profile. */
@@ -210,6 +242,45 @@ class OAuthLinkTest extends WebTestCase
         $r = $this->linkStart($user, 'nope');
         $this->assertSame(404, $r['status']);
         $this->assertSame('unknown_provider', $r['body']['code']);
+    }
+
+    // --- step-up ---
+
+    public function testLinkingAndUnlinkingNeedAStepUp(): void
+    {
+        $user = $this->createUser('alice@example.com');
+        $this->addAccount($user, 'google', 'g-1');
+        $plain = TestHelper::sessionHeader($user, $this->tokens);
+        foreach ([
+            ['POST', '/api/auth/oauth/google/link-start', []],
+            ['POST', '/api/auth/oauth/google/link-complete', ['proof' => 'forged.proof']],
+            ['DELETE', '/api/auth/oauth/google', []],
+        ] as [$method, $uri, $body]) {
+            $r = TestHelper::jsonRequest(self::$client, $method, self::API.$uri, $body, $plain);
+            $this->assertSame(403, $r['status'], "$method $uri");
+            $this->assertSame('step_up_required', $r['body']['code'], "$method $uri");
+        }
+        $this->assertCount(1, $this->accounts());
+    }
+
+    public function testStepUpExpiredDuringTheProviderDetourKeepsTheProofUsable(): void
+    {
+        self::mockTime('2026-10-13 09:00:00 UTC');
+        $user = $this->createUser('alice@example.com');
+        $auth = $this->auth($user);
+        $oldToken = $this->stepUpOf($auth);
+
+        self::mockTime('+8 minutes');
+        $proof = $this->proofFor($user, 'google', 'g-1');
+        self::mockTime('+3 minutes');
+        $r = $this->completeRequest('google', $proof, $auth, $oldToken);
+        $this->assertSame(403, $r['status']);
+        $this->assertSame('step_up_required', $r['body']['code']);
+        $this->assertSame([], $this->accounts());
+
+        // The refused call did not use up the proof: confirm again and repeat.
+        $this->assertSame(204, $this->completeRequest('google', $proof, $auth, TestHelper::stepUp(self::$client, $auth))['status']);
+        $this->assertCount(1, $this->accounts());
     }
 
     // --- linking ---
@@ -501,7 +572,7 @@ class OAuthLinkTest extends WebTestCase
     {
         $user = $this->createUser('alice@example.com');
         $this->addAccount($user, 'google', 'g-1');
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', self::API.'/api/auth/oauth/google', [], $this->auth($user));
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', self::API.'/api/auth/oauth/google', [], $this->auth($user), $this->stepUpOf($this->auth($user)));
         $this->assertSame(204, $r['status'], $r['content']);
         $this->assertSame([], $this->accounts());
     }
@@ -510,7 +581,7 @@ class OAuthLinkTest extends WebTestCase
     {
         $user = $this->createUser('sso@example.com', false);
         $this->addAccount($user, 'google', 'g-1');
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', self::API.'/api/auth/oauth/google', [], $this->auth($user));
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', self::API.'/api/auth/oauth/google', [], $this->auth($user), $this->stepUpOf($this->auth($user)));
         $this->assertSame(409, $r['status']);
         $this->assertSame('last_login_method', $r['body']['code']);
         $this->assertCount(1, $this->accounts());
@@ -521,15 +592,15 @@ class OAuthLinkTest extends WebTestCase
         $user = $this->createUser('sso@example.com', false);
         $this->addAccount($user, 'google', 'g-1');
         $this->addAccount($user, 'microsoft', 'ms-1');
-        $this->assertSame(204, TestHelper::jsonRequest(self::$client, 'DELETE', self::API.'/api/auth/oauth/google', [], $this->auth($user))['status']);
-        $this->assertSame(409, TestHelper::jsonRequest(self::$client, 'DELETE', self::API.'/api/auth/oauth/microsoft', [], $this->auth($user))['status']);
+        $this->assertSame(204, TestHelper::jsonRequest(self::$client, 'DELETE', self::API.'/api/auth/oauth/google', [], $this->auth($user), $this->stepUpOf($this->auth($user)))['status']);
+        $this->assertSame(409, TestHelper::jsonRequest(self::$client, 'DELETE', self::API.'/api/auth/oauth/microsoft', [], $this->auth($user), $this->stepUpOf($this->auth($user)))['status']);
 
         $user = $this->em->getRepository(User::class)->find($user->getId());
         $passkey = new Passkey();
         $passkey->setId('pk-1')->setUser($user)->setCredentialId('cred-1')->setPublicKey('key');
         $this->em->persist($passkey);
         $this->em->flush();
-        $this->assertSame(204, TestHelper::jsonRequest(self::$client, 'DELETE', self::API.'/api/auth/oauth/microsoft', [], $this->auth($user))['status']);
+        $this->assertSame(204, TestHelper::jsonRequest(self::$client, 'DELETE', self::API.'/api/auth/oauth/microsoft', [], $this->auth($user), $this->stepUpOf($this->auth($user)))['status']);
         $this->assertSame([], $this->accounts());
     }
 
@@ -538,7 +609,7 @@ class OAuthLinkTest extends WebTestCase
         $user = $this->createUser('alice@example.com');
         $other = $this->createUser('bob@example.com');
         $this->addAccount($other, 'google', 'g-bob');
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', self::API.'/api/auth/oauth/google', [], $this->auth($user));
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', self::API.'/api/auth/oauth/google', [], $this->auth($user), $this->stepUpOf($this->auth($user)));
         $this->assertSame(404, $r['status']);
         $this->assertSame('oauth_account_not_found', $r['body']['code']);
         $this->assertCount(1, $this->accounts());

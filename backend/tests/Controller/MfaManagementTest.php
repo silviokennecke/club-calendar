@@ -68,7 +68,7 @@ class MfaManagementTest extends WebTestCase
 
     private function sensitive(string $method, string $uri): bool
     {
-        return ('POST' === $method && in_array($uri, ['/api/auth/mfa/enable', '/api/auth/mfa/disable', '/api/auth/mfa/backup-codes'], true))
+        return ('POST' === $method && in_array($uri, ['/api/auth/mfa/setup', '/api/auth/mfa/enable', '/api/auth/mfa/disable', '/api/auth/mfa/backup-codes'], true))
             || ('DELETE' === $method && str_starts_with($uri, '/api/auth/webauthn/'));
     }
 
@@ -170,6 +170,13 @@ class MfaManagementTest extends WebTestCase
         $this->assertNotEmpty($r['body']['secret']);
         $this->assertSame(0, (int) $this->conn()->fetchOne('SELECT COUNT(*) FROM user_totp'));
         $this->assertSame(0, (int) $this->conn()->fetchOne('SELECT COUNT(*) FROM mfa_backup_code'));
+    }
+
+    public function testSetupNeedsAStepUp(): void
+    {
+        $r = $this->call('POST', '/api/auth/mfa/setup', ['method' => 'totp'], $this->user(), false);
+        $this->assertSame(403, $r['status']);
+        $this->assertSame('step_up_required', $r['body']['code']);
     }
 
     public function testSetupErrors(): void

@@ -17,6 +17,7 @@ use App\Security\CurrentUserResolver;
 use App\Security\NonceStore;
 use App\Security\OneTimeTokenService;
 use App\Security\SignedTokenService;
+use App\Security\StepUp\RequiresStepUp;
 use App\Service\AccountService;
 use App\Service\AuthService;
 use App\Service\FeedProof;
@@ -114,6 +115,7 @@ class OAuthController extends AbstractController
     }
 
     #[Route('/{provider}/link-start', name: 'oauth_link_start', methods: ['POST'])]
+    #[RequiresStepUp]
     public function linkStart(string $provider): JsonResponse
     {
         $user = $this->userResolver->resolve();
@@ -163,6 +165,7 @@ class OAuthController extends AbstractController
      * version). A flow started by someone else ends here (400 invalid_state).
      */
     #[Route('/{provider}/link-complete', name: 'oauth_link_complete', methods: ['POST'])]
+    #[RequiresStepUp]
     public function linkComplete(string $provider, Request $request): JsonResponse
     {
         $user = $this->userResolver->resolve();
@@ -188,6 +191,7 @@ class OAuthController extends AbstractController
     }
 
     #[Route('/{provider}', name: 'oauth_unlink', methods: ['DELETE'])]
+    #[RequiresStepUp]
     public function unlink(string $provider): JsonResponse
     {
         $this->accounts->unlinkProvider($this->userResolver->resolve(), $provider);

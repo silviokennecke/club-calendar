@@ -77,8 +77,7 @@ readonly class AccountService
      * Starts an e-mail change: the new address gets a confirmation link (24 h), the account keeps its
      * address until then. If the new address already belongs to an account, no mail goes there, but the
      * request looks the same (answer and pending address; no oracle). The current address gets a notice
-     * in both cases. `$send = false` (rate limit) sends no mail at all. SSO-only accounts cannot change
-     * the address (409 no_password): without a password there is no re-authentication.
+     * in both cases. `$send = false` (rate limit) sends no mail at all.
      */
     public function requestEmailChange(User $user, string $newEmail, bool $send = true): void
     {

@@ -7,7 +7,6 @@ Offene Backend-Features, Sicherheitsrisiken, Betriebspunkte und Design-Entscheid
 ### Konten
 
 - **Theme** wird nur im Browser gespeichert (localStorage), nicht am Benutzer (bewusst).
-- **E-Mail-Wechsel für SSO-only-Konten** ist nicht möglich (409 `no_password`), bis ein Passwort gesetzt ist
   ("Passwort per E-Mail festlegen" im Profil); eine Bestätigung über eine erneute SSO-Anmeldung gibt es nicht.
 - **Keine Mail an eine bereits vergebene neue Adresse** (bewusst): weder Bestätigungslink noch Hinweis; der
   Wechsel bleibt unsichtbar wartend (kein Orakel, und sonst könnte jeder beliebigen Kontoinhabern Mails schicken).

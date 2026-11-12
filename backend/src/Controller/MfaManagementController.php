@@ -28,6 +28,7 @@ class MfaManagementController extends AbstractApiController
 
     /** `{method: totp|passkeys}` -> `{setupToken, backupCodes: [..]|null, secret?, otpauthUri?}`; stores nothing. */
     #[Route('/setup', methods: ['POST'])]
+    #[RequiresStepUp]
     public function setup(Request $request): JsonResponse
     {
         $user = $this->userResolver->resolve();
