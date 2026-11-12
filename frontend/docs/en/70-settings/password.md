@@ -11,9 +11,8 @@ You sign in with your password. It must be between 8 and 128 characters long.
 ## Change your password
 
 1. Open your [profile](help:settings/profile) and go to **Password**.
-2. Enter your **Current password**.
-3. Enter the **New password** twice.
-4. Click **Change password**. If asked, confirm that it is you, see [Confirm it is you](help:settings/confirmation).
+2. Enter the **New password** twice.
+3. Click **Change password**. If asked, confirm that it is you, see [Confirm it is you](help:settings/confirmation).
 
 You stay signed in on this device. On all other devices you are signed out.
 

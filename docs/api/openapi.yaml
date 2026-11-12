@@ -1076,8 +1076,8 @@ paths:
       tags: [Auth]
       summary: Change the password
       description: >-
-        Needs a step-up token (`X-Step-Up-Token`) and still the current password in the body (the old credential of the
-        operation). Returns new tokens for the calling session (a NEW session family: the next sensitive action needs
+        Needs a step-up token (`X-Step-Up-Token`), which proves the current password; the body carries only the new
+        password. Returns new tokens for the calling session (a NEW session family: the next sensitive action needs
         a new step-up); all other sessions end. A notice mail goes to the account.
       operationId: changePassword
       parameters:
@@ -1088,14 +1088,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [currentPassword, newPassword]
+              required: [newPassword]
               properties:
-                currentPassword: { type: string, maxLength: 4096 }
                 newPassword: { $ref: '#/components/schemas/Password' }
       responses:
         '200': { $ref: '#/components/responses/Tokens' }
         '400':
-          description: '`invalid_credentials` (field `currentPassword`) or `invalid_request`.'
+          description: '`invalid_request`.'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -5207,7 +5206,7 @@ components:
         | `email_taken` | 400 | Registration, field `email` |
         | `registration_restricted` | 403 | `POST /api/auth/register` with `RESTRICT_REGISTRATION` and no open invitation for the address, field `email` (SSO: redirect error code) |
         | `club_creation_restricted` | 403 | `POST /api/clubs` with `RESTRICT_CLUB_CREATION` (except the bootstrap: `RESTRICT_REGISTRATION` and no club yet) |
-        | `invalid_credentials` | 401 / 400 | Login 401; 400 for `change-password` (field `currentPassword`) and `DELETE /api/auth/me` (field `password`) |
+        | `invalid_credentials` | 401 / 400 | Login 401; 400 for `DELETE /api/auth/me` (field `password`) |
         | `invalid_reset_token` | 400 | `reset-password`: unknown, used or expired (same answer), field `token` |
         | `no_password` | 409 | `change-password` of SSO-only accounts |
         | `invalid_confirmation_code` | 400 | `POST /api/auth/step-up` of an account without password: code missing, wrong, expired or of another account, field `code` |

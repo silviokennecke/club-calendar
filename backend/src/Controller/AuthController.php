@@ -211,7 +211,7 @@ class AuthController extends AbstractApiController
         $dto = $this->deserializeDto($request, ChangePasswordDto::class);
         $this->validateDto($dto, $this->validator);
 
-        return new JsonResponse($this->accounts->changePassword($user, $dto->currentPassword, $dto->newPassword, $this->userResolver->sessionConsentOk(), $this->userResolver->sessionFamilyExpiresAt()));
+        return new JsonResponse($this->accounts->changePassword($user, $dto->newPassword, $this->userResolver->sessionConsentOk(), $this->userResolver->sessionFamilyExpiresAt()));
     }
 
     /**

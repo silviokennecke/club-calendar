@@ -11,7 +11,6 @@ import type { User } from "@/lib/types";
 import type { ProfileData } from "./profileTypes";
 
 interface Errors {
-  current?: string;
   next?: string;
   confirm?: string;
 }
@@ -23,16 +22,15 @@ interface TokenResponse {
 }
 
 /**
- * "Passwort" (not in the design Profile; same panel style). With a password: change it with the
- * current one; the API ends all other sessions and returns new tokens for this one. SSO-only accounts
+ * "Passwort" (not in the design Profile; same panel style). With a password: change it (the step-up
+ * confirmation proves the password); the API ends all other sessions and returns new tokens for this one. SSO-only accounts
  * set a password by e-mail: the reset link of "Passwort vergessen" goes to the account's own address
- * (proves the mailbox; no password change without the old password or the mailbox).
+ * (proves the mailbox).
  */
 export function PasswordSection({ profile }: { profile: ProfileData }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const { login } = useAuth();
-  const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [errors, setErrors] = useState<Errors>({});
@@ -48,7 +46,6 @@ export function PasswordSection({ profile }: { profile: ProfileData }) {
     e.preventDefault();
     setFailed(false);
     const found: Errors = {};
-    if (!current) found.current = t("profile.account.passwordMissing");
     const problem = passwordProblem(next);
     if (problem) found.next = t(`auth.reset.password.${problem}`);
     else if (confirm !== next) found.confirm = t("auth.register.confirmMismatchField");
@@ -58,12 +55,10 @@ export function PasswordSection({ profile }: { profile: ProfileData }) {
     setSaving(true);
     try {
       const tokens = await apiPost<TokenResponse>("/api/auth/change-password", {
-        currentPassword: current,
         newPassword: next,
       });
       // All sessions ended on the server; this one continues with the new tokens.
       login(tokens.access_token, tokens.refresh_token, tokens.user);
-      setCurrent("");
       setNext("");
       setConfirm("");
       await qc.invalidateQueries({ queryKey: ["profile"] });
@@ -71,9 +66,7 @@ export function PasswordSection({ profile }: { profile: ProfileData }) {
     } catch (err) {
       if (isStepUpCancelled(err)) return;
       const code = err instanceof ApiError ? err.code : undefined;
-      if (code === "invalid_credentials")
-        setErrors({ current: t("profile.account.wrongPassword") });
-      else if (code === "validation_failed") setErrors({ next: t("auth.reset.password.short") });
+      if (code === "validation_failed") setErrors({ next: t("auth.reset.password.short") });
       else setFailed(true);
     } finally {
       setSaving(false);
@@ -105,14 +98,6 @@ export function PasswordSection({ profile }: { profile: ProfileData }) {
           noValidate
         >
           {failed && <Banner tone="danger">{t("profile.password.failed")}</Banner>}
-          <PasswordField
-            label={t("profile.account.currentPassword")}
-            requiredLabel
-            error={errors.current}
-            value={current}
-            autoComplete="current-password"
-            onChange={(e) => setCurrent(e.target.value)}
-          />
           <PasswordField
             label={t("auth.reset.newPassword")}
             requiredLabel

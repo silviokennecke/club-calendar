@@ -2352,7 +2352,6 @@
       "emailFailed": "The confirmation link could not be requested. Please try again.",
       "newEmail": "New email address",
       "newEmailHint": "We send a confirmation link to the new address.",
-      "currentPassword": "Current password",
       "passwordMissing": "Please enter your current password.",
       "wrongPassword": "The password is not correct.",
       "emailInvalid": "Please enter a valid email address that differs from the current one.",

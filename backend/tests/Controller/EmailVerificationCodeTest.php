@@ -539,7 +539,7 @@ class EmailVerificationCodeTest extends WebTestCase
             $this->assertSame('email_verification_required', $r['body']['code'], $uri);
             $this->assertSame('new@example.com', $r['body']['email']);
         }
-        $this->assertSame('email_verification_required', $this->post('/api/auth/change-password', ['currentPassword' => 'password123', 'newPassword' => 'password456'], $auth)['body']['code']);
+        $this->assertSame('email_verification_required', $this->post('/api/auth/change-password', ['newPassword' => 'password456'], $auth)['body']['code']);
         $this->assertSame('email_verification_required', $this->post('/api/auth/logout-all', [], $auth)['body']['code']);
 
         $me = $get('/api/auth/me');

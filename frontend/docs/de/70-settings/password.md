@@ -11,9 +11,8 @@ Mit deinem Passwort meldest du dich an. Es muss zwischen 8 und 128 Zeichen lang 
 ## Passwort ändern
 
 1. Öffne dein [Profil](help:settings/profile) und gehe zu **Passwort**.
-2. Gib dein **Aktuelles Passwort** ein.
-3. Gib das **Neue Passwort** zweimal ein.
-4. Klicke auf **Passwort ändern**. Wirst du gefragt, bestätige, dass du es bist, siehe [Bestätigen, dass du es bist](help:settings/confirmation).
+2. Gib das **Neue Passwort** zweimal ein.
+3. Klicke auf **Passwort ändern**. Wirst du gefragt, bestätige, dass du es bist, siehe [Bestätigen, dass du es bist](help:settings/confirmation).
 
 Auf diesem Gerät bleibst du angemeldet. Auf allen anderen Geräten wirst du abgemeldet.
 

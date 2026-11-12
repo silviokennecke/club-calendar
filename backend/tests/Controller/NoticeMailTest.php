@@ -100,12 +100,12 @@ class NoticeMailTest extends WebTestCase
         $this->assertStringNotContainsString('verify-new-email', $html);
     }
 
-    private function changePassword(User $user, string $current = 'password123', string $new = 'new-password-1'): array
+    private function changePassword(User $user, string $new = 'new-password-1'): array
     {
         $auth = TestHelper::sessionHeader($user, self::$tokens);
 
         return TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', [
-            'currentPassword' => $current, 'newPassword' => $new,
+            'newPassword' => $new,
         ], $auth, TestHelper::stepUp(self::$client, $auth));
     }
 
@@ -164,9 +164,7 @@ class NoticeMailTest extends WebTestCase
     public function testNoNoticeWhenThePasswordChangeFails(): void
     {
         $user = $this->user();
-        $this->assertSame(400, $this->changePassword($user, 'wrong-password')['status']);
-        $this->assertEmailCount(0);
-        $this->assertSame(422, $this->changePassword($user, 'password123', 'short')['status']);
+        $this->assertSame(422, $this->changePassword($user, 'short')['status']);
         $this->assertEmailCount(0);
     }
 

@@ -39,11 +39,13 @@ readonly class AccountService
      * change is discarded as well: it may have been started by someone who knew the old password, and
      * its link would otherwise still move the account to their address.
      *
-     * @throws ApiProblemException 409 no_password (SSO-only account), 400 invalid_credentials
+     * @throws ApiProblemException 409 no_password (SSO-only account)
      */
-    public function changePassword(User $user, string $currentPassword, string $newPassword, ?bool $consentOk = null, ?\DateTimeImmutable $familyExpiresAt = null): array
+    public function changePassword(User $user, string $newPassword, ?bool $consentOk = null, ?\DateTimeImmutable $familyExpiresAt = null): array
     {
-        $this->assertPassword($user, $currentPassword, 'currentPassword');
+        if (null === $user->getPassword()) {
+            throw new ApiProblemException(409, 'This account has no password', 'no_password');
+        }
         $user->setPassword($this->hasher->hashPassword($user, $newPassword));
         $user->invalidateTokens();
         $this->deleteOpenEmailChanges($user);
@@ -256,19 +258,6 @@ readonly class AccountService
             'DELETE FROM email_change WHERE expires_at < ?',
             [$this->now()->format('Y-m-d H:i:s')],
         );
-    }
-
-    /**
-     * @throws ApiProblemException 409 no_password (SSO-only account), 400 invalid_credentials
-     */
-    public function assertPassword(User $user, string $password, string $field): void
-    {
-        if (null === $user->getPassword()) {
-            throw new ApiProblemException(409, 'This account has no password', 'no_password');
-        }
-        if ('' === $password || !$this->hasher->isPasswordValid($user, $password)) {
-            throw new ApiProblemException(400, 'The password is not correct', 'invalid_credentials', $field);
-        }
     }
 
     private function deleteOpenEmailChanges(User $user): void

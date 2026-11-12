@@ -394,7 +394,7 @@ class OAuthAuthorizeTest extends WebTestCase
         $tokens = json_decode((string) $this->client->getResponse()->getContent(), true);
 
         $auth = TestHelper::sessionHeader($this->user, static::getContainer()->get(TokenService::class));
-        $r = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/change-password', ['currentPassword' => 'password123', 'newPassword' => 'another-pass-123'], $auth, TestHelper::stepUp($this->client, $auth));
+        $r = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/change-password', ['newPassword' => 'another-pass-123'], $auth, TestHelper::stepUp($this->client, $auth));
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertNull(static::getContainer()->get(OAuthServerService::class)->resolveAccessToken($tokens['access_token']));
     }

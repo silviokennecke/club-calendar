@@ -65,7 +65,7 @@ class SecurityEventTest extends WebTestCase
             'HTTP_X_STEP_UP_TOKEN' => TestHelper::stepUp($this->client, $auth),
             'HTTP_USER_AGENT' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
             'REMOTE_ADDR' => '203.0.113.7',
-        ], $server), json_encode(['currentPassword' => 'password123', 'newPassword' => 'new-password-1']));
+        ], $server), json_encode(['newPassword' => 'new-password-1']));
         $this->assertSame(200, $this->client->getResponse()->getStatusCode(), (string) $this->client->getResponse()->getContent());
     }
 

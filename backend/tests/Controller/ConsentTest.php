@@ -445,7 +445,7 @@ class ConsentTest extends WebTestCase
         LegalTestHelper::publish(self::$em, LegalDocumentType::PRIVACY, 'v2');
 
         $stepUp = TestHelper::stepUp(self::$client, 'Bearer '.$session['access_token']);
-        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', ['currentPassword' => 'password123', 'newPassword' => 'password456'], 'Bearer '.$session['access_token'], $stepUp);
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', ['newPassword' => 'password456'], 'Bearer '.$session['access_token'], $stepUp);
         $this->assertSame(200, $r['status']);
         $this->assertTrue(self::claims($r['body']['access_token'])['lc']);
         $this->assertTrue(self::claims($r['body']['refresh_token'])['lc']);
@@ -459,7 +459,7 @@ class ConsentTest extends WebTestCase
         $h = $this->auth($user);
         // change-password is behind the gate; consent first via the allow-listed route is not wanted here, so only the claim is checked
         $this->assertFalse(self::claims(substr($h, 7))['lc']);
-        $this->assertSame(403, TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', ['currentPassword' => 'password123', 'newPassword' => 'password456'], $h)['status']);
+        $this->assertSame(403, TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', ['newPassword' => 'password456'], $h)['status']);
         $this->assertNotNull($doc);
     }
 

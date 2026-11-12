@@ -2352,7 +2352,6 @@
       "emailFailed": "Der Bestätigungslink konnte nicht angefordert werden. Bitte versuche es erneut.",
       "newEmail": "Neue E-Mail-Adresse",
       "newEmailHint": "Wir schicken einen Bestätigungslink an die neue Adresse.",
-      "currentPassword": "Aktuelles Passwort",
       "passwordMissing": "Bitte gib dein aktuelles Passwort ein.",
       "wrongPassword": "Das Passwort stimmt nicht.",
       "emailInvalid": "Bitte gib eine gültige E-Mail-Adresse ein, die sich von der aktuellen unterscheidet.",

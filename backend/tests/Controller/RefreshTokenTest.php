@@ -263,7 +263,7 @@ class RefreshTokenTest extends WebTestCase
         $this->assertNotEmpty(self::payload($sso['refresh_token'])['fam']);
 
         $auth = 'Bearer '.$sso['access_token'];
-        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', ['currentPassword' => 'password123', 'newPassword' => 'password456'], $auth, TestHelper::stepUp(self::$client, $auth));
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', ['newPassword' => 'password456'], $auth, TestHelper::stepUp(self::$client, $auth));
         $this->assertSame(200, $r['status']);
         $this->assertNotEmpty(self::payload($r['body']['refresh_token'])['fam']);
 
@@ -276,7 +276,7 @@ class RefreshTokenTest extends WebTestCase
     {
         $user = $this->user();
         $old = $this->tokens->tokenResponse($user);
-        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', ['currentPassword' => 'password123', 'newPassword' => 'password456'], 'Bearer '.$old['access_token'], TestHelper::stepUp(self::$client, 'Bearer '.$old['access_token']));
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', ['newPassword' => 'password456'], 'Bearer '.$old['access_token'], TestHelper::stepUp(self::$client, 'Bearer '.$old['access_token']));
         $this->assertSame(401, $this->refresh($old['refresh_token'])[0]);
         $this->assertSame(200, $this->refresh($r['body']['refresh_token'])[0]);
     }

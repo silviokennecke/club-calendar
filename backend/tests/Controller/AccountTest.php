@@ -288,7 +288,7 @@ class AccountTest extends WebTestCase
         $oldRefresh = self::$tokens->createRefreshToken($user);
 
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', [
-            'currentPassword' => 'password123', 'newPassword' => 'new-password-1',
+            'newPassword' => 'new-password-1',
         ], $oldAccess, TestHelper::stepUp(self::$client, $oldAccess));
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertNotEmpty($r['body']['access_token']);
@@ -307,27 +307,12 @@ class AccountTest extends WebTestCase
         $this->assertSame(401, $this->login('alice@example.com', 'password123'));
     }
 
-    public function testChangePasswordWithAWrongCurrentPasswordFails(): void
-    {
-        $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
-        foreach (['wrong-password', ''] as $current) {
-            $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', [
-                'currentPassword' => $current, 'newPassword' => 'new-password-1',
-            ], ...$this->su($user));
-            $this->assertSame(400, $r['status']);
-            $this->assertSame('invalid_credentials', $r['body']['code']);
-            $this->assertArrayNotHasKey('access_token', $r['body']);
-        }
-        $this->assertSame(200, $this->login('alice@example.com'));
-        $this->assertSame(0, $this->user($user->getId())->getTokenVersion());
-    }
-
     public function testChangePasswordUsesThePasswordPolicy(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher);
         foreach (['short12', str_repeat('a', 129)] as $weak) {
             $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', [
-                'currentPassword' => 'password123', 'newPassword' => $weak,
+                'newPassword' => $weak,
             ], ...$this->su($user));
             $this->assertSame(422, $r['status']);
             $this->assertSame('newPassword', $r['body']['field']);
@@ -338,14 +323,14 @@ class AccountTest extends WebTestCase
     {
         $sso = $this->ssoOnlyUser();
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', [
-            'currentPassword' => 'anything', 'newPassword' => 'new-password-1',
+            'newPassword' => 'new-password-1',
         ], ...$this->ssoSu($sso));
         $this->assertSame(409, $r['status']);
         $this->assertSame('no_password', $r['body']['code']);
         $this->assertNull($this->user($sso->getId())->getPassword());
 
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', [
-            'currentPassword' => 'password123', 'newPassword' => 'new-password-1',
+            'newPassword' => 'new-password-1',
         ]);
         $this->assertSame(401, $r['status']);
     }
@@ -554,7 +539,7 @@ class AccountTest extends WebTestCase
         $this->changeEmail($user, 'intruder@example.com');
         $token = $this->confirmTokenFromMail();
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', [
-            'currentPassword' => 'password123', 'newPassword' => 'new-password-1',
+            'newPassword' => 'new-password-1',
         ], ...$this->su($user));
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertSame(['status' => 'error', 'reason' => 'invalid', 'flow' => 'email_change'], $this->openConfirmation($token));

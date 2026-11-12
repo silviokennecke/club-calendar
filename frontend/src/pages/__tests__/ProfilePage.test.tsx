@@ -357,7 +357,6 @@ describe("ProfilePage", () => {
     const panel = (await screen.findByRole("heading", { level: 2, name: "Passwort" })).closest(
       "section",
     )!;
-    await user.type(within(panel).getByLabelText(/^Aktuelles Passwort/), "old-password");
     await user.type(within(panel).getByLabelText(/^Neues Passwort/), "short");
     await user.click(within(panel).getByRole("button", { name: "Passwort ändern" }));
     expect(await within(panel).findByText(/Das Passwort ist zu kurz/)).toBeInTheDocument();
@@ -368,29 +367,11 @@ describe("ProfilePage", () => {
     await user.click(within(panel).getByRole("button", { name: "Passwort ändern" }));
     await waitFor(() =>
       expect(apiPost).toHaveBeenCalledWith("/api/auth/change-password", {
-        currentPassword: "old-password",
         newPassword: "short-and-longer",
       }),
     );
     expect(login).toHaveBeenCalledWith("a2", "r2", { id: "u1" });
     expect(await screen.findByText(/Passwort geändert/)).toBeInTheDocument();
-  });
-
-  it("names a wrong current password at its field", async () => {
-    apiPost.mockRejectedValue(new ApiError("x", 400, "invalid_credentials"));
-    const user = userEvent.setup();
-    renderProfile();
-    const panel = (await screen.findByRole("heading", { level: 2, name: "Passwort" })).closest(
-      "section",
-    )!;
-    await user.type(within(panel).getByLabelText(/^Aktuelles Passwort/), "wrong");
-    await user.type(within(panel).getByLabelText(/^Neues Passwort/), "new-password-1");
-    await user.type(within(panel).getByLabelText(/^Passwort wiederholen/), "new-password-1");
-    await user.click(within(panel).getByRole("button", { name: "Passwort ändern" }));
-    expect(await within(panel).findByText("Das Passwort stimmt nicht.")).toBeInTheDocument();
-    // The error is not a live region: focus moves to the field so that it is announced.
-    await waitFor(() => expect(within(panel).getByLabelText(/^Aktuelles Passwort/)).toHaveFocus());
-    expect(login).not.toHaveBeenCalled();
   });
 
   it("lets SSO-only accounts set a password by e-mail", async () => {
