@@ -52,6 +52,10 @@ class SecurityEvent
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $browser = null;
 
+    /** Full raw User-Agent (max. 512 characters), forensic only: never rendered in mails or UI. */
+    #[ORM\Column(length: 512, nullable: true)]
+    private ?string $userAgent = null;
+
     /** Hash of user, type, method, provider, IP and hour of a failure row; unique, so parallel failures fold into one row. */
     #[ORM\Column(type: 'string', length: 64, nullable: true, options: ['fixed' => true])]
     private ?string $dedupeKey = null;
@@ -121,6 +125,11 @@ class SecurityEvent
     public function getBrowser(): ?string
     {
         return $this->browser;
+    }
+
+    public function getUserAgent(): ?string
+    {
+        return $this->userAgent;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

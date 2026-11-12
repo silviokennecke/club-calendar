@@ -25,35 +25,47 @@ class ClientContextSanitizerTest extends TestCase
     }
 
     #[DataProvider('hostile')]
-    public function testHostileUserAgentsYieldInertShortText(string $ua): void
+    public function testHostileUserAgentsYieldNullOrKnownBrowser(string $ua): void
     {
         $browser = UserAgentSummary::browser($ua);
         if (null !== $browser) {
-            $this->assertMatchesRegularExpression('/^[A-Za-z0-9 ._-]{1,20}$/', $browser);
-            $this->assertDoesNotMatchRegularExpression('/[:\/@<>%]/', $browser);
+            $this->assertMatchesRegularExpression('/^[A-Za-z ]{1,30}( \d{1,3})?$/', $browser);
         }
-        $context = new ClientContext('203.0.113.5', $browser);
-        $this->assertTrue(null === $context->browser || strlen($context->browser) <= 20);
+        $context = new ClientContext('203.0.113.5', $browser, null, null, $ua);
+        $this->assertSame($browser, $context->browser);
     }
 
-    public function testBrowserIsStrippedCollapsedAndCut(): void
+    public function testDomainLikeNamesAreUnknown(): void
     {
-        $this->assertSame('evil.example restore', ClientContextSanitizer::browser("\u{202E}evil\u{200B}.example  ://\t restore"));
-        $this->assertNull(ClientContextSanitizer::browser('://<>@%'));
-        $this->assertSame(20, strlen((string) ClientContextSanitizer::browser(str_repeat('a', 100))));
-        $this->assertSame('httpsevil.examplerest', ClientContextSanitizer::browser('https://evil.example/rest', 21));
+        foreach (['acct-reset.io/1 CFNetwork/1410 Darwin/22', 'www.evil.co/1 CFNetwork/1410 Darwin/22', 'support.example.com/99 CFNetwork/1 Darwin/1'] as $ua) {
+            $this->assertNull(UserAgentSummary::browser($ua), $ua);
+        }
+        foreach (['www.evil.co 1', 'Visit https://evil.example now', 'Chrome 1260', 'Chrome 12.3', 'Unknown 5', '', "Chrome\u{202E} 1"] as $text) {
+            $this->assertNull(ClientContextSanitizer::browser($text), $text);
+        }
     }
 
-    public function testVersionIsKeptWhenFamilyIsShortened(): void
+    public function testKnownBrowsersKeepOnlyDigitVersion(): void
     {
-        $out = ClientContextSanitizer::browserWithVersion('A very long browser family name', '126');
-        $this->assertLessThanOrEqual(20, strlen((string) $out));
-        $this->assertStringEndsWith(' 126', (string) $out);
-        $this->assertSame('Chrome 126', ClientContextSanitizer::browserWithVersion('Chrome', '126'));
-        $this->assertSame('Chrome', ClientContextSanitizer::browserWithVersion('Chrome', null));
-        $this->assertSame('Chrome 12', ClientContextSanitizer::browserWithVersion('Chrome', "1\u{200B}2"));
-        // an absurdly long "version" is dropped instead of eating the family
-        $this->assertSame('Chrome', ClientContextSanitizer::browserWithVersion('Chrome', str_repeat('9', 30)));
+        $this->assertSame('Chrome 126', ClientContextSanitizer::browser('Chrome 126'));
+        $this->assertSame('Samsung Internet 25', ClientContextSanitizer::knownBrowser('Samsung Internet', '25'));
+        $this->assertSame('Chrome Mobile', ClientContextSanitizer::knownBrowser('Chrome Mobile iOS', null));
+        $this->assertSame('Chrome', ClientContextSanitizer::knownBrowser('Chrome', '126.1'));
+        $this->assertSame('Chrome', ClientContextSanitizer::knownBrowser('Chrome', '1234'));
+        $this->assertSame('Chrome', ClientContextSanitizer::knownBrowser('Chrome', "1\u{200B}2"));
+        $this->assertNull(ClientContextSanitizer::knownBrowser('Other', '1'));
+        $this->assertNull(ClientContextSanitizer::knownBrowser(null));
+    }
+
+    public function testRawUserAgentIsCappedAndCleanedForTheLogOnly(): void
+    {
+        $this->assertSame(512, strlen((string) ClientContextSanitizer::userAgent(str_repeat('a', 5000))));
+        $this->assertSame('a b', ClientContextSanitizer::userAgent("a\r\nb"));
+        $this->assertNull(ClientContextSanitizer::userAgent(" \n "));
+        $ua = 'www.evil.co/1 CFNetwork/1410 Darwin/22';
+        $c = new ClientContext('203.0.113.5', UserAgentSummary::browser($ua), null, null, $ua);
+        $this->assertSame($ua, $c->userAgent);
+        $this->assertNull($c->browser);
     }
 
     public function testCountryMustBeTwoLetters(): void
@@ -76,7 +88,7 @@ class ClientContextSanitizerTest extends TestCase
     public function testContextSanitizesEveryClientField(): void
     {
         $c = new ClientContext('203.0.113.5', 'Visit https://evil.example now', '<i>Berlin</i>', 'DE; DROP');
-        $this->assertSame('Visit httpsevil.exam', $c->browser);
+        $this->assertNull($c->browser);
         $this->assertSame('iBerlini', $c->city);
         $this->assertNull($c->country);
     }

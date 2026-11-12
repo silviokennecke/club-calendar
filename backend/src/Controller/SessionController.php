@@ -33,8 +33,9 @@ class SessionController extends AbstractApiController
         $user = $this->userResolver->resolve();
         $this->rateLimiter->assertMfaManageAllowed($request, $user->getId());
         $consentOk = $this->userResolver->sessionConsentOk();
+        $familyExpiresAt = $this->userResolver->sessionFamilyExpiresAt();
         $this->mfa->endOtherSessions($user);
 
-        return new JsonResponse(['ok' => true] + $this->tokens->tokenResponse($user, null, null, $consentOk));
+        return new JsonResponse(['ok' => true] + $this->tokens->tokenResponse($user, null, $familyExpiresAt, $consentOk));
     }
 }

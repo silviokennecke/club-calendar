@@ -27,7 +27,8 @@ class ClientContextTest extends TestCase
         yield 'chrome ios' => ['Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/126.0.6478.54 Mobile/15E148 Safari/604.1', 'Chrome Mobile 126'];
         yield 'safari' => ['Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15', 'Safari 17'];
         yield 'safari ios' => ['Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1', 'Mobile Safari 17'];
-        yield 'curl' => ['curl/8.4.0', 'curl 8'];
+        yield 'curl is not a known browser' => ['curl/8.4.0', null];
+        yield 'domain-like family' => ['www.evil.co/1 CFNetwork/1410 Darwin/22', null];
         yield 'unknown' => ['definitely-not-a-browser', null];
         yield 'empty' => ['', null];
     }

@@ -21,7 +21,7 @@ use Symfony\Component\Uid\Uuid;
  *
  * Failures are attacker-writable (anyone who knows an address), so they are folded: same user, type,
  * method, provider and IP within the same clock hour (UTC) increment `attempts` of one row (unique
- * `dedupe_key`, so parallel requests cannot create two); a per-user advisory lock makes the daily cap exact; at most FAILURE_ROWS_PER_DAY
+ * `dedupe_key`, so parallel requests cannot create two); a per-user advisory lock (0.5 s wait) makes the daily cap exact, without it an atomic upsert keeps every count; at most FAILURE_ROWS_PER_DAY
  * failure rows per user and UTC day, beyond that the newest failure row only counts up.
  *
  * From the 3rd failed attempt of the same kind (user, type, method, provider) within an hour the user
@@ -34,6 +34,7 @@ class SecurityEventLogger
     private const MAIL_PURPOSE = 'security_failure_mail';
     private const MAIL_INTERVAL = 86400;
     private const MAX_ATTEMPTS = 65535;
+    private const LOCK_WAIT = '0.5';
 
     public function __construct(
         private readonly Connection $connection,
@@ -75,8 +76,9 @@ class SecurityEventLogger
         $key = hash('sha256', implode('|', [$user->getId(), $type->value, $method, $provider, $context->ip, $now->format('Y-m-d H')]));
         $lock = 'secev:'.$user->getId();
 
-        // The lock makes the daily cap exact; the unique key alone already prevents duplicate rows if it times out.
-        $locked = 1 === (int) $this->connection->fetchOne('SELECT GET_LOCK(?, 3)', [$lock]);
+        // The lock makes the daily cap exact. Without it (short wait) the atomic upsert on the unique key
+        // still loses no count; only the daily cap may then be exceeded by a parallel burst.
+        $locked = 1 === (int) $this->connection->fetchOne('SELECT GET_LOCK(?, '.self::LOCK_WAIT.')', [$lock]);
         try {
             $updated = $this->connection->executeStatement(
                 'UPDATE security_event SET attempts = LEAST(attempts + 1, '.self::MAX_ATTEMPTS.') WHERE dedupe_key = ?',
@@ -84,9 +86,10 @@ class SecurityEventLogger
             );
             if (0 === $updated) {
                 $dayStart = $now->setTime(0, 0)->format('Y-m-d H:i:s');
-                // locking read: sees rows committed after this connection's transaction snapshot
+                // locking read: sees rows committed after this connection's transaction snapshot;
+                // without the advisory lock a shared lock could deadlock with the upsert, so read plainly there
                 $today = (int) $this->connection->fetchOne(
-                    'SELECT COUNT(*) FROM security_event WHERE user_id = ? AND success = 0 AND created_at >= ? LOCK IN SHARE MODE',
+                    'SELECT COUNT(*) FROM security_event WHERE user_id = ? AND success = 0 AND created_at >= ?'.($locked ? ' LOCK IN SHARE MODE' : ''),
                     [$user->getId(), $dayStart],
                 );
                 if ($today >= self::FAILURE_ROWS_PER_DAY) {
@@ -95,7 +98,7 @@ class SecurityEventLogger
                         [$user->getId(), $dayStart],
                     );
                 } else {
-                    $this->insert($user, $type, false, $method, $provider, $context, $now, $key);
+                    $this->insert($user, $type, false, $method, $provider, $context, $now, $key, !$locked);
                 }
             }
         } finally {
@@ -122,9 +125,9 @@ class SecurityEventLogger
         }
     }
 
-    private function insert(User $user, SecurityEventType $type, bool $success, ?string $method, ?string $provider, ClientContext $context, \DateTimeImmutable $now, ?string $dedupeKey = null): void
+    private function insert(User $user, SecurityEventType $type, bool $success, ?string $method, ?string $provider, ClientContext $context, \DateTimeImmutable $now, ?string $dedupeKey = null, bool $upsert = false): void
     {
-        $this->connection->insert('security_event', [
+        $row = [
             'id' => Uuid::v7()->toRfc4122(),
             'user_id' => $user->getId(),
             'type' => $type->value,
@@ -136,8 +139,21 @@ class SecurityEventLogger
             'city' => null !== $context->city ? mb_substr($context->city, 0, 100) : null,
             'country' => null !== $context->country ? substr($context->country, 0, 2) : null,
             'browser' => null !== $context->browser ? mb_substr($context->browser, 0, 100) : null,
+            'user_agent' => null !== $context->userAgent ? mb_substr($context->userAgent, 0, 512) : null,
             'dedupe_key' => $dedupeKey,
             'created_at' => $now->format('Y-m-d H:i:s'),
-        ]);
+        ];
+        if (!$upsert) {
+            $this->connection->insert('security_event', $row);
+
+            return;
+        }
+        // Lock-free fallback: a parallel insert of the same key turns into a count-up, nothing is lost.
+        $columns = implode(', ', array_keys($row));
+        $marks = implode(', ', array_fill(0, count($row), '?'));
+        $this->connection->executeStatement(
+            "INSERT INTO security_event ($columns) VALUES ($marks) ON DUPLICATE KEY UPDATE attempts = LEAST(attempts + 1, ".self::MAX_ATTEMPTS.')',
+            array_values($row),
+        );
     }
 }

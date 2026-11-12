@@ -29,6 +29,7 @@ class ClientContextResolver
             '' === $ua ? null : UserAgentSummary::browser(substr($ua, 0, 512)),
             $location->city,
             $location->country,
+            '' === $ua ? null : $ua,
         );
     }
 }

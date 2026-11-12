@@ -6,7 +6,6 @@ namespace App\Security;
 
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\ParameterType;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -33,37 +32,27 @@ final readonly class NonceStore
     }
 
     /**
-     * Single insert-or-fail. Expired rows are not swept here (a sweep inside a caller's transaction locks
-     * unrelated rows); `app:prune-auth-nonces` does that. Only an expired row with the very same hash is
-     * replaced, so a reused key (slot, mail interval) becomes available again at its expiry.
+     * One atomic `INSERT ... ON DUPLICATE KEY UPDATE`: a free key is inserted, an expired row with the very same
+     * hash is renewed in place (a reused key such as a slot or mail interval opens again at its expiry), a live
+     * row stays untouched. There is no separate DELETE, so concurrent consumers (also inside transactions)
+     * cannot deadlock on a lock-order inversion; the duplicate path takes an exclusive lock directly. Expired
+     * rows are not swept here (`app:prune-auth-nonces` does that). The winner is read from the affected rows
+     * (pdo_mysql without FOUND_ROWS: 1 inserted, 2 renewed, 0 live row unchanged).
      */
     public function consume(string $purpose, string $nonce, int $expiresAtTimestamp): bool
     {
-        $hash = hash('sha256', $purpose."\0".$nonce);
-        for ($attempt = 0; $attempt < 2; ++$attempt) {
-            try {
-                $this->connection->insert('auth_nonce', [
-                    'id' => Uuid::v7()->toRfc4122(),
-                    'nonce_hash' => $hash,
-                    // Keep the entry a little past the token expiry so clock skew cannot reopen it.
-                    'expires_at' => (new \DateTimeImmutable('@'.($expiresAtTimestamp + 60)))->format('Y-m-d H:i:s'),
-                ]);
+        // Both sides in UTC: expires_at is written from a Unix timestamp.
+        $now = $this->clock->now()->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+        // Keep the entry a little past the token expiry so clock skew cannot reopen it.
+        $expires = (new \DateTimeImmutable('@'.($expiresAtTimestamp + 60)))->format('Y-m-d H:i:s');
 
-                return true;
-            } catch (UniqueConstraintViolationException) {
-                // Both sides in UTC: expires_at is written from a Unix timestamp.
-                $now = $this->clock->now()->setTimezone(new \DateTimeZone('UTC'));
-                $replaced = $this->connection->executeStatement(
-                    'DELETE FROM auth_nonce WHERE nonce_hash = ? AND expires_at < ?',
-                    [$hash, $now->format('Y-m-d H:i:s')],
-                );
-                if (0 === $replaced) {
-                    return false;
-                }
-            }
-        }
+        $affected = (int) $this->connection->executeStatement(
+            'INSERT INTO auth_nonce (id, nonce_hash, expires_at) VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE expires_at = IF(expires_at < ?, ?, expires_at)',
+            [Uuid::v7()->toRfc4122(), hash('sha256', $purpose."\0".$nonce), $expires, $now, $expires],
+        );
 
-        return false;
+        return $affected > 0;
     }
 
     /**

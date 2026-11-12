@@ -12,6 +12,7 @@ use App\Service\SecurityEventLogger;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Mime\Email;
@@ -41,7 +42,7 @@ class SecurityEventConcurrencyTest extends KernelTestCase
     }
 
     /** @param list<string> $ips one child per entry; mails of all children are counted */
-    private function race(User $user, array $ips): int
+    private function race(User $user, array $ips, ?callable $afterFork = null): int
     {
         $userId = $user->getId();
         $dir = dirname(__DIR__, 2).'/var';
@@ -73,6 +74,9 @@ class SecurityEventConcurrencyTest extends KernelTestCase
             }
             $this->assertGreaterThan(0, $pid);
             $pids[] = $pid;
+        }
+        if (null !== $afterFork) {
+            $afterFork();
         }
         foreach ($pids as $pid) {
             pcntl_waitpid($pid, $status);
@@ -111,5 +115,31 @@ class SecurityEventConcurrencyTest extends KernelTestCase
         $db = static::getContainer()->get(Connection::class);
         $this->assertSame($cap, (int) $db->fetchOne('SELECT COUNT(*) FROM security_event'));
         $this->assertSame($cap + 10, (int) $db->fetchOne('SELECT SUM(attempts) FROM security_event'));
+    }
+
+    public function testLockTimeoutLosesNoAttemptsAndReturnsFast(): void
+    {
+        $user = $this->user();
+        $name = 'secev:'.$user->getId();
+        $params = static::getContainer()->get(Connection::class)->getParams();
+        $holder = null;
+        $started = microtime(true);
+        try {
+            // a foreign connection (opened after the forks, children would share its socket) holds the per-user lock for the whole race
+            $this->race($user, array_fill(0, 10, '203.0.113.5'), function () use (&$holder, $name, $params): void {
+                $holder = DriverManager::getConnection($params);
+                $this->assertSame(1, (int) $holder->fetchOne('SELECT GET_LOCK(?, 1)', [$name]));
+            });
+            $elapsed = microtime(true) - $started;
+            $db = static::getContainer()->get(Connection::class);
+            $rows = $db->fetchAllAssociative('SELECT attempts FROM security_event');
+            $this->assertCount(1, $rows);
+            $this->assertSame(10, (int) $rows[0]['attempts']);
+            // 3 s head start of the race + well below the old 3 s lock wait per request
+            $this->assertLessThan(3.0 + 2.0, $elapsed);
+        } finally {
+            $holder?->executeStatement('DO RELEASE_LOCK(?)', [$name]);
+            $holder?->close();
+        }
     }
 }

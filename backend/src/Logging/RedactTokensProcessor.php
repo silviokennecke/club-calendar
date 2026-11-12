@@ -21,13 +21,24 @@ use Monolog\Processor\ProcessorInterface;
 #[AsMonologProcessor]
 final class RedactTokensProcessor implements ProcessorInterface
 {
-    private const string PATTERN = '/([?&](?:token|ticket|secret|refresh_token|code|state|link_proof|access_token|mfaToken|setupToken|challengeToken|backupCodes?(?:%5B%5D|\[\])?|otpauthUri)=)[^&#\s"\']+/i';
-    private const string JSON_PATTERN = '/("(?:access_token|refresh_token|token|secret|mfaToken|setupToken|challengeToken|backupCode|otpauthUri)"\s*:\s*")[^"]*/i';
-    // "backupCodes": ["a","b"] (whole array) and 6 to 10 digit MFA codes; other "code" values (error codes) stay readable
-    private const string JSON_LIST_PATTERN = '/("backupCodes"\s*:\s*)\[[^\]]*\]/i';
-    private const string JSON_CODE_PATTERN = '/("code"\s*:\s*")\d{6,10}(?=")/';
+    private const string KEYS = 'access_token|refresh_token|token|secret|mfaToken|setupToken|challengeToken|backupCode|otpauthUri|password|newPassword|currentPassword|client_secret';
+    // query strings and form bodies (also at the start of a body); indexed backupCodes[0]= / %5B0%5D= / []=
+    private const string PATTERN = '/((?:^|[?&\s])(?:token|ticket|secret|refresh_token|code|state|link_proof|access_token|mfaToken|setupToken|challengeToken|password|newPassword|currentPassword|backupCodes?(?:%5B\d*%5D|\[\d*\])?|otpauthUri)=)[^&#\s"\']+/i';
+    // JSON, plain and double-encoded (\"key\":\"value\"); the value ends at the closing quote
+    private const string JSON_PATTERN = '/("(?:'.self::KEYS.')"\s*:\s*")(?:[^"\\\\]|\\\\.)*/i';
+    private const string JSON_ESCAPED_PATTERN = '/(\\\\"(?:'.self::KEYS.')\\\\"\s*:\s*\\\\")(?:[^"\\\\]|\\\\(?!"))*/i';
+    // "backupCodes": ["a","b"] (whole array, also escaped)
+    private const string JSON_LIST_PATTERN = '/(\\\\?"backupCodes\\\\?"\s*:\s*)\[[^\]]*\]/i';
+    // MFA codes under "code": 6 to 10 digits (grouped or not) or a backup code (xxxx-xxxx-xxxx / 12 Crockford characters); error codes stay readable
+    private const string CODE_VALUE = '(?:\d{3}[ -]?\d{3,7}|[0-9A-Za-z]{4}-[0-9A-Za-z]{4}-[0-9A-Za-z]{4}|[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{12})';
+    private const string JSON_CODE_PATTERN = '/("code"\s*:\s*\\\\?"?)'.self::CODE_VALUE.'(?=[\\\\"\s,}\]]|$)/i';
+    private const string JSON_CODE_ESCAPED_PATTERN = '/(\\\\"code\\\\"\s*:\s*\\\\?"?)'.self::CODE_VALUE.'(?=[\\\\"\s,}\]]|$)/i';
+    private const string AUTHORIZATION_PATTERN = '/(\bauthorization\b\\\\?["\']?\s*[:=]\s*\\\\?["\']?(?:(?:Bearer|Basic|Token)\s+)?)[^\s"\',;\\\\]+/i';
+    private const string BEARER_PATTERN = '/\b(Bearer\s+)[A-Za-z0-9._~+\/=-]{8,}/';
     // TOTP provisioning URIs carry the secret in their query
     private const string OTPAUTH_PATTERN = '/otpauth:\/\/[^\s"\'<>]+/i';
+    // keys of context arrays whose value is always masked (a "code" is masked only when it looks like an MFA code)
+    private const string SENSITIVE_KEY = '/^(?:'.self::KEYS.'|backupCodes|authorization|ticket|link_proof)$/i';
 
     public function __invoke(LogRecord $record): LogRecord
     {
@@ -46,7 +57,11 @@ final class RedactTokensProcessor implements ProcessorInterface
     private static function redactArray(array $values): array
     {
         foreach ($values as $key => $value) {
-            if (is_string($value)) {
+            if (is_string($key) && null !== $value && !is_bool($value) && 1 === preg_match(self::SENSITIVE_KEY, $key)) {
+                $values[$key] = '[redacted]';
+            } elseif ('code' === $key && (is_string($value) || is_int($value)) && 1 === preg_match('/^'.self::CODE_VALUE.'$/', (string) $value)) {
+                $values[$key] = '[redacted]';
+            } elseif (is_string($value)) {
                 $values[$key] = self::redact($value);
             } elseif ($value instanceof \Throwable) {
                 $values[$key] = self::leaks($value) ? self::describe($value) : $value;
@@ -60,11 +75,13 @@ final class RedactTokensProcessor implements ProcessorInterface
 
     private static function redact(string $value): string
     {
-        $value = (string) preg_replace(self::PATTERN, '$1[redacted]', $value);
-
-        $value = (string) preg_replace(self::JSON_PATTERN, '$1[redacted]', $value);
+        foreach ([
+            self::PATTERN, self::JSON_PATTERN, self::JSON_ESCAPED_PATTERN,
+            self::JSON_CODE_PATTERN, self::JSON_CODE_ESCAPED_PATTERN, self::AUTHORIZATION_PATTERN, self::BEARER_PATTERN,
+        ] as $pattern) {
+            $value = (string) preg_replace($pattern, '$1[redacted]', $value);
+        }
         $value = (string) preg_replace(self::JSON_LIST_PATTERN, '$1"[redacted]"', $value);
-        $value = (string) preg_replace(self::JSON_CODE_PATTERN, '$1[redacted]', $value);
 
         return (string) preg_replace(self::OTPAUTH_PATTERN, 'otpauth://[redacted]', $value);
     }

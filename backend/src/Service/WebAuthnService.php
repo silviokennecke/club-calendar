@@ -200,7 +200,7 @@ class WebAuthnService
 
         $context = $this->contextResolver->current();
         $this->events->record($user, SecurityEventType::PASSKEY_ADDED, true, 'passkey', null, $context);
-        $this->mailer->sendPasskeyAdded($user, (string) $deviceName, $context);
+        $this->mailer->sendPasskeyAdded($user, $context);
 
         return $passkey->getId();
     }
@@ -368,7 +368,7 @@ class WebAuthnService
      * Removes a passkey and ends all sessions (token version, refresh tokens): whoever signed in with it
      * must not stay signed in. Returns fresh tokens so that the session that made the change continues.
      */
-    public function deletePasskey(string $id, User $user, ?bool $consentOk = null): array
+    public function deletePasskey(string $id, User $user, ?bool $consentOk = null, ?\DateTimeImmutable $familyExpiresAt = null): array
     {
         // The user row lock makes "not the last passkey" and the delete one step: two parallel deletes serialise.
         $this->em->wrapInTransaction(function () use ($id, $user): void {
@@ -387,7 +387,7 @@ class WebAuthnService
         $this->events->record($user, SecurityEventType::PASSKEY_DELETED, true, 'passkey', null, $context);
         $this->mailer->sendPasskeyDeleted($user, $context);
 
-        return $this->tokens->tokenResponse($user, null, null, $consentOk);
+        return $this->tokens->tokenResponse($user, null, $familyExpiresAt, $consentOk);
     }
 
     public function renamePasskey(string $id, User $user, string $deviceName): void

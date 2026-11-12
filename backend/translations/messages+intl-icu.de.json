@@ -131,7 +131,7 @@
         "passkey_added": {
             "subject": "Ein Passkey wurde hinzugefügt",
             "greeting": "Hallo {name},",
-            "body": "zu deinem Club-Calendar-Konto wurde der Passkey „{name}“ hinzugefügt.",
+            "body": "zu deinem Club-Calendar-Konto wurde ein Passkey hinzugefügt.",
             "info": "Mit diesem Passkey kann man sich jetzt anmelden, auch wenn MFA eingeschaltet ist.",
             "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), lösche danach in deinem Profil den fremden Passkey, prüfe MFA und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
         },

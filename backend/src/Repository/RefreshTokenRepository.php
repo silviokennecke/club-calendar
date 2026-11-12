@@ -65,6 +65,17 @@ class RefreshTokenRepository extends ServiceEntityRepository
         ];
     }
 
+    /** Absolute end of a user's session (family), or null when unknown (pruned, or another user's). */
+    public function findFamilyExpiry(string $familyId, string $userId): ?\DateTimeImmutable
+    {
+        $value = $this->connection()->fetchOne(
+            'SELECT MIN(family_expires_at) FROM refresh_token WHERE family_id = ? AND user_id = ?',
+            [$familyId, $userId],
+        );
+
+        return is_string($value) ? new \DateTimeImmutable($value, new \DateTimeZone('UTC')) : null;
+    }
+
     /** Marks a token as used. True for exactly one of any number of concurrent calls. */
     public function markRotated(string $id, \DateTimeImmutable $now): bool
     {

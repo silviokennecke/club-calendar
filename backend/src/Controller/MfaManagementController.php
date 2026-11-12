@@ -87,10 +87,11 @@ class MfaManagementController extends AbstractApiController
         $user = $this->userResolver->resolve();
         $this->rateLimiter->assertMfaManageAllowed($request, $user->getId());
         $consentOk = $this->userResolver->sessionConsentOk();
+        $familyExpiresAt = $this->userResolver->sessionFamilyExpiresAt();
         $this->reauthenticate($user, $this->decodeJson($request));
         $this->mfa->disable($user);
 
-        return new JsonResponse(['mfa' => $this->mfa->status($user)] + $this->tokens->tokenResponse($user, null, null, $consentOk));
+        return new JsonResponse(['mfa' => $this->mfa->status($user)] + $this->tokens->tokenResponse($user, null, $familyExpiresAt, $consentOk));
     }
 
     /** `{password|confirmationCode}` -> `{backupCodes, mfa}`; the new codes are shown once. */

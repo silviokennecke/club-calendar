@@ -290,19 +290,46 @@ class SecurityEventTest extends WebTestCase
         $this->assertCount(1, $deleted);
         $html = (string) $added[0]->getHtmlBody();
         $this->assertSame('A passkey was added', $added[0]->getSubject());
-        $this->assertStringContainsString('Software', $html);
+        $this->assertStringNotContainsString('Software', $html);
         $this->assertStringContainsString('/forgot-password', $html);
         $this->assertSame('A passkey was deleted', $deleted[0]->getSubject());
         $this->assertStringContainsString('/forgot-password', (string) $deleted[0]->getHtmlBody());
     }
 
-    public function testPasskeyNameIsEscapedInTheMail(): void
+    public function testPasskeyNameNeverReachesTheMail(): void
     {
         $this->client->disableReboot();
-        $this->passkeyFor($this->user('en'), '<b>Evil</b> & co');
+        $this->passkeyFor($this->user('en'), 'Security update https://evil.example/r');
         $html = (string) $this->mails()[0]->getHtmlBody();
-        $this->assertStringNotContainsString('<b>Evil</b>', $html);
-        $this->assertStringContainsString('&lt;b&gt;Evil&lt;/b&gt;', $html);
+        $this->assertStringNotContainsString('evil.example', $html);
+        $this->assertStringNotContainsString('Security update', $html);
+    }
+
+    public function testSsoAutoLinkIntoAnAccountWithoutMfaRecordsOneEventAndNoMail(): void
+    {
+        $user = $this->user();
+        $auth = static::getContainer()->get(AuthService::class);
+        $auth->findOrCreateOAuthUser('google', 'g-sub', 'alice@example.com', 'Alice', true);
+        // signing in again with the linked provider is no new link
+        $auth->findOrCreateOAuthUser('google', 'g-sub', 'alice@example.com', 'Alice', true);
+
+        $events = $this->events();
+        $this->assertCount(1, $events);
+        $this->assertEvent($events[0], 'sso_linked', true, 'sso', 'google');
+        $this->assertSame($user->getId(), $events[0]['user_id']);
+        $this->assertSame([], $this->mails());
+    }
+
+    public function testNewSsoUserAndProfileLinkRecordOneEventEach(): void
+    {
+        $user = $this->user();
+        $auth = static::getContainer()->get(AuthService::class);
+        $auth->findOrCreateOAuthUser('google', 'g-new', 'newbie@example.com', 'New', true);
+        $this->assertSame([], $this->events());
+        $this->assertNull($auth->linkOAuthAccount($user, 'microsoft', 'm-sub', 'alice@example.com'));
+        $events = $this->events();
+        $this->assertCount(1, $events);
+        $this->assertEvent($events[0], 'sso_linked', true, 'sso', 'microsoft');
     }
 
     public function testPasskeyMailsAreGermanForGermanAccounts(): void

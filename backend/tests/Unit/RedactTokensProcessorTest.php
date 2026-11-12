@@ -101,4 +101,91 @@ class RedactTokensProcessorTest extends TestCase
         $this->assertSame('{"code":"rate_limited"}', $out->context['err']);
         $this->assertStringContainsString('x=1', $out->message);
     }
+
+    /** @param array<string, mixed> $context */
+    private function redact(string $message, array $context = []): LogRecord
+    {
+        return (new RedactTokensProcessor())(new LogRecord(new \DateTimeImmutable(), 'app', Level::Error, $message, $context));
+    }
+
+    public function testBackupAndTotpCodesInRealBodiesAreRedacted(): void
+    {
+        $bodies = [
+            '{"mfaToken":"T0K3N","method":"backup_code","code":"ABCD-EFGH-JKMN"}',
+            '{"code":"abcdefghjkmn","method":"backup_code"}',
+            '{"code":123456,"method":"totp"}',
+            '{"code":"123 456"}',
+            '{"code": "1234567890"}',
+            'code=ABCD-EFGH-JKMN&method=backup_code',
+            'method=totp&code=123456',
+            'backupCodes%5B0%5D=aaaa-bbbb-cccc&backupCodes%5B1%5D=dddd-eeee-ffff',
+            'x=1&backupCodes[1]=gggg-hhhh-jjjj&backupCodes[]=kkkk-mmmm-nnnn',
+            '{\\"mfaToken\\":\\"T0K3N\\",\\"code\\":\\"ABCD-EFGH-JKMN\\",\\"password\\":\\"hunter2hunter2\\"}',
+            '{"password":"hunter2hunter2","newPassword":"n3wpassw0rd","currentPassword":"0ldpassw0rd","k":1}',
+            'password=hunter2hunter2&newPassword=n3wpassw0rd',
+            'Authorization: Bearer eyJhbGciOi.payload.sig',
+            '{"headers":{"Authorization":"Bearer eyJhbGciOi.payload.sig"}}',
+            'calling with Bearer eyJhbGciOi.payload.sig now',
+        ];
+        $leaks = ['T0K3N', 'ABCD-EFGH-JKMN', 'abcdefghjkmn', '123456', '123 456', '1234567890', 'aaaa-bbbb-cccc', 'dddd-eeee-ffff', 'gggg-hhhh-jjjj', 'kkkk-mmmm-nnnn', 'hunter2hunter2', 'n3wpassw0rd', '0ldpassw0rd', 'eyJhbGciOi'];
+        foreach ($bodies as $body) {
+            $out = $this->redact($body, ['body' => $body])->message;
+            foreach ($leaks as $leak) {
+                $this->assertStringNotContainsString($leak, $out, $body);
+            }
+        }
+        $this->assertStringContainsString('"method":"totp"', $this->redact('{"code":123456,"method":"totp"}')->message);
+        $this->assertStringContainsString('method=backup_code', $this->redact('code=ABCD-EFGH-JKMN&method=backup_code')->message);
+    }
+
+    public function testErrorCodesAndPlainWordsStayReadable(): void
+    {
+        foreach (['{"code":"rate_limited"}', '{"code":"invalid_mfa_code"}', '{"code":429}', 'rate_limited for user', 'status code=500 retry'] as $text) {
+            $out = $this->redact($text)->message;
+            if (str_contains($text, 'code=500')) {
+                $this->assertStringContainsString('status', $out);
+
+                continue;
+            }
+            $this->assertSame($text, $out);
+        }
+    }
+
+    public function testSensitiveKeysAreMaskedInNestedContextArrays(): void
+    {
+        $out = $this->redact('m', [
+            'request' => ['password' => 'hunter2hunter2', 'newPassword' => 'x', 'headers' => ['Authorization' => 'Bearer abc.def.ghi'], 'backupCodes' => ['aaaa-bbbb-cccc'], 'user' => 'alice'],
+            'mfaToken' => 't', 'code' => 'ABCD-EFGH-JKMN', 'error' => ['code' => 'rate_limited', 'other' => 7],
+        ])->context;
+
+        $this->assertSame('[redacted]', $out['request']['password']);
+        $this->assertSame('[redacted]', $out['request']['newPassword']);
+        $this->assertSame('[redacted]', $out['request']['headers']['Authorization']);
+        $this->assertSame('[redacted]', $out['request']['backupCodes']);
+        $this->assertSame('alice', $out['request']['user']);
+        $this->assertSame('[redacted]', $out['mfaToken']);
+        $this->assertSame('[redacted]', $out['code']);
+        $this->assertSame('rate_limited', $out['error']['code']);
+        $this->assertSame(7, $out['error']['other']);
+    }
+
+    public function testLargeInputsStayFast(): void
+    {
+        $inputs = [
+            str_repeat('a', 1_000_000),
+            str_repeat('"password":"', 80_000),
+            str_repeat('\\"code\\":\\"', 80_000),
+            str_repeat('Authorization: ', 60_000),
+            str_repeat('code=1234 ', 100_000),
+            '{"code":"'.str_repeat('1', 1_000_000),
+            'Bearer '.str_repeat('a', 1_000_000),
+            str_repeat('"backupCodes":[', 70_000),
+        ];
+        foreach ($inputs as $i => $input) {
+            $start = microtime(true);
+            $this->redact($input);
+            $this->assertLessThan(1.0, microtime(true) - $start, "input $i");
+            $this->assertSame(PREG_NO_ERROR, preg_last_error(), "input $i");
+        }
+    }
 }

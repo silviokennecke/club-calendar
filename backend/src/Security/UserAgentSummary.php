@@ -10,7 +10,7 @@ final class UserAgentSummary
 {
     private static ?Parser $parser = null;
 
-    /** "Chrome 126" (family and major version, at most 20 characters of A-Z a-z 0-9 space . - _) or null when unknown. */
+    /** "Chrome 126": a known browser name (allow-list) and a numeric major version, null for anything else. */
     public static function browser(string $userAgent): ?string
     {
         if ('' === trim($userAgent)) {
@@ -24,7 +24,7 @@ final class UserAgentSummary
             return null;
         }
 
-        // Rules of uap-core copy free text of the header into the family: only inert characters, max. 20.
-        return ClientContextSanitizer::browserWithVersion($family, $ua->major);
+        // uap-core rules copy free text of the header into the family: only allow-listed names pass.
+        return ClientContextSanitizer::knownBrowser($family, $ua->major);
     }
 }

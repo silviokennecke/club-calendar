@@ -317,6 +317,29 @@ class MfaManagementTest extends WebTestCase
         $this->assertTrue($this->em->find(User::class, $user->getId())->isMfaEnforced());
     }
 
+    public function testSignOutOthersNeverExtendsTheAbsoluteSessionLifetime(): void
+    {
+        $user = $this->user();
+        $this->enableTotp($user);
+        $session = $this->tokens->tokenResponse($user);
+        $aged = (new \DateTimeImmutable('+1 day', new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+        $this->conn()->executeStatement('UPDATE refresh_token SET family_expires_at = ?', [$aged]);
+
+        $access = $session['access_token'];
+        $oldFamily = $this->tokens->decodeRefreshToken($session['refresh_token'])['fam'];
+        for ($i = 0; $i < 3; ++$i) {
+            $r = $this->call('POST', '/api/auth/sessions/sign-out-others', [], 'Bearer '.$access);
+            $this->assertSame(200, $r['status'], $r['content']);
+            $access = $r['body']['access_token'];
+            $family = $this->tokens->decodeRefreshToken($r['body']['refresh_token'])['fam'];
+            $this->assertNotSame($oldFamily, $family);
+            $this->assertSame($aged, $this->conn()->fetchOne('SELECT family_expires_at FROM refresh_token WHERE family_id = ?', [$family]));
+            $this->assertNotNull($this->conn()->fetchOne('SELECT MIN(revoked_at) FROM refresh_token WHERE family_id = ?', [$oldFamily]));
+            $oldFamily = $family;
+        }
+        $this->assertSame([], $this->conn()->fetchFirstColumn('SELECT id FROM refresh_token WHERE family_expires_at > ?', [$aged]));
+    }
+
     public function testBackupCodesRegenerate(): void
     {
         $user = $this->user();

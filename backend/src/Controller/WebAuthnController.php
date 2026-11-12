@@ -134,6 +134,6 @@ class WebAuthnController extends AbstractController
         $this->reauth->assertConfirmed($user, ReauthenticationService::PURPOSE_MFA, $data['password'] ?? null, $data['confirmationCode'] ?? null);
 
         // `ok` like every delete, plus the fresh token pair: the deletion ended all sessions.
-        return new JsonResponse(['ok' => true] + $this->webAuthn->deletePasskey($id, $user, $this->userResolver->sessionConsentOk()));
+        return new JsonResponse(['ok' => true] + $this->webAuthn->deletePasskey($id, $user, $this->userResolver->sessionConsentOk(), $this->userResolver->sessionFamilyExpiresAt()));
     }
 }

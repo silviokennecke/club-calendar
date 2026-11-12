@@ -87,10 +87,10 @@ readonly class AccountMailer
         $this->sendNotice($user, 'passkey_deleted', $context);
     }
 
-    /** A passkey was registered; `$deviceName` is user input (the template escapes it). */
-    public function sendPasskeyAdded(User $user, string $deviceName, ClientContext $context = new ClientContext()): void
+    /** A passkey was registered. Its name is attacker-chosen text and deliberately not part of the notice. */
+    public function sendPasskeyAdded(User $user, ClientContext $context = new ClientContext()): void
     {
-        $this->sendNotice($user, 'passkey_added', $context, ['passkeyName' => $deviceName]);
+        $this->sendNotice($user, 'passkey_added', $context);
     }
 
     /** An SSO provider was linked to the account in the profile. */

@@ -10,6 +10,7 @@ use App\Repository\RefreshTokenRepository;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Access tokens (JWT bundle) and refresh tokens. A refresh token is an HMAC-signed JWT with `jti` (row of
@@ -40,11 +41,18 @@ class TokenService
     /** Claim of access and refresh tokens: the session started with all current consents given (see ConsentGateListener). */
     public const string CONSENT_CLAIM = 'lc';
 
-    public function createAccessToken(User $user, ?bool $consentOk = null): string
+    /** Claim of access tokens: the refresh-token family (session) they belong to. */
+    public const string FAMILY_CLAIM = 'fam';
+
+    public function createAccessToken(User $user, ?bool $consentOk = null, ?string $familyId = null): string
     {
         $consentOk ??= $this->consentOk($user);
+        $claims = $this->sessionClaims($user) + [self::CONSENT_CLAIM => $consentOk];
+        if (null !== $familyId) {
+            $claims[self::FAMILY_CLAIM] = $familyId;
+        }
 
-        return $this->jwtManager->createFromPayload($user, $this->sessionClaims($user) + [self::CONSENT_CLAIM => $consentOk]);
+        return $this->jwtManager->createFromPayload($user, $claims);
     }
 
     /**
@@ -137,7 +145,9 @@ class TokenService
 
     /**
      * Token response for a login / grant. `$familyId` + `$familyExpiresAt` continue an existing session
-     * (rotation); without them a new session starts.
+     * (rotation); without them a new session starts. A flow that continues a session under a new family (sign-out
+     * of other devices, password change, ...) passes only `$familyExpiresAt` (the old family's absolute end), so the
+     * session never gets a fresh absolute lifetime ({@see \App\Security\CurrentUserResolver::sessionFamilyExpiresAt()}).
      *
      * `$consentOk` is the consent flag of the session (claim `lc`, fixed for the family's lifetime): rotation
      * and re-issuance inside a running session pass the session's flag on; `null` evaluates it now (a new
@@ -146,9 +156,10 @@ class TokenService
     public function tokenResponse(User $user, ?string $familyId = null, ?\DateTimeImmutable $familyExpiresAt = null, ?bool $consentOk = null): array
     {
         $consentOk ??= $this->consentOk($user);
+        $familyId ??= Uuid::v7()->toRfc4122();
 
         return [
-            'access_token' => $this->createAccessToken($user, $consentOk),
+            'access_token' => $this->createAccessToken($user, $consentOk, $familyId),
             'token_type' => 'Bearer',
             'expires_in' => 900,
             'refresh_token' => $this->createRefreshToken($user, $familyId, $familyExpiresAt, $consentOk),

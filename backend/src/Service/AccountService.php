@@ -41,7 +41,7 @@ readonly class AccountService
      *
      * @throws ApiProblemException 409 no_password (SSO-only account), 400 invalid_credentials
      */
-    public function changePassword(User $user, string $currentPassword, string $newPassword, ?bool $consentOk = null): array
+    public function changePassword(User $user, string $currentPassword, string $newPassword, ?bool $consentOk = null, ?\DateTimeImmutable $familyExpiresAt = null): array
     {
         $this->assertPassword($user, $currentPassword, 'currentPassword');
         $user->setPassword($this->hasher->hashPassword($user, $newPassword));
@@ -53,7 +53,7 @@ readonly class AccountService
         $this->events->record($user, SecurityEventType::PASSWORD_CHANGED, true, 'password', null, $context);
         $this->mailer->sendPasswordChanged($user, $context);
 
-        return $this->tokens->tokenResponse($user, null, null, $consentOk);
+        return $this->tokens->tokenResponse($user, null, $familyExpiresAt, $consentOk);
     }
 
     /**

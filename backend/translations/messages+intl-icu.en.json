@@ -131,7 +131,7 @@
         "passkey_added": {
             "subject": "A passkey was added",
             "greeting": "Hello {name},",
-            "body": "The passkey \"{name}\" was added to your Club Calendar account.",
+            "body": "A passkey was added to your Club Calendar account.",
             "info": "This passkey can now be used to sign in, even when MFA is on.",
             "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then delete the unknown passkey in your profile, check MFA and contact Club Calendar support. You can find the \"Forgot password\" page here:"
         },

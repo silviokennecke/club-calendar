@@ -472,6 +472,7 @@ readonly class AuthService
             && in_array($provider, self::PROVIDERS_WITH_VERIFIED_EMAIL_CLAIM, true);
 
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
+        $linkedExisting = null !== $user;
         if ($user) {
             // The column collation (utf8mb4_unicode_ci) also equates "ä" with "a", "ß" with "ss" or full-width
             // letters: link only if the stored address is exactly the normalized one.
@@ -519,6 +520,10 @@ readonly class AuthService
             return $this->findOrCreateOAuthUser($provider, $providerId, $email, $name, $providerSaysEmailVerified, false, $tenantId, $objectId, $feedProof);
         }
 
+        if ($linkedExisting) {
+            // Event only: the sign-in itself is the mailbox owner's, so no notice mail (the profile link flow mails).
+            $this->events->record($user, SecurityEventType::SSO_LINKED, true, 'sso', $provider);
+        }
         if (!$user->isEmailVerified()) {
             $this->sendCodeIfDue($user);
         }

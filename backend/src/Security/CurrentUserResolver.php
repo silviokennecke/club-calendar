@@ -6,6 +6,7 @@ namespace App\Security;
 
 use App\Entity\User;
 use App\Exception\ApiProblemException;
+use App\Repository\RefreshTokenRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 
@@ -14,6 +15,7 @@ readonly class CurrentUserResolver
     public function __construct(
         private readonly Security $security,
         private readonly EntityManagerInterface $em,
+        private readonly RefreshTokenRepository $refreshTokens,
     ) {
     }
 
@@ -21,6 +23,23 @@ readonly class CurrentUserResolver
     public function sessionConsentOk(): bool
     {
         return SessionConsentListener::isOk($this->security->getToken());
+    }
+
+    /**
+     * Absolute end of the presenting session (its refresh-token family), to be handed to
+     * `TokenService::tokenResponse` when the session continues under a new family. Null (a token from before the
+     * claim existed, at most 15 minutes old) lets the new family start with the full lifetime.
+     */
+    public function sessionFamilyExpiresAt(): ?\DateTimeImmutable
+    {
+        $family = SessionConsentListener::family($this->security->getToken());
+        $user = $this->security->getUser();
+        if (null === $family || null === $user) {
+            return null;
+        }
+        $row = $this->em->getRepository(User::class)->findOneBy(['email' => $user->getUserIdentifier()]);
+
+        return null === $row ? null : $this->refreshTokens->findFamilyExpiry($family, $row->getId());
     }
 
     public function resolve(): User

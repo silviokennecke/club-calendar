@@ -9,31 +9,70 @@ final class ClientContextSanitizer
 {
     public const int BROWSER_MAX = 20;
     public const int CITY_MAX = 100;
+    public const int USER_AGENT_MAX = 512;
 
-    /** Letters, digits, space, dot, hyphen, underscore (ASCII only); null when nothing is left. */
-    public static function browser(string $value, int $max = self::BROWSER_MAX): ?string
+    /** uap family (lower case) => name shown in notices. Anything else is "unknown" (null). */
+    private const array KNOWN_BROWSERS = [
+        'chrome' => 'Chrome',
+        'chrome mobile' => 'Chrome Mobile',
+        'chrome mobile ios' => 'Chrome Mobile',
+        'chromium' => 'Chromium',
+        'firefox' => 'Firefox',
+        'firefox mobile' => 'Firefox Mobile',
+        'firefox ios' => 'Firefox iOS',
+        'safari' => 'Safari',
+        'mobile safari' => 'Mobile Safari',
+        'mobile safari ui/wkwebview' => 'Mobile Safari',
+        'edge' => 'Edge',
+        'edge mobile' => 'Edge Mobile',
+        'opera' => 'Opera',
+        'opera mobile' => 'Opera Mobile',
+        'opera mini' => 'Opera Mini',
+        'samsung internet' => 'Samsung Internet',
+        'brave' => 'Brave',
+        'vivaldi' => 'Vivaldi',
+        'duckduckgo mobile' => 'DuckDuckGo',
+        'duckduckgo' => 'DuckDuckGo',
+        'android' => 'Android Browser',
+        'android browser' => 'Android Browser',
+        'ie' => 'IE',
+        'ie mobile' => 'IE Mobile',
+    ];
+
+    /** Known browser name plus optional major version (1-3 digits); null for everything else. */
+    public static function knownBrowser(?string $family, ?string $major = null): ?string
     {
-        return self::cut(self::collapse((string) preg_replace('/[^A-Za-z0-9 ._-]+/', '', $value)), $max);
-    }
-
-    /** "Family Major" within the limit: the family is shortened first so the version stays complete. */
-    public static function browserWithVersion(string $family, ?string $major, int $max = self::BROWSER_MAX): ?string
-    {
-        $family = self::collapse((string) preg_replace('/[^A-Za-z0-9 ._-]+/', '', $family));
-        $major = null === $major ? '' : self::collapse((string) preg_replace('/[^A-Za-z0-9._-]+/', '', $major));
-        if ('' !== $major && strlen($major) + 2 <= $max) {
-            $room = $max - strlen($major) - 1;
-            if (strlen($family) > $room) {
-                $short = substr($family, 0, $room);
-                // prefer whole words: "Chrome Mobile 126" over "Chrome Mobile iO 126"
-                $family = false !== ($space = strrpos($short, ' ')) && $space > 0 ? substr($short, 0, $space) : $short;
-            }
-            $family = rtrim($family);
-
-            return '' === $family ? null : $family.' '.$major;
+        if (null === $family) {
+            return null;
+        }
+        $name = self::KNOWN_BROWSERS[strtolower(trim($family))] ?? null;
+        if (null === $name) {
+            return null;
         }
 
-        return self::cut($family, $max);
+        return null !== $major && 1 === preg_match('/^\d{1,3}$/', $major) ? $name.' '.$major : $name;
+    }
+
+    /** Re-validates an already summarised "Name 126" against the allow-list (the single gate for stored and mailed browsers). */
+    public static function browser(string $value): ?string
+    {
+        if (1 !== preg_match('/^([A-Za-z ]{1,30}?)(?: (\d{1,3}))?$/', $value, $m)) {
+            return null;
+        }
+
+        return self::knownBrowser($m[1], $m[2] ?? null);
+    }
+
+    /** Raw User-Agent for the log only: valid UTF-8, no control characters, at most 512 characters. */
+    public static function userAgent(?string $value): ?string
+    {
+        if (null === $value) {
+            return null;
+        }
+        $clean = (string) preg_replace('/[\x00-\x1F\x7F]+/', ' ', mb_convert_encoding($value, 'UTF-8', 'UTF-8'));
+        $clean = mb_substr(trim($clean), 0, self::USER_AGENT_MAX);
+
+        return '' === $clean ? null : $clean;
     }
 
     /** Unicode letters/marks/digits are kept (Zürich, São Paulo), everything else is dropped. */
