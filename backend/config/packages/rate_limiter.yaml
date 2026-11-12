@@ -113,24 +113,11 @@ framework:
             policy: sliding_window
             limit: 60
             interval: '1 minute'
-        # Account deletion (AUTH-03): failed/any confirmation attempts and code mails per user.
-        account_delete_attempt:
-            policy: sliding_window
-            limit: 5
-            interval: '15 minutes'
-        account_delete_code:
-            policy: sliding_window
-            limit: 5
-            interval: '1 hour'
         # Club invitations (mail sending): per user, per club and per invited address, 24 hours each.
         passkey_register_attempt:
             policy: sliding_window
             limit: 5
             interval: '15 minutes'
-        passkey_register_code:
-            policy: sliding_window
-            limit: 5
-            interval: '1 hour'
         # MFA: verification attempts at sign-in (per user, per IP, per login token) and re-authenticated management.
         mfa_verify_user:
             policy: sliding_window
@@ -148,10 +135,6 @@ framework:
             policy: sliding_window
             limit: 5
             interval: '15 minutes'
-        mfa_manage_code:
-            policy: sliding_window
-            limit: 5
-            interval: '1 hour'
         # Step-up confirmation (password / mailed code + MFA factor): attempts per user and per IP, mails per user.
         step_up_user:
             policy: sliding_window

@@ -31,12 +31,15 @@ class PasskeyDeleteConcurrencyTest extends WebTestCase
         $c = static::getContainer();
         $em = $c->get(EntityManagerInterface::class);
         $user = TestHelper::createUser($em, $c->get(UserPasswordHasherInterface::class), 'alice@example.com', 'password123', true);
-        $user->setMfaEnforced(true);
         foreach (['pk-1', 'pk-2'] as $id) {
             $em->persist((new Passkey())->setId($id)->setUser($user)->setCredentialId('cred-'.$id)->setPublicKey('key')->setCounter(0));
         }
         $em->flush();
-        $auth = 'Bearer '.$c->get(TokenService::class)->createAccessToken($user);
+        $client = static::getClient();
+        [$auth, $stepUp] = TestHelper::stepUpSession($client, $user, $c->get(TokenService::class));
+        // MFA is switched on after the (password-only) step-up; the token stays valid
+        $user->setMfaEnforced(true);
+        $em->flush();
 
         $dir = dirname(__DIR__, 2).'/var';
         $startAt = microtime(true) + 3.0;
@@ -55,7 +58,7 @@ class PasskeyDeleteConcurrencyTest extends WebTestCase
                     while (microtime(true) < $startAt) {
                         usleep(500);
                     }
-                    $r = TestHelper::jsonRequest($client, 'DELETE', '/api/auth/webauthn/'.$id, ['password' => 'password123'], $auth);
+                    $r = TestHelper::jsonRequest($client, 'DELETE', '/api/auth/webauthn/'.$id, [], $auth, $stepUp);
                     $result = ['status' => $r['status'], 'code' => $r['body']['code'] ?? null];
                 } catch (\Throwable $e) {
                     $result['code'] = $e->getMessage();

@@ -63,12 +63,50 @@ class MfaManagementTest extends WebTestCase
 
     private function auth(User $user): string
     {
-        return 'Bearer '.$this->tokens->createAccessToken($user);
+        return TestHelper::sessionHeader($user, $this->tokens);
     }
 
-    private function call(string $method, string $uri, array $body, User|string $auth): array
+    private function sensitive(string $method, string $uri): bool
     {
-        return TestHelper::jsonRequest($this->client, $method, $uri, $body, $auth instanceof User ? $this->auth($auth) : $auth);
+        return ('POST' === $method && in_array($uri, ['/api/auth/mfa/enable', '/api/auth/mfa/disable', '/api/auth/mfa/backup-codes'], true))
+            || ('DELETE' === $method && str_starts_with($uri, '/api/auth/webauthn/'));
+    }
+
+    /**
+     * A request as `$auth`; a User gets a fresh session and, on the sensitive routes, a valid step-up token
+     * (password, or the mailed code for accounts without one; MFA is skipped for fixtures) unless `$stepUp` is false.
+     */
+    private function call(string $method, string $uri, array $body, User|string $auth, bool $stepUp = true): array
+    {
+        $token = null;
+        if ($auth instanceof User) {
+            $user = $auth;
+            $auth = $this->auth($user);
+            if ($stepUp && $this->sensitive($method, $uri)) {
+                $token = $this->obtainStepUp($user, $auth);
+            }
+        }
+
+        return TestHelper::jsonRequest($this->client, $method, $uri, $body, $auth, $token);
+    }
+
+    private function obtainStepUp(User $user, string $auth): string
+    {
+        $enforced = (bool) $this->conn()->fetchOne('SELECT mfa_enforced FROM user WHERE id = ?', [$user->getId()]);
+        $this->conn()->executeStatement('UPDATE user SET mfa_enforced = 0 WHERE id = ?', [$user->getId()]);
+        try {
+            if (null === $this->conn()->fetchOne('SELECT password FROM user WHERE id = ?', [$user->getId()])) {
+                $this->assertSame(204, TestHelper::jsonRequest($this->client, 'POST', '/api/auth/step-up/code', [], $auth)['status']);
+                $r = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/step-up', ['confirmationCode' => $this->mailedCode()], $auth);
+                $this->assertSame(200, $r['status'], $r['content']);
+
+                return $r['body']['stepUpToken'];
+            }
+
+            return TestHelper::stepUp($this->client, $auth);
+        } finally {
+            $this->conn()->executeStatement('UPDATE user SET mfa_enforced = ? WHERE id = ?', [(int) $enforced, $user->getId()]);
+        }
     }
 
     private function conn(): Connection
@@ -98,7 +136,6 @@ class MfaManagementTest extends WebTestCase
             'code' => Totp::code($body['secret'], Totp::step(time())),
             'backupCodes' => $body['backupCodes'],
             'backupCodesAcknowledged' => true,
-            'password' => 'password123',
         ], $user);
 
         return [$body, $r];
@@ -110,14 +147,14 @@ class MfaManagementTest extends WebTestCase
         $setup = $this->call('POST', '/api/auth/mfa/setup', ['method' => 'passkeys'], $user)['body'];
         $r = $this->call('POST', '/api/auth/mfa/enable', [
             'setupToken' => $setup['setupToken'], 'method' => 'passkeys', 'backupCodes' => $setup['backupCodes'],
-            'backupCodesAcknowledged' => true, 'password' => 'password123',
+            'backupCodesAcknowledged' => true,
         ], $user);
         $this->assertSame(200, $r['status'], $r['content']);
     }
 
     public function testRoutesNeedAJwt(): void
     {
-        foreach ([['POST', '/api/auth/mfa/setup'], ['POST', '/api/auth/mfa/enable'], ['POST', '/api/auth/mfa/disable'], ['POST', '/api/auth/mfa/backup-codes'], ['POST', '/api/auth/mfa/code'], ['PATCH', '/api/auth/webauthn/x'], ['DELETE', '/api/auth/webauthn/x']] as [$m, $u]) {
+        foreach ([['POST', '/api/auth/mfa/setup'], ['POST', '/api/auth/mfa/enable'], ['POST', '/api/auth/mfa/disable'], ['POST', '/api/auth/mfa/backup-codes'], ['PATCH', '/api/auth/webauthn/x'], ['DELETE', '/api/auth/webauthn/x']] as [$m, $u]) {
             $this->assertSame(401, $this->call($m, $u, [], '')['status'], "$m $u");
         }
     }
@@ -176,17 +213,16 @@ class MfaManagementTest extends WebTestCase
         $this->assertSame(['enforced' => false, 'totp' => null, 'backupCodes' => null, 'canEnforce' => false], $me['body']['mfa']);
     }
 
-    public function testEnableNeedsProof(): void
+    public function testEnableNeedsAStepUp(): void
     {
         $user = $this->user();
         $setup = $this->call('POST', '/api/auth/mfa/setup', ['method' => 'totp'], $user)['body'];
         $base = ['setupToken' => $setup['setupToken'], 'method' => 'totp', 'secret' => $setup['secret'], 'code' => Totp::code($setup['secret'], Totp::step(time())), 'backupCodes' => $setup['backupCodes'], 'backupCodesAcknowledged' => true];
 
-        foreach ([[], ['password' => 'wrong-password'], ['password' => '']] as $proof) {
-            $r = $this->call('POST', '/api/auth/mfa/enable', $base + $proof, $user);
-            $this->assertSame(400, $r['status']);
-            $this->assertSame('invalid_credentials', $r['body']['code']);
-            $this->assertSame('password', $r['body']['field']);
+        foreach ([[], ['password' => 'password123'], ['password' => '']] as $legacy) {
+            $r = $this->call('POST', '/api/auth/mfa/enable', $base + $legacy, $user, false);
+            $this->assertSame(403, $r['status']);
+            $this->assertSame('step_up_required', $r['body']['code']);
         }
         $this->assertFalse($this->em->getRepository(User::class)->findOneBy([])->isMfaEnforced());
     }
@@ -196,7 +232,7 @@ class MfaManagementTest extends WebTestCase
         $user = $this->user();
         $setup = $this->call('POST', '/api/auth/mfa/setup', ['method' => 'totp'], $user)['body'];
         $own = Totp::generateSecret();
-        $base = ['setupToken' => $setup['setupToken'], 'method' => 'totp', 'backupCodesAcknowledged' => true, 'password' => 'password123'];
+        $base = ['setupToken' => $setup['setupToken'], 'method' => 'totp', 'backupCodesAcknowledged' => true];
 
         $r = $this->call('POST', '/api/auth/mfa/enable', $base + ['secret' => $own, 'code' => Totp::code($own, Totp::step(time())), 'backupCodes' => $setup['backupCodes']], $user);
         $this->assertSame(400, $r['status']);
@@ -243,9 +279,9 @@ class MfaManagementTest extends WebTestCase
     public function testEnableRejectsMalformedBody(): void
     {
         $user = $this->user();
-        $r = $this->call('POST', '/api/auth/mfa/enable', ['password' => 'password123', 'setupToken' => 5, 'method' => 'totp'], $user);
+        $r = $this->call('POST', '/api/auth/mfa/enable', ['setupToken' => 5, 'method' => 'totp'], $user);
         $this->assertSame('invalid_request', $r['body']['code']);
-        $r = $this->call('POST', '/api/auth/mfa/enable', ['password' => ['x']], $user);
+        $r = $this->call('POST', '/api/auth/mfa/enable', ['code' => ['x']], $user);
         $this->assertSame('invalid_request', $r['body']['code']);
     }
 
@@ -262,7 +298,7 @@ class MfaManagementTest extends WebTestCase
 
         $r = $this->call('POST', '/api/auth/mfa/enable', [
             'setupToken' => $setup['body']['setupToken'], 'method' => 'totp', 'secret' => $setup['body']['secret'],
-            'code' => Totp::code($setup['body']['secret'], Totp::step(time())), 'password' => 'password123',
+            'code' => Totp::code($setup['body']['secret'], Totp::step(time())),
         ], $user);
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertNotNull($r['body']['mfa']['totp']);
@@ -272,18 +308,18 @@ class MfaManagementTest extends WebTestCase
     public function testDisableErrorsAndEffects(): void
     {
         $user = $this->user();
-        $r = $this->call('POST', '/api/auth/mfa/disable', ['password' => 'password123'], $user);
+        $r = $this->call('POST', '/api/auth/mfa/disable', [], $user);
         $this->assertSame(409, $r['status']);
         $this->assertSame('mfa_not_enabled', $r['body']['code']);
 
         $this->passkey($user);
         $this->enableTotp($user);
         $other = $this->tokens->tokenResponse($user);
-        $r = $this->call('POST', '/api/auth/mfa/disable', ['password' => 'wrong-password'], $user);
-        $this->assertSame('invalid_credentials', $r['body']['code']);
+        $r = $this->call('POST', '/api/auth/mfa/disable', [], $user, false);
+        $this->assertSame('step_up_required', $r['body']['code']);
         $this->assertSame(200, $this->call('GET', '/api/auth/me', [], 'Bearer '.$other['access_token'])['status']);
 
-        $r = $this->call('POST', '/api/auth/mfa/disable', ['password' => 'password123'], $user);
+        $r = $this->call('POST', '/api/auth/mfa/disable', [], $user);
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertFalse($r['body']['mfa']['enforced']);
         $this->assertNull($r['body']['mfa']['totp']);
@@ -343,15 +379,15 @@ class MfaManagementTest extends WebTestCase
     public function testBackupCodesRegenerate(): void
     {
         $user = $this->user();
-        $r = $this->call('POST', '/api/auth/mfa/backup-codes', ['password' => 'password123'], $user);
+        $r = $this->call('POST', '/api/auth/mfa/backup-codes', [], $user);
         $this->assertSame(409, $r['status']);
         $this->assertSame('mfa_not_enabled', $r['body']['code']);
 
         [$setup] = $this->enableTotp($user);
         $other = $this->tokens->tokenResponse($user);
-        $this->assertSame('invalid_credentials', $this->call('POST', '/api/auth/mfa/backup-codes', ['x' => 1], $user)['body']['code']);
+        $this->assertSame('step_up_required', $this->call('POST', '/api/auth/mfa/backup-codes', [], $user, false)['body']['code']);
 
-        $r = $this->call('POST', '/api/auth/mfa/backup-codes', ['password' => 'password123'], $user);
+        $r = $this->call('POST', '/api/auth/mfa/backup-codes', [], $user);
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertCount(10, $r['body']['backupCodes']);
         $this->assertSame(10, $r['body']['mfa']['backupCodes']['remaining']);
@@ -367,52 +403,26 @@ class MfaManagementTest extends WebTestCase
         $this->assertSame(200, $this->call('GET', '/api/auth/me', [], 'Bearer '.$other['access_token'])['status']);
     }
 
-    public function testMailedCodeAccountsUseConfirmationCode(): void
+    public function testAccountsWithoutPasswordConfirmWithTheMailedStepUpCode(): void
     {
         $user = $this->passwordless();
-
-        $r = $this->call('POST', '/api/auth/mfa/code', [], $user);
-        $this->assertSame(204, $r['status']);
-        $code = $this->mailedCode();
 
         $setup = $this->call('POST', '/api/auth/mfa/setup', ['method' => 'totp'], $user)['body'];
         $body = ['setupToken' => $setup['setupToken'], 'method' => 'totp', 'secret' => $setup['secret'], 'code' => Totp::code($setup['secret'], Totp::step(time())), 'backupCodes' => $setup['backupCodes'], 'backupCodesAcknowledged' => true];
-        foreach ([[], ['confirmationCode' => '000000'], ['password' => 'password123']] as $proof) {
-            $r = $this->call('POST', '/api/auth/mfa/enable', $body + $proof, $user);
-            $this->assertSame(400, $r['status']);
-            $this->assertSame('invalid_confirmation_code', $r['body']['code']);
+        foreach ([[], ['confirmationCode' => '000000']] as $legacy) {
+            $r = $this->call('POST', '/api/auth/mfa/enable', $body + $legacy, $user, false);
+            $this->assertSame('step_up_required', $r['body']['code']);
         }
-        $r = $this->call('POST', '/api/auth/mfa/enable', $body + ['confirmationCode' => $code], $user);
+        $r = $this->call('POST', '/api/auth/mfa/enable', $body, $user);
         $this->assertSame(200, $r['status'], $r['content']);
-
-        // a deletion/passkey code must not work for MFA
-        $this->assertSame(204, $this->call('POST', '/api/auth/webauthn/register/code', [], $user)['status']);
     }
 
-    public function testConfirmationCodeErrorShape(): void
+    public function testObsoleteCodeRoutesAreGone(): void
     {
         $user = $this->passwordless();
-        $r = $this->call('POST', '/api/auth/mfa/disable', ['confirmationCode' => '123456'], $user);
-        $this->assertSame(400, $r['status']);
-        $this->assertSame('invalid_confirmation_code', $r['body']['code']);
-        $this->assertSame('code', $r['body']['field']);
-    }
-
-    public function testPasskeyRegistrationCodeDoesNotWorkForMfa(): void
-    {
-        $user = $this->passwordless();
-        $this->call('POST', '/api/auth/webauthn/register/code', [], $user);
-        $code = $this->mailedCode();
-        $r = $this->call('POST', '/api/auth/mfa/disable', ['confirmationCode' => $code], $user);
-        $this->assertSame('invalid_confirmation_code', $r['body']['code']);
-    }
-
-    public function testCodeRouteIsConflictForPasswordAccounts(): void
-    {
-        $r = $this->call('POST', '/api/auth/mfa/code', [], $this->user());
-        $this->assertSame(409, $r['status']);
-        $this->assertSame('has_password', $r['body']['code']);
-        $this->assertEmailCount(0);
+        foreach (['/api/auth/mfa/code', '/api/auth/webauthn/register/code', '/api/auth/delete-account/code'] as $uri) {
+            $this->assertSame(404, $this->call('POST', $uri, [], $user)['status'], $uri);
+        }
     }
 
     public function testRenameNeedsNoReauth(): void
@@ -435,55 +445,53 @@ class MfaManagementTest extends WebTestCase
         $this->assertSame(404, $this->call('PATCH', '/api/auth/webauthn/pk-1', ['deviceName' => 'mine'], $other)['status']);
     }
 
-    public function testDeletePasskeyNeedsProof(): void
+    public function testDeletePasskeyNeedsAStepUp(): void
     {
         $user = $this->user();
         $this->passkey($user);
 
-        foreach ([[], ['password' => 'wrong-password']] as $body) {
-            $r = $this->call('DELETE', '/api/auth/webauthn/pk-1', $body, $user);
-            $this->assertSame(400, $r['status']);
-            $this->assertSame('invalid_credentials', $r['body']['code']);
+        foreach ([[], ['password' => 'password123']] as $body) {
+            $r = $this->call('DELETE', '/api/auth/webauthn/pk-1', $body, $user, false);
+            $this->assertSame(403, $r['status']);
+            $this->assertSame('step_up_required', $r['body']['code']);
         }
         $this->assertSame(1, $this->em->getRepository(Passkey::class)->count([]));
 
-        $r = $this->call('DELETE', '/api/auth/webauthn/pk-1', ['password' => 'password123'], $user);
+        $r = $this->call('DELETE', '/api/auth/webauthn/pk-1', [], $user);
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertTrue($r['body']['ok']);
         $this->assertArrayHasKey('access_token', $r['body']);
         $this->assertSame(0, (int) $this->conn()->fetchOne('SELECT COUNT(*) FROM passkey'));
     }
 
-    public function testDeletePasskeyWithMailedCode(): void
+    public function testDeletePasskeyWithMailedStepUpCode(): void
     {
         $user = $this->passwordless();
         $this->passkey($user);
-        $this->call('POST', '/api/auth/mfa/code', [], $user);
-        $code = $this->mailedCode();
 
-        $this->assertSame('invalid_confirmation_code', $this->call('DELETE', '/api/auth/webauthn/pk-1', ['confirmationCode' => '000000'], $user)['body']['code']);
-        $this->assertSame(200, $this->call('DELETE', '/api/auth/webauthn/pk-1', ['confirmationCode' => $code], $user)['status']);
+        $this->assertSame('step_up_required', $this->call('DELETE', '/api/auth/webauthn/pk-1', [], $user, false)['body']['code']);
+        $this->assertSame(200, $this->call('DELETE', '/api/auth/webauthn/pk-1', [], $user)['status']);
     }
 
-    public function testLastPasskeyGuardOnlyAfterValidProof(): void
+    public function testLastPasskeyGuardOnlyAfterAValidStepUp(): void
     {
         $user = $this->user();
         $this->enforcedWithPasskey($user);
 
-        $r = $this->call('DELETE', '/api/auth/webauthn/pk-1', ['password' => 'wrong-password'], $user);
-        $this->assertSame('invalid_credentials', $r['body']['code']);
+        $r = $this->call('DELETE', '/api/auth/webauthn/pk-1', [], $user, false);
+        $this->assertSame('step_up_required', $r['body']['code']);
 
-        $r = $this->call('DELETE', '/api/auth/webauthn/pk-1', ['password' => 'password123'], $user);
+        $r = $this->call('DELETE', '/api/auth/webauthn/pk-1', [], $user);
         $this->assertSame(422, $r['status']);
         $this->assertSame('mfa_last_passkey', $r['body']['code']);
         $this->assertSame(1, (int) $this->conn()->fetchOne('SELECT COUNT(*) FROM passkey'));
 
         // an unknown id stays a 404, not a guard error
-        $this->assertSame('passkey_not_found', $this->call('DELETE', '/api/auth/webauthn/nope', ['password' => 'password123'], $user)['body']['code']);
+        $this->assertSame('passkey_not_found', $this->call('DELETE', '/api/auth/webauthn/nope', [], $user)['body']['code']);
 
         // a second passkey or a TOTP lifts the guard
         $this->passkey($user, 'pk-2');
-        $this->assertSame(200, $this->call('DELETE', '/api/auth/webauthn/pk-1', ['password' => 'password123'], $user)['status']);
+        $this->assertSame(200, $this->call('DELETE', '/api/auth/webauthn/pk-1', [], $user)['status']);
     }
 
     public function testLastPasskeyGuardLiftedByTotp(): void
@@ -492,7 +500,7 @@ class MfaManagementTest extends WebTestCase
         $this->passkey($user);
         $this->enableTotp($user);
 
-        $r = $this->call('DELETE', '/api/auth/webauthn/pk-1', ['password' => 'password123'], $user);
+        $r = $this->call('DELETE', '/api/auth/webauthn/pk-1', [], $user);
         $this->assertSame(200, $r['status'], $r['content']);
     }
 
@@ -500,22 +508,11 @@ class MfaManagementTest extends WebTestCase
     {
         $user = $this->user(false);
         $this->passkey($user);
-        $routes = [['POST', '/api/auth/mfa/setup'], ['POST', '/api/auth/mfa/enable'], ['POST', '/api/auth/mfa/disable'], ['POST', '/api/auth/mfa/backup-codes'], ['POST', '/api/auth/mfa/code'], ['PATCH', '/api/auth/webauthn/pk-1'], ['DELETE', '/api/auth/webauthn/pk-1']];
+        $routes = [['POST', '/api/auth/mfa/setup'], ['POST', '/api/auth/mfa/enable'], ['POST', '/api/auth/mfa/disable'], ['POST', '/api/auth/mfa/backup-codes'], ['PATCH', '/api/auth/webauthn/pk-1'], ['DELETE', '/api/auth/webauthn/pk-1']];
         foreach ($routes as [$m, $u]) {
             $r = $this->call($m, $u, ['method' => 'totp', 'password' => 'password123', 'deviceName' => 'x'], $user);
             $this->assertSame(403, $r['status'], "$m $u");
             $this->assertSame('email_verification_required', $r['body']['code'], "$m $u");
         }
-    }
-
-    public function testRateLimitedMailedCode(): void
-    {
-        $user = $this->passwordless();
-        for ($i = 0; $i < 5; ++$i) {
-            $this->assertSame(204, $this->call('POST', '/api/auth/mfa/code', [], $user)['status']);
-        }
-        $r = $this->call('POST', '/api/auth/mfa/code', [], $user);
-        $this->assertSame(429, $r['status']);
-        $this->assertSame('rate_limited', $r['body']['code']);
     }
 }

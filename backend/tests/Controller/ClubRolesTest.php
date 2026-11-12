@@ -224,14 +224,14 @@ class ClubRolesTest extends WebTestCase
 
     public function testAccountDeletionOfTheLastAdminIsRefusedWhileOthersRemain(): void
     {
-        $r = $this->req('admin', 'DELETE', '/api/auth/me', ['password' => 'password123']);
+        $r = TestHelper::deleteAccount(self::$client, $this->users['admin'], self::$tokens);
         $this->assertSame(422, $r['status'], $r['content']);
         $this->assertSame('last_admin_of_club', $r['body']['code']);
 
         // A non-admin may delete the account; with a second admin the first may as well
-        $this->assertSame(200, $this->req('viewer', 'DELETE', '/api/auth/me', ['password' => 'password123'])['status']);
+        $this->assertSame(200, TestHelper::deleteAccount(self::$client, $this->users['viewer'], self::$tokens)['status']);
         $this->assertSame(200, $this->req('admin', 'PATCH', "/api/clubs/{$this->cid()}/members/{$this->users['editor']->getId()}", ['role' => 'admin'])['status']);
-        $this->assertSame(200, $this->req('admin', 'DELETE', '/api/auth/me', ['password' => 'password123'])['status']);
+        $this->assertSame(200, TestHelper::deleteAccount(self::$client, $this->users['admin'], self::$tokens)['status']);
     }
 
     public function testInvitationCarriesTheRoleToTheMembership(): void

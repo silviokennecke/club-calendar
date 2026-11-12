@@ -12,7 +12,4 @@ class ChangeEmailDto
     #[Assert\Email]
     #[Assert\Length(max: 255)]
     public string $email = '';
-
-    #[Assert\Length(max: 4096)]
-    public ?string $password = null;
 }

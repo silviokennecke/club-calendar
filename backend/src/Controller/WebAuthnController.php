@@ -7,12 +7,11 @@ namespace App\Controller;
 use App\Exception\ApiProblemException;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
-use App\Service\ReauthenticationService;
+use App\Security\StepUp\RequiresStepUp;
 use App\Service\WebAuthnService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/auth/webauthn')]
@@ -22,41 +21,25 @@ class WebAuthnController extends AbstractController
         private readonly WebAuthnService $webAuthn,
         private readonly CurrentUserResolver $userResolver,
         private readonly AuthRateLimiter $rateLimiter,
-        private readonly ReauthenticationService $reauth,
     ) {
     }
 
     /**
-     * Registration options after re-authentication (L7): `{password}` for an account with a password, `{code}`
-     * (mailed by `POST /register/code`) for one without. The proof is checked here and only then the signed,
-     * single-use challenge token is issued, which `/register/verify` requires: there is no way around it.
+     * Registration options. Needs a step-up token (`X-Step-Up-Token`): 403 `step_up_required`. The signed,
+     * single-use challenge token it issues is required by `/register/verify`.
      */
     #[Route('/register/options', methods: ['POST'])]
+    #[RequiresStepUp]
     public function registrationOptions(Request $request): JsonResponse
     {
         $user = $this->userResolver->resolve();
         $this->rateLimiter->assertPasskeyRegisterAllowed($request, $user->getId());
-        $data = '' === trim($request->getContent()) ? [] : json_decode($request->getContent(), true);
-        if (!is_array($data) || (isset($data['password']) && !is_string($data['password'])) || (isset($data['code']) && !is_string($data['code']))) {
-            throw new ApiProblemException(400, 'Invalid request body', 'invalid_request');
-        }
-        $this->reauth->assertConfirmed($user, ReauthenticationService::PURPOSE_PASSKEY, $data['password'] ?? null, $data['code'] ?? null);
 
         return new JsonResponse($this->webAuthn->getRegistrationOptions($user));
     }
 
-    /** 204: a 6-digit code went to the account's address (accounts without password only; 409 `has_password` otherwise). */
-    #[Route('/register/code', methods: ['POST'])]
-    public function sendRegistrationCode(Request $request): JsonResponse
-    {
-        $user = $this->userResolver->resolve();
-        $this->rateLimiter->assertPasskeyRegisterCodeAllowed($request, $user->getId());
-        $this->reauth->sendCode($user, ReauthenticationService::PURPOSE_PASSKEY);
-
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
-    }
-
     #[Route('/register/verify', methods: ['POST'])]
+    #[RequiresStepUp]
     public function registrationVerify(Request $request): JsonResponse
     {
         $this->rateLimiter->assertOtherAllowed($request);
@@ -119,19 +102,15 @@ class WebAuthnController extends AbstractController
     }
 
     /**
-     * Needs re-authentication (`{password}` or `{confirmationCode}` from `POST /api/auth/mfa/code`). Ends all
-     * sessions and answers with a fresh token pair.
+     * Needs a step-up token (`X-Step-Up-Token`). Ends all sessions and answers with a fresh token pair (a new
+     * step-up is needed for the next sensitive action).
      */
     #[Route('/{id}', methods: ['DELETE'])]
+    #[RequiresStepUp]
     public function deletePasskey(string $id, Request $request): JsonResponse
     {
         $user = $this->userResolver->resolve();
         $this->rateLimiter->assertMfaManageAllowed($request, $user->getId());
-        $data = '' === trim($request->getContent()) ? [] : json_decode($request->getContent(), true);
-        if (!is_array($data) || (isset($data['password']) && !is_string($data['password'])) || (isset($data['confirmationCode']) && !is_string($data['confirmationCode']))) {
-            throw new ApiProblemException(400, 'Invalid request body', 'invalid_request');
-        }
-        $this->reauth->assertConfirmed($user, ReauthenticationService::PURPOSE_MFA, $data['password'] ?? null, $data['confirmationCode'] ?? null);
 
         // `ok` like every delete, plus the fresh token pair: the deletion ended all sessions.
         return new JsonResponse(['ok' => true] + $this->webAuthn->deletePasskey($id, $user, $this->userResolver->sessionConsentOk(), $this->userResolver->sessionFamilyExpiresAt()));

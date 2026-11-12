@@ -48,6 +48,7 @@ class WebAuthnTest extends WebTestCase
         }
         self::$em = static::getContainer()->get(EntityManagerInterface::class);
         DatabaseResetter::reset(self::$em);
+        $this->sessions = [];
     }
 
     protected function tearDown(): void
@@ -57,9 +58,19 @@ class WebAuthnTest extends WebTestCase
 
     // --- helpers ---
 
+    /** @var array<string, array{0: string, 1: ?string}> session header and step-up token per user */
+    private array $sessions = [];
+
     private function auth(User $user): string
     {
-        return 'Bearer '.self::$tokens->createAccessToken($user);
+        return ($this->sessions[$user->getId()] ??= [TestHelper::sessionHeader($user, self::$tokens), null])[0];
+    }
+
+    private function stepUp(User $user): string
+    {
+        $auth = $this->auth($user);
+
+        return $this->sessions[$user->getId()][1] ??= TestHelper::stepUp(self::$client, $auth);
     }
 
     /** @return array{challenge: string, token: string} */
@@ -70,8 +81,9 @@ class WebAuthnTest extends WebTestCase
             self::$client,
             $register ? 'POST' : 'GET',
             "/api/auth/webauthn/$kind/options",
-            $register ? ['password' => 'password123'] : [],
+            [],
             $user ? $this->auth($user) : '',
+            $register && $user ? $this->stepUp($user) : null,
         );
         $this->assertSame(200, $r['status'], $r['content']);
 
@@ -86,7 +98,7 @@ class WebAuthnTest extends WebTestCase
             'challengeToken' => $opts['token'],
             'response' => $authenticator->attestation($opts['challenge'], self::$origin, self::RP_ID, $override),
             'deviceName' => 'Software',
-        ], $this->auth($user));
+        ], $this->auth($user), $this->stepUp($user));
     }
 
     /** @return array{0: User, 1: SoftwareAuthenticator} */
@@ -448,10 +460,25 @@ class WebAuthnTest extends WebTestCase
 
     public function testRegistrationRequiresSignIn(): void
     {
-        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/options', ['password' => 'password123']);
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/options');
         $this->assertSame(401, $r['status']);
-        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/code');
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/verify');
         $this->assertSame(401, $r['status']);
+    }
+
+    public function testRegistrationNeedsAStepUp(): void
+    {
+        $user = TestHelper::createUser(self::$em, self::$hasher);
+        $auth = $this->auth($user);
+        foreach (['register/options', 'register/verify'] as $path) {
+            $r = TestHelper::jsonRequest(self::$client, 'POST', "/api/auth/webauthn/$path", [], $auth);
+            $this->assertSame(403, $r['status'], $path);
+            $this->assertSame('step_up_required', $r['body']['code']);
+        }
+        // The legacy proof in the body no longer works
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/options', ['password' => 'password123'], $auth);
+        $this->assertSame('step_up_required', $r['body']['code']);
+        $this->assertSame(404, TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/code', [], $auth)['status']);
     }
 
     // --- deletion ---
@@ -462,7 +489,7 @@ class WebAuthnTest extends WebTestCase
         $passkeyId = self::$em->getRepository(Passkey::class)->findOneBy([])->getId();
         $mallory = TestHelper::createUser(self::$em, self::$hasher, 'mallory@example.com');
 
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', "/api/auth/webauthn/$passkeyId", ['password' => 'password123'], $this->auth($mallory));
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', "/api/auth/webauthn/$passkeyId", [], $this->auth($mallory), $this->stepUp($mallory));
         $this->assertSame(404, $r['status']);
         $this->assertSame(1, self::$em->getRepository(Passkey::class)->count([]));
     }
@@ -798,7 +825,7 @@ class WebAuthnTest extends WebTestCase
             json_encode(['challengeToken' => $reg['token'], 'response' => array_replace_recursive($attestation, ['response' => ['attestationObject' => 'AAAA']])]),
         ];
         foreach ($bodies as $i => $body) {
-            self::$client->request('POST', '/api/auth/webauthn/register/verify', [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => $auth], $body);
+            self::$client->request('POST', '/api/auth/webauthn/register/verify', [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => $auth, 'HTTP_X_STEP_UP_TOKEN' => $this->stepUp($user)], $body);
             $status = self::$client->getResponse()->getStatusCode();
             $this->assertSame(400, $status, "registration body $i -> $status");
         }
@@ -874,7 +901,7 @@ class WebAuthnTest extends WebTestCase
         $attestation['response']['clientDataJSON'] = SoftwareAuthenticator::b64(json_encode(['crossOrigin' => true] + $clientData, \JSON_UNESCAPED_SLASHES));
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/verify', [
             'challengeToken' => $opts['token'], 'response' => $attestation,
-        ], $this->auth($user));
+        ], $this->auth($user), $this->stepUp($user));
         $this->assertSame(400, $r['status']);
     }
 }

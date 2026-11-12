@@ -684,7 +684,7 @@ class InvitationTest extends WebTestCase
         $secondClub = ['auth' => $this->auth($second), 'url' => $c['url']];
         $this->invite($secondClub, 'ina@example.com');
 
-        $r = $this->req('DELETE', '/api/auth/me', $secondClub['auth'], ['password' => 'password123']);
+        $r = TestHelper::deleteAccount(self::$client, $second, self::$tokens);
         $this->assertSame(200, $r['status'], $r['content']);
         $listed = $this->req('GET', $c['url'], $c['auth'])['body'];
         $this->assertCount(1, $listed);

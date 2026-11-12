@@ -94,12 +94,35 @@ class AccountTest extends WebTestCase
         return $user;
     }
 
-    private function changeEmail(User $user, string $email, ?string $password = 'password123', array $server = []): array
+    /** @return array{0: string, 1: string} Authorization header, step-up token (password) */
+    private function su(User $user, string $password = 'password123'): array
     {
-        self::$client->request('POST', '/api/auth/change-email', [], [], [
+        $auth = TestHelper::sessionHeader($user, self::$tokens);
+
+        return [$auth, TestHelper::stepUp(self::$client, $auth, null, $password)];
+    }
+
+    /** @return array{0: string, 1: string} step-up of an account without password (mailed code) */
+    private function ssoSu(User $user): array
+    {
+        $auth = TestHelper::sessionHeader($user, self::$tokens);
+        TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/step-up/code', [], $auth);
+        $this->assertSame(1, preg_match('/letter-spacing:\d+px[^>]*>(\d{3})-(\d{3})</', $this->lastMailHtml(), $m));
+
+        return [$auth, TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/step-up', ['confirmationCode' => $m[1].$m[2]], $auth)['body']['stepUpToken']];
+    }
+
+    private function changeEmail(User $user, string $email, bool $stepUp = true, array $server = []): array
+    {
+        $auth = TestHelper::sessionHeader($user, self::$tokens);
+        $headers = [
             'CONTENT_TYPE' => 'application/json',
-            'HTTP_AUTHORIZATION' => $this->auth($user),
-        ] + $server, (string) json_encode(['email' => $email, 'password' => $password]));
+            'HTTP_AUTHORIZATION' => $auth,
+        ];
+        if ($stepUp) {
+            $headers['HTTP_X_STEP_UP_TOKEN'] = TestHelper::stepUp(self::$client, $auth);
+        }
+        self::$client->request('POST', '/api/auth/change-email', [], [], $headers + $server, (string) json_encode(['email' => $email]));
         $response = self::$client->getResponse();
 
         return [
@@ -261,12 +284,12 @@ class AccountTest extends WebTestCase
     public function testChangePasswordReturnsNewTokensAndEndsOtherSessions(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
-        $oldAccess = $this->auth($user);
+        $oldAccess = TestHelper::sessionHeader($user, self::$tokens);
         $oldRefresh = self::$tokens->createRefreshToken($user);
 
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', [
             'currentPassword' => 'password123', 'newPassword' => 'new-password-1',
-        ], $oldAccess);
+        ], $oldAccess, TestHelper::stepUp(self::$client, $oldAccess));
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertNotEmpty($r['body']['access_token']);
         $this->assertNotEmpty($r['body']['refresh_token']);
@@ -290,7 +313,7 @@ class AccountTest extends WebTestCase
         foreach (['wrong-password', ''] as $current) {
             $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', [
                 'currentPassword' => $current, 'newPassword' => 'new-password-1',
-            ], $this->auth($user));
+            ], ...$this->su($user));
             $this->assertSame(400, $r['status']);
             $this->assertSame('invalid_credentials', $r['body']['code']);
             $this->assertArrayNotHasKey('access_token', $r['body']);
@@ -305,7 +328,7 @@ class AccountTest extends WebTestCase
         foreach (['short12', str_repeat('a', 129)] as $weak) {
             $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', [
                 'currentPassword' => 'password123', 'newPassword' => $weak,
-            ], $this->auth($user));
+            ], ...$this->su($user));
             $this->assertSame(422, $r['status']);
             $this->assertSame('newPassword', $r['body']['field']);
         }
@@ -316,7 +339,7 @@ class AccountTest extends WebTestCase
         $sso = $this->ssoOnlyUser();
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', [
             'currentPassword' => 'anything', 'newPassword' => 'new-password-1',
-        ], $this->auth($sso));
+        ], ...$this->ssoSu($sso));
         $this->assertSame(409, $r['status']);
         $this->assertSame('no_password', $r['body']['code']);
         $this->assertNull($this->user($sso->getId())->getPassword());
@@ -332,7 +355,7 @@ class AccountTest extends WebTestCase
     public function testChangeEmailSendsTheConfirmationLinkToTheNewAddressOnly(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
-        $r = $this->changeEmail($user, 'alice.new@example.com', 'password123', ['HTTP_HOST' => '127.0.0.1:9999']);
+        $r = $this->changeEmail($user, 'alice.new@example.com', true, ['HTTP_HOST' => '127.0.0.1:9999']);
         $this->assertSame(204, $r['status'], $r['content']);
 
         // The link to the new address; the current address only gets a notice without link (NoticeMailTest)
@@ -418,15 +441,15 @@ class AccountTest extends WebTestCase
         $this->assertSame(0, self::$em->getRepository(EmailChange::class)->count([]));
     }
 
-    public function testChangeEmailNeedsTheCorrectPassword(): void
+    public function testChangeEmailNeedsAStepUp(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
-        foreach (['wrong-password', null] as $password) {
-            $r = $this->changeEmail($user, 'alice.new@example.com', $password);
-            $this->assertSame(400, $r['status']);
-            $this->assertSame('invalid_credentials', $r['body']['code']);
-            $this->assertSame('password', $r['body']['field']);
-        }
+        $r = $this->changeEmail($user, 'alice.new@example.com', false);
+        $this->assertSame(403, $r['status']);
+        $this->assertSame('step_up_required', $r['body']['code']);
+        // A password in the body is not a proof any more
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-email', ['email' => 'alice.new@example.com', 'password' => 'password123'], TestHelper::sessionHeader($user, self::$tokens));
+        $this->assertSame('step_up_required', $r['body']['code']);
         $this->assertEmailCount(0);
         $this->assertSame(0, self::$em->getRepository(EmailChange::class)->count([]));
     }
@@ -434,7 +457,8 @@ class AccountTest extends WebTestCase
     public function testSsoOnlyAccountsCannotChangeTheAddress(): void
     {
         $sso = $this->ssoOnlyUser();
-        $r = $this->changeEmail($sso, 'other@example.com', null);
+        [$auth, $stepUp] = $this->ssoSu($sso);
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-email', ['email' => 'other@example.com'], $auth, $stepUp);
         $this->assertSame(409, $r['status']);
         $this->assertSame('no_password', $r['body']['code']);
         $this->assertEmailCount(0);
@@ -521,14 +545,14 @@ class AccountTest extends WebTestCase
         $token = $this->confirmTokenFromMail();
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', [
             'currentPassword' => 'password123', 'newPassword' => 'new-password-1',
-        ], $this->auth($user));
+        ], ...$this->su($user));
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertSame(['status' => 'error', 'reason' => 'invalid', 'flow' => 'email_change'], $this->openConfirmation($token));
         $this->assertSame('alice@example.com', $this->user($user->getId())->getEmail());
         $this->assertNull($this->me('Bearer '.$r['body']['access_token'])['body']['pendingEmail']);
 
         $user = $this->user($user->getId());
-        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-email', ['email' => 'intruder@example.com', 'password' => 'new-password-1'], $this->auth($user));
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-email', ['email' => 'intruder@example.com'], ...$this->su($user, 'new-password-1'));
         $this->assertSame(204, $r['status'], $r['content']);
         $second = $this->confirmTokenFromMail();
         $this->assertNotSame($token, $second);
@@ -580,8 +604,8 @@ class AccountTest extends WebTestCase
         $r = $this->changeEmail($user, 'new5@example.com');
         $this->assertSame(204, $r['status']);
         $this->assertEmailCount(0);
-        // Still the password check first.
-        $this->assertSame('invalid_credentials', $this->changeEmail($user, 'new6@example.com', 'wrong')['body']['code']);
+        // Still the step-up check first.
+        $this->assertSame('step_up_required', $this->changeEmail($user, 'new6@example.com', false)['body']['code']);
     }
 
     public function testConfirmationTokenNeverReachesTheLog(): void

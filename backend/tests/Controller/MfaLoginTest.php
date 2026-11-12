@@ -121,14 +121,14 @@ class MfaLoginTest extends WebTestCase
     private function passkeyFor(User $user): array
     {
         $origin = rtrim((string) $_ENV['FRONTEND_URL'], '/');
-        $auth = 'Bearer '.static::getContainer()->get(TokenService::class)->createAccessToken($user);
-        $o = $this->post('/api/auth/webauthn/register/options', ['password' => 'password123'], $auth);
+        [$auth, $stepUp] = TestHelper::stepUpSessionSkippingMfa($this->client, $user, static::getContainer()->get(TokenService::class), $this->em);
+        $o = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/webauthn/register/options', [], $auth, $stepUp);
         $authenticator = new SoftwareAuthenticator();
-        $r = $this->post('/api/auth/webauthn/register/verify', [
+        $r = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/webauthn/register/verify', [
             'challengeToken' => $o['body']['challengeToken'],
             'response' => $authenticator->attestation($o['body']['options']['challenge'], $origin, self::RP_ID),
             'deviceName' => 'Software',
-        ], $auth);
+        ], $auth, $stepUp);
         $this->assertSame(200, $r['status'], $r['content']);
 
         return [$authenticator, $origin];
@@ -347,7 +347,8 @@ class MfaLoginTest extends WebTestCase
             $this->assertSame('invalid_mfa_token', $r['body']['code']);
         }
         // A challenge token of the passkey ceremony is not an mfaToken
-        $o = $this->post('/api/auth/webauthn/register/options', ['password' => 'password123'], 'Bearer '.static::getContainer()->get(TokenService::class)->createAccessToken($this->em->getRepository(User::class)->findOneBy([])));
+        [$auth, $stepUp] = TestHelper::stepUpSessionSkippingMfa($this->client, $this->em->getRepository(User::class)->findOneBy([]), static::getContainer()->get(TokenService::class), $this->em);
+        $o = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/webauthn/register/options', [], $auth, $stepUp);
         $this->assertSame('invalid_mfa_token', $this->verify($o['body']['challengeToken'], 'totp', $this->totpCode())['body']['code']);
     }
 

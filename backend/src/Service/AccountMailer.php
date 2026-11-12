@@ -141,29 +141,6 @@ readonly class AccountMailer
         ));
     }
 
-    /** The 6-digit code that confirms the deletion of an account without password (mail has the code, no link). */
-    public function sendAccountDeletionCode(User $user, string $code, int $validMinutes): void
-    {
-        $this->mailer->queue($this->email(
-            $user,
-            $user->getEmail(),
-            'email.delete_code.subject',
-            'email/delete_code.html.twig',
-            ['code' => $code, 'validMinutes' => (string) $validMinutes],
-        ));
-    }
-
-    public function sendPasskeyCode(User $user, string $code, int $validMinutes): void
-    {
-        $this->mailer->queue($this->email(
-            $user,
-            $user->getEmail(),
-            'email.passkey_code.subject',
-            'email/passkey_code.html.twig',
-            ['code' => $code, 'validMinutes' => (string) $validMinutes],
-        ));
-    }
-
     /** The 6-digit code that confirms a sensitive action (step-up) for an account without password. */
     public function sendStepUpCode(User $user, string $code, int $validMinutes): void
     {
@@ -172,18 +149,6 @@ readonly class AccountMailer
             $user->getEmail(),
             'email.step_up_code.subject',
             'email/step_up_code.html.twig',
-            ['code' => $code, 'validMinutes' => (string) $validMinutes],
-        ));
-    }
-
-    /** The 6-digit code that confirms an MFA change (or passkey deletion) for an account without password. */
-    public function sendMfaCode(User $user, string $code, int $validMinutes): void
-    {
-        $this->mailer->queue($this->email(
-            $user,
-            $user->getEmail(),
-            'email.mfa_code.subject',
-            'email/mfa_code.html.twig',
             ['code' => $code, 'validMinutes' => (string) $validMinutes],
         ));
     }

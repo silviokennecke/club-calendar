@@ -121,13 +121,19 @@ class StepUpTest extends WebTestCase
     {
         $origin = rtrim((string) $_ENV['FRONTEND_URL'], '/');
         $auth = $this->session($user);
-        $o = $this->post('/api/auth/webauthn/register/options', ['password' => 'password123'], $auth);
+        $enforced = $user->isMfaEnforced();
+        $user->setMfaEnforced(false);
+        $this->em->flush();
+        $stepUp = $this->stepUp($auth, ['password' => 'password123']);
+        $user->setMfaEnforced($enforced);
+        $this->em->flush();
+        $o = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/webauthn/register/options', [], $auth, $stepUp);
         $authenticator = new SoftwareAuthenticator();
-        $r = $this->post('/api/auth/webauthn/register/verify', [
+        $r = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/webauthn/register/verify', [
             'challengeToken' => $o['body']['challengeToken'],
             'response' => $authenticator->attestation($o['body']['options']['challenge'], $origin, self::RP_ID),
             'deviceName' => 'Software',
-        ], $auth);
+        ], $auth, $stepUp);
         $this->assertSame(200, $r['status'], $r['content']);
 
         return [$authenticator, $origin];
@@ -416,6 +422,8 @@ class StepUpTest extends WebTestCase
         $auth = $this->session($this->user('new@example.com', false, false));
 
         $this->assertSame('email_verification_required', $this->probe($auth, null)['body']['code']);
-        $this->assertSame('email_verification_required', $this->post('/api/auth/step-up', ['password' => 'password123'], $auth)['body']['code']);
+        // The step-up routes are allow-listed in the gate (account deletion of a restricted session needs them)
+        $token = $this->stepUp($auth, ['password' => 'password123']);
+        $this->assertSame('email_verification_required', $this->probe($auth, $token)['body']['code']);
     }
 }

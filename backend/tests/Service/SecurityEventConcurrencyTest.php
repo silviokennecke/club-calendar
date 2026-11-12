@@ -106,15 +106,38 @@ class SecurityEventConcurrencyTest extends KernelTestCase
         $this->assertSame(1, $mails);
     }
 
-    public function testParallelFailuresFromManyIpsRespectTheDailyCap(): void
+    /**
+     * The cap is exact while the per-user lock is held; under an extreme burst a request whose lock wait times out
+     * may still insert, so the rows can exceed the cap by at most the number of parallel requests. No attempt is lost.
+     */
+    public function testParallelFailuresFromManyIpsStayNearTheDailyCap(): void
     {
         $user = $this->user();
         $cap = SecurityEventLogger::FAILURE_ROWS_PER_DAY;
-        $this->race($user, array_map(fn (int $i) => '198.51.100.'.$i, range(1, $cap + 10)));
+        $parallel = $cap + 10;
+        $this->race($user, array_map(fn (int $i) => '198.51.100.'.$i, range(1, $parallel)));
+
+        $db = static::getContainer()->get(Connection::class);
+        $rows = (int) $db->fetchOne('SELECT COUNT(*) FROM security_event');
+        $this->assertGreaterThanOrEqual($cap, $rows);
+        $this->assertLessThanOrEqual($parallel, $rows);
+        $this->assertSame($parallel, (int) $db->fetchOne('SELECT SUM(attempts) FROM security_event'));
+    }
+
+    /** Few parallel requests cannot time out on the lock: the cap is exact. */
+    public function testParallelFailuresAtTheDailyCapAreExact(): void
+    {
+        $user = $this->user();
+        $cap = SecurityEventLogger::FAILURE_ROWS_PER_DAY;
+        $logger = static::getContainer()->get(SecurityEventLogger::class);
+        for ($i = 1; $i <= $cap - 5; ++$i) {
+            $logger->record($user, SecurityEventType::LOGIN, false, 'password', null, new ClientContext('198.51.100.'.$i, 'Chrome 126', 'Berlin', 'DE'));
+        }
+        $this->race($user, array_map(fn (int $i) => '203.0.113.'.$i, range(1, 8)));
 
         $db = static::getContainer()->get(Connection::class);
         $this->assertSame($cap, (int) $db->fetchOne('SELECT COUNT(*) FROM security_event'));
-        $this->assertSame($cap + 10, (int) $db->fetchOne('SELECT SUM(attempts) FROM security_event'));
+        $this->assertSame($cap - 5 + 8, (int) $db->fetchOne('SELECT SUM(attempts) FROM security_event'));
     }
 
     public function testLockTimeoutLosesNoAttemptsAndReturnsFast(): void

@@ -257,7 +257,7 @@ class ConsentTest extends WebTestCase
     {
         $user = $this->user();
         LegalTestHelper::publish(self::$em, LegalDocumentType::TERMS);
-        $h = $this->auth($user);
+        $h = TestHelper::sessionHeader($user, self::$tokens);
 
         $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/me', [], $h)['status']);
         $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/consents', [], $h)['status']);
@@ -265,7 +265,9 @@ class ConsentTest extends WebTestCase
         $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'GET', '/api/legal/terms', [], $h)['status']);
         $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'GET', '/api/auth/providers', [], $h)['status']);
         $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'GET', '/api/health', [], $h)['status']);
-        $this->assertSame(409, TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/delete-account/code', [], $h)['status']);
+        $this->assertSame(409, TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/step-up/code', [], $h)['status']);
+        $this->assertSame(400, TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/step-up/passkey/options', [], $h)['status']);
+        $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/step-up', ['password' => 'password123'], $h)['status']);
         $this->assertSame(200, TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/logout', ['refresh_token' => 'x'], $h)['status']);
         $this->assertSame(204, TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/logout-all', [], $h)['status']);
     }
@@ -274,7 +276,15 @@ class ConsentTest extends WebTestCase
     {
         $user = $this->user();
         LegalTestHelper::publish(self::$em, LegalDocumentType::TERMS);
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', ['password' => 'password123'], $this->auth($user));
+        $h = TestHelper::sessionHeader($user, self::$tokens);
+        $this->assertFalse(self::claims(substr($h, 7))['lc']);
+        // The gated session obtains a step-up; every other sensitive route stays gated
+        $stepUp = TestHelper::stepUp(self::$client, $h);
+        foreach ([['POST', '/api/auth/change-password'], ['POST', '/api/auth/change-email'], ['POST', '/api/auth/mfa/disable'], ['POST', '/api/auth/mfa/enable'], ['POST', '/api/auth/mfa/backup-codes'], ['POST', '/api/auth/webauthn/register/options'], ['DELETE', '/api/auth/webauthn/x']] as [$method, $uri]) {
+            $r = TestHelper::jsonRequest(self::$client, $method, $uri, [], $h, $stepUp);
+            $this->assertSame('consent_required', $r['body']['code'], "$method $uri");
+        }
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', [], $h, $stepUp);
         $this->assertSame(200, $r['status']);
     }
 
@@ -434,7 +444,8 @@ class ConsentTest extends WebTestCase
         $session = $this->login($user)['body'];
         LegalTestHelper::publish(self::$em, LegalDocumentType::PRIVACY, 'v2');
 
-        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', ['currentPassword' => 'password123', 'newPassword' => 'password456'], 'Bearer '.$session['access_token']);
+        $stepUp = TestHelper::stepUp(self::$client, 'Bearer '.$session['access_token']);
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', ['currentPassword' => 'password123', 'newPassword' => 'password456'], 'Bearer '.$session['access_token'], $stepUp);
         $this->assertSame(200, $r['status']);
         $this->assertTrue(self::claims($r['body']['access_token'])['lc']);
         $this->assertTrue(self::claims($r['body']['refresh_token'])['lc']);
@@ -463,7 +474,8 @@ class ConsentTest extends WebTestCase
         $session = $this->login($user)['body'];
         LegalTestHelper::publish(self::$em, LegalDocumentType::PRIVACY, 'v2');
 
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/webauthn/'.$passkey->getId(), ['password' => 'password123'], 'Bearer '.$session['access_token']);
+        $stepUp = TestHelper::stepUp(self::$client, 'Bearer '.$session['access_token']);
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/webauthn/'.$passkey->getId(), [], 'Bearer '.$session['access_token'], $stepUp);
         $this->assertSame(200, $r['status']);
         $this->assertTrue(self::claims($r['body']['access_token'])['lc']);
     }

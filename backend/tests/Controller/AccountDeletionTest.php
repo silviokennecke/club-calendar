@@ -18,8 +18,7 @@ use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
- * AUTH-03: `DELETE /api/auth/me` needs re-authentication (password, or the mailed code for accounts
- * without a password).
+ * AUTH-03: `DELETE /api/auth/me` needs a step-up token (password, or the mailed code for accounts without a password).
  */
 class AccountDeletionTest extends WebTestCase
 {
@@ -49,11 +48,6 @@ class AccountDeletionTest extends WebTestCase
         // Keep the kernel alive across tests (see AuthTest).
     }
 
-    private function auth(User $user): string
-    {
-        return 'Bearer '.self::$tokens->createAccessToken($user);
-    }
-
     private function exists(string $email): bool
     {
         self::$em->clear();
@@ -61,20 +55,13 @@ class AccountDeletionTest extends WebTestCase
         return null !== self::$em->getRepository(User::class)->findOneBy(['email' => $email]);
     }
 
-    /** @return array{status: int, content: string, body: mixed} */
-    private function delete(User $user, ?array $body, array $server = []): array
+    /** Deletes with a valid step-up (password) unless `$stepUp` is false. @return array{status: int, content: string, body: mixed} */
+    private function delete(User $user, bool $stepUp = true, ?string $auth = null): array
     {
-        self::$client->request('DELETE', '/api/auth/me', [], [], [
-            'CONTENT_TYPE' => 'application/json',
-            'HTTP_AUTHORIZATION' => $this->auth($user),
-        ] + $server, null === $body ? null : (string) json_encode($body));
-        $response = self::$client->getResponse();
+        $auth ??= TestHelper::sessionHeader($user, self::$tokens);
+        $token = $stepUp ? TestHelper::stepUp(self::$client, $auth) : null;
 
-        return [
-            'status' => $response->getStatusCode(),
-            'content' => (string) $response->getContent(),
-            'body' => json_decode((string) $response->getContent(), true),
-        ];
+        return TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', [], $auth, $token);
     }
 
     private function passwordless(string $email = 'sso@example.com'): User
@@ -89,11 +76,6 @@ class AccountDeletionTest extends WebTestCase
         return $user;
     }
 
-    private function requestCode(User $user): array
-    {
-        return TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/delete-account/code', [], $this->auth($user));
-    }
-
     private function mailedCode(int $index = 0): string
     {
         $mail = $this->getMailerMessage($index);
@@ -103,47 +85,39 @@ class AccountDeletionTest extends WebTestCase
         return $m[1].$m[2];
     }
 
-    public function testWithoutCredentialsNothingIsDeleted(): void
+    public function testWithoutStepUpNothingIsDeleted(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
 
-        foreach ([null, [], ['password' => ''], ['password' => null], ['code' => '123456']] as $body) {
-            $r = $this->delete($user, $body);
-            $this->assertSame(400, $r['status'], $r['content']);
-            $this->assertSame('invalid_credentials', $r['body']['code']);
-            $this->assertSame('password', $r['body']['field']);
-        }
+        $r = $this->delete($user, false);
+        $this->assertSame(403, $r['status'], $r['content']);
+        $this->assertSame('step_up_required', $r['body']['code']);
+        $this->assertTrue($this->exists('alice@example.com'));
+
+        // A token of another user's session is refused as well
+        $other = TestHelper::createUser(self::$em, self::$hasher, 'other@example.com');
+        [, $foreign] = TestHelper::stepUpSession(self::$client, $other, self::$tokens);
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', [], TestHelper::sessionHeader($user, self::$tokens), $foreign);
+        $this->assertSame('step_up_required', $r['body']['code']);
         $this->assertTrue($this->exists('alice@example.com'));
     }
 
-    public function testWrongPasswordIsRefused(): void
+    public function testStepUpDeletesTheAccount(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
-        $r = $this->delete($user, ['password' => 'wrong-password']);
-        $this->assertSame(400, $r['status'], $r['content']);
-        $this->assertSame('invalid_credentials', $r['body']['code']);
-        $this->assertTrue($this->exists('alice@example.com'));
-    }
-
-    public function testRightPasswordDeletesTheAccount(): void
-    {
-        $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
-        $r = $this->delete($user, ['password' => 'password123']);
+        $r = $this->delete($user);
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertFalse($this->exists('alice@example.com'));
     }
 
-    public function testWrongPasswordAttemptsAreRateLimited(): void
+    public function testExpiredStepUpIsRefused(): void
     {
+        self::mockTime('2026-10-13 09:00:00 UTC');
         $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
-        for ($i = 0; $i < 5; ++$i) {
-            $this->assertSame(400, $this->delete($user, ['password' => 'nope'.$i])['status']);
-        }
-        // Even the right password is refused once the bucket of the user is used up.
-        $r = $this->delete($user, ['password' => 'password123']);
-        $this->assertSame(429, $r['status'], $r['content']);
-        $this->assertSame('rate_limited', $r['body']['code']);
-        $this->assertNotNull(self::$client->getResponse()->headers->get('Retry-After'));
+        [$auth, $token] = TestHelper::stepUpSession(self::$client, $user, self::$tokens);
+        self::mockTime('+11 minutes');
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', [], TestHelper::sessionHeader($user, self::$tokens), $token);
+        $this->assertSame('step_up_required', $r['body']['code']);
         $this->assertTrue($this->exists('alice@example.com'));
     }
 
@@ -152,14 +126,12 @@ class AccountDeletionTest extends WebTestCase
         $user = TestHelper::createUser(self::$em, self::$hasher, 'solo@example.com');
         TestHelper::createClub(self::$em, $user);
 
-        $r = $this->delete($user, ['password' => 'password123']);
+        $r = $this->delete($user);
         $this->assertSame(422, $r['status'], $r['content']);
         $this->assertSame('last_member_of_club', $r['body']['code']);
         $this->assertTrue($this->exists('solo@example.com'));
 
-        // A wrong password is refused before the guard answers (no information for the unauthenticated)
-        $r = $this->delete($user, ['password' => 'wrong']);
-        $this->assertSame('invalid_credentials', $r['body']['code']);
+        $this->assertSame('step_up_required', $this->delete($user, false)['body']['code']);
     }
 
     public function testMembershipsOfAnAccountWithOtherMembersAreRemoved(): void
@@ -169,101 +141,41 @@ class AccountDeletionTest extends WebTestCase
         $club = TestHelper::createClub(self::$em, $a);
         self::$em->persist((new ClubUser())->setClub($club)->setUser($b));
         self::$em->flush();
-        $this->assertSame(200, $this->delete($a, ['password' => 'password123'])['status']);
+        $this->assertSame(200, $this->delete($a)['status']);
         self::$em->clear();
         $this->assertSame(1, self::$em->getRepository(ClubUser::class)->count([]));
     }
 
-    public function testAccountWithoutPasswordNeedsTheMailedCode(): void
+    public function testAccountWithoutPasswordConfirmsWithTheMailedStepUpCode(): void
     {
         $user = $this->passwordless();
+        $auth = TestHelper::sessionHeader($user, self::$tokens);
 
-        // Four refusals: the fifth attempt would be the last of the 5 per 15 minutes
-        foreach ([null, ['password' => 'password123'], ['code' => ''], ['code' => '000000']] as $body) {
-            $r = $this->delete($user, $body);
-            $this->assertSame(400, $r['status'], $r['content']);
-            $this->assertSame('invalid_confirmation_code', $r['body']['code']);
-            $this->assertSame('code', $r['body']['field']);
-        }
-        $this->assertTrue($this->exists('sso@example.com'));
-
-        $this->assertSame(204, $this->requestCode($user)['status']);
+        $this->assertSame(204, TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/step-up/code', [], $auth)['status']);
         $this->assertEmailCount(1);
-        $mail = $this->getMailerMessage();
-        $this->assertEmailAddressContains($mail, 'to', 'sso@example.com');
+        $this->assertEmailAddressContains($this->getMailerMessage(), 'to', 'sso@example.com');
         $code = $this->mailedCode();
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/step-up', ['confirmationCode' => $code], $auth);
+        $this->assertSame(200, $r['status'], $r['content']);
 
-        $r = $this->delete($user, ['code' => $code]);
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', [], $auth, $r['body']['stepUpToken']);
         $this->assertSame(200, $r['status'], $r['content']);
         $this->assertFalse($this->exists('sso@example.com'));
     }
 
-    public function testCodeOfAnotherAccountOrAnExpiredCodeIsRefused(): void
+    public function testObsoleteDeletionRoutesAndBodiesAreGone(): void
     {
-        self::mockTime('2026-10-13 09:00:00 UTC');
-        $one = $this->passwordless('one@example.com');
-        $two = $this->passwordless('two@example.com');
-        $this->requestCode($one);
-        $codeOne = $this->mailedCode();
-
-        $this->assertSame(400, $this->delete($two, ['code' => $codeOne])['status']);
-
-        self::mockTime('+25 minutes');
-        $r = $this->delete($one, ['code' => $codeOne]);
-        $this->assertSame(400, $r['status'], $r['content']);
-        $this->assertSame('invalid_confirmation_code', $r['body']['code']);
-        $this->assertTrue($this->exists('one@example.com'));
-        $this->assertTrue($this->exists('two@example.com'));
-    }
-
-    public function testCodeEndsWhenTheSessionsEnd(): void
-    {
-        $user = $this->passwordless();
-        $this->requestCode($user);
-        $code = $this->mailedCode();
-        $user = self::$em->getRepository(User::class)->find($user->getId());
-        $user->invalidateTokens();
-        self::$em->flush();
-        $access = 'Bearer '.self::$tokens->createAccessToken($user);
-
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', ['code' => $code], $access);
-        $this->assertSame(400, $r['status'], $r['content']);
-        $this->assertTrue($this->exists('sso@example.com'));
-    }
-
-    public function testGuessingTheCodeIsRateLimited(): void
-    {
-        $user = $this->passwordless();
-        for ($i = 0; $i < 5; ++$i) {
-            $this->assertSame(400, $this->delete($user, ['code' => sprintf('%06d', $i)])['status']);
-        }
-        $r = $this->delete($user, ['code' => '999999']);
-        $this->assertSame(429, $r['status'], $r['content']);
-        $this->assertSame('rate_limited', $r['body']['code']);
-    }
-
-    public function testCodeMailsAreLimitedAndOnlyForAccountsWithoutPassword(): void
-    {
-        $withPassword = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
-        $r = $this->requestCode($withPassword);
-        $this->assertSame(409, $r['status'], $r['content']);
-        $this->assertSame('has_password', $r['body']['code']);
-        $this->assertEmailCount(0);
-
-        $user = $this->passwordless();
-        for ($i = 0; $i < 5; ++$i) {
-            $this->assertSame(204, $this->requestCode($user)['status']);
-        }
-        $r = $this->requestCode($user);
-        $this->assertSame(429, $r['status'], $r['content']);
-        $this->assertSame('rate_limited', $r['body']['code']);
+        $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
+        $auth = TestHelper::sessionHeader($user, self::$tokens);
+        $this->assertSame(404, TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/delete-account/code', [], $auth)['status']);
+        // A password in the body is not a proof any more
+        $this->assertSame('step_up_required', TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', ['password' => 'password123'], $auth)['body']['code']);
+        $this->assertTrue($this->exists('alice@example.com'));
     }
 
     public function testRequestsWithoutTokenAreUnauthorized(): void
     {
-        self::$client->request('DELETE', '/api/auth/me', [], [], ['CONTENT_TYPE' => 'application/json'], '{"password":"x"}');
-        $this->assertSame(401, self::$client->getResponse()->getStatusCode());
-        self::$client->request('POST', '/api/auth/delete-account/code');
+        self::$client->request('DELETE', '/api/auth/me', [], [], ['CONTENT_TYPE' => 'application/json']);
         $this->assertSame(401, self::$client->getResponse()->getStatusCode());
     }
 }

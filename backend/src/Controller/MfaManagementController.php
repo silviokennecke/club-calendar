@@ -4,23 +4,17 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
+use App\Security\StepUp\RequiresStepUp;
 use App\Service\MfaService;
-use App\Service\ReauthenticationService;
 use App\Service\TokenService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * Management of MFA (JWT). Re-authentication = `password`, or for accounts without one
- * `confirmationCode` mailed by `POST /api/auth/mfa/code`: 400 `invalid_credentials` (field `password`) /
- * 400 `invalid_confirmation_code` (field `code`).
- */
+/** Management of MFA (JWT). Enable, disable and backup codes need a step-up token (`X-Step-Up-Token`): 403 `step_up_required`. */
 #[Route('/api/auth/mfa')]
 class MfaManagementController extends AbstractApiController
 {
@@ -28,7 +22,6 @@ class MfaManagementController extends AbstractApiController
         private readonly MfaService $mfa,
         private readonly CurrentUserResolver $userResolver,
         private readonly AuthRateLimiter $rateLimiter,
-        private readonly ReauthenticationService $reauth,
         private readonly TokenService $tokens,
     ) {
     }
@@ -48,16 +41,15 @@ class MfaManagementController extends AbstractApiController
     }
 
     /**
-     * `{setupToken, method, secret?, code?, backupCodes?, backupCodesAcknowledged, password|confirmationCode}`
-     * -> `{mfa}`. Other sessions stay.
+     * `{setupToken, method, secret?, code?, backupCodes?, backupCodesAcknowledged}` -> `{mfa}`. Other sessions stay.
      */
     #[Route('/enable', methods: ['POST'])]
+    #[RequiresStepUp]
     public function enable(Request $request): JsonResponse
     {
         $user = $this->userResolver->resolve();
         $this->rateLimiter->assertMfaManageAllowed($request, $user->getId());
         $data = $this->decodeJson($request);
-        $this->reauthenticate($user, $data);
         $codes = $data['backupCodes'] ?? null;
         foreach (['secret', 'code'] as $key) {
             if (isset($data[$key]) && !is_string($data[$key])) {
@@ -80,51 +72,29 @@ class MfaManagementController extends AbstractApiController
         )]);
     }
 
-    /** `{password|confirmationCode}` -> `{mfa, ...token response}`: all other sessions end, the new pair continues this one. */
+    /** -> `{mfa, ...token response}`: all other sessions end, the new pair continues this one (it needs a new step-up). */
     #[Route('/disable', methods: ['POST'])]
+    #[RequiresStepUp]
     public function disable(Request $request): JsonResponse
     {
         $user = $this->userResolver->resolve();
         $this->rateLimiter->assertMfaManageAllowed($request, $user->getId());
         $consentOk = $this->userResolver->sessionConsentOk();
         $familyExpiresAt = $this->userResolver->sessionFamilyExpiresAt();
-        $this->reauthenticate($user, $this->decodeJson($request));
         $this->mfa->disable($user);
 
         return new JsonResponse(['mfa' => $this->mfa->status($user)] + $this->tokens->tokenResponse($user, null, $familyExpiresAt, $consentOk));
     }
 
-    /** `{password|confirmationCode}` -> `{backupCodes, mfa}`; the new codes are shown once. */
+    /** -> `{backupCodes, mfa}`; the new codes are shown once. */
     #[Route('/backup-codes', methods: ['POST'])]
+    #[RequiresStepUp]
     public function backupCodes(Request $request): JsonResponse
     {
         $user = $this->userResolver->resolve();
         $this->rateLimiter->assertMfaManageAllowed($request, $user->getId());
-        $this->reauthenticate($user, $this->decodeJson($request));
         $codes = $this->mfa->regenerateBackupCodes($user);
 
         return new JsonResponse(['backupCodes' => $codes, 'mfa' => $this->mfa->status($user)]);
-    }
-
-    /** 204: a 6-digit code went to the account's address (accounts without password only; 409 `has_password` otherwise). */
-    #[Route('/code', methods: ['POST'])]
-    public function sendCode(Request $request): JsonResponse
-    {
-        $user = $this->userResolver->resolve();
-        $this->rateLimiter->assertMfaManageCodeAllowed($request, $user->getId());
-        $this->reauth->sendCode($user, ReauthenticationService::PURPOSE_MFA);
-
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
-    }
-
-    /** @param array<mixed> $data */
-    private function reauthenticate(User $user, array $data): void
-    {
-        foreach (['password', 'confirmationCode'] as $key) {
-            if (isset($data[$key]) && !is_string($data[$key])) {
-                throw new ApiProblemException(400, 'Invalid request body', 'invalid_request', $key);
-            }
-        }
-        $this->reauth->assertConfirmed($user, ReauthenticationService::PURPOSE_MFA, $data['password'] ?? null, $data['confirmationCode'] ?? null);
     }
 }

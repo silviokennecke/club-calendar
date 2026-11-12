@@ -30,7 +30,9 @@ class EmailVerificationGateListener
         '/api/auth/token' => ['POST'],
         '/api/auth/providers' => ['GET'],
         '/api/auth/registration' => ['GET'],
-        '/api/auth/delete-account/code' => ['POST'],
+        '/api/auth/step-up' => ['POST'],
+        '/api/auth/step-up/code' => ['POST'],
+        '/api/auth/step-up/passkey/options' => ['POST'],
         '/api/health' => ['GET'],
     ];
 

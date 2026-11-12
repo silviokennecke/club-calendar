@@ -41,14 +41,8 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $otherIp,
         #[Autowire(service: 'limiter.verification_resend_ip')]
         private readonly RateLimiterFactory $verificationResendIp,
-        #[Autowire(service: 'limiter.account_delete_attempt')]
-        private readonly RateLimiterFactory $accountDeleteAttempt,
-        #[Autowire(service: 'limiter.account_delete_code')]
-        private readonly RateLimiterFactory $accountDeleteCode,
         #[Autowire(service: 'limiter.passkey_register_attempt')]
         private readonly RateLimiterFactory $passkeyRegisterAttempt,
-        #[Autowire(service: 'limiter.passkey_register_code')]
-        private readonly RateLimiterFactory $passkeyRegisterCode,
         #[Autowire(service: 'limiter.mfa_verify_user')]
         private readonly RateLimiterFactory $mfaVerifyUser,
         #[Autowire(service: 'limiter.mfa_verify_ip')]
@@ -57,8 +51,6 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $mfaTokenAttempt,
         #[Autowire(service: 'limiter.mfa_manage_attempt')]
         private readonly RateLimiterFactory $mfaManageAttempt,
-        #[Autowire(service: 'limiter.mfa_manage_code')]
-        private readonly RateLimiterFactory $mfaManageCode,
         #[Autowire(service: 'limiter.step_up_user')]
         private readonly RateLimiterFactory $stepUpUser,
         #[Autowire(service: 'limiter.step_up_ip')]
@@ -170,35 +162,11 @@ class AuthRateLimiter
         self::assertAccepted($this->verificationResendIp->create(self::ip($request))->consume());
     }
 
-    /**
-     * Confirmation attempts of the account deletion (password or mailed code): per client IP and per user, so
-     * a stolen access token cannot be used to guess the password or the code. Every attempt counts.
-     */
-    public function assertAccountDeleteAllowed(Request $request, string $userId): void
-    {
-        self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
-        self::assertAccepted($this->accountDeleteAttempt->create($userId)->consume());
-    }
-
-    /** Mails of the deletion code: 5 per user and hour. */
-    public function assertAccountDeleteCodeAllowed(Request $request, string $userId): void
-    {
-        self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
-        self::assertAccepted($this->accountDeleteCode->create($userId)->consume());
-    }
-
-    /** Re-authentication attempts for passkey registration (password or mailed code): per client IP and user. */
+    /** Passkey registration options: per client IP and user. */
     public function assertPasskeyRegisterAllowed(Request $request, string $userId): void
     {
         self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
         self::assertAccepted($this->passkeyRegisterAttempt->create($userId)->consume());
-    }
-
-    /** Mails of the passkey registration code: 5 per user and hour. */
-    public function assertPasskeyRegisterCodeAllowed(Request $request, string $userId): void
-    {
-        self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
-        self::assertAccepted($this->passkeyRegisterCode->create($userId)->consume());
     }
 
     /** MFA verification at sign-in: per client IP, per user and per login token (`jti`; it dies after 5 guesses). */
@@ -209,18 +177,11 @@ class AuthRateLimiter
         self::assertAccepted($this->mfaTokenAttempt->create($tokenId)->consume());
     }
 
-    /** Re-authenticated MFA management (enable, disable, backup codes, passkey delete): per client IP and user. */
+    /** MFA management (enable, disable, backup codes, passkey delete): per client IP and user. */
     public function assertMfaManageAllowed(Request $request, string $userId): void
     {
         self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
         self::assertAccepted($this->mfaManageAttempt->create($userId)->consume());
-    }
-
-    /** Mails of the MFA re-authentication code: 5 per user and hour. */
-    public function assertMfaManageCodeAllowed(Request $request, string $userId): void
-    {
-        self::assertAccepted($this->otherIp->create(self::ip($request))->consume());
-        self::assertAccepted($this->mfaManageCode->create($userId)->consume());
     }
 
     /** Step-up confirmation attempts: 10 per user and 30 per client IP per 15 minutes. */

@@ -97,15 +97,17 @@ class ErrorCodesTest extends WebTestCase
     public function testPasskeys(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher);
-        $auth = TestHelper::authHeader($user, self::$tokens);
+        [$auth, $stepUp] = TestHelper::stepUpSession(self::$client, $user, self::$tokens);
 
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/webauthn/gibt-es-nicht', [], $auth);
+        $this->assertProblem(403, ['code' => 'step_up_required'], $r);
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/authenticate/verify', ['challengeToken' => 'forged', 'response' => ['id' => 'x']]);
         $this->assertProblem(401, ['code' => 'invalid_passkey', 'detail' => 'Invalid passkey'], $r);
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/authenticate/verify', ['challengeToken' => 'forged']);
         $this->assertProblem(400, ['code' => 'invalid_request'], $r);
-        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/verify', ['challengeToken' => 'forged', 'response' => ['id' => 'x']], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/verify', ['challengeToken' => 'forged', 'response' => ['id' => 'x']], $auth, $stepUp);
         $this->assertProblem(400, ['code' => 'invalid_passkey_registration'], $r);
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/webauthn/gibt-es-nicht', ['password' => 'password123'], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/webauthn/gibt-es-nicht', [], $auth, $stepUp);
         $this->assertProblem(404, ['code' => 'passkey_not_found'], $r);
     }
 

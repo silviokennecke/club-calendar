@@ -151,7 +151,7 @@ class UpdateAuditTest extends WebTestCase
         $id = $created['body']['id'];
         $this->assertSame($user->getId(), $this->audit('target_group', $id)['updated_by_id']);
 
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', ['password' => 'password123'], $auth);
+        $r = TestHelper::deleteAccount(self::$client, $user, self::$tokens);
         $this->assertSame(200, $r['status'], $r['content']);
 
         $this->assertNull($this->audit('target_group', $id)['updated_by_id']);

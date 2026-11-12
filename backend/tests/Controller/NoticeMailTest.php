@@ -102,14 +102,18 @@ class NoticeMailTest extends WebTestCase
 
     private function changePassword(User $user, string $current = 'password123', string $new = 'new-password-1'): array
     {
+        $auth = TestHelper::sessionHeader($user, self::$tokens);
+
         return TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-password', [
             'currentPassword' => $current, 'newPassword' => $new,
-        ], $this->auth($user));
+        ], $auth, TestHelper::stepUp(self::$client, $auth));
     }
 
-    private function changeEmail(User $user, string $email, ?string $password = 'password123'): array
+    private function changeEmail(User $user, string $email, bool $stepUp = true): array
     {
-        return TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-email', ['email' => $email, 'password' => $password], $this->auth($user));
+        $auth = TestHelper::sessionHeader($user, self::$tokens);
+
+        return TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-email', ['email' => $email], $auth, $stepUp ? TestHelper::stepUp(self::$client, $auth) : null);
     }
 
     private function confirmationToken(): string
@@ -224,7 +228,7 @@ class NoticeMailTest extends WebTestCase
     public function testNoNoticeWhenTheEmailChangeIsRejected(): void
     {
         $user = $this->user();
-        $this->assertSame(400, $this->changeEmail($user, 'new@example.com', 'wrong')['status']);
+        $this->assertSame(403, $this->changeEmail($user, 'new@example.com', false)['status']);
         $this->assertEmailCount(0);
         $this->assertSame(422, $this->changeEmail($user, 'not-an-address')['status']);
         $this->assertEmailCount(0);
@@ -307,7 +311,8 @@ class NoticeMailTest extends WebTestCase
         try {
             $r = $this->changePassword($user);
             $this->assertSame(200, $r['status'], $r['content']);
-            $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-email', ['email' => 'alice.new@example.com', 'password' => 'new-password-1'], 'Bearer '.$r['body']['access_token']);
+            $auth = 'Bearer '.$r['body']['access_token'];
+            $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-email', ['email' => 'alice.new@example.com'], $auth, TestHelper::stepUp(self::$client, $auth, null, 'new-password-1'));
             $this->assertSame(204, $r['status'], $r['content']);
             // password notice + confirmation link + change notice: all attempted, all failed quietly
             $this->assertSame(3, $failing->attempts);

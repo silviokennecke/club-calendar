@@ -6,7 +6,6 @@ namespace App\Controller;
 
 use App\Dto\Auth\ChangeEmailDto;
 use App\Dto\Auth\ChangePasswordDto;
-use App\Dto\Auth\DeleteAccountDto;
 use App\Dto\Auth\ForgotPasswordDto;
 use App\Dto\Auth\IdentifyDto;
 use App\Dto\Auth\LoginDto;
@@ -18,6 +17,7 @@ use App\Entity\User;
 use App\Exception\ApiProblemException;
 use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
+use App\Security\StepUp\RequiresStepUp;
 use App\Service\AccountService;
 use App\Service\AuthService;
 use App\Service\ClubCreationPolicy;
@@ -25,7 +25,6 @@ use App\Service\FeedProof;
 use App\Service\Input;
 use App\Service\LegalConsentService;
 use App\Service\PasswordResetService;
-use App\Service\ReauthenticationService;
 use App\Service\RegistrationPolicy;
 use Doctrine\ORM\EntityManagerInterface;
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
@@ -52,7 +51,6 @@ class AuthController extends AbstractApiController
         private readonly ClientRegistry $clientRegistry,
         private readonly PasswordResetService $passwordResets,
         private readonly AccountService $accounts,
-        private readonly ReauthenticationService $reauth,
         private readonly LegalConsentService $legal,
         private readonly RegistrationPolicy $registrationPolicy,
         private readonly ClubCreationPolicy $clubCreationPolicy,
@@ -206,6 +204,7 @@ class AuthController extends AbstractApiController
 
     /** Returns new tokens: all other sessions end, the calling session continues with these. */
     #[Route('/change-password', methods: ['POST'])]
+    #[RequiresStepUp]
     public function changePassword(Request $request): JsonResponse
     {
         $user = $this->userResolver->resolve();
@@ -220,6 +219,7 @@ class AuthController extends AbstractApiController
      * only if it is. Over the rate limit also 204 without mail.
      */
     #[Route('/change-email', methods: ['POST'])]
+    #[RequiresStepUp]
     public function changeEmail(Request $request): JsonResponse
     {
         $user = $this->userResolver->resolve();
@@ -227,7 +227,9 @@ class AuthController extends AbstractApiController
         $this->validateDto($dto, $this->validator);
         $dto->email = trim($dto->email);
 
-        $this->accounts->assertPassword($user, (string) $dto->password, 'password');
+        if (null === $user->getPassword()) {
+            throw new ApiProblemException(409, 'This account has no password', 'no_password');
+        }
         $send = $this->emailChangeLimiter->create($user->getId())->consume()->isAccepted();
         $this->accounts->requestEmailChange($user, $dto->email, $send);
 
@@ -408,34 +410,18 @@ class AuthController extends AbstractApiController
     }
 
     /**
-     * Deletes the account after re-authentication: `{password}` for an account with a password, `{code}`
-     * (mailed by `POST /delete-account/code`) for one without. 400 `invalid_credentials` /
-     * `invalid_confirmation_code`, 429 `rate_limited`; nothing is deleted before the proof is valid.
+     * Deletes the account. Needs a step-up token (`X-Step-Up-Token`, `POST /api/auth/step-up`): 403
+     * `step_up_required`. Nothing is deleted before the last-member guard passes (422 `last_member_of_club`).
      */
     #[Route('/me', methods: ['DELETE'])]
+    #[RequiresStepUp]
     public function deleteMe(Request $request): JsonResponse
     {
         $user = $this->userResolver->resolve();
-        $this->rateLimiter->assertAccountDeleteAllowed($request, $user->getId());
-        $dto = '' === trim($request->getContent())
-            ? new DeleteAccountDto()
-            : $this->deserializeDto($request, DeleteAccountDto::class);
-        $this->validateDto($dto, $this->validator);
-        $this->reauth->assertConfirmed($user, ReauthenticationService::PURPOSE_DELETE_ACCOUNT, $dto->password, $dto->code);
+        $this->rateLimiter->assertOtherAllowed($request);
         $this->auth->deleteMe($user);
 
         return new JsonResponse(['ok' => true]);
-    }
-
-    /** 204: a 6-digit code went to the account's address (accounts without password only; 409 `has_password` otherwise). */
-    #[Route('/delete-account/code', methods: ['POST'])]
-    public function sendDeleteAccountCode(Request $request): JsonResponse
-    {
-        $user = $this->userResolver->resolve();
-        $this->rateLimiter->assertAccountDeleteCodeAllowed($request, $user->getId());
-        $this->reauth->sendCode($user, ReauthenticationService::PURPOSE_DELETE_ACCOUNT);
-
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 
     #[Route('/registration', methods: ['GET'])]

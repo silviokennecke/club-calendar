@@ -35,6 +35,7 @@ class SecurityEventTest extends WebTestCase
     {
         self::ensureKernelShutdown();
         $this->client = static::createClient();
+        $this->client->disableReboot();
         $c = static::getContainer();
         $c->set(LocationResolver::class, new class implements LocationResolver {
             public function resolve(Request $request): Location
@@ -57,9 +58,11 @@ class SecurityEventTest extends WebTestCase
 
     private function change(User $user, array $server = []): void
     {
+        $auth = TestHelper::sessionHeader($user, static::getContainer()->get(TokenService::class));
         $this->client->request('POST', '/api/auth/change-password', [], [], array_merge([
             'CONTENT_TYPE' => 'application/json',
-            'HTTP_AUTHORIZATION' => 'Bearer '.static::getContainer()->get(TokenService::class)->createAccessToken($user),
+            'HTTP_AUTHORIZATION' => $auth,
+            'HTTP_X_STEP_UP_TOKEN' => TestHelper::stepUp($this->client, $auth),
             'HTTP_USER_AGENT' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
             'REMOTE_ADDR' => '203.0.113.7',
         ], $server), json_encode(['currentPassword' => 'password123', 'newPassword' => 'new-password-1']));
@@ -69,7 +72,7 @@ class SecurityEventTest extends WebTestCase
     /** @return list<array<string, mixed>> */
     private function events(): array
     {
-        return static::getContainer()->get(Connection::class)->fetchAllAssociative('SELECT * FROM security_event ORDER BY id');
+        return static::getContainer()->get(Connection::class)->fetchAllAssociative("SELECT * FROM security_event WHERE type <> 'step_up' ORDER BY id");
     }
 
     private function mail(): Email
@@ -218,9 +221,10 @@ class SecurityEventTest extends WebTestCase
     private function passkeyFor(User $user, string $name = 'Software'): array
     {
         $origin = rtrim((string) $_ENV['FRONTEND_URL'], '/');
-        $auth = 'Bearer '.static::getContainer()->get(TokenService::class)->createAccessToken($user);
-        $json = fn (string $m, string $u, array $d, string $a = '') => TestHelper::jsonRequest($this->client, $m, $u, $d, $a);
-        $o = $json('POST', '/api/auth/webauthn/register/options', ['password' => 'password123'], $auth);
+        $auth = TestHelper::sessionHeader($user, static::getContainer()->get(TokenService::class));
+        $stepUp = TestHelper::stepUp($this->client, $auth);
+        $json = fn (string $m, string $u, array $d, string $a = '') => TestHelper::jsonRequest($this->client, $m, $u, $d, $a, $stepUp);
+        $o = $json('POST', '/api/auth/webauthn/register/options', [], $auth);
         $authenticator = new SoftwareAuthenticator();
         $r = $json('POST', '/api/auth/webauthn/register/verify', [
             'challengeToken' => $o['body']['challengeToken'],
@@ -253,7 +257,7 @@ class SecurityEventTest extends WebTestCase
         $this->assertSame(200, $this->passkeyLogin($authenticator, $user, 'localhost'));
 
         $id = $this->em->getRepository(Passkey::class)->findOneBy([])->getId();
-        $r = TestHelper::jsonRequest($this->client, 'DELETE', '/api/auth/webauthn/'.$id, ['password' => 'password123'], $auth);
+        $r = TestHelper::jsonRequest($this->client, 'DELETE', '/api/auth/webauthn/'.$id, [], $auth, TestHelper::stepUp($this->client, $auth));
         $this->assertSame(200, $r['status'], $r['content']);
 
         $events = $this->events();
@@ -277,7 +281,7 @@ class SecurityEventTest extends WebTestCase
         [, $auth] = $this->passkeyFor($user);
         $added = $this->mails();
         $id = $this->em->getRepository(Passkey::class)->findOneBy([])->getId();
-        $r = TestHelper::jsonRequest($this->client, 'DELETE', '/api/auth/webauthn/'.$id, ['password' => 'password123'], $auth);
+        $r = TestHelper::jsonRequest($this->client, 'DELETE', '/api/auth/webauthn/'.$id, [], $auth, TestHelper::stepUp($this->client, $auth));
         $this->assertSame(200, $r['status'], $r['content']);
 
         return [$added, $this->mails()];

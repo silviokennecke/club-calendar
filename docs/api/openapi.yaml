@@ -50,7 +50,8 @@ info:
       (`emailVerificationRequired: true` in every token response and in `GET /api/auth/me`) and gets
       `403 email_verification_required` (member `email`) on every `/api/*` route except `GET|PATCH|DELETE /api/auth/me`,
       `POST /api/auth/verify-email`, `POST /api/auth/resend-verification`, `GET|POST /api/auth/consents`,
-      `/api/legal*`, `POST /api/auth/logout`, `/token`, `/delete-account/code`, `GET /api/auth/providers`,
+      `/api/legal*`, `POST /api/auth/logout`, `/token`, `POST /api/auth/step-up`, `/step-up/code`, `/step-up/passkey/options`
+      (an unverified user confirms with the password or the mailed code and can delete the account), `GET /api/auth/providers`,
       `GET /api/auth/registration`, `GET /api/health` and `/api/feed/*`. Only this session can confirm the address
       (it needs the JWT and the mailed code), so the mailbox owner cannot confirm an account someone else registered.
       The gate runs before the consent gate.
@@ -82,7 +83,7 @@ info:
     - **Consent gate**: a signed-in user who has not consented to the current privacy policy / terms of use
       (see `GET /api/legal`, `pendingConsents` of `GET /api/auth/me`) gets `403 consent_required` (+ `documents`)
       on every `/api/*` route except `GET|DELETE /api/auth/me`, `GET|POST /api/auth/consents`, `/api/legal*`,
-      `POST /api/auth/logout`, `/logout-all`, `/token`, `/delete-account/code`, `GET /api/auth/providers`, `GET /api/auth/registration`,
+      `POST /api/auth/logout`, `/logout-all`, `/token`, `POST /api/auth/step-up`, `/step-up/code`, `/step-up/passkey/options`, `GET /api/auth/providers`, `GET /api/auth/registration`,
       `GET /api/health` and `/api/feed/*`. Sign-in still returns tokens. Without any provided consent document
       nobody is gated. The gate applies only to sessions that STARTED without up-to-date consents: a new session
       (login, SSO/e-mail code, passkey, legacy refresh token) stores the flag `lc` (consent ok = no pending
@@ -119,8 +120,7 @@ info:
 
     ### Passkeys (WebAuthn) - brief
 
-    `POST …/webauthn/register/options` (JWT, re-authentication: `{password}` or, for accounts without a
-    password, `{code}` mailed by `POST …/register/code`) or `GET …/webauthn/authenticate/options` returns
+    `POST …/webauthn/register/options` (JWT and a step-up token) or `GET …/webauthn/authenticate/options` returns
     `{options, challengeToken}`; the browser runs `navigator.credentials.create/get` with `options`; the result
     goes to `POST …/register/verify` or `POST …/authenticate/verify` together with the signed, single-use
     `challengeToken`. Allowed origin is `FRONTEND_URL`, RP ID `WEBAUTHN_RP_ID`. The authentication options need no
@@ -1064,8 +1064,13 @@ paths:
     post:
       tags: [Auth]
       summary: Change the password
-      description: Returns new tokens for the calling session; all other sessions end. A notice mail goes to the account.
+      description: >-
+        Needs a step-up token (`X-Step-Up-Token`) and still the current password in the body (the old credential of the
+        operation). Returns new tokens for the calling session (a NEW session family: the next sensitive action needs
+        a new step-up); all other sessions end. A notice mail goes to the account.
       operationId: changePassword
+      parameters:
+        - { $ref: '#/components/parameters/StepUpToken' }
       requestBody:
         required: true
         content:
@@ -1084,6 +1089,7 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/StepUpRequired' }
         '409':
           description: '`no_password`: SSO-only account (set a password via forgot-password first).'
           content:
@@ -1098,26 +1104,24 @@ paths:
       description: >-
         204 whether or not the new address is free (no oracle). A confirmation link goes to the new address only if
         it is free and the rate limit allows; a notice goes to the current address. The change completes with
-        `GET /api/auth/verify-new-email`.
+        `GET /api/auth/verify-new-email`. Needs a step-up token (`X-Step-Up-Token`); the body carries no password.
       operationId: requestEmailChange
+      parameters:
+        - { $ref: '#/components/parameters/StepUpToken' }
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [email, password]
+              required: [email]
               properties:
                 email: { type: string, format: email, maxLength: 255 }
-                password: { type: [string, 'null'], maxLength: 4096, description: Current password. }
       responses:
         '204': { description: Accepted. }
-        '400':
-          description: '`invalid_credentials` (field `password`) or `invalid_request`.'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/StepUpRequired' }
         '409':
           description: '`no_password`: SSO-only account.'
           content:
@@ -1335,66 +1339,23 @@ paths:
       tags: [Auth]
       summary: Delete the account
       description: >-
-        Needs re-authentication (AUTH-03): an account with a password sends `password`; an account without one
-        (SSO-only, passkey-only) sends the 6-digit `code` that `POST /api/auth/delete-account/code` mailed to its
-        address. Every attempt counts against 5 per 15 minutes per user (and the per-IP limit): `429 rate_limited`.
-        Nothing is deleted before the proof is valid. Then refused with `422 last_member_of_club` while the user is
-        the only member of a club (no club is named): delete that club first (`DELETE /api/clubs/{clubId}`) or add
-        another member.
+        Needs a step-up token (`X-Step-Up-Token`, `POST /api/auth/step-up`): the password, or the mailed code for an
+        account without a password. Also reachable in a restricted (unverified) session and in the consent gate.
+        Refused with `422 last_member_of_club` while the user is the only member of a club (no club is named): delete
+        that club first (`DELETE /api/clubs/{clubId}`) or add another member.
       operationId: deleteMe
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                password: { type: [string, 'null'], maxLength: 4096, description: Current password (accounts with a password). }
-                code: { type: [string, 'null'], maxLength: 32, description: Mailed 6-digit code (accounts without a password). }
+      parameters:
+        - { $ref: '#/components/parameters/StepUpToken' }
       responses:
         '200': { $ref: '#/components/responses/Ok' }
-        '400':
-          description: >-
-            `invalid_credentials` (field `password`: missing or wrong) for an account with a password;
-            `invalid_confirmation_code` (field `code`: missing, wrong, expired or of another account) for one without.
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/StepUpRequired' }
         '422':
           description: "`last_member_of_club` or `last_admin_of_club` (the only admin of a club that has other members)."
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
-        '429':
-          description: '`rate_limited` (header `Retry-After`).'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-
-  /api/auth/delete-account/code:
-    post:
-      tags: [Auth]
-      summary: Mail the confirmation code for the account deletion
-      description: >-
-        Only for accounts without a password. The code is derived from the user, the session version, the address
-        and a 10-minute window (nothing is stored): it is valid for 10 to 20 minutes, repeated requests mail the same
-        code within a window, and it ends with a password set, a sign-out of all sessions or an address change.
-        At most 5 mails per user and hour.
-      operationId: sendDeleteAccountCode
-      responses:
-        '204': { description: The code went to the account's address. }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '409':
-          description: '`has_password`: the account has a password, confirm with it.'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '429':
-          description: '`rate_limited` (header `Retry-After`).'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+        '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/auth/registration:
     get:
@@ -1447,63 +1408,33 @@ paths:
   /api/auth/webauthn/register/options:
     post:
       tags: [Passkeys]
-      summary: Options to register a passkey (needs re-authentication)
+      summary: Options to register a passkey (needs a step-up)
       description: >-
-        The account proves itself first: `{password}` for an account with a password, `{code}` (6 digits, mailed by
-        `POST …/register/code`) for one without. Only then the options and the signed, single-use challenge token
-        are issued; `…/register/verify` is impossible without that token. A deletion code is not valid here (the
-        code is bound to its purpose). Every attempt counts: 5 per 15 minutes per user, plus the per-IP limit.
+        Needs a step-up token (`X-Step-Up-Token`). The options and the signed, single-use challenge token are issued
+        only then; `…/register/verify` is impossible without that token (and needs the step-up as well).
       operationId: passkeyRegistrationOptions
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                password: { type: string, maxLength: 4096 }
-                code: { type: string, maxLength: 32 }
+      parameters:
+        - { $ref: '#/components/parameters/StepUpToken' }
       responses:
         '200':
           description: '`PublicKeyCredentialCreationOptions` (JSON, base64url) and the signed challenge token.'
           content:
             application/json:
               schema: { $ref: '#/components/schemas/WebAuthnOptions' }
-        '400':
-          description: '`invalid_credentials` (password missing or wrong, field `password`), `invalid_confirmation_code` (field `code`), `invalid_request`.'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/StepUpRequired' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
-
-  /api/auth/webauthn/register/code:
-    post:
-      tags: [Passkeys]
-      summary: Mail the confirmation code for passkey registration
-      description: >-
-        Only for accounts without a password. Same derived, stateless code as for the account deletion but bound to
-        the passkey purpose (10 to 20 minutes). At most 5 mails per user and hour.
-      operationId: sendPasskeyRegistrationCode
-      responses:
-        '204': { description: The code went to the account's address. }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '409':
-          description: '`has_password`: the account has a password, confirm with it.'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '429':
-          description: '`rate_limited` (header `Retry-After`).'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
 
   /api/auth/webauthn/register/verify:
     post:
       tags: [Passkeys]
       summary: Register a passkey
-      description: Returns the id of the new passkey (for `PATCH …/webauthn/{id}`, e.g. to name it).
+      description: >-
+        Needs a step-up token (`X-Step-Up-Token`). Returns the id of the new passkey (for `PATCH …/webauthn/{id}`,
+        e.g. to name it).
       operationId: passkeyRegistrationVerify
+      parameters:
+        - { $ref: '#/components/parameters/StepUpToken' }
       requestBody:
         required: true
         content:
@@ -1533,6 +1464,7 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/StepUpRequired' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
 
   /api/auth/webauthn/authenticate/options:
@@ -1723,11 +1655,12 @@ paths:
       tags: [Multi-factor authentication (MFA)]
       summary: Turn MFA on
       description: >-
-        Needs re-authentication: `password`, or `confirmationCode` for an account without one (see
-        `POST /api/auth/mfa/code`). Sending the `setupToken` again with the same secret/codes proves the setup. An
+        Needs a step-up token (`X-Step-Up-Token`). Sending the `setupToken` again with the same secret/codes proves the setup. An
         authenticator app needs a current 6-digit `code` (the first accepted step is spent). Backup codes need
         `backupCodesAcknowledged: true`. Other sessions stay signed in.
       operationId: mfaEnable
+      parameters:
+        - { $ref: '#/components/parameters/StepUpToken' }
       requestBody:
         required: true
         content:
@@ -1742,8 +1675,6 @@ paths:
                 code: { type: [string, 'null'], maxLength: 16, description: 'Authenticator app: the current 6-digit code.' }
                 backupCodes: { type: [array, 'null'], maxItems: 50, items: { type: string }, description: 'The backup codes of the setup, exactly as issued.' }
                 backupCodesAcknowledged: { type: boolean, description: 'Confirms the backup codes were stored.' }
-                password: { type: [string, 'null'], maxLength: 4096 }
-                confirmationCode: { type: [string, 'null'], maxLength: 32 }
       responses:
         '200':
           description: MFA is on.
@@ -1755,11 +1686,12 @@ paths:
                 properties:
                   mfa: { $ref: '#/components/schemas/MfaStatus' }
         '400':
-          description: '`invalid_mfa_setup` (setup token wrong, expired or not matching; also used), `invalid_request`, `invalid_credentials` (field `password`) or `invalid_confirmation_code` (field `code`).'
+          description: '`invalid_mfa_setup` (setup token wrong, expired or not matching; also used), or `invalid_request`.'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/StepUpRequired' }
         '409':
           description: '`totp_already_set` or `mfa_already_enabled`.'
           content:
@@ -1777,19 +1709,12 @@ paths:
       tags: [Multi-factor authentication (MFA)]
       summary: Turn MFA off
       description: >-
-        Needs re-authentication (`password`, or `confirmationCode` for an account without one). Removes the authenticator
-        app and the backup codes, keeps the passkeys, and ends all other sessions and MCP connections. The answer is
-        a fresh token pair, so the calling session continues.
+        Needs a step-up token (`X-Step-Up-Token`). Removes the authenticator app and the backup codes, keeps the
+        passkeys, and ends all other sessions and MCP connections. The answer is a fresh token pair (a new session
+        family, so the next sensitive action needs a new step-up), so the calling session continues.
       operationId: mfaDisable
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                password: { type: [string, 'null'], maxLength: 4096 }
-                confirmationCode: { type: [string, 'null'], maxLength: 32 }
+      parameters:
+        - { $ref: '#/components/parameters/StepUpToken' }
       responses:
         '200':
           description: MFA is off; the new token pair of this session.
@@ -1802,8 +1727,8 @@ paths:
                     required: [mfa]
                     properties:
                       mfa: { $ref: '#/components/schemas/MfaStatus' }
-        '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/StepUpRequired' }
         '409':
           description: '`mfa_not_enabled`: MFA is not on.'
           content:
@@ -1843,18 +1768,10 @@ paths:
       tags: [Multi-factor authentication (MFA)]
       summary: Replace the backup codes
       description: >-
-        Needs re-authentication (`password`, or `confirmationCode` for an account without one). The old codes stop
-        working at once. The new codes are shown once.
+        Needs a step-up token (`X-Step-Up-Token`). The old codes stop working at once. The new codes are shown once.
       operationId: mfaRegenerateBackupCodes
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                password: { type: [string, 'null'], maxLength: 4096 }
-                confirmationCode: { type: [string, 'null'], maxLength: 32 }
+      parameters:
+        - { $ref: '#/components/parameters/StepUpToken' }
       responses:
         '200':
           description: The new backup codes and the status.
@@ -1866,28 +1783,10 @@ paths:
                 properties:
                   backupCodes: { type: array, items: { type: string }, minItems: 10, maxItems: 10 }
                   mfa: { $ref: '#/components/schemas/MfaStatus' }
-        '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/StepUpRequired' }
         '409':
           description: '`mfa_not_enabled`: MFA is not on.'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '429': { $ref: '#/components/responses/AuthRateLimited' }
-
-  /api/auth/mfa/code:
-    post:
-      tags: [Multi-factor authentication (MFA)]
-      summary: Mail the confirmation code for MFA changes
-      description: >-
-        For accounts without a password only (they confirm with a code instead of a password). Same stateless code as
-        for account deletion, bound to this purpose. Counts against the per-user and per-IP limits.
-      operationId: mfaSendCode
-      responses:
-        '204': { description: The code went to the account's address. }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '409':
-          description: '`has_password`: the account has a password, confirm with it.'
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problem' }
@@ -1898,8 +1797,8 @@ paths:
       tags: [Step-up confirmation]
       summary: Mail the step-up confirmation code
       description: >-
-        For accounts without a password only (they confirm with a code instead of a password). Same stateless code
-        as for account deletion, bound to this purpose. 5 mails per user and hour. 403 `step_up_unavailable` when
+        For accounts without a password only (they confirm with a code instead of a password). The code is stateless
+        (derived from the user, the session version, the address and a 10-minute window) and bound to this purpose. 5 mails per user and hour. 403 `step_up_unavailable` when
         the access token has no session claim (see `POST /api/auth/step-up`).
       operationId: stepUpSendCode
       responses:
@@ -2011,23 +1910,14 @@ paths:
       tags: [Passkeys]
       summary: Delete one of the user's passkeys
       description: >-
-        Needs re-authentication: `password`, or `confirmationCode` for an account without one (see
-        `POST /api/auth/mfa/code`); the body may be empty only when neither applies. Ends all sessions (session
+        Needs a step-up token (`X-Step-Up-Token`). Ends all sessions (session
         version, refresh tokens) and answers with `{"ok": true}` plus a fresh token pair (`access_token`,
         `refresh_token`, ... like login), so the calling session continues. While MFA is on, the last
         passkey cannot be deleted (422 `mfa_last_passkey`).
       operationId: deletePasskey
       parameters:
         - { $ref: '#/components/parameters/Id' }
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                password: { type: [string, 'null'], maxLength: 4096 }
-                confirmationCode: { type: [string, 'null'], maxLength: 32 }
+        - { $ref: '#/components/parameters/StepUpToken' }
       responses:
         '200':
           description: Done, with a fresh token pair.
@@ -2040,12 +1930,8 @@ paths:
                     required: [ok]
                     properties:
                       ok: { type: boolean, const: true }
-        '400':
-          description: '`invalid_credentials` (field `password`) or `invalid_confirmation_code` (field `code`); `invalid_request` for a malformed body.'
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/StepUpRequired' }
         '404':
           description: '`passkey_not_found` (unknown or another user''s).'
           content:
@@ -4905,6 +4791,14 @@ components:
       description: Shared secret of a `PRIVATE` feed (`sharedSecret` of the feed). Ignored for `PUBLIC`/`CLUB` feeds.
 
   parameters:
+    StepUpToken:
+      name: X-Step-Up-Token
+      in: header
+      required: true
+      description: >-
+        Step-up token from `POST /api/auth/step-up` (valid 10 minutes, bound to the user and the session). Without a
+        valid one the route answers `403 step_up_required` before any other check of the route.
+      schema: { type: string }
     IncludeSecret:
       name: includeSecret
       in: query
@@ -5136,6 +5030,13 @@ components:
       description: >-
         Map images: per-IP limit (360 per hour, `rate_limited` problem body with `Retry-After`) or the provider's
         budget reached (empty body).
+    StepUpRequired:
+      description: >-
+        `step_up_required` (member `methods`) or `step_up_unavailable`: the `X-Step-Up-Token` header is missing,
+        malformed, expired or from another user or session; or the access token has no session claim (refresh it first).
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
     StepUpUnavailable:
       description: '`step_up_unavailable`: the access token carries no session claim; refresh it and retry.'
       content:
@@ -5272,7 +5173,7 @@ components:
         | `mcp_grant_not_found` | 404 | `DELETE /api/auth/mcp-grants/{id}`: unknown id or a grant of another user |
         | `ics_fetch_failed` | 422 | Holiday calendar create/refresh: the ICS URL could not be fetched or parsed (field `url`) |
         | `holiday_source_failed` | 422 | Predefined holiday calendars / source lists / refresh: the holiday source (openholidaysapi.org) failed |
-        | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider, plus per-user/IP Mapbox limits (tiles 1800 per user and 3600 per IP per hour, styles/fonts 900 per user per hour, anonymous `/api/map/image/*` 360 per IP per hour, with `Retry-After`; an exhausted provider budget on map images answers an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After`; club invitations (create, re-send): 20 per user and 50 per club and day; account deletion (`DELETE /api/auth/me`, `POST /api/auth/delete-account/code`): per user and per IP; `GET …/events.pdf`: 10 per user and 30 per IP in 10 minutes |
+        | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider, plus per-user/IP Mapbox limits (tiles 1800 per user and 3600 per IP per hour, styles/fonts 900 per user per hour, anonymous `/api/map/image/*` 360 per IP per hour, with `Retry-After`; an exhausted provider budget on map images answers an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After`; club invitations (create, re-send): 20 per user and 50 per club and day; step-up attempts and code mails: see `POST /api/auth/step-up`; `GET …/events.pdf`: 10 per user and 30 per IP in 10 minutes |
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
         | `event_not_draft` | 409 | MCP tool `update_event_draft` only: the event is published (not a draft) and stays unchanged |
         | `duplicate_name` | 422 | Name of a badge (property) or extra (feature) already used in the calendar, or of an audience (target group) in the club |
@@ -5286,8 +5187,8 @@ components:
         | `invalid_credentials` | 401 / 400 | Login 401; 400 for `change-password` (field `currentPassword`), `change-email` and `DELETE /api/auth/me` (field `password`) |
         | `invalid_reset_token` | 400 | `reset-password`: unknown, used or expired (same answer), field `token` |
         | `no_password` | 409 | `change-password` / `change-email` of SSO-only accounts |
-        | `invalid_confirmation_code` | 400 | `DELETE /api/auth/me` of an account without password: code missing, wrong, expired or of another account, field `code` |
-        | `has_password` | 409 | `POST /api/auth/delete-account/code` for an account with a password |
+        | `invalid_confirmation_code` | 400 | `POST /api/auth/step-up` of an account without password: code missing, wrong, expired or of another account, field `code` |
+        | `has_password` | 409 | `POST /api/auth/step-up/code` for an account with a password |
         | `last_login_method` | 409 | `DELETE /api/auth/oauth/{provider}`: no sign-in method would remain |
         | `oauth_account_not_found` | 404 | `DELETE /api/auth/oauth/{provider}`: provider not linked |
         | `unknown_provider` | 404 | `POST /api/auth/oauth/{provider}/link-start` and the browser routes `GET /api/auth/oauth/{provider}`, `GET …/{provider}/link` |

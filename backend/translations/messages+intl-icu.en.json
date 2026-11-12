@@ -57,27 +57,6 @@
             "info": "We will not send further messages about your account to this address. All sessions were signed out; from now on you sign in with the new address.",
             "not_you": "Then contact Club Calendar support right away so your account can be restored. As long as you are still signed in or have access to the new address, also set a new password via “Forgot password”. You find the page here:"
         },
-        "delete_code": {
-            "subject": "Confirm the deletion of your account",
-            "greeting": "Hello {name},",
-            "body": "You asked to delete your Club Calendar account. Enter this code in the app to confirm. The account and its data are then removed for good.",
-            "expiry_note": "The code is valid for at least {minutes} minutes and works only for this account.",
-            "ignore_note": "If this was not you, do not enter the code and ignore this email. Your account stays as it is."
-        },
-        "passkey_code": {
-            "subject": "Confirm adding a passkey",
-            "greeting": "Hello {name},",
-            "body": "You asked to add a passkey to your Club Calendar account. Enter this code in the app to confirm.",
-            "expiry_note": "The code is valid for at least {minutes} minutes and works only for this account.",
-            "ignore_note": "If this was not you, do not enter the code and ignore this email. No passkey is added. Consider changing your password."
-        },
-        "mfa_code": {
-            "subject": "Confirm a change to your sign-in protection",
-            "greeting": "Hello {name},",
-            "body": "You asked to change MFA or the passkeys of your Club Calendar account. Enter this code in the app to confirm.",
-            "expiry_note": "The code is valid for at least {minutes} minutes and works only for this account.",
-            "ignore_note": "If this was not you, do not enter the code and ignore this email. Nothing is changed. Consider changing your password."
-        },
         "step_up_code": {
             "subject": "Confirm a sensitive action",
             "greeting": "Hello {name},",

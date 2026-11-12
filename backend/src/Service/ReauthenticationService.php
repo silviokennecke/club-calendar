@@ -11,7 +11,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
- * Re-authentication for sensitive actions: account deletion (AUTH-03) and passkey registration (L7). The code of
+ * Re-authentication of the step-up confirmation (`StepUpService`). The code of
  * one purpose never validates for another (the purpose is part of the HMAC key). An account with a password confirms with that password.
  * An account without one (SSO-only, passkey-only) confirms with a 6-digit code mailed to its address: the
  * code is derived (HMAC of APP_SECRET over user, session version, address and a 10-minute window), so nothing
@@ -22,9 +22,6 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 readonly class ReauthenticationService
 {
     public const int CODE_WINDOW = 600;
-    public const string PURPOSE_DELETE_ACCOUNT = 'delete-account';
-    public const string PURPOSE_PASSKEY = 'passkey-register';
-    public const string PURPOSE_MFA = 'mfa';
     public const string PURPOSE_STEP_UP = 'step-up';
 
     public function __construct(
@@ -44,15 +41,7 @@ readonly class ReauthenticationService
         }
         $code = $this->code($user, $purpose, $this->window());
         $minutes = intdiv(self::CODE_WINDOW, 60);
-        if (self::PURPOSE_PASSKEY === $purpose) {
-            $this->mailer->sendPasskeyCode($user, $code, $minutes);
-        } elseif (self::PURPOSE_MFA === $purpose) {
-            $this->mailer->sendMfaCode($user, $code, $minutes);
-        } elseif (self::PURPOSE_STEP_UP === $purpose) {
-            $this->mailer->sendStepUpCode($user, $code, $minutes);
-        } else {
-            $this->mailer->sendAccountDeletionCode($user, $code, $minutes);
-        }
+        $this->mailer->sendStepUpCode($user, $code, $minutes);
     }
 
     /**

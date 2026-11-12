@@ -220,14 +220,14 @@ class MfaConcurrencyTest extends WebTestCase
     {
         [$user] = $this->user();
         $origin = rtrim((string) $_ENV['FRONTEND_URL'], '/');
-        $auth = 'Bearer '.static::getContainer()->get(TokenService::class)->createAccessToken($user);
-        $o = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/webauthn/register/options', ['password' => 'password123'], $auth);
+        [$auth, $stepUp] = TestHelper::stepUpSessionSkippingMfa($this->client, $user, static::getContainer()->get(TokenService::class), static::getContainer()->get(EntityManagerInterface::class));
+        $o = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/webauthn/register/options', [], $auth, $stepUp);
         $key = new SoftwareAuthenticator();
         $reg = TestHelper::jsonRequest($this->client, 'POST', '/api/auth/webauthn/register/verify', [
             'challengeToken' => $o['body']['challengeToken'],
             'response' => $key->attestation($o['body']['options']['challenge'], $origin, self::RP_ID),
             'deviceName' => 'Software',
-        ], $auth);
+        ], $auth, $stepUp);
         $this->assertSame(200, $reg['status'], $reg['content']);
 
         $token = $this->mfaToken();

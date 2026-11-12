@@ -84,25 +84,10 @@ framework:
             limit: 1000
             interval: '1 minute'
             cache_pool: app.auth_limiter_pool
-        account_delete_attempt:
-            policy: sliding_window
-            limit: 5
-            interval: '15 minutes'
-            cache_pool: app.auth_limiter_pool
-        account_delete_code:
-            policy: sliding_window
-            limit: 5
-            interval: '1 hour'
-            cache_pool: app.auth_limiter_pool
         passkey_register_attempt:
             policy: sliding_window
             limit: 90
             interval: '15 minutes'
-            cache_pool: app.auth_limiter_pool
-        passkey_register_code:
-            policy: sliding_window
-            limit: 5
-            interval: '1 hour'
             cache_pool: app.auth_limiter_pool
         mfa_verify_user:
             policy: sliding_window
@@ -123,11 +108,6 @@ framework:
             policy: sliding_window
             limit: 90
             interval: '15 minutes'
-            cache_pool: app.auth_limiter_pool
-        mfa_manage_code:
-            policy: sliding_window
-            limit: 5
-            interval: '1 hour'
             cache_pool: app.auth_limiter_pool
         step_up_user:
             policy: sliding_window

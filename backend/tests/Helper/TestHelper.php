@@ -22,6 +22,7 @@ use App\Service\TokenService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Uid\Uuid;
 
 class TestHelper
 {
@@ -199,6 +200,74 @@ class TestHelper
         return 'Bearer '.$tokens->createAccessToken($user);
     }
 
+    /** Access token with a session (`fam`) claim, which a step-up is bound to (no refresh-token row is stored). */
+    public static function sessionHeader(User $user, TokenService $tokens): string
+    {
+        return 'Bearer '.$tokens->createAccessToken($user, null, Uuid::v7()->toRfc4122());
+    }
+
+    /**
+     * Obtains a step-up token for the session of `$auth` through `POST /api/auth/step-up` (the real route).
+     *
+     * @param array<string, mixed>|null $factor MFA factor, e.g. `['method' => 'totp', 'code' => '123456']`
+     */
+    public static function stepUp(KernelBrowser $client, string $auth, ?array $factor = null, string $password = 'password123'): string
+    {
+        $data = ['password' => $password];
+        if (null !== $factor) {
+            $data['factor'] = $factor;
+        }
+        $r = self::jsonRequest($client, 'POST', '/api/auth/step-up', $data, $auth);
+        if (200 !== $r['status']) {
+            throw new \RuntimeException('Step-up failed: '.$r['content']);
+        }
+
+        return $r['body']['stepUpToken'];
+    }
+
+    /**
+     * A fresh session of `$user` with a valid step-up token.
+     *
+     * @param array<string, mixed>|null $factor
+     *
+     * @return array{0: string, 1: string} Authorization header, step-up token
+     */
+    public static function stepUpSession(KernelBrowser $client, User $user, TokenService $tokens, ?array $factor = null, string $password = 'password123'): array
+    {
+        $auth = self::sessionHeader($user, $tokens);
+
+        return [$auth, self::stepUp($client, $auth, $factor, $password)];
+    }
+
+    /**
+     * Fixture shortcut for a user whose MFA is already on: the step-up is obtained with MFA switched off briefly.
+     *
+     * @return array{0: string, 1: string}
+     */
+    public static function stepUpSessionSkippingMfa(KernelBrowser $client, User $user, TokenService $tokens, EntityManagerInterface $em): array
+    {
+        $conn = $em->getConnection();
+        $enforced = (int) $conn->fetchOne('SELECT mfa_enforced FROM user WHERE id = ?', [$user->getId()]);
+        $conn->executeStatement('UPDATE user SET mfa_enforced = 0 WHERE id = ?', [$user->getId()]);
+        $em->refresh($user);
+        try {
+            return self::stepUpSession($client, $user, $tokens);
+        } finally {
+            $conn->executeStatement('UPDATE user SET mfa_enforced = ? WHERE id = ?', [$enforced, $user->getId()]);
+            if ($em->contains($user)) {
+                $em->refresh($user);
+            }
+        }
+    }
+
+    /** `DELETE /api/auth/me` with a fresh session and a password step-up. */
+    public static function deleteAccount(KernelBrowser $client, User $user, TokenService $tokens): array
+    {
+        [$auth, $stepUp] = self::stepUpSession($client, $user, $tokens);
+
+        return self::jsonRequest($client, 'DELETE', '/api/auth/me', [], $auth, $stepUp);
+    }
+
     /**
      * @param array<string, mixed> $data
      *
@@ -210,10 +279,14 @@ class TestHelper
         string $uri,
         array $data = [],
         string $authHeader = '',
+        ?string $stepUpToken = null,
     ): array {
         $headers = ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'];
         if ($authHeader) {
             $headers['HTTP_AUTHORIZATION'] = $authHeader;
+        }
+        if (null !== $stepUpToken) {
+            $headers['HTTP_X_STEP_UP_TOKEN'] = $stepUpToken;
         }
         $client->request($method, $uri, [], [], $headers, $data ? json_encode($data) : null);
         $response = $client->getResponse();

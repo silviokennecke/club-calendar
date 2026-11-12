@@ -19,7 +19,7 @@ use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
- * L7: passkey registration needs the password, or for accounts without one a mailed code of its own purpose.
+ * L7: passkey registration needs a step-up token (password, or the mailed code for accounts without a password).
  */
 class PasskeyReauthTest extends WebTestCase
 {
@@ -49,11 +49,6 @@ class PasskeyReauthTest extends WebTestCase
         // Keep the kernel alive across tests (see AuthTest).
     }
 
-    private function auth(User $user): string
-    {
-        return 'Bearer '.self::$tokens->createAccessToken($user);
-    }
-
     private function passwordless(string $email = 'sso@example.com'): User
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, $email);
@@ -66,14 +61,18 @@ class PasskeyReauthTest extends WebTestCase
         return $user;
     }
 
-    private function options(User $user, ?array $body): array
+    /** @return array{0: string, 1: string} Authorization header, step-up token (password or mailed code) */
+    private function session(User $user): array
     {
-        return TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/options', $body ?? [], $this->auth($user));
-    }
+        $auth = TestHelper::sessionHeader($user, self::$tokens);
+        if (null !== $user->getPassword()) {
+            return [$auth, TestHelper::stepUp(self::$client, $auth)];
+        }
+        TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/step-up/code', [], $auth);
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/step-up', ['confirmationCode' => $this->mailedCode()], $auth);
+        $this->assertSame(200, $r['status'], $r['content']);
 
-    private function requestCode(User $user, string $path = '/api/auth/webauthn/register/code'): array
-    {
-        return TestHelper::jsonRequest(self::$client, 'POST', $path, [], $this->auth($user));
+        return [$auth, $r['body']['stepUpToken']];
     }
 
     private function mailedCode(int $index = 0): string
@@ -85,7 +84,7 @@ class PasskeyReauthTest extends WebTestCase
         return $m[1].$m[2];
     }
 
-    private function verify(User $user, array $opts, ?string $token = null): array
+    private function verify(string $auth, ?string $stepUp, array $opts, ?string $token = null): array
     {
         $authenticator = new SoftwareAuthenticator();
 
@@ -93,7 +92,7 @@ class PasskeyReauthTest extends WebTestCase
             'challengeToken' => $token ?? $opts['challengeToken'],
             'response' => $authenticator->attestation($opts['options']['challenge'], rtrim((string) $_ENV['FRONTEND_URL'], '/'), 'localhost'),
             'deviceName' => 'Software',
-        ], $this->auth($user));
+        ], $auth, $stepUp);
     }
 
     private function passkeyCount(): int
@@ -103,15 +102,18 @@ class PasskeyReauthTest extends WebTestCase
         return count(self::$em->getRepository(Passkey::class)->findAll());
     }
 
-    public function testOptionsWithoutOrWithWrongPasswordAreRefused(): void
+    public function testOptionsAndVerifyNeedAStepUp(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
+        $auth = TestHelper::sessionHeader($user, self::$tokens);
+        [, $foreign] = $this->session(TestHelper::createUser(self::$em, self::$hasher, 'bob@example.com'));
 
-        foreach ([null, [], ['password' => ''], ['password' => 'wrong-password'], ['code' => '123456']] as $body) {
-            $r = $this->options($user, $body);
-            $this->assertSame(400, $r['status'], $r['content']);
-            $this->assertSame('invalid_credentials', $r['body']['code']);
-            $this->assertSame('password', $r['body']['field']);
+        foreach ([null, $foreign, 'garbage'] as $token) {
+            foreach (['options', 'verify'] as $step) {
+                $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/'.$step, ['password' => 'password123'], $auth, $token);
+                $this->assertSame(403, $r['status'], $r['content']);
+                $this->assertSame('step_up_required', $r['body']['code']);
+            }
         }
         $this->assertSame(0, $this->passkeyCount());
     }
@@ -119,97 +121,42 @@ class PasskeyReauthTest extends WebTestCase
     public function testVerifyCannotBeCalledWithoutTokenFromOptions(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
+        [$auth, $stepUp] = $this->session($user);
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/verify', [
             'challengeToken' => 'forged',
             'response' => ['id' => 'x'],
-        ], $this->auth($user));
+        ], $auth, $stepUp);
         $this->assertSame(400, $r['status']);
         $this->assertSame('invalid_passkey_registration', $r['body']['code']);
         $this->assertSame(0, $this->passkeyCount());
     }
 
-    public function testPasswordAccountRegistersWithPassword(): void
+    public function testPasswordAccountRegistersWithAStepUp(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
-        $r = $this->options($user, ['password' => 'password123']);
+        [$auth, $stepUp] = $this->session($user);
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/options', [], $auth, $stepUp);
         $this->assertSame(200, $r['status'], $r['content']);
-        $v = $this->verify($user, $r['body']);
+        $v = $this->verify($auth, $stepUp, $r['body']);
         $this->assertSame(200, $v['status'], $v['content']);
         $this->assertSame(1, $this->passkeyCount());
     }
 
-    public function testPasswordAccountCannotRequestCode(): void
-    {
-        $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
-        $r = $this->requestCode($user);
-        $this->assertSame(409, $r['status']);
-        $this->assertSame('has_password', $r['body']['code']);
-    }
-
-    public function testPasswordlessAccountNeedsMailedCode(): void
+    public function testPasswordlessAccountRegistersWithTheMailedStepUpCode(): void
     {
         $user = $this->passwordless();
+        [$auth, $stepUp] = $this->session($user);
 
-        foreach ([null, ['password' => 'password123'], ['code' => ''], ['code' => '000000']] as $body) {
-            $r = $this->options($user, $body);
-            $this->assertSame(400, $r['status'], $r['content']);
-            $this->assertSame('invalid_confirmation_code', $r['body']['code']);
-            $this->assertSame('code', $r['body']['field']);
-        }
-
-        $this->assertSame(204, $this->requestCode($user)['status']);
-        $this->assertEmailCount(1);
-        $this->assertEmailAddressContains($this->getMailerMessage(), 'to', 'sso@example.com');
-        $code = $this->mailedCode();
-
-        $r = $this->options($user, ['code' => $code]);
+        $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/options', [], $auth, $stepUp);
         $this->assertSame(200, $r['status'], $r['content']);
-        $v = $this->verify($user, $r['body']);
+        $v = $this->verify($auth, $stepUp, $r['body']);
         $this->assertSame(200, $v['status'], $v['content']);
         $this->assertSame(1, $this->passkeyCount());
     }
 
-    public function testDeletionCodeIsNotValidForPasskeysAndViceVersa(): void
-    {
-        self::mockTime('2026-10-13 09:00:00 UTC');
-        $user = $this->passwordless();
-
-        $this->assertSame(204, $this->requestCode($user, '/api/auth/delete-account/code')['status']);
-        $deleteCode = $this->mailedCode();
-        $this->assertSame(204, $this->requestCode($user)['status']);
-        $passkeyCode = $this->mailedCode();
-        $this->assertNotSame($deleteCode, $passkeyCode);
-
-        $r = $this->options($user, ['code' => $deleteCode]);
-        $this->assertSame(400, $r['status']);
-        $this->assertSame('invalid_confirmation_code', $r['body']['code']);
-
-        $r = TestHelper::jsonRequest(self::$client, 'DELETE', '/api/auth/me', ['code' => $passkeyCode], $this->auth($user));
-        $this->assertSame(400, $r['status']);
-        $this->assertSame('invalid_confirmation_code', $r['body']['code']);
-        $this->assertNotNull(self::$em->getRepository(User::class)->findOneBy(['email' => 'sso@example.com']));
-    }
-
-    public function testAttemptsAreRateLimited(): void
+    public function testObsoleteCodeRouteIsGone(): void
     {
         $user = $this->passwordless();
-        for ($i = 0; $i < 90; ++$i) {
-            $this->assertSame(400, $this->options($user, ['code' => sprintf('%06d', $i)])['status']);
-        }
-        $r = $this->options($user, ['code' => '999999']);
-        $this->assertSame(429, $r['status']);
-        $this->assertSame('rate_limited', $r['body']['code']);
-        $this->assertSame(0, $this->passkeyCount());
-    }
-
-    public function testCodeMailsAreRateLimited(): void
-    {
-        $user = $this->passwordless();
-        for ($i = 0; $i < 5; ++$i) {
-            $this->assertSame(204, $this->requestCode($user)['status']);
-        }
-        $r = $this->requestCode($user);
-        $this->assertSame(429, $r['status']);
-        $this->assertSame('rate_limited', $r['body']['code']);
+        $this->assertSame(404, TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/webauthn/register/code', [], TestHelper::sessionHeader($user, self::$tokens))['status']);
     }
 }
