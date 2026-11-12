@@ -5,6 +5,7 @@ import { stashReturnTo } from "@/lib/mcp";
 import { FullPageLoader } from "@/components/ui/shared";
 import { ConsentPage } from "@/pages/lazy";
 import { ConsentChangeBanner } from "@/components/legal/ConsentChangeBanner";
+import { BackupCodeNotice } from "@/components/auth/BackupCodeNotice";
 import { AppShell } from "./AppShell";
 
 function parseContextFromPath(
@@ -19,6 +20,15 @@ function parseContextFromPath(
 }
 
 export default function ProtectedRoute() {
+  return (
+    <>
+      <RouteGate />
+      <BackupCodeNotice />
+    </>
+  );
+}
+
+function RouteGate() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { pathname, search } = useLocation();

@@ -61,6 +61,20 @@ export function MfaSection({ profile }: { profile: ProfileData }) {
         <p className="t-body">
           <b>{mfa.enforced ? t("profile.mfa.statusOn") : t("profile.mfa.statusOff")}</b>
         </p>
+        {mfa.backupCodes && mfa.backupCodes.remaining <= 2 && (
+          <Banner
+            tone="warning"
+            action={
+              <Button variant="secondary" icon="refresh" onClick={() => setCodesOpen(true)}>
+                {t("profile.mfa.regenerate.action")}
+              </Button>
+            }
+          >
+            {mfa.backupCodes.remaining === 0
+              ? t("profile.mfa.backupNone")
+              : t("profile.mfa.backupLow", { count: mfa.backupCodes.remaining })}
+          </Banner>
+        )}
         {renameFailed && <Banner tone="danger">{t("profile.mfa.renameFailed")}</Banner>}
 
         {!mfa.totp && passkeys.length === 0 && !mfa.backupCodes ? (

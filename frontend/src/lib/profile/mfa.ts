@@ -96,3 +96,12 @@ export function useDisableMfa() {
     },
   });
 }
+
+/** Ends every other session and MCP connection; the answer is a fresh token pair for this session. */
+export function useSignOutOtherSessions() {
+  const adopt = useAdoptTokens();
+  return useMutation({
+    mutationFn: () => apiPost<Tokens>("/api/auth/sessions/sign-out-others", {}),
+    onSuccess: (tokens) => adopt(tokens),
+  });
+}

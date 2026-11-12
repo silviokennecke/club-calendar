@@ -81,6 +81,25 @@ describe("MfaSection", () => {
     expect(screen.getByText("add-dialog")).toBeInTheDocument();
   });
 
+  it.each([
+    [2, /Nur noch 2 Backup-Codes übrig/],
+    [1, /Nur noch 1 Backup-Code übrig/],
+    [0, /Keine Backup-Codes mehr.*Betreiber \(Admin\)/],
+  ])("warns persistently when %i backup codes are left", async (remaining, text) => {
+    renderSection(profile({}, { backupCodes: { remaining, createdAt: "2026-10-02T10:00:00Z" } }));
+    const banner = screen.getByRole("status");
+    expect(within(banner).getByText(text)).toBeInTheDocument();
+    await userEvent.click(within(banner).getByRole("button", { name: "Neu erzeugen" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("shows no backup code warning with 3 codes left", () => {
+    renderSection(
+      profile({}, { backupCodes: { remaining: 3, createdAt: "2026-10-02T10:00:00Z" } }),
+    );
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
   it("offers enforcing only when not enforced and possible", () => {
     const { unmount } = renderSection(profile());
     expect(screen.getByRole("button", { name: "MFA einschalten" })).toBeInTheDocument();

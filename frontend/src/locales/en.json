@@ -197,8 +197,19 @@
       "usePasskey": "Use a passkey",
       "passkeyErrorTitle": "Passkey confirmation not possible",
       "passkeyErrorText": "The passkey confirmation was cancelled or did not work. Try again or use a code.",
-      "back": "Back to password",
-      "disabledToast": "MFA was turned off and other devices were signed out. Turn it on again in your profile."
+      "back": "Back to password"
+    },
+    "backupNotice": {
+      "title": "You signed in with a backup code",
+      "text_one": "Multi-factor authentication (MFA) stays on. You have {{count}} backup code left. You can create new backup codes in your profile.",
+      "text_other": "Multi-factor authentication (MFA) stays on. You have {{count}} backup codes left. You can create new backup codes in your profile.",
+      "question": "Do you want to sign out your other devices?",
+      "none": "You have no backup codes left. Without backup codes you can only get back into your account with the authenticator app or a passkey. If you lose both, ask the operator (admin) to reset MFA.",
+      "signOutOthers": "Sign out other devices",
+      "keep": "Keep them signed in",
+      "newCodes": "Create new backup codes",
+      "signedOut": "Your other devices were signed out.",
+      "signOutFailed": "The other devices could not be signed out. Please try again in your profile."
     }
   },
   "setup": {
@@ -2425,6 +2436,9 @@
       "totpName": "Authenticator app",
       "backupName": "Backup codes",
       "backupRemaining": "{{n}} codes left",
+      "backupLow_one": "Only {{count}} backup code left. Create new ones.",
+      "backupLow_other": "Only {{count}} backup codes left. Create new ones.",
+      "backupNone": "No backup codes left. Create new ones now. Without them you can only get back into your account with the authenticator app or a passkey; if you lose both, ask the operator (admin) to reset MFA.",
       "unnamed": "Unnamed passkey",
       "addedOn": "added on {{date}}",
       "lastUsed": "last used on {{date}}",

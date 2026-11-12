@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { toast } from "sonner";
 import SignInPage from "../SignInPage";
 import { ApiError } from "@/lib/api";
 import { renderAt } from "./authTestUtils";
@@ -10,6 +9,7 @@ import { renderAt } from "./authTestUtils";
 const apiPost = vi.fn();
 const apiGet = vi.fn();
 const login = vi.fn();
+const announceBackupCodeUsed = vi.fn();
 const startAuthentication = vi.fn();
 
 vi.mock("@/lib/api", async () => ({
@@ -18,6 +18,9 @@ vi.mock("@/lib/api", async () => ({
   apiPost: (...a: unknown[]) => apiPost(...a),
   apiGet: (...a: unknown[]) => apiGet(...a),
   apiFetch: vi.fn(),
+}));
+vi.mock("@/lib/backupCodeNotice", () => ({
+  announceBackupCodeUsed: (...a: unknown[]) => announceBackupCodeUsed(...a),
 }));
 vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ login }) }));
 vi.mock("@simplewebauthn/browser", () => ({
@@ -87,11 +90,11 @@ describe("MFA step", () => {
       method: "totp",
       code: "123456",
     });
+    expect(announceBackupCodeUsed).not.toHaveBeenCalled();
   });
 
-  it("signs in with a backup code and announces that MFA was turned off", async () => {
-    const success = vi.spyOn(toast, "success");
-    setup(undefined, () => ({ ...tokens, mfaDisabled: true }));
+  it("signs in with a backup code and announces the notice with the remaining codes", async () => {
+    setup(undefined, () => ({ ...tokens, backupCodeUsed: true, backupCodesRemaining: 4 }));
     const u = await toMfaStep();
     await u.click(screen.getByRole("button", { name: "Backup-Code verwenden" }));
     await u.type(screen.getByLabelText("Backup-Code"), "abcd-efgh");
@@ -101,7 +104,7 @@ describe("MFA step", () => {
       "/api/auth/mfa/verify",
       expect.objectContaining({ method: "backup_code", code: "abcd-efgh" }),
     );
-    expect(success).toHaveBeenCalled();
+    expect(announceBackupCodeUsed).toHaveBeenCalledWith(4);
   });
 
   it("offers the passkey button only when the account has a passkey", async () => {

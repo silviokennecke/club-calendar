@@ -9,8 +9,9 @@ import {
   type MfaTokenResponse,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { announceBackupCodeUsed } from "@/lib/backupCodeNotice";
 import { isRateLimited, rateLimitText } from "@/lib/rateLimit";
-import { Button, Field, TextInput, toast } from "@/components/ui/shared";
+import { Button, Field, TextInput } from "@/components/ui/shared";
 import { FocusBanner } from "@/components/auth/FocusBanner";
 
 type Method = "totp" | "backup_code";
@@ -47,7 +48,7 @@ export function MfaStep({
 
   function finish(data: MfaTokenResponse) {
     login(data.access_token, data.refresh_token, sessionUser(data));
-    if (data.mfaDisabled) toast.success(t("auth.mfa.disabledToast"), { duration: 12000 });
+    if (data.backupCodeUsed) announceBackupCodeUsed(data.backupCodesRemaining ?? 0);
     navigate(data.emailVerificationRequired ? "/verify-email" : "/clubs");
   }
 

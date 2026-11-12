@@ -101,7 +101,7 @@ test.describe("MFA", () => {
     await page.waitForURL(/\/clubs/);
   });
 
-  test("Anmeldung mit Backup-Code lässt MFA und andere Geräte bestehen", async ({
+  test("Anmeldung mit Backup-Code lässt MFA bestehen und bietet das Abmelden anderer Geräte an", async ({
     page,
     browser,
     baseURL,
@@ -124,12 +124,31 @@ test.describe("MFA", () => {
       await MFA_FORM(page).getByRole("button", { name: "Bestätigen" }).click();
       await page.waitForURL(/\/clubs/);
 
+      // The notice offers to sign out the other devices; first keep them
+      const notice = page.getByRole("alertdialog", {
+        name: "Du hast dich mit einem Backup-Code angemeldet",
+      });
+      await expect(notice.getByText(/Dir bleiben noch 9 Backup-Codes/)).toBeVisible();
+      await notice.getByRole("button", { name: "Angemeldet lassen" }).click();
+
       // MFA stays on and the other device keeps its session
       await page.goto("/profile");
       await expect(page.getByRole("heading", { level: 1, name: "Profil" })).toBeVisible();
       await expect(page.getByText("MFA ist ausgeschaltet.")).toHaveCount(0);
       await other.page.goto("/profile");
       await expect(other.page).toHaveURL(/\/profile/);
+
+      // A second backup-code sign-in, this time ending the other devices
+      await SIGN_OUT(page).click();
+      await submitPassword(page, email);
+      await MFA_FORM(page).getByRole("button", { name: "Backup-Code verwenden" }).click();
+      await MFA_FORM(page).getByLabel("Backup-Code", { exact: true }).fill(backupCodes[1]);
+      await MFA_FORM(page).getByRole("button", { name: "Bestätigen" }).click();
+      await page.waitForURL(/\/clubs/);
+      await page.getByRole("button", { name: "Andere Geräte abmelden" }).click();
+      await expect(page.getByText("Deine anderen Geräte wurden abgemeldet.")).toBeVisible();
+      await other.page.goto("/profile");
+      await expect(other.page).toHaveURL(/\/login/);
     } finally {
       await other.context.close();
     }

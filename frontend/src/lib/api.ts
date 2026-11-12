@@ -416,8 +416,11 @@ export function isMfaChallenge(result: LoginResult): result is MfaChallenge {
   return "mfaRequired" in result && result.mfaRequired === true;
 }
 
-/** Token response of the MFA step; `mfaDisabled` is set after a backup code was used. */
-export type MfaTokenResponse = TokenResponse & { mfaDisabled?: boolean };
+/** Token response of the MFA step; the backup fields are set after a backup code was used. */
+export type MfaTokenResponse = TokenResponse & {
+  backupCodeUsed?: boolean;
+  backupCodesRemaining?: number;
+};
 
 /** The signed-in user of a token response, with the top-level verification flag merged in. */
 export function sessionUser(tokens: { user: User; emailVerificationRequired?: boolean }): User {

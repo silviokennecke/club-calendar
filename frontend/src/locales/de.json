@@ -197,8 +197,19 @@
       "usePasskey": "Passkey verwenden",
       "passkeyErrorTitle": "Bestätigung mit Passkey nicht möglich",
       "passkeyErrorText": "Die Passkey-Bestätigung wurde abgebrochen oder hat nicht geklappt. Versuche es erneut oder nutze einen Code.",
-      "back": "Zurück zum Passwort",
-      "disabledToast": "MFA wurde ausgeschaltet und andere Geräte wurden abgemeldet. Schalte MFA im Profil wieder ein."
+      "back": "Zurück zum Passwort"
+    },
+    "backupNotice": {
+      "title": "Du hast dich mit einem Backup-Code angemeldet",
+      "text_one": "Die Multi-Faktor-Authentifizierung (MFA) bleibt eingeschaltet. Dir bleibt noch {{count}} Backup-Code. Neue Backup-Codes kannst du in deinem Profil erstellen.",
+      "text_other": "Die Multi-Faktor-Authentifizierung (MFA) bleibt eingeschaltet. Dir bleiben noch {{count}} Backup-Codes. Neue Backup-Codes kannst du in deinem Profil erstellen.",
+      "question": "Möchtest du deine anderen Geräte abmelden?",
+      "none": "Du hast keine Backup-Codes mehr. Ohne Backup-Codes kommst du nur noch mit der Authenticator-App oder einem Passkey in dein Konto. Wenn du beides verlierst, bitte den Betreiber (Admin), MFA zurückzusetzen.",
+      "signOutOthers": "Andere Geräte abmelden",
+      "keep": "Angemeldet lassen",
+      "newCodes": "Neue Backup-Codes erstellen",
+      "signedOut": "Deine anderen Geräte wurden abgemeldet.",
+      "signOutFailed": "Die anderen Geräte konnten nicht abgemeldet werden. Versuche es im Profil noch einmal."
     }
   },
   "setup": {
@@ -2425,6 +2436,9 @@
       "totpName": "Authenticator-App",
       "backupName": "Backup-Codes",
       "backupRemaining": "noch {{n}} Codes übrig",
+      "backupLow_one": "Nur noch {{count}} Backup-Code übrig. Erstelle neue.",
+      "backupLow_other": "Nur noch {{count}} Backup-Codes übrig. Erstelle neue.",
+      "backupNone": "Keine Backup-Codes mehr. Erstelle jetzt neue. Ohne sie kommst du nur noch mit der Authenticator-App oder einem Passkey in dein Konto; wenn du beides verlierst, bitte den Betreiber (Admin), MFA zurückzusetzen.",
       "unnamed": "Passkey ohne Namen",
       "addedOn": "hinzugefügt am {{date}}",
       "lastUsed": "zuletzt benutzt am {{date}}",
