@@ -10,7 +10,7 @@ If you link your Google or Microsoft account, you can use it to sign in without 
 
 ## Link an account
 
-1. Open your [profile](help:settings/profile) and go to **Linked sign-ins**.
+1. Open your [profile](help:settings/profile), tab **Security**, and go to **Linked sign-ins**.
 2. Click **Link account** next to the provider. If asked, confirm that it is you, see [Confirm it is you](help:settings/confirmation).
 3. Sign in with the provider and confirm. You return to your profile, which now shows **Connected**.
 

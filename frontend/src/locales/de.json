@@ -2237,6 +2237,13 @@
     "intro": "Dein Konto und deine persönlichen Einstellungen.",
     "signOut": "Abmelden",
     "toClubs": "Zu allen Vereinen",
+    "tabs": {
+      "label": "Profilbereiche",
+      "account": "Konto",
+      "security": "Sicherheit",
+      "apps": "Kalender & Apps",
+      "privacy": "Datenschutz"
+    },
     "loading": "Profil wird geladen …",
     "loadError": {
       "title": "Das Profil konnte nicht geladen werden.",

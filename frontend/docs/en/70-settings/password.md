@@ -10,7 +10,7 @@ You sign in with your password. It must be between 8 and 128 characters long.
 
 ## Change your password
 
-1. Open your [profile](help:settings/profile) and go to **Password**.
+1. Open your [profile](help:settings/profile), tab **Security**, and go to **Password**.
 2. Enter the **New password** twice.
 3. Click **Change password**. If asked, confirm that it is you, see [Confirm it is you](help:settings/confirmation).
 
@@ -27,7 +27,7 @@ Afterwards you are signed out everywhere and sign in again with the new password
 
 ## No password yet?
 
-If you sign in only with Google, Microsoft or a passkey, your account has no password. In your profile under **Password**, click **Set password by email**. You get a link (valid for 60 minutes) to choose a password.
+If you sign in only with Google, Microsoft or a passkey, your account has no password. In your profile, tab **Security**, under **Password**, click **Set password by email**. You get a link (valid for 60 minutes) to choose a password.
 
 ## Confirm it is you
 

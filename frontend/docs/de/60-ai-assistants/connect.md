@@ -46,7 +46,7 @@ Hast du die Verbindung nicht selbst gestartet, klicke auf **Ablehnen**.
 ## Wenn es nicht klappt
 
 - „Anfrage abgelaufen“: Die Anfrage gilt nur kurz, wurde schon beantwortet oder wurde in einem anderen Browser gestartet. Öffne den Link im selben Browser, in dem du die Verbindung gestartet hast, und starte die Verbindung in der KI-App noch einmal.
-- Meldung zu zu vielen Apps: Du kannst höchstens 20 Apps verbinden. Trenne zuerst eine im [Profil](help:ai-assistants/manage-access).
+- Meldung zu zu vielen Apps: Du kannst höchstens 20 Apps verbinden. Trenne zuerst eine im [Profil](help:ai-assistants/manage-access), Reiter **Kalender & Apps**.
 
 ## Siehe auch
 

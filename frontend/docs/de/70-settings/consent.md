@@ -10,7 +10,7 @@ Für die Nutzung von Club Calendar stimmst du der Datenschutzerklärung und den 
 
 ## Dokumente und Verlauf ansehen
 
-Im [Profil](help:settings/profile) findest du unter **Rechtliches & Einwilligungen** die **Aktuellen Dokumente** (Impressum, Datenschutzerklärung, Nutzungsbedingungen) und den **Einwilligungsverlauf**: Dort steht, welcher Fassung du wann zugestimmt hast. Mit **Ansehen** liest du eine Fassung. **Aktuell** oder **Veraltet** zeigt, ob es die neueste ist.
+Im [Profil](help:settings/profile) findest du im Reiter **Datenschutz** unter **Rechtliches & Einwilligungen** die **Aktuellen Dokumente** (Impressum, Datenschutzerklärung, Nutzungsbedingungen) und den **Einwilligungsverlauf**: Dort steht, welcher Fassung du wann zugestimmt hast. Mit **Ansehen** liest du eine Fassung. **Aktuell** oder **Veraltet** zeigt, ob es die neueste ist.
 
 ## Wenn sich Dokumente ändern
 

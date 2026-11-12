@@ -29,5 +29,10 @@ function isMyEventPath(path: string, clubId: string): boolean {
 export function memberMayOpen(pathname: string, clubId: string): boolean {
   const path = pathname.replace(/\/+$/, "") || "/";
   // The event dialog above Mein Verein has its own address (/clubs/:id/me/events/:eventId).
-  return path === "/profile" || isMyClubPath(path, clubId) || isMyEventPath(path, clubId);
+  return (
+    path === "/profile" ||
+    path.startsWith("/profile/") ||
+    isMyClubPath(path, clubId) ||
+    isMyEventPath(path, clubId)
+  );
 }

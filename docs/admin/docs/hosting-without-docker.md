@@ -212,7 +212,7 @@ The web server has three jobs:
       `Caddyfile` of the new release.
     - **`/.well-known/oauth-*` and `/api/mcp`** must go to PHP, or AI assistants (MCP clients) cannot find and use
       the server. Do not block `.well-known` with a dotfile rule.
-    - **`/.well-known/change-password`** must go to PHP too. It sends password managers to the password section of the profile page.
+    - **`/.well-known/change-password`** must go to PHP too. It sends password managers to the password section of the profile page (the Security tab).
     - **TLS** is not shown. Terminate it here or in front, and send the HSTS header only over HTTPS.
     - **Timeouts** for `/api/` should be at least 60 seconds (PDF export).
 

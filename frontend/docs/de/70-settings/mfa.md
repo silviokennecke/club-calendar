@@ -8,7 +8,7 @@ description: MFA einrichten, mit Authenticator-App oder Passkey.
 
 Mit Multi-Faktor-Authentifizierung (MFA) fragt dich die Anmeldung mit Passwort zusätzlich nach einem weiteren Faktor: einem Code aus einer Authenticator-App oder einem Passkey.
 
-Den Abschnitt findest du in deinem [Profil](help:settings/profile) unter **Multi-Faktor-Authentifizierung (MFA)**.
+Den Abschnitt findest du in deinem [Profil](help:settings/profile) im Reiter **Sicherheit** unter **Multi-Faktor-Authentifizierung (MFA)**.
 
 ![Profil, Abschnitt MFA mit Authenticator-App, Passkey und Backup-Codes](shot:profile-mfa)
 

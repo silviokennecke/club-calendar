@@ -8,7 +8,7 @@ description: Sign in with fingerprint, face or device PIN.
 
 With a passkey you sign in by fingerprint, face recognition or device PIN, without a password.
 
-You manage passkeys in the section **Multi-factor authentication (MFA)** on your [profile](help:settings/profile). More under [Multi-factor authentication (MFA)](help:settings/mfa).
+You manage passkeys in the section **Multi-factor authentication (MFA)** on your [profile](help:settings/profile), tab **Security**. More under [Multi-factor authentication (MFA)](help:settings/mfa).
 
 ## Set up a passkey
 

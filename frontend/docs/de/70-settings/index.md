@@ -10,7 +10,7 @@ Hier findest du alles, was du an deinem Konto, deinem Verein und deinen Kalender
 
 ## Dein Konto
 
-Diese Einstellungen betreffen nur dich. Du findest sie auf deiner Profilseite (**Mein Profil**, unten in der Seitenleiste).
+Diese Einstellungen betreffen nur dich. Du findest sie auf deiner Profilseite (**Mein Profil**, unten in der Seitenleiste). Sie sind auf vier Reiter verteilt: **Konto**, **Sicherheit**, **Kalender & Apps** und **Datenschutz**.
 
 - [Profil und Name](help:settings/profile)
 - [Bestätigen, dass du es bist](help:settings/confirmation)

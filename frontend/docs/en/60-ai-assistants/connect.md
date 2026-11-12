@@ -46,7 +46,7 @@ If you did not start the connection yourself, click **Deny**.
 ## If it does not work
 
 - "Request expired": The request is only valid for a short time, was already answered or was started in another browser. Open the link in the same browser in which you started the connection, and start the connection in the AI app again.
-- Message about too many apps: You can connect at most 20 apps. Disconnect one first in your [profile](help:ai-assistants/manage-access).
+- Message about too many apps: You can connect at most 20 apps. Disconnect one first in your [profile](help:ai-assistants/manage-access), tab **Calendar & apps**.
 
 ## See also
 

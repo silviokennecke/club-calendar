@@ -6,7 +6,7 @@ description: Sprache, Darstellung, Datumsformat und ersten Wochentag einstellen.
 
 # Persönliche Einstellungen
 
-Diese Einstellungen gelten nur für dich. Du findest sie im [Profil](help:settings/profile) unter **Persönliche Einstellungen**. Änderungen gelten sofort und werden gespeichert.
+Diese Einstellungen gelten nur für dich. Du findest sie im [Profil](help:settings/profile), Reiter **Konto**, unter **Persönliche Einstellungen**. Änderungen gelten sofort und werden gespeichert.
 
 ## Sprache
 

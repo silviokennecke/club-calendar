@@ -94,6 +94,7 @@ describe("navigation", () => {
 
   it("detects the club settings areas, also without a calendar", () => {
     for (const cal of ["k1", null]) {
+      expect(activeNavKey("/profile/security", "c1", cal)).toBe("profile");
       expect(activeNavKey("/clubs/c1/settings/feeds", "c1", cal)).toBe("feeds");
       expect(activeNavKey("/clubs/c1/settings/feeds/new", "c1", cal)).toBe("feeds");
       expect(activeNavKey("/clubs/c1/settings/locations", "c1", cal)).toBe("clubSettings");

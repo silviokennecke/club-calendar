@@ -134,7 +134,7 @@ export function activeNavKey(
   calendarId: string | null,
 ): NavKey | null {
   const path = pathname.replace(/\/+$/, "") || "/";
-  if (path === "/profile") return "profile";
+  if (path === "/profile" || path.startsWith("/profile/")) return "profile";
   if (path === `/clubs/${clubId}`) return "club";
   if (path === `/clubs/${clubId}/me`) return "me";
   // Club settings (locations, target groups, feeds) have no calendar in the URL.

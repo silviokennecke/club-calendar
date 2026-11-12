@@ -30,7 +30,7 @@ Below you find **Your personal link**. Add it to your calendar app, the steps ar
 The personal link is only for you. It can also contain private feeds. Do not pass it on.
 :::
 
-If the link fell into the wrong hands, renew it in your profile, see [Profile and name](help:settings/profile). Afterwards enter the new link in your calendar app.
+If the link fell into the wrong hands, renew it in your profile (tab **Calendar & apps**), see [Profile and name](help:settings/profile). Afterwards enter the new link in your calendar app.
 
 ## Leave the club
 

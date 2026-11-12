@@ -10,7 +10,7 @@ Du kannst dein Konto jederzeit löschen. Das geht nicht rückgängig.
 
 ## So geht's
 
-1. Öffne dein [Profil](help:settings/profile) und gehe zum **Gefahrenbereich**.
+1. Öffne dein [Profil](help:settings/profile), Reiter **Datenschutz**, und gehe zum **Gefahrenbereich**.
 2. Klicke auf **Konto löschen**.
 3. Bestätige, dass du es bist, siehe [Bestätigen, dass du es bist](help:settings/confirmation). Das geht auch, wenn die App sonst nur die Einwilligung oder die E-Mail-Bestätigung zeigt.
 4. Klicke auf **Konto löschen**.

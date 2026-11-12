@@ -96,6 +96,18 @@ describe("Sidebar navigation", () => {
     expect(current()).toEqual([]);
   });
 
+  it.each(["/profile/security", "/profile/apps", "/profile/privacy"])(
+    "keeps the profile link current on the tab %s",
+    (path) => {
+      renderAt(path);
+      expect(screen.getByRole("link", { name: /Alex Beispiel/ })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      expect(current()).toEqual([]);
+    },
+  );
+
   it("opens the calendar switcher and marks the current calendar", async () => {
     renderAt(base);
     const trigger = screen.getByRole("button", { name: /Kalender.*Schießbetrieb 2026/ });

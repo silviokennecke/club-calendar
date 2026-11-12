@@ -10,7 +10,7 @@ Wenn du dein Google- oder Microsoft-Konto verknüpfst, meldest du dich damit ohn
 
 ## Konto verknüpfen
 
-1. Öffne dein [Profil](help:settings/profile) und gehe zu **Verknüpfte Anmeldungen**.
+1. Öffne dein [Profil](help:settings/profile), Reiter **Sicherheit**, und gehe zu **Verknüpfte Anmeldungen**.
 2. Klicke beim Anbieter auf **Konto verknüpfen**. Wirst du gefragt, bestätige, dass du es bist, siehe [Bestätigen, dass du es bist](help:settings/confirmation).
 3. Melde dich beim Anbieter an und bestätige. Du landest wieder im Profil, dort steht **Verbunden**.
 

@@ -2,12 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { MemoryRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { ThemeProvider } from "@/lib/ThemeProvider";
 import { Toaster } from "@/components/ui/shared";
 import i18n from "@/lib/i18n";
 import { ApiError } from "@/lib/api";
 import ProfilePage from "../ProfilePage";
+import ProfileAccountTab from "../profile/ProfileAccountTab";
+import ProfileSecurityTab from "../profile/ProfileSecurityTab";
+import ProfileAppsTab from "../profile/ProfileAppsTab";
+import ProfilePrivacyTab from "../profile/ProfilePrivacyTab";
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
@@ -50,12 +54,22 @@ function ShellStub() {
   return <Outlet context={{}} />;
 }
 
+// Mirrors the nested routes of App.tsx: layout at /profile, one child route per tab.
 function renderProfile(inShell = true, path = "/profile") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const page = (
     <>
       <ProfilePage />
       <SearchProbe />
+    </>
+  );
+  const tabs = (
+    <>
+      <Route index element={<ProfileAccountTab />} />
+      <Route path="security" element={<ProfileSecurityTab />} />
+      <Route path="apps" element={<ProfileAppsTab />} />
+      <Route path="privacy" element={<ProfilePrivacyTab />} />
+      <Route path="*" element={<Navigate to="/profile" replace />} />
     </>
   );
   return render(
@@ -66,10 +80,14 @@ function renderProfile(inShell = true, path = "/profile") {
           <Routes>
             {inShell ? (
               <Route element={<ShellStub />}>
-                <Route path="/profile" element={page} />
+                <Route path="/profile" element={page}>
+                  {tabs}
+                </Route>
               </Route>
             ) : (
-              <Route path="/profile" element={page} />
+              <Route path="/profile" element={page}>
+                {tabs}
+              </Route>
             )}
             <Route path="*" element={<Probe />} />
           </Routes>
@@ -150,7 +168,7 @@ afterEach(async () => {
 
 describe("ProfilePage", () => {
   it("shows the account, linked sign-ins as words and the passkeys", async () => {
-    renderProfile();
+    renderProfile(true, "/profile/security");
     expect(await screen.findByRole("heading", { level: 1, name: "Profil" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Alex Beispiel" })).toBeInTheDocument();
     expect(screen.getByText("alex@beispiel.de")).toBeInTheDocument();
@@ -190,7 +208,7 @@ describe("ProfilePage", () => {
     });
     const user = userEvent.setup();
     try {
-      renderProfile();
+      renderProfile(true, "/profile/security");
       await user.click(await screen.findByRole("button", { name: "Microsoft-Konto verknüpfen" }));
       await waitFor(() =>
         expect(assign).toHaveBeenCalledWith(
@@ -205,7 +223,7 @@ describe("ProfilePage", () => {
 
   it("unlinks a provider only after confirming and names the consequence", async () => {
     const user = userEvent.setup();
-    renderProfile();
+    renderProfile(true, "/profile/security");
     await user.click(await screen.findByRole("button", { name: "Google-Verknüpfung trennen" }));
     const dialog = await screen.findByRole("alertdialog", {
       name: "Verknüpfung mit Google trennen?",
@@ -229,7 +247,7 @@ describe("ProfilePage", () => {
     });
     const user = userEvent.setup();
     try {
-      renderProfile();
+      renderProfile(true, "/profile/security");
       await user.click(await screen.findByRole("button", { name: "Microsoft-Konto verknüpfen" }));
       await waitFor(() => expect(apiPost).toHaveBeenCalledTimes(1));
       expect(assign).not.toHaveBeenCalled();
@@ -247,7 +265,7 @@ describe("ProfilePage", () => {
       .mockRejectedValueOnce(new ApiError("x", 0, "step_up_cancelled"))
       .mockResolvedValueOnce(undefined);
     const user = userEvent.setup();
-    renderProfile(true, "/profile?link_provider=google&link_proof=proof-value");
+    renderProfile(true, "/profile/security?link_provider=google&link_proof=proof-value");
     expect(await screen.findByText(/noch nicht abgeschlossen/)).toBeInTheDocument();
     expect(screen.queryByText("Das Konto wurde nicht verknüpft")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Erneut bestätigen" }));
@@ -262,7 +280,7 @@ describe("ProfilePage", () => {
   it("stays silent when the step-up for unlinking is cancelled", async () => {
     apiDelete.mockRejectedValueOnce(new ApiError("x", 0, "step_up_cancelled"));
     const user = userEvent.setup();
-    renderProfile();
+    renderProfile(true, "/profile/security");
     await user.click(await screen.findByRole("button", { name: "Google-Verknüpfung trennen" }));
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Verknüpfung trennen" }));
@@ -276,7 +294,7 @@ describe("ProfilePage", () => {
   it("lets an account without a password request an e-mail change", async () => {
     profile = { ...profile, hasPassword: false };
     const user = userEvent.setup();
-    renderProfile();
+    renderProfile(true, "/profile");
     await user.type(await screen.findByLabelText(/^Neue E-Mail-Adresse/), "neu@beispiel.de");
     await user.click(screen.getByRole("button", { name: "Bestätigungslink senden" }));
     await waitFor(() =>
@@ -286,14 +304,14 @@ describe("ProfilePage", () => {
 
   it("keeps the last sign-in method: unlink disabled with an explanation", async () => {
     profile = { ...profile, hasPassword: false, passkeys: [] };
-    renderProfile();
+    renderProfile(true, "/profile/security");
     const unlink = await screen.findByRole("button", { name: "Google-Verknüpfung trennen" });
     expect(unlink).toBeDisabled();
     expect(unlink).toHaveAccessibleDescription(/Mindestens eine Anmeldemethode muss bleiben/);
   });
 
   it("shows the result of the link flow once and removes it from the address", async () => {
-    renderProfile(true, "/profile?linked=google");
+    renderProfile(true, "/profile/security?linked=google");
     const sso = (await screen.findByRole("heading", { name: "Verknüpfte Anmeldungen" })).closest(
       "section",
     )!;
@@ -303,7 +321,7 @@ describe("ProfilePage", () => {
 
   it("completes a link flow with this session and removes the proof from the address", async () => {
     apiPost.mockResolvedValueOnce(undefined);
-    renderProfile(true, "/profile?link_provider=google&link_proof=proof-value");
+    renderProfile(true, "/profile/security?link_provider=google&link_proof=proof-value");
     const sso = (await screen.findByRole("heading", { name: "Verknüpfte Anmeldungen" })).closest(
       "section",
     )!;
@@ -319,13 +337,13 @@ describe("ProfilePage", () => {
 
   it("shows a refused link completion (flow started by another account) as an error", async () => {
     apiPost.mockRejectedValueOnce(new ApiError("x", 400, "invalid_state"));
-    renderProfile(true, "/profile?link_provider=google&link_proof=proof-value");
+    renderProfile(true, "/profile/security?link_provider=google&link_proof=proof-value");
     expect(await screen.findByText("Das Konto wurde nicht verknüpft")).toBeInTheDocument();
     expect(screen.queryByText("Google wurde verknüpft.")).not.toBeInTheDocument();
   });
 
   it("explains a failed link by its code", async () => {
-    renderProfile(true, "/profile?link_error=account_in_use");
+    renderProfile(true, "/profile/security?link_error=account_in_use");
     expect(await screen.findByText("Das Konto wurde nicht verknüpft")).toBeInTheDocument();
     expect(
       screen.getByText("Dieses Konto ist schon mit einem anderen Club-Calendar-Konto verknüpft."),
@@ -335,7 +353,7 @@ describe("ProfilePage", () => {
 
   it("renames the account", async () => {
     const user = userEvent.setup();
-    renderProfile();
+    renderProfile(true, "/profile");
     const name = await screen.findByRole("textbox", { name: /^Name/ });
     await user.clear(name);
     await user.click(screen.getByRole("button", { name: "Name speichern" }));
@@ -353,7 +371,7 @@ describe("ProfilePage", () => {
       path === "/api/auth/change-password" ? Promise.resolve(tokens) : Promise.resolve(undefined),
     );
     const user = userEvent.setup();
-    renderProfile();
+    renderProfile(true, "/profile/security");
     const panel = (await screen.findByRole("heading", { level: 2, name: "Passwort" })).closest(
       "section",
     )!;
@@ -377,9 +395,8 @@ describe("ProfilePage", () => {
   it("lets SSO-only accounts set a password by e-mail", async () => {
     profile = { ...profile, hasPassword: false };
     const user = userEvent.setup();
-    renderProfile();
-    expect(await screen.findByLabelText(/^Neue E-Mail-Adresse/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Passwort per E-Mail festlegen" }));
+    renderProfile(true, "/profile/security");
+    await user.click(await screen.findByRole("button", { name: "Passwort per E-Mail festlegen" }));
     await waitFor(() =>
       expect(apiPost).toHaveBeenCalledWith("/api/auth/forgot-password", {
         email: "alex@beispiel.de",
@@ -390,7 +407,7 @@ describe("ProfilePage", () => {
 
   it("requests a new e-mail address (step-up confirmation by the API layer) and shows the pending change", async () => {
     const user = userEvent.setup();
-    renderProfile();
+    renderProfile(true, "/profile");
     await user.type(await screen.findByLabelText(/^Neue E-Mail-Adresse/), "neu@beispiel.de");
     profile = { ...profile, pendingEmail: "neu@beispiel.de" };
     await user.click(screen.getByRole("button", { name: "Bestätigungslink senden" }));
@@ -409,7 +426,7 @@ describe("ProfilePage", () => {
   });
 
   it("works without the app shell (no club yet) with a way back", async () => {
-    renderProfile(false);
+    renderProfile(false, "/profile/security");
     expect(await screen.findByRole("heading", { level: 1, name: "Profil" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Zu allen Vereinen" })).toHaveAttribute(
       "href",
@@ -429,7 +446,7 @@ describe("ProfilePage", () => {
 
   it("saves the date format, first weekday and language on the account", async () => {
     const user = userEvent.setup();
-    renderProfile();
+    renderProfile(true, "/profile");
     const prefs = (
       await screen.findByRole("heading", { name: "Persönliche Einstellungen" })
     ).closest("section")!;
@@ -449,7 +466,7 @@ describe("ProfilePage", () => {
   it("reports a failed save", async () => {
     updateUser.mockResolvedValue(false);
     const user = userEvent.setup();
-    renderProfile();
+    renderProfile(true, "/profile");
     await user.click(await screen.findByRole("radio", { name: "2026-12-31" }));
     expect(
       await screen.findByText(
@@ -460,7 +477,7 @@ describe("ProfilePage", () => {
 
   it("switches the theme and remembers it in this browser", async () => {
     const user = userEvent.setup();
-    renderProfile();
+    renderProfile(true, "/profile");
     const group = (await screen.findByText("Darstellung")).closest('[role="group"]') as HTMLElement;
     const system = within(group).getByRole("button", { name: "Wie System" });
     expect(system).toHaveAttribute("aria-pressed", "true");
@@ -478,7 +495,7 @@ describe("ProfilePage", () => {
   it("signs out everywhere only after confirming, then signs out locally", async () => {
     const user = userEvent.setup();
     logoutEverywhere.mockResolvedValue(undefined);
-    renderProfile();
+    renderProfile(true, "/profile/security");
     await user.click(await screen.findByRole("button", { name: "Überall abmelden" }));
     const dialog = await screen.findByRole("alertdialog", {
       name: "Auf allen Geräten abmelden?",
@@ -493,7 +510,7 @@ describe("ProfilePage", () => {
   it("stays signed in and shows an error when signing out everywhere fails", async () => {
     const user = userEvent.setup();
     logoutEverywhere.mockRejectedValue(new ApiError("boom", 500));
-    renderProfile();
+    renderProfile(true, "/profile/security");
     await user.click(await screen.findByRole("button", { name: "Überall abmelden" }));
     const dialog = await screen.findByRole("alertdialog", {
       name: "Auf allen Geräten abmelden?",
@@ -510,7 +527,7 @@ describe("ProfilePage", () => {
 
   it("deletes the account after the confirmation, then signs out", async () => {
     const user = userEvent.setup();
-    renderProfile();
+    renderProfile(true, "/profile/privacy");
     const dialog = await openDeleteDialog(user);
     expect(within(dialog).queryByLabelText(/Passwort/)).toBeNull();
     await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
@@ -522,7 +539,7 @@ describe("ProfilePage", () => {
   it("stays quiet and keeps the account when the step-up confirmation is cancelled", async () => {
     apiDelete.mockRejectedValue(new ApiError("x", 0, "step_up_cancelled"));
     const user = userEvent.setup();
-    renderProfile();
+    renderProfile(true, "/profile/privacy");
     const dialog = await openDeleteDialog(user);
     await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
     await waitFor(() => expect(apiDelete).toHaveBeenCalled());
@@ -533,7 +550,7 @@ describe("ProfilePage", () => {
   it("tells about the rate limit", async () => {
     apiDelete.mockRejectedValue(new ApiError("x", 429, "rate_limited"));
     const user = userEvent.setup();
-    renderProfile();
+    renderProfile(true, "/profile/privacy");
     const dialog = await openDeleteDialog(user);
     await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
     expect(await within(dialog).findByText(/Zu viele Versuche/)).toBeInTheDocument();
@@ -542,7 +559,7 @@ describe("ProfilePage", () => {
   it("explains that the account stays while the user is the only member of a club", async () => {
     apiDelete.mockRejectedValue(new ApiError("x", 422, "last_member_of_club"));
     const user = userEvent.setup();
-    renderProfile();
+    renderProfile(true, "/profile/privacy");
     const dialog = await openDeleteDialog(user);
     await user.click(within(dialog).getByRole("button", { name: "Konto löschen" }));
     expect(await screen.findByText(/einzige Mitglied eines Vereins/)).toBeInTheDocument();
@@ -574,15 +591,13 @@ describe("ProfilePage", () => {
       ),
     );
     await user.click(screen.getByRole("button", { name: "Erneut versuchen" }));
-    expect(
-      await screen.findByRole("heading", { name: "Multi-Faktor-Authentifizierung (MFA)" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("textbox", { name: /^Name/ })).toBeInTheDocument();
   });
 
   it("says so when there are no passkeys and no linked sign-ins", async () => {
     profile = { ...profile, passkeys: [], oauthAccounts: [] };
     providers = [];
-    renderProfile();
+    renderProfile(true, "/profile/security");
     expect(
       await screen.findByText("Du hast noch keine MFA-Methode eingerichtet."),
     ).toBeInTheDocument();
@@ -603,15 +618,14 @@ describe("ProfilePage (dialog while loading)", () => {
           ),
     );
     const user = userEvent.setup();
-    renderProfile();
+    renderProfile(true, "/profile/privacy");
     await user.click(await screen.findByRole("button", { name: "Konto löschen" }));
     await screen.findByRole("dialog", { name: "Konto löschen?" });
     resolveMe(profile);
-    // The page behind the modal dialog is inert, hence `hidden`.
-    await screen.findByRole("heading", {
-      name: "Multi-Faktor-Authentifizierung (MFA)",
-      hidden: true,
-    });
+    // The loading state behind the modal dialog goes away once the data arrived.
+    await waitFor(() =>
+      expect(screen.queryByText("Profil wird geladen …")).not.toBeInTheDocument(),
+    );
     expect(screen.getByRole("dialog", { name: "Konto löschen?" })).toBeInTheDocument();
   });
 });

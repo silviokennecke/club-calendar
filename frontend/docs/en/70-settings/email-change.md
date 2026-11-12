@@ -14,7 +14,7 @@ You do not need a password for this. If your account has none, you confirm with 
 
 ## Steps
 
-1. Open your [profile](help:settings/profile), section **Name and email address**.
+1. Open your [profile](help:settings/profile), tab **Account**, section **Name and email address**.
 2. Enter the **New email address**.
 3. Click **Send confirmation link**. If asked, confirm that it is you, see [Confirm it is you](help:settings/confirmation).
 4. Open the link in the e-mail sent to the **new** address. It is valid for 24 hours.

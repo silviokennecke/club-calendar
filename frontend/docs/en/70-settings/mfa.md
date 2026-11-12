@@ -8,7 +8,7 @@ description: Set up MFA with an authenticator app or a passkey.
 
 With multi-factor authentication (MFA), signing in with your password also asks for another factor: a code from an authenticator app or a passkey.
 
-You find the section in your [profile](help:settings/profile) under **Multi-factor authentication (MFA)**.
+You find the section in your [profile](help:settings/profile), tab **Security**, under **Multi-factor authentication (MFA)**.
 
 ![Profile, MFA section with authenticator app, passkey and backup codes](shot:profile-mfa)
 

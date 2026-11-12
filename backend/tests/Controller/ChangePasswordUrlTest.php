@@ -19,7 +19,7 @@ class ChangePasswordUrlTest extends WebTestCase
         $r = $client->getResponse();
         self::assertSame(302, $r->getStatusCode());
         $location = (string) $r->headers->get('Location');
-        self::assertStringEndsWith('/profile#pr-pw', $location);
+        self::assertStringEndsWith('/profile/security#pr-pw', $location);
         self::assertStringNotContainsString('evil.example', $location);
         self::assertStringNotContainsString('9999', $location);
     }

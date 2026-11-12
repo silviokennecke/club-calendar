@@ -1,117 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, Outlet, useOutletContext } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Banner, Button, Skeleton, toast } from "@/components/ui/shared";
+import { Banner, Button, Skeleton } from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { initials } from "@/components/layout/navigation";
 import type { ShellData } from "@/components/layout/shellTypes";
-import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
-import { AccountSection } from "@/components/profile/AccountSection";
-import { LinkedLoginsSection, type LinkOutcome } from "@/components/profile/LinkedLoginsSection";
-import { CalendarSubscriptionSection } from "@/components/profile/CalendarSubscriptionSection";
-import { ConnectedAppsSection } from "@/components/profile/ConnectedAppsSection";
-import { LegalSection } from "@/components/profile/LegalSection";
-import { PasswordSection } from "@/components/profile/PasswordSection";
-import { MfaSection } from "@/components/profile/MfaSection";
-import { PreferencesSection } from "@/components/profile/PreferencesSection";
-import { SessionsSection } from "@/components/profile/SessionsSection";
+import { ProfileTabs } from "@/components/profile/ProfileTabs";
+import type { ProfileOutletContext } from "@/components/profile/profileContext";
 import type { ProfileData } from "@/components/profile/profileTypes";
-import { ApiError, apiGet, apiPost, isStepUpCancelled } from "@/lib/api";
+import { apiGet } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { linkErrorKind, providerLabel } from "@/lib/profile";
 import { usePageTitle } from "@/lib/usePageTitle";
 
-/** URL parameters of the SSO link flow; read once, then removed from the address. */
-const LINK_PARAMS = ["linked", "link_error", "link_provider", "link_proof"];
-
-/** `?linked=<provider>` / `?link_error=<code>` of the SSO link flow. */
-function linkOutcomeOf(params: URLSearchParams): LinkOutcome | null {
-  const linked = params.get("linked");
-  if (linked) return { kind: "linked", provider: linked };
-  if (params.has("link_error"))
-    return { kind: "error", error: linkErrorKind(params.get("link_error")) };
-  return null;
-}
-
-/** `?link_provider=&link_proof=`: the provider confirmed the account, this session completes the link. */
-function linkProofOf(params: URLSearchParams): { provider: string; proof: string } | null {
-  const provider = params.get("link_provider");
-  const proof = params.get("link_proof");
-  return provider && proof ? { provider, proof } : null;
-}
-
 /**
- * Completes an SSO link with this session's token. The API links only when the signed-in user is the
- * one who started the flow, so a link flow started by someone else (a link sent to this browser) never
- * attaches this browser's provider account to another user.
- */
-async function completeLink(provider: string, proof: string): Promise<LinkOutcome> {
-  try {
-    await apiPost<void>(`/api/auth/oauth/${encodeURIComponent(provider)}/link-complete`, { proof });
-    return { kind: "linked", provider };
-  } catch (err) {
-    if (isStepUpCancelled(err)) return { kind: "cancelled", provider };
-    return { kind: "error", error: linkErrorKind(err instanceof ApiError ? err.code : undefined) };
-  }
-}
-
-/**
- * Profile (design: Profile, ProfileMobile): account (name, e-mail with confirmation link), password
- * (change, or set by e-mail for SSO-only accounts), linked sign-ins (link / unlink), MFA (authenticator app, passkeys, backup codes), personal
- * settings (incl. theme) and account deletion. Name / e-mail / password editing extends the design.
+ * Profile layout (design: Profile, ProfileMobile): header, sign-out and the load state of the account
+ * above the tabs; the tabs are routes below `/profile` (account, security, calendar & apps, privacy)
+ * rendered through the outlet. The profile query is shared with the tabs via the outlet context.
  */
 export default function ProfilePage() {
   const { t } = useTranslation();
   usePageTitle(t("profile.title"));
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [deleteOpen, setDeleteOpen] = useState(false);
   // Inside the app shell (a club is known) or on its own page for users without a club.
   const shell = useOutletContext<ShellData | undefined>();
-  const [params, setParams] = useSearchParams();
-  const [linkOutcome, setLinkOutcome] = useState(() => linkOutcomeOf(params));
-  const [linkProof] = useState(() => linkProofOf(params));
-  const completing = useRef(false);
-  // The proof stays in the address until the call has an answer (or was cancelled: then the state keeps it).
-  const [linkSettled, setLinkSettled] = useState(!linkProof);
-
-  const runComplete = useCallback(() => {
-    if (!linkProof) return;
-    setLinkOutcome(null);
-    void completeLink(linkProof.provider, linkProof.proof).then((outcome) => {
-      setLinkOutcome(outcome);
-      setLinkSettled(true);
-      if (outcome.kind === "linked") void queryClient.invalidateQueries({ queryKey: ["profile"] });
-    });
-  }, [linkProof, queryClient]);
-
-  useEffect(() => {
-    // Once, also when effects run twice (StrictMode): the proof is single-use.
-    if (!linkProof || completing.current) return;
-    completing.current = true;
-    runComplete();
-  }, [linkProof, runComplete]);
-
-  useEffect(() => {
-    if (linkOutcome?.kind !== "linked") return;
-    // Fixed id: shown once, also when effects run twice (StrictMode).
-    toast.success(t("profile.sso.linkedNow", { name: providerLabel(linkOutcome.provider) }), {
-      id: "sso-linked",
-    });
-  }, [linkOutcome, t]);
-
-  // The result of the link flow is shown once; the address loses the parameters (no repeat on reload).
-  useEffect(() => {
-    const removable = LINK_PARAMS.filter(
-      (p) => linkSettled || (p !== "link_proof" && p !== "link_provider"),
-    );
-    if (!removable.some((p) => params.has(p))) return;
-    const rest = new URLSearchParams(params);
-    for (const p of removable) rest.delete(p);
-    setParams(rest, { replace: true });
-  }, [params, setParams, linkSettled]);
 
   const profile = useQuery<ProfileData>({
     queryKey: ["profile"],
@@ -120,11 +31,7 @@ export default function ProfilePage() {
   const data = profile.data;
   const name = data?.name ?? user?.name ?? "";
   const email = data?.email ?? user?.email ?? "";
-
-  function accountDeleted() {
-    logout();
-    navigate("/login", { replace: true });
-  }
+  const context: ProfileOutletContext = { profile: data };
 
   const signOut = (
     <Button variant="secondary" icon="log-out" onClick={logout}>
@@ -152,63 +59,35 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      {profile.isPending ? (
-        <div className="ap-stack" aria-busy="true">
-          <p className="ap-sr" role="status">
-            {t("profile.loading")}
-          </p>
-          <Skeleton style={{ display: "block", height: 160 }} />
-          <Skeleton style={{ display: "block", height: 220 }} />
-        </div>
-      ) : data ? (
-        <>
-          <AccountSection key={data.name} profile={data} />
-          <PasswordSection profile={data} />
-          <LinkedLoginsSection profile={data} outcome={linkOutcome} onRetryComplete={runComplete} />
-          <MfaSection profile={data} />
-        </>
-      ) : (
-        <Banner
-          tone="danger"
-          title={t("profile.loadError.title")}
-          action={
-            <Button variant="secondary" icon="refresh" onClick={() => void profile.refetch()}>
-              {t("profile.loadError.retry")}
-            </Button>
-          }
-        >
-          {t("profile.loadError.text")}
-        </Banner>
-      )}
+      <div>
+        <ProfileTabs />
 
-      <PreferencesSection />
-
-      <CalendarSubscriptionSection />
-
-      <ConnectedAppsSection />
-
-      <SessionsSection />
-
-      <LegalSection />
-
-      <section className="ap-panel ap-panel--danger" aria-labelledby="pr-danger">
-        <div className="ap-panel-head">
-          <div>
-            <h2 className="t-h2" id="pr-danger">
-              {t("profile.danger.title")}
-            </h2>
-            <p>{t("profile.danger.text")}</p>
+        {profile.isPending ? (
+          <div className="ap-stack" aria-busy="true">
+            <p className="ap-sr" role="status">
+              {t("profile.loading")}
+            </p>
+            <Skeleton style={{ display: "block", height: 160 }} />
+            <Skeleton style={{ display: "block", height: 220 }} />
           </div>
-          <Button variant="danger" icon="trash" onClick={() => setDeleteOpen(true)}>
-            {t("profile.danger.action")}
-          </Button>
-          <DeleteAccountDialog
-            open={deleteOpen}
-            onOpenChange={setDeleteOpen}
-            onDeleted={accountDeleted}
-          />
-        </div>
-      </section>
+        ) : (
+          !data && (
+            <Banner
+              tone="danger"
+              title={t("profile.loadError.title")}
+              action={
+                <Button variant="secondary" icon="refresh" onClick={() => void profile.refetch()}>
+                  {t("profile.loadError.retry")}
+                </Button>
+              }
+            >
+              {t("profile.loadError.text")}
+            </Banner>
+          )
+        )}
+
+        <Outlet context={context} />
+      </div>
     </div>
   );
 

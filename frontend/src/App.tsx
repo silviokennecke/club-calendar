@@ -45,6 +45,10 @@ import {
   MyEventModal,
   OAuthConsentPage,
   ProfilePage,
+  ProfileAccountTab,
+  ProfileSecurityTab,
+  ProfileAppsTab,
+  ProfilePrivacyTab,
   PropertiesPage,
   PublicEventModal,
   ResetPasswordPage,
@@ -88,7 +92,13 @@ function AppRoutes() {
             <Route path="/clubs" element={<ClubsPage />} />
             <Route path="/setup" element={<SetupPage />} />
             <Route path="/oauth/consent" element={<OAuthConsentPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile" element={<ProfilePage />}>
+              <Route index element={<ProfileAccountTab />} />
+              <Route path="security" element={<ProfileSecurityTab />} />
+              <Route path="apps" element={<ProfileAppsTab />} />
+              <Route path="privacy" element={<ProfilePrivacyTab />} />
+              <Route path="*" element={<Navigate to="/profile" replace />} />
+            </Route>
             <Route path="/clubs/:clubId" element={<ClubPage />} />
             <Route path="/clubs/:clubId/me" element={<MyClubPage />} />
             <Route path="/clubs/:clubId/calendars/:calendarId" element={<CalendarPage />} />

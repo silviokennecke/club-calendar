@@ -10,7 +10,7 @@ To use Club Calendar you agree to the privacy policy and the terms of use. You t
 
 ## View documents and history
 
-In your [profile](help:settings/profile) under **Legal & consents** you find the **Current documents** (imprint, privacy policy, terms of use) and the **Consent history**: which version you agreed to and when. **View** lets you read a version. **Current** or **Outdated** shows whether it is the latest.
+In your [profile](help:settings/profile), tab **Privacy**, under **Legal & consents** you find the **Current documents** (imprint, privacy policy, terms of use) and the **Consent history**: which version you agreed to and when. **View** lets you read a version. **Current** or **Outdated** shows whether it is the latest.
 
 ## When documents change
 

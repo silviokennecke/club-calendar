@@ -50,7 +50,7 @@ function NoticeDialog({ remaining }: { remaining: number }) {
       onConfirm={confirm}
       alternative={{
         label: t("auth.backupNotice.newCodes"),
-        onConfirm: () => navigate("/profile#pr-mfa"),
+        onConfirm: () => navigate("/profile/security#pr-mfa"),
       }}
     />
   );

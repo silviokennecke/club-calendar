@@ -29,6 +29,11 @@ describe("contextHelpPath", () => {
     [`${CAL}/settings/features`, "", "/help/organize/features"],
     [`${CAL}/settings/holiday-calendars`, "", "/help/organize/holidays"],
     ["/profile", "", "/help/settings/profile"],
+    ["/profile/security", "", "/help/settings/password"],
+    ["/profile/security/", "", "/help/settings/password"],
+    ["/profile/apps", "", "/help/publishing/subscribe"],
+    ["/profile/privacy", "", "/help/settings/consent"],
+    ["/profile/unknown", "", "/help/settings/profile"],
     ["/login", "", "/help/getting-started/sign-up"],
     ["/something-unknown", "", "/help"],
   ])("%s%s -> %s", (path, search, expected) => {

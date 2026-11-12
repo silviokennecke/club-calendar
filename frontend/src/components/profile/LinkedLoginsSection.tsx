@@ -14,7 +14,7 @@ import {
 } from "@/lib/profile";
 import type { ProfileData } from "./profileTypes";
 
-/** Result of an SSO link flow, read from `/profile?linked=` / `?link_error=` by the page. */
+/** Result of an SSO link flow, read from `/profile/security?linked=` / `?link_error=` by the page. */
 export type LinkOutcome =
   | { kind: "linked"; provider: string }
   | { kind: "error"; error: LinkError }

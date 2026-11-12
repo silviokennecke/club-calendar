@@ -10,7 +10,7 @@ You can delete your account at any time. This cannot be undone.
 
 ## Steps
 
-1. Open your [profile](help:settings/profile) and go to the **Danger zone**.
+1. Open your [profile](help:settings/profile), tab **Privacy**, and go to the **Danger zone**.
 2. Click **Delete account**.
 3. Confirm that it is you, see [Confirm it is you](help:settings/confirmation). This also works when the app otherwise only shows the consent or e-mail confirmation screen.
 4. Click **Delete account**.

@@ -81,7 +81,7 @@ for (const lang of LANGS) {
       const { cdp, authenticatorId } = await addVirtualAuthenticator(page);
       await setPresenceSimulation(cdp, authenticatorId, false);
       await signIn(page, lang, email);
-      await page.goto("/profile");
+      await page.goto("/profile/security");
       await expect(page.getByRole("button", { name: t.add })).toBeVisible();
 
       // 1. A passkey first, so the method choice shows it.

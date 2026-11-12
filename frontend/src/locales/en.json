@@ -2237,6 +2237,13 @@
     "intro": "Your account and personal settings.",
     "signOut": "Sign out",
     "toClubs": "All clubs",
+    "tabs": {
+      "label": "Profile sections",
+      "account": "Account",
+      "security": "Security",
+      "apps": "Calendar & apps",
+      "privacy": "Privacy"
+    },
     "loading": "Loading profile …",
     "loadError": {
       "title": "The profile could not be loaded.",

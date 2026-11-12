@@ -6,7 +6,7 @@ description: Set language, appearance, date format and first day of the week.
 
 # Personal settings
 
-These settings only apply to you. You find them in your [profile](help:settings/profile) under **Personal settings**. Changes apply immediately and are saved.
+These settings only apply to you. You find them in your [profile](help:settings/profile), tab **Account**, under **Personal settings**. Changes apply immediately and are saved.
 
 ## Language
 

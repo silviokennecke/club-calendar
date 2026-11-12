@@ -107,6 +107,7 @@ describe("legal modals", () => {
     expect(matchModal("/imprint")).toEqual({ kind: "legal", type: "imprint" });
     expect(matchModal("/terms")).toEqual({ kind: "legal", type: "terms" });
     expect(matchModal("/profile")).toBeNull();
+    expect(matchModal("/profile/security")).toBeNull();
   });
 
   it("is a modal only with a valid stored background", () => {

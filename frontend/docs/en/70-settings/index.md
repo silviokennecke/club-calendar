@@ -10,7 +10,7 @@ This is where you find everything you can set up for your account, your club and
 
 ## Your account
 
-These settings only affect you. You find them on your profile page (**My profile**, at the bottom of the sidebar).
+These settings only affect you. You find them on your profile page (**My profile**, at the bottom of the sidebar). They are spread over four tabs: **Account**, **Security**, **Calendar & apps** and **Privacy**.
 
 - [Profile and name](help:settings/profile)
 - [Confirm it is you](help:settings/confirmation)

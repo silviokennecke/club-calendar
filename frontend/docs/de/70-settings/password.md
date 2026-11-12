@@ -10,7 +10,7 @@ Mit deinem Passwort meldest du dich an. Es muss zwischen 8 und 128 Zeichen lang 
 
 ## Passwort ändern
 
-1. Öffne dein [Profil](help:settings/profile) und gehe zu **Passwort**.
+1. Öffne dein [Profil](help:settings/profile), Reiter **Sicherheit**, und gehe zu **Passwort**.
 2. Gib das **Neue Passwort** zweimal ein.
 3. Klicke auf **Passwort ändern**. Wirst du gefragt, bestätige, dass du es bist, siehe [Bestätigen, dass du es bist](help:settings/confirmation).
 
@@ -27,7 +27,7 @@ Danach bist du überall abgemeldet und meldest dich mit dem neuen Passwort wiede
 
 ## Noch kein Passwort?
 
-Wenn du dich nur mit Google, Microsoft oder einem Passkey anmeldest, hat dein Konto kein Passwort. Klicke im Profil unter **Passwort** auf **Passwort per E-Mail festlegen**. Du bekommst einen Link (60 Minuten gültig), mit dem du ein Passwort festlegst.
+Wenn du dich nur mit Google, Microsoft oder einem Passkey anmeldest, hat dein Konto kein Passwort. Klicke im Profil im Reiter **Sicherheit** unter **Passwort** auf **Passwort per E-Mail festlegen**. Du bekommst einen Link (60 Minuten gültig), mit dem du ein Passwort festlegst.
 
 ## Bestätigen, dass du es bist
 

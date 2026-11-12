@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { ApiError, clearTokens } from "@/lib/api";
 import {
@@ -23,11 +23,17 @@ vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ login, user: currentUse
 
 const tokens = { access_token: "a2", refresh_token: "r2", user: { id: "u" } };
 
+function Where() {
+  const { pathname, hash } = useLocation();
+  return <p data-testid="where">{pathname + hash}</p>;
+}
+
 function mount() {
   return render(
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter>
         <BackupCodeNotice />
+        <Where />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -59,6 +65,15 @@ describe("BackupCodeNotice", () => {
     await waitFor(() => expect(login).toHaveBeenCalledWith("a2", "r2", tokens.user));
     expect(success).toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  });
+
+  it("leads to the MFA section on the security tab for new codes", async () => {
+    mount();
+    act(() => announceBackupCodeUsed("u", 4));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Neue Backup-Codes erstellen" }),
+    );
+    expect(screen.getByTestId("where")).toHaveTextContent("/profile/security#pr-mfa");
   });
 
   it("keeps the other devices and does not come back", async () => {

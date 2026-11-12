@@ -25,6 +25,6 @@ class ChangePasswordUrlController
     #[Route('/.well-known/change-password', methods: ['GET'])]
     public function __invoke(): RedirectResponse
     {
-        return new RedirectResponse(rtrim($this->frontendUrl, '/').'/profile#pr-pw', 302);
+        return new RedirectResponse(rtrim($this->frontendUrl, '/').'/profile/security#pr-pw', 302);
     }
 }

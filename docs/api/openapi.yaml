@@ -223,7 +223,7 @@ info:
     Both are public JSON, cacheable for 5 minutes, and built only from `APP_URL` / `BACKEND_URL`.
 
     Also outside `/api`: `GET /.well-known/change-password` (W3C change-password URL) answers `302` to
-    `{FRONTEND_URL}/profile#pr-pw`, the password section of the profile page. Public, no body, built only from `FRONTEND_URL`.
+    `{FRONTEND_URL}/profile/security#pr-pw`, the password section of the profile page (Security tab). Public, no body, built only from `FRONTEND_URL`.
 
     **Flow:** register (`POST /api/oauth/register`) -> `GET /api/oauth/authorize` (PKCE S256 only) redirects the
     browser to the SPA consent page -> the signed-in user allows or denies (`POST /api/oauth/authorize/decision`)

@@ -81,7 +81,7 @@ test("Anmeldung, Zustimmung, Weiterleitung mit Code, Trennen im Profil", async (
   expect(seen[0].searchParams.get("state")).toBe("st-allow");
   expect(seen[0].searchParams.get("code")).toBeTruthy();
 
-  await page.goto("/profile");
+  await page.goto("/profile/apps");
   const apps = page.getByRole("region", { name: "Verbundene Apps" });
   await expect(apps.getByText("Unbekannte App (127.0.0.1)")).toBeVisible();
   await expect(apps.getByText(/Nennt sich „E2E Assistent“/)).toBeVisible();

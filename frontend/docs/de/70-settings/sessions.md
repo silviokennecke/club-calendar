@@ -18,7 +18,7 @@ Tipp: Auf einem fremden oder gemeinsam genutzten Computer meldest du dich immer 
 
 Das ist sinnvoll, wenn du ein Gerät verloren hast oder an einem fremden Gerät angemeldet geblieben bist.
 
-1. Öffne dein [Profil](help:settings/profile) und gehe zu **Anmeldungen**.
+1. Öffne dein [Profil](help:settings/profile), Reiter **Sicherheit**, und gehe zu **Anmeldungen**.
 2. Klicke auf **Überall abmelden** und bestätige.
 
 Alle aktiven Anmeldungen werden beendet, auch hier. Verbundene KI-Apps verlieren ebenfalls den Zugriff.

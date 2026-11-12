@@ -14,7 +14,7 @@ Dafür brauchst du kein Passwort. Hat dein Konto keins, bestätigst du mit einem
 
 ## So geht's
 
-1. Öffne dein [Profil](help:settings/profile), Bereich **Name und E-Mail-Adresse**.
+1. Öffne dein [Profil](help:settings/profile), Reiter **Konto**, Bereich **Name und E-Mail-Adresse**.
 2. Gib die **Neue E-Mail-Adresse** ein.
 3. Klicke auf **Bestätigungslink senden**. Wirst du gefragt, bestätige, dass du es bist, siehe [Bestätigen, dass du es bist](help:settings/confirmation).
 4. Öffne den Link in der E-Mail, die an die **neue** Adresse geht. Er ist 24 Stunden gültig.

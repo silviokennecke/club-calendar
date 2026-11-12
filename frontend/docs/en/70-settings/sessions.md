@@ -18,7 +18,7 @@ Tip: on someone else's or a shared computer, always sign out when you are done. 
 
 Useful if you lost a device or stayed signed in on someone else's device.
 
-1. Open your [profile](help:settings/profile) and go to **Sign-ins**.
+1. Open your [profile](help:settings/profile), tab **Security**, and go to **Sign-ins**.
 2. Click **Sign out everywhere** and confirm.
 
 All active sessions end, including this one. Connected AI apps lose access too.

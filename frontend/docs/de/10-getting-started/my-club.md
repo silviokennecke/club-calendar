@@ -30,7 +30,7 @@ Darunter findest du **Dein persönlicher Link**. Trage ihn in deine Kalender-App
 Der persönliche Link ist nur für dich. Er kann auch private Feeds enthalten. Gib ihn nicht weiter.
 :::
 
-Ist der Link in falsche Hände geraten, erneuere ihn in deinem Profil, siehe [Profil und Name](help:settings/profile). Trage danach den neuen Link in deiner Kalender-App ein.
+Ist der Link in falsche Hände geraten, erneuere ihn in deinem Profil (Reiter **Kalender & Apps**), siehe [Profil und Name](help:settings/profile). Trage danach den neuen Link in deiner Kalender-App ein.
 
 ## Verein verlassen
 

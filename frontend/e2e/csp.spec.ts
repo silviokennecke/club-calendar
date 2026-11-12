@@ -156,6 +156,9 @@ test("Seiten und Dialoge laufen unter der durchgesetzten CSP ohne Verstöße", a
   await visit(`/clubs/${clubId}/settings/feeds`);
   await visit(`/clubs/${clubId}/settings/feeds/new`);
   await visit("/profile");
+  await visit("/profile/security");
+  await visit("/profile/apps");
+  await visit("/profile/privacy");
 
   // Emoji picker (emoji-mart, shadow DOM), toast
   await visit(`${cal}/settings/properties`);

@@ -8,7 +8,7 @@ description: Mit Fingerabdruck, Gesicht oder Geräte-PIN anmelden.
 
 Mit einem Passkey meldest du dich per Fingerabdruck, Gesichtserkennung oder Geräte-PIN an, ohne Passwort.
 
-Passkeys verwaltest du im Abschnitt **Multi-Faktor-Authentifizierung (MFA)** in deinem [Profil](help:settings/profile). Mehr dazu unter [Multi-Faktor-Authentifizierung (MFA)](help:settings/mfa).
+Passkeys verwaltest du im Abschnitt **Multi-Faktor-Authentifizierung (MFA)** in deinem [Profil](help:settings/profile), Reiter **Sicherheit**. Mehr dazu unter [Multi-Faktor-Authentifizierung (MFA)](help:settings/mfa).
 
 ## Passkey einrichten
 
