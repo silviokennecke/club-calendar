@@ -2824,7 +2824,7 @@
       "rateLimited": "Too many attempts. Please wait a while and try again."
     },
     "factor": {
-      "choose": "Second factor",
+      "choose": "Another factor",
       "totp": "Authenticator app",
       "backup": "Backup code",
       "passkey": "Passkey",

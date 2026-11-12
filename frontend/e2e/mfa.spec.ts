@@ -34,6 +34,8 @@ async function enableTotp(page: Page) {
   await page.getByRole("button", { name: "MFA-Methode hinzufügen" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Authenticator-App", exact: true }).click();
+  // mfa/setup needs the step-up; the confirmation then stays valid for the rest of the flow
+  await confirmStepUpIfAsked(page);
   const secret = await dialog.getByLabel("Einrichtungsschlüssel").inputValue();
   const step = totpStep();
   await typeDigits(page, totpCode(secret, step));
@@ -166,12 +168,19 @@ test.describe("MFA", () => {
   }) => {
     const email = await createVerifiedUser(request, "Mfa Aus");
     await openProfile(page, email);
-    const { secret, step } = await enableTotp(page);
+    const { secret, step, backupCodes } = await enableTotp(page);
 
     const other = await secondContext(browser, baseURL);
     try {
-      await loginWithTotp(other.page, email, secret, step);
+      // A backup code keeps the next TOTP step free for the confirmation below (a used step is refused)
+      await submitPassword(other.page, email);
+      await MFA_FORM(other.page).getByRole("button", { name: "Backup-Code verwenden" }).click();
+      await MFA_FORM(other.page).getByLabel("Backup-Code", { exact: true }).fill(backupCodes[0]);
+      await MFA_FORM(other.page).getByRole("button", { name: "Bestätigen" }).click();
+      await other.page.waitForURL(/\/clubs/);
 
+      // The confirmation from the setup would still be valid: drop it before opening the dialog
+      await forgetStepUp(page);
       await page.getByRole("button", { name: "MFA ausschalten" }).click();
       const dialog = page.getByRole("dialog", { name: "MFA ausschalten?" });
       await expect(dialog).toContainText(
@@ -179,12 +188,11 @@ test.describe("MFA", () => {
       );
       await expect(dialog).toContainText("Alle anderen Geräte werden abgemeldet.");
       // The confirmation (password + authenticator code) is asked for; a wrong password keeps it open
-      await forgetStepUp(page);
       await dialog.getByRole("button", { name: "MFA ausschalten" }).click();
       const stepUp = stepUpDialog(page);
       await confirmStepUp(page, {
         password: "falsches-Passwort-1",
-        totp: totpCode(secret, step + 2),
+        totp: totpCode(secret, step + 1),
       });
       await expect(stepUp.getByText("Das Passwort stimmt nicht.")).toBeVisible();
       await stepUp.getByLabel(/Dein Passwort/).fill(PASSWORD);

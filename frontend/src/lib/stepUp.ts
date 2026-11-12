@@ -141,6 +141,11 @@ export function cancelStepUp() {
 }
 
 /** Logout, session end, user change, a token-version change: the token (and an open prompt) is gone. */
+/** Drops the stored token only (the server refused it), so the next `ensureStepUp` asks again. */
+export function discardStepUpToken() {
+  removeStored();
+}
+
 export function clearStepUp() {
   removeStored();
   cancelStepUp();

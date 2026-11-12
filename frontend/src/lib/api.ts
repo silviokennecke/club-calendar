@@ -4,7 +4,13 @@ import { API_URL } from "./apiUrl";
 import { clearInvitationToken } from "./invitations";
 import { dismissBackupCodeNotice } from "./backupCodeNotice";
 import { markSessionEnded } from "./sessionEnd";
-import { StepUpCancelledError, clearStepUp, ensureStepUp, getStepUpToken } from "./stepUp";
+import {
+  StepUpCancelledError,
+  clearStepUp,
+  discardStepUpToken,
+  ensureStepUp,
+  getStepUpToken,
+} from "./stepUp";
 import type {
   HolidayCalendar,
   HolidayCountry,
@@ -408,6 +414,8 @@ export async function apiFetch(path: string, options: ApiRequestInit = {}): Prom
     }
   }
   if (code === "step_up_required" && !path.startsWith("/api/auth/step-up")) {
+    // A token the server just refused (e.g. ended by a token version bump) must not satisfy ensureStepUp
+    if (getStepUpToken()) discardStepUpToken();
     await promptStepUp();
     res = await send(getAccessToken() ?? access, true);
   }

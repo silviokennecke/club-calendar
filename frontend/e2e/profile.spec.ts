@@ -301,12 +301,12 @@ test.describe("Profil", () => {
   test("Konto löschen verlangt die Bestätigung", async ({ page, request }) => {
     const s = await seed(request, "Profil Löschen");
     await openProfile(page, s, request);
+    await forgetStepUp(page);
     await page.getByRole("button", { name: "Konto löschen" }).click();
     const dialog = page.getByRole("dialog", { name: "Konto löschen?" });
     await expect(dialog).toContainText("Du wirst abgemeldet.");
     const confirm = dialog.getByRole("button", { name: "Konto löschen" });
     // Wrong password in the step-up dialog: the account stays
-    await forgetStepUp(page);
     await confirm.click();
     const stepUp = stepUpDialog(page);
     await confirmStepUp(page, { password: "falsches-Passwort-1" });

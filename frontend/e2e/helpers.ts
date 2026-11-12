@@ -205,9 +205,13 @@ export function stepUpDialog(page: Page) {
     .filter({ has: page.getByRole("button", { name: "Bestätigen", exact: true }) });
 }
 
-/** Drops the stored step-up token so the next sensitive action asks for the confirmation again. */
+/**
+ * Drops the stored step-up token so the next sensitive action asks for the confirmation again. Reloads
+ * the page: the app keeps a copy in memory that only a reload clears, and open dialogs are lost.
+ */
 export async function forgetStepUp(page: Page) {
   await page.evaluate(() => sessionStorage.removeItem("cc_step_up"));
+  await page.reload();
 }
 
 /** Fills the step-up dialog (password, optional authenticator code) and confirms. The dialog must open. */

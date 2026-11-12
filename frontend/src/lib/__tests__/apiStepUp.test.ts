@@ -64,6 +64,19 @@ describe("apiFetch step-up", () => {
     expect(getStepUpToken()).toBe("fresh");
   });
 
+  it("asks again when the server refuses a stored token", async () => {
+    completeStepUp("stale", 600);
+    fetchMock
+      .mockResolvedValueOnce(json(403, { code: "step_up_required", status: 403 }))
+      .mockResolvedValueOnce(json(200, { ok: true }));
+    const pending = apiPost<{ ok: boolean }>("/api/auth/change-email", {});
+    await vi.waitFor(() => expect(isStepUpPrompting()).toBe(true));
+    completeStepUp("fresh", 600);
+    await expect(pending).resolves.toEqual({ ok: true });
+    expect(sent[0]["X-Step-Up-Token"]).toBe("stale");
+    expect(sent[1]["X-Step-Up-Token"]).toBe("fresh");
+  });
+
   it("rejects with step_up_cancelled when the dialog is cancelled", async () => {
     fetchMock.mockResolvedValueOnce(json(403, { code: "step_up_required", status: 403 }));
     const pending = apiPost("/api/auth/change-email", {});
