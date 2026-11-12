@@ -15,12 +15,12 @@ class TotpTest extends TestCase
     /** @return iterable<string, array{int, string}> RFC 6238 appendix B (SHA-1), last 6 digits */
     public static function vectors(): iterable
     {
-        yield [59, '287082'];
-        yield [1111111109, '081804'];
-        yield [1111111111, '050471'];
-        yield [1234567890, '005924'];
-        yield [2000000000, '279037'];
-        yield [20000000000, '353130'];
+        yield 'T=59' => [59, '287082'];
+        yield 'T=1111111109' => [1111111109, '081804'];
+        yield 'T=1111111111' => [1111111111, '050471'];
+        yield 'T=1234567890' => [1234567890, '005924'];
+        yield 'T=2000000000' => [2000000000, '279037'];
+        yield 'T=20000000000' => [20000000000, '353130'];
     }
 
     #[DataProvider('vectors')]

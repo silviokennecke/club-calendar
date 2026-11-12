@@ -9,7 +9,7 @@ use Doctrine\Migrations\AbstractMigration;
 
 /**
  * Backup codes move from unsalted SHA-256 to a salted bcrypt hash (hasher `backup_code`). Existing SHA-256 rows
- * cannot be converted (the codes are not stored), so they are deleted: accounts with two-step sign-in keep
+ * cannot be converted (the codes are not stored), so they are deleted: accounts with multi-factor authentication (MFA) keep
  * `mfa_enforced` and their TOTP/passkeys, but have no backup codes until the user regenerates them in the profile.
  */
 final class Version20261112090000 extends AbstractMigration

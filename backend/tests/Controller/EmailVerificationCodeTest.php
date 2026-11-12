@@ -156,7 +156,9 @@ class EmailVerificationCodeTest extends WebTestCase
     public function testMailShowsTheCodeGroupedInThreeDigits(): void
     {
         $this->register();
-        $html = (string) $this->getMailerMessage()->getHtmlBody();
+        $mail = $this->getMailerMessage();
+        $this->assertInstanceOf(Email::class, $mail);
+        $html = (string) $mail->getHtmlBody();
         $this->assertSame(1, preg_match('/>(\d{3})-(\d{3})</', $html, $m), $html);
         $this->assertDoesNotMatchRegularExpression('/>\s*\d{6}\s*</', $html);
         $this->assertSame(6, strlen($this->codeFromLastMail('new@example.com')));
