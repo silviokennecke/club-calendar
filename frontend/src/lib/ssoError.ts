@@ -11,6 +11,7 @@ export const SSO_ERROR_CODES = [
   "account_exists",
   "email_unverified_at_provider",
   "registration_restricted",
+  "mfa_link_required",
   // set by the SPA itself when the one-time code of the redirect was rejected
   "invalid_login_code",
   // set by the SPA when this tab did not start the flow; invalid_request also by the backend start route

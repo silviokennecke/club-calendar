@@ -47,7 +47,8 @@
         "invalid_login_code": "Your sign-in has expired or was already used. Please sign in again.",
         "invalid_code_verifier": "You started signing in in another browser or tab, or the sign-in was interrupted. Please start it again here.",
         "invalid_request": "The sign-in could not be started. Please try again.",
-        "registration_restricted": "No account was created. Registration is only possible with an invitation. Ask your club admin to invite this email address."
+        "registration_restricted": "No account was created. Registration is only possible with an invitation. Ask your club admin to invite this email address.",
+        "mfa_link_required": "There is already an account for this email address and it uses MFA. Sign in with your password and MFA, then link the provider in your profile."
       },
       "forgot": "Forgot password?",
       "signInWith": "Sign in with {{provider}}",

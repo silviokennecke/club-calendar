@@ -18,6 +18,10 @@ describe("ssoErrorKey", () => {
     );
   });
 
+  it("maps mfa_link_required", () => {
+    expect(ssoErrorKey("mfa_link_required")).toBe("auth.login.ssoError.mfa_link_required");
+  });
+
   it("falls back to the general text", () => {
     expect(ssoErrorKey("oauth_failed")).toBe("auth.login.ssoError.generic");
     expect(ssoErrorKey("something_new")).toBe("auth.login.ssoError.generic");

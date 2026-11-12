@@ -47,7 +47,8 @@
         "invalid_login_code": "Die Anmeldung ist abgelaufen oder wurde bereits verwendet. Bitte melde dich erneut an.",
         "invalid_code_verifier": "Die Anmeldung wurde in einem anderen Browser oder Tab gestartet oder unterbrochen. Bitte starte sie hier erneut.",
         "invalid_request": "Die Anmeldung konnte nicht gestartet werden. Bitte versuche es erneut.",
-        "registration_restricted": "Es wurde kein Konto erstellt. Die Registrierung ist nur mit einer Einladung möglich. Bitte die Verwalter deines Vereins um eine Einladung an diese E-Mail-Adresse."
+        "registration_restricted": "Es wurde kein Konto erstellt. Die Registrierung ist nur mit einer Einladung möglich. Bitte die Verwalter deines Vereins um eine Einladung an diese E-Mail-Adresse.",
+        "mfa_link_required": "Du hast dich mit einem Anbieter angemeldet, doch zu dieser E-Mail-Adresse gibt es ein Konto mit MFA. Melde dich mit Passwort und MFA an und verknüpfe den Anbieter danach in deinem Profil."
       },
       "forgot": "Passwort vergessen?",
       "signInWith": "Mit {{provider}} anmelden",
