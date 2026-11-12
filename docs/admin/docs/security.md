@@ -84,6 +84,14 @@ Security entries and mails name the approximate location of the sign-in. Two way
 
 The visitor's address and the country header are trusted only for requests that come through a proxy listed in `SYMFONY_TRUSTED_PROXIES`. Without that list anyone could fake them. The variables are in the [reference](configuration/reference.md#security-notices-and-location).
 
+**Location is empty or wrong?** Simulate a request and see what the app makes of it. The first argument is the address the request comes from (your proxy's address when you use one); add the headers your proxy sends with `-H`:
+
+```bash
+php bin/console app:geoip:debug 10.0.0.1 -H 'X-Forwarded-For: 203.0.113.9' -H 'CF-IPCountry: DE'
+```
+
+With Docker, run it through `docker compose exec app`. The output shows which method is active, whether the address counts as a trusted proxy, the visitor address the app sees and the city and country found. If nothing is found, it says why. It changes nothing and sends no mail.
+
 ## E-mail confirmation
 
 New accounts must confirm their address with a **6-digit code** sent by mail. The code is valid for 15 minutes, works once and allows 5 attempts. Until it is confirmed, the account can only reach the confirmation step.

@@ -11,6 +11,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Added
 
+- Console command `app:geoip:debug <ip> [-H 'Name: value']` shows how the location of a client (MaxMind or proxy country header, trusted proxies) is detected.
 - `GET /.well-known/change-password` redirects password managers to the password section of the profile page; custom web servers must route it to PHP like the other `/.well-known` addresses.
 - Multi-factor authentication (MFA): users can add an authenticator app and passkeys as an additional factor at password sign-in, get backup codes (shown once), and turn MFA on or off in the new profile section "Multi-Faktor-Authentifizierung (MFA)". A password sign-in with MFA on returns `mfaRequired` and a short-lived `mfaToken` (new routes `/api/auth/mfa/*`); a backup code is used up but MFA stays on (the response carries `backupCodeUsed` and `backupCodesRemaining`, the user is mailed the remaining count, and the app offers to sign out other devices and create new codes; the profile warns at 2 or fewer codes). Only the user in the profile or an operator ends MFA. Operators can reset a locked-out user with `php bin/console app:user:disable-mfa <id|email>`.
 - A verified Google or Apple sign-in no longer links itself to an existing account with MFA on (`?error=mfa_link_required`); link the provider in the profile after signing in with password and MFA.
