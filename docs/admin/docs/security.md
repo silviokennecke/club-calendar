@@ -57,7 +57,7 @@ The app keeps a log of security-relevant events for each account. It holds:
 - failed sign-in attempts on existing accounts,
 - MFA steps and changes, and password changes.
 
-Each entry has the time, the IP address, the approximate city and country, and the browser name and version. Text that comes from the visitor's browser is reduced to plain letters, digits, spaces and a few separators, and the browser entry is at most 20 characters, so nobody can smuggle links or other text into the log or into notification mails. The log is not shown in the app; it is only in the database.
+Each entry has the time, the IP address, the approximate city and country, the browser name and version, and the full user agent text the browser sent (at most 512 characters, kept for investigations). Notification mails and the log's browser field show only a well-known browser name (such as Chrome, Firefox, Safari or Edge) with a version number; anything else is shown as unknown, so nobody can smuggle links or other text into notification mails. The full user agent is never shown in mails or in the app. The log is not shown in the app; it is only in the database.
 
 - Failed attempts are merged: repeated failures from the same address within the same clock hour (UTC) count up in one entry. There are at most 50 failure entries per account and day.
 - Entries older than **one year** are deleted by the scheduled command `app:prune-security-events` (see [Operations](operations.md#scheduled-tasks)). They are also deleted when the account is deleted.
