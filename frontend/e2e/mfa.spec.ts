@@ -25,7 +25,7 @@ const MFA_FORM = (page: Page) => page.getByRole("form", { name: "Bestätigung mi
 async function openProfile(page: Page, email: string) {
   await login(page, email);
   await page.waitForURL(/\/clubs/);
-  await page.goto("/profile");
+  await page.goto("/profile/security");
   await expect(page.getByRole("heading", { level: 1, name: "Profil" })).toBeVisible();
 }
 
@@ -138,11 +138,11 @@ test.describe("MFA", () => {
       await notice.getByRole("button", { name: "Angemeldet lassen" }).click();
 
       // MFA stays on and the other device keeps its session
-      await page.goto("/profile");
+      await page.goto("/profile/security");
       await expect(page.getByRole("heading", { level: 1, name: "Profil" })).toBeVisible();
       await expect(page.getByText("MFA ist ausgeschaltet.")).toHaveCount(0);
-      await other.page.goto("/profile");
-      await expect(other.page).toHaveURL(/\/profile/);
+      await other.page.goto("/profile/security");
+      await expect(other.page).toHaveURL(/\/profile\/security/);
 
       // A second backup-code sign-in, this time ending the other devices
       await SIGN_OUT(page).click();
@@ -153,7 +153,7 @@ test.describe("MFA", () => {
       await page.waitForURL(/\/clubs/);
       await page.getByRole("button", { name: "Andere Geräte abmelden" }).click();
       await expect(page.getByText("Deine anderen Geräte wurden abgemeldet.")).toBeVisible();
-      await other.page.goto("/profile");
+      await other.page.goto("/profile/security");
       await expect(other.page).toHaveURL(/\/login/);
     } finally {
       await other.context.close();
@@ -204,7 +204,7 @@ test.describe("MFA", () => {
       await page.reload();
       await expect(page.getByRole("heading", { level: 1, name: "Profil" })).toBeVisible();
       // the other one is signed out
-      await other.page.goto("/profile");
+      await other.page.goto("/profile/security");
       await expect(other.page).toHaveURL(/\/login/);
     } finally {
       await other.context.close();

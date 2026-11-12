@@ -2,11 +2,13 @@ import { test, expect, type APIRequestContext } from "@playwright/test";
 import {
   API,
   PASSWORD,
+  confirmStepUp,
   confirmStepUpIfAsked,
   createVerifiedUser,
   login,
   resetLinkFor,
   seedClub,
+  stepUpDialog,
 } from "./helpers";
 
 // ——— Konto (Backend-Paket 3): Passwort zurücksetzen, Profil bearbeiten, letzter Kalender je Verein ———
@@ -88,22 +90,29 @@ test.describe("Profil bearbeiten", () => {
     await expect(page.getByText("Name gespeichert")).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Profil Neu" })).toBeVisible();
 
+    await page
+      .getByRole("navigation", { name: "Profilbereiche" })
+      .getByRole("link", { name: "Sicherheit" })
+      .click();
+    await expect(page).toHaveURL(/\/profile\/security$/);
     const password = page.getByRole("region", { name: "Passwort" });
-    await password.getByLabel(/^Aktuelles Passwort/).fill("falsch-falsch");
     await password.getByLabel(/^Neues Passwort/).fill(NEW_PASSWORD);
     await password.getByLabel(/^Passwort wiederholen/).fill(NEW_PASSWORD);
     await password.getByRole("button", { name: "Passwort ändern" }).click();
-    await confirmStepUpIfAsked(page);
-    await expect(password.getByText("Das Passwort stimmt nicht.")).toBeVisible();
-    await password.getByLabel(/^Aktuelles Passwort/).fill(PASSWORD);
-    await password.getByRole("button", { name: "Passwort ändern" }).click();
-    await confirmStepUpIfAsked(page);
+    // The current password is proven by the step-up confirmation; a wrong one keeps the dialog open
+    await confirmStepUp(page, { password: "falsch-falsch" });
+    const stepUp = stepUpDialog(page);
+    await expect(stepUp.getByText("Das Passwort stimmt nicht.")).toBeVisible();
+    await stepUp.getByLabel(/Dein Passwort/).fill(PASSWORD);
+    await stepUp.getByRole("button", { name: "Bestätigen", exact: true }).click();
     await expect(page.getByText(/Passwort geändert/)).toBeVisible();
     // This session continues with the new tokens (also after a reload).
     await page.reload();
     await expect(page.getByRole("heading", { level: 2, name: "Profil Neu" })).toBeVisible();
     expect((await signIn(request, email, NEW_PASSWORD)).status()).toBe(200);
 
+    // The e-mail change lives on the account tab.
+    await page.goto("/profile");
     const newEmail = `neu-${Date.now()}@example.com`;
     await account.getByLabel(/^Neue E-Mail-Adresse/).fill(newEmail);
     await account.getByRole("button", { name: "Bestätigungslink senden" }).click();
@@ -123,11 +132,12 @@ test.describe("Profil bearbeiten", () => {
     await login(page, email);
     await page.waitForURL(/\/(clubs|setup)/);
     await page.goto("/profile?link_error=account_in_use");
+    // the account tab forwards the link flow result to the security tab
     await expect(page.getByText("Das Konto wurde nicht verknüpft")).toBeVisible();
     await expect(
       page.getByText("Dieses Konto ist schon mit einem anderen Club-Calendar-Konto verknüpft."),
     ).toBeVisible();
-    await expect(page).toHaveURL(/\/profile$/);
+    await expect(page).toHaveURL(/\/profile\/security$/);
   });
 });
 

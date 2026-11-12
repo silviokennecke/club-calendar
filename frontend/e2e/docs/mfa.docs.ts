@@ -22,6 +22,7 @@ const T = {
     digit: /^Ziffer 1/,
     ack: "Ich habe die Backup-Codes aufbewahrt",
     password: /Dein Passwort/,
+    confirm: "Bestätigen",
     activate: "Aktivieren",
     close: "Schließen",
     nameDialog: "Passkey benennen",
@@ -40,6 +41,7 @@ const T = {
     digit: /^Digit 1/,
     ack: "I stored the backup codes",
     password: /Your password/,
+    confirm: "Confirm",
     activate: "Activate",
     close: "Close",
     nameDialog: "Name your passkey",
@@ -50,6 +52,21 @@ const T = {
     signIn: "Sign in",
   },
 } as const;
+
+/** Confirms the step-up dialog when it opens (a still valid confirmation skips it). */
+async function confirmStepUp(page: Page, t: (typeof T)[Lang]) {
+  const dialog = page
+    .getByRole("dialog")
+    .filter({ has: page.getByRole("button", { name: t.confirm, exact: true }) });
+  try {
+    await dialog.waitFor({ state: "visible", timeout: 3_000 });
+  } catch {
+    return;
+  }
+  await dialog.getByLabel(t.password).fill(PASSWORD);
+  await dialog.getByRole("button", { name: t.confirm, exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+}
 
 /** The address contains a random id: show a fixed one. */
 async function fixEmail(page: Page) {
@@ -89,8 +106,8 @@ for (const lang of LANGS) {
       await page.getByRole("button", { name: t.add }).click();
       let dialog = page.getByRole("dialog");
       await dialog.getByRole("button", { name: t.passkey, exact: true }).click();
-      await dialog.getByLabel(t.password).fill(PASSWORD);
       await dialog.getByRole("button", { name: t.next }).click();
+      await confirmStepUp(page, t);
       const naming = page.getByRole("dialog", { name: t.nameDialog });
       await naming.getByLabel(t.name).fill(lang === "de" ? "Büro-PC" : "Office PC");
       await naming.getByRole("button", { name: t.saveName }).click();
@@ -108,6 +125,7 @@ for (const lang of LANGS) {
 
       // 3. Authenticator setup; QR code and key are random per run.
       await dialog.getByRole("button", { name: t.totp, exact: true }).click();
+      await confirmStepUp(page, t);
       const key = dialog.getByLabel(t.key);
       const secret = await key.inputValue();
       await page.evaluate(() => {
@@ -132,8 +150,8 @@ for (const lang of LANGS) {
       await shot(page, lang, "mfa-backup-codes");
       await dialog.getByLabel(t.ack).check();
       await dialog.getByRole("button", { name: t.next }).click();
-      await dialog.getByLabel(t.password).fill(PASSWORD);
-      await dialog.getByLabel(t.password).press("Enter");
+      await dialog.getByRole("button", { name: t.activate }).click();
+      await confirmStepUp(page, t);
       await dialog
         .getByRole("button", { name: t.close })
         .click({ timeout: 5000 })

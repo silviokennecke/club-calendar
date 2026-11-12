@@ -27,6 +27,7 @@ async function openProfile(
   page: Page,
   s: { email: string; clubId: string; calendarId: string; headers: Record<string, string> },
   request: APIRequestContext,
+  tab?: "Sicherheit" | "Kalender & Apps" | "Datenschutz",
 ) {
   await login(page, s.email);
   await page.waitForURL(/\/clubs/);
@@ -39,6 +40,15 @@ async function openProfile(
     .getByRole("link", { name: /Mein Profil/ })
     .click();
   await expect(page.getByRole("heading", { level: 1, name: "Profil" })).toBeVisible();
+  if (tab) await openProfileTab(page, tab);
+}
+
+/** Switches to another tab of the profile (routes below /profile). */
+async function openProfileTab(page: Page, tab: "Sicherheit" | "Kalender & Apps" | "Datenschutz") {
+  await page
+    .getByRole("navigation", { name: "Profilbereiche" })
+    .getByRole("link", { name: tab })
+    .click();
 }
 
 /** Opens "MFA-Methode hinzufügen" > Passkey (unless the proof step is open) and confirms with the step-up dialog. */
@@ -87,6 +97,8 @@ test.describe("Profil", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Profil Kopf" })).toBeVisible();
     await expect(page.getByText(s.email).first()).toBeVisible();
     await expect(page.getByRole("region", { name: "Name und E-Mail-Adresse" })).toBeVisible();
+    await openProfileTab(page, "Sicherheit");
+    await expect(page).toHaveURL(/\/profile\/security$/);
     await expect(page.getByRole("region", { name: "Passwort" })).toBeVisible();
     await expect(page.getByText("Du hast noch keine MFA-Methode eingerichtet.")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Verknüpfte Anmeldungen" })).toBeVisible();
@@ -195,7 +207,7 @@ test.describe("Profil", () => {
     request,
   }) => {
     const s = await seed(request, "Profil Passkey");
-    await openProfile(page, s, request);
+    await openProfile(page, s, request, "Sicherheit");
     // Der Browser meldet "abgebrochen" (Nutzer schließt den Systemdialog).
     await page.evaluate(() => {
       navigator.credentials.create = () =>
@@ -221,7 +233,7 @@ test.describe("Profil", () => {
     request,
   }) => {
     const s = await seed(request, "Profil Virtuell");
-    await openProfile(page, s, request);
+    await openProfile(page, s, request, "Sicherheit");
     await addVirtualAuthenticator(page);
 
     await startPasskeySetup(page);
@@ -250,7 +262,7 @@ test.describe("Profil", () => {
     request,
   }) => {
     const s = await seed(request, "Profil Passkey Login");
-    await openProfile(page, s, request);
+    await openProfile(page, s, request, "Sicherheit");
     const { cdp, authenticatorId } = await addVirtualAuthenticator(page);
     await startPasskeySetup(page);
     await nameAndFinish(page, "Login-Laptop");
@@ -300,7 +312,7 @@ test.describe("Profil", () => {
 
   test("Konto löschen verlangt die Bestätigung", async ({ page, request }) => {
     const s = await seed(request, "Profil Löschen");
-    await openProfile(page, s, request);
+    await openProfile(page, s, request, "Datenschutz");
     await forgetStepUp(page);
     await page.getByRole("button", { name: "Konto löschen" }).click();
     const dialog = page.getByRole("dialog", { name: "Konto löschen?" });
