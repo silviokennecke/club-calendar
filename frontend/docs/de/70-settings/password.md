@@ -13,7 +13,7 @@ Mit deinem Passwort meldest du dich an. Es muss zwischen 8 und 128 Zeichen lang 
 1. Öffne dein [Profil](help:settings/profile) und gehe zu **Passwort**.
 2. Gib dein **Aktuelles Passwort** ein.
 3. Gib das **Neue Passwort** zweimal ein.
-4. Klicke auf **Passwort ändern**.
+4. Klicke auf **Passwort ändern**. Wirst du gefragt, bestätige, dass du es bist, siehe [Bestätigen, dass du es bist](help:settings/confirmation).
 
 Auf diesem Gerät bleibst du angemeldet. Auf allen anderen Geräten wirst du abgemeldet.
 
@@ -28,7 +28,11 @@ Danach bist du überall abgemeldet und meldest dich mit dem neuen Passwort wiede
 
 ## Noch kein Passwort?
 
-Wenn du dich nur mit Google, Microsoft oder einem Passkey anmeldest, hat dein Konto kein Passwort. Klicke im Profil unter **Passwort** auf **Passwort per E-Mail festlegen**. Du bekommst einen Link (60 Minuten gültig), mit dem du ein Passwort festlegst. Das brauchst du zum Beispiel, um die [E-Mail-Adresse zu ändern](help:settings/email-change).
+Wenn du dich nur mit Google, Microsoft oder einem Passkey anmeldest, hat dein Konto kein Passwort. Klicke im Profil unter **Passwort** auf **Passwort per E-Mail festlegen**. Du bekommst einen Link (60 Minuten gültig), mit dem du ein Passwort festlegst.
+
+## Bestätigen, dass du es bist
+
+Bei sensiblen Aktionen wie dieser bittet dich die App einmal zu bestätigen, dass du es bist. Siehe [Bestätigen, dass du es bist](help:settings/confirmation).
 
 ## E-Mails bei Änderungen
 

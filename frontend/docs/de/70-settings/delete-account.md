@@ -12,9 +12,7 @@ Du kannst dein Konto jederzeit löschen. Das geht nicht rückgängig.
 
 1. Öffne dein [Profil](help:settings/profile) und gehe zum **Gefahrenbereich**.
 2. Klicke auf **Konto löschen**.
-3. Bestätige:
-   - Mit Passwort: gib bei **Zur Bestätigung dein Passwort** dein Passwort ein.
-   - Ohne Passwort (nur Anbieter oder Passkey): klicke auf **Code senden**. Du bekommst einen 6-stelligen Code per E-Mail und gibst ihn bei **Bestätigungscode** ein. Er ist mindestens 10 Minuten gültig.
+3. Bestätige, dass du es bist, siehe [Bestätigen, dass du es bist](help:settings/confirmation). Das geht auch, wenn die App sonst nur die Einwilligung oder die E-Mail-Bestätigung zeigt.
 4. Klicke auf **Konto löschen**.
 
 ## Was gelöscht wird
@@ -30,8 +28,6 @@ Solange du das einzige Mitglied eines Vereins bist, kannst du dein Konto nicht l
 :::warning
 Bist du der einzige Admin eines Vereins mit weiteren Mitgliedern, mache zuerst jemand anderen zum Admin oder lösche den Verein.
 :::
-
-Zu viele Fehlversuche sperren die Bestätigung kurz. Warte dann eine Weile.
 
 ## Siehe auch
 

@@ -2521,7 +2521,7 @@
         },
         "confirm": {
           "title": "Confirm it is you",
-          "text": "To finish the setup, confirm your identity.",
+          "text": "You will be asked to confirm it is you once.",
           "submit": "Activate"
         },
         "passkey": {

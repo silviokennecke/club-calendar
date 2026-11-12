@@ -44,10 +44,16 @@ Users can turn on multi-factor authentication (MFA) for password sign-in in thei
 - If a user's account has MFA on, **Sign in with Google or Apple** for an address not yet linked to the account is refused with the advice to sign in with password and MFA and link the provider in the profile. Providers already linked keep working.
 - Users receive a notification mail when MFA is switched on or off, when backup codes are made again or used, and when a passkey or a single sign-on provider is added or a passkey is deleted.
 
-!!! warning "Limit: factor changes are confirmed with the password, not another factor"
-    Switching MFA off, creating new backup codes, adding or removing a factor and deleting the account are confirmed with the password (or, for accounts without a password, a code sent by e-mail). They do not ask for another factor. Anyone who holds a stolen signed-in session and knows the password can therefore change them. This is an accepted limit; the notification mails are the way users notice it.
-
 Nothing needs configuring. If a user has lost the device with the authenticator app and also has no backup codes, an operator can switch MFA off on the command line, see [Command-line tools](operations.md#command-line-tools). Check the identity of the person first. Run the daily cleanup `app:prune-auth-nonces` as well (see [Operations](operations.md#scheduled-tasks)).
+
+### Confirming sensitive actions
+
+Sensitive account actions need a one-time confirmation on top of the signed-in session: changing the password or e-mail address, deleting the account, switching MFA on or off, setting up the authenticator app, creating new backup codes, adding or removing a passkey, and linking or unlinking a single sign-on provider. The user confirms once with the password (accounts without a password use a code sent by e-mail) and, when MFA is on, also with one MFA factor: an authenticator code, a backup code or a passkey. A stolen session alone is therefore not enough to change sign-in methods.
+
+- The confirmation is valid for 10 minutes and cannot be renewed; after that the user confirms again. It is kept only in the browser tab's session storage, is not shared between tabs and ends on sign-out, password change and other events that end the session.
+- A backup code used for the confirmation is used up, and the user gets the usual mail.
+- Wrong MFA factors, at sign-in and in the confirmation, share one limit of 5 per 15 minutes per account.
+- Signing out other devices needs no confirmation.
 
 ## Security log
 
@@ -55,7 +61,7 @@ The app keeps a log of security-relevant events for each account. It holds:
 
 - every sign-in (with password, passkey, single sign-on or the connection of an AI app),
 - failed sign-in attempts on existing accounts,
-- MFA steps and changes, and password changes.
+- MFA steps and changes, confirmations of sensitive actions, and password changes.
 
 Each entry has the time, the IP address, the approximate city and country, the browser name and version, and the full user agent text the browser sent (at most 512 characters, kept for investigations). Notification mails and the log's browser field show only a well-known browser name (such as Chrome, Firefox, Safari or Edge) with a version number; anything else is shown as unknown, so nobody can smuggle links or other text into notification mails. The full user agent is never shown in mails or in the app. The log is not shown in the app; it is only in the database.
 

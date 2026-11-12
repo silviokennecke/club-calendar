@@ -27,7 +27,7 @@ Hast du über [Mein Verein](help:getting-started/my-club) einen Kalender abonnie
 
 ## Was du sonst auf der Seite findest
 
-Auf dem Profil sind alle weiteren Kontoeinstellungen untereinander angeordnet, siehe [Überblick](help:settings/index). Mit **Abmelden** meldest du dich auf diesem Gerät ab.
+Auf dem Profil sind alle weiteren Kontoeinstellungen untereinander angeordnet, siehe [Überblick](help:settings/index). Mit **Abmelden** meldest du dich auf diesem Gerät ab. Bei sensiblen Aktionen bittet dich die App zu [bestätigen, dass du es bist](help:settings/confirmation).
 
 ## Siehe auch
 

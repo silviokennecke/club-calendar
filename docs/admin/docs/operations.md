@@ -119,6 +119,9 @@ The app cleans up after itself only when these commands run regularly. Add them 
 | `app:holidays:refresh --all` | Refreshes the predefined holiday calendars. See [Holidays](#holidays). | weekly |
 | `app:geoip:update` | Downloads a newer location database for security notices. Does nothing without `MAXMIND_LICENSE_KEY`. See [Protection mechanisms](security.md#location-in-security-notices). | weekly |
 
+!!! warning "The Docker image runs no cron"
+    Nothing in the container runs these commands. Without `app:prune-auth-nonces`, the table of one-time sign-in and confirmation values grows indefinitely. Schedule all commands, at least this one daily, with the examples below.
+
 === "Docker"
 
     Example for the host's crontab (`crontab -e`). Replace `/srv/club-calendar` with the folder that holds your `docker-compose.yml`. `-T` is needed because cron has no terminal.

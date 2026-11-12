@@ -13,6 +13,7 @@ This is where you find everything you can set up for your account, your club and
 These settings only affect you. You find them on your profile page (**My profile**, at the bottom of the sidebar).
 
 - [Profile and name](help:settings/profile)
+- [Confirm it is you](help:settings/confirmation)
 - [Password](help:settings/password)
 - [Multi-factor authentication (MFA)](help:settings/mfa)
 - [Passkeys](help:settings/passkeys)

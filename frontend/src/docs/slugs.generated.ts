@@ -36,6 +36,7 @@ export const DOC_SLUGS = [
   "settings/calendar-settings",
   "settings/calendars",
   "settings/club",
+  "settings/confirmation",
   "settings/consent",
   "settings/delete-account",
   "settings/delete-club",

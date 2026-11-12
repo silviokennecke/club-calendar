@@ -1742,7 +1742,7 @@ paths:
       tags: [Multi-factor authentication (MFA)]
       summary: Sign out all other sessions
       description: >-
-        No body and no re-authentication. Ends every other session and all MCP connections of the user (token version
+        No body and no step-up confirmation. Ends every other session and all MCP connections of the user (token version
         bump, refresh token families revoked) and returns a fresh token pair of a new family, so the calling session
         continues. The new family inherits the absolute end of the calling session (`REFRESH_TOKEN_ABSOLUTE_LIFETIME` counts
         from the original sign-in), so repeating the call never extends it. Shares the rate limit of MFA management

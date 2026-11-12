@@ -13,7 +13,7 @@ You manage passkeys in the section **Multi-factor authentication (MFA)** on your
 ## Set up a passkey
 
 1. In the section, click **Add MFA method** and choose **Passkey**. Click **Next**.
-2. Confirm that it is you: enter your password. If your account has no password (provider or passkey only), click **Send code** and enter the 6-digit code from the e-mail under **Confirmation code** (valid for at least 10 minutes).
+2. If asked, confirm that it is you, see [Confirm it is you](help:settings/confirmation).
 3. Click **Next** and confirm on the device.
 4. Optionally enter a name for the passkey, for example "Office PC", and click **Save name**. It helps you recognize the device in the list.
 
@@ -31,7 +31,7 @@ Next to the passkey, click **Rename**, change the name and click **Save**.
 
 ## Remove a passkey
 
-Next to the passkey, click **Remove**, confirm it is you with your password (without a password, with the code from the e-mail) and click **Remove passkey**. You can no longer sign in with that device by passkey.
+Next to the passkey, click **Remove**, confirm it is you if asked (see [Confirm it is you](help:settings/confirmation)) and click **Remove passkey**. You can no longer sign in with that device by passkey.
 
 :::warning
 When you remove a passkey, your other devices are signed out.

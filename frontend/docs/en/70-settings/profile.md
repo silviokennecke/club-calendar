@@ -27,7 +27,7 @@ If you subscribed to a club calendar through [My club](help:getting-started/my-c
 
 ## What else is on the page
 
-All other account settings are listed one below the other, see the [overview](help:settings/index). **Sign out** signs you out on this device.
+All other account settings are listed one below the other, see the [overview](help:settings/index). **Sign out** signs you out on this device. For sensitive actions the app asks you to [confirm it is you](help:settings/confirmation).
 
 ## See also
 

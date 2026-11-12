@@ -13,7 +13,7 @@ Passkeys verwaltest du im Abschnitt **Multi-Faktor-Authentifizierung (MFA)** in 
 ## Passkey einrichten
 
 1. Klicke im Abschnitt auf **MFA-Methode hinzufügen** und wähle **Passkey**. Klicke auf **Weiter**.
-2. Bestätige, dass du es bist: Gib dein Passwort ein. Hat dein Konto kein Passwort (nur Anbieter oder Passkey), klicke auf **Code senden** und gib den 6-stelligen Code aus der E-Mail unter **Bestätigungscode** ein (mindestens 10 Minuten gültig).
+2. Wirst du gefragt, bestätige, dass du es bist, siehe [Bestätigen, dass du es bist](help:settings/confirmation).
 3. Klicke auf **Weiter** und bestätige am Gerät.
 4. Gib dem Passkey optional einen Namen, zum Beispiel „Büro-PC“, und klicke auf **Namen speichern**. Damit erkennst du das Gerät später in der Liste.
 
@@ -31,7 +31,7 @@ Klicke bei dem Passkey auf **Umbenennen**, ändere den Namen und klicke auf **Sp
 
 ## Passkey entfernen
 
-Klicke bei dem Passkey auf **Entfernen**, bestätige mit deinem Passwort (ohne Passwort mit dem Code aus der E-Mail) und klicke auf **Passkey entfernen**. Mit diesem Gerät kannst du dich danach nicht mehr per Passkey anmelden.
+Klicke bei dem Passkey auf **Entfernen**, bestätige bei Bedarf, dass du es bist (siehe [Bestätigen, dass du es bist](help:settings/confirmation)), und klicke auf **Passkey entfernen**. Mit diesem Gerät kannst du dich danach nicht mehr per Passkey anmelden.
 
 :::warning
 Wenn du einen Passkey entfernst, werden deine anderen Geräte abgemeldet.

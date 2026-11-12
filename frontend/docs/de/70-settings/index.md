@@ -13,6 +13,7 @@ Hier findest du alles, was du an deinem Konto, deinem Verein und deinen Kalender
 Diese Einstellungen betreffen nur dich. Du findest sie auf deiner Profilseite (**Mein Profil**, unten in der Seitenleiste).
 
 - [Profil und Name](help:settings/profile)
+- [Bestätigen, dass du es bist](help:settings/confirmation)
 - [Passwort](help:settings/password)
 - [Multi-Faktor-Authentifizierung (MFA)](help:settings/mfa)
 - [Passkeys](help:settings/passkeys)

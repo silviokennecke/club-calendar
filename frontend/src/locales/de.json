@@ -2521,7 +2521,7 @@
         },
         "confirm": {
           "title": "Bestätige, dass du es bist",
-          "text": "Bestätige deine Identität, um die Einrichtung abzuschließen.",
+          "text": "Du wirst einmal gebeten zu bestätigen, dass du es bist.",
           "submit": "Aktivieren"
         },
         "passkey": {

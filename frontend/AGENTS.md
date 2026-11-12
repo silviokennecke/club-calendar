@@ -287,7 +287,7 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
     other devices are signed out; SSO-only: "Passwort per E-Mail festlegen" = forgot-password for the own address),
     `LinkedLoginsSection` (link: `POST /api/auth/oauth/{provider}/link-start` → `window.location.assign(url)`; the API
     comes back with `?link_provider=&link_proof=` and the page completes the link with this session's token
-    (`POST …/link-complete {proof}`; the API refuses a flow started by another user: link-CSRF protection); unlink
+    (`POST …/link-complete {proof}`; the API refuses a flow started by another user: link-CSRF protection; the proof stays in the URL until the API answers, so a cancelled step-up can be retried via the info banner); unlink
     with `ConfirmDialog`, disabled with the "Mindestens eine Anmeldemethode muss bleiben" note when it is the last
     method (`isLastSignInMethod`); the page reads `?linked=` / `?link_error=` / `link_proof` once (banner + toast),
     removes them from the address and maps codes with `linkErrorKind`). After a failed submit the profile forms move

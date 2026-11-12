@@ -26,7 +26,9 @@ Den Abschnitt findest du in deinem [Profil](help:settings/profile) unter **Multi
    ![Backup-Codes zum Aufbewahren](shot:mfa-backup-codes)
 
 5. Bewahre die **Backup-Codes** sicher auf (siehe unten). Setze den Haken bei **Ich habe die Backup-Codes aufbewahrt** und klicke auf **Weiter**.
-6. Bestätige, dass du es bist: Gib dein Passwort ein und klicke auf **Aktivieren**. Hat dein Konto kein Passwort, klicke auf **Code senden** und gib den Code aus der E-Mail ein.
+6. Klicke auf **Aktivieren**.
+
+Die App bittet dich einmal zu bestätigen, dass du es bist, siehe [Bestätigen, dass du es bist](help:settings/confirmation).
 
 Du kannst nur eine Authenticator-App einrichten. Statt einer App kannst du im selben Schritt auch einen **Passkey** für MFA wählen.
 
@@ -36,7 +38,7 @@ Hast du schon einen Passkey, kannst du MFA direkt damit einschalten. Der Knopf *
 
 1. Klicke auf **MFA einschalten**.
 2. Bewahre die Backup-Codes sicher auf, setze den Haken bei **Ich habe die Backup-Codes aufbewahrt** und klicke auf **Weiter**.
-3. Bestätige, dass du es bist, und klicke auf **MFA einschalten**.
+3. Klicke auf **MFA einschalten**. Wirst du gefragt, bestätige, dass du es bist, siehe [Bestätigen, dass du es bist](help:settings/confirmation).
 
 ## Bei der Anmeldung
 
@@ -56,7 +58,7 @@ Bei der Anmeldung mit Google, Apple, Microsoft oder einem Passkey fragt die Anme
 
 Backup-Codes sind Ersatzcodes, falls du deine Authenticator-App nicht benutzen kannst. Du bekommst sie, wenn du MFA einrichtest. Jeder Code funktioniert nur einmal. Bewahre sie an einem sicheren Ort auf.
 
-Neue Codes bekommst du im Abschnitt über **Neu erzeugen** bei **Backup-Codes**. Bestätige, klicke auf **Codes erzeugen** und speichere die neuen Codes. Die alten funktionieren danach nicht mehr.
+Neue Codes bekommst du im Abschnitt über **Neu erzeugen** bei **Backup-Codes**. Bestätige bei Bedarf, dass du es bist (siehe [Bestätigen, dass du es bist](help:settings/confirmation)), klicke auf **Codes erzeugen** und speichere die neuen Codes. Die alten funktionieren danach nicht mehr.
 
 Das Profil warnt dich, wenn nur noch 2 oder weniger Backup-Codes übrig sind. Meldest du dich mit einem Backup-Code an, schicken wir dir eine E-Mail mit der Zahl der übrigen Codes.
 
@@ -70,12 +72,12 @@ Melde dich mit deinem Passwort an, wähle **Backup-Code verwenden** und gib eine
 
 Gleich nach der Anmeldung zeigt dir die App, wie viele Codes übrig sind. Dort kannst du deine anderen Geräte abmelden und neue Codes erzeugen.
 
-Hast du die Authenticator-App endgültig verloren, schalte MFA im Profil mit deinem Passwort aus (siehe unten) und richte es mit einer neuen App wieder ein.
+Hast du die Authenticator-App endgültig verloren, schalte MFA im Profil aus (siehe unten) und richte es mit einer neuen App wieder ein.
 
 ## MFA ausschalten
 
 1. Klicke im Abschnitt auf **MFA ausschalten**.
-2. Bestätige, dass du es bist: Gib dein Passwort ein (ohne Passwort: den Code aus der E-Mail) und klicke auf **MFA ausschalten**.
+2. Wirst du gefragt, bestätige, dass du es bist (siehe [Bestätigen, dass du es bist](help:settings/confirmation)), und klicke auf **MFA ausschalten**.
 
 Die Authenticator-App und die Backup-Codes werden gelöscht. Deine Passkeys bleiben erhalten. Alle anderen Geräte werden abgemeldet.
 

@@ -26,7 +26,9 @@ You find the section in your [profile](help:settings/profile) under **Multi-fact
    ![Backup codes to store safely](shot:mfa-backup-codes)
 
 5. Store your **Backup codes** safely (see below). Tick **I stored the backup codes** and click **Continue**.
-6. Confirm that it is you: enter your password and click **Activate**. If your account has no password, click **Send code** and enter the code from the e-mail.
+6. Click **Activate**.
+
+The app asks you once to confirm it is you, see [Confirm it is you](help:settings/confirmation).
 
 You can set up only one authenticator app. Instead of an app, you can also choose a **Passkey** for MFA in the same dialog.
 
@@ -36,7 +38,7 @@ If you already have a passkey, you can turn on MFA with it. The **Turn on MFA** 
 
 1. Click **Turn on MFA**.
 2. Store the backup codes safely, tick **I stored the backup codes** and click **Continue**.
-3. Confirm that it is you and click **Turn on MFA**.
+3. Click **Turn on MFA**. If asked, confirm that it is you, see [Confirm it is you](help:settings/confirmation).
 
 ## When signing in
 
@@ -56,7 +58,7 @@ When you sign in with Google, Apple, Microsoft or a passkey, sign-in does not as
 
 Backup codes are spare codes in case you cannot use your authenticator app. You get them when you set up MFA. Each code works only once. Keep them in a safe place.
 
-To get new codes, click **Regenerate** next to **Backup codes** in the section. Confirm, click **Generate codes** and store the new codes. The old codes stop working.
+To get new codes, click **Regenerate** next to **Backup codes** in the section. Confirm it is you if asked (see [Confirm it is you](help:settings/confirmation)), click **Generate codes** and store the new codes. The old codes stop working.
 
 The profile warns you when 2 or fewer backup codes are left. When you sign in with a backup code, we send you an e-mail with the number of codes left.
 
@@ -70,12 +72,12 @@ Sign in with your password, choose **Use a backup code** and enter one code. The
 
 Right after signing in, the app tells you how many codes are left. You can sign out your other devices there and create new codes.
 
-If you lost the authenticator app for good, switch MFA off in your profile (see below) with your password and set it up again with a new app.
+If you lost the authenticator app for good, switch MFA off in your profile (see below) and set it up again with a new app.
 
 ## Turn off MFA
 
 1. In the section, click **Turn off MFA**.
-2. Confirm that it is you: enter your password (without a password: the code from the e-mail) and click **Turn off MFA**.
+2. If asked, confirm that it is you (see [Confirm it is you](help:settings/confirmation)) and click **Turn off MFA**.
 
 The authenticator app and the backup codes are deleted. Your passkeys stay. All other devices are signed out.
 
