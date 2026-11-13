@@ -7,7 +7,20 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Added
 
+- **Job queue and scheduler:** all e-mail is sent through a queue (Symfony Messenger on the application database, bodies encrypted with `APP_SECRET`, 3 retries, then a `failed` queue; inspect with `messenger:failed:show`) and all periodic jobs (pruning, holiday refresh, GeoIP update) run through the built-in scheduler at fixed UTC times. New settings `MESSENGER_TRANSPORT_DSN`, `SCHEDULER_ENABLED`, `LOCK_DSN`; new command `app:prune-failed-messages` (failed queue rows older than 30 days, daily); new tables `messenger_messages`, `lock_keys`, `cache_items` (migrations run automatically).
+- **Docker roles and supervisord:** the image runs supervisord (as `www-data`) with `ROLE=all` (default), `web` or `worker`; `MESSENGER_WORKERS` (default 2) sets the number of queue workers, `MIGRATION_WAIT_RETRIES` how long a worker waits for migrations. A crash of PHP-FPM, Caddy or a program ends the container so the orchestrator restarts it; the health check covers all roles. Recommended `stop_grace_period: 90s`.
+- **Redis/Valkey cache (optional):** `CACHE_DSN` (`redis://`, `rediss://`, `valkey://`, `valkeys://`) and `CACHE_PREFIX` move rate limits, MCP sessions and the app caches to a shared Redis so several containers share them; default stays the filesystem. The Docker image includes the `redis` PHP extension. If Redis is unreachable, rate limits are not enforced.
+- **File storage (optional):** `STORAGE_SOURCE` (`storage.local` or `storage.s3`), `STORAGE_LOCAL_PATH` (image: `/data/storage`), `S3_*` settings and client-side-keyed encryption `S3_SSE_C_KEY` / `S3_SSE_C_KEY_PREVIOUS` with key rotation at start (`app:storage:rotate-key`); `app:storage:check` tests the setup. Prepared for later features, nothing uses it yet.
 - **Instance name:** new setting `APP_NAME` (default `Club Calendar`) names the installation. It appears as page title and logo text, in e-mails (header, footer, subjects), as default mail sender name in the Docker image, in the passkey prompt (`WEBAUTHN_RP_NAME` still overrides), in authenticator apps and as MCP server name. The Docker image also sets the initial page title at start.
+
+### Changed
+
+- **A worker is required:** e-mails (registration codes, password reset, invitations, notices) are now sent asynchronously by a worker and can arrive slightly later; without a running worker no e-mail is sent. The Docker default `ROLE=all` includes one; outside Docker run `php bin/console messenger:consume async scheduler_default` (dev: `npm run dev:worker`).
+- **Existing filesystem caches start cold once** after the upgrade (`CACHE_PREFIX` now seeds the cache keys).
+
+### Removed
+
+- **Host cron:** the crontab entries for `app:prune-*`, `app:holidays:refresh` and `app:geoip:update` are no longer needed and no longer supported; delete them. The commands remain for manual runs.
 
 ## [0.1.0] - 2026-11-13
 

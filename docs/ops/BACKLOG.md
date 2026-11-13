@@ -13,12 +13,12 @@ Offene Backend-Features, Sicherheitsrisiken, Betriebspunkte und Design-Entscheid
   Die bisherige Adresse bekommt den Hinweis trotzdem. Keine Hinweis-Mail bei "Passwort vergessen" (Spam-Vektor).
 - **Mehrere Konten desselben Anbieters** (z. B. zwei Google-Konten) lassen sich nicht verknüpfen (`already_linked`).
 - **Inaktive Konten ohne Verein** werden nicht automatisch gelöscht. Geplant: Konten ohne Vereinsmitgliedschaft nach X Tagen
-  ohne Aktivität löschen, vorher Hinweis per E-Mail. Dafür fehlen Zeitstempel der letzten Aktivität, ein Cron-Befehl wie
-  die `app:prune-*`-Befehle und Konfiguration für X und die Vorankündigungsfrist. Nicht umgesetzt.
+  ohne Aktivität löschen, vorher Hinweis per E-Mail. Dafür fehlen Zeitstempel der letzten Aktivität, ein geplanter Job (Scheduler, `ScheduledTask`) wie
+  die `app:prune-*`-Jobs und Konfiguration für X und die Vorankündigungsfrist. Nicht umgesetzt.
 - **Datenexport (DSGVO) läuft synchron:** Der Export wird direkt gestreamt (JSON, erhöhte Speicher- und Zeitlimits). Bei
   Nutzern mit vielen Vereinen und umfangreich bearbeiteten Datensätzen kann er groß werden. Er sollte ein asynchroner
-  Vorgang werden (Job/Warteschlange, Ergebnis kurz gespeichert und per Download-Link abrufbar, Hinweis per E-Mail). Die
-  App hat dafür noch keine Queue-Infrastruktur (`symfony/messenger` ist nicht installiert).
+  Vorgang werden (Job in der Messenger-Queue, Ergebnis kurz in `app.storage` gespeichert und per Download-Link
+  abrufbar, Hinweis per E-Mail). Queue und Storage sind vorhanden, der Export selbst ist noch nicht umgestellt (Stufe 3).
 
 ### Termine und Serien
 
@@ -88,12 +88,34 @@ Hier steht die einzige maßgebliche Liste der offenen Sicherheitspunkte. Die Aud
 | Schweregrad | Risiko | Details / mögliche Behebung |
 | --- | --- | --- |
 | niedrig | **API-53 (ehemals L5): öffentliche statische Kartenbilder** | `/api/map/image/location/{id}` und `/event/{id}` sind ohne Anmeldung erreichbar (für anonyme Feed-Seiten) und prüfen nicht, ob Ort/Termin in einem Feed veröffentlicht ist; Ausgabe ist nur ein Kartenbild mit der Position. IP-Limit 360/h; das gemeinsame Mapbox-Bildbudget bleibt von vielen IPs erschöpfbar. Behebung: feed-gebundene/signierte URLs bzw. Mitgliedsprüfung in der App. |
-| info | **I3: Backend-Hinweise** | Fixtures-Passwort `password123` (nur Dev/CI); `app:prune-unverified-users` steht als Cron im Admin-Guide (`docs/admin/docs/security.md`), nichts im Repo plant es ein; Refresh-Token ist ein selbst gebauter HS256-Token mit Standard-Base64; `OidcProvider` ohne PKCE zum Identity Provider; lokale `config/jwt/public.pem` mit 0666 (Umask des Entwicklerrechners, öffentlicher Schlüssel); 404-vs-403-Orakel auf Verein-/Kalender-IDs. |
+| info | **I3: Backend-Hinweise** | Fixtures-Passwort `password123` (nur Dev/CI); Refresh-Token ist ein selbst gebauter HS256-Token mit Standard-Base64; `OidcProvider` ohne PKCE zum Identity Provider; lokale `config/jwt/public.pem` mit 0666 (Umask des Entwicklerrechners, öffentlicher Schlüssel); 404-vs-403-Orakel auf Verein-/Kalender-IDs. |
 | info | **I4: Frontend-Hinweise** | Routen-Guards nur clientseitig (Backend erzwingt); IDs in API-Pfaden meist ohne `encodeURIComponent` (serverseitige UUIDs); OAuth-Provider-ID unkodiert im `href`. |
 | info | **SCAN-12 (Rest): Release-`ci`-Aufruf mit `contents: write`** | `release.yml` muss `contents: write` an `ci.yml` geben, weil dort `autofix` es deklariert (läuft auf Tags nicht). |
 | niedrig | **MCP: Familien-Treffer beweist nicht den Betreiber** | Die Bezeichnung (Claude, ChatGPT, Gemini) kommt aus der Redirect-URI-Familie, der selbst angegebene `client_name` gilt nur als Behauptung. Ein eigener ChatGPT-Konnektor (`chatgpt.com/connector/oauth/<id>`) oder ein lokales Programm (Loopback) trifft trotzdem eine Familie; akzeptiert, die Zustimmungsseite warnt dafür gesondert. Ein leeres `MCP_ALLOWED_CLIENTS` erlaubt keinen Client mehr, alle nur mit `*`. |
 | niedrig | **Refresh-Token im localStorage** | Der Refresh-Token liegt im Browser-Speicher (`localStorage`), damit die Anmeldung neue Tabs und Browser-Neustarts übersteht. Skripte auf der Seite (XSS) können ihn lesen. Abgemildert durch strikte CSP und Rotation mit Wiederverwendungserkennung. Option: Refresh-Token als HttpOnly-Cookie (Variante B); braucht CSRF-Schutz und eine Umstellung bei getrennten Ursprüngen. |
 | niedrig | **MCP: Bundle vor 1.0** | `symfony/mcp-bundle` ist auf `~0.15.0` gepinnt (mcp/sdk 0.9); API und Verhalten können sich bei Updates ändern, Updates nur mit laufender `McpEndpointTest`/Tool-Tests. |
+
+## Offene Punkte: Messenger, Scheduler, Cache, Storage
+
+- **GeoIP-Update mit mehreren Containern:** Der Scheduler-Job `geoip-update` läuft auf dem Container, der die
+  Scheduler-Sperre hält (kann ein reiner Worker sein); Web-Container lesen ihre eigene Datei unter `/data/geoip`. Mit
+  einem Container (`ROLE=all`) ist das unproblematisch. Optionen: gemeinsames Volume, Sync pro Knoten über den Storage
+  oder ein Timer pro Knoten. Vor der Umstellung auf Benutzerprozesse (Stufe 3) lösen.
+- **Stufe 3: asynchroner Datenexport, Import und PDF** mit Jobstatus und Ergebnisspeicher (`app.storage` ist
+  vorbereitet, Flysystem lokal oder S3).
+- **Rate-Limiter öffnen bei Redis-Ausfall (fail open):** Ist `CACHE_DSN` auf Redis gesetzt und Redis nicht erreichbar,
+  werfen die Limiter nicht, sondern lassen alles durch. Entscheiden: akzeptieren und dokumentieren (aktueller Stand
+  im Admin-Guide) oder die Auth-Limiter fail-closed bzw. auf DB-Zustand umstellen. Die exakten DB-Budgets (MFA, Step-up,
+  Nonces) sind nicht betroffen.
+- **MariaDB und `SKIP LOCKED`:** Der Doctrine-Transport nutzt es auf MySQL 8 (getestet); MariaDB läuft über dieselbe
+  DBAL-Plattformprüfung, ist aber nicht getestet.
+- **Docker-Image nach dem Storage-Paket nicht verifiziert:** Der Build brach beim `composer install` wegen eines
+  504 der GitHub-API ab. Erneut `docker build -f docker/Dockerfile -t club-calendar .` ausführen und den
+  Rollen-Smoke-Test (`ROLE=all`, `web`, `worker`) wiederholen.
+- **Logs der Queue können Empfängeradressen enthalten:** Die Messenger-Logs des Frameworks zu fehlgeschlagenen
+  `SendEmailMessage` können die Adresse enthalten; Logs gelten als sensibel. Prüfen, ob sich das filtern lässt.
+- **Sauberer Stopp mit laufenden langen Jobs ungetestet:** Worker bekommen `stopwaitsecs 60`; was bei einem Job
+  passiert, der länger läuft (SIGKILL, Nachricht wird nach Ablauf erneut zugestellt), ist nicht geprüft.
 
 ## Offene Betriebspunkte
 

@@ -28,6 +28,11 @@ calendar; back up and try on a test environment first), `Version20261025120000` 
   in its shadow DOM, by hash `sha256-+A14ONesVdzkn6nr37Osn+rUqNz4oFGZFDbLXrlae04=`; drift test
   `frontend/src/lib/__tests__/cspStyleHash.test.ts`. A changed hash must also be changed in the nginx example in
   `docs/admin/docs/hosting-without-docker.md`.
+- Infrastructure tables `messenger_messages` (Messenger Doctrine transport), `lock_keys` (scheduler lock) and
+  `cache_items` (scheduler state) are created by migrations but are not ORM entities: `doctrine.yaml` `schema_filter`
+  excludes them, so schema validation and diffs ignore them (and a migration generated from a diff never drops them).
+  Queued messages are encrypted with a key derived from `APP_SECRET`; `app:secrets:rotate` does not re-encrypt them,
+  see CLAUDE.md "Messenger and Scheduler".
 - Mail templates: after changing `backend/templates/email/*.mjml` run `npm run build:mail -w backend`. The compiled
   `*.html.twig` are gitignored (`npm run build` builds them as well).
 - After a deploy the chunks of the previous release are gone; the frontend reloads once on a failed chunk import
