@@ -81,6 +81,7 @@ export function DeleteAccountDialog({
       <div className="ap-stack">
         <p>{t("profile.danger.confirmText")}</p>
         <p className="t-sm">{t("profile.danger.consequence")}</p>
+        <p className="t-sm">{t("profile.danger.exportHint")}</p>
         {failure && <Banner tone="danger">{failure}</Banner>}
       </div>
     </FormDialog>

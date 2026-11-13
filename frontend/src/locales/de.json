@@ -2327,6 +2327,21 @@
       "confirm": "Überall abmelden",
       "failed": "Das Abmelden auf allen Geräten hat nicht geklappt. Bitte versuche es erneut."
     },
+    "export": {
+      "title": "Deine Daten herunterladen",
+      "text": "Du bekommst eine Datei mit allen Daten, die wir über dich gespeichert haben.",
+      "included": "Enthalten sind dein Konto, deine Mitgliedschaften, dein Anmeldeverlauf, deine Einwilligungen und die Inhalte, die du in Vereinen bearbeitet hast.",
+      "excluded": "Nicht enthalten sind Passwörter und Geheimnisse sowie Daten anderer Personen. Du kannst die Datei in jedem Texteditor öffnen.",
+      "limit": "Du kannst die Datei höchstens einmal pro Stunde herunterladen.",
+      "action": "Daten herunterladen",
+      "busy": "Wird vorbereitet …",
+      "done": "Deine Daten wurden heruntergeladen.",
+      "failed": "Der Download hat nicht geklappt. Bitte versuche es erneut.",
+      "confirmAgain": "Bitte bestätige deine Identität und versuche es noch einmal.",
+      "notAllowed": "Der Download ist gerade nicht möglich. Bitte bestätige zuerst deine E-Mail-Adresse und die aktuellen Rechtstexte.",
+      "rateLimited": "Du hast deine Daten gerade erst heruntergeladen. Bitte versuche es später noch einmal.",
+      "rateLimitedWait": "Du hast deine Daten gerade erst heruntergeladen. Bitte versuche es in etwa {{minutes}} Min. noch einmal."
+    },
     "danger": {
       "title": "Gefahrenbereich",
       "text": "Löscht dein Konto mit allen Passkeys und verknüpften Anmeldungen unwiderruflich.",
@@ -2334,6 +2349,7 @@
       "confirmTitle": "Konto löschen?",
       "confirmText": "Dies löscht dein Konto dauerhaft. Dieser Vorgang kann nicht rückgängig gemacht werden.",
       "consequence": "Löscht dein Konto, deine Passkeys und verknüpften Anmeldungen. Du wirst abgemeldet.",
+      "exportHint": "Möchtest du deine Daten behalten? Lade sie vorher unter „Datenschutz“ herunter.",
       "confirm": "Konto löschen",
       "failed": "Das Konto konnte nicht gelöscht werden. Bitte versuche es erneut.",
       "lastMemberOfClub": "Das Konto kann nicht gelöscht werden, solange du das einzige Mitglied eines Vereins bist. Lösche zuerst den Verein oder füge ein weiteres Mitglied hinzu.",

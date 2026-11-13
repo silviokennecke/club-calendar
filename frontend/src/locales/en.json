@@ -2327,6 +2327,21 @@
       "confirm": "Sign out everywhere",
       "failed": "Signing out on all devices did not work. Please try again."
     },
+    "export": {
+      "title": "Download your data",
+      "text": "You get a file with all the data we have stored about you.",
+      "included": "It contains your account, your memberships, your sign-in history, your consents and the content you edited in clubs.",
+      "excluded": "Passwords and secrets as well as data of other people are not included. You can open the file in any text editor.",
+      "limit": "You can download the file once per hour at most.",
+      "action": "Download data",
+      "busy": "Preparing …",
+      "done": "Your data was downloaded.",
+      "failed": "The download did not work. Please try again.",
+      "confirmAgain": "Please confirm your identity and try again.",
+      "notAllowed": "The download is not possible right now. Please confirm your e-mail address and the current legal documents first.",
+      "rateLimited": "You just downloaded your data. Please try again later.",
+      "rateLimitedWait": "You just downloaded your data. Please try again in about {{minutes}} min."
+    },
     "danger": {
       "title": "Danger zone",
       "text": "Permanently deletes your account with all passkeys and linked sign-ins.",
@@ -2334,6 +2349,7 @@
       "confirmTitle": "Delete account?",
       "confirmText": "This deletes your account permanently. This cannot be undone.",
       "consequence": "Deletes your account, your passkeys and linked sign-ins. You will be signed out.",
+      "exportHint": "Want to keep your data? Download it first under “Privacy”.",
       "confirm": "Delete account",
       "failed": "The account could not be deleted. Please try again.",
       "lastMemberOfClub": "Your account cannot be deleted while you are the only member of a club. Delete the club first or add another member.",

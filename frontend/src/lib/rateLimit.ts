@@ -11,3 +11,9 @@ export function rateLimitText(t: TFunction, error: unknown): string {
   if (!seconds) return t("auth.rateLimited");
   return t("auth.rateLimitedWait", { minutes: Math.max(1, Math.ceil(seconds / 60)) });
 }
+
+/** Wait from `Retry-After` in whole minutes (at least 1), or undefined when the server sent none. */
+export function retryAfterMinutes(error: unknown): number | undefined {
+  const seconds = error instanceof ApiError ? error.retryAfter : undefined;
+  return seconds ? Math.max(1, Math.ceil(seconds / 60)) : undefined;
+}
