@@ -294,7 +294,7 @@ Users can also add their own holiday calendar by the address of an ICS file. The
 
 ## Logs and health
 
-In production the app logs only errors, as JSON lines, together with the few messages that came just before each error. Normal requests and "not found" answers are not logged by the app. Secrets and tokens in addresses are masked in the log, but this is a best-effort safeguard: treat the logs as sensitive, restrict who can read them and do not share them unredacted.
+In production the app logs only errors, as JSON lines, together with the few messages that came just before each error. Normal requests and "not found" answers are not logged by the app. Secrets and tokens in addresses are masked in the log, but this is a best-effort safeguard: treat the logs as sensitive, restrict who can read them and do not share them unredacted. Failed e-mail deliveries are logged by the worker, and the log entry can contain the recipient address.
 
 === "Docker"
 
