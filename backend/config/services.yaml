@@ -79,6 +79,21 @@ parameters:
     env(GEOCODER_CACHE_TTL): '3600'       # 1 hour
     env(MAPBOX_PROXY_CACHE_TTL): '2592000' # 30 days
 
+    # File storage (app.storage): STORAGE_SOURCE = storage.local | storage.s3. S3_* only matter for storage.s3.
+    # S3_SSE_C_KEY: base64 of 32 random bytes (server-side encryption with a customer key, needs https);
+    # S3_SSE_C_KEY_PREVIOUS: comma-separated older keys and/or the word "plain", only while rotating.
+    env(STORAGE_SOURCE): 'storage.local'
+    env(STORAGE_LOCAL_PATH): '%kernel.project_dir%/var/storage'
+    env(S3_ENDPOINT): ''
+    env(S3_REGION): 'us-east-1'
+    env(S3_KEY): ''
+    env(S3_SECRET): ''
+    env(S3_BUCKET): ''
+    env(S3_PREFIX): ''
+    env(S3_USE_PATH_STYLE): 'false'
+    env(S3_SSE_C_KEY): ''
+    env(S3_SSE_C_KEY_PREVIOUS): ''
+
     env(MAPBOX_TOKEN): ''
     map.image.zoom: 14
     map.image.width: 800
@@ -173,6 +188,38 @@ services:
     app.scheduler_lock_factory:
         class: Symfony\Component\Lock\LockFactory
         arguments: ['@app.lock_store']
+
+    app.s3_client:
+        class: Aws\S3\S3Client
+        factory: ['@App\Storage\S3ClientFactory', 'create']
+
+    # Same bucket without the automatic SSE-C parameters: the key rotation sets old and new keys per request
+    app.s3_client_raw:
+        class: Aws\S3\S3Client
+        factory: ['@App\Storage\S3ClientFactory', 'createRaw']
+
+    App\Storage\S3ClientFactory:
+        arguments:
+            $endpoint: '%env(S3_ENDPOINT)%'
+            $region: '%env(S3_REGION)%'
+            $accessKey: '%env(S3_KEY)%'
+            $secretKey: '%env(S3_SECRET)%'
+            $pathStyle: '%env(bool:S3_USE_PATH_STYLE)%'
+            $sseCKey: '%env(S3_SSE_C_KEY)%'
+
+    App\Storage\StorageConfig:
+        arguments:
+            $source: '%env(storage_source:STORAGE_SOURCE)%'
+            $endpoint: '%env(S3_ENDPOINT)%'
+            $bucket: '%env(S3_BUCKET)%'
+            $prefix: '%env(S3_PREFIX)%'
+            $sseCKey: '%env(S3_SSE_C_KEY)%'
+            $sseCPrevious: '%env(S3_SSE_C_KEY_PREVIOUS)%'
+
+    App\Storage\S3KeyRotator:
+        arguments:
+            $client: '@app.s3_client_raw'
+            $lockFactory: '@app.scheduler_lock_factory'
 
     App\Security\LocationResolver:
         factory: ['@App\Security\LocationResolverFactory', 'create']

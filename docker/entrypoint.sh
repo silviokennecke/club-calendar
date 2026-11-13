@@ -13,6 +13,8 @@
 #            RESTRICT_REGISTRATION (default 0/false), MCP_ACCESS_TOKEN_TTL, MCP_REFRESH_TOKEN_LIFETIME,
 #            MCP_REFRESH_TOKEN_ABSOLUTE_LIFETIME, MCP_REFRESH_TOKEN_REUSE_GRACE, MCP_ALLOWED_CLIENTS (MCP server, see backend/.env.example),
 #            FEED_ICS_WINDOW_ENABLED, FEED_ICS_PAST_DAYS, FEED_ICS_FUTURE_MONTHS, FEED_ICS_MAX_EVENTS (public feed ICS window), FEED_RATE_LIMIT_PER_IP, FEED_RATE_LIMIT_PER_FEED (public feed rate limits), RUN_MIGRATIONS (default 1), MIGRATION_RETRIES (default 15), PORT (default 8080), LEGAL_DOCUMENTS_PATH
+#            STORAGE_SOURCE (storage.local default | storage.s3), STORAGE_LOCAL_PATH, S3_ENDPOINT, S3_REGION, S3_KEY, S3_SECRET, S3_BUCKET, S3_PREFIX, S3_USE_PATH_STYLE,
+#            S3_SSE_C_KEY, S3_SSE_C_KEY_PREVIOUS (file storage, see backend/.env.example)
 #            MAXMIND_ACCOUNT_ID, MAXMIND_LICENSE_KEY (offline GeoIP for security notices; the entrypoint downloads GeoLite2-City to GEOIP_DB_PATH, default /data/geoip/GeoLite2-City.mmdb)
 # JWT keys:  JWT_PRIVATE_KEY / JWT_PUBLIC_KEY (paths; the image sets /data/config/*.pem, mount a volume at /data/config,
 #            otherwise a new keypair is generated on every container start).
@@ -134,6 +136,12 @@ else
     # Encrypt stored feed and subscription secrets with the current APP_SECRET (legacy plaintext on upgrade, rotation)
     if ! php bin/console app:secrets:rotate --no-interaction >&2; then
         log "WARNING: app:secrets:rotate failed (non-fatal): some secrets could not be encrypted or decrypted; check APP_SECRET / APP_SECRET_PREVIOUS and run the command by hand"
+    fi
+
+    # Re-encrypt S3 objects with the current SSE-C key (a no-op unless STORAGE_SOURCE=storage.s3 with S3_SSE_C_KEY and
+    # S3_SSE_C_KEY_PREVIOUS set; remove S3_SSE_C_KEY_PREVIOUS once it has succeeded)
+    if ! php bin/console app:storage:rotate-key --no-interaction >&2; then
+        log "WARNING: app:storage:rotate-key failed (non-fatal): some objects could not be re-encrypted; check S3_SSE_C_KEY / S3_SSE_C_KEY_PREVIOUS and run the command by hand"
     fi
 fi
 

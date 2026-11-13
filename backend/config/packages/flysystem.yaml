@@ -1,0 +1,18 @@
+# `app.storage` (League\Flysystem\FilesystemOperator) is the application's file storage. STORAGE_SOURCE selects
+# the backend: storage.local (default, files under STORAGE_LOCAL_PATH) or storage.s3 (S3-compatible bucket,
+# optional SSE-C, see App\Storage). Nothing S3-related is instantiated or required while the source is local.
+flysystem:
+    storages:
+        storage.local:
+            local:
+                directory: '%env(resolve:STORAGE_LOCAL_PATH)%'
+
+        storage.s3:
+            aws:
+                client: 'app.s3_client'
+                bucket: '%env(S3_BUCKET)%'
+                prefix: '%env(S3_PREFIX)%'
+
+        app.storage:
+            lazy:
+                source: '%env(storage_source:STORAGE_SOURCE)%'
