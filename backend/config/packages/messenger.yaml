@@ -1,0 +1,33 @@
+framework:
+    messenger:
+        failure_transport: failed
+
+        transports:
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                serializer: App\Messenger\EncryptingSerializer
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
+                    jitter: 0.1
+            failed:
+                dsn: 'doctrine://default?queue_name=failed&auto_setup=0'
+                serializer: App\Messenger\EncryptingSerializer
+
+        buses:
+            messenger.bus.default:
+                middleware:
+                    - doctrine_ping_connection
+                    - doctrine_close_connection
+
+        routing: {}
+
+when@test:
+    framework:
+        messenger:
+            transports:
+                async:
+                    dsn: 'in-memory://'
+                failed:
+                    dsn: 'in-memory://'
