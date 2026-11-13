@@ -28,10 +28,9 @@ parameters:
     env(CLIENT_COUNTRY_HEADER): ''
 
     # Offline GeoIP (city + country in security notices): with a licence key MaxMind is the only source,
-    # `app:geoip:update` downloads GeoLite2-City to GEOIP_DB_PATH
+    # `app:geoip:update` stores GeoLite2-City in app.storage; each node keeps a local copy under the cache directory
     env(MAXMIND_ACCOUNT_ID): ''
     env(MAXMIND_LICENSE_KEY): ''
-    env(GEOIP_DB_PATH): '%kernel.project_dir%/var/geoip/GeoLite2-City.mmdb'
 
     env(WEBAUTHN_RP_ID): '%env(string:key:host:url:APP_URL)%'
     env(APP_NAME): 'Club Calendar'

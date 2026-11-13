@@ -72,7 +72,6 @@ ENV APP_ENV=prod \
     JWT_PRIVATE_KEY=/data/config/private.pem \
     JWT_PUBLIC_KEY=/data/config/public.pem \
     LEGAL_DOCUMENTS_PATH=/data/legal \
-    GEOIP_DB_PATH=/data/geoip/GeoLite2-City.mmdb \
     STORAGE_LOCAL_PATH=/data/storage \
     PORT=8080 \
     XDG_DATA_HOME=/tmp/caddy-data \
@@ -85,7 +84,7 @@ COPY --from=frontend-build --chown=www-data:www-data /build/backend/public/ ./pu
 COPY --from=frontend-build --chown=www-data:www-data /build/backend/templates/email/*.html.twig templates/email/
 
 # Create data and legal directories
-RUN mkdir -p /data/config /data/cache /data/legal /data/geoip /data/storage && \
+RUN mkdir -p /data/config /data/cache /data/legal /data/storage && \
     chown -R www-data:www-data /data
 VOLUME ["/data"]
 

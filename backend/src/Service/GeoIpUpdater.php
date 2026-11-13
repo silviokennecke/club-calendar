@@ -8,7 +8,7 @@ use GeoIp2\Database\Reader;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-/** Downloads the GeoLite2 City database from MaxMind and replaces the local file atomically. */
+/** Downloads the GeoLite2 City database from MaxMind and stores it (validated first) in the file storage. */
 class GeoIpUpdater
 {
     public const string URL = 'https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz';
@@ -20,8 +20,7 @@ class GeoIpUpdater
         private readonly string $accountId,
         #[Autowire('%env(MAXMIND_LICENSE_KEY)%')]
         private readonly string $licenseKey,
-        #[Autowire('%env(GEOIP_DB_PATH)%')]
-        private readonly string $databasePath,
+        private readonly GeoIpDatabase $database,
     ) {
     }
 
@@ -33,31 +32,30 @@ class GeoIpUpdater
         if ('' === trim($this->accountId)) {
             return new GeoIpUpdateResult(GeoIpUpdateStatus::Failed, 'MAXMIND_ACCOUNT_ID is not set.');
         }
-        if (!$force && is_file($this->databasePath) && time() - (int) filemtime($this->databasePath) < self::MIN_AGE) {
+        try {
+            $storedAt = $this->database->storedAt();
+        } catch (\Throwable) {
+            $storedAt = null;
+        }
+        if (!$force && null !== $storedAt && time() - $storedAt < self::MIN_AGE) {
             return new GeoIpUpdateResult(GeoIpUpdateStatus::Skipped, 'The database is younger than 3 days: skipped (use --force).');
         }
 
-        $dir = dirname($this->databasePath);
-        if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
-            return new GeoIpUpdateResult(GeoIpUpdateStatus::Failed, sprintf('Cannot create %s.', $dir));
-        }
-
-        $archive = $this->databasePath.'.'.bin2hex(random_bytes(4)).'.tar.gz';
-        $tmpDb = $this->databasePath.'.'.bin2hex(random_bytes(4)).'.tmp';
+        $base = sys_get_temp_dir().'/geoip-'.bin2hex(random_bytes(6));
+        $archive = $base.'.tar.gz';
+        $tmpDb = $base.'.mmdb';
         try {
             $this->download($archive);
             $this->extract($archive, $tmpDb);
             $this->validate($tmpDb);
-            if (!rename($tmpDb, $this->databasePath)) {
-                throw new \RuntimeException('Cannot replace the database file.');
-            }
+            $this->database->publish($tmpDb);
         } catch (\Throwable $e) {
-            return new GeoIpUpdateResult(GeoIpUpdateStatus::Failed, 'GeoIP update failed, the old file is kept: '.$e->getMessage(), $e);
+            return new GeoIpUpdateResult(GeoIpUpdateStatus::Failed, 'GeoIP update failed, the stored file is kept: '.$e->getMessage(), $e);
         } finally {
             @unlink($archive);
             @unlink($tmpDb);
             // PharData creates a sibling .tar for a .tar.gz
-            @unlink(substr($archive, 0, -3));
+            @unlink($base.'.tar');
         }
 
         return new GeoIpUpdateResult(GeoIpUpdateStatus::Updated, 'GeoLite2 City database updated.');

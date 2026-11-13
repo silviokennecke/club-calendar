@@ -50,7 +50,7 @@ Classic hosting stays on the file cache. Other adapters (for example Memcached, 
 
 ## Storage
 
-The app has a file storage that is either a local folder or an S3-compatible bucket. It is prepared for files the app may need to keep in the future; the current version does not store any files in it yet, so you can leave it at the default. Nothing here is needed for a normal installation.
+The app has a file storage that is either a local folder or an S3-compatible bucket. Today it holds one file: the location database (only with `MAXMIND_LICENSE_KEY`, see below). It is prepared for further files in the future. Nothing here is needed for a normal installation; the default is fine for a single server.
 
 | Variable | Meaning |
 |---|---|
@@ -62,7 +62,7 @@ The app has a file storage that is either a local folder or an S3-compatible buc
 
 All variables are in the [reference](configuration/reference.md#cache-and-file-storage).
 
-With Docker, keep `/data` (or at least `/data/storage`) on a volume when you use the local storage, as the example Compose file does. Some data stays local on purpose: the compiled cache, PDF fonts, logs, the login keys, the legal documents and the location database.
+With Docker, keep `/data` (or at least `/data/storage`) on a volume when you use the local storage, as the example Compose file does. Some data stays local on purpose: the compiled cache, PDF fonts, logs, the login keys, the legal documents and the local copy of the location database.
 
 Check the setup with:
 
@@ -71,6 +71,10 @@ php bin/console app:storage:check
 ```
 
 It writes, reads and deletes a test file and prints the storage in use (source, host of the endpoint, bucket and whether the encryption is on). It never prints secrets.
+
+### Location database
+
+With `MAXMIND_LICENSE_KEY` set, the downloaded location database is kept in this storage. Each container makes a temporary local copy of it in its cache folder and replaces that copy by itself when a newer file is stored; clearing the cache just makes it fetch the copy again. If the storage cannot be reached, the last local copy keeps being used, and without any copy the location in notices stays empty. A broken download never replaces the stored file. Run `php bin/console app:geoip:update --force` to update it right away.
 
 ### Encrypting S3 files with your own key
 

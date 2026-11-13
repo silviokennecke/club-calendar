@@ -4,21 +4,20 @@ declare(strict_types=1);
 
 namespace App\Security;
 
+use App\Service\GeoIpDatabase;
 use GeoIp2\Database\Reader;
 use GeoIp2\Exception\AddressNotFoundException;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 
 /** Offline lookup in a local GeoLite2/GeoIP2 City database; never contacts MaxMind at request time. */
 final class MaxMindLocationResolver implements LocationResolver
 {
     private ?Reader $reader = null;
-    private bool $unavailable = false;
+    private ?string $readerPath = null;
 
     public function __construct(
-        #[Autowire('%env(GEOIP_DB_PATH)%')]
-        private readonly string $databasePath,
+        private readonly GeoIpDatabase $database,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -50,16 +49,25 @@ final class MaxMindLocationResolver implements LocationResolver
         return new Location($city, $record->country->isoCode);
     }
 
+    /** Re-opens the Reader when the local copy was replaced; the old one stays valid until closed here. */
     private function reader(): ?Reader
     {
-        if (null !== $this->reader || $this->unavailable) {
-            return $this->reader;
-        }
         try {
-            $this->reader = new Reader($this->databasePath);
+            $path = $this->database->localPath();
+            if (null === $path) {
+                $this->logger->warning('GeoIP database unavailable (run app:geoip:update)');
+
+                return $this->reader;
+            }
+            if ($path !== $this->readerPath) {
+                $new = new Reader($path);
+                $old = $this->reader;
+                $this->reader = $new;
+                $this->readerPath = $path;
+                $old?->close();
+            }
         } catch (\Throwable $e) {
-            $this->unavailable = true;
-            $this->logger->warning('GeoIP database unavailable (run app:geoip:update)', ['path' => $this->databasePath, 'exception' => $e::class]);
+            $this->logger->warning('GeoIP database unusable', ['exception' => $e::class]);
         }
 
         return $this->reader;

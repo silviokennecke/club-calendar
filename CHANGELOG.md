@@ -17,9 +17,11 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 - **A worker is required:** e-mails (registration codes, password reset, invitations, notices) are now sent asynchronously by a worker and can arrive slightly later; without a running worker no e-mail is sent. The Docker default `ROLE=all` includes one; outside Docker run `php bin/console messenger:consume async scheduler_default` (dev: `npm run dev:worker`).
 - **Existing filesystem caches start cold once** after the upgrade (`CACHE_PREFIX` now seeds the cache keys).
+- **GeoIP in the file storage:** `app:geoip:update` validates the download and stores it in the file storage; every container keeps a versioned local copy in its cache folder and refreshes it when the stored version changes. With several containers the storage must be shared.
 
 ### Removed
 
+- **`GEOIP_DB_PATH`** and the `/data/geoip` volume: no longer used, remove them.
 - **Host cron:** the crontab entries for `app:prune-*`, `app:holidays:refresh` and `app:geoip:update` are no longer needed and no longer supported; delete them. The commands remain for manual runs.
 
 ## [0.1.0] - 2026-11-13

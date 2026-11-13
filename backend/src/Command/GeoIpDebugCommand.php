@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Security\ClientContextResolver;
 use App\Security\LocationResolver;
 use App\Security\MaxMindLocationResolver;
+use App\Service\GeoIpDatabase;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -29,8 +30,7 @@ class GeoIpDebugCommand
         private readonly RequestStack $requestStack,
         #[Autowire('%env(MAXMIND_LICENSE_KEY)%')]
         private readonly string $licenseKey,
-        #[Autowire('%env(GEOIP_DB_PATH)%')]
-        private readonly string $databasePath,
+        private readonly GeoIpDatabase $database,
         #[Autowire('%env(CLIENT_COUNTRY_HEADER)%')]
         private readonly string $countryHeader,
     ) {
@@ -77,7 +77,7 @@ class GeoIpDebugCommand
         $io->definitionList(
             ['Active resolver' => $maxMind ? 'MaxMind GeoLite2 (MAXMIND_LICENSE_KEY is set)' : 'Proxy country header (MAXMIND_LICENSE_KEY is not set)'],
             ['MAXMIND_LICENSE_KEY' => '' !== trim($this->licenseKey) ? 'set' : 'not set'],
-            ['GEOIP_DB_PATH' => $this->databasePath.' ('.self::fileInfo($this->databasePath).')'],
+            ['Database' => $this->databaseInfo()],
             ['CLIENT_COUNTRY_HEADER' => '' === $this->countryHeader ? '(empty: off)' : $this->countryHeader],
             ['Trusted proxies' => [] === $proxies ? '(none: SYMFONY_TRUSTED_PROXIES is empty)' : implode(', ', $proxies)],
         );
@@ -137,8 +137,8 @@ class GeoIpDebugCommand
             if (null === $clientIp || false === filter_var($clientIp, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
                 return sprintf('the client IP %s is private or reserved and has no location.', $clientIp ?? '(none)');
             }
-            if (!is_file($this->databasePath) || !is_readable($this->databasePath)) {
-                return 'the database file is missing or not readable (run app:geoip:update).';
+            if (null === $this->database->localPath()) {
+                return 'the database is not available in the storage or locally (run app:geoip:update, see the log).';
             }
 
             return 'the IP is not in the database, or the file is not a valid City database (see the log).';
@@ -159,15 +159,12 @@ class GeoIpDebugCommand
         return sprintf('the header value "%s" is not a usable country code (two letters; XX and T1 are ignored).', (string) $request->headers->get($this->countryHeader));
     }
 
-    private static function fileInfo(string $path): string
+    private function databaseInfo(): string
     {
-        if (!is_file($path)) {
-            return 'file does not exist';
-        }
-        if (!is_readable($path)) {
-            return 'exists but is not readable';
-        }
+        $stored = $this->database->storedAt();
+        $path = $this->database->localPath();
+        $info = null === $stored ? 'not in the storage' : 'in the storage since '.date('Y-m-d H:i:s', $stored);
 
-        return sprintf('%s bytes, modified %s', number_format((int) filesize($path), 0, '.', ','), date('Y-m-d H:i:s', (int) filemtime($path)));
+        return $info.'; '.(null === $path ? 'no local copy' : sprintf('local copy %s (%s bytes)', $path, number_format((int) filesize($path), 0, '.', ',')));
     }
 }

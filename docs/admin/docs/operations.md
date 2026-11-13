@@ -206,8 +206,8 @@ For more than one server or container, run the same image several times:
 - Give containers time to finish running jobs when they stop: set `stop_grace_period: 90s` (Compose) or the equivalent in your orchestrator.
 - The database changes, the secrets encryption and the storage key rotation run only in `web` and `all` containers.
 
-!!! note "Known limitation: location database with several containers"
-    The weekly location database update runs in whichever container holds the scheduler lock, which can be a worker-only container, while the web containers read the file from their own `/data/geoip`. With a single container this is no issue. With several, put `/data/geoip` on a volume shared by all containers, or accept that each web container updates its file only when it starts with a missing or older-than-seven-days file. Without `MAXMIND_LICENSE_KEY` this does not apply.
+!!! note "Location database with several containers"
+    The weekly location database update stores the file in the [file storage](cache-and-storage.md), and every container fetches its own copy from there when it needs it. With several containers the storage must therefore be shared by all of them (an S3 bucket or a shared volume); with a shared Redis cache all containers notice a new file at once, otherwise within an hour. Without `MAXMIND_LICENSE_KEY` this does not apply.
 
 ## Command-line tools
 

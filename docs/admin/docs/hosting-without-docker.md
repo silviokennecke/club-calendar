@@ -232,7 +232,7 @@ The web server has three jobs:
 | `opcache.enable` | `1` | Faster responses |
 | `date.timezone` | `UTC` | Consistent times |
 
-The user running PHP must be able to write to `backend/var/` (cache; the PDF export stores fonts and temporary files in `backend/var/cache`; the location database for security notices is kept in `backend/var/geoip` by default). The build does not publish source maps. With PHP-FPM,
+The user running PHP must be able to write to `backend/var/` (cache; the PDF export stores fonts and temporary files in `backend/var/cache`). The build does not publish source maps. With PHP-FPM,
 pass the environment through (`clear_env = no`) if you set settings as real environment variables instead of
 `.env.local`.
 

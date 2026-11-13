@@ -17,8 +17,6 @@ services:
       - jwt:/data/config
       # Your imprint, privacy policy and terms (imprint.md, privacy.md, terms.md)
       - ./legal:/data/legal:ro
-      # Location database for security notices (only used with MAXMIND_LICENSE_KEY, see example.env)
-      - geoip:/data/geoip
       # Files of the app's storage (only used with the default local storage)
       - storage:/data/storage
     depends_on:
@@ -35,9 +33,6 @@ services:
   #   environment:
   #     ROLE: worker
   #     DATABASE_URL: mysql://${DB_USER:-club_calendar}:${DB_PASSWORD}@db:3306/${DB_NAME:-club_calendar}?charset=utf8mb4
-  #   volumes:
-  #     # Same volume as the app, so the weekly location database update reaches the web server
-  #     - geoip:/data/geoip
   #   depends_on:
   #     - app
 
@@ -66,6 +61,5 @@ services:
 
 volumes:
   jwt:
-  geoip:
   storage:
   db_data:

@@ -97,10 +97,6 @@ Hier steht die einzige maßgebliche Liste der offenen Sicherheitspunkte. Die Aud
 
 ## Offene Punkte: Messenger, Scheduler, Cache, Storage
 
-- **GeoIP-Update mit mehreren Containern:** Der Scheduler-Job `geoip-update` läuft auf dem Container, der die
-  Scheduler-Sperre hält (kann ein reiner Worker sein); Web-Container lesen ihre eigene Datei unter `/data/geoip`. Mit
-  einem Container (`ROLE=all`) ist das unproblematisch. Optionen: gemeinsames Volume, Sync pro Knoten über den Storage
-  oder ein Timer pro Knoten. Vor der Umstellung auf Benutzerprozesse (Stufe 3) lösen.
 - **Stufe 3: asynchroner Datenexport, Import und PDF** mit Jobstatus und Ergebnisspeicher (`app.storage` ist
   vorbereitet, Flysystem lokal oder S3).
 

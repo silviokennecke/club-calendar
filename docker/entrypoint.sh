@@ -15,7 +15,7 @@
 #            FEED_ICS_WINDOW_ENABLED, FEED_ICS_PAST_DAYS, FEED_ICS_FUTURE_MONTHS, FEED_ICS_MAX_EVENTS (public feed ICS window), FEED_RATE_LIMIT_PER_IP, FEED_RATE_LIMIT_PER_FEED (public feed rate limits), RUN_MIGRATIONS (default 1), MIGRATION_RETRIES (default 15), PORT (default 8080), LEGAL_DOCUMENTS_PATH
 #            STORAGE_SOURCE (storage.local default | storage.s3), STORAGE_LOCAL_PATH, S3_ENDPOINT, S3_REGION, S3_KEY, S3_SECRET, S3_BUCKET, S3_PREFIX, S3_USE_PATH_STYLE,
 #            S3_SSE_C_KEY, S3_SSE_C_KEY_PREVIOUS (file storage, see backend/.env.example)
-#            MAXMIND_ACCOUNT_ID, MAXMIND_LICENSE_KEY (offline GeoIP for security notices; the entrypoint downloads GeoLite2-City to GEOIP_DB_PATH, default /data/geoip/GeoLite2-City.mmdb)
+#            MAXMIND_ACCOUNT_ID, MAXMIND_LICENSE_KEY (offline GeoIP for security notices; the entrypoint stores GeoLite2-City in the file storage when it is missing or older than 3 days)
 # JWT keys:  JWT_PRIVATE_KEY / JWT_PUBLIC_KEY (paths; the image sets /data/config/*.pem, mount a volume at /data/config,
 #            otherwise a new keypair is generated on every container start).
 # Legal documents: mount your legal Markdown files (imprint.md, privacy.md, terms.md) at /data/legal (the image sets
@@ -123,13 +123,11 @@ else
         log "WARNING: legal document sync failed (non-fatal, documents may be out of date)"
     fi
 
-    # GeoLite2 City database for the location in security notices (only with a MaxMind licence key; the scheduler refreshes it weekly)
+    # GeoLite2 City database for the location in security notices (only with a MaxMind licence key). Stored in the file
+    # storage; the command skips the download while the stored file is younger than 3 days. The scheduler refreshes it weekly.
     if [ -n "${MAXMIND_LICENSE_KEY:-}" ]; then
-        geoip_db="${GEOIP_DB_PATH:-/data/geoip/GeoLite2-City.mmdb}"
-        if [ ! -s "$geoip_db" ] || [ -n "$(find "$geoip_db" -mtime +7 2>/dev/null)" ]; then
-            if ! php bin/console app:geoip:update --force --no-interaction >&2; then
-                log "WARNING: GeoIP database update failed (non-fatal, locations stay empty or outdated)"
-            fi
+        if ! php bin/console app:geoip:update --no-interaction >&2; then
+            log "WARNING: GeoIP database update failed (non-fatal, locations stay empty or outdated)"
         fi
     fi
 

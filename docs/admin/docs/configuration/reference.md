@@ -77,9 +77,8 @@ City and country in security mails and the security log. See [Location in securi
 
 | Variable | Default | Description |
 |---|---|---|
-| `MAXMIND_ACCOUNT_ID` | empty | Your MaxMind account ID. Needed with the licence key to download the database. |
+| `MAXMIND_ACCOUNT_ID` | empty | Your MaxMind account ID. Needed with the licence key to download the database. The database is kept in the [file storage](../cache-and-storage.md). |
 | `MAXMIND_LICENSE_KEY` | empty | MaxMind licence key. When set, the local GeoLite2 City database is the only source of locations and the country header is ignored. Using the database means accepting MaxMind's licence terms. |
-| `GEOIP_DB_PATH` | Docker image: `/data/geoip/GeoLite2-City.mmdb`. Without Docker: `backend/var/geoip/GeoLite2-City.mmdb` | Where the database file is stored. The folder must be writable and, with Docker, kept on a volume. |
 | `CLIENT_COUNTRY_HEADER` | empty | Header in which your CDN or proxy sends the visitor's country code. Used only without a MaxMind key and only for requests from a trusted proxy (`SYMFONY_TRUSTED_PROXIES`). Empty = off. |
 
 

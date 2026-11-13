@@ -9,6 +9,7 @@ use App\Security\ClientContextResolver;
 use App\Security\HeaderCountryLocationResolver;
 use App\Security\LocationResolver;
 use App\Security\MaxMindLocationResolver;
+use App\Service\GeoIpDatabase;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\Console\Application;
@@ -28,10 +29,13 @@ class GeoIpDebugCommandTest extends TestCase
         Request::setTrustedProxies([], Request::HEADER_X_FORWARDED_FOR);
     }
 
-    private function tester(LocationResolver $resolver, string $header = 'CF-IPCountry', string $key = '', string $db = '/nonexistent/db.mmdb'): CommandTester
+    private function tester(LocationResolver $resolver, string $header = 'CF-IPCountry', string $key = '', ?string $db = null): CommandTester
     {
+        $database = $this->createStub(GeoIpDatabase::class);
+        $database->method('localPath')->willReturn($db);
+        $database->method('storedAt')->willReturn(null === $db ? null : time());
         $this->stack = new RequestStack();
-        $command = new GeoIpDebugCommand(new ClientContextResolver($this->stack, $resolver), $resolver, $this->stack, $key, $db, $header);
+        $command = new GeoIpDebugCommand(new ClientContextResolver($this->stack, $resolver), $resolver, $this->stack, $key, $database, $header);
         $app = new Application();
         $app->addCommand($command);
 
@@ -106,7 +110,7 @@ class GeoIpDebugCommandTest extends TestCase
 
     public function testMaxMindPrivateIpAndMissingFile(): void
     {
-        $resolver = new MaxMindLocationResolver('/nonexistent/db.mmdb', new NullLogger());
+        $resolver = new MaxMindLocationResolver($this->createStub(GeoIpDatabase::class), new NullLogger());
         $t = $this->tester($resolver, '', 'secret-key');
         $t->execute(['ip' => '192.168.1.1']);
         $out = $t->getDisplay();
@@ -115,12 +119,12 @@ class GeoIpDebugCommandTest extends TestCase
         self::assertStringNotContainsString('secret-key', $out);
 
         $t->execute(['ip' => '81.2.69.142']);
-        self::assertStringContainsString('missing or not readable', self::flat($t->getDisplay()));
+        self::assertStringContainsString('not available in the storage or locally', self::flat($t->getDisplay()));
     }
 
     public function testMaxMindWithFixtureDatabase(): void
     {
-        $resolver = new MaxMindLocationResolver(self::FIXTURE, new NullLogger());
+        $resolver = new MaxMindLocationResolver($this->createConfiguredStub(GeoIpDatabase::class, ['localPath' => self::FIXTURE]), new NullLogger());
         $t = $this->tester($resolver, '', 'k', self::FIXTURE);
         $t->execute(['ip' => '81.2.69.142']);
         $out = $t->getDisplay();
