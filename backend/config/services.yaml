@@ -28,7 +28,8 @@ parameters:
     env(GEOIP_DB_PATH): '%kernel.project_dir%/var/geoip/GeoLite2-City.mmdb'
 
     env(WEBAUTHN_RP_ID): '%env(string:key:host:url:APP_URL)%'
-    env(WEBAUTHN_RP_NAME): 'Club Calendar'
+    env(APP_NAME): 'Club Calendar'
+    env(WEBAUTHN_RP_NAME): '%env(APP_NAME)%'
     env(WEBAUTHN_USER_VERIFICATION): 'preferred'
 
     env(MICROSOFT_TENANT_ID): 'common'

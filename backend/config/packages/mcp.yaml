@@ -1,8 +1,8 @@
 mcp:
     servers:
         app:
-            name: 'Club Calendar'
-            description: 'Club Calendar: read clubs, calendars and events, and draft events.'
+            name: '%env(APP_NAME)%'
+            description: 'Read clubs, calendars and events, and draft events.'
             transports:
                 stdio: false
                 http: true

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\OAuth;
 
+use App\Service\AppBranding;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -18,6 +19,7 @@ class OAuthMetadataController
 {
     public function __construct(
         private readonly OAuthServerService $oauth,
+        private readonly AppBranding $branding,
         #[Autowire(env: 'APP_URL')]
         private readonly string $appUrl,
         #[Autowire(env: 'BACKEND_URL')]
@@ -55,7 +57,7 @@ class OAuthMetadataController
             'authorization_servers' => [rtrim($this->appUrl, '/')],
             'scopes_supported' => array_map(static fn (McpScope $s) => $s->value, McpScope::cases()),
             'bearer_methods_supported' => ['header'],
-            'resource_name' => 'Club Calendar',
+            'resource_name' => $this->branding->name(),
         ]);
     }
 

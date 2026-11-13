@@ -4,7 +4,7 @@
 #   anything else    executed as is, e.g. `php bin/console doctrine:fixtures:load`
 #
 # Required:  APP_SECRET, JWT_REFRESH_SECRET, DATABASE_URL, APP_URL (public URL, e.g. https://cal.example.com)
-# Optional:  WEBAUTHN_RP_NAME, FRONTEND_URL / BACKEND_URL / WEBAUTHN_RP_ID (derived from APP_URL), MAILER_DSN, MAILER_FROM, MAPBOX_TOKEN,
+# Optional:  APP_NAME, WEBAUTHN_RP_NAME, FRONTEND_URL / BACKEND_URL / WEBAUTHN_RP_ID (derived from APP_URL), MAILER_DSN, MAILER_FROM, MAPBOX_TOKEN,
 #            APP_SECRET_PREVIOUS (only while rotating APP_SECRET), GOOGLE_*/MICROSOFT_*/APPLE_* OAuth settings, SYMFONY_TRUSTED_PROXIES (behind a TLS proxy, e.g. PRIVATE_SUBNETS),
 #            RESTRICT_REGISTRATION (default 0/false), MCP_ACCESS_TOKEN_TTL, MCP_REFRESH_TOKEN_LIFETIME,
 #            MCP_REFRESH_TOKEN_ABSOLUTE_LIFETIME, MCP_REFRESH_TOKEN_REUSE_GRACE, MCP_ALLOWED_CLIENTS (MCP server, see backend/.env.example),
@@ -25,7 +25,7 @@ log() { echo "[entrypoint] $*" >&2; }
 cd "$APP_DIR"
 
 export MAILER_DSN="${MAILER_DSN:-null://null}"
-export MAILER_FROM="${MAILER_FROM:-Club Calendar <noreply@localhost>}"
+export MAILER_FROM="${MAILER_FROM:-${APP_NAME:-Club Calendar} <noreply@localhost>}"
 export GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-}" GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET:-}"
 export MICROSOFT_CLIENT_ID="${MICROSOFT_CLIENT_ID:-}" MICROSOFT_CLIENT_SECRET="${MICROSOFT_CLIENT_SECRET:-}"
 export APPLE_CLIENT_ID="${APPLE_CLIENT_ID:-}" APPLE_CLIENT_SECRET="${APPLE_CLIENT_SECRET:-}"

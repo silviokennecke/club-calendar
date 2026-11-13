@@ -31,7 +31,6 @@ use Symfony\Component\Uid\Uuid;
  */
 class MfaService
 {
-    public const string ISSUER = 'Club Calendar';
     public const string PURPOSE_SETUP = 'mfa.setup';
     public const int SETUP_TTL = 900;
     public const string METHOD_TOTP = 'totp';
@@ -49,6 +48,7 @@ class MfaService
         private readonly SecurityEventLogger $events,
         private readonly AccountMailer $mailer,
         private readonly ClientContextResolver $contextResolver,
+        private readonly AppBranding $branding,
     ) {
     }
 
@@ -105,7 +105,7 @@ class MfaService
         $result = ['setupToken' => $token, 'backupCodes' => $codes];
         if (self::METHOD_TOTP === $method) {
             $result['secret'] = $secret;
-            $result['otpauthUri'] = Totp::otpauthUri(self::ISSUER, $user->getEmail(), $secret);
+            $result['otpauthUri'] = Totp::otpauthUri($this->branding->name(), $user->getEmail(), $secret);
         }
 
         return $result;

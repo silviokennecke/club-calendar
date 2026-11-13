@@ -147,11 +147,11 @@ class RestrictedRegistrationTest extends WebTestCase
         $this->boot(false);
         $r = TestHelper::jsonRequest($this->client, 'GET', '/api/auth/registration');
         $this->assertSame(200, $r['status']);
-        $this->assertSame(['restricted' => false, 'clubCreationAllowed' => true], $r['body']);
+        $this->assertSame(['restricted' => false, 'clubCreationAllowed' => true, 'appName' => 'Club Calendar'], $r['body']);
 
         $this->boot(true);
         $r = TestHelper::jsonRequest($this->client, 'GET', '/api/auth/registration');
-        $this->assertSame(['restricted' => true, 'clubCreationAllowed' => true], $r['body']);
+        $this->assertSame(['restricted' => true, 'clubCreationAllowed' => true, 'appName' => 'Club Calendar'], $r['body']);
     }
 
     public function testSsoNewUserWithoutInvitationIsRedirectedAndNothingIsCreated(): void

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Club Calendar API
-  version: '1.0'
+  version: '1.1'
   summary: HTTP API of the Club Calendar backend (Symfony, `backend/`).
   description: |
     Hand-written reference of every route under `/api`. It is checked against the Symfony router by
@@ -1415,9 +1415,12 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [restricted, clubCreationAllowed]
+                required: [restricted, clubCreationAllowed, appName]
                 properties:
                   restricted: { type: boolean }
+                  appName:
+                    type: string
+                    description: Instance name from `APP_NAME` (sanitized, at most 60 characters; default `Club Calendar`).
                   clubCreationAllowed:
                     type: boolean
                     description: >-

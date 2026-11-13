@@ -19,6 +19,7 @@ use App\Security\AuthRateLimiter;
 use App\Security\CurrentUserResolver;
 use App\Security\StepUp\RequiresStepUp;
 use App\Service\AccountService;
+use App\Service\AppBranding;
 use App\Service\AuthService;
 use App\Service\ClubCreationPolicy;
 use App\Service\FeedProof;
@@ -54,6 +55,7 @@ class AuthController extends AbstractApiController
         private readonly LegalConsentService $legal,
         private readonly RegistrationPolicy $registrationPolicy,
         private readonly ClubCreationPolicy $clubCreationPolicy,
+        private readonly AppBranding $branding,
         private readonly EntityManagerInterface $em,
         #[Autowire(service: 'limiter.password_reset_email')]
         private readonly RateLimiterFactory $passwordResetEmailLimiter,
@@ -427,6 +429,7 @@ class AuthController extends AbstractApiController
         return new JsonResponse([
             'restricted' => $this->registrationPolicy->isRestricted(),
             'clubCreationAllowed' => $this->clubCreationPolicy->isCreationAllowed(),
+            'appName' => $this->branding->name(),
         ]);
     }
 
