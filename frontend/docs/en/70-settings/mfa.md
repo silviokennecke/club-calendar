@@ -65,7 +65,7 @@ The profile warns you when 2 or fewer backup codes are left. When you sign in wi
 ## Lost your phone
 
 :::warning
-If you lose your authenticator app and have no backup codes or passkey left, only the operator of this Club Calendar can reset MFA for you.
+If you lose your authenticator app and have no backup codes or passkey left, only the operator of this app can reset MFA for you.
 :::
 
 Sign in with your password, choose **Use a backup code** and enter one code. The code works only once. MFA stays on.

@@ -65,7 +65,7 @@ Das Profil warnt dich, wenn nur noch 2 oder weniger Backup-Codes übrig sind. Me
 ## Handy verloren
 
 :::warning
-Hast du Authenticator-App, Backup-Codes und Passkey verloren, kann nur der Betreiber dieses Club Calendar MFA für dich zurücksetzen.
+Hast du Authenticator-App, Backup-Codes und Passkey verloren, kann nur der Betreiber dieser Anwendung MFA für dich zurücksetzen.
 :::
 
 Melde dich mit deinem Passwort an, wähle **Backup-Code verwenden** und gib einen Code ein. Der Code funktioniert nur einmal. MFA bleibt eingeschaltet.

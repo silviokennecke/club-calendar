@@ -1,7 +1,7 @@
 ---
 title: Help
 order: 0
-description: Welcome to the Club Calendar help
+description: Welcome to the help
 ---
 
 # Welcome

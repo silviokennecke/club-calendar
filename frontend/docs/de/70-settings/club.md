@@ -6,7 +6,7 @@ description: Vereinsname und Zeitzone, die Vereinsauswahl, weitere Vereine anleg
 
 # Verein und Vereinsauswahl
 
-Der Verein ist die oberste Ebene in Club Calendar: Er enthält alle Kalender, Mitglieder, Orte und Feeds. Du kannst Mitglied in mehreren Vereinen sein und jederzeit zwischen ihnen wechseln.
+Der Verein ist die oberste Ebene in dieser Anwendung: Er enthält alle Kalender, Mitglieder, Orte und Feeds. Du kannst Mitglied in mehreren Vereinen sein und jederzeit zwischen ihnen wechseln.
 
 ## Vereinsname ändern
 
@@ -55,7 +55,7 @@ Die Zeitzone wirkt sich so aus:
 
 Die Vereinsauswahl erreichst du unter `/clubs`. Dort siehst du jeden Verein als Karte mit Anzahl der Kalender und Mitglieder. Der zuletzt genutzte Verein ist mit **Zuletzt genutzt** markiert. Offene Einladungen siehst du ebenfalls dort, mehr dazu unter [Einladungen](help:team/invitations).
 
-Nach dem Anmelden führt dich Club Calendar direkt in deinen zuletzt genutzten Kalender. Die Auswahl siehst du nur, wenn du sie über **Alle Vereine anzeigen** öffnest.
+Nach dem Anmelden führt dich die Anwendung direkt in deinen zuletzt genutzten Kalender. Die Auswahl siehst du nur, wenn du sie über **Alle Vereine anzeigen** öffnest.
 
 ## Einen weiteren Verein anlegen
 

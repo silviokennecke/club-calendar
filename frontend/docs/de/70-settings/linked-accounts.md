@@ -1,7 +1,7 @@
 ---
 title: Verknüpfte Anmeldungen
 order: 40
-description: Dein Google- oder Microsoft-Konto mit Club Calendar verbinden.
+description: Dein Google- oder Microsoft-Konto mit dieser Anwendung verbinden.
 ---
 
 # Verknüpfte Anmeldungen
@@ -18,7 +18,7 @@ Ist für dein Konto Multi-Faktor-Authentifizierung (MFA) eingeschaltet, kann sic
 
 Ist die Bestätigung abgelaufen, während du beim Anbieter warst, fragt die Seite erneut. Bestätige, dann wird die Verknüpfung abgeschlossen (innerhalb von 5 Minuten).
 
-Ein Anbieterkonto kann nur mit einem Club-Calendar-Konto verknüpft sein, und pro Anbieter ist ein Konto möglich.
+Ein Anbieterkonto kann nur mit einem Konto dieser Anwendung verknüpft sein, und pro Anbieter ist ein Konto möglich.
 
 ## Verknüpfung trennen
 

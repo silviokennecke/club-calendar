@@ -6,7 +6,7 @@ description: Club name and time zone, the club picker, creating more clubs and s
 
 # Club and club picker
 
-The club is the top level in Club Calendar: it holds all calendars, members, locations and feeds. You can be a member of several clubs and switch between them at any time.
+The club is the top level in this app: it holds all calendars, members, locations and feeds. You can be a member of several clubs and switch between them at any time.
 
 ## Change the club name
 
@@ -55,7 +55,7 @@ The time zone has these effects:
 
 You reach the club picker at `/clubs`. It shows each club as a card with the number of calendars and members. The club you used last is marked **Last used**. Open invitations also appear there, see [Invitations](help:team/invitations).
 
-After signing in, Club Calendar takes you straight to your last used calendar. You only see the picker when you open it via **Show all clubs**.
+After signing in, the app takes you straight to your last used calendar. You only see the picker when you open it via **Show all clubs**.
 
 ## Create another club
 

@@ -1,7 +1,7 @@
 ---
 title: Linked sign-ins
 order: 40
-description: Connect your Google or Microsoft account to Club Calendar.
+description: Connect your Google or Microsoft account to this app.
 ---
 
 # Linked sign-ins
@@ -18,7 +18,7 @@ If multi-factor authentication (MFA) is on for your account, an address that is 
 
 If the confirmation ran out while you were at the provider, the page asks again. Confirm, and the link completes (within 5 minutes).
 
-A provider account can be linked to only one Club Calendar account, and one account per provider is possible.
+A provider account can be linked to only one account in this app, and one account per provider is possible.
 
 ## Unlink
 
