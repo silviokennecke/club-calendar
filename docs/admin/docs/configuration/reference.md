@@ -7,6 +7,7 @@ All variables an admin can set. Variables marked **required** have no default. T
 | Variable | Default | Description |
 |---|---|---|
 | `APP_URL` | **required** | Public address of the app, e.g. `https://calendar.example.com`. Used for all links in e-mails and redirects. |
+| `APP_NAME` | `Club Calendar` | Name of your installation. Shown as page title and logo text, in e-mails (header, footer, subjects), as sender name of mails (Docker image, unless `MAILER_FROM` is set), in authenticator apps and as server name for connected AI apps. Surrounding spaces and control characters are removed, at most 60 characters; empty = default. Restart the app after changing it. |
 | `APP_ENV` | `dev` (`prod` in the Docker image) | Use `prod` on a live server. |
 | `FRONTEND_URL` | `APP_URL` | Address of the web app. Only for split setups. Passkeys work only on exactly this address. |
 | `BACKEND_URL` | `APP_URL` | Public address of the API. Only for split setups. It is used in the link for confirming a new e-mail address and for SSO, so it must be reachable by users. |
@@ -80,7 +81,7 @@ City and country in security mails and the security log. See [Location in securi
 
 | Variable | Default | Description |
 |---|---|---|
-| `WEBAUTHN_RP_NAME` | `Club Calendar` | Name shown by the browser when users create a passkey. |
+| `WEBAUTHN_RP_NAME` | `APP_NAME` | Name shown by the browser when users create a passkey. Passkeys created earlier keep the name they had. |
 | `WEBAUTHN_RP_ID` | host of `APP_URL` | Domain passkeys belong to. A passkey only works on the domain it was created for, so changing it makes existing passkeys unusable. |
 | `WEBAUTHN_USER_VERIFICATION` | `preferred` | `preferred`, `required` (always PIN or biometrics) or `discouraged`. |
 
@@ -92,7 +93,7 @@ See [Mail and maps](mail-and-maps.md).
 | Variable | Default | Description |
 |---|---|---|
 | `MAILER_DSN` | `null://null` (mails are discarded) | Mail server connection, e.g. `smtp://user:pass@host:587`. Without it no mail is sent, so nobody can confirm an address. |
-| `MAILER_FROM` | `Club Calendar <noreply@localhost>` | Sender of all mails. Use an address on a domain you control. |
+| `MAILER_FROM` | Docker image: `"<APP_NAME> <noreply@localhost>"` | Sender of all mails; when set, it replaces the whole default including the name. Use an address on a domain you control. |
 
 
 ## Maps

@@ -78,6 +78,10 @@ TRUSTED_HOSTS=www.example.com
 
 The Docker image speaks plain HTTP on port 8080 and does not handle HTTPS itself. If you run a reverse proxy or load balancer in front (the example Compose setup does), set `SYMFONY_TRUSTED_PROXIES` to the proxy addresses, for example `10.0.0.0/8,172.16.0.0/12,192.168.0.0/16`. Without it, the app sees every visitor as coming from the proxy, and the [rate limits](../security.md) apply to all visitors together.
 
+## Instance name
+
+`APP_NAME` (default `Club Calendar`) is the name your users see: page title, logo text, e-mails and the passkey prompt. Set it in the environment and restart. The Docker image also puts it into the page title that is shown before the app has loaded. Without Docker, that first title stays `Club Calendar` until the app loads; edit `<title>` in `backend/public/index.html` after each build if you want your name there from the start.
+
 ## Checking your configuration
 
 | Command | What it checks |

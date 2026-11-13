@@ -9,7 +9,7 @@ The app sends mail for account security and invitations. Without working mail, p
 | Variable | Meaning |
 |---|---|
 | `MAILER_DSN` | How to reach your mail server. |
-| `MAILER_FROM` | The sender shown to recipients, for example `Club Calendar <noreply@example.org>`. |
+| `MAILER_FROM` | The sender shown to recipients, for example `Club Calendar <noreply@example.org>`. If unset, the Docker image uses your `APP_NAME` with `noreply@localhost`. |
 
 Examples for `MAILER_DSN`:
 

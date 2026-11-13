@@ -369,7 +369,7 @@ target-groups,feeds,feeds/new,feeds/:feedId}` (no calendar in the URL; the old `
 - History focus: `lib/historyFocus.ts` (`useHistoryFocus` in `BackgroundRoutes`) moves focus to the page `h1`
   (else `#main`) after every route change between different pages (link, redirect, back / forward) unless the page
   already focused something in `#main`; not for dialogs (own focus logic) or query-only changes. Page titles:
-  `usePageTitle(title)` (`lib/usePageTitle.ts`, "<title> – Club Calendar", i18n) in every page / layout; routed modals
+  `usePageTitle(title)` (`lib/usePageTitle.ts`, "<title> – <appName>", i18n; the name comes from `useAppName()` in `lib/appName.ts`, runtime `appName` of `GET /api/auth/registration`, also used by `Logo`; texts use `{{appName}}`, see `../CLAUDE.md` "Branding") in every page / layout; routed modals
   never set a title. Dialog titles are `h2` (the page keeps the only `h1`).
 - Import details: the step is kept in the history state (`{ importStep: "review" | "done" }`, same URL), so back /
   forward move between the steps; `useUnsavedChanges(dirty, { blockSamePath: true })` also holds same-path POPs; the

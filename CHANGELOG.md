@@ -5,6 +5,10 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ## [Unreleased]
 
+### Added
+
+- **Instance name:** new setting `APP_NAME` (default `Club Calendar`) names the installation. It appears as page title and logo text, in e-mails (header, footer, subjects), as default mail sender name in the Docker image, in the passkey prompt (`WEBAUTHN_RP_NAME` still overrides), in authenticator apps and as MCP server name. The Docker image also sets the initial page title at start.
+
 ## [0.1.0] - 2026-11-13
 
 ### Added

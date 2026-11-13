@@ -188,7 +188,7 @@ Passkeys let users sign in with fingerprint, face or a device PIN instead of a p
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `WEBAUTHN_RP_NAME` | | Name shown in the browser prompt. |
+| `WEBAUTHN_RP_NAME` | `APP_NAME` | Name shown in the browser prompt. |
 | `WEBAUTHN_RP_ID` | host of `APP_URL` | The domain passkeys are bound to. |
 | `WEBAUTHN_USER_VERIFICATION` | `preferred` | `preferred`, `required` or `discouraged`. |
 
