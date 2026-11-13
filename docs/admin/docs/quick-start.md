@@ -85,7 +85,7 @@ More in [Security](security.md).
 - [Configuration](configuration/index.md): mail, maps, single sign-on and all other settings
 - [Legal documents](legal.md)
 - [Security](security.md)
-- [Operations](operations.md): updates, backups and cron jobs
+- [Operations](operations.md): updates, backups, the worker and scheduled jobs
 
 ## Updating
 

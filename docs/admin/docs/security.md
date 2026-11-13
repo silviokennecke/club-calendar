@@ -44,7 +44,7 @@ Users can turn on multi-factor authentication (MFA) for password sign-in in thei
 - If a user's account has MFA on, **Sign in with Google or Apple** for an address not yet linked to the account is refused with the advice to sign in with password and MFA and link the provider in the profile. Providers already linked keep working.
 - Users receive a notification mail when MFA is switched on or off, when backup codes are made again or used, and when a passkey or a single sign-on provider is added or a passkey is deleted, or an AI app is connected to the account.
 
-Nothing needs configuring. If a user has lost the device with the authenticator app and also has no backup codes, an operator can switch MFA off on the command line, see [Command-line tools](operations.md#command-line-tools). Check the identity of the person first. Run the daily cleanup `app:prune-auth-nonces` as well (see [Operations](operations.md#scheduled-tasks)).
+Nothing needs configuring. If a user has lost the device with the authenticator app and also has no backup codes, an operator can switch MFA off on the command line, see [Command-line tools](operations.md#command-line-tools). Check the identity of the person first. The daily cleanup of one-time values runs by itself (see [Operations](operations.md#scheduled-tasks-and-the-worker)).
 
 ### Confirming sensitive actions
 
@@ -71,7 +71,7 @@ The app keeps a log of security-relevant events for each account. It holds:
 Each entry has the time, the IP address, the approximate city and country, the browser name and version, and the full user agent text the browser sent (at most 512 characters, kept for investigations). Notification mails and the log's browser field show only a well-known browser name (such as Chrome, Firefox, Safari or Edge) with a version number; anything else is shown as unknown, so nobody can smuggle links or other text into notification mails. The full user agent is never shown in mails or in the app. The log is not shown in the app; it is only in the database.
 
 - Failed attempts are merged: repeated failures from the same address within the same clock hour (UTC) count up in one entry. There are at most 50 failure entries per account and day.
-- Entries older than **one year** are deleted by the scheduled command `app:prune-security-events` (see [Operations](operations.md#scheduled-tasks)). They are also deleted when the account is deleted.
+- Entries older than **one year** are deleted by a daily scheduled job (see [Operations](operations.md#scheduled-tasks-and-the-worker)). They are also deleted when the account is deleted.
 - **Your privacy policy must say that this log exists**, what it contains and how long it is kept. The [legal documents](legal.md#what-the-security-log-stores) page lists the details.
 
 Users also get a mail when there are **three failed sign-in attempts within one hour** on their account. The app sends at most one such mail per day. Three failed confirmations of a sensitive action within an hour (which can only happen inside a signed-in session) get their own mail with different wording: someone who is signed in failed to confirm, so the user should sign out everywhere and change the password.
@@ -88,7 +88,7 @@ The download is built while it is sent, so large accounts take a while. See [PHP
 
 Security entries and mails name the approximate location of the sign-in. Two ways to get it:
 
-- **With a MaxMind licence key** (`MAXMIND_ACCOUNT_ID` and `MAXMIND_LICENSE_KEY`): the app uses the GeoLite2 City database, stored on your server. It never asks an external service while users work. You need a free MaxMind account, and using the database means accepting MaxMind's licence terms. The container downloads the database at start when it is missing or older than seven days. Run `app:geoip:update` weekly as well, see [Operations](operations.md#scheduled-tasks). Without the key the command does nothing.
+- **With a MaxMind licence key** (`MAXMIND_ACCOUNT_ID` and `MAXMIND_LICENSE_KEY`): the app uses the GeoLite2 City database, stored on your server. It never asks an external service while users work. You need a free MaxMind account, and using the database means accepting MaxMind's licence terms. The container downloads the database at start when it is missing or older than seven days. The scheduler refreshes it weekly, see [Operations](operations.md#scheduled-tasks-and-the-worker). Without the key nothing is downloaded. With several containers, see the [known limitation](operations.md#several-containers).
 - **Without a key:** only the country is known, and only when your CDN or proxy sends it in a header (`CLIENT_COUNTRY_HEADER`, default empty). Otherwise the location stays empty.
 
 The visitor's address and the country header are trusted only for requests that come through a proxy listed in `SYMFONY_TRUSTED_PROXIES`. Without that list anyone could fake them. The variables are in the [reference](configuration/reference.md#security-notices-and-location).
@@ -106,8 +106,8 @@ With Docker, run it through `docker compose exec app`. The output shows which me
 New accounts must confirm their address with a **6-digit code** sent by mail. The code is valid for 15 minutes, works once and allows 5 attempts. Until it is confirmed, the account can only reach the confirmation step.
 
 - Resending is limited, see [Rate limits]below.
-- Unconfirmed accounts are deleted automatically after 30 days by the scheduled command `app:prune-unverified-users` (club members are never deleted this way), see [Operations](operations.md).
-- A working mail setup is required, see [Mail and maps](configuration/mail-and-maps.md).
+- Unconfirmed accounts are deleted automatically after 30 days by a daily scheduled job (club members are never deleted this way), see [Operations](operations.md#scheduled-tasks-and-the-worker).
+- A working mail setup and a running worker are required (mails are sent through the queue), see [Mail and maps](configuration/mail-and-maps.md).
 
 If a user cannot receive the code, you can confirm the address yourself:
 
@@ -121,6 +121,9 @@ Limits slow down attackers and mistakes. When one is hit, the app answers `429` 
 
 !!! warning "Behind a reverse proxy, set `SYMFONY_TRUSTED_PROXIES`"
     The limits are counted per client IP address. If a proxy or load balancer sits in front of the app and you do not list it in `SYMFONY_TRUSTED_PROXIES` (for example `10.0.0.0/8,172.16.0.0/12,192.168.0.0/16`), **all users share the proxy's IP address and its limits**. A few sign-ins would then lock everybody out. This applies to every reverse proxy or TLS terminator in front of the container, including the Caddy of the example `docker-compose.override.yml` (which already sets it). It is only unnecessary when visitors connect to the container directly.
+
+!!! warning "With a shared Redis cache, the limits fail open"
+    If `CACHE_DSN` points to Redis or Valkey and that server is unreachable, nothing breaks visibly, but the counters of these limits cannot be read or saved, so **the limits are not enforced** until Redis is back. Connected AI apps lose their open sessions as well. Limits that are counted in the database (wrong MFA codes, wrong passwords in a sensitive confirmation, guess budgets of tokens) keep working. Monitor Redis, and keep the default file cache if you cannot. See [Cache and storage](cache-and-storage.md#when-redis-is-down).
 
 | Action | Limit | Tunable with |
 |---|---|---|
@@ -250,7 +253,7 @@ The app can let AI assistants (such as Claude, ChatGPT or Gemini) read a user's 
 - Behind a proxy, do not buffer `/api/mcp` and allow long-lived connections.
 - With nginx or another web server, the discovery addresses under `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource`, and `/api/mcp`, must reach the app, and `/api/mcp` must not be buffered. `/.well-known/change-password` (a redirect for password managers) must reach the app as well. The bundled Caddy and `.htaccess` already do this.
 - Connection lifetimes can be tuned with the `MCP_*` variables, see the [reference](configuration/reference.md).
-- Expired entries are cleaned up by the scheduled command `app:prune-oauth` (see [Operations](operations.md)).
+- Expired entries are cleaned up by a daily scheduled job (see [Operations](operations.md#scheduled-tasks-and-the-worker)).
 
 ## Quotas
 
@@ -285,5 +288,6 @@ Keep these out of version control and back them up. Treat them like passwords.
 | JWT keys (`/data/config/` in Docker, `backend/config/jwt/` otherwise) | Access tokens (15 minutes) | With new keys, current access tokens become invalid and browsers fetch new ones automatically; users usually notice nothing. Keep the keys between updates anyway. |
 | Database password (`DATABASE_URL`) | Database access | The app cannot start until both sides match. |
 | OAuth client secrets | SSO | SSO sign-in fails until updated. |
+| `S3_SSE_C_KEY` (if you use S3 storage) | Encryption of the files in the bucket | The files cannot be read and cannot be recovered. See [Cache and storage](cache-and-storage.md#storage). |
 
 Never reuse these values between test and production.

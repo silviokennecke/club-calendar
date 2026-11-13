@@ -28,6 +28,7 @@ nav = [
   { "Clubs and members" = "clubs.md" },
   { "Legal documents" = "legal.md" },
   { "Operations" = "operations.md" },
+  { "Cache and storage" = "cache-and-storage.md" },
   { "Examples" = "examples/index.md" },
 ]
 

@@ -8,7 +8,7 @@ own web server, this page shows how. You need to be comfortable with PHP hosting
 | What | Details |
 |---|---|
 | PHP | 8.4 with PHP-FPM (or mod_php) |
-| PHP extensions | `ctype`, `dom`, `gd`, `iconv`, `intl`, `mbstring`, `pdo_mysql`, `opcache` (recommended) |
+| PHP extensions | `ctype`, `dom`, `gd`, `iconv`, `intl`, `mbstring`, `pdo_mysql`, `opcache` (recommended), `redis` (only for a Redis or Valkey [cache](cache-and-storage.md)) |
 | Database | MySQL 8 or MariaDB |
 | Web server | Apache with `mod_rewrite` and `mod_headers`, or nginx |
 | Build machine | Node.js 22 and Composer (the server itself does not need Node.js) |
@@ -236,9 +236,42 @@ The user running PHP must be able to write to `backend/var/` (cache; the PDF exp
 pass the environment through (`clear_env = no`) if you set settings as real environment variables instead of
 `.env.local`.
 
-## Scheduled tasks
+## Background jobs and the worker
 
-Set up the jobs listed under [Scheduled tasks](operations.md). They are the same as with Docker, without the `docker compose exec` part.
+The app needs two long-running processes besides PHP-FPM. Without them no mail is sent and no cleanup runs. Do not use cron for the jobs; the scheduler starts them itself.
+
+- `php bin/console messenger:consume async`: the **worker**. Sends all mail and runs the jobs.
+- `php bin/console messenger:consume scheduler_default`: the **scheduler**. Starts the periodic jobs at their times (see [Operations](operations.md#scheduled-tasks-and-the-worker)). Run exactly one for your installation; a second one does no harm but is not needed.
+
+Run both as services under the user that runs PHP, and restart them when they end: they stop by themselves after a time or memory limit so that they never grow, and the service manager starts them again. Example for systemd, `/etc/systemd/system/club-calendar-worker.service` (adapt paths and user):
+
+```ini
+[Unit]
+Description=Club Calendar worker
+After=network.target mysql.service
+
+[Service]
+User=www-data
+WorkingDirectory=/var/www/club-calendar/backend
+Environment=APP_ENV=prod
+ExecStart=/usr/bin/php bin/console messenger:consume async --time-limit=3600 --memory-limit=256M
+Restart=always
+RestartSec=5
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target
+```
+
+The scheduler service is the same with `Description=Club Calendar scheduler` and `ExecStart=/usr/bin/php bin/console messenger:consume scheduler_default --time-limit=3600`. Enable and start both:
+
+```bash
+systemctl enable --now club-calendar-worker club-calendar-scheduler
+```
+
+If mail or jobs pile up, run more than one worker service. The services read the same `.env.local` as the web application. If you set settings as real environment variables for PHP-FPM, set them for these services too.
+
+Restart both services after every update, because they keep the old code in memory. Check the queue with `php bin/console messenger:stats` (see [Operations](operations.md#the-queue)).
 
 ## Updating
 

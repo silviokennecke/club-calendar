@@ -1,6 +1,6 @@
 # Operations
 
-Day-to-day tasks: updating, backups, scheduled jobs, command-line tools, logs and troubleshooting. The examples assume the Docker setup from the [Quick start](quick-start.md) with the services `app` and `db`. Without Docker, see [Hosting without Docker](hosting-without-docker.md) for the setup.
+Day-to-day tasks: updating, backups, the worker and scheduled jobs, command-line tools, logs and troubleshooting. The examples assume the Docker setup from the [Quick start](quick-start.md) with the services `app` and `db`. Without Docker, see [Hosting without Docker](hosting-without-docker.md) for the setup.
 
 ## Updating
 
@@ -48,7 +48,7 @@ Day-to-day tasks: updating, backups, scheduled jobs, command-line tools, logs an
     php bin/console app:secrets:rotate
     ```
 
-    Keep your `.env.local` and the `config/jwt/` keys outside the release folder (or copy them over); they are not part of a release. Restart PHP-FPM afterwards.
+    Keep your `.env.local` and the `config/jwt/` keys outside the release folder (or copy them over); they are not part of a release. Restart PHP-FPM and the worker and scheduler services afterwards (`systemctl restart club-calendar-worker club-calendar-scheduler`, see [Hosting without Docker](hosting-without-docker.md#background-jobs-and-the-worker)); they keep the old code in memory until restarted.
 
 !!! note "Upgrading to the member role and joining through feeds"
     The update adds the club role **Member** and the club setting **Joining through feeds**. The database changes run with the usual migration step above. Existing members keep their roles. Existing clubs start with **Joining through feeds** set to club-internal feeds only. Check that setting in each club and set it to **Off** if people should only join by invitation, especially with `RESTRICT_REGISTRATION=true`. See [Clubs and members](clubs.md).
@@ -57,6 +57,9 @@ Day-to-day tasks: updating, backups, scheduled jobs, command-line tools, logs an
     Feed secrets (the key of private feeds) and the personal calendar secrets of members are now stored encrypted in the database. Existing values keep working. They are encrypted by the command `app:secrets:rotate`, which the Docker container runs at every start (a failure only logs a warning). Without Docker, run it after the migrations as shown above. The command is safe to repeat and changes nothing that is already encrypted. Calendar subscriptions and feed links do not change.
 
     From now on **`APP_SECRET` is needed to read these values**: a database backup is useless for them without the matching `APP_SECRET`. Keep both together, see [Backups](#backups).
+
+!!! note "Upgrading to the built-in scheduler and mail queue"
+    Cron entries for the `app:prune-*`, `app:holidays:refresh` and `app:geoip:update` commands are no longer used and must be removed. All e-mail is now sent by a background worker, which the Docker image starts by default. See [Scheduled tasks and the worker](#scheduled-tasks-and-the-worker).
 
 !!! note "Open browser tabs"
     Visitors who keep the app open during an update reload the page once by themselves when they open a part of the app that no longer exists. No action is needed.
@@ -75,7 +78,7 @@ Back up regularly and before every update. Keep copies away from the server and 
 | Login keys (JWT) | Docker volume `jwt`, mounted at `/data/config`; `backend/config/jwt/` without Docker | A new pair is created. Nobody is signed out: browsers fetch new access tokens automatically. Harmless. |
 | Legal documents | Your `legal` folder (`/data/legal` in the container) | Re-create the files. See [Legal documents](legal.md). |
 
-The cache (`/data/cache` in the container) is rebuilt automatically and needs no backup.
+The cache (`/data/cache` in the container) is rebuilt automatically and needs no backup. If you use S3 storage with a customer key, back up that key (see [Cache and storage](cache-and-storage.md#storage)).
 
 ### Database dump
 
@@ -103,44 +106,108 @@ docker compose cp app:/data/config ./jwt-backup
 3. Put back `.env` and the login keys (the keys are protected with `APP_SECRET`, see [Secrets and key rotation](#secrets-and-key-rotation)).
 4. Start the app: `docker compose up -d`. Use the same version that made the backup, or a newer one: it then updates the database itself.
 
-## Scheduled tasks
+## Scheduled tasks and the worker
 
-The app cleans up after itself only when these commands run regularly. Add them to the cron of the host (or a systemd timer). Run them once a day at night, except where noted.
+The app runs its own background jobs. No cron entries or timers on the host are needed, and an external cron is not supported. Two things work together:
 
-| Command | What it does | Schedule |
+- The **scheduler** starts the periodic jobs below at fixed times. It only puts them in a queue.
+- The **worker** takes jobs from the queue and runs them. It also sends all e-mail.
+
+!!! warning "Without a worker no mail is sent"
+    Every e-mail (confirmation codes, password resets, invitations, notices) goes through the queue. If no worker runs, nobody can confirm an address, so for example registration cannot be completed. The standard Docker setup starts a worker and the scheduler for you. Without Docker you start both yourself, see [Hosting without Docker](hosting-without-docker.md#background-jobs-and-the-worker).
+
+Mails can arrive a few seconds later than the action that caused them. A mail that cannot be sent is tried again three times, after about 1, 2 and 4 seconds; after that it moves to the list of failed messages (see [The queue](#the-queue)).
+
+### Schedule
+
+The times are fixed and in UTC (there is no setting per job). A job that was missed because the app was down runs once when it is back.
+
+| Job | What it does | When (UTC) |
 |---|---|---|
-| `app:prune-unverified-users` | Deletes accounts that never confirmed their address after 30 days. Club members are kept. | daily |
-| `app:prune-password-resets` | Deletes expired password reset links and e-mail change confirmations. | daily |
-| `app:prune-refresh-tokens` | Deletes expired sessions. | daily |
-| `app:prune-club-invitations` | Deletes invitations that were answered or expired more than 30 days ago. | daily |
-| `app:prune-oauth` | Deletes expired entries of AI app connections. | daily |
-| `app:prune-security-events` | Deletes security log entries older than one year. See [Protection mechanisms](security.md#security-log). | daily |
-| `app:prune-auth-nonces` | Deletes expired one-time sign-in values. | daily |
-| `app:holidays:refresh --all` | Refreshes the predefined holiday calendars. See [Holidays](#holidays). | weekly |
-| `app:geoip:update` | Downloads a newer location database for security notices. Does nothing without `MAXMIND_LICENSE_KEY`. See [Protection mechanisms](security.md#location-in-security-notices). | weekly |
+| Unconfirmed accounts | Deletes accounts that never confirmed their address after 30 days. Club members are kept. | daily 02:00 |
+| Password reset links | Deletes expired password reset links and e-mail change confirmations. | daily 02:10 |
+| Sessions | Deletes expired sessions. | daily 02:20 |
+| Club invitations | Deletes invitations that were answered or expired more than 30 days ago. | daily 02:30 |
+| AI app connections | Deletes expired entries of AI app connections. | daily 02:40 |
+| Security log | Deletes security log entries older than one year. See [Protection mechanisms](security.md#security-log). | daily 02:50 |
+| One-time values | Deletes expired one-time sign-in values. | daily 03:00 |
+| Failed messages | Deletes failed queue entries older than 30 days. | daily 03:10 |
+| Holidays | Refreshes the predefined holiday calendars. See [Holidays](#holidays). | Sundays 03:30 |
+| Location database | Downloads a newer location database for security notices. Does nothing without `MAXMIND_LICENSE_KEY`. See [Protection mechanisms](security.md#location-in-security-notices). | Sundays 03:50 |
 
-!!! warning "The Docker image runs no cron"
-    Nothing in the container runs these commands. Without `app:prune-auth-nonces`, the table of one-time sign-in and confirmation values grows indefinitely. Schedule all commands, at least this one daily, with the examples below.
+If a cleanup job fails, it is retried and then lands in the failed messages. The holiday refresh and the location update only log a warning when they fail and try again the next week.
 
-=== "Docker"
+To see the list as the app knows it, run `php bin/console debug:scheduler`.
 
-    Example for the host's crontab (`crontab -e`). Replace `/srv/club-calendar` with the folder that holds your `docker-compose.yml`. `-T` is needed because cron has no terminal.
+### Roles in the Docker image
 
-    ```cron
-    0 3 * * * cd /srv/club-calendar && for c in app:prune-unverified-users app:prune-password-resets app:prune-refresh-tokens app:prune-club-invitations app:prune-oauth app:prune-security-events app:prune-auth-nonces; do docker compose exec -T app php bin/console $c; done
-    0 4 * * 0 cd /srv/club-calendar && docker compose exec -T app php bin/console app:holidays:refresh --all
-    0 4 * * 0 cd /srv/club-calendar && docker compose exec -T app php bin/console app:geoip:update
-    ```
+One image can play different roles, chosen with `ROLE`:
 
-=== "Without Docker"
+| `ROLE` | Runs |
+|---|---|
+| `all` (default) | The web server and the PHP application, plus workers and the scheduler. Right for a single server. |
+| `web` | Only the web server and the PHP application. Also runs the database changes at start. |
+| `worker` | Only workers and the scheduler. No web server, no port. Waits at start until the database changes are done. |
 
-    Run the jobs as the user that runs PHP:
+Further settings:
 
-    ```cron
-    0 3 * * * cd /var/www/club-calendar/backend && for c in app:prune-unverified-users app:prune-password-resets app:prune-refresh-tokens app:prune-club-invitations app:prune-oauth app:prune-security-events app:prune-auth-nonces; do php bin/console $c; done
-    0 4 * * 0 cd /var/www/club-calendar/backend && php bin/console app:holidays:refresh --all
-    0 4 * * 0 cd /var/www/club-calendar/backend && php bin/console app:geoip:update
-    ```
+- `MESSENGER_WORKERS` (default `2`, from 1 to 32): how many workers run in one container. They restart by themselves after an hour or when they use too much memory.
+- `SCHEDULER_ENABLED` (default `true`): `false` leaves out the scheduler in this container. Only one scheduler in your whole installation fires a job at a time (a lock in the database sees to that), so extra schedulers are harmless.
+- `MIGRATION_WAIT_RETRIES` (default `90`): how often a worker container checks (2 seconds apart) whether the database changes are done before it gives up.
+
+If the web server or a program in the container fails for good, the container stops with an error so that Docker or your orchestrator can restart it. The container is `healthy` only while all its programs run (and, with a web server, `/api/health` answers). Logs of all programs go to the container output.
+
+### Running a job by hand
+
+The jobs stay available as commands, for testing or when you do not want to wait. They do the same as the scheduler:
+
+| Command | Job |
+|---|---|
+| `app:prune-unverified-users` | Unconfirmed accounts |
+| `app:prune-password-resets` | Password reset links |
+| `app:prune-refresh-tokens` | Sessions |
+| `app:prune-club-invitations` | Club invitations |
+| `app:prune-oauth` | AI app connections |
+| `app:prune-security-events` | Security log |
+| `app:prune-auth-nonces` | One-time values |
+| `app:prune-failed-messages` | Failed messages |
+| `app:holidays:refresh --all` | Holidays |
+| `app:geoip:update` | Location database |
+
+### The queue
+
+The queue lives in the database (table `messenger_messages`), so it needs nothing extra. Everything in it is stored encrypted. Run the commands as described under [Command-line tools](#command-line-tools).
+
+| Command | Purpose |
+|---|---|
+| `messenger:stats` | Shows how many messages wait. A number that keeps growing means no worker runs or the workers are too slow. |
+| `messenger:failed:show --transport=failed` | Lists messages that failed after all retries. |
+| `messenger:failed:retry --transport=failed` | Tries them again (add an id to retry one). |
+| `messenger:failed:remove --transport=failed <id>` | Removes one entry for good. |
+
+Failed messages are deleted automatically after 30 days. Log lines about a failed mail can contain the recipient's address, so treat logs as sensitive.
+
+!!! warning "Queued mails and `APP_SECRET`"
+    Because queued messages are encrypted with a key derived from `APP_SECRET`, they can only be read with it. `app:secrets:rotate` does **not** re-encrypt messages that are already queued. Before you drop the old `APP_SECRET`, wait until the queue is empty (`messenger:stats`) and the failed list is cleared, or keep the old value in `APP_SECRET_PREVIOUS` until then. Messages that cannot be read count as failed.
+
+### Upgrading from cron
+
+1. Remove the old cron entries (or timers) for `app:prune-*`, `app:holidays:refresh` and `app:geoip:update`.
+2. Make sure a worker and the scheduler run. With the standard Docker setup (`ROLE=all`) they do; without Docker see [Hosting without Docker](hosting-without-docker.md#background-jobs-and-the-worker).
+3. The database changes for the queue, the lock and the scheduler run with the usual migration step.
+4. Optionally set up [cache and storage](cache-and-storage.md).
+
+### Several containers
+
+For more than one server or container, run the same image several times:
+
+- One or more `web` containers (port 8080, behind your proxy) and one or more `worker` containers, all on the same database. A worker container needs no port, no legal documents and no login keys.
+- A worker container needs the same settings as the web containers: `APP_SECRET` (and `APP_SECRET_PREVIOUS` while rotating), `JWT_REFRESH_SECRET`, `DATABASE_URL`, `APP_URL`, `MAILER_DSN` and `MAILER_FROM`. Use a shared `CACHE_DSN` (see [Cache and storage](cache-and-storage.md)) when rate limits and cache should be shared.
+- Give containers time to finish running jobs when they stop: set `stop_grace_period: 90s` (Compose) or the equivalent in your orchestrator.
+- The database changes, the secrets encryption and the storage key rotation run only in `web` and `all` containers.
+
+!!! note "Known limitation: location database with several containers"
+    The weekly location database update runs in whichever container holds the scheduler lock, which can be a worker-only container, while the web containers read the file from their own `/data/geoip`. With a single container this is no issue. With several, put `/data/geoip` on a volume shared by all containers, or accept that each web container updates its file only when it starts with a missing or older-than-seven-days file. Without `MAXMIND_LICENSE_KEY` this does not apply.
 
 ## Command-line tools
 
@@ -197,6 +264,9 @@ The app has a few commands for administrators. Run them like this:
 | `app:legal:sync` | Loads changed [legal documents](legal.md) and reports missing ones and invalid links. |
 | `app:secrets:rotate` | Encrypts stored feed and calendar secrets with the current `APP_SECRET` and re-encrypts values of older keys. `--dry-run` only counts. Prints counts per column; ends with an error and the ids of rows it cannot read. Safe to repeat. See [Secrets and key rotation](#secrets-and-key-rotation). |
 | `app:holidays:refresh` | Refreshes holiday calendars: `--all` for all predefined ones, `--calendar=<id>` for one. |
+| `app:storage:check` | Writes, reads and deletes a test file in the configured file storage and prints which storage is used. See [Cache and storage](cache-and-storage.md#storage). |
+| `app:storage:rotate-key` | Re-encrypts S3 files with a new customer key. `--dry-run` only counts. See [Cache and storage](cache-and-storage.md#rotating-the-key). |
+| `cache:pool:clear` | Empties shared caches in Redis or Valkey. See [Cache and storage](cache-and-storage.md#clearing-the-cache). |
 
 ## Browser recognition
 
@@ -218,9 +288,9 @@ Sign-in notification mails and the security log name the browser used (for examp
 
 ## Holidays
 
-Predefined holiday and school holiday calendars are loaded from `openholidaysapi.org`, so the server needs outbound HTTPS access to that host. The data is stored in your database and shown from there. The app refreshes a calendar by itself when it is older than three months when someone uses it; the weekly job above keeps all of them current. If the source is down, the stored data stays and is used.
+Predefined holiday and school holiday calendars are loaded from `openholidaysapi.org`, so the server needs outbound HTTPS access to that host. The data is stored in your database and shown from there. The app refreshes a calendar by itself when it is older than three months when someone uses it; the weekly job (see [Scheduled tasks](#scheduled-tasks-and-the-worker)) keeps all of them current. If the source is down, the stored data stays and is used.
 
-Users can also add their own holiday calendar by the address of an ICS file. The app follows at most three redirects and refuses addresses in private networks (for example `192.168.x.x` or `localhost`). Adding a calendar by address and refreshing it by hand is limited to 20 times per user and hour; the cron job and the automatic refresh are not limited.
+Users can also add their own holiday calendar by the address of an ICS file. The app follows at most three redirects and refuses addresses in private networks (for example `192.168.x.x` or `localhost`). Adding a calendar by address and refreshing it by hand is limited to 20 times per user and hour; the scheduled job and the automatic refresh are not limited.
 
 ## Logs and health
 
@@ -310,4 +380,4 @@ Everybody is signed out once.
 | Maps are empty | `MAPBOX_TOKEN` is missing or invalid. See [Mail and maps](configuration/mail-and-maps.md). |
 | Legal documents missing | Run `app:legal:sync` and read its warnings. See [Legal documents](legal.md). |
 | Holiday calendars do not load | The server cannot reach `openholidaysapi.org` over HTTPS. |
-| Cleanup jobs seem to do nothing | Check that the cron entries exist and use `-T` with Docker. |
+| Cleanup jobs seem to do nothing, or no mail arrives although `MAILER_DSN` is set | No worker runs, or the queue is stuck. Check `docker compose ps` and the logs, and run `messenger:stats` and `messenger:failed:show --transport=failed`. See [Scheduled tasks and the worker](#scheduled-tasks-and-the-worker). |

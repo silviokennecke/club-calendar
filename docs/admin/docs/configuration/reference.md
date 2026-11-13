@@ -16,13 +16,19 @@ All variables an admin can set. Variables marked **required** have no default. T
 | `PORT` | `8080` | Docker image only: port the built-in web server listens on. |
 | `RUN_MIGRATIONS` | `1` | Docker image only: set `0` to skip database updates at start. |
 | `MIGRATION_RETRIES` | `15` | Docker image only: how often the start waits (2 s apart) for the database before giving up. |
+| `ROLE` | `all` | Docker image only: `all` (web server, workers and scheduler), `web` (web server only) or `worker` (workers and scheduler only). See [Operations](../operations.md#roles-in-the-docker-image). |
+| `MESSENGER_WORKERS` | `2` | Docker image only: number of workers per container that send mail and run jobs, 1 to 32. |
+| `SCHEDULER_ENABLED` | `true` | `false` stops this container (or process) from starting scheduled jobs. |
+| `MIGRATION_WAIT_RETRIES` | `90` | Docker image, `ROLE=worker` only: how often (2 s apart) the container checks that the database changes are done before it gives up. |
 
 
-## Database
+## Database and queue
 
 | Variable | Default | Description |
 |---|---|---|
 | `DATABASE_URL` | **required** | Connection to MySQL 8 or MariaDB, e.g. `mysql://user:password@host:3306/club_calendar`. The [example Compose file](../examples/index.md) builds it from `DB_NAME`, `DB_USER` and `DB_PASSWORD`. |
+| `MESSENGER_TRANSPORT_DSN` | `doctrine://default?auto_setup=0` | Where the job and mail queue is kept. The default is your database; leave it unless you know why not. See [Operations](../operations.md#the-queue). |
+| `LOCK_DSN` | empty | Lock that keeps the scheduler unique. Empty = your database. Only for several servers that prefer Redis, e.g. `redis://redis:6379`. |
 
 
 ## Security and sessions
@@ -160,11 +166,28 @@ Imprint, privacy policy and terms. See [Legal](../legal.md).
 | `LEGAL_TERMS_URL` | empty | Same for the terms of use. |
 
 
-## Misc
+## Cache and file storage
+
+See [Cache and storage](../cache-and-storage.md).
 
 | Variable | Default | Description |
 |---|---|---|
-| `CACHE_DIR` | Docker image: `/data/cache`. Without Docker: inside `backend/var/` | Where cached data (including rate limit counters) is stored. Must be writable. |
+| `CACHE_DIR` | Docker image: `/data/cache`. Without Docker: inside `backend/var/` | Where cached data (including rate limit counters) is stored with the file cache. Must be writable. |
+| `CACHE_DSN` | empty (files in `CACHE_DIR`) | `redis://`, `rediss://`, `valkey://` or `valkeys://` address to share the cache between servers. Empty or `filesystem` = files. |
+| `CACHE_PREFIX` | `club-calendar` | Name prefix of all cache keys. Set a different one per installation when several share one Redis. |
+| `STORAGE_SOURCE` | `storage.local` | Where app files are kept: `storage.local` (a folder) or `storage.s3` (an S3-compatible bucket). |
+| `STORAGE_LOCAL_PATH` | Docker image: `/data/storage`. Without Docker: `backend/var/storage` | Folder for the local storage. Must be writable. |
+| `S3_ENDPOINT` | empty | Address of the S3 service. Empty = Amazon S3. Set it for MinIO, Hetzner, Scaleway and similar. |
+| `S3_REGION` | `us-east-1` | Region of the bucket. |
+| `S3_KEY` | empty | Access key. Together with `S3_SECRET`; both empty = the default AWS credentials of the server or task. |
+| `S3_SECRET` | empty | Secret of the access key. |
+| `S3_BUCKET` | empty | Name of the bucket. |
+| `S3_PREFIX` | empty | Optional folder inside the bucket. |
+| `S3_USE_PATH_STYLE` | `false` | `true` for providers that need path-style addresses (often MinIO). |
+| `S3_SSE_C_KEY` | empty | Customer key that encrypts the files in the bucket: base64 of 32 random bytes. Losing it loses the files. Needs `https`. |
+| `S3_SSE_C_KEY_PREVIOUS` | empty | Only while changing the key: older keys, comma-separated; `plain` = unencrypted files may still exist. |
+
+The `S3_*` variables apply only with `STORAGE_SOURCE=storage.s3`.
 
 
 The variables for tests (such as `TEST_DATABASE_URL`) are for developers only and are not listed.

@@ -2,7 +2,7 @@
 
 ## Mail
 
-The app sends mail for account security and invitations. Without working mail, people cannot finish signing up.
+The app sends mail for account security and invitations. Without working mail, people cannot finish signing up. All mail is sent by the background worker, so a worker must be running (the Docker image starts one by default, see [Operations](../operations.md#scheduled-tasks-and-the-worker)); mails can arrive a few seconds late.
 
 ### Settings
 
