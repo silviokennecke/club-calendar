@@ -10,7 +10,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/** Cron: deletes expired password reset links and expired e-mail change confirmations. */
+/** Deletes expired password reset links and expired e-mail change confirmations. */
 #[AsCommand(name: 'app:prune-password-resets', description: 'Delete expired password reset links and e-mail change confirmations')]
 class PrunePasswordResetsCommand
 {

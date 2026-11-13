@@ -82,17 +82,18 @@ final readonly class NonceStore
     }
 
     /** Deletes expired entries in small batches (autocommit); returns the number deleted. */
-    public function prune(int $batch = 1000): int
+    public function prune(int $batch = 1000, int $maxBatches = 1000): int
     {
         $now = $this->clock->now()->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
         $total = 0;
+        $batches = 0;
         do {
             $n = (int) $this->connection->executeStatement(
                 sprintf('DELETE FROM auth_nonce WHERE expires_at < ? LIMIT %d', $batch),
                 [$now],
             );
             $total += $n;
-        } while ($n >= $batch);
+        } while ($n >= $batch && ++$batches < $maxBatches);
 
         return $total;
     }

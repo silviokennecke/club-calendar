@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Entity\User;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Service\UnverifiedUserPruner;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -19,7 +18,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class PruneUnverifiedUsersCommand extends Command
 {
     public function __construct(
-        private readonly EntityManagerInterface $em,
+        private readonly UnverifiedUserPruner $pruner,
     ) {
         parent::__construct();
     }
@@ -27,18 +26,7 @@ class PruneUnverifiedUsersCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $cutoff = new \DateTimeImmutable('-30 days');
-
-        $deleted = $this->em->createQueryBuilder()
-            ->delete(User::class, 'u')
-            ->where('u.isEmailVerified = :verified')
-            ->andWhere('u.createdAt < :cutoff')
-            // Legacy SSO users that were never confirmed may already be club members: they stay.
-            ->andWhere('NOT EXISTS (SELECT 1 FROM App\Entity\ClubUser cu WHERE cu.user = u)')
-            ->setParameter('verified', false)
-            ->setParameter('cutoff', $cutoff)
-            ->getQuery()
-            ->execute();
+        $deleted = $this->pruner->prune();
 
         $io->success(sprintf('Deleted %d unverified user(s) older than 30 days.', $deleted));
 

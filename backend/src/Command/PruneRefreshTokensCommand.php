@@ -10,7 +10,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/** Cron: deletes refresh token sessions (families) that are over: expired, whether revoked or not. */
+/** Deletes refresh token sessions (families) that are over: expired, whether revoked or not. */
 #[AsCommand(name: 'app:prune-refresh-tokens', description: 'Delete expired refresh tokens and sessions')]
 class PruneRefreshTokensCommand
 {

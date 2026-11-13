@@ -10,7 +10,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/** Cron: deletes security events older than one year. */
+/** Deletes security events older than one year. */
 #[AsCommand(name: 'app:prune-security-events', description: 'Delete security events older than one year')]
 class PruneSecurityEventsCommand
 {

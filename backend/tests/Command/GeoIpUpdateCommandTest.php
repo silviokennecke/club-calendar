@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Command;
 
 use App\Command\GeoIpUpdateCommand;
+use App\Service\GeoIpUpdater;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Command\Command;
@@ -53,7 +54,7 @@ class GeoIpUpdateCommandTest extends TestCase
     /** @param list<MockResponse>|MockResponse $responses */
     private function tester(MockResponse|array $responses, string $account = '123', string $key = 'k'): CommandTester
     {
-        $command = new GeoIpUpdateCommand(new MockHttpClient($responses), $account, $key, $this->dir.'/GeoLite2-City.mmdb');
+        $command = new GeoIpUpdateCommand(new GeoIpUpdater(new MockHttpClient($responses), $account, $key, $this->dir.'/GeoLite2-City.mmdb'));
         $app = new Application();
         $app->addCommand($command);
 

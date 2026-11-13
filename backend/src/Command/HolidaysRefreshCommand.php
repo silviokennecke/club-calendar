@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Entity\HolidayCalendar;
-use App\Enum\HolidaySource;
-use App\Service\HolidayCalendarService;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Service\HolidayRefreshService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
@@ -17,8 +14,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class HolidaysRefreshCommand
 {
     public function __construct(
-        private readonly EntityManagerInterface $em,
-        private readonly HolidayCalendarService $service,
+        private readonly HolidayRefreshService $refresher,
     ) {
     }
 
@@ -33,22 +29,17 @@ class HolidaysRefreshCommand
             return Command::INVALID;
         }
 
-        $criteria = ['source' => HolidaySource::OPENHOLIDAYS];
-        if (null !== $calendar) {
-            $criteria['id'] = $calendar;
-        }
         $failed = 0;
-        $items = $this->em->getRepository(HolidayCalendar::class)->findBy($criteria);
-        foreach ($items as $hc) {
-            try {
-                $count = $this->service->fetchAndStore($hc);
-                $io->writeln(sprintf('%s: %d event(s)', $hc->getName(), $count));
-            } catch (\Throwable $e) {
+        $results = $this->refresher->refresh($calendar);
+        foreach ($results as $result) {
+            if (null !== $result->error) {
                 ++$failed;
-                $io->warning(sprintf('%s failed: %s', $hc->getName(), $e->getMessage()));
+                $io->warning(sprintf('%s failed: %s', $result->name, $result->error->getMessage()));
+            } else {
+                $io->writeln(sprintf('%s: %d event(s)', $result->name, $result->events));
             }
         }
-        if ([] === $items) {
+        if ([] === $results) {
             $io->note('No predefined holiday calendars found.');
         }
 

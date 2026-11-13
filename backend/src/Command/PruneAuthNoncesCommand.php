@@ -9,7 +9,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-/** Cron: deletes expired one-time values (the nonce store no longer sweeps them while consuming). */
+/** Deletes expired one-time values (the nonce store no longer sweeps them while consuming). */
 #[AsCommand(name: 'app:prune-auth-nonces', description: 'Delete expired one-time sign-in values')]
 class PruneAuthNoncesCommand
 {
