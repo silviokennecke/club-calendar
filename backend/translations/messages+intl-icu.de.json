@@ -1,14 +1,14 @@
 {
     "email": {
         "verify": {
-            "subject": "Dein Bestätigungscode für Club Calendar",
+            "subject": "Dein Bestätigungscode für {appName}",
             "greeting": "Hallo {name},",
             "body": "Danke für deine Registrierung. Gib diesen Code in der App ein, um deine E-Mail-Adresse zu bestätigen.",
             "expiry_note": "Der Code ist {minutes} Minuten gültig und funktioniert nur einmal. Gib ihn niemals an andere weiter.",
             "ignore_note": "Falls du kein Konto erstellt hast, kannst du diese E-Mail ignorieren."
         },
         "reset": {
-            "subject": "Neues Passwort für Club Calendar festlegen",
+            "subject": "Neues Passwort für {appName} festlegen",
             "greeting": "Hallo {name},",
             "body": "Jemand (hoffentlich du) möchte ein neues Passwort für dein Konto festlegen. Klicke auf den Button, um ein neues Passwort zu wählen. Danach wirst du auf allen Geräten abgemeldet.",
             "button": "Neues Passwort festlegen",
@@ -19,7 +19,7 @@
         "change": {
             "subject": "Bestätige deine neue E-Mail-Adresse",
             "greeting": "Hallo {name},",
-            "body": "Du möchtest die E-Mail-Adresse deines Club-Calendar-Kontos auf {email} ändern. Klicke auf den Button, um die neue Adresse zu bestätigen. Danach meldest du dich mit der neuen Adresse an.",
+            "body": "Du möchtest die E-Mail-Adresse deines Kontos auf {email} ändern. Klicke auf den Button, um die neue Adresse zu bestätigen. Danach meldest du dich mit der neuen Adresse an.",
             "button": "Neue E-Mail-Adresse bestätigen",
             "expiry_note": "Dieser Link ist 24 Stunden gültig und funktioniert nur einmal.",
             "ignore_note": "Falls du das nicht warst, kannst du diese E-Mail ignorieren. Die Adresse wird dann nicht geändert.",
@@ -39,35 +39,35 @@
         "password_changed": {
             "subject": "Dein Passwort wurde geändert",
             "greeting": "Hallo {name},",
-            "body": "das Passwort deines Club-Calendar-Kontos wurde am {when} geändert.",
+            "body": "das Passwort deines Kontos wurde am {when} geändert.",
             "info": "Alle anderen Sitzungen wurden dabei abgemeldet.",
-            "not_you": "Dann kennt jemand anderes dein Passwort oder hatte Zugriff auf dein Postfach. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet) und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+            "not_you": "Dann kennt jemand anderes dein Passwort oder hatte Zugriff auf dein Postfach. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet) und wende dich an den Support von {appName}. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "email_change_requested": {
             "subject": "Es wurde eine Änderung deiner E-Mail-Adresse angefordert",
             "greeting": "Hallo {name},",
-            "body": "am {when} wurde angefordert, die E-Mail-Adresse deines Club-Calendar-Kontos auf {email} zu ändern.",
+            "body": "am {when} wurde angefordert, die E-Mail-Adresse deines Kontos auf {email} zu ändern.",
             "info": "Die Adresse ändert sich erst, wenn der Bestätigungslink geöffnet wird, der an die neue Adresse geschickt wurde. Bis dahin bleibt diese Adresse die Anmeldeadresse deines Kontos.",
-            "not_you": "Dann kennt jemand anderes dein Passwort. Setze sofort über „Passwort vergessen“ ein neues Passwort; dadurch wird auch die angeforderte Änderung verworfen. Wende dich außerdem an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+            "not_you": "Dann kennt jemand anderes dein Passwort. Setze sofort über „Passwort vergessen“ ein neues Passwort; dadurch wird auch die angeforderte Änderung verworfen. Wende dich außerdem an den Support von {appName}. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "email_changed": {
             "subject": "Deine E-Mail-Adresse wurde geändert",
             "greeting": "Hallo {name},",
-            "body": "die E-Mail-Adresse deines Club-Calendar-Kontos wurde am {when} auf {email} geändert.",
+            "body": "die E-Mail-Adresse deines Kontos wurde am {when} auf {email} geändert.",
             "info": "An diese Adresse schicken wir keine weiteren Nachrichten zu deinem Konto. Alle Sitzungen wurden abgemeldet; angemeldet wird ab jetzt mit der neuen Adresse.",
-            "not_you": "Dann wende dich sofort an den Support von Club Calendar, damit dein Konto wiederhergestellt werden kann. Solange du noch angemeldet bist oder Zugriff auf die neue Adresse hast, setze außerdem über „Passwort vergessen“ ein neues Passwort. Die Seite findest du hier:"
+            "not_you": "Dann wende dich sofort an den Support von {appName}, damit dein Konto wiederhergestellt werden kann. Solange du noch angemeldet bist oder Zugriff auf die neue Adresse hast, setze außerdem über „Passwort vergessen“ ein neues Passwort. Die Seite findest du hier:"
         },
         "step_up_code": {
             "subject": "Sensible Aktion bestätigen",
             "greeting": "Hallo {name},",
-            "body": "Du möchtest eine sensible Aktion in deinem Club-Calendar-Konto bestätigen. Gib diesen Code in der App ein, um das zu bestätigen.",
+            "body": "Du möchtest eine sensible Aktion in deinem Konto bestätigen. Gib diesen Code in der App ein, um das zu bestätigen.",
             "expiry_note": "Der Code ist mindestens {minutes} Minuten gültig und funktioniert nur für dieses Konto.",
             "ignore_note": "Warst du das nicht, gib den Code nicht ein und ignoriere diese E-Mail. Es wird nichts geändert. Ändere am besten dein Passwort."
         },
         "invitation": {
-            "subject": "Einladung in den Verein {club} bei Club Calendar",
+            "subject": "Einladung in den Verein {club} bei {appName}",
             "greeting": "Hallo,",
-            "body": "{inviter} hat dich in den Verein „{club}“ bei Club Calendar eingeladen. Klicke auf den Button und melde dich mit dieser E-Mail-Adresse an, um die Einladung anzunehmen oder abzulehnen.",
+            "body": "{inviter} hat dich in den Verein „{club}“ bei {appName} eingeladen. Klicke auf den Button und melde dich mit dieser E-Mail-Adresse an, um die Einladung anzunehmen oder abzulehnen.",
             "button": "Einladung ansehen",
             "no_account": "Du hast noch kein Konto? Registriere dich zuerst mit dieser E-Mail-Adresse:",
             "expiry_note": "Die Einladung ist {days} Tage gültig. Du trittst dem Verein erst bei, wenn du sie annimmst.",
@@ -81,71 +81,71 @@
         "mfa_enabled": {
             "subject": "MFA wurde eingeschaltet",
             "greeting": "Hallo {name},",
-            "body": "für dein Club-Calendar-Konto wurde die Multi-Faktor-Authentifizierung (MFA) eingeschaltet. Bei der Anmeldung mit Passwort brauchst du jetzt zusätzlich einen Code aus deiner Authenticator-App.",
+            "body": "für dein Konto wurde die Multi-Faktor-Authentifizierung (MFA) eingeschaltet. Bei der Anmeldung mit Passwort brauchst du jetzt zusätzlich einen Code aus deiner Authenticator-App.",
             "info": "Deine anderen Sitzungen bleiben angemeldet.",
-            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil MFA und deine Passkeys und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil MFA und deine Passkeys und wende dich an den Support von {appName}. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "mfa_disabled": {
             "subject": "MFA wurde ausgeschaltet",
             "greeting": "Hallo {name},",
-            "body": "für dein Club-Calendar-Konto wurde die Multi-Faktor-Authentifizierung (MFA) ausgeschaltet. Die Anmeldung mit Passwort ist jetzt nicht mehr durch MFA geschützt.",
-            "body_operator": "für dein Club-Calendar-Konto wurde die Multi-Faktor-Authentifizierung (MFA) durch den Betreiber dieser Installation ausgeschaltet. Die Anmeldung mit Passwort ist jetzt nicht mehr durch MFA geschützt.",
+            "body": "für dein Konto wurde die Multi-Faktor-Authentifizierung (MFA) ausgeschaltet. Die Anmeldung mit Passwort ist jetzt nicht mehr durch MFA geschützt.",
+            "body_operator": "für dein Konto wurde die Multi-Faktor-Authentifizierung (MFA) durch den Betreiber dieser Installation ausgeschaltet. Die Anmeldung mit Passwort ist jetzt nicht mehr durch MFA geschützt.",
             "info": "Alle anderen Sitzungen und verbundenen Apps wurden abgemeldet. Du kannst MFA jederzeit in deinem Profil wieder einschalten.",
-            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort, schalte danach MFA in deinem Profil wieder ein und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort, schalte danach MFA in deinem Profil wieder ein und wende dich an den Support von {appName}. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "backup_codes_regenerated": {
             "subject": "Neue Backup-Codes wurden erstellt",
             "greeting": "Hallo {name},",
-            "body": "für dein Club-Calendar-Konto wurden neue Backup-Codes erstellt.",
+            "body": "für dein Konto wurden neue Backup-Codes erstellt.",
             "info": "Die bisherigen Backup-Codes sind damit ungültig. Deine Sitzungen bleiben angemeldet.",
-            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil MFA und deine Passkeys und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil MFA und deine Passkeys und wende dich an den Support von {appName}. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "backup_code_used": {
             "subject": "Ein Backup-Code wurde zur Anmeldung verwendet",
             "greeting": "Hallo {name},",
-            "body": "bei der Anmeldung zu deinem Club-Calendar-Konto wurde ein Backup-Code verwendet. Die Multi-Faktor-Authentifizierung (MFA) bleibt eingeschaltet.",
+            "body": "bei der Anmeldung zu deinem Konto wurde ein Backup-Code verwendet. Die Multi-Faktor-Authentifizierung (MFA) bleibt eingeschaltet.",
             "info": "{remaining, plural, =0 {Du hast keine Backup-Codes mehr. Wenn du deine Authenticator-App oder deinen Passkey verlierst, kannst du dich nicht mehr anmelden und musst den Betreiber dieser Installation bitten, MFA für dein Konto zurückzusetzen. Erzeuge in deinem Profil unter MFA neue Backup-Codes.} one {Du hast noch 1 Backup-Code. Neue Backup-Codes kannst du in deinem Profil unter MFA erzeugen.} other {Du hast noch # Backup-Codes. Neue Backup-Codes kannst du in deinem Profil unter MFA erzeugen.}}",
             "not_you": "Dann kennt jemand anderes dein Passwort und einen deiner Backup-Codes. Setze sofort über „Passwort vergessen“ ein neues Passwort (das beendet alle Sitzungen), prüfe deine MFA-Einstellungen im Profil und bitte bei einer Aussperrung den Betreiber dieser Installation, MFA für dein Konto zurückzusetzen. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "passkey_deleted": {
             "subject": "Ein Passkey wurde gelöscht",
             "greeting": "Hallo {name},",
-            "body": "aus deinem Club-Calendar-Konto wurde ein Passkey gelöscht.",
+            "body": "aus deinem Konto wurde ein Passkey gelöscht.",
             "info": "Mit diesem Passkey kann man sich nicht mehr anmelden. Alle anderen Sitzungen wurden abgemeldet.",
-            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil MFA und deine Passkeys und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil MFA und deine Passkeys und wende dich an den Support von {appName}. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "data_exported": {
             "subject": "Deine Daten wurden heruntergeladen",
             "greeting": "Hallo {name},",
-            "body": "eine Kopie aller Daten, die in deinem Club-Calendar-Konto über dich gespeichert sind, wurde heruntergeladen.",
+            "body": "eine Kopie aller Daten, die in deinem Konto über dich gespeichert sind, wurde heruntergeladen.",
             "info": "Der Download wird nicht auf unseren Servern aufbewahrt und diese E-Mail enthält keine deiner Daten.",
             "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet) und melde dich überall ab. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "passkey_added": {
             "subject": "Ein Passkey wurde hinzugefügt",
             "greeting": "Hallo {name},",
-            "body": "zu deinem Club-Calendar-Konto wurde ein Passkey hinzugefügt.",
+            "body": "zu deinem Konto wurde ein Passkey hinzugefügt.",
             "info": "Mit diesem Passkey kann man sich jetzt anmelden, auch wenn MFA eingeschaltet ist.",
-            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), lösche danach in deinem Profil den fremden Passkey, prüfe MFA und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), lösche danach in deinem Profil den fremden Passkey, prüfe MFA und wende dich an den Support von {appName}. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "sso_linked": {
             "subject": "Eine Anmeldung über einen Anbieter wurde verknüpft",
             "greeting": "Hallo {name},",
-            "body": "mit deinem Club-Calendar-Konto wurde die Anmeldung über {provider} verknüpft.",
+            "body": "mit deinem Konto wurde die Anmeldung über {provider} verknüpft.",
             "info": "Man kann sich jetzt über diesen Anbieter anmelden, auch wenn MFA eingeschaltet ist.",
-            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), trenne danach in deinem Profil die fremde Verknüpfung, prüfe MFA und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), trenne danach in deinem Profil die fremde Verknüpfung, prüfe MFA und wende dich an den Support von {appName}. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "failed_sign_ins": {
             "subject": "Fehlgeschlagene Anmeldeversuche bei deinem Konto",
             "greeting": "Hallo {name},",
-            "body": "in der letzten Stunde gab es {count} fehlgeschlagene Anmeldeversuche bei deinem Club-Calendar-Konto. Das heißt: Jemand hat versucht, sich anzumelden, hat aber das Passwort oder den Code nicht richtig eingegeben. Die Angaben unten gehören zum letzten Versuch.",
+            "body": "in der letzten Stunde gab es {count} fehlgeschlagene Anmeldeversuche bei deinem Konto. Das heißt: Jemand hat versucht, sich anzumelden, hat aber das Passwort oder den Code nicht richtig eingegeben. Die Angaben unten gehören zum letzten Versuch.",
             "info": "An deinem Konto wurde nichts geändert und niemand ist angemeldet. Zu solchen Versuchen schicken wir dir höchstens eine Nachricht pro Tag.",
             "not_you": "Warst du das nicht, ändere sicherheitshalber dein Passwort über „Passwort vergessen“ (dadurch werden alle Sitzungen beendet) und prüfe danach in deinem Profil MFA und deine Passkeys. Die Seite „Passwort vergessen“ findest du hier:"
         },
         "failed_step_ups": {
             "subject": "Fehlgeschlagene Bestätigungen einer sensiblen Aktion bei deinem Konto",
             "greeting": "Hallo {name},",
-            "body": "Jemand, der in deinem Club-Calendar-Konto angemeldet ist, hat in der letzten Stunde {count} Mal versucht, eine sensible Aktion zu bestätigen, und dabei das Passwort oder den Code nicht richtig eingegeben. Die Angaben unten gehören zum letzten Versuch.",
+            "body": "Jemand, der in deinem Konto angemeldet ist, hat in der letzten Stunde {count} Mal versucht, eine sensible Aktion zu bestätigen, und dabei das Passwort oder den Code nicht richtig eingegeben. Die Angaben unten gehören zum letzten Versuch.",
             "info": "An deinem Konto wurde nichts geändert. Zu solchen Versuchen schicken wir dir höchstens eine Nachricht pro Tag.",
             "not_you": "Warst du das nicht, hat vielleicht jemand Zugriff auf eine Sitzung deines Kontos. Melde dich in deinem Profil überall ab und ändere dein Passwort über „Passwort vergessen“ (dadurch werden alle Sitzungen beendet). Die Seite „Passwort vergessen“ findest du hier:"
         },
@@ -153,7 +153,7 @@
             "unverified_app": "Nicht verifizierte App",
             "subject": "Eine neue App wurde mit deinem Konto verbunden",
             "greeting": "Hallo {name},",
-            "body": "Mit deinem Club-Calendar-Konto wurde eine neue App verbunden: {app}. Sie kann jetzt die Kalender deiner Vereine lesen und in deinem Namen Entwürfe anlegen.",
+            "body": "Mit deinem Konto wurde eine neue App verbunden: {app}. Sie kann jetzt die Kalender deiner Vereine lesen und in deinem Namen Entwürfe anlegen.",
             "info": "Verbundene Apps siehst du in deinem Profil und kannst sie dort jederzeit trennen.",
             "not_you": "Dann hat jemand Zugriff auf dein Konto. Trenne die App in deinem Profil unter „Verbundene Apps“ und setze über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet). Die Seite „Passwort vergessen“ findest du hier:"
         }

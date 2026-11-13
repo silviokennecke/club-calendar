@@ -1,14 +1,14 @@
 {
     "email": {
         "verify": {
-            "subject": "Your confirmation code for Club Calendar",
+            "subject": "Your confirmation code for {appName}",
             "greeting": "Hello {name},",
             "body": "Thank you for registering. Enter this code in the app to confirm your email address.",
             "expiry_note": "The code is valid for {minutes} minutes and works only once. Never share it with anyone.",
             "ignore_note": "If you did not create an account, you can safely ignore this email."
         },
         "reset": {
-            "subject": "Set a new password for Club Calendar",
+            "subject": "Set a new password for {appName}",
             "greeting": "Hello {name},",
             "body": "Someone (hopefully you) wants to set a new password for your account. Click the button to choose a new password. You will then be signed out on all devices.",
             "button": "Set new password",
@@ -19,7 +19,7 @@
         "change": {
             "subject": "Confirm your new email address",
             "greeting": "Hello {name},",
-            "body": "You want to change the email address of your Club Calendar account to {email}. Click the button to confirm the new address. You then sign in with the new address.",
+            "body": "You want to change the email address of your account to {email}. Click the button to confirm the new address. You then sign in with the new address.",
             "button": "Confirm new email address",
             "expiry_note": "This link is valid for 24 hours and works only once.",
             "ignore_note": "If this was not you, you can safely ignore this email. The address will not be changed.",
@@ -39,35 +39,35 @@
         "password_changed": {
             "subject": "Your password was changed",
             "greeting": "Hello {name},",
-            "body": "the password of your Club Calendar account was changed on {when}.",
+            "body": "the password of your account was changed on {when}.",
             "info": "All other sessions were signed out.",
-            "not_you": "Then someone else knows your password or had access to your mailbox. Set a new password via “Forgot password” right away (this ends all sessions) and contact Club Calendar support. You find the “Forgot password” page here:"
+            "not_you": "Then someone else knows your password or had access to your mailbox. Set a new password via “Forgot password” right away (this ends all sessions) and contact {appName} support. You find the “Forgot password” page here:"
         },
         "email_change_requested": {
             "subject": "A change of your e-mail address was requested",
             "greeting": "Hello {name},",
-            "body": "on {when} someone requested to change the e-mail address of your Club Calendar account to {email}.",
+            "body": "on {when} someone requested to change the e-mail address of your account to {email}.",
             "info": "The address only changes once the confirmation link sent to the new address is opened. Until then this address stays the sign-in address of your account.",
-            "not_you": "Then someone else knows your password. Set a new password via “Forgot password” right away; this also discards the requested change. Please contact Club Calendar support as well. You find the “Forgot password” page here:"
+            "not_you": "Then someone else knows your password. Set a new password via “Forgot password” right away; this also discards the requested change. Please contact {appName} support as well. You find the “Forgot password” page here:"
         },
         "email_changed": {
             "subject": "Your e-mail address was changed",
             "greeting": "Hello {name},",
-            "body": "the e-mail address of your Club Calendar account was changed to {email} on {when}.",
+            "body": "the e-mail address of your account was changed to {email} on {when}.",
             "info": "We will not send further messages about your account to this address. All sessions were signed out; from now on you sign in with the new address.",
-            "not_you": "Then contact Club Calendar support right away so your account can be restored. As long as you are still signed in or have access to the new address, also set a new password via “Forgot password”. You find the page here:"
+            "not_you": "Then contact {appName} support right away so your account can be restored. As long as you are still signed in or have access to the new address, also set a new password via “Forgot password”. You find the page here:"
         },
         "step_up_code": {
             "subject": "Confirm a sensitive action",
             "greeting": "Hello {name},",
-            "body": "You are about to confirm a sensitive action on your Club Calendar account. Enter this code in the app to confirm.",
+            "body": "You are about to confirm a sensitive action on your account. Enter this code in the app to confirm.",
             "expiry_note": "The code is valid for at least {minutes} minutes and works only for this account.",
             "ignore_note": "If this was not you, do not enter the code and ignore this email. Nothing is changed. Consider changing your password."
         },
         "invitation": {
-            "subject": "Invitation to join {club} on Club Calendar",
+            "subject": "Invitation to join {club} on {appName}",
             "greeting": "Hello,",
-            "body": "{inviter} invited you to join the club “{club}” on Club Calendar. Click the button and sign in with this e-mail address to accept or decline the invitation.",
+            "body": "{inviter} invited you to join the club “{club}” on {appName}. Click the button and sign in with this e-mail address to accept or decline the invitation.",
             "button": "View invitation",
             "no_account": "You do not have an account yet? Register with this e-mail address first:",
             "expiry_note": "The invitation is valid for {days} days. You only join the club once you accept.",
@@ -81,71 +81,71 @@
         "mfa_enabled": {
             "subject": "MFA was turned on",
             "greeting": "Hello {name},",
-            "body": "Multi-factor authentication (MFA) was turned on for your Club Calendar account. When you sign in with your password, you now also need a code from your authenticator app.",
+            "body": "Multi-factor authentication (MFA) was turned on for your account. When you sign in with your password, you now also need a code from your authenticator app.",
             "info": "Your other sessions stay signed in.",
-            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then check MFA and your passkeys in your profile and contact Club Calendar support. You can find the \"Forgot password\" page here:"
+            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then check MFA and your passkeys in your profile and contact {appName} support. You can find the \"Forgot password\" page here:"
         },
         "mfa_disabled": {
             "subject": "MFA was turned off",
             "greeting": "Hello {name},",
-            "body": "Multi-factor authentication (MFA) was turned off for your Club Calendar account. Signing in with your password is no longer protected by MFA.",
-            "body_operator": "Multi-factor authentication (MFA) was turned off for your Club Calendar account by the operator of this installation. Signing in with your password is no longer protected by MFA.",
+            "body": "Multi-factor authentication (MFA) was turned off for your account. Signing in with your password is no longer protected by MFA.",
+            "body_operator": "Multi-factor authentication (MFA) was turned off for your account by the operator of this installation. Signing in with your password is no longer protected by MFA.",
             "info": "All other sessions and connected apps were signed out. You can turn MFA back on in your profile at any time.",
-            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\", then turn MFA back on in your profile and contact Club Calendar support. You can find the \"Forgot password\" page here:"
+            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\", then turn MFA back on in your profile and contact {appName} support. You can find the \"Forgot password\" page here:"
         },
         "backup_codes_regenerated": {
             "subject": "New backup codes were created",
             "greeting": "Hello {name},",
-            "body": "New backup codes were created for your Club Calendar account.",
+            "body": "New backup codes were created for your account.",
             "info": "Your previous backup codes no longer work. Your sessions stay signed in.",
-            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then check MFA and your passkeys in your profile and contact Club Calendar support. You can find the \"Forgot password\" page here:"
+            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then check MFA and your passkeys in your profile and contact {appName} support. You can find the \"Forgot password\" page here:"
         },
         "backup_code_used": {
             "subject": "A backup code was used to sign in",
             "greeting": "Hello {name},",
-            "body": "A backup code was used to sign in to your Club Calendar account. Multi-factor authentication (MFA) stays on.",
+            "body": "A backup code was used to sign in to your account. Multi-factor authentication (MFA) stays on.",
             "info": "{remaining, plural, =0 {You have no backup codes left. If you lose your authenticator app or passkey, you can no longer sign in and must ask the operator of this installation to reset MFA for your account. Generate new backup codes in your profile under MFA.} one {You have 1 backup code left. You can generate new backup codes in your profile under MFA.} other {You have # backup codes left. You can generate new backup codes in your profile under MFA.}}",
             "not_you": "Then someone knows your password and one of your backup codes. Immediately set a new password via \"Forgot password\" (this ends all sessions), check your MFA settings in your profile, and if you are locked out ask the operator of this installation to reset MFA for your account. You can find the \"Forgot password\" page here:"
         },
         "passkey_deleted": {
             "subject": "A passkey was deleted",
             "greeting": "Hello {name},",
-            "body": "A passkey was deleted from your Club Calendar account.",
+            "body": "A passkey was deleted from your account.",
             "info": "This passkey can no longer be used to sign in. All other sessions were signed out.",
-            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then check MFA and your passkeys in your profile and contact Club Calendar support. You can find the \"Forgot password\" page here:"
+            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then check MFA and your passkeys in your profile and contact {appName} support. You can find the \"Forgot password\" page here:"
         },
         "data_exported": {
             "subject": "Your data was downloaded",
             "greeting": "Hello {name},",
-            "body": "A copy of all data stored about you in your Club Calendar account was downloaded.",
+            "body": "A copy of all data stored about you in your account was downloaded.",
             "info": "The download is not stored on our servers and this mail contains none of your data.",
             "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions) and sign out everywhere. You can find the \"Forgot password\" page here:"
         },
         "passkey_added": {
             "subject": "A passkey was added",
             "greeting": "Hello {name},",
-            "body": "A passkey was added to your Club Calendar account.",
+            "body": "A passkey was added to your account.",
             "info": "This passkey can now be used to sign in, even when MFA is on.",
-            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then delete the unknown passkey in your profile, check MFA and contact Club Calendar support. You can find the \"Forgot password\" page here:"
+            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then delete the unknown passkey in your profile, check MFA and contact {appName} support. You can find the \"Forgot password\" page here:"
         },
         "sso_linked": {
             "subject": "A sign-in provider was linked",
             "greeting": "Hello {name},",
-            "body": "Signing in with {provider} was linked to your Club Calendar account.",
+            "body": "Signing in with {provider} was linked to your account.",
             "info": "This provider can now be used to sign in, even when MFA is on.",
-            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then remove the unknown link in your profile, check MFA and contact Club Calendar support. You can find the \"Forgot password\" page here:"
+            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then remove the unknown link in your profile, check MFA and contact {appName} support. You can find the \"Forgot password\" page here:"
         },
         "failed_sign_ins": {
             "subject": "Failed sign-in attempts on your account",
             "greeting": "Hello {name},",
-            "body": "There were {count} failed sign-in attempts on your Club Calendar account in the last hour. This means someone tried to sign in but did not enter the password or code correctly. The details below belong to the latest attempt.",
+            "body": "There were {count} failed sign-in attempts on your account in the last hour. This means someone tried to sign in but did not enter the password or code correctly. The details below belong to the latest attempt.",
             "info": "Nothing was changed on your account and nobody is signed in. We send you at most one message per day about such attempts.",
             "not_you": "If this was not you, change your password via \"Forgot password\" to be safe (this ends all sessions), then check MFA and your passkeys in your profile. You can find the page here:"
         },
         "failed_step_ups": {
             "subject": "Failed confirmations of a sensitive action on your account",
             "greeting": "Hello {name},",
-            "body": "Someone who is signed in to your Club Calendar account tried to confirm a sensitive action {count} times in the last hour and entered the password or code incorrectly. The details below belong to the latest attempt.",
+            "body": "Someone who is signed in to your account tried to confirm a sensitive action {count} times in the last hour and entered the password or code incorrectly. The details below belong to the latest attempt.",
             "info": "Nothing was changed on your account. We send you at most one message per day about such attempts.",
             "not_you": "If this was not you, someone may have access to a session of your account. Sign out everywhere in your profile and change your password via \"Forgot password\" (this ends all sessions). You can find the \"Forgot password\" page here:"
         },
@@ -153,7 +153,7 @@
             "unverified_app": "Unverified app",
             "subject": "A new app was connected to your account",
             "greeting": "Hello {name},",
-            "body": "A new app was connected to your Club Calendar account: {app}. It can now read your clubs' calendars and create drafts in your name.",
+            "body": "A new app was connected to your account: {app}. It can now read your clubs' calendars and create drafts in your name.",
             "info": "You can see and disconnect connected apps in your profile at any time.",
             "not_you": "Then someone has access to your account. Disconnect the app in your profile under \"Connected apps\" and set a new password via \"Forgot password\" (this ends all sessions). You can find the \"Forgot password\" page here:"
         }

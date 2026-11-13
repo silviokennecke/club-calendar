@@ -89,7 +89,7 @@ module.exports = {
    * Identity components for email headers/branding
    */
   brand: {
-    name: 'Club Calendar',
+    name: '{{ app_name }}', // runtime Twig variable (App\Twig\AppNameExtension)
     icon: '📅',
   },
 
