@@ -96,8 +96,9 @@ RUN --mount=type=bind,source=docker/build.env,target=/tmp/build.env \
     && mkdir -p var config/jwt \
     && set -a && . /tmp/build.env && set +a \
     && php bin/console cache:warmup --no-interaction \
+    && cp public/index.html index.html.tpl \
     && chmod +x /usr/local/bin/docker-entrypoint.sh \
-    && chown -R www-data:www-data .env var public
+    && chown -R www-data:www-data .env var public index.html.tpl
 
 USER www-data
 EXPOSE 8080
