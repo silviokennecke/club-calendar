@@ -22,6 +22,7 @@ These settings only affect you. You find them on your profile page (**My profile
 - [Sessions and signing out](help:settings/sessions)
 - [Personal settings](help:settings/preferences)
 - [Legal and consent](help:settings/consent)
+- [Download your data](help:settings/data-export)
 - [Delete your account](help:settings/delete-account)
 
 ## Club & calendars

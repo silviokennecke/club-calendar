@@ -65,7 +65,8 @@ The app keeps a log of security-relevant events for each account. It holds:
 
 - every sign-in (with password, passkey, single sign-on or the connection of an AI app),
 - failed sign-in attempts on existing accounts,
-- MFA steps and changes, confirmations of sensitive actions, and password changes.
+- MFA steps and changes, confirmations of sensitive actions, and password changes,
+- downloads of personal data (by the user in the profile, or by you with `app:user:export`).
 
 Each entry has the time, the IP address, the approximate city and country, the browser name and version, and the full user agent text the browser sent (at most 512 characters, kept for investigations). Notification mails and the log's browser field show only a well-known browser name (such as Chrome, Firefox, Safari or Edge) with a version number; anything else is shown as unknown, so nobody can smuggle links or other text into notification mails. The full user agent is never shown in mails or in the app. The log is not shown in the app; it is only in the database.
 
@@ -74,6 +75,14 @@ Each entry has the time, the IP address, the approximate city and country, the b
 - **Your privacy policy must say that this log exists**, what it contains and how long it is kept. The [legal documents](legal.md#what-the-security-log-stores) page lists the details.
 
 Users also get a mail when there are **three failed sign-in attempts within one hour** on their account. The app sends at most one such mail per day. Three failed confirmations of a sensitive action within an hour (which can only happen inside a signed-in session) get their own mail with different wording: someone who is signed in failed to confirm, so the user should sign out everywhere and change the password.
+
+## Personal data download
+
+Every user can download their own data in the profile (tab Privacy, "Download data"). The file holds the account, memberships, sign-in methods and history (including IP addresses), consents, connected apps and the club content the user created or last edited. Passwords, secrets and data of other people are not included. The user must confirm their identity first, and gets a notice mail after the download. The limits are in the [rate limit table](#rate-limits). The download is a security log entry and is kept one year like the others.
+
+A user whose e-mail address is not confirmed, or who has not yet accepted the current legal documents, cannot use the download. Such users have to ask you; use `app:user:export` (see [Operations](operations.md#users)). Mention the download in your privacy policy.
+
+The download is built while it is sent, so large accounts take a while. See [PHP settings](hosting-without-docker.md#php-settings-worth-knowing) for the time it needs.
 
 ## Location in security notices
 

@@ -11,6 +11,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Added
 
+- Download of personal data: users get a file with their data in the profile (tab Privacy, with confirmation, limited to once per hour, notice mail); operators can create it with `php bin/console app:user:export <id|email>`.
 - Console command `app:geoip:debug <ip> [-H 'Name: value']` shows how the location of a client (MaxMind or proxy country header, trusted proxies) is detected.
 - The profile is split into tabs with their own addresses (Account, Security, Calendar & apps, Privacy: `/profile`, `/profile/security`, `/profile/apps`, `/profile/privacy`); old `/profile#pr-…` links keep working. `/.well-known/change-password` now points to `/profile/security#pr-pw`.
 - `GET /.well-known/change-password` redirects password managers to the password section of the profile page (the Security tab); custom web servers must route it to PHP like the other `/.well-known` addresses.

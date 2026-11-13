@@ -169,6 +169,7 @@ The app has a few commands for administrators. Run them like this:
 | `app:user:set-password <email or id>` | Sets a new password (`--password` or `--password-stdin`) and ends all sessions of that user. |
 | `app:user:verify <email or id>` | Confirms an address by hand, for users who cannot receive the code. Also available as `app:user:activate`. |
 | `app:user:reset-link <email>` | Prints a password reset link without sending mail. |
+| `app:user:export <email or id>` | Writes all personal data of a user as a JSON file, for data access requests or users who cannot download it themselves. Prints to the screen by default; `--output=<file>` writes a file that only the current user can read. An existing file is not overwritten unless you add `--force`. Writes a security log entry; the user is not notified and no rate limit applies. See the warning below. |
 | `app:user:disable-mfa <email or id>` | Switches MFA off for a user who lost the authenticator app and all backup codes (or the passkey). This is the only way to help such a user besides their own switch in the profile. Removes the authenticator app and backup codes (passkeys stay), ends all sessions and AI app connections, mails the user and writes a security log entry. No password needed; nothing happens if MFA is off. |
 
 ### Clubs
@@ -179,6 +180,9 @@ The app has a few commands for administrators. Run them like this:
 
 !!! warning "Switching off MFA"
     `app:user:disable-mfa` switches MFA off without the user's password. Use it only after you have confirmed the person's identity, and only when the user has neither the authenticator app nor the backup codes. Normally the user uses a backup code (MFA stays on) or switches it off in the profile.
+
+!!! warning "Handle exports with care"
+    The file from `app:user:export` contains personal data: account data, sign-in history with IP addresses, consents and more. Passwords, secrets and data of other people are not included. Hand it only to the person it is about, over a channel you trust, store it only as long as needed and delete it afterwards (also from backups and download folders).
 
 !!! warning "Reset links give access to the account"
     A link from `app:user:reset-link` (valid 60 minutes) lets whoever opens it set a new password for that account. Hand it only to the owner, over a channel you trust.

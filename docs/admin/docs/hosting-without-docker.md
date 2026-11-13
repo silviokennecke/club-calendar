@@ -214,7 +214,7 @@ The web server has three jobs:
       the server. Do not block `.well-known` with a dotfile rule.
     - **`/.well-known/change-password`** must go to PHP too. It sends password managers to the password section of the profile page (the Security tab).
     - **TLS** is not shown. Terminate it here or in front, and send the HSTS header only over HTTPS.
-    - **Timeouts** for `/api/` should be at least 60 seconds (PDF export).
+    - **Timeouts** for `/api/` should be at least 60 seconds (PDF export). The personal data download (`POST /api/auth/me/export`) can take up to 300 seconds for very large accounts: allow that for this route, and do not buffer its response (nginx: `fastcgi_buffering off` and `fastcgi_read_timeout 300s` for it; PHP-FPM: `request_terminate_timeout` of 300 s or more or 0).
 
 !!! warning "Test your server"
     After setup, open `https://your-domain/api/health` (should answer `{"status":"ok"}`), reload a deep
@@ -225,9 +225,9 @@ The web server has three jobs:
 
 | Setting | Recommended | Why |
 |---|---|---|
-| `memory_limit` | `256M` | An import of 5000 events needs about 130 MB extra. PDF export raises the limit itself to 512M for that request |
+| `memory_limit` | `256M` | An import of 5000 events needs about 130 MB extra. PDF export raises the limit itself to 512M for that request, the personal data download to 256M |
 | `post_max_size` | `16M` | Imports send 2 to 3 MB |
-| `max_execution_time` | at least 60 s for `/api/` | PDF export raises it itself to 60 s; proxy timeouts must allow it too |
+| `max_execution_time` | at least 60 s for `/api/` | PDF export raises it itself to 60 s, the personal data download to 300 s; proxy timeouts must allow it too |
 | `display_errors` | `Off` | Never show errors to visitors |
 | `opcache.enable` | `1` | Faster responses |
 | `date.timezone` | `UTC` | Consistent times |

@@ -22,6 +22,7 @@ Diese Einstellungen betreffen nur dich. Du findest sie auf deiner Profilseite (*
 - [Anmeldungen und Abmelden](help:settings/sessions)
 - [Persönliche Einstellungen](help:settings/preferences)
 - [Rechtliches und Einwilligungen](help:settings/consent)
+- [Meine Daten herunterladen](help:settings/data-export)
 - [Konto löschen](help:settings/delete-account)
 
 ## Verein & Kalender

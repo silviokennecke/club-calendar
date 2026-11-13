@@ -15,6 +15,8 @@ You can delete your account at any time. This cannot be undone.
 3. Confirm that it is you, see [Confirm it is you](help:settings/confirmation). This also works when the app otherwise only shows the consent or e-mail confirmation screen.
 4. Click **Delete account**.
 
+If you want a copy of your data first, see [Download your data](help:settings/data-export).
+
 ## What is deleted
 
 Your account, your passkeys and linked sign-ins. You are signed out.
@@ -31,5 +33,6 @@ If you are the only admin of a club that has other members, make someone else an
 
 ## See also
 
+- [Download your data](help:settings/data-export)
 - [Delete a club](help:settings/delete-club)
 - [Legal and consent](help:settings/consent)

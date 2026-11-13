@@ -15,6 +15,8 @@ Du kannst dein Konto jederzeit löschen. Das geht nicht rückgängig.
 3. Bestätige, dass du es bist, siehe [Bestätigen, dass du es bist](help:settings/confirmation). Das geht auch, wenn die App sonst nur die Einwilligung oder die E-Mail-Bestätigung zeigt.
 4. Klicke auf **Konto löschen**.
 
+Möchtest du vorher eine Kopie deiner Daten, siehe [Meine Daten herunterladen](help:settings/data-export).
+
 ## Was gelöscht wird
 
 Dein Konto, deine Passkeys und verknüpften Anmeldungen. Du wirst abgemeldet.
@@ -31,5 +33,6 @@ Bist du der einzige Admin eines Vereins mit weiteren Mitgliedern, mache zuerst j
 
 ## Siehe auch
 
+- [Meine Daten herunterladen](help:settings/data-export)
 - [Verein löschen](help:settings/delete-club)
 - [Rechtliches und Einwilligungen](help:settings/consent)

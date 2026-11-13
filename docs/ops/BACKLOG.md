@@ -15,6 +15,10 @@ Offene Backend-Features, Sicherheitsrisiken, Betriebspunkte und Design-Entscheid
 - **Inaktive Konten ohne Verein** werden nicht automatisch gelöscht. Geplant: Konten ohne Vereinsmitgliedschaft nach X Tagen
   ohne Aktivität löschen, vorher Hinweis per E-Mail. Dafür fehlen Zeitstempel der letzten Aktivität, ein Cron-Befehl wie
   die `app:prune-*`-Befehle und Konfiguration für X und die Vorankündigungsfrist. Nicht umgesetzt.
+- **Datenexport (DSGVO) läuft synchron:** Der Export wird direkt gestreamt (JSON, erhöhte Speicher- und Zeitlimits). Bei
+  Nutzern mit vielen Vereinen und umfangreich bearbeiteten Datensätzen kann er groß werden. Er sollte ein asynchroner
+  Vorgang werden (Job/Warteschlange, Ergebnis kurz gespeichert und per Download-Link abrufbar, Hinweis per E-Mail). Die
+  App hat dafür noch keine Queue-Infrastruktur (`symfony/messenger` ist nicht installiert).
 
 ### Termine und Serien
 
@@ -106,4 +110,7 @@ Hier steht die einzige maßgebliche Liste der offenen Sicherheitspunkte. Die Aud
 - **Design-L1: Archivierter Kalender, Knopf-Beschriftung.** Das Design öffnet einen archivierten Kalender in seinem Zeitraum und beschriftet den Knopf "Zurück zu <Monat>"; die App öffnet im aktuellen Monat mit "Heute". Regel für den Startmonat fehlt (letzter Termin? Archivierungsdatum?). Entscheidung nötig.
 - **Design-L5: Kurze Feed-Adressen** (`/k/<verein>/<feed>`): benötigt Slugs je Verein und Feed im API; zusammen mit der Lücke "Kurze Adressen" unter "Feeds und öffentlicher Zugriff" entscheiden.
 - **Design-L6: Dialogtexte uneinheitlich.** Der Passkey-Dialog hat in den Dialogs keinen Namen, im Profil mit Namen; der Vorlagen-Löschdialog existiert in zwei Fassungen. Klärung im Design nötig.
+- **Einwilligungsnachweise bei Kontolöschung (später prüfen):** Der Nachweis der Einwilligung (`user_consent`) wird mit dem
+  Konto gelöscht (Kaskade). Zu prüfen ist, ob Aufbewahrungspflichten oder der Nachweis einer Einwilligung eine
+  Aufbewahrung verlangen. Entscheidung vorerst: Die Kontolöschung löscht alles.
 

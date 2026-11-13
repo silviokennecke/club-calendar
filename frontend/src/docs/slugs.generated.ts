@@ -38,6 +38,7 @@ export const DOC_SLUGS = [
   "settings/club",
   "settings/confirmation",
   "settings/consent",
+  "settings/data-export",
   "settings/delete-account",
   "settings/delete-club",
   "settings/email-change",
