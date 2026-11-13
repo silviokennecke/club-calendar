@@ -93,6 +93,12 @@ readonly class AccountMailer
         $this->sendNotice($user, 'passkey_added', $context);
     }
 
+    /** The personal data export was downloaded; the mail carries no data and no link to it. */
+    public function sendDataExported(User $user, ClientContext $context = new ClientContext()): void
+    {
+        $this->sendNotice($user, 'data_exported', $context);
+    }
+
     /** An SSO provider was linked to the account in the profile. */
     public function sendSsoProviderLinked(User $user, string $provider, ClientContext $context = new ClientContext()): void
     {

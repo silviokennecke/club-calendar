@@ -129,6 +129,7 @@ Limits slow down attackers and mistakes. When one is hit, the app answers `429` 
 | PDF export | 10 per user and 30 per IP per 10 min | fixed |
 | Maps and address search | several limits | fixed, see [Mail and maps](configuration/mail-and-maps.md) |
 | Holiday calendar fetch from a web address | 20 per hour per user | fixed |
+| Download of personal data (profile) | 1 per hour and 3 per day per user, 10 per day per IP; a failed or aborted download does not count | fixed |
 | AI app connections | 120 per minute per connection and per IP | fixed |
 
 

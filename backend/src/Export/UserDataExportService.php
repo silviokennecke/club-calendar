@@ -49,7 +49,7 @@ use Symfony\Component\Clock\ClockInterface;
  * so new columns never leak automatically and memory does not grow with the number of rows. Big lists are read
  * in keyset batches. Nothing about other people is included.
  */
-final class UserDataExportService
+class UserDataExportService
 {
     public const int VERSION = 1;
     public const string SCHEMA = 'club-calendar-user-export';

@@ -114,6 +114,13 @@
             "info": "This passkey can no longer be used to sign in. All other sessions were signed out.",
             "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions), then check MFA and your passkeys in your profile and contact Club Calendar support. You can find the \"Forgot password\" page here:"
         },
+        "data_exported": {
+            "subject": "Your data was downloaded",
+            "greeting": "Hello {name},",
+            "body": "A copy of all data stored about you in your Club Calendar account was downloaded.",
+            "info": "The download is not stored on our servers and this mail contains none of your data.",
+            "not_you": "Then someone has access to your account. Immediately set a new password via \"Forgot password\" (this ends all sessions) and sign out everywhere. You can find the \"Forgot password\" page here:"
+        },
         "passkey_added": {
             "subject": "A passkey was added",
             "greeting": "Hello {name},",

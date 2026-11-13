@@ -1,3 +1,6 @@
+parameters:
+    app.data_export_ip_per_day: 1000
+
 services:
     # Counts SQL statements in tests (N+1 checks, e.g. CountersTest)
     App\Tests\Helper\QueryCounter:
@@ -12,7 +15,7 @@ services:
         autowire: true
         tags: ['controller.service_arguments']
 
-    # Not yet used by a controller; tests fetch it from the container
+    # Tests replace it with a failing one
     App\Export\UserDataExportService:
         autowire: true
         public: true

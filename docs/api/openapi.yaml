@@ -1362,6 +1362,43 @@ paths:
               schema: { $ref: '#/components/schemas/Problem' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
 
+  /api/auth/me/export:
+    post:
+      tags: [Auth]
+      summary: Download all personal data
+      description: >-
+        GDPR export of everything stored about the signed-in user, as one JSON document (`UserDataExport`, schema
+        version 1). Needs a step-up token (`X-Step-Up-Token`; no body). Unlike most routes it stays behind the e-mail
+        verification and consent gates (`email_verification_required`, `consent_required`): such accounts ask the
+        operator. The body is streamed (chunked, no `Content-Length`) with `Content-Disposition: attachment;
+        filename="club-calendar-export-<userId>-<YYYYMMDD>.json"` (exposed to browsers via CORS), `Cache-Control:
+        no-store` and `X-Robots-Tag: noindex`. Limits: 1 per hour and 3 per day per user, 10 per day per client IP
+        (`429 rate_limited` + `Retry-After`); a request that fails or is aborted before the last byte does not use
+        up a slot. After a complete download a `data_export` security event is recorded and a notice mail (no data,
+        no link to it) goes to the account.
+      operationId: exportMyData
+      parameters:
+        - { $ref: '#/components/parameters/StepUpToken' }
+      responses:
+        '200':
+          description: The export.
+          headers:
+            Content-Disposition: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserDataExport' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: '`step_up_required` (member `methods`) or `step_up_unavailable`, `email_verification_required` or `consent_required`.'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429':
+          description: '`rate_limited` with `Retry-After` (seconds).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
   /api/auth/registration:
     get:
       tags: [Auth]
@@ -5402,6 +5439,197 @@ components:
         current: { type: boolean, description: 'The document is still the current one of its type.' }
         ipAddress: { type: [string, 'null'] }
         userAgent: { type: [string, 'null'] }
+    UserDataExport:
+      type: object
+      description: >-
+        Complete personal data export. Timestamps are UTC (`YYYY-MM-DDTHH:MM:SSZ`). Secrets (password hash, TOTP
+        secret, backup codes, passkey keys, tokens, feed and subscription addresses) and data of other people are
+        never included; `meta.excluded` lists this in words.
+      required: [meta, account, memberships, feedAccess, subscription, signInMethods, consents, securityEvents, connectedApps, sessions, invitations, pendingEmailChange, clubContent]
+      properties:
+        meta:
+          type: object
+          required: [version, schema, generatedAt, userId, excluded]
+          properties:
+            version: { type: integer, const: 1 }
+            schema: { type: string, const: club-calendar-user-export }
+            generatedAt: { type: string, format: date-time }
+            userId: { type: string }
+            excluded: { type: array, items: { type: string }, description: What is deliberately not part of the export. }
+        account:
+          type: object
+          properties:
+            id: { type: string }
+            name: { type: string }
+            email: { type: string }
+            language: { type: string }
+            dateFormat: { type: string }
+            firstDayOfWeek: { type: integer }
+            lastClubId: { type: [string, 'null'] }
+            lastCalendarId: { type: [string, 'null'] }
+            emailVerified: { type: boolean }
+            createdAt: { type: [string, 'null'], format: date-time }
+            mfaEnforced: { type: boolean }
+            mfaEnforcedAt: { type: [string, 'null'], format: date-time }
+        memberships:
+          type: array
+          items:
+            type: object
+            properties:
+              clubId: { type: string }
+              clubName: { type: string }
+              role: { type: string, enum: [member, viewer, editor, admin] }
+              lastCalendarId: { type: [string, 'null'] }
+        feedAccess:
+          type: array
+          description: Access to private feeds.
+          items:
+            type: object
+            properties:
+              feedId: { type: string }
+              feedName: { type: string }
+              clubId: { type: string }
+              source: { type: string, enum: [assigned, claimed] }
+              createdAt: { type: [string, 'null'], format: date-time }
+        subscription:
+          type: array
+          description: The personal subscription ("Mein Abo") per club, without its secret address.
+          items:
+            type: object
+            properties:
+              clubId: { type: string }
+              clubName: { type: string }
+              selectedFeeds: { type: array, items: { type: object, properties: { id: { type: string }, name: { type: string } } } }
+              targetGroups: { type: array, description: Audiences; empty = all., items: { type: object, properties: { id: { type: string }, name: { type: string } } } }
+              updatedAt: { type: [string, 'null'], format: date-time }
+        signInMethods:
+          type: object
+          properties:
+            password: { type: boolean, description: Whether a password is set (never the hash). }
+            mfaEnforced: { type: boolean }
+            totp: { type: [object, 'null'], properties: { active: { type: boolean }, createdAt: { type: string, format: date-time } } }
+            backupCodes: { type: object, properties: { total: { type: integer }, unused: { type: integer } } }
+            passkeys:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  deviceName: { type: [string, 'null'] }
+                  createdAt: { type: [string, 'null'], format: date-time }
+                  lastUsedAt: { type: [string, 'null'], format: date-time }
+            sso:
+              type: array
+              items:
+                type: object
+                properties:
+                  provider: { type: string }
+                  providerId: { type: string }
+                  email: { type: [string, 'null'] }
+                  tenantId: { type: [string, 'null'] }
+                  objectId: { type: [string, 'null'] }
+        consents:
+          type: array
+          items:
+            type: object
+            properties:
+              documentType: { type: string, enum: [imprint, privacy, terms] }
+              documentId: { type: string }
+              consentedAt: { type: string, format: date-time }
+              ipAddress: { type: [string, 'null'] }
+              userAgent: { type: [string, 'null'] }
+        securityEvents:
+          type: array
+          description: Security log of the account, oldest first (sign-ins, MFA, step-up, `data_export` and others).
+          items:
+            type: object
+            properties:
+              type: { type: string }
+              method: { type: [string, 'null'] }
+              provider: { type: [string, 'null'] }
+              success: { type: boolean }
+              attempts: { type: integer }
+              ip: { type: [string, 'null'] }
+              city: { type: [string, 'null'] }
+              country: { type: [string, 'null'] }
+              browser: { type: [string, 'null'] }
+              userAgent: { type: [string, 'null'] }
+              createdAt: { type: string, format: date-time }
+        connectedApps:
+          type: array
+          description: Connected AI apps (MCP grants).
+          items:
+            type: object
+            properties:
+              grantId: { type: string }
+              label: { type: string }
+              claimedName: { type: [string, 'null'] }
+              scopes: { type: array, items: { type: string } }
+              createdAt: { type: [string, 'null'], format: date-time }
+              lastUsedAt: { type: [string, 'null'], format: date-time }
+              expiresAt: { type: [string, 'null'], format: date-time }
+              revokedAt: { type: [string, 'null'], format: date-time }
+        sessions:
+          type: array
+          description: One entry per sign-in; no ids or tokens.
+          items:
+            type: object
+            properties:
+              startedAt: { type: string, format: date-time }
+              lastRefreshedAt: { type: string, format: date-time }
+              expiresAt: { type: string, format: date-time }
+              familyExpiresAt: { type: [string, 'null'], format: date-time }
+              revokedAt: { type: [string, 'null'], format: date-time }
+        invitations:
+          type: object
+          properties:
+            received:
+              type: array
+              items:
+                type: object
+                properties:
+                  clubName: { type: string }
+                  role: { type: string }
+                  status: { type: string, enum: [pending, accepted, declined] }
+                  createdAt: { type: string, format: date-time }
+                  expiresAt: { type: string, format: date-time }
+                  resolvedAt: { type: [string, 'null'], format: date-time }
+            sentCount: { type: integer, description: Number of invitations the user sent (no addresses). }
+        pendingEmailChange:
+          type: [object, 'null']
+          properties:
+            newEmail: { type: string }
+            expiresAt: { type: string, format: date-time }
+            createdAt: { type: string, format: date-time }
+        clubContent:
+          type: array
+          description: >-
+            Per club, the entries the user last changed or created (as last editor or inviter), grouped by type.
+            Content of other people is not included.
+          items:
+            type: object
+            properties:
+              clubId: { type: string }
+              clubName: { type: string }
+              entities:
+                type: object
+                description: >-
+                  Keys (only present when there are entries): `club`, `calendar`, `calendarFeed`, `event`, `eventSeries`,
+                  `eventTemplate`, `property` (badge), `feature` (extra), `targetGroup` (audience), `location`,
+                  `holidayCalendar`, `holidayEvent`, `clubMember`, `clubInvitation`, `memberSubscription`.
+                additionalProperties:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type: { type: string }
+                      id: { type: [string, 'null'] }
+                      name: { type: [string, 'null'] }
+                      relation: { type: string, enum: [lastUpdatedBy, createdBy] }
+                      at: { type: [string, 'null'], format: date-time }
+                      date: { type: string, description: Events and holiday events only. }
+                      calendarId: { type: string, description: Entries that belong to a calendar. }
+                      calendarName: { type: string }
     Me:
       allOf:
         - { $ref: '#/components/schemas/UserSummary' }

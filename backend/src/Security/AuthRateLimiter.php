@@ -103,6 +103,7 @@ class AuthRateLimiter
         private readonly RateLimiterFactory $mapboxStyleGlobal,
         #[Autowire(service: 'limiter.map_image_ip')]
         private readonly RateLimiterFactory $mapImageIp,
+        private readonly DataExportBudget $dataExportBudget,
         #[Autowire('%env(int:FEED_RATE_LIMIT_PER_IP)%')]
         private readonly int $feedIpLimit,
         #[Autowire('%env(int:FEED_RATE_LIMIT_PER_FEED)%')]
@@ -288,6 +289,15 @@ class AuthRateLimiter
     {
         self::assertAccepted($this->pdfExportUser->create($userId)->consume());
         self::assertAccepted($this->pdfExportIp->create(self::ip($request))->consume());
+    }
+
+    /**
+     * Personal data export: 1 per hour and 3 per day per user, 10 per day per client IP. Exact slot budgets
+     * (see {@see DataExportBudget}); the caller releases the returned ticket when the export fails.
+     */
+    public function assertDataExportAllowed(Request $request, string $userId): DataExportTicket
+    {
+        return $this->dataExportBudget->acquire($userId, self::ip($request));
     }
 
     /** User-initiated holiday feed fetch (create, refresh; outbound HTTP request): 20 per user per hour. */

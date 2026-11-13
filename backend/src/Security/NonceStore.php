@@ -75,6 +75,12 @@ final readonly class NonceStore
         return array_map(static fn (string $d): int => (new \DateTimeImmutable($d, new \DateTimeZone('UTC')))->getTimestamp(), $rows);
     }
 
+    /** Removes entries (a refund for slot-style budgets); unknown values are ignored. */
+    public function forget(string $purpose, string $nonce): void
+    {
+        $this->connection->executeStatement('DELETE FROM auth_nonce WHERE nonce_hash = ?', [hash('sha256', $purpose."\0".$nonce)]);
+    }
+
     /** Deletes expired entries in small batches (autocommit); returns the number deleted. */
     public function prune(int $batch = 1000): int
     {

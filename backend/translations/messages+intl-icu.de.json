@@ -114,6 +114,13 @@
             "info": "Mit diesem Passkey kann man sich nicht mehr anmelden. Alle anderen Sitzungen wurden abgemeldet.",
             "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet), prüfe danach in deinem Profil MFA und deine Passkeys und wende dich an den Support von Club Calendar. Die Seite „Passwort vergessen“ findest du hier:"
         },
+        "data_exported": {
+            "subject": "Deine Daten wurden heruntergeladen",
+            "greeting": "Hallo {name},",
+            "body": "eine Kopie aller Daten, die in deinem Club-Calendar-Konto über dich gespeichert sind, wurde heruntergeladen.",
+            "info": "Der Download wird nicht auf unseren Servern aufbewahrt und diese E-Mail enthält keine deiner Daten.",
+            "not_you": "Dann hat jemand Zugriff auf dein Konto. Setze sofort über „Passwort vergessen“ ein neues Passwort (dadurch werden alle Sitzungen beendet) und melde dich überall ab. Die Seite „Passwort vergessen“ findest du hier:"
+        },
         "passkey_added": {
             "subject": "Ein Passkey wurde hinzugefügt",
             "greeting": "Hallo {name},",
