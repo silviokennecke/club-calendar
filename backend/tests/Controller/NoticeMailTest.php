@@ -306,14 +306,18 @@ class NoticeMailTest extends WebTestCase
         self::$client = static::createClient();
         self::$client->disableReboot();
         static::getContainer()->set('mailer.transports', $failing);
+        // The queue takes the mails (test config sends them inline otherwise): a failing transport is the worker's problem.
+        $queue = new \Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport();
+        static::getContainer()->set('messenger.transport.sync', $queue);
         try {
             $r = $this->changePassword($user);
             $this->assertSame(200, $r['status'], $r['content']);
             $auth = 'Bearer '.$r['body']['access_token'];
             $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/change-email', ['email' => 'alice.new@example.com'], $auth, TestHelper::stepUp(self::$client, $auth, null, 'new-password-1'));
             $this->assertSame(204, $r['status'], $r['content']);
-            // password notice + confirmation link + change notice: all attempted, all failed quietly
-            $this->assertSame(3, $failing->attempts);
+            // password notice + confirmation link + change notice: queued, nothing sent by the request
+            $this->assertSame(0, $failing->attempts);
+            $this->assertCount(3, $queue->getSent());
         } finally {
             self::$client->enableReboot();
             self::ensureKernelShutdown();

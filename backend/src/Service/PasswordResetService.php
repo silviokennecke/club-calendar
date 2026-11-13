@@ -10,9 +10,11 @@ use App\Entity\PasswordReset;
 use App\Entity\User;
 use App\Enum\SecurityEventType;
 use App\Exception\ApiProblemException;
+use App\Message\SendPasswordResetMail;
 use App\Security\ClientContextResolver;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
@@ -34,7 +36,7 @@ readonly class PasswordResetService
         private UserPasswordHasherInterface $hasher,
         private AccountMailer $mailer,
         private ClockInterface $clock,
-        private DeferredMailer $deferred,
+        private MessageBusInterface $bus,
         private ClientContextResolver $clientContext,
         private SecurityEventLogger $events,
     ) {
@@ -42,20 +44,25 @@ readonly class PasswordResetService
 
     /**
      * Sends a reset link if the address belongs to an account (also unconfirmed and SSO-only ones). The
-     * caller answers the same way in every case. Lookup, token and mail all happen after the response:
-     * neither the SMTP round trip nor the database writes for an existing account delay the answer.
+     * caller answers the same way in every case. The request only enqueues a message (identical for every
+     * address); lookup, token and mail happen in {@see sendResetIfAccount()} in the worker, so neither the
+     * SMTP round trip nor the database writes for an existing account can be timed.
      */
     public function requestReset(string $email): void
     {
-        $this->deferred->defer(function () use ($email): void {
-            $user = $this->em->getRepository(User::class)->findOneBy(['email' => EmailAddress::normalize($email)]);
-            if (null === $user) {
-                return;
-            }
-            // The link always goes to the stored address of the account, never to the typed one (the
-            // column collation also matches look-alike spellings).
-            $this->mailer->sendPasswordReset($user, $this->createToken($user));
-        });
+        $this->bus->dispatch(new SendPasswordResetMail(EmailAddress::normalize($email)));
+    }
+
+    /** Handler side of {@see requestReset()}. */
+    public function sendResetIfAccount(string $email): void
+    {
+        $user = $this->em->getRepository(User::class)->findOneBy(['email' => EmailAddress::normalize($email)]);
+        if (null === $user) {
+            return;
+        }
+        // The link always goes to the stored address of the account, never to the typed one (the
+        // column collation also matches look-alike spellings).
+        $this->mailer->sendPasswordReset($user, $this->createToken($user));
     }
 
     /** Creates a new link token for the user (older open ones become invalid) and returns it. */

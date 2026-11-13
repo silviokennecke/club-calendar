@@ -10,11 +10,13 @@ use App\Entity\ClubUser;
 use App\Entity\User;
 use App\Enum\ClubRole;
 use App\Exception\ApiProblemException;
+use App\Message\SendClubInvitationMail;
 use App\Security\AuthRateLimiter;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityNotFoundException;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * Club invitations (security audit M8). Nobody is added to a club without consent, and inviting reveals
@@ -45,8 +47,7 @@ readonly class ClubInvitationService
         private EntityManagerInterface $em,
         private Quota $quota,
         private ClockInterface $clock,
-        private ClubInvitationMailer $mailer,
-        private DeferredMailer $deferred,
+        private MessageBusInterface $bus,
         private AuthRateLimiter $limiter,
     ) {
     }
@@ -374,14 +375,15 @@ readonly class ClubInvitationService
         return in_array($email, $found, true);
     }
 
-    /** The mail goes out after the response, and not at all above the per-address limit (answer unchanged). */
+    /**
+     * The mail is sent by the worker, and not at all above the per-address limit (answer unchanged). The limit is
+     * consumed here, once, so a retry of the send does not use it up; it does not depend on whether an account exists.
+     */
     private function queueMail(ClubInvitation $invitation, string $token): void
     {
-        $this->deferred->defer(function () use ($invitation, $token): void {
-            if ($this->limiter->allowInvitationMail($invitation->getEmail())) {
-                $this->mailer->send($invitation, $token);
-            }
-        });
+        if ($this->limiter->allowInvitationMail($invitation->getEmail())) {
+            $this->bus->dispatch(new SendClubInvitationMail($invitation->getId(), $token));
+        }
     }
 
     private static function newToken(): string

@@ -26,7 +26,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Symfony\Component\Messenger\Exception\ExceptionInterface as MessengerException;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 readonly class AuthService
@@ -151,7 +151,7 @@ readonly class AuthService
         }
         try {
             $this->verificationMailer->send($user);
-        } catch (TransportExceptionInterface) {
+        } catch (MessengerException) {
         }
     }
 

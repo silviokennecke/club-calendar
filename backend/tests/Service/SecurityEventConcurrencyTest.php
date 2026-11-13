@@ -7,7 +7,6 @@ namespace App\Tests\Service;
 use App\Entity\User;
 use App\Enum\SecurityEventType;
 use App\Security\ClientContext;
-use App\Service\DeferredMailer;
 use App\Service\SecurityEventLogger;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
@@ -65,7 +64,6 @@ class SecurityEventConcurrencyTest extends KernelTestCase
                         usleep(500);
                     }
                     $c->get(SecurityEventLogger::class)->record($u, SecurityEventType::LOGIN, false, 'password', null, new ClientContext($ip, 'Chrome 126', 'Berlin', 'DE'));
-                    $c->get(DeferredMailer::class)->flush();
                     $mails = count(array_filter(self::getMailerMessages(), fn ($m) => $m instanceof Email));
                 } catch (\Throwable) {
                 }

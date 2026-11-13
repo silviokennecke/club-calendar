@@ -169,32 +169,6 @@ class PasswordResetTest extends WebTestCase
         $this->assertEmailCount(1);
     }
 
-    public function testMailIsSentAfterTheResponse(): void
-    {
-        // Neither the SMTP round trip nor the token's database writes may delay only the answers for
-        // existing accounts (timing oracle): token and mail are created and sent on kernel.terminate.
-        $user = TestHelper::createUser(self::$em, self::$hasher, self::uniqueEmail());
-        $sentBeforeTerminate = null;
-        $tokensBeforeTerminate = null;
-        $dispatcher = static::getContainer()->get('event_dispatcher');
-        $listener = function () use (&$sentBeforeTerminate, &$tokensBeforeTerminate): void {
-            $sentBeforeTerminate ??= count($this->getMailerMessages());
-            $tokensBeforeTerminate ??= (int) self::$em->getConnection()->fetchOne('SELECT COUNT(*) FROM password_reset');
-        };
-        $dispatcher->addListener('kernel.response', $listener, -1000);
-        try {
-            self::$client->disableReboot();
-            $this->forgot($user->getEmail());
-        } finally {
-            $dispatcher->removeListener('kernel.response', $listener);
-            self::$client->enableReboot();
-        }
-        $this->assertSame(0, $sentBeforeTerminate);
-        $this->assertSame(0, $tokensBeforeTerminate);
-        $this->assertEmailCount(1);
-        $this->assertSame(1, (int) self::$em->getConnection()->fetchOne('SELECT COUNT(*) FROM password_reset'));
-    }
-
     public function testInvalidInputIsAValidationErrorWithCode(): void
     {
         $r = TestHelper::jsonRequest(self::$client, 'POST', '/api/auth/forgot-password', ['email' => 'not-an-email']);

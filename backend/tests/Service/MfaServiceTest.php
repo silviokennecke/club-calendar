@@ -13,7 +13,6 @@ use App\Repository\MfaBackupCodeRepository;
 use App\Repository\UserTotpRepository;
 use App\Security\ClientContext;
 use App\Security\Mfa\Totp;
-use App\Service\DeferredMailer;
 use App\Service\MfaService;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
@@ -261,8 +260,6 @@ class MfaServiceTest extends WebTestCase
 
     private function mailCount(): int
     {
-        static::getContainer()->get(DeferredMailer::class)->flush();
-
         return count(array_filter(self::getMailerMessages(), fn ($m) => $m instanceof Email));
     }
 

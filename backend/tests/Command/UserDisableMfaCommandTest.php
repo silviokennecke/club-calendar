@@ -8,7 +8,6 @@ use App\Entity\Passkey;
 use App\Entity\User;
 use App\Security\ClientContext;
 use App\Security\Mfa\Totp;
-use App\Service\DeferredMailer;
 use App\Service\MfaService;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
@@ -59,7 +58,6 @@ class UserDisableMfaCommandTest extends WebTestCase
     /** @return list<Email> mails sent since the last call */
     private function drainMail(): array
     {
-        static::getContainer()->get(DeferredMailer::class)->flush();
         $all = array_values(array_filter(self::getMailerMessages(), fn ($m) => $m instanceof Email));
         $mails = \array_slice($all, $this->seenMails);
         $this->seenMails = \count($all);

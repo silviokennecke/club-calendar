@@ -11,8 +11,7 @@ use Twig\TwigFunction;
 /**
  * `legal_links()` for the e-mail footer (`templates/email/_components/footer.mjml`): the public legal links
  * (imprint, privacy, terms; type => absolute URL, missing types omitted) from
- * {@see LegalDocumentService::publicLinks()}. Evaluated when a mail is rendered (memoized per instance, the footer asks twice) (also after the response in
- * {@see \App\Service\DeferredMailer} and in console commands), so no mailer has to pass it in.
+ * {@see LegalDocumentService::publicLinks()}. Evaluated when a mail is rendered (memoized per instance, the footer asks twice) (in the Messenger worker), so no mailer has to pass it in.
  */
 final class LegalLinksExtension extends AbstractExtension
 {

@@ -467,7 +467,6 @@ class OAuthAuthorizeTest extends WebTestCase
         $requestId = $this->startRequest($this->registerClient());
         $this->assertSame(200, $this->json('POST', '/api/oauth/authorize/decision', ['requestId' => $requestId, 'approve' => true])['status']);
 
-        static::getContainer()->get(\App\Service\DeferredMailer::class)->flush();
         $mails = array_values(array_filter(self::getMailerMessages(), static fn ($m) => $m instanceof \Symfony\Component\Mime\Email && str_contains((string) $m->getSubject(), 'app was connected')));
         $this->assertCount(1, $mails);
         $html = (string) $mails[0]->getHtmlBody();

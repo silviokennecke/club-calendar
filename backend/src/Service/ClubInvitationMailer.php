@@ -9,18 +9,19 @@ use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * The invitation mail: club name and inviter name, a link with the one-time token to the SPA and a link to
  * the registration for people without an account. The text is identical for registered and unregistered
- * addresses; only the language differs (the account's language if there is one, else the inviter's). Sent after
- * the response ({@see DeferredMailer}).
+ * addresses; only the language differs (the account's language if there is one, else the inviter's). Queued via
+ * the mailer (Messenger), rendered by the worker.
  */
 readonly class ClubInvitationMailer
 {
     public function __construct(
-        private DeferredMailer $mailer,
+        private MailerInterface $mailer,
         private TranslatorInterface $translator,
         private EntityManagerInterface $em,
         #[Autowire(env: 'MAILER_FROM')]
@@ -47,7 +48,7 @@ readonly class ClubInvitationMailer
         $locale = $existing?->getLanguage() ?? $inviter?->getLanguage() ?? 'en';
         $clubName = $invitation->getClub()->getName();
 
-        $this->mailer->queue(
+        $this->mailer->send(
             new TemplatedEmail()
                 ->from($this->mailerFrom)
                 ->to($invitation->getEmail())

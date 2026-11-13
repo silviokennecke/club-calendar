@@ -12,19 +12,20 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Mails for account changes: one-time links (password reset, new e-mail address) and notices about a
  * change (password changed, e-mail change requested / done). The links are built from configured base
  * URLs (FRONTEND_URL, BACKEND_URL), never from the request's Host header. Notices carry no token and no
- * link except the general "forgot password" page; a new address appears only masked. Sending happens
- * after the response ({@see DeferredMailer}); a transport error is logged there and never breaks the flow.
+ * link except the general "forgot password" page; a new address appears only masked. The mails go to the
+ * Messenger queue (the worker renders and sends them, with retry); a transport error never breaks the flow.
  */
 readonly class AccountMailer
 {
     public function __construct(
-        private DeferredMailer $mailer,
+        private MailerInterface $mailer,
         private TranslatorInterface $translator,
         #[Autowire(env: 'MAILER_FROM')]
         private string $mailerFrom,
@@ -127,7 +128,7 @@ readonly class AccountMailer
     /** @param array<string, scalar> $extra */
     private function sendNotice(User $user, string $name, ClientContext $context, array $extra = []): void
     {
-        $this->mailer->queue($this->email(
+        $this->mailer->send($this->email(
             $user,
             $user->getEmail(),
             "email.$name.subject",
@@ -139,7 +140,7 @@ readonly class AccountMailer
     /** Notice to the CURRENT address that a change to `$newEmail` (shown masked) was requested. */
     public function sendEmailChangeRequested(User $user, string $newEmail): void
     {
-        $this->mailer->queue($this->email(
+        $this->mailer->send($this->email(
             $user,
             $user->getEmail(),
             'email.email_change_requested.subject',
@@ -151,7 +152,7 @@ readonly class AccountMailer
     /** Notice to the FORMER address after the change to `$newEmail` (shown masked) was confirmed. */
     public function sendEmailChanged(User $user, string $oldEmail, string $newEmail): void
     {
-        $this->mailer->queue($this->email(
+        $this->mailer->send($this->email(
             $user,
             $oldEmail,
             'email.email_changed.subject',
@@ -163,7 +164,7 @@ readonly class AccountMailer
     /** The 6-digit code that confirms a sensitive action (step-up) for an account without password. */
     public function sendStepUpCode(User $user, string $code, int $validMinutes): void
     {
-        $this->mailer->queue($this->email(
+        $this->mailer->send($this->email(
             $user,
             $user->getEmail(),
             'email.step_up_code.subject',
@@ -229,7 +230,7 @@ readonly class AccountMailer
 
     public function sendPasswordReset(User $user, string $token): void
     {
-        $this->mailer->queue($this->email(
+        $this->mailer->send($this->email(
             $user,
             $user->getEmail(),
             'email.reset.subject',
@@ -240,7 +241,7 @@ readonly class AccountMailer
 
     public function sendNewEmailConfirmation(User $user, string $newEmail, string $token): void
     {
-        $this->mailer->queue($this->email(
+        $this->mailer->send($this->email(
             $user,
             $newEmail,
             'email.change.subject',

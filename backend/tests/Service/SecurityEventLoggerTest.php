@@ -10,7 +10,6 @@ use App\Security\ClientContext;
 use App\Security\ClientContextResolver;
 use App\Security\NonceStore;
 use App\Service\AccountMailer;
-use App\Service\DeferredMailer;
 use App\Service\SecurityEventLogger;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
@@ -62,8 +61,6 @@ class SecurityEventLoggerTest extends KernelTestCase
     /** @return list<Email> */
     private function mails(): array
     {
-        static::getContainer()->get(DeferredMailer::class)->flush();
-
         return array_values(array_filter(self::getMailerMessages(), fn ($m) => $m instanceof Email));
     }
 
