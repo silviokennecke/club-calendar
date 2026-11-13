@@ -1,8 +1,12 @@
 #!/bin/bash
 # Entrypoint of the Club Calendar image.
-#   serve (default)  prepare, migrate, then run PHP-FPM + Caddy
+#   serve (default)  prepare, then run supervisord with the programs of ROLE
 #   anything else    executed as is, e.g. `php bin/console doctrine:fixtures:load`
 #
+# ROLE:      all (default: web + worker in one container), web (PHP-FPM + Caddy, prepares and migrates) or
+#            worker (queue consumers + scheduler; waits for the web role to have migrated the database).
+#            MESSENGER_WORKERS (default 2, 1..32) consumers of the async queue; SCHEDULER_ENABLED=false removes the
+#            scheduler from this container (one is enough per cluster, the app lock guarantees uniqueness anyway).
 # Required:  APP_SECRET, JWT_REFRESH_SECRET, DATABASE_URL, APP_URL (public URL, e.g. https://cal.example.com)
 # Optional:  APP_NAME, WEBAUTHN_RP_NAME, FRONTEND_URL / BACKEND_URL / WEBAUTHN_RP_ID (derived from APP_URL), MAILER_DSN, MAILER_FROM, MAPBOX_TOKEN,
 #            APP_SECRET_PREVIOUS (only while rotating APP_SECRET), GOOGLE_*/MICROSOFT_*/APPLE_* OAuth settings, SYMFONY_TRUSTED_PROXIES (behind a TLS proxy, e.g. PRIVATE_SUBNETS),
@@ -34,6 +38,20 @@ if [ "${1:-serve}" != "serve" ]; then
     exec "$@"
 fi
 
+ROLE="${ROLE:-all}"
+case "$ROLE" in
+    all | web | worker) ;;
+    *) log "invalid ROLE '$ROLE' (allowed: all, web, worker)"; exit 1 ;;
+esac
+
+MESSENGER_WORKERS="${MESSENGER_WORKERS:-2}"
+if ! [[ "$MESSENGER_WORKERS" =~ ^[0-9]+$ ]] || [ "$MESSENGER_WORKERS" -lt 1 ] || [ "$MESSENGER_WORKERS" -gt 32 ]; then
+    log "invalid MESSENGER_WORKERS '$MESSENGER_WORKERS' (integer 1..32)"
+    exit 1
+fi
+export MESSENGER_WORKERS
+
+# Every role boots the same kernel, so all roles need the same core settings
 missing=()
 for var in APP_SECRET JWT_REFRESH_SECRET DATABASE_URL APP_URL; do
     [ -n "${!var:-}" ] || missing+=("$var")
@@ -43,79 +61,99 @@ if [ ${#missing[@]} -gt 0 ]; then
     exit 1
 fi
 
-# Initial page title from APP_NAME: render the SPA's index.html from the untouched build-time template (idempotent)
-if [ -f index.html.tpl ]; then
-    if ! php -r '
-        $v = trim((string) preg_replace("/[\p{Cc}\p{Cf}]+/u", "", (string) getenv("APP_NAME")));
-        $v = trim(mb_substr($v, 0, 60));
-        if ($v === "") { $v = "Club Calendar"; }
-        $t = htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, "UTF-8");
-        $h = file_get_contents("index.html.tpl");
-        $o = "<title>Club Calendar</title>";
-        if ($h === false || substr_count($h, $o) !== 1) { fwrite(STDERR, "title marker not found\n"); exit(1); }
-        $tmp = "public/.index.html.tmp";
-        if (file_put_contents($tmp, str_replace($o, "<title>" . $t . "</title>", $h)) === false || !rename($tmp, "public/index.html")) { exit(1); }
-    '; then
-        log "WARNING: could not set the page title from APP_NAME (non-fatal, the default title stays until the app loads)"
-    fi
-fi
-
-# JWT keypair
-if [ ! -s "$JWT_PRIVATE_KEY" ]; then
-    log "no JWT keypair found, generating one at $JWT_PRIVATE_KEY (mount a volume at $(dirname "$JWT_PRIVATE_KEY") to keep it across restarts)"
-    php bin/console lexik:jwt:generate-keypair --skip-if-exists --no-interaction
-fi
-
-# Database migrations
-if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
-    retries="${MIGRATION_RETRIES:-15}"
+if [ "$ROLE" = "worker" ]; then
+    # The web role owns migrations and the secret rotation; wait (bounded) until the schema is current
+    retries="${MIGRATION_WAIT_RETRIES:-90}"
     for ((attempt = 1; ; attempt++)); do
-        if php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration; then
+        if php bin/console doctrine:migrations:up-to-date --no-interaction >/dev/null 2>&1; then
+            log "database schema is up to date"
             break
         fi
         if [ "$attempt" -ge "$retries" ]; then
-            log "migrations failed after $attempt attempts"
+            log "database schema still not migrated after $attempt checks (is a web container running?)"
             exit 1
         fi
-        log "migration attempt $attempt failed (database not ready?), retrying in 2s"
+        log "waiting for database migrations ($attempt/$retries), retrying in 2s"
         sleep 2
     done
-fi
-
-# Sync legal documents from the mounted directory
-if ! php bin/console app:legal:sync --no-interaction >&2; then
-    log "WARNING: legal document sync failed (non-fatal, documents may be out of date)"
-fi
-
-# GeoLite2 City database for the location in security notices (only with a MaxMind licence key; refresh weekly via cron)
-if [ -n "${MAXMIND_LICENSE_KEY:-}" ]; then
-    geoip_db="${GEOIP_DB_PATH:-/data/geoip/GeoLite2-City.mmdb}"
-    if [ ! -s "$geoip_db" ] || [ -n "$(find "$geoip_db" -mtime +7 2>/dev/null)" ]; then
-        if ! php bin/console app:geoip:update --force --no-interaction >&2; then
-            log "WARNING: GeoIP database update failed (non-fatal, locations stay empty or outdated)"
+else
+    # Initial page title from APP_NAME: render the SPA's index.html from the untouched build-time template (idempotent)
+    if [ -f index.html.tpl ]; then
+        if ! php -r '
+            $v = trim((string) preg_replace("/[\p{Cc}\p{Cf}]+/u", "", (string) getenv("APP_NAME")));
+            $v = trim(mb_substr($v, 0, 60));
+            if ($v === "") { $v = "Club Calendar"; }
+            $t = htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, "UTF-8");
+            $h = file_get_contents("index.html.tpl");
+            $o = "<title>Club Calendar</title>";
+            if ($h === false || substr_count($h, $o) !== 1) { fwrite(STDERR, "title marker not found\n"); exit(1); }
+            $tmp = "public/.index.html.tmp";
+            if (file_put_contents($tmp, str_replace($o, "<title>" . $t . "</title>", $h)) === false || !rename($tmp, "public/index.html")) { exit(1); }
+        '; then
+            log "WARNING: could not set the page title from APP_NAME (non-fatal, the default title stays until the app loads)"
         fi
+    fi
+
+    # JWT keypair
+    if [ ! -s "$JWT_PRIVATE_KEY" ]; then
+        log "no JWT keypair found, generating one at $JWT_PRIVATE_KEY (mount a volume at $(dirname "$JWT_PRIVATE_KEY") to keep it across restarts)"
+        php bin/console lexik:jwt:generate-keypair --skip-if-exists --no-interaction
+    fi
+
+    # Database migrations
+    if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
+        retries="${MIGRATION_RETRIES:-15}"
+        for ((attempt = 1; ; attempt++)); do
+            if php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration; then
+                break
+            fi
+            if [ "$attempt" -ge "$retries" ]; then
+                log "migrations failed after $attempt attempts"
+                exit 1
+            fi
+            log "migration attempt $attempt failed (database not ready?), retrying in 2s"
+            sleep 2
+        done
+    fi
+
+    # Sync legal documents from the mounted directory
+    if ! php bin/console app:legal:sync --no-interaction >&2; then
+        log "WARNING: legal document sync failed (non-fatal, documents may be out of date)"
+    fi
+
+    # GeoLite2 City database for the location in security notices (only with a MaxMind licence key; the scheduler refreshes it weekly)
+    if [ -n "${MAXMIND_LICENSE_KEY:-}" ]; then
+        geoip_db="${GEOIP_DB_PATH:-/data/geoip/GeoLite2-City.mmdb}"
+        if [ ! -s "$geoip_db" ] || [ -n "$(find "$geoip_db" -mtime +7 2>/dev/null)" ]; then
+            if ! php bin/console app:geoip:update --force --no-interaction >&2; then
+                log "WARNING: GeoIP database update failed (non-fatal, locations stay empty or outdated)"
+            fi
+        fi
+    fi
+
+    # Encrypt stored feed and subscription secrets with the current APP_SECRET (legacy plaintext on upgrade, rotation)
+    if ! php bin/console app:secrets:rotate --no-interaction >&2; then
+        log "WARNING: app:secrets:rotate failed (non-fatal): some secrets could not be encrypted or decrypted; check APP_SECRET / APP_SECRET_PREVIOUS and run the command by hand"
     fi
 fi
 
-# Encrypt stored feed and subscription secrets with the current APP_SECRET (legacy plaintext on upgrade, rotation)
-if ! php bin/console app:secrets:rotate --no-interaction >&2; then
-    log "WARNING: app:secrets:rotate failed (non-fatal): some secrets could not be encrypted or decrypted; check APP_SECRET / APP_SECRET_PREVIOUS and run the command by hand"
+# Render the supervisord configuration for this role into /tmp (the image directory stays untouched)
+SUPERVISOR_DIR=/tmp/supervisor
+SUPERVISOR_SRC=/usr/local/share/supervisord
+mkdir -p "$SUPERVISOR_DIR"
+chmod 0700 "$SUPERVISOR_DIR"
+conf="$SUPERVISOR_DIR/supervisord.conf"
+cp "$SUPERVISOR_SRC/base.conf" "$conf"
+if [ "$ROLE" != "worker" ]; then
+    cat "$SUPERVISOR_SRC/web.conf" >> "$conf"
+fi
+if [ "$ROLE" != "web" ]; then
+    cat "$SUPERVISOR_SRC/worker.conf" >> "$conf"
+    case "${SCHEDULER_ENABLED:-true}" in
+        0 | false | FALSE | False | no | off) log "scheduler disabled (SCHEDULER_ENABLED=${SCHEDULER_ENABLED})" ;;
+        *) cat "$SUPERVISOR_SRC/scheduler.conf" >> "$conf" ;;
+    esac
 fi
 
-# Run PHP-FPM + Caddy; if one exits, take the other down so the container restarts
-php-fpm -F &
-fpm_pid=$!
-caddy run --config /etc/caddy/Caddyfile --adapter caddyfile &
-caddy_pid=$!
-
-shutdown() {
-    kill -TERM "$fpm_pid" "$caddy_pid" 2>/dev/null || true
-}
-trap shutdown TERM INT
-
-set +e
-wait -n "$fpm_pid" "$caddy_pid"
-status=$?
-shutdown
-wait
-exit "$status"
+log "starting supervisord (role $ROLE)"
+exec supervisord -n -c "$conf"

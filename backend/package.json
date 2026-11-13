@@ -8,6 +8,7 @@
     "build:mail": "node build/mail-builder.js",
     "test": "composer test",
     "migrate": "composer migrate",
+    "worker": "php bin/console messenger:consume async scheduler_default -vv",
     "fixtures": "composer fixtures"
   },
   "devDependencies": {

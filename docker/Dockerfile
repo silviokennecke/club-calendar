@@ -49,8 +49,8 @@ FROM php:${PHP_VERSION}-fpm-alpine AS runtime
 LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
 COPY --from=ghcr.io/mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
-RUN apk add --no-cache bash tini \
-    && install-php-extensions pdo_mysql intl gd opcache \
+RUN apk add --no-cache bash tini supervisor \
+    && install-php-extensions pdo_mysql intl gd opcache redis \
     && rm -f /usr/local/bin/install-php-extensions \
     && mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
     # own pool config, runs unprivileged (no user/group directive)
@@ -62,7 +62,9 @@ COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 COPY docker/php.ini "$PHP_INI_DIR/conf.d/zz-app.ini"
 COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/app.conf
 COPY docker/Caddyfile /etc/caddy/Caddyfile
+COPY docker/supervisord/ /usr/local/share/supervisord/
 COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY docker/healthcheck.sh /usr/local/bin/healthcheck.sh
 
 ENV APP_ENV=prod \
     APP_DEBUG=0 \
@@ -97,14 +99,14 @@ RUN --mount=type=bind,source=docker/build.env,target=/tmp/build.env \
     && set -a && . /tmp/build.env && set +a \
     && php bin/console cache:warmup --no-interaction \
     && cp public/index.html index.html.tpl \
-    && chmod +x /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/healthcheck.sh \
     && chown -R www-data:www-data .env var public index.html.tpl
 
 USER www-data
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD curl -sf "http://127.0.0.1:${PORT}/api/health" > /dev/null || exit 1
+    CMD ["/usr/local/bin/healthcheck.sh"]
 
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/docker-entrypoint.sh"]
 CMD ["serve"]
