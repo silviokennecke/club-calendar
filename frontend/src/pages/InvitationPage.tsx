@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { useAppName } from "@/lib/appName";
 import { apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { Banner, Button, FullPageLoader, LinkButton } from "@/components/ui/shared";
@@ -24,6 +25,7 @@ import type { Club } from "@/lib/types";
  */
 export default function InvitationPage() {
   const { t } = useTranslation();
+  const appName = useAppName();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { user, loading } = useAuth();
@@ -101,7 +103,7 @@ export default function InvitationPage() {
     <AuthLayout
       icon="mail"
       title={t("invitations.page.title")}
-      intro={dead ? undefined : t("invitations.page.intro")}
+      intro={dead ? undefined : t("invitations.page.intro", { appName })}
     >
       <div className="ap-stack">
         {failure && (

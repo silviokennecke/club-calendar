@@ -9,6 +9,12 @@ vi.mock("@/components/legal/LegalLinks", () => ({
   LegalLinks: ({ trailing }: { trailing?: unknown }) => trailing ?? null,
 }));
 
+// The instance name comes from the registration endpoint (needs a query client); tests see the default.
+vi.mock("@/lib/appName", () => ({
+  PROJECT_NAME: "Club Calendar",
+  useAppName: () => "Club Calendar",
+}));
+
 // Tests run in German (the design's source language). Wait for the initial language detection
 // (jsdom reports English, which loads lazily) so it cannot switch back afterwards.
 await i18nReady;

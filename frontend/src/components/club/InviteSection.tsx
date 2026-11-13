@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { useAppName } from "@/lib/appName";
 import {
   Banner,
   Button,
@@ -31,6 +32,7 @@ import type { Club, ClubRole, User } from "@/lib/types";
  */
 export function InviteSection({ club, members }: { club: Club; members: ReadonlyArray<User> }) {
   const { t } = useTranslation();
+  const appName = useAppName();
   const qc = useQueryClient();
   const { user } = useAuth();
   const [email, setEmail] = useState("");
@@ -135,7 +137,7 @@ export function InviteSection({ club, members }: { club: Club; members: Readonly
           id="cl-email"
           label={t("club.invite.emailLabel")}
           required
-          hint={t("club.invite.emailHint")}
+          hint={t("club.invite.emailHint", { appName })}
           error={message}
         >
           <TextInput

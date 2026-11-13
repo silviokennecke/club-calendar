@@ -346,7 +346,7 @@ describe("ProfilePage", () => {
     renderProfile(true, "/profile/security?link_error=account_in_use");
     expect(await screen.findByText("Das Konto wurde nicht verknüpft")).toBeInTheDocument();
     expect(
-      screen.getByText("Dieses Konto ist schon mit einem anderen Club-Calendar-Konto verknüpft."),
+      screen.getByText("Dieses Konto ist schon mit einem anderen Konto verknüpft."),
     ).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("search")).toHaveTextContent(/^$/));
   });

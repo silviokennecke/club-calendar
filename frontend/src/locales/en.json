@@ -218,7 +218,7 @@
     "restrictedBack": "Back to my clubs",
     "stepClub": "Club",
     "stepCalendar": "Calendar",
-    "welcome": "Welcome to Club Calendar",
+    "welcome": "Welcome to {{appName}}",
     "setupClubFirst": "Create your club first. Then you set up the first calendar.",
     "clubFormLabel": "Create club",
     "clubName": "Name of your club",
@@ -1652,9 +1652,6 @@
       "title": "Club settings"
     }
   },
-  "brand": {
-    "name": "Club Calendar"
-  },
   "ui": {
     "sso": {
       "google": "Sign in with Google",
@@ -1968,7 +1965,7 @@
     "invite": {
       "title": "Invite by email",
       "emailLabel": "Email address",
-      "emailHint": "The person receives an invitation by email and can accept it in Club Calendar.",
+      "emailHint": "The person receives an invitation by email and can accept it in {{appName}}.",
       "emailPlaceholder": "name@example.com",
       "send": "Send invitation",
       "sent": "If {{email}} can be invited, an invitation was sent.",
@@ -2266,7 +2263,7 @@
       "linkedNow": "{{name}} was linked.",
       "linkErrorTitle": "The account was not linked",
       "linkError": {
-        "account_in_use": "This account is already linked to another Club Calendar account.",
+        "account_in_use": "This account is already linked to another account.",
         "already_linked": "Another account of this provider is already linked. Unlink it first.",
         "provider_denied": "You cancelled the linking at the provider.",
         "provider_error": "The provider declined the linking. Please try again later.",
@@ -2606,7 +2603,7 @@
     },
     "page": {
       "title": "Invitation to a club",
-      "intro": "You have been invited to a club in Club Calendar. Do you want to accept the invitation?",
+      "intro": "You have been invited to a club in {{appName}}. Do you want to accept the invitation?",
       "errorTitle": "The invitation could not be answered",
       "later": "Decide later",
       "toClubs": "Go to my clubs",
@@ -2650,7 +2647,7 @@
   },
   "consent": {
     "title": "Consent required",
-    "intro": "Please accept the current version of the following documents to keep using Club Calendar.",
+    "intro": "Please accept the current version of the following documents to keep using {{appName}}.",
     "accept": {
       "privacy": "I have read and accept the <doc>privacy policy</doc>.",
       "terms": "I have read and accept the <doc>terms of use</doc>.",
@@ -2710,7 +2707,7 @@
       "errorTitle": "That did not work",
       "expiredTitle": "Request expired",
       "expiredText": "This request has expired, was already answered or was started in another browser. Start the connection in the app again and open the link in the same browser you sign in with.",
-      "toApp": "Go to Club Calendar",
+      "toApp": "Go to {{appName}}",
       "toProfile": "Go to profile",
       "risk": {
         "loopback": {

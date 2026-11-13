@@ -135,7 +135,7 @@ test.describe("Profil bearbeiten", () => {
     // the account tab forwards the link flow result to the security tab
     await expect(page.getByText("Das Konto wurde nicht verknüpft")).toBeVisible();
     await expect(
-      page.getByText("Dieses Konto ist schon mit einem anderen Club-Calendar-Konto verknüpft."),
+      page.getByText("Dieses Konto ist schon mit einem anderen Konto verknüpft."),
     ).toBeVisible();
     await expect(page).toHaveURL(/\/profile\/security$/);
   });

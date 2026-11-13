@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useAppName } from "@/lib/appName";
 import { Banner, Button, Icon, LinkButton, Skeleton } from "@/components/ui/shared";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import {
@@ -19,6 +20,7 @@ import { apiErrorCode, isStepUpCancelled } from "@/lib/api";
  */
 export default function OAuthConsentPage() {
   const { t } = useTranslation();
+  const appName = useAppName();
   const [params] = useSearchParams();
   const requestId = params.get("request");
   const request = useAuthorizationRequest(requestId);
@@ -56,7 +58,7 @@ export default function OAuthConsentPage() {
         <div className="ap-stack">
           <Banner tone="warning">{t("oauth.consent.expiredText")}</Banner>
           <LinkButton to="/clubs" block>
-            {t("oauth.consent.toApp")}
+            {t("oauth.consent.toApp", { appName })}
           </LinkButton>
         </div>
       </AuthLayout>
@@ -91,7 +93,7 @@ export default function OAuthConsentPage() {
             {t("oauth.consent.loadFailed")}
           </Banner>
           <LinkButton to="/clubs" variant="ghost" block>
-            {t("oauth.consent.toApp")}
+            {t("oauth.consent.toApp", { appName })}
           </LinkButton>
         </div>
       </AuthLayout>

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useAppName } from "@/lib/appName";
 import { useClubCreationAllowed } from "@/lib/registration";
 import type { Club, Calendar } from "@/lib/types";
 import {
@@ -32,6 +33,7 @@ const CALENDAR_NAME_ID = "setup-calendar-name";
  */
 export default function SetupPage() {
   const { t } = useTranslation();
+  const appName = useAppName();
   const { updateUser, logout } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -188,7 +190,7 @@ export default function SetupPage() {
       wide
       headingRef={headingRef}
       top={<Stepper steps={[t("setup.stepClub"), t("setup.stepCalendar")]} current={step} />}
-      title={step === 1 ? t("setup.welcome") : t("setup.createCalendar")}
+      title={step === 1 ? t("setup.welcome", { appName }) : t("setup.createCalendar")}
       intro={step === 1 ? t("setup.setupClubFirst") : undefined}
       footer={
         step === 1 ? (

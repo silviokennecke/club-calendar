@@ -218,7 +218,7 @@
     "restrictedBack": "Zu meinen Vereinen",
     "stepClub": "Verein",
     "stepCalendar": "Kalender",
-    "welcome": "Willkommen bei Club Calendar",
+    "welcome": "Willkommen bei {{appName}}",
     "setupClubFirst": "Lege zuerst deinen Verein an. Danach richtest du den ersten Kalender ein.",
     "clubFormLabel": "Verein anlegen",
     "clubName": "Name deines Vereins",
@@ -1652,9 +1652,6 @@
       "title": "Vereinseinstellungen"
     }
   },
-  "brand": {
-    "name": "Club Calendar"
-  },
   "ui": {
     "sso": {
       "google": "Mit Google anmelden",
@@ -1968,7 +1965,7 @@
     "invite": {
       "title": "Per E-Mail einladen",
       "emailLabel": "E-Mail-Adresse",
-      "emailHint": "Die Person bekommt eine Einladung per E-Mail und kann sie in Club Calendar annehmen.",
+      "emailHint": "Die Person bekommt eine Einladung per E-Mail und kann sie in {{appName}} annehmen.",
       "emailPlaceholder": "name@beispiel.de",
       "send": "Einladung senden",
       "sent": "Wenn {{email}} eingeladen werden kann, wurde eine Einladung verschickt.",
@@ -2266,7 +2263,7 @@
       "linkedNow": "{{name}} wurde verknüpft.",
       "linkErrorTitle": "Das Konto wurde nicht verknüpft",
       "linkError": {
-        "account_in_use": "Dieses Konto ist schon mit einem anderen Club-Calendar-Konto verknüpft.",
+        "account_in_use": "Dieses Konto ist schon mit einem anderen Konto verknüpft.",
         "already_linked": "Mit diesem Anbieter ist schon ein anderes Konto verknüpft. Trenne es zuerst.",
         "provider_denied": "Du hast die Verknüpfung beim Anbieter abgebrochen.",
         "provider_error": "Der Anbieter hat die Verknüpfung abgelehnt. Bitte versuche es später noch einmal.",
@@ -2606,7 +2603,7 @@
     },
     "page": {
       "title": "Einladung zu einem Verein",
-      "intro": "Du wurdest zu einem Verein in Club Calendar eingeladen. Möchtest du die Einladung annehmen?",
+      "intro": "Du wurdest zu einem Verein in {{appName}} eingeladen. Möchtest du die Einladung annehmen?",
       "errorTitle": "Die Einladung konnte nicht beantwortet werden",
       "later": "Später entscheiden",
       "toClubs": "Zu meinen Vereinen",
@@ -2650,7 +2647,7 @@
   },
   "consent": {
     "title": "Zustimmung erforderlich",
-    "intro": "Bitte akzeptiere die aktuelle Fassung der folgenden Dokumente, um Club Calendar weiter zu nutzen.",
+    "intro": "Bitte akzeptiere die aktuelle Fassung der folgenden Dokumente, um {{appName}} weiter zu nutzen.",
     "accept": {
       "privacy": "Ich habe die <doc>Datenschutzerklärung</doc> gelesen und akzeptiere sie.",
       "terms": "Ich habe die <doc>Nutzungsbedingungen</doc> gelesen und akzeptiere sie.",
@@ -2710,7 +2707,7 @@
       "errorTitle": "Das hat nicht geklappt",
       "expiredTitle": "Anfrage abgelaufen",
       "expiredText": "Diese Anfrage ist abgelaufen, wurde schon beantwortet oder wurde in einem anderen Browser gestartet. Starte die Verbindung in der App noch einmal und öffne den Link im selben Browser, in dem du dich anmeldest.",
-      "toApp": "Zu Club Calendar",
+      "toApp": "Zu {{appName}}",
       "toProfile": "Zum Profil",
       "risk": {
         "loopback": {

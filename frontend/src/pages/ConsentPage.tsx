@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useAppName } from "@/lib/appName";
 import { useQueryClient } from "@tanstack/react-query";
 import { legalKeys } from "@/lib/legal";
 import { apiGet, apiPost, apiErrorCode } from "@/lib/api";
@@ -18,6 +19,7 @@ import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
  */
 export default function ConsentPage() {
   const { t } = useTranslation();
+  const appName = useAppName();
   const { user, setUser, logout } = useAuth();
   const queryClient = useQueryClient();
   const pending = user?.pendingConsents ?? [];
@@ -72,7 +74,7 @@ export default function ConsentPage() {
   }
 
   return (
-    <AuthLayout icon="shield" title={t("consent.title")} intro={t("consent.intro")}>
+    <AuthLayout icon="shield" title={t("consent.title")} intro={t("consent.intro", { appName })}>
       <form className="ap-form" onSubmit={submit} noValidate aria-label={t("consent.title")}>
         {problem && (
           <Banner tone="danger" title={t("consent.errorTitle")}>

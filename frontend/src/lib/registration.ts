@@ -6,6 +6,8 @@ export interface RegistrationInfo {
   restricted: boolean;
   /** false: only the operator creates clubs (RESTRICT_CLUB_CREATION). */
   clubCreationAllowed?: boolean;
+  /** Instance name (APP_NAME). */
+  appName?: string;
 }
 
 export const registrationKeys = { info: ["auth", "registration"] as const };

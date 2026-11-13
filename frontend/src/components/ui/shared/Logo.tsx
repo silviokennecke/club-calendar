@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { useTranslation } from "react-i18next";
+import { useAppName } from "@/lib/appName";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
@@ -10,10 +10,9 @@ interface LogoProps {
 }
 
 export function Logo({ variant = "full", size = 40, className }: LogoProps) {
-  const { t } = useTranslation();
   const uid = useId().replace(/:/g, "");
   const clipId = `cc-logo-${uid}`;
-  const name = t("brand.name");
+  const name = useAppName();
 
   const mark = (
     <svg
