@@ -1,7 +1,11 @@
 parameters:
     env(CACHE_DIR): '%kernel.cache_dir%/pools'
+    # Empty or "filesystem": files under CACHE_DIR. redis[s]:// or valkey[s]://: shared Redis (see App\Cache\CacheAdapterFactory).
+    env(CACHE_DSN): ''
+    env(CACHE_PREFIX): 'club-calendar'
 
-    default_cache_adapter: cache.adapter.filesystem
+    # Switch point of cache.app and the app pools; cache.system and the scheduler state pool stay node-local / in the DB.
+    default_cache_adapter: app.cache.adapter
     cache_adapter_map: '%default_cache_adapter%'
     cache_adapter_geocoder: '%default_cache_adapter%'
     cache_adapter_mapbox_proxy: '%default_cache_adapter%'
@@ -10,6 +14,9 @@ parameters:
 framework:
     cache:
         directory: '%env(CACHE_DIR)%'
+        # Same pool namespaces on every node; also keeps a shared Redis apart from other apps.
+        prefix_seed: '%env(CACHE_PREFIX)%'
+        app: app.cache.adapter
 
         pools:
             map_images:
@@ -27,3 +34,20 @@ framework:
             holiday_refresh_attempts:
                 adapter: '%cache_adapter_holiday_sources%'
                 default_lifetime: 3600
+
+services:
+    app.cache.adapter_factory:
+        class: App\Cache\CacheAdapterFactory
+        arguments:
+            $dsn: '%env(CACHE_DSN)%'
+            $directory: '%env(CACHE_DIR)%'
+            $prefix: '%env(CACHE_PREFIX)%'
+
+    # Abstract parent of the pools: CachePoolPass fills argument 0 (namespace) and 1 (default lifetime).
+    app.cache.adapter:
+        abstract: true
+        class: Symfony\Component\Cache\Adapter\AdapterInterface
+        factory: ['@app.cache.adapter_factory', 'create']
+        arguments: ['', 0]
+        tags:
+            - { name: cache.pool, clearer: cache.default_clearer, reset: reset, pruneable: false }

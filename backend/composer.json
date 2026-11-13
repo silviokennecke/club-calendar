@@ -123,5 +123,8 @@
         "phpunit/phpunit": "^13.2.1",
         "symfony/browser-kit": "8.1.*",
         "symfony/css-selector": "8.1.*"
+    },
+    "suggest": {
+        "ext-redis": "Needed when CACHE_DSN points at Redis/Valkey (alternatively predis/predis)"
     }
 }
