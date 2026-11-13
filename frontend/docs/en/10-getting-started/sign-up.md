@@ -37,7 +37,7 @@ Until the address is confirmed, the rest of the app is locked: any other page se
 The same applies if you sign in with the right password of an account that is not yet confirmed: you are signed in and land on this page. If no code is waiting, we send you a new one. Signing in with Microsoft also leads here, because Microsoft does not prove the address. With Google or Apple the code is skipped.
 
 :::tip
-Nothing arrived? Check your spam folder. **Send again** on the same page gets you a new code after a wait of a few minutes. The code is valid for 15 minutes. After five wrong entries you need a new one.
+Nothing arrived? Give the e-mail a minute or two and check your spam folder. **Send again** on the same page gets you a new code after a wait of a few minutes. The code is valid for 15 minutes. After five wrong entries you need a new one.
 :::
 
 ## Forgot your password?
