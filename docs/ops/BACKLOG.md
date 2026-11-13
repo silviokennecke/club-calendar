@@ -103,19 +103,6 @@ Hier steht die einzige maßgebliche Liste der offenen Sicherheitspunkte. Die Aud
   oder ein Timer pro Knoten. Vor der Umstellung auf Benutzerprozesse (Stufe 3) lösen.
 - **Stufe 3: asynchroner Datenexport, Import und PDF** mit Jobstatus und Ergebnisspeicher (`app.storage` ist
   vorbereitet, Flysystem lokal oder S3).
-- **Rate-Limiter öffnen bei Redis-Ausfall (fail open):** Ist `CACHE_DSN` auf Redis gesetzt und Redis nicht erreichbar,
-  werfen die Limiter nicht, sondern lassen alles durch. Entscheiden: akzeptieren und dokumentieren (aktueller Stand
-  im Admin-Guide) oder die Auth-Limiter fail-closed bzw. auf DB-Zustand umstellen. Die exakten DB-Budgets (MFA, Step-up,
-  Nonces) sind nicht betroffen.
-- **MariaDB und `SKIP LOCKED`:** Der Doctrine-Transport nutzt es auf MySQL 8 (getestet); MariaDB läuft über dieselbe
-  DBAL-Plattformprüfung, ist aber nicht getestet.
-- **Docker-Image nach dem Storage-Paket nicht verifiziert:** Der Build brach beim `composer install` wegen eines
-  504 der GitHub-API ab. Erneut `docker build -f docker/Dockerfile -t club-calendar .` ausführen und den
-  Rollen-Smoke-Test (`ROLE=all`, `web`, `worker`) wiederholen.
-- **Logs der Queue können Empfängeradressen enthalten:** Die Messenger-Logs des Frameworks zu fehlgeschlagenen
-  `SendEmailMessage` können die Adresse enthalten; Logs gelten als sensibel. Prüfen, ob sich das filtern lässt.
-- **Sauberer Stopp mit laufenden langen Jobs ungetestet:** Worker bekommen `stopwaitsecs 60`; was bei einem Job
-  passiert, der länger läuft (SIGKILL, Nachricht wird nach Ablauf erneut zugestellt), ist nicht geprüft.
 
 ## Offene Betriebspunkte
 
