@@ -25,7 +25,7 @@ Day-to-day tasks: updating, backups, the worker and scheduled jobs, command-line
     docker compose up -d
     ```
 
-    At start the container runs database changes (migrations), loads the [legal documents](legal.md) and encrypts stored secrets (see the note below). Check `docker compose ps` until `app` is `healthy`.
+    At start the container runs database changes (migrations), loads the [legal documents](legal.md), encrypts stored secrets (see the note below) and sets the page title from `APP_NAME`. Check `docker compose ps` until `app` is `healthy`.
 
     With `RUN_MIGRATIONS=0` in `.env` the container skips the database changes. Then run them yourself after every update, followed by the secrets command:
 
@@ -48,7 +48,7 @@ Day-to-day tasks: updating, backups, the worker and scheduled jobs, command-line
     php bin/console app:secrets:rotate
     ```
 
-    Keep your `.env.local` and the `config/jwt/` keys outside the release folder (or copy them over); they are not part of a release. Restart PHP-FPM and the worker and scheduler services afterwards (`systemctl restart club-calendar-worker club-calendar-scheduler`, see [Hosting without Docker](hosting-without-docker.md#background-jobs-and-the-worker)); they keep the old code in memory until restarted.
+    Keep your `.env.local` and the `config/jwt/` keys outside the release folder (or copy them over); they are not part of a release. Deploy the build with its `backend/index.html.tpl` file as well, otherwise the page title falls back to the built default. Restart PHP-FPM and the worker and scheduler services afterwards (`systemctl restart club-calendar-worker club-calendar-scheduler`, see [Hosting without Docker](hosting-without-docker.md#background-jobs-and-the-worker)); they keep the old code in memory until restarted.
 
 !!! note "Upgrading to the member role and joining through feeds"
     The update adds the club role **Member** and the club setting **Joining through feeds**. The database changes run with the usual migration step above. Existing members keep their roles. Existing clubs start with **Joining through feeds** set to club-internal feeds only. Check that setting in each club and set it to **Off** if people should only join by invitation, especially with `RESTRICT_REGISTRATION=true`. See [Clubs and members](clubs.md).
@@ -262,6 +262,7 @@ The app has a few commands for administrators. Run them like this:
 | Command | Purpose |
 |---|---|
 | `app:legal:sync` | Loads changed [legal documents](legal.md) and reports missing ones and invalid links. |
+| `app:branding:apply-title` | Sets the page title of the web app from `APP_NAME`. Runs with every cache clear and at every Docker start; run it by hand after changing `APP_NAME` without a cache clear. |
 | `app:secrets:rotate` | Encrypts stored feed and calendar secrets with the current `APP_SECRET` and re-encrypts values of older keys. `--dry-run` only counts. Prints counts per column; ends with an error and the ids of rows it cannot read. Safe to repeat. See [Secrets and key rotation](#secrets-and-key-rotation). |
 | `app:holidays:refresh` | Refreshes holiday calendars: `--all` for all predefined ones, `--calendar=<id>` for one. |
 | `app:storage:check` | Writes, reads and deletes a test file in the configured file storage and prints which storage is used. See [Cache and storage](cache-and-storage.md#storage). |

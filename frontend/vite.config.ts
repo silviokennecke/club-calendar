@@ -19,8 +19,19 @@ const cleanPreviousBuild: Plugin = {
   },
 };
 
+// Pristine copy of index.html next to the backend (not in public/): the backend renders the
+// instance title from it (app:branding:apply-title, cache warmup).
+const indexTemplate: Plugin = {
+  name: "index-html-template",
+  apply: "build",
+  closeBundle() {
+    const built = path.join(outDir, "index.html");
+    if (fs.existsSync(built)) fs.copyFileSync(built, path.resolve(outDir, "../index.html.tpl"));
+  },
+};
+
 export default defineConfig({
-  plugins: [react(), docsPlugin(), sonnerCss(), cleanPreviousBuild],
+  plugins: [react(), docsPlugin(), sonnerCss(), cleanPreviousBuild, indexTemplate],
   build: {
     outDir,
     emptyOutDir: false,

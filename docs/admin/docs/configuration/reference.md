@@ -7,7 +7,7 @@ All variables an admin can set. Variables marked **required** have no default. T
 | Variable | Default | Description |
 |---|---|---|
 | `APP_URL` | **required** | Public address of the app, e.g. `https://calendar.example.com`. Used for all links in e-mails and redirects. |
-| `APP_NAME` | `Club Calendar` | Name of your installation. Shown as page title and logo text, in e-mails (header, footer, subjects), as sender name of mails (Docker image, unless `MAILER_FROM` is set), in authenticator apps and as server name for connected AI apps. Surrounding spaces and control characters are removed, at most 60 characters; empty = default. Restart the app after changing it. |
+| `APP_NAME` | `Club Calendar` | Name of your installation. Shown as page title and logo text, in e-mails (header, footer, subjects), as sender name of mails (Docker image, unless `MAILER_FROM` is set), in authenticator apps and as server name for connected AI apps. Surrounding spaces and control characters are removed, at most 60 characters; empty = default. Restart the app after changing it. Without Docker, the page title follows after `cache:clear` or `app:branding:apply-title`. |
 | `APP_ENV` | `dev` (`prod` in the Docker image) | Use `prod` on a live server. |
 | `FRONTEND_URL` | `APP_URL` | Address of the web app. Only for split setups. Passkeys work only on exactly this address. |
 | `BACKEND_URL` | `APP_URL` | Public address of the API. Only for split setups. It is used in the link for confirming a new e-mail address and for SSO, so it must be reachable by users. |

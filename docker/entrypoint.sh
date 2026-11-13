@@ -79,19 +79,9 @@ if [ "$ROLE" = "worker" ]; then
         sleep 2
     done
 else
-    # Initial page title from APP_NAME: render the SPA's index.html from the untouched build-time template (idempotent)
+    # Initial page title from APP_NAME: renders public/index.html from the untouched build-time template (idempotent)
     if [ -f index.html.tpl ]; then
-        if ! php -r '
-            $v = trim((string) preg_replace("/[\p{Cc}\p{Cf}]+/u", "", (string) getenv("APP_NAME")));
-            $v = trim(mb_substr($v, 0, 60));
-            if ($v === "") { $v = "Club Calendar"; }
-            $t = htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, "UTF-8");
-            $h = file_get_contents("index.html.tpl");
-            $o = "<title>Club Calendar</title>";
-            if ($h === false || substr_count($h, $o) !== 1) { fwrite(STDERR, "title marker not found\n"); exit(1); }
-            $tmp = "public/.index.html.tmp";
-            if (file_put_contents($tmp, str_replace($o, "<title>" . $t . "</title>", $h)) === false || !rename($tmp, "public/index.html")) { exit(1); }
-        '; then
+        if ! php bin/console app:branding:apply-title --no-interaction >/dev/null 2>&1; then
             log "WARNING: could not set the page title from APP_NAME (non-fatal, the default title stays until the app loads)"
         fi
     fi

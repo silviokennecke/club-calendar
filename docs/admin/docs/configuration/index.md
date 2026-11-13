@@ -80,7 +80,7 @@ The Docker image speaks plain HTTP on port 8080 and does not handle HTTPS itself
 
 ## Instance name
 
-`APP_NAME` (default `Club Calendar`) is the name your users see: page title, logo text, e-mails and the passkey prompt. Set it in the environment and restart. The Docker image also puts it into the page title that is shown before the app has loaded. Without Docker, that first title stays `Club Calendar` until the app loads; edit `<title>` in `backend/public/index.html` after each build if you want your name there from the start.
+`APP_NAME` (default `Club Calendar`) is the name your users see: page title, logo text, e-mails and the passkey prompt. Set it in the environment and restart. The page title that browsers show before the app has loaded also uses it: the Docker image sets it at every start, without Docker it is set by the cache clear of each deploy. After changing `APP_NAME` without a cache clear, run `php bin/console app:branding:apply-title` once. If this step fails, the app sets the title itself once it loads.
 
 ## Checking your configuration
 

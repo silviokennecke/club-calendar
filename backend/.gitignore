@@ -27,6 +27,7 @@
 /public/*
 !/public/index.php
 !/public/.htaccess
+/index.html.tpl
 ###< frontend build ###
 
 ###> legal documents (real texts are installation specific) ###

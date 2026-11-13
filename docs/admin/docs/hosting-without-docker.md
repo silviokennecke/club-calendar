@@ -59,6 +59,8 @@ Do these steps in the `backend/` directory.
     ```bash
     APP_ENV=prod php bin/console cache:clear
     ```
+
+    This also sets the page title of the web app to your `APP_NAME`. Deploy the build with its `backend/index.html.tpl` file, or the title falls back to the built default.
 5. **Encrypt the stored secrets** (feed and personal calendar secrets; safe to repeat, also after every update):
 
     ```bash
