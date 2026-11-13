@@ -21,7 +21,8 @@ framework:
                     - doctrine_ping_connection
                     - doctrine_close_connection
 
-        routing: {}
+        routing:
+            App\Scheduler\RunScheduledTask: async
 
 when@test:
     framework:

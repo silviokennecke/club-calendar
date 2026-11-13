@@ -1,0 +1,19 @@
+# Scheduler state always lives in the shared database, whatever the app cache is configured to.
+when@dev: &state_in_db
+    framework:
+        cache:
+            pools:
+                scheduler_state:
+                    adapter: cache.adapter.doctrine_dbal
+                    provider: doctrine.dbal.default_connection
+
+when@prod: *state_in_db
+
+when@test:
+    parameters:
+        env(LOCK_DSN): 'in-memory'
+    framework:
+        cache:
+            pools:
+                scheduler_state:
+                    adapter: cache.adapter.array

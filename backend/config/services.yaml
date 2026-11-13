@@ -10,6 +10,10 @@ parameters:
 
     env(MESSENGER_TRANSPORT_DSN): 'doctrine://default?auto_setup=0'
 
+    # Scheduler: SCHEDULER_ENABLED=false leaves the schedule empty. LOCK_DSN empty = the application database.
+    env(SCHEDULER_ENABLED): 'true'
+    env(LOCK_DSN): ''
+
     env(LEGAL_DOCUMENTS_PATH): '%kernel.project_dir%/legal'
     app.legal_documents_path: '%env(resolve:LEGAL_DOCUMENTS_PATH)%'
     # External documents (absolute http(s) URL) used when the Markdown file of the type is missing
@@ -160,6 +164,15 @@ services:
             $allowedPatterns: '%mapbox.allowed_patterns%'
             $mapboxProxyCache: '@mapbox_proxy'
             $mapboxToken: '%env(MAPBOX_TOKEN)%'
+
+    app.lock_store:
+        class: Symfony\Component\Lock\PersistingStoreInterface
+        factory: ['App\Scheduler\LockStoreFactory', 'create']
+        arguments: ['@doctrine.dbal.default_connection', '%env(LOCK_DSN)%']
+
+    app.scheduler_lock_factory:
+        class: Symfony\Component\Lock\LockFactory
+        arguments: ['@app.lock_store']
 
     App\Security\LocationResolver:
         factory: ['@App\Security\LocationResolverFactory', 'create']

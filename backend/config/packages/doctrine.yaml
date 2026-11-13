@@ -3,6 +3,8 @@ doctrine:
         url: '%env(resolve:DATABASE_URL)%'
         driver: 'pdo_mysql'
         charset: utf8mb4
+        # Infrastructure tables (messenger, scheduler lock and state) are not ORM entities.
+        schema_filter: '~^(?!(messenger_messages|lock_keys|cache_items)$)~'
         types:
             encrypted_feed_secret: App\Doctrine\Type\EncryptedFeedSecretType
             encrypted_subscription_secret: App\Doctrine\Type\EncryptedSubscriptionSecretType
