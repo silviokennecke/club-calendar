@@ -16,7 +16,7 @@ use Symfony\Component\Lock\Store\InMemoryStore;
 
 /**
  * Real S3 / MinIO over https. Skipped unless TEST_S3_ENDPOINT, TEST_S3_BUCKET, TEST_S3_KEY and TEST_S3_SECRET are set
- * (TEST_S3_INSECURE_TLS=1 accepts a self-signed certificate). The bucket must exist; objects under a random prefix
+ * (TEST_S3_INSECURE_TLS=1 accepts a self-signed certificate; REQUIRE_S3_TESTS=1 turns the skip into a failure). The bucket must exist; objects under a random prefix
  * are created and removed.
  */
 class S3IntegrationTest extends TestCase
@@ -29,7 +29,8 @@ class S3IntegrationTest extends TestCase
     {
         $env = static fn (string $n): string => (string) (getenv($n) ?: '');
         if ('' === $env('TEST_S3_ENDPOINT') || '' === $env('TEST_S3_BUCKET') || '' === $env('TEST_S3_KEY') || '' === $env('TEST_S3_SECRET')) {
-            $this->markTestSkipped('TEST_S3_* not set');
+            // CI sets REQUIRE_S3_TESTS: a missing provider must fail there, not skip
+            '' !== $env('REQUIRE_S3_TESTS') ? $this->fail('TEST_S3_* not set but REQUIRE_S3_TESTS is') : $this->markTestSkipped('TEST_S3_* not set');
         }
         $this->endpoint = $env('TEST_S3_ENDPOINT');
         $this->bucket = $env('TEST_S3_BUCKET');

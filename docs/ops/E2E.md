@@ -21,6 +21,8 @@ Migrationen gehören nicht ungeprüft auf die Dev-DB).
    export TEST_DATABASE_URL="mysql://root:root@127.0.0.1:3360/club_calendar_test?serverVersion=8.0&charset=utf8mb4"
    (cd backend && APP_ENV=test php bin/console doctrine:migrations:migrate -n && composer test)
    ```
+   S3-Integrationstest (`backend/tests/Storage/S3IntegrationTest.php`, übersprungen ohne `TEST_S3_*`): braucht einen
+   https-S3-Endpunkt (SSE-C); Wegwerf-MinIO-Befehle und Variablen stehen in `CLAUDE.md`, Abschnitt "Tests".
 2. E2E-Datenbank im selben Container: mit
    `DATABASE_URL=mysql://root:root@127.0.0.1:3360/club_calendar_e2e?serverVersion=8.0&charset=utf8mb4`
    in `backend/`: `php bin/console doctrine:database:create --if-not-exists`, `doctrine:migrations:migrate -n`,
