@@ -64,6 +64,7 @@ final class TelemetryTest extends TestCase
         self::assertCount(2, $storage);
         $sums = array_map(static fn ($m) => $m->data->dataPoints[0]->value, $storage->getArrayCopy());
         self::assertSame([2, 3], $sums);
+        self::assertNotNull($storage[0]);
         self::assertSame(Temporality::DELTA, $storage[0]->data->temporality);
     }
 
