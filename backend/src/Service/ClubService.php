@@ -43,9 +43,9 @@ readonly class ClubService
         $qb = $this->em->createQueryBuilder()
             ->select('c', 'cal.id AS lastCalendarId', 'cu.role AS role')
             ->from(Club::class, 'c')
-            ->join(ClubUser::class, 'cu', 'WITH', 'cu.club = c')
+            ->join(ClubUser::class, 'cu', 'ON', 'cu.club = c')
             // The remembered calendar counts only while it exists and still belongs to this club.
-            ->leftJoin(Calendar::class, 'cal', 'WITH', 'cal.id = cu.lastCalendarId AND cal.club = c')
+            ->leftJoin(Calendar::class, 'cal', 'ON', 'cal.id = cu.lastCalendarId AND cal.club = c')
             ->where('cu.user = :user')
             ->setParameter('user', $user);
         if ($staffOnly) {
@@ -315,7 +315,7 @@ readonly class ClubService
         $clubs = $this->em->createQueryBuilder()
             ->select('c')
             ->from(Club::class, 'c')
-            ->join(ClubUser::class, 'cu', 'WITH', 'cu.club = c')
+            ->join(ClubUser::class, 'cu', 'ON', 'cu.club = c')
             ->where('cu.user = :user')
             ->orderBy('c.id', 'ASC')
             ->setParameter('user', $user)
