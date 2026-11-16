@@ -31,6 +31,19 @@ readonly class ResourceService
         return array_map($this->serialize(...), $items);
     }
 
+    /** Plain members: only `members` resources, minimal fields (no settings of the booking rules). */
+    public function listForMember(Club $club): array
+    {
+        $items = $this->em->getRepository(Resource::class)->findBy(['club' => $club, 'visibility' => ResourceVisibility::MEMBERS], ['name' => 'ASC', 'id' => 'ASC']);
+
+        return array_map(fn (Resource $r) => [
+            'id' => $r->getId(),
+            'name' => $r->getName(),
+            'type' => $r->getType()->value,
+            'locationId' => $r->getLocation()->getId(),
+        ], $items);
+    }
+
     public function create(Club $club, array $data): array
     {
         $this->quota->assertRoom(Quota::RESOURCES_PER_CLUB, $club);

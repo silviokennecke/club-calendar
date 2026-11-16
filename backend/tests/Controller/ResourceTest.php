@@ -132,7 +132,8 @@ class ResourceTest extends WebTestCase
         }
 
         $member = $this->userWithRole(ClubRole::MEMBER);
-        $this->assertSame(403, $this->req($member, 'GET', $this->base)['status']);
+        // plain members may list, but only `members` resources (see ResourceCalendarTest)
+        $this->assertSame([], $this->req($member, 'GET', $this->base)['body']);
 
         $stranger = TestHelper::createUser(self::$em, self::$hasher, 'stranger@example.com');
         $this->assertSame(403, $this->req($stranger, 'GET', $this->base)['status']);

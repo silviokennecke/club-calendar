@@ -36,6 +36,9 @@ class MemberRoleTest extends WebTestCase
         'GET /api/clubs/{clubId}/my-feeds',
         'GET /api/clubs/{clubId}/my-events',
         'GET /api/clubs/{clubId}/my-events/{eventId}',
+        // voter admits any member; the service shows plain members only `members` resources (busy-only)
+        'GET /api/clubs/{clubId}/resources',
+        'GET /api/clubs/{clubId}/resources/{id}/events',
     ];
 
     private static KernelBrowser $client;

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Club Calendar API
-  version: '1.3'
+  version: '1.4'
   summary: HTTP API of the Club Calendar backend (Symfony, `backend/`).
   description: |
     Hand-written reference of every route under `/api`. It is checked against the Symfony router by
@@ -3811,16 +3811,21 @@ paths:
     get:
       tags: [Resources]
       summary: Resources of a club
-      description: Viewers, editors and admins (a plain `member` is 403 `forbidden`). Sorted by name.
+      description: >-
+        Viewers, editors and admins get all resources in full. A plain `member` gets only the resources with
+        `visibility=members`, reduced to `id`, `name`, `type`, `locationId` (`MemberResource`). Sorted by name.
       operationId: listResources
       responses:
         '200':
-          description: Resources.
+          description: Resources (`Resource` for staff, `MemberResource` for a plain member).
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/Resource' }
+                items:
+                  oneOf:
+                    - { $ref: '#/components/schemas/Resource' }
+                    - { $ref: '#/components/schemas/MemberResource' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -3886,6 +3891,45 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/ForbiddenWrite' }
         '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/clubs/{clubId}/resources/{id}/events:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+      - { $ref: '#/components/parameters/Id' }
+    get:
+      tags: [Resources]
+      summary: Resource calendar (events at the resource's location)
+      description: >-
+        All events of the club whose location is the resource's location, over all calendars of the club including
+        archived ones (they still occupy the place), sorted by date, start time, id; overlap filter like the event
+        list. `from` and `to` (YYYY-MM-DD) are required, at most 1830 days apart (400 on `to`). Plain query, no
+        cache. Viewers see published events in full, editors and admins also drafts. A plain `member` may call it
+        only for `visibility=members` resources and gets busy-only items (`BusyItem`: no id, name or calendar id)
+        of published events. Member on a `staff` resource, unknown id and a resource of another club are the same
+        404 `resource_not_found` for members (no existence leak); a non-member is 403.
+      operationId: listResourceEvents
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 5000, default: 5000 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+      responses:
+        '200':
+          description: Items; `X-Total-Count` is the number of all matches before limit/offset.
+          headers:
+            X-Total-Count: { schema: { type: integer } }
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - { $ref: '#/components/schemas/ResourceEvent' }
+                    - { $ref: '#/components/schemas/ResourceBusyItem' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: '`resource_not_found` (unknown id, other club, or a `staff` resource for a plain member).', content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
 
   # ------------------------------------------------------------------ Feeds (management)
   /api/clubs/{clubId}/feeds:
@@ -5378,6 +5422,7 @@ components:
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
         | `event_not_draft` | 409 | MCP tool `update_event_draft` only: the event is published (not a draft) and stays unchanged |
         | `duplicate_resource` | 422 | Create resource: the location (field `locationId`) is already a resource |
+        | `resource_not_found` | 404 | Resource calendar: unknown resource, resource of another club, or (for a plain `member`) a resource that is not visible to members. |
         | `resource_conflict` | 422 | Saving a published event (create, update, from-template, series create and rule change, import, bulk `publish`) would double-book a resource (overlap with a published event, `allowDoubleBooking=false`); nothing is saved. Extra member `conflicts`: list of `ResourceConflict` (error items only). Drafts always save. |
         | `duplicate_name` | 422 | Name of a badge (property) or extra (feature) already used in the calendar, or of an audience (target group) in the club |
         | `too_many_events` | 413 / 422 | 413: import > 5000 events/locations, bulk > 5000 ids; 422: series > 366 events (preview, create, rule change) |
@@ -6038,10 +6083,44 @@ components:
         type: { type: string, enum: [location] }
         name: { type: string }
         locationId: { type: string }
-        visibility: { type: string, enum: [staff, members], description: '`staff` = viewer, editor, admin; `members` = every club member (not enforced by any route yet).' }
+        visibility: { type: string, enum: [staff, members], description: '`staff` = viewer, editor, admin; `members` = every club member (list and busy-only calendar).' }
         allowDoubleBooking: { type: boolean }
         bufferMinutes: { type: integer, minimum: 0, maximum: 1440 }
         updatedAt: { type: integer, description: Unix timestamp. }
+    MemberResource:
+      type: object
+      required: [id, name, type, locationId]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string, enum: [location] }
+        locationId: { type: string }
+    ResourceEvent:
+      type: object
+      required: [id, name, calendarId, calendarName, date, dateEnd, timeBegin, timeEnd, isAllDay, timezone, isDraft]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        calendarId: { type: string }
+        calendarName: { type: string }
+        date: { type: string, format: date }
+        dateEnd: { type: [string, 'null'], format: date }
+        timeBegin: { type: string, example: '18:00' }
+        timeEnd: { type: string, example: '20:00' }
+        isAllDay: { type: boolean }
+        timezone: { type: string, description: 'Event zone, else calendar zone, else club zone.' }
+        isDraft: { type: boolean }
+    ResourceBusyItem:
+      type: object
+      required: [calendarName, date, dateEnd, timeBegin, timeEnd, isAllDay, timezone]
+      properties:
+        calendarName: { type: string }
+        date: { type: string, format: date }
+        dateEnd: { type: [string, 'null'], format: date }
+        timeBegin: { type: string }
+        timeEnd: { type: string }
+        isAllDay: { type: boolean }
+        timezone: { type: string }
     ResourceConflict:
       type: object
       description: >-

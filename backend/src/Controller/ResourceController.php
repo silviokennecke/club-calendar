@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\Club;
+use App\Enum\ClubRole;
 use App\Security\ClubMemberVoter;
+use App\Security\CurrentUserResolver;
+use App\Service\ResourceCalendarService;
 use App\Service\ResourceService;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -19,14 +22,35 @@ class ResourceController extends AbstractApiController
 {
     public function __construct(
         private readonly ResourceService $resourceService,
+        private readonly ResourceCalendarService $calendarService,
+        private readonly CurrentUserResolver $userResolver,
     ) {
     }
 
+    /**
+     * Viewer+ get the full list; a plain member (allowed by CLUB_ANY_MEMBER, role re-checked here) only gets
+     * the `members` resources with minimal fields.
+     */
     #[Route('', methods: ['GET'])]
-    #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
+    #[IsGranted(ClubMemberVoter::CLUB_ANY_MEMBER, subject: 'club')]
     public function list(#[MapEntity(id: 'clubId')] Club $club): JsonResponse
     {
+        $role = $this->calendarService->role($club, $this->userResolver->resolve());
+        if (null === $role || !$role->atLeast(ClubRole::VIEWER)) {
+            return new JsonResponse($this->resourceService->listForMember($club));
+        }
+
         return new JsonResponse($this->resourceService->list($club));
+    }
+
+    /** Events at the resource's location (all calendars); `from`, `to` required. Busy-only items for plain members. */
+    #[Route('/{id}/events', methods: ['GET'])]
+    #[IsGranted(ClubMemberVoter::CLUB_ANY_MEMBER, subject: 'club')]
+    public function events(#[MapEntity(id: 'clubId')] Club $club, string $id, Request $request): JsonResponse
+    {
+        $page = $this->calendarService->events($club, $id, $this->userResolver->resolve(), $request->query->all());
+
+        return new JsonResponse($page['items'], 200, ['X-Total-Count' => (string) $page['total']]);
     }
 
     #[Route('', methods: ['POST'])]
