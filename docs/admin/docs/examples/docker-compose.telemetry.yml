@@ -1,0 +1,64 @@
+# Optional add-on for docker-compose.yml: collector, Prometheus, Loki and Grafana.
+# Start with:  docker compose -f docker-compose.yml -f docker-compose.telemetry.yml up -d
+# Advanced example, not a hardened production setup: no TLS and no authentication between the parts.
+# Put Grafana behind your TLS proxy and change the admin password before you expose it.
+services:
+  app:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=production
+      # OTEL_LOGS_EXPORTER: none   # metrics only
+      # OTEL_LOGS_LEVEL: warning
+    depends_on:
+      - otel-collector
+  # With a separate worker container, give it the same OTEL_* variables (see telemetry.md).
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.141.0
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    depends_on:
+      - prometheus
+      - loki
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=90d
+      # Lets the collector push metrics
+      - --web.enable-remote-write-receiver
+    volumes:
+      - prometheus_data:/prometheus
+
+  loki:
+    image: grafana/loki:3.5.5
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes:
+      - loki_data:/loki
+
+  grafana:
+    image: grafana/grafana:12.2.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me}
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./grafana-dashboard.json:/var/lib/grafana/dashboards/grafana-dashboard.json:ro
+    depends_on:
+      - prometheus
+      - loki
+
+volumes:
+  prometheus_data:
+  loki_data:
+  grafana_data:

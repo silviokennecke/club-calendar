@@ -1,0 +1,35 @@
+# OpenTelemetry Collector for Club Calendar: receives OTLP over HTTP from the app,
+# sends metrics to Prometheus and logs to Loki. Advanced example, no TLS or authentication.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+  # The app sends counters as deltas; Prometheus needs running totals
+  deltatocumulative:
+    max_stale: 10m
+  batch:
+    timeout: 5s
+
+exporters:
+  prometheusremotewrite:
+    endpoint: http://prometheus:9090/api/v1/write
+  # Loki accepts OTLP natively; the app's "/v1/logs" is added by the exporter
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, deltatocumulative, batch]
+      exporters: [prometheusremotewrite]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/loki]
