@@ -30,6 +30,16 @@ In the sidebar under **Club**, open **Places and audiences**, then the **Resourc
 
 Even when double booking is allowed, overlaps are still shown as a warning.
 
+## Calendar of a resource
+
+Each resource has a **Calendar** button that opens a month and week view. It shows all events at this location from all calendars of the club, archived ones included.
+
+![Calendar of a resource](shot:resources-calendar)
+
+- Viewers see published events with their name and calendar; editors and admins also see drafts.
+- Members without further rights only see when the resource is **Busy**, with the calendar and time, and only for resources that are visible to all members.
+- The view is for looking things up only. You still create events in the calendar.
+
 ## When a resource is already booked
 
 When you create or change an event, the form shows below the location whether the resource is already booked:

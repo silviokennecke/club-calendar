@@ -1719,7 +1719,8 @@
         "bufferRange": "Gib eine ganze Zahl von 0 bis 24 ein.",
         "duplicate": "Dieser Ort ist bereits eine Ressource.",
         "unknownLocation": "Dieser Ort existiert nicht mehr. Wähle einen anderen."
-      }
+      },
+      "calendar": "Kalender"
     }
   },
   "ui": {
@@ -2927,6 +2928,22 @@
       "required": "Bitte gib zusätzlich einen Code für die Multi-Faktor-Authentifizierung (MFA) ein.",
       "passkeyFailed": "Die Bestätigung mit dem Passkey hat nicht geklappt. Versuche es noch einmal oder nutze einen Code.",
       "passkeyCancelled": "Die Bestätigung mit dem Passkey wurde abgebrochen."
+    }
+  },
+  "resourceCalendar": {
+    "title": "Ressource",
+    "pageTitle": "Kalender {{name}}",
+    "back": "Zurück zu den Ressourcen",
+    "busy": "Belegt",
+    "loading": "Kalender der Ressource wird geladen …",
+    "loadError": {
+      "title": "Der Kalender der Ressource konnte nicht geladen werden.",
+      "text": "Prüfe deine Verbindung und versuche es erneut.",
+      "retry": "Erneut versuchen"
+    },
+    "notFound": {
+      "title": "Ressource nicht gefunden",
+      "text": "Diese Ressource gibt es nicht, oder du darfst sie nicht sehen."
     }
   }
 }

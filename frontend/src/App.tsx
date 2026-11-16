@@ -53,6 +53,7 @@ import {
   PublicEventModal,
   ResetPasswordPage,
   SetupPage,
+  ResourceCalendarPage,
   ResourcesPage,
   TargetGroupsPage,
   TemplateEditPage,
@@ -142,6 +143,10 @@ function AppRoutes() {
             <Route path="/clubs/:clubId/settings/locations" element={<LocationsPage />} />
             <Route path="/clubs/:clubId/settings/target-groups" element={<TargetGroupsPage />} />
             <Route path="/clubs/:clubId/settings/resources" element={<ResourcesPage />} />
+            <Route
+              path="/clubs/:clubId/resources/:resourceId/calendar"
+              element={<ResourceCalendarPage />}
+            />
             <Route path="/clubs/:clubId/settings/feeds" element={<FeedsPage />} />
             <Route path="/clubs/:clubId/settings/feeds/new" element={<FeedEditPage />} />
             <Route path="/clubs/:clubId/settings/feeds/:feedId" element={<FeedEditPage />} />

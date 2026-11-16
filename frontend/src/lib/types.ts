@@ -169,6 +169,28 @@ export interface Resource {
   updatedAt: number;
 }
 
+/** Item of the resource calendar: full for viewers and above, busy-only (no id, name, draft flag) for members. */
+export interface ResourceCalendarEvent {
+  id: string;
+  name: string;
+  calendarId: string;
+  calendarName: string;
+  date: string;
+  dateEnd: string | null;
+  timeBegin: string;
+  timeEnd: string;
+  isAllDay: boolean;
+  timezone: string;
+  isDraft: boolean;
+}
+
+export type ResourceBusyItem = Omit<
+  ResourceCalendarEvent,
+  "id" | "name" | "calendarId" | "isDraft"
+>;
+
+export type ResourceCalendarItem = ResourceCalendarEvent | ResourceBusyItem;
+
 export function formatAddress(loc: Pick<Location, "street" | "zip" | "city" | "country">): string {
   const parts: string[] = [];
   if (loc.street) parts.push(loc.street);

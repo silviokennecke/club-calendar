@@ -30,6 +30,16 @@ Seitenleiste, unter **Verein** **Orte und Gruppen**, Tab **Ressourcen**.
 
 Auch bei erlaubter Doppelbelegung werden Überschneidungen weiterhin als Warnung angezeigt.
 
+## Kalender der Ressource
+
+Bei jeder Ressource führt die Schaltfläche **Kalender** zu einer Monats- und Wochenansicht. Sie zeigt alle Termine, die an diesem Ort stattfinden, aus allen Kalendern des Vereins, auch aus archivierten.
+
+![Kalender einer Ressource](shot:resources-calendar)
+
+- Betrachter sehen veröffentlichte Termine mit Name und Kalender, Bearbeiter und Admins zusätzlich Entwürfe.
+- Mitglieder ohne weitere Rechte sehen nur, wann die Ressource **Belegt** ist, mit Kalender und Uhrzeit, und nur bei Ressourcen, die für alle Mitglieder sichtbar sind.
+- Die Ansicht dient nur zum Nachschauen. Termine legst du weiterhin im Kalender an.
+
 ## Wenn eine Ressource belegt ist
 
 Beim Anlegen oder Ändern eines Termins zeigt das Formular unter dem Ort, ob die Ressource schon belegt ist:

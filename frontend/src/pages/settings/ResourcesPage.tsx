@@ -10,6 +10,7 @@ import {
   Field,
   FormDialog,
   IconButton,
+  LinkButton,
   NativeSelect,
   Skeleton,
   Tag,
@@ -277,6 +278,13 @@ export default function ResourcesPage() {
                 </Tag>
               )}
             </span>
+            <LinkButton
+              variant="secondary"
+              icon="calendar"
+              to={`/clubs/${clubId}/resources/${r.id}/calendar`}
+            >
+              {t("settings.resources.calendar")}
+            </LinkButton>
             {isAdmin && (
               <>
                 <IconButton

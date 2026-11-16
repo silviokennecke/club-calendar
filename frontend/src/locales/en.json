@@ -1719,7 +1719,8 @@
         "bufferRange": "Enter a whole number from 0 to 24.",
         "duplicate": "This location is already a resource.",
         "unknownLocation": "This location no longer exists. Choose another one."
-      }
+      },
+      "calendar": "Calendar"
     }
   },
   "ui": {
@@ -2927,6 +2928,22 @@
       "required": "Please also enter a code for multi-factor authentication (MFA).",
       "passkeyFailed": "The passkey confirmation did not work. Try again or use a code.",
       "passkeyCancelled": "The passkey confirmation was cancelled."
+    }
+  },
+  "resourceCalendar": {
+    "title": "Resource",
+    "pageTitle": "Calendar {{name}}",
+    "back": "Back to resources",
+    "busy": "Busy",
+    "loading": "Loading the resource calendar …",
+    "loadError": {
+      "title": "The resource calendar could not be loaded.",
+      "text": "Check your connection and try again.",
+      "retry": "Try again"
+    },
+    "notFound": {
+      "title": "Resource not found",
+      "text": "This resource does not exist, or you are not allowed to see it."
     }
   }
 }

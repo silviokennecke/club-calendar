@@ -26,10 +26,19 @@ for (const lang of LANGS) {
     test.setTimeout(90000);
     test.use({ locale: lang === "de" ? "de-DE" : "en-US", timezoneId: "Europe/Berlin" });
 
-    async function open(page: import("@playwright/test").Page, height?: number) {
+    async function open(
+      page: import("@playwright/test").Page,
+      height?: number,
+      target: (ids: { clubId: string; hallResourceId: string }) => string = (ids) =>
+        `/clubs/${ids.clubId}/settings/resources`,
+    ) {
       await prepare(page, lang, height);
       const email = await createVerifiedUser(page.request, "Max Mustermann");
-      const { clubId, headers } = await seedClub(page.request, email, "Schützenverein Musterstadt");
+      const { clubId, calendarId, headers } = await seedClub(
+        page.request,
+        email,
+        "Schützenverein Musterstadt",
+      );
       const me = await page.request.patch(`${API}/api/auth/me`, {
         headers,
         data: { language: lang },
@@ -64,7 +73,21 @@ for (const lang of LANGS) {
         street: "Parkweg 3",
         city: "Musterstadt",
       });
-      await post("resources", {
+      const events: [string, string, string, string][] = [
+        ["Training Luftgewehr", "2026-10-06", "18:00", "20:00"],
+        ["Jugendtraining", "2026-10-08", "16:00", "17:30"],
+        ["Vorstandssitzung", "2026-10-13", "19:00", "21:00"],
+        ["Preisschießen", "2026-10-17", "10:00", "16:00"],
+        ["Training Luftgewehr", "2026-10-20", "18:00", "20:00"],
+      ];
+      for (const [name, date, timeBegin, timeEnd] of events) {
+        const res = await page.request.post(`${API}/api/calendars/${calendarId}/events`, {
+          headers,
+          data: { name, date, timeBegin, timeEnd, isDraft: false, locationId: hall.id },
+        });
+        expect(res.ok(), `event: ${await res.text()}`).toBeTruthy();
+      }
+      const hallResource = await post("resources", {
         locationId: hall.id,
         name: "Schützenhaus Waldblick",
         visibility: "members",
@@ -78,13 +101,23 @@ for (const lang of LANGS) {
         allowDoubleBooking: true,
       });
       await signIn(page, lang, email);
-      await page.goto(`/clubs/${clubId}/settings/resources`);
+      await page.goto(target({ clubId, hallResourceId: hallResource.id }));
     }
 
     test("resources-list", async ({ page }) => {
       await open(page);
       await expect(page.getByText("Vereinsheim Nebenraum").first()).toBeVisible();
       await shot(page, lang, "resources-list");
+    });
+
+    test("resources-calendar", async ({ page }) => {
+      await open(
+        page,
+        undefined,
+        (ids) => `/clubs/${ids.clubId}/resources/${ids.hallResourceId}/calendar`,
+      );
+      await expect(page.getByText(/Training Luftgewehr/).first()).toBeVisible();
+      await shot(page, lang, "resources-calendar");
     });
 
     test("resources-form", async ({ page }) => {

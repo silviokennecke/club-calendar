@@ -92,6 +92,7 @@ export const FeedEditPage = lazyPage(() => import("./settings/FeedEditPage"));
 export const PropertiesPage = lazyPage(() => import("./settings/PropertiesPage"));
 export const FeaturesPage = lazyPage(() => import("./settings/FeaturesPage"));
 export const LocationsPage = lazyPage(() => import("./settings/LocationsPage"));
+export const ResourceCalendarPage = lazyPage(() => import("./ResourceCalendarPage"));
 export const ResourcesPage = lazyPage(() => import("./settings/ResourcesPage"));
 export const TargetGroupsPage = lazyPage(() => import("./settings/TargetGroupsPage"));
 export const HolidayCalendarsPage = lazyPage(() => import("./settings/HolidayCalendarsPage"));
