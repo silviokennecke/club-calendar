@@ -137,6 +137,8 @@ The times are fixed and in UTC (there is no setting per job). A job that was mis
 | Failed messages | Deletes failed queue entries older than 30 days. | daily 03:10 |
 | Holidays | Refreshes the predefined holiday calendars. See [Holidays](#holidays). | Sundays 03:30 |
 | Sitemap | Rebuilds the sitemap of public feeds. See [Sitemap](#sitemap). | every 6 hours at minute 20 |
+| Telemetry, hourly | Reports totals (users, clubs, events, feeds, memberships) to your monitoring system. Does nothing without `OTEL_EXPORTER_OTLP_ENDPOINT`. See [Metrics and logs](telemetry.md). | every hour at minute 5 |
+| Telemetry, daily | Reports averages and spread per club, calendar and feed. Does nothing without `OTEL_EXPORTER_OTLP_ENDPOINT`. | daily 03:20 |
 | Location database | Downloads a newer location database for security notices. Does nothing without `MAXMIND_LICENSE_KEY`. See [Protection mechanisms](security.md#location-in-security-notices). | Sundays 03:50 |
 
 If a cleanup job fails, it is retried and then lands in the failed messages. The holiday refresh and the location update only log a warning when they fail and try again the next week.
@@ -207,7 +209,7 @@ Failed messages are deleted automatically after 30 days. Log lines about a faile
 For more than one server or container, run the same image several times:
 
 - One or more `web` containers (port 8080, behind your proxy) and one or more `worker` containers, all on the same database. A worker container needs no port, no legal documents and no login keys.
-- A worker container needs the same settings as the web containers: `APP_SECRET` (and `APP_SECRET_PREVIOUS` while rotating), `JWT_REFRESH_SECRET`, `DATABASE_URL`, `APP_URL`, `MAILER_DSN` and `MAILER_FROM`. Use a shared `CACHE_DSN` (see [Cache and storage](cache-and-storage.md)) when rate limits and cache should be shared.
+- A worker container needs the same settings as the web containers (including the `OTEL_*` variables if you use [metrics and logs](telemetry.md)): `APP_SECRET` (and `APP_SECRET_PREVIOUS` while rotating), `JWT_REFRESH_SECRET`, `DATABASE_URL`, `APP_URL`, `MAILER_DSN` and `MAILER_FROM`. Use a shared `CACHE_DSN` (see [Cache and storage](cache-and-storage.md)) when rate limits and cache should be shared.
 - Give containers time to finish running jobs when they stop: set `stop_grace_period: 90s` (Compose) or the equivalent in your orchestrator.
 - The database changes, the secrets encryption and the storage key rotation run only in `web` and `all` containers.
 
@@ -324,7 +326,7 @@ In production the app logs only errors, as JSON lines, together with the few mes
 
     The log goes to PHP's error output. With PHP-FPM it appears in the FPM error log only if `catch_workers_output = yes` is set in the pool. Web server logs are separate. Use your system's log rotation.
 
-For monitoring, request `https://your-domain/api/health`. It answers `{"status":"ok"}` when the app runs. In the Docker image this check also drives the container's `healthy` status.
+The app can also send logs and metrics to a monitoring system, see [Metrics and logs](telemetry.md). For simple monitoring, request `https://your-domain/api/health`. It answers `{"status":"ok"}` when the app runs. In the Docker image this check also drives the container's `healthy` status.
 
 ## Secrets and key rotation
 

@@ -167,6 +167,23 @@ Imprint, privacy policy and terms. See [Legal](../legal.md).
 | `LEGAL_TERMS_URL` | empty | Same for the terms of use. |
 
 
+## Metrics and logs (OpenTelemetry)
+
+Optional and off unless `OTEL_EXPORTER_OTLP_ENDPOINT` is set. Set the same variables on every web and worker container. See [Metrics and logs](../telemetry.md).
+
+| Variable | Default | Description |
+|---|---|---|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | empty (off) | Base address of an OTLP over HTTP receiver, e.g. `http://otel-collector:4318`. |
+| `OTEL_SDK_DISABLED` | `false` | `true` switches the feature off even with an address. |
+| `OTEL_SERVICE_NAME` | `club-calendar` | Name of this installation in the monitoring system. |
+| `OTEL_RESOURCE_ATTRIBUTES` | empty | Extra labels, `key=value` pairs separated by commas. |
+| `OTEL_EXPORTER_OTLP_HEADERS` | empty | Extra HTTP headers, `key=value` pairs separated by commas (spaces as `%20`). |
+| `OTEL_EXPORTER_OTLP_TIMEOUT` | `1000` | Milliseconds to wait for the receiver. |
+| `OTEL_EXPORTER_OTLP_COMPRESSION` | `none` | `gzip` or `none`. |
+| `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE` | `delta` | `delta` or `cumulative`. Keep `delta` and use a collector that converts it. |
+| `OTEL_LOGS_EXPORTER` | `otlp` | `none` sends metrics only. |
+| `OTEL_LOGS_LEVEL` | `warning` | Lowest log level that is sent. |
+
 ## Cache and file storage
 
 See [Cache and storage](../cache-and-storage.md).

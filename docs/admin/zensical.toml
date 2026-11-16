@@ -29,6 +29,7 @@ nav = [
   { "Legal documents" = "legal.md" },
   { "Operations" = "operations.md" },
   { "Cache and storage" = "cache-and-storage.md" },
+  { "Metrics and logs" = "telemetry.md" },
   { "Examples" = "examples/index.md" },
 ]
 

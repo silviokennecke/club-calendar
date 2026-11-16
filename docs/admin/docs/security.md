@@ -19,6 +19,7 @@ This page lists what the app does to keep accounts and data safe, and what you, 
 | Feed visibility and secret links | Private events becoming public | Choose the right visibility per feed. |
 | AI app access (MCP) | Unwanted AI clients | Check `MCP_ALLOWED_CLIENTS`. |
 | Quotas | Runaway data growth | None. Fixed limits. |
+| Metrics and logs (optional) | Data leaving the server unnoticed | Off by default. If you enable it, send logs only to a system you control. See [Metrics and logs](telemetry.md#privacy). |
 
 ## Sign-in and sessions
 
@@ -294,6 +295,10 @@ Fixed limits keep a single account from filling the database. Exceeding one show
 | Events per import | 5,000 |
 | Events per series | 366 |
 | PDF export | 366 days, 2,000 events |
+
+## Metrics and logs sent out
+
+Only when you set `OTEL_EXPORTER_OTLP_ENDPOINT`, the app sends usage counts and (unless `OTEL_LOGS_EXPORTER=none`) log messages to that address. Metrics contain counts only, no user, club, feed or address data. Logs can contain error texts and file paths and are masked only on a best-effort basis, so send them only to a system you control. Details: [Metrics and logs](telemetry.md#privacy).
 
 ## Secrets to protect and back up
 

@@ -275,7 +275,7 @@ The scheduler service is the same with `Description=Club Calendar scheduler` and
 systemctl enable --now club-calendar-worker club-calendar-scheduler
 ```
 
-If mail or jobs pile up, run more than one worker service. The services read the same `.env.local` as the web application. If you set settings as real environment variables for PHP-FPM, set them for these services too.
+If mail or jobs pile up, run more than one worker service. The services read the same `.env.local` as the web application. If you set settings as real environment variables for PHP-FPM, set them for these services too. This includes the `OTEL_*` variables of [Metrics and logs](telemetry.md): the worker sends the scheduled numbers and its own logs.
 
 Restart both services after every update, because they keep the old code in memory. Check the queue with `php bin/console messenger:stats` (see [Operations](operations.md#the-queue)).
 

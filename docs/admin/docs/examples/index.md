@@ -36,4 +36,40 @@ curl -fL $BASE/example.env -o .env
     --8<-- "example.env"
     ```
 
+## Telemetry stack
+
+Optional files for [metrics and logs with Grafana](../telemetry.md#example-grafana-with-opentelemetry). Advanced example, not a hardened production setup. Put them next to `docker-compose.yml` and start with `docker compose -f docker-compose.yml -f docker-compose.telemetry.yml up -d`.
+
+| File | Purpose |
+|---|---|
+| [docker-compose.telemetry.yml](docker-compose.telemetry.yml) | Collector, Prometheus, Loki and Grafana; sets the `OTEL_*` variables of the app |
+| [otel-collector.yaml](otel-collector.yaml) | Collector settings |
+| [grafana-datasources.yml](grafana-datasources.yml) | Grafana datasources (Prometheus, Loki) |
+| [grafana-dashboards.yml](grafana-dashboards.yml) | Loads the dashboard file |
+| [grafana-dashboard.json](grafana-dashboard.json) | The dashboard "Club Calendar – Instance" (also for manual import) |
+
+=== "docker-compose.telemetry.yml"
+
+    ```yaml title="docker-compose.telemetry.yml"
+    --8<-- "docker-compose.telemetry.yml"
+    ```
+
+=== "otel-collector.yaml"
+
+    ```yaml title="otel-collector.yaml"
+    --8<-- "otel-collector.yaml"
+    ```
+
+=== "grafana-datasources.yml"
+
+    ```yaml title="grafana-datasources.yml"
+    --8<-- "grafana-datasources.yml"
+    ```
+
+=== "grafana-dashboards.yml"
+
+    ```yaml title="grafana-dashboards.yml"
+    --8<-- "grafana-dashboards.yml"
+    ```
+
 For all other settings see the [configuration reference](../configuration/reference.md).
