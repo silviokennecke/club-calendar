@@ -37,6 +37,7 @@ readonly class EventSeriesService
         private Quota $quota,
         private CalendarVersionBumper $versionBumper,
         private HolidayCalendarService $holidayCalendars,
+        private ResourceConflictService $conflicts,
     ) {
     }
 
@@ -107,7 +108,10 @@ readonly class EventSeriesService
                 throw $this->inEvent($e);
             }
         }
-        $this->em->flush();
+        $this->conflicts->atomically(function () use ($created): void {
+            $this->conflicts->assertCanPublish($created);
+            $this->em->flush();
+        });
 
         return [
             'series' => $this->events->serializeSeries($series, count($created)),
@@ -162,7 +166,7 @@ readonly class EventSeriesService
     public function update(Calendar $calendar, string $id, array $data): array
     {
         try {
-            return $this->em->wrapInTransaction(function () use ($calendar, $id, $data): array {
+            return $this->conflicts->atomically(function () use ($calendar, $id, $data): array {
                 // Serializes rule changes of the same series (the second one sees the result of the first)
                 $locked = $this->em->getConnection()->fetchOne(
                     'SELECT id FROM event_series WHERE id = ? AND calendar_id = ? FOR UPDATE',
@@ -181,8 +185,9 @@ readonly class EventSeriesService
                     throw new ApiProblemException(409, 'The series changed meanwhile, please try again', self::SERIES_CHANGED_CODE);
                 }
                 $duration = null === $prototype->getDateEnd() ? 0 : (int) $prototype->getDate()->diff($prototype->getDateEnd())->days;
+                $copies = [];
                 foreach ($plan['create'] as $date) {
-                    $this->copyEvent($prototype, $series, new \DateTimeImmutable($date), $duration);
+                    $copies[] = $this->copyEvent($prototype, $series, new \DateTimeImmutable($date), $duration);
                 }
                 if ([] !== $plan['delete']) {
                     // Assignments go with the events (ON DELETE CASCADE); already deleted ids are no error
@@ -196,6 +201,7 @@ readonly class EventSeriesService
                     }
                 }
                 $series->changeRule($plan['rule']);
+                $this->conflicts->assertCanPublish($copies);
                 $this->em->flush();
 
                 return [
@@ -286,7 +292,7 @@ readonly class EventSeriesService
     }
 
     /** New event of the series on `$date` with the values of `$prototype` (assignments without extra reads). */
-    private function copyEvent(Event $prototype, EventSeries $series, \DateTimeImmutable $date, int $duration): void
+    private function copyEvent(Event $prototype, EventSeries $series, \DateTimeImmutable $date, int $duration): Event
     {
         $event = (new Event())
             ->setCalendar($prototype->getCalendar())
@@ -318,6 +324,8 @@ readonly class EventSeriesService
             $this->em->persist($copy);
             $event->getTargetGroups()->add($copy);
         }
+
+        return $event;
     }
 
     /** Today in the calendar's zone (calendar, else club; unknown zones fall back to UTC). */

@@ -49,6 +49,7 @@ readonly class EventImportService
         private EventService $events,
         private LocationService $locations,
         private Quota $quota,
+        private ResourceConflictService $conflicts,
     ) {
     }
 
@@ -106,6 +107,7 @@ readonly class EventImportService
         // Everything is validated and persisted first; nothing reaches the database before the single
         // flush below, so a failing entry leaves no trace (no places, no earlier events).
         $ids = [];
+        $built = [];
         $used = [];
         $skipped = 0;
         $warnings = [];
@@ -129,6 +131,7 @@ readonly class EventImportService
                 $used[spl_object_id($entry['location'])] = true;
             }
             $ids[] = $event->getId();
+            $built[] = $event;
         }
 
         $newPlaces = count(array_filter($places, fn (Location $l) => isset($used[spl_object_id($l)])));
@@ -145,7 +148,10 @@ readonly class EventImportService
         }
 
         // One flush in one transaction: places and events are stored together or not at all
-        $this->em->wrapInTransaction(fn () => $this->em->flush());
+        $this->conflicts->atomically(function () use ($built): void {
+            $this->conflicts->assertCanPublish($built);
+            $this->em->flush();
+        });
 
         return ['imported' => count($ids), 'skipped' => $skipped, 'createdLocations' => $created, 'ids' => $ids, 'warnings' => $warnings];
     }

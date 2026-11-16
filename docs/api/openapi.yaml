@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Club Calendar API
-  version: '1.2'
+  version: '1.3'
   summary: HTTP API of the Club Calendar backend (Symfony, `backend/`).
   description: |
     Hand-written reference of every route under `/api`. It is checked against the Symfony router by
@@ -2970,6 +2970,55 @@ paths:
               schema: { $ref: '#/components/schemas/Problem' }
         '422': { $ref: '#/components/responses/UnknownReference' }
 
+  /api/calendars/{calendarId}/events/conflicts:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    post:
+      tags: [Events]
+      summary: Check an event against the bookings of a resource
+      description: >-
+        Live check for the event form; writes nothing. Compares the event with the events of ALL calendars of the club that
+        use the same location, when that location is a resource (resource type `location`; independent of the resource's
+        `visibility`). Interval = `date` + `timeBegin` .. (`dateEnd` or `date`) + `timeEnd` in the event's zone (`timezone`,
+        else the calendar's, else the club's), compared as absolute instants; all-day events occupy whole days. Non-all-day
+        events keep the resource's `bufferMinutes` free before and after. Severity: overlap with a draft = `warning`; overlap
+        with a published event = `error` when the resource has `allowDoubleBooking=false`, else `warning`; buffer-only
+        collision = always `warning`. An event sent with `isDraft` true (the default) never gets `error`. `blocking` is true
+        when saving it as sent would fail with 422 `resource_conflict`. `eventId` and `eventName` only for club staff
+        (viewer or above). Editor or admin; archived calendar 403.
+      operationId: checkEventConflicts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [locationId, date]
+              properties:
+                locationId: { type: string }
+                date: { type: string, format: date }
+                dateEnd: { type: [string, 'null'], format: date }
+                timeBegin: { type: string, description: 'HH:MM; optional for all-day events.' }
+                timeEnd: { type: string, description: 'HH:MM; optional for all-day events.' }
+                isAllDay: { type: boolean, default: false }
+                isDraft: { type: boolean, default: true }
+                timezone: { type: [string, 'null'] }
+                eventId: { type: string, description: The event being edited; it is not compared with itself. }
+      responses:
+        '200':
+          description: Conflicts sorted by start (empty when the location is no resource or nothing collides).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [conflicts, blocking]
+                properties:
+                  conflicts: { type: array, items: { $ref: '#/components/schemas/ResourceConflict' } }
+                  blocking: { type: boolean }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+
   /api/calendars/{calendarId}/events/bulk:
     parameters:
       - { $ref: '#/components/parameters/CalendarId' }
@@ -5329,6 +5378,7 @@ components:
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
         | `event_not_draft` | 409 | MCP tool `update_event_draft` only: the event is published (not a draft) and stays unchanged |
         | `duplicate_resource` | 422 | Create resource: the location (field `locationId`) is already a resource |
+        | `resource_conflict` | 422 | Saving a published event (create, update, from-template, series create and rule change, import, bulk `publish`) would double-book a resource (overlap with a published event, `allowDoubleBooking=false`); nothing is saved. Extra member `conflicts`: list of `ResourceConflict` (error items only). Drafts always save. |
         | `duplicate_name` | 422 | Name of a badge (property) or extra (feature) already used in the calendar, or of an audience (target group) in the club |
         | `too_many_events` | 413 / 422 | 413: import > 5000 events/locations, bulk > 5000 ids; 422: series > 366 events (preview, create, rule change) |
         | `quota_exceeded` | 422 | A create/import would exceed a quota (clubs per user, calendars/members/open invitations per club, events/templates/properties/features/holiday calendars per calendar, locations/resources/target groups/feeds per club); extra members `resource`, `limit`. List: "Quotas and input limits" |
@@ -5382,6 +5432,7 @@ components:
         - unknown_reference
         - duplicate_name
         - duplicate_resource
+        - resource_conflict
         - event_not_draft
         - too_many_events
         - quota_exceeded
@@ -5991,6 +6042,28 @@ components:
         allowDoubleBooking: { type: boolean }
         bufferMinutes: { type: integer, minimum: 0, maximum: 1440 }
         updatedAt: { type: integer, description: Unix timestamp. }
+    ResourceConflict:
+      type: object
+      description: >-
+        The other booking. `forEventId` / `forDate` (which event of the request it collides with) only in the 422
+        `resource_conflict` body.
+      required: [kind, severity, resourceId, resourceName, calendarName, date, dateEnd, timeBegin, timeEnd, isAllDay, isDraft]
+      properties:
+        kind: { type: string, enum: [overlap, buffer] }
+        severity: { type: string, enum: [error, warning] }
+        resourceId: { type: string }
+        resourceName: { type: string }
+        calendarName: { type: string }
+        date: { type: string, format: date }
+        dateEnd: { type: [string, 'null'], format: date }
+        timeBegin: { type: string }
+        timeEnd: { type: string }
+        isAllDay: { type: boolean }
+        isDraft: { type: boolean }
+        eventId: { type: string, description: Only for club staff. }
+        eventName: { type: string, description: Only for club staff. }
+        forEventId: { type: string }
+        forDate: { type: string, format: date }
     ResourceInput:
       type: object
       description: 'Create: `name` and `locationId` are required. Update: any subset of `name`, `visibility`, `allowDoubleBooking`, `bufferMinutes`.'

@@ -17,6 +17,7 @@ use App\Service\EventImportService;
 use App\Service\EventSeriesService;
 use App\Service\EventService;
 use App\Service\Input;
+use App\Service\ResourceConflictService;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -37,6 +38,7 @@ class EventController extends AbstractApiController
         private readonly PdfHolidaySelection $pdfHolidays,
         private readonly AuthRateLimiter $rateLimiter,
         private readonly CurrentUserResolver $userResolver,
+        private readonly ResourceConflictService $conflictService,
     ) {
     }
 
@@ -213,6 +215,16 @@ class EventController extends AbstractApiController
     public function bulk(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
         return new JsonResponse($this->eventService->bulk($calendar, $this->decodeJson($request)));
+    }
+
+    #[Route('/conflicts', methods: ['POST'])]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
+    #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
+    public function conflicts(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
+    {
+        $staff = $this->isGranted(CalendarMemberVoter::CALENDAR_MEMBER, $calendar);
+
+        return new JsonResponse($this->conflictService->check($calendar, $this->decodeJson($request), $staff));
     }
 
     #[Route('', methods: ['POST'])]

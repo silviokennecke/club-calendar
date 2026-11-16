@@ -33,6 +33,7 @@ readonly class EventService
         private Quota $quota,
         private CalendarVersionBumper $versionBumper,
         private TokenStorageInterface $tokenStorage,
+        private ResourceConflictService $conflicts,
     ) {
     }
 
@@ -143,7 +144,10 @@ readonly class EventService
     {
         $this->quota->assertRoom(Quota::EVENTS_PER_CALENDAR, $calendar);
         $event = $this->buildEvent($calendar, $data);
-        $this->em->flush();
+        $this->conflicts->atomically(function () use ($event): void {
+            $this->conflicts->assertCanPublish([$event]);
+            $this->em->flush();
+        });
 
         return $this->serializeEvent($event);
     }
@@ -169,7 +173,10 @@ readonly class EventService
             $input['date'] = $dateStr;
             $events[] = $this->buildEvent($calendar, $input);
         }
-        $this->em->flush();
+        $this->conflicts->atomically(function () use ($events): void {
+            $this->conflicts->assertCanPublish($events);
+            $this->em->flush();
+        });
 
         return array_map(fn (Event $e) => $this->serializeEvent($e), $events);
     }
@@ -244,24 +251,36 @@ readonly class EventService
         $scope = $this->scope($data['scope'] ?? null);
         unset($data['scope']);
         $event = $this->findEvent($id, $calendar);
-        $this->applyInput($event, $calendar, $data, true);
 
-        $series = $event->getSeries();
-        $shared = array_diff_key($data, array_flip(self::OWN_FIELDS));
-        if ('all' === $scope && null !== $series && [] !== $shared) {
-            // Ids as stored (lower case), so the references come from the identity map after the first event
-            foreach (['locationId', 'propertyIds', 'featureIds', 'targetGroupIds'] as $key) {
-                if (is_string($shared[$key] ?? null)) {
-                    $shared[$key] = strtolower($shared[$key]);
-                } elseif (is_array($shared[$key] ?? null)) {
-                    $shared[$key] = array_map(fn ($v) => is_string($v) ? strtolower($v) : $v, $shared[$key]);
+        $this->conflicts->atomically(function () use ($event, $calendar, $data, $scope): void {
+            $changed = [];
+            $apply = function (Event $e, array $input) use ($calendar, &$changed): void {
+                $before = ResourceConflictService::scheduleKey($e);
+                $this->applyInput($e, $calendar, $input, true);
+                if ($before !== ResourceConflictService::scheduleKey($e)) {
+                    $changed[] = $e;
+                }
+            };
+            $apply($event, $data);
+
+            $series = $event->getSeries();
+            $shared = array_diff_key($data, array_flip(self::OWN_FIELDS));
+            if ('all' === $scope && null !== $series && [] !== $shared) {
+                // Ids as stored (lower case), so the references come from the identity map after the first event
+                foreach (['locationId', 'propertyIds', 'featureIds', 'targetGroupIds'] as $key) {
+                    if (is_string($shared[$key] ?? null)) {
+                        $shared[$key] = strtolower($shared[$key]);
+                    } elseif (is_array($shared[$key] ?? null)) {
+                        $shared[$key] = array_map(fn ($v) => is_string($v) ? strtolower($v) : $v, $shared[$key]);
+                    }
+                }
+                foreach ($this->seriesEventsWithLinks($series, $event) as $other) {
+                    $apply($other, $shared);
                 }
             }
-            foreach ($this->seriesEventsWithLinks($series, $event) as $other) {
-                $this->applyInput($other, $calendar, $shared, true);
-            }
-        }
-        $this->em->flush();
+            $this->conflicts->assertCanPublish($changed);
+            $this->em->flush();
+        });
 
         return $this->serializeEvent($event);
     }
@@ -442,6 +461,11 @@ readonly class EventService
             return ['affected' => count($ids)];
         }
 
+        $publishing = [];
+        if ('publish' === $action) {
+            $publishing = $this->em->getRepository(Event::class)->findBy(['calendar' => $calendar, 'id' => $ids, 'isDraft' => true]);
+        }
+
         $qb = $this->em->createQueryBuilder();
         if ('delete' === $action) {
             // Assignments go with the event (ON DELETE CASCADE in the database)
@@ -454,7 +478,8 @@ readonly class EventService
             ->setParameter('calendar', $calendar)
             ->setParameter('ids', $ids);
 
-        $this->em->wrapInTransaction(function () use ($qb, $action, $calendar): void {
+        $this->conflicts->atomically(function () use ($qb, $action, $calendar, $publishing): void {
+            $this->conflicts->assertCanPublish($publishing, true);
             $qb->getQuery()->execute();
             // The bulk DQL bypasses the unit of work (and ContentVersionListener).
             $this->versionBumper->bumpCalendars([$calendar->getId()]);
