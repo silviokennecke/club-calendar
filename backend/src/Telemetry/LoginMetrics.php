@@ -31,4 +31,27 @@ final class LoginMetrics
         } catch (\Throwable) {
         }
     }
+
+    /**
+     * Creates every valid label set with a zero delta. A Prometheus-style store cannot see the first sample of a
+     * new series in increase(); with the zero sample beforehand a rare first event (one passkey sign-in) counts.
+     */
+    public function initialize(): void
+    {
+        try {
+            $counter = $this->telemetry->counter(self::NAME, '{login}', 'Sign-ins (session issued) and failed sign-in attempts');
+            foreach ([true, false] as $success) {
+                foreach (['password', 'passkey'] as $method) {
+                    $counter->add(0, ['method' => $method, 'stage' => self::STAGE_PRIMARY, 'success' => $success]);
+                }
+                foreach ([...self::PROVIDERS, 'none'] as $provider) {
+                    $counter->add(0, ['method' => 'sso', 'stage' => self::STAGE_PRIMARY, 'success' => $success, 'provider' => $provider]);
+                }
+                foreach (['totp', 'backup_code'] as $method) {
+                    $counter->add(0, ['method' => $method, 'stage' => self::STAGE_MFA, 'success' => $success]);
+                }
+            }
+        } catch (\Throwable) {
+        }
+    }
 }

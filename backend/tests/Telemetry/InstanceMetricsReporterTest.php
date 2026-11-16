@@ -35,7 +35,7 @@ final class InstanceMetricsReporterTest extends KernelTestCase
         $config = new TelemetryConfig('http://x');
         $this->storage = new \ArrayObject();
         $telemetry = new Telemetry($config, null, new InMemoryExporter($this->storage, $config->temporality));
-        $this->reporter = new InstanceMetricsReporter($this->db, $telemetry, new NullLogger());
+        $this->reporter = new InstanceMetricsReporter($this->db, $telemetry, new NullLogger(), new \App\Telemetry\LoginMetrics($telemetry));
     }
 
     /** @return list<array{array<string, mixed>, int|float}> */
@@ -101,6 +101,21 @@ final class InstanceMetricsReporterTest extends KernelTestCase
         self::assertSame(0, $this->points('club_calendar.mcp.grants')[0][1]);
         self::assertSame(0, $this->points('club_calendar.member_subscriptions')[0][1]);
         self::assertSame(0, $this->points('club_calendar.mcp.clients')[0][1]);
+    }
+
+    public function testHourlyCreatesZeroLoginSeries(): void
+    {
+        $this->reporter->reportHourly();
+
+        $points = $this->points('club_calendar.logins');
+        self::assertCount(16, $points);
+        foreach ($points as [, $value]) {
+            self::assertSame(0, $value);
+        }
+        $keys = array_map(static fn (array $p): string => implode('/', [$p[0]['method'], $p[0]['stage'], var_export($p[0]['success'], true), $p[0]['provider'] ?? '']), $points);
+        self::assertContains('passkey/primary/true/', $keys);
+        self::assertContains('sso/primary/false/none', $keys);
+        self::assertContains('backup_code/mfa/true/', $keys);
     }
 
     /** @return array<string, int|float> */

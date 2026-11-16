@@ -19,6 +19,7 @@ class InstanceMetricsReporter
         private readonly Connection $connection,
         private readonly Telemetry $telemetry,
         private readonly LoggerInterface $logger,
+        private readonly ?LoginMetrics $loginMetrics = null,
     ) {
     }
 
@@ -29,6 +30,7 @@ class InstanceMetricsReporter
         }
         try {
             $this->recordTotals();
+            $this->loginMetrics?->initialize();
             $this->telemetry->flush();
         } catch (\Throwable $e) {
             $this->logger->warning('Scheduled telemetry report failed.', ['exception' => $e::class]);

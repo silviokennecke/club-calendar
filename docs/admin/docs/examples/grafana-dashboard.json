@@ -1530,7 +1530,7 @@
       "id": 26,
       "type": "timeseries",
       "title": "Successful vs. failed sign-ins",
-      "description": "Every evaluated attempt counts. A password sign-in with MFA counts once at the primary stage and once at the mfa stage.",
+      "description": "Every evaluated attempt counts. A password sign-in with MFA counts once at the primary stage and once at the mfa stage. Rolling 2 hours: sign-ins are rare, and the store needs two samples inside the window to compute an increase.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1548,7 +1548,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (success) (increase(club_calendar_logins_total[$__rate_interval]))",
+          "expr": "sum by (success) (increase(club_calendar_logins_total[2h]))",
           "legendFormat": "success={{success}}",
           "range": true,
           "instant": false,
@@ -1602,7 +1602,7 @@
       "id": 27,
       "type": "timeseries",
       "title": "Sign-ins by method",
-      "description": "password, passkey, sso (any provider), totp and backup_code (MFA stage). Successes and failures together.",
+      "description": "password, passkey, sso (any provider), totp and backup_code (MFA stage). Successes and failures together. Rolling 2 hours: sign-ins are rare, and the store needs two samples inside the window to compute an increase.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1620,7 +1620,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (method) (increase(club_calendar_logins_total[$__rate_interval]))",
+          "expr": "sum by (method) (increase(club_calendar_logins_total[2h]))",
           "legendFormat": "{{method}}",
           "range": true,
           "instant": false,
@@ -1674,7 +1674,7 @@
       "id": 28,
       "type": "timeseries",
       "title": "Sign-ins by stage",
-      "description": "primary = first factor or SSO/passkey, mfa = second factor. MFA counts only at its own stage.",
+      "description": "primary = first factor or SSO/passkey, mfa = second factor. MFA counts only at its own stage. Rolling 2 hours: sign-ins are rare, and the store needs two samples inside the window to compute an increase.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1692,7 +1692,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (stage) (increase(club_calendar_logins_total[$__rate_interval]))",
+          "expr": "sum by (stage) (increase(club_calendar_logins_total[2h]))",
           "legendFormat": "{{stage}}",
           "range": true,
           "instant": false,
