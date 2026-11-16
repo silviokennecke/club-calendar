@@ -10,6 +10,7 @@ describe("contextHelpPath", () => {
     [`/clubs/c1/me/events/e1`, "", "/help/getting-started/my-club"],
     [`/clubs/c1/settings/locations`, "", "/help/organize/locations"],
     [`/clubs/c1/settings/target-groups`, "", "/help/organize/target-groups"],
+    [`/clubs/c1/settings/resources`, "", "/help/organize/resources"],
     [`/clubs/c1/settings/feeds`, "", "/help/publishing/feeds"],
     [`/clubs/c1/settings/feeds/new`, "", "/help/publishing/create-feed"],
     [`/clubs/c1/settings/feeds/f1`, "", "/help/publishing/create-feed"],

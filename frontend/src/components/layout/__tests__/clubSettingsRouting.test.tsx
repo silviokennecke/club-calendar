@@ -62,10 +62,11 @@ describe("old calendar-level addresses of club data redirect to the club setting
 });
 
 describe("navigation", () => {
-  it("club settings tabs hold only locations and target groups", () => {
+  it("club settings tabs hold locations, target groups and resources", () => {
     expect(buildClubSettingsTabs("c1").map((t) => t.href)).toEqual([
       "/clubs/c1/settings/locations",
       "/clubs/c1/settings/target-groups",
+      "/clubs/c1/settings/resources",
     ]);
   });
 

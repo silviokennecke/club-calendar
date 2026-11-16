@@ -6,6 +6,7 @@ export function clubSettingsRoutes(clubId: string) {
     club: `/clubs/${clubId}`,
     locations: `${base}/locations`,
     targetGroups: `${base}/target-groups`,
+    resources: `${base}/resources`,
     feeds: `${base}/feeds`,
     /** New feed (design: FeedEdit, mode new). */
     feedNew: `${base}/feeds/new`,

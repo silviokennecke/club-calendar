@@ -22,6 +22,7 @@ Orte, Besonderheiten, Zusatzangebote, Gruppen und Vorlagen legst du einmal an un
 | ------------------------------------------ | -------------------------------------- |
 | [Vorlagen](help:organize/templates)        | Vorgaben für Zeit, Ort und mehr        |
 | [Orte](help:organize/locations)            | Treffpunkte mit Adresse und Karte      |
+| [Ressourcen](help:organize/resources)      | Orte, die nur einmal nutzbar sind      |
 | [Besonderheiten](help:organize/properties) | Mit Symbol (Emoji)                     |
 | [Zusatzangebote](help:organize/features)   | Optionale Extras an einem Termin       |
 | [Gruppen](help:organize/target-groups)     | Für wen ein Termin gedacht ist         |

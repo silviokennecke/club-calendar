@@ -195,6 +195,7 @@ export function buildClubSettingsTabs(clubId: string): SettingsTab[] {
   return [
     { labelKey: "shell.settingsTabs.locations", href: routes.locations },
     { labelKey: "shell.settingsTabs.targetGroups", href: routes.targetGroups },
+    { labelKey: "shell.settingsTabs.resources", href: routes.resources },
   ];
 }
 

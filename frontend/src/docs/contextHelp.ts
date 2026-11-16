@@ -42,6 +42,7 @@ const RULES: Rule[] = [
   [new RegExp(`${CAL}/?$`), () => "events/views"],
   [new RegExp(`${CLUB}/settings/locations/?$`), () => "organize/locations"],
   [new RegExp(`${CLUB}/settings/target-groups/?$`), () => "organize/target-groups"],
+  [new RegExp(`${CLUB}/settings/resources/?$`), () => "organize/resources"],
   [new RegExp(`${CLUB}/settings/feeds/(new|[^/]+)/?$`), () => "publishing/create-feed"],
   [new RegExp(`${CLUB}/settings/feeds/?$`), () => "publishing/feeds"],
   [

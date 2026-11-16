@@ -155,6 +155,20 @@ export interface Location {
   usage?: LocationUsage;
 }
 
+export type ResourceVisibility = "staff" | "members";
+
+export interface Resource {
+  id: string;
+  clubId: string;
+  type: "location";
+  name: string;
+  locationId: string;
+  visibility: ResourceVisibility;
+  allowDoubleBooking: boolean;
+  bufferMinutes: number;
+  updatedAt: number;
+}
+
 export function formatAddress(loc: Pick<Location, "street" | "zip" | "city" | "country">): string {
   const parts: string[] = [];
   if (loc.street) parts.push(loc.street);

@@ -3,3 +3,4 @@ export * from "./masterList";
 export * from "./location";
 export * from "./holidays";
 export * from "./timezones";
+export * from "./resource";

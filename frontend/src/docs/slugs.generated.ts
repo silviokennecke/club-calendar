@@ -25,6 +25,7 @@ export const DOC_SLUGS = [
   "organize/index",
   "organize/locations",
   "organize/properties",
+  "organize/resources",
   "organize/series",
   "organize/target-groups",
   "organize/templates",

@@ -1650,6 +1650,62 @@
     },
     "club": {
       "title": "Club settings"
+    },
+    "resources": {
+      "description": "Resources are locations that can only be used once at a time, for example a room or a hall. Each resource belongs to a location of the club.",
+      "create": "Create resource",
+      "listTitle": "Resources ({{count}})",
+      "loading": "Loading resources …",
+      "loadError": {
+        "title": "The resources could not be loaded.",
+        "text": "Check your connection and try again.",
+        "retry": "Try again"
+      },
+      "empty": {
+        "title": "No resources yet",
+        "text": "Turn a location into a resource so that overlaps are noticed.",
+        "readOnly": "This club has no resources.",
+        "noLocations": "First create a location under Locations."
+      },
+      "location": "Location",
+      "locationPlaceholder": "Choose a location …",
+      "locationFixed": "The location of a resource cannot be changed.",
+      "noFreeLocations": "All locations are already resources.",
+      "name": "Name",
+      "visibility": "Visibility",
+      "visibilityStaff": "Editors and viewers only",
+      "visibilityMembers": "All members",
+      "doubleBooking": "Allow double booking",
+      "doubleBookingHint": "Overlaps are still shown as a warning.",
+      "buffer": "Buffer time in hours",
+      "bufferHint": "Time between two events, 0 to 24 hours.",
+      "bufferHours": "{{count}} h buffer",
+      "doubleBookingTag": "Double booking allowed",
+      "createTitle": "Create resource",
+      "createText": "Choose a location and set how it may be used.",
+      "editTitle": "Edit resource",
+      "editText": "Change the settings of the resource {{name}}.",
+      "save": "Save",
+      "saved": "Resource saved.",
+      "created": "Resource {{name}} created.",
+      "deleted": "Resource {{name}} deleted.",
+      "deleteFailed": "The resource {{name}} could not be deleted.",
+      "editLabel": "Edit resource {{name}}",
+      "deleteLabel": "Delete resource {{name}}",
+      "delete": {
+        "title": "Delete resource {{name}}?",
+        "text": "The location stays; it just is no longer a resource.",
+        "confirm": "Delete resource"
+      },
+      "errorSummary": "Please check your input.",
+      "saveFailed": "The resource could not be saved. Try again.",
+      "problem": {
+        "nameRequired": "Enter a name.",
+        "locationRequired": "Choose a location.",
+        "bufferRange": "Enter a whole number from 0 to 24.",
+        "duplicate": "This location is already a resource.",
+        "unknownLocation": "This location no longer exists. Choose another one."
+      }
     }
   },
   "ui": {
@@ -1828,7 +1884,8 @@
       "targetGroups": "Audiences",
       "locations": "Locations",
       "holidays": "Holidays",
-      "clubLabel": "Club settings"
+      "clubLabel": "Club settings",
+      "resources": "Resources"
     },
     "unavailable": "Not available",
     "toClubPicker": "Go to club selection",

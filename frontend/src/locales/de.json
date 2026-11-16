@@ -1650,6 +1650,62 @@
     },
     "club": {
       "title": "Vereinseinstellungen"
+    },
+    "resources": {
+      "description": "Ressourcen sind Orte, die nur einmal zur gleichen Zeit genutzt werden können, zum Beispiel ein Raum oder eine Halle. Jede Ressource gehört zu einem Ort des Vereins.",
+      "create": "Ressource anlegen",
+      "listTitle": "Ressourcen ({{count}})",
+      "loading": "Ressourcen werden geladen …",
+      "loadError": {
+        "title": "Die Ressourcen konnten nicht geladen werden.",
+        "text": "Prüfe deine Verbindung und versuche es erneut.",
+        "retry": "Erneut versuchen"
+      },
+      "empty": {
+        "title": "Noch keine Ressourcen",
+        "text": "Mache einen Ort zur Ressource, damit Überschneidungen auffallen.",
+        "readOnly": "In diesem Verein gibt es keine Ressourcen.",
+        "noLocations": "Lege zuerst unter Orte einen Ort an."
+      },
+      "location": "Ort",
+      "locationPlaceholder": "Ort wählen …",
+      "locationFixed": "Der Ort einer Ressource lässt sich nicht ändern.",
+      "noFreeLocations": "Alle Orte sind bereits Ressourcen.",
+      "name": "Name",
+      "visibility": "Sichtbarkeit",
+      "visibilityStaff": "Nur Bearbeiter und Betrachter",
+      "visibilityMembers": "Alle Mitglieder",
+      "doubleBooking": "Doppelbelegung erlauben",
+      "doubleBookingHint": "Überschneidungen werden trotzdem als Warnung angezeigt.",
+      "buffer": "Pufferzeit in Stunden",
+      "bufferHint": "Zeit zwischen zwei Terminen, 0 bis 24 Stunden.",
+      "bufferHours": "{{count}} Std. Puffer",
+      "doubleBookingTag": "Doppelbelegung erlaubt",
+      "createTitle": "Ressource anlegen",
+      "createText": "Wähle einen Ort und lege fest, wie er genutzt werden darf.",
+      "editTitle": "Ressource bearbeiten",
+      "editText": "Einstellungen der Ressource {{name}} ändern.",
+      "save": "Speichern",
+      "saved": "Ressource gespeichert.",
+      "created": "Ressource {{name}} angelegt.",
+      "deleted": "Ressource {{name}} gelöscht.",
+      "deleteFailed": "Die Ressource {{name}} konnte nicht gelöscht werden.",
+      "editLabel": "Ressource {{name}} bearbeiten",
+      "deleteLabel": "Ressource {{name}} löschen",
+      "delete": {
+        "title": "Ressource {{name}} löschen?",
+        "text": "Der Ort bleibt erhalten, er ist danach keine Ressource mehr.",
+        "confirm": "Ressource löschen"
+      },
+      "errorSummary": "Bitte prüfe deine Eingaben.",
+      "saveFailed": "Die Ressource konnte nicht gespeichert werden. Versuche es erneut.",
+      "problem": {
+        "nameRequired": "Gib einen Namen ein.",
+        "locationRequired": "Wähle einen Ort.",
+        "bufferRange": "Gib eine ganze Zahl von 0 bis 24 ein.",
+        "duplicate": "Dieser Ort ist bereits eine Ressource.",
+        "unknownLocation": "Dieser Ort existiert nicht mehr. Wähle einen anderen."
+      }
     }
   },
   "ui": {
@@ -1828,7 +1884,8 @@
       "targetGroups": "Gruppen",
       "locations": "Orte",
       "holidays": "Feiertage",
-      "clubLabel": "Einstellungen des Vereins"
+      "clubLabel": "Einstellungen des Vereins",
+      "resources": "Ressourcen"
     },
     "unavailable": "Nicht verfügbar",
     "toClubPicker": "Zur Vereinsauswahl",
