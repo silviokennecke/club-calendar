@@ -16,6 +16,8 @@ Eine Ressource ist ein Ort, den dein Verein nur einmal zur gleichen Zeit nutzen 
 
 Seitenleiste, unter **Verein** **Orte und Gruppen**, Tab **Ressourcen**.
 
+![Liste der Ressourcen](shot:resources-list)
+
 ## Ressource anlegen
 
 1. Wähle **Ressource anlegen**.
@@ -23,6 +25,8 @@ Seitenleiste, unter **Verein** **Orte und Gruppen**, Tab **Ressourcen**.
 3. Prüfe den **Namen**. Er ist zuerst der Name des Ortes.
 4. Stelle ein, wer die Ressource sieht, ob **Doppelbelegung erlauben** gelten soll und wie viele Stunden **Pufferzeit** zwischen zwei Terminen liegen sollen (0 bis 24).
 5. Wähle **Speichern**.
+
+![Dialog zum Anlegen einer Ressource](shot:resources-form)
 
 Auch bei erlaubter Doppelbelegung werden Überschneidungen weiterhin als Warnung angezeigt.
 

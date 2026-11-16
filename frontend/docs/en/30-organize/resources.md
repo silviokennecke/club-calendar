@@ -16,6 +16,8 @@ A resource is a location your club can only use once at a time, for example a ha
 
 In the sidebar under **Club**, open **Places and audiences**, then the **Resources** tab.
 
+![List of resources](shot:resources-list)
+
 ## Create a resource
 
 1. Choose **Create resource**.
@@ -23,6 +25,8 @@ In the sidebar under **Club**, open **Places and audiences**, then the **Resourc
 3. Check the **Name**. It starts as the name of the location.
 4. Set who can see the resource, whether **Allow double booking** applies and how many hours of **buffer time** should lie between two events (0 to 24).
 5. Choose **Save**.
+
+![Dialog for creating a resource](shot:resources-form)
 
 Even when double booking is allowed, overlaps are still shown as a warning.
 
