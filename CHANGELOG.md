@@ -8,7 +8,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 ### Added
 
 - **Run scheduled jobs by hand:** `app:scheduler:run [job]` runs any scheduled job immediately (list with `--list`, pick interactively without a name, tab completion); two manual runs of a job never overlap, and it works with `SCHEDULER_ENABLED=false`.
-- **Job queue and scheduler:** all e-mail is sent through a queue (Symfony Messenger on the application database, bodies encrypted with `APP_SECRET`, 3 retries, then a `failed` queue; inspect with `messenger:failed:show`) and all periodic jobs (pruning, holiday refresh, GeoIP update) run through the built-in scheduler at fixed UTC times. New settings `MESSENGER_TRANSPORT_DSN`, `SCHEDULER_ENABLED`, `LOCK_DSN`; new command `app:prune-failed-messages` (failed queue rows older than 30 days, daily); new tables `messenger_messages`, `lock_keys`, `cache_items` (migrations run automatically).
+- **Job queue and scheduler:** all e-mail is sent through a queue (Symfony Messenger on the application database, bodies encrypted with `APP_SECRET`, 3 retries, then a `failed` queue; inspect with `messenger:failed:show`) and all periodic jobs (pruning, holiday refresh, GeoIP update) run through the built-in scheduler at fixed UTC times. New settings `MESSENGER_TRANSPORT_DSN`, `SCHEDULER_ENABLED`, `LOCK_DSN`; new daily job `prune-failed-messages` (failed queue rows older than 30 days); new tables `messenger_messages`, `lock_keys`, `cache_items` (migrations run automatically).
 - **Docker roles and supervisord:** the image runs supervisord (as `www-data`) with `ROLE=all` (default), `web` or `worker`; `MESSENGER_WORKERS` (default 2) sets the number of queue workers, `MIGRATION_WAIT_RETRIES` how long a worker waits for migrations. A crash of PHP-FPM, Caddy or a program ends the container so the orchestrator restarts it; the health check covers all roles. Recommended `stop_grace_period: 90s`.
 - **Redis/Valkey cache (optional):** `CACHE_DSN` (`redis://`, `rediss://`, `valkey://`, `valkeys://`) and `CACHE_PREFIX` move rate limits, MCP sessions and the app caches to a shared Redis so several containers share them; default stays the filesystem. The Docker image includes the `redis` PHP extension. If Redis is unreachable, rate limits are not enforced.
 - **File storage (optional):** `STORAGE_SOURCE` (`storage.local` or `storage.s3`), `STORAGE_LOCAL_PATH` (image: `/data/storage`), `S3_*` settings and client-side-keyed encryption `S3_SSE_C_KEY` / `S3_SSE_C_KEY_PREVIOUS` with key rotation at start (`app:storage:rotate-key`); `app:storage:check` tests the setup. Prepared for later features, nothing uses it yet.
@@ -29,8 +29,9 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 
 ### Removed
 
+- **`app:prune-*` commands:** the eight prune commands (`app:prune-unverified-users`, `-password-resets`, `-refresh-tokens`, `-club-invitations`, `-oauth`, `-security-events`, `-auth-nonces`, `-failed-messages`) are gone; run the same jobs with `app:scheduler:run <job>` (for example `app:scheduler:run prune-security-events`).
 - **`GEOIP_DB_PATH`** and the `/data/geoip` volume: no longer used, remove them.
-- **Host cron:** the crontab entries for `app:prune-*`, `app:holidays:refresh` and `app:geoip:update` are no longer needed and no longer supported; delete them. The commands remain for manual runs.
+- **Host cron:** the crontab entries for `app:prune-*`, `app:holidays:refresh` and `app:geoip:update` are no longer needed and no longer supported; delete them. `app:holidays:refresh` and `app:geoip:update` remain for manual runs.
 
 ## [0.1.0] - 2026-11-13
 

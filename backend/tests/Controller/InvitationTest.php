@@ -8,14 +8,15 @@ use App\Entity\Club;
 use App\Entity\ClubInvitation;
 use App\Entity\ClubUser;
 use App\Entity\User;
+use App\Scheduler\RunScheduledTask;
+use App\Scheduler\RunScheduledTaskHandler;
+use App\Scheduler\ScheduledTask;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
@@ -703,7 +704,7 @@ class InvitationTest extends WebTestCase
 
     // --- prune ---
 
-    public function testPruneCommandDeletesOldAnsweredAndLongExpiredInvitations(): void
+    public function testPruneTaskDeletesOldAnsweredAndLongExpiredInvitations(): void
     {
         $c = $this->club();
         $ids = [];
@@ -718,10 +719,7 @@ class InvitationTest extends WebTestCase
         $conn->executeStatement("UPDATE club_invitation SET status = 'declined', resolved_at = ? WHERE id = ?", [$at('-2 days'), $ids['declined-recent']]);
         $conn->executeStatement("UPDATE club_invitation SET status = 'accepted', resolved_at = ? WHERE id = ?", [$at('-40 days'), $ids['accepted-old']]);
 
-        $application = new Application(self::$kernel ?? static::bootKernel());
-        $tester = new CommandTester($application->find('app:prune-club-invitations'));
-        $this->assertSame(0, $tester->execute([]));
-        $this->assertStringContainsString('Deleted 3 old club invitation', $tester->getDisplay());
+        static::getContainer()->get(RunScheduledTaskHandler::class)(new RunScheduledTask(ScheduledTask::PruneClubInvitations));
 
         self::$em->clear();
         $left = array_map(fn (ClubInvitation $i) => $i->getEmail(), self::$em->getRepository(ClubInvitation::class)->findAll());

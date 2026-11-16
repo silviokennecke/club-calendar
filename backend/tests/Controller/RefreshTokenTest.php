@@ -6,16 +6,17 @@ namespace App\Tests\Controller;
 
 use App\Entity\Passkey;
 use App\Entity\User;
+use App\Scheduler\RunScheduledTask;
+use App\Scheduler\RunScheduledTaskHandler;
+use App\Scheduler\ScheduledTask;
 use App\Security\OneTimeTokenService;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /** Refresh tokens: stored, rotated on every use, reuse detection with a grace window, logout, sign out everywhere. */
@@ -82,11 +83,6 @@ class RefreshTokenTest extends WebTestCase
     private function openRows(): int
     {
         return (int) $this->conn()->fetchOne('SELECT COUNT(*) FROM refresh_token WHERE revoked_at IS NULL');
-    }
-
-    private function command(string $name): CommandTester
-    {
-        return new CommandTester((new Application(self::$client->getKernel()))->find($name));
     }
 
     // --- rotation ---
@@ -378,9 +374,7 @@ class RefreshTokenTest extends WebTestCase
         $this->conn()->executeStatement('UPDATE refresh_token SET expires_at = ? WHERE id = ?', [$past, self::payload($expired)['jti']]);
         $this->conn()->executeStatement('UPDATE refresh_token SET family_expires_at = ? WHERE id = ?', [$past, self::payload($limited)['jti']]);
 
-        $tester = $this->command('app:prune-refresh-tokens');
-        $this->assertSame(0, $tester->execute([]));
-        $this->assertStringContainsString('Deleted 2 expired', $tester->getDisplay());
+        static::getContainer()->get(RunScheduledTaskHandler::class)(new RunScheduledTask(ScheduledTask::PruneRefreshTokens));
         $this->assertSame([self::payload($live)['jti']], $this->conn()->fetchFirstColumn('SELECT id FROM refresh_token'));
     }
 

@@ -10,19 +10,19 @@ use App\Entity\OAuthAuthorizationCode;
 use App\Entity\OAuthAuthorizationRequest;
 use App\Entity\OAuthClient;
 use App\Entity\User;
+use App\Scheduler\RunScheduledTask;
+use App\Scheduler\RunScheduledTaskHandler;
+use App\Scheduler\ScheduledTask;
 use App\Service\Quota;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
-/** Persistence of the OAuth/MCP entities (and the migration behind them) and app:prune-oauth. */
-class PruneOAuthCommandTest extends WebTestCase
+/** Persistence of the OAuth/MCP entities (and the migration behind them) and the prune-oauth scheduled task. */
+class OAuthEntitiesTest extends WebTestCase
 {
     private static KernelBrowser $client;
     private static EntityManagerInterface $em;
@@ -55,13 +55,10 @@ class PruneOAuthCommandTest extends WebTestCase
         return $user;
     }
 
-    private function prune(): string
+    private function prune(): void
     {
-        $t = new CommandTester((new Application(self::$client->getKernel()))->find('app:prune-oauth'));
-        $this->assertSame(Command::SUCCESS, $t->execute([]));
+        static::getContainer()->get(RunScheduledTaskHandler::class)(new RunScheduledTask(ScheduledTask::PruneOAuth));
         self::$em->clear();
-
-        return $t->getDisplay();
     }
 
     public function testEntitiesPersistWithUuidIdsAndRelations(): void

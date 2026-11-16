@@ -59,7 +59,7 @@ Day-to-day tasks: updating, backups, the worker and scheduled jobs, command-line
     From now on **`APP_SECRET` is needed to read these values**: a database backup is useless for them without the matching `APP_SECRET`. Keep both together, see [Backups](#backups).
 
 !!! note "Upgrading to the built-in scheduler and mail queue"
-    Cron entries for the `app:prune-*`, `app:holidays:refresh` and `app:geoip:update` commands are no longer used and must be removed. All e-mail is now sent by a background worker, which the Docker image starts by default. See [Scheduled tasks and the worker](#scheduled-tasks-and-the-worker).
+    Cron entries for the old `app:prune-*`, `app:holidays:refresh` and `app:geoip:update` commands are no longer used and must be removed. The `app:prune-*` commands no longer exist; run a job by hand with `app:scheduler:run`. All e-mail is now sent by a background worker, which the Docker image starts by default. See [Scheduled tasks and the worker](#scheduled-tasks-and-the-worker).
 
 !!! note "Upgrading to private instance by default"
     New setting `INSTANCE_PRIVATE` defaults to `true`: search engines are asked to ignore everything except public feeds. If you want the rest of the site indexed, set `INSTANCE_PRIVATE=false`. The app also publishes `/robots.txt` and a sitemap of public feeds now; custom web servers must route them to the app. See [Search engines](security.md#search-engines-and-private-instance).
@@ -177,18 +177,10 @@ The job names are the ones shown by `--list` (for example `prune-security-events
 
 The command prints the job, how long it took and the result, and exits with `0` on success and non-zero when the job fails or the name is unknown. Two manual runs of the same job never overlap (also across containers); the second one is refused. A manual run does not check whether the scheduler or a worker is running the same job at that moment, which is harmless for the cleanup jobs. The holiday refresh, location update, sitemap and telemetry jobs only log a warning when they fail, so the command cannot report their failure: it says so, and you check the log. The telemetry jobs print a note when no `OTEL_EXPORTER_OTLP_ENDPOINT` is set, because they then do nothing.
 
-The older commands below remain available and do the same as the matching job:
+The cleanup jobs (`prune-*`) have no commands of their own; use `app:scheduler:run` for them. These three jobs also have their own commands, which do the same as the matching job:
 
 | Command | Job |
 |---|---|
-| `app:prune-unverified-users` | Unconfirmed accounts |
-| `app:prune-password-resets` | Password reset links |
-| `app:prune-refresh-tokens` | Sessions |
-| `app:prune-club-invitations` | Club invitations |
-| `app:prune-oauth` | AI app connections |
-| `app:prune-security-events` | Security log |
-| `app:prune-auth-nonces` | One-time values |
-| `app:prune-failed-messages` | Failed messages |
 | `app:holidays:refresh --all` | Holidays |
 | `app:geoip:update` | Location database |
 | `app:sitemap:generate` | Sitemap |
@@ -211,7 +203,7 @@ Failed messages are deleted automatically after 30 days. Log lines about a faile
 
 ### Upgrading from cron
 
-1. Remove the old cron entries (or timers) for `app:prune-*`, `app:holidays:refresh` and `app:geoip:update`.
+1. Remove the old cron entries (or timers) for `app:prune-*`, `app:holidays:refresh` and `app:geoip:update`. The `app:prune-*` commands no longer exist; `app:scheduler:run` replaces them.
 2. Make sure a worker and the scheduler run. With the standard Docker setup (`ROLE=all`) they do; without Docker see [Hosting without Docker](hosting-without-docker.md#background-jobs-and-the-worker).
 3. The database changes for the queue, the lock and the scheduler run with the usual migration step.
 4. Optionally set up [cache and storage](cache-and-storage.md).

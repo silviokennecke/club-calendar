@@ -313,7 +313,7 @@ info:
 
     OAuth client registration (`POST /api/oauth/register`): 10 per client IP and hour, at most 5 redirect URIs
     (2048 characters each), `client_name` at most 100 characters (RFC 7591 errors, not `quota_exceeded`). Unused
-    clients are pruned by `app:prune-oauth`.
+    clients are pruned by the scheduled `prune-oauth` job.
 
     Notes: `note` of events and templates at most 2000 characters (422 `validation_failed`, field `note`).
 

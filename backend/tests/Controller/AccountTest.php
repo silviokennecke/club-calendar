@@ -7,16 +7,17 @@ namespace App\Tests\Controller;
 use App\Entity\EmailChange;
 use App\Entity\OAuthAccount;
 use App\Entity\User;
+use App\Scheduler\RunScheduledTask;
+use App\Scheduler\RunScheduledTaskHandler;
+use App\Scheduler\ScheduledTask;
 use App\Service\PasswordResetService;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
-use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
@@ -621,7 +622,7 @@ class AccountTest extends WebTestCase
         $this->assertStringNotContainsString($token, $written);
     }
 
-    public function testPruneCommandAlsoDeletesExpiredEmailChanges(): void
+    public function testPruneTaskAlsoDeletesExpiredEmailChanges(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, 'alice@example.com');
         $this->changeEmail($user, 'alice.new@example.com');
@@ -629,8 +630,7 @@ class AccountTest extends WebTestCase
         $other = TestHelper::createUser(self::$em, self::$hasher, 'bob@example.com');
         $this->changeEmail($other, 'bob.new@example.com');
 
-        $tester = new CommandTester((new Application(self::$client->getKernel()))->find('app:prune-password-resets'));
-        $this->assertSame(0, $tester->execute([]));
+        static::getContainer()->get(RunScheduledTaskHandler::class)(new RunScheduledTask(ScheduledTask::PrunePasswordResets));
         self::$em->clear();
         $left = array_map(fn (EmailChange $c) => $c->getNewEmail(), self::$em->getRepository(EmailChange::class)->findAll());
         $this->assertSame(['bob.new@example.com'], $left);

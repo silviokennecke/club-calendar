@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Scheduler;
 
 use App\Entity\PasswordReset;
+use App\Entity\SecurityEvent;
+use App\Enum\SecurityEventType;
 use App\Scheduler\RunScheduledTask;
 use App\Scheduler\RunScheduledTaskHandler;
 use App\Scheduler\ScheduledTask;
@@ -78,6 +80,23 @@ class RunScheduledTaskHandlerTest extends KernelTestCase
         $this->runTask(ScheduledTask::PrunePasswordResets);
 
         $this->assertSame(1, $this->rows('password_reset'));
+    }
+
+    public function testPrunesSecurityEventsOlderThanOneYearOnly(): void
+    {
+        $user = TestHelper::createUser($this->em, self::getContainer()->get(UserPasswordHasherInterface::class));
+        $utc = new \DateTimeZone('UTC');
+        $old = new SecurityEvent($user, SecurityEventType::LOGIN, true, new \DateTimeImmutable('-366 days', $utc));
+        $recent = new SecurityEvent($user, SecurityEventType::LOGIN, true, new \DateTimeImmutable('-364 days', $utc));
+        $this->em->persist($old);
+        $this->em->persist($recent);
+        $this->em->flush();
+        $recentId = $recent->getId();
+        $this->em->clear();
+
+        $this->runTask(ScheduledTask::PruneSecurityEvents);
+
+        $this->assertSame([$recentId], $this->db->fetchFirstColumn('SELECT id FROM security_event'));
     }
 
     public function testPrunesExpiredAuthNonces(): void

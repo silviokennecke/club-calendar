@@ -14,7 +14,7 @@ Offene Backend-Features, Sicherheitsrisiken, Betriebspunkte und Design-Entscheid
 - **Mehrere Konten desselben Anbieters** (z. B. zwei Google-Konten) lassen sich nicht verknüpfen (`already_linked`).
 - **Inaktive Konten ohne Verein** werden nicht automatisch gelöscht. Geplant: Konten ohne Vereinsmitgliedschaft nach X Tagen
   ohne Aktivität löschen, vorher Hinweis per E-Mail. Dafür fehlen Zeitstempel der letzten Aktivität, ein geplanter Job (Scheduler, `ScheduledTask`) wie
-  die `app:prune-*`-Jobs und Konfiguration für X und die Vorankündigungsfrist. Nicht umgesetzt.
+  die `prune-*`-Jobs und Konfiguration für X und die Vorankündigungsfrist. Nicht umgesetzt.
 - **Datenexport (DSGVO) läuft synchron:** Der Export wird direkt gestreamt (JSON, erhöhte Speicher- und Zeitlimits). Bei
   Nutzern mit vielen Vereinen und umfangreich bearbeiteten Datensätzen kann er groß werden. Er sollte ein asynchroner
   Vorgang werden (Job in der Messenger-Queue, Ergebnis kurz in `app.storage` gespeichert und per Download-Link

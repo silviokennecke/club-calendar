@@ -36,7 +36,7 @@ final readonly class NonceStore
      * hash is renewed in place (a reused key such as a slot or mail interval opens again at its expiry), a live
      * row stays untouched. There is no separate DELETE, so concurrent consumers (also inside transactions)
      * cannot deadlock on a lock-order inversion; the duplicate path takes an exclusive lock directly. Expired
-     * rows are not swept here (`app:prune-auth-nonces` does that). The winner is read from the affected rows
+     * rows are not swept here (the `prune-auth-nonces` scheduled task does that). The winner is read from the affected rows
      * (pdo_mysql without FOUND_ROWS: 1 inserted, 2 renewed, 0 live row unchanged).
      */
     public function consume(string $purpose, string $nonce, int $expiresAtTimestamp): bool

@@ -7,6 +7,9 @@ namespace App\Tests\Controller;
 use App\Entity\OAuthAccount;
 use App\Entity\Passkey;
 use App\Entity\User;
+use App\Scheduler\RunScheduledTask;
+use App\Scheduler\RunScheduledTaskHandler;
+use App\Scheduler\ScheduledTask;
 use App\Security\OneTimeTokenService;
 use App\Security\SignedTokenService;
 use App\Tests\Helper\DatabaseResetter;
@@ -14,11 +17,9 @@ use App\Tests\Helper\FakeOAuth2Client;
 use App\Tests\Helper\TestHelper;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
-use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
@@ -619,8 +620,7 @@ class OAuthTest extends WebTestCase
         TestHelper::createClub($this->em, $this->user('member@example.com'));
         $this->em->getConnection()->executeStatement("UPDATE `user` SET created_at = '2020-01-01 00:00:00'");
 
-        $tester = new CommandTester((new Application(self::$client->getKernel()))->find('app:prune-unverified-users'));
-        $tester->execute([]);
+        static::getContainer()->get(RunScheduledTaskHandler::class)(new RunScheduledTask(ScheduledTask::PruneUnverifiedUsers));
 
         $this->assertNotNull($this->user('member@example.com'));
         $this->assertNull($this->user('lurker@example.com'));
@@ -633,8 +633,7 @@ class OAuthTest extends WebTestCase
         TestHelper::createUser($this->em, $hasher, 'stale@example.com', 'password123', false);
         $this->em->getConnection()->executeStatement("UPDATE `user` SET created_at = '2020-01-01 00:00:00'");
 
-        $tester = new CommandTester((new Application(self::$client->getKernel()))->find('app:prune-unverified-users'));
-        $tester->execute([]);
+        static::getContainer()->get(RunScheduledTaskHandler::class)(new RunScheduledTask(ScheduledTask::PruneUnverifiedUsers));
 
         $this->assertNull($this->user('ms@example.com'));
         $this->assertNull($this->user('stale@example.com'));
@@ -781,8 +780,7 @@ class OAuthTest extends WebTestCase
         TestHelper::createUser($this->em, $hasher, 'old@example.com', 'password123', false);
         $this->em->getConnection()->executeStatement("UPDATE `user` SET created_at = '2020-01-01 00:00:00' WHERE email <> 'fresh@example.com'");
 
-        $tester = new CommandTester((new Application(self::$client->getKernel()))->find('app:prune-unverified-users'));
-        $tester->execute([]);
+        static::getContainer()->get(RunScheduledTaskHandler::class)(new RunScheduledTask(ScheduledTask::PruneUnverifiedUsers));
 
         $this->assertNotNull($this->user('verified@example.com'));
         $this->assertNotNull($this->user('fresh@example.com'));

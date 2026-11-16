@@ -9,6 +9,9 @@ use App\Entity\OAuthAccount;
 use App\Entity\Passkey;
 use App\Entity\PasswordReset;
 use App\Entity\User;
+use App\Scheduler\RunScheduledTask;
+use App\Scheduler\RunScheduledTaskHandler;
+use App\Scheduler\ScheduledTask;
 use App\Service\TokenService;
 use App\Tests\Helper\DatabaseResetter;
 use App\Tests\Helper\TestHelper;
@@ -471,7 +474,7 @@ class PasswordResetTest extends WebTestCase
         $this->assertSame(1, $this->command('app:user:verify')->execute(['user' => 'nobody@example.com']));
     }
 
-    public function testPruneCommandDeletesExpiredLinksOnly(): void
+    public function testPruneTaskDeletesExpiredLinksOnly(): void
     {
         $user = TestHelper::createUser(self::$em, self::$hasher, self::uniqueEmail());
         self::mockTime('2026-10-13 08:00:00 UTC');
@@ -485,8 +488,7 @@ class PasswordResetTest extends WebTestCase
         $this->forgot($other->getEmail());
         $valid = $this->tokenFromMail();
 
-        $tester = $this->command('app:prune-password-resets');
-        $this->assertSame(0, $tester->execute([]));
+        static::getContainer()->get(RunScheduledTaskHandler::class)(new RunScheduledTask(ScheduledTask::PrunePasswordResets));
         self::$em->clear();
         $left = array_map(fn (PasswordReset $r) => $r->getTokenHash(), self::$em->getRepository(PasswordReset::class)->findAll());
         $this->assertSame([hash('sha256', $valid)], $left);
