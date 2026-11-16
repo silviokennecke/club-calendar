@@ -58,6 +58,13 @@ class MainScheduleTest extends KernelTestCase
         $this->assertNotNull($schedule->getState());
     }
 
+    public function testEveryTaskHasADescription(): void
+    {
+        foreach (ScheduledTask::cases() as $task) {
+            $this->assertNotSame('', trim($task->description()), $task->value);
+        }
+    }
+
     public function testCronTimesAreUniqueAndInTheNightWindow(): void
     {
         $crons = array_map(static fn (ScheduledTask $t): string => $t->cron(), ScheduledTask::cases());

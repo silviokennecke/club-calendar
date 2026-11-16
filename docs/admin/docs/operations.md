@@ -165,7 +165,19 @@ If the web server or a program in the container fails for good, the container st
 
 ### Running a job by hand
 
-The jobs stay available as commands, for testing or when you do not want to wait. They do the same as the scheduler:
+One command runs any job right away, for testing or when you do not want to wait. It does the same as the scheduler, but in your terminal, and works even when `SCHEDULER_ENABLED` is `false`:
+
+```bash
+docker compose exec app php bin/console app:scheduler:run --list                       # all jobs with their schedule
+docker compose exec app php bin/console app:scheduler:run prune-security-events         # run one job
+docker compose exec -it app php bin/console app:scheduler:run                           # pick a job from a list
+```
+
+The job names are the ones shown by `--list` (for example `prune-security-events`, `holidays-refresh`, `sitemap-refresh`, `telemetry-hourly`). A misspelt name is refused with the valid names. Without a name in a non-interactive shell the command also refuses and prints the names.
+
+The command prints the job, how long it took and the result, and exits with `0` on success and non-zero when the job fails or the name is unknown. Two manual runs of the same job never overlap (also across containers); the second one is refused. A manual run does not check whether the scheduler or a worker is running the same job at that moment, which is harmless for the cleanup jobs. The holiday refresh, location update, sitemap and telemetry jobs only log a warning when they fail, so the command cannot report their failure: it says so, and you check the log. The telemetry jobs print a note when no `OTEL_EXPORTER_OTLP_ENDPOINT` is set, because they then do nothing.
+
+The older commands below remain available and do the same as the matching job:
 
 | Command | Job |
 |---|---|

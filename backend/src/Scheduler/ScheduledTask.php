@@ -39,4 +39,38 @@ enum ScheduledTask: string
             self::TelemetryDaily => '20 3 * * *',
         };
     }
+
+    /** One plain-language line for operators (manual run list and choice). */
+    public function description(): string
+    {
+        return match ($this) {
+            self::PruneUnverifiedUsers => 'Delete accounts that never confirmed their address after 30 days',
+            self::PrunePasswordResets => 'Delete expired password reset links and e-mail change confirmations',
+            self::PruneRefreshTokens => 'Delete expired sessions',
+            self::PruneClubInvitations => 'Delete invitations answered or expired more than 30 days ago',
+            self::PruneOAuth => 'Delete expired AI app connection entries',
+            self::PruneSecurityEvents => 'Delete security log entries older than one year',
+            self::PruneAuthNonces => 'Delete expired one-time sign-in values',
+            self::PruneFailedMessages => 'Delete failed queue entries older than 30 days',
+            self::HolidaysRefresh => 'Refresh the predefined holiday calendars',
+            self::GeoIpUpdate => 'Download a newer location database (needs MAXMIND_LICENSE_KEY)',
+            self::SitemapRefresh => 'Rebuild the sitemap of public feeds',
+            self::TelemetryHourly => 'Report hourly totals to the monitoring system (needs an OTLP endpoint)',
+            self::TelemetryDaily => 'Report daily distributions to the monitoring system (needs an OTLP endpoint)',
+        };
+    }
+
+    /** True for jobs that log and swallow failures by policy, so a run cannot signal them. */
+    public function swallowsFailures(): bool
+    {
+        return match ($this) {
+            self::HolidaysRefresh, self::GeoIpUpdate, self::SitemapRefresh, self::TelemetryHourly, self::TelemetryDaily => true,
+            default => false,
+        };
+    }
+
+    public function needsTelemetry(): bool
+    {
+        return self::TelemetryHourly === $this || self::TelemetryDaily === $this;
+    }
 }
