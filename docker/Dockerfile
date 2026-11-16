@@ -50,7 +50,7 @@ LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
 COPY --from=ghcr.io/mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 RUN apk add --no-cache bash tini supervisor \
-    && install-php-extensions pdo_mysql intl gd opcache redis \
+    && install-php-extensions pdo_mysql intl gd opcache redis protobuf \
     && rm -f /usr/local/bin/install-php-extensions \
     && mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
     # own pool config, runs unprivileged (no user/group directive)

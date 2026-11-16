@@ -11,6 +11,16 @@ parameters:
     # Older APP_SECRET values (comma-separated) still accepted for decrypting stored secrets while rotating APP_SECRET
     env(APP_SECRET_PREVIOUS): ''
 
+    # Optional OpenTelemetry (OTLP http/protobuf): active only with a non-empty endpoint
+    env(OTEL_EXPORTER_OTLP_ENDPOINT): ''
+    env(OTEL_SDK_DISABLED): 'false'
+    env(OTEL_SERVICE_NAME): 'club-calendar'
+    env(OTEL_RESOURCE_ATTRIBUTES): ''
+    env(OTEL_EXPORTER_OTLP_HEADERS): ''
+    env(OTEL_EXPORTER_OTLP_TIMEOUT): '1000'
+    env(OTEL_EXPORTER_OTLP_COMPRESSION): 'none'
+    env(OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE): 'delta'
+
     env(MESSENGER_TRANSPORT_DSN): 'doctrine://default?auto_setup=0'
 
     # Scheduler: SCHEDULER_ENABLED=false leaves the schedule empty. LOCK_DSN empty = the application database.
@@ -127,6 +137,17 @@ services:
     # Public so the Doctrine encrypted types (static) can reach it lazily, see Kernel::boot()
     App\Security\Secret\SecretCipher:
         public: true
+
+    App\Telemetry\TelemetryConfig:
+        arguments:
+            $endpoint: '%env(OTEL_EXPORTER_OTLP_ENDPOINT)%'
+            $sdkDisabled: '%env(bool:OTEL_SDK_DISABLED)%'
+            $serviceName: '%env(OTEL_SERVICE_NAME)%'
+            $resourceAttributes: '%env(OTEL_RESOURCE_ATTRIBUTES)%'
+            $headers: '%env(OTEL_EXPORTER_OTLP_HEADERS)%'
+            $timeoutMs: '%env(int:OTEL_EXPORTER_OTLP_TIMEOUT)%'
+            $compression: '%env(OTEL_EXPORTER_OTLP_COMPRESSION)%'
+            $temporality: '%env(OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE)%'
 
     App\Messenger\EncryptingSerializer:
         arguments:
