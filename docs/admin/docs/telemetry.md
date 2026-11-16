@@ -127,6 +127,14 @@ The dashboard expects a Prometheus-compatible datasource. The example sets Prome
 
 If you use your own Grafana: **Dashboards, New, Import**, upload `grafana-dashboard.json` and choose your Prometheus-compatible datasource when asked. Your store must receive the metrics under the Prometheus names described above, which means a collector with `deltatocumulative` in front of it.
 
+### What the dashboard shows
+
+The top shows six tiles with the main totals (users, clubs, calendars, events, feeds, AI app clients) and three activity graphs: sign-ins, feed requests and AI app calls. Below, the sections **Sign-ins**, **Feeds** and **MCP** go into detail. **Clubs & members** (the daily distributions) and **Notes** are collapsed; click the title to open them.
+
+- The activity graphs show a **rolling 2 hours**: each point is the number of events in the 2 hours before it. Counters only arrive when something happens, and the store needs two samples in a window to compute an increase, so shorter windows would miss rare events.
+- Totals, percentages and the top-tools list use the selected time range. Ranges shorter than 2 hours can show too little or nothing.
+- A failure percentage shows **0%** when there were attempts but no failures, and "No data" only when there were no attempts at all.
+
 ### Grafana Cloud
 
 Grafana Cloud accepts OTLP directly. In the Cloud portal open your stack's **OpenTelemetry** details to get the OTLP address (`https://otlp-gateway-<zone>.grafana.net/otlp`), the instance ID and an access token. The simplest dependable way is to keep the collector from the example and replace its two exporters by one `otlphttp` exporter that points at that address and sends the credentials with basic authentication (instance ID as user name, token as password), instead of running Prometheus and Loki yourself. Keep the `deltatocumulative` processor in the metrics pipeline. We could not verify whether Grafana Cloud accepts delta counters without it, so check the current Grafana Cloud documentation before sending deltas directly from the app. Then import the dashboard as described above.

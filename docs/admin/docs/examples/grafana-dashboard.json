@@ -50,7 +50,7 @@
   "annotations": {
     "list": []
   },
-  "description": "Optional OpenTelemetry metrics of a Club Calendar instance. Assumes a Prometheus-compatible datasource fed via the standard OTLP to Prometheus name translation: dots become underscores, counters get the suffix _total, curly-brace units such as {login} are not appended, boolean attributes appear as the strings \"true\"/\"false\". Counters are exported as deltas, so the OTel Collector must run the deltatocumulative processor. Gauges are reported hourly (queried with a 2h lookback) or daily (26h lookback) to bridge Prometheus staleness. Membership totals per role are club_calendar_memberships; the per-club distribution is club_calendar_club_members (stat label).",
+  "description": "Optional OpenTelemetry metrics of a Club Calendar instance. Needs a Prometheus-compatible datasource and a collector with deltatocumulative. See the Notes row.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -59,31 +59,18 @@
   "panels": [
     {
       "id": 1,
-      "type": "row",
-      "title": "Overview",
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
-      "panels": []
-    },
-    {
-      "id": 2,
       "type": "stat",
       "title": "Users",
-      "description": "Registered users (verified and unverified). Reported hourly.",
+      "description": "Registered users. Hourly value.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
         "h": 4,
-        "w": 3,
+        "w": 4,
         "x": 0,
-        "y": 1
+        "y": 0
       },
       "targets": [
         {
@@ -94,19 +81,83 @@
           "editorMode": "code",
           "expr": "sum(last_over_time(club_calendar_users[2h]))",
           "legendFormat": "",
-          "range": false,
-          "instant": true,
+          "range": true,
+          "instant": false,
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Clubs",
+      "description": "Clubs. Hourly value.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(last_over_time(club_calendar_clubs[2h]))",
+          "legendFormat": "",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
                 "value": null
               }
             ]
@@ -135,17 +186,17 @@
     {
       "id": 3,
       "type": "stat",
-      "title": "Clubs",
-      "description": "Reported hourly.",
+      "title": "Calendars",
+      "description": "Calendars that are not archived. Hourly value.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
         "h": 4,
-        "w": 3,
-        "x": 3,
-        "y": 1
+        "w": 4,
+        "x": 8,
+        "y": 0
       },
       "targets": [
         {
@@ -154,21 +205,22 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(last_over_time(club_calendar_clubs[2h]))",
+          "expr": "sum(last_over_time(club_calendar_calendars{archived=\"false\"}[2h]))",
           "legendFormat": "",
-          "range": false,
-          "instant": true,
+          "range": true,
+          "instant": false,
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
@@ -197,17 +249,17 @@
     {
       "id": 4,
       "type": "stat",
-      "title": "Calendars",
-      "description": "Non-archived calendars. Reported hourly.",
+      "title": "Events",
+      "description": "Events that are not drafts. Hourly value.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
         "h": 4,
-        "w": 3,
-        "x": 6,
-        "y": 1
+        "w": 4,
+        "x": 12,
+        "y": 0
       },
       "targets": [
         {
@@ -216,21 +268,22 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(last_over_time(club_calendar_calendars{archived=\"false\"}[2h]))",
+          "expr": "sum(last_over_time(club_calendar_events{draft=\"false\"}[2h]))",
           "legendFormat": "",
-          "range": false,
-          "instant": true,
+          "range": true,
+          "instant": false,
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
@@ -259,17 +312,17 @@
     {
       "id": 5,
       "type": "stat",
-      "title": "Events",
-      "description": "Published events (drafts excluded). Reported hourly.",
+      "title": "Feeds",
+      "description": "Feeds of all visibilities. Hourly value.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
         "h": 4,
-        "w": 3,
-        "x": 9,
-        "y": 1
+        "w": 4,
+        "x": 16,
+        "y": 0
       },
       "targets": [
         {
@@ -278,21 +331,22 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(last_over_time(club_calendar_events{draft=\"false\"}[2h]))",
+          "expr": "sum(last_over_time(club_calendar_feeds[2h]))",
           "legendFormat": "",
-          "range": false,
-          "instant": true,
+          "range": true,
+          "instant": false,
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
@@ -321,17 +375,17 @@
     {
       "id": 6,
       "type": "stat",
-      "title": "Feeds",
-      "description": "Calendar feeds of all visibilities. Reported hourly.",
+      "title": "MCP clients",
+      "description": "Registered AI app clients. Hourly value.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
         "h": 4,
-        "w": 3,
-        "x": 12,
-        "y": 1
+        "w": 4,
+        "x": 20,
+        "y": 0
       },
       "targets": [
         {
@@ -340,21 +394,22 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(last_over_time(club_calendar_feeds[2h]))",
+          "expr": "sum(last_over_time(club_calendar_mcp_clients[2h]))",
           "legendFormat": "",
-          "range": false,
-          "instant": true,
+          "range": true,
+          "instant": false,
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
@@ -383,17 +438,17 @@
     {
       "id": 7,
       "type": "stat",
-      "title": "Personal subscriptions",
-      "description": "Members with a personal subscription (My subscription). Reported hourly.",
+      "title": "Failed",
+      "description": "Share of failed attempts in the selected range. No data when nobody signed in.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 4,
+        "h": 7,
         "w": 3,
-        "x": 15,
-        "y": 1
+        "x": 0,
+        "y": 4
       },
       "targets": [
         {
@@ -402,7 +457,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(last_over_time(club_calendar_member_subscriptions[2h]))",
+          "expr": "(sum(increase(club_calendar_logins_total{success=\"false\"}[$__range])) or vector(0)) / (sum(increase(club_calendar_logins_total[$__range])) > 0)",
           "legendFormat": "",
           "range": false,
           "instant": true,
@@ -411,19 +466,26 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "percentunit",
+          "decimals": 1,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.2
               }
             ]
           },
           "color": {
             "mode": "thresholds"
-          }
+          },
+          "min": 0,
+          "max": 1
         },
         "overrides": []
       },
@@ -436,7 +498,7 @@
           "values": false
         },
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "textMode": "auto",
         "justifyMode": "auto",
         "orientation": "auto"
@@ -444,155 +506,18 @@
     },
     {
       "id": 8,
-      "type": "stat",
-      "title": "MCP clients",
-      "description": "Registered OAuth clients of connected AI apps. Reported hourly.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 3,
-        "x": 18,
-        "y": 1
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(last_over_time(club_calendar_mcp_clients[2h]))",
-          "legendFormat": "",
-          "range": false,
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "thresholds"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "area",
-        "textMode": "auto",
-        "justifyMode": "auto",
-        "orientation": "auto"
-      }
-    },
-    {
-      "id": 9,
-      "type": "stat",
-      "title": "MCP grants",
-      "description": "Active (not revoked) connections of AI apps to user accounts. Reported hourly.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 3,
-        "x": 21,
-        "y": 1
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(last_over_time(club_calendar_mcp_grants[2h]))",
-          "legendFormat": "",
-          "range": false,
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "thresholds"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "area",
-        "textMode": "auto",
-        "justifyMode": "auto",
-        "orientation": "auto"
-      }
-    },
-    {
-      "id": 10,
-      "type": "row",
-      "title": "Clubs & members",
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 5
-      },
-      "panels": []
-    },
-    {
-      "id": 11,
       "type": "timeseries",
-      "title": "Memberships by role",
-      "description": "Club memberships per role (member, viewer, editor, admin), stacked. Reported hourly.",
+      "title": "Sign-ins",
+      "description": "Rolling 2 hours. Every checked attempt counts.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 6
+        "h": 7,
+        "w": 5,
+        "x": 3,
+        "y": 4
       },
       "targets": [
         {
@@ -601,24 +526,38 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (role) (last_over_time(club_calendar_memberships[2h]))",
-          "legendFormat": "{{role}}",
+          "expr": "sum(increase(club_calendar_logins_total{success=\"true\"}[2h])) or vector(0)",
+          "legendFormat": "success",
           "range": true,
           "instant": false,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(club_calendar_logins_total{success=\"false\"}[2h])) or vector(0)",
+          "legendFormat": "failed",
+          "range": true,
+          "instant": false,
+          "refId": "B"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "min": 0,
           "custom": {
             "drawStyle": "line",
-            "lineWidth": 1,
-            "fillOpacity": 40,
-            "showPoints": "auto",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
             "spanNulls": true,
+            "lineInterpolation": "linear",
             "stacking": {
-              "mode": "normal",
+              "mode": "none",
               "group": "A"
             }
           },
@@ -626,15 +565,14 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
           },
           "color": {
             "mode": "palette-classic"
-          },
-          "min": 0
+          }
         },
         "overrides": []
       },
@@ -652,19 +590,19 @@
       }
     },
     {
-      "id": 12,
-      "type": "timeseries",
-      "title": "Users by verification",
-      "description": "Verified vs. unverified accounts. Unverified accounts are removed after 30 days. Reported hourly.",
+      "id": 9,
+      "type": "stat",
+      "title": "Total",
+      "description": "Feed requests in the selected range.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 6
+        "h": 7,
+        "w": 3,
+        "x": 8,
+        "y": 4
       },
       "targets": [
         {
@@ -673,8 +611,231 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (verified) (last_over_time(club_calendar_users[2h]))",
-          "legendFormat": "verified={{verified}}",
+          "expr": "sum(increase(club_calendar_feed_requests_total[$__range]))",
+          "legendFormat": "",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Feed requests",
+      "description": "Rolling 2 hours.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 5,
+        "x": 11,
+        "y": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(club_calendar_feed_requests_total{kind=\"ics\",status=\"200\"}[2h]))",
+          "legendFormat": "ICS 200",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(club_calendar_feed_requests_total{kind=\"ics\",status=\"304\"}[2h]))",
+          "legendFormat": "ICS 304",
+          "range": true,
+          "instant": false,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(club_calendar_feed_requests_total{kind!=\"ics\"}[2h]))",
+          "legendFormat": "other (web, event)",
+          "range": true,
+          "instant": false,
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true,
+            "lineInterpolation": "linear",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Total",
+      "description": "MCP calls in the selected range.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 3,
+        "x": 16,
+        "y": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(club_calendar_mcp_calls_total[$__range]))",
+          "legendFormat": "",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "MCP calls",
+      "description": "Rolling 2 hours.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 5,
+        "x": 19,
+        "y": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (access) (increase(club_calendar_mcp_calls_total[2h]))",
+          "legendFormat": "{{access}}",
           "range": true,
           "instant": false,
           "refId": "A"
@@ -683,14 +844,16 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "min": 0,
           "custom": {
             "drawStyle": "line",
-            "lineWidth": 1,
-            "fillOpacity": 40,
-            "showPoints": "auto",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
             "spanNulls": true,
+            "lineInterpolation": "linear",
             "stacking": {
-              "mode": "normal",
+              "mode": "none",
               "group": "A"
             }
           },
@@ -698,15 +861,14 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
           },
           "color": {
             "mode": "palette-classic"
-          },
-          "min": 0
+          }
         },
         "overrides": []
       },
@@ -725,90 +887,31 @@
     },
     {
       "id": 13,
-      "type": "timeseries",
-      "title": "Members per club (all roles)",
-      "description": "Distribution over clubs of the total member count (avg, min, max, median, population stddev). Updated once a day, so the line is a step per day.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
+      "type": "row",
+      "title": "Sign-ins",
+      "collapsed": false,
       "gridPos": {
-        "h": 8,
-        "w": 12,
+        "h": 1,
+        "w": 24,
         "x": 0,
-        "y": 14
+        "y": 11
       },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "max by (stat) (last_over_time(club_calendar_club_members{role=\"all\",stat!=\"\"}[26h]))",
-          "legendFormat": "{{stat}}",
-          "range": true,
-          "instant": false,
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "auto",
-            "spanNulls": true,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "palette-classic"
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true,
-          "calcs": []
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      }
+      "panels": []
     },
     {
       "id": 14,
       "type": "timeseries",
-      "title": "Calendars per club",
-      "description": "Distribution of non-archived calendars per club. Updated once a day.",
+      "title": "By method",
+      "description": "Rolling 2 hours.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 12,
-        "x": 12,
-        "y": 14
+        "x": 0,
+        "y": 12
       },
       "targets": [
         {
@@ -817,8 +920,8 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max by (stat) (last_over_time(club_calendar_club_calendars[26h]))",
-          "legendFormat": "{{stat}}",
+          "expr": "sum by (method) (increase(club_calendar_logins_total[2h]))",
+          "legendFormat": "{{method}}",
           "range": true,
           "instant": false,
           "refId": "A"
@@ -827,12 +930,14 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "min": 0,
           "custom": {
             "drawStyle": "line",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "auto",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
             "spanNulls": true,
+            "lineInterpolation": "linear",
             "stacking": {
               "mode": "none",
               "group": "A"
@@ -842,15 +947,14 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
           },
           "color": {
             "mode": "palette-classic"
-          },
-          "min": 0
+          }
         },
         "overrides": []
       },
@@ -870,17 +974,17 @@
     {
       "id": 15,
       "type": "timeseries",
-      "title": "Events per calendar",
-      "description": "Distribution of events (drafts included) per calendar. Updated once a day.",
+      "title": "By stage",
+      "description": "Rolling 2 hours. With MFA one sign-in counts at both stages.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 12,
-        "x": 0,
-        "y": 22
+        "x": 12,
+        "y": 12
       },
       "targets": [
         {
@@ -889,8 +993,8 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "max by (stat) (last_over_time(club_calendar_calendar_events[26h]))",
-          "legendFormat": "{{stat}}",
+          "expr": "sum by (stage) (increase(club_calendar_logins_total[2h]))",
+          "legendFormat": "{{stage}}",
           "range": true,
           "instant": false,
           "refId": "A"
@@ -899,12 +1003,14 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "min": 0,
           "custom": {
             "drawStyle": "line",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "auto",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
             "spanNulls": true,
+            "lineInterpolation": "linear",
             "stacking": {
               "mode": "none",
               "group": "A"
@@ -914,15 +1020,14 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
           },
           "color": {
             "mode": "palette-classic"
-          },
-          "min": 0
+          }
         },
         "overrides": []
       },
@@ -941,94 +1046,18 @@
     },
     {
       "id": 16,
-      "type": "table",
-      "title": "Members per club by role (latest)",
-      "description": "Distribution of member counts per club, one row per role and one column per statistic. Latest daily report.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 22
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "max by (role, stat) (last_over_time(club_calendar_club_members{stat!=\"\"}[26h]))",
-          "legendFormat": "",
-          "range": false,
-          "instant": true,
-          "refId": "A",
-          "format": "table"
-        }
-      ],
-      "transformations": [
-        {
-          "id": "groupingToMatrix",
-          "options": {
-            "columnField": "stat",
-            "rowField": "role",
-            "valueField": "Value"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "decimals": 1,
-          "custom": {
-            "align": "auto"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "showHeader": true,
-        "cellHeight": "sm"
-      }
-    },
-    {
-      "id": 17,
-      "type": "row",
-      "title": "Feeds",
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 30
-      },
-      "panels": []
-    },
-    {
-      "id": 18,
       "type": "timeseries",
-      "title": "Feeds by visibility",
-      "description": "Number of feeds per visibility (public, club, private). Reported hourly.",
+      "title": "Failures",
+      "description": "Rolling 2 hours.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 12,
         "x": 0,
-        "y": 31
+        "y": 19
       },
       "targets": [
         {
@@ -1037,8 +1066,8 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (visibility) (last_over_time(club_calendar_feeds[2h]))",
-          "legendFormat": "{{visibility}}",
+          "expr": "sum by (method, stage) (increase(club_calendar_logins_total{success=\"false\"}[2h]))",
+          "legendFormat": "{{method}} / {{stage}}",
           "range": true,
           "instant": false,
           "refId": "A"
@@ -1047,96 +1076,14 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "min": 0,
           "custom": {
             "drawStyle": "line",
-            "lineWidth": 1,
-            "fillOpacity": 40,
-            "showPoints": "auto",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
             "spanNulls": true,
-            "stacking": {
-              "mode": "normal",
-              "group": "A"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "palette-classic"
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true,
-          "calcs": []
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      }
-    },
-    {
-      "id": 19,
-      "type": "timeseries",
-      "title": "Feeds per club and calendars per feed",
-      "description": "Distributions over clubs (feeds per club) and over feeds (calendars per feed). Updated once a day.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 31
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "max by (stat) (last_over_time(club_calendar_club_feeds[26h]))",
-          "legendFormat": "feeds per club {{stat}}",
-          "range": true,
-          "instant": false,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "max by (stat) (last_over_time(club_calendar_feed_calendars[26h]))",
-          "legendFormat": "calendars per feed {{stat}}",
-          "range": true,
-          "instant": false,
-          "refId": "B"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "auto",
-            "spanNulls": true,
+            "lineInterpolation": "linear",
             "stacking": {
               "mode": "none",
               "group": "A"
@@ -1146,15 +1093,14 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
           },
           "color": {
             "mode": "palette-classic"
-          },
-          "min": 0
+          }
         },
         "overrides": []
       },
@@ -1172,19 +1118,19 @@
       }
     },
     {
-      "id": 20,
+      "id": 17,
       "type": "timeseries",
-      "title": "Feed requests by visibility",
-      "description": "Served requests per interval. Mostly calendar apps polling in the background, not people. Only counted after access was granted. my_subscription = personal subscription feed.",
+      "title": "SSO by provider",
+      "description": "Rolling 2 hours.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 39
+        "h": 7,
+        "w": 6,
+        "x": 12,
+        "y": 19
       },
       "targets": [
         {
@@ -1193,7 +1139,231 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (visibility) (increase(club_calendar_feed_requests_total[$__rate_interval]))",
+          "expr": "sum by (provider) (increase(club_calendar_logins_total{method=\"sso\"}[2h]))",
+          "legendFormat": "{{provider}}",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true,
+            "lineInterpolation": "linear",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "Failed (primary)",
+      "description": "Failed share at the password, passkey or SSO step in the range.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 3,
+        "x": 18,
+        "y": 19
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "(sum(increase(club_calendar_logins_total{stage=\"primary\",success=\"false\"}[$__range])) or vector(0)) / (sum(increase(club_calendar_logins_total{stage=\"primary\"}[$__range])) > 0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.2
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 19,
+      "type": "stat",
+      "title": "Failed (MFA)",
+      "description": "Failed share at the second step in the range.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 3,
+        "x": 21,
+        "y": 19
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "(sum(increase(club_calendar_logins_total{stage=\"mfa\",success=\"false\"}[$__range])) or vector(0)) / (sum(increase(club_calendar_logins_total{stage=\"mfa\"}[$__range])) > 0)",
+          "legendFormat": "",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.2
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Feeds",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "panels": []
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Requests by visibility",
+      "description": "Rolling 2 hours.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 27
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (visibility) (increase(club_calendar_feed_requests_total[2h]))",
           "legendFormat": "{{visibility}}",
           "range": true,
           "instant": false,
@@ -1203,14 +1373,16 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "min": 0,
           "custom": {
-            "drawStyle": "bars",
-            "lineWidth": 1,
-            "fillOpacity": 40,
-            "showPoints": "auto",
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
             "spanNulls": true,
+            "lineInterpolation": "linear",
             "stacking": {
-              "mode": "normal",
+              "mode": "none",
               "group": "A"
             }
           },
@@ -1218,87 +1390,14 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
           },
           "color": {
             "mode": "palette-classic"
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true,
-          "calcs": []
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      }
-    },
-    {
-      "id": 21,
-      "type": "timeseries",
-      "title": "Feed requests by kind",
-      "description": "ics = calendar subscription, web = public web view, event = event detail, event_ics = single-event download.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 39
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (kind) (increase(club_calendar_feed_requests_total[$__rate_interval]))",
-          "legendFormat": "{{kind}}",
-          "range": true,
-          "instant": false,
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "bars",
-            "lineWidth": 1,
-            "fillOpacity": 40,
-            "showPoints": "auto",
-            "spanNulls": true,
-            "stacking": {
-              "mode": "normal",
-              "group": "A"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "palette-classic"
-          },
-          "min": 0
+          }
         },
         "overrides": []
       },
@@ -1318,17 +1417,17 @@
     {
       "id": 22,
       "type": "timeseries",
-      "title": "Feed requests: 200 vs 304",
-      "description": "304 = unchanged, answered by revalidation without a body. A high 304 share means clients poll efficiently.",
+      "title": "Requests by kind",
+      "description": "Rolling 2 hours.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 12,
-        "x": 0,
-        "y": 47
+        "x": 12,
+        "y": 27
       },
       "targets": [
         {
@@ -1337,8 +1436,8 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (status) (increase(club_calendar_feed_requests_total[$__rate_interval]))",
-          "legendFormat": "{{status}}",
+          "expr": "sum by (kind) (increase(club_calendar_feed_requests_total[2h]))",
+          "legendFormat": "{{kind}}",
           "range": true,
           "instant": false,
           "refId": "A"
@@ -1347,14 +1446,16 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "min": 0,
           "custom": {
-            "drawStyle": "bars",
-            "lineWidth": 1,
-            "fillOpacity": 40,
-            "showPoints": "auto",
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
             "spanNulls": true,
+            "lineInterpolation": "linear",
             "stacking": {
-              "mode": "normal",
+              "mode": "none",
               "group": "A"
             }
           },
@@ -1362,15 +1463,14 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
           },
           "color": {
             "mode": "palette-classic"
-          },
-          "min": 0
+          }
         },
         "overrides": []
       },
@@ -1389,18 +1489,18 @@
     },
     {
       "id": 23,
-      "type": "stat",
-      "title": "304 share",
-      "description": "Share of feed requests answered with 304 (not modified) in the selected time range.",
+      "type": "timeseries",
+      "title": "200 vs 304",
+      "description": "Rolling 2 hours.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 12,
-        "y": 47
+        "h": 7,
+        "w": 9,
+        "x": 0,
+        "y": 34
       },
       "targets": [
         {
@@ -1409,7 +1509,80 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(increase(club_calendar_feed_requests_total{status=\"304\"}[$__range])) / sum(increase(club_calendar_feed_requests_total[$__range]))",
+          "expr": "sum by (status) (increase(club_calendar_feed_requests_total[2h]))",
+          "legendFormat": "{{status}}",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true,
+            "lineInterpolation": "linear",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 24,
+      "type": "stat",
+      "title": "304 share",
+      "description": "Share of unchanged answers in the range.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 3,
+        "x": 9,
+        "y": 34
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "(sum(increase(club_calendar_feed_requests_total{status=\"304\"}[$__range])) or vector(0)) / (sum(increase(club_calendar_feed_requests_total[$__range])) > 0)",
           "legendFormat": "",
           "range": false,
           "instant": true,
@@ -1419,11 +1592,12 @@
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
+          "decimals": 1,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
@@ -1431,7 +1605,8 @@
           "color": {
             "mode": "thresholds"
           },
-          "decimals": 1
+          "min": 0,
+          "max": 1
         },
         "overrides": []
       },
@@ -1444,70 +1619,7 @@
           "values": false
         },
         "colorMode": "value",
-        "graphMode": "area",
-        "textMode": "auto",
-        "justifyMode": "auto",
-        "orientation": "auto"
-      }
-    },
-    {
-      "id": 24,
-      "type": "stat",
-      "title": "Feed requests (range)",
-      "description": "Total served feed requests in the selected time range.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 18,
-        "y": 47
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(increase(club_calendar_feed_requests_total[$__range]))",
-          "legendFormat": "",
-          "range": false,
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "textMode": "auto",
         "justifyMode": "auto",
         "orientation": "auto"
@@ -1515,175 +1627,168 @@
     },
     {
       "id": 25,
+      "type": "timeseries",
+      "title": "Feeds by visibility",
+      "description": "Hourly values, stacked.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 12,
+        "y": 34
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (visibility) (last_over_time(club_calendar_feeds[2h]))",
+          "legendFormat": "{{visibility}}",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": true,
+            "lineInterpolation": "linear",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 26,
+      "type": "stat",
+      "title": "Subscriptions",
+      "description": "Personal subscriptions (My subscription). Hourly value.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 20,
+        "y": 34
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(last_over_time(club_calendar_member_subscriptions[2h]))",
+          "legendFormat": "",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 27,
       "type": "row",
-      "title": "Sign-ins",
+      "title": "MCP",
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 55
+        "y": 41
       },
       "panels": []
     },
     {
-      "id": 26,
-      "type": "timeseries",
-      "title": "Successful vs. failed sign-ins",
-      "description": "Every evaluated attempt counts. A password sign-in with MFA counts once at the primary stage and once at the mfa stage. Rolling 2 hours: sign-ins are rare, and the store needs two samples inside the window to compute an increase.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 56
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (success) (increase(club_calendar_logins_total[2h]))",
-          "legendFormat": "success={{success}}",
-          "range": true,
-          "instant": false,
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "bars",
-            "lineWidth": 1,
-            "fillOpacity": 40,
-            "showPoints": "auto",
-            "spanNulls": true,
-            "stacking": {
-              "mode": "normal",
-              "group": "A"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "palette-classic"
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true,
-          "calcs": []
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      }
-    },
-    {
-      "id": 27,
-      "type": "timeseries",
-      "title": "Sign-ins by method",
-      "description": "password, passkey, sso (any provider), totp and backup_code (MFA stage). Successes and failures together. Rolling 2 hours: sign-ins are rare, and the store needs two samples inside the window to compute an increase.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 56
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (method) (increase(club_calendar_logins_total[2h]))",
-          "legendFormat": "{{method}}",
-          "range": true,
-          "instant": false,
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "bars",
-            "lineWidth": 1,
-            "fillOpacity": 40,
-            "showPoints": "auto",
-            "spanNulls": true,
-            "stacking": {
-              "mode": "normal",
-              "group": "A"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "palette-classic"
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true,
-          "calcs": []
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      }
-    },
-    {
       "id": 28,
       "type": "timeseries",
-      "title": "Sign-ins by stage",
-      "description": "primary = first factor or SSO/passkey, mfa = second factor. MFA counts only at its own stage. Rolling 2 hours: sign-ins are rare, and the store needs two samples inside the window to compute an increase.",
+      "title": "Calls by access",
+      "description": "Rolling 2 hours.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 12,
         "x": 0,
-        "y": 64
+        "y": 42
       },
       "targets": [
         {
@@ -1692,8 +1797,8 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (stage) (increase(club_calendar_logins_total[2h]))",
-          "legendFormat": "{{stage}}",
+          "expr": "sum by (access) (increase(club_calendar_mcp_calls_total[2h]))",
+          "legendFormat": "{{access}}",
           "range": true,
           "instant": false,
           "refId": "A"
@@ -1702,14 +1807,16 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "min": 0,
           "custom": {
-            "drawStyle": "bars",
-            "lineWidth": 1,
-            "fillOpacity": 40,
-            "showPoints": "auto",
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
             "spanNulls": true,
+            "lineInterpolation": "linear",
             "stacking": {
-              "mode": "normal",
+              "mode": "none",
               "group": "A"
             }
           },
@@ -1717,15 +1824,14 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
           },
           "color": {
             "mode": "palette-classic"
-          },
-          "min": 0
+          }
         },
         "overrides": []
       },
@@ -1744,245 +1850,18 @@
     },
     {
       "id": 29,
-      "type": "stat",
-      "title": "Failure ratio (primary)",
-      "description": "Failed share of primary-stage attempts in the selected range. Includes mistyped passwords and probing.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 12,
-        "y": 64
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(increase(club_calendar_logins_total{stage=\"primary\",success=\"false\"}[$__range])) / sum(increase(club_calendar_logins_total{stage=\"primary\"}[$__range]))",
-          "legendFormat": "",
-          "range": false,
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 0.2
-              },
-              {
-                "color": "red",
-                "value": 0.5
-              }
-            ]
-          },
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 1
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "area",
-        "textMode": "auto",
-        "justifyMode": "auto",
-        "orientation": "auto"
-      }
-    },
-    {
-      "id": 30,
-      "type": "stat",
-      "title": "Failure ratio (MFA)",
-      "description": "Failed share of MFA-stage attempts in the selected range.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 18,
-        "y": 64
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum(increase(club_calendar_logins_total{stage=\"mfa\",success=\"false\"}[$__range])) / sum(increase(club_calendar_logins_total{stage=\"mfa\"}[$__range]))",
-          "legendFormat": "",
-          "range": false,
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 0.2
-              },
-              {
-                "color": "red",
-                "value": 0.5
-              }
-            ]
-          },
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 1
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "area",
-        "textMode": "auto",
-        "justifyMode": "auto",
-        "orientation": "auto"
-      }
-    },
-    {
-      "id": 31,
-      "type": "row",
-      "title": "MCP",
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 72
-      },
-      "panels": []
-    },
-    {
-      "id": 32,
       "type": "timeseries",
-      "title": "MCP calls by access",
-      "description": "read vs. write tool calls per interval (access = scope the tool asked for; unknown if none).",
+      "title": "Calls by outcome",
+      "description": "Rolling 2 hours.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 73
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (access) (increase(club_calendar_mcp_calls_total[$__rate_interval]))",
-          "legendFormat": "{{access}}",
-          "range": true,
-          "instant": false,
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "bars",
-            "lineWidth": 1,
-            "fillOpacity": 40,
-            "showPoints": "auto",
-            "spanNulls": true,
-            "stacking": {
-              "mode": "normal",
-              "group": "A"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "palette-classic"
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true,
-          "calcs": []
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      }
-    },
-    {
-      "id": 33,
-      "type": "timeseries",
-      "title": "MCP calls by outcome",
-      "description": "ok vs. error.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 12,
         "x": 12,
-        "y": 73
+        "y": 42
       },
       "targets": [
         {
@@ -1991,7 +1870,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (outcome) (increase(club_calendar_mcp_calls_total[$__rate_interval]))",
+          "expr": "sum by (outcome) (increase(club_calendar_mcp_calls_total[2h]))",
           "legendFormat": "{{outcome}}",
           "range": true,
           "instant": false,
@@ -2001,14 +1880,16 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "min": 0,
           "custom": {
-            "drawStyle": "bars",
-            "lineWidth": 1,
-            "fillOpacity": 40,
-            "showPoints": "auto",
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
             "spanNulls": true,
+            "lineInterpolation": "linear",
             "stacking": {
-              "mode": "normal",
+              "mode": "none",
               "group": "A"
             }
           },
@@ -2016,15 +1897,14 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
           },
           "color": {
             "mode": "palette-classic"
-          },
-          "min": 0
+          }
         },
         "overrides": []
       },
@@ -2042,19 +1922,19 @@
       }
     },
     {
-      "id": 34,
+      "id": 30,
       "type": "bargauge",
       "title": "Top 10 tools",
-      "description": "Most called MCP tools in the selected time range.",
+      "description": "Most called tools in the range. Needs a range of at least 2 hours.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
-        "w": 16,
+        "h": 7,
+        "w": 12,
         "x": 0,
-        "y": 81
+        "y": 49
       },
       "targets": [
         {
@@ -2079,7 +1959,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
@@ -2106,19 +1986,19 @@
       }
     },
     {
-      "id": 35,
+      "id": 31,
       "type": "stat",
       "title": "Error ratio",
-      "description": "Share of MCP tool calls that ended in an error in the selected range. Includes expected refusals such as missing permissions.",
+      "description": "Share of failed calls in the range. No data when there were no calls.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 4,
-        "x": 16,
-        "y": 81
+        "x": 12,
+        "y": 49
       },
       "targets": [
         {
@@ -2127,7 +2007,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(increase(club_calendar_mcp_calls_total{outcome=\"error\"}[$__range])) / sum(increase(club_calendar_mcp_calls_total[$__range]))",
+          "expr": "(sum(increase(club_calendar_mcp_calls_total{outcome=\"error\"}[$__range])) or vector(0)) / (sum(increase(club_calendar_mcp_calls_total[$__range])) > 0)",
           "legendFormat": "",
           "range": false,
           "instant": true,
@@ -2137,27 +2017,88 @@
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
+          "decimals": 1,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               },
               {
                 "color": "orange",
-                "value": 0.1
-              },
-              {
-                "color": "red",
-                "value": 0.3
+                "value": 0.2
               }
             ]
           },
           "color": {
             "mode": "thresholds"
           },
-          "decimals": 1
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 32,
+      "type": "stat",
+      "title": "Grants",
+      "description": "Connected AI apps that are not revoked. Hourly value.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 16,
+        "y": 49
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "sum(last_over_time(club_calendar_mcp_grants[2h]))",
+          "legendFormat": "",
+          "range": true,
+          "instant": false,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
@@ -2177,19 +2118,19 @@
       }
     },
     {
-      "id": 36,
+      "id": 33,
       "type": "stat",
-      "title": "MCP calls (range)",
-      "description": "Total tool calls in the selected range.",
+      "title": "Clients",
+      "description": "Registered AI app clients. Hourly value.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
+        "h": 7,
         "w": 4,
         "x": 20,
-        "y": 81
+        "y": 49
       },
       "targets": [
         {
@@ -2198,29 +2139,29 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(increase(club_calendar_mcp_calls_total[$__range]))",
+          "expr": "sum(last_over_time(club_calendar_mcp_clients[2h]))",
           "legendFormat": "",
-          "range": false,
-          "instant": true,
+          "range": true,
+          "instant": false,
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
+          "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
               }
             ]
           },
           "color": {
             "mode": "thresholds"
-          },
-          "decimals": 0
+          }
         },
         "overrides": []
       },
@@ -2238,6 +2179,634 @@
         "justifyMode": "auto",
         "orientation": "auto"
       }
+    },
+    {
+      "id": 42,
+      "type": "row",
+      "title": "Clubs & members",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      },
+      "panels": [
+        {
+          "id": 34,
+          "type": "timeseries",
+          "title": "Memberships by role",
+          "description": "Hourly values, stacked.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 0,
+            "y": 57
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "sum by (role) (last_over_time(club_calendar_memberships[2h]))",
+              "legendFormat": "{{role}}",
+              "range": true,
+              "instant": false,
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "showPoints": "never",
+                "spanNulls": true,
+                "lineInterpolation": "linear",
+                "stacking": {
+                  "mode": "normal",
+                  "group": "A"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "decimals": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true,
+              "calcs": []
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 35,
+          "type": "timeseries",
+          "title": "Users by verified",
+          "description": "Hourly values, stacked.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 8,
+            "y": 57
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "sum by (verified) (last_over_time(club_calendar_users[2h]))",
+              "legendFormat": "verified={{verified}}",
+              "range": true,
+              "instant": false,
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "showPoints": "never",
+                "spanNulls": true,
+                "lineInterpolation": "linear",
+                "stacking": {
+                  "mode": "normal",
+                  "group": "A"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "decimals": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true,
+              "calcs": []
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 36,
+          "type": "table",
+          "title": "Members per club by role",
+          "description": "Daily values. Latest report.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 57
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "max by (role, stat) (last_over_time(club_calendar_club_members{stat!=\"\"}[26h]))",
+              "legendFormat": "",
+              "range": false,
+              "instant": true,
+              "refId": "A",
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "groupingToMatrix",
+              "options": {
+                "columnField": "stat",
+                "rowField": "role",
+                "valueField": "Value"
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 1,
+              "custom": {
+                "align": "auto"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm"
+          }
+        },
+        {
+          "id": 37,
+          "type": "timeseries",
+          "title": "Members per club",
+          "description": "Daily values.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 0,
+            "y": 64
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "max by (stat) (last_over_time(club_calendar_club_members{role=\"all\",stat!=\"\"}[26h]))",
+              "legendFormat": "{{stat}}",
+              "range": true,
+              "instant": false,
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 8,
+                "showPoints": "never",
+                "spanNulls": true,
+                "lineInterpolation": "linear",
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "decimals": 1
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true,
+              "calcs": []
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 38,
+          "type": "timeseries",
+          "title": "Calendars per club",
+          "description": "Daily values.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 8,
+            "y": 64
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "max by (stat) (last_over_time(club_calendar_club_calendars[26h]))",
+              "legendFormat": "{{stat}}",
+              "range": true,
+              "instant": false,
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 8,
+                "showPoints": "never",
+                "spanNulls": true,
+                "lineInterpolation": "linear",
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "decimals": 1
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true,
+              "calcs": []
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 39,
+          "type": "timeseries",
+          "title": "Events per calendar",
+          "description": "Daily values.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 64
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "max by (stat) (last_over_time(club_calendar_calendar_events[26h]))",
+              "legendFormat": "{{stat}}",
+              "range": true,
+              "instant": false,
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 8,
+                "showPoints": "never",
+                "spanNulls": true,
+                "lineInterpolation": "linear",
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "decimals": 1
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true,
+              "calcs": []
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 40,
+          "type": "timeseries",
+          "title": "Feeds per club",
+          "description": "Daily values.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 0,
+            "y": 71
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "max by (stat) (last_over_time(club_calendar_club_feeds[26h]))",
+              "legendFormat": "{{stat}}",
+              "range": true,
+              "instant": false,
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 8,
+                "showPoints": "never",
+                "spanNulls": true,
+                "lineInterpolation": "linear",
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "decimals": 1
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true,
+              "calcs": []
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 41,
+          "type": "timeseries",
+          "title": "Calendars per feed",
+          "description": "Daily values.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 8,
+            "y": 71
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "max by (stat) (last_over_time(club_calendar_feed_calendars[26h]))",
+              "legendFormat": "{{stat}}",
+              "range": true,
+              "instant": false,
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 8,
+                "showPoints": "never",
+                "spanNulls": true,
+                "lineInterpolation": "linear",
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "text",
+                    "value": null
+                  }
+                ]
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "decimals": 1
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true,
+              "calcs": []
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "type": "row",
+      "title": "Notes",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 57
+      },
+      "panels": [
+        {
+          "id": 43,
+          "type": "text",
+          "title": "Notes",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 24,
+            "x": 0,
+            "y": 58
+          },
+          "options": {
+            "mode": "markdown",
+            "content": "**Names.** The app's metrics appear in Prometheus-compatible stores with dots turned into underscores and `_total` added to counters, for example `club_calendar.logins` is `club_calendar_logins_total`.\n\n**Rolling 2 hours.** Sign-ins, feed requests and MCP calls are rare, and the store needs two samples inside a window to compute an increase. The graphs therefore show a rolling 2-hour window: each point is the number of events in the 2 hours before it. Range totals and ratios use the selected time range; ranges shorter than 2 hours can show too little.\n\n**Percentages.** A failure ratio shows 0% when there were attempts but no failures, and \"No data\" only when there were no attempts at all.\n\n**Feed requests.** Mostly calendar apps polling on a timer, not people. A 304 means \"unchanged since last time\". Unknown feeds, wrong secrets and rate-limited requests are not counted.\n\n**Hourly and daily values.** Counts of users, clubs, feeds and so on are reported hourly. The per-club, per-calendar and per-feed distributions (avg, min, max, median, stddev) are reported once a day at 03:20 UTC and need the scheduler and a worker.\n"
+          }
+        }
+      ]
     }
   ],
   "refresh": "5m",
@@ -2275,6 +2844,6 @@
   "timezone": "browser",
   "title": "Club Calendar – Instance",
   "uid": "club-calendar-instance",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
