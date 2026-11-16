@@ -7,30 +7,17 @@ namespace App\Telemetry;
 use App\Enum\ClubRole;
 use App\Enum\FeedVisibility;
 use Doctrine\DBAL\Connection;
-use Psr\Cache\CacheItemPoolInterface;
-use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\Lock\LockFactory;
 
 /**
- * Instance metrics computed by the scheduler (hourly totals and login deltas, daily distributions) and pushed
+ * Instance metrics computed by the scheduler (hourly totals, daily distributions) and pushed
  * through Telemetry. Disabled telemetry returns before any query; failures are logged and never fail the job.
  */
 class InstanceMetricsReporter
 {
-    public const WATERMARK_KEY = 'telemetry.security_events.watermark';
-    private const FIRST_WINDOW = 3600;
-    private const MAX_WINDOW = 86400;
-
     public function __construct(
         private readonly Connection $connection,
         private readonly Telemetry $telemetry,
-        private readonly ClockInterface $clock,
-        #[Autowire(service: 'scheduler_state')]
-        private readonly CacheItemPoolInterface $state,
-        #[Autowire(service: 'app.scheduler_lock_factory')]
-        private readonly LockFactory $lockFactory,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -42,7 +29,6 @@ class InstanceMetricsReporter
         }
         try {
             $this->recordTotals();
-            $this->recordSecurityEvents();
             $this->telemetry->flush();
         } catch (\Throwable $e) {
             $this->logger->warning('Scheduled telemetry report failed.', ['exception' => $e::class]);
@@ -98,47 +84,6 @@ class InstanceMetricsReporter
         $gauge = $t->gauge('club_calendar.club_members', '{member}', 'Club memberships per role');
         foreach ($this->grouped('SELECT role AS k, COUNT(*) AS n FROM club_user GROUP BY role', ClubRole::values()) as $k => $n) {
             $gauge->record($n, ['role' => (string) $k]);
-        }
-    }
-
-    /**
-     * Counts security_event rows in (watermark, now]. The watermark is kept in the shared scheduler state (DB)
-     * and a lock keeps concurrent runs from reading the same window. Failure rows are folded by the logger
-     * (created_at = first failure of the hour), so failures counted up after a window closed are not reported.
-     */
-    private function recordSecurityEvents(): void
-    {
-        $lock = $this->lockFactory->createLock('telemetry_security_events');
-        if (!$lock->acquire()) {
-            return;
-        }
-        try {
-            $now = $this->clock->now()->getTimestamp();
-            $item = $this->state->getItem(self::WATERMARK_KEY);
-            $from = $item->isHit() ? (int) $item->get() : $now - self::FIRST_WINDOW;
-            $from = max($from, $now - self::MAX_WINDOW);
-            if ($from >= $now) {
-                return;
-            }
-            $fmt = static fn (int $ts): string => gmdate('Y-m-d H:i:s', $ts);
-
-            $rows = $this->connection->fetchAllAssociative(
-                "SELECT type, method, success, COALESCE(SUM(attempts), 0) AS n FROM security_event
-                 WHERE type IN ('login', 'mfa_verify') AND created_at > ? AND created_at <= ?
-                 GROUP BY type, method, success",
-                [$fmt($from), $fmt($now)],
-            );
-            $logins = $this->telemetry->counter('club_calendar.logins', '{login}', 'Sign-in attempts');
-            $mfa = $this->telemetry->counter('club_calendar.mfa_verifications', '{verification}', 'MFA verification attempts');
-            foreach ($rows as $r) {
-                $counter = 'login' === $r['type'] ? $logins : $mfa;
-                $counter->add((int) $r['n'], ['method' => $r['method'] ?? 'unknown', 'success' => (bool) $r['success']]);
-            }
-
-            $item->set($now);
-            $this->state->save($item);
-        } finally {
-            $lock->release();
         }
     }
 

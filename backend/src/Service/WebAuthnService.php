@@ -11,6 +11,7 @@ use App\Exception\ApiProblemException;
 use App\Security\ClientContextResolver;
 use App\Security\NonceStore;
 use App\Security\SignedTokenService;
+use App\Telemetry\LoginMetrics;
 use Cose\Algorithm\Manager;
 use Cose\Algorithm\Signature\ECDSA\ES256;
 use Cose\Algorithm\Signature\RSA\RS256;
@@ -72,6 +73,7 @@ class WebAuthnService
         private readonly MfaService $mfa,
         private readonly AccountMailer $mailer,
         private readonly ClientContextResolver $contextResolver,
+        private readonly LoginMetrics $loginMetrics,
         private readonly string $rpId,
         private readonly string $rpName,
         private readonly string $allowedOrigin,
@@ -228,6 +230,20 @@ class WebAuthnService
      */
     public function verifyAuthentication(string $challengeToken, array $responseData): array
     {
+        try {
+            $user = $this->authenticate($challengeToken, $responseData);
+        } catch (ApiProblemException $e) {
+            $this->loginMetrics->record(false, 'passkey', LoginMetrics::STAGE_PRIMARY);
+
+            throw $e;
+        }
+        $this->loginMetrics->record(true, 'passkey', LoginMetrics::STAGE_PRIMARY);
+
+        return $this->tokens->tokenResponse($user);
+    }
+
+    private function authenticate(string $challengeToken, array $responseData): User
+    {
         $claims = $this->signedTokens->verify(self::PURPOSE_GET, $challengeToken);
         if (null === $claims || !is_string($claims['ch'] ?? null)
             || !$this->nonces->consume(self::PURPOSE_GET, $claims['ch'], $claims['exp'])) {
@@ -246,7 +262,7 @@ class WebAuthnService
         $this->applyAssertion($passkey, $updated);
         $this->events->record($user, SecurityEventType::LOGIN, true, 'passkey');
 
-        return $this->tokens->tokenResponse($user);
+        return $user;
     }
 
     /**

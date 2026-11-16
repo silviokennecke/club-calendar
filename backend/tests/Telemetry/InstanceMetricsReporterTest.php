@@ -16,19 +16,13 @@ use Doctrine\ORM\EntityManagerInterface;
 use OpenTelemetry\SDK\Metrics\MetricExporter\InMemoryExporter;
 use Psr\Log\NullLogger;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
-use Symfony\Component\Clock\MockClock;
-use Symfony\Component\Lock\LockFactory;
-use Symfony\Component\Lock\Store\InMemoryStore;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-use Symfony\Component\Uid\Uuid;
 
 final class InstanceMetricsReporterTest extends KernelTestCase
 {
     private EntityManagerInterface $em;
     private Connection $db;
     private \ArrayObject $storage;
-    private MockClock $clock;
     private InstanceMetricsReporter $reporter;
 
     protected function setUp(): void
@@ -41,8 +35,7 @@ final class InstanceMetricsReporterTest extends KernelTestCase
         $config = new TelemetryConfig('http://x');
         $this->storage = new \ArrayObject();
         $telemetry = new Telemetry($config, null, new InMemoryExporter($this->storage, $config->temporality));
-        $this->clock = new MockClock('2026-11-16 12:00:00 UTC');
-        $this->reporter = new InstanceMetricsReporter($this->db, $telemetry, $this->clock, new ArrayAdapter(), new LockFactory(new InMemoryStore()), new NullLogger());
+        $this->reporter = new InstanceMetricsReporter($this->db, $telemetry, new NullLogger());
     }
 
     /** @return list<array{array<string, mixed>, int|float}> */
@@ -92,17 +85,6 @@ final class InstanceMetricsReporterTest extends KernelTestCase
         TestHelper::createFeed($this->em, $club1, [$cal1, $cal2], FeedVisibility::PUBLIC);
         TestHelper::createFeed($this->em, $club2, [$cal3], FeedVisibility::PRIVATE);
         $this->em->flush();
-        $this->userId = $a->getId();
-    }
-
-    private string $userId;
-
-    private function event(string $type, ?string $method, bool $success, int $attempts, string $at): void
-    {
-        $this->db->insert('security_event', [
-            'id' => Uuid::v7()->toRfc4122(), 'user_id' => $this->userId, 'type' => $type, 'method' => $method,
-            'success' => (int) $success, 'attempts' => $attempts, 'created_at' => $at,
-        ]);
     }
 
     public function testHourlyTotals(): void
@@ -178,57 +160,12 @@ final class InstanceMetricsReporterTest extends KernelTestCase
         self::assertSame([], $this->points('club_calendar.calendar.events'));
     }
 
-    public function testLoginCounterWindowsAndNeverDoubleCounts(): void
-    {
-        $this->seed();
-        $this->event('login', 'passwordX', true, 1, '2026-11-16 10:00:00'); // before the first window
-        $this->event('login', 'password', true, 1, '2026-11-16 11:30:00');
-        $this->event('login', 'password', false, 3, '2026-11-16 11:40:00');
-        $this->event('login', null, true, 1, '2026-11-16 11:45:00');
-        $this->event('mfa_verify', 'totp', true, 1, '2026-11-16 11:50:00');
-        $this->event('step_up', 'password', true, 1, '2026-11-16 11:55:00');
-
-        $this->reporter->reportHourly();
-        $logins = [];
-        foreach ($this->points('club_calendar.logins') as [$a, $v]) {
-            $logins[$a['method'].'/'.var_export($a['success'], true)] = $v;
-        }
-        ksort($logins);
-        self::assertSame(['password/false' => 3, 'password/true' => 1, 'unknown/true' => 1], $logins);
-        self::assertSame([[['method' => 'totp', 'success' => true], 1]], $this->points('club_calendar.mfa_verifications'));
-
-        $this->storage->exchangeArray([]);
-        $this->reporter->reportHourly();
-        self::assertSame([], $this->points('club_calendar.logins'));
-
-        $this->clock->modify('+1 hour');
-        $this->event('login', 'passkey', true, 1, '2026-11-16 12:30:00');
-        $this->event('login', 'passkey', true, 1, '2026-11-16 12:30:00');
-        $this->reporter->reportHourly();
-        self::assertSame([[['method' => 'passkey', 'success' => true], 2]], $this->points('club_calendar.logins'));
-    }
-
-    public function testLongDowntimeIsCappedToTwentyFourHours(): void
-    {
-        $this->seed();
-        $this->event('login', 'password', true, 1, '2026-11-14 12:00:00');
-        $this->event('login', 'password', true, 1, '2026-11-15 13:00:00');
-        $this->reporter->reportHourly();
-        // first run only looks back one hour: nothing yet, watermark is now
-        self::assertSame([], $this->points('club_calendar.logins'));
-        $this->clock->modify('+3 days');
-        $this->event('login', 'password', true, 1, '2026-11-19 11:00:00');
-        $this->event('login', 'password', true, 1, '2026-11-18 10:00:00'); // older than 24 h
-        $this->reporter->reportHourly();
-        self::assertSame(1, $this->points('club_calendar.logins')[0][1]);
-    }
-
     public function testDisabledRunsNoQueries(): void
     {
         $db = $this->createMock(Connection::class);
         $db->expects(self::never())->method(self::anything());
         $telemetry = new Telemetry(new TelemetryConfig(''));
-        $reporter = new InstanceMetricsReporter($db, $telemetry, $this->clock, new ArrayAdapter(), new LockFactory(new InMemoryStore()), new NullLogger());
+        $reporter = new InstanceMetricsReporter($db, $telemetry, new NullLogger());
         $reporter->reportHourly();
         $reporter->reportDaily();
     }
@@ -247,7 +184,7 @@ final class InstanceMetricsReporterTest extends KernelTestCase
             }
         };
         $config = new TelemetryConfig('http://x');
-        $reporter = new InstanceMetricsReporter($db, new Telemetry($config, null, new InMemoryExporter(new \ArrayObject())), $this->clock, new ArrayAdapter(), new LockFactory(new InMemoryStore()), $logger);
+        $reporter = new InstanceMetricsReporter($db, new Telemetry($config, null, new InMemoryExporter(new \ArrayObject())), $logger);
         $reporter->reportHourly();
         $reporter->reportDaily();
         self::assertSame([['exception' => \RuntimeException::class], ['exception' => \RuntimeException::class]], $logger->records);

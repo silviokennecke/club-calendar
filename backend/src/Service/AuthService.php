@@ -19,6 +19,7 @@ use App\Repository\RefreshTokenRepository;
 use App\Security\ClientContextResolver;
 use App\Security\NonceStore;
 use App\Security\OneTimeTokenService;
+use App\Telemetry\LoginMetrics;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\ORMException;
@@ -52,6 +53,7 @@ readonly class AuthService
         private ClientContextResolver $contextResolver,
         private MfaLoginService $mfaLogin,
         private MfaService $mfa,
+        private LoginMetrics $loginMetrics,
         /** Seconds in which a rotated refresh token may be presented again without revoking the session. */
         #[Autowire(env: 'int:REFRESH_TOKEN_REUSE_GRACE')]
         private int $refreshReuseGrace,
@@ -103,9 +105,12 @@ readonly class AuthService
         $email = EmailAddress::normalize($email);
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
         if (!$user || !$user->getPassword()) {
+            $this->loginMetrics->record(false, 'password', LoginMetrics::STAGE_PRIMARY);
+
             throw self::invalidCredentials();
         }
         if (!$this->hasher->isPasswordValid($user, $password)) {
+            $this->loginMetrics->record(false, 'password', LoginMetrics::STAGE_PRIMARY);
             $this->events->record($user, SecurityEventType::LOGIN, false, 'password');
 
             throw self::invalidCredentials();
@@ -123,6 +128,8 @@ readonly class AuthService
         if ($this->mfaLogin->isRequired($user)) {
             return $this->mfaLogin->challenge($user);
         }
+        // Includes the restricted session of an unverified user: a session is issued by the normal login path.
+        $this->loginMetrics->record(true, 'password', LoginMetrics::STAGE_PRIMARY);
 
         return $this->tokens->tokenResponse($user);
     }
@@ -207,8 +214,11 @@ readonly class AuthService
     {
         $user = $this->oneTimeTokens->redeem($token, [OneTimeTokenService::PURPOSE_OAUTH_LOGIN], $verifier, $provider);
         if (null === $user) {
+            $this->loginMetrics->record(false, 'sso', LoginMetrics::STAGE_PRIMARY);
+
             throw new ApiProblemException(400, 'The token is invalid, expired or was used before', 'invalid_grant');
         }
+        $this->loginMetrics->record(true, 'sso', LoginMetrics::STAGE_PRIMARY, $provider);
         $this->events->record($user, SecurityEventType::LOGIN, true, 'sso', $provider);
 
         return $this->tokens->tokenResponse($user);
@@ -456,6 +466,7 @@ readonly class AuthService
                 try {
                     $this->syncDirectoryIdentity($existing, $providerId, $tenantId, $objectId);
                 } catch (OAuthIdentityMismatchException $e) {
+                    $this->loginMetrics->record(false, 'sso', LoginMetrics::STAGE_PRIMARY, $provider);
                     $this->events->record($oauthUser, SecurityEventType::LOGIN, false, 'sso', $provider);
 
                     throw $e;
@@ -477,12 +488,14 @@ readonly class AuthService
             // The column collation (utf8mb4_unicode_ci) also equates "ä" with "a", "ß" with "ss" or full-width
             // letters: link only if the stored address is exactly the normalized one.
             if (!$emailVerified || $user->getEmail() !== $email) {
+                $this->loginMetrics->record(false, 'sso', LoginMetrics::STAGE_PRIMARY, $provider);
                 $this->events->record($user, SecurityEventType::LOGIN, false, 'sso', $provider);
                 $trustedProvider = in_array($provider, self::PROVIDERS_WITH_VERIFIED_EMAIL_CLAIM, true);
                 throw new OAuthAccountConflictException('An account with this e-mail address already exists', $trustedProvider && !$providerSaysEmailVerified);
             }
             if ($user->isMfaEnforced()) {
                 // No auto-link into an MFA account: the mailbox alone must not open a session.
+                $this->loginMetrics->record(false, 'sso', LoginMetrics::STAGE_PRIMARY, $provider);
                 $this->events->record($user, SecurityEventType::LOGIN, false, 'sso', $provider);
 
                 throw new OAuthMfaLinkRequiredException('Sign in with password and MFA, then link the provider in the profile');

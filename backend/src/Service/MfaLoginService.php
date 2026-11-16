@@ -10,6 +10,7 @@ use App\Exception\ApiProblemException;
 use App\Security\Mfa\MfaFailureBudget;
 use App\Security\NonceStore;
 use App\Security\SignedTokenService;
+use App\Telemetry\LoginMetrics;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -36,6 +37,7 @@ class MfaLoginService
         private readonly TokenService $tokens,
         private readonly SecurityEventLogger $events,
         private readonly MfaFailureBudget $budget,
+        private readonly LoginMetrics $loginMetrics,
     ) {
     }
 
@@ -198,10 +200,12 @@ class MfaLoginService
             }
         });
         if (null !== $failure) {
+            $this->loginMetrics->record(false, $method, LoginMetrics::STAGE_MFA);
             $this->events->record($user, SecurityEventType::MFA_VERIFY, false, $method);
 
             throw $failure;
         }
+        $this->loginMetrics->record(true, $method, LoginMetrics::STAGE_MFA);
         $this->events->record($user, SecurityEventType::MFA_VERIFY, true, $method);
         if (self::METHOD_BACKUP === $method) {
             $this->mfa->notifyBackupCodeUsed($user, $response['backupCodesRemaining']);
