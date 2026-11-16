@@ -136,6 +136,7 @@ class RunScheduledTaskHandlerTest extends KernelTestCase
             $holidays,
             $geoIp,
             $c->get(\App\Sitemap\SitemapGenerator::class),
+            $c->get(\App\Telemetry\InstanceMetricsReporter::class),
             $c->get(\Psr\Clock\ClockInterface::class),
             $logger,
         );
@@ -175,6 +176,7 @@ class RunScheduledTaskHandlerTest extends KernelTestCase
             $holidays,
             $c->get(GeoIpUpdater::class),
             $c->get(\App\Sitemap\SitemapGenerator::class),
+            $c->get(\App\Telemetry\InstanceMetricsReporter::class),
             $c->get(\Psr\Clock\ClockInterface::class),
             $logger,
         );
@@ -216,6 +218,7 @@ class RunScheduledTaskHandlerTest extends KernelTestCase
             $c->get(HolidayRefreshService::class),
             $c->get(GeoIpUpdater::class),
             $sitemap,
+            $c->get(\App\Telemetry\InstanceMetricsReporter::class),
             $c->get(\Psr\Clock\ClockInterface::class),
             $logger,
         );
@@ -223,5 +226,33 @@ class RunScheduledTaskHandlerTest extends KernelTestCase
         $handler(new RunScheduledTask(ScheduledTask::SitemapRefresh));
 
         $this->assertSame([['exception' => \RuntimeException::class]], $logger->records);
+    }
+
+    public function testTelemetryTasksDispatchToTheReporter(): void
+    {
+        $reporter = $this->createMock(\App\Telemetry\InstanceMetricsReporter::class);
+        $reporter->expects($this->once())->method('reportHourly');
+        $reporter->expects($this->once())->method('reportDaily');
+        $c = self::getContainer();
+        $handler = new RunScheduledTaskHandler(
+            $c->get(\App\Service\UnverifiedUserPruner::class),
+            $c->get(\App\Service\PasswordResetService::class),
+            $c->get(\App\Service\AccountService::class),
+            $c->get(\App\Repository\RefreshTokenRepository::class),
+            $c->get(\App\Service\ClubInvitationService::class),
+            $c->get(\App\Service\OAuthPruner::class),
+            $c->get(\App\Repository\SecurityEventRepository::class),
+            $c->get(\App\Security\NonceStore::class),
+            $c->get(\App\Service\FailedMessagePruner::class),
+            $c->get(HolidayRefreshService::class),
+            $c->get(GeoIpUpdater::class),
+            $c->get(\App\Sitemap\SitemapGenerator::class),
+            $reporter,
+            $c->get(\Psr\Clock\ClockInterface::class),
+            $c->get(\Psr\Log\LoggerInterface::class),
+        );
+
+        $handler(new RunScheduledTask(ScheduledTask::TelemetryHourly));
+        $handler(new RunScheduledTask(ScheduledTask::TelemetryDaily));
     }
 }

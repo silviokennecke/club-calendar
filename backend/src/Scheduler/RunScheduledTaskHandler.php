@@ -17,6 +17,7 @@ use App\Service\OAuthPruner;
 use App\Service\PasswordResetService;
 use App\Service\UnverifiedUserPruner;
 use App\Sitemap\SitemapGenerator;
+use App\Telemetry\InstanceMetricsReporter;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -41,6 +42,7 @@ final class RunScheduledTaskHandler
         private readonly HolidayRefreshService $holidays,
         private readonly GeoIpUpdater $geoIp,
         private readonly SitemapGenerator $sitemap,
+        private readonly InstanceMetricsReporter $metrics,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $logger,
     ) {
@@ -62,6 +64,8 @@ final class RunScheduledTaskHandler
             ScheduledTask::HolidaysRefresh => $this->refreshHolidays(),
             ScheduledTask::GeoIpUpdate => $this->updateGeoIp(),
             ScheduledTask::SitemapRefresh => $this->refreshSitemap(),
+            ScheduledTask::TelemetryHourly => $this->metrics->reportHourly(),
+            ScheduledTask::TelemetryDaily => $this->metrics->reportDaily(),
         };
     }
 

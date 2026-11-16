@@ -68,6 +68,11 @@ class MainScheduleTest extends KernelTestCase
 
                 continue;
             }
+            if (ScheduledTask::TelemetryHourly === $task) {
+                $this->assertSame('5 * * * *', $task->cron());
+
+                continue;
+            }
             [$minute, $hour] = explode(' ', $task->cron());
             $this->assertGreaterThanOrEqual(2, (int) $hour);
             $this->assertLessThan(4, (int) $hour);

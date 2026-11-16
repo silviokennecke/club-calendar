@@ -17,6 +17,8 @@ enum ScheduledTask: string
     case HolidaysRefresh = 'holidays-refresh';
     case GeoIpUpdate = 'geoip-update';
     case SitemapRefresh = 'sitemap-refresh';
+    case TelemetryHourly = 'telemetry-hourly';
+    case TelemetryDaily = 'telemetry-daily';
 
     /** Fixed UTC cron expression; daily jobs are staggered between 02:00 and 04:00, the fetching jobs run on Sundays. */
     public function cron(): string
@@ -33,6 +35,8 @@ enum ScheduledTask: string
             self::HolidaysRefresh => '30 3 * * 0',
             self::GeoIpUpdate => '50 3 * * 0',
             self::SitemapRefresh => '20 */6 * * *',
+            self::TelemetryHourly => '5 * * * *',
+            self::TelemetryDaily => '20 3 * * *',
         };
     }
 }
