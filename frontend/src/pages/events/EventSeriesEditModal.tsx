@@ -5,12 +5,14 @@ import { useTranslation } from "react-i18next";
 import { ApiError, apiErrorStatus, apiGet, apiPatch } from "@/lib/api";
 import {
   SERIES_MAX_EVENTS,
+  conflictsFromError,
   describeSeriesRule,
   formFromRule,
   formatWeekdayDate,
   sameSeriesRule,
   toSeriesRule,
   type EventSeriesInfo,
+  type ResourceConflict,
   type SeriesFormRule,
   type SeriesUpdateResult,
 } from "@/lib/events";
@@ -26,6 +28,7 @@ import {
   toast,
   useModalInitialFocus,
 } from "@/components/ui/shared";
+import { ResourceConflictList } from "@/components/events/ResourceConflictList";
 import { ModalSkeleton } from "@/components/events/CreateGate";
 import { SeriesRuleFields } from "@/components/events/SeriesRuleFields";
 import { useEventPage } from "@/components/events/useEventPage";
@@ -161,6 +164,7 @@ function SeriesEditor({
   const [form, setForm] = useState<SeriesFormRule>(() => formFromRule(series.rule));
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [conflicts, setConflicts] = useState<ResourceConflict[] | null>(null);
   useModalInitialFocus("sre-wd");
 
   const rule = toSeriesRule(form);
@@ -207,6 +211,7 @@ function SeriesEditor({
     e.preventDefault();
     if (!ready || !rule) return;
     setFailed(null);
+    setConflicts(null);
     setConfirmOpen(true);
   }
 
@@ -230,7 +235,10 @@ function SeriesEditor({
       const status = apiErrorStatus(err);
       const errCode = err instanceof ApiError ? err.code : undefined;
       let message = t("events.seriesEdit.errors.failed");
-      if (errCode === "series_changed" || errCode === "series_empty" || status === 409) {
+      const found = conflictsFromError(err);
+      setConflicts(found);
+      if (found) message = t("events.conflicts.saveRefused");
+      else if (errCode === "series_changed" || errCode === "series_empty" || status === 409) {
         message = t("events.seriesEdit.errors.conflict");
         preview.retry();
       } else if (errCode === "too_many_events")
@@ -256,7 +264,8 @@ function SeriesEditor({
       <Banner tone="info" icon="repeat" title={t("events.seriesEdit.current")}>
         {`${describeSeriesRule(series.rule, t, locale)}. ${t("events.seriesEdit.futureOnly")}`}
       </Banner>
-      {failed && <Banner tone="danger">{failed}</Banner>}
+      {failed && !conflicts && <Banner tone="danger">{failed}</Banner>}
+      {conflicts && <ResourceConflictList conflicts={conflicts} failed />}
       {knownPreviewError && <Banner tone="warning">{knownPreviewError}</Banner>}
       {rule && !unchanged && preview.error && !knownPreviewError && (
         <Banner

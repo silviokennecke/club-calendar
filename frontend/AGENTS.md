@@ -190,6 +190,7 @@ Background: `docs/ops/BACKLOG.md` (open backend gaps and operations), `docs/api/
   `EventsTable` and `EventItem` (`CalItem.recurring`), not on the month chips; bulk actions treat them like any event.
   UI in `components/events/` (`EventsTable`, `LocationSection` (location autocomplete, last suggestion "Neuen Ort anlegen" opens `LocationCreateDialog`, a stacked `FormDialog` using `components/locations/LocationFields`; position only via that dialog or the places page; static `LocationImage` map, no mapbox-gl in the event form), `StatusSeg`,
   `CreateGate`, `useEventResources`, `useEventPage`, `ArchivedCreateGuard` for the import / template / feed pages).
+  Resource conflicts: `useEventConflicts` (debounced `POST …/events/conflicts` under the location field, only with a location and valid date/time) and the shared `ResourceConflictList` (errors red, warnings yellow); a 422 `resource_conflict` (`ApiError.conflicts`, `conflictsFromError` in `lib/events/conflicts.ts`) is shown with the same list in the event form (input kept), from-template, series edit, bulk publish and import.
 - Import: `…/import` is one page with a Stepper (Datei, Prüfen, Fertig; state in `pages/ImportPage.tsx`,
   UI in `components/import/`: `ImportUpload` file input + drop zone, `ImportReview` bulk panel / groups / summary bar,
   `ReviewGroup`, `ImportEditDialog`, `ImportDone`). Pure logic in `src/lib/import/` (`ics.ts` parser incl. unfolding,

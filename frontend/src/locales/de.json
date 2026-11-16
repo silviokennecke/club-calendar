@@ -447,6 +447,20 @@
     }
   },
   "events": {
+    "conflicts": {
+      "allDay": "ganztägig",
+      "overlap": "Überschneidung",
+      "buffer": "Pufferzeit",
+      "draft": "Entwurf",
+      "forDate": "Für {{date}}",
+      "errorTitle": "Die Ressource ist zu dieser Zeit schon belegt",
+      "errorFailedTitle": "Nicht gespeichert: Die Ressource ist zu dieser Zeit schon belegt",
+      "errorHint": "Als Entwurf kannst du den Termin trotzdem speichern.",
+      "warningTitle": "Hinweis zur Ressource",
+      "saveRefused": "Nicht gespeichert: Die Ressource ist schon belegt.",
+      "bulkRefused": "Nicht veröffentlicht: Eine Ressource ist schon belegt.",
+      "importRefused": "Es wurde nichts importiert, weil eine Ressource zu einer der veröffentlichten Zeiten schon belegt ist. Importiere die Termine als Entwurf oder ändere sie."
+    },
     "holidayType": {
       "public": "Feiertage",
       "school": "Ferien",

@@ -1,6 +1,8 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { IMPORT_MAX, replacedZones } from "@/lib/import";
+import type { ResourceConflict } from "@/lib/events";
+import { ResourceConflictList } from "@/components/events/ResourceConflictList";
 import type { ImportWarning } from "@/lib/types";
 import { Banner, Icon, LinkButton, Button } from "@/components/ui/shared";
 
@@ -21,7 +23,7 @@ export type ImportResult =
       warnings: ImportWarning[];
     }
   /** The import is atomic: on failure nothing was created. */
-  | { kind: "error"; reason: "failed" | "tooMany" };
+  | { kind: "error"; reason: "failed" | "tooMany"; conflicts?: ResourceConflict[] };
 
 interface ImportDoneProps {
   result: ImportResult;
@@ -82,8 +84,11 @@ export function ImportDone({
         >
           {tooMany
             ? t("import.done.failed.tooMany", { max: IMPORT_MAX.toLocaleString(i18n.language) })
-            : t("import.done.failed.text")}
+            : result.conflicts
+              ? t("events.conflicts.importRefused")
+              : t("import.done.failed.text")}
         </Banner>
+        {result.conflicts && <ResourceConflictList conflicts={result.conflicts} failed />}
         <div className="ap-actions">
           <LinkButton variant="secondary" to={calendarUrl}>
             {t("import.done.toCalendar")}

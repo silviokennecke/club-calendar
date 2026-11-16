@@ -39,6 +39,13 @@ A new event starts as a **draft** that only your club can see. It appears in the
 
 Pick an existing location. If it is missing, use **Create new location** to add one right away. If the location has a position, you see it on the map. More under [Locations](help:organize/locations).
 
+If the location is a [resource](help:organize/resources), the app checks right away whether it is already booked at that time and shows the result below the location field:
+
+- **Yellow note**: there is an overlap with a draft, or the buffer time is not kept. You can still save.
+- **Red note**: the resource is already taken by a published event at the same time. The event cannot be published then. Saved as a **draft**, it always saves.
+
+Each entry names the calendar, the time span and whether the other event is a draft. "Buffer time" is the gap the resource asks for between two events.
+
 **Badges, extras and audiences**
 
 Here you assign [badges](help:organize/properties), [extras](help:organize/features) and [audiences](help:organize/target-groups) to the event. If you pick no audience, the event applies to everyone. If something is missing, you can create it right here.

@@ -14,6 +14,8 @@ import {
   serializeSort,
   sortEvents,
   STATUS_TABS,
+  conflictsFromError,
+  type ResourceConflict,
   summarizeSelection,
   type SortState,
   type StatusTab,
@@ -34,6 +36,7 @@ import {
   toast,
 } from "@/components/ui/shared";
 import { BulkAssignPanel, type BulkAssignment } from "@/components/events/BulkAssignPanel";
+import { ResourceConflictList } from "@/components/events/ResourceConflictList";
 import { EventsTable } from "@/components/events/EventsTable";
 import { useAllEvents, useEventPage } from "@/components/events/useEventPage";
 import { audienceTone } from "@/components/calendar/eventDisplay";
@@ -70,6 +73,7 @@ export default function EventsListPage() {
   const [groupIds, setGroupIds] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  const [bulkConflicts, setBulkConflicts] = useState<ResourceConflict[] | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const events = useAllEvents(page.calendarId);
@@ -167,6 +171,7 @@ export default function EventsListPage() {
     const ids = selectedEvents.filter((e) => e.isDraft !== isDraft).map((e) => e.id);
     if (ids.length === 0) return;
     setBusy(true);
+    setBulkConflicts(null);
     try {
       await runBulk(ids, isDraft ? "draft" : "publish");
       toast.success(
@@ -186,8 +191,10 @@ export default function EventsListPage() {
         },
       );
       setSelected(new Set());
-    } catch {
-      toast.error(t("events.list.bulk.failed"));
+    } catch (err) {
+      const found = conflictsFromError(err);
+      setBulkConflicts(found);
+      toast.error(t(found ? "events.conflicts.bulkRefused" : "events.list.bulk.failed"));
     } finally {
       await refresh();
       setBusy(false);
@@ -384,6 +391,12 @@ export default function EventsListPage() {
           </button>
         ))}
       </div>
+
+      {bulkConflicts && (
+        <div className="mb-4">
+          <ResourceConflictList conflicts={bulkConflicts} failed />
+        </div>
+      )}
 
       {events.isError && (
         <Banner

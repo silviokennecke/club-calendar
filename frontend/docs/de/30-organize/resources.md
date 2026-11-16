@@ -30,6 +30,15 @@ Seitenleiste, unter **Verein** **Orte und Gruppen**, Tab **Ressourcen**.
 
 Auch bei erlaubter Doppelbelegung werden Überschneidungen weiterhin als Warnung angezeigt.
 
+## Wenn eine Ressource belegt ist
+
+Beim Anlegen oder Ändern eines Termins zeigt das Formular unter dem Ort, ob die Ressource schon belegt ist:
+
+- **Gelb (Warnung)**: Überschneidung mit einem Entwurf, Verletzung der Pufferzeit, oder Überschneidung mit einem veröffentlichten Termin bei erlaubter Doppelbelegung. Du kannst speichern und veröffentlichen.
+- **Rot (Fehler)**: Überschneidung mit einem veröffentlichten Termin, obwohl Doppelbelegung nicht erlaubt ist. Der Termin lässt sich dann nicht veröffentlichen, auch nicht über die Sammelaktion, eine Terminreihe, eine Vorlage oder den Import. In diesen Fällen zeigt die App dieselbe Liste und es wird nichts gespeichert.
+
+Als **Entwurf** lässt sich ein Termin immer speichern. Deine Eingaben bleiben erhalten, wenn das Speichern abgelehnt wird.
+
 ## Bearbeiten und löschen
 
 Wähle bei einer Ressource „bearbeiten“, um Name und Einstellungen zu ändern. Der Ort selbst lässt sich nicht ändern. Beim Löschen bleibt der Ort erhalten, er ist danach nur keine Ressource mehr.

@@ -30,6 +30,15 @@ In the sidebar under **Club**, open **Places and audiences**, then the **Resourc
 
 Even when double booking is allowed, overlaps are still shown as a warning.
 
+## When a resource is already booked
+
+When you create or change an event, the form shows below the location whether the resource is already booked:
+
+- **Yellow (warning)**: overlap with a draft, the buffer time is not kept, or overlap with a published event where double booking is allowed. You can still save and publish.
+- **Red (error)**: overlap with a published event although double booking is not allowed. The event cannot be published then, also not through the bulk action, an event series, a template or the import. In these cases the app shows the same list and nothing is saved.
+
+You can always save an event as a **draft**. Your input is kept when saving is refused.
+
 ## Edit and delete
 
 Choose "edit" on a resource to change its name and settings. The location itself cannot be changed. When you delete a resource, the location stays; it just is no longer a resource.

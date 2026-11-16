@@ -37,12 +37,14 @@ export class ApiError extends Error {
   email?: string;
   /** `Retry-After` header in seconds (429 answers), if present. */
   retryAfter?: number;
+  /** Extra member `conflicts` of `resource_conflict` (422), see `lib/events/conflicts.ts`. */
+  conflicts?: unknown[];
   constructor(
     message: string,
     status: number,
     code?: string,
     field?: string,
-    extras: { retryAt?: string; email?: string; retryAfter?: number } = {},
+    extras: { retryAt?: string; email?: string; retryAfter?: number; conflicts?: unknown[] } = {},
   ) {
     super(message);
     this.name = "ApiError";
@@ -52,6 +54,7 @@ export class ApiError extends Error {
     this.retryAt = extras.retryAt;
     this.email = extras.email;
     this.retryAfter = extras.retryAfter;
+    this.conflicts = extras.conflicts;
   }
 }
 
@@ -436,6 +439,7 @@ export async function errorFrom(res: Response): Promise<ApiError> {
     field?: string;
     retryAt?: unknown;
     email?: unknown;
+    conflicts?: unknown;
   } | null;
   // Quota of a club/calendar used up (422): one clear message for every create form and import
   if (err?.code === "quota_exceeded") toast.error(i18n.t("common.quotaExceeded"));
@@ -455,6 +459,7 @@ export async function errorFrom(res: Response): Promise<ApiError> {
     retryAt: typeof err?.retryAt === "string" ? err.retryAt : undefined,
     email: typeof err?.email === "string" ? err.email : undefined,
     retryAfter: retryAfterOf(res),
+    conflicts: Array.isArray(err?.conflicts) ? err.conflicts : undefined,
   });
 }
 

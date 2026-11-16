@@ -9,6 +9,8 @@ import {
   applyTemplateToValues,
   changedEventFields,
   changesDate,
+  conflictRequest,
+  conflictsFromError,
   describeSeriesRule,
   dropUnknownReferences,
   emptyEventValues,
@@ -22,6 +24,7 @@ import {
   type EventField,
   type EventFormValues,
   type EventPayload,
+  type ResourceConflict,
 } from "@/lib/events";
 import { keepExisting, saveDroppingDeletedReferences } from "@/lib/staleReferences";
 import type { CalendarEvent, EventTemplate } from "@/lib/types";
@@ -55,6 +58,8 @@ import { LocationMap, LocationSection } from "@/components/events/LocationSectio
 import { useEventPage } from "@/components/events/useEventPage";
 import { CreateGateBody, ModalSkeleton } from "@/components/events/CreateGate";
 import { createGate, gateTitle } from "@/components/events/createGateState";
+import { ResourceConflictList } from "@/components/events/ResourceConflictList";
+import { useEventConflicts } from "@/components/events/useEventConflicts";
 import { useEventResources } from "@/components/events/useEventResources";
 import { useTemplateMeta } from "@/components/events/useTemplateMeta";
 import { useLocale } from "@/components/calendar/useLocale";
@@ -235,6 +240,17 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   const [scopeOpen, setScopeOpen] = useState(false);
   // Also shown in the dialog: toasts sit behind the modal for screen readers.
   const [saveFailed, setSaveFailed] = useState(false);
+  // Conflicts of a refused save (422 resource_conflict); dropped as soon as a field changes.
+  const [saveConflicts, setSaveConflicts] = useState<ResourceConflict[] | null>(null);
+  const [prevValues, setPrevValues] = useState(values);
+  if (prevValues !== values) {
+    setPrevValues(values);
+    if (saveConflicts) setSaveConflicts(null);
+  }
+  const liveConflicts = useEventConflicts(
+    page.calendarId,
+    readOnly ? null : conflictRequest(values, event?.timezone ?? page.timeZone, event?.id),
+  );
 
   const dirty = !readOnly && isFormDirty(initial, values);
   // The scope question only makes sense with other events in the series.
@@ -295,6 +311,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
   async function save(scope: SeriesScope) {
     setSaving(true);
     setSaveFailed(false);
+    setSaveConflicts(null);
     try {
       const send = (body: PatchBody) =>
         event
@@ -335,9 +352,15 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
       draft.clear();
       unsaved.allow();
       nav.close();
-    } catch {
-      setSaveFailed(true);
-      toast.error(t("events.form.saveFailed"));
+    } catch (err) {
+      const conflicts = conflictsFromError(err);
+      if (conflicts) {
+        setSaveConflicts(conflicts);
+        toast.error(t("events.conflicts.saveRefused"));
+      } else {
+        setSaveFailed(true);
+        toast.error(t("events.form.saveFailed"));
+      }
     } finally {
       setSaving(false);
     }
@@ -585,6 +608,10 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
               onChange={(id) => set("locationId", id)}
               onCreate={res.createLocation}
               readOnly={readOnly}
+            />
+            <ResourceConflictList
+              conflicts={saveConflicts ?? liveConflicts.conflicts}
+              failed={saveConflicts !== null}
             />
             <LocationMap locations={res.locations} value={values.locationId} />
           </section>

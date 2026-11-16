@@ -447,6 +447,20 @@
     }
   },
   "events": {
+    "conflicts": {
+      "allDay": "all day",
+      "overlap": "Overlap",
+      "buffer": "Buffer time",
+      "draft": "Draft",
+      "forDate": "For {{date}}",
+      "errorTitle": "The resource is already booked at this time",
+      "errorFailedTitle": "Not saved: the resource is already booked at this time",
+      "errorHint": "You can still save the event as a draft.",
+      "warningTitle": "Note about the resource",
+      "saveRefused": "Not saved: the resource is already booked.",
+      "bulkRefused": "Not published: a resource is already booked.",
+      "importRefused": "Nothing was imported because a resource is already booked at one of the published times. Import the events as drafts or change them."
+    },
     "holidayType": {
       "public": "Public holidays",
       "school": "School holidays",

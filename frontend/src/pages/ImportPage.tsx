@@ -16,6 +16,7 @@ import {
 import type { ImportResponse } from "@/lib/types";
 import { useUnsavedChanges } from "@/lib/useUnsavedChanges";
 import { Banner, Button, Stepper, UnsavedChangesDialog } from "@/components/ui/shared";
+import { conflictsFromError } from "@/lib/events";
 import { ArchivedCreateGuard } from "@/components/events/ArchivedCreateGuard";
 import { useAllEvents, useEventPage } from "@/components/events/useEventPage";
 import { useEventResources } from "@/components/events/useEventResources";
@@ -175,6 +176,7 @@ function Import() {
       setResult({
         kind: "error",
         reason: e instanceof ApiError && e.code === "too_many_events" ? "tooMany" : "failed",
+        conflicts: conflictsFromError(e) ?? undefined,
       });
     } finally {
       await Promise.all([

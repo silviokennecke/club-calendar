@@ -39,6 +39,13 @@ Ein neuer Termin bleibt zunächst ein **Entwurf**, den nur dein Verein sieht. Er
 
 Wähle einen vorhandenen Ort aus. Fehlt er, legst du mit **Neuen Ort anlegen** direkt einen an. Hat der Ort eine Position, siehst du ihn auf der Karte. Mehr dazu unter [Orte](help:organize/locations).
 
+Ist der Ort eine [Ressource](help:organize/resources), prüft die App sofort, ob sie zu dieser Zeit schon belegt ist, und zeigt das unter dem Ortsfeld an:
+
+- **Gelber Hinweis**: Es gibt eine Überschneidung mit einem Entwurf oder eine Pufferzeit wird unterschritten. Du kannst trotzdem speichern.
+- **Roter Hinweis**: Die Ressource ist zur gleichen Zeit schon durch einen veröffentlichten Termin belegt. Dann lässt sich der Termin nicht veröffentlichen. Als **Entwurf** speichert er immer.
+
+Jeder Eintrag nennt Kalender, Zeitraum und ob der andere Termin ein Entwurf ist. Mit „Pufferzeit“ ist der Abstand gemeint, den die Ressource zwischen zwei Terminen verlangt.
+
 **Besonderheiten, Zusatzangebote und Gruppen**
 
 Hier ordnest du dem Termin [Besonderheiten](help:organize/properties), [Zusatzangebote](help:organize/features) und [Gruppen](help:organize/target-groups) zu. Wählst du keine Gruppe, gilt der Termin für alle. Fehlt etwas, kannst du es hier gleich neu anlegen.

@@ -7,6 +7,8 @@ import { ApiError, apiGet, apiPost } from "@/lib/api";
 import { addDays, dayOfWeek, isValidIso } from "@/lib/calendar";
 import {
   SERIES_MAX_EVENTS,
+  conflictsFromError,
+  type ResourceConflict,
   formatWeekdayDate,
   locationName,
   seriesPreviewRows,
@@ -30,6 +32,7 @@ import {
   toast,
 } from "@/components/ui/shared";
 import { StatusSeg } from "@/components/events/StatusSeg";
+import { ResourceConflictList } from "@/components/events/ResourceConflictList";
 import { useEventPage } from "@/components/events/useEventPage";
 import { useLocale } from "@/components/calendar/useLocale";
 import { CreateGateBody, ModalSkeleton } from "@/components/events/CreateGate";
@@ -160,6 +163,7 @@ function SeriesForm({
   const [saving, setSaving] = useState(false);
   // Also shown in the dialog: toasts sit behind the modal for screen readers.
   const [failed, setFailed] = useState<string | null>(null);
+  const [conflicts, setConflicts] = useState<ResourceConflict[] | null>(null);
   const [dateError, setDateError] = useState(false);
 
   const series = mode === "series";
@@ -221,6 +225,7 @@ function SeriesForm({
     }
     setSaving(true);
     setFailed(null);
+    setConflicts(null);
     try {
       const created = await apiPost<{ id: string }[]>(
         `/api/calendars/${page.calendarId}/events/from-template`,
@@ -236,9 +241,11 @@ function SeriesForm({
       focusAfterModalClose(first ? eventSelector(first) : null);
       allow();
       nav.close();
-    } catch {
-      setFailed(t("events.series.failed"));
-      toast.error(t("events.series.failed"));
+    } catch (err) {
+      const found = conflictsFromError(err);
+      setConflicts(found);
+      setFailed(t(found ? "events.conflicts.saveRefused" : "events.series.failed"));
+      toast.error(t(found ? "events.conflicts.saveRefused" : "events.series.failed"));
     } finally {
       setSaving(false);
     }
@@ -247,6 +254,7 @@ function SeriesForm({
   async function createSeries() {
     setSaving(true);
     setFailed(null);
+    setConflicts(null);
     try {
       const created = await apiPost<{ series: EventSeriesInfo; events: CalendarEvent[] }>(
         `/api/calendars/${page.calendarId}/events/series`,
@@ -260,8 +268,11 @@ function SeriesForm({
       allow();
       nav.close();
     } catch (err) {
-      const message =
-        err instanceof ApiError && err.code === "too_many_events"
+      const found = conflictsFromError(err);
+      setConflicts(found);
+      const message = found
+        ? t("events.conflicts.saveRefused")
+        : err instanceof ApiError && err.code === "too_many_events"
           ? t("events.series.tooMany", { max: SERIES_MAX_EVENTS })
           : t("events.series.seriesFailed");
       setFailed(message);
@@ -304,7 +315,8 @@ function SeriesForm({
         </LinkButton>
       </div>
 
-      {failed && <Banner tone="danger">{failed}</Banner>}
+      {failed && !conflicts && <Banner tone="danger">{failed}</Banner>}
+      {conflicts && <ResourceConflictList conflicts={conflicts} failed />}
       {series && rule && ready && n === 0 && (
         <Banner tone="warning">{t("events.series.noMatch")}</Banner>
       )}
