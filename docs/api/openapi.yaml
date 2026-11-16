@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Club Calendar API
-  version: '1.1'
+  version: '1.2'
   summary: HTTP API of the Club Calendar backend (Symfony, `backend/`).
   description: |
     Hand-written reference of every route under `/api`. It is checked against the Symfony router by
@@ -305,6 +305,7 @@ info:
     | `eventsPerCalendar` | 20000 events per calendar (create, from-template, series create/rule change, import) |
     | `locationsPerClub` | 2000 locations per club (also those an import creates) |
     | `templatesPerCalendar` / `propertiesPerCalendar` / `featuresPerCalendar` | 500 each per calendar |
+    | `resourcesPerClub` | 500 resources per club |
     | `targetGroupsPerClub` | 500 target groups per club |
     | `feedsPerClub` | 50 feeds per club |
     | `feedMembersPerFeed` | 5000 people with stored access per feed (assign, claim) |
@@ -378,6 +379,8 @@ tags:
     description: Audiences (target groups), audience filters of events and feeds.
   - name: Locations
     description: Venues with address and map position.
+  - name: Resources
+    description: Resources (bookable locations of a club; admins manage, viewers and up read).
   - name: Feeds
     description: Feed management (admins; editors may read).
   - name: Public feed
@@ -3752,6 +3755,89 @@ paths:
         '403': { $ref: '#/components/responses/ForbiddenWrite' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  # ------------------------------------------------------------------ Resources
+  /api/clubs/{clubId}/resources:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+    get:
+      tags: [Resources]
+      summary: Resources of a club
+      description: Viewers, editors and admins (a plain `member` is 403 `forbidden`). Sorted by name.
+      operationId: listResources
+      responses:
+        '200':
+          description: Resources.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Resource' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Resources]
+      summary: Create a resource
+      description: >-
+        Admins only. Makes a club location a resource (one resource per location). `locationId` must be a
+        location of this club (422 `unknown_reference`) that is not a resource yet (422 `duplicate_resource`).
+      operationId: createResource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResourceInput' }
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Resource' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: '`unknown_reference`, `duplicate_resource` (field `locationId`) or `quota_exceeded` (`resourcesPerClub`).'
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /api/clubs/{clubId}/resources/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/ClubId' }
+      - { $ref: '#/components/parameters/Id' }
+    patch:
+      tags: [Resources]
+      summary: Update a resource
+      description: Admins only. Only the sent fields change; the location of a resource cannot be changed (a `locationId` is ignored).
+      operationId: updateResource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResourceInput' }
+      responses:
+        '200':
+          description: The updated resource.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Resource' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Resources]
+      summary: Delete a resource (the location stays)
+      description: Admins only. Deleting the location deletes its resource too.
+      operationId: deleteResource
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/ForbiddenWrite' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   # ------------------------------------------------------------------ Feeds (management)
   /api/clubs/{clubId}/feeds:
     parameters:
@@ -5242,9 +5328,10 @@ components:
         | `rate_limited` | 429 | Geocoding and Mapbox proxy: rate limit of the map provider, plus per-user/IP Mapbox limits (tiles 1800 per user and 3600 per IP per hour, styles/fonts 900 per user per hour, anonymous `/api/map/image/*` 360 per IP per hour, with `Retry-After`; an exhausted provider budget on map images answers an empty 429); sign-in, registration, refresh, e-mail confirmation, passkey and SSO routes: per-IP / per-address limits with `Retry-After`; club invitations (create, re-send): 20 per user and 50 per club and day; step-up attempts and code mails: see `POST /api/auth/step-up`; `GET …/events.pdf`: 10 per user and 30 per IP in 10 minutes |
         | `unknown_reference` | 422 | Id unknown or of another calendar (references of events/templates/feeds, bulk `ids`, export `targetGroupIds`, import `locationTempId`, series `templateId`) |
         | `event_not_draft` | 409 | MCP tool `update_event_draft` only: the event is published (not a draft) and stays unchanged |
+        | `duplicate_resource` | 422 | Create resource: the location (field `locationId`) is already a resource |
         | `duplicate_name` | 422 | Name of a badge (property) or extra (feature) already used in the calendar, or of an audience (target group) in the club |
         | `too_many_events` | 413 / 422 | 413: import > 5000 events/locations, bulk > 5000 ids; 422: series > 366 events (preview, create, rule change) |
-        | `quota_exceeded` | 422 | A create/import would exceed a quota (clubs per user, calendars/members/open invitations per club, events/templates/properties/features/holiday calendars per calendar, locations/target groups/feeds per club); extra members `resource`, `limit`. List: "Quotas and input limits" |
+        | `quota_exceeded` | 422 | A create/import would exceed a quota (clubs per user, calendars/members/open invitations per club, events/templates/properties/features/holiday calendars per calendar, locations/resources/target groups/feeds per club); extra members `resource`, `limit`. List: "Quotas and input limits" |
         | `series_empty` | 409 | Rule change preview/PATCH: the series has no events |
         | `series_changed` | 409 | Rule change PATCH: prototype/reference deleted concurrently or deadlock; nothing changed |
         | `email_taken` | 400 | Registration, field `email` |
@@ -5294,6 +5381,7 @@ components:
         - invalid_request
         - unknown_reference
         - duplicate_name
+        - duplicate_resource
         - event_not_draft
         - too_many_events
         - quota_exceeded
@@ -5890,6 +5978,29 @@ components:
         country: { type: [string, 'null'], maxLength: 100 }
         latitude: { type: [number, 'null'], minimum: -90, maximum: 90, description: 'Degrees (JSON number). Only together with `longitude` (both or none); otherwise, out of range or not a number: 400 `validation_failed` with the field. On update the pair is checked after merging with the stored value, and only when a coordinate is sent.' }
         longitude: { type: [number, 'null'], minimum: -180, maximum: 180, description: Degrees (JSON number); see `latitude`. }
+    Resource:
+      type: object
+      required: [id, clubId, type, name, locationId, visibility, allowDoubleBooking, bufferMinutes, updatedAt]
+      properties:
+        id: { type: string }
+        clubId: { type: string }
+        type: { type: string, enum: [location] }
+        name: { type: string }
+        locationId: { type: string }
+        visibility: { type: string, enum: [staff, members], description: '`staff` = viewer, editor, admin; `members` = every club member (not enforced by any route yet).' }
+        allowDoubleBooking: { type: boolean }
+        bufferMinutes: { type: integer, minimum: 0, maximum: 1440 }
+        updatedAt: { type: integer, description: Unix timestamp. }
+    ResourceInput:
+      type: object
+      description: 'Create: `name` and `locationId` are required. Update: any subset of `name`, `visibility`, `allowDoubleBooking`, `bufferMinutes`.'
+      properties:
+        name: { type: string, maxLength: 255 }
+        locationId: { type: string, description: 'Create only; a location of the club that is no resource yet.' }
+        type: { type: string, enum: [location], default: location }
+        visibility: { type: string, enum: [staff, members], default: staff }
+        allowDoubleBooking: { type: boolean, default: false }
+        bufferMinutes: { type: integer, minimum: 0, maximum: 1440, default: 0, description: 'JSON integer; otherwise 400 `validation_failed` with the field.' }
     LocationUsage:
       type: object
       required: [events, templates, templateNames]

@@ -17,6 +17,7 @@ use App\Entity\HolidayCalendar;
 use App\Entity\Location;
 use App\Entity\McpGrant;
 use App\Entity\Property;
+use App\Entity\Resource;
 use App\Entity\TargetGroup;
 use App\Entity\User;
 use App\Enum\ClubRole;
@@ -45,6 +46,7 @@ class Quota
     public const PENDING_INVITATIONS_PER_CLUB = 'pendingInvitationsPerClub';
     public const EVENTS_PER_CALENDAR = 'eventsPerCalendar';
     public const LOCATIONS_PER_CLUB = 'locationsPerClub';
+    public const RESOURCES_PER_CLUB = 'resourcesPerClub';
     public const TEMPLATES_PER_CALENDAR = 'templatesPerCalendar';
     public const PROPERTIES_PER_CALENDAR = 'propertiesPerCalendar';
     public const FEATURES_PER_CALENDAR = 'featuresPerCalendar';
@@ -63,6 +65,7 @@ class Quota
         self::PENDING_INVITATIONS_PER_CLUB => 200,
         self::EVENTS_PER_CALENDAR => 20000,
         self::LOCATIONS_PER_CLUB => 2000,
+        self::RESOURCES_PER_CLUB => 500,
         self::TEMPLATES_PER_CALENDAR => 500,
         self::PROPERTIES_PER_CALENDAR => 500,
         self::FEATURES_PER_CALENDAR => 500,
@@ -84,6 +87,7 @@ class Quota
         self::PENDING_INVITATIONS_PER_CLUB => [ClubInvitation::class, 'club', ['status' => ClubInvitation::PENDING]],
         self::EVENTS_PER_CALENDAR => [Event::class, 'calendar'],
         self::LOCATIONS_PER_CLUB => [Location::class, 'club'],
+        self::RESOURCES_PER_CLUB => [Resource::class, 'club'],
         self::TEMPLATES_PER_CALENDAR => [EventTemplate::class, 'calendar'],
         self::PROPERTIES_PER_CALENDAR => [Property::class, 'calendar'],
         self::FEATURES_PER_CALENDAR => [Feature::class, 'calendar'],

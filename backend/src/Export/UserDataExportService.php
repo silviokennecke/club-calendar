@@ -32,6 +32,7 @@ use App\Entity\Passkey;
 use App\Entity\PasswordReset;
 use App\Entity\Property;
 use App\Entity\RefreshToken;
+use App\Entity\Resource;
 use App\Entity\SecurityEvent;
 use App\Entity\StepUpCode;
 use App\Entity\TargetGroup;
@@ -97,6 +98,7 @@ class UserDataExportService
         Feature::class => 'exported:clubContent',
         TargetGroup::class => 'exported:clubContent',
         Location::class => 'exported:clubContent',
+        Resource::class => 'excluded:club configuration; the only user link is the audit stamp of the last editor (not exposed in the API)',
         HolidayCalendar::class => 'exported:clubContent',
         HolidayEvent::class => 'exported:clubContent',
         PasswordReset::class => 'excluded:secret reset token',
