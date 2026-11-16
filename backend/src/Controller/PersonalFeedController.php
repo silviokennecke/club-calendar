@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Security\AuthRateLimiter;
 use App\Service\PersonalFeedService;
+use App\Telemetry\FeedRequestMetrics;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,6 +19,7 @@ class PersonalFeedController extends AbstractController
     public function __construct(
         private readonly PersonalFeedService $personal,
         private readonly AuthRateLimiter $rateLimiter,
+        private readonly FeedRequestMetrics $metrics,
     ) {
     }
 
@@ -35,8 +37,11 @@ class PersonalFeedController extends AbstractController
         $notModified = new Response();
         $apply($notModified);
         if ($notModified->isNotModified($request)) {
+            $this->metrics->record(FeedRequestMetrics::MY_SUBSCRIPTION, 'ics', 304);
+
             return $notModified;
         }
+        $this->metrics->record(FeedRequestMetrics::MY_SUBSCRIPTION, 'ics');
 
         $response = new StreamedResponse($this->personal->icsOutput($this->personal->streamIcs($plan)));
         $apply($response);

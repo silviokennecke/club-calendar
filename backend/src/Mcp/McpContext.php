@@ -56,8 +56,30 @@ class McpContext
     /** @throws ToolCallException when the grant does not carry the scope (`mcp:write` implies `mcp:read`) */
     public function requireScope(McpScope $scope): void
     {
+        $this->recordScope($scope);
         if (!$this->token()->allows($scope)) {
             throw new ToolCallException(sprintf('The connection lacks the "%s" scope.', $scope->value));
+        }
+    }
+
+    /** The strongest scope a tool asked for in this request (`read`|`write`), for telemetry; null if none. */
+    public function requiredScope(): ?string
+    {
+        $scope = $this->requests->getMainRequest()?->attributes->get('_mcp_required_scope');
+
+        return \is_string($scope) ? $scope : null;
+    }
+
+    public function resetRequiredScope(): void
+    {
+        $this->requests->getMainRequest()?->attributes->remove('_mcp_required_scope');
+    }
+
+    private function recordScope(McpScope $scope): void
+    {
+        $attributes = $this->requests->getMainRequest()?->attributes;
+        if (null !== $attributes && 'write' !== $attributes->get('_mcp_required_scope')) {
+            $attributes->set('_mcp_required_scope', McpScope::Write === $scope ? 'write' : 'read');
         }
     }
 

@@ -19,3 +19,18 @@ services:
     App\Export\UserDataExportService:
         autowire: true
         public: true
+
+    # Telemetry tests read what would be exported (enabled by setting OTEL_EXPORTER_OTLP_ENDPOINT in the test)
+    test.telemetry.storage:
+        class: ArrayObject
+        public: true
+
+    test.telemetry.exporter:
+        class: OpenTelemetry\SDK\Metrics\MetricExporter\InMemoryExporter
+        arguments: ['@test.telemetry.storage', 'delta']
+
+    App\Telemetry\Telemetry:
+        autowire: true
+        public: true
+        arguments:
+            $exporter: '@test.telemetry.exporter'

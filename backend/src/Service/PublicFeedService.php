@@ -24,6 +24,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class PublicFeedService
 {
+    /** Request attribute set once access to a feed is granted (for telemetry only). */
+    public const VISIBILITY_ATTRIBUTE = '_feed_visibility';
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly IcsService $icsService,
@@ -403,6 +406,7 @@ class PublicFeedService
         // Access granted: tell FeedResponseHeadersListener whether the response may be indexed (the
         // listener does not load the feed again; without this attribute it sends noindex).
         $this->requestStack->getMainRequest()?->attributes->set(FeedResponseHeadersListener::INDEXABLE_ATTRIBUTE, $feed->isIndexable());
+        $this->requestStack->getMainRequest()?->attributes->set(self::VISIBILITY_ATTRIBUTE, $feed->getVisibility()->value);
 
         return $feed;
     }

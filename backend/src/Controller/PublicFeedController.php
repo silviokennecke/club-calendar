@@ -10,6 +10,7 @@ use App\Security\CurrentUserResolver;
 use App\Service\FeedClaimService;
 use App\Service\Input;
 use App\Service\PublicFeedService;
+use App\Telemetry\FeedRequestMetrics;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -25,6 +26,7 @@ class PublicFeedController extends AbstractController
         private readonly AuthRateLimiter $rateLimiter,
         private readonly FeedClaimService $claims,
         private readonly CurrentUserResolver $userResolver,
+        private readonly FeedRequestMetrics $metrics,
     ) {
     }
 
@@ -67,14 +69,17 @@ class PublicFeedController extends AbstractController
         $tgParam = $request->query->get('targetGroupIds');
         $tgIds = $tgParam ? array_values(array_filter(array_map('trim', explode(',', $tgParam)))) : null;
 
-        return new JsonResponse($this->feedService->getFeedEvents(
+        $data = $this->feedService->getFeedEvents(
             $feedId,
             $secret,
             $tgIds ?: null,
             // raw values (also arrays): checked strictly as YYYY-MM-DD after the access check
             $request->query->all()['from'] ?? null,
             $request->query->all()['to'] ?? null,
-        ));
+        );
+        $this->count($request, 'web');
+
+        return new JsonResponse($data);
     }
 
     #[Route('/{feedId}/events/{eventId}', methods: ['GET'])]
@@ -82,7 +87,10 @@ class PublicFeedController extends AbstractController
     {
         $this->rateLimiter->assertFeedAllowed($request, $feedId);
 
-        return new JsonResponse($this->feedService->getFeedEvent($feedId, $eventId, $this->queryString($request, 'secret')));
+        $data = $this->feedService->getFeedEvent($feedId, $eventId, $this->queryString($request, 'secret'));
+        $this->count($request, 'event');
+
+        return new JsonResponse($data);
     }
 
     #[Route('/{feedId}/events/{eventId}/ics', methods: ['GET'])]
@@ -91,12 +99,22 @@ class PublicFeedController extends AbstractController
         $this->rateLimiter->assertFeedAllowed($request, $feedId);
         [$filename, $pieces] = $this->feedService->streamFeedEventIcs($feedId, $eventId, $this->queryString($request, 'secret'));
 
+        $this->count($request, 'event_ics');
         $response = new StreamedResponse($this->feedService->icsOutput($pieces));
         $response->headers->set('Content-Type', 'text/calendar; charset=utf-8');
         $response->headers->set('Content-Disposition', "attachment; filename=\"$filename\"");
         $response->headers->set('Cache-Control', 'private, no-store');
 
         return $response;
+    }
+
+    /** Called only after the service granted access (it sets the visibility attribute); a miss counts nothing. */
+    private function count(Request $request, string $kind, int $status = 200): void
+    {
+        $visibility = $request->attributes->get(PublicFeedService::VISIBILITY_ATTRIBUTE);
+        if (is_string($visibility)) {
+            $this->metrics->record($visibility, $kind, $status);
+        }
     }
 
     /** A scalar query parameter (an array such as ?from[]= is a 400 from InputBag). */
@@ -122,8 +140,11 @@ class PublicFeedController extends AbstractController
         $notModified = new Response();
         $apply($notModified);
         if ($notModified->isNotModified($request)) {
+            $this->count($request, 'ics', 304);
+
             return $notModified;
         }
+        $this->count($request, 'ics');
 
         // Access and ETag are decided; the events are read while streaming (no Content-Length)
         $response = new StreamedResponse($this->feedService->icsOutput($this->feedService->streamFeedIcs($plan)));
