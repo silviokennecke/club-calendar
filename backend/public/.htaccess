@@ -2,6 +2,7 @@
 #   /api/*        -> Symfony front controller (index.php)
 #   /.well-known/oauth-authorization-server, /.well-known/oauth-protected-resource[/api/mcp], /.well-known/change-password
 #                 -> Symfony (OAuth/MCP discovery documents, RFC 8414 / 9728; change-password redirect); other /.well-known paths -> SPA
+#   /robots.txt, /sitemap*.xml -> Symfony (dynamic, from the instance policy)
 #   existing file -> served as is
 #   anything else -> SPA (index.html), so client-side routes survive a reload (directories too: /assets/ is never listed)
 # No "Options -Indexes": under a restrictive AllowOverride it is a 500 for the whole site (audit I2); directory listings
@@ -28,6 +29,8 @@ DirectoryIndex index.html index.php
 
     RewriteRule ^api(?:/|$) index.php [L]
     RewriteRule ^\.well-known/(?:oauth-(?:authorization-server|protected-resource)|change-password)(?:/|$) index.php [L]
+
+    RewriteRule ^(?:robots\.txt|sitemap[^/]*\.xml)$ index.php [L]
 
     RewriteRule ^ index.html [L]
 </IfModule>
