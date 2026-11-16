@@ -10,9 +10,13 @@ processors:
   memory_limiter:
     check_interval: 1s
     limit_mib: 256
-  # The app sends counters as deltas; Prometheus needs running totals
+  # The app sends counters as deltas; Prometheus needs running totals.
+  # Rare events (sign-ins, MCP calls) must not lose their state between two events:
+  # after max_stale without data the running total restarts at 1 and increase() sees nothing.
+  # The state is small (a few hundred series), so keep it for a long time.
   deltatocumulative:
-    max_stale: 10m
+    max_stale: 8760h
+    max_streams: 100000
   batch:
     timeout: 5s
 
