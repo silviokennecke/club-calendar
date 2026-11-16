@@ -76,6 +76,7 @@ parameters:
     env(FEED_ICS_PAST_DAYS): '180'
     env(FEED_ICS_FUTURE_MONTHS): '24'
     env(FEED_ICS_MAX_EVENTS): '0'
+    env(SITEMAP_EVENTS_FUTURE_MONTHS): '12'
 
     env(MAP_IMAGE_CACHE_TTL): '2592000'  # 30 days
     env(GEOCODER_CACHE_TTL): '3600'       # 1 hour

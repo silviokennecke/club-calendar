@@ -121,6 +121,11 @@ else
         fi
     fi
 
+    # Sitemap of the public feeds (the scheduler refreshes it every 6 hours)
+    if ! php bin/console app:sitemap:generate --no-interaction >&2; then
+        log "WARNING: app:sitemap:generate failed (non-fatal, the sitemap stays missing or outdated until the next scheduled run)"
+    fi
+
     # Encrypt stored feed and subscription secrets with the current APP_SECRET (legacy plaintext on upgrade, rotation)
     if ! php bin/console app:secrets:rotate --no-interaction >&2; then
         log "WARNING: app:secrets:rotate failed (non-fatal): some secrets could not be encrypted or decrypted; check APP_SECRET / APP_SECRET_PREVIOUS and run the command by hand"

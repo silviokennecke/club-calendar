@@ -16,6 +16,7 @@ use App\Service\HolidayRefreshService;
 use App\Service\OAuthPruner;
 use App\Service\PasswordResetService;
 use App\Service\UnverifiedUserPruner;
+use App\Sitemap\SitemapGenerator;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -39,6 +40,7 @@ final class RunScheduledTaskHandler
         private readonly FailedMessagePruner $failedMessages,
         private readonly HolidayRefreshService $holidays,
         private readonly GeoIpUpdater $geoIp,
+        private readonly SitemapGenerator $sitemap,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $logger,
     ) {
@@ -59,6 +61,7 @@ final class RunScheduledTaskHandler
             ScheduledTask::PruneFailedMessages => $this->failedMessages->prune(),
             ScheduledTask::HolidaysRefresh => $this->refreshHolidays(),
             ScheduledTask::GeoIpUpdate => $this->updateGeoIp(),
+            ScheduledTask::SitemapRefresh => $this->refreshSitemap(),
         };
     }
 
@@ -92,6 +95,15 @@ final class RunScheduledTaskHandler
         }
         if (GeoIpUpdateStatus::Failed === $result->status) {
             $this->logger->warning('Scheduled GeoIP update failed.', ['exception' => null !== $result->error ? $result->error::class : null]);
+        }
+    }
+
+    private function refreshSitemap(): void
+    {
+        try {
+            $this->sitemap->generate();
+        } catch (\Throwable $e) {
+            $this->logger->warning('Scheduled sitemap refresh failed.', ['exception' => $e::class]);
         }
     }
 }

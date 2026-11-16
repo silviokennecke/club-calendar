@@ -16,6 +16,7 @@ enum ScheduledTask: string
     case PruneFailedMessages = 'prune-failed-messages';
     case HolidaysRefresh = 'holidays-refresh';
     case GeoIpUpdate = 'geoip-update';
+    case SitemapRefresh = 'sitemap-refresh';
 
     /** Fixed UTC cron expression; daily jobs are staggered between 02:00 and 04:00, the fetching jobs run on Sundays. */
     public function cron(): string
@@ -31,6 +32,7 @@ enum ScheduledTask: string
             self::PruneFailedMessages => '10 3 * * *',
             self::HolidaysRefresh => '30 3 * * 0',
             self::GeoIpUpdate => '50 3 * * 0',
+            self::SitemapRefresh => '20 */6 * * *',
         };
     }
 }

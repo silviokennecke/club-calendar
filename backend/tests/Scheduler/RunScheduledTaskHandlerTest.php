@@ -46,7 +46,7 @@ class RunScheduledTaskHandlerTest extends KernelTestCase
     public function testEveryTaskRunsAgainstTheDatabase(): void
     {
         foreach (ScheduledTask::cases() as $task) {
-            if (ScheduledTask::HolidaysRefresh === $task || ScheduledTask::GeoIpUpdate === $task) {
+            if (in_array($task, [ScheduledTask::HolidaysRefresh, ScheduledTask::GeoIpUpdate, ScheduledTask::SitemapRefresh], true)) {
                 continue;
             }
             $this->runTask($task);
@@ -135,6 +135,7 @@ class RunScheduledTaskHandlerTest extends KernelTestCase
             $c->get(\App\Service\FailedMessagePruner::class),
             $holidays,
             $geoIp,
+            $c->get(\App\Sitemap\SitemapGenerator::class),
             $c->get(\Psr\Clock\ClockInterface::class),
             $logger,
         );
@@ -173,6 +174,7 @@ class RunScheduledTaskHandlerTest extends KernelTestCase
             $c->get(\App\Service\FailedMessagePruner::class),
             $holidays,
             $c->get(GeoIpUpdater::class),
+            $c->get(\App\Sitemap\SitemapGenerator::class),
             $c->get(\Psr\Clock\ClockInterface::class),
             $logger,
         );
@@ -186,5 +188,40 @@ class RunScheduledTaskHandlerTest extends KernelTestCase
     {
         $this->runTask(ScheduledTask::GeoIpUpdate);
         $this->addToAssertionCount(1);
+    }
+
+    public function testSitemapFailureIsSwallowedAndLogged(): void
+    {
+        $logger = new class extends AbstractLogger {
+            public array $records = [];
+
+            public function log($level, \Stringable|string $message, array $context = []): void
+            {
+                $this->records[] = $context;
+            }
+        };
+        $sitemap = $this->createStub(\App\Sitemap\SitemapGenerator::class);
+        $sitemap->method('generate')->willThrowException(new \RuntimeException('s3 secret'));
+        $c = self::getContainer();
+        $handler = new RunScheduledTaskHandler(
+            $c->get(\App\Service\UnverifiedUserPruner::class),
+            $c->get(\App\Service\PasswordResetService::class),
+            $c->get(\App\Service\AccountService::class),
+            $c->get(\App\Repository\RefreshTokenRepository::class),
+            $c->get(\App\Service\ClubInvitationService::class),
+            $c->get(\App\Service\OAuthPruner::class),
+            $c->get(\App\Repository\SecurityEventRepository::class),
+            $c->get(\App\Security\NonceStore::class),
+            $c->get(\App\Service\FailedMessagePruner::class),
+            $c->get(HolidayRefreshService::class),
+            $c->get(GeoIpUpdater::class),
+            $sitemap,
+            $c->get(\Psr\Clock\ClockInterface::class),
+            $logger,
+        );
+
+        $handler(new RunScheduledTask(ScheduledTask::SitemapRefresh));
+
+        $this->assertSame([['exception' => \RuntimeException::class]], $logger->records);
     }
 }

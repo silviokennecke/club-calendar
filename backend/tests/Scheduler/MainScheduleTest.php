@@ -63,6 +63,11 @@ class MainScheduleTest extends KernelTestCase
         $crons = array_map(static fn (ScheduledTask $t): string => $t->cron(), ScheduledTask::cases());
         $this->assertSame($crons, array_values(array_unique($crons)));
         foreach (ScheduledTask::cases() as $task) {
+            if (ScheduledTask::SitemapRefresh === $task) {
+                $this->assertSame('20 */6 * * *', $task->cron());
+
+                continue;
+            }
             [$minute, $hour] = explode(' ', $task->cron());
             $this->assertGreaterThanOrEqual(2, (int) $hour);
             $this->assertLessThan(4, (int) $hour);
