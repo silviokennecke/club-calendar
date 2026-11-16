@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\EventListener\FeedResponseHeadersListener;
+use App\Service\InstanceVisibility;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,7 +16,7 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 class FeedResponseHeadersListenerTest extends TestCase
 {
     /** @param array<string, mixed> $attributes */
-    private function handle(string $uri, int $status = 404, array $attributes = [], int $type = HttpKernelInterface::MAIN_REQUEST): Response
+    private function handle(string $uri, int $status = 404, array $attributes = [], int $type = HttpKernelInterface::MAIN_REQUEST, bool $private = true): Response
     {
         $response = new Response('', $status);
         $request = Request::create($uri);
@@ -23,7 +24,7 @@ class FeedResponseHeadersListenerTest extends TestCase
             $request->attributes->set($key, $value);
         }
         $event = new ResponseEvent($this->createStub(HttpKernelInterface::class), $request, $type, $response);
-        (new FeedResponseHeadersListener())($event);
+        (new FeedResponseHeadersListener(new InstanceVisibility($private)))($event);
 
         return $response;
     }
@@ -65,9 +66,28 @@ class FeedResponseHeadersListenerTest extends TestCase
         }
     }
 
+    public function testPrivateInstanceMarksOtherApiResponsesNoindex(): void
+    {
+        foreach (['/api/health', '/api/feeds', '/api/mcp', '/.well-known/oauth-authorization-server'] as $uri) {
+            $this->assertSame('noindex', $this->handle($uri, 200)->headers->get('X-Robots-Tag'), $uri);
+            $this->assertFalse($this->handle($uri, 200, [], HttpKernelInterface::MAIN_REQUEST, false)->headers->has('X-Robots-Tag'), $uri);
+        }
+        $this->assertFalse($this->handle('/feed/f1', 200)->headers->has('X-Robots-Tag'));
+    }
+
+    public function testIndexableFeedStaysHeaderFreeInBothModes(): void
+    {
+        foreach ([true, false] as $private) {
+            $headers = $this->handle('/api/feed/f1/events', 200, [FeedResponseHeadersListener::INDEXABLE_ATTRIBUTE => true], HttpKernelInterface::MAIN_REQUEST, $private)->headers;
+            $this->assertFalse($headers->has('X-Robots-Tag'));
+            $headers = $this->handle('/api/feed/f1/events', 200, [FeedResponseHeadersListener::INDEXABLE_ATTRIBUTE => false], HttpKernelInterface::MAIN_REQUEST, $private)->headers;
+            $this->assertSame('noindex', $headers->get('X-Robots-Tag'));
+        }
+    }
+
     public function testOtherResponsesAreLeftAlone(): void
     {
-        foreach (['/api/health', '/api/feeds', '/feed/f1'] as $uri) {
+        foreach (['/feed/f1', '/robots.txt'] as $uri) {
             $headers = $this->handle($uri)->headers;
             $this->assertFalse($headers->has('Referrer-Policy'), $uri);
             $this->assertFalse($headers->has('X-Robots-Tag'), $uri);

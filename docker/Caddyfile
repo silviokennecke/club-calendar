@@ -40,6 +40,15 @@
 	@feed path /feed/* /api/feed/*
 	header @feed Referrer-Policy no-referrer
 
+	# Private instance (INSTANCE_PRIVATE, default true): everything except public feed candidates, robots.txt
+	# and sitemaps is noindex. Feed pages decide through their own <meta> tag; the feed API sets its own header.
+	map {env.INSTANCE_PRIVATE} {private_instance} {
+		~^(?i:false|0|no|off)$ "no"
+		default "yes"
+	}
+	@noindex expression `{private_instance} == "yes" && !path('/feed/*', '/api/feed/*', '/robots.txt', '/sitemap*.xml')`
+	header @noindex X-Robots-Tag noindex
+
 	header {
 		# KEEP IN SYNC with backend/public/.htaccess (tests/Unit/SecurityHeadersConfigTest.php)
 		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'sha256-+A14ONesVdzkn6nr37Osn+rUqNz4oFGZFDbLXrlae04='; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; child-src blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"

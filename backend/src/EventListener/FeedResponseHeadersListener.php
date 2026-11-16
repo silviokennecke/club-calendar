@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\EventListener;
 
+use App\Service\InstanceVisibility;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,16 +20,31 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * Whether a feed may be indexed (visibility PUBLIC) is decided by PublicFeedService after the
  * access checks; it stores the result in the request attribute INDEXABLE_ATTRIBUTE, so the feed is not
  * loaded twice. Without the attribute (unknown feed, 403/404, any error) the response is noindex.
+ *
+ * In a private instance (InstanceVisibility) every other `/api/*` and OAuth `/.well-known/*` response is
+ * noindex too; otherwise they are left alone.
  */
 #[AsEventListener(event: KernelEvents::RESPONSE)]
 class FeedResponseHeadersListener
 {
     public const INDEXABLE_ATTRIBUTE = 'feed_indexable';
 
+    public function __construct(private readonly InstanceVisibility $visibility)
+    {
+    }
+
     public function __invoke(ResponseEvent $event): void
     {
         $request = $event->getRequest();
-        if (!$event->isMainRequest() || !str_starts_with($request->getPathInfo(), '/api/feed/')) {
+        if (!$event->isMainRequest()) {
+            return;
+        }
+        $path = $request->getPathInfo();
+        if (!str_starts_with($path, '/api/feed/')) {
+            if ($this->visibility->isPrivate() && (str_starts_with($path, '/api/') || str_starts_with($path, '/.well-known/'))) {
+                $event->getResponse()->headers->set('X-Robots-Tag', 'noindex');
+            }
+
             return;
         }
 

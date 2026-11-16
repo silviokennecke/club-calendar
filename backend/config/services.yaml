@@ -5,6 +5,9 @@ parameters:
     env(BACKEND_URL): '%env(APP_URL)%'
     env(TRUSTED_HOSTS): ''
 
+    # Private instance: nothing but PUBLIC feeds may be indexed by search engines
+    env(INSTANCE_PRIVATE): 'true'
+
     # Older APP_SECRET values (comma-separated) still accepted for decrypting stored secrets while rotating APP_SECRET
     env(APP_SECRET_PREVIOUS): ''
 
