@@ -81,7 +81,7 @@ class InstanceMetricsReporter
         $t->gauge('club_calendar.mcp.clients', '{client}', 'Registered OAuth clients')
             ->record($this->scalar('SELECT COUNT(*) FROM oauth_client'));
 
-        $gauge = $t->gauge('club_calendar.club_members', '{member}', 'Club memberships per role');
+        $gauge = $t->gauge('club_calendar.memberships', '{member}', 'Club memberships per role');
         foreach ($this->grouped('SELECT role AS k, COUNT(*) AS n FROM club_user GROUP BY role', ClubRole::values()) as $k => $n) {
             $gauge->record($n, ['role' => (string) $k]);
         }

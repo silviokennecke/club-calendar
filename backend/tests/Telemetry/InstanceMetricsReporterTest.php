@@ -97,7 +97,7 @@ final class InstanceMetricsReporterTest extends KernelTestCase
         self::assertSame(['false' => 2, 'true' => 1], $this->by('club_calendar.calendars', 'archived'));
         self::assertSame(['false' => 1, 'true' => 1], $this->by('club_calendar.events', 'draft'));
         self::assertSame(['club' => 0, 'private' => 1, 'public' => 1], array_map('intval', $this->stringKeyed('club_calendar.feeds', 'visibility')));
-        self::assertSame(['admin' => 2, 'editor' => 0, 'member' => 1, 'viewer' => 1], $this->stringKeyed('club_calendar.club_members', 'role'));
+        self::assertSame(['admin' => 2, 'editor' => 0, 'member' => 1, 'viewer' => 1], $this->stringKeyed('club_calendar.memberships', 'role'));
         self::assertSame(0, $this->points('club_calendar.mcp.grants')[0][1]);
         self::assertSame(0, $this->points('club_calendar.member_subscriptions')[0][1]);
         self::assertSame(0, $this->points('club_calendar.mcp.clients')[0][1]);

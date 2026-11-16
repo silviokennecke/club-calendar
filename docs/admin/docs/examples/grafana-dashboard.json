@@ -50,7 +50,7 @@
   "annotations": {
     "list": []
   },
-  "description": "Optional OpenTelemetry metrics of a Club Calendar instance. Assumes a Prometheus-compatible datasource fed via the standard OTLP to Prometheus name translation: dots become underscores, counters get the suffix _total, curly-brace units such as {login} are not appended, boolean attributes appear as the strings \"true\"/\"false\". Counters are exported as deltas, so the OTel Collector must run the deltatocumulative processor. Gauges are reported hourly (queried with a 2h lookback) or daily (26h lookback) to bridge Prometheus staleness. The metric club_calendar_club_members holds both the hourly role totals (no stat label) and the daily per-club distribution (stat label); queries separate them by the stat label.",
+  "description": "Optional OpenTelemetry metrics of a Club Calendar instance. Assumes a Prometheus-compatible datasource fed via the standard OTLP to Prometheus name translation: dots become underscores, counters get the suffix _total, curly-brace units such as {login} are not appended, boolean attributes appear as the strings \"true\"/\"false\". Counters are exported as deltas, so the OTel Collector must run the deltatocumulative processor. Gauges are reported hourly (queried with a 2h lookback) or daily (26h lookback) to bridge Prometheus staleness. Membership totals per role are club_calendar_memberships; the per-club distribution is club_calendar_club_members (stat label).",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -583,7 +583,7 @@
       "id": 11,
       "type": "timeseries",
       "title": "Memberships by role",
-      "description": "Club memberships per role (member, viewer, editor, admin), stacked. Reported hourly. The distribution series of the same metric family carry a stat label and are excluded.",
+      "description": "Club memberships per role (member, viewer, editor, admin), stacked. Reported hourly.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -601,7 +601,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (role) (last_over_time(club_calendar_club_members{stat=\"\"}[2h]))",
+          "expr": "sum by (role) (last_over_time(club_calendar_memberships[2h]))",
           "legendFormat": "{{role}}",
           "range": true,
           "instant": false,
