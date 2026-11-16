@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Logging;
 
+use App\Telemetry\FiberSafeContext;
 use App\Telemetry\Telemetry;
 use App\Telemetry\TelemetryConfig;
 use Monolog\Handler\AbstractProcessingHandler;
@@ -55,7 +56,8 @@ final class OtelLogHandler extends AbstractProcessingHandler
                 }
                 $this->inner = new Handler($provider, Level::Debug, true, new OtelLogFormatter());
             }
-            $this->inner->handle($record->with(context: OtelLogFormatter::cap($record->context), extra: OtelLogFormatter::cap($record->extra)));
+            $capped = $record->with(context: OtelLogFormatter::cap($record->context), extra: OtelLogFormatter::cap($record->extra));
+            FiberSafeContext::run(fn () => $this->inner->handle($capped));
         } catch (\Throwable) {
         }
     }

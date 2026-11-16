@@ -33,6 +33,11 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 - **`GEOIP_DB_PATH`** and the `/data/geoip` volume: no longer used, remove them.
 - **Host cron:** the crontab entries for `app:prune-*`, `app:holidays:refresh` and `app:geoip:update` are no longer needed and no longer supported; delete them. `app:holidays:refresh` and `app:geoip:update` remain for manual runs.
 
+### Fixed
+
+- **Telemetry in MCP calls:** MCP tool calls no longer log the warning "Access to not initialized OpenTelemetry context in fiber" (the metric and log recording now never touch the OpenTelemetry context inside a fiber).
+
+
 ## [0.1.0] - 2026-11-13
 
 ### Added

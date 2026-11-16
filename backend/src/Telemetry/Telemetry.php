@@ -67,14 +67,14 @@ class Telemetry
     {
         $key = 'c:'.$name;
         try {
-            $instrument = $this->instruments[$key] ??= $this->meter()->createCounter($name, '' === $unit ? null : $unit, '' === $description ? null : $description);
+            $instrument = $this->instruments[$key] ??= new FiberSafeCounter(FiberSafeContext::run(fn () => $this->meter()->createCounter($name, '' === $unit ? null : $unit, '' === $description ? null : $description)));
             \assert($instrument instanceof CounterInterface);
 
             return $instrument;
         } catch (\Throwable $e) {
             $this->warn($e);
 
-            return $this->instruments[$key] = (new NoopMeter())->createCounter($name);
+            return $this->instruments[$key] = new FiberSafeCounter((new NoopMeter())->createCounter($name));
         }
     }
 
@@ -82,14 +82,14 @@ class Telemetry
     {
         $key = 'g:'.$name;
         try {
-            $instrument = $this->instruments[$key] ??= $this->meter()->createGauge($name, '' === $unit ? null : $unit, '' === $description ? null : $description);
+            $instrument = $this->instruments[$key] ??= new FiberSafeGauge(FiberSafeContext::run(fn () => $this->meter()->createGauge($name, '' === $unit ? null : $unit, '' === $description ? null : $description)));
             \assert($instrument instanceof GaugeInterface);
 
             return $instrument;
         } catch (\Throwable $e) {
             $this->warn($e);
 
-            return $this->instruments[$key] = (new NoopMeter())->createGauge($name);
+            return $this->instruments[$key] = new FiberSafeGauge((new NoopMeter())->createGauge($name));
         }
     }
 
@@ -100,6 +100,11 @@ class Telemetry
 
     /** Null when logs are disabled or the provider could not be built. */
     public function loggerProvider(): ?LoggerProviderInterface
+    {
+        return FiberSafeContext::run(fn () => $this->buildLoggerProvider());
+    }
+
+    private function buildLoggerProvider(): ?LoggerProviderInterface
     {
         if (null !== $this->logProvider) {
             return $this->logProvider;
@@ -127,6 +132,11 @@ class Telemetry
     }
 
     public function flush(): void
+    {
+        FiberSafeContext::run($this->doFlush(...));
+    }
+
+    private function doFlush(): void
     {
         if (null === $this->provider && null === $this->logProvider) {
             return;
