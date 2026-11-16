@@ -6,13 +6,20 @@ namespace App\Telemetry;
 
 use Nyholm\Psr7\Factory\Psr17Factory;
 use OpenTelemetry\API\Behavior\Internal\Logging;
+use OpenTelemetry\API\Common\Time\Clock;
+use OpenTelemetry\API\Logs\LoggerProviderInterface;
 use OpenTelemetry\API\Metrics\CounterInterface;
 use OpenTelemetry\API\Metrics\GaugeInterface;
 use OpenTelemetry\API\Metrics\MeterInterface;
 use OpenTelemetry\API\Metrics\Noop\NoopMeter;
+use OpenTelemetry\Contrib\Otlp\LogsExporter;
 use OpenTelemetry\Contrib\Otlp\MetricExporter;
 use OpenTelemetry\SDK\Common\Attribute\Attributes;
 use OpenTelemetry\SDK\Common\Export\Http\PsrTransportFactory;
+use OpenTelemetry\SDK\Common\Export\TransportInterface;
+use OpenTelemetry\SDK\Logs\LoggerProvider;
+use OpenTelemetry\SDK\Logs\LogRecordExporterInterface;
+use OpenTelemetry\SDK\Logs\Processor\BatchLogRecordProcessor;
 use OpenTelemetry\SDK\Metrics\MeterProvider;
 use OpenTelemetry\SDK\Metrics\MeterProviderBuilder;
 use OpenTelemetry\SDK\Metrics\MetricExporterInterface;
@@ -34,6 +41,10 @@ class Telemetry
     private ?MeterInterface $meter = null;
     private ?MeterProvider $provider = null;
     private bool $failed = false;
+    private ?LoggerProvider $logProvider = null;
+    private bool $logsFailed = false;
+    /** Set while telemetry itself runs, so its own log records never re-enter the log export. */
+    private static bool $busy = false;
     private float $lastFlush = 0.0;
 
     /** @var array<string, CounterInterface|GaugeInterface> */
@@ -43,6 +54,7 @@ class Telemetry
         private readonly TelemetryConfig $config,
         private readonly ?LoggerInterface $logger = null,
         private readonly ?MetricExporterInterface $exporter = null,
+        private readonly ?LogRecordExporterInterface $logExporter = null,
     ) {
     }
 
@@ -81,23 +93,64 @@ class Telemetry
         }
     }
 
+    public static function isBusyNow(): bool
+    {
+        return self::$busy;
+    }
+
+    /** Null when logs are disabled or the provider could not be built. */
+    public function loggerProvider(): ?LoggerProviderInterface
+    {
+        if (null !== $this->logProvider) {
+            return $this->logProvider;
+        }
+        if (!$this->config->logsEnabled() || $this->logsFailed) {
+            return null;
+        }
+        $previous = self::$busy;
+        self::$busy = true;
+        try {
+            Logging::disable();
+            $exporter = $this->logExporter ?? new LogsExporter($this->transport($this->config->logsUrl()));
+            // autoFlush off and batch = queue: nothing is sent during a request, one request per flush
+            $processor = new BatchLogRecordProcessor($exporter, Clock::getDefault(), 256, 1000, max(1, $this->config->timeoutMs), 256, false);
+
+            return $this->logProvider = new LoggerProvider($processor, new \OpenTelemetry\SDK\Common\Instrumentation\InstrumentationScopeFactory(Attributes::factory()), $this->resource());
+        } catch (\Throwable $e) {
+            $this->logsFailed = true;
+            $this->warn($e);
+
+            return null;
+        } finally {
+            self::$busy = $previous;
+        }
+    }
+
     public function flush(): void
     {
-        if (null === $this->provider) {
+        if (null === $this->provider && null === $this->logProvider) {
             return;
         }
         $this->lastFlush = microtime(true);
+        $previous = self::$busy;
+        self::$busy = true;
         try {
-            $this->provider->forceFlush();
-        } catch (\Throwable $e) {
-            $this->warn($e);
+            foreach ([$this->provider, $this->logProvider] as $provider) {
+                try {
+                    $provider?->forceFlush();
+                } catch (\Throwable $e) {
+                    $this->warn($e);
+                }
+            }
+        } finally {
+            self::$busy = $previous;
         }
     }
 
     /** For idle loops: flush at most once per interval. */
     public function flushIfDue(float $minIntervalSeconds): void
     {
-        if (null !== $this->provider && microtime(true) - $this->lastFlush >= $minIntervalSeconds) {
+        if ((null !== $this->provider || null !== $this->logProvider) && microtime(true) - $this->lastFlush >= $minIntervalSeconds) {
             $this->flush();
         }
     }
@@ -127,11 +180,9 @@ class Telemetry
     private function buildProvider(): MeterProvider
     {
         $exporter = $this->exporter ?? $this->buildExporter();
-        $attributes = ['service.name' => $this->config->serviceName]
-            + TelemetryConfig::parsePairs($this->config->resourceAttributes);
 
         $provider = (new MeterProviderBuilder())
-            ->setResource(ResourceInfo::create(Attributes::create($attributes)))
+            ->setResource($this->resource())
             ->addReader(new ExportingReader($exporter))
             ->build();
         \assert($provider instanceof MeterProvider);
@@ -139,15 +190,28 @@ class Telemetry
         return $provider;
     }
 
+    private function resource(): ResourceInfo
+    {
+        $attributes = ['service.name' => $this->config->serviceName]
+            + TelemetryConfig::parsePairs($this->config->resourceAttributes);
+
+        return ResourceInfo::create(Attributes::create($attributes));
+    }
+
     private function buildExporter(): MetricExporterInterface
+    {
+        return new MetricExporter($this->transport($this->config->metricsUrl()), TemporalityPreference::fromName($this->config->temporality));
+    }
+
+    private function transport(string $url): TransportInterface
     {
         $timeout = max(1, $this->config->timeoutMs) / 1000;
         $psr17 = new Psr17Factory();
         $client = new Psr18Client(HttpClient::create(['timeout' => $timeout, 'max_duration' => $timeout]), $psr17, $psr17);
         $compression = 'gzip' === strtolower($this->config->compression) ? 'gzip' : null;
 
-        $transport = (new PsrTransportFactory($client, $psr17, $psr17))->create(
-            $this->config->metricsUrl(),
+        return (new PsrTransportFactory($client, $psr17, $psr17))->create(
+            $url,
             'application/x-protobuf',
             TelemetryConfig::parsePairs($this->config->headers),
             $compression,
@@ -155,15 +219,17 @@ class Telemetry
             0,
             0,
         );
-
-        return new MetricExporter($transport, TemporalityPreference::fromName($this->config->temporality));
     }
 
     private function warn(\Throwable $e): void
     {
+        $previous = self::$busy;
+        self::$busy = true;
         try {
             $this->logger?->warning('Telemetry failed', ['exception' => $e::class]);
         } catch (\Throwable) {
+        } finally {
+            self::$busy = $previous;
         }
     }
 }

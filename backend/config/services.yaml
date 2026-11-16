@@ -20,6 +20,9 @@ parameters:
     env(OTEL_EXPORTER_OTLP_TIMEOUT): '1000'
     env(OTEL_EXPORTER_OTLP_COMPRESSION): 'none'
     env(OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE): 'delta'
+    # Logs: 'otlp' or 'none'; minimum PSR-3 level
+    env(OTEL_LOGS_EXPORTER): 'otlp'
+    env(OTEL_LOGS_LEVEL): 'warning'
 
     env(MESSENGER_TRANSPORT_DSN): 'doctrine://default?auto_setup=0'
 
@@ -148,6 +151,8 @@ services:
             $timeoutMs: '%env(int:OTEL_EXPORTER_OTLP_TIMEOUT)%'
             $compression: '%env(OTEL_EXPORTER_OTLP_COMPRESSION)%'
             $temporality: '%env(OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE)%'
+            $logsExporter: '%env(OTEL_LOGS_EXPORTER)%'
+            $logsLevel: '%env(OTEL_LOGS_LEVEL)%'
 
     App\Messenger\EncryptingSerializer:
         arguments:

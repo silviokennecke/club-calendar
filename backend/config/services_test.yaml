@@ -29,8 +29,17 @@ services:
         class: OpenTelemetry\SDK\Metrics\MetricExporter\InMemoryExporter
         arguments: ['@test.telemetry.storage', 'delta']
 
+    test.telemetry.log_storage:
+        class: ArrayObject
+        public: true
+
+    test.telemetry.log_exporter:
+        class: OpenTelemetry\SDK\Logs\Exporter\InMemoryExporter
+        arguments: ['@test.telemetry.log_storage']
+
     App\Telemetry\Telemetry:
         autowire: true
         public: true
         arguments:
             $exporter: '@test.telemetry.exporter'
+            $logExporter: '@test.telemetry.log_exporter'

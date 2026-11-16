@@ -1,6 +1,12 @@
 monolog:
     channels:
         - deprecation # Deprecations are logged in the dedicated "deprecation" channel when it exists
+    handlers:
+        # Optional OTLP log export (no-op unless OTEL_EXPORTER_OTLP_ENDPOINT is set); bubbles to the handlers below
+        otel:
+            type: service
+            id: App\Logging\OtelLogHandler
+            channels: ["!event", "!deprecation"]
 
 when@dev:
     monolog:
