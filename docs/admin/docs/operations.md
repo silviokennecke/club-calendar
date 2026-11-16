@@ -61,6 +61,9 @@ Day-to-day tasks: updating, backups, the worker and scheduled jobs, command-line
 !!! note "Upgrading to the built-in scheduler and mail queue"
     Cron entries for the `app:prune-*`, `app:holidays:refresh` and `app:geoip:update` commands are no longer used and must be removed. All e-mail is now sent by a background worker, which the Docker image starts by default. See [Scheduled tasks and the worker](#scheduled-tasks-and-the-worker).
 
+!!! note "Upgrading to private instance by default"
+    New setting `INSTANCE_PRIVATE` defaults to `true`: search engines are asked to ignore everything except public feeds. If you want the rest of the site indexed, set `INSTANCE_PRIVATE=false`. The app also publishes `/robots.txt` and a sitemap of public feeds now; custom web servers must route them to the app. See [Search engines](security.md#search-engines-and-private-instance).
+
 !!! note "Open browser tabs"
     Visitors who keep the app open during an update reload the page once by themselves when they open a part of the app that no longer exists. No action is needed.
 
@@ -133,6 +136,7 @@ The times are fixed and in UTC (there is no setting per job). A job that was mis
 | One-time values | Deletes expired one-time sign-in values. | daily 03:00 |
 | Failed messages | Deletes failed queue entries older than 30 days. | daily 03:10 |
 | Holidays | Refreshes the predefined holiday calendars. See [Holidays](#holidays). | Sundays 03:30 |
+| Sitemap | Rebuilds the sitemap of public feeds. See [Sitemap](#sitemap). | every 6 hours at minute 20 |
 | Location database | Downloads a newer location database for security notices. Does nothing without `MAXMIND_LICENSE_KEY`. See [Protection mechanisms](security.md#location-in-security-notices). | Sundays 03:50 |
 
 If a cleanup job fails, it is retried and then lands in the failed messages. The holiday refresh and the location update only log a warning when they fail and try again the next week.
@@ -173,6 +177,7 @@ The jobs stay available as commands, for testing or when you do not want to wait
 | `app:prune-failed-messages` | Failed messages |
 | `app:holidays:refresh --all` | Holidays |
 | `app:geoip:update` | Location database |
+| `app:sitemap:generate` | Sitemap |
 
 ### The queue
 
@@ -265,9 +270,16 @@ The app has a few commands for administrators. Run them like this:
 | `app:branding:apply-title` | Sets the page title of the web app from `APP_NAME`. Runs with every cache clear and at every Docker start; run it by hand after changing `APP_NAME` without a cache clear. |
 | `app:secrets:rotate` | Encrypts stored feed and calendar secrets with the current `APP_SECRET` and re-encrypts values of older keys. `--dry-run` only counts. Prints counts per column; ends with an error and the ids of rows it cannot read. Safe to repeat. See [Secrets and key rotation](#secrets-and-key-rotation). |
 | `app:holidays:refresh` | Refreshes holiday calendars: `--all` for all predefined ones, `--calendar=<id>` for one. |
+| `app:sitemap:generate` | Rebuilds the sitemap of public feeds right away. Also runs at every Docker start (a failure only logs a warning). See [Sitemap](#sitemap). |
 | `app:storage:check` | Writes, reads and deletes a test file in the configured file storage and prints which storage is used. See [Cache and storage](cache-and-storage.md#storage). |
 | `app:storage:rotate-key` | Re-encrypts S3 files with a new customer key. `--dry-run` only counts. See [Cache and storage](cache-and-storage.md#rotating-the-key). |
 | `cache:pool:clear` | Empties shared caches in Redis or Valkey. See [Cache and storage](cache-and-storage.md#clearing-the-cache). |
+
+## Sitemap
+
+The app publishes a sitemap of its public feeds at `/sitemap.xml` (with `/sitemap-1.xml`, `/sitemap-2.xml` and so on when there are many entries). It lists the pages of public feeds and their published upcoming events, up to `SITEMAP_EVENTS_FUTURE_MONTHS` months ahead (default 12, `0` = feed pages only). It does not depend on `INSTANCE_PRIVATE`, and `/robots.txt` points to it.
+
+The sitemap is rebuilt every 6 hours by the scheduler, at every start of the Docker image and by `app:sitemap:generate`. It is kept in the file storage, so with several containers the storage must be shared (like the location database, see [Cache and storage](cache-and-storage.md#storage)). Your web server must send `/robots.txt` and `/sitemap*.xml` to the app; the Docker image and the Apache file do, for other servers see [Hosting without Docker](hosting-without-docker.md).
 
 ## Browser recognition
 

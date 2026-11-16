@@ -18,6 +18,7 @@ All variables an admin can set. Variables marked **required** have no default. T
 | `MIGRATION_RETRIES` | `15` | Docker image only: how often the start waits (2 s apart) for the database before giving up. |
 | `ROLE` | `all` | Docker image only: `all` (web server, workers and scheduler), `web` (web server only) or `worker` (workers and scheduler only). See [Operations](../operations.md#roles-in-the-docker-image). |
 | `MESSENGER_WORKERS` | `2` | Docker image only: number of workers per container that send mail and run jobs, 1 to 32. |
+| `INSTANCE_PRIVATE` | `true` | Keeps search engines away from everything except public feeds. `false` makes this a public instance. The Docker image reads it at start. See [Search engines](../security.md#search-engines-and-private-instance). |
 | `SCHEDULER_ENABLED` | `true` | `false` stops this container (or process) from starting scheduled jobs. |
 | `MIGRATION_WAIT_RETRIES` | `90` | Docker image, `ROLE=worker` only: how often (2 s apart) the container checks that the database changes are done before it gives up. |
 
@@ -123,6 +124,7 @@ Calendar feeds that people subscribe to.
 | `FEED_ICS_PAST_DAYS` | `180` | Days into the past included. |
 | `FEED_ICS_FUTURE_MONTHS` | `24` | Months into the future included. |
 | `FEED_ICS_MAX_EVENTS` | `0` | Maximum events per subscription file (earliest first). `0` = unlimited. |
+| `SITEMAP_EVENTS_FUTURE_MONTHS` | `12` | The sitemap of public feeds lists upcoming events up to this many months ahead. `0` = feed pages only. |
 | `FEED_RATE_LIMIT_PER_IP` | `120` | Feed requests per minute per visitor. `0` = off. |
 | `FEED_RATE_LIMIT_PER_FEED` | `600` | Feed requests per minute per feed. `0` = off. |
 

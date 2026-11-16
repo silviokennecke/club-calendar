@@ -165,6 +165,10 @@ info:
     | `PRIVATE` | only with `?secret=<sharedSecret>` (403 without or with a wrong one, checked first) | never indexed |
 
     - `indexable` = `visibility == PUBLIC`. There is no separate search engine setting.
+    - On a private instance (`INSTANCE_PRIVATE`, default true) nothing is indexable except `PUBLIC` feeds: every
+      other `/api/*` response (and `/.well-known/*`) carries `X-Robots-Tag: noindex`. With
+      `INSTANCE_PRIVATE=false` those carry no header. `GET /robots.txt` and the sitemap of public feeds
+      (`GET /sitemap.xml`, `/sitemap-N.xml`) are served by the backend outside `/api` and are not part of this document.
     - Every response of `/api/feed/*` (errors included) carries `Referrer-Policy: no-referrer` and
       `X-Robots-Tag: noindex`, **except** successful responses of an indexable feed, which carry no
       `X-Robots-Tag`. The header is set by the backend only (web server configs add nothing).
@@ -4928,7 +4932,7 @@ components:
       description: Always `no-referrer` on `/api/feed/*` (errors included).
       schema: { type: string, const: no-referrer }
     XRobotsTag:
-      description: '`noindex` unless the response is successful and the feed is indexable (`PUBLIC`); then absent.'
+      description: '`noindex` unless the response is successful and the feed is indexable (`PUBLIC`); then absent. Other `/api/*` responses carry `noindex` on a private instance (`INSTANCE_PRIVATE`, default).'
       schema: { type: string, const: noindex }
 
   responses:

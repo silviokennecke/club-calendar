@@ -239,7 +239,25 @@ Every club member also has a personal subscription address (a calendar made of t
 
 A signed-in person who opens a feed address can become a plain club member through it, if a club admin allows it (see [Clubs and members](clubs.md#joining-through-feeds)). When a private feed gets a new secret, admins can also remove the access of everyone who joined with the old one. The old secret stops working in every case. If a private feed is switched to another visibility, the stored access stays but has no effect.
 
-Feeds are rate limited (see above). The ICS file by default covers the last 180 days and the next 24 months; `FEED_ICS_WINDOW_ENABLED`, `FEED_ICS_PAST_DAYS`, `FEED_ICS_FUTURE_MONTHS` and `FEED_ICS_MAX_EVENTS` change that, see the [reference](configuration/reference.md).
+Only public feeds may be indexed, see [Search engines](#search-engines-and-private-instance). Feeds are rate limited (see above). The ICS file by default covers the last 180 days and the next 24 months; `FEED_ICS_WINDOW_ENABLED`, `FEED_ICS_PAST_DAYS`, `FEED_ICS_FUTURE_MONTHS` and `FEED_ICS_MAX_EVENTS` change that, see the [reference](configuration/reference.md).
+
+## Search engines and private instance
+
+By default (`INSTANCE_PRIVATE=true`) your installation is a **private instance**: search engines are asked to ignore everything except public feeds.
+
+- `/robots.txt` disallows the whole site and allows only feed pages, feed data, the web app's files and the sitemap, so crawlers can still reach feed pages and see the per-feed rule.
+- Every other page and response of the app carries a "do not index" header. The Docker image's web server adds it to the web app's files and pages too.
+- Public feeds stay indexable. Club-internal and private feeds are never indexed.
+
+Set `INSTANCE_PRIVATE=false` for a **public instance**, for example when you want the start page found by search engines. Then `/robots.txt` only blocks the API and pages without content (sign-in, profile and so on), and no extra header is added.
+
+!!! note "Upgrading"
+    Existing installations are now private instances by default. If search engines should keep indexing more than the public feeds, set `INSTANCE_PRIVATE=false`.
+
+Public feeds are listed in a sitemap at `/sitemap.xml` (feed pages and their published upcoming events, `SITEMAP_EVENTS_FUTURE_MONTHS` ahead, `0` = feed pages only). It does not depend on `INSTANCE_PRIVATE`. See [Operations](operations.md#sitemap) for how it is refreshed.
+
+!!! info "Without Docker"
+    Apache (`.htaccess`) and nginx cannot read `INSTANCE_PRIVATE`, so the web server adds no "do not index" header for the web app's files. `/robots.txt` and the headers of the app's own responses still work. If you want the header on the rest of the site, add it yourself, see [Hosting without Docker](hosting-without-docker.md#keeping-search-engines-away).
 
 ## AI apps (MCP)
 
