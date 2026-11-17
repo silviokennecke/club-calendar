@@ -133,7 +133,7 @@ class McpReadToolsTest extends WebTestCase
         $token = $this->token($this->viewer);
         $r = $this->rpc(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'tools/list'], $token, $this->session($token));
         $names = array_column($r['body']['result']['tools'], 'name');
-        $expected = ['create_event_draft', 'update_event_draft', 'create_target_group', 'create_location', 'create_property', 'create_feature', 'create_event_template', 'update_event_template', 'delete_event_template', 'create_feed', 'list_clubs', 'list_calendars', 'list_events', 'get_event', 'list_target_groups', 'list_properties', 'list_features', 'list_locations', 'list_event_templates', 'get_event_template', 'list_feeds', 'get_feed', 'list_resources', 'list_resource_events'];
+        $expected = ['create_event_draft', 'update_event_draft', 'create_target_group', 'create_location', 'create_property', 'create_feature', 'create_event_template', 'update_event_template', 'delete_event_template', 'create_feed', 'list_clubs', 'list_calendars', 'list_events', 'get_event', 'list_target_groups', 'list_properties', 'list_features', 'list_locations', 'list_event_templates', 'get_event_template', 'list_feeds', 'get_feed', 'list_resources', 'list_resource_events', 'check_event_conflicts'];
         sort($names);
         sort($expected);
         $this->assertSame($expected, $names);
@@ -184,6 +184,48 @@ class McpReadToolsTest extends WebTestCase
         $this->assertSame(2, $this->ok($this->editor, 'list_resource_events', $args)['total']);
         $this->assertError($this->call($this->viewer, 'list_resource_events', ['resourceId' => '00000000-0000-7000-8000-000000000000'] + $args), 'not found');
         $this->assertError($this->call($this->outsider, 'list_resource_events', $args), 'Club not found.');
+    }
+
+    public function testCheckEventConflicts(): void
+    {
+        $loc = TestHelper::createLocation($this->em, $this->club, 'Halle');
+        $other = TestHelper::createLocation($this->em, $this->club, 'Wiese');
+        $res = (new \App\Entity\Resource())->setClub($this->club)->setName('Grosse Halle')->setLocation($loc)->setBufferMinutes(30);
+        $this->em->persist($res);
+        $this->em->flush();
+        $ev = TestHelper::createEvent($this->em, $this->calendar, ['name' => 'Training', 'isDraft' => false]);
+        $ev->setLocation($loc);
+        $this->em->flush();
+        $cal = $this->calendar->getId();
+        $before = $this->em->getRepository(\App\Entity\Event::class)->count([]);
+        $args = ['calendarId' => $cal, 'locationId' => $loc->getId(), 'date' => '2026-07-01', 'timeBegin' => '19:00', 'timeEnd' => '21:00'];
+
+        $r = $this->ok($this->editor, 'check_event_conflicts', $args);
+        $this->assertTrue($r['blocking']);
+        $this->assertSame('error', $r['conflicts'][0]['severity']);
+        $this->assertSame('Training', $r['conflicts'][0]['eventName']);
+        $this->assertArrayHasKey('eventId', $r['conflicts'][0]);
+
+        $draft = $this->ok($this->editor, 'check_event_conflicts', $args + ['isDraft' => true]);
+        $this->assertFalse($draft['blocking']);
+
+        $free = $this->ok($this->editor, 'check_event_conflicts', ['date' => '2026-07-02'] + $args);
+        $this->assertSame(['conflicts' => [], 'blocking' => false], $free);
+
+        $buffer = $this->ok($this->editor, 'check_event_conflicts', ['timeBegin' => '20:10', 'timeEnd' => '21:00'] + $args);
+        $this->assertFalse($buffer['blocking']);
+        $this->assertSame('warning', $buffer['conflicts'][0]['severity']);
+
+        $this->assertSame(['conflicts' => [], 'blocking' => false], $this->ok($this->editor, 'check_event_conflicts', ['locationId' => $other->getId()] + $args));
+        $this->assertSame([], $this->ok($this->editor, 'check_event_conflicts', ['eventId' => $ev->getId()] + $args)['conflicts']);
+
+        $this->assertError($this->call($this->viewer, 'check_event_conflicts', $args), 'Forbidden');
+        $this->assertError($this->call($this->outsider, 'check_event_conflicts', $args), 'Calendar not found.');
+
+        $this->calendar->setArchivedAt(new \DateTimeImmutable());
+        $this->em->flush();
+        $this->assertTrue($this->ok($this->editor, 'check_event_conflicts', $args)['blocking']);
+        $this->assertSame($before, $this->em->getRepository(\App\Entity\Event::class)->count([]));
     }
 
     public function testNonMemberAndUnknownIdsLookTheSame(): void

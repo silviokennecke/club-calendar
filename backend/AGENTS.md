@@ -36,7 +36,7 @@ the router, so a new or changed route needs a matching operation there).
 | Legal | `/api/legal` | `LegalController` | `LegalDocumentService`, `LegalConsentService`, `LegalPresenter` (see `../CLAUDE.md` "Legal documents and consent") |
 | MCP grants | `/api/auth/mcp-grants` | `McpGrantController` | `OAuth\OAuthServerService` |
 | OAuth server | `/api/oauth/{authorize,authorization-request,authorize/decision,register,token,revoke}`, `/.well-known/oauth-*` | `OAuth\OAuthAuthorizeController`, `OAuthTokenController`, `OAuthRegistrationController`, `OAuthMetadataController` | `OAuth\OAuthServerService`, `OAuthConsentService`, `RedirectUriPolicy` |
-| MCP server | `/api/mcp` (bundle route, firewall `mcp`) | — | tools in `Mcp\Tool\` (read-only resource tools `ListResourcesTool`, `ListResourceEventsTool`), `Mcp\McpContext`, `Mcp\Security\McpAuthenticator` (see `../CLAUDE.md` "MCP server and OAuth") |
+| MCP server | `/api/mcp` (bundle route, firewall `mcp`) | — | tools in `Mcp\Tool\` (read-only resource tools `ListResourcesTool`, `ListResourceEventsTool`, `CheckEventConflictsTool`), `Mcp\McpContext`, `Mcp\Security\McpAuthenticator` (see `../CLAUDE.md` "MCP server and OAuth") |
 | Health | `/api/health` | `HealthController` | — |
 
 ## Common Infrastructure

@@ -127,7 +127,7 @@ class McpWriteToolsTest extends WebTestCase
         $this->assertStringContainsString($contains, $r['text']);
     }
 
-    private const READ = ['list_clubs', 'list_calendars', 'list_events', 'get_event', 'list_target_groups', 'list_properties', 'list_features', 'list_locations', 'list_event_templates', 'get_event_template', 'list_feeds', 'get_feed', 'list_resources', 'list_resource_events'];
+    private const READ = ['list_clubs', 'list_calendars', 'list_events', 'get_event', 'list_target_groups', 'list_properties', 'list_features', 'list_locations', 'list_event_templates', 'get_event_template', 'list_feeds', 'get_feed', 'list_resources', 'list_resource_events', 'check_event_conflicts'];
     private const WRITE = ['create_event_draft', 'update_event_draft', 'create_target_group', 'create_location', 'create_property', 'create_feature', 'create_event_template', 'update_event_template', 'delete_event_template', 'create_feed'];
 
     /** @return array<string, array<string, mixed>> */
