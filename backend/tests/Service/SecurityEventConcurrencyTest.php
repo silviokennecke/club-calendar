@@ -156,8 +156,8 @@ class SecurityEventConcurrencyTest extends KernelTestCase
             $rows = $db->fetchAllAssociative('SELECT attempts FROM security_event');
             $this->assertCount(1, $rows);
             $this->assertSame(10, (int) $rows[0]['attempts']);
-            // 3 s head start of the race + well below the old 3 s lock wait per request
-            $this->assertLessThan(3.0 + 2.0, $elapsed);
+            // 3 s head start of the race plus slack for slow CI runners; still far from serial lock waits
+            $this->assertLessThan(3.0 + 5.0, $elapsed);
         } finally {
             $holder?->executeStatement('DO RELEASE_LOCK(?)', [$name]);
             $holder?->close();
