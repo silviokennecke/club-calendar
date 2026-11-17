@@ -27,6 +27,10 @@ With **Read and drafts** it can additionally, if you are at least an editor:
 - create, change and delete event templates,
 - as admin, create feeds, but only with visibility "Club-internal" or "Private".
 
+## With a calendar permission
+
+If you are a regular member with a [calendar permission](help:organize/calendar-permissions), the assistant can work only in that calendar: view events and templates, create and change drafts, and manage badges and extras. It can only view locations and audiences, and it cannot see feeds or resources. When an admin removes the permission, the assistant loses access immediately.
+
 ## What deliberately does not work
 
 - Publishing or deleting events

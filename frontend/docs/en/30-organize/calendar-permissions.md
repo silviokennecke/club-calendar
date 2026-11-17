@@ -35,6 +35,8 @@ In this calendar they may:
 - manage [badges](help:organize/properties) and [extras](help:organize/features)
 - only view [holidays](help:organize/holidays) and the calendar's settings
 
+A connected [AI assistant](help:ai-assistants/capabilities) is then limited to this calendar as well.
+
 They cannot create new locations or audiences: only the existing ones are offered. In an import, only known locations are possible. Everything else in the club, such as feeds, members and other calendars, stays closed to them.
 
 When someone leaves the club or is removed, their permissions end too.

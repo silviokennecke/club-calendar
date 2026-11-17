@@ -35,6 +35,8 @@ In diesem Kalender darf sie:
 - [Besonderheiten](help:organize/properties) und [Zusatzangebote](help:organize/features) pflegen
 - [Feiertage](help:organize/holidays) und die Einstellungen des Kalenders nur ansehen
 
+Auch ein verbundener [KI-Assistent](help:ai-assistants/capabilities) darf dann nur in diesem Kalender arbeiten.
+
 Neue Orte und Gruppen legt sie nicht an: Es stehen nur die vorhandenen zur Auswahl. Beim Import sind deshalb nur bekannte Orte möglich. Alles andere im Verein, etwa Feeds, Mitglieder und andere Kalender, bleibt ihr verschlossen.
 
 Verlässt jemand den Verein oder wird entfernt, erlöschen auch seine Berechtigungen.

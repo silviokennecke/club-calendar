@@ -27,6 +27,10 @@ Mit **Lesen und Entwürfe** kann er zusätzlich, wenn du mindestens Bearbeiter b
 - Terminvorlagen anlegen, ändern und löschen,
 - als Admin Feeds anlegen, aber nur mit Sichtbarkeit „Vereinsintern“ oder „Privat“.
 
+## Mit Kalender-Berechtigung
+
+Hast du als normales Mitglied eine [Kalender-Berechtigung](help:organize/calendar-permissions), kann der Assistent nur in diesem Kalender arbeiten: Termine und Vorlagen ansehen, Entwürfe anlegen und ändern, Besonderheiten und Zusatzangebote pflegen. Orte und Gruppen kann er nur ansehen, Feeds und Ressourcen sieht er nicht. Entfernt ein Admin die Berechtigung, endet der Zugriff des Assistenten sofort.
+
 ## Was bewusst nicht geht
 
 - Termine veröffentlichen oder löschen

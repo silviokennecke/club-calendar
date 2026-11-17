@@ -250,17 +250,8 @@ class McpReadToolsTest extends WebTestCase
     {
         $this->assertSame([], $this->ok($this->plainMember, 'list_clubs'));
         $this->assertError($this->call($this->plainMember, 'list_calendars', ['clubId' => $this->club->getId()]), 'Forbidden');
-        $this->assertError($this->call($this->plainMember, 'list_events', ['calendarId' => $this->calendar->getId()]), 'Forbidden');
+        $this->assertError($this->call($this->plainMember, 'list_events', ['calendarId' => $this->calendar->getId()]), 'Calendar not found.');
         $this->assertSame($this->club->getId(), $this->ok($this->viewer, 'list_clubs')[0]['id']);
-    }
-
-    public function testCalendarMemberRowDoesNotGrantMcpAccess(): void
-    {
-        $this->em->persist(new \App\Entity\CalendarMember($this->calendar, $this->plainMember, $this->admin));
-        $this->em->flush();
-
-        $this->assertSame([], $this->ok($this->plainMember, 'list_clubs'));
-        $this->assertError($this->call($this->plainMember, 'list_events', ['calendarId' => $this->calendar->getId()]), 'Forbidden');
     }
 
     public function testDraftsAreHiddenFromViewers(): void

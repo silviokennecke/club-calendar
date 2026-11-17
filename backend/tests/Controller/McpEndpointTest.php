@@ -249,6 +249,8 @@ class McpEndpointTest extends WebTestCase
         $resolved = $c->get(OAuthServerService::class)->resolveAccessToken($tokens['access_token']);
         $request->attributes->set(\App\Mcp\McpContext::ATTRIBUTE, $resolved);
         $c->get('request_stack')->push($request);
+        // The mcp firewall sets the security token in production; the voters decide from it (fail closed without)
+        $c->get('security.token_storage')->setToken(new \Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken($resolved->user, 'mcp', $resolved->user->getRoles()));
 
         $ctx->requireRole($calendar, ClubRole::EDITOR);
         $ctx->requireScope(\App\OAuth\McpScope::Write);

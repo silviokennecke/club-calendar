@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Club Calendar API
-  version: '1.7'
+  version: '1.8'
   summary: HTTP API of the Club Calendar backend (Symfony, `backend/`).
   description: |
     Hand-written reference of every route under `/api`. It is checked against the Symfony router by
@@ -247,7 +247,7 @@ info:
     responses carry `Cache-Control: no-store`.
 
     **Scopes:** `mcp:read` (read tools) and `mcp:write` (draft and create tools; implies read). The scope is only
-    the ceiling: every tool also checks the caller's **current** club role (viewer/editor/admin; a plain `member` is rejected by every tool and `list_clubs` leaves their clubs out).
+    the ceiling: every tool also checks the caller's **current** access on every call from the database (club role and calendar permissions, the same rules as the REST routes), never from the token. A plain `member` can use the tools marked "calendar" below, and only for calendars they hold a calendar permission for; for every other calendar they get the same "not found" as an outsider, and for club-scoped tools "forbidden". A calendar permission gives edit rights on that calendar whatever the club role (like the REST API); removing it, or leaving the club, ends the access of an already connected app immediately.
 
     **Grants** (connected apps) end by user action (`DELETE /api/auth/mcp-grants/{id}`), by revocation
     (`POST /api/oauth/revoke`), and whenever the user's session version changes (sign out everywhere, password
@@ -260,25 +260,25 @@ info:
     **MCP tools** (`tools/list` returns exactly these 25; all descriptions state that returned texts are untrusted
     data):
 
-    | Tool | Scope | Role | Notes |
+    | Tool | Scope | Role (calendar permission) | Notes |
     | --- | --- | --- | --- |
-    | `list_clubs` | read | viewer | clubs with the caller's role |
-    | `list_calendars` | read | viewer | |
-    | `list_events` | read | viewer | `from`/`to`/`q`/`limit`/`offset` with the caps of `GET …/events`; drafts only for editors |
-    | `get_event` | read | viewer | drafts only for editors |
-    | `list_target_groups`, `list_locations` | read | viewer | club-scoped |
-    | `list_properties`, `list_features` | read | viewer | calendar-scoped |
-    | `list_event_templates`, `get_event_template` | read | viewer | |
-    | `list_resources` | read | viewer | resources (Ressourcen) of a club with booking rules |
-    | `list_resource_events` | read | viewer | `from`/`to` required, `limit`/`offset`; events at the resource's location over all calendars; drafts only for editors |
-    | `check_event_conflicts` | read | editor | resource conflicts of a planned event (`locationId`, `date`, optional `dateEnd`/times/`isAllDay`/`isDraft` (default false)/`timezone`/`eventId`); never writes; `{conflicts, blocking}`; archived calendars allowed |
-    | `list_feeds`, `get_feed` | read | editor | include the shared secret |
-    | `create_event_draft` | write | editor | always a draft; calendar not archived; no series |
-    | `update_event_draft` | write | editor | only events that are still drafts (else `event_not_draft`); stays a draft; only this event |
-    | `create_target_group`, `create_location` | write | editor | club-scoped |
-    | `create_property`, `create_feature` | write | editor | calendar-scoped, calendar not archived |
-    | `create_event_template`, `update_event_template`, `delete_event_template` | write | editor | calendar not archived |
-    | `create_feed` | write | admin | visibility `CLUB` (default) or `PRIVATE`; `PUBLIC` is refused |
+    | `list_clubs` | read | viewer; member with a permission | clubs with the caller's role; a plain member sees the club only with the calendars they hold a permission for (`calendars`) |
+    | `list_calendars` | read | viewer; member with a permission | a plain member sees only their calendars |
+    | `list_events` | read | viewer; calendar | `from`/`to`/`q`/`limit`/`offset` with the caps of `GET …/events`; drafts only for editors and calendar permission holders |
+    | `get_event` | read | viewer; calendar | drafts only for editors and calendar permission holders |
+    | `list_target_groups`, `list_locations` | read | viewer; member with a permission | club-scoped, read only |
+    | `list_properties`, `list_features` | read | viewer; calendar | calendar-scoped |
+    | `list_event_templates`, `get_event_template` | read | viewer; calendar | |
+    | `list_resources` | read | viewer (no permission access) | resources (Ressourcen) of a club with booking rules |
+    | `list_resource_events` | read | viewer (no permission access) | `from`/`to` required, `limit`/`offset`; events at the resource's location over all calendars; drafts only for editors |
+    | `check_event_conflicts` | read | editor; calendar | without a staff (viewer+) club role the conflicts carry no event id or title; resource conflicts of a planned event (`locationId`, `date`, optional `dateEnd`/times/`isAllDay`/`isDraft` (default false)/`timezone`/`eventId`); never writes; `{conflicts, blocking}`; archived calendars allowed |
+    | `list_feeds`, `get_feed` | read | editor (no permission access) | include the shared secret |
+    | `create_event_draft` | write | editor; calendar | always a draft; calendar not archived; no series |
+    | `update_event_draft` | write | editor; calendar | only events that are still drafts (else `event_not_draft`); stays a draft; only this event |
+    | `create_target_group`, `create_location` | write | editor (no permission access) | club-scoped |
+    | `create_property`, `create_feature` | write | editor; calendar | calendar-scoped, calendar not archived |
+    | `create_event_template`, `update_event_template`, `delete_event_template` | write | editor; calendar | calendar not archived |
+    | `create_feed` | write | admin (no permission access) | visibility `CLUB` (default) or `PRIVATE`; `PUBLIC` is refused |
 
     **Deliberately not available:** deleting or publishing events, series, import, bulk actions, updating or
     deleting target groups, properties, features and locations, updating or deleting feeds, public feeds, and
@@ -662,7 +662,7 @@ paths:
         (`missing_token` / `invalid_token`). After authentication: `429 rate_limited` (per client IP and per grant),
         `403 consent_required` (current legal documents), `403 email_not_verified`. `Origin` / `Host` must be one
         of the trusted hosts (`403` from the MCP transport otherwise). Tools check the scope and the caller's current
-        club role on every call.
+        access (club role and calendar permissions) on every call.
       operationId: mcpEndpoint
       security: []
       requestBody:
@@ -4860,7 +4860,7 @@ paths:
         Club admins only. Calendar permissions let a club member (typically role `member`) read and edit events,
         series, templates, badges (properties) and extras (features) of THIS calendar, plus read club locations and
         audiences. Holiday calendars and calendar settings stay read-only for them; managing permissions, feeds and
-        club settings is closed to them (403). MCP access is not affected (role `member` is rejected there).
+        club settings is closed to them (403). The MCP tools honour the permission too (see "MCP server and OAuth"), for this calendar only.
       operationId: listCalendarMembers
       responses:
         '200':

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tool;
 
-use App\Enum\ClubRole;
 use App\Mcp\McpContext;
 use App\OAuth\McpScope;
 use App\Service\TargetGroupService;
@@ -30,7 +29,7 @@ final class ListTargetGroupsTool
         #[Schema(description: 'UUID of the club (from list_clubs).')] string $clubId,
     ): array {
         $this->context->requireScope(McpScope::Read);
-        $club = $this->context->club($clubId, ClubRole::VIEWER);
+        $club = $this->context->clubForCalendarAccess($clubId);
 
         return $this->context->run(fn () => $this->groups->list($club));
     }

@@ -124,7 +124,7 @@ A club member with a `CalendarMember` row (managed by club admins; row removed o
 | Locations, target groups: writes; resources writes; feeds; club members; invitations; club settings | `CLUB_EDITOR` / `CLUB_ADMIN` | denied |
 | `/api/calendars/{id}/members` | `CALENDAR_ADMIN` | denied (admins only) |
 | Own-data allow-list (`my-subscription`, `my-feeds`, `my-events`, `GET resources[/{id}/events]`, `GET /clubs/{id}`, leaving) | `CLUB_ANY_MEMBER` | unchanged (all members) |
-| MCP tools | `McpContext::requireRole` (club role) | no access (a row grants nothing there) |
+| MCP tools | `McpContext` (delegates to the voters above, decided per call) | calendar tools on THEIR calendars only (events, drafts, templates, badges, extras, `check_event_conflicts`), read-only `list_calendars`/`list_clubs`/`list_locations`/`list_target_groups`; denied: `create_location`, `create_target_group`, feed tools, `list_resources`, `list_resource_events`; no row = "Calendar not found." like an outsider; see `../CLAUDE.md` "MCP server and OAuth" |
 
 `ClubService::listClubs/getClub` add `calendars` (id, name, timezone, archivedAt of the permitted calendars, possibly empty) for role `member` only. `ResourceConflictService::isStaff` decides from the real club role (not the voter) whether conflict details carry event id and title; the publish error `resource_conflict` follows the same rule.
 
