@@ -1147,7 +1147,11 @@
       },
       "shownOf": "Showing {{shown}} of {{count}} events",
       "showMore_one": "Show 1 more event",
-      "showMore_other": "Show {{count}} more events"
+      "showMore_other": "Show {{count}} more events",
+      "newPlacesForbidden": {
+        "title": "New places cannot be created here",
+        "text": "Your permission covers this calendar only. Choose existing places for these events, or ask a club editor to add the places first."
+      }
     },
     "dialog": {
       "groupTitle": "Edit group: {{name}}",
@@ -1721,6 +1725,30 @@
         "unknownLocation": "This location no longer exists. Choose another one."
       },
       "calendar": "Calendar"
+    },
+    "permissions": {
+      "title": "Calendar permissions",
+      "description": "Members with this permission may edit events, series, templates, badges and extras in this calendar. Holiday calendars and settings they can only view.",
+      "addLabel": "Add a club member",
+      "addPlaceholder": "Search by name or e-mail",
+      "add": "Add",
+      "added": "{{name}} can now edit this calendar.",
+      "unknownMember": "This person is not a member of the club (any more).",
+      "addFailed": "The permission could not be added. Please try again.",
+      "removed": "{{name}} can no longer edit this calendar.",
+      "removeFailed": "The permission could not be removed. Please try again.",
+      "loadError": "The permissions could not be loaded.",
+      "listTitle": "People with permission",
+      "emptyTitle": "No one yet",
+      "emptyText": "Club admins and editors can always edit this calendar. Add club members here to give them access to this calendar only.",
+      "caption": "{{count}} people with a calendar permission",
+      "remove": "Remove",
+      "removeLabel": "Remove permission of {{name}}",
+      "removeTitle": "Remove permission of {{name}}?",
+      "removeText": "{{name}} stays in the club but can no longer open or edit this calendar.",
+      "removeConfirm": "Remove permission",
+      "adminOnlyTitle": "Club admins only",
+      "adminOnlyText": "Only club admins can manage who may edit this calendar."
     }
   },
   "ui": {
@@ -1900,7 +1928,8 @@
       "locations": "Locations",
       "holidays": "Holidays",
       "clubLabel": "Club settings",
-      "resources": "Resources"
+      "resources": "Resources",
+      "permissions": "Permissions"
     },
     "unavailable": "Not available",
     "toClubPicker": "Go to club selection",

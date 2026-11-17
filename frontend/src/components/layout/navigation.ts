@@ -45,6 +45,19 @@ export function calendarBase(clubId: string, calendarId: string) {
 }
 
 /** Sidebar navigation mapped onto the existing routes. */
+/**
+ * Calendar the navigation and the switchers point at: the one of the URL, else (plain member on
+ * "Mein Verein") their first permitted calendar, else none.
+ */
+export function shellCalendarId(data: {
+  role?: ClubRole;
+  calendarId: string | null;
+  calendars: { id: string; archivedAt?: string | null }[];
+}): string | null {
+  if (data.calendarId || !isPlainMember(data.role)) return data.calendarId;
+  return (data.calendars.find((c) => !c.archivedAt) ?? data.calendars[0])?.id ?? null;
+}
+
 export function buildNavGroups(
   clubId: string,
   calendarId: string | null,
@@ -57,7 +70,7 @@ export function buildNavGroups(
     href: myClubPath(clubId),
     icon: "user",
   };
-  if (isPlainMember(role) || !calendarId) {
+  if (!calendarId) {
     return [{ titleKey: "shell.groups.club", items: [myClub] }];
   }
   const base = calendarBase(clubId, calendarId);
@@ -103,14 +116,25 @@ export function buildNavGroups(
       ],
     },
   ];
-  const hidden: NavKey[] = canEdit ? [] : ["feeds"];
-  return groups.map((g) => ({ ...g, items: g.items.filter((i) => !hidden.includes(i.key)) }));
+  // A member with a calendar permission: the calendar's own pages and Mein Verein, nothing club-wide.
+  const hidden: NavKey[] = isPlainMember(role)
+    ? ["feeds", "clubSettings", "club"]
+    : canEdit
+      ? []
+      : ["feeds"];
+  return groups
+    .map((g) => ({ ...g, items: g.items.filter((i) => !hidden.includes(i.key)) }))
+    .filter((g) => g.items.length > 0);
 }
 
 export function buildTabs(clubId: string, calendarId: string | null, role?: ClubRole): TabItem[] {
-  if (isPlainMember(role) || !calendarId) {
-    return [{ key: "me", labelKey: "shell.nav.myClub", href: myClubPath(clubId), icon: "user" }];
-  }
+  const myClub: TabItem = {
+    key: "me",
+    labelKey: "shell.nav.myClub",
+    href: myClubPath(clubId),
+    icon: "user",
+  };
+  if (!calendarId) return [myClub];
   const base = calendarBase(clubId, calendarId);
   const tabs: TabItem[] = [
     { key: "calendar", labelKey: "shell.tabs.calendar", href: base, icon: "calendar" },
@@ -123,6 +147,9 @@ export function buildTabs(clubId: string, calendarId: string | null, role?: Club
     },
     { key: "more", labelKey: "shell.tabs.more", href: `${base}/more`, icon: "menu" },
   ];
+  if (isPlainMember(role)) {
+    return [...tabs.filter((tab) => tab.key !== "feeds" && tab.key !== "more"), myClub, tabs[3]];
+  }
   // Feeds are not readable for viewers.
   return roleAtLeast(role, "editor") ? tabs : tabs.filter((tab) => tab.key !== "feeds");
 }
@@ -179,14 +206,22 @@ export interface SettingsTab {
 }
 
 /** Calendar settings sub-pages (design: SettingsTabs.dc.html). */
-export function buildSettingsTabs(clubId: string, calendarId: string): SettingsTab[] {
+export function buildSettingsTabs(
+  clubId: string,
+  calendarId: string,
+  /** Club admins get the "Berechtigungen" tab. */
+  isAdmin = false,
+): SettingsTab[] {
   const base = `${calendarBase(clubId, calendarId)}/settings`;
-  return [
+  const tabs: SettingsTab[] = [
     { labelKey: "shell.settingsTabs.general", href: base },
     { labelKey: "shell.settingsTabs.properties", href: `${base}/properties` },
     { labelKey: "shell.settingsTabs.features", href: `${base}/features` },
     { labelKey: "shell.settingsTabs.holidays", href: `${base}/holiday-calendars` },
   ];
+  if (isAdmin)
+    tabs.push({ labelKey: "shell.settingsTabs.permissions", href: `${base}/permissions` });
+  return tabs;
 }
 
 /** Club settings sub-pages: locations and target groups (feeds have their own page). */

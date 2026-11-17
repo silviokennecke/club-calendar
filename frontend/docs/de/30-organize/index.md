@@ -18,19 +18,20 @@ Orte, Besonderheiten, Zusatzangebote, Gruppen und Vorlagen legst du einmal an un
 
 ## Alle Seiten dieser Sektion
 
-| Seite                                      | Wofür                                  |
-| ------------------------------------------ | -------------------------------------- |
-| [Vorlagen](help:organize/templates)        | Vorgaben für Zeit, Ort und mehr        |
-| [Orte](help:organize/locations)            | Treffpunkte mit Adresse und Karte      |
-| [Ressourcen](help:organize/resources)      | Orte, die nur einmal nutzbar sind      |
-| [Besonderheiten](help:organize/properties) | Mit Symbol (Emoji)                     |
-| [Zusatzangebote](help:organize/features)   | Optionale Extras an einem Termin       |
-| [Gruppen](help:organize/target-groups)     | Für wen ein Termin gedacht ist         |
-| [Terminreihen](help:organize/series)       | Regelmäßig wiederkehrende Termine      |
-| [Feiertage](help:organize/holidays)        | Feiertagskalender einbinden            |
-| [Sammelaktionen](help:organize/bulk)       | Mehrere Termine auf einmal ändern      |
-| [Import](help:organize/import)             | Termine aus einer ICS-Datei übernehmen |
-| [Export](help:organize/export)             | Termine als ICS-Datei herunterladen    |
+| Seite                                                         | Wofür                                       |
+| ------------------------------------------------------------- | ------------------------------------------- |
+| [Vorlagen](help:organize/templates)                           | Vorgaben für Zeit, Ort und mehr             |
+| [Orte](help:organize/locations)                               | Treffpunkte mit Adresse und Karte           |
+| [Ressourcen](help:organize/resources)                         | Orte, die nur einmal nutzbar sind           |
+| [Kalender-Berechtigungen](help:organize/calendar-permissions) | Mitglieder dürfen einen Kalender bearbeiten |
+| [Besonderheiten](help:organize/properties)                    | Mit Symbol (Emoji)                          |
+| [Zusatzangebote](help:organize/features)                      | Optionale Extras an einem Termin            |
+| [Gruppen](help:organize/target-groups)                        | Für wen ein Termin gedacht ist              |
+| [Terminreihen](help:organize/series)                          | Regelmäßig wiederkehrende Termine           |
+| [Feiertage](help:organize/holidays)                           | Feiertagskalender einbinden                 |
+| [Sammelaktionen](help:organize/bulk)                          | Mehrere Termine auf einmal ändern           |
+| [Import](help:organize/import)                                | Termine aus einer ICS-Datei übernehmen      |
+| [Export](help:organize/export)                                | Termine als ICS-Datei herunterladen         |
 
 :::note
 Orte und Gruppen gehören zum ganzen Verein, Besonderheiten, Zusatzangebote und Vorlagen zu einem einzelnen Kalender.

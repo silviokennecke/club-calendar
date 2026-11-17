@@ -19,10 +19,21 @@ function TabLinks({ tabs, label }: { tabs: SettingsTab[]; label: string }) {
 }
 
 /** Tabs for the calendar settings sub-pages (design: SettingsTabs.dc.html). */
-export function SettingsTabs({ clubId, calendarId }: { clubId: string; calendarId: string }) {
+export function SettingsTabs({
+  clubId,
+  calendarId,
+  isAdmin,
+}: {
+  clubId: string;
+  calendarId: string;
+  isAdmin?: boolean;
+}) {
   const { t } = useTranslation();
   return (
-    <TabLinks tabs={buildSettingsTabs(clubId, calendarId)} label={t("shell.settingsTabs.label")} />
+    <TabLinks
+      tabs={buildSettingsTabs(clubId, calendarId, isAdmin)}
+      label={t("shell.settingsTabs.label")}
+    />
   );
 }
 

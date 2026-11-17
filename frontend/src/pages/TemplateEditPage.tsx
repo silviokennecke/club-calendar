@@ -382,6 +382,7 @@ function TemplateEditor({ template }: { template?: EventTemplate }) {
               value={values}
               onChange={(field, ids) => set(field, ids)}
               readOnly={readOnly}
+              canCreateTargetGroups={page.roleCanManageClub}
               targetGroupsHint={t("templates.form.audiencesHint")}
             />
           </fieldset>

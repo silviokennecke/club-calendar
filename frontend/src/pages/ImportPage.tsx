@@ -259,6 +259,7 @@ function Import() {
               timeZone={page.timeZone}
               importing={importing}
               blocked={resources.loading || resources.failed}
+              canCreateClubData={page.roleCanManageClub}
               onBack={back}
               onImport={runImport}
             />

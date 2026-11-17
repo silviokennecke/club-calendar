@@ -5,12 +5,13 @@ import { useTranslation } from "react-i18next";
 import { apiGet } from "@/lib/api";
 import { pickCalendar } from "@/lib/pickCalendar";
 import { useAuth } from "@/lib/auth-context";
-import { isPlainMember } from "@/lib/club/permissions";
+import { isPlainMember, memberCalendars } from "@/lib/club/permissions";
 import { memberMayOpen, myClubPath } from "@/lib/club/myClub";
 import type { Calendar, Club } from "@/lib/types";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { Tabbar } from "./Tabbar";
+import { shellCalendarId } from "./navigation";
 import type { ShellData } from "./shellTypes";
 import { FullPageLoader } from "@/components/ui/shared";
 
@@ -48,7 +49,7 @@ export function AppShell({
   const clubs = useMemo(() => clubsData ?? [], [clubsData]);
   const { pathname } = useLocation();
   const role = clubs.find((c) => c.id === clubId)?.role;
-  // A plain member has no access to calendars and settings: nothing of that is requested or shown.
+  // A plain member has no access to the club-wide calendar list and settings: it is not requested (their calendars come with the club).
   const isMember = isPlainMember(role);
   const {
     data: calendarsData,
@@ -62,7 +63,23 @@ export function AppShell({
     enabled: !clubsLoading && !isMember,
   });
 
-  const calendars = useMemo(() => calendarsData ?? [], [calendarsData]);
+  // A plain member's calendars come with the club list (only those they hold a permission for).
+  const club = clubs.find((c) => c.id === clubId);
+  const permitted = useMemo(
+    () =>
+      memberCalendars(club).map((c): Calendar => ({
+        id: c.id,
+        clubId,
+        name: c.name,
+        timezone: c.timezone,
+        archivedAt: c.archivedAt,
+      })),
+    [club, clubId],
+  );
+  const calendars = useMemo(
+    () => (isMember ? permitted : (calendarsData ?? [])),
+    [isMember, permitted, calendarsData],
+  );
   const calendarsPending = !isMember && (clubsLoading || calendarsLoading);
   // A club that is not in the user's list (foreign / deleted) or whose calendars cannot be loaded.
   const contextState: ShellData["contextState"] =
@@ -73,7 +90,9 @@ export function AppShell({
         : "ready";
 
   const calendarId = isMember
-    ? null
+    ? permitted.some((c) => c.id === requestedCalendarId)
+      ? requestedCalendarId
+      : null
     : requestedCalendarId &&
         (calendarsPending || calendars.some((c) => c.id === requestedCalendarId))
       ? requestedCalendarId
@@ -148,8 +167,9 @@ export function AppShell({
     [clubs, calendars, clubId, calendarId, contextState, role, user, onSelectClub, logout],
   );
 
-  // A plain member only gets Mein Verein and the profile; everything else goes back to Mein Verein.
-  const redirectMember = isMember && !memberMayOpen(pathname, clubId);
+  // A plain member only gets Mein Verein, the profile and their permitted calendars; everything else goes back to Mein Verein.
+  const permittedIds = permitted.map((c) => c.id);
+  const redirectMember = isMember && !memberMayOpen(pathname, clubId, permittedIds);
   // The role is unknown until the club list is loaded: do not start pages that would get a 403.
   const roleUnknown = clubsLoading && !memberMayOpen(pathname, clubId);
 
@@ -176,7 +196,9 @@ export function AppShell({
           </Fragment>
         </Suspense>
       </main>
-      {(calendarId || isMember) && <Tabbar clubId={clubId} calendarId={calendarId} role={role} />}
+      {(calendarId || isMember) && (
+        <Tabbar clubId={clubId} calendarId={shellCalendarId(data)} role={role} />
+      )}
     </div>
   );
 }

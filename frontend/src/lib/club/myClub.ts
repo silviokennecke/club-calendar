@@ -25,9 +25,35 @@ function isMyEventPath(path: string, clubId: string): boolean {
   );
 }
 
-/** Pages a plain member may open inside the shell: Mein Verein and the own profile. */
-export function memberMayOpen(pathname: string, clubId: string): boolean {
+// Calendar settings a member may read; the club-wide legacy addresses and the permission tab stay closed.
+const MEMBER_SETTINGS = new Set(["properties", "features", "holiday-calendars"]);
+
+/** A calendar route of a calendar the member holds a permission for (one of `calendarIds`). */
+function isMemberCalendarPath(
+  path: string,
+  clubId: string,
+  calendarIds: readonly string[],
+): boolean {
+  const prefix = `/clubs/${clubId}/calendars/`;
+  if (!path.startsWith(prefix)) return false;
+  const [id, ...rest] = path.slice(prefix.length).split("/");
+  if (!id || !calendarIds.includes(id)) return false;
+  if (rest[0] === "settings" && rest.length > 1)
+    return rest.length === 2 && MEMBER_SETTINGS.has(rest[1]);
+  return true;
+}
+
+/**
+ * Pages a plain member may open inside the shell: Mein Verein, the own profile and the calendar pages of
+ * the calendars they hold a permission for (`calendarIds`).
+ */
+export function memberMayOpen(
+  pathname: string,
+  clubId: string,
+  calendarIds: readonly string[] = [],
+): boolean {
   const path = pathname.replace(/\/+$/, "") || "/";
+  if (isMemberCalendarPath(path, clubId, calendarIds)) return true;
   // The event dialog above Mein Verein has its own address (/clubs/:id/me/events/:eventId).
   return (
     path === "/profile" ||

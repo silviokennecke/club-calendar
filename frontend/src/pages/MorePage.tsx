@@ -2,7 +2,8 @@ import { Link, useOutletContext } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth-context";
 import { Icon, LangSwitch, type Glyph } from "@/components/ui/shared";
-import { calendarBase } from "@/components/layout/navigation";
+import { calendarBase, shellCalendarId } from "@/components/layout/navigation";
+import { isPlainMember } from "@/lib/club/permissions";
 import { clubSettingsRoutes } from "@/components/settings/clubSettingsRoutes";
 import { myClubPath } from "@/lib/club/myClub";
 import type { ShellData } from "@/components/layout/shellTypes";
@@ -23,10 +24,12 @@ export default function MorePage() {
   const { updateUser } = useAuth();
   const data = useOutletContext<ShellData>();
   const club = data.clubs.find((c) => c.id === data.clubId);
-  const calendar = data.calendars.find((c) => c.id === data.calendarId);
+  const navCalendarId = shellCalendarId(data);
+  const calendar = data.calendars.find((c) => c.id === navCalendarId);
   const fallback =
     data.contextState === "unavailable" ? t("shell.unavailable") : t("common.loading");
-  const base = data.calendarId ? calendarBase(data.clubId, data.calendarId) : null;
+  const base = navCalendarId ? calendarBase(data.clubId, navCalendarId) : null;
+  const member = isPlainMember(club?.role);
 
   const rows: Row[] = [
     ...(base
@@ -36,12 +39,16 @@ export default function MorePage() {
         ]
       : []),
     { labelKey: "shell.nav.myClub", href: myClubPath(data.clubId), icon: "user" },
-    { labelKey: "shell.nav.club", href: `/clubs/${data.clubId}`, icon: "building" },
-    {
-      labelKey: "shell.nav.clubSettings",
-      href: clubSettingsRoutes(data.clubId).locations,
-      icon: "map-pin",
-    },
+    ...(member
+      ? []
+      : [
+          { labelKey: "shell.nav.club", href: `/clubs/${data.clubId}`, icon: "building" as const },
+          {
+            labelKey: "shell.nav.clubSettings",
+            href: clubSettingsRoutes(data.clubId).locations,
+            icon: "map-pin" as const,
+          },
+        ]),
     { labelKey: "shell.more.allClubs", href: "/clubs?select=1", icon: "list" },
     { labelKey: "shell.profile", href: "/profile", icon: "user" },
   ];

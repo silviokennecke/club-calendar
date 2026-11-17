@@ -211,12 +211,14 @@ function GeneralForm({ calendar }: { calendar: Calendar }) {
         )}
       </form>
 
-      <p className="t-body t-muted">
-        <Trans
-          i18nKey="settings.general.manageHint"
-          components={{ clubLink: <Link className="ap-link" to={`/clubs/${clubId}`} /> }}
-        />
-      </p>
+      {page.isAdmin && (
+        <p className="t-body t-muted">
+          <Trans
+            i18nKey="settings.general.manageHint"
+            components={{ clubLink: <Link className="ap-link" to={`/clubs/${clubId}`} /> }}
+          />
+        </p>
+      )}
       <UnsavedChangesDialog {...guard.dialog} />
     </>
   );

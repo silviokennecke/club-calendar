@@ -7,6 +7,7 @@ import {
   commonIds,
   commonStatus,
   groupItems,
+  newPlaceNames,
   patchItems,
   replacedZones,
   selectionState,
@@ -46,6 +47,8 @@ interface ImportReviewProps {
   importing: boolean;
   /** The import cannot start yet (reference data still loading or failed). */
   blocked: boolean;
+  /** False for calendar members: new places and audiences are club data they cannot create. Default true. */
+  canCreateClubData?: boolean;
   onBack: () => void;
   onImport: () => void;
 }
@@ -68,6 +71,7 @@ export function ImportReview({
   timeZone,
   importing,
   blocked,
+  canCreateClubData = true,
   onBack,
   onImport,
 }: ImportReviewProps) {
@@ -87,6 +91,7 @@ export function ImportReview({
   const selectedInvalid = items.filter((i) => i.selected && invalid.has(i.id)).length;
   const zones = replacedZones(check?.warnings ?? []);
   const tooMany = selected.length > IMPORT_MAX;
+  const needsNewPlaces = !canCreateClubData && newPlaceNames(selected, locations).length > 0;
   const recurring = items.filter((i) => i.recurring).length;
   const unsupported = items.filter((i) => i.recurrenceUnsupported).length;
   const fmt = (n: number) => n.toLocaleString(i18n.language);
@@ -134,7 +139,9 @@ export function ImportReview({
       <div className="ap-actions">
         {!isMobile && backButton}
         <Button
-          disabled={selected.length === 0 || blocked || tooMany || selectedInvalid > 0}
+          disabled={
+            selected.length === 0 || blocked || tooMany || selectedInvalid > 0 || needsNewPlaces
+          }
           loading={importing}
           loadingLabel={t("import.review.importing")}
           onClick={onImport}
@@ -151,6 +158,11 @@ export function ImportReview({
       {skippedCount > 0 && (
         <Banner tone="danger" title={t("import.review.skipped.title", { count: skippedCount })}>
           {t("import.review.skipped.text", { count: skippedCount })}
+        </Banner>
+      )}
+      {needsNewPlaces && (
+        <Banner tone="warning" title={t("import.review.newPlacesForbidden.title")}>
+          {t("import.review.newPlacesForbidden.text")}
         </Banner>
       )}
       {recurring > 0 && (
@@ -296,6 +308,7 @@ export function ImportReview({
               targetGroupIds: commonIds(selected, "targetGroupIds"),
             }}
             onChange={(field, ids) => bulkIds(field, ids)}
+            canCreateTargetGroups={canCreateClubData}
             targetGroupsHint={t("import.review.bulk.targetGroupsHint")}
           />
         </fieldset>
@@ -371,6 +384,7 @@ export function ImportReview({
           items={items}
           locations={locations}
           resources={resources}
+          canCreateClubData={canCreateClubData}
           onClose={() => setEditing(null)}
           onSubmit={(update) => {
             onItemsChange(update);

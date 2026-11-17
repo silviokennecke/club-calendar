@@ -15,6 +15,7 @@ import { SubscribeRedirect } from "./components/help/SubscribeRedirect";
 import {
   AuthCallbackPage,
   CalendarPage,
+  CalendarPermissionsPage,
   CalendarSettingsPage,
   ClubPage,
   ClubsPage,
@@ -137,6 +138,10 @@ function AppRoutes() {
             <Route
               path="/clubs/:clubId/calendars/:calendarId/settings/features"
               element={<FeaturesPage />}
+            />
+            <Route
+              path="/clubs/:clubId/calendars/:calendarId/settings/permissions"
+              element={<CalendarPermissionsPage />}
             />
             {/* Locations, target groups and feeds belong to the club: club settings without a calendar. */}
             <Route path="/clubs/:clubId/settings" element={<Navigate to="locations" replace />} />

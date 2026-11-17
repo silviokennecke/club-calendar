@@ -19,6 +19,8 @@ interface LocationSectionProps {
   onChange: (locationId: string) => void;
   onCreate: (payload: object) => Promise<Location>;
   readOnly?: boolean;
+  /** Places are club data: false offers existing places only (calendar members). Default true. */
+  canCreate?: boolean;
 }
 
 /**
@@ -32,6 +34,7 @@ export function LocationSection({
   onChange,
   onCreate,
   readOnly,
+  canCreate = true,
 }: LocationSectionProps) {
   const { t } = useTranslation();
   const selected = locations.find((l) => l.id === value);
@@ -49,7 +52,9 @@ export function LocationSection({
     const hits = q
       ? rankByRelevance(locations, q, ["name", "street", "city"])
       : [...locations].sort((a, b) => locationName(a).localeCompare(locationName(b)));
-    return [...hits.slice(0, MAX_LOCATIONS), { id: CREATE_ID, create: true }];
+    return canCreate
+      ? [...hits.slice(0, MAX_LOCATIONS), { id: CREATE_ID, create: true }]
+      : hits.slice(0, MAX_LOCATIONS);
   }
 
   function created(location: Location) {

@@ -26,6 +26,10 @@ Ein **Mitglied** gehört nur zum Verein. Mitglieder sehen den Vereinskalender ni
 Ob du eher Betrachter bist, merkst du an einem Hinweis: „Deine Rolle in diesem Verein erlaubt nur das Ansehen.“ Betrachter sehen außerdem **Veröffentlichen** nicht, also auch keine Links privater Feeds.
 :::
 
+## Ein Mitglied für einen Kalender freischalten
+
+Admins können einem Mitglied erlauben, **einen bestimmten Kalender** zu bearbeiten, ohne die Rolle zu ändern: Termine, Serien, Vorlagen, Besonderheiten und Zusatzangebote. Feiertage und Kalendereinstellungen darf das Mitglied dort nur ansehen. Siehe [Kalender-Berechtigungen](help:organize/calendar-permissions).
+
 ## Wie du eine andere Rolle bekommst
 
 Admins legen die Rolle schon bei der Einladung fest und können sie später unter **Verein verwalten** auf dem Tab **Mitglieder** ändern. Einen Verein ohne Admin gibt es nicht: Der letzte Admin kann seine Rolle erst abgeben, wenn ein anderes Mitglied Admin ist. Mehr dazu unter [Mitglieder](help:team/members).

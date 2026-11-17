@@ -42,6 +42,8 @@ interface ImportEditDialogProps {
   locations: Location[];
   resources: ReturnType<typeof useEventResources>;
   onClose: () => void;
+  /** False for calendar members: no new audiences from the dialog (club data). */
+  canCreateClubData?: boolean;
   /** Applies the change to the items. */
   onSubmit: (update: (items: ImportItem[]) => ImportItem[]) => void;
 }
@@ -81,6 +83,7 @@ export function ImportEditDialog({
   locations,
   resources,
   onClose,
+  canCreateClubData = true,
   onSubmit,
 }: ImportEditDialogProps) {
   const { t } = useTranslation();
@@ -318,6 +321,7 @@ export function ImportEditDialog({
           resources={resources}
           value={values}
           onChange={(field, ids) => set(field, ids)}
+          canCreateTargetGroups={canCreateClubData}
         />
       </FormDialog>
       <UnsavedChangesDialog {...unsaved.dialog} />

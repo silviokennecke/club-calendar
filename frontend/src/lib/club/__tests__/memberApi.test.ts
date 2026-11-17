@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPlainMember, isStaff, permissionsFor } from "../permissions";
+import { calendarPermissions, isPlainMember, isStaff, permissionsFor } from "../permissions";
 import { memberMayOpen, myClubPath, parseMyClubTab } from "../myClub";
 import { mySubscriptionAddresses } from "../memberApi";
 
@@ -34,6 +34,49 @@ describe("Mein Verein paths", () => {
     expect(memberMayOpen("/clubs/c1", "c1")).toBe(false);
     expect(memberMayOpen("/clubs/c1/calendars/k1", "c1")).toBe(false);
     expect(memberMayOpen("/clubs/c2/me", "c1")).toBe(false);
+  });
+});
+
+describe("calendar permissions", () => {
+  const member = {
+    role: "member" as const,
+    calendars: [{ id: "k1", name: "A", timezone: null, archivedAt: null }],
+  };
+
+  it("lets a member write only in the calendars they hold a permission for", () => {
+    expect(calendarPermissions(member, "k1")).toEqual({
+      canWrite: true,
+      canManageClubData: false,
+      isAdmin: false,
+    });
+    expect(calendarPermissions(member, "k2").canWrite).toBe(false);
+    expect(calendarPermissions({ role: "member" }, "k1").canWrite).toBe(false);
+  });
+
+  it("keeps the role rules for staff", () => {
+    expect(calendarPermissions({ role: "viewer" }, "k1").canWrite).toBe(false);
+    expect(calendarPermissions({ role: "editor" }, "k1")).toMatchObject({
+      canWrite: true,
+      canManageClubData: true,
+      isAdmin: false,
+    });
+    expect(calendarPermissions({ role: "admin" }, "k1").isAdmin).toBe(true);
+    expect(calendarPermissions(undefined, "k1").canWrite).toBe(false);
+  });
+
+  it("opens only the permitted calendars' pages and read-only settings to a member", () => {
+    const ids = ["k1"];
+    for (const rest of ["", "/events", "/events/e1", "/import", "/templates/new", "/more"])
+      expect(memberMayOpen(`/clubs/c1/calendars/k1${rest}`, "c1", ids)).toBe(true);
+    for (const rest of ["", "/properties", "/features", "/holiday-calendars"])
+      expect(memberMayOpen(`/clubs/c1/calendars/k1/settings${rest}`, "c1", ids)).toBe(true);
+    for (const rest of ["/permissions", "/locations", "/target-groups", "/feeds", "/feeds/new"])
+      expect(memberMayOpen(`/clubs/c1/calendars/k1/settings${rest}`, "c1", ids)).toBe(false);
+    expect(memberMayOpen("/clubs/c1/calendars/k2", "c1", ids)).toBe(false);
+    expect(memberMayOpen("/clubs/c2/calendars/k1", "c1", ids)).toBe(false);
+    expect(memberMayOpen("/clubs/c1/settings/locations", "c1", ids)).toBe(false);
+    expect(memberMayOpen("/clubs/c1/settings/resources", "c1", ids)).toBe(false);
+    expect(memberMayOpen("/clubs/c1", "c1", ids)).toBe(false);
   });
 });
 

@@ -45,6 +45,25 @@ export interface Club {
   feedCount?: number;
   /** Self-join through feeds (staff responses only). */
   feedSignup?: FeedSignup;
+  /** Role `member` only: the calendars they hold a permission for (possibly empty). */
+  calendars?: MemberCalendar[];
+}
+
+/** Calendar of a plain member's permission list (`calendars` of the club payload). */
+export interface MemberCalendar {
+  id: string;
+  name: string;
+  timezone: string | null;
+  archivedAt: string | null;
+}
+
+/** A club member with a permission for one calendar (`GET /api/calendars/:id/members`). */
+export interface CalendarMember {
+  userId: string;
+  name: string;
+  email: string;
+  clubRole: ClubRole;
+  createdAt: string;
 }
 
 export type FeedSignup = "off" | "internal" | "public";

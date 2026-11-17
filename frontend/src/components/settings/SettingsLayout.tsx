@@ -94,7 +94,7 @@ export function SettingsLayout({ wide, actions, children }: SettingsLayoutProps)
         </div>
         {actions && <div className="ap-actions">{actions}</div>}
       </header>
-      <SettingsTabs clubId={page.clubId} calendarId={page.calendarId} />
+      <SettingsTabs clubId={page.clubId} calendarId={page.calendarId} isAdmin={page.isAdmin} />
       <div className="ap-stack ap-stack--lg">{body}</div>
     </div>
   );

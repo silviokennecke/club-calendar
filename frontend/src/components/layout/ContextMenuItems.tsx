@@ -84,11 +84,15 @@ export function CalendarMenuItems({ data, onNavigate }: ItemsProps) {
           </Link>
         );
       })}
-      <hr />
-      <Link className="ap-menuitem" to={`/clubs/${data.clubId}`} onClick={onNavigate}>
-        <Icon glyph="plus" size={18} />
-        <span>{t("shell.manageCalendars")}</span>
-      </Link>
+      {data.role !== "member" && (
+        <>
+          <hr />
+          <Link className="ap-menuitem" to={`/clubs/${data.clubId}`} onClick={onNavigate}>
+            <Icon glyph="plus" size={18} />
+            <span>{t("shell.manageCalendars")}</span>
+          </Link>
+        </>
+      )}
     </>
   );
 }

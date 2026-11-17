@@ -103,6 +103,84 @@ describe("AppShell for a plain member", () => {
   });
 });
 
+describe("AppShell for a member with calendar permissions", () => {
+  beforeEach(() => {
+    apiGet.mockImplementation((path: string) => {
+      if (path === "/api/clubs")
+        return Promise.resolve([
+          {
+            id: "m1",
+            name: "Mitgliederverein",
+            timezone: "Europe/Berlin",
+            role: "member",
+            calendars: [{ id: "k1", name: "Hauptkalender", timezone: null, archivedAt: null }],
+          },
+        ]);
+      return Promise.resolve([]);
+    });
+  });
+
+  function renderCalendar(path: string) {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const calendarId = path.split("/")[4] ?? null;
+    return render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route
+              path="/clubs/:clubId/*"
+              element={<AppShell clubId="m1" calendarId={calendarId} />}
+            >
+              <Route
+                path="*"
+                element={
+                  <>
+                    <p>Inhalt</p>
+                    <Probe />
+                  </>
+                }
+              />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  it("opens a permitted calendar and its read-only settings, without requesting the calendar list", async () => {
+    renderCalendar("/clubs/m1/calendars/k1/settings/holiday-calendars");
+    await screen.findByText("Inhalt");
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      "/clubs/m1/calendars/k1/settings/holiday-calendars",
+    );
+    expect(apiGet.mock.calls.some(([p]) => /calendars/.test(String(p)))).toBe(false);
+    const nav = await screen.findByRole("navigation", { name: "Bereiche" });
+    const labels = Array.from(nav.querySelectorAll("a")).map((a) => a.textContent);
+    expect(labels).toContain("Mein Verein");
+    expect(labels).not.toContain("Veröffentlichen");
+    expect(labels).not.toContain("Verein");
+    expect(screen.getAllByText("Hauptkalender").length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    "/clubs/m1/calendars/k2",
+    "/clubs/m1/calendars/k1/settings/permissions",
+    "/clubs/m1/settings/locations",
+  ])("still redirects %s to Mein Verein", async (path) => {
+    renderCalendar(path);
+    await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("/clubs/m1/me"));
+  });
+
+  it("shows the calendar entries for Mein Verein, too", async () => {
+    renderCalendar("/clubs/m1/me");
+    await screen.findByText("Inhalt");
+    const nav = await screen.findByRole("navigation", { name: "Bereiche" });
+    expect(Array.from(nav.querySelectorAll("a")).map((a) => a.textContent)).toContain(
+      "Alle Termine",
+    );
+  });
+});
+
 describe("AppShell for staff", () => {
   it("loads the calendars and offers the admin areas next to Mein Verein", async () => {
     renderAt("/clubs/a1/me");

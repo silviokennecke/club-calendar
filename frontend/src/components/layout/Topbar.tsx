@@ -5,7 +5,7 @@ import { Logo } from "@/components/ui/shared";
 import { isPlainMember } from "@/lib/club/permissions";
 import { ContextMenu } from "./ContextMenu";
 import { CalendarMenuItems, ClubMenuItems } from "./ContextMenuItems";
-import { initials } from "./navigation";
+import { initials, shellCalendarId } from "./navigation";
 import type { ShellData } from "./shellTypes";
 
 /** Mobile top bar (<= 720px): logo mark, combined club/calendar switcher, profile. */
@@ -16,10 +16,11 @@ export function Topbar({ data }: { data: ShellData }) {
   useEffect(() => setOpen(false), [pathname]);
 
   const club = data.clubs.find((c) => c.id === data.clubId);
-  const calendar = data.calendars.find((c) => c.id === data.calendarId);
+  const navCalendarId = shellCalendarId(data);
+  const calendar = data.calendars.find((c) => c.id === navCalendarId);
   const close = () => setOpen(false);
   const unavailable = data.contextState === "unavailable";
-  const member = isPlainMember(club?.role);
+  const member = isPlainMember(club?.role) && !navCalendarId;
   const fallback = unavailable ? t("shell.unavailable") : t("common.loading");
 
   return (

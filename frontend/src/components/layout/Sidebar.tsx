@@ -6,7 +6,7 @@ import { isPlainMember } from "@/lib/club/permissions";
 import { HelpCenterLink } from "@/docs/HelpCenterLink";
 import { ContextMenu } from "./ContextMenu";
 import { CalendarMenuItems, ClubMenuItems } from "./ContextMenuItems";
-import { activeNavKey, buildNavGroups, initials } from "./navigation";
+import { activeNavKey, buildNavGroups, initials, shellCalendarId } from "./navigation";
 import type { ShellData } from "./shellTypes";
 
 /** Desktop sidebar (288px): logo, club/calendar switchers, navigation, profile, sign out. */
@@ -18,12 +18,14 @@ export function Sidebar({ data }: { data: ShellData }) {
   // Close any open switcher when the route changes.
   useEffect(() => setMenu(null), [pathname]);
 
+  const navCalendarId = shellCalendarId(data);
   const active = activeNavKey(pathname, data.clubId, data.calendarId);
   const club = data.clubs.find((c) => c.id === data.clubId);
-  const calendar = data.calendars.find((c) => c.id === data.calendarId);
+  const calendar = data.calendars.find((c) => c.id === navCalendarId);
   const close = () => setMenu(null);
   const unavailable = data.contextState === "unavailable";
-  const member = isPlainMember(club?.role);
+  // A plain member without any calendar permission only has Mein Verein.
+  const member = isPlainMember(club?.role) && !navCalendarId;
   const fallback = unavailable ? t("shell.unavailable") : t("common.loading");
 
   return (
@@ -75,9 +77,9 @@ export function Sidebar({ data }: { data: ShellData }) {
         )}
       </div>
 
-      {(data.calendarId || member) && (
+      {(navCalendarId || member) && (
         <nav className="ap-navgroup" aria-label={t("shell.navLabel")}>
-          {buildNavGroups(data.clubId, data.calendarId, club?.role).map((group) => (
+          {buildNavGroups(data.clubId, navCalendarId, club?.role).map((group) => (
             <div key={group.titleKey} className="ap-navgroup">
               <div className="ap-navtitle">{t(group.titleKey)}</div>
               {group.items.map((item) => (

@@ -95,6 +95,7 @@ export const LocationsPage = lazyPage(() => import("./settings/LocationsPage"));
 export const ResourceCalendarPage = lazyPage(() => import("./ResourceCalendarPage"));
 export const ResourcesPage = lazyPage(() => import("./settings/ResourcesPage"));
 export const TargetGroupsPage = lazyPage(() => import("./settings/TargetGroupsPage"));
+export const CalendarPermissionsPage = lazyPage(() => import("./settings/CalendarPermissionsPage"));
 export const HolidayCalendarsPage = lazyPage(() => import("./settings/HolidayCalendarsPage"));
 export const LegalPage = lazyPage(() => import("./LegalPage"));
 export const LegalModal = lazyPage(modalImports.LegalModal);

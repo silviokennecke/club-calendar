@@ -4,7 +4,7 @@ import { apiGet } from "@/lib/api";
 import { todayIn } from "@/lib/calendar";
 import type { Calendar, CalendarEvent, Club } from "@/lib/types";
 import type { ShellData } from "@/components/layout/shellTypes";
-import { permissionsFor } from "@/lib/club/permissions";
+import { calendarPermissions } from "@/lib/club/permissions";
 import { eventRoutes } from "./routes";
 
 /**
@@ -29,8 +29,12 @@ export function useEventPage() {
   const calendar = calendarQuery.data;
   const club = (shell?.clubs ?? clubsQuery.data)?.find((c) => c.id === clubId);
   const timeZone = calendar?.timezone || club?.timezone || null;
-  // Club role (viewer < editor < admin): unknown until the club list is loaded, then no write control.
-  const { canEdit: roleCanEdit, isAdmin } = permissionsFor(club?.role);
+  // Club role (viewer < editor < admin) or a calendar permission: unknown until the club list is loaded, then no write control.
+  const {
+    canWrite: roleCanEdit,
+    canManageClubData: roleCanManageClub,
+    isAdmin,
+  } = calendarPermissions(club, calendarId);
   const roleLoading = !club?.role && !shell && clubsQuery.isLoading;
 
   return {
@@ -47,6 +51,8 @@ export function useEventPage() {
     roleLoading,
     /** Role editor or admin: may write events, templates and reference data. */
     roleCanEdit,
+    /** Role editor or admin: club-wide data (new places, audiences) and holiday calendars; false for a calendar member. */
+    roleCanManageClub,
     /** Role admin: manages calendars and feeds. */
     isAdmin,
     /** Role editor or admin and the calendar is loaded and not archived: events etc. can be changed. */

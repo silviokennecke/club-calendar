@@ -1147,7 +1147,11 @@
       },
       "shownOf": "{{shown}} von {{count}} Terminen angezeigt",
       "showMore_one": "Weiteren Termin anzeigen",
-      "showMore_other": "{{count}} weitere Termine anzeigen"
+      "showMore_other": "{{count}} weitere Termine anzeigen",
+      "newPlacesForbidden": {
+        "title": "Neue Orte können hier nicht angelegt werden",
+        "text": "Deine Berechtigung gilt nur für diesen Kalender. Wähle vorhandene Orte für diese Termine oder bitte jemanden mit der Rolle Bearbeiter, die Orte zuerst anzulegen."
+      }
     },
     "dialog": {
       "groupTitle": "Gruppe bearbeiten: {{name}}",
@@ -1721,6 +1725,30 @@
         "unknownLocation": "Dieser Ort existiert nicht mehr. Wähle einen anderen."
       },
       "calendar": "Kalender"
+    },
+    "permissions": {
+      "title": "Kalender-Berechtigungen",
+      "description": "Mitglieder mit dieser Berechtigung dürfen in diesem Kalender Termine, Serien, Vorlagen, Besonderheiten und Zusatzangebote bearbeiten; Feiertage und Einstellungen dürfen sie nur ansehen.",
+      "addLabel": "Vereinsmitglied hinzufügen",
+      "addPlaceholder": "Nach Name oder E-Mail suchen",
+      "add": "Hinzufügen",
+      "added": "{{name}} darf diesen Kalender jetzt bearbeiten.",
+      "unknownMember": "Diese Person ist (nicht mehr) Mitglied des Vereins.",
+      "addFailed": "Die Berechtigung konnte nicht hinzugefügt werden. Bitte versuche es erneut.",
+      "removed": "{{name}} darf diesen Kalender nicht mehr bearbeiten.",
+      "removeFailed": "Die Berechtigung konnte nicht entfernt werden. Bitte versuche es erneut.",
+      "loadError": "Die Berechtigungen konnten nicht geladen werden.",
+      "listTitle": "Personen mit Berechtigung",
+      "emptyTitle": "Noch niemand",
+      "emptyText": "Admins und Bearbeiter des Vereins dürfen diesen Kalender immer bearbeiten. Füge hier Vereinsmitglieder hinzu, die nur diesen Kalender bearbeiten sollen.",
+      "caption": "{{count}} Personen mit Kalender-Berechtigung",
+      "remove": "Entfernen",
+      "removeLabel": "Berechtigung von {{name}} entfernen",
+      "removeTitle": "Berechtigung von {{name}} entfernen?",
+      "removeText": "{{name}} bleibt im Verein, kann diesen Kalender aber nicht mehr öffnen oder bearbeiten.",
+      "removeConfirm": "Berechtigung entfernen",
+      "adminOnlyTitle": "Nur für Vereins-Admins",
+      "adminOnlyText": "Nur Admins des Vereins können festlegen, wer diesen Kalender bearbeiten darf."
     }
   },
   "ui": {
@@ -1900,7 +1928,8 @@
       "locations": "Orte",
       "holidays": "Feiertage",
       "clubLabel": "Einstellungen des Vereins",
-      "resources": "Ressourcen"
+      "resources": "Ressourcen",
+      "permissions": "Berechtigungen"
     },
     "unavailable": "Nicht verfügbar",
     "toClubPicker": "Zur Vereinsauswahl",

@@ -48,7 +48,8 @@ describe("CalendarSettingsPage", () => {
     ).toBeInTheDocument();
     expect(await screen.findByLabelText(/^Kalendername/)).toHaveValue("Schießbetrieb 2026");
     const tabs = screen.getByRole("navigation", { name: "Einstellungen des Kalenders" });
-    expect(within(tabs).getAllByRole("link")).toHaveLength(4);
+    expect(within(tabs).getAllByRole("link")).toHaveLength(5);
+    expect(within(tabs).getByRole("link", { name: "Berechtigungen" })).toBeInTheDocument();
     expect(within(tabs).queryByRole("link", { name: "Orte" })).not.toBeInTheDocument();
     expect(within(tabs).queryByRole("link", { name: "Gruppen" })).not.toBeInTheDocument();
     expect(within(tabs).getByRole("link", { name: "Allgemein" })).toHaveAttribute(

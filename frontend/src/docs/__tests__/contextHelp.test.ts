@@ -30,6 +30,7 @@ describe("contextHelpPath", () => {
     [`${CAL}/settings/properties`, "", "/help/organize/properties"],
     [`${CAL}/settings/features`, "", "/help/organize/features"],
     [`${CAL}/settings/holiday-calendars`, "", "/help/organize/holidays"],
+    [`${CAL}/settings/permissions`, "", "/help/organize/calendar-permissions"],
     ["/profile", "", "/help/settings/profile"],
     ["/profile/security", "", "/help/settings/password"],
     ["/profile/security/", "", "/help/settings/password"],

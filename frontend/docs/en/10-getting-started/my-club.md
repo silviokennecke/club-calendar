@@ -6,7 +6,7 @@ description: Your own calendar and subscription in a club, and how to leave the 
 
 # My club
 
-**My club** is your personal page in a club. You find it in the navigation. Members see only this page. For viewers, editors and admins it is an addition to the club calendar. It has two tabs.
+**My club** is your personal page in a club. You find it in the navigation. Members see only this page, unless an admin has given them access to a calendar: that calendar then also appears in the navigation and you can edit its events, see [Calendar permissions](help:organize/calendar-permissions). For viewers, editors and admins it is an addition to the club calendar. It has two tabs.
 
 ## Calendar
 

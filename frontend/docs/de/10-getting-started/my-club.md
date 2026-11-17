@@ -6,7 +6,7 @@ description: Dein eigener Kalender und dein Abo in einem Verein sowie das Verlas
 
 # Mein Verein
 
-**Mein Verein** ist deine persönliche Seite in einem Verein. Du findest sie in der Navigation. Mitglieder sehen nur diese Seite. Für Betrachter, Bearbeiter und Admins ist sie eine Ergänzung zum Vereinskalender. Die Seite hat zwei Reiter.
+**Mein Verein** ist deine persönliche Seite in einem Verein. Du findest sie in der Navigation. Mitglieder sehen nur diese Seite, außer ein Admin hat ihnen einen Kalender freigegeben: Dann erscheint dieser Kalender zusätzlich in der Navigation und du kannst dort Termine bearbeiten, siehe [Kalender-Berechtigungen](help:organize/calendar-permissions). Für Betrachter, Bearbeiter und Admins ist sie eine Ergänzung zum Vereinskalender. Die Seite hat zwei Reiter.
 
 ## Kalender
 

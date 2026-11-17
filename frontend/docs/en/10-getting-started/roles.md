@@ -26,6 +26,10 @@ A **Member** only belongs to the club. Members do not see the club calendar itse
 You can tell you are a viewer by a notice: "Your role in this club only allows viewing." Viewers also do not see **Import events** and **Publish**, so they cannot see private feed links either.
 :::
 
+## Letting a member edit one calendar
+
+Admins can allow a member to edit **one specific calendar** without changing their role: events, series, templates, badges and extras. Holidays and calendar settings stay view-only for them there. See [Calendar permissions](help:organize/calendar-permissions).
+
 ## Getting a different role
 
 Admins choose the role when they invite you and can change it later under **Manage club** on the **Members** tab. A club never has no admin: the last admin can only give up the role once another member is admin. More under [Members](help:team/members).

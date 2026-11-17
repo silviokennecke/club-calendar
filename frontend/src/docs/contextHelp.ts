@@ -37,6 +37,7 @@ const RULES: Rule[] = [
   [new RegExp(`${CAL}/settings/properties/?$`), () => "organize/properties"],
   [new RegExp(`${CAL}/settings/features/?$`), () => "organize/features"],
   [new RegExp(`${CAL}/settings/holiday-calendars/?$`), () => "organize/holidays"],
+  [new RegExp(`${CAL}/settings/permissions/?$`), () => "organize/calendar-permissions"],
   [new RegExp(`${CAL}/settings/?$`), () => "settings/calendar-settings"],
   [new RegExp(`${CAL}/more/?$`), () => "getting-started/tour"],
   [new RegExp(`${CAL}/?$`), () => "events/views"],

@@ -6,7 +6,7 @@
 //   While the club is loading (or the role is unknown) role is undefined and both flags are false.
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
-import type { Club, ClubRole } from "@/lib/types";
+import type { Club, ClubRole, MemberCalendar } from "@/lib/types";
 
 const RANK: Record<ClubRole, number> = { member: 0, viewer: 1, editor: 2, admin: 3 };
 
@@ -51,4 +51,34 @@ export function useClubPermissions(clubId: string | undefined): ClubPermissions 
     retry: false,
   });
   return permissionsFor(club.data?.role);
+}
+
+/** Calendars a plain member holds a permission for (empty for every other role). */
+export function memberCalendars(
+  club: Pick<Club, "role" | "calendars"> | undefined,
+): MemberCalendar[] {
+  return isPlainMember(club?.role) ? (club?.calendars ?? []) : [];
+}
+
+export interface CalendarPermissions {
+  /** Events, series, templates, badges and extras of the calendar: editor+ or a member with a permission. */
+  canWrite: boolean;
+  /** Editor+: club-wide writes (locations, audiences, new places in an import) and holiday calendars. */
+  canManageClubData: boolean;
+  /** Admin: calendar settings, archiving, permissions. */
+  isAdmin: boolean;
+}
+
+/** The one place that decides what the signed-in user may do inside a calendar (no loading state: all false). */
+export function calendarPermissions(
+  club: Pick<Club, "role" | "calendars"> | undefined,
+  calendarId: string | undefined,
+): CalendarPermissions {
+  const base = permissionsFor(club?.role);
+  const viaRow = !!calendarId && memberCalendars(club).some((c) => c.id === calendarId);
+  return {
+    canWrite: base.canEdit || viaRow,
+    canManageClubData: base.canEdit,
+    isAdmin: base.isAdmin,
+  };
 }

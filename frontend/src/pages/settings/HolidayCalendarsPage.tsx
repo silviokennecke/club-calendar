@@ -55,7 +55,9 @@ export default function HolidayCalendarsPage() {
   const locale = useLocale();
   const qc = useQueryClient();
   const page = useSettingsPage();
-  const { calendarId, readOnly, timeZone } = page;
+  const { calendarId, timeZone } = page;
+  // Holiday calendars are club-staff territory: a member with a calendar permission only reads them.
+  const readOnly = page.readOnly || !page.roleCanManageClub;
   const queryKey = ["holidayCalendars", calendarId];
 
   const [mode, setMode] = useState<"predefined" | "ics">("predefined");

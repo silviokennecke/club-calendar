@@ -15,6 +15,8 @@ interface AssignmentFieldsProps {
   onChange: <K extends keyof Assignments>(field: K, ids: Assignments[K]) => void;
   /** No inline creation of new entries. */
   readOnly?: boolean;
+  /** Audiences are club data: false hides their inline creation (calendar members). Default true. */
+  canCreateTargetGroups?: boolean;
   /** Help text below the target groups (default: "Ohne Auswahl gilt der Termin für alle."). */
   targetGroupsHint?: ReactNode;
   /** `combobox`: only assigned entries as chips plus an autosuggest add chip (event form). */
@@ -30,6 +32,7 @@ export function AssignmentFields({
   value,
   onChange,
   readOnly,
+  canCreateTargetGroups = true,
   targetGroupsHint,
   variant = "toggle",
 }: AssignmentFieldsProps) {
@@ -72,7 +75,11 @@ export function AssignmentFields({
           options={res.targetGroups.map((g) => ({ id: g.id, label: g.name }))}
           selected={value.targetGroupIds}
           onChange={(ids) => onChange("targetGroupIds", ids)}
-          onCreate={readOnly ? undefined : (name) => create(res.createTargetGroup, name)}
+          onCreate={
+            readOnly || !canCreateTargetGroups
+              ? undefined
+              : (name) => create(res.createTargetGroup, name)
+          }
           addLabel={t("events.form.createTargetGroup")}
           hint={targetGroupsHint ?? t("events.form.targetGroupsHint")}
         />
@@ -106,7 +113,11 @@ export function AssignmentFields({
         options={res.targetGroups.map((g) => ({ id: g.id, label: g.name }))}
         selected={value.targetGroupIds}
         onChange={(ids) => onChange("targetGroupIds", ids)}
-        onCreate={readOnly ? undefined : (name) => create(res.createTargetGroup, name)}
+        onCreate={
+          readOnly || !canCreateTargetGroups
+            ? undefined
+            : (name) => create(res.createTargetGroup, name)
+        }
         createLabel={t("events.form.createTargetGroup")}
         hint={targetGroupsHint ?? t("events.form.targetGroupsHint")}
       />

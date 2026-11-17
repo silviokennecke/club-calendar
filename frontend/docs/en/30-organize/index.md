@@ -18,19 +18,20 @@ Create locations, badges, extras, audiences and templates once, then just pick t
 
 ## All pages in this section
 
-| Page                                     | Purpose                              |
-| ---------------------------------------- | ------------------------------------ |
-| [Templates](help:organize/templates)     | Presets for time, location and more  |
-| [Locations](help:organize/locations)     | Meeting places with address and map  |
-| [Resources](help:organize/resources)     | Locations usable only once at a time |
-| [Badges](help:organize/properties)       | Marked with a symbol (emoji)         |
-| [Extras](help:organize/features)         | Optional additions to an event       |
-| [Audiences](help:organize/target-groups) | Who an event is for                  |
-| [Series](help:organize/series)           | Regularly recurring events           |
-| [Holidays](help:organize/holidays)       | Add holiday calendars                |
-| [Bulk actions](help:organize/bulk)       | Change several events at once        |
-| [Import](help:organize/import)           | Take over events from an ICS file    |
-| [Export](help:organize/export)           | Download events as an ICS file       |
+| Page                                                       | Purpose                              |
+| ---------------------------------------------------------- | ------------------------------------ |
+| [Templates](help:organize/templates)                       | Presets for time, location and more  |
+| [Locations](help:organize/locations)                       | Meeting places with address and map  |
+| [Resources](help:organize/resources)                       | Locations usable only once at a time |
+| [Calendar permissions](help:organize/calendar-permissions) | Let members edit one calendar        |
+| [Badges](help:organize/properties)                         | Marked with a symbol (emoji)         |
+| [Extras](help:organize/features)                           | Optional additions to an event       |
+| [Audiences](help:organize/target-groups)                   | Who an event is for                  |
+| [Series](help:organize/series)                             | Regularly recurring events           |
+| [Holidays](help:organize/holidays)                         | Add holiday calendars                |
+| [Bulk actions](help:organize/bulk)                         | Change several events at once        |
+| [Import](help:organize/import)                             | Take over events from an ICS file    |
+| [Export](help:organize/export)                             | Download events as an ICS file       |
 
 :::note
 Locations and audiences belong to the whole club. Badges, extras and templates belong to a single calendar.

@@ -608,6 +608,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
               onChange={(id) => set("locationId", id)}
               onCreate={res.createLocation}
               readOnly={readOnly}
+              canCreate={page.roleCanManageClub}
             />
             <ResourceConflictList
               conflicts={saveConflicts ?? liveConflicts.conflicts}
@@ -625,6 +626,7 @@ function EventEditor({ initial, event, template, presetDate }: EventEditorProps)
               value={values}
               onChange={(field, ids) => set(field, ids)}
               readOnly={readOnly}
+              canCreateTargetGroups={page.roleCanManageClub}
               variant="combobox"
             />
           </section>

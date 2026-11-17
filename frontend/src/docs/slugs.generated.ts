@@ -18,6 +18,7 @@ export const DOC_SLUGS = [
   "getting-started/tour",
   "index",
   "organize/bulk",
+  "organize/calendar-permissions",
   "organize/export",
   "organize/features",
   "organize/holidays",
