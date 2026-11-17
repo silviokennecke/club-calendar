@@ -21,7 +21,7 @@ class Passkey
     private string $credentialId;
 
     // A blob column is hydrated as a stream resource, so the property cannot be typed `string`.
-    /** @var string|resource */
+    /** @var string|open-resource */
     #[ORM\Column(type: 'blob')]
     private mixed $publicKey;
 
