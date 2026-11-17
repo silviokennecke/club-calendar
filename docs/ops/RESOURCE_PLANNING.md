@@ -76,3 +76,32 @@ Keine Verbindung zu `TargetGroup`: eigene Dienstgruppen.
 Ablauf: Anforderung am Termin (auch Entwurf); Zuteilung auf eigener Seite je Gruppe (Badge mit Zahl offener Dienste, indizierte Zählung); automatisch (faire Verteilung) oder manuell; immer zuerst Entwurf, dann veröffentlichen. Sichtbar für Staff und betroffene Personen (Mitglied einer zugewiesenen Gruppe). Eigene Dienste im ICS-Feed mit Präfix und Details in der Beschreibung (eigener Feed-Schlüssel je Person, auch ohne Konto). Tausch später.
 
 Konto-Zuordnung (offen): Roster-Import mit E-Mail und Bulk-Einladung mit `personId` (Annahme verknüpft automatisch); Auto-Match über bestätigte E-Mail mit Bestätigung durch den Benutzer. Offen: DSGVO für Personen ohne Konto (Aufbewahrung, Anonymisierung).
+
+## Status (Feature 1 abgeschlossen)
+
+| Schritt | Commit |
+|---|---|
+| 1 Resource: Entität, Migration, Service, CRUD, OpenAPI | `29591ca1` |
+| 2 Frontend-Seite, i18n, Hilfeseite | `98772386` (Screenshots `876767fc`) |
+| 3 Konfliktdienst, Endpunkt, Prüfung beim Veröffentlichen | `20fd95e7` |
+| 4 Konfliktanzeige im Terminformular | `3d928bc8` |
+| 5 Ressourcen-Kalender (API, Ansicht) | `1ea1edac`, `2879b096` |
+| 6 `CalendarMember` (Backend, UI) | `3c15c613`, `6c3153df` |
+| 7 MCP `list_resources`, `list_resource_events` | `d3a3e917` |
+| 8 Dokumentation (CHANGELOG, CLAUDE.md, AGENTS.md, Admin) | dieser Commit |
+
+### Entscheidungen während der Umsetzung
+
+- Puffer: einseitig strikt, also gilt der Puffer der Ressource für den Abstand zu jedem anderen Termin; Kollision nur im Pufferbereich ist immer eine Warnung.
+- Bearbeiten und Bulk prüfen nur, wenn sich Zeitplan, Ort oder Status des Termins ändern.
+- Import mit neuen Orten ist für Kalender-Mitglieder (`CalendarMember`) verboten.
+- Der Ressourcen-Kalender schließt archivierte Kalender ein.
+- Die Ressourcenliste und der Ressourcen-Kalender sind für Mitglieder per API offen (nur "belegt"), haben aber keinen UI-Eintrag.
+- Admin-Guide: keine neuen Umgebungsvariablen; nur die Telemetrie-Gauges (bereits dokumentiert).
+
+### Offene Punkte
+
+- Navigationseintrag "Ressourcen" und Zugang der Mitglieder zur Ressourcen-UI (Entscheidung des Nutzers).
+- Keine Screenshots der Konfliktanzeige im Terminformular.
+- Das Rückgängig nach Bulk zeigt keine Konfliktliste.
+- Der Import-Dialog bietet Kalender-Mitgliedern die Option "neuer Ort" an; abgesichert nur serverseitig (Review).
