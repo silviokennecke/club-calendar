@@ -21,6 +21,9 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\RouterInterface;
 
 /**
+ * A plain member WITHOUT a CalendarMember row (this test) is 403 everywhere outside the allow-list; members WITH a row
+ * are covered per route group in CalendarMemberTest.
+ *
  * Role `member` is deny-by-default: on every club- or calendar-scoped route a plain member gets 403 `forbidden`,
  * except the explicit allow-list below. A new route is therefore staff-only unless it is added here on purpose.
  */
@@ -127,7 +130,9 @@ class MemberRoleTest extends WebTestCase
 
         $r = $this->req($this->member, 'GET', '/api/clubs/'.$this->club->getId());
         $this->assertSame(200, $r['status']);
-        $this->assertEqualsCanonicalizing(['id', 'name', 'timezone', 'role'], array_keys($r['body']));
+        // `calendars` = the calendars the member holds a CalendarMember permission for (empty here)
+        $this->assertEqualsCanonicalizing(['id', 'name', 'timezone', 'role', 'calendars'], array_keys($r['body']));
+        $this->assertSame([], $r['body']['calendars']);
 
         $r = $this->req($this->member, 'GET', '/api/holiday-sources/countries');
         $this->assertSame(403, $r['status']);

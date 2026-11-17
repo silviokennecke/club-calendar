@@ -6,7 +6,7 @@ description: Eine Datei mit allen Daten herunterladen, die über dich gespeicher
 
 # Meine Daten herunterladen
 
-Du kannst eine Datei herunterladen, in der alle Daten stehen, die über dich gespeichert sind: dein Konto, deine Mitgliedschaften, dein Anmeldeverlauf, deine Einwilligungen und die Inhalte, die du in Vereinen angelegt oder zuletzt bearbeitet hast.
+Du kannst eine Datei herunterladen, in der alle Daten stehen, die über dich gespeichert sind: dein Konto, deine Mitgliedschaften und Kalenderberechtigungen, dein Anmeldeverlauf, deine Einwilligungen und die Inhalte, die du in Vereinen angelegt oder zuletzt bearbeitet hast.
 
 ## So geht's
 

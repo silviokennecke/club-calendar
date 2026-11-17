@@ -24,6 +24,7 @@ the router, so a new or changed route needs a matching operation there).
 | Features | `/api/calendars/{calendarId}/features` | `FeatureController` | `FeatureService` |
 | Target Groups | `/api/clubs/{clubId}/target-groups` | `TargetGroupController` | `TargetGroupService` |
 | Locations | `/api/clubs/{clubId}/locations` | `LocationController` | `LocationService` |
+| Calendar permissions | `/api/calendars/{calendarId}/members` (GET, POST `{userId}`, DELETE `/{userId}`; club admins only) | `CalendarMemberController` | `CalendarMemberService` (also `ClubService::removeMember`, club payloads) |
 | Feeds | `/api/clubs/{clubId}/feeds` (incl. single GET `…/{feedId}`, `…/{feedId}/members[/by-email\|/bulk-delete\|/{userId}]`) | `FeedController` | `FeedService`, `FeedMemberService`, `FeedAccessPolicy` |
 | Personal subscription | `/api/clubs/{clubId}/my-subscription` (GET, PUT, `…/rotate-secret`), `/api/clubs/{clubId}/my-feeds` | `MemberSubscriptionController` | `MemberSubscriptionService` (also called by `FeedClaimService`, `ClubService::removeMember`) |
 | Personal subscription feed | `/api/feed/me/{subscriptionId}/ics` (public, secret), `/api/clubs/{clubId}/my-events[/{eventId}]` | `PersonalFeedController`, `MemberSubscriptionController` | `PersonalFeedService`, `PersonalSelection`, `PersonalIcsPlan` (reuse `PublicFeedService`, `IcsService`) |
@@ -45,8 +46,8 @@ the router, so a new or changed route needs a matching operation there).
 | File | Purpose |
 |------|---------|
 | `src/Security/CurrentUserResolver.php` | Resolves authenticated `User` entity from JWT token |
-| `src/Security/CalendarMemberVoter.php` | Role check in the calendar's club (`CALENDAR_MEMBER` = staff, viewer+; plain `member` is always denied) |
-| `src/Security/ClubMemberVoter.php` | Role check in the club: `CLUB_MEMBER` = staff (viewer+), `CLUB_EDITOR`, `CLUB_ADMIN`; `CLUB_ANY_MEMBER` (incl. role `member`) only for the allow-list (club read, leaving); new routes are staff-only by default, guarded by `tests/Controller/MemberRoleTest.php` |
+| `src/Security/CalendarMemberVoter.php` | Role check in the calendar's club: `CALENDAR_MEMBER` (staff, viewer+) and `CALENDAR_EDITOR` (editor+) ALSO pass for a club member with a `CalendarMember` row for that calendar (any club role below the requirement); `CALENDAR_STAFF_EDITOR` = editor+ only (holiday calendar writes, new locations in an import); `CALENDAR_ADMIN` = admin; a plain `member` without a row is always denied |
+| `src/Security/ClubMemberVoter.php` | Role check in the club: `CLUB_MEMBER` = staff (viewer+), `CLUB_EDITOR`, `CLUB_ADMIN`; `CLUB_ANY_MEMBER` (incl. role `member`) only for the allow-list (club read, leaving); `CLUB_CALENDAR_ACCESS` = staff or any member with a `CalendarMember` row in the club (read-only: calendar list/one calendar, locations, target groups); new routes are staff-only by default, guarded by `tests/Controller/MemberRoleTest.php` (member without row) and `tests/Controller/CalendarMemberTest.php` (member with row: explicit allow-list `ROW_ALLOWED` + matrix) |
 | `src/Security/ArchivedCalendarVoter.php` | Blocks writes to archived calendars (`NOT_ARCHIVED`) |
 | `src/EventListener/ExceptionListener.php` | Converts all exceptions to RFC 7807 `application/problem+json` (`src/Http/ProblemResponse.php`); access denied without a signed-in user → 401 `missing_token`; every 400 gets a code (framework 400s `invalid_request`, array query parameters `validation_failed` + `field`) |
 | `src/Security/JwtProblemListener.php` | 401 problems of the JWT bundle: `missing_token`, `invalid_token`, `token_expired` (`WWW-Authenticate: Bearer`) |
@@ -105,6 +106,27 @@ the router, so a new or changed route needs a matching operation there).
 | `config/services.yaml` | Parameters and env defaults: `APP_URL` drives `FRONTEND_URL`, `BACKEND_URL` and `WEBAUTHN_RP_ID`; optional `MAPBOX_TOKEN`, cache TTLs, `WEBAUTHN_USER_VERIFICATION` |
 | `config/packages/security.yaml` | Stateless JWT firewall; `access_control` is deny-by-default: an explicit `PUBLIC_ACCESS` allow-list, then a final `^/api` `IS_AUTHENTICATED` rule (401 before the entity lookup). A new public route needs its own rule there and an entry in `PUBLIC_PATTERNS` of `tests/Unit/AccessControlCoverageTest.php` (L11) |
 | `migrations/` | Doctrine migrations; do not list versions here |
+
+## Calendar permissions (CalendarMember) - decision per route group
+
+A club member with a `CalendarMember` row (managed by club admins; row removed on leave/removal, CASCADE with calendar and user; quota `calendarMembersPerCalendar`) gets, for THAT calendar only:
+
+| Route group | Attribute | Calendar member |
+|---|---|---|
+| Events: list/get/`.ics`/`.pdf` (drafts included), create, patch, delete, `from-template`, bulk, import preview, series (preview/create), `conflicts`, `event-series/*` read and rule change | `CALENDAR_MEMBER` / `CALENDAR_EDITOR` | allowed |
+| Event import WITH new `locations` | `CALENDAR_STAFF_EDITOR` (checked in `EventController::import`) | denied (403): new places are club writes; referencing existing locations is fine |
+| Templates, properties (badges), features (extras): read and write | `CALENDAR_MEMBER` / `CALENDAR_EDITOR` | allowed |
+| Holiday calendars read, `holiday-events` read | `CALENDAR_MEMBER` | allowed (read-only) |
+| Holiday calendars create/predefined/patch/delete/refresh | `CALENDAR_STAFF_EDITOR` (was `CALENDAR_EDITOR`; real editors unchanged) | denied |
+| Calendar list and single calendar (`/api/clubs/{id}/calendars[/{id}]`) | `CLUB_CALENDAR_ACCESS` (+ `CALENDAR_MEMBER` for the single one) | allowed, only their calendars |
+| Calendar create/patch/delete/archive/unarchive/duplicate | `CLUB_ADMIN` | denied |
+| Locations, target groups: GET | `CLUB_CALENDAR_ACCESS` | allowed (read-only) |
+| Locations, target groups: writes; resources writes; feeds; club members; invitations; club settings | `CLUB_EDITOR` / `CLUB_ADMIN` | denied |
+| `/api/calendars/{id}/members` | `CALENDAR_ADMIN` | denied (admins only) |
+| Own-data allow-list (`my-subscription`, `my-feeds`, `my-events`, `GET resources[/{id}/events]`, `GET /clubs/{id}`, leaving) | `CLUB_ANY_MEMBER` | unchanged (all members) |
+| MCP tools | `McpContext::requireRole` (club role) | no access (a row grants nothing there) |
+
+`ClubService::listClubs/getClub` add `calendars` (id, name, timezone, archivedAt of the permitted calendars, possibly empty) for role `member` only. `ResourceConflictService::isStaff` decides from the real club role (not the voter) whether conflict details carry event id and title; the publish error `resource_conflict` follows the same rule.
 
 ## Security Pattern
 

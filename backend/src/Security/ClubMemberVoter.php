@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Security;
 
+use App\Entity\CalendarMember;
 use App\Entity\Club;
 use App\Entity\ClubUser;
 use App\Entity\User;
@@ -16,6 +17,8 @@ use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 /**
  * Club rights by role: CLUB_ANY_MEMBER (any role incl. plain `member`: only for the explicit allow-list), CLUB_MEMBER (staff, viewer or above: read), CLUB_EDITOR (editor or admin: change content),
  * CLUB_ADMIN (admin: manage the club, members, invitations, calendars and feeds). Non-members get 403 for all.
+ * CLUB_CALENDAR_ACCESS (read-only club data for the calendar form: staff, or any member holding a CalendarMember row
+ * in this club).
  *
  * @extends Voter<string, Club>
  */
@@ -25,12 +28,14 @@ class ClubMemberVoter extends Voter
     public const string CLUB_MEMBER = 'CLUB_MEMBER';
     public const string CLUB_EDITOR = 'CLUB_EDITOR';
     public const string CLUB_ADMIN = 'CLUB_ADMIN';
+    public const string CLUB_CALENDAR_ACCESS = 'CLUB_CALENDAR_ACCESS';
 
     private const array REQUIRED = [
         self::CLUB_ANY_MEMBER => ClubRole::MEMBER,
         self::CLUB_MEMBER => ClubRole::VIEWER,
         self::CLUB_EDITOR => ClubRole::EDITOR,
         self::CLUB_ADMIN => ClubRole::ADMIN,
+        self::CLUB_CALENDAR_ACCESS => ClubRole::VIEWER,
     ];
 
     public function __construct(private readonly EntityManagerInterface $em)
@@ -54,6 +59,15 @@ class ClubMemberVoter extends Voter
             'user' => $user,
         ]);
 
-        return null !== $clubUser && $clubUser->getRole()->atLeast(self::REQUIRED[$attribute]);
+        if (null === $clubUser) {
+            return false;
+        }
+        if ($clubUser->getRole()->atLeast(self::REQUIRED[$attribute])) {
+            return true;
+        }
+
+        return self::CLUB_CALENDAR_ACCESS === $attribute && (int) $this->em->createQuery(
+            'SELECT COUNT(m.id) FROM '.CalendarMember::class.' m JOIN m.calendar c WHERE m.user = :user AND c.club = :club',
+        )->setParameter('user', $user)->setParameter('club', $subject)->getSingleScalarResult() > 0;
     }
 }

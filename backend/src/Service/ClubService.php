@@ -32,6 +32,7 @@ readonly class ClubService
         private readonly ClubCreationPolicy $creationPolicy,
         private readonly FeedMemberService $feedMembers,
         private readonly MemberSubscriptionService $subscriptions,
+        private readonly CalendarMemberService $calendarMembers,
     ) {
     }
 
@@ -64,10 +65,12 @@ readonly class ClubService
         $ids = array_map(fn (Club $c) => $c->getId(), $clubs);
         $calendars = $this->counts->calendarsByClub($ids);
         $members = $this->counts->membersByClub($ids);
+        $plainIds = array_keys(array_filter($roles, fn (ClubRole $r) => ClubRole::MEMBER === $r));
+        $accessible = $this->calendarMembers->calendarsByClub($user, array_values($plainIds));
 
-        return array_map(function (Club $club) use ($calendars, $members, $lastCalendars, $roles) {
+        return array_map(function (Club $club) use ($calendars, $members, $lastCalendars, $roles, $accessible) {
             if (ClubRole::MEMBER === $roles[$club->getId()]) {
-                return $this->serializeClub($club) + ['role' => ClubRole::MEMBER->value];
+                return $this->serializeClub($club) + ['role' => ClubRole::MEMBER->value, 'calendars' => $accessible[$club->getId()] ?? []];
             }
             $cals = $calendars[$club->getId()] ?? ['active' => 0, 'archived' => 0];
 
@@ -139,7 +142,10 @@ readonly class ClubService
         $id = $club->getId();
         $membership = $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $club, 'user' => $viewer]);
         if (ClubRole::MEMBER === $membership?->getRole()) {
-            return $this->serializeClub($club) + ['role' => ClubRole::MEMBER->value];
+            return $this->serializeClub($club) + [
+                'role' => ClubRole::MEMBER->value,
+                'calendars' => $this->calendarMembers->calendarsByClub($viewer, [$id])[$id] ?? [],
+            ];
         }
         $cals = $this->counts->calendarsByClub([$id])[$id] ?? ['active' => 0, 'archived' => 0];
 
@@ -248,6 +254,7 @@ readonly class ClubService
             }
             $this->feedMembers->removeAllOfUserInClub($club, $cu->getUser());
             $this->subscriptions->removeAllOfUserInClub($club, $cu->getUser());
+            $this->calendarMembers->removeAllOfUserInClub($club, $cu->getUser());
             $this->em->remove($cu);
             $this->em->flush();
         });

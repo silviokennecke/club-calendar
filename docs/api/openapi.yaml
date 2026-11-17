@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Club Calendar API
-  version: '1.4'
+  version: '1.5'
   summary: HTTP API of the Club Calendar backend (Symfony, `backend/`).
   description: |
     Hand-written reference of every route under `/api`. It is checked against the Symfony router by
@@ -62,7 +62,11 @@ info:
       lower ones). Authorization is deny-by-default: a plain *member* belongs to the club but is not staff, so every
       club- or calendar-scoped route is 403 `forbidden` for them except the allow-list `GET /api/auth/me`,
       `GET /api/clubs` (minimal entries: `id`, `name`, `timezone`, `role`), `GET /api/clubs/{clubId}` (same minimal
-      fields) and leaving the club; a new route is staff-only unless it is allow-listed on purpose. *Viewer* (the lowest
+      fields plus `calendars`) and leaving the club (and the own-data and resource routes); a new route is staff-only
+      unless it is allow-listed on purpose. Exception: a **calendar permission** (`/api/calendars/{calendarId}/members`,
+      admin-managed) lets a club member below editor read and edit events, series, templates, badges and extras of that
+      one calendar and read the club's locations and audiences; holiday calendars, calendar settings, feeds, members
+      and club settings stay closed to them. *Viewer* (the lowest
       staff role) reads (club, calendars, events, reference data, members, `events.ics`, `events.pdf`); *editor* also
       creates, changes and deletes events, series, templates, locations, badges (properties), extras (features), audiences (target groups) and
       holiday calendars (import, bulk and series included) and reads the feeds of the club (their addresses
@@ -309,6 +313,7 @@ info:
     | `targetGroupsPerClub` | 500 target groups per club |
     | `feedsPerClub` | 50 feeds per club |
     | `feedMembersPerFeed` | 5000 people with stored access per feed (assign, claim) |
+    | `calendarMembersPerCalendar` | 500 calendar permissions per calendar (`POST /api/calendars/{calendarId}/members`) |
     | `holidayCalendarsPerCalendar` | 20 holiday calendars |
     | `mcpClientsPerUser` | 20 connected apps (MCP grants) per user (consent decision) |
 
@@ -2239,7 +2244,7 @@ paths:
     get:
       tags: [Clubs]
       summary: One club with counters
-      description: 'Plain members get only `id`, `name`, `timezone` and `role` (staff also get `feedSignup`). `eventCount` includes archived calendars; `feedCount` counts the feeds of the club (what deleting the club removes).'
+      description: 'Plain members get only `id`, `name`, `timezone`, `role` and `calendars` (the calendars they hold a calendar permission for, possibly empty; staff get `feedSignup` instead). `eventCount` includes archived calendars; `feedCount` counts the feeds of the club (what deleting the club removes).'
       operationId: getClub
       responses:
         '200':
@@ -2632,7 +2637,9 @@ paths:
     get:
       tags: [Calendars]
       summary: Calendars of a club
-      description: Active calendars first, then by name.
+      description: >-
+        Active calendars first, then by name. Staff (viewer and above) see all calendars; a plain member sees only the
+        calendars they hold a calendar permission for (see `/api/calendars/{calendarId}/members`) and is otherwise 403.
       operationId: listCalendars
       parameters:
         - { name: includeArchived, in: query, schema: { type: string, enum: ['true', 'false'], default: 'false' } }
@@ -2681,6 +2688,7 @@ paths:
     get:
       tags: [Calendars]
       summary: One calendar
+      description: Staff, or a plain member with a calendar permission for this calendar.
       operationId: getCalendar
       responses:
         '200':
@@ -3651,6 +3659,7 @@ paths:
     get:
       tags: [Target groups]
       summary: Audiences (target groups) of a club
+      description: Staff, or a plain member with a calendar permission in this club (read-only, for the event form).
       operationId: listTargetGroups
       responses:
         '200':
@@ -3731,6 +3740,7 @@ paths:
     get:
       tags: [Locations]
       summary: Locations of a club
+      description: Staff, or a plain member with a calendar permission in this club (read-only, for the event form).
       operationId: listLocations
       responses:
         '200':
@@ -4837,6 +4847,78 @@ paths:
         '422': { $ref: '#/components/responses/HolidaySourceOrFetchFailed' }
         '429': { $ref: '#/components/responses/AuthRateLimited' }
 
+  /api/calendars/{calendarId}/members:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+    get:
+      tags: [Calendars]
+      summary: People with a calendar permission
+      description: >-
+        Club admins only. Calendar permissions let a club member (typically role `member`) read and edit events,
+        series, templates, badges (properties) and extras (features) of THIS calendar, plus read club locations and
+        audiences. Holiday calendars and calendar settings stay read-only for them; managing permissions, feeds and
+        club settings is closed to them (403). MCP access is not affected (role `member` is rejected there).
+      operationId: listCalendarMembers
+      responses:
+        '200':
+          description: Ordered by name.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CalendarMember' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Calendars]
+      summary: Give a club member a calendar permission
+      description: >-
+        Club admins only. `userId` must be a member of the calendar's club (any role), else 422 `unknown_reference`
+        (field `userId`). Idempotent: 201 when new, 200 when the permission already existed. Quota
+        `calendarMembersPerCalendar` (422 `quota_exceeded`).
+      operationId: addCalendarMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: string, maxLength: 36 }
+      responses:
+        '200':
+          description: The permission existed already.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CalendarMember' }
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CalendarMember' }
+        '400': { $ref: '#/components/responses/InvalidInput' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/calendars/{calendarId}/members/{userId}:
+    parameters:
+      - { $ref: '#/components/parameters/CalendarId' }
+      - { name: userId, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [Calendars]
+      summary: Withdraw a calendar permission
+      description: Club admins only. Idempotent (no permission is fine). Leaving or being removed from the club removes all permissions of that club.
+      operationId: deleteCalendarMember
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /api/calendars/{calendarId}/holiday-events:
     parameters:
       - { $ref: '#/components/parameters/CalendarId' }
@@ -5636,7 +5718,7 @@ components:
         Complete personal data export. Timestamps are UTC (`YYYY-MM-DDTHH:MM:SSZ`). Secrets (password hash, TOTP
         secret, backup codes, passkey keys, tokens, feed and subscription addresses) and data of other people are
         never included; `meta.excluded` lists this in words.
-      required: [meta, account, memberships, feedAccess, subscription, signInMethods, consents, securityEvents, connectedApps, sessions, invitations, pendingEmailChange, clubContent]
+      required: [meta, account, memberships, feedAccess, calendarAccess, subscription, signInMethods, consents, securityEvents, connectedApps, sessions, invitations, pendingEmailChange, clubContent]
       properties:
         meta:
           type: object
@@ -5681,6 +5763,17 @@ components:
               feedName: { type: string }
               clubId: { type: string }
               source: { type: string, enum: [assigned, claimed] }
+              createdAt: { type: [string, 'null'], format: date-time }
+        calendarAccess:
+          type: array
+          description: Calendar permissions handed out to the user (who granted them is not included).
+          items:
+            type: object
+            properties:
+              calendarId: { type: string }
+              calendarName: { type: string }
+              clubId: { type: string }
+              clubName: { type: string }
               createdAt: { type: [string, 'null'], format: date-time }
         subscription:
           type: array
@@ -5974,6 +6067,7 @@ components:
           required: [role]
           properties:
             role: { $ref: '#/components/schemas/ClubRole' }
+            calendars: { type: array, items: { $ref: '#/components/schemas/MemberCalendar' }, description: 'Only for role `member`: the calendars the user holds a calendar permission for (possibly empty).' }
             calendarCount: { type: integer, description: Active calendars. }
             archivedCalendarCount: { type: integer }
             memberCount: { type: integer }
@@ -5991,6 +6085,7 @@ components:
           required: [role]
           properties:
             role: { $ref: '#/components/schemas/ClubRole' }
+            calendars: { type: array, items: { $ref: '#/components/schemas/MemberCalendar' }, description: 'Only for role `member`: the calendars the user holds a calendar permission for (possibly empty).' }
             calendarCount: { type: integer }
             archivedCalendarCount: { type: integer }
             memberCount: { type: integer }
@@ -6029,6 +6124,23 @@ components:
         name: { type: string }
         email: { type: string, format: email }
         role: { $ref: '#/components/schemas/ClubRole' }
+    CalendarMember:
+      type: object
+      required: [userId, name, email, clubRole, createdAt]
+      properties:
+        userId: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        clubRole: { $ref: '#/components/schemas/ClubRole' }
+        createdAt: { type: string, format: date-time }
+    MemberCalendar:
+      type: object
+      required: [id, name, timezone, archivedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        timezone: { type: [string, 'null'] }
+        archivedAt: { type: [string, 'null'], format: date-time }
     Calendar:
       type: object
       required: [id, clubId, name, timezone, archivedAt, eventCount, templateCount, feedCount, exclusiveFeedCount]

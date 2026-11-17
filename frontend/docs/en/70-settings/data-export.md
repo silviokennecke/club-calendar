@@ -6,7 +6,7 @@ description: Download a file with all the data stored about you.
 
 # Download your data
 
-You can download a file with all the data stored about you: your account, your memberships, your sign-in history, your consents and the content you created or last edited in clubs.
+You can download a file with all the data stored about you: your account, your memberships and calendar permissions, your sign-in history, your consents and the content you created or last edited in clubs.
 
 ## How to
 

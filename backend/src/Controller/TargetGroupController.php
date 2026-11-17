@@ -23,7 +23,7 @@ class TargetGroupController extends AbstractApiController
     }
 
     #[Route('', methods: ['GET'])]
-    #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
+    #[IsGranted(ClubMemberVoter::CLUB_CALENDAR_ACCESS, subject: 'club')]
     public function list(#[MapEntity(id: 'clubId')] Club $club): JsonResponse
     {
         return new JsonResponse($this->targetGroupService->list($club));

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\Calendar;
+use App\Exception\ApiProblemException;
 use App\Pdf\PdfExportService;
 use App\Pdf\PdfHolidaySelection;
 use App\Pdf\PdfOptions;
@@ -200,7 +201,13 @@ class EventController extends AbstractApiController
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function import(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
-        return new JsonResponse($this->importService->import($calendar, $this->decodeJson($request)), Response::HTTP_CREATED);
+        $data = $this->decodeJson($request);
+        // new places are club-scoped writes: staff editors only (a calendar member may only reference existing ones)
+        if (!empty($data['locations']) && !$this->isGranted(CalendarMemberVoter::CALENDAR_STAFF_EDITOR, $calendar)) {
+            throw new ApiProblemException(Response::HTTP_FORBIDDEN, 'Editor role required to create locations', 'forbidden');
+        }
+
+        return new JsonResponse($this->importService->import($calendar, $data), Response::HTTP_CREATED);
     }
 
     /**
@@ -222,7 +229,7 @@ class EventController extends AbstractApiController
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function conflicts(#[MapEntity(id: 'calendarId')] Calendar $calendar, Request $request): JsonResponse
     {
-        $staff = $this->isGranted(CalendarMemberVoter::CALENDAR_MEMBER, $calendar);
+        $staff = $this->conflictService->isStaff($calendar->getClub()->getId());
 
         return new JsonResponse($this->conflictService->check($calendar, $this->decodeJson($request), $staff));
     }

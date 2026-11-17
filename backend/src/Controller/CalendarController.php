@@ -7,8 +7,12 @@ namespace App\Controller;
 use App\Dto\Calendar\CreateCalendarDto;
 use App\Entity\Calendar;
 use App\Entity\Club;
+use App\Enum\ClubRole;
 use App\Security\ArchivedCalendarVoter;
+use App\Security\CalendarMemberVoter;
 use App\Security\ClubMemberVoter;
+use App\Security\CurrentUserResolver;
+use App\Service\CalendarMemberService;
 use App\Service\CalendarService;
 use App\Service\Input;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
@@ -28,16 +32,21 @@ class CalendarController extends AbstractApiController
         private readonly CalendarService $calendarService,
         private readonly ValidatorInterface $validator,
         private readonly SerializerInterface $serializer,
+        private readonly CurrentUserResolver $userResolver,
+        private readonly CalendarMemberService $calendarMembers,
     ) {
     }
 
+    /** Staff see all calendars; a plain member with calendar permissions only those. */
     #[Route('', methods: ['GET'])]
-    #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
+    #[IsGranted(ClubMemberVoter::CLUB_CALENDAR_ACCESS, subject: 'club')]
     public function list(#[MapEntity(id: 'clubId')] Club $club, Request $request): JsonResponse
     {
         $includeArchived = 'true' === $request->query->get('includeArchived');
+        $user = $this->userResolver->resolve();
+        $onlyIds = $this->calendarMembers->role($club, $user)?->atLeast(ClubRole::VIEWER) ? null : $this->calendarMembers->calendarIds($club, $user);
 
-        return new JsonResponse($this->calendarService->listCalendars($club, $includeArchived));
+        return new JsonResponse($this->calendarService->listCalendars($club, $includeArchived, $onlyIds));
     }
 
     #[Route('', methods: ['POST'])]
@@ -58,11 +67,13 @@ class CalendarController extends AbstractApiController
     }
 
     #[Route('/{calendarId}', methods: ['GET'])]
-    #[IsGranted(ClubMemberVoter::CLUB_MEMBER, subject: 'club')]
+    #[IsGranted(ClubMemberVoter::CLUB_CALENDAR_ACCESS, subject: 'club')]
     public function getOne(
         #[MapEntity(id: 'clubId')] Club $club,
         #[MapEntity(expr: 'repository.findByIdAndClubId(calendarId, clubId)')] Calendar $calendar,
     ): JsonResponse {
+        $this->denyAccessUnlessGranted(CalendarMemberVoter::CALENDAR_MEMBER, $calendar);
+
         return new JsonResponse($this->calendarService->serializeCalendar($calendar));
     }
 

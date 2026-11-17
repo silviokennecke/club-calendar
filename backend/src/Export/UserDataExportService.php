@@ -6,6 +6,7 @@ namespace App\Export;
 
 use App\Entity\Calendar;
 use App\Entity\CalendarFeed;
+use App\Entity\CalendarMember;
 use App\Entity\Club;
 use App\Entity\ClubInvitation;
 use App\Entity\ClubUser;
@@ -75,6 +76,7 @@ class UserDataExportService
         User::class => 'exported:account',
         ClubUser::class => 'exported:memberships',
         FeedMember::class => 'exported:feedAccess',
+        CalendarMember::class => 'exported:calendarAccess',
         MemberSubscription::class => 'exported:subscription',
         MemberSubscriptionFeed::class => 'exported:subscription',
         MemberSubscriptionTargetGroup::class => 'exported:subscription',
@@ -138,6 +140,7 @@ class UserDataExportService
         $w->key('account')->value($this->account($user));
         $w->key('memberships')->value($this->memberships($uid));
         $w->key('feedAccess')->value($this->feedAccess($uid));
+        $w->key('calendarAccess')->value($this->calendarAccess($uid));
         $w->key('subscription')->value($this->subscriptions($uid));
         yield $w->flush();
 
@@ -210,6 +213,22 @@ class UserDataExportService
         return array_map(static fn (array $r) => [
             'feedId' => $r['feed_id'], 'feedName' => $r['name'], 'clubId' => $r['club_id'],
             'source' => $r['source'], 'createdAt' => self::utc($r['created_at']),
+        ], $rows);
+    }
+
+    /** Calendar permissions handed out to the user; who granted them is not included. @return list<array<string, mixed>> */
+    private function calendarAccess(string $uid): array
+    {
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT m.calendar_id, cal.name AS calendar_name, cal.club_id, c.name AS club_name, m.created_at FROM calendar_member m
+             INNER JOIN calendar cal ON cal.id = m.calendar_id INNER JOIN club c ON c.id = cal.club_id
+             WHERE m.user_id = :u ORDER BY c.name, cal.name, m.id',
+            ['u' => $uid],
+        );
+
+        return array_map(static fn (array $r) => [
+            'calendarId' => $r['calendar_id'], 'calendarName' => $r['calendar_name'],
+            'clubId' => $r['club_id'], 'clubName' => $r['club_name'], 'createdAt' => self::utc($r['created_at']),
         ], $rows);
     }
 

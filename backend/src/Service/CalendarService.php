@@ -26,7 +26,10 @@ class CalendarService
     ) {
     }
 
-    public function listCalendars(Club $club, bool $includeArchived = false): array
+    /**
+     * @param list<string>|null $onlyIds restrict to these calendars (a calendar member sees only their own)
+     */
+    public function listCalendars(Club $club, bool $includeArchived = false, ?array $onlyIds = null): array
     {
         $qb = $this->em->createQueryBuilder()
             ->select('c')
@@ -36,6 +39,12 @@ class CalendarService
 
         if (!$includeArchived) {
             $qb->andWhere('c.archivedAt IS NULL');
+        }
+        if (null !== $onlyIds) {
+            if ([] === $onlyIds) {
+                return [];
+            }
+            $qb->andWhere('c.id IN (:ids)')->setParameter('ids', $onlyIds);
         }
 
         $calendars = $qb->getQuery()->getResult();

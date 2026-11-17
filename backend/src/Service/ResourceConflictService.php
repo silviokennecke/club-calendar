@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Calendar;
+use App\Entity\ClubUser;
 use App\Entity\Event;
+use App\Entity\User;
+use App\Enum\ClubRole;
 use App\Exception\ApiProblemException;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\SecurityBundle\Security;
 
 /**
  * Double-booking check of resources of type location (event.location_id), see docs/ops/RESOURCE_PLANNING.md.
@@ -26,8 +30,23 @@ readonly class ResourceConflictService
     /** Days around the candidates read from the database (buffer max. 1 day plus zone differences). */
     private const WINDOW_DAYS = 3;
 
-    public function __construct(private EntityManagerInterface $em)
+    public function __construct(private EntityManagerInterface $em, private Security $security)
     {
+    }
+
+    /**
+     * Whether the signed-in user sees titles and ids of other events (club role viewer or above). A calendar member
+     * with a lower club role sees only calendar name and time. No signed-in user (CLI, tests) counts as staff.
+     */
+    public function isStaff(string $clubId): bool
+    {
+        $user = $this->security->getUser();
+        if (!$user instanceof User) {
+            return true;
+        }
+        $cu = $this->em->getRepository(ClubUser::class)->findOneBy(['club' => $clubId, 'user' => $user]);
+
+        return null !== $cu && $cu->getRole()->atLeast(ClubRole::VIEWER);
     }
 
     /**
@@ -84,7 +103,9 @@ readonly class ResourceConflictService
             return;
         }
 
-        throw new ApiProblemException(422, 'The resource is already booked at this time', self::CODE, null, [], null, ['conflicts' => array_map(fn (array $h) => $this->serialize($h, true, true), $hits)]);
+        $staff = $this->isStaff($club);
+
+        throw new ApiProblemException(422, 'The resource is already booked at this time', self::CODE, null, [], null, ['conflicts' => array_map(fn (array $h) => $this->serialize($h, $staff, true), $hits)]);
     }
 
     /**

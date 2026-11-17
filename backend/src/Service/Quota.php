@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\Calendar;
 use App\Entity\CalendarFeed;
+use App\Entity\CalendarMember;
 use App\Entity\Club;
 use App\Entity\ClubInvitation;
 use App\Entity\ClubUser;
@@ -53,6 +54,7 @@ class Quota
     public const TARGET_GROUPS_PER_CLUB = 'targetGroupsPerClub';
     public const FEEDS_PER_CLUB = 'feedsPerClub';
     public const FEED_MEMBERS_PER_FEED = 'feedMembersPerFeed';
+    public const CALENDAR_MEMBERS_PER_CALENDAR = 'calendarMembersPerCalendar';
     public const HOLIDAY_CALENDARS_PER_CALENDAR = 'holidayCalendarsPerCalendar';
     public const MCP_CLIENTS_PER_USER = 'mcpClientsPerUser';
 
@@ -72,6 +74,7 @@ class Quota
         self::TARGET_GROUPS_PER_CLUB => 500,
         self::FEEDS_PER_CLUB => 50,
         self::FEED_MEMBERS_PER_FEED => 5000,
+        self::CALENDAR_MEMBERS_PER_CALENDAR => 500,
         self::HOLIDAY_CALENDARS_PER_CALENDAR => 20,
         self::MCP_CLIENTS_PER_USER => 20,
     ];
@@ -94,6 +97,7 @@ class Quota
         self::TARGET_GROUPS_PER_CLUB => [TargetGroup::class, 'club'],
         self::FEEDS_PER_CLUB => [CalendarFeed::class, 'club'],
         self::FEED_MEMBERS_PER_FEED => [FeedMember::class, 'feed'],
+        self::CALENDAR_MEMBERS_PER_CALENDAR => [CalendarMember::class, 'calendar'],
         self::HOLIDAY_CALENDARS_PER_CALENDAR => [HolidayCalendar::class, 'calendar'],
         // Connected apps = grants of the user (revoked ones are deleted by the revoke route, not kept)
         self::MCP_CLIENTS_PER_USER => [McpGrant::class, 'user'],

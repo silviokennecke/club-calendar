@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Entity\CalendarMember;
 use App\Entity\ClubInvitation;
 use App\Entity\FeedMember;
 use App\Entity\McpGrant;
@@ -105,6 +106,10 @@ class UserDataExportServiceTest extends KernelTestCase
         $fm = new FeedMember($feed, $b, FeedMember::ASSIGNED, $a);
         $this->em->persist($fm);
 
+        // a holds a calendar permission granted by b, b holds one granted by a (not exported)
+        $this->em->persist(new CalendarMember($cal2, $a, $b));
+        $this->em->persist(new CalendarMember($cal, $b, $a));
+
         // own subscription
         $sub = new MemberSubscription($club, $a);
         $this->em->persist($sub);
@@ -185,7 +190,7 @@ class UserDataExportServiceTest extends KernelTestCase
         $data = $this->exportOf($a, $raw);
 
         self::assertSame(
-            ['meta', 'account', 'memberships', 'feedAccess', 'subscription', 'signInMethods', 'consents', 'securityEvents', 'connectedApps', 'sessions', 'invitations', 'pendingEmailChange', 'clubContent'],
+            ['meta', 'account', 'memberships', 'feedAccess', 'calendarAccess', 'subscription', 'signInMethods', 'consents', 'securityEvents', 'connectedApps', 'sessions', 'invitations', 'pendingEmailChange', 'clubContent'],
             array_keys($data),
         );
         self::assertSame(1, $data['meta']['version']);
@@ -204,6 +209,12 @@ class UserDataExportServiceTest extends KernelTestCase
         self::assertSame('viewer', $data['memberships'][1]['role']);
 
         self::assertSame([], $data['feedAccess']); // the feed member row is b's
+
+        self::assertCount(1, $data['calendarAccess']);
+        self::assertSame('Beta Kalender', $data['calendarAccess'][0]['calendarName']);
+        self::assertSame($cal2->getId(), $data['calendarAccess'][0]['calendarId']);
+        self::assertSame('Beta Club', $data['calendarAccess'][0]['clubName']);
+        self::assertSame(['calendarId', 'calendarName', 'clubId', 'clubName', 'createdAt'], array_keys($data['calendarAccess'][0]));
 
         self::assertCount(1, $data['subscription']);
         self::assertSame($club->getId(), $data['subscription'][0]['clubId']);

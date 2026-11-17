@@ -52,7 +52,7 @@ class HolidayCalendarController extends AbstractApiController
     }
 
     #[Route('', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_STAFF_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function create(
         #[MapEntity(id: 'calendarId')] Calendar $calendar,
@@ -80,7 +80,7 @@ class HolidayCalendarController extends AbstractApiController
     }
 
     #[Route('/predefined', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_STAFF_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function createPredefined(
         #[MapEntity(id: 'calendarId')] Calendar $calendar,
@@ -123,7 +123,7 @@ class HolidayCalendarController extends AbstractApiController
     }
 
     #[Route('/{hcId}', methods: ['PATCH'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_STAFF_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function update(
         #[MapEntity(id: 'calendarId')] Calendar $calendar,
@@ -162,7 +162,7 @@ class HolidayCalendarController extends AbstractApiController
     }
 
     #[Route('/{hcId}', methods: ['DELETE'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_STAFF_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function delete(
         #[MapEntity(id: 'calendarId')] Calendar $calendar,
@@ -177,7 +177,7 @@ class HolidayCalendarController extends AbstractApiController
     }
 
     #[Route('/{hcId}/refresh', methods: ['POST'])]
-    #[IsGranted(CalendarMemberVoter::CALENDAR_EDITOR, subject: 'calendar')]
+    #[IsGranted(CalendarMemberVoter::CALENDAR_STAFF_EDITOR, subject: 'calendar')]
     #[IsGranted(ArchivedCalendarVoter::NOT_ARCHIVED, subject: 'calendar')]
     public function refresh(
         #[MapEntity(id: 'calendarId')] Calendar $calendar,
