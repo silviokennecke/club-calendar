@@ -56,6 +56,8 @@ Updated by the scheduled task `telemetry-hourly` at minute 5 of every hour (UTC)
 | `club_calendar.member_subscriptions` | none | Personal subscriptions ("My subscription") |
 | `club_calendar.mcp.grants` | none | Connected AI apps that are not revoked |
 | `club_calendar.mcp.clients` | none | Registered AI app clients |
+| `club_calendar.resources` | `visibility`: `staff`, `members` | Resources (bookable places) |
+| `club_calendar.calendar_members` | none | Per-calendar member permissions |
 | `club_calendar.memberships` | `role`: `member`, `viewer`, `editor`, `admin` | Club memberships per role |
 
 ### Daily distributions

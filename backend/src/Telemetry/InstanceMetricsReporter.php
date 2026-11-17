@@ -6,6 +6,7 @@ namespace App\Telemetry;
 
 use App\Enum\ClubRole;
 use App\Enum\FeedVisibility;
+use App\Enum\ResourceVisibility;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 
@@ -86,6 +87,13 @@ class InstanceMetricsReporter
             ->record($this->scalar('SELECT COUNT(*) FROM mcp_grant WHERE revoked_at IS NULL'));
         $t->gauge('club_calendar.mcp.clients', '{client}', 'Registered OAuth clients')
             ->record($this->scalar('SELECT COUNT(*) FROM oauth_client'));
+
+        $gauge = $t->gauge('club_calendar.resources', '{resource}', 'Resources per visibility');
+        foreach ($this->grouped('SELECT visibility AS k, COUNT(*) AS n FROM resource GROUP BY visibility', ResourceVisibility::values()) as $k => $n) {
+            $gauge->record($n, ['visibility' => (string) $k]);
+        }
+        $t->gauge('club_calendar.calendar_members', '{member}', 'Per-calendar member permissions')
+            ->record($this->scalar('SELECT COUNT(*) FROM calendar_member'));
 
         $gauge = $t->gauge('club_calendar.memberships', '{member}', 'Club memberships per role');
         foreach ($this->grouped('SELECT role AS k, COUNT(*) AS n FROM club_user GROUP BY role', ClubRole::values()) as $k => $n) {

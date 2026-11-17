@@ -133,7 +133,7 @@ class McpReadToolsTest extends WebTestCase
         $token = $this->token($this->viewer);
         $r = $this->rpc(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'tools/list'], $token, $this->session($token));
         $names = array_column($r['body']['result']['tools'], 'name');
-        $expected = ['create_event_draft', 'update_event_draft', 'create_target_group', 'create_location', 'create_property', 'create_feature', 'create_event_template', 'update_event_template', 'delete_event_template', 'create_feed', 'list_clubs', 'list_calendars', 'list_events', 'get_event', 'list_target_groups', 'list_properties', 'list_features', 'list_locations', 'list_event_templates', 'get_event_template', 'list_feeds', 'get_feed'];
+        $expected = ['create_event_draft', 'update_event_draft', 'create_target_group', 'create_location', 'create_property', 'create_feature', 'create_event_template', 'update_event_template', 'delete_event_template', 'create_feed', 'list_clubs', 'list_calendars', 'list_events', 'get_event', 'list_target_groups', 'list_properties', 'list_features', 'list_locations', 'list_event_templates', 'get_event_template', 'list_feeds', 'get_feed', 'list_resources', 'list_resource_events'];
         sort($names);
         sort($expected);
         $this->assertSame($expected, $names);
@@ -162,12 +162,36 @@ class McpReadToolsTest extends WebTestCase
         $this->assertError($this->call($this->viewer, 'get_event_template', ['calendarId' => $cid, 'templateId' => 'nope']), 'not found');
     }
 
+    public function testResourceTools(): void
+    {
+        $loc = TestHelper::createLocation($this->em, $this->club, 'Halle');
+        $res = (new \App\Entity\Resource())->setClub($this->club)->setName('Grosse Halle')->setLocation($loc)->setBufferMinutes(15);
+        $this->em->persist($res);
+        $this->em->flush();
+        $ev = TestHelper::createEvent($this->em, $this->calendar, ['name' => 'Training', 'isDraft' => false]);
+        $ev->setLocation($loc);
+        $draft = TestHelper::createEvent($this->em, $this->calendar, ['name' => 'Entwurf', 'isDraft' => true]);
+        $draft->setLocation($loc);
+        $this->em->flush();
+        $club = $this->club->getId();
+
+        $list = $this->ok($this->viewer, 'list_resources', ['clubId' => $club]);
+        $this->assertEquals([['id' => $res->getId(), 'name' => 'Grosse Halle', 'type' => 'location', 'locationId' => $loc->getId(), 'visibility' => 'staff', 'allowDoubleBooking' => false, 'bufferMinutes' => 15]], $list);
+        $this->assertError($this->call($this->plainMember, 'list_resources', ['clubId' => $club]), 'Forbidden');
+
+        $args = ['clubId' => $club, 'resourceId' => $res->getId(), 'from' => '2026-07-01', 'to' => '2026-07-31'];
+        $this->assertSame(1, $this->ok($this->viewer, 'list_resource_events', $args)['total']);
+        $this->assertSame(2, $this->ok($this->editor, 'list_resource_events', $args)['total']);
+        $this->assertError($this->call($this->viewer, 'list_resource_events', ['resourceId' => '00000000-0000-7000-8000-000000000000'] + $args), 'not found');
+        $this->assertError($this->call($this->outsider, 'list_resource_events', $args), 'Club not found.');
+    }
+
     public function testNonMemberAndUnknownIdsLookTheSame(): void
     {
         $cid = $this->calendar->getId();
         $club = $this->club->getId();
         $unknown = '00000000-0000-7000-8000-000000000000';
-        foreach (['list_calendars' => 'clubId', 'list_target_groups' => 'clubId', 'list_locations' => 'clubId', 'list_feeds' => 'clubId'] as $tool => $key) {
+        foreach (['list_calendars' => 'clubId', 'list_target_groups' => 'clubId', 'list_locations' => 'clubId', 'list_feeds' => 'clubId', 'list_resources' => 'clubId'] as $tool => $key) {
             $this->assertError($this->call($this->outsider, $tool, [$key => $club]), 'Club not found.');
             $this->assertError($this->call($this->outsider, $tool, [$key => $unknown]), 'Club not found.');
         }

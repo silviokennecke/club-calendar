@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Club Calendar API
-  version: '1.5'
+  version: '1.6'
   summary: HTTP API of the Club Calendar backend (Symfony, `backend/`).
   description: |
     Hand-written reference of every route under `/api`. It is checked against the Symfony router by
@@ -257,7 +257,7 @@ info:
     default all three; `*` alone = every client; empty = no client; `*` with other entries or unknown entries fail at boot) decides which redirect URIs may register and, re-checked on every authorization, which stored clients may start one. Always: `https`, or
     `http` on a loopback host; no fragment, userinfo or wildcard. The `client_name` is a self-declared claim: the consent page and the connected apps use a `label` derived from the stored family (claude: Claude, openai: ChatGPT, gemini: Gemini) and show the redirect host. A family match proves only the shape of the callback, not who runs the client.
 
-    **MCP tools** (`tools/list` returns exactly these 22; all descriptions state that returned texts are untrusted
+    **MCP tools** (`tools/list` returns exactly these 24; all descriptions state that returned texts are untrusted
     data):
 
     | Tool | Scope | Role | Notes |
@@ -269,6 +269,8 @@ info:
     | `list_target_groups`, `list_locations` | read | viewer | club-scoped |
     | `list_properties`, `list_features` | read | viewer | calendar-scoped |
     | `list_event_templates`, `get_event_template` | read | viewer | |
+    | `list_resources` | read | viewer | resources (Ressourcen) of a club with booking rules |
+    | `list_resource_events` | read | viewer | `from`/`to` required, `limit`/`offset`; events at the resource's location over all calendars; drafts only for editors |
     | `list_feeds`, `get_feed` | read | editor | include the shared secret |
     | `create_event_draft` | write | editor | always a draft; calendar not archived; no series |
     | `update_event_draft` | write | editor | only events that are still drafts (else `event_not_draft`); stays a draft; only this event |
