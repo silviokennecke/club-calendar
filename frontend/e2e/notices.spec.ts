@@ -2,6 +2,8 @@ import { test, expect } from "@playwright/test";
 import { createVerifiedUser, login, seedClub } from "./helpers";
 
 test.describe("Hinweise", () => {
+  test.use({ locale: "de-DE", timezoneId: "Europe/Berlin" });
+
   test("Hinweis über den Split-Button anlegen", async ({ page, request }) => {
     const email = await createVerifiedUser(request, "Hinweis Anlegen");
     const { clubId, calendarId } = await seedClub(request, email, "Hinweis Verein");
