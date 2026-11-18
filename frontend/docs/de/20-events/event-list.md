@@ -25,6 +25,8 @@ Jeder Termin hat einen Status:
 
 Die Reiter **Alle**, **Veröffentlicht** und **Entwurf** filtern danach. Die Zahl am Reiter sagt, wie viele Termine dort liegen. Suche und Gruppenfilter wirken auf die Zahlen mit.
 
+[Hinweise](help:events/notices) stehen ebenfalls in der Liste, markiert mit **Hinweis**. Sobald der Kalender einen hat, zeigt ein Filter über der Tabelle nur Termine oder nur Hinweise.
+
 ## Termin öffnen
 
 Klicke in der Spalte **Name** auf einen Termin. Er öffnet sich über der Liste, Suche, Reiter und Filter bleiben beim Schließen erhalten. Wie du ihn änderst, steht unter [Termine bearbeiten](help:events/edit).

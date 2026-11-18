@@ -43,6 +43,8 @@ A legend below the calendar explains the markers: **Published**, **Draft, only v
 
 On a smartphone you get the month view with a list of events for the selected day below it. For all events use the **Events** area.
 
+[Notices](help:events/notices) appear in the month and week view as blue banners.
+
 ## Archived calendars
 
 If a calendar is archived, a notice at the top says it is read-only. You can view and export events but not change, create or move them. Admins can end the archiving with **Unarchive**, see [Manage calendars](help:settings/calendars).

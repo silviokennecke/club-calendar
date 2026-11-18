@@ -25,6 +25,8 @@ A new event starts as a **draft** that only your club can see. It appears in the
 
 ![New event form with the basic data filled in](shot:first-event-form)
 
+For a short all-day message without a time or location, create a [notice](help:events/notices) instead: use the menu next to **Create event**.
+
 ## The fields
 
 **Basics**

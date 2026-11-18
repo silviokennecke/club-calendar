@@ -12,6 +12,7 @@ Termine sind das Herz des Vereinskalenders. Hier erfährst du, wie du sie anlegs
 - [Termine bearbeiten, verschieben und löschen](help:events/edit)
 - [Ansichten: Monat, Woche und Liste](help:events/views)
 - [Suchen und filtern](help:events/search-filter)
+- [Hinweise](help:events/notices): kurze ganztägige Mitteilungen ohne Uhrzeit
 - [Die Terminliste](help:events/event-list): alle Termine mit Status im Überblick
 
 Wiederkehrende Termine legst du als [Terminreihe](help:organize/series) an, mehrere Termine auf einmal änderst du mit [Sammelaktionen](help:organize/bulk).

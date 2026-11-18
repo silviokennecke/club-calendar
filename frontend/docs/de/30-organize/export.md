@@ -33,6 +33,8 @@ Wähle oben beim **Dateiformat** den Eintrag **PDF**, wenn du den Kalender druck
 3. Wähle unter **Feiertage anzeigen** die **Feiertagskalender im PDF**. Ohne Auswahl werden keine Feiertage gedruckt.
 4. Klicke auf **PDF-Datei laden**.
 
+[Hinweise](help:events/notices) werden mitgedruckt (Quartalsübersicht, Monatsraster und Agenda, nicht die Jahresübersicht). Die ICS-Datei enthält sie nicht.
+
 Gesetzliche Feiertage werden farbig mit ihrem Namen hervorgehoben. Schulferien sind ebenfalls farbig, ihr Name steht nur am ersten Tag. Bei überlappenden Farben gilt diese Rangfolge: deaktivierte Tage, Feiertage, Wochenenden, Schulferien. Wie du Feiertagskalender einrichtest, steht unter [Feiertage und Ferien](help:organize/holidays).
 
 ## Was mache ich mit der Datei?

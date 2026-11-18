@@ -8,6 +8,7 @@ export const DOC_SLUGS = [
   "events/event-list",
   "events/first-event",
   "events/index",
+  "events/notices",
   "events/search-filter",
   "events/views",
   "getting-started/index",

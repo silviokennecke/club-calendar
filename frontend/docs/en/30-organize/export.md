@@ -33,6 +33,8 @@ Under **File format** at the top, choose **PDF** if you want to print or share t
 3. Under **Show holidays**, select the **Holiday calendars to print**. Without a selection no holidays are printed.
 4. Click **Download PDF file**.
 
+[Notices](help:events/notices) are printed too (quarter overview, month grid and agenda, not the annual overview). The ICS file does not contain them.
+
 Public holidays are highlighted in colour with their name. School holidays are coloured too, with their name shown on the first day only. When colours overlap, this priority applies: disabled days, holidays, weekends, school holidays. How to set up holiday calendars is described under [Holidays and school breaks](help:organize/holidays).
 
 ## What do I do with the file?

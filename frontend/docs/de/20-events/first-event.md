@@ -25,6 +25,8 @@ Ein neuer Termin bleibt zunächst ein **Entwurf**, den nur dein Verein sieht. Er
 
 ![Formular Neuer Termin mit ausgefüllten Grunddaten](shot:first-event-form)
 
+Für eine kurze ganztägige Mitteilung ohne Uhrzeit und Ort legst du stattdessen einen [Hinweis](help:events/notices) an: über das Menü neben **Termin anlegen**.
+
 ## Die Felder
 
 **Grunddaten**

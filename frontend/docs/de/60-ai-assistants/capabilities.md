@@ -22,7 +22,7 @@ Mit der Berechtigung **Nur lesen** kann der Assistent ansehen:
 
 Mit **Lesen und Entwürfe** kann er zusätzlich, wenn du mindestens Bearbeiter bist:
 
-- Terminentwürfe anlegen und noch nicht veröffentlichte Entwürfe ändern,
+- Terminentwürfe und [Hinweis](help:events/notices)-Entwürfe anlegen und noch nicht veröffentlichte Entwürfe ändern,
 - einen veröffentlichten Termin wieder auf Entwurf setzen (damit er geändert werden kann; er ist dann in Feeds nicht mehr sichtbar, bis du ihn erneut veröffentlichst),
 - Gruppen, Besonderheiten, Zusatzangebote und Orte anlegen,
 - Terminvorlagen anlegen, ändern und löschen,

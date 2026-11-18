@@ -22,7 +22,7 @@ With the permission **Read only** the assistant can view:
 
 With **Read and drafts** it can additionally, if you are at least an editor:
 
-- create event drafts and change drafts that are not yet published,
+- create event drafts and [notice](help:events/notices) drafts and change drafts that are not yet published,
 - set a published event back to draft (so it can be changed; it is then no longer visible in feeds until you publish it again),
 - create audiences, badges, extras and locations,
 - create, change and delete event templates,

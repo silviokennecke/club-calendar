@@ -43,6 +43,8 @@ Eine Legende unter dem Kalender erklärt die Markierungen: **Veröffentlicht**, 
 
 Auf dem Smartphone gibt es die Monatsansicht mit einer Terminliste für den gewählten Tag darunter. Für alle Termine nutzt du den Bereich **Termine**.
 
+[Hinweise](help:events/notices) erscheinen in der Monats- und Wochenansicht als blaue Banner.
+
 ## Archivierte Kalender
 
 Ist ein Kalender archiviert, steht oben ein Hinweis, dass er schreibgeschützt ist. Termine lassen sich ansehen und exportieren, aber nicht ändern, anlegen oder verschieben. Admins können die Archivierung mit **Archivierung aufheben** beenden, siehe [Kalender verwalten](help:settings/calendars).

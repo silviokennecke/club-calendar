@@ -143,6 +143,7 @@ Security headers (audit M4) live in both `backend/public/.htaccess` and `docker/
 - **CalendarFeed** (visibility also decides indexing: only `PUBLIC` is indexable, even on a private instance, see "Search engines, robots.txt and sitemap") — a publishable view of 1..n Calendars of a Club (ICS + web) with one of three states: `PUBLIC` (by link, search
   engines may index it), `CLUB` ("Vereinsintern", default: by link, never indexed)
   or `PRIVATE` (shared-secret protected); the web view merges published events and holiday events of all selected non-archived calendars; ICS lists events only, never holidays; scoped to a Club; see `docs/api/openapi.yaml`
+- **Notice** ("Hinweis") — `event.type` = `notice` (`App\Enum\EventType`, default `event`; column on `Event`): an all-day, optionally multi-day message with name, date(s), optional `note`, target groups and draft/published; no time, location/resource, properties or features; cannot change type after creation. Shown in calendar month/week (info banner), events list (tag, `?type=` filter), feed web view and "Mein Abo" web view (feed header `noticeCount`; no detail page), PDF (quarter, month grid, agenda; not annual; `PdfExportService::MAX_NOTICES` 500) and MCP (`create_event_draft` `type: notice`, `list_events`). Excluded from ICS (`IcsEventReader` `includeNotices` default false, so `FORMAT_VERSION` untouched), feed event detail pages, sitemap, series, templates, import and resource conflicts
 - **Event** — a single occurrence on a Calendar; optional plain-text `note` (max 2000 chars, trimmed, empty = null; copied from the template; ICS `DESCRIPTION`, shown in the public feed); may be based on an EventTemplate; may belong to an EventSeries
 - **EventSeries** — a recurrence rule (weekly, every two weeks, monthly on the n-th weekday; until a date or a count; skip holidays) with the events created from it; edit/delete "only this event" or "all events of the series" (`scope`); the rule can be changed later ("Reihe ändern", `PATCH …/event-series/{id}`: only future events change, past ones stay). ICS imports with RRULE create single events, not series
 - **EventTemplate** — reusable event definition (name, time, location, properties, optional `note`)
@@ -164,6 +165,7 @@ Technical names (code, routes, tables, JSON fields, MCP tool names) differ from 
 | TargetGroup | `/target-groups`, `*_target_group(s)` | Gruppe / Gruppen | Audience / Audiences |
 | Feature | `/features`, `*_feature(s)` | Zusatzangebot / Zusatzangebote | Extra / Extras |
 | Property | `/properties`, `*_property`, `*_properties` | Besonderheit / Besonderheiten | Badge / Badges |
+| Notice | `type=notice` on events, `type: notice` in MCP | Hinweis / Hinweise | Notice / Notices |
 | Resource | `/resources`, `*_resource(s)` | Ressource / Ressourcen | Resource / Resources |
 
 Rule: UI texts, help pages, docs and descriptions (OpenAPI, MCP tool descriptions) use the UI term only (technical name in parentheses once where it helps); code identifiers keep the technical name; new texts must follow this table.
@@ -381,6 +383,6 @@ The E2E backend must run with `MCP_ALLOWED_CLIENTS='*'` (setup command in `docs/
 
 Specs in `frontend/e2e/`: `auth`, `onboarding`, `calendar`, `events`, `series-change`, `templates`, `import`,
 `import-rrule`, `import-keyboard`, `import-large`, `error-page`, `dialog-stack`, `settings`, `feeds`, `club`, `profile`,
-`public`, `regressions`, `session-revoked`, `stale-assignments`, `account`, `event-template-suggest`, `help`, `mcp-consent`, `csp` (`*.spec.ts`; `csp` only runs with `E2E_CSP=1` against a production build); helpers in `helpers.ts`, guard in `safety.ts` / `global-setup.ts`.
+`public`, `regressions`, `session-revoked`, `stale-assignments`, `account`, `event-template-suggest`, `notices`, `help`, `mcp-consent`, `csp` (`*.spec.ts`; `csp` only runs with `E2E_CSP=1` against a production build); helpers in `helpers.ts`, guard in `safety.ts` / `global-setup.ts`.
 
 Help screenshots: `frontend/e2e/docs/*.docs.ts` run only in the Playwright project `docs` (`npm run docs:screenshots`), never in the normal `chromium` project; `frontend/e2e/help.spec.ts` covers the help pages.

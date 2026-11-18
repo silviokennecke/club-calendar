@@ -25,6 +25,8 @@ Every event has a status:
 
 The tabs **All**, **Published** and **Draft** filter by it. The number on a tab tells you how many events are in it. Search and audience filter affect the numbers.
 
+[Notices](help:events/notices) are in the list too, marked **Notice**. Once the calendar has one, a filter above the table shows only events or only notices.
+
 ## Open an event
 
 Click an event in the **Name** column. It opens above the list; search, tab and filters are kept when you close it. How to change it is explained under [Edit events](help:events/edit).
