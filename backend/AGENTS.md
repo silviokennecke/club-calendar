@@ -173,6 +173,12 @@ Run and DB setup: `../CLAUDE.md` "Tests".
 - Event templates: `timezone`, `timeBegin`, `timeEnd` are optional (times only as a pair); without times in the template and in the request, `from-template` creates all-day events (`../docs/api/openapi.yaml`)
 - Archived calendar public feeds → 404; nested write endpoints → 403 (via `ArchivedCalendarVoter`)
 
+## Event type notice
+
+- `Event.type` (`App\Enum\EventType`: `event` default | `notice`, column `type` varchar(16)); UI term Hinweis / Notice. Set only by `POST …/events` (`type`, invalid = 422 `validation_failed`); PATCH and `updateDraft` drop it. `EventService::buildEvent(…, EventType)` defaults to `event`, so series, from-template and import never create notices (their `type` input is ignored).
+- Notice rules live in `EventService::applyNoticeInput`: always all-day (00:00-23:59, times from input ignored), no location/template/badges/extras (non-empty input = 422 `validation_failed` with the field), `isAllDay: false` = 422; allowed: name, timezone, date, dateEnd, note, targetGroupIds, isDraft. Bulk `assign` of badges/extras onto a selection containing a notice is 422.
+- Queries that must stay `type = event`: `ResourceConflictService`, `ResourceCalendarService`, `SitemapGenerator`, import duplicate index, series rule-change planning and `seriesEventsWithLinks`, public feed event detail and its one-event ICS. `GET …/events?type=` filters.
+
 ## Event Series
 
 - `EventSeries` (`event_series`: rule + optional template, FK calendar CASCADE, template SET NULL) and `Event.series` (`series_id`, SET NULL). The events are normal rows; the rule is re-evaluated only when it is changed.

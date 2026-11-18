@@ -132,7 +132,7 @@ class SitemapGenerator
         $groupIds = $this->db->fetchFirstColumn('SELECT target_group_id FROM calendar_feed_target_group WHERE feed_id = ?', [$feedId]);
 
         $sql = 'SELECT e.id, e.updated_at FROM event e
-                WHERE e.calendar_id IN (?) AND e.is_draft = 0 AND e.id > ?
+                WHERE e.calendar_id IN (?) AND e.type = \'event\' AND e.is_draft = 0 AND e.id > ?
                   AND COALESCE(e.date_end, e.date) >= ? AND e.date <= ?';
         if ([] !== $groupIds) {
             $sql .= ' AND EXISTS (SELECT 1 FROM event_target_group etg WHERE etg.event_id = e.id AND etg.target_group_id IN (?))';

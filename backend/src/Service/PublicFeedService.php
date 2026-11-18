@@ -143,7 +143,9 @@ class PublicFeedService
         $feed = $this->loadFeed($feedId, $secret);
         $event = $this->eventQuery($feed, null, null, null)
             ->andWhere('e.id = :eventId')
+            ->andWhere('e.type = :eventType')
             ->setParameter('eventId', $eventId)
+            ->setParameter('eventType', \App\Enum\EventType::Event)
             ->getQuery()
             ->getOneOrNullResult();
         if (!$event instanceof Event) {
@@ -260,7 +262,9 @@ class PublicFeedService
         $feed = $this->loadFeed($feedId, $secret);
         $qb = $this->eventQuery($feed, null, null, null)
             ->andWhere('e.id = :eventId')
-            ->setParameter('eventId', $eventId);
+            ->andWhere('e.type = :eventType')
+            ->setParameter('eventId', $eventId)
+            ->setParameter('eventType', \App\Enum\EventType::Event);
         $events = [];
         foreach ($this->icsReader->chunks($qb, 1) as $chunk) {
             $events = $chunk;

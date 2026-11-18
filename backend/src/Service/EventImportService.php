@@ -305,7 +305,9 @@ readonly class EventImportService
             ->select('e.id', 'e.name', 'e.date', 'e.externalUid')
             ->from(Event::class, 'e')
             ->where('e.calendar = :calendar')
+            ->andWhere('e.type = :type')
             ->setParameter('calendar', $calendar)
+            ->setParameter('type', \App\Enum\EventType::Event)
             ->orderBy('e.date', 'ASC')
             ->getQuery()
             ->getArrayResult();

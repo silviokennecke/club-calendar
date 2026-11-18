@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\EventType;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -59,6 +60,10 @@ class Event implements UpdateAudited
 
     #[ORM\Column]
     private bool $isAllDay = false;
+
+    /** Set at creation only (a notice has no location, badges, extras or template and is always all-day). */
+    #[ORM\Column(length: 16, enumType: EventType::class, options: ['default' => 'event'])]
+    private EventType $type = EventType::Event;
 
     /** UID of the ICS event this event was imported from (duplicate check of later imports). */
     #[ORM\Column(length: 255, nullable: true)]
@@ -209,6 +214,18 @@ class Event implements UpdateAudited
     public function setTimeEnd(string $timeEnd): static
     {
         $this->timeEnd = $timeEnd;
+
+        return $this;
+    }
+
+    public function getType(): EventType
+    {
+        return $this->type;
+    }
+
+    public function setType(EventType $type): static
+    {
+        $this->type = $type;
 
         return $this;
     }

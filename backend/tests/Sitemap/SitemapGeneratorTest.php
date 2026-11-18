@@ -124,6 +124,19 @@ class SitemapGeneratorTest extends KernelTestCase
         $this->assertMatchesRegularExpression('#<lastmod>\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ</lastmod>#', $this->storage->read('sitemap/sitemap.xml'));
     }
 
+    public function testNoticesAreNotListed(): void
+    {
+        ['club' => $club, 'calendar' => $cal] = $this->club();
+        TestHelper::createFeed($this->em, $club, [$cal], FeedVisibility::PUBLIC);
+        $notice = $this->published($cal, '+10 days');
+        $notice->setType(\App\Enum\EventType::Notice);
+        $this->em->flush();
+
+        $this->generator()->generate();
+
+        $this->assertStringNotContainsString($notice->getId(), $this->storage->read('sitemap/sitemap-1.xml'));
+    }
+
     public function testFeedTargetGroupFilterMatchesWebView(): void
     {
         ['club' => $club, 'calendar' => $cal] = $this->club();

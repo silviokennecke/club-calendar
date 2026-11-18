@@ -59,7 +59,7 @@ readonly class ResourceCalendarService
 
         $drafts = $staff && $role->atLeast(ClubRole::EDITOR);
         $where = ' FROM event e JOIN calendar cal ON cal.id = e.calendar_id JOIN club ON club.id = cal.club_id'
-            .' WHERE e.location_id = :loc AND e.date <= :to AND COALESCE(e.date_end, e.date) >= :from'
+            .' WHERE e.type = \'event\' AND e.location_id = :loc AND e.date <= :to AND COALESCE(e.date_end, e.date) >= :from'
             .($drafts ? '' : ' AND e.is_draft = 0');
         $params = ['loc' => $resource->getLocation()->getId(), 'from' => $from->format('Y-m-d'), 'to' => $to->format('Y-m-d')];
 

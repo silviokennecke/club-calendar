@@ -202,7 +202,7 @@ readonly class ResourceConflictService
             'SELECT e.id, e.name, e.location_id, e.date, e.date_end, e.time_begin, e.time_end, e.is_all_day, e.is_draft,'
             .' cal.name AS calendar_name, COALESCE(e.timezone, cal.timezone, club.timezone) AS tz'
             .' FROM event e JOIN calendar cal ON cal.id = e.calendar_id JOIN club ON club.id = cal.club_id'
-            .' WHERE e.location_id IN (?) AND e.date <= ? AND COALESCE(e.date_end, e.date) >= ?'
+            .' WHERE e.type = \'event\' AND e.location_id IN (?) AND e.date <= ? AND COALESCE(e.date_end, e.date) >= ?'
             .($locking ? ' LOCK IN SHARE MODE' : ''),
             [array_keys($resources), $to, $from],
             [0 => ArrayParameterType::STRING],

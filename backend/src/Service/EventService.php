@@ -16,6 +16,7 @@ use App\Entity\Location;
 use App\Entity\Property;
 use App\Entity\TargetGroup;
 use App\Entity\User;
+use App\Enum\EventType;
 use App\Exception\ApiProblemException;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\LockMode;
@@ -81,10 +82,20 @@ readonly class EventService
             throw Input::invalid('q', sprintf('q must be at most %d characters', self::SEARCH_MAX_LENGTH));
         }
 
-        return $this->listEvents($calendar, $from, $to, $tgIds ?: null, $limit, $offset, '' === $q ? null : $q, $includeDrafts);
+        $type = $query['type'] ?? null;
+        if (null !== $type && '' !== $type) {
+            $type = is_string($type) ? EventType::tryFrom($type) : null;
+            if (null === $type) {
+                throw Input::invalid('type', 'type must be one of: '.implode(', ', EventType::values()));
+            }
+        } else {
+            $type = null;
+        }
+
+        return $this->listEvents($calendar, $from, $to, $tgIds ?: null, $limit, $offset, '' === $q ? null : $q, $includeDrafts, $type);
     }
 
-    public function listEvents(Calendar $calendar, ?\DateTimeImmutable $from, ?\DateTimeImmutable $to, ?array $targetGroupIds, int $limit = self::LIST_MAX_LIMIT, int $offset = 0, ?string $search = null, bool $includeDrafts = true): array
+    public function listEvents(Calendar $calendar, ?\DateTimeImmutable $from, ?\DateTimeImmutable $to, ?array $targetGroupIds, int $limit = self::LIST_MAX_LIMIT, int $offset = 0, ?string $search = null, bool $includeDrafts = true, ?EventType $type = null): array
     {
         $qb = $this->em->createQueryBuilder()
             ->select('e', 'l', 't')
@@ -99,6 +110,9 @@ readonly class EventService
 
         if (!$includeDrafts) {
             $qb->andWhere('e.isDraft = false');
+        }
+        if (null !== $type) {
+            $qb->andWhere('e.type = :type')->setParameter('type', $type);
         }
         if (null !== $from) {
             // Overlap: multi-day events that started before the range but reach into it are included
@@ -143,13 +157,24 @@ readonly class EventService
     public function createEvent(Calendar $calendar, array $data): array
     {
         $this->quota->assertRoom(Quota::EVENTS_PER_CALENDAR, $calendar);
-        $event = $this->buildEvent($calendar, $data);
+        $event = $this->buildEvent($calendar, $data, false, $this->typeFromInput($data));
         $this->conflicts->atomically(function () use ($event): void {
             $this->conflicts->assertCanPublish([$event]);
             $this->em->flush();
         });
 
         return $this->serializeEvent($event);
+    }
+
+    private function typeFromInput(array $data): EventType
+    {
+        $type = $data['type'] ?? null;
+        if (null === $type) {
+            return EventType::Event;
+        }
+
+        return (is_string($type) ? EventType::tryFrom($type) : null)
+            ?? throw Input::invalid('type', 'type must be one of: '.implode(', ', EventType::values()), 422);
     }
 
     public function createSeriesFromTemplate(Calendar $calendar, string $templateId, array $dates, array $overrides): array
@@ -249,7 +274,8 @@ readonly class EventService
     public function updateEvent(string $id, Calendar $calendar, array $data): array
     {
         $scope = $this->scope($data['scope'] ?? null);
-        unset($data['scope']);
+        // The type is fixed at creation
+        unset($data['scope'], $data['type']);
         $event = $this->findEvent($id, $calendar);
 
         $this->conflicts->atomically(function () use ($event, $calendar, $data, $scope): void {
@@ -293,7 +319,7 @@ readonly class EventService
      */
     public function updateDraft(string $id, Calendar $calendar, array $data): array
     {
-        unset($data['scope'], $data['isDraft']);
+        unset($data['scope'], $data['isDraft'], $data['type']);
 
         return $this->em->wrapInTransaction(function () use ($id, $calendar, $data): array {
             $event = $this->findEvent($id, $calendar);
@@ -378,6 +404,8 @@ readonly class EventService
                 ->from(Event::class, 'e')
                 ->leftJoin("e.$link", 'l')
                 ->where('e.series = :series')
+                ->andWhere('e.type = :type')
+                ->setParameter('type', EventType::Event)
                 ->andWhere('e.id <> :id')
                 ->setParameter('series', $series->getId())
                 ->setParameter('id', $except->getId())
@@ -471,6 +499,7 @@ readonly class EventService
         }
 
         if (null !== $assign) {
+            $this->assertNoNoticeLinks($assign, $ids, $calendar);
             $this->em->wrapInTransaction(function () use ($assign, $ids, $calendar): void {
                 $this->assignLinks($assign, $ids);
                 $this->versionBumper->bumpCalendars([$calendar->getId()]);
@@ -509,6 +538,32 @@ readonly class EventService
 
         // `affected` = events of the request (an update to the same value reports no changed row in MySQL)
         return ['affected' => count($ids)];
+    }
+
+    /** Notices take no badges or extras: assigning them to a selection with a notice is 422. */
+    private function assertNoNoticeLinks(array $assign, array $ids, Calendar $calendar): void
+    {
+        $linksBadgesOrExtras = false;
+        foreach ($assign as ['table' => $table, 'ids' => $linkIds]) {
+            $linksBadgesOrExtras = $linksBadgesOrExtras || ('event_target_group' !== $table && [] !== $linkIds);
+        }
+        if (!$linksBadgesOrExtras) {
+            return;
+        }
+        $notices = (int) $this->em->createQueryBuilder()
+            ->select('COUNT(e.id)')
+            ->from(Event::class, 'e')
+            ->where('e.calendar = :calendar')
+            ->andWhere('e.id IN (:ids)')
+            ->andWhere('e.type = :type')
+            ->setParameter('calendar', $calendar)
+            ->setParameter('ids', $ids)
+            ->setParameter('type', EventType::Notice)
+            ->getQuery()
+            ->getSingleScalarResult();
+        if ($notices > 0) {
+            throw Input::invalid('ids', 'Notices cannot have badges or extras', 422);
+        }
     }
 
     /**
@@ -581,10 +636,10 @@ readonly class EventService
      *
      * @param bool $dryRun validate only: the event is neither persisted nor linked (import preview)
      */
-    public function buildEvent(Calendar $calendar, array $data, bool $dryRun = false): Event
+    public function buildEvent(Calendar $calendar, array $data, bool $dryRun = false, EventType $type = EventType::Event): Event
     {
         $event = new Event();
-        $event->setCalendar($calendar);
+        $event->setCalendar($calendar)->setType($type);
         $this->applyInput($event, $calendar, $data, false, $dryRun);
         if (!$dryRun) {
             $this->em->persist($event);
@@ -602,6 +657,11 @@ readonly class EventService
      */
     private function applyInput(Event $event, Calendar $calendar, array $data, bool $partial, bool $dryRun = false): void
     {
+        if (EventType::Notice === $event->getType()) {
+            $this->applyNoticeInput($event, $calendar, $data, $partial, $dryRun);
+
+            return;
+        }
         $has = fn (string $key) => !$partial || array_key_exists($key, $data);
         // PATCH: a missing or null id list leaves the assignments unchanged
         $hasList = fn (string $key) => !$partial || null !== ($data[$key] ?? null);
@@ -682,10 +742,65 @@ readonly class EventService
         }
     }
 
+    private const NOTICE_FORBIDDEN = ['locationId', 'eventTemplateId', 'propertyIds', 'featureIds'];
+
+    /** Notice: always all-day (00:00 - 23:59), only name, dates, note, target groups and draft state. */
+    private function applyNoticeInput(Event $event, Calendar $calendar, array $data, bool $partial, bool $dryRun): void
+    {
+        foreach (self::NOTICE_FORBIDDEN as $key) {
+            $value = $data[$key] ?? null;
+            if (null !== $value && '' !== $value && [] !== $value) {
+                throw Input::invalid($key, sprintf('A notice cannot have %s', $key), 422);
+            }
+        }
+        if (false === ($data['isAllDay'] ?? null)) {
+            throw Input::invalid('isAllDay', 'A notice is always all-day', 422);
+        }
+
+        $has = fn (string $key) => !$partial || array_key_exists($key, $data);
+        if ($has('name')) {
+            $event->setName(Input::string($data, 'name'));
+        }
+        if ($has('timezone')) {
+            $event->setTimezone(Input::timezone($data, 'timezone'));
+        }
+        if ($has('date')) {
+            $event->setDate(Input::date($data, 'date'));
+        }
+        if ($has('dateEnd')) {
+            $dateEnd = $data['dateEnd'] ?? null;
+            $event->setDateEnd(null === $dateEnd || '' === $dateEnd ? null : Input::parseDate($dateEnd, 'dateEnd'));
+        }
+        if ($has('note')) {
+            $event->setNote(Input::note($data));
+        }
+        if (array_key_exists('isDraft', $data) && null !== $data['isDraft']) {
+            $event->setIsDraft(Input::bool($data, 'isDraft'));
+        }
+        if (null !== $event->getDateEnd() && $event->getDateEnd() < $event->getDate()) {
+            throw Input::invalid('dateEnd', 'dateEnd must not be before date');
+        }
+        $event->setIsAllDay(true)->setTimeBegin('00:00')->setTimeEnd('23:59');
+
+        if (null !== ($data['targetGroupIds'] ?? null)) {
+            $groups = $this->references->findAll(TargetGroup::class, $calendar->getClub(), Input::idList($data, 'targetGroupIds'), 'targetGroupIds');
+            if (!$dryRun) {
+                LinkCollectionSync::sync(
+                    $this->em,
+                    $event->getTargetGroups(),
+                    array_keys($groups),
+                    fn (EventTargetGroup $etg) => $etg->getTargetGroup()->getId(),
+                    fn (string $id) => (new EventTargetGroup())->setEvent($event)->setTargetGroup($groups[$id]),
+                );
+            }
+        }
+    }
+
     public function serializeEvent(Event $event): array
     {
         return [
             'id' => $event->getId(),
+            'type' => $event->getType()->value,
             'calendarId' => $event->getCalendar()->getId(),
             'eventTemplateId' => $event->getTemplate()?->getId(),
             'seriesId' => $event->getSeries()?->getId(),
