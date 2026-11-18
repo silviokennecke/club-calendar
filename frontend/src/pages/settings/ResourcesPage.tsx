@@ -311,6 +311,7 @@ export default function ResourcesPage() {
 
   return (
     <ClubSettingsLayout
+      wide
       actions={
         canCreate && resources.length > 0 ? (
           <Button icon="plus" onClick={() => open("new")}>
