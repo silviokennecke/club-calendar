@@ -204,6 +204,7 @@ class McpCalendarMemberTest extends WebTestCase
             'get_event_template' => ['mode' => 'read', 'args' => fn ($c) => ['calendarId' => $calId($c), 'templateId' => $tpl($c)]],
             'create_event_draft' => ['mode' => 'write', 'args' => fn ($c) => ['calendarId' => $calId($c), 'name' => 'Neu', 'date' => '2026-08-01', 'timeBegin' => '10:00', 'timeEnd' => '11:00']],
             'update_event_draft' => ['mode' => 'write', 'args' => fn ($c) => ['calendarId' => $calId($c), 'eventId' => $ev($c), 'name' => 'Geändert']],
+            'unpublish_event' => ['mode' => 'write', 'args' => fn ($c) => ['calendarId' => $calId($c), 'eventId' => $pub($c)]],
             'create_property' => ['mode' => 'write', 'args' => fn ($c) => ['calendarId' => $calId($c), 'name' => 'P '.$c.uniqid()]],
             'create_feature' => ['mode' => 'write', 'args' => fn ($c) => ['calendarId' => $calId($c), 'name' => 'F '.$c.uniqid()]],
             'create_event_template' => ['mode' => 'write', 'args' => fn ($c) => ['calendarId' => $calId($c), 'name' => 'T '.$c.uniqid()]],

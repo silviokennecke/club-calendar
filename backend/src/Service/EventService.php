@@ -309,6 +309,24 @@ readonly class EventService
     }
 
     /**
+     * Sets a published event back to draft (MCP `unpublish_event`), under a row lock; idempotent for drafts. Only this
+     * event changes (series and rule untouched). Going back to draft needs no conflict check.
+     */
+    public function unpublish(string $id, Calendar $calendar): array
+    {
+        return $this->em->wrapInTransaction(function () use ($id, $calendar): array {
+            $event = $this->findEvent($id, $calendar);
+            $this->em->refresh($event, LockMode::PESSIMISTIC_WRITE);
+            if (!$event->isDraft()) {
+                $event->setIsDraft(true);
+                $this->em->flush();
+            }
+
+            return $this->serializeEvent($event);
+        });
+    }
+
+    /**
      * DELETE. `scope: "all"` deletes every event of the series and the series; `this` (default) only the
      * event, and the series once its last event is gone.
      */

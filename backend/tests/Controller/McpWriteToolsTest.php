@@ -128,7 +128,7 @@ class McpWriteToolsTest extends WebTestCase
     }
 
     private const READ = ['list_clubs', 'list_calendars', 'list_events', 'get_event', 'list_target_groups', 'list_properties', 'list_features', 'list_locations', 'list_event_templates', 'get_event_template', 'list_feeds', 'get_feed', 'list_resources', 'list_resource_events', 'check_event_conflicts'];
-    private const WRITE = ['create_event_draft', 'update_event_draft', 'create_target_group', 'create_location', 'create_property', 'create_feature', 'create_event_template', 'update_event_template', 'delete_event_template', 'create_feed'];
+    private const WRITE = ['create_event_draft', 'update_event_draft', 'unpublish_event', 'create_target_group', 'create_location', 'create_property', 'create_feature', 'create_event_template', 'update_event_template', 'delete_event_template', 'create_feed'];
 
     /** @return array<string, array<string, mixed>> */
     private function writeCalls(): array
@@ -140,6 +140,7 @@ class McpWriteToolsTest extends WebTestCase
         return [
             'create_event_draft' => ['calendarId' => $cal, 'name' => 'X', 'date' => '2026-07-01', 'timeBegin' => '18:00', 'timeEnd' => '20:00'],
             'update_event_draft' => ['calendarId' => $cal, 'eventId' => $unknown, 'name' => 'Y'],
+            'unpublish_event' => ['calendarId' => $cal, 'eventId' => $unknown],
             'create_target_group' => ['clubId' => $club, 'name' => 'TG'],
             'create_location' => ['clubId' => $club, 'name' => 'Halle'],
             'create_property' => ['calendarId' => $cal, 'name' => 'P'],
@@ -244,6 +245,23 @@ class McpWriteToolsTest extends WebTestCase
         $this->assertError($this->call($this->editor, 'update_event_draft', ['calendarId' => $cal, 'eventId' => '00000000-0000-7000-8000-000000000000', 'name' => 'x']), 'not found');
     }
 
+    public function testUnpublishEvent(): void
+    {
+        $cal = $this->calendar->getId();
+        $pub = TestHelper::createEvent($this->em, $this->calendar, ['name' => 'Fest', 'isDraft' => false]);
+        $draft = TestHelper::createEvent($this->em, $this->calendar, ['name' => 'Entwurf', 'isDraft' => true]);
+
+        $r = $this->ok($this->editor, 'unpublish_event', ['calendarId' => $cal, 'eventId' => $pub->getId()]);
+        $this->assertTrue($r['isDraft']);
+        $this->em->clear();
+        $this->assertTrue($this->em->find(Event::class, $pub->getId())->isDraft());
+
+        $again = $this->ok($this->editor, 'unpublish_event', ['calendarId' => $cal, 'eventId' => $draft->getId()]);
+        $this->assertTrue($again['isDraft']);
+
+        $this->assertError($this->call($this->editor, 'unpublish_event', ['calendarId' => $cal, 'eventId' => '00000000-0000-7000-8000-000000000000']), 'not found');
+    }
+
     public function testScopeAllIsIgnoredForSeriesEvents(): void
     {
         $cal = $this->calendar->getId();
@@ -272,6 +290,7 @@ class McpWriteToolsTest extends WebTestCase
         $calls = [
             'create_event_draft' => ['calendarId' => $cal, 'name' => 'X', 'date' => '2026-07-01', 'timeBegin' => '18:00', 'timeEnd' => '20:00'],
             'update_event_draft' => ['calendarId' => $cal, 'eventId' => $draft->getId(), 'name' => 'Y'],
+            'unpublish_event' => ['calendarId' => $cal, 'eventId' => $draft->getId()],
             'create_property' => ['calendarId' => $cal, 'name' => 'P'],
             'create_feature' => ['calendarId' => $cal, 'name' => 'F'],
             'create_event_template' => ['calendarId' => $cal, 'name' => 'T2'],

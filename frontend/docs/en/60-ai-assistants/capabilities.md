@@ -23,6 +23,7 @@ With the permission **Read only** the assistant can view:
 With **Read and drafts** it can additionally, if you are at least an editor:
 
 - create event drafts and change drafts that are not yet published,
+- set a published event back to draft (so it can be changed; it is then no longer visible in feeds until you publish it again),
 - create audiences, badges, extras and locations,
 - create, change and delete event templates,
 - as admin, create feeds, but only with visibility "Club-internal" or "Private".
@@ -33,7 +34,7 @@ If you are a regular member with a [calendar permission](help:organize/calendar-
 
 ## What deliberately does not work
 
-- Publishing or deleting events
+- Publishing or deleting events (it can only set an event back to draft)
 - Event series, import and bulk actions
 - Changing or deleting existing audiences, badges, extras and locations
 - Changing or deleting feeds, creating public feeds

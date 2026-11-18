@@ -23,6 +23,7 @@ Mit der Berechtigung **Nur lesen** kann der Assistent ansehen:
 Mit **Lesen und Entwürfe** kann er zusätzlich, wenn du mindestens Bearbeiter bist:
 
 - Terminentwürfe anlegen und noch nicht veröffentlichte Entwürfe ändern,
+- einen veröffentlichten Termin wieder auf Entwurf setzen (damit er geändert werden kann; er ist dann in Feeds nicht mehr sichtbar, bis du ihn erneut veröffentlichst),
 - Gruppen, Besonderheiten, Zusatzangebote und Orte anlegen,
 - Terminvorlagen anlegen, ändern und löschen,
 - als Admin Feeds anlegen, aber nur mit Sichtbarkeit „Vereinsintern“ oder „Privat“.
@@ -33,7 +34,7 @@ Hast du als normales Mitglied eine [Kalender-Berechtigung](help:organize/calenda
 
 ## Was bewusst nicht geht
 
-- Termine veröffentlichen oder löschen
+- Termine veröffentlichen oder löschen (er kann Termine nur wieder auf Entwurf setzen)
 - Terminreihen, Import und Sammelaktionen
 - vorhandene Gruppen, Besonderheiten, Zusatzangebote und Orte ändern oder löschen
 - Feeds ändern oder löschen, öffentliche Feeds anlegen
