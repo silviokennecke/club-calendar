@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { eventToItem, formatNumericDate } from "@/lib/calendar";
 import type { PublicFeedEvent } from "@/lib/feeds/public";
 import { formatAddress, type CalendarEvent } from "@/lib/types";
-import { Field, StatusBadge, TextInput } from "@/components/ui/shared";
+import { Field, IconButton, StatusBadge, TextInput } from "@/components/ui/shared";
 import { itemTimeText } from "./eventDisplay";
 import { useLocale } from "./useLocale";
 
@@ -137,29 +137,50 @@ export function CalendarSearch({
   return (
     <div className="ap-ac">
       <Field id="calendar-search" label={t("calendar.search.label")}>
-        <TextInput
-          ref={inputRef}
-          type="search"
-          name="search"
-          autoComplete="off"
-          spellCheck={false}
-          maxLength={100}
-          role="combobox"
-          aria-autocomplete="list"
-          aria-expanded={visible}
-          aria-controls={listId}
-          aria-activedescendant={visible && activeIndex >= 0 ? optionId(activeIndex) : undefined}
-          value={text}
-          placeholder={placeholder}
-          onChange={(e) => {
-            setText(e.target.value);
-            setOpen(true);
-            setActiveIndex(-1);
-          }}
-          onFocus={() => setOpen(true)}
-          onBlur={close}
-          onKeyDown={handleKeyDown}
-        />
+        {(control) => (
+          <div className="relative">
+            <TextInput
+              {...control}
+              ref={inputRef}
+              type="search"
+              name="search"
+              autoComplete="off"
+              spellCheck={false}
+              maxLength={100}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={visible}
+              aria-controls={listId}
+              aria-activedescendant={
+                visible && activeIndex >= 0 ? optionId(activeIndex) : undefined
+              }
+              value={text}
+              placeholder={placeholder}
+              className="pr-12"
+              onChange={(e) => {
+                setText(e.target.value);
+                setOpen(true);
+                setActiveIndex(-1);
+              }}
+              onFocus={() => setOpen(true)}
+              onBlur={close}
+              onKeyDown={handleKeyDown}
+            />
+            {text && (
+              <IconButton
+                className="absolute top-1/2 right-0 -translate-y-1/2"
+                icon="x"
+                size={18}
+                label={t("ui.search.clear")}
+                onClick={() => {
+                  setText("");
+                  setActiveIndex(-1);
+                  inputRef.current?.focus();
+                }}
+              />
+            )}
+          </div>
+        )}
       </Field>
       <ul
         id={listId}

@@ -44,6 +44,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and a
 ### Fixed
 
 - **Telemetry example collector:** `deltatocumulative` now keeps its state for a year (`max_stale: 8760h`, `max_streams: 100000`) so rare counters (MCP calls, sign-ins) no longer vanish from `increase()` after quiet periods; operators with their own collector should set the same values.
+- **Search clear button:** the calendar search shows the app's own clear button instead of the browser's blue X.
 - **Telemetry in MCP calls:** MCP tool calls no longer log the warning "Access to not initialized OpenTelemetry context in fiber" (the metric and log recording now never touch the OpenTelemetry context inside a fiber).
 
 

@@ -559,6 +559,17 @@
     min-height: 96px;
     resize: vertical;
   }
+  input[type="search"]::-webkit-search-cancel-button,
+  input[type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+    display: none;
+  }
+  input[type="search"]::-ms-clear {
+    display: none;
+    width: 0;
+    height: 0;
+  }
 
   .cc-toggle-row {
     display: flex;
@@ -1265,10 +1276,6 @@
   .ap-search .cc-input {
     padding-left: 44px;
     padding-right: 48px;
-  }
-  .ap-search .cc-input::-webkit-search-cancel-button {
-    appearance: none;
-    display: none;
   }
   .ap-search .ap-search-clear {
     position: absolute;
