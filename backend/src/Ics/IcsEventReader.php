@@ -7,6 +7,7 @@ namespace App\Ics;
 use App\Entity\EventFeature;
 use App\Entity\EventProperty;
 use App\Entity\EventTargetGroup;
+use App\Enum\EventType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
@@ -32,15 +33,20 @@ class IcsEventReader
      * assignments is in memory at a time. Each chunk is a list of events in output order; `$limit` caps the total
      * over all chunks (null = unlimited).
      *
-     * @param QueryBuilder $qb    an event query with root alias `e` (filters, window); the select and ordering
-     *                            (date, time, id) are set here, a max-results setting is ignored (use `$limit`)
-     * @param int|null     $limit maximum number of events over all chunks
+     * @param QueryBuilder $qb             an event query with root alias `e` (filters, window); the select and ordering
+     *                                     (date, time, id) are set here, a max-results setting is ignored (use `$limit`)
+     * @param int|null     $limit          maximum number of events over all chunks
+     * @param bool         $includeNotices include events of type notice (default: excluded)
      *
      * @return \Generator<int, list<IcsEvent>>
      */
-    public function chunks(QueryBuilder $qb, ?int $limit = null): \Generator
+    public function chunks(QueryBuilder $qb, ?int $limit = null, bool $includeNotices = false): \Generator
     {
         $base = clone $qb;
+        // Notices are never ICS content; the safe default keeps every caller (ICS and PDF) free of them.
+        if (!$includeNotices) {
+            $base->andWhere('e.type = :icsEventType')->setParameter('icsEventType', EventType::Event);
+        }
         $base->select(
             'e.id AS id', 'e.name AS name', 'e.timezone AS timezone', 'e.date AS date', 'e.dateEnd AS dateEnd',
             'e.timeBegin AS timeBegin', 'e.timeEnd AS timeEnd', 'e.isAllDay AS isAllDay', 'e.isDraft AS isDraft', 'e.note AS note',
