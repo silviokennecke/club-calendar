@@ -354,7 +354,8 @@
       "add": "Add to my account",
       "show": "Show in my account",
       "added": "The calendar is now in your account."
-    }
+    },
+    "noticesNote": "Notices appear only on this page, not in your calendar app."
   },
   "calendar": {
     "prevMonth": "Previous month",
@@ -393,14 +394,18 @@
       "today": "today",
       "events_one": "{{count}} event",
       "events_other": "{{count}} events",
-      "holiday": "holiday {{name}}"
+      "holiday": "holiday {{name}}",
+      "notices_one": "{{count}} notice",
+      "notices_other": "{{count}} notices"
     },
     "more": "+{{count}} more",
     "chip": {
       "published": "(published)",
       "draft": "Draft",
       "holiday": "(holiday)",
-      "holidayTip": "Holiday: {{name}}"
+      "holidayTip": "Holiday: {{name}}",
+      "notice": "(notice)",
+      "noticeTip": "Notice: {{name}}"
     },
     "time": {
       "range": "{{from}} – {{to}}",
@@ -411,7 +416,8 @@
       "published": "Published",
       "draft": "Draft, only visible internally",
       "holiday": "Holiday, not editable",
-      "drag": "Events can be dragged to another day (on touch screens: press and hold, then drag). Alternatively open the event and change the date."
+      "drag": "Events can be dragged to another day (on touch screens: press and hold, then drag). Alternatively open the event and change the date.",
+      "notice": "Notice, all day"
     },
     "dayPanel": {
       "empty": "There are no events on this day.",
@@ -577,6 +583,12 @@
           "asc": "Sorted by {{col}}, ascending",
           "desc": "Sorted by {{col}}, descending"
         }
+      },
+      "typeFilter": "Filter by type",
+      "types": {
+        "all": "All types",
+        "event": "Events",
+        "notice": "Notices"
       }
     },
     "delete": {
@@ -1009,7 +1021,8 @@
       "deleteTitle": "Delete notice “{{name}}”?",
       "deleteText": "The notice on {{date}} will be removed permanently.",
       "deleteConsequence": "The notice disappears from the calendar and from all feeds. This cannot be undone.",
-      "deleteDone": "Notice deleted."
+      "deleteDone": "Notice deleted.",
+      "tag": "Notice"
     }
   },
   "import": {

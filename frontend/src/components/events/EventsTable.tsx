@@ -187,6 +187,12 @@ export function EventsTable({
                         </span>
                       </>
                     )}
+                    {ev.type === "notice" && (
+                      <>
+                        {" "}
+                        <Tag tone="info">{t("events.notice.tag")}</Tag>
+                      </>
+                    )}
                     {ev.seriesId && (
                       <>
                         {" "}
@@ -198,7 +204,7 @@ export function EventsTable({
                     {dates}
                   </td>
                   <td data-label={t("events.list.col.time")} className="ap-col-nowrap">
-                    {ev.isAllDay
+                    {ev.isAllDay || ev.type === "notice"
                       ? t("events.list.allDay")
                       : t("events.list.timeRange", {
                           from: ev.timeBegin.slice(0, 5),

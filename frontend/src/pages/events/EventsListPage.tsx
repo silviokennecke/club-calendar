@@ -9,8 +9,10 @@ import {
   filterEvents,
   formatShortDate,
   joinList,
+  parseKindFilter,
   parseSort,
   parseStatusTab,
+  KIND_FILTERS,
   serializeSort,
   sortEvents,
   STATUS_TABS,
@@ -64,6 +66,7 @@ export default function EventsListPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const tab = parseStatusTab(params.get("status"));
+  const typeFilter = parseKindFilter(params.get("type"));
   const query = params.get("q") ?? "";
   const sort = parseSort(params.get("sort"));
   const latestParams = useRef(params);
@@ -93,19 +96,20 @@ export default function EventsListPage() {
     enabled: page.canEdit,
   });
   const all = useMemo(() => events.data ?? [], [events.data]);
-  const filter = { tab, query, groupIds };
+  const filter = { tab, query, groupIds, kind: typeFilter };
   const sortKey = sort.key;
   const sortDir = sort.dir;
   const shown = useMemo(
     () =>
       sortEvents(
-        filterEvents(all, { tab, query, groupIds }),
+        filterEvents(all, { tab, query, groupIds, kind: typeFilter }),
         { key: sortKey, dir: sortDir },
         locale,
       ),
-    [all, tab, query, groupIds, sortKey, sortDir, locale],
+    [all, tab, query, groupIds, typeFilter, sortKey, sortDir, locale],
   );
-  const counts = countByStatus(all, { query, groupIds });
+  const counts = countByStatus(all, { query, groupIds, kind: typeFilter });
+  const hasNotices = all.some((e) => e.type === "notice");
   const canEdit = page.canEdit;
   const selectedEvents = shown.filter((e) => selected.has(e.id));
   const groupList = groups.data ?? [];
@@ -113,11 +117,11 @@ export default function EventsListPage() {
   // Event dialogs open above this list (with its tab, search and filter).
   const modalState = openModalState(location);
 
-  function setParam(key: "status" | "q" | "sort", value: string) {
+  function setParam(key: "status" | "q" | "sort" | "type", value: string) {
     // Router updates run in a transition: `prev` / `params` can still be the state before a
     // just-clicked tab, which would bring the old tab back. Build on the last params we set.
     const next = new URLSearchParams(latestParams.current);
-    if (value && !(key === "status" && value === "all")) next.set(key, value);
+    if (value && !(["status", "type"].includes(key) && value === "all")) next.set(key, value);
     else next.delete(key);
     latestParams.current = next;
     setParams(next, { replace: true });
@@ -376,6 +380,18 @@ export default function EventsListPage() {
             }
           />
         )}
+        {(hasNotices || typeFilter !== "all") && (
+          <FilterPillGroup
+            label={t("events.list.typeFilter")}
+            hideLabel
+            items={KIND_FILTERS.map((k) => ({ id: k, label: t(`events.list.types.${k}`) }))}
+            selected={[typeFilter]}
+            onChange={(id) => {
+              setParam("type", id);
+              setSelected(new Set());
+            }}
+          />
+        )}
         {groupIds.length > 0 && (
           <Button variant="ghost" onClick={() => setGroupIds([])}>
             {t("events.list.resetFilter")}
@@ -494,8 +510,12 @@ export default function EventsListPage() {
               {(close) => (
                 <BulkAssignPanel
                   targetGroups={groupList}
-                  features={features.data ?? []}
-                  properties={properties.data ?? []}
+                  features={
+                    selectedEvents.some((e) => e.type === "notice") ? [] : (features.data ?? [])
+                  }
+                  properties={
+                    selectedEvents.some((e) => e.type === "notice") ? [] : (properties.data ?? [])
+                  }
                   busy={busy}
                   onApply={(a) => void bulkAssign(a, close)}
                 />

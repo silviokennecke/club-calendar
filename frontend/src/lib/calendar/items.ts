@@ -4,7 +4,7 @@
  */
 import { addDays, diffDays, isValidIso, type IsoDate } from "./dates";
 
-export type CalItemKind = "event" | "holiday";
+export type CalItemKind = "event" | "notice" | "holiday";
 
 export interface CalItem<T = unknown> {
   id: string;
@@ -25,13 +25,17 @@ export interface CalItem<T = unknown> {
   iconLabel: string;
   /** Event of a series (tag "Wiederkehrend"). */
   recurring?: boolean;
-  /** The original record (event or holiday). */
+  /** Notice without a detail view (public feed): shown, but not openable. */
+  noOpen?: boolean;
+  /** The original record (event, notice or holiday). */
   source: T;
 }
 
 /** Minimal event shape (admin events and public feed events). */
 export interface EventLike {
   id: string | number;
+  /** Absent = "event". A "notice" (Hinweis) is an all-day banner. */
+  type?: "event" | "notice";
   name: string;
   date: string;
   dateEnd?: string | null;
@@ -65,10 +69,11 @@ function endDate(start: IsoDate, end: string | null | undefined): IsoDate {
 export function eventToItem<T extends EventLike>(ev: T): CalItem<T> {
   const start = ev.date.slice(0, 10);
   const withIcons = (ev.properties ?? []).filter((p) => p.property.icon);
-  const allDay = !!ev.isAllDay;
+  const notice = ev.type === "notice";
+  const allDay = notice || !!ev.isAllDay;
   return {
     id: String(ev.id),
-    kind: "event",
+    kind: notice ? "notice" : "event",
     title: ev.name,
     start,
     end: endDate(start, ev.dateEnd),
@@ -115,15 +120,16 @@ export function isMultiDay(item: Pick<CalItem, "start" | "end">): boolean {
   return item.end > item.start;
 }
 
+/** Holidays first, then notices, then events. */
 function kindRank(item: CalItem): number {
-  return item.kind === "holiday" ? 0 : 1;
+  return item.kind === "holiday" ? 0 : item.kind === "notice" ? 1 : 2;
 }
 
 /**
- * Display order: holidays first, then all-day / multi-day items, then by start time and title.
+ * Display order: holidays, notices, then all-day / multi-day items, then by start time and title.
  */
 export function compareItems(a: CalItem, b: CalItem): number {
-  if (a.kind !== b.kind) return a.kind === "holiday" ? -1 : 1;
+  if (a.kind !== b.kind) return kindRank(a) - kindRank(b);
   if (a.start !== b.start) return a.start < b.start ? -1 : 1;
   const spanA = diffDays(a.start, a.end);
   const spanB = diffDays(b.start, b.end);
@@ -195,7 +201,7 @@ export function layoutWeek<T extends CalItem>(
         continuesAfter: e > cols - 1,
       };
     })
-    // Holidays on top, then by first column; longer bars first within a column.
+    // Holidays and notices on top, then by first column; longer bars first within a column.
     .sort(
       (a, b) =>
         kindRank(a.item) - kindRank(b.item) ||

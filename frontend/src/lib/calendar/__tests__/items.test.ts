@@ -279,3 +279,47 @@ describe("shiftEventDates", () => {
     });
   });
 });
+
+describe("notices", () => {
+  const notice = (id: string, date: string, extra: Omit<Partial<EventLike>, "id"> = {}) =>
+    eventToItem(ev({ id, date, type: "notice", ...extra }));
+
+  it("maps type notice to kind notice, always all-day without times", () => {
+    const item = notice("n1", "2026-10-05", {
+      name: "Halle gesperrt",
+      dateEnd: "2026-10-07",
+      isDraft: true,
+    });
+    expect(item).toMatchObject({
+      kind: "notice",
+      title: "Halle gesperrt",
+      start: "2026-10-05",
+      end: "2026-10-07",
+      allDay: true,
+      isDraft: true,
+    });
+    expect(item.timeBegin).toBeUndefined();
+    expect(item.timeEnd).toBeUndefined();
+  });
+
+  it("keeps kind event without a type", () => {
+    expect(eventToItem(ev({ id: "e", date: "2026-10-05" })).kind).toBe("event");
+  });
+
+  it("sorts holidays, then notices, then events", () => {
+    const h = holidayToItem({ id: "h", name: "Feiertag", date: "2026-10-05" });
+    const e = eventToItem(ev({ id: "e", date: "2026-10-05", isAllDay: true }));
+    const n = notice("n", "2026-10-05");
+    expect([e, n, h].sort(compareItems).map((i) => i.kind)).toEqual(["holiday", "notice", "event"]);
+  });
+
+  it("lays out a multi-day notice as one bar above events", () => {
+    const week = weekDays("2026-10-05");
+    const n = notice("n", "2026-10-06", { dateEnd: "2026-10-08" });
+    const e = eventToItem(ev({ id: "e", date: "2026-10-06" }));
+    const { segments } = layoutWeek([e, n], week, 3);
+    const seg = segments.find((s) => s.item.id === "n")!;
+    expect([seg.startCol, seg.endCol, seg.lane]).toEqual([1, 3, 0]);
+    expect(segments.find((s) => s.item.id === "e")!.lane).toBe(1);
+  });
+});

@@ -5,6 +5,7 @@ import {
   fetchPublicFeed,
   filterPublicEvents,
   googleCalendarUrl,
+  isFeedEmpty,
   mapLinkFor,
   outlookCalendarUrl,
   parseGroupIds,
@@ -243,5 +244,14 @@ describe("subscribe URLs", () => {
     ).toBe(
       "https://outlook.live.com/calendar/0/addfromweb?url=https%3A%2F%2Fx.test%2Fapi%2Ffeed%2Ff1%2Fics%3Fsecret%3Ds%26targetGroupIds%3Da%2Cb&name=Sch%C3%BCtzen%20%26%20Co",
     );
+  });
+});
+
+describe("isFeedEmpty", () => {
+  it("counts notices: a feed with only notices is not empty", () => {
+    expect(isFeedEmpty({ eventCount: 0 })).toBe(true);
+    expect(isFeedEmpty({ eventCount: 0, noticeCount: 0 })).toBe(true);
+    expect(isFeedEmpty({ eventCount: 0, noticeCount: 2 })).toBe(false);
+    expect(isFeedEmpty({ eventCount: 3 })).toBe(false);
   });
 });

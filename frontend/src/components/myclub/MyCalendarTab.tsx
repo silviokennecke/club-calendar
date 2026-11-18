@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { parseAnchor, todayIn, visibleRange } from "@/lib/calendar";
-import { isSearchList, parseGroupIds } from "@/lib/feeds/public";
+import { isFeedEmpty, isSearchList, parseGroupIds } from "@/lib/feeds/public";
 import { myClubPath } from "@/lib/club/myClub";
 import {
   getMyEvents,
@@ -103,7 +103,7 @@ export function MyCalendarTab({ clubId }: { clubId: string }) {
   }
 
   const data = events.data;
-  if (data.feed.eventCount === 0 && groupIds.length === 0) {
+  if (isFeedEmpty(data.feed) && groupIds.length === 0) {
     return (
       <EmptyState
         icon="calendar"

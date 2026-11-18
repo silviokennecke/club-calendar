@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export type TagTone = "neutral" | "youth" | "adult" | "senior" | "brand" | "accent" | "danger";
+export type TagTone =
+  "neutral" | "youth" | "adult" | "senior" | "brand" | "accent" | "danger" | "info";
 
 interface TagProps {
   tone?: TagTone;

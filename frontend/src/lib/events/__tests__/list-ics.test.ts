@@ -5,6 +5,7 @@ import {
   emptyKind,
   filterEvents,
   groupByMonth,
+  parseKindFilter,
   parseStatusTab,
   summarizeSelection,
 } from "../list";
@@ -201,5 +202,27 @@ describe("export file name and year range", () => {
       selectForExport(evs, { ...o, range }).map((e) => e.id);
     expect(ids("year")).toEqual(["a"]);
     expect(ids("nextYear")).toEqual(["a", "b"]);
+  });
+});
+
+describe("kind filter", () => {
+  const events = [
+    ev({ id: "a", name: "Training", date: "2026-10-01" }),
+    ev({ id: "b", name: "Halle gesperrt", date: "2026-10-02", type: "notice" }),
+  ];
+
+  it("parses the type param", () => {
+    expect(parseKindFilter("notice")).toBe("notice");
+    expect(parseKindFilter("event")).toBe("event");
+    expect(parseKindFilter("x")).toBe("all");
+    expect(parseKindFilter(null)).toBe("all");
+  });
+
+  it("filters and counts by kind", () => {
+    const base = { tab: "all" as const, query: "", groupIds: [] };
+    expect(filterEvents(events, { ...base, kind: "notice" }).map((e) => e.id)).toEqual(["b"]);
+    expect(filterEvents(events, { ...base, kind: "event" }).map((e) => e.id)).toEqual(["a"]);
+    expect(filterEvents(events, base)).toHaveLength(2);
+    expect(countByStatus(events, { query: "", groupIds: [], kind: "notice" }).all).toBe(1);
   });
 });

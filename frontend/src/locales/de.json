@@ -354,7 +354,8 @@
       "add": "Zu meinem Konto hinzufügen",
       "show": "In meinem Konto anzeigen",
       "added": "Der Kalender ist jetzt in deinem Konto."
-    }
+    },
+    "noticesNote": "Hinweise erscheinen nur auf dieser Seite, nicht in der Kalender-App."
   },
   "calendar": {
     "prevMonth": "Vorheriger Monat",
@@ -393,14 +394,18 @@
       "today": "heute",
       "events_one": "{{count}} Termin",
       "events_other": "{{count}} Termine",
-      "holiday": "Feiertag {{name}}"
+      "holiday": "Feiertag {{name}}",
+      "notices_one": "{{count}} Hinweis",
+      "notices_other": "{{count}} Hinweise"
     },
     "more": "+{{count}} weitere",
     "chip": {
       "published": "(veröffentlicht)",
       "draft": "Entwurf",
       "holiday": "(Feiertag)",
-      "holidayTip": "Feiertag: {{name}}"
+      "holidayTip": "Feiertag: {{name}}",
+      "notice": "(Hinweis)",
+      "noticeTip": "Hinweis: {{name}}"
     },
     "time": {
       "range": "{{from}} bis {{to}} Uhr",
@@ -411,7 +416,8 @@
       "published": "Veröffentlicht",
       "draft": "Entwurf, nur intern sichtbar",
       "holiday": "Feiertag, nicht bearbeitbar",
-      "drag": "Termine lassen sich auf einen anderen Tag ziehen (am Touchscreen: gedrückt halten, dann ziehen). Alternativ Termin öffnen und Datum ändern."
+      "drag": "Termine lassen sich auf einen anderen Tag ziehen (am Touchscreen: gedrückt halten, dann ziehen). Alternativ Termin öffnen und Datum ändern.",
+      "notice": "Hinweis, ganztägig"
     },
     "dayPanel": {
       "empty": "An diesem Tag gibt es keine Termine.",
@@ -577,6 +583,12 @@
           "asc": "Sortiert nach {{col}}, aufsteigend",
           "desc": "Sortiert nach {{col}}, absteigend"
         }
+      },
+      "typeFilter": "Nach Art filtern",
+      "types": {
+        "all": "Alle Arten",
+        "event": "Termine",
+        "notice": "Hinweise"
       }
     },
     "delete": {
@@ -1009,7 +1021,8 @@
       "deleteTitle": "Hinweis „{{name}}“ löschen?",
       "deleteText": "Der Hinweis am {{date}} wird dauerhaft entfernt.",
       "deleteConsequence": "Der Hinweis verschwindet aus dem Kalender und aus allen Feeds. Das lässt sich nicht rückgängig machen.",
-      "deleteDone": "Hinweis gelöscht."
+      "deleteDone": "Hinweis gelöscht.",
+      "tag": "Hinweis"
     }
   },
   "import": {

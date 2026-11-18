@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { eventToItem } from "@/lib/calendar";
 import { EventItem } from "../EventItem";
+import { EventChip } from "../EventChip";
 
 const event = {
   id: "e1",
@@ -27,5 +28,44 @@ describe("EventItem", () => {
   it("has no tag for single events", () => {
     render(<EventItem item={eventToItem(event)} />);
     expect(screen.queryByText("Wiederkehrend")).toBeNull();
+  });
+
+  it("marks a notice with the tag Hinweis and opens it", () => {
+    const onOpen = vi.fn();
+    render(
+      <EventItem
+        item={eventToItem({ ...event, type: "notice", name: "Halle zu" })}
+        onOpen={onOpen}
+      />,
+    );
+    expect(screen.getByText("Hinweis")).toHaveClass("cc-tag--info");
+    fireEvent.click(screen.getByRole("button", { name: "Halle zu" }));
+    expect(onOpen).toHaveBeenCalled();
+  });
+
+  it("shows a notice without detail page as plain text", () => {
+    const item = { ...eventToItem({ ...event, type: "notice", name: "Halle zu" }), noOpen: true };
+    render(<EventItem item={item} onOpen={vi.fn()} showStatus={false} />);
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.getByText("Halle zu")).toBeVisible();
+    expect(screen.getByText("Hinweis")).toBeVisible();
+  });
+});
+
+describe("EventChip notice", () => {
+  const notice = eventToItem({ ...event, type: "notice", name: "Halle zu", isDraft: true });
+
+  it("is a button with Hinweis in the tooltip and no time label", () => {
+    render(<EventChip item={notice} onOpen={vi.fn()} />);
+    const btn = screen.getByRole("button");
+    expect(btn).toHaveClass("ap-evchip--notice", "ap-evchip--notice-draft");
+    expect(btn.title).toContain("Hinweis");
+    expect(btn.querySelector("b")).toBeNull();
+  });
+
+  it("is not clickable when it has no detail page", () => {
+    render(<EventChip item={{ ...notice, noOpen: true }} onOpen={vi.fn()} />);
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.getByText("Halle zu").closest("span.ap-evchip")).toHaveAttribute("title");
   });
 });

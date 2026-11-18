@@ -22,6 +22,8 @@ export interface PublicFeedLocation {
 /** An event as `GET /api/feed/{id}/events` delivers it (published events only). */
 export interface PublicFeedEvent {
   id: string;
+  /** Absent = "event". A notice (Hinweis) has no detail page, location, badges or extras. */
+  type?: "event" | "notice";
   name: string;
   date: string;
   dateEnd?: string | null;
@@ -58,6 +60,8 @@ export interface PublicFeedHeader {
   indexable: boolean;
   /** Published events of the feed over all dates (the page loads one month at a time). */
   eventCount: number;
+  /** Published notices over all dates; absent from older servers (= 0). */
+  noticeCount?: number;
   /** Audiences of those events, sorted by name (filter chips, tag tones). */
   audiences: AudienceOption[];
 }
@@ -185,6 +189,11 @@ export function filterPublicEvents<T extends PublicFeedEvent>(
   return events.filter(
     (ev) => matchesGroups(ev, groupIds) && (!q || ev.name.toLocaleLowerCase().includes(q)),
   );
+}
+
+/** Nothing to show at all: a feed with only notices is not empty. */
+export function isFeedEmpty(feed: Pick<PublicFeedHeader, "eventCount" | "noticeCount">): boolean {
+  return feed.eventCount + (feed.noticeCount ?? 0) === 0;
 }
 
 /** The list view with a search term shows the matches of all dates, not one month. */

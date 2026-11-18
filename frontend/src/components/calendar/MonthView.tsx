@@ -150,6 +150,7 @@ export function MonthView({
         showHoliday={showHolidayLegend}
         showDragHint={!!onDropItem}
         showDraft={!publicView}
+        showNotice={items.some((i) => i.kind === "notice")}
       />
     </div>
   );

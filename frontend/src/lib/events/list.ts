@@ -13,7 +13,16 @@ export function parseStatusTab(value: string | null | undefined): StatusTab {
   return value === "published" || value === "draft" ? value : "all";
 }
 
+export type KindFilter = "all" | "event" | "notice";
+
+export const KIND_FILTERS: KindFilter[] = ["all", "event", "notice"];
+
+export function parseKindFilter(value: string | null | undefined): KindFilter {
+  return value === "event" || value === "notice" ? value : "all";
+}
+
 type ListEvent = Pick<CalendarEvent, "name" | "date" | "timeBegin" | "isDraft" | "isAllDay"> & {
+  type?: CalendarEvent["type"];
   targetGroups: { targetGroup: { id: string } }[];
 };
 
@@ -21,6 +30,11 @@ function matchesStatus(ev: Pick<CalendarEvent, "isDraft">, tab: StatusTab): bool
   if (tab === "published") return !ev.isDraft;
   if (tab === "draft") return ev.isDraft;
   return true;
+}
+
+function matchesKind(ev: { type?: CalendarEvent["type"] }, kind: KindFilter | undefined): boolean {
+  if (!kind || kind === "all") return true;
+  return (ev.type ?? "event") === kind;
 }
 
 /** Case-insensitive search in the event name. */
@@ -41,6 +55,8 @@ export interface ListFilter {
   tab: StatusTab;
   query: string;
   groupIds: string[];
+  /** Absent = all kinds. */
+  kind?: KindFilter;
 }
 
 /** Date, then all-day first, then start time, then name. */
@@ -121,7 +137,8 @@ export function filterEvents<T extends ListEvent>(events: T[], filter: ListFilte
       (ev) =>
         matchesStatus(ev, filter.tab) &&
         matchesQuery(ev, filter.query) &&
-        matchesGroups(ev, filter.groupIds),
+        matchesGroups(ev, filter.groupIds) &&
+        matchesKind(ev, filter.kind),
     )
     .sort(compareEvents);
 }
@@ -135,7 +152,10 @@ export function countByStatus<T extends ListEvent>(
   filter: Omit<ListFilter, "tab">,
 ): Record<StatusTab, number> {
   const base = events.filter(
-    (ev) => matchesQuery(ev, filter.query) && matchesGroups(ev, filter.groupIds),
+    (ev) =>
+      matchesQuery(ev, filter.query) &&
+      matchesGroups(ev, filter.groupIds) &&
+      matchesKind(ev, filter.kind),
   );
   return {
     all: base.length,
@@ -175,7 +195,7 @@ export function emptyKind(totalEvents: number, shown: number, filter: ListFilter
   if (shown > 0) return "none";
   if (totalEvents === 0) return "noCalendarEvents";
   if (filter.query.trim()) return "noSearchHits";
-  if (filter.groupIds.length > 0) return "noFilterHits";
+  if (filter.groupIds.length > 0 || (filter.kind && filter.kind !== "all")) return "noFilterHits";
   if (filter.tab === "published") return "noPublished";
   if (filter.tab === "draft") return "noDrafts";
   return "noFilterHits";

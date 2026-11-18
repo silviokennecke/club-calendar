@@ -80,7 +80,7 @@ export function MonthGrid({
             {week.map((day) => {
               if (!sameMonth(day, month)) return <span key={day} role="gridcell" />;
               const dayItems = itemsOnDay(items, day);
-              const dots = Math.min(3, dayItems.filter((i) => i.kind === "event").length);
+              const dots = Math.min(3, dayItems.filter((i) => i.kind !== "holiday").length);
               const selected = day === selectedDate;
               return (
                 <span key={day} role="gridcell" aria-selected={selected}>

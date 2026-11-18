@@ -27,7 +27,8 @@ interface EventChipProps {
 
 /**
  * Event in a calendar grid (design: ap-evchip). Published = filled, draft = dashed + "Entwurf",
- * holiday = grey, italic with a flag (not clickable). Status never relies on colour alone.
+ * holiday = grey, italic with a flag (not clickable), notice = info-toned banner with an icon (no
+ * time). Status never relies on colour alone.
  */
 export function EventChip({
   item,
@@ -45,9 +46,12 @@ export function EventChip({
   const { t } = useTranslation();
   const status = itemStatus(item);
   const summary = itemSummary(item, t);
+  const isNotice = item.kind === "notice";
+  const noOpen = isNotice && !!item.noOpen;
   const className = cn(
     "ap-evchip",
-    `ap-evchip--${status}`,
+    isNotice ? "ap-evchip--notice" : `ap-evchip--${status}`,
+    isNotice && item.isDraft && "ap-evchip--notice-draft",
     variant === "block" && "ap-evchip--block",
     continuesBefore && "ap-evchip--cl",
     continuesAfter && "ap-evchip--cr",
@@ -64,6 +68,22 @@ export function EventChip({
         <Icon glyph="flag" size={12} />
         <span className="t">{item.title}</span>
         <span className="ap-sr"> {t("calendar.chip.holiday")}</span>
+      </span>
+    );
+  }
+
+  if (noOpen) {
+    return (
+      <span
+        className={className}
+        style={style}
+        title={summary}
+        data-noopen=""
+        aria-hidden={presentational || undefined}
+      >
+        <Icon glyph="info" size={12} />
+        <span className="t">{item.title}</span>
+        <span className="ap-sr"> {t("calendar.chip.notice")}</span>
       </span>
     );
   }
@@ -86,8 +106,10 @@ export function EventChip({
         onOpen?.(item);
       }}
     >
+      {isNotice && <Icon glyph="info" size={12} />}
       {timeLabel && <b>{timeLabel}</b>}
       <span className="t">{item.title}</span>
+      {isNotice && <span className="ap-sr"> {t("calendar.chip.notice")}</span>}
       {item.icons && (
         <span className="ap-ico" role="img" aria-label={item.iconLabel}>
           {item.icons}

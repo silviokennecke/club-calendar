@@ -220,7 +220,7 @@ export default function CalendarPage() {
   }
 
   function openItem(item: CalItem) {
-    if (item.kind !== "event") return;
+    if (item.kind === "holiday") return;
     routerNavigate(routes.edit(item.id), { state: navState });
   }
 

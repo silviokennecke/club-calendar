@@ -7,10 +7,17 @@ interface Props {
   showDragHint?: boolean;
   /** The draft entry; the public view never shows drafts. */
   showDraft?: boolean;
+  /** Adds the notice entry (only when the view contains notices). */
+  showNotice?: boolean;
 }
 
 /** Explains the chip styles (design: ap-legend). */
-export function CalendarLegend({ showHoliday = true, showDragHint, showDraft = true }: Props) {
+export function CalendarLegend({
+  showHoliday = true,
+  showDragHint,
+  showDraft = true,
+  showNotice,
+}: Props) {
   const { t } = useTranslation();
   return (
     <div className="ap-legend">
@@ -22,6 +29,12 @@ export function CalendarLegend({ showHoliday = true, showDragHint, showDraft = t
         <span>
           <i className="ap-sw ap-sw--draft" aria-hidden="true" />
           {t("calendar.legend.draft")}
+        </span>
+      )}
+      {showNotice && (
+        <span>
+          <i className="ap-sw ap-sw--notice" aria-hidden="true" />
+          {t("calendar.legend.notice")}
         </span>
       )}
       {showHoliday && (

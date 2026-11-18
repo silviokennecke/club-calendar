@@ -19,6 +19,10 @@ export function itemTimeText(item: CalItem, t: TFunction): string {
 /** Tooltip / accessible summary: "Training, 19:00 bis 21:00 Uhr (veröffentlicht)". */
 export function itemSummary(item: CalItem, t: TFunction): string {
   if (item.kind === "holiday") return t("calendar.chip.holidayTip", { name: item.title });
+  if (item.kind === "notice") {
+    const state = item.isDraft ? `(${t("calendar.chip.draft")})` : t("calendar.chip.published");
+    return `${t("calendar.chip.noticeTip", { name: item.title })} ${state}`;
+  }
   const status = item.isDraft ? `(${t("calendar.chip.draft")})` : t("calendar.chip.published");
   return `${item.title}, ${itemTimeText(item, t)} ${status}`;
 }

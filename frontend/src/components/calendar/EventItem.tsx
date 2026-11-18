@@ -43,7 +43,8 @@ export function EventItem({
   const shown = day ?? item.start;
   const Heading = headingLevel;
   const meta = [itemTimeText(item, t), place].filter(Boolean).join(" · ");
-  const clickable = !!onOpen && status !== "holiday";
+  const isNotice = item.kind === "notice";
+  const clickable = !!onOpen && status !== "holiday" && !item.noOpen;
 
   return (
     <article
@@ -51,6 +52,7 @@ export function EventItem({
         "cc-card ap-evcard",
         status === "draft" && "ap-evcard--draft",
         status === "holiday" && "ap-evcard--holiday",
+        isNotice && "ap-evcard--notice",
       )}
     >
       <div className="cc-date" aria-hidden="true">
@@ -84,8 +86,9 @@ export function EventItem({
           {showStatus && <StatusBadge status={status} />}
         </div>
         <p className="cc-meta">{meta}</p>
-        {(tags.length > 0 || item.recurring) && (
+        {(tags.length > 0 || item.recurring || isNotice) && (
           <div className="cc-tags">
+            {isNotice && <Tag tone="info">{t("events.notice.tag")}</Tag>}
             {item.recurring && <Tag tone="brand">{t("events.recurring")}</Tag>}
             {tags.map((tag) => (
               <Tag key={tag.id} tone={tag.tone}>

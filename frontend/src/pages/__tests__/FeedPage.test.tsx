@@ -316,6 +316,50 @@ describe("FeedPage", () => {
     expect(screen.getByRole("button", { name: "Kalender abonnieren" })).toBeInTheDocument();
   });
 
+  describe("notices", () => {
+    const notice = event({
+      id: "n1",
+      type: "notice",
+      name: "Halle gesperrt",
+      date: "2026-10-12",
+      dateEnd: "2026-10-14",
+      isAllDay: true,
+      timeBegin: "00:00",
+      timeEnd: "00:00",
+    });
+
+    it("is not empty with only notices and shows them in the list without a link", async () => {
+      respond = feedApi({ events: [notice], header: { eventCount: 0, noticeCount: 1 } });
+      renderAt("/feed/f1?view=list");
+      expect(await screen.findByText("Halle gesperrt")).toBeVisible();
+      expect(
+        screen.queryByRole("heading", { name: "Noch keine Termine veröffentlicht" }),
+      ).toBeNull();
+      expect(screen.queryByRole("button", { name: "Halle gesperrt" })).toBeNull();
+      expect(screen.getByText("Hinweis")).toBeVisible();
+      expect(
+        screen.getByText("Hinweise erscheinen nur auf dieser Seite, nicht in der Kalender-App."),
+      ).toBeVisible();
+    });
+
+    it("shows a notice banner in the month grid and no calendar-app hint without notices", async () => {
+      respond = feedApi({
+        events: [notice, ...feedEvents],
+        header: { eventCount: 3, noticeCount: 1 },
+      });
+      renderAt("/feed/f1");
+      const grid = await screen.findByRole("grid");
+      expect(within(grid).getAllByTitle(/^Hinweis: Halle gesperrt/)[0]).toBeInTheDocument();
+      expect(within(grid).getByLabelText(/^12\. Oktober.*1 Hinweis/)).toBeInTheDocument();
+    });
+
+    it("has no calendar-app hint when the feed has no notices", async () => {
+      renderAt("/feed/f1");
+      await screen.findByRole("heading", { level: 1, name: FEED_NAME });
+      expect(screen.queryByText(/Hinweise erscheinen nur auf dieser Seite/)).toBeNull();
+    });
+  });
+
   it("explains a private feed (403) with a heading and no calendar", async () => {
     respond = () => json({ detail: "Invalid or missing secret" }, 403);
     renderAt("/feed/f1");

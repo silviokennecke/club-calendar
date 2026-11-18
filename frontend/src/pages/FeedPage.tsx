@@ -6,6 +6,7 @@ import { parseAnchor, todayIn, visibleRange, type IsoDate } from "@/lib/calendar
 import { helpPath } from "@/docs/paths";
 import {
   fetchPublicFeed,
+  isFeedEmpty,
   isSearchList,
   parseGroupIds,
   publicEventPath,
@@ -101,6 +102,7 @@ function FeedHero({
   feedId: string;
   secret: string | undefined;
 }) {
+  const { t } = useTranslation();
   const [params] = useSearchParams();
   const groupIds = parseGroupIds(params.get("groups"), data.feed.audiences);
   const addresses = publicFeedAddresses(feedId, secret, groupIds);
@@ -110,6 +112,9 @@ function FeedHero({
     <div className="pub-hero">
       <div className="ap-stack ap-stack--sm" style={{ flex: "1 1 420px", minWidth: 0 }}>
         <h1 className="t-display">{data.feed.name}</h1>
+        {(data.feed.noticeCount ?? 0) > 0 && (
+          <p className="t-sm t-muted">{t("feed.noticesNote")}</p>
+        )}
       </div>
       <div className="ap-actions" style={{ flex: "0 1 auto" }}>
         <SubscribeButton addresses={addresses} name={data.feed.name} account={account} />
@@ -163,7 +168,7 @@ function FeedCalendar({ data, feedId, secret, today, anchor, range }: FeedCalend
     });
   }
 
-  if (data.feed.eventCount === 0) {
+  if (isFeedEmpty(data.feed)) {
     return (
       <div style={{ padding: "var(--space-8) 0" }}>
         <EmptyState headingLevel="h2" title={t("feed.empty.title")} text={t("feed.empty.text")} />

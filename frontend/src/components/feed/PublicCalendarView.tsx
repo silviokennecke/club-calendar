@@ -107,7 +107,11 @@ export function PublicCalendarView({
   const [rangeFrom, rangeTo] = range;
   // Holidays of the calendar like in the internal month view
   const items = useMemo<CalItem[]>(() => {
-    const evs: CalItem[] = filtered.map((ev) => eventToItem(ev));
+    // Notices have no detail page: shown, not openable.
+    const evs: CalItem[] = filtered.map((ev) => {
+      const item = eventToItem(ev);
+      return item.kind === "notice" ? { ...item, noOpen: true } : item;
+    });
     if (hideHolidays) return evs;
     const holidays = data.holidays
       .map((h) => holidayToItem(h))
@@ -119,11 +123,15 @@ export function PublicCalendarView({
   const [first, last] = monthBounds(anchor);
   // The list of a search spans all dates; the caller then loads the events without a range.
   const searchList = isSearchList(view, query);
-  const monthTotal = searchList ? events.length : eventsInRange(events, first, last).length;
-  const monthShown = searchList ? filtered.length : eventsInRange(filtered, first, last).length;
+  const realEvents = (list: PublicFeedEvent[]) => list.filter((ev) => ev.type !== "notice");
+  const inScope = (list: PublicFeedEvent[]) =>
+    searchList ? list : eventsInRange(list, first, last);
+  const monthTotal = realEvents(inScope(events)).length;
+  const monthShown = realEvents(inScope(filtered)).length;
+  const monthNotices = inScope(events).length - monthTotal;
 
   async function searchAll(q: string, signal: AbortSignal) {
-    const matches = filterPublicEvents(await loadAllEvents(signal), groupIds, q);
+    const matches = realEvents(filterPublicEvents(await loadAllEvents(signal), groupIds, q));
     return { data: matches.slice(0, SEARCH_LIMIT) as SearchEvent[], total: matches.length };
   }
 
@@ -158,7 +166,8 @@ export function PublicCalendarView({
 
   const monthList = items
     .filter(
-      (item) => item.kind === "event" && (searchList || (item.start <= last && item.end >= first)),
+      (item) =>
+        item.kind !== "holiday" && (searchList || (item.start <= last && item.end >= first)),
     )
     .sort(compareItems);
 
@@ -290,7 +299,9 @@ export function PublicCalendarView({
         </p>
         <div aria-live="polite">{filterNote}</div>
       </div>
-      {monthTotal === 0 && !filtering && <p className="t-sm t-muted">{t("feed.noneInMonth")}</p>}
+      {monthTotal === 0 && monthNotices === 0 && !filtering && (
+        <p className="t-sm t-muted">{t("feed.noneInMonth")}</p>
+      )}
       {content}
     </div>
   );

@@ -11,11 +11,13 @@ export function dayCellLabel(
 ): string {
   const { locale, today, t } = opts;
   const events = items.filter((i) => i.kind === "event").length;
+  const notices = items.filter((i) => i.kind === "notice").length;
   const holidays = items.filter((i) => i.kind === "holiday");
   return [
     formatDayMonth(date, locale),
     date === today ? t("calendar.cell.today") : null,
     events > 0 ? t("calendar.cell.events", { count: events }) : null,
+    notices > 0 ? t("calendar.cell.notices", { count: notices }) : null,
     ...holidays.map((h) => t("calendar.cell.holiday", { name: h.title })),
   ]
     .filter(Boolean)
