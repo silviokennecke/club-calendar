@@ -36,7 +36,7 @@ final class PdfQuarterOverview
      * @param float                      $contentHeightPt printable page height in points
      * @param float                      $contentWidthPt  printable page width in points
      *
-     * @return list<array{months: list<array{label: string, rows: list<array<string, mixed>>}>, fontPt: float, lineHeightPt: float, rowHeightPt: float, emojiPt: float, eventIds: list<string>, holidayKinds: list<string>}>
+     * @return list<array{months: list<array{label: string, rows: list<array<string, mixed>>}>, fontPt: float, lineHeightPt: float, rowHeightPt: float, emojiPt: float, eventIds: list<string>, holidayKinds: list<string>, notices: list<array<string, mixed>>}>
      */
     public static function build(\DateTimeImmutable $from, \DateTimeImmutable $to, array $entries, string $locale, float $contentHeightPt, float $contentWidthPt, array $holidays = [], array $notices = []): array
     {

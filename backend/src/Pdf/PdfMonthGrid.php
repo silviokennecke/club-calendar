@@ -25,7 +25,7 @@ final class PdfMonthGrid
      * @param list<array<string, mixed>>                        $entries  per-day entries (key "day" = \DateTimeImmutable), sorted
      * @param array<string, array{kind: string, name: ?string}> $holidays see PdfHolidays::days()
      *
-     * @return list<array{year: int, month: int, label: string, weeks: list<list<array<string, mixed>|null>>}>
+     * @return list<array{notices: list<array<string, mixed>>, cellHeightMm: ?float, year: int, month: int, label: string, weeks: list<list<array<string, mixed>|null>>}>
      */
     public static function build(\DateTimeImmutable $from, \DateTimeImmutable $to, ?int $firstDayOfWeek, array $entries, string $locale, int $cap = self::CELL_CAP, float $contentWidthPt = 527.0, array $holidays = [], array $notices = [], float $contentHeightPt = 502.0): array
     {
