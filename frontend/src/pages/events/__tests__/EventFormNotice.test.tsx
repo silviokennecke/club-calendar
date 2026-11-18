@@ -61,6 +61,7 @@ describe("event form in notice mode", () => {
     expect(screen.queryByText("Besonderheiten")).toBeNull();
     expect(screen.queryByText("Zusatzangebote")).toBeNull();
     expect(screen.getByRole("group", { name: "Gruppen" })).toBeInTheDocument();
+    expect(screen.getByText("Ohne Auswahl gilt der Hinweis für alle.")).toBeInTheDocument();
   });
 
   it("sends only the fields a notice may carry", async () => {

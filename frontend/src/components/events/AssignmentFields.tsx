@@ -88,7 +88,10 @@ export function AssignmentFields({
               : (name) => create(res.createTargetGroup, name)
           }
           addLabel={t("events.form.createTargetGroup")}
-          hint={targetGroupsHint ?? t("events.form.targetGroupsHint")}
+          hint={
+            targetGroupsHint ??
+            t(audiencesOnly ? "events.notice.targetGroupsHint" : "events.form.targetGroupsHint")
+          }
         />
       </>
     );
@@ -126,7 +129,10 @@ export function AssignmentFields({
             : (name) => create(res.createTargetGroup, name)
         }
         createLabel={t("events.form.createTargetGroup")}
-        hint={targetGroupsHint ?? t("events.form.targetGroupsHint")}
+        hint={
+          targetGroupsHint ??
+          t(audiencesOnly ? "events.notice.targetGroupsHint" : "events.form.targetGroupsHint")
+        }
       />
     </>
   );

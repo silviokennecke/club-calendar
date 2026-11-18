@@ -1015,6 +1015,7 @@
       "errorTitle": "Der Hinweis ist noch nicht vollständig.",
       "namePlaceholder": "z. B. Schießstand geschlossen…",
       "sectionTags": "Gruppen",
+      "targetGroupsHint": "Ohne Auswahl gilt der Hinweis für alle.",
       "save": "Hinweis speichern",
       "saved": "Hinweis gespeichert.",
       "delete": "Hinweis löschen",

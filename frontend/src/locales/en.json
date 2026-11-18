@@ -1015,6 +1015,7 @@
       "errorTitle": "The notice is not complete yet.",
       "namePlaceholder": "e.g. Shooting range closed…",
       "sectionTags": "Audiences",
+      "targetGroupsHint": "Without a selection the notice is for everyone.",
       "save": "Save notice",
       "saved": "Notice saved.",
       "delete": "Delete notice",
