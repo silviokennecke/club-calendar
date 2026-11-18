@@ -3,7 +3,7 @@ export function clubSettingsRoutes(clubId: string) {
   const base = `/clubs/${clubId}/settings`;
   return {
     base,
-    club: `/clubs/${clubId}`,
+    club: `/clubs/${clubId}/general`,
     locations: `${base}/locations`,
     targetGroups: `${base}/target-groups`,
     resources: `${base}/resources`,

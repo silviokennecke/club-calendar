@@ -63,7 +63,7 @@ function memberPage(path: string) {
 }
 
 function renderClub(tab?: "general" | "calendars" | "members") {
-  return renderRoute("/clubs/:clubId", `/clubs/c1${tab ? `?tab=${tab}` : ""}`, <ClubPage />);
+  return renderRoute("/clubs/:clubId/*", `/clubs/c1/${tab ?? "general"}`, <ClubPage />);
 }
 
 beforeEach(() => {

@@ -80,7 +80,7 @@ for (const lang of LANGS) {
       const s = await seed(page, lang);
       await signIn(page, lang, s.email);
 
-      await page.goto(`/clubs/${s.clubId}?tab=calendars`);
+      await page.goto(`/clubs/${s.clubId}/calendars`);
       await expect(page.getByText("Jugendabteilung").first()).toBeVisible();
       await expect(page.getByText("Saison 2025").first()).toBeVisible();
       // The archive date is the real server date: pin it to a fixed one.
@@ -102,7 +102,7 @@ for (const lang of LANGS) {
       await expect(page.getByText(/\d\d:\d\d/).first()).toBeVisible();
       await shot(page, lang, "calendar-settings-general");
 
-      await page.goto(`/clubs/${s.clubId}?tab=members`);
+      await page.goto(`/clubs/${s.clubId}/members`);
       await expect(page.getByText("anna.beispiel@example.com").first()).toBeVisible();
       await expect(page.getByText("ben.beispiel@example.com").first()).toBeVisible();
       // The admin's address is random per run: show a fixed fake one.
@@ -116,11 +116,11 @@ for (const lang of LANGS) {
       await shot(page, lang, "club-members-list");
 
       await page.setViewportSize({ width: 1280, height: 1000 });
-      await page.goto(`/clubs/${s.clubId}?tab=general`);
+      await page.goto(`/clubs/${s.clubId}/general`);
       await expect(page.getByRole("radio").first()).toBeVisible();
       await shot(page, lang, "club-feed-signup");
       await page.setViewportSize({ width: 1280, height: 800 });
-      await page.goto(`/clubs/${s.clubId}?tab=general`);
+      await page.goto(`/clubs/${s.clubId}/general`);
       const del = page.getByRole("button", {
         name: lang === "de" ? "Verein löschen" : "Delete club",
       });

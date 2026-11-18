@@ -87,7 +87,7 @@ export function CalendarMenuItems({ data, onNavigate }: ItemsProps) {
       {data.role !== "member" && (
         <>
           <hr />
-          <Link className="ap-menuitem" to={`/clubs/${data.clubId}`} onClick={onNavigate}>
+          <Link className="ap-menuitem" to={`/clubs/${data.clubId}/calendars`} onClick={onNavigate}>
             <Icon glyph="plus" size={18} />
             <span>{t("shell.manageCalendars")}</span>
           </Link>

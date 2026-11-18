@@ -87,7 +87,7 @@ describe("calendar menu", () => {
     expect(archived.querySelector("svg")).toHaveClass("lucide-archive");
     expect(within(panel).getByRole("link", { name: "Kalender verwalten" })).toHaveAttribute(
       "href",
-      "/clubs/c1",
+      "/clubs/c1/calendars",
     );
   });
 

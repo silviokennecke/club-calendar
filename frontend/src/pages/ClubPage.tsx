@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
@@ -26,7 +26,7 @@ const TABS = ["general", "calendars", "members"] as const;
 type ClubTab = (typeof TABS)[number];
 
 /**
- * Club management (design: Club, ClubMobile) in three tabs (`?tab=`): general (name, danger zone),
+ * Club management (design: Club, ClubMobile) in three tabs (own path each: `/clubs/:id/general|calendars|members`): general (name, danger zone),
  * calendars (incl. archived, with duplicate / archive / delete) and members (with invitations). Calendar and club deletion name their
  * consequences; deleting the club also asks to type its name.
  */
@@ -34,13 +34,13 @@ export default function ClubPage() {
   const { t } = useTranslation();
   usePageTitle(t("club.title"));
   const { clubId = "" } = useParams<{ clubId: string }>();
+  const { pathname } = useLocation();
+  const last = pathname.replace(/\/+$/, "").split("/").pop();
+  const tab: ClubTab = TABS.find((x) => x === last) ?? "general";
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { updateUser } = useAuth();
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [params, setParams] = useSearchParams();
-  const requested = params.get("tab");
-  const tab: ClubTab = TABS.find((x) => x === requested) ?? "general";
 
   const query = useQuery<Club>({
     queryKey: ["club", clubId],
@@ -118,7 +118,7 @@ export default function ClubPage() {
           idPrefix="club"
           tabs={TABS.map((id) => ({ id, label: t(`club.tabs.${id}`) }))}
           value={tab}
-          onChange={(id) => setParams({ tab: id }, { replace: true })}
+          onChange={(id) => navigate(`/clubs/${clubId}/${id}`, { replace: true })}
         />
         <div
           className="ap-stack ap-stack--lg"

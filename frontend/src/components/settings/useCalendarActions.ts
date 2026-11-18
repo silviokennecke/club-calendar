@@ -84,7 +84,7 @@ export function useCalendarActions(
         qc.removeQueries({ queryKey: ["calendar", clubId, calendarId] });
         await qc.invalidateQueries({ queryKey: ["calendars", clubId] });
         toast.success(t("settings.delete.done"));
-        if (!stay) navigate(`/clubs/${clubId}`);
+        if (!stay) navigate(`/clubs/${clubId}/calendars`);
       } catch {
         toast.error(t("settings.delete.failed"));
       }

@@ -8,6 +8,7 @@ import { StepUpDialog } from "./components/auth/StepUpDialog";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import GuestRoute from "./components/layout/GuestRoute";
 import { BackgroundRoutes } from "./components/layout/BackgroundRoutes";
+import { LegacyClubTabRedirect } from "./components/layout/LegacyClubTabRedirect";
 import { LegacyClubSettingsRedirect } from "./components/layout/LegacyClubSettingsRedirect";
 import { NotFoundPage, RouteErrorPage } from "./components/error/ErrorPage";
 import { SubscribeRedirect } from "./components/help/SubscribeRedirect";
@@ -102,7 +103,10 @@ function AppRoutes() {
               <Route path="privacy" element={<ProfilePrivacyTab />} />
               <Route path="*" element={<Navigate to="/profile" replace />} />
             </Route>
-            <Route path="/clubs/:clubId" element={<ClubPage />} />
+            <Route path="/clubs/:clubId" element={<LegacyClubTabRedirect />} />
+            <Route path="/clubs/:clubId/general" element={<ClubPage />} />
+            <Route path="/clubs/:clubId/calendars" element={<ClubPage />} />
+            <Route path="/clubs/:clubId/members" element={<ClubPage />} />
             <Route path="/clubs/:clubId/me" element={<MyClubPage />} />
             <Route path="/clubs/:clubId/calendars/:calendarId" element={<CalendarPage />} />
             <Route

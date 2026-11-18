@@ -60,7 +60,8 @@ describe("Sidebar navigation", () => {
     ["/clubs/c1/settings/locations", "Orte und Gruppen"],
     ["/clubs/c1/settings/target-groups", "Orte und Gruppen"],
     [`${base}/events/export`, "Veröffentlichen"],
-    ["/clubs/c1", "Verein verwalten"],
+    ["/clubs/c1/general", "Verein verwalten"],
+    ["/clubs/c1/members", "Verein verwalten"],
   ])("marks exactly one link as current on %s", (path, label) => {
     renderAt(path);
     expect(current()).toEqual([label]);
@@ -78,7 +79,7 @@ describe("Sidebar navigation", () => {
     );
     expect(screen.getByRole("link", { name: "Verein verwalten" })).toHaveAttribute(
       "href",
-      "/clubs/c1",
+      "/clubs/c1/general",
     );
   });
 

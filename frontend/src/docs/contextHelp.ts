@@ -51,15 +51,10 @@ const RULES: Rule[] = [
     new RegExp(`${CLUB}/me(/|$)`),
     (q) => (q.get("tab") === "subscription" ? "publishing/subscribe" : "getting-started/my-club"),
   ],
-  [
-    new RegExp(`${CLUB}/?$`),
-    (q) => {
-      const tab = q.get("tab");
-      if (tab === "calendars") return "settings/calendars";
-      if (tab === "members") return "team/members";
-      return "settings/club";
-    },
-  ],
+  [new RegExp(`${CLUB}/?$`), () => "settings/club"],
+  [new RegExp(`${CLUB}/calendars/?$`), () => "settings/calendars"],
+  [new RegExp(`${CLUB}/members/?$`), () => "team/members"],
+  [new RegExp(`${CLUB}/general/?$`), () => "settings/club"],
 ];
 
 /** Help page matching an app route (`/help` start page for routes without a fitting page). */

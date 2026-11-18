@@ -112,7 +112,12 @@ export function buildNavGroups(
           href: clubSettings.locations,
           icon: "map-pin",
         },
-        { key: "club", labelKey: "shell.nav.club", href: `/clubs/${clubId}`, icon: "building" },
+        {
+          key: "club",
+          labelKey: "shell.nav.club",
+          href: `/clubs/${clubId}/general`,
+          icon: "building",
+        },
       ],
     },
   ];
@@ -162,7 +167,11 @@ export function activeNavKey(
 ): NavKey | null {
   const path = pathname.replace(/\/+$/, "") || "/";
   if (path === "/profile" || path.startsWith("/profile/")) return "profile";
-  if (path === `/clubs/${clubId}`) return "club";
+  if (
+    path === `/clubs/${clubId}` ||
+    ["general", "calendars", "members"].some((t) => path === `/clubs/${clubId}/${t}`)
+  )
+    return "club";
   if (path === `/clubs/${clubId}/me`) return "me";
   // Club settings (locations, target groups, feeds) have no calendar in the URL.
   const clubSettings = clubSettingsRoutes(clubId);

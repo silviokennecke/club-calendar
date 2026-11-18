@@ -253,7 +253,7 @@ describe("FeedsPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Zurück zum Verein" })).toHaveAttribute(
       "href",
-      "/clubs/c1",
+      "/clubs/c1/general",
     );
     expect(apiGet).not.toHaveBeenCalledWith("/api/clubs/c1/feeds?includeSecret=1");
   });

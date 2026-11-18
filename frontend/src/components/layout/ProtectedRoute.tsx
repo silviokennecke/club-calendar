@@ -14,7 +14,9 @@ function parseContextFromPath(
   const withCalendar = pathname.match(/^\/clubs\/([^/]+)\/calendars\/([^/]+)/);
   if (withCalendar) return { clubId: withCalendar[1], calendarId: withCalendar[2] };
   // Club page, "Mein Verein" and club settings (locations, target groups, feeds): no calendar in the URL.
-  const clubOnly = pathname.match(/^\/clubs\/([^/]+)(?:\/settings(?:\/.*)?|\/me)?\/?$/);
+  const clubOnly = pathname.match(
+    /^\/clubs\/([^/]+)(?:\/settings(?:\/.*)?|\/me|\/general|\/calendars|\/members)?\/?$/,
+  );
   if (clubOnly) return { clubId: clubOnly[1], calendarId: null };
   return null;
 }
