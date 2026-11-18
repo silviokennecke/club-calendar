@@ -148,7 +148,9 @@ class PersonalFeedService
         if ([] !== $selection->branches(null)) {
             $event = $this->baseQuery($selection, null, null, null)
                 ->andWhere('e.id = :eventId')
+                ->andWhere('e.type = :eventType')
                 ->setParameter('eventId', $eventId)
+                ->setParameter('eventType', \App\Enum\EventType::Event)
                 ->getQuery()
                 ->getOneOrNullResult();
         }
@@ -163,11 +165,15 @@ class PersonalFeedService
     private function header(PersonalSelection $selection): array
     {
         $count = 0;
+        $noticeCount = 0;
         $audiences = [];
         if ([] !== $selection->branches(null)) {
-            $countQb = $this->em->createQueryBuilder()->select('COUNT(e.id)')->from(Event::class, 'e');
+            $countQb = $this->em->createQueryBuilder()->select('e.type AS type', 'COUNT(e.id) AS n')->from(Event::class, 'e')->groupBy('e.type');
             $this->restrict($countQb, $selection, null);
-            $count = (int) $countQb->getQuery()->getSingleScalarResult();
+            foreach ($countQb->getQuery()->getArrayResult() as $row) {
+                $t = $row['type'] instanceof \App\Enum\EventType ? $row['type']->value : (string) $row['type'];
+                'notice' === $t ? $noticeCount = (int) $row['n'] : $count = (int) $row['n'];
+            }
             $groupQb = $this->em->createQueryBuilder()
                 ->select('DISTINCT tg.id AS id', 'tg.name AS name')
                 ->from(EventTargetGroup::class, 'etg')
@@ -189,6 +195,7 @@ class PersonalFeedService
             'visibility' => 'PRIVATE',
             'indexable' => false,
             'eventCount' => $count,
+            'noticeCount' => $noticeCount,
             'audiences' => $audiences,
         ];
     }

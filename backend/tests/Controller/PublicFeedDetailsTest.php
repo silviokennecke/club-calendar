@@ -123,6 +123,7 @@ class PublicFeedDetailsTest extends WebTestCase
             'visibility' => 'PUBLIC',
             'indexable' => true,
             'eventCount' => 0,
+            'noticeCount' => 0,
             'audiences' => [],
         ], $r['body']['feed']);
 

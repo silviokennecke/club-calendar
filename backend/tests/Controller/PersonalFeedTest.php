@@ -437,7 +437,7 @@ class PersonalFeedTest extends WebTestCase
         $this->assertSame(200, $this->api($this->memberId, 'GET', "{$base}?from=2030-03-01")['status']);
         $r = $this->api($this->memberId, 'GET', "$base?from=2030-03-01&to=2030-03-31");
         $this->assertSame(['Kids event'], array_column($r['body']['events'], 'name'), 'default = subscription groups; hidden feed ignored');
-        $this->assertSame(['id', 'name', 'clubName', 'timezone', 'visibility', 'indexable', 'eventCount', 'audiences'], array_keys($r['body']['feed']));
+        $this->assertSame(['id', 'name', 'clubName', 'timezone', 'visibility', 'indexable', 'eventCount', 'noticeCount', 'audiences'], array_keys($r['body']['feed']));
         $this->assertSame($this->subId, $r['body']['feed']['id']);
         $this->assertCount(1, $r['body']['holidays'], 'deduplicated by uid');
         $this->assertStringNotContainsString('secret', strtolower($r['content']));

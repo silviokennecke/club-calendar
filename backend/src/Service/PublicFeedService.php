@@ -166,8 +166,14 @@ class PublicFeedService
 
         // Counted over all published events of the feed (not only a from/to range), so the page keeps
         // its audience filter and knows whether the feed is empty; nothing beyond what the feed shows.
-        $count = $this->em->createQueryBuilder()->select('COUNT(e.id)')->from(Event::class, 'e');
-        $this->restrictToFeed($count, $feed, null);
+        // Notices are counted separately: eventCount stays "events with a detail page".
+        $counts = $this->em->createQueryBuilder()->select('e.type AS type', 'COUNT(e.id) AS n')->from(Event::class, 'e')->groupBy('e.type');
+        $this->restrictToFeed($counts, $feed, null);
+        $byType = [];
+        foreach ($counts->getQuery()->getArrayResult() as $row) {
+            $t = $row['type'] instanceof \App\Enum\EventType ? $row['type']->value : (string) $row['type'];
+            $byType[$t] = (int) $row['n'];
+        }
         $audiences = $this->em->createQueryBuilder()
             ->select('DISTINCT tg.id AS id', 'tg.name AS name')
             ->from(EventTargetGroup::class, 'etg')
@@ -183,7 +189,8 @@ class PublicFeedService
             'timezone' => Input::canonicalTimezone($club->getTimezone()) ?? 'UTC',
             'visibility' => $feed->getVisibility()->value,
             'indexable' => $feed->isIndexable(),
-            'eventCount' => (int) $count->getQuery()->getSingleScalarResult(),
+            'eventCount' => $byType['event'] ?? 0,
+            'noticeCount' => $byType['notice'] ?? 0,
             'audiences' => array_map(
                 fn (array $row) => ['id' => (string) $row['id'], 'name' => (string) $row['name']],
                 $audiences->getQuery()->getArrayResult(),
@@ -486,6 +493,7 @@ class PublicFeedService
         return [
             'id' => $e->getId(),
             'calendarId' => $e->getCalendar()->getId(),
+            'type' => $e->getType()->value,
             'name' => $e->getName(),
             'date' => $e->getDate()->format('Y-m-d'),
             'dateEnd' => $e->getDateEnd()?->format('Y-m-d'),

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Club Calendar API
-  version: '1.9'
+  version: '1.10'
   summary: HTTP API of the Club Calendar backend (Symfony, `backend/`).
   description: |
     Hand-written reference of every route under `/api`. It is checked against the Symfony router by
@@ -4328,7 +4328,7 @@ paths:
       description: >-
         Every club member (also plain `member`). Same payload and limits as the public web view `/api/feed/{feedId}/events`,
         over the effective feeds of the personal subscription (selected feeds the user may access now, non-archived
-        calendars, published events only; holidays de-duplicated by uid; the club time zone). `feed` is a header with
+        calendars, published events and notices (`type`); holidays de-duplicated by uid; the club time zone). `feed` is a header with
         `name` "Mein Abo", `visibility` PRIVATE, `indexable` false; it never contains a secret (`id` is the subscription id, empty while none exists). Without `targetGroupIds`
         the subscription's own target groups apply; a given list (also empty = all groups) overrides it. Does not create the
         subscription (none = empty result).
@@ -4361,7 +4361,7 @@ paths:
     get:
       tags: [Clubs]
       summary: One event of the personal subscription
-      description: A published event of the effective feeds; drafts, events of other feeds and unknown ids are the same 404.
+      description: A published event of the effective feeds; drafts, notices, events of other feeds and unknown ids are the same 404.
       operationId: getMyEvent
       responses:
         '200':
@@ -6757,7 +6757,7 @@ components:
         calendarIds: { allOf: [{ $ref: '#/components/schemas/IdList' }], description: 'Required on create; optional on update but non-empty when sent. Every id must be a calendar of the club (422 `unknown_reference`; empty: 422 `validation_failed`).' }
     PublicFeedHeader:
       type: object
-      required: [id, name, clubName, timezone, visibility, indexable, eventCount, audiences]
+      required: [id, name, clubName, timezone, visibility, indexable, eventCount, noticeCount, audiences]
       properties:
         id: { type: string }
         name: { type: string, description: The feed name (replaces the former calendar name in the page title). }
@@ -6765,7 +6765,8 @@ components:
         timezone: { type: string, description: 'Time zone of the club (else UTC). An event without its own zone falls back to its calendar zone, then the club zone.' }
         visibility: { $ref: '#/components/schemas/FeedVisibility' }
         indexable: { type: boolean, description: Drives the `<meta name="robots">` of the SPA page. }
-        eventCount: { type: integer, description: All published events of the feed (not only the range). }
+        eventCount: { type: integer, description: All published events (type `event`) of the feed (not only the range); notices are not included. }
+        noticeCount: { type: integer, description: All published notices (type `notice`) of the feed (not only the range). }
         audiences:
           type: array
           description: Audiences (target groups) used by the feed's published events.
@@ -6777,10 +6778,12 @@ components:
               name: { type: string }
     PublicEvent:
       type: object
-      required: [id, calendarId, name, date, dateEnd, timeBegin, timeEnd, isAllDay, note, timezone, location, properties, features, targetGroups]
+      required: [id, calendarId, type, name, date, dateEnd, timeBegin, timeEnd, isAllDay, note, timezone, location, properties, features, targetGroups]
+      description: 'Item of the web views. Notices (`type` `notice`) appear here only (never in any ICS, the sitemap or as a detail route, which is 404 for them); they are all-day, may span days via `dateEnd`, and have no location, badges or extras.'
       properties:
         id: { type: string }
         calendarId: { type: string }
+        type: { type: string, enum: [event, notice] }
         name: { type: string }
         date: { $ref: '#/components/schemas/Date' }
         dateEnd: { type: [string, 'null'], format: date }
